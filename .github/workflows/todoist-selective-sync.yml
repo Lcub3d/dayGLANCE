@@ -12,37 +12,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  integrate:
-    if: github.repository == 'Lcub3d/dayGLANCE' && github.ref == 'refs/heads/feature/todoist-selective-sync'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feature/todoist-selective-sync
-      - name: Apply exact-source integration patch once
-        shell: bash
-        run: |
-          if [ -f .github/todoist-integration.patch ]; then
-            git apply --check .github/todoist-integration.patch
-            git apply .github/todoist-integration.patch
-            rm .github/todoist-integration.patch
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add src/App.jsx src/components/SettingsModal.jsx src/components/MobileSettingsPanel.jsx src/hooks/useTodoistSync.js src/todoist/client.js src/todoist/core.test.js .github/todoist-integration.patch
-            git commit -m 'feat: wire Todoist sync into desktop and mobile settings'
-            git push origin HEAD:refs/heads/feature/todoist-selective-sync
-          fi
   verify:
-    needs: integrate
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/todoist-selective-sync
           persist-credentials: false
       - name: Archive exact source and tested commit
         run: |
@@ -54,17 +28,26 @@ jobs:
           path: |
             /tmp/dayglance-source.zip
             /tmp/TESTED_COMMIT.txt
-          retention-days: 7
+          retention-days: 14
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      - name: Run complete test suite
+        run: npm test 2>&1 | tee /tmp/dayglance-tests.log
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: dayglance-web
           path: dist/
-          retention-days: 7
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dayglance-validation
+          path: |
+            /tmp/TESTED_COMMIT.txt
+            /tmp/dayglance-tests.log
+          retention-days: 14

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETTINGS, normalizeSettings, mergeResponse, matches, active, linked,
   reconcileTask, additions, prepareOutbox, acknowledge, writebackReason } from '../todoist/core.js';
-import { requestSync, CONFIG_KEY, TOKEN_KEY, ACCOUNT_KEY, stateKey, readJSON, writeJSON } from '../todoist/client.js';
+import { requestSync, connectAccount, CONFIG_KEY, TOKEN_KEY, ACCOUNT_KEY, stateKey, readJSON, writeJSON } from '../todoist/client.js';
 import { isResetInProgress } from '../utils/resetAppData.js';
+
+const sessionValue = key => {
+  try { return sessionStorage.getItem(key) || ''; } catch { return ''; }
+};
 
 // Credentials are session-only. dg-todoist-* is deliberately outside the
 // day-planner-* device-settings/backup namespace. Tasks themselves may sync.
@@ -12,8 +16,8 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
     try { return normalizeSettings(readJSON(localStorage, CONFIG_KEY, DEFAULT_SETTINGS)); }
     catch { return normalizeSettings(); }
   });
-  const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || '');
-  const [account, setAccount] = useState(() => sessionStorage.getItem(ACCOUNT_KEY) || '');
+  const [token, setToken] = useState(() => sessionValue(TOKEN_KEY));
+  const [account, setAccount] = useState(() => sessionValue(ACCOUNT_KEY));
   const [catalog, setCatalog] = useState(null);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -38,10 +42,9 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
   }, [cancel]);
   const disconnect = useCallback(() => {
     cancel();
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(ACCOUNT_KEY);
+    try { sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(ACCOUNT_KEY); } catch { /* storage may be disabled */ }
     setToken(''); setAccount(''); setCatalog(null); setPending(0); setLastSynced(null);
-    updateSettings({ enabled: false });
+    updateSettings({ enabled: false, completionWriteback: false });
     setStatus('idle');
   }, [cancel, updateSettings]);
 
@@ -64,17 +67,21 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
       let id = initial.account;
       let stored = id ? readJSON(localStorage, stateKey(id), {}) : {};
       let cache;
-      const response = await requestSync(secret, mode === 'connect' ? '*' : (stored.cache?.cursor || '*'), [],
-        { signal: controller.current.signal });
+      if (mode === 'connect') {
+        const connected = await connectAccount(secret,
+          accountId => readJSON(localStorage, stateKey(accountId), {}), { signal: controller.current.signal });
+        cache = connected.cache; stored = connected.stored;
+      } else {
+        cache = mergeResponse(stored.cache, await requestSync(secret, stored.cache?.cursor || '*', [],
+          { signal: controller.current.signal }));
+      }
       check();
-      cache = mergeResponse(mode === 'connect' ? {} : stored.cache, response);
       id = String(cache.user.id);
       if (mode !== 'connect' && id !== initial.account) throw new Error('accountChanged');
       if (mode === 'connect') {
-        stored = readJSON(localStorage, stateKey(id), {});
         // Connecting is always read-only, even after reconnecting to the same account.
         const next = normalizeSettings(initial.account && initial.account !== id
-          ? DEFAULT_SETTINGS : { ...initial.settings, enabled: false });
+          ? DEFAULT_SETTINGS : { ...initial.settings, enabled: false, completionWriteback: false });
         writeJSON(localStorage, CONFIG_KEY, next);
         sessionStorage.setItem(TOKEN_KEY, secret);
         sessionStorage.setItem(ACCOUNT_KEY, id);

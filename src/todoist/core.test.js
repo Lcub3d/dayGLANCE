@@ -2,7 +2,7 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { DEFAULT_SETTINGS, normalizeSettings, matches, mergeResponse, importTask,
   reconcileTask, additions, taskId, prepareOutbox, acknowledge, writebackReason, remoteFields } from './core.js';
-import { requestSync, TODOIST_ENDPOINT, CONFIG_KEY, TOKEN_KEY, stateKey, readJSON, writeJSON } from './client.js';
+import { requestSync, connectAccount, TODOIST_ENDPOINT, CONFIG_KEY, TOKEN_KEY, stateKey, readJSON, writeJSON } from './client.js';
 const now = '2026-09-10T06:00:00.000Z';
 const settings = patch => normalizeSettings({ ...DEFAULT_SETTINGS, ...patch });
 const item = patch => ({ id: 'aBc123', content: 'Review plan', description: 'Notes', priority: 4,
@@ -169,5 +169,28 @@ describe('transport and storage boundaries', () => {
   it('fails closed on corrupt storage or full disk', () => {
     assert.throws(() => readJSON({ getItem: () => '{bad' }, 'key', {}), /storageCorrupt/);
     assert.throws(() => writeJSON({ setItem: () => { throw Error('full'); } }, 'key', {}), /storageFull/);
+  });
+});
+
+describe('read-only reconnect', () => {
+  it('resumes the saved cursor and captures completions while closed', async () => {
+    const seen = [];
+    const stored = { cache: cache(), queue: [{ uuid: 'pending' }] };
+    const result = await connectAccount('secret', () => stored, { fetchImpl: async (url, init) => {
+      seen.push(init.body.get('sync_token'));
+      assert.equal(init.body.has('commands'), false);
+      return { ok: true, json: async () => seen.length === 1 ? payload({ items: [] })
+        : payload({ full_sync: false, items: [item({ checked: true })] }) };
+    } });
+    assert.deepEqual(seen, ['*', 'cursor-1']);
+    assert.equal(result.cache.items.aBc123.checked, true);
+    assert.equal(result.stored.queue[0].uuid, 'pending');
+  });
+  it('never loads another account cache under the old account ID', async () => {
+    let loaded;
+    await connectAccount('secret', id => { loaded = id; return {}; }, {
+      fetchImpl: async () => ({ ok: true, json: async () => payload({ user: { id: 'new-user' } }) }),
+    });
+    assert.equal(loaded, 'new-user');
   });
 });

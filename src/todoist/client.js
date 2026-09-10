@@ -1,3 +1,4 @@
+import { mergeResponse } from './core.js';
 // No proxy, configurable host, telemetry, token-in-URL, or logged response body.
 export const TODOIST_ENDPOINT = 'https://api.todoist.com/api/v1/sync';
 export async function requestSync(token, cursor = '*', commands = [], { signal, fetchImpl = globalThis.fetch } = {}) {
@@ -43,4 +44,16 @@ export function readJSON(storage, key, fallback) {
 }
 export function writeJSON(storage, key, value) {
   try { storage.setItem(key, JSON.stringify(value)); } catch { throw new Error('storageFull'); }
+}
+
+// Verify identity first, then resume the saved cursor rather than discarding
+// completions received while the app was closed. Never write during connect.
+export async function connectAccount(token, loadStored, options = {}) {
+  const fresh = mergeResponse({}, await requestSync(token, '*', [], options));
+  const stored = loadStored(String(fresh.user.id));
+  const cache = stored.cache?.cursor
+    ? mergeResponse(stored.cache, await requestSync(token, stored.cache.cursor, [], options))
+    : fresh;
+  if (String(cache.user.id) !== String(fresh.user.id)) throw new Error('accountChanged');
+  return { cache, stored };
 }

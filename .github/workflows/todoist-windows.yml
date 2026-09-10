@@ -7,7 +7,18 @@ on:
       - .github/workflows/todoist-windows.yml
       - electron-builder.todoist-windows.cjs
       - scripts/smoke-todoist-windows.cjs
+      - 'src/todoist/**'
+      - src/hooks/useTodoistSync.js
+      - src/components/TodoistSettings.jsx
+      - src/components/MobileSettingsPanel.jsx
+      - src/App.jsx
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_ref:
+        type: string
+        default: ''
+        required: false
 
 permissions:
   contents: read
@@ -27,13 +38,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ inputs.source_ref || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Todoist unit and settings tests
-        run: npx vitest run src/todoist/core.test.js src/todoist/settings.test.jsx
+        run: npx vitest run src/todoist
       - name: Compile Electron renderer and main process
         shell: pwsh
         run: |

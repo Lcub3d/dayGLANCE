@@ -376,7 +376,7 @@ const MobileSettingsPanel = () => {
         onClick={() => setMobileSettingsView('todoist')}
         className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
       >
-        <CheckSquare size={20} className="text-red-500" />
+        <CheckSquare size={20} className={textSecondary} />
         <span className={`font-medium ${textPrimary} flex-1 text-left`}>{todoistText('title')}</span>
         <ChevronRight size={18} className={textSecondary} />
       </button>

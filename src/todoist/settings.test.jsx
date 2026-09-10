@@ -53,13 +53,33 @@ describe('Todoist namespace and settings', () => {
   it('renders a masked token input and safe defaults before connecting', async () => {
     const html = await render(mockSync());
     expect(html).toContain('type="password"'); expect(html).toContain(en.title);
-    expect(html).toContain(en.ruleHelp); expect(html).toContain(en.security);
+    expect(html).toContain(en.modes.today); expect(html).toContain(en.security);
   });
   it('renders the Chinese connected view and safely escapes task titles', async () => {
     const html = await render(mockSync({ connected: true, account: 'u1', catalog: { user: { full_name: 'Test' }, projects: {}, labels: {} },
       selected: [{ id: 'task', content: '<img src=x onerror=alert(1)>', priority: 4 }] }), 'zh-CN');
     expect(html).toContain(zh.title); expect(html).not.toContain('type="password"');
     expect(html).toContain('&lt;img'); expect(html).not.toContain('<img src=x');
+  });
+  it('keeps manual sync available with automatic sync off', async () => {
+    const html = await render(mockSync({ connected: true }));
+    const buttons = html.match(/<button[^>]*>[\s\S]*?<\/button>/g);
+    const manual = buttons.find(button => button.includes(en.sync));
+    expect(manual).not.toMatch(/\sdisabled(?:=|>|\s)/);
+    expect(html).toContain('aria-expanded="true"');
+  });
+  it('shows advanced filters only in the appropriate mode', async () => {
+    const today = await render(mockSync());
+    const filtered = await render(mockSync({ settings: normalizeSettings({ mode: 'filtered' }) }));
+    expect(today).not.toContain(en.advanced);
+    expect(filtered).toContain(en.advanced);
+    expect(filtered).toContain(en.ruleHelp);
+  });
+  it('requires explicit mirror consent before allowing a sync', async () => {
+    const html = await render(mockSync({ connected: true, settings: normalizeSettings({ mode: 'mirror' }) }));
+    const manual = html.match(/<button[^>]*>[\s\S]*?<\/button>/g).find(button => button.includes(en.sync));
+    expect(manual).toMatch(/\sdisabled(?:=|>|\s)/);
+    expect(html).toContain(en.mirrorWarning);
   });
   it('is wired to both settings entries and an always-mounted hook', () => {
     expect(readFileSync('src/App.jsx', 'utf8')).toContain('const todoist = useTodoistSync(');

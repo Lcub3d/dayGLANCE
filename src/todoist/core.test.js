@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS, normalizeSettings, matches, mergeResponse, importTask
   reconcileTask, additions, taskId, prepareOutbox, acknowledge, writebackReason, remoteFields } from './core.js';
 import { requestSync, connectAccount, TODOIST_ENDPOINT, CONFIG_KEY, TOKEN_KEY, stateKey, readJSON, writeJSON } from './client.js';
 const now = '2026-09-10T06:00:00.000Z';
-const settings = patch => normalizeSettings({ ...DEFAULT_SETTINGS, ...patch });
+const settings = patch => normalizeSettings({ ...DEFAULT_SETTINGS, mode: 'filtered', destination: 'inbox', ...patch });
 const item = patch => ({ id: 'aBc123', content: 'Review plan', description: 'Notes', priority: 4,
   project_id: 'child', labels: ['work'], checked: false, is_deleted: false, ...patch });
 const payload = patch => ({ full_sync: true, sync_token: 'cursor-1', user: { id: 'user1', full_name: 'Tester' },

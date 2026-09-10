@@ -51,9 +51,8 @@ export function writeJSON(storage, key, value) {
 export async function connectAccount(token, loadStored, options = {}) {
   const fresh = mergeResponse({}, await requestSync(token, '*', [], options));
   const stored = loadStored(String(fresh.user.id));
-  const cache = stored.cache?.cursor
-    ? mergeResponse(stored.cache, await requestSync(token, stored.cache.cursor, [], options))
-    : fresh;
+  const base = stored.cache?.cursor ? stored.cache : fresh;
+  const cache = mergeResponse(base, await requestSync(token, base.cursor, [], options));
   if (String(cache.user.id) !== String(fresh.user.id)) throw new Error('accountChanged');
   return { cache, stored };
 }

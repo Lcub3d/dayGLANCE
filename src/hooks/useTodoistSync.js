@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETTINGS, normalizeSettings, mergeResponse, matches, active, linked,
-  reconcileTask, additions, prepareOutbox, acknowledge, writebackReason } from '../todoist/core.js';
+  reconcileLists, mirrorRemoval, prepareOutbox, acknowledge, writebackReason } from '../todoist/core.js';
 import { requestSync, connectAccount, CONFIG_KEY, TOKEN_KEY, ACCOUNT_KEY, stateKey, readJSON, writeJSON } from '../todoist/client.js';
 import { isResetInProgress } from '../utils/resetAppData.js';
 
@@ -11,7 +11,7 @@ const sessionValue = key => {
 // Credentials are session-only. dg-todoist-* is deliberately outside the
 // day-planner-* device-settings/backup namespace. Tasks themselves may sync.
 export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setUnscheduledTasks,
-  recycleBin, dataLoaded, isTrayMode, multiUserEnabled }) {
+  recycleBin, setRecycleBin, dataLoaded, isTrayMode, multiUserEnabled }) {
   const [settings, setSettings] = useState(() => {
     try { return normalizeSettings(readJSON(localStorage, CONFIG_KEY, DEFAULT_SETTINGS)); }
     catch { return normalizeSettings(); }
@@ -23,8 +23,9 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
   const [error, setError] = useState('');
   const [lastSynced, setLastSynced] = useState(null);
   const [pending, setPending] = useState(0);
+  const [report, setReport] = useState(null);
   const latest = useRef();
-  latest.current = { tasks, setTasks, unscheduledTasks, setUnscheduledTasks, recycleBin,
+  latest.current = { tasks, setTasks, unscheduledTasks, setUnscheduledTasks, recycleBin, setRecycleBin,
     dataLoaded, isTrayMode, multiUserEnabled, settings, token, account };
   const running = useRef(false);
   const generation = useRef(0);
@@ -36,14 +37,20 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
   }, []);
   const updateSettings = useCallback(patch => {
     cancel();
-    const next = normalizeSettings({ ...latest.current.settings, ...patch });
-    try { writeJSON(localStorage, CONFIG_KEY, next); setSettings(next); setError(''); }
+    const enteringMirror = patch.mode === 'mirror' && latest.current.settings.mode !== 'mirror';
+    const changingMirror = (patch.mode || latest.current.settings.mode) === 'mirror' &&
+      ['mirrorScope', 'mirrorDates', 'priorities', 'projects', 'labels', 'match', 'labelMatch', 'subprojects', 'todayOnly', 'includeOverdue']
+        .some(field => Object.hasOwn(patch, field));
+    const next = normalizeSettings({ ...latest.current.settings, ...patch,
+      ...((enteringMirror || changingMirror) ? { mirrorAcknowledged: false, completionWriteback: false } : {}) });
+    try { writeJSON(localStorage, CONFIG_KEY, next); latest.current.settings = next; setSettings(next); setError(''); }
     catch (err) { setError(err.message); }
   }, [cancel]);
   const disconnect = useCallback(() => {
     cancel();
     try { sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(ACCOUNT_KEY); } catch { /* storage may be disabled */ }
-    setToken(''); setAccount(''); setCatalog(null); setPending(0); setLastSynced(null);
+    setToken(''); setAccount(''); setCatalog(null); setPending(0); setLastSynced(null); setReport(null);
+    latest.current.token = ''; latest.current.account = ''; retryAt.current = 0;
     updateSettings({ enabled: false, completionWriteback: false });
     setStatus('idle');
   }, [cancel, updateSettings]);
@@ -52,7 +59,8 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
     const initial = latest.current;
     if (running.current || initial.isTrayMode || isResetInProgress()) return;
     if (initial.multiUserEnabled) { setError('multiUser'); return; }
-    if (mode === 'sync' && (!initial.settings.enabled || !initial.dataLoaded)) return;
+    if (mode === 'sync' && !initial.dataLoaded) { setError('notReady'); return false; }
+    if (mode === 'sync' && initial.settings.mode === 'mirror' && !initial.settings.mirrorAcknowledged) { setError('mirrorConsent'); return false; }
     if (Date.now() < retryAt.current) { setError('rateLimited'); return; }
     const secret = mode === 'connect' ? candidateToken.trim() : initial.token;
     if (!secret) { setError('tokenRequired'); return; }
@@ -81,17 +89,19 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
       if (mode === 'connect') {
         // Connecting is always read-only, even after reconnecting to the same account.
         const next = normalizeSettings(initial.account && initial.account !== id
-          ? DEFAULT_SETTINGS : { ...initial.settings, enabled: false, completionWriteback: false });
+          ? DEFAULT_SETTINGS : { ...initial.settings, enabled: false, completionWriteback: false, mirrorAcknowledged: false });
         writeJSON(localStorage, CONFIG_KEY, next);
         sessionStorage.setItem(TOKEN_KEY, secret);
         sessionStorage.setItem(ACCOUNT_KEY, id);
         setToken(secret); setAccount(id); setSettings(next);
+        Object.assign(latest.current, { token: secret, account: id, settings: next });
       }
       if (stored.queue != null && !Array.isArray(stored.queue)) throw new Error('storageCorrupt');
       let queue = stored.queue || [];
+      let currentReport = stored.report || null;
       const persist = (lastSync = stored.lastSync) => {
         check();
-        writeJSON(localStorage, stateKey(id), { cache, queue, lastSync });
+        writeJSON(localStorage, stateKey(id), { cache, queue, lastSync, report: currentReport });
         setCatalog(cache); setPending(queue.length);
       };
       persist();
@@ -126,22 +136,23 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
         const now = new Date().toISOString();
         const currentState = latest.current;
         const tombstones = readJSON(localStorage, 'day-planner-deleted-task-ids', {});
-        const blocked = new Set([...Object.keys(tombstones), ...(currentState.recycleBin || []).map(t => String(t.id))]);
-        const inserted = additions([...currentState.tasks, ...currentState.unscheduledTasks], cache, currentState.settings, blocked, now);
-        const config = currentState.settings;
-        currentState.setTasks(prev => generation.current === epoch && !isResetInProgress()
-          ? prev.map(task => reconcileTask(task, cache, config, now)) : prev);
-        currentState.setUnscheduledTasks(prev => {
-          if (generation.current !== epoch || isResetInProgress()) return prev;
-          const updated = prev.map(task => reconcileTask(task, cache, config, now));
-          const existing = new Set([...updated, ...latest.current.tasks].map(task => String(task.id)));
-          return [...updated, ...inserted.filter(task => !existing.has(String(task.id)))];
-        });
+        const plan = reconcileLists({ tasks: currentState.tasks, unscheduledTasks: currentState.unscheduledTasks,
+          recycleBin: currentState.recycleBin, cache, settings: currentState.settings,
+          blockedIds: new Set(Object.keys(tombstones)), now });
+        check();
+        // These setters are batched by React. Recycle first so removed copies remain recoverable.
+        const valid = () => generation.current === epoch && !isResetInProgress();
+        currentState.setRecycleBin(prev => valid() ? applyPlannedList(prev, currentState.recycleBin, plan.recycleBin) : prev);
+        currentState.setTasks(prev => valid() ? applyPlannedList(prev, currentState.tasks, plan.tasks) : prev);
+        currentState.setUnscheduledTasks(prev => valid() ? applyPlannedList(prev, currentState.unscheduledTasks, plan.unscheduledTasks) : prev);
+        currentReport = plan.report;
+        setReport(currentReport);
         persist(now);
         setLastSynced(now);
-      } else setLastSynced(stored.lastSync || null);
+      } else { setLastSynced(stored.lastSync || null); setReport(currentReport); }
       setCatalog(cache); setPending(queue.length); setStatus('success');
     };
+    let succeeded = false;
     try {
       if (navigator.locks?.request) {
         await navigator.locks.request('dayglance-todoist-sync', { ifAvailable: true }, async lock => {
@@ -149,6 +160,7 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
           await execute();
         });
       } else await execute();
+      succeeded = true;
     } catch (err) {
       if (generation.current === epoch) {
         setError(err.message === 'cancelled' ? 'networkError' : err.message);
@@ -160,6 +172,7 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
       controller.current = null;
       if (generation.current !== epoch) setStatus('idle');
     }
+    return succeeded;
   }, []);
   const syncNow = useCallback(() => perform('sync'), [perform]);
   const preview = useCallback(() => perform('preview'), [perform]);
@@ -197,11 +210,28 @@ export default function useTodoistSync({ tasks, setTasks, unscheduledTasks, setU
     };
   }, [settings.enabled, settings.intervalMinutes, token, dataLoaded, isTrayMode, multiUserEnabled, syncNow]);
 
-  const selected = catalog ? Object.values(catalog.items).filter(item => active(item) && matches(item, settings, catalog.projects)) : [];
+  const selected = catalog ? Object.values(catalog.items).filter(item => active(item) && matches(item, settings, catalog.projects, new Date(), catalog.user.timezone)) : [];
   const local = [...tasks, ...unscheduledTasks].filter(task => linked(task, account));
   const conflicts = local.filter(task => Object.keys(task.todoist.conflicts || {}).length);
   const blockedWrites = catalog ? local.filter(task => ['recurring', 'parent', 'assignedElsewhere'].includes(writebackReason(task, catalog, settings))) : [];
+  const plannedRemovals = catalog ? local.filter(task => mirrorRemoval(task, catalog, { ...settings, mirrorAcknowledged: true }, new Date())).length : 0;
   return { settings, updateSettings, connected: !!token && !!account, account, catalog, selected,
-    status, error, lastSynced, pending, conflicts, blockedWrites, multiUserEnabled,
+    status, error, lastSynced, report, plannedRemovals, pending, conflicts, blockedWrites, multiUserEnabled,
     connect, disconnect, preview, syncNow, resolveConflict };
+}
+
+
+// Preserve unrelated additions/edits queued while an async request was outstanding.
+export function applyPlannedList(current, snapshot = [], planned) {
+  if (current === snapshot) return planned;
+  const before = new Map(snapshot.map(task => [String(task.id), task]));
+  const after = new Map(planned.map(task => [String(task.id), task]));
+  const present = new Set(current.map(task => String(task.id)));
+  const merged = current.flatMap(task => {
+    const id = String(task.id);
+    if (!before.has(id) || task !== before.get(id)) return [task];
+    return after.has(id) ? [after.get(id)] : [];
+  });
+  for (const task of planned) if (!present.has(String(task.id)) && !before.has(String(task.id))) merged.push(task);
+  return merged;
 }

@@ -2810,7 +2810,7 @@ const DayPlanner = () => {
 
   const todoist = useTodoistSync({
     tasks, setTasks, unscheduledTasks, setUnscheduledTasks,
-    recycleBin, dataLoaded, isTrayMode, multiUserEnabled,
+    recycleBin, setRecycleBin, dataLoaded, isTrayMode, multiUserEnabled,
   });
 
   // Obsidian vault sync — full lifecycle (initial restore+sync, visibility

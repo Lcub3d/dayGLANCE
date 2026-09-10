@@ -7,13 +7,13 @@ module.exports = {
   ...base,
   appId: 'com.dayglance.app',
   productName: 'dayGLANCE',
-  buildVersion: '5.0.0.1',
+  buildVersion: '5.0.0.2',
   publish: null,
   directories: { ...base.directories, output: 'dist-todoist-windows' },
   win: {
     ...base.win,
     target: [{ target: 'nsis', arch: ['x64'] }],
-    artifactName: 'dayGLANCE-5.0.0-Todoist-Windows-${arch}-Setup.${ext}',
+    artifactName: 'dayGLANCE-5.0.0-Todoist-V2-Windows-${arch}-Setup.${ext}',
   },
   nsis: {
     oneClick: false,

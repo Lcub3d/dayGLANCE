@@ -1,0 +1,36 @@
+name: Todoist selective sync
+
+on:
+  push:
+    branches: [feature/todoist-selective-sync]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Archive exact source snapshot
+        run: git archive --format=zip HEAD -o /tmp/dayglance-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dayglance-source
+          path: /tmp/dayglance-source.zip
+          retention-days: 7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dayglance-web
+          path: dist/
+          retention-days: 7

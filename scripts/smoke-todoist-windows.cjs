@@ -74,7 +74,8 @@ fs.mkdirSync(output, { recursive: true });
     results.tests.push('Synthetic API connection and preview: P1 matches, P4 excluded; preview does not import.');
     await section.getByLabel('Smoke project', { exact: true }).check();
     await section.getByLabel('dayglance', { exact: true }).check();
-    await section.getByLabel('Automatic sync while the app is open', { exact: true }).selectOption('0');
+    // A wrapping label's accessible name includes its select's option text.
+    await section.getByLabel('Automatic sync while the app is open').selectOption('0');
     await section.getByLabel('Enable selective sync', { exact: true }).check();
     await section.getByRole('button', { name: 'Sync now', exact: true }).click();
     await page.waitForFunction(() => JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]').some(task => task.id === 'todoist:windows-smoke-account:smoke-p1'), null, { timeout: 30000 });

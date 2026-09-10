@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { setTimeout: delay } = require('node:timers/promises');
 if (process.platform !== 'win32' || process.env.GITHUB_ACTIONS !== 'true') {
   throw new Error('This smoke test is restricted to ephemeral GitHub Windows runners.');
 }
@@ -17,10 +18,15 @@ fs.mkdirSync(output, { recursive: true });
   const errors = [];
   try {
     app = await electron.launch({ executablePath: process.env.TODOIST_TEST_EXE,
-      timeout: 90000, args: [], env: { ...process.env, ELECTRON_DISABLE_SECURITY_WARNINGS: 'false' } });
-    page = await app.firstWindow();
+      timeout: 90000, args: [], env: { ...process.env } });
+    // Fresh installs briefly create a hidden storage-migration window first.
+    const deadline = Date.now() + 60000;
+    while (!page && Date.now() < deadline) {
+      page = app.windows().find(window => !window.isClosed() && window.url() === 'app://dayglance/');
+      if (!page) await delay(250);
+    }
+    assert(page, 'Main application window did not open.');
     page.on('pageerror', error => errors.push(error.message));
-    await page.waitForURL('app://dayglance/**', { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded');
     await page.evaluate(() => {
       localStorage.setItem('i18nextLng', 'en');
@@ -71,7 +77,7 @@ fs.mkdirSync(output, { recursive: true });
     await section.getByLabel('Automatic sync while the app is open', { exact: true }).selectOption('0');
     await section.getByLabel('Enable selective sync', { exact: true }).check();
     await section.getByRole('button', { name: 'Sync now', exact: true }).click();
-    await page.waitForFunction(() => JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]').some(task => task.id === 'todoist:windows-smoke-account:smoke-p1'), { timeout: 30000 });
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]').some(task => task.id === 'todoist:windows-smoke-account:smoke-p1'), null, { timeout: 30000 });
     const afterImport = await page.evaluate(() => JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]'));
     assert.equal(afterImport.filter(task => task.importSource === 'todoist').length, 1);
     assert.equal(afterImport.some(task => task.id === 'windows-test-local'), true);
@@ -85,7 +91,13 @@ fs.mkdirSync(output, { recursive: true });
     await chinese.waitFor({ state: 'visible' });
     await chinese.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(output, 'todoist-settings-zh.png') });
-    results.tests.push('Chinese settings render after restart; disconnect leaves imported tasks in local data.');
+    const kept = await page.evaluate(() => ({
+      tasks: JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]'),
+      token: sessionStorage.getItem('dg-todoist-token-v1'),
+    }));
+    assert.equal(kept.tasks.some(task => task.id === 'todoist:windows-smoke-account:smoke-p1'), true);
+    assert.equal(kept.token, null);
+    results.tests.push('Chinese settings render after reload; disconnect clears token but keeps imported tasks.');
     assert.deepEqual(errors, []);
     results.status = 'passed';
     results.mockRequests = requests;

@@ -9,11 +9,14 @@ export default function ActualTimelineLayer({
   clipStartMin = 0,
   clipEndMin = 1440,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { darkMode, minutesToPosition, timeToMinutes, formatTime } = useDayPlannerCtx();
   const { actualForDate } = useJournalTimeline();
   const blocks = actualForDate(dateStr);
   const toTop = minToTop ?? minutesToPosition;
+  const actualLabel = t('journal.actual', {
+    defaultValue: i18n.resolvedLanguage?.startsWith('zh') ? '实际' : 'Actual',
+  });
 
   if (!blocks.length) return null;
 
@@ -35,7 +38,7 @@ export default function ActualTimelineLayer({
           <div
             key={block.id}
             role="note"
-            aria-label={`${t('journal.actual', { defaultValue: 'Actual' })}: ${block.title}`}
+            aria-label={`${actualLabel}: ${block.title}`}
             data-journal-actual-id={block.id}
             className={`absolute left-1 right-1 overflow-hidden rounded-md border-2 ${darkMode ? 'text-stone-50 border-stone-100/80' : 'text-stone-900 border-stone-900/75'}`}
             style={{
@@ -53,7 +56,7 @@ export default function ActualTimelineLayer({
             <div className="h-full px-2 py-1 pl-3 flex flex-col justify-start min-w-0">
               <div className="flex items-center gap-1 min-w-0">
                 <span className="text-[9px] font-bold uppercase tracking-wider opacity-70 flex-shrink-0">
-                  {t('journal.actual', { defaultValue: 'Actual' })}
+                  {actualLabel}
                 </span>
                 <span className="text-xs font-semibold truncate">{block.title}</span>
               </div>

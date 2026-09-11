@@ -74,14 +74,9 @@ export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, 
   // establishes a baseline; later schedule changes append revisions instead of
   // erasing the earlier intent. This gives PDCA review a stable plan history while
   // leaving the existing planner free to reschedule unfinished work.
-  const planFingerprint = useMemo(() => dayTasks
-    .map(task => [task.id, task.date, task.startTime, task.duration, task.title, task.projectId].join('|'))
-    .sort()
-    .join('||'), [dayTasks]);
-
   useEffect(() => {
     if (dayTasks.length) observePlans(dayTasks);
-  }, [observePlans, planFingerprint]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dayTasks, observePlans]);
 
   const dayWindow = getDayWindow?.(dateStr);
   const markerLines = [];
@@ -124,9 +119,9 @@ export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, 
     const end = start + Math.max(1, Number(task.duration) || 30);
     if (end <= clipStartMin || start >= clipEndMin) return null;
 
-    // Recording a future plan as fact is deliberately blocked. Past blocks and
-    // blocks that have already started today can be accepted as actual with one tap.
-    if (dateStr > todayStr || (dateStr === todayStr && start > nowMinutes)) return null;
+    // Facts are created only after the planned block has elapsed. This avoids
+    // turning a future duration into recorded time before it actually happens.
+    if (dateStr > todayStr || (dateStr === todayStr && end > nowMinutes)) return null;
 
     const slotKey = `${start}`;
     const sameStartIndex = occupiedStarts.get(slotKey) || 0;

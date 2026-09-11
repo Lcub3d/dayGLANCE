@@ -217,6 +217,57 @@ describe('DayDial keyboard/AT contract', () => {
     expect(options(html)).toHaveLength(1);
   });
 
+  it('draws the daylight band under the schedule, and only when lit', async () => {
+    const i18n = await i18nFor('en');
+    const steps = [
+      { startMin: 400, endMin: 404, opacity: 0.05 },
+      { startMin: 404, endMin: 408, opacity: 0.2 },
+    ];
+    const html = render(i18n, { dayTasks: [task()], daylight: steps });
+    // Each step is feathered into three concentric sub-bands, so its radial
+    // edges fade instead of cutting: two paths per step at a third strength
+    // and one at full.
+    expect(html).toContain('fill="#fcd34d"');
+    expect((html.match(/fill-opacity="0\.2"/g) || [])).toHaveLength(1);
+    expect((html.match(/fill-opacity="0\.07"/g) || [])).toHaveLength(2); // 0.2 x 0.35, twice
+    expect((html.match(/fill-opacity="0\.0175"/g) || [])).toHaveLength(2); // 0.05 x 0.35
+    // Beneath the wedges: the band's group opens before the first block.
+    expect(html.indexOf('#fcd34d')).toBeLessThan(html.indexOf('Deep work'));
+
+    // A polar night, or no location at all, draws nothing.
+    expect(render(i18n, { dayTasks: [task()], daylight: [] })).not.toContain('#fcd34d');
+    expect(render(i18n, { dayTasks: [task()] })).not.toContain('#fcd34d');
+  });
+
+  it('rails the day\'s focus sessions inside the blocks they happened in', async () => {
+    const i18n = await i18nFor('en');
+    const html = render(i18n, {
+      dayTasks: [task()],
+      focusSpans: [{ startMin: 540, endMin: 591 }, { startMin: 840, endMin: 870 }],
+    });
+    expect((html.match(/fill-opacity="0\.42"/g) || [])).toHaveLength(1); // one group
+    expect((html.match(/A 315 315/g) || [])).toHaveLength(2);  // one arc per span
+    // The rail sits INSIDE the schedule band (300-385) rather than beside
+    // it, and clear of the wedge's own inner edge stroke at 300.
+    expect(html).toContain('A 307 307');
+    // And the total gets a home in the legend, kept out of the minute totals
+    // above it (focus happens INSIDE those same blocks).
+    expect(html).toContain('Focus');
+    expect(html).toContain('1h 21m');
+
+    expect(render(i18n, { dayTasks: [task()], focusSpans: [] })).not.toContain('fill-opacity="0.42"');
+    expect(render(i18n, { dayTasks: [task()] })).not.toContain('>Focus<');
+  });
+
+  it('keeps the now line from swallowing taps on the blocks beneath it', async () => {
+    const i18n = await i18nFor('en');
+    const html = render(i18n, { dayTasks: [task()] });
+    // The needle and its afterglow are painted OVER the wedges. Without this
+    // the glow eats every tap for the hour behind now — which is exactly the
+    // part of the running block someone reaches for.
+    expect(html).toMatch(/<g pointer-events="none">(?:(?!<\/g>).)*#fe8b00/s);
+  });
+
   it('localizes the listbox name and the option labels', async () => {
     const i18n = await i18nFor('de');
     const html = render(i18n, { dayTasks: [task({ completed: true })] });

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Leaf, MoonStar, Sparkles, Undo2, Zap } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Leaf, MoonStar, Sparkles, Timer, Undo2, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { stripWikilinks } from '../utils/taskUtils.js';
 import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import DialComplications from './DialComplications.jsx';
 import {
   DIAL_COLORS,
   DIAL_DAY_MINUTES,
@@ -15,7 +16,9 @@ import {
   dialSectorPath,
   dialTicks,
   dialLabelYieldsToSun,
+  canStartFocusFromBlock,
   findDialFocusBlock,
+  focusSpanMinutes,
   initialDialSelection,
   muteDialColor,
   padDialSegment,
@@ -80,6 +83,31 @@ const TICK_STYLE = {
 // something laid over the schedule.
 const ROUTINE_COLOR = '#5eead4';   // teal-300, the app's routine colour
 const R_ROUTINE_BAND = [404, 432]; // inside the tick field (400–436)
+
+// Daylight rides just inside the schedule ring, among the weather it belongs
+// with: the temps are at 250 and the precipitation arc at 292, so this sits
+// with them rather than out in the tick field, where the ticks stripe
+// straight through a band and it reads as a highlighter mark on a scale.
+// The outer edge tucks two units UNDER the wedges (drawn beneath them), which
+// is what makes the band feel attached to the ring instead of floating below.
+const R_DAYLIGHT_BAND = [282, 302];
+const DAYLIGHT_COLOR = '#fcd34d';
+// Feathered rather than cut: three concentric sub-bands, the outer two at a
+// third strength, so the band has no hard radial edge to read as an object.
+const DAYLIGHT_FEATHER = [[0, 0.25, 0.35], [0.25, 0.75, 1], [0.75, 1, 0.35]];
+
+// Focus sessions ride a rail INSIDE the schedule band, not beside it: focus
+// mode can only run inside a block that is already on the ring, so the mark
+// belongs to that block rather than to a track of its own. 307 clears the
+// wedge's own inner edge stroke — a rail sitting exactly on it reads as the
+// edge rather than as a separate fact, which is what ruled out the effort
+// blue in the mock (it is that stroke's colour).
+const R_FOCUS_RAIL = [307, 315];
+// Neutral rather than a sixth hue: orange is now, teal routines, violet
+// sleep, amber daylight, and the wedges carry the task palette.
+const FOCUS_COLOR = '#ffffff';
+const FOCUS_OPACITY = 0.42;
+
 const ROUTINE_WEIGHT = 14;
 const ROUTINE_OPACITY = 0.5;
 const ROUTINE_DONE_OPACITY = 0.18;
@@ -291,6 +319,54 @@ function WeatherRing({ hourly }) {
 }
 
 /**
+ * The lit part of the day. Each step is a 4-minute arc (1° of dial) carrying
+ * its own opacity, so the band brightens toward solar noon and fades back to
+ * the floor at the horizons — where it meets the sunrise and sunset
+ * hairlines, which come from the same solar solution.
+ */
+function DaylightBand({ steps }) {
+  const [r0, r1] = R_DAYLIGHT_BAND;
+  return (
+    <g fill={DAYLIGHT_COLOR}>
+      {steps.map((step) => DAYLIGHT_FEATHER.map(([a, b, weight]) => (
+        <path
+          key={`${step.startMin}-${a}`}
+          // Steps overlap by a hair; butted arcs leave hairline seams.
+          d={dialSectorPath(CX, CY, r0 + (r1 - r0) * a, r0 + (r1 - r0) * b,
+            step.startMin, step.endMin + 0.6)}
+          // Rounded: the raw product is float noise (0.2 x 0.35 prints as
+          // 0.06999999999999999) and there are hundreds of these paths.
+          fillOpacity={Math.round(step.opacity * weight * 1e4) / 1e4}
+        />
+      )))}
+    </g>
+  );
+}
+
+/**
+ * Where the day's focus sessions actually landed, as a rail inside the
+ * schedule band. Drawn over the wedges: the point is which part of a block
+ * the work happened in, so it has to read against that block's fill.
+ *
+ * Overlapping blocks take lanes, but the rail does not — a session is a
+ * stretch of the day's clock, not a claim about which of two stacked blocks
+ * it belonged to, so one rail at one radius is the honest depth.
+ */
+function FocusRail({ spans }) {
+  const [r0, r1] = R_FOCUS_RAIL;
+  return (
+    <g fill={FOCUS_COLOR} fillOpacity={FOCUS_OPACITY}>
+      {spans.map((span) => (
+        <path
+          key={span.startMin}
+          d={dialSectorPath(CX, CY, r0, r1, span.startMin, span.endMin)}
+        />
+      ))}
+    </g>
+  );
+}
+
+/**
  * The routine bars. Overlapping routines take lanes in the band exactly as
  * overlapping blocks do on the ring — dialLaneBand splits the track, and a
  * bar is stroked along its lane's centre line so its weight IS the lane's
@@ -355,7 +431,11 @@ function NowLine({ nowMin }) {
   const deg = (nowMin / 1440) * 360;
   const dot = dialPoint(CX, CY, R_EDGE, nowMin);
   return (
-    <g>
+    // Decorative throughout, and it sits ON TOP of the wedges: without this
+    // the afterglow sectors swallow taps for the whole hour behind the
+    // needle, which is precisely the part of the running block someone
+    // reaches for to start a focus session.
+    <g pointerEvents="none">
       {/* Radar-sweep afterglow: every sector ends at the needle, each one
           starting closer to it, so their tiny opacities stack into a smooth
           ramp — brightest just behind the needle, gone an hour back. */}
@@ -419,7 +499,7 @@ function NowLine({ nowMin }) {
  *                        be null in polar seasons), or null to omit the
  *                        solar layer entirely (no location known).
  */
-const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true }) => {
+const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, daylight = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true }) => {
   const { t, i18n } = useTranslation();
   const formatMinutes = (minutes) => formatLocalizedDurationMinutes(minutes, i18n.resolvedLanguage || i18n.language);
 
@@ -783,6 +863,24 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
   // 2x2 grid), so measuring anything the legend's size feeds into creates a
   // feedback loop: near the threshold the mode flips every frame — a
   // sustained visible flicker across a ~45px window-width band.
+  // The dial's drawn size, for anything positioned against the face itself
+  // (the complication slots). The area's box is imposed by the parent flex,
+  // so nothing inside it can feed back into this measurement.
+  const areaRef = useRef(null);
+  const [areaBox, setAreaBox] = useState(null);
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setAreaBox((prev) => (prev && prev.width === width && prev.height === height
+        ? prev
+        : { width, height }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const wrapRef = useRef(null);
   const [wrapBox, setWrapBox] = useState(null);
   useEffect(() => {
@@ -893,6 +991,17 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
     // Routines are habits, not scheduled work: they are counted, never
     // summed into the minute totals above (those stay a partition of
     // scheduled task time).
+    // Focus is time spent INSIDE the blocks above, so summing it into the
+    // totals would double-count the same minutes; it gets its own figure.
+    ...(focusSpans?.length
+      ? [{
+        key: 'focus',
+        label: t('dial.focus', 'Focus'),
+        color: FOCUS_COLOR,
+        minutes: focusSpanMinutes(focusSpans),
+        Icon: Timer,
+      }]
+      : []),
     ...(routineBars.length
       ? [{
         key: 'routines',
@@ -1005,7 +1114,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
 
   return (
     <div ref={wrapRef} className="w-full h-full flex flex-col items-center justify-center gap-2 select-none">
-      <div className="relative w-full flex-1 min-h-0 flex items-center justify-center">
+      <div ref={areaRef} className="relative w-full flex-1 min-h-0 flex items-center justify-center">
         {/* The horizontal viewBox margin exists only for the 3/9-o'clock
             labels, which extend past the dial's square; compact mode drops
             those labels, so it reclaims the margin too. */}
@@ -1043,6 +1152,10 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
               </text>
             );
           })}
+
+          {/* Daylight — beneath every other datum on the face, so the night,
+              the wedges and the weather all read over the top of it. */}
+          {daylight?.length > 0 && <DaylightBand steps={daylight} />}
 
           {/* Sleep — the declared night, quiet lavender. Its two halves stay
               flush at midnight so the night reads as one mass. */}
@@ -1095,6 +1208,10 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
               />
             );
           })}
+
+          {/* Focus sessions — over the wedges, since the rail is about which
+              part of a block the work landed in. */}
+          {focusSpans?.length > 0 && <FocusRail spans={focusSpans} />}
 
           {routineBars.length > 0 && (
             <RoutineBars
@@ -1253,6 +1370,22 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
           )}
         </div>
 
+        {/* Watch-face complications, positioned off the dial's measured size
+            (the viewBox is 1000 units tall, so its drawn height IS the
+            dial's diameter in px). */}
+        {complications?.length > 0 && (
+          <DialComplications
+            items={complications}
+            dialPx={areaBox
+              ? Math.min(areaBox.height, areaBox.width / (compact ? 1 : 1.12))
+              : null}
+            onOpenTask={onOpenTask}
+            onSetHabitCount={onSetHabitCount}
+            onIncrementHabit={onIncrementHabit}
+            onToggleComplete={onToggleComplete}
+          />
+        )}
+
         {/* The ring's accessibility tree and its single tab stop. The SVG
             above is one image to AT, so the blocks get real semantics here:
             a listbox of visually-hidden options, one per block in time
@@ -1331,6 +1464,15 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
                       {live.completed
                         ? t('dial.markNotComplete', 'Mark not complete')
                         : t('dial.markComplete', 'Mark complete')}
+                    </button>
+                  )}
+                  {onStartFocus && canStartFocusFromBlock(live, nowMin) && (
+                    <button
+                      onClick={() => { closeSheet(); onStartFocus(); }}
+                      className="w-full flex items-center gap-2.5 rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/15 px-3.5 py-2.5 text-white/85 text-sm transition-colors"
+                    >
+                      <Timer size={16} className="text-white/50" />
+                      {t('dial.startFocus', 'Start focus session')}
                     </button>
                   )}
                   {onOpenInPlanner && (

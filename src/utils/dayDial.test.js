@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { getSunTimes } from './solar.js';
 import {
   DIAL_DAY_MINUTES,
   DIAL_LANE_GAP,
@@ -20,6 +21,14 @@ import {
   muteDialColor,
   precipRuns,
   stepDialSelection,
+  computeDaylightBand,
+  dialPeakUv,
+  DAYLIGHT_FLOOR,
+  DAYLIGHT_PEAK,
+  computeFocusSpans,
+  focusSpanMinutes,
+  canStartFocusFromBlock,
+  computeDayCompletion,
 } from './dayDial.js';
 
 const task = (over = {}) => ({
@@ -560,5 +569,271 @@ describe('dialLabelYieldsToSun', () => {
   it('is quiet with no solar data', () => {
     expect(dialLabelYieldsToSun(360, null)).toBe(false);
     expect(dialLabelYieldsToSun(360, { sunriseMin: null, sunsetMin: null })).toBe(false);
+  });
+});
+
+
+describe('computeDaylightBand', () => {
+  // Denver, ~5,280 ft: the site the band was designed against. Coordinates
+  // only reach the astronomy — altitude is not part of a sun-angle
+  // calculation, and reaches the band through the UV term instead.
+  const DENVER = { lat: 39.7392, lon: -104.9903 };
+  const TROMSO = { lat: 69.65, lon: 18.95 };
+
+  const band = (date, coords, uv = null) =>
+    computeDaylightBand(date, coords, getSunTimes(date, coords.lat, coords.lon), uv);
+  const span = (steps) => (steps.length ? steps[steps.length - 1].endMin - steps[0].startMin : 0);
+  const peak = (steps) => Math.max(...steps.map((x) => x.opacity));
+
+  it('runs from sunrise to sunset, the same solution the hairlines use', () => {
+    const date = new Date(2026, 8, 10);
+    const sun = getSunTimes(date, DENVER.lat, DENVER.lon);
+    const steps = computeDaylightBand(date, DENVER, sun);
+    expect(steps[0].startMin).toBe(sun.sunriseMin);
+    // Minutes are left unwrapped, so a band that crosses midnight runs past
+    // 1440 rather than restarting — which is exactly this case, since a UTC
+    // device with US coordinates sets after midnight local. The geometry
+    // turns minutes into an angle, and an angle wraps by itself.
+    expect(sun.sunsetMin).toBeLessThan(sun.sunriseMin);
+    expect(steps[steps.length - 1].endMin).toBe(sun.sunsetMin + DIAL_DAY_MINUTES);
+    expect(steps[steps.length - 1].endMin % DIAL_DAY_MINUTES).toBe(sun.sunsetMin);
+  });
+
+  it('makes a winter day both shorter and dimmer than a summer one', () => {
+    // The whole point of normalising against the site's best noon rather
+    // than each day's own: renormalising per day makes every December look
+    // exactly like every June.
+    const june = band(new Date(2026, 5, 21), DENVER);
+    const dec = band(new Date(2026, 11, 21), DENVER);
+    expect(span(dec)).toBeLessThan(span(june) - 4 * 60);
+    expect(peak(dec)).toBeLessThan(peak(june) * 0.7);
+  });
+
+  it('never fades below the floor, so midwinter still reads', () => {
+    const dec = band(new Date(2026, 11, 21), DENVER);
+    expect(dec.length).toBeGreaterThan(0);
+    for (const step of dec) expect(step.opacity).toBeGreaterThanOrEqual(DAYLIGHT_FLOOR);
+    // And the floor is where it starts: the first step is at the horizon.
+    expect(dec[0].opacity).toBeCloseTo(DAYLIGHT_FLOOR, 2);
+  });
+
+  it('tops out at the peak on the best day of the year', () => {
+    const june = band(new Date(2026, 5, 21), DENVER);
+    expect(peak(june)).toBeLessThanOrEqual(DAYLIGHT_PEAK + 1e-9);
+    expect(peak(june)).toBeGreaterThan(DAYLIGHT_PEAK * 0.95);
+    for (const step of june) expect(step.opacity).toBeLessThanOrEqual(DAYLIGHT_PEAK + 1e-9);
+  });
+
+  it('brightens toward solar noon and back down again', () => {
+    const steps = band(new Date(2026, 8, 10), DENVER);
+    const mid = Math.floor(steps.length / 2);
+    expect(steps[mid].opacity).toBeGreaterThan(steps[0].opacity);
+    expect(steps[mid].opacity).toBeGreaterThan(steps[steps.length - 1].opacity);
+  });
+
+  it('lights the whole ring through polar day and none of it through polar night', () => {
+    const midnightSun = band(new Date(2026, 5, 21), TROMSO);
+    expect(span(midnightSun)).toBe(1440);
+    for (const step of midnightSun) expect(step.opacity).toBeGreaterThan(DAYLIGHT_FLOOR);
+    // Polar night is the opposite day, not the same missing data.
+    expect(band(new Date(2026, 11, 21), TROMSO)).toEqual([]);
+  });
+
+  it('scales the whole band by UV when the forecast reaches the date', () => {
+    const date = new Date(2026, 5, 21);
+    const clear = band(date, DENVER, 10);
+    const overcast = band(date, DENVER, 1);
+    const noData = band(date, DENVER);
+    // No UV is not "UV zero" — the band is pure geometry there.
+    expect(peak(noData)).toBeCloseTo(peak(clear), 6);
+    expect(peak(overcast)).toBeLessThan(peak(clear));
+    // ...but a flat grey day is still a lit day.
+    expect(peak(overcast)).toBeGreaterThan(DAYLIGHT_FLOOR);
+    expect(span(overcast)).toBe(span(clear));
+  });
+
+  it('draws nothing without a location', () => {
+    expect(computeDaylightBand(new Date(2026, 5, 21), null, { sunriseMin: 300, sunsetMin: 1200 })).toEqual([]);
+    expect(computeDaylightBand(new Date(2026, 5, 21), DENVER, null)).toEqual([]);
+  });
+});
+
+describe('dialPeakUv', () => {
+  it('takes the day\'s highest reading', () => {
+    expect(dialPeakUv({ 9: { uv: 3 }, 12: { uv: 8.4 }, 15: { uv: 5 } })).toBe(8.4);
+  });
+
+  it('is null when the forecast carries no UV at all', () => {
+    expect(dialPeakUv(null)).toBeNull();
+    expect(dialPeakUv({ 12: { temp: 20, code: 1 } })).toBeNull();
+  });
+
+  it('keeps a real zero apart from missing data', () => {
+    // Overcast midwinter genuinely reads 0; that is data, not absence.
+    expect(dialPeakUv({ 12: { uv: 0 } })).toBe(0);
+  });
+});
+
+describe('computeFocusSpans', () => {
+  const log = (spans, extra = {}) => ({ '2026-09-10': { totalMinutes: 60, sessions: spans.length, spans, ...extra } });
+
+  it('places each session on the day\'s clock', () => {
+    expect(computeFocusSpans(log([{ start: 540, end: 565 }]), '2026-09-10'))
+      .toEqual([{ startMin: 540, endMin: 565 }]);
+  });
+
+  it('draws back-to-back sessions as one stretch', () => {
+    // Two pomodoros either side of a break inside one block are one piece of
+    // focus to look at; the day's session COUNT is kept separately, so
+    // nothing is lost by merging them here.
+    expect(computeFocusSpans(log([
+      { start: 540, end: 565 }, { start: 566, end: 591 },
+    ]), '2026-09-10')).toEqual([{ startMin: 540, endMin: 591 }]);
+  });
+
+  it('keeps sessions in different blocks apart', () => {
+    expect(computeFocusSpans(log([
+      { start: 540, end: 565 }, { start: 840, end: 870 },
+    ]), '2026-09-10')).toEqual([
+      { startMin: 540, endMin: 565 },
+      { startMin: 840, endMin: 870 },
+    ]);
+  });
+
+  it('orders and coalesces whatever order the log holds', () => {
+    expect(computeFocusSpans(log([
+      { start: 840, end: 870 }, { start: 540, end: 600 }, { start: 580, end: 650 },
+    ]), '2026-09-10')).toEqual([
+      { startMin: 540, endMin: 650 },
+      { startMin: 840, endMin: 870 },
+    ]);
+  });
+
+  it('clips a session that ran past midnight at the day it belongs to', () => {
+    // The log is keyed by the date the session STARTED; the remainder is
+    // tomorrow's, and this entry does not describe tomorrow.
+    expect(computeFocusSpans(log([{ start: 1425, end: 1470 }]), '2026-09-10'))
+      .toEqual([{ startMin: 1425, endMin: 1440 }]);
+  });
+
+  it('is empty for a day with no record, and for the old shape', () => {
+    expect(computeFocusSpans(log([{ start: 540, end: 565 }]), '2026-09-09')).toEqual([]);
+    expect(computeFocusSpans(null, '2026-09-10')).toEqual([]);
+    // Days logged before spans existed keep their totals but have no times
+    // to place — the ring is honestly bare for them rather than guessing.
+    expect(computeFocusSpans({ '2026-09-10': { totalMinutes: 90, sessions: 2 } }, '2026-09-10')).toEqual([]);
+  });
+
+  it('drops entries that carry no real interval', () => {
+    expect(computeFocusSpans(log([
+      { start: 540, end: 540 }, { start: 600, end: 590 }, { start: 'x', end: 700 }, null,
+    ]), '2026-09-10')).toEqual([]);
+  });
+});
+
+describe('focusSpanMinutes', () => {
+  it('totals the merged spans', () => {
+    expect(focusSpanMinutes([{ startMin: 540, endMin: 591 }, { startMin: 840, endMin: 870 }])).toBe(81);
+  });
+
+  it('is zero with nothing to total', () => {
+    expect(focusSpanMinutes([])).toBe(0);
+    expect(focusSpanMinutes(null)).toBe(0);
+  });
+});
+
+
+describe('canStartFocusFromBlock', () => {
+  const block = (over = {}) => ({ startMin: 540, endMin: 660, ...over });
+
+  it('allows it only on the block that is running now', () => {
+    // Focus mode derives its block from the CURRENT time, not from whatever
+    // was tapped, so offering the action elsewhere would silently focus a
+    // different block than the one asked for.
+    expect(canStartFocusFromBlock(block(), 600)).toBe(true);
+    expect(canStartFocusFromBlock(block(), 540)).toBe(true);   // the first minute counts
+    expect(canStartFocusFromBlock(block(), 660)).toBe(false);  // the last does not
+    expect(canStartFocusFromBlock(block(), 400)).toBe(false);
+    expect(canStartFocusFromBlock(block(), 800)).toBe(false);
+  });
+
+  it('refuses where there is no running block to focus', () => {
+    expect(canStartFocusFromBlock(block(), null)).toBe(false);  // no now line
+    expect(canStartFocusFromBlock(block({ isRoutine: true }), 600)).toBe(false);
+    expect(canStartFocusFromBlock({ }, 600)).toBe(false);       // an all-day item
+    expect(canStartFocusFromBlock(null, 600)).toBe(false);
+  });
+});
+
+
+describe('computeDayCompletion', () => {
+  const T = (over = {}) => ({ id: 1, title: 'x', startTime: '09:00', duration: 60, ...over });
+  const ids = (c) => c.remaining.map((t) => t.id);
+
+  it('weighs completion by minutes, not by block count', () => {
+    // The whole reason this face measures in minutes: a two-hour block is
+    // more of the day than a fifteen-minute errand.
+    const c = computeDayCompletion([
+      T({ id: 1, duration: 120, completed: true }),
+      T({ id: 2, startTime: '14:00', duration: 15 }),
+    ]);
+    expect(c.doneMinutes).toBe(120);
+    expect(c.totalMinutes).toBe(135);
+    expect(c.fraction).toBeCloseTo(120 / 135, 5);
+    // By block count this would read 1 of 2; by minutes it is nearly done.
+    expect(c.fraction).toBeGreaterThan(0.85);
+  });
+
+  it('reads an empty day as empty, never as finished', () => {
+    // 0/0 is not 100%: a day with nothing scheduled has completed nothing.
+    const c = computeDayCompletion([]);
+    expect(c).toEqual({ doneMinutes: 0, totalMinutes: 0, fraction: 0, remaining: [] });
+    expect(computeDayCompletion(null).fraction).toBe(0);
+  });
+
+  it('reaches exactly 1 when everything scheduled is done', () => {
+    const c = computeDayCompletion([
+      T({ id: 1, completed: true }), T({ id: 2, startTime: '11:00', completed: true }),
+    ]);
+    expect(c.fraction).toBe(1);
+    expect(c.remaining).toEqual([]);
+  });
+
+  it('leaves out what is not yours to complete', () => {
+    // A read-only imported meeting would otherwise peg the figure below
+    // 100% on any day containing one.
+    const c = computeDayCompletion([
+      T({ id: 1, completed: true }),
+      T({ id: 2, startTime: '11:00', imported: true }),
+    ]);
+    expect(c.fraction).toBe(1);
+    expect(ids(c)).toEqual([]);
+    // ...but an imported TASK calendar is the user's own work.
+    const own = computeDayCompletion([
+      T({ id: 1, completed: true }),
+      T({ id: 2, startTime: '11:00', imported: true, isTaskCalendar: true }),
+    ]);
+    expect(own.fraction).toBe(0.5);
+    expect(ids(own)).toEqual([2]);
+  });
+
+  it('leaves out what has no minutes to weigh', () => {
+    const c = computeDayCompletion([
+      T({ id: 1, completed: true }),
+      T({ id: 2, isAllDay: true, duration: 600 }),   // no hour on the clock
+      T({ id: 3, startTime: null, duration: 30 }),   // unscheduled
+      T({ id: 4, startTime: '13:00', duration: 0 }), // zero-length
+    ]);
+    expect(c.totalMinutes).toBe(60);
+    expect(c.fraction).toBe(1);
+  });
+
+  it('lists what is left, in time order', () => {
+    expect(ids(computeDayCompletion([
+      T({ id: 'c', startTime: '16:00' }),
+      T({ id: 'a', startTime: '08:00' }),
+      T({ id: 'done', startTime: '09:00', completed: true }),
+      T({ id: 'b', startTime: '12:30' }),
+    ]))).toEqual(['a', 'b', 'c']);
   });
 });

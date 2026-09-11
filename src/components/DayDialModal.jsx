@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Eclipse, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Thermometer, X } from 'lucide-react';
+import { CalendarClock, CalendarDays, Eclipse, Inbox, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Target, Thermometer, X, Timer, CircleCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import { getStoredWeatherCoords, getSunTimes } from '../utils/solar.js';
+import { computeDayCompletion, computeDaylightBand, computeFocusSpans, dialPeakUv } from '../utils/dayDial.js';
 import { acquireWakeLock, releaseWakeLock } from '../utils/wakeLock.js';
 import { isNativeApp, nativeSetImmersiveMode } from '../native.js';
 import { AMBIENT_DELAY_OPTIONS, loadAmbientPrefs, saveAmbientPrefs } from '../utils/dialPrefs.js';
+import { HABIT_ICONS } from '../constants/habits.js';
 import DayDial from './DayDial.jsx';
 import Wordmark from './Wordmark.jsx';
 
@@ -32,12 +34,27 @@ const IDLE_RETURN_MS = 5 * 60_000;
 // summary strip's collapse state): a wall panel and a phone reasonably want
 // different layers, so this deliberately does not ride the sync payload.
 const DIAL_LAYERS_KEY = 'day-planner-dial-layers';
-const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true };
+const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true, focus: true };
 const loadLayers = () => {
   try {
     return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem(DIAL_LAYERS_KEY) || '{}') };
   } catch {
     return DEFAULT_LAYERS;
+  }
+};
+
+// Complications — which readouts ride the face, in the order they were
+// switched on (that order IS the slot order: top-left, top-right,
+// bottom-left, bottom-right). Device-local like the layer toggles: a wall
+// panel and a phone reasonably want different ones.
+const DIAL_COMPLICATIONS_KEY = 'day-planner-dial-complications';
+const MAX_COMPLICATIONS = 4;
+const loadComplications = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DIAL_COMPLICATIONS_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter((k) => typeof k === 'string') : [];
+  } catch {
+    return [];
   }
 };
 
@@ -50,12 +67,14 @@ const AMBIENT_ORBIT = [
 ];
 const AMBIENT_ORBIT_STEP_MS = 60_000;
 
-const ToggleRow = ({ icon: Icon, label, on, onChange }) => (
+const ToggleRow = ({ icon: Icon, label, on, onChange, disabled = false }) => (
   <button
-    onClick={() => onChange(!on)}
+    onClick={() => !disabled && onChange(!on)}
     role="switch"
     aria-checked={on}
-    className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-white/5 transition-colors"
+    aria-disabled={disabled || undefined}
+    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+      disabled ? 'opacity-40 cursor-default' : 'hover:bg-white/5'}`}
   >
     <Icon size={16} className="text-white/50 flex-shrink-0" />
     <span className="flex-1 text-left text-white/85 text-sm">{label}</span>
@@ -72,9 +91,12 @@ const DayDialModal = () => {
     getTasksForDate, currentTime, formatTime, use24HourClock,
     weather,
     toggleComplete, openMobileEditTask, scrollToHour, isMobile,
+    filteredUnscheduledTasks, getDeadlineTasksForDate,
   } = useDayPlannerCtx();
   const {
     getDayWindow, routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
+    habitsEnabled, activeHabits, getTodayHabitCount, setHabitCount, incrementHabit,
+    focusLog, focusModeAvailable, enterFocusMode,
   } = useFeaturesCtx();
 
   // Always one day per keypress — changeDate() pages by visible columns,
@@ -451,11 +473,23 @@ const DayDialModal = () => {
   // Solar layer: sunrise/sunset computed locally from the weather feature's
   // persisted geocode (utils/solar.js) — any date, works offline. No
   // location ever configured → null → the layer doesn't render.
-  const sun = useMemo(() => {
+  const solar = useMemo(() => {
     if (!layers.solar) return null;
     const coords = getStoredWeatherCoords();
-    return coords ? getSunTimes(selectedDate, coords.lat, coords.lon) : null;
+    return coords ? { coords, sun: getSunTimes(selectedDate, coords.lat, coords.lon) } : null;
   }, [selectedDate, layers.solar]);
+  const sun = solar?.sun ?? null;
+
+  // The daylight band. Its extent and shape are the local solar solution, so
+  // it draws on any date and offline; the forecast's UV only scales it, on
+  // the few days the forecast reaches. Deliberately NOT gated on the weather
+  // layer: that toggle governs what the weather ring shows, while this is the
+  // sun, and it belongs with the marks the solar layer already draws.
+  const daylight = useMemo(() => (solar
+    ? computeDaylightBand(selectedDate, solar.coords, solar.sun,
+      dialPeakUv(weather?.hourlyByDate?.[dateStr]))
+    : []),
+  [solar, selectedDate, weather, dateStr]);
 
   // Calendars off hides calendar-imported events (Obsidian-imported tasks
   // are the user's own work and stay); totals and the ring follow together
@@ -477,6 +511,79 @@ const DayDialModal = () => {
     return applyLayers(getTasksForDate(prev));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getTasksForDate, selectedDate, layers.calendars]);
+
+  // Focus sessions for the day being drawn. The log is keyed by date, so
+  // paging back shows the hours actually spent in focus on that day — but
+  // only from the version that started recording spans, since the entries
+  // before it kept totals without times.
+  const focusSpans = useMemo(
+    () => (layers.focus ? computeFocusSpans(focusLog, dateStr) : []),
+    [layers.focus, focusLog, dateStr],
+  );
+
+  // Starting a session leaves the dial: focus mode is its own fullscreen
+  // view, with its own wake lock and (on Android) its own notification.
+  // enterFocusMode derives the block from NOW, which is why the dial only
+  // offers the action on the block that is actually running.
+  const handleStartFocus = () => {
+    setShowDayDial(false);
+    enterFocusMode();
+  };
+
+  // Complications. Each carries its own items, so the sheet that opens has
+  // nothing left to fetch. The counts deliberately reuse the app's own
+  // numbers rather than recomputing: the inbox count is the sidebar badge's
+  // exact expression (filteredUnscheduledTasks already applies all six inbox
+  // filters, sorted), and the deadline list is the same accessor the
+  // planner's all-day area uses.
+  const [complicationKeys, setComplicationKeys] = useState(loadComplications);
+  const toggleComplication = (key) => setComplicationKeys((prev) => {
+    const next = prev.includes(key)
+      ? prev.filter((k) => k !== key)
+      : [...prev, key].slice(0, MAX_COMPLICATIONS);
+    try { localStorage.setItem(DIAL_COMPLICATIONS_KEY, JSON.stringify(next)); } catch { /* view pref only */ }
+    return next;
+  });
+
+  const complicationsFull = complicationKeys.length >= MAX_COMPLICATIONS;
+
+  const complications = useMemo(() => complicationKeys.map((key) => {
+    if (key === 'inbox') {
+      const items = (filteredUnscheduledTasks || []).filter((t) => !t.isExample);
+      return { key, kind: 'inbox', count: items.length, items };
+    }
+    if (key === 'deadlines') {
+      const items = getDeadlineTasksForDate(dateStr) || [];
+      return { key, kind: 'deadlines', count: items.length, items };
+    }
+    if (key === 'done') {
+      // Weighted by minutes, not by block count: this face is about time,
+      // so a two-hour block counts for more than a fifteen-minute errand.
+      return { key, kind: 'done', ...computeDayCompletion(dayTasks) };
+    }
+    const habit = (activeHabits || []).find((h) => `habit:${h.id}` === key);
+    return habit
+      ? { key, kind: 'habit', habit, count: getTodayHabitCount(habit.id) }
+      : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  })
+    // Some readouts only mean anything about today: the inbox is one global
+    // list with no notion of a date, and a habit count is today's tally. The
+    // rest are per-date and stay useful when the dial is paged back — the
+    // deadline list is already fetched for the date on screen, and a day's
+    // completion is a fact about that day.
+    .filter((c) => c && (isToday || c.kind === 'done' || c.kind === 'deadlines')),
+  [complicationKeys, filteredUnscheduledTasks, getDeadlineTasksForDate,
+    dateStr, activeHabits, getTodayHabitCount, dayTasks, isToday]);
+
+  // A complication row hands the task to the app's own editor — the same one
+  // the planner opens — so a deadline or an inbox item can be given a date
+  // without leaving for the planner first and without this surface inventing
+  // a scheduling path of its own.
+  const handleOpenTask = (task) => {
+    setShowDayDial(false);
+    openMobileEditTask(task, true);
+  };
 
   // Touch paging — the couch has arrow keys, a phone or wall tablet doesn't.
   // A decisively horizontal swipe pages one day; anything vertical-ish is
@@ -583,6 +690,12 @@ const DayDialModal = () => {
         // midnight), so any other date gets none rather than a stale set.
         routines={layers.routines && routinesEnabled && isToday ? todayRoutines : null}
         routineCompletions={routineCompletions}
+        focusSpans={focusSpans}
+        onStartFocus={isToday && focusModeAvailable ? handleStartFocus : null}
+        complications={complications}
+        onOpenTask={handleOpenTask}
+        onSetHabitCount={(habit, next) => setHabitCount(habit.id, next)}
+        onIncrementHabit={(habit) => incrementHabit(habit.id)}
         dayWindow={getDayWindow(dateStr)}
         date={selectedDate}
         nowMin={nowMin}
@@ -590,6 +703,7 @@ const DayDialModal = () => {
         formatTime={formatTime}
         use24HourClock={use24HourClock}
         sun={sun}
+        daylight={daylight}
         hourlyWeather={layers.weather ? (weather?.hourlyByDate?.[dateStr] ?? null) : null}
         onToggleComplete={handleToggleComplete}
         onOpenInPlanner={handleOpenInPlanner}
@@ -635,6 +749,54 @@ const DayDialModal = () => {
                 onChange={(v) => setLayer('routines', v)}
               />
             )}
+            <ToggleRow
+              icon={Timer}
+              label={t('dial.focus', 'Focus')}
+              on={layers.focus}
+              onChange={(v) => setLayer('focus', v)}
+            />
+            {/* Complications: four slots, filled in the order they are
+                switched on. Only offered where the face has room for them —
+                see COMPLICATION_MIN_DIAL_PX. */}
+            <div className="my-1.5 border-t border-white/10" />
+            <div className="px-3 pb-1 text-white/35 text-[11px] uppercase tracking-[0.14em]">
+              {t('dial.complications', 'Complications')}
+            </div>
+            <ToggleRow
+              icon={Inbox}
+              label={t('dial.inbox', 'Inbox')}
+              on={complicationKeys.includes('inbox')}
+              disabled={complicationsFull && !complicationKeys.includes('inbox')}
+              onChange={() => toggleComplication('inbox')}
+            />
+            <ToggleRow
+              icon={CircleCheck}
+              label={t('dial.done', 'Done')}
+              on={complicationKeys.includes('done')}
+              disabled={complicationsFull && !complicationKeys.includes('done')}
+              onChange={() => toggleComplication('done')}
+            />
+            <ToggleRow
+              icon={CalendarClock}
+              label={t('dial.deadlines', 'Deadlines')}
+              on={complicationKeys.includes('deadlines')}
+              disabled={complicationsFull && !complicationKeys.includes('deadlines')}
+              onChange={() => toggleComplication('deadlines')}
+            />
+            {habitsEnabled && (activeHabits || []).map((habit) => {
+              const key = `habit:${habit.id}`;
+              return (
+                <ToggleRow
+                  key={key}
+                  icon={HABIT_ICONS[habit.icon] || Target}
+                  label={habit.name}
+                  on={complicationKeys.includes(key)}
+                  disabled={complicationsFull && !complicationKeys.includes(key)}
+                  onChange={() => toggleComplication(key)}
+                />
+              );
+            })}
+
             <div className="my-1.5 border-t border-white/10" />
             <ToggleRow
               icon={Eclipse}

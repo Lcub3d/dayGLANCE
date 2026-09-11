@@ -52,7 +52,7 @@ export default function TodoistSettings() {
   </details>;
   const scanned = catalog ? Object.values(catalog.items || {}).filter(active).length : 0;
   const emptyReason = scanned === 0 ? 'noActive' : scope === 'today' || (scope === 'filtered' && settings.todayOnly) ? 'noToday' : 'noMatch';
-  return <section aria-labelledby={`${id}-title`} className={`space-y-3 ${textPrimary}`}>
+  return <section aria-labelledby={`${id}-title`} className={`space-y-3 ${textPrimary} [&+hr]:hidden`}>
     <button type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded}
       aria-controls={`${id}-body`} className="font-medium flex items-center gap-2 w-full text-left">
       <CheckSquare size={16} className={textSecondary} />

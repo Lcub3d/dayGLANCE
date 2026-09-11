@@ -9,11 +9,14 @@ export default function PlanHistoryLayer({
   clipStartMin = 0,
   clipEndMin = 1440,
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { darkMode, minutesToPosition, timeToMinutes, formatTime } = useDayPlannerCtx();
   const { historicalForDate } = useJournalTimeline();
   const plans = historicalForDate(dateStr);
   const toTop = minToTop ?? minutesToPosition;
+  const originalPlanLabel = t('journal.originalPlan', {
+    defaultValue: i18n.resolvedLanguage?.startsWith('zh') ? '原计划' : 'Original plan',
+  });
 
   if (!plans.length) return null;
 
@@ -35,14 +38,14 @@ export default function PlanHistoryLayer({
           <div
             key={`historical-plan:${plan.taskId}:${plan.date}:${plan.startTime}`}
             role="note"
-            aria-label={`${t('journal.originalPlan', { defaultValue: 'Original plan' })}: ${plan.title}`}
+            aria-label={`${originalPlanLabel}: ${plan.title}`}
             className={`absolute left-1 right-1 overflow-hidden rounded-md border-2 border-dashed ${darkMode ? 'text-stone-300 border-stone-400/55 bg-stone-950/10' : 'text-stone-600 border-stone-500/55 bg-white/10'}`}
             style={{ top: `${top}px`, height: `${height}px` }}
           >
             <div className="h-full px-2 py-1 flex flex-col justify-start min-w-0 opacity-70">
               <div className="flex items-center gap-1 min-w-0">
                 <span className="text-[9px] font-bold uppercase tracking-wider flex-shrink-0">
-                  {t('journal.originalPlan', { defaultValue: 'Original plan' })}
+                  {originalPlanLabel}
                 </span>
                 <span className="text-xs font-medium truncate">{plan.title}</span>
               </div>

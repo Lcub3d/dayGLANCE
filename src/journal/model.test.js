@@ -3,6 +3,7 @@ import {
   EMPTY_JOURNAL_STATE,
   actualBlockMatchesPlan,
   actualBlocksForDate,
+  historicalPlansForDate,
   observePlans,
   recordPlanAsActual,
   summarizeJournalDay,
@@ -92,6 +93,27 @@ describe('journal model', () => {
     expect(changed.state.planRevisions[0]).toMatchObject({ id: 'revision-1', taskId: 'task-1' });
     expect(changed.state.planRevisions[0].before).toMatchObject({ date: '2026-09-11', startTime: '09:00' });
     expect(changed.state.planRevisions[0].after).toMatchObject({ date: '2026-09-12', startTime: '10:30' });
+    expect(historicalPlansForDate(changed.state, '2026-09-11')).toEqual([
+      expect.objectContaining({ taskId: 'task-1', startTime: '09:00' }),
+    ]);
+  });
+
+  it('keeps the earliest changed plan as the visual historical plan for a day', () => {
+    const initial = observePlans(EMPTY_JOURNAL_STATE, [task()], {
+      observedAt: '2026-09-11T07:00:00.000Z',
+      idFactory: () => 'unused',
+    });
+    const movedOnce = observePlans(initial.state, [task({ startTime: '10:00' })], {
+      observedAt: '2026-09-11T07:30:00.000Z',
+      idFactory: () => 'revision-1',
+    });
+    const movedTwice = observePlans(movedOnce.state, [task({ startTime: '16:00' })], {
+      observedAt: '2026-09-11T08:00:00.000Z',
+      idFactory: () => 'revision-2',
+    });
+
+    expect(historicalPlansForDate(movedTwice.state, '2026-09-11')).toHaveLength(1);
+    expect(historicalPlansForDate(movedTwice.state, '2026-09-11')[0].startTime).toBe('09:00');
   });
 
   it('can correct actual time while keeping the captured plan intact', () => {

@@ -61,7 +61,7 @@ function dateFromString(dateStr) {
 export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, clipEndMin = 1440 }) {
   const { minutesToPosition, timeToMinutes, getTasksForDate } = useDayPlannerCtx();
   const { getDayWindow, setDayWindowMenuOpen } = useFeaturesCtx();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { recordActual, hasMatchingActual, observePlans } = useJournalTimeline();
 
   const toTop = minToTop ?? minutesToPosition;
@@ -114,6 +114,7 @@ export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, 
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const occupiedStarts = new Map();
+  const isChinese = i18n.resolvedLanguage?.startsWith('zh');
 
   const recordButtons = dayTasks.map(task => {
     const start = timeToMinutes(task.startTime);
@@ -129,8 +130,8 @@ export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, 
     occupiedStarts.set(slotKey, sameStartIndex + 1);
     const recorded = hasMatchingActual(task);
     const label = recorded
-      ? t('journal.actualRecorded', { defaultValue: 'Actual recorded' })
-      : t('journal.recordActual', { defaultValue: 'Record planned block as actual' });
+      ? t('journal.actualRecorded', { defaultValue: isChinese ? '已记录实际' : 'Actual recorded' })
+      : t('journal.recordActual', { defaultValue: isChinese ? '按计划记录实际' : 'Record planned block as actual' });
 
     return (
       <button

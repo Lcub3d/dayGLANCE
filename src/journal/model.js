@@ -192,6 +192,24 @@ export function actualBlocksForDate(state, dateStr) {
     .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)) || String(a.id).localeCompare(String(b.id)));
 }
 
+export function historicalPlansForDate(state, dateStr) {
+  const current = normalizeJournalState(state);
+  const firstByTask = new Map();
+
+  for (const revision of current.planRevisions) {
+    const snapshot = revision.before;
+    if (!snapshot || snapshot.date !== dateStr || !snapshot.startTime || snapshot.isAllDay) continue;
+    const id = taskKey(revision.taskId || snapshot.taskId);
+    if (!id || firstByTask.has(id)) continue;
+    const head = current.planHeads[id];
+    if (head && samePlanSchedule(head, snapshot)) continue;
+    firstByTask.set(id, snapshot);
+  }
+
+  return [...firstByTask.values()]
+    .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)) || a.taskId.localeCompare(b.taskId));
+}
+
 export function summarizeJournalDay(state, dateStr) {
   const current = normalizeJournalState(state);
   const blocks = actualBlocksForDate(current, dateStr);

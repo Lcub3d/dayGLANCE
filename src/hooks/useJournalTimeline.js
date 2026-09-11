@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   EMPTY_JOURNAL_STATE,
   actualBlockMatchesPlan,
@@ -20,18 +20,24 @@ const makeId = prefix => {
   return `${prefix}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 };
 
-export function readJournalState(storage = globalThis.localStorage) {
+const defaultStorage = () => {
+  try { return globalThis.localStorage || null; } catch { return null; }
+};
+
+export function readJournalState(storage) {
   try {
-    const raw = storage?.getItem?.(JOURNAL_STORAGE_KEY);
+    const target = storage === undefined ? defaultStorage() : storage;
+    const raw = target?.getItem?.(JOURNAL_STORAGE_KEY);
     return raw ? normalizeJournalState(JSON.parse(raw)) : normalizeJournalState(EMPTY_JOURNAL_STATE);
   } catch {
     return normalizeJournalState(EMPTY_JOURNAL_STATE);
   }
 }
 
-export function writeJournalState(state, storage = globalThis.localStorage) {
+export function writeJournalState(state, storage) {
   const normalized = normalizeJournalState(state);
-  storage?.setItem?.(JOURNAL_STORAGE_KEY, JSON.stringify(normalized));
+  const target = storage === undefined ? defaultStorage() : storage;
+  try { target?.setItem?.(JOURNAL_STORAGE_KEY, JSON.stringify(normalized)); } catch { /* keep this session usable */ }
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(JOURNAL_CHANGE_EVENT, { detail: normalized }));
   }
@@ -90,12 +96,7 @@ export default function useJournalTimeline() {
 
   const actualForDate = useCallback(dateStr => actualBlocksForDate(state, dateStr), [state]);
   const daySummary = useCallback(dateStr => summarizeJournalDay(state, dateStr), [state]);
-
-  const matchingActualIds = useMemo(() => new Set(state.actualBlocks.map(block => block.id)), [state.actualBlocks]);
-  const hasMatchingActual = useCallback(task => {
-    if (!matchingActualIds.size) return false;
-    return state.actualBlocks.some(block => actualBlockMatchesPlan(block, task));
-  }, [matchingActualIds, state.actualBlocks]);
+  const hasMatchingActual = useCallback(task => state.actualBlocks.some(block => actualBlockMatchesPlan(block, task)), [state.actualBlocks]);
 
   return {
     state,

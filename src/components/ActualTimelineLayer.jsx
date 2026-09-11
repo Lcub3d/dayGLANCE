@@ -18,7 +18,7 @@ export default function ActualTimelineLayer({
   if (!blocks.length) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-[18]" data-journal-actual-layer={dateStr}>
+    <div className="absolute inset-0 pointer-events-none z-[8]" data-journal-actual-layer={dateStr}>
       {blocks.map(block => {
         const start = timeToMinutes(block.startTime || '00:00');
         const end = start + Math.max(1, Number(block.duration) || 30);

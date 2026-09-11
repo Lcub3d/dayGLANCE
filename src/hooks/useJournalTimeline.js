@@ -3,6 +3,7 @@ import {
   EMPTY_JOURNAL_STATE,
   actualBlockMatchesPlan,
   actualBlocksForDate,
+  historicalPlansForDate,
   normalizeJournalState,
   observePlans as observePlanState,
   recordPlanAsActual,
@@ -95,6 +96,7 @@ export default function useJournalTimeline() {
   })), [commit]);
 
   const actualForDate = useCallback(dateStr => actualBlocksForDate(state, dateStr), [state]);
+  const historicalForDate = useCallback(dateStr => historicalPlansForDate(state, dateStr), [state]);
   const daySummary = useCallback(dateStr => summarizeJournalDay(state, dateStr), [state]);
   const hasMatchingActual = useCallback(task => state.actualBlocks.some(block => actualBlockMatchesPlan(block, task)), [state.actualBlocks]);
 
@@ -107,6 +109,7 @@ export default function useJournalTimeline() {
     removeActual,
     observePlans,
     actualForDate,
+    historicalForDate,
     daySummary,
     hasMatchingActual,
   };

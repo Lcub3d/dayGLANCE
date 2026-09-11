@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { dateToString } from '../utils/taskUtils.js';
 import useJournalTimeline from '../hooks/useJournalTimeline.js';
 import ActualTimelineLayer from './ActualTimelineLayer.jsx';
+import PlanHistoryLayer from './PlanHistoryLayer.jsx';
 
 // START/STOP day-window marker lines on the timeline grid. Render-only in
 // phase A - the window is set and moved from the summary strip's day-window
@@ -159,6 +160,12 @@ export default function DayWindowMarkers({ dateStr, minToTop, clipStartMin = 0, 
 
   return (
     <>
+      <PlanHistoryLayer
+        dateStr={dateStr}
+        minToTop={minToTop}
+        clipStartMin={clipStartMin}
+        clipEndMin={clipEndMin}
+      />
       <ActualTimelineLayer
         dateStr={dateStr}
         minToTop={minToTop}

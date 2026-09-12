@@ -1,0 +1,77 @@
+name: Validate Todoist review fixes
+
+on:
+  push:
+    branches: [workbench/todoist-review-1604-20260912]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: todoist-review-1604
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.repository == 'Lcub3d/dayGLANCE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Prepare clean PR worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/review-logs"
+          cat .review/1604.patch.b64.* | base64 --decode | gzip --decompress > "$RUNNER_TEMP/review.patch"
+          echo "6be944367ec78f7a0673e09b84b8e0277b3809c302a16f969c8d6b78a9fae2bf  $RUNNER_TEMP/review.patch" | sha256sum --check
+          git config user.name 'Lcub3d'
+          git config user.email '46134215+Lcub3d@users.noreply.github.com'
+          git fetch https://github.com/krelltunez/dayGLANCE.git 77c5bcd4c1918646ec80c02dd618853128ebbabd
+          git worktree add --detach "$RUNNER_TEMP/todoist-review" 06be77b35d4a642e86fa9c2f73eb3c3098a47bbb
+          cd "$RUNNER_TEMP/todoist-review"
+          git apply --index "$RUNNER_TEMP/review.patch"
+          git diff --cached --check
+          git commit -m 'Address Todoist review: defer mirror and bound cached state'
+          git merge --no-ff 77c5bcd4c1918646ec80c02dd618853128ebbabd -m 'Merge current upstream main for Todoist review validation'
+          git log -3 --oneline | tee "$RUNNER_TEMP/review-logs/commits.log"
+          git diff --stat 77c5bcd4c1918646ec80c02dd618853128ebbabd HEAD | tee "$RUNNER_TEMP/review-logs/scope.log"
+      - name: Install dependencies
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: npm ci
+      - name: Audit dependencies
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: npm run audit 2>&1 | tee "$RUNNER_TEMP/review-logs/audit.log"
+      - name: Lint
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: npm run lint 2>&1 | tee "$RUNNER_TEMP/review-logs/lint.log"
+      - name: Test
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: npm test 2>&1 | tee "$RUNNER_TEMP/review-logs/test.log"
+      - name: Build
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: npm run build 2>&1 | tee "$RUNNER_TEMP/review-logs/build.log"
+      - name: Publish validated commit to isolated validation branch
+        working-directory: ${{ runner.temp }}/todoist-review
+        run: |
+          set -euo pipefail
+          git push origin HEAD:refs/heads/validation/todoist-review-1604-20260912
+          git rev-parse HEAD | tee "$RUNNER_TEMP/review-logs/validated-commit.txt"
+          echo "Validated commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo 'The upstream PR branch has NOT been changed by this workflow.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Save validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: todoist-review-1604-validation-${{ github.run_id }}
+          path: ${{ runner.temp }}/review-logs/
+          if-no-files-found: warn
+          retention-days: 7

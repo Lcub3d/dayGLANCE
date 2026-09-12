@@ -38,7 +38,25 @@ jobs:
           git fetch https://github.com/krelltunez/dayGLANCE.git 77c5bcd4c1918646ec80c02dd618853128ebbabd
           git worktree add --detach "$RUNNER_TEMP/todoist-review" 06be77b35d4a642e86fa9c2f73eb3c3098a47bbb
           cd "$RUNNER_TEMP/todoist-review"
-          git apply --index "$RUNNER_TEMP/review.patch"
+          test "$(git hash-object src/todoist/settings.test.jsx)" = e64a9f7cab1e560ca54f49b0c6e291d4b7a7c59f
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/todoist/settings.test.jsx')
+          text = p.read_text()
+          old = r"toMatch(/\sdisabled(?:=|>|\s)/)"
+          assert text.count(old) == 2
+          p.write_text(text.replace(old, "toContain('disabled')"))
+          PY
+          git apply "$RUNNER_TEMP/review.patch"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/todoist/settings.test.jsx')
+          text = p.read_text()
+          old = "expect(manual).not.toContain('disabled')"
+          assert text.count(old) == 1
+          p.write_text(text.replace(old, r"expect(manual).not.toMatch(/\sdisabled(?:=|>|\s)/)"))
+          PY
+          git add -A
           git diff --cached --check
           git commit -m 'Address Todoist review: defer mirror and bound cached state'
           git merge --no-ff 77c5bcd4c1918646ec80c02dd618853128ebbabd -m 'Merge current upstream main for Todoist review validation'

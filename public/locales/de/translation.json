@@ -650,7 +650,9 @@
     "trmnlWebhookHint": "Zu finden in den Einstellungen Ihres DayGLANCE-Rezepts auf TRMNL",
     "trmnlOneDeviceHint": "TRMNL nimmt pro Stunde nur eine begrenzte Zahl von Aktualisierungen für das gesamte Plugin an. Aktiviere dies daher auf einem Gerät, das normalerweise läuft.",
     "usersSyncPathHint": "WebDAV-Pfad, unter dem die gemeinsame Benutzerliste gespeichert wird. Muss in allen GLANCE-Apps übereinstimmen.",
-    "weatherLocationPlaceholder": "z. B. 10115 oder Berlin"
+    "weatherLocationPlaceholder": "z. B. 10115 oder Berlin",
+    "monthViewPreview": "Monatsansicht (Vorschau)",
+    "monthViewPreviewHint": "Zeigt die unfertige Monatsansicht über der App. Tippe auf einen Tag, um sein Blatt zu öffnen. Beim Umschalten wird die App neu geladen."
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

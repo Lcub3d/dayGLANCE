@@ -9,7 +9,7 @@
 // │ through the view cycler.                                                 │
 // └──────────────────────────────────────────────────────────────────────────┘
 import React, { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { Copy, X } from 'lucide-react';
 import { routinesForDate } from '@glance-apps/agenda-core';
 import MonthGrid from './MonthGrid.jsx';
 import MonthDaySheet from './MonthDaySheet.jsx';
@@ -57,6 +57,45 @@ function useDemoItemsForDate(year, month) {
   }, [year, month]);
 }
 
+// Errors surfaced in the overlay itself, for device builds where a console
+// is hard to reach: uncaught errors and rejections while the overlay is up,
+// and a render error inside the grid or the sheet (caught below, so the app's
+// crash screen is not what you see).
+function useCaughtErrors() {
+  const [errors, setErrors] = useState([]);
+  const push = (text) => setErrors((list) => [...list.slice(-4), `${new Date().toLocaleTimeString()} ${text}`]);
+  useEffect(() => {
+    const onError = (e) => push(e.message || String(e.error || e));
+    const onRejection = (e) => push(`unhandled: ${e.reason?.message || String(e.reason)}`);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => { window.removeEventListener('error', onError); window.removeEventListener('unhandledrejection', onRejection); };
+  }, []);
+  return { errors, push, clear: () => setErrors([]) };
+}
+
+class CatchRenderError extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error, info) { this.props.onError(`${error?.message || error}\n${(info?.componentStack || '').split('\n').slice(1, 4).join('\n')}`); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
+function ErrorStrip({ errors, clear, textSecondary }) {
+  if (errors.length === 0) return null;
+  const text = errors.join('\n');
+  return (
+    <div data-month-grid-errors={errors.length} className="shrink-0 mx-3 mb-1 px-2 py-1 rounded border border-red-500/60 bg-red-500/10 text-[11px] text-red-700 dark:text-red-300">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold flex-1">{errors.length} error{errors.length === 1 ? '' : 's'} while the month view was up</span>
+        <button type="button" onClick={() => navigator.clipboard?.writeText(text)} aria-label="Copy errors" className={`p-0.5 rounded border border-current ${textSecondary}`}><Copy size={12} /></button>
+        <button type="button" onClick={clear} aria-label="Clear errors" className={`p-0.5 rounded border border-current ${textSecondary}`}><X size={12} /></button>
+      </div>
+      <pre className="whitespace-pre-wrap break-words font-mono max-h-24 overflow-y-auto">{text}</pre>
+    </div>
+  );
+}
+
 export default function MonthGridDevOverlay() {
   const { bgClass, textPrimary, textSecondary, weekStartDay, selectedDate, setMonthViewRange } = useDayPlannerCtx();
   // On macOS Electron (titleBarStyle hiddenInset) the top 28px is still the
@@ -78,6 +117,7 @@ export default function MonthGridDevOverlay() {
   const demoItemsForDate = useDemoItemsForDate(shown.year, shown.month);
   const itemsForDate = demo ? demoItemsForDate : realItemsForDate;
   const [hidden, setHidden] = useState(false);
+  const caught = useCaughtErrors();
   const [sheetDate, setSheetDate] = useState(null);
   // The grid's highlighted day follows the sheet and outlives it, so closing
   // the sheet leaves the grid on the day the visit ended on. Stepping into
@@ -115,28 +155,33 @@ export default function MonthGridDevOverlay() {
           <X size={14} />
         </button>
       </div>
+      <ErrorStrip errors={caught.errors} clear={caught.clear} textSecondary={textSecondary} />
       <div className="flex-1 min-h-0">
-        <MonthGrid
-          year={shown.year}
-          month={shown.month}
-          itemsForDate={itemsForDate}
-          weekStartDay={weekStartDay}
-          onNavigate={(year, month) => setShown({ year, month })}
-          onSelectDate={showDay}
-          selectedDate={selected}
-        />
+        <CatchRenderError onError={caught.push}>
+          <MonthGrid
+            year={shown.year}
+            month={shown.month}
+            itemsForDate={itemsForDate}
+            weekStartDay={weekStartDay}
+            onNavigate={(year, month) => setShown({ year, month })}
+            onSelectDate={showDay}
+            selectedDate={selected}
+          />
+        </CatchRenderError>
       </div>
       {sheetDate && (
-        <MonthDaySheet
-          date={sheetDate}
-          onNavigate={showDay}
-          onClose={() => {
-            setSheetDate(null);
-            // Focus follows the selection out of the sheet, so the keyboard
-            // focus ring and the selection ring land on the same cell.
-            document.querySelector(`[data-month-cell="${selected}"]`)?.focus();
-          }}
-        />
+        <CatchRenderError onError={(text) => { caught.push(text); setSheetDate(null); }}>
+          <MonthDaySheet
+            date={sheetDate}
+            onNavigate={showDay}
+            onClose={() => {
+              setSheetDate(null);
+              // Focus follows the selection out of the sheet, so the keyboard
+              // focus ring and the selection ring land on the same cell.
+              document.querySelector(`[data-month-cell="${selected}"]`)?.focus();
+            }}
+          />
+        </CatchRenderError>
       )}
     </div>
   );

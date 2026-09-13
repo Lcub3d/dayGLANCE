@@ -1160,7 +1160,10 @@
     "suggestionsHint": "Interacting with suggestions:",
     "taskTitleFieldHint": "Type in the task title field:",
     "toggleMonthNav": "Toggle month nav",
-    "viewMonth": "View: Month"
+    "viewMonth": "View: Month",
+    "monthStepDay": "In MONTH: next day (Shift+Space: previous)",
+    "monthStepWeek": "In MONTH: a week back / forward",
+    "monthOpenDay": "In MONTH: open the selected day"
   },
   "spotlight": {
     "placeholder": "Search tasks...",

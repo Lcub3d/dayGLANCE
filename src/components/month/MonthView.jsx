@@ -60,7 +60,7 @@ export function monthViewRangeFor(year, month, weekStartDay) {
  * @param {number} [props.height]  and tests; the app measures instead
  */
 export default function MonthView({ width, height } = {}) {
-  const { selectedDate, goToDate, weekStartDay, setMonthViewRange } = useDayPlannerCtx();
+  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef } = useDayPlannerCtx();
   const itemsForDate = useMonthItemsForDate();
   const selectedStr = dateToString(selectedDate);
   const { year, month } = monthOf(selectedStr);
@@ -76,6 +76,13 @@ export default function MonthView({ width, height } = {}) {
     setSheetDate(dateStr);
     goToDate(dateStr);
   };
+
+  // Enter (useKeyboardShortcuts) opens the selected day while this view is up.
+  useEffect(() => {
+    if (!openMonthDaySheetRef) return undefined;
+    openMonthDaySheetRef.current = () => setSheetDate(selectedStr);
+    return () => { openMonthDaySheetRef.current = null; };
+  }, [openMonthDaySheetRef, selectedStr]);
 
   return (
     <div data-month-view className="flex-1 min-h-0 flex flex-col">

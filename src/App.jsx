@@ -3428,6 +3428,9 @@ const DayPlanner = () => {
   const enterFocusModeRef = useRef(null);
   const startFocusTimerRef = useRef(null);
   const openRoutinesDashboardRef = useRef(null);
+  // MONTH view registers its "open the sheet for this day" here while mounted,
+  // so Enter in the keyboard shortcuts can open the selected day.
+  const openMonthDaySheetRef = useRef(null);
 
   const { longPressTriggeredRef, longPressTimerRef } = useMobileInteractions({
     isMobile, performUndo, performRedo,
@@ -3478,6 +3481,7 @@ const DayPlanner = () => {
     setDarkMode,
     showMonthView, goToToday, setViewedMonth,
     setShowMonthView,
+    monthViewActive, openMonthDaySheetRef,
     setShowMobileTagFilter,
     setShowBackupMenu,
     isMobile, tabletActiveTab, setTabletActiveTab,
@@ -8372,7 +8376,7 @@ const DayPlanner = () => {
     isPhone, isMobile, isTablet, isLandscape,
     visibleDays, visibleDates,
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
-    monthViewActive,
+    monthViewActive, openMonthDaySheetRef,
     defaultView, setDefaultView,
     dayViewMode, setDayViewMode,
     dayViewColumns,

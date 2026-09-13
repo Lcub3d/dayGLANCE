@@ -1160,7 +1160,10 @@
     "suggestionsHint": "Interagir com as sugestões:",
     "taskTitleFieldHint": "Escreva no campo do título da tarefa:",
     "toggleMonthNav": "Mostrar ou ocultar a navegação por mês",
-    "viewMonth": "Vista: Mês"
+    "viewMonth": "Vista: Mês",
+    "monthStepDay": "Em MÊS: dia seguinte (Shift+Espaço: anterior)",
+    "monthStepWeek": "Em MÊS: uma semana para trás / para a frente",
+    "monthOpenDay": "Em MÊS: abrir o dia selecionado"
   },
   "spotlight": {
     "placeholder": "Pesquisar tarefas…",

@@ -1160,7 +1160,10 @@
     "suggestionsHint": "Mit Vorschlägen interagieren:",
     "taskTitleFieldHint": "Im Feld für den Aufgabentitel eingeben:",
     "toggleMonthNav": "Monatsnavigation ein/aus",
-    "viewMonth": "Ansicht: Monat"
+    "viewMonth": "Ansicht: Monat",
+    "monthStepDay": "In MONAT: nächster Tag (Umschalt+Leertaste: vorheriger)",
+    "monthStepWeek": "In MONAT: eine Woche zurück / vor",
+    "monthOpenDay": "In MONAT: ausgewählten Tag öffnen"
   },
   "spotlight": {
     "placeholder": "Aufgaben suchen…",

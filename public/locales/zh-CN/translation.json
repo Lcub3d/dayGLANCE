@@ -1160,7 +1160,10 @@
     "suggestionsHint": "操作建议：",
     "taskTitleFieldHint": "在任务标题栏中输入：",
     "toggleMonthNav": "切换月份导航",
-    "viewMonth": "视图：月"
+    "viewMonth": "视图：月",
+    "monthStepDay": "月视图：下一天（Shift+空格：上一天）",
+    "monthStepWeek": "月视图：前一周 / 后一周",
+    "monthOpenDay": "月视图：打开所选日期"
   },
   "spotlight": {
     "placeholder": "搜索任务...",

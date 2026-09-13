@@ -46,6 +46,8 @@ export default function useKeyboardShortcuts({
   showMonthView, goToToday, setViewedMonth,
   // month view ('m')
   setShowMonthView,
+  // MONTH view cursor (Space, Shift+Space, Up, Down, Enter)
+  monthViewActive, openMonthDaySheetRef,
   // tag filter ('/')
   setShowMobileTagFilter,
   // backup menu ('b')
@@ -124,6 +126,35 @@ export default function useKeyboardShortcuts({
       }
 
       const noModifiers = !e.ctrlKey && !e.metaKey && !e.altKey;
+
+      // MONTH: the selection is a cursor over the grid. Space and Shift+Space
+      // step a day, Up and Down a week (Left and Right page months, below,
+      // like every view's stride), Enter opens the selected day's sheet.
+      // Space is claimed even with a cell focused, where it would otherwise
+      // activate the cell; Enter still does, and now opens the same day.
+      if (monthViewActive && noModifiers) {
+        const stepDays = (n) => setSelectedDate(prev => {
+          const d = new Date(prev);
+          d.setDate(d.getDate() + n);
+          d.setHours(12, 0, 0, 0);
+          return d;
+        });
+        if (e.key === ' ') {
+          e.preventDefault();
+          stepDays(e.shiftKey ? -1 : 1);
+          return;
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          stepDays(e.key === 'ArrowUp' ? -7 : 7);
+          return;
+        }
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          openMonthDaySheetRef?.current?.();
+          return;
+        }
+      }
 
       // 'n' for new scheduled task
       if (e.key === 'n' && noModifiers) {
@@ -342,5 +373,5 @@ export default function useKeyboardShortcuts({
     // action callbacks (changeDate/goToToday/performUndo/performRedo/playUISound),
     // all stable or read through refs — listing them would needlessly re-bind.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, effectiveViewMode]);
+  }, [monthViewActive, selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, effectiveViewMode]);
 }

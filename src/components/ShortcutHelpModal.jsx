@@ -30,6 +30,9 @@ const ShortcutHelpModal = () => {
               ['T', t('shortcuts.goToToday')],
               ['\u2190 / \u2192', t('shortcuts.prevNextDay')],
               ['M', t('shortcuts.toggleMonthNav')],
+              ['Space', t('shortcuts.monthStepDay')],
+              ['\u2191 / \u2193', t('shortcuts.monthStepWeek')],
+              ['Enter', t('shortcuts.monthOpenDay')],
               ...(canShowViewCycler ? [
                 ['1', t('shortcuts.view3Day')],
                 ['2', t('shortcuts.viewDay')],

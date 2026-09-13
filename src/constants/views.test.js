@@ -5,10 +5,12 @@ import {
 } from './views.js';
 
 describe('view modes', () => {
-  it('lists MONTH last in every switcher', () => {
-    expect(DESKTOP_VIEW_MODES.at(-1)).toBe('month');
-    expect(NARROW_DESKTOP_VIEW_MODES.at(-1)).toBe('month');
-    expect(MOBILE_VIEW_MODES.at(-1)).toBe('month');
+  it('puts MONTH just before SCHED in every switcher', () => {
+    for (const list of [DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES]) {
+      expect(list.indexOf('sched') - list.indexOf('month')).toBe(1);
+      expect(list.at(-1)).toBe('sched');
+    }
+    expect(DESKTOP_VIEW_MODES).toEqual(['multi', 'day', 'week', 'month', 'sched']);
   });
 
   it('falls back sanely on a persisted value from another build', () => {
@@ -20,18 +22,19 @@ describe('view modes', () => {
   });
 
   it('leaves MONTH out of the cyclers while the Day Dial is up', () => {
-    expect(cyclerStates(true)).toEqual(['multi', 'day', 'week', 'sched', 'month']);
-    expect(cyclerStates(false)).toEqual(['multi', 'sched', 'month']);
+    expect(cyclerStates(true)).toEqual(['multi', 'day', 'week', 'month', 'sched']);
+    expect(cyclerStates(false)).toEqual(['multi', 'month', 'sched']);
     expect(cyclerStates(true, true)).toEqual(['multi', 'day', 'week', 'sched']);
     expect(cyclerStates(false, true)).toEqual(['multi', 'sched']);
-    expect(mobileToggleStates()).toEqual(['grid', 'list', 'sched', 'month']);
+    expect(mobileToggleStates()).toEqual(['grid', 'list', 'month', 'sched']);
     expect(mobileToggleStates(true)).toEqual(['grid', 'list', 'sched']);
   });
 
   it('cycles with wrap-around and recovers from an unknown current state', () => {
-    expect(nextState(DESKTOP_VIEW_MODES, 'sched')).toBe('month');
-    expect(nextState(DESKTOP_VIEW_MODES, 'month')).toBe('multi');
-    expect(nextState(MOBILE_VIEW_MODES, 'month')).toBe('grid');
+    expect(nextState(DESKTOP_VIEW_MODES, 'week')).toBe('month');
+    expect(nextState(DESKTOP_VIEW_MODES, 'month')).toBe('sched');
+    expect(nextState(DESKTOP_VIEW_MODES, 'sched')).toBe('multi');
+    expect(nextState(MOBILE_VIEW_MODES, 'sched')).toBe('grid');
     expect(nextState(MOBILE_VIEW_MODES, 'nope')).toBe('grid');
     // A stored MONTH while the dial is up cycles on from MULTI rather than crashing.
     expect(nextState(cyclerStates(true, true), 'month')).toBe('multi');

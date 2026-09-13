@@ -276,8 +276,8 @@ export default function useKeyboardShortcuts({
         }
       }
 
-      // 1/2/3/4/5 to jump directly to multi/day/week/sched/month view. On
-      // narrow desktop (schedOnlyCycler) only MULTI, SCHED and MONTH are
+      // 1/2/3/4/5 to jump directly to multi/day/week/month/sched view. On
+      // narrow desktop (schedOnlyCycler) only MULTI, MONTH and SCHED are
       // available. (The Day Dial's modal check above already stands every
       // shortcut down while it is up, MONTH included.)
       if (e.key === '1' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
@@ -292,13 +292,13 @@ export default function useKeyboardShortcuts({
         e.preventDefault();
         setViewMode('week');
       }
-      if (e.key === '4' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
-        e.preventDefault();
-        setViewMode('sched');
-      }
-      if (e.key === '5' && noModifiers && (canShowViewCycler || schedOnlyCycler) && !showDayDial) {
+      if (e.key === '4' && noModifiers && (canShowViewCycler || schedOnlyCycler) && !showDayDial) {
         e.preventDefault();
         setViewMode('month');
+      }
+      if (e.key === '5' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
+        e.preventDefault();
+        setViewMode('sched');
       }
       // C cycles through whichever views the current width offers — always
       // valid, unlike the direct-jump numbers (2/3 need the 3-column grid).

@@ -34,13 +34,13 @@ const ShortcutHelpModal = () => {
                 ['1', t('shortcuts.view3Day')],
                 ['2', t('shortcuts.viewDay')],
                 ['3', t('shortcuts.viewWeek')],
-                ['4', t('shortcuts.viewSched')],
-                ['5', t('shortcuts.viewMonth')],
+                ['4', t('shortcuts.viewMonth')],
+                ['5', t('shortcuts.viewSched')],
                 ['C', t('shortcuts.cycleViews')],
               ] : schedOnlyCycler ? [
                 ['1', t('shortcuts.view3Day')],
-                ['4', t('shortcuts.viewSched')],
-                ['5', t('shortcuts.viewMonth')],
+                ['4', t('shortcuts.viewMonth')],
+                ['5', t('shortcuts.viewSched')],
                 ['C', t('shortcuts.cycleViews')],
               ] : []),
             ].map(([key, desc]) => (

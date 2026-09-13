@@ -237,8 +237,6 @@ const MobileSettingsPanel = () => {
   const mobileSettingsViewRef = useRef(mobileSettingsView);
   const handleRoutinesDoneRef = useRef(handleRoutinesDone);
   const [devTapCount, setDevTapCount] = useState(0);
-  // TEMPORARY: whether the month view preview flag is set (see the toggle below).
-  const monthPreviewOn = (() => { try { return ['1', 'demo'].includes(localStorage.getItem('day-planner-dev-month-grid')); } catch { return false; } })();
   useEffect(() => { mobileSettingsViewRef.current = mobileSettingsView; }, [mobileSettingsView]);
   useEffect(() => { handleRoutinesDoneRef.current = handleRoutinesDone; });
   useEffect(() => {
@@ -533,32 +531,6 @@ const MobileSettingsPanel = () => {
           </button>
         )
       )}
-      {devTapCount >= 7 && (
-        // TEMPORARY: month view preview. The same switch as `?month-grid` on
-        // the web, for device builds where the URL is fixed and a console is
-        // hard to reach. Delete with the dev overlay once the grid is routed
-        // through the view cycler (see MONTH_GRID_DEV in App.jsx).
-        <button
-          onClick={() => {
-            try {
-              if (monthPreviewOn) localStorage.removeItem('day-planner-dev-month-grid');
-              else localStorage.setItem('day-planner-dev-month-grid', '1');
-            } catch { /* no storage, nothing to switch */ }
-            window.location.reload();
-          }}
-          data-month-preview-toggle={monthPreviewOn ? 'on' : 'off'}
-          className={`w-full ${cardBg} border ${borderClass} rounded-xl p-3 flex items-center gap-3`}
-        >
-          <CalendarDays size={16} className={textSecondary} />
-          <span className="flex-1 text-left">
-            <span className={`block text-sm ${textPrimary}`}>{t('settings.monthViewPreview')}</span>
-            <span className={`block text-xs ${textSecondary} leading-snug`}>{t('settings.monthViewPreviewHint')}</span>
-          </span>
-          <span className={`w-10 h-6 rounded-full relative shrink-0 transition-colors ${monthPreviewOn ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
-            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${monthPreviewOn ? 'left-5' : 'left-1'}`} />
-          </span>
-        </button>
-      )}
       {(isAndroidApp || isIOSApp || isElectronApp) && isPro && (
         <p onClick={() => setDevTapCount(c => c + 1)} className={`text-xs ${textSecondary} text-center pt-1`}>
           {/* Only two plans exist on every platform: annual and lifetime
@@ -593,6 +565,7 @@ const MobileSettingsPanel = () => {
             { value: 'grid', label: t('settings.viewGrid') },
             { value: 'list', label: t('settings.viewList') },
             { value: 'sched', label: t('settings.viewSched') },
+            { value: 'month', label: t('sched.viewMonthShort') },
           ].map(({ value, label }) => (
             <button
               key={value}

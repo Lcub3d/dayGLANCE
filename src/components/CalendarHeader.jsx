@@ -238,6 +238,13 @@ const CalendarHeader = () => {
         );
       })}
     </>
+  ) : effectiveViewMode === 'month' ? (
+    /* MONTH view: the switcher's gutter cell only. The grid draws its own
+       weekday row, aligned to its width-capped, centred columns, and the app
+       chrome above pages months and names the month. */
+    <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
+      {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
+    </div>
   ) : effectiveViewMode === 'multi' ? (
     <>
     {/* Top-left cell: hosts ViewCycler on large screens */}
@@ -564,7 +571,7 @@ const CalendarHeader = () => {
 )}
 
 {/* Multi-mode all-day tasks section */}
-{effectiveViewMode === 'multi' && !(isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched')) && (visibleDates.some(date => getTasksForDate(date).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(date)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
+{effectiveViewMode === 'multi' && !(isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) && (visibleDates.some(date => getTasksForDate(date).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(date)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
   <div ref={(el) => { if (isTablet) mobileAllDaySectionRef.current = el; }} className={`flex border-b ${borderClass} ${cardBg}`}>
     <div className={`w-16 flex-shrink-0 px-3 py-2 text-xs font-semibold ${textSecondary} border-r ${borderClass}`}>
       {t('task.allDay')}

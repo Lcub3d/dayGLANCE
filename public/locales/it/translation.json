@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL accetta un numero limitato di aggiornamenti all'ora per l'intero plugin, quindi attiva questa opzione su un solo dispositivo che di solito è acceso.",
     "usersSyncPathHint": "Percorso WebDAV in cui viene archiviato l'elenco condiviso degli utenti. Deve coincidere in tutte le app GLANCE.",
     "weatherLocationPlaceholder": "ad es. 00100 o Roma",
-    "monthViewPreview": "Vista mensile (anteprima)",
-    "monthViewPreviewHint": "Mostra la vista mensile non ancora completata sopra l'app. Tocca un giorno per aprire la sua scheda. Cambiando questa opzione l'app si ricarica."
+    "viewMonth": "Mese"
   },
   "dailyNotes": {
     "quickNotes": "Note rapide",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Suggerimenti inserimento",
     "goToToday": "Vai a oggi",
     "prevNextDay": "Giorno precedente / successivo",
-    "toggleMonthView": "Attiva/disattiva vista mensile",
     "viewDay": "Vista: Giorno",
     "view3Day": "Vista: 3 giorni",
     "viewWeek": "Vista: Settimana",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Cambia vista",
     "dayDial": "Quadrante del giorno",
     "suggestionsHint": "Interagire con i suggerimenti:",
-    "taskTitleFieldHint": "Digitare nel campo del titolo dell’attività:"
+    "taskTitleFieldHint": "Digitare nel campo del titolo dell’attività:",
+    "toggleMonthNav": "Mostra o nascondi la navigazione per mese",
+    "viewMonth": "Vista: Mese"
   },
   "spotlight": {
     "placeholder": "Cerca attività…",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Aggiungi routine alle sezioni dei giorni con il pulsante +, quindi fai clic per selezionarle per oggi"
   },
   "month": {
-    "previousMonth": "Mese precedente",
-    "nextMonth": "Mese successivo",
     "today": "Oggi",
     "nothingScheduled": "Niente in programma",
     "events_one": "{{count}} evento",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Mostra eventi passati",
     "hidePastEvents": "Nascondi eventi passati",
     "happeningNow": "In corso",
-    "nowLabel": "Ora"
+    "nowLabel": "Ora",
+    "viewMonthShort": "MESE"
   },
   "planner": {
     "standaloneProject": "Progetto indipendente",

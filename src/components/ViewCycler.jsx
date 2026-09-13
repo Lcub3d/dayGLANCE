@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { cyclerStates, nextState } from '../constants/views.js';
 
-const STATES = ['multi', 'day', 'week', 'sched'];
-const LABEL_KEYS = { multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', sched: 'sched.viewSchedShort' };
+const LABEL_KEYS = { multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', sched: 'sched.viewSchedShort', month: 'sched.viewMonthShort' };
 const ORANGE = '#fe8b00';
 
 const MultiIcon = () => (
@@ -47,24 +47,31 @@ const SchedIcon = () => (
   </svg>
 );
 
-const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon };
+const MonthIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    {/* Four squares: a month as a grid of weeks */}
+    <rect x="2"  y="2"  width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="11" y="2"  width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="2"  y="11" width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="11" y="11" width="7" height="7" rx="1.5" fill={ORANGE} />
+  </svg>
+);
+
+const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon };
 
 const ViewCycler = () => {
-  const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler } = useDayPlannerCtx();
+  const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial } = useDayPlannerCtx();
   const { t } = useTranslation();
   const label = t(LABEL_KEYS[effectiveViewMode]);
 
-  // Narrow desktop (1-2 columns) only offers MULTI and SCHED — DAY/WEEK need
-  // the full 3-column breakpoint.
-  const states = canShowViewCycler ? STATES : ['multi', 'sched'];
+  // Narrow desktop (1-2 columns) offers MULTI, SCHED and MONTH — DAY/WEEK need
+  // the full 3-column breakpoint. MONTH steps out while the Day Dial is up.
+  const states = cyclerStates(canShowViewCycler, !!showDayDial);
 
   // Display + cycle from effectiveViewMode, not the raw stored mode: a stored
   // DAY/WEEK at narrow width renders as MULTI, and the picker must agree with
   // what's actually on screen.
-  const cycle = () => {
-    const idx = states.indexOf(effectiveViewMode);
-    setViewMode(states[(idx + 1) % states.length]);
-  };
+  const cycle = () => setViewMode(nextState(states, effectiveViewMode));
 
   const Icon = ICONS[effectiveViewMode] || MultiIcon;
 
@@ -72,7 +79,7 @@ const ViewCycler = () => {
     <button
       onClick={cycle}
       className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-1 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded"
-      title={t('sched.viewTooltip', 'View: {{view}} ({{keys}} or C to switch)', { view: label, keys: canShowViewCycler ? '1/2/3/4' : '1/4' })}
+      title={t('sched.viewTooltip', 'View: {{view}} ({{keys}} or C to switch)', { view: label, keys: canShowViewCycler ? '1/2/3/4/5' : '1/4/5' })}
       aria-label={t('sched.viewAria', 'Current view: {{view}}. Click to cycle view.', { view: label })}
     >
       <Icon />

@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL 对整个插件每小时接受的更新次数有限，因此请只在一台通常保持运行的设备上启用此功能。",
     "usersSyncPathHint": "共享用户列表在 WebDAV 上的存储路径。所有 GLANCE 应用必须使用相同路径。",
     "weatherLocationPlaceholder": "例如 100000 或北京",
-    "monthViewPreview": "月视图（预览）",
-    "monthViewPreviewHint": "在应用上方显示尚未完成的月视图。点按某一天可打开当天的面板。切换此项会重新加载应用。"
+    "viewMonth": "月"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "任务输入建议",
     "goToToday": "转到今天",
     "prevNextDay": "前一天/后一天",
-    "toggleMonthView": "切换月视图",
     "viewDay": "视图：单日",
     "view3Day": "视图：3 日",
     "viewWeek": "视图：周",
@@ -1160,7 +1158,9 @@
     "cycleViews": "循环切换视图",
     "dayDial": "日程表盘",
     "suggestionsHint": "操作建议：",
-    "taskTitleFieldHint": "在任务标题栏中输入："
+    "taskTitleFieldHint": "在任务标题栏中输入：",
+    "toggleMonthNav": "切换月份导航",
+    "viewMonth": "视图：月"
   },
   "spotlight": {
     "placeholder": "搜索任务...",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "使用 + 按钮向日期分组添加流程，然后点击流程将其选入今天"
   },
   "month": {
-    "previousMonth": "上个月",
-    "nextMonth": "下个月",
     "today": "今天",
     "nothingScheduled": "没有安排",
     "events_one": "{{count}} 个日程",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "显示过去的事件",
     "hidePastEvents": "隐藏过去的事件",
     "happeningNow": "正在进行",
-    "nowLabel": "现在"
+    "nowLabel": "现在",
+    "viewMonthShort": "月"
   },
   "planner": {
     "standaloneProject": "独立项目",

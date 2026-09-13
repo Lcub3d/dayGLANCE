@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "O TRMNL aceita um número limitado de atualizações por hora para todo o plugin, então ative isto em um único dispositivo que costuma ficar ligado.",
     "usersSyncPathHint": "Caminho WebDAV onde a lista compartilhada de usuários é armazenada. Deve ser igual em todos os aplicativos GLANCE.",
     "weatherLocationPlaceholder": "ex.: 01310-100 ou São Paulo",
-    "monthViewPreview": "Visualização mensal (prévia)",
-    "monthViewPreviewHint": "Mostra a visualização mensal inacabada sobre o app. Toque em um dia para abrir sua folha. Alterar isto recarrega o app."
+    "viewMonth": "Mês"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Sugestões de inserção",
     "goToToday": "Ir para hoje",
     "prevNextDay": "Dia anterior / seguinte",
-    "toggleMonthView": "Alternar visualização mensal",
     "viewDay": "Visualização: Dia",
     "view3Day": "Visualização: 3 dias",
     "viewWeek": "Visualização: Semana",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Alternar visualizações",
     "dayDial": "Mostrador do dia",
     "suggestionsHint": "Interagir com as sugestões:",
-    "taskTitleFieldHint": "Digite no campo de título da tarefa:"
+    "taskTitleFieldHint": "Digite no campo de título da tarefa:",
+    "toggleMonthNav": "Mostrar ou ocultar a navegação por mês",
+    "viewMonth": "Visualização: Mês"
   },
   "spotlight": {
     "placeholder": "Pesquisar tarefas…",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Adicione rotinas às seções de dias com o botão + e clique nelas para selecioná-las para hoje"
   },
   "month": {
-    "previousMonth": "Mês anterior",
-    "nextMonth": "Próximo mês",
     "today": "Hoje",
     "nothingScheduled": "Nada agendado",
     "events_one": "{{count}} evento",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Mostrar eventos passados",
     "hidePastEvents": "Ocultar eventos passados",
     "happeningNow": "Decorrendo",
-    "nowLabel": "Agora"
+    "nowLabel": "Agora",
+    "viewMonthShort": "MÊS"
   },
   "planner": {
     "standaloneProject": "Projeto independente",

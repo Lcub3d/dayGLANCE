@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { mobileToggleStates, nextState } from '../constants/views.js';
 
 const ORANGE = '#fe8b00';
 
@@ -34,25 +35,40 @@ const SchedIcon = () => (
   </svg>
 );
 
-// GRID → LIST → SCHED → GRID
-const NEXT_MODE = { grid: 'list', list: 'sched', sched: 'grid' };
+const MonthIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    {/* Four squares at full strength: a month as a grid of weeks (GRID fades its squares) */}
+    <rect x="1"  y="1"  width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="10" y="1"  width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="1"  y="10" width="7" height="7" rx="1.5" fill={ORANGE} />
+    <rect x="10" y="10" width="7" height="7" rx="1.5" fill={ORANGE} />
+  </svg>
+);
 
+const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon };
+const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort' };
+
+// GRID → LIST → SCHED → MONTH → GRID (MONTH steps out while the Day Dial is up)
 const MobileViewToggle = () => {
-  const { mobileViewMode, setMobileViewMode, textSecondary } = useDayPlannerCtx();
+  const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial } = useDayPlannerCtx();
   const { t } = useTranslation();
+  const states = mobileToggleStates(!!showDayDial);
+  const next = nextState(states, mobileViewMode);
+  const label = (mode) => t(LABEL_KEYS[mode] || LABEL_KEYS.grid);
 
-  const toggle = () => setMobileViewMode(prev => NEXT_MODE[prev] || 'grid');
+  const toggle = () => setMobileViewMode(next);
+  const Icon = ICONS[mobileViewMode] || GridIcon;
 
   return (
     <button
       onClick={toggle}
       className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-1 hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 dark:active:bg-white/10 transition-colors"
-      aria-label={t('sched.switchToView', 'Switch to {{view}} view', { view: (NEXT_MODE[mobileViewMode] || 'grid').toUpperCase() })}
-      title={t('sched.currentViewTap', 'Current view: {{view}}. Tap to switch.', { view: mobileViewMode.toUpperCase() })}
+      aria-label={t('sched.switchToView', 'Switch to {{view}} view', { view: label(next) })}
+      title={t('sched.currentViewTap', 'Current view: {{view}}. Tap to switch.', { view: label(mobileViewMode) })}
     >
-      {mobileViewMode === 'grid' ? <GridIcon /> : mobileViewMode === 'sched' ? <SchedIcon /> : <ListIcon />}
+      <Icon />
       <span className={`text-[9px] font-semibold tracking-widest uppercase ${textSecondary} leading-none`}>
-        {mobileViewMode.toUpperCase()}
+        {label(mobileViewMode)}
       </span>
     </button>
   );

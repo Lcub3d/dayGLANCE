@@ -21,6 +21,7 @@ import DayView from './DayView.jsx';
 import WeekView from './WeekView.jsx';
 import SchedDashboard from './sched/SchedDashboard.jsx';
 import SchedView from './sched/SchedView.jsx';
+import MonthView from './month/MonthView.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -809,7 +810,7 @@ const DesktopLayout = () => {
           <div className="flex-1 min-w-0 relative">
             <div
               ref={calendarRef}
-              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
+              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
@@ -822,7 +823,7 @@ const DesktopLayout = () => {
                   two-column timeline). tabletListView covers both LIST and
                   SCHED; the toggle's mode picks which one renders. */}
               {tabletListView
-                ? (mobileViewMode === 'sched' ? <SchedView /> : (
+                ? (mobileViewMode === 'sched' ? <SchedView /> : mobileViewMode === 'month' ? <MonthView /> : (
                     <>
                       <MobileListView hideInboxHandle />
                       {/* The tablet's LIST strip, placed exactly as MobileLayout
@@ -837,6 +838,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'day' && <DayView />}
                     {effectiveViewMode === 'week' && <WeekView />}
                     {effectiveViewMode === 'sched' && <SchedDashboard />}
+                    {effectiveViewMode === 'month' && <MonthView />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.
@@ -851,7 +853,7 @@ const DesktopLayout = () => {
                         titlebarPills lets it stand down for today while the
                         macOS title bar carries the same numbers — always false
                         on a tablet, since that bar is Electron-on-macOS only. */}
-                    {effectiveViewMode !== 'sched' && (
+                    {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && (
                       <SummaryStrip
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}

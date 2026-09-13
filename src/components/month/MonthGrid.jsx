@@ -1,8 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import MonthDayCell from './MonthDayCell.jsx';
-import { monthGridDates, monthCellSize, shiftMonth } from '../../utils/monthGrid.js';
+import { monthGridDates, monthCellSize } from '../../utils/monthGrid.js';
 import { dayCellItemKind } from '../../utils/monthCellLayout.js';
 import { MONTH_CELL_LAYOUT } from '../../constants/monthView.js';
 import { formatLocalizedDate, localizedWeekdays } from '../../utils/localeFormatting.js';
@@ -47,14 +46,13 @@ export function monthCellLabel(dateStr, items, isToday, t, language) {
  *   deadlines tagged 'deadline')
  * @param {number} [props.weekStartDay=0]
  * @param {string} [props.today]  YYYY-MM-DD; defaults to the local date
- * @param {(year: number, month: number) => void} [props.onNavigate]
  * @param {(dateStr: string) => void} [props.onSelectDate]  cell tap (step 4)
  * @param {string} [props.selectedDate]  YYYY-MM-DD highlighted as the open day (step 5)
  * @param {number} [props.width]   fixed grid-area size, else measured
  * @param {number} [props.height]
  */
 export default function MonthGrid({
-  year, month, itemsForDate, weekStartDay = 0, today, onNavigate, onSelectDate, selectedDate, width, height,
+  year, month, itemsForDate, weekStartDay = 0, today, onSelectDate, selectedDate, width, height,
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
@@ -78,24 +76,9 @@ export default function MonthGrid({
   const ready = area.width > 0 && area.height > 0;
 
   const weekdayNames = useMemo(() => localizedWeekdays('short', language), [language]);
-  const title = formatLocalizedDate(new Date(year, month - 1, 1), { month: 'long', year: 'numeric' }, language);
-  const prev = shiftMonth(year, month, -1);
-  const next = shiftMonth(year, month, 1);
 
   return (
     <div data-month-grid={`${year}-${String(month).padStart(2, '0')}`} className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between px-2 py-1 shrink-0 mx-auto w-full" style={ready ? { maxWidth: cell.width * 7 } : undefined}>
-        <button type="button" onClick={onNavigate ? () => onNavigate(prev.year, prev.month) : undefined}
-          aria-label={t('month.previousMonth')} className="p-1 rounded text-stone-600 dark:text-gray-400">
-          <ChevronLeft size={18} />
-        </button>
-        <h2 data-month-grid-title className="text-sm font-semibold text-stone-900 dark:text-gray-100">{title}</h2>
-        <button type="button" onClick={onNavigate ? () => onNavigate(next.year, next.month) : undefined}
-          aria-label={t('month.nextMonth')} className="p-1 rounded text-stone-600 dark:text-gray-400">
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
       <div data-month-grid-weekdays className="grid grid-cols-7 shrink-0 mx-auto" style={ready ? { width: cell.width * 7 } : undefined}>
         {grid.weekdays.map((weekday) => (
           <div key={weekday} className="text-[10px] font-semibold uppercase tracking-wide text-center text-stone-500 dark:text-gray-400 py-0.5">

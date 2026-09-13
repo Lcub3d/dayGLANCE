@@ -41,6 +41,7 @@ import MobileViewToggle from './MobileViewToggle.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import MobileListView from './MobileListView.jsx';
 import SchedView from './sched/SchedView.jsx';
+import MonthView from './month/MonthView.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -499,7 +500,9 @@ const MobileLayout = () => {
                       }}
                       className={`month-view-toggle ${textPrimary} font-bold text-lg px-2 py-1 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`}
                     >
-                      {formatDateRange(visibleDates, t, i18n.resolvedLanguage || i18n.language)}
+                      {mobileViewMode === 'month'
+                        ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, i18n.resolvedLanguage || i18n.language)
+                        : formatDateRange(visibleDates, t, i18n.resolvedLanguage || i18n.language)}
                     </button>
                     {dateToString(selectedDate) !== dateToString(new Date()) && (
                       <button
@@ -708,7 +711,7 @@ const MobileLayout = () => {
                 {/* Reuse existing calendar grid for single day */}
                 <div
                   ref={calendarRef}
-                  className={`${cardBg} border ${borderClass} overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''} relative h-full`}
+                  className={`${cardBg} border ${borderClass} ${mobileViewMode === 'month' ? 'overflow-hidden flex flex-col' : `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}`} relative h-full`}
                 >
                   {/* Timezone mismatch strip */}
                   {!tzBannerDismissed && Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone && (
@@ -746,7 +749,8 @@ const MobileLayout = () => {
                         : <MobileViewToggle />
                       }
                     </div>
-                    {visibleDates.map((date, idx) => {
+                    {/* MONTH: the switcher only; the grid carries its own weekday row. */}
+                    {mobileViewMode === 'month' ? <div className="flex-1" /> : visibleDates.map((date, idx) => {
                       const isDateToday = dateToString(date) === dateToString(new Date());
                       const dateStr = dateToString(date);
                       return (
@@ -791,6 +795,7 @@ const MobileLayout = () => {
                   {mobileViewMode === 'grid' && <MobileTimeGrid />}
                   {mobileViewMode === 'list' && <MobileListView />}
                   {mobileViewMode === 'sched' && <SchedView />}
+                  {mobileViewMode === 'month' && <MonthView />}
                   {/* Summary strip. Compact (touch) variant plus the phone-only
                       FAB clearance. GRID floats it sticky over the timeline;
                       LIST places it statically after the day's content — a

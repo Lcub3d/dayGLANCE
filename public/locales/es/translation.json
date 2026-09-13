@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL acepta un número limitado de actualizaciones por hora para todo el plugin, así que activa esto en un solo dispositivo que suela estar en marcha.",
     "usersSyncPathHint": "Ruta WebDAV donde se guarda la lista compartida de usuarios. Debe coincidir en todas las aplicaciones GLANCE.",
     "weatherLocationPlaceholder": "p. ej., 28001 o Madrid",
-    "monthViewPreview": "Vista mensual (vista previa)",
-    "monthViewPreviewHint": "Muestra la vista mensual sin terminar sobre la app. Toca un día para abrir su hoja. Al cambiar esto, la app se recarga."
+    "viewMonth": "Mes"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Sugerencias de entrada",
     "goToToday": "Ir a hoy",
     "prevNextDay": "Día anterior / siguiente",
-    "toggleMonthView": "Alternar vista mensual",
     "viewDay": "Vista: Día",
     "view3Day": "Vista: 3 días",
     "viewWeek": "Vista: Semana",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Cambiar de vista",
     "dayDial": "Esfera del día",
     "suggestionsHint": "Cómo interactuar con las sugerencias:",
-    "taskTitleFieldHint": "Escribe en el campo del título de la tarea:"
+    "taskTitleFieldHint": "Escribe en el campo del título de la tarea:",
+    "toggleMonthNav": "Mostrar u ocultar el navegador de meses",
+    "viewMonth": "Vista: Mes"
   },
   "spotlight": {
     "placeholder": "Buscar tareas…",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Añade rutinas a las secciones de días con el botón + y haz clic en ellas para seleccionarlas para hoy"
   },
   "month": {
-    "previousMonth": "Mes anterior",
-    "nextMonth": "Mes siguiente",
     "today": "Hoy",
     "nothingScheduled": "Nada programado",
     "events_one": "{{count}} evento",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Mostrar eventos pasados",
     "hidePastEvents": "Ocultar eventos pasados",
     "happeningNow": "En curso",
-    "nowLabel": "Ahora"
+    "nowLabel": "Ahora",
+    "viewMonthShort": "MES"
   },
   "planner": {
     "standaloneProject": "Proyecto independiente",

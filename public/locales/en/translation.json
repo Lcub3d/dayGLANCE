@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL accepts a limited number of updates per hour for the whole plugin, so enable this on one device that is usually running.",
     "usersSyncPathHint": "WebDAV path where the shared user list is stored. Must match across all GLANCE apps.",
     "weatherLocationPlaceholder": "e.g. 90210 or Seattle",
-    "monthViewPreview": "Month view (preview)",
-    "monthViewPreviewHint": "Shows the unfinished month view over the app. Tap a day to open its sheet. Switching this reloads the app."
+    "viewMonth": "Month"
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Task Entry Suggestions",
     "goToToday": "Go to today",
     "prevNextDay": "Previous / next day",
-    "toggleMonthView": "Toggle month view",
     "viewDay": "View: Day",
     "view3Day": "View: 3-day",
     "viewWeek": "View: Week",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Cycle views",
     "dayDial": "Day Dial",
     "suggestionsHint": "Interacting with suggestions:",
-    "taskTitleFieldHint": "Type in the task title field:"
+    "taskTitleFieldHint": "Type in the task title field:",
+    "toggleMonthNav": "Toggle month nav",
+    "viewMonth": "View: Month"
   },
   "spotlight": {
     "placeholder": "Search tasks...",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Add routines to the day sections with the + button, then click them to select them for today"
   },
   "month": {
-    "previousMonth": "Previous month",
-    "nextMonth": "Next month",
     "today": "Today",
     "nothingScheduled": "Nothing scheduled",
     "events_one": "{{count}} event",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Show past events",
     "hidePastEvents": "Hide past events",
     "happeningNow": "Happening now",
-    "nowLabel": "Now"
+    "nowLabel": "Now",
+    "viewMonthShort": "MONTH"
   },
   "planner": {
     "standaloneProject": "Standalone project",

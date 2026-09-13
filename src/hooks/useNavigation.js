@@ -1,10 +1,12 @@
 import { useCallback } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { getNextOccurrence } from '../utils/recurrenceEngine.js';
+import { shiftDateByMonths } from '../utils/monthGrid.js';
 
 export default function useNavigation({
   visibleDays,
   effectiveViewMode,
+  monthViewActive = false,
   setSelectedDate,
   setShowMonthView,
   setShowSpotlight,
@@ -16,6 +18,12 @@ export default function useNavigation({
   calendarRef,
 }) {
   const changeDate = useCallback((direction) => {
+    // MONTH: the chrome's arrows page whole months, keeping the day of the
+    // month where it exists (Jan 31 → Feb 28, not Mar 3).
+    if (monthViewActive) {
+      setSelectedDate(prev => shiftDateByMonths(prev, direction));
+      return;
+    }
     const stride = effectiveViewMode === 'day' ? 1
       : effectiveViewMode === 'week' || effectiveViewMode === 'sched' ? 7
       : visibleDays;
@@ -25,7 +33,7 @@ export default function useNavigation({
       newDate.setHours(12, 0, 0, 0);
       return newDate;
     });
-  }, [setSelectedDate, visibleDays, effectiveViewMode]);
+  }, [setSelectedDate, visibleDays, effectiveViewMode, monthViewActive]);
 
   const goToToday = useCallback(() => {
     const today = new Date();

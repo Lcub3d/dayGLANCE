@@ -108,18 +108,17 @@ describe('MonthGrid', () => {
     expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*class="[^"]*ring-2 ring-inset ring-blue-500/);
   });
 
-  it('gives every cell a localized accessible label and localizes the header', async () => {
+  it('gives every cell a localized accessible label and carries no header of its own', async () => {
     const en = render(await i18nFor('en'));
     expect(en).toContain('aria-label="Wednesday, September 16, Today: 6 events, 6 tasks, 6 routines"');
     expect(en).toContain('aria-label="Thursday, September 3: 1 deadline"');
     expect(en).toContain('aria-label="Thursday, September 10: Nothing scheduled"');
-    expect(en).toContain('aria-label="Previous month"');
-    expect(en).toContain('aria-label="Next month"');
-    expect(en).toMatch(/data-month-grid-title[^>]*>September 2026</);
+    // The app chrome pages months and names the month; the grid draws only cells and weekdays.
+    expect(en).not.toContain('data-month-grid-title');
+    expect(en).not.toContain('<h2');
     const de = render(await i18nFor('de'));
     expect(de).toContain('aria-label="Donnerstag, 3. September: 1 Frist"');
-    expect(de).toMatch(/data-month-grid-title[^>]*>September 2026</);
-    expect(de).toContain('aria-label="Vorheriger Monat"');
+    expect(de).toContain('aria-label="Mittwoch, 16. September, Heute:');
   });
 
   it('builds labels with plural forms', async () => {

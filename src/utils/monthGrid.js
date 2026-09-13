@@ -27,6 +27,16 @@ export function adjacentDay(dateStr, delta) {
   return { dateStr: next, ...monthOf(next) };
 }
 
+/**
+ * A Date moved by whole months at noon, the day of the month clamped to the
+ * target month's length (Jan 31 + 1 → Feb 28). The chrome's stride in MONTH.
+ */
+export function shiftDateByMonths(date, delta) {
+  const { year, month } = shiftMonth(date.getFullYear(), date.getMonth() + 1, delta);
+  const day = Math.min(date.getDate(), daysInMonth(year, month));
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
 /** { year, month } of a YYYY-MM-DD, or of a Date. */
 export function monthOf(dateOrStr) {
   if (typeof dateOrStr === 'string') return { year: Number(dateOrStr.slice(0, 4)), month: Number(dateOrStr.slice(5, 7)) };

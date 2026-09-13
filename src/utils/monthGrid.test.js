@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize, adjacentDay } from './monthGrid.js';
+import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize, adjacentDay, shiftDateByMonths } from './monthGrid.js';
 import { MONTH_CELL_LAYOUT } from '../constants/monthView.js';
 
 const ids = (g) => g.cells.map((c) => c.dateStr);
@@ -27,6 +27,23 @@ describe('shiftMonth and monthOf', () => {
   it('reads a month from a string or a Date', () => {
     expect(monthOf('2026-09-16')).toEqual({ year: 2026, month: 9 });
     expect(monthOf(new Date(2026, 0, 31))).toEqual({ year: 2026, month: 1 });
+  });
+});
+
+describe('shiftDateByMonths', () => {
+  const ymd = (d) => [d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours()];
+  it('keeps the day of the month and lands at noon', () => {
+    expect(ymd(shiftDateByMonths(new Date(2026, 8, 16, 9), 1))).toEqual([2026, 10, 16, 12]);
+    expect(ymd(shiftDateByMonths(new Date(2026, 8, 16), -1))).toEqual([2026, 8, 16, 12]);
+  });
+  it('clamps to the shorter month instead of spilling over', () => {
+    expect(ymd(shiftDateByMonths(new Date(2026, 0, 31), 1))).toEqual([2026, 2, 28, 12]);
+    expect(ymd(shiftDateByMonths(new Date(2028, 0, 31), 1))).toEqual([2028, 2, 29, 12]);
+    expect(ymd(shiftDateByMonths(new Date(2026, 2, 31), -1))).toEqual([2026, 2, 28, 12]);
+  });
+  it('rolls the year over in both directions', () => {
+    expect(ymd(shiftDateByMonths(new Date(2026, 11, 15), 1))).toEqual([2027, 1, 15, 12]);
+    expect(ymd(shiftDateByMonths(new Date(2027, 0, 15), -1))).toEqual([2026, 12, 15, 12]);
   });
 });
 

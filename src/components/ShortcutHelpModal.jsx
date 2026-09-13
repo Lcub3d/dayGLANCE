@@ -29,16 +29,18 @@ const ShortcutHelpModal = () => {
             {[
               ['T', t('shortcuts.goToToday')],
               ['\u2190 / \u2192', t('shortcuts.prevNextDay')],
-              ['M', t('shortcuts.toggleMonthView')],
+              ['M', t('shortcuts.toggleMonthNav')],
               ...(canShowViewCycler ? [
                 ['1', t('shortcuts.view3Day')],
                 ['2', t('shortcuts.viewDay')],
                 ['3', t('shortcuts.viewWeek')],
                 ['4', t('shortcuts.viewSched')],
+                ['5', t('shortcuts.viewMonth')],
                 ['C', t('shortcuts.cycleViews')],
               ] : schedOnlyCycler ? [
                 ['1', t('shortcuts.view3Day')],
                 ['4', t('shortcuts.viewSched')],
+                ['5', t('shortcuts.viewMonth')],
                 ['C', t('shortcuts.cycleViews')],
               ] : []),
             ].map(([key, desc]) => (

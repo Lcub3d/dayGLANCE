@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { isMonthDaySheetOpen } from '../components/month/MonthDaySheet.jsx';
+import { cyclerStates, nextState } from '../constants/views.js';
 
 const getNextQuarterHour = () => {
   const now = new Date();
@@ -275,8 +276,10 @@ export default function useKeyboardShortcuts({
         }
       }
 
-      // 1/2/3/4 to jump directly to multi/day/week/sched view. On narrow
-      // desktop (schedOnlyCycler) only MULTI and SCHED are available.
+      // 1/2/3/4/5 to jump directly to multi/day/week/sched/month view. On
+      // narrow desktop (schedOnlyCycler) only MULTI, SCHED and MONTH are
+      // available. (The Day Dial's modal check above already stands every
+      // shortcut down while it is up, MONTH included.)
       if (e.key === '1' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
         e.preventDefault();
         setViewMode('multi');
@@ -293,15 +296,19 @@ export default function useKeyboardShortcuts({
         e.preventDefault();
         setViewMode('sched');
       }
+      if (e.key === '5' && noModifiers && (canShowViewCycler || schedOnlyCycler) && !showDayDial) {
+        e.preventDefault();
+        setViewMode('month');
+      }
       // C cycles through whichever views the current width offers — always
       // valid, unlike the direct-jump numbers (2/3 need the 3-column grid).
       if ((e.key === 'c' || e.key === 'C') && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
         e.preventDefault();
-        const states = canShowViewCycler ? ['multi', 'day', 'week', 'sched'] : ['multi', 'sched'];
+        const states = cyclerStates(canShowViewCycler, showDayDial);
         // Cycle from the EFFECTIVE mode, matching the ViewCycler: a stored
         // DAY/WEEK renders as MULTI at narrow widths, so cycling must start
         // from what's on screen, not the raw stored mode.
-        setViewMode(states[(states.indexOf(effectiveViewMode) + 1) % states.length] || 'multi');
+        setViewMode(nextState(states, effectiveViewMode));
       }
 
       // Arrow left/right to navigate dates

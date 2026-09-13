@@ -650,7 +650,9 @@
     "trmnlWebhookHint": "可在 TRMNL 的 DayGLANCE 配方设置中找到",
     "trmnlOneDeviceHint": "TRMNL 对整个插件每小时接受的更新次数有限，因此请只在一台通常保持运行的设备上启用此功能。",
     "usersSyncPathHint": "共享用户列表在 WebDAV 上的存储路径。所有 GLANCE 应用必须使用相同路径。",
-    "weatherLocationPlaceholder": "例如 100000 或北京"
+    "weatherLocationPlaceholder": "例如 100000 或北京",
+    "monthViewPreview": "月视图（预览）",
+    "monthViewPreviewHint": "在应用上方显示尚未完成的月视图。点按某一天可打开当天的面板。切换此项会重新加载应用。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

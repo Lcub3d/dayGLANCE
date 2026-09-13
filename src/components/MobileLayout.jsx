@@ -38,6 +38,7 @@ import MobileAllDaySection from './MobileAllDaySection.jsx';
 import MobileBottomSheets from './MobileBottomSheets.jsx';
 import MobileGlanceSection from './MobileGlanceSection.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
+import DayHeaderCell from './DayHeader.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import MobileListView from './MobileListView.jsx';
 import SchedView from './sched/SchedView.jsx';
@@ -749,42 +750,16 @@ const MobileLayout = () => {
                         : <MobileViewToggle />
                       }
                     </div>
-                    {/* MONTH: the switcher only; the grid carries its own weekday row. */}
-                    {mobileViewMode === 'month' ? <div className="flex-1" /> : visibleDates.map((date, idx) => {
-                      const isDateToday = dateToString(date) === dateToString(new Date());
+                    {/* MONTH: the selected day's header; every other mode, the day's own. */}
+                    {(mobileViewMode === 'month' ? [selectedDate] : visibleDates).map((date, idx) => {
                       const dateStr = dateToString(date);
                       return (
-                        <div
+                        <DayHeaderCell
                           key={dateStr}
-                          className={`flex-1 py-2 px-3 text-center ${idx > 0 ? `border-l ${borderClass}` : ''} ${mobileDragPreviewTime === 'all-day' ? (darkMode ? 'bg-blue-900/40' : 'bg-blue-100') : isDateToday ? (darkMode ? 'bg-blue-900/30' : 'bg-blue-50') : (darkMode ? 'bg-gray-700/50' : 'bg-stone-50')}`}
-                          onClick={() => openNewAllDayTask(dateStr)}
-                           title={`${t('task.addTask')}: ${t('task.allDay')}`}
-                        >
-                          <div className={`font-bold text-sm flex items-center justify-center gap-1.5 ${isDateToday ? 'text-blue-600' : textPrimary}`}>
-                            {formatShortDate(date)}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate(dateStr); }}
-                              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${dailyNotes[dateStr]?.text ? '' : 'opacity-50'}`}
-                               title={t('common.dailyNote')}
-                            >
-                              <NotebookPen size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setFocusLogModalDate(dateStr); }}
-                              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${focusLog[dateStr]?.totalMinutes > 0 ? '' : 'opacity-50'}`}
-                               title={t('app.focusLog')}
-                            >
-                              <Target size={14} />
-                            </button>
-                          </div>
-                          {habitsEnabled && !isDateToday && dateStr < dateToString(new Date()) && habitLogs[dateStr] && activeHabits.length > 0 && (
-                            <div className="flex items-center justify-center gap-0.5 mt-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setHabitDayPopup(dateStr); }}>
-                              {activeHabits.filter(h => (h.scheduledDays ?? [0,1,2,3,4,5,6]).includes(new Date(dateStr + 'T12:00:00').getDay())).slice(0, 6).map(habit => (
-                                <MiniHabitRing key={habit.id} habit={habit} count={habitLogs[dateStr]?.[habit.id] || 0} darkMode={darkMode} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                          date={date}
+                          compact
+                          className={`flex-1 ${idx > 0 ? `border-l ${borderClass}` : ''} ${mobileDragPreviewTime === 'all-day' ? (darkMode ? 'bg-blue-900/40' : 'bg-blue-100') : ''}`}
+                        />
                       );
                     })}
                   </div>

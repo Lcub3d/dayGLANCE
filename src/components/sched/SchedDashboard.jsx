@@ -10,6 +10,7 @@ import useSchedAgendaState, { LOAD_MORE_DAYS } from './useSchedAgendaState.js';
 import SchedTaskCard from './SchedTaskCard.jsx';
 import SchedFilterPresets from './SchedFilterPresets.jsx';
 import { SchedDeadlineCard, SchedRoutinePills } from './SchedDayExtras.jsx';
+import { DayHeaderActions } from '../DayHeader.jsx';
 
 /** One collapsible section of the desktop filter rail. Collapsed state is
     persisted per section (storageKey, stable across locales) so the rail
@@ -105,8 +106,9 @@ const SchedDashboard = () => {
           {visibleDays.map(day => (
             <div key={day.dateStr} className="flex flex-col gap-1.5">
               <div className={`flex items-center justify-between border-b ${borderClass} pb-1`}>
-                <span className={`text-sm font-semibold ${day.dateStr === todayStr ? 'text-blue-500' : textPrimary}`}>
-                  {dayLabel(day)}
+                <span className={`flex items-center gap-1.5 text-sm font-semibold ${day.dateStr === todayStr ? 'text-blue-500' : textPrimary}`}>
+                  <span>{dayLabel(day)}</span>
+                  <DayHeaderActions dateStr={day.dateStr} />
                 </span>
                 <button
                   onClick={() => addTaskOnDay(day.dateStr)}

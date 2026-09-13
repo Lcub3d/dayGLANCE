@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL nimmt pro Stunde nur eine begrenzte Zahl von Aktualisierungen für das gesamte Plugin an. Aktiviere dies daher auf einem Gerät, das normalerweise läuft.",
     "usersSyncPathHint": "WebDAV-Pfad, unter dem die gemeinsame Benutzerliste gespeichert wird. Muss in allen GLANCE-Apps übereinstimmen.",
     "weatherLocationPlaceholder": "z. B. 10115 oder Berlin",
-    "monthViewPreview": "Monatsansicht (Vorschau)",
-    "monthViewPreviewHint": "Zeigt die unfertige Monatsansicht über der App. Tippe auf einen Tag, um sein Blatt zu öffnen. Beim Umschalten wird die App neu geladen."
+    "viewMonth": "Monat"
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Aufgabeneingabe-Vorschläge",
     "goToToday": "Zu heute gehen",
     "prevNextDay": "Vorheriger / nächster Tag",
-    "toggleMonthView": "Monatsansicht umschalten",
     "viewDay": "Ansicht: Tag",
     "view3Day": "Ansicht: 3 Tage",
     "viewWeek": "Ansicht: Woche",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Ansichten wechseln",
     "dayDial": "Tagesanzeige",
     "suggestionsHint": "Mit Vorschlägen interagieren:",
-    "taskTitleFieldHint": "Im Feld für den Aufgabentitel eingeben:"
+    "taskTitleFieldHint": "Im Feld für den Aufgabentitel eingeben:",
+    "toggleMonthNav": "Monatsnavigation ein/aus",
+    "viewMonth": "Ansicht: Monat"
   },
   "spotlight": {
     "placeholder": "Aufgaben suchen…",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Füge den Tagesbereichen mit der Schaltfläche + Routinen hinzu und klicke sie dann an, um sie für heute auszuwählen"
   },
   "month": {
-    "previousMonth": "Vorheriger Monat",
-    "nextMonth": "Nächster Monat",
     "today": "Heute",
     "nothingScheduled": "Nichts geplant",
     "events_one": "{{count}} Termin",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Vergangene Termine anzeigen",
     "hidePastEvents": "Vergangene Termine ausblenden",
     "happeningNow": "Läuft gerade",
-    "nowLabel": "Jetzt"
+    "nowLabel": "Jetzt",
+    "viewMonthShort": "MONAT"
   },
   "planner": {
     "standaloneProject": "Eigenständiges Projekt",

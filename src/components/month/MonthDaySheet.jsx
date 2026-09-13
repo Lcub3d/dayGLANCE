@@ -24,8 +24,10 @@ import { shiftDateStr } from '@glance-apps/agenda-core';
 // onNavigate. The owner changes `date`; the sheet itself stays put and the
 // same history entry serves the whole visit.
 //
-// Stacking: z-[46], above the month overlay and the tab bar (40), below the
-// filter popup and the task editors (50, 80) that open from inside it.
+// Stacking: z-[45]. Above the mobile tab bar and FAB (40), which its backdrop
+// covers, and below everything that opens from inside it or over the app:
+// the filter popup, a card's notes panel and the app's own popups (50), the
+// confirm dialog and the Day Dial (70), and the task editors (80).
 
 export const MONTH_DAY_SHEET_HISTORY_KEY = 'monthDaySheet';
 
@@ -57,7 +59,7 @@ export default function MonthDaySheet({ date, onClose, onNavigate }) {
   const title = formatLocalizedDate(new Date(`${date}T12:00:00`), { weekday: 'long', month: 'long', day: 'numeric' }, language);
 
   return (
-    <div data-month-day-sheet={date} className="fixed inset-0 z-[46] flex flex-col justify-end" role="presentation">
+    <div data-month-day-sheet={date} className="fixed inset-0 z-[45] flex flex-col justify-end" role="presentation">
       <div data-month-day-sheet-backdrop className="absolute inset-0 bg-black/40" onClick={dismiss} />
       <div
         role="dialog"

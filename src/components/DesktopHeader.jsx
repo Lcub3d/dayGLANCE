@@ -22,6 +22,7 @@ const DesktopHeader = () => {
     darkMode, setDarkMode,
     use24HourClock,
     showMonthView, setShowMonthView,
+    monthViewActive,
     setShowDayDial,
     viewedMonth, setViewedMonth,
     setShowSettings,
@@ -143,7 +144,9 @@ const DesktopHeader = () => {
               }}
               className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center min-w-[13rem]`}
             >
-              {effectiveViewMode === 'day'
+              {monthViewActive
+                ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, i18n.resolvedLanguage || i18n.language)
+                : effectiveViewMode === 'day'
                 ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, i18n.resolvedLanguage || i18n.language)
                 : effectiveViewMode === 'week' && weekViewDates.length > 0
                 ? formatDateRange(weekViewDates, t, i18n.resolvedLanguage || i18n.language)

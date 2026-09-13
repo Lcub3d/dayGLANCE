@@ -651,8 +651,7 @@
     "trmnlOneDeviceHint": "TRMNL n'accepte qu'un nombre limité de mises à jour par heure pour l'ensemble du plugin. Activez donc ceci sur un seul appareil qui fonctionne habituellement.",
     "usersSyncPathHint": "Chemin WebDAV où la liste partagée des utilisateurs est stockée. Il doit être identique dans toutes les applications GLANCE.",
     "weatherLocationPlaceholder": "par ex. 75001 ou Paris",
-    "monthViewPreview": "Vue mensuelle (aperçu)",
-    "monthViewPreviewHint": "Affiche la vue mensuelle inachevée par-dessus l'app. Touchez un jour pour ouvrir sa feuille. Ce réglage recharge l'app."
+    "viewMonth": "Mois"
   },
   "dailyNotes": {
     "quickNotes": "Notes rapides",
@@ -1121,7 +1120,6 @@
     "sectionTaskEntrySuggestions": "Suggestions de saisie",
     "goToToday": "Aller à aujourd'hui",
     "prevNextDay": "Jour précédent / suivant",
-    "toggleMonthView": "Basculer la vue mensuelle",
     "viewDay": "Vue : Jour",
     "view3Day": "Vue : 3 jours",
     "viewWeek": "Vue : Semaine",
@@ -1160,7 +1158,9 @@
     "cycleViews": "Changer de vue",
     "dayDial": "Cadran du jour",
     "suggestionsHint": "Interagir avec les suggestions :",
-    "taskTitleFieldHint": "Saisir dans le champ du titre de la tâche :"
+    "taskTitleFieldHint": "Saisir dans le champ du titre de la tâche :",
+    "toggleMonthNav": "Afficher ou masquer la navigation par mois",
+    "viewMonth": "Vue : Mois"
   },
   "spotlight": {
     "placeholder": "Rechercher des tâches…",
@@ -1330,8 +1330,6 @@
     "emptySelectedNoChips": "Ajoutez des routines aux sections quotidiennes avec le bouton +, puis cliquez dessus pour les sélectionner pour aujourd’hui"
   },
   "month": {
-    "previousMonth": "Mois précédent",
-    "nextMonth": "Mois suivant",
     "today": "Aujourd'hui",
     "nothingScheduled": "Rien de prévu",
     "events_one": "{{count}} événement",
@@ -1809,7 +1807,8 @@
     "showPastEvents": "Afficher les événements passés",
     "hidePastEvents": "Masquer les événements passés",
     "happeningNow": "En cours",
-    "nowLabel": "En cours"
+    "nowLabel": "En cours",
+    "viewMonthShort": "MOIS"
   },
   "planner": {
     "standaloneProject": "Projet indépendant",

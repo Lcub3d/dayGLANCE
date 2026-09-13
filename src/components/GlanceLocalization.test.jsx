@@ -178,7 +178,7 @@ it('uses 领域 consistently for Chinese Areas without changing regional setting
 });
 
 describe.each(languages)('%s view labels', (language) => {
-  it.each(['multi', 'day', 'week', 'sched'])('localizes %s label, tooltip and accessible name', async (view) => {
+  it.each(['multi', 'day', 'week', 'sched', 'month'])('localizes %s label, tooltip and accessible name', async (view) => {
     const i18n = await translation(language);
     const key = `sched.view${view[0].toUpperCase()}${view.slice(1)}Short`;
     expect(i18n.exists(key)).toBe(true);
@@ -194,10 +194,10 @@ describe.each(languages)('%s view labels', (language) => {
       );
       expect(html).toContain(`>${escape(label)}</span>`);
       expect(html).toContain(`title="${escape(i18n.t('sched.viewTooltip', {
-        view: label, keys: canShowViewCycler ? '1/2/3/4' : '1/4',
+        view: label, keys: canShowViewCycler ? '1/2/3/4/5' : '1/4/5',
       }))}"`);
       expect(html).toContain(`aria-label="${escape(i18n.t('sched.viewAria', { view: label }))}"`);
-      if (language === 'zh-CN') expect(label).toBe({ multi: '多日', day: '单日', week: '周', sched: '日程' }[view]);
+      if (language === 'zh-CN') expect(label).toBe({ multi: '多日', day: '单日', week: '周', sched: '日程', month: '月' }[view]);
       if (language === 'en') expect(label).toBe(view.toUpperCase());
     }
   });

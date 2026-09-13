@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES } from '../constants/views.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
@@ -312,7 +313,7 @@ const SettingsModal = () => {
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.defaultViewOnLoad')}</label>
                           <div className="flex gap-2">
-                            {(canShowViewCycler ? ['multi', 'day', 'week', 'sched'] : ['multi', 'sched']).map(v => (
+                            {(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES).map(v => (
                               <button
                                 key={v}
                                 onClick={() => setDefaultView(v)}
@@ -322,7 +323,7 @@ const SettingsModal = () => {
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}
                               >
-                                {v === 'multi' ? t('settings.viewMultiDay') : v === 'day' ? t('settings.viewDay') : v === 'week' ? t('settings.viewWeek') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                {v === 'multi' ? t('settings.viewMultiDay') : v === 'day' ? t('settings.viewDay') : v === 'week' ? t('settings.viewWeek') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' })}
                               </button>
                             ))}
                           </div>
@@ -435,7 +436,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.portraitViewDefault', 'Portrait view')}</label>
                             <div className="flex gap-2">
-                              {['grid', 'list', 'sched'].map(mode => (
+                              {MOBILE_VIEW_MODES.map(mode => (
                                 <button
                                   key={mode}
                                   onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
@@ -445,7 +446,7 @@ const SettingsModal = () => {
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
-                                  {mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                  {mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' })}
                                 </button>
                               ))}
                             </div>
@@ -453,7 +454,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.landscapeViewDefault', 'Landscape view')}</label>
                             <div className="flex gap-2">
-                              {['multi', 'sched'].map(v => (
+                              {NARROW_DESKTOP_VIEW_MODES.map(v => (
                                 <button
                                   key={v}
                                   onClick={() => { setDefaultView(v); setViewMode(v); }}
@@ -463,7 +464,7 @@ const SettingsModal = () => {
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
-                                  {v === 'multi' ? t('settings.viewMultiDay') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                  {v === 'multi' ? t('settings.viewMultiDay') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' })}
                                 </button>
                               ))}
                             </div>

@@ -173,6 +173,7 @@ import DesktopLayout from './components/DesktopLayout.jsx';
 import GlanceSidebar from './components/GlanceSidebar.jsx';
 import TrayApp from './components/TrayApp.jsx';
 import MobileLayout from './components/MobileLayout.jsx';
+import { DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, resolveStoredView } from './constants/views.js';
 import ShortcutHelpModal from './components/ShortcutHelpModal.jsx';
 import FocusModeModal from './components/FocusModeModal.jsx';
 import HyperGlanceModeModal from './components/HyperGlanceModeModal.jsx';
@@ -186,23 +187,6 @@ import FrameScheduleModal from './components/FrameScheduleModal.jsx';
 import FramesModal from './components/FramesModal.jsx';
 import MobileWelcomeModal from './components/MobileWelcomeModal.jsx';
 import DesktopWelcomeModal from './components/DesktopWelcomeModal.jsx';
-// ── TEMPORARY: month view step 3 dev overlay ────────────────────────────────
-// Renders components/month/MonthGridDevOverlay.jsx over the app on real data
-// when asked for explicitly: `?month-grid` in the URL, or localStorage
-// 'day-planner-dev-month-grid' = '1' (the only route on a device build,
-// where the URL is fixed). Lazy, so the bundle carries only this gate. Delete
-// this block, the render below, and the overlay file once the month grid is
-// routed through the view cycler.
-const MONTH_GRID_DEV = (() => {
-  try {
-    return new URLSearchParams(window.location.search).has('month-grid')
-      || ['1', 'demo'].includes(window.localStorage.getItem('day-planner-dev-month-grid'));
-  } catch {
-    return false;
-  }
-})();
-const MonthGridDevOverlay = MONTH_GRID_DEV ? React.lazy(() => import('./components/month/MonthGridDevOverlay.jsx')) : null;
-// ── end TEMPORARY ────────────────────────────────────────────────────────────
 import SpotlightModal from './components/SpotlightModal.jsx';
 import BucketListModal from './components/BucketListModal.jsx';
 import HabitModal from './components/HabitModal.jsx';
@@ -344,9 +328,10 @@ const DayPlanner = () => {
   const [viewMode, setViewMode] = useState(() => {
     // URL ?view= param takes priority over defaultView on cold load.
     const urlView = new URLSearchParams(window.location.search).get('view');
-    if (urlView && ['multi', 'day', 'week', 'sched'].includes(urlView)) return urlView;
+    if (urlView && DESKTOP_VIEW_MODES.includes(urlView)) return urlView;
     const def = localStorage.getItem('day-planner-default-view');
-    return def ? JSON.parse(def) : 'multi';
+    // A value this build does not know (written by another build, or by hand) falls back to MULTI.
+    try { return resolveStoredView(def ? JSON.parse(def) : null, DESKTOP_VIEW_MODES, 'multi'); } catch { return 'multi'; }
   });
   // Only expose the cycler (and honour viewMode) when the 3-day breakpoint is active
   const canShowViewCycler = !isTablet && !isMobile && _visibleDays === 3;
@@ -357,12 +342,13 @@ const DayPlanner = () => {
   const schedOnlyCycler = (!isTablet && !isMobile && _visibleDays < 3) || (isTablet && isLandscape);
   // Otherwise the cycler is hidden and the stored mode is ignored until the
   // viewport grows back; the app behaves as 'multi' in the meantime.
+  // SCHED and MONTH fit any width, so the narrow cycler offers them too.
   const effectiveViewMode = canShowViewCycler ? viewMode
-    : schedOnlyCycler && viewMode === 'sched' ? 'sched'
+    : schedOnlyCycler && (viewMode === 'sched' || viewMode === 'month') ? viewMode
     : 'multi';
   const [defaultView, setDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-default-view');
-    return saved ? JSON.parse(saved) : 'multi';
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, DESKTOP_VIEW_MODES, 'multi'); } catch { return 'multi'; }
   });
   const [dayViewMode, setDayViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-day-view-mode');
@@ -377,7 +363,7 @@ const DayPlanner = () => {
   const [mobileDefaultView, _setMobileDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-mobile-default-view')
       || localStorage.getItem('day-planner-mobile-view-mode');
-    try { return saved ? JSON.parse(saved) : 'grid'; } catch { return 'grid'; }
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, MOBILE_VIEW_MODES, 'grid'); } catch { return 'grid'; }
   });
   const setMobileDefaultView = (mode) => {
     _setMobileDefaultView(mode);
@@ -393,7 +379,11 @@ const DayPlanner = () => {
   // uses the two-column timeline (and hides the LIST/GRID toggle). This mirrors
   // how wider Android tablets behave, where landscape drops out of tablet mode
   // entirely. (On phones, list view is independent of orientation.)
-  const tabletListView = isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched');
+  const tabletListView = isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month');
+  // MONTH on screen, whichever switcher put it there: the desktop cycler
+  // (effectiveViewMode) or the phone / portrait-tablet toggle (mobileViewMode).
+  // Drives the chrome's month-long stride and month-name date display.
+  const monthViewActive = effectiveViewMode === 'month' || ((isMobile || (isTablet && !isLandscape)) && mobileViewMode === 'month');
   const [glancePage, setGlancePage] = useState(() => {
     const saved = localStorage.getItem('day-planner-glance-page');
     return saved !== null ? parseInt(saved, 10) : 0;
@@ -1327,6 +1317,7 @@ const DayPlanner = () => {
   const { changeDate, goToToday, goToDate, handleSpotlightSelect } = useNavigation({
     visibleDays,
     effectiveViewMode,
+    monthViewActive,
     setSelectedDate,
     setShowMonthView,
     setShowSpotlight,
@@ -1882,8 +1873,12 @@ const DayPlanner = () => {
       window.history.pushState({ appTab: mobileActiveTab }, '');
     }
 
-    const onPopState = () => {
-      setMobileActiveTab('dayglance');
+    const onPopState = (e) => {
+      // An entry that still carries appTab belongs to something opened inside
+      // the tab (the month view's day sheet pushes one on top of ours); popping
+      // it closes that thing and the tab stays. Only the tab's own entry
+      // going away returns to GLANCE.
+      setMobileActiveTab(e.state?.appTab || 'dayglance');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -8377,6 +8372,7 @@ const DayPlanner = () => {
     isPhone, isMobile, isTablet, isLandscape,
     visibleDays, visibleDates,
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
+    monthViewActive,
     defaultView, setDefaultView,
     dayViewMode, setDayViewMode,
     dayViewColumns,
@@ -9822,7 +9818,7 @@ const DayPlanner = () => {
       )}
 
       {/* Refocus timeline toast — all form factors except mobile list view */}
-      {timelineScrolledAway && effectiveViewMode === 'multi' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched')) || tabletListView) && (
+      {timelineScrolledAway && effectiveViewMode === 'multi' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
         <div className="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-auto" style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
           <button
             onClick={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }}
@@ -10505,10 +10501,6 @@ const DayPlanner = () => {
       {showWelcome && isMobile && <MobileWelcomeModal />}
       {showWelcome && !isMobile && <DesktopWelcomeModal />}
 
-      {/* TEMPORARY: month view step 3 dev overlay (see MONTH_GRID_DEV above). */}
-      {MonthGridDevOverlay && (
-        <React.Suspense fallback={null}><MonthGridDevOverlay /></React.Suspense>
-      )}
 
       {/* Voice Input Modal (Phase 1) */}
       <VoiceInputModal />

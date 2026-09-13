@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import ViewCycler from './ViewCycler.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
-import DayHeaderCell, { DayHeaderActions } from './DayHeader.jsx';
+import DayHeaderCell, { DayHeaderActions, DayHabitRings } from './DayHeader.jsx';
 import DayViewAllDaySection from './DayViewAllDaySection.jsx';
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
@@ -321,28 +321,9 @@ const CalendarHeader = () => {
             {timeRange && (
               <span className={`font-normal text-xs ${textSecondary}`}>· {timeRange}</span>
             )}
-            <button
-              onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate(group.dateStr); }}
-              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${dailyNotes[group.dateStr]?.text ? '' : 'opacity-50'}`}
-              title={t('common.dailyNote')}
-            >
-              <NotebookPen size={14} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setFocusLogModalDate(group.dateStr); }}
-              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${focusLog[group.dateStr]?.totalMinutes > 0 ? '' : 'opacity-50'}`}
-              title={t('app.focusLog')}
-            >
-              <Target size={14} />
-            </button>
+            <DayHeaderActions dateStr={group.dateStr} />
           </div>
-          {habitsEnabled && !isDateToday && group.dateStr < dateToString(new Date()) && habitLogs[group.dateStr] && activeHabits.length > 0 && (
-            <div className="flex items-center justify-center gap-0.5 mt-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setHabitDayPopup(group.dateStr); }}>
-              {activeHabits.filter(h => (h.scheduledDays ?? [0,1,2,3,4,5,6]).includes(new Date(group.dateStr + 'T12:00:00').getDay())).slice(0, 6).map(habit => (
-                <MiniHabitRing key={habit.id} habit={habit} count={habitLogs[group.dateStr]?.[habit.id] || 0} darkMode={darkMode} />
-              ))}
-            </div>
-          )}
+          <DayHabitRings dateStr={group.dateStr} />
         </div>
       );
     });

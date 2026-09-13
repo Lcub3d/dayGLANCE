@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
+import { isMonthDaySheetOpen } from '../components/month/MonthDaySheet.jsx';
 
 const getNextQuarterHour = () => {
   const now = new Date();
@@ -113,6 +114,11 @@ export default function useKeyboardShortcuts({
 
       // Don't trigger shortcuts when a modal is open (except Escape and ? handled above)
       if (showAddTask || showFocusMode || showRoutinesDashboard || showShortcutHelp || showSpotlight || showSettings || showRemindersSettings || showWeeklyReview || showVoiceInput || showHabitModal || showFramesModal || frameAdjustModal || showRescheduleModal || showGoalsDashboard || showBucketList || showDayDial) {
+        return;
+      }
+      // The month view's day sheet is modal too: its own controller owns the
+      // arrow keys (previous/next day) and Escape while it is open.
+      if (isMonthDaySheetOpen()) {
         return;
       }
 

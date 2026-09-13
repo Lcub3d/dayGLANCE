@@ -140,12 +140,13 @@ function AllDayMark({ entry, item, x, y, size, m }) {
  *   width rule in constants (present on wide cells, absent on narrow), 0 for none
  * @param {boolean} [props.isToday=false]
  * @param {boolean} [props.inMonth=true]  false dims the cell (adjacent month)
+ * @param {boolean} [props.isSelected=false]  the day the open day sheet shows
  * @param {string} [props.label]       accessible name; defaults to the date
  * @param {(date: string) => void} [props.onSelect]  the whole-cell tap; the
  *   day sheet it opens is step 4, so callers leave it unwired for now
  */
 export default function MonthDayCell({
-  date, items, width, height, gutterWidth, isToday = false, inMonth = true, label, onSelect,
+  date, items, width, height, gutterWidth, isToday = false, inMonth = true, isSelected = false, label, onSelect,
 }) {
   const m = monthCellMetrics(width, height, { gutter: gutterWidth === undefined ? 'auto' : gutterWidth });
   const timedRoutines = (items || []).filter((item) => item?.kind === 'routine' && !item.isAllDay && toMin(item.startTime) !== null);
@@ -178,11 +179,14 @@ export default function MonthDayCell({
       data-month-cell={date}
       data-today={isToday ? 'true' : undefined}
       data-in-month={inMonth ? 'true' : 'false'}
+      data-selected={isSelected ? 'true' : undefined}
+      aria-pressed={isSelected ? 'true' : undefined}
       aria-label={label || date}
       onClick={onSelect ? () => onSelect(date) : undefined}
       className={`relative block p-0 m-0 border-0 bg-transparent text-left select-none appearance-none cursor-pointer overflow-hidden
         focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-        ${isToday ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''} ${inMonth ? '' : 'opacity-40'}`}
+        ${isToday ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''} ${inMonth ? '' : 'opacity-40'}
+        ${isSelected ? 'ring-2 ring-inset ring-blue-500 dark:ring-blue-400 !opacity-100' : ''}`}
       style={{ width, height }}
     >
       <svg

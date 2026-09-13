@@ -79,6 +79,17 @@ export default function MonthGridDevOverlay() {
   const itemsForDate = demo ? demoItemsForDate : realItemsForDate;
   const [hidden, setHidden] = useState(false);
   const [sheetDate, setSheetDate] = useState(null);
+  // The grid's highlighted day follows the sheet and outlives it, so closing
+  // the sheet leaves the grid on the day the visit ended on. Stepping into
+  // another month pages the grid (and, through the effect below, the range
+  // recurring occurrences are expanded for) along with it.
+  const [selected, setSelected] = useState(null);
+  const showDay = (dateStr) => {
+    setSheetDate(dateStr);
+    setSelected(dateStr);
+    const { year, month } = monthOf(dateStr);
+    if (year !== shown.year || month !== shown.month) setShown({ year, month });
+  };
   // Recurring occurrences are expanded for the grid's whole range while it shows.
   useEffect(() => {
     if (hidden || !setMonthViewRange) return undefined;
@@ -92,7 +103,7 @@ export default function MonthGridDevOverlay() {
       style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + ${titlebarH}px)`, paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className={`flex items-center gap-3 px-3 py-1 text-[11px] ${textSecondary} shrink-0`}>
         <span className="font-semibold">Month grid (TEMPORARY dev overlay, real data)</span>
-        <span className="hidden sm:inline">tap a cell to open its day sheet</span>
+        <span className="hidden sm:inline">tap a cell to open its day sheet; swipe or use the arrow keys to move between days</span>
         <span data-month-grid-source={demo ? 'demo' : 'real'} className={demo ? 'font-semibold text-amber-700 dark:text-amber-300' : ''}>
           {demo ? 'showing: generated demo month' : 'showing: your data'}
         </span>
@@ -111,10 +122,22 @@ export default function MonthGridDevOverlay() {
           itemsForDate={itemsForDate}
           weekStartDay={weekStartDay}
           onNavigate={(year, month) => setShown({ year, month })}
-          onSelectDate={setSheetDate}
+          onSelectDate={showDay}
+          selectedDate={selected}
         />
       </div>
-      {sheetDate && <MonthDaySheet date={sheetDate} onClose={() => setSheetDate(null)} />}
+      {sheetDate && (
+        <MonthDaySheet
+          date={sheetDate}
+          onNavigate={showDay}
+          onClose={() => {
+            setSheetDate(null);
+            // Focus follows the selection out of the sheet, so the keyboard
+            // focus ring and the selection ring land on the same cell.
+            document.querySelector(`[data-month-cell="${selected}"]`)?.focus();
+          }}
+        />
+      )}
     </div>
   );
 }

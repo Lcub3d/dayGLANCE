@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  createSheetController, shouldDismissPull, shouldDismissEdgeSwipe,
-  SHEET_PULL_DISMISS_PX, SHEET_EDGE_DISMISS_PX, SHEET_EDGE_START_PX,
+  createSheetController, shouldDismissPull, shouldDismissEdgeSwipe, dragAxis, pageDirection,
+  SHEET_PULL_DISMISS_PX, SHEET_EDGE_DISMISS_PX, SHEET_EDGE_START_PX, SHEET_AXIS_LOCK_PX, SHEET_PAGE_SWIPE_PX,
 } from './sheetDismissal.js';
 
 function fakeWindow({ hasInnerOverlay = false } = {}) {
@@ -25,9 +25,10 @@ function fakeWindow({ hasInnerOverlay = false } = {}) {
 const setup = (opts) => {
   const win = fakeWindow(opts);
   const onClose = vi.fn();
-  const ctl = createSheetController({ key: 'monthDaySheet', onClose, win });
+  const onPage = vi.fn();
+  const ctl = createSheetController({ key: 'monthDaySheet', onClose, onPage, win });
   ctl.open();
-  return { win, onClose, ctl };
+  return { win, onClose, onPage, ctl };
 };
 
 describe('sheet dismissal controller', () => {
@@ -134,5 +135,95 @@ describe('sheet dismissal controller', () => {
     ctl.dispose();
     expect(win.listenerCount('popstate')).toBe(0);
     expect(win.listenerCount('keydown')).toBe(0);
+  });
+});
+
+describe('sheet paging (step 5)', () => {
+  it('locks a drag to the dominant axis once past the slop', () => {
+    expect(dragAxis({ dx: 4, dy: 4 })).toBeNull();
+    expect(dragAxis({ dx: SHEET_AXIS_LOCK_PX, dy: 0 })).toBe('x');
+    expect(dragAxis({ dx: 0, dy: SHEET_AXIS_LOCK_PX })).toBe('y');
+    expect(dragAxis({ dx: 12, dy: 9 })).toBe('x');
+    expect(dragAxis({ dx: 9, dy: 12 })).toBe('y');
+    expect(dragAxis({ dx: 10, dy: 10 })).toBe('y'); // a tie stays a dismiss, never a page
+  });
+
+  it('pages on a long or quick horizontal swipe, in either direction', () => {
+    expect(pageDirection({ dx: -SHEET_PAGE_SWIPE_PX, dtMs: 400 })).toBe(1);   // swipe left: next day
+    expect(pageDirection({ dx: SHEET_PAGE_SWIPE_PX, dtMs: 400 })).toBe(-1);   // swipe right: previous day
+    expect(pageDirection({ dx: -40, dtMs: 40 })).toBe(1);                     // a flick
+    expect(pageDirection({ dx: -40, dtMs: 600 })).toBe(0);                    // a slow short drag
+    expect(pageDirection({ dx: -10, dtMs: 5 })).toBe(0);                      // too short even when fast
+  });
+
+  it('pages to the next day on a swipe left and the previous on a swipe right, without dismissing', () => {
+    const next = setup();
+    next.ctl.onDragStart({ x: 300, y: 400, t: 0, scrollTop: 0 });
+    expect(next.ctl.onDragMove({ x: 200, y: 404, t: 200 })).toBe(0); // horizontal: no pull offset
+    expect(next.ctl.onDragEnd()).toBe(false);
+    expect(next.onPage).toHaveBeenCalledWith(1);
+    expect(next.onClose).not.toHaveBeenCalled();
+
+    const prev = setup();
+    prev.ctl.onDragStart({ x: 200, y: 400, t: 0, scrollTop: 300 }); // scrolled content still pages
+    prev.ctl.onDragMove({ x: 300, y: 396, t: 200 });
+    expect(prev.ctl.onDragEnd()).toBe(false);
+    expect(prev.onPage).toHaveBeenCalledWith(-1);
+    expect(prev.onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps a mostly-vertical drag a dismiss and never a page, even with sideways drift', () => {
+    const { ctl, onClose, onPage } = setup();
+    ctl.onDragStart({ x: 200, y: 100, t: 0, scrollTop: 0 });
+    expect(ctl.onDragMove({ x: 206, y: 112, t: 50 })).toBe(12); // locks vertical
+    expect(ctl.onDragMove({ x: 320, y: 240, t: 300 })).toBe(140); // later sideways drift is ignored
+    expect(ctl.onDragEnd()).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPage).not.toHaveBeenCalled();
+  });
+
+  it('keeps a drag that locked horizontal from dismissing, even if it then goes down', () => {
+    const { ctl, onClose, onPage } = setup();
+    ctl.onDragStart({ x: 200, y: 100, t: 0, scrollTop: 0 });
+    expect(ctl.onDragMove({ x: 214, y: 104, t: 50 })).toBe(0); // locks horizontal
+    expect(ctl.onDragMove({ x: 230, y: 300, t: 400 })).toBe(0);
+    expect(ctl.onDragEnd()).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onPage).not.toHaveBeenCalled(); // 30px right is neither a page nor a dismiss
+  });
+
+  it('lets the left-edge swipe win over paging to the previous day', () => {
+    const { ctl, onClose, onPage } = setup();
+    ctl.onDragStart({ x: SHEET_EDGE_START_PX, y: 300, t: 0, scrollTop: 0 });
+    ctl.onDragMove({ x: SHEET_EDGE_START_PX + 120, y: 310, t: 200 });
+    expect(ctl.onDragEnd()).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPage).not.toHaveBeenCalled();
+  });
+
+  it('pages with the arrow keys, but not while typing or under an inner overlay', () => {
+    const { win, onPage, onClose } = setup();
+    const right = { key: 'ArrowRight', target: { tagName: 'BUTTON' }, preventDefault: vi.fn() };
+    win.fire('keydown', right);
+    win.fire('keydown', { key: 'ArrowLeft', target: { tagName: 'BODY' } });
+    expect(onPage.mock.calls).toEqual([[1], [-1]]);
+    expect(right.preventDefault).toHaveBeenCalled();
+    win.fire('keydown', { key: 'ArrowRight', target: { tagName: 'INPUT' } });
+    win.fire('keydown', { key: 'ArrowRight', target: { tagName: 'DIV', isContentEditable: true } });
+    win.fire('keydown', { key: 'ArrowRight', target: { tagName: 'BODY' }, defaultPrevented: true });
+    win.fire('keydown', { key: 'ArrowUp', target: { tagName: 'BODY' } });
+    expect(onPage).toHaveBeenCalledTimes(2);
+    expect(onClose).not.toHaveBeenCalled();
+
+    const inner = setup({ hasInnerOverlay: true });
+    inner.win.fire('keydown', { key: 'ArrowRight', target: { tagName: 'BODY' } });
+    expect(inner.onPage).not.toHaveBeenCalled();
+  });
+
+  it('stops paging once the sheet has closed', () => {
+    const { win, ctl, onPage } = setup();
+    ctl.dismiss('button');
+    win.fire('keydown', { key: 'ArrowRight', target: { tagName: 'BODY' } });
+    expect(onPage).not.toHaveBeenCalled();
   });
 });

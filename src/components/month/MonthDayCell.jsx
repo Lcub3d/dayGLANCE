@@ -186,7 +186,7 @@ export default function MonthDayCell({
       className={`relative block p-0 m-0 border-0 bg-transparent text-left select-none appearance-none cursor-pointer overflow-hidden
         focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
         ${isToday ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''} ${inMonth ? '' : 'opacity-40'}
-        ${isSelected ? 'ring-2 ring-inset ring-blue-500 dark:ring-blue-400 !opacity-100' : ''}`}
+        ${isSelected ? 'ring-2 ring-inset ring-brand !opacity-100' : ''}`}
       style={{ width, height }}
     >
       <svg

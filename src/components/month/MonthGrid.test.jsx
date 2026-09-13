@@ -105,7 +105,7 @@ describe('MonthGrid', () => {
     const html = render(i18n, { selectedDate: '2026-10-02' }); // a trailing cell of September's grid
     expect(count(html, /data-selected="true"/g)).toBe(1);
     expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*data-selected="true"[^>]*aria-pressed="true"/);
-    expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*class="[^"]*ring-2 ring-inset ring-blue-500/);
+    expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*class="[^"]*ring-2 ring-inset ring-brand/); // dayGLANCE orange
   });
 
   it('gives every cell a localized accessible label and carries no header of its own', async () => {

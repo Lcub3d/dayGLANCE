@@ -17,6 +17,16 @@ export function shiftMonth(year, month, delta) {
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 
+/**
+ * The day before or after a YYYY-MM-DD, with the month it lands in, so a
+ * caller stepping through days can page a month grid along with it.
+ * @returns {{ dateStr: string, year: number, month: number }}
+ */
+export function adjacentDay(dateStr, delta) {
+  const next = shiftDateStr(dateStr, delta);
+  return { dateStr: next, ...monthOf(next) };
+}
+
 /** { year, month } of a YYYY-MM-DD, or of a Date. */
 export function monthOf(dateOrStr) {
   if (typeof dateOrStr === 'string') return { year: Number(dateOrStr.slice(0, 4)), month: Number(dateOrStr.slice(5, 7)) };

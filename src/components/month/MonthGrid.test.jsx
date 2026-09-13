@@ -98,6 +98,16 @@ describe('MonthGrid', () => {
     expect(short).toContain('grid-template-columns:repeat(7, 140px)');
   });
 
+  it('highlights exactly the selected day, and none without a selection', async () => {
+    const i18n = await i18nFor('en');
+    const none = render(i18n);
+    expect(none).not.toContain('data-selected');
+    const html = render(i18n, { selectedDate: '2026-10-02' }); // a trailing cell of September's grid
+    expect(count(html, /data-selected="true"/g)).toBe(1);
+    expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*data-selected="true"[^>]*aria-pressed="true"/);
+    expect(html).toMatch(/data-month-cell="2026-10-02"[^>]*class="[^"]*ring-2 ring-inset ring-blue-500/);
+  });
+
   it('gives every cell a localized accessible label and localizes the header', async () => {
     const en = render(await i18nFor('en'));
     expect(en).toContain('aria-label="Wednesday, September 16, Today: 6 events, 6 tasks, 6 routines"');

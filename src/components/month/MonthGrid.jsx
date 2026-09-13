@@ -49,11 +49,12 @@ export function monthCellLabel(dateStr, items, isToday, t, language) {
  * @param {string} [props.today]  YYYY-MM-DD; defaults to the local date
  * @param {(year: number, month: number) => void} [props.onNavigate]
  * @param {(dateStr: string) => void} [props.onSelectDate]  cell tap (step 4)
+ * @param {string} [props.selectedDate]  YYYY-MM-DD highlighted as the open day (step 5)
  * @param {number} [props.width]   fixed grid-area size, else measured
  * @param {number} [props.height]
  */
 export default function MonthGrid({
-  year, month, itemsForDate, weekStartDay = 0, today, onNavigate, onSelectDate, width, height,
+  year, month, itemsForDate, weekStartDay = 0, today, onNavigate, onSelectDate, selectedDate, width, height,
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
@@ -122,6 +123,7 @@ export default function MonthGrid({
                     height={cell.height}
                     isToday={isToday}
                     inMonth={inMonth}
+                    isSelected={dateStr === selectedDate}
                     label={monthCellLabel(dateStr, items, isToday, t, language)}
                     onSelect={onSelectDate}
                   />

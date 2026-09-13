@@ -2,21 +2,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createSheetController } from '../utils/sheetDismissal.js';
 
 /**
- * Dismissal for a near-full-height sheet: Escape, browser/Android back
- * (via a pushed history entry), pull-down from the top of the content, a
- * drag on the handle, and a left-edge swipe. The decisions live in
+ * Dismissal and paging for a near-full-height sheet: Escape, browser/Android
+ * back (via a pushed history entry), pull-down from the top of the content,
+ * a drag on the handle, a left-edge swipe, and a horizontal swipe or arrow
+ * key that pages to the adjacent day. The decisions live in
  * utils/sheetDismissal.js; this only connects them to the DOM.
  *
- * @param {{ open: boolean, key: string, onClose: (reason: string) => void, scrollRef: React.RefObject }} args
+ * @param {{ open: boolean, key: string, onClose: (reason: string) => void,
+ *   onPage?: (delta: -1 | 1) => void, scrollRef: React.RefObject }} args
  * @returns {{ dismiss: () => void, dragOffset: number, dragging: boolean,
  *   handleProps: object, contentProps: object }}
  *   handleProps go on the drag handle/header (mouse and touch, touch-action: none);
  *   contentProps go on the scrolling body (touch only, pull-down from scrollTop 0).
  */
-export default function useSheetDismissal({ open, key, onClose, scrollRef }) {
+export default function useSheetDismissal({ open, key, onClose, onPage, scrollRef }) {
   const ctlRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const onPageRef = useRef(onPage);
+  onPageRef.current = onPage;
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
 
@@ -25,12 +29,14 @@ export default function useSheetDismissal({ open, key, onClose, scrollRef }) {
     const ctl = createSheetController({
       key,
       onClose: (reason) => onCloseRef.current?.(reason),
+      onPage: (delta) => onPageRef.current?.(delta),
       win: {
         history: window.history,
         addEventListener: (type, fn) => window.addEventListener(type, fn),
         removeEventListener: (type, fn) => window.removeEventListener(type, fn),
-        // A card's notes panel owns Escape while it is open (see SchedTaskCard).
-        hasInnerOverlay: () => !!document.querySelector('.sched-notes-panel'),
+        // A card's notes panel owns Escape while it is open (see SchedTaskCard),
+        // and the task editors (the z-[80] modals) own the keyboard entirely.
+        hasInnerOverlay: () => !!document.querySelector('.sched-notes-panel, [class*="z-[80]"]'),
       },
     });
     ctl.open();
@@ -71,8 +77,10 @@ export default function useSheetDismissal({ open, key, onClose, scrollRef }) {
     onPointerCancel: end,
   };
   // Content: touch only, passive, so scrolling stays native; the pull-down
-  // only translates the sheet once the content is at its top.
+  // only translates the sheet once the content is at its top. pan-y tells
+  // the browser vertical panning is its own; a horizontal swipe is ours.
   const contentProps = {
+    style: { touchAction: 'pan-y' },
     onTouchStart: (e) => { const t = e.touches[0]; start(t.clientX, t.clientY, true); },
     onTouchMove: (e) => { const t = e.touches[0]; move(t.clientX, t.clientY); },
     onTouchEnd: end,

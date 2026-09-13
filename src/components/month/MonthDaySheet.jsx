@@ -5,6 +5,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import SchedView from '../sched/SchedView.jsx';
 import useSheetDismissal from '../../hooks/useSheetDismissal.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
+import { shiftDateStr } from '@glance-apps/agenda-core';
 
 // Month view day sheet (step 4). Tapping a cell opens this: the day's agenda
 // rendered by SCHED scoped to that one date, so the cards, completion
@@ -18,17 +19,26 @@ import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 // has no free back gesture; the backdrop; and the close button. All of it
 // is one controller (utils/sheetDismissal.js) so each path closes once.
 //
+// Paging (step 5): a horizontal swipe on the content or the handle, or the
+// left and right arrow keys, asks the owner for the adjacent day through
+// onNavigate. The owner changes `date`; the sheet itself stays put and the
+// same history entry serves the whole visit.
+//
 // Stacking: z-[46], above the month overlay and the tab bar (40), below the
 // filter popup and the task editors (50, 80) that open from inside it.
 
 export const MONTH_DAY_SHEET_HISTORY_KEY = 'monthDaySheet';
 
+/** Whether a day sheet is on screen; the app's global shortcuts stand down while it is. */
+export const isMonthDaySheetOpen = () => typeof document !== 'undefined' && !!document.querySelector('[data-month-day-sheet]');
+
 /**
  * @param {object} props
  * @param {string} props.date       YYYY-MM-DD; the sheet shows this one day
  * @param {() => void} props.onClose
+ * @param {(dateStr: string) => void} [props.onNavigate]  asked to show the adjacent day
  */
-export default function MonthDaySheet({ date, onClose }) {
+export default function MonthDaySheet({ date, onClose, onNavigate }) {
   const { cardBg, borderClass, textPrimary, textSecondary, hoverBg } = useDayPlannerCtx();
   const { t, i18n } = useTranslation();
   const scrollRef = useRef(null);
@@ -37,7 +47,10 @@ export default function MonthDaySheet({ date, onClose }) {
 
   const { dismiss, dragOffset, dragging, handleProps, contentProps } = useSheetDismissal({
     open: !!date, key: MONTH_DAY_SHEET_HISTORY_KEY, onClose, scrollRef,
+    onPage: onNavigate && date ? (delta) => onNavigate(shiftDateStr(date, delta)) : undefined,
   });
+  // A new day starts at the top of its agenda.
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [date]);
   if (!date) return null;
 
   const language = i18n.resolvedLanguage || i18n.language || 'en';

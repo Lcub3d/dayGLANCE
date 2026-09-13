@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize } from './monthGrid.js';
+import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize, adjacentDay } from './monthGrid.js';
 import { MONTH_CELL_LAYOUT } from '../constants/monthView.js';
 
 const ids = (g) => g.cells.map((c) => c.dateStr);
@@ -27,6 +27,22 @@ describe('shiftMonth and monthOf', () => {
   it('reads a month from a string or a Date', () => {
     expect(monthOf('2026-09-16')).toEqual({ year: 2026, month: 9 });
     expect(monthOf(new Date(2026, 0, 31))).toEqual({ year: 2026, month: 1 });
+  });
+});
+
+describe('adjacentDay', () => {
+  it('steps within a month', () => {
+    expect(adjacentDay('2026-09-16', 1)).toEqual({ dateStr: '2026-09-17', year: 2026, month: 9 });
+    expect(adjacentDay('2026-09-16', -1)).toEqual({ dateStr: '2026-09-15', year: 2026, month: 9 });
+  });
+  it('crosses a month boundary in both directions', () => {
+    expect(adjacentDay('2026-09-30', 1)).toEqual({ dateStr: '2026-10-01', year: 2026, month: 10 });
+    expect(adjacentDay('2026-10-01', -1)).toEqual({ dateStr: '2026-09-30', year: 2026, month: 9 });
+    expect(adjacentDay('2028-02-29', 1)).toEqual({ dateStr: '2028-03-01', year: 2028, month: 3 });
+  });
+  it('rolls the year over from December to January and back', () => {
+    expect(adjacentDay('2026-12-31', 1)).toEqual({ dateStr: '2027-01-01', year: 2027, month: 1 });
+    expect(adjacentDay('2027-01-01', -1)).toEqual({ dateStr: '2026-12-31', year: 2026, month: 12 });
   });
 });
 

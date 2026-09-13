@@ -478,6 +478,9 @@ Attach freeform notes to any day for journaling, reflections, or quick reference
 | `F` | Focus mode |
 | `T` | Jump to today |
 | `M` | Toggle month nav |
+| `Space` / `Shift+Space` | In MONTH: next / previous day |
+| `↑` / `↓` | In MONTH: a week back / forward |
+| `Enter` | In MONTH: open the selected day |
 | `D` | Toggle dark mode |
 | `/` | Toggle tag filter |
 | `Ctrl/Cmd + Z` | Undo |

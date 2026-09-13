@@ -1160,7 +1160,10 @@
     "suggestionsHint": "Interagir avec les suggestions :",
     "taskTitleFieldHint": "Saisir dans le champ du titre de la tâche :",
     "toggleMonthNav": "Afficher ou masquer la navigation par mois",
-    "viewMonth": "Vue : Mois"
+    "viewMonth": "Vue : Mois",
+    "monthStepDay": "En MOIS : jour suivant (Maj+Espace : précédent)",
+    "monthStepWeek": "En MOIS : une semaine en arrière / en avant",
+    "monthOpenDay": "En MOIS : ouvrir le jour sélectionné"
   },
   "spotlight": {
     "placeholder": "Rechercher des tâches…",

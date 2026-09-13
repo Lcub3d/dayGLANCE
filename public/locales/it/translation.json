@@ -1160,7 +1160,10 @@
     "suggestionsHint": "Interagire con i suggerimenti:",
     "taskTitleFieldHint": "Digitare nel campo del titolo dell’attività:",
     "toggleMonthNav": "Mostra o nascondi la navigazione per mese",
-    "viewMonth": "Vista: Mese"
+    "viewMonth": "Vista: Mese",
+    "monthStepDay": "In MESE: giorno successivo (Maiusc+Spazio: precedente)",
+    "monthStepWeek": "In MESE: una settimana indietro / avanti",
+    "monthOpenDay": "In MESE: apri il giorno selezionato"
   },
   "spotlight": {
     "placeholder": "Cerca attività…",

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ViewCycler from './ViewCycler.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
+import DayHeaderCell, { DayHeaderActions, DayHabitRings } from './DayHeader.jsx';
 import DayViewAllDaySection from './DayViewAllDaySection.jsx';
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
@@ -175,21 +176,23 @@ const CalendarHeader = () => {
         const isDateToday = dateStr === dateToString(new Date());
         const isSelected = dateStr === dateToString(selectedDate);
         return (
-          <button
+          <div
             key={dateStr}
             onClick={() => { goToDate(date); openNewAllDayTask(dateStr); }}
-            className={`flex-1 flex items-center justify-center py-1.5 px-1 text-center transition-colors ${idx > 0 ? `border-l ${borderClass}` : ''}
+            className={`flex-1 flex items-center justify-center py-1.5 px-1 text-center cursor-pointer transition-colors ${idx > 0 ? `border-l ${borderClass}` : ''}
               ${isSelected ? (darkMode ? 'bg-blue-900/40' : 'bg-blue-100') : isDateToday ? (darkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
             style={{ minHeight: 'var(--header-row-h)' }}
             title={`${t('task.addTask')}: ${t('task.allDay')}`}
           >
-            <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday || isSelected ? 'text-blue-600' : textPrimary}`}>
+            <div className={`font-bold flex items-center justify-center gap-1.5 whitespace-nowrap ${isDateToday || isSelected ? 'text-blue-600' : textPrimary}`}>
               <span>{formatLocalizedDate(date, { weekday: 'short' })}</span>
               <span className={`font-normal ${isDateToday || isSelected ? 'text-blue-500' : textSecondary}`}>
-                {formatLocalizedDate(date, { month: 'long', day: 'numeric' })}
+                {/* Short month: seven cells plus the two buttons must fit the narrow cycler's width */}
+                {formatLocalizedDate(date, { month: 'short', day: 'numeric' })}
               </span>
+              <DayHeaderActions dateStr={dateStr} />
             </div>
-          </button>
+          </div>
         );
       })}
     </>
@@ -219,32 +222,23 @@ const CalendarHeader = () => {
               <span className={`font-normal ${isDateToday ? 'text-blue-500' : textSecondary}`}>
                 {formatLocalizedDate(date, { month: 'long', day: 'numeric' })}
               </span>
-              <button
-                onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate(dateStr); }}
-                className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${dailyNotes[dateStr]?.text ? '' : 'opacity-40'}`}
-                title={t('common.dailyNote')}
-              >
-                <NotebookPen size={14} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setFocusLogModalDate(dateStr); }}
-                className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${focusLog[dateStr]?.totalMinutes > 0 ? '' : 'opacity-40'}`}
-                title={t('focus.title')}
-              >
-                <Target size={14} />
-              </button>
+              <DayHeaderActions dateStr={dateStr} />
             </div>
           </div>
         );
       })}
     </>
   ) : effectiveViewMode === 'month' ? (
-    /* MONTH view: the switcher's gutter cell only. The grid draws its own
-       weekday row, aligned to its width-capped, centred columns, and the app
-       chrome above pages months and names the month. */
-    <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
-      {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
-    </div>
+    /* MONTH view: the switcher's gutter cell and the selected day's header
+       (daily note, focus log, tap for an all-day task on that day). The grid
+       draws its own weekday row, aligned to its width-capped, centred
+       columns, and the app chrome above pages months and names the month. */
+    <>
+      <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
+        {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
+      </div>
+      <DayHeaderCell date={selectedDate} className="flex-1" />
+    </>
   ) : effectiveViewMode === 'multi' ? (
     <>
     {/* Top-left cell: hosts ViewCycler on large screens */}
@@ -256,11 +250,10 @@ const CalendarHeader = () => {
     const dateStr = dateToString(date);
     const isDragOverThis = dragOverAllDay === dateStr;
     return (
-      <div
+      <DayHeaderCell
         key={dateStr}
-        className={`flex-1 py-2 px-3 text-center cursor-pointer hover:bg-opacity-80 transition-colors ${idx > 0 ? `border-l ${borderClass}` : ''} ${isDateToday ? (darkMode ? 'bg-blue-900/30 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100') : `${cardBg} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`} ${isDragOverThis ? (darkMode ? 'bg-green-700 ring-2 ring-inset ring-green-400' : 'bg-green-200 ring-2 ring-inset ring-green-500') : ''}`}
-        style={{ minHeight: 'var(--header-row-h)' }}
-        onClick={() => openNewAllDayTask(dateStr)}
+        date={date}
+        className={`flex-1 ${idx > 0 ? `border-l ${borderClass}` : ''} ${isDragOverThis ? (darkMode ? 'bg-green-700 ring-2 ring-inset ring-green-400' : 'bg-green-200 ring-2 ring-inset ring-green-500') : ''}`}
         onDragOver={(e) => { e.preventDefault(); if (autoScrollInterval.current) { clearInterval(autoScrollInterval.current); autoScrollInterval.current = null; } }}
         onDragEnter={(e) => {
           e.preventDefault();
@@ -273,33 +266,8 @@ const CalendarHeader = () => {
           }
         }}
         onDrop={(e) => handleDropOnDateHeader(e, date)}
-        title={draggedTask ? t('task.dropToAllDay') : `${t('task.addTask')}: ${t('task.allDay')}`}
-      >
-        <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday ? 'text-blue-600' : textPrimary}`}>
-          {formatShortDate(date)}
-          <button
-            onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate(dateStr); }}
-            className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${dailyNotes[dateStr]?.text ? '' : 'opacity-50'}`}
-            title={t('common.dailyNote')}
-          >
-            <NotebookPen size={14} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setFocusLogModalDate(dateStr); }}
-            className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${focusLog[dateStr]?.totalMinutes > 0 ? '' : 'opacity-50'}`}
-            title={t('app.focusLog')}
-          >
-            <Target size={14} />
-          </button>
-        </div>
-        {habitsEnabled && !isDateToday && dateStr < dateToString(new Date()) && habitLogs[dateStr] && activeHabits.length > 0 && (
-          <div className="flex items-center justify-center gap-0.5 mt-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setHabitDayPopup(dateStr); }}>
-            {activeHabits.filter(h => (h.scheduledDays ?? [0,1,2,3,4,5,6]).includes(new Date(dateStr + 'T12:00:00').getDay())).slice(0, 6).map(habit => (
-              <MiniHabitRing key={habit.id} habit={habit} count={habitLogs[dateStr]?.[habit.id] || 0} darkMode={darkMode} />
-            ))}
-          </div>
-        )}
-      </div>
+        title={draggedTask ? t('task.dropToAllDay') : undefined}
+      />
     );
   })}
     </>
@@ -353,28 +321,9 @@ const CalendarHeader = () => {
             {timeRange && (
               <span className={`font-normal text-xs ${textSecondary}`}>· {timeRange}</span>
             )}
-            <button
-              onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate(group.dateStr); }}
-              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${dailyNotes[group.dateStr]?.text ? '' : 'opacity-50'}`}
-              title={t('common.dailyNote')}
-            >
-              <NotebookPen size={14} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setFocusLogModalDate(group.dateStr); }}
-              className={`p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors ${focusLog[group.dateStr]?.totalMinutes > 0 ? '' : 'opacity-50'}`}
-              title={t('app.focusLog')}
-            >
-              <Target size={14} />
-            </button>
+            <DayHeaderActions dateStr={group.dateStr} />
           </div>
-          {habitsEnabled && !isDateToday && group.dateStr < dateToString(new Date()) && habitLogs[group.dateStr] && activeHabits.length > 0 && (
-            <div className="flex items-center justify-center gap-0.5 mt-0.5 cursor-pointer" onClick={(e) => { e.stopPropagation(); setHabitDayPopup(group.dateStr); }}>
-              {activeHabits.filter(h => (h.scheduledDays ?? [0,1,2,3,4,5,6]).includes(new Date(group.dateStr + 'T12:00:00').getDay())).slice(0, 6).map(habit => (
-                <MiniHabitRing key={habit.id} habit={habit} count={habitLogs[group.dateStr]?.[habit.id] || 0} darkMode={darkMode} />
-              ))}
-            </div>
-          )}
+          <DayHabitRings dateStr={group.dateStr} />
         </div>
       );
     });

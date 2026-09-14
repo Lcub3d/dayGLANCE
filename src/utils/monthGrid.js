@@ -85,3 +85,26 @@ export function monthCellSize(areaWidth, areaHeight, rows, { cell }) {
   const width = Math.max(1, Math.min(Math.floor(areaWidth / 7), Math.floor(height * cell.maxAspect), cell.maxWidth));
   return { width, height, scrolls: height * rows > areaHeight };
 }
+
+/**
+ * The docked day panel's width beside the grid (MonthView, wide desktop).
+ * The panel takes the larger of a share of the row and whatever the grid
+ * cannot use: cells never grow wider than they are tall nor past their cap,
+ * so past a point extra width beside the grid is dead space, and the grid's
+ * natural width follows from the area's height alone (no feedback from the
+ * panel's own width). Clamped between a minimum SCHED's cards need and a
+ * maximum past which a single day's agenda just gets wider lines.
+ *
+ * @param {number} areaWidth        the whole row: grid plus panel
+ * @param {number} gridAreaHeight   the grid's cell area height (below the weekday row)
+ * @param {number} rows             the month's rows
+ * @param {object} layout           MONTH_CELL_LAYOUT
+ * @param {{ min: number, max: number, share: number }} bounds
+ */
+export function monthPanelWidth(areaWidth, gridAreaHeight, rows, layout, { min, max, share }) {
+  if (!(areaWidth > 0)) return min;
+  // Until the grid's height is known, only the share applies.
+  const leftover = gridAreaHeight > 0 ? areaWidth - monthCellSize(Infinity, gridAreaHeight, rows, layout).width * 7 : 0;
+  const wanted = Math.max(areaWidth * share, leftover);
+  return Math.round(Math.min(max, Math.max(min, wanted)));
+}

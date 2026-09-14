@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize, adjacentDay, shiftDateByMonths } from './monthGrid.js';
+import { daysInMonth, shiftMonth, monthOf, monthGridDates, monthCellSize, monthPanelWidth, adjacentDay, shiftDateByMonths } from './monthGrid.js';
 import { MONTH_CELL_LAYOUT } from '../constants/monthView.js';
 
 const ids = (g) => g.cells.map((c) => c.dateStr);
@@ -163,5 +163,27 @@ describe('monthCellSize', () => {
     expect(s.height).toBe(C.cell.minHeight);
     expect(s.scrolls).toBe(true);
     expect(monthCellSize(1120, 900, 6, C).scrolls).toBe(false);
+  });
+});
+
+describe('monthPanelWidth', () => {
+  const B = { min: 380, max: 640, share: 1 / 3 };
+  const C = { cell: { maxAspect: 1.0, maxWidth: 200, minHeight: 64 } };
+  it('takes a share of the row, never less than the minimum', () => {
+    // 1280 wide (a 1600 window past the sidebar), 800 tall, 5 rows: cells cap at 160,
+    // the grid wants 1120, the third (427) wins over the leftover (160).
+    expect(monthPanelWidth(1280, 800, 5, C, B)).toBe(427);
+    // A short row: the share falls under the minimum.
+    expect(monthPanelWidth(1000, 800, 5, C, B)).toBe(380);
+  });
+  it('absorbs what the grid cannot use when that is more than the share', () => {
+    // 1680 wide, 400 tall: cells are 80, the grid wants 560, leaving 1120; capped at the maximum.
+    expect(monthPanelWidth(1680, 400, 5, C, B)).toBe(640);
+    // A tall area: cells hit their 200 cap, the grid wants 1400, the leftover 280 loses to the third.
+    expect(monthPanelWidth(1680, 1000, 5, C, B)).toBe(560);
+  });
+  it('falls back to the minimum before the row is measured', () => {
+    expect(monthPanelWidth(0, 0, 5, C, B)).toBe(380);
+    expect(monthPanelWidth(1680, 0, 5, C, B)).toBe(560);
   });
 });

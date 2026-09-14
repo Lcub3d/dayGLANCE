@@ -50,9 +50,11 @@ export function monthCellLabel(dateStr, items, isToday, t, language) {
  * @param {string} [props.selectedDate]  YYYY-MM-DD highlighted as the open day (step 5)
  * @param {number} [props.width]   fixed grid-area size, else measured
  * @param {number} [props.height]
+ * @param {(area: {width: number, height: number}) => void} [props.onMeasure]
+ *                                 hears the measured cell area (MonthView sizes its panel from its height)
  */
 export default function MonthGrid({
-  year, month, itemsForDate, weekStartDay = 0, today, onSelectDate, selectedDate, width, height,
+  year, month, itemsForDate, weekStartDay = 0, today, onSelectDate, selectedDate, width, height, onMeasure,
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
@@ -61,11 +63,17 @@ export default function MonthGrid({
 
   const areaRef = useRef(null);
   const [measured, setMeasured] = useState({ width: width || 0, height: height || 0 });
+  const onMeasureRef = useRef(onMeasure);
+  onMeasureRef.current = onMeasure;
   useLayoutEffect(() => {
     if (width && height) return undefined;
     const el = areaRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const read = () => setMeasured({ width: el.clientWidth, height: el.clientHeight });
+    const read = () => {
+      const area = { width: el.clientWidth, height: el.clientHeight };
+      setMeasured(area);
+      onMeasureRef.current?.(area);
+    };
     read();
     const ro = new ResizeObserver(read);
     ro.observe(el);

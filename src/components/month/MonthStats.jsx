@@ -23,7 +23,8 @@ import { dateToString } from '../../utils/taskUtils.js';
  * @param {string}  [props.className]  sizing in the header row (flex-1 ...)
  * @param {boolean} [props.dense]      sharing the row with the day's header: the
  *                                     side notes (incomplete, of planned) move to the tooltip
- * @param {boolean} [props.compact]    the phone header: the percentage over the ratio, nothing else
+ * @param {boolean} [props.compact]    the phone header: the percentage with a short
+ *                                     progress bar over the ratio, nothing else
  */
 export default function MonthStats({ className = '', dense = false, compact = false }) {
   const { t, i18n } = useTranslation();
@@ -78,7 +79,12 @@ export default function MonthStats({ className = '', dense = false, compact = fa
         title={title}
         className={`flex-shrink-0 flex flex-col items-end justify-center pr-2 leading-tight tabular-nums ${className}`}
       >
-        <span className={`text-sm font-semibold ${textPrimary}`}>{percentText}</span>
+        <span className="flex items-center gap-1.5">
+          <span className={`text-sm font-semibold ${textPrimary}`}>{percentText}</span>
+          <span className="h-1 w-12 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden" aria-hidden="true">
+            <span className="block h-full rounded-full bg-brand" style={{ width: `${stats.percent ?? 0}%` }} />
+          </span>
+        </span>
         <span className={`text-[10px] ${textSecondary} whitespace-nowrap`}>{ratio}</span>
       </div>
     );

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, net, protocol, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session, screen, Notification } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, net, protocol, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session, screen, Notification, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { homedir } from 'node:os';
@@ -43,6 +43,19 @@ import {
 } from './mcpJournal.js';
 import { createWriteGate } from './mcpWriteGate.js';
 import { createIdempotencyStore } from './mcpIdempotency.js';
+import {
+  defaultTrustedHosts,
+  parseTrustedHosts,
+  hostKeyOf,
+  grantTrustedHost,
+  revokeTrustedHost,
+  decideProxyUrl,
+  canRequestConsent,
+  formatHostKey,
+  sanitizeConsentLabels,
+  type TrustedHostsFile,
+} from './proxyUrlPolicy.js';
+import { writeFileAtomicSync } from './atomicWrite.js';
 import { trayReloadDebounceMs } from './trayReloadPolicy.js';
 import { decideRecovery } from './rendererRecovery.js';
 import { buildApplicationMenuTemplate, isApplicationMenuLabels, supportsCustomApplicationMenu, type ApplicationMenuLabels } from './applicationMenu.js';
@@ -534,69 +547,187 @@ function createTray(): void {
 // Allowed HTTP methods for the proxy — covers CalDAV/WebDAV needs.
 const PROXY_ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'PROPFIND', 'MKCOL', 'REPORT', 'OPTIONS']);
 
-// True for an IP address (v4 or v6 literal, no brackets) that is loopback,
-// private (RFC1918), link-local, CGNAT, or otherwise reserved. Shared by the
-// literal-host path and the DNS-resolution path so both block the same ranges.
-function isPrivateOrReservedIp(ip: string): boolean {
-  const h = ip.toLowerCase();
+// The SSRF policy (ranges, the never-exemptible set, grant bookkeeping, the
+// allow/deny/consent decision) is pure and tested in proxyUrlPolicy.ts. This
+// block owns only what cannot be pure: DNS, the grant file, and the dialog.
+//
+// Before issue #1642 this was a flat block on every private range, which made a
+// self-hosted GLANCEvault unreachable from the desktop app specifically: a LAN
+// box, a Docker host, or a Tailscale node (CGNAT 100.64.0.0/10 plus ULA
+// fd7a:115c:a1e0::/48) all landed in it, while Android, iOS and the browser
+// build reached the same server fine. Private addresses are still refused by
+// default; the user can now grant ONE origin at a time, and only from the
+// explicit button that reaches requestProxyTrust() below. That includes a vault
+// on this very machine (localhost), which is grantable per PORT and carries its
+// own dialog copy: permitting the vault on :8080 grants nothing to whatever else
+// is listening locally. Link-local and the unspecified address stay refused
+// outright. See proxyUrlPolicy.ts for why each line of that is where it is.
 
-  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-    return (
-      a === 10 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      a === 0 ||
-      (a === 100 && b >= 64 && b <= 127)
-    );
-  }
-
-  return (
-    h === '::1' || h === '::' ||
-    /^::ffff:/i.test(h) || /^fe80:/i.test(h) ||
-    /^fc/i.test(h)      || /^fd/i.test(h)
-  );
+const TRUSTED_HOSTS_FILE = 'proxy-trusted-hosts.json';
+function trustedHostsPath(): string {
+  return path.join(app.getPath('userData'), TRUSTED_HOSTS_FILE);
 }
 
-// Block private/loopback/link-local addresses to prevent SSRF. For an IP-literal
-// host the range check runs directly; for a hostname we resolve EVERY A/AAAA
-// record via DNS and reject if any resolves internally — closing the bypass where
-// a public hostname (or a redirect target) points at 127.0.0.1 / an RFC1918 host.
-async function validateProxyUrl(urlString: string): Promise<void> {
-  let parsed: URL;
-  try { parsed = new URL(urlString); } catch { throw new Error('Invalid URL'); }
+let trustedHosts: TrustedHostsFile = defaultTrustedHosts();
 
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('Only http and https URLs are allowed');
-  }
-
-  const h = parsed.hostname.toLowerCase();
-
-  if (h === 'localhost' || h === '0.0.0.0') throw new Error('Private/reserved address');
-
-  // URL keeps the brackets on IPv6 literals (e.g. "[::1]"); strip them so the
-  // literal check and net.isIP see the bare address.
-  const bare = h.startsWith('[') && h.endsWith(']') ? h.slice(1, -1) : h;
-
-  if (nodeNet.isIP(bare)) {
-    if (isPrivateOrReservedIp(bare)) throw new Error('Private/reserved address');
-    return;
-  }
-
-  // Hostname — resolve and reject if ANY resolved address is internal.
-  let addresses: { address: string }[];
+// A file that is missing, unreadable or corrupt yields NO grants. Failing that
+// direction forgets a consent (the user re-grants with one click); failing the
+// other way would invent one.
+function loadTrustedHosts(): void {
   try {
-    addresses = await dns.promises.lookup(bare, { all: true });
+    if (!fs.existsSync(trustedHostsPath())) return;
+    trustedHosts = parseTrustedHosts(fs.readFileSync(trustedHostsPath(), 'utf-8'));
+  } catch (err) {
+    console.error('[dayGLANCE] proxy trusted-hosts file could not be read:', err);
+    trustedHosts = defaultTrustedHosts();
+  }
+}
+
+function saveTrustedHosts(): void {
+  try {
+    writeFileAtomicSync(trustedHostsPath(), JSON.stringify(trustedHosts, null, 2));
+  } catch (err) {
+    console.error('[dayGLANCE] Failed to save the proxy trusted-hosts file:', err);
+  }
+}
+
+// Every A/AAAA record for a host, or the literal itself when the host is already
+// an IP. Resolving EVERY record is what closes the bypass where a public
+// hostname also carries an internal record.
+async function resolveHostAddresses(host: string): Promise<string[]> {
+  if (nodeNet.isIP(host)) return [host];
+  // dns.lookup (not dns.resolve) goes through the OS resolver, which is what
+  // makes Tailscale MagicDNS names such as host.tailnet.ts.net resolve at all.
+  const addresses = await dns.promises.lookup(host, { all: true });
+  return addresses.map(({ address }) => address);
+}
+
+// Throws on refusal; the message becomes the proxy's 400 body. `isRedirect`
+// marks a redirect target, which no grant can unlock.
+async function validateProxyUrl(urlString: string, isRedirect = false): Promise<void> {
+  const key = hostKeyOf(urlString);
+  if (!key) {
+    // Unparseable or a non-http(s) scheme. decideProxyUrl tells the two apart,
+    // so the reason wording stays in one place.
+    const decision = decideProxyUrl({ urlString, resolvedAddresses: [], trusted: trustedHosts });
+    throw new Error(decision.kind === 'deny' ? decision.reason : 'Invalid URL');
+  }
+
+  let resolvedAddresses: string[];
+  try {
+    resolvedAddresses = await resolveHostAddresses(key.host);
   } catch {
     throw new Error('DNS resolution failed');
   }
-  for (const { address } of addresses) {
-    if (isPrivateOrReservedIp(address)) throw new Error('Private/reserved address');
-  }
+
+  const decision = decideProxyUrl({ urlString, resolvedAddresses, trusted: trustedHosts, isRedirect });
+  if (decision.kind === 'allow') return;
+  // 'needs-consent' is a refusal HERE. The proxy never raises a dialog of its
+  // own: a 60-second background sync poll must not be able to put a modal on
+  // screen, and a prompt the user did not ask for is one they click through.
+  // The renderer turns this reason into the "Allow this address" affordance,
+  // which calls proxy-trust:request and re-runs the connection test.
+  throw new Error(decision.kind === 'deny' ? decision.reason : 'Private/reserved address');
 }
+
+// The consent step, reached ONLY from the proxy-trust:request IPC below, which
+// the Cloud Sync settings form invokes on an explicit button press. Returns
+// whether the origin is now granted.
+async function requestProxyTrust(urlString: string, rawLabels: unknown): Promise<{ ok: boolean; reason?: string }> {
+  const key = hostKeyOf(urlString);
+  if (!key) return { ok: false, reason: 'Invalid URL' };
+
+  let resolvedAddresses: string[];
+  try {
+    resolvedAddresses = await resolveHostAddresses(key.host);
+  } catch {
+    return { ok: false, reason: 'DNS resolution failed' };
+  }
+
+  const check = canRequestConsent(urlString, resolvedAddresses);
+  if (!check.ok) return { ok: false, reason: check.reason };
+
+  const origin = formatHostKey(check.key);
+  const parent = live(mainWindow);
+  // Translated chrome from the renderer; the origin and the resolved addresses
+  // are appended HERE, positionally, so no label can reorder or suppress them.
+  const labels = sanitizeConsentLabels(rawLabels);
+  const options: Electron.MessageBoxOptions = {
+    type: 'warning',
+    buttons: [labels.cancel, labels.allow],
+    defaultId: 0,
+    cancelId: 0,
+    title: labels.title,
+    message: `${labels.question}\n\n${origin}`,
+    detail: [
+      `${labels.resolvesTo} ${check.addresses.join(', ')}`,
+      check.loopback ? labels.warningLoopback : labels.warning,
+      labels.scope,
+    ].join('\n\n'),
+  };
+  const { response } = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options);
+  if (response !== 1) return { ok: false, reason: 'Permission declined.' };
+
+  trustedHosts = grantTrustedHost(trustedHosts, {
+    ...check.key,
+    grantedAt: new Date().toISOString(),
+    addresses: check.addresses,
+  });
+  saveTrustedHosts();
+  logStartup(`proxy trust: granted ${origin}`);
+  return { ok: true };
+}
+
+// The three grant IPCs. `request` is the only path that can raise the consent
+// dialog, and the Cloud Sync settings form is its only caller, on a button press.
+ipcMain.handle('proxy-trust:request', async (_event, url: unknown, labels: unknown) => {
+  if (typeof url !== 'string') return { ok: false, reason: 'Invalid URL' };
+  return requestProxyTrust(url, labels);
+});
+
+ipcMain.handle('proxy-trust:list', () =>
+  trustedHosts.hosts.map((h) => ({
+    origin: formatHostKey(h),
+    host: h.host,
+    protocol: h.protocol,
+    port: h.port,
+    grantedAt: h.grantedAt,
+    addresses: h.addresses,
+  })),
+);
+
+ipcMain.handle('proxy-trust:revoke', (_event, origin: unknown) => {
+  if (typeof origin !== 'string') return { ok: false };
+  const key = hostKeyOf(origin);
+  if (!key) return { ok: false };
+  trustedHosts = revokeTrustedHost(trustedHosts, key);
+  saveTrustedHosts();
+  return { ok: true };
+});
+
+// Whether this URL is currently blocked as a private address, and whether a
+// grant could unlock it. The connection test calls this BEFORE probing, so the
+// user is told what actually stopped the request instead of seeing the proxy's
+// synthetic 400 reported as "the vault rejected the request".
+ipcMain.handle('proxy-trust:inspect', async (_event, url: unknown) => {
+  if (typeof url !== 'string') return { blocked: false };
+  const key = hostKeyOf(url);
+  if (!key) return { blocked: false };
+  let resolvedAddresses: string[];
+  try {
+    resolvedAddresses = await resolveHostAddresses(key.host);
+  } catch {
+    return { blocked: false }; // a DNS failure is the probe's story to tell
+  }
+  const decision = decideProxyUrl({ urlString: url, resolvedAddresses, trusted: trustedHosts });
+  if (decision.kind === 'allow') return { blocked: false };
+  if (decision.kind === 'needs-consent') {
+    return { blocked: true, canGrant: true, origin: formatHostKey(decision.key), addresses: decision.addresses };
+  }
+  return { blocked: true, canGrant: false, origin: formatHostKey(key), reason: decision.reason };
+});
 
 // Proxy outbound HTTP requests from the renderer (via IPC, origin-independent) so
 // WebDAV/CalDAV/vault sync reach servers that don't send CORS headers for the
@@ -644,7 +775,7 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
         return { status: 0, ok: false, statusText: 'Too many redirects', body: '', headers: { etag: null } };
       }
       const nextUrl = new URL(location, currentUrl).toString();
-      await validateProxyUrl(nextUrl); // re-validate the redirect target (throws → caught below)
+      await validateProxyUrl(nextUrl, true); // re-validate the redirect target (throws, caught below)
       // Mirror fetch's method-rewrite semantics: 303 always, and 301/302 on POST,
       // switch to a bodyless GET; other redirects preserve method and body.
       if (response.status === 303 || ((response.status === 301 || response.status === 302) && currentMethod === 'POST')) {
@@ -1452,6 +1583,7 @@ app.whenReady().then(async () => {
   // done-flag even on a fresh install, and that flag is one of the
   // prior-install signals — so this MUST read the evidence first.
   loadOrMigrateIntegrationsConfig();
+  loadTrustedHosts();
 
   logStartup('storage migration: start');
   await migrateFileToAppStorage();

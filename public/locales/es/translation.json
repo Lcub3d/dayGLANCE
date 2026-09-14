@@ -664,7 +664,9 @@
     "weatherLocationPlaceholder": "p. ej., 28001 o Madrid",
     "viewMonth": "Mes",
     "viewsOnDevice": "Vistas en este dispositivo",
-    "viewsOnDeviceHint": "Una vista desactivada aquí desaparece del selector, de los atajos y de la vista predeterminada solo en este dispositivo. No se pierde nada. Al menos una vista debe quedar activa."
+    "viewsOnDeviceHint": "Una vista desactivada aquí desaparece del selector, de los atajos y de la vista predeterminada solo en este dispositivo. No se pierde nada. Al menos una vista debe quedar activa.",
+    "viewsInPortrait": "Vistas en vertical",
+    "viewsInLandscape": "Vistas en horizontal"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

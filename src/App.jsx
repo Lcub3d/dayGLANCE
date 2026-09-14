@@ -173,7 +173,7 @@ import DesktopLayout from './components/DesktopLayout.jsx';
 import GlanceSidebar from './components/GlanceSidebar.jsx';
 import TrayApp from './components/TrayApp.jsx';
 import MobileLayout from './components/MobileLayout.jsx';
-import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, ALL_VIEWS, resolveStoredView, normalizeHiddenViews, enabledViews, homeView } from './constants/views.js';
+import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_SCOPES, resolveStoredView, normalizeHiddenViews, enabledViews, homeView } from './constants/views.js';
 import ShortcutHelpModal from './components/ShortcutHelpModal.jsx';
 import FocusModeModal from './components/FocusModeModal.jsx';
 import HyperGlanceModeModal from './components/HyperGlanceModeModal.jsx';
@@ -329,21 +329,23 @@ const DayPlanner = () => {
   // Views turned off on this device (settings, "Views on this device"). Per
   // device by nature, like the default-view keys beside it: a hidden view
   // leaves the switchers, the shortcuts and the default pickers here only.
-  // At least one view stays on; wherever a view has to be landed on, it is
-  // the first still on for the width (constants/views.js homeView).
+  // One list per switcher (desktop cycler, phone toggle), so a tablet can
+  // differ by orientation. At least one view stays on in each; wherever a
+  // view has to be landed on, it is the first still on for the width
+  // (constants/views.js homeView).
   const [hiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
-    try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return []; }
+    try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
   });
   const [viewMode, setViewMode] = useState(() => {
-    const allowed = enabledViews(DESKTOP_VIEW_MODES, hiddenViews);
+    const allowed = enabledViews(DESKTOP_VIEW_MODES, hiddenViews.desktop);
     // URL ?view= param takes priority over defaultView on cold load.
     const urlView = new URLSearchParams(window.location.search).get('view');
     if (urlView && allowed.includes(urlView)) return urlView;
     const def = localStorage.getItem('day-planner-default-view');
     // A value this build does not know (written by another build, or by hand),
     // or a view since turned off here, falls back to the first view still on.
-    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews);
+    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
     try { return resolveStoredView(def ? JSON.parse(def) : null, allowed, home); } catch { return home; }
   });
   // Only expose the cycler (and honour viewMode) when the 3-day breakpoint is active
@@ -358,13 +360,13 @@ const DayPlanner = () => {
   // SCHED and MONTH fit any width, so the narrow cycler offers them too.
   // A view turned off on this device is never on screen either: the width's
   // first view still on stands in, as it does for a DAY/WEEK too narrow to fit.
-  const effectiveViewMode = canShowViewCycler ? (hiddenViews.includes(viewMode) ? homeView(DESKTOP_VIEW_MODES, hiddenViews) : viewMode)
-    : schedOnlyCycler ? ((viewMode === 'sched' || viewMode === 'month') && !hiddenViews.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews))
+  const effectiveViewMode = canShowViewCycler ? (hiddenViews.desktop.includes(viewMode) ? homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop) : viewMode)
+    : schedOnlyCycler ? ((viewMode === 'sched' || viewMode === 'month') && !hiddenViews.desktop.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews.desktop))
     : 'multi';
   const [defaultView, setDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-default-view');
-    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews);
-    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(DESKTOP_VIEW_MODES, hiddenViews), home); } catch { return home; }
+    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(DESKTOP_VIEW_MODES, hiddenViews.desktop), home); } catch { return home; }
   });
   const [dayViewMode, setDayViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-day-view-mode');
@@ -379,27 +381,32 @@ const DayPlanner = () => {
   const [mobileDefaultView, _setMobileDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-mobile-default-view')
       || localStorage.getItem('day-planner-mobile-view-mode');
-    const home = homeView(MOBILE_VIEW_MODES, hiddenViews);
-    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(MOBILE_VIEW_MODES, hiddenViews), home); } catch { return home; }
+    const home = homeView(MOBILE_VIEW_MODES, hiddenViews.mobile);
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(MOBILE_VIEW_MODES, hiddenViews.mobile), home); } catch { return home; }
   });
   const setMobileDefaultView = (mode) => {
     _setMobileDefaultView(mode);
     localStorage.setItem('day-planner-mobile-default-view', JSON.stringify(mode));
   };
   const [mobileViewMode, setMobileViewMode] = useState(mobileDefaultView);
-  // Turning a view off on this device. The last view on cannot be turned off
-  // (the switch is disabled too). Whatever was on the view, or defaulted to
-  // it, lands on the first view still on for its form factor; turning it
-  // back on restores nothing, the user picks it again.
-  const setViewHidden = (view, hidden) => {
-    const next = normalizeHiddenViews(hidden ? [...hiddenViews, view] : hiddenViews.filter((v) => v !== view));
-    if (hidden && enabledViews(ALL_VIEWS, next).length === 0) return;
+  // Turning a view off in one switcher on this device ('desktop' is the
+  // cycler, 'mobile' the phone toggle). The last view on in a switcher
+  // cannot be turned off (the switch is disabled too). Whatever was on the
+  // view, or defaulted to it, lands on the first view still on there;
+  // turning it back on restores nothing, the user picks it again.
+  const setViewHidden = (scope, view, hidden) => {
+    const list = hiddenViews[scope] || [];
+    const next = normalizeHiddenViews({ ...hiddenViews, [scope]: hidden ? [...list, view] : list.filter((v) => v !== view) });
+    if (hidden && enabledViews(VIEW_SCOPES[scope], next[scope]).length === 0) return;
     setHiddenViews(next);
     if (!hidden) return;
-    if (viewMode === view) setViewMode(homeView(DESKTOP_VIEW_MODES, next));
-    if (defaultView === view) setDefaultView(homeView(DESKTOP_VIEW_MODES, next));
-    if (mobileViewMode === view) setMobileViewMode(homeView(MOBILE_VIEW_MODES, next));
-    if (mobileDefaultView === view) setMobileDefaultView(homeView(MOBILE_VIEW_MODES, next));
+    if (scope === 'desktop') {
+      if (viewMode === view) setViewMode(homeView(DESKTOP_VIEW_MODES, next.desktop));
+      if (defaultView === view) setDefaultView(homeView(DESKTOP_VIEW_MODES, next.desktop));
+    } else {
+      if (mobileViewMode === view) setMobileViewMode(homeView(MOBILE_VIEW_MODES, next.mobile));
+      if (mobileDefaultView === view) setMobileDefaultView(homeView(MOBILE_VIEW_MODES, next.mobile));
+    }
   };
   // SCHED agenda rolling-window length (days). Lives here, not in
   // useSchedAgendaState, because expandedRecurringTasks must expand recurring
@@ -3527,7 +3534,7 @@ const DayPlanner = () => {
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
-    setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews,
+    setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews: hiddenViews.desktop,
   });
 
   const changeViewedMonth = (delta) => {

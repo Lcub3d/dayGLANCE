@@ -25,9 +25,9 @@ const keys = (html) => [...html.matchAll(/<kbd[^>]*>([^<]+)<\/kbd>/g)].map((m) =
 
 describe('ShortcutHelpModal view keys', () => {
   it('lists the keys this width offers, minus views turned off on this device', async () => {
-    expect(keys(await render({ canShowViewCycler: true, hiddenViews: [] }))).toEqual(['1', '2', '3', '4', '5', 'C']);
-    expect(keys(await render({ canShowViewCycler: true, hiddenViews: ['month', 'day'] }))).toEqual(['1', '3', '5', 'C']);
-    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: ['sched'] }))).toEqual(['1', '4', 'C']);
-    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: false, hiddenViews: [] }))).toEqual([]);
+    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: [] } }))).toEqual(['1', '2', '3', '4', '5', 'C']);
+    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['month', 'day'], mobile: ['month'] } }))).toEqual(['1', '3', '5', 'C']);
+    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: { desktop: ['sched'] } }))).toEqual(['1', '4', 'C']);
+    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: false, hiddenViews: { desktop: [] } }))).toEqual([]);
   });
 });

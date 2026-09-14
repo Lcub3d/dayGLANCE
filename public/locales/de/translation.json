@@ -664,7 +664,9 @@
     "weatherLocationPlaceholder": "z. B. 10115 oder Berlin",
     "viewMonth": "Monat",
     "viewsOnDevice": "Ansichten auf diesem Gerät",
-    "viewsOnDeviceHint": "Eine hier ausgeschaltete Ansicht verschwindet nur auf diesem Gerät aus dem Umschalter, den Tastenkürzeln und der Standardauswahl. Nichts davon geht verloren. Mindestens eine Ansicht bleibt an."
+    "viewsOnDeviceHint": "Eine hier ausgeschaltete Ansicht verschwindet nur auf diesem Gerät aus dem Umschalter, den Tastenkürzeln und der Standardauswahl. Nichts davon geht verloren. Mindestens eine Ansicht bleibt an.",
+    "viewsInPortrait": "Ansichten im Hochformat",
+    "viewsInLandscape": "Ansichten im Querformat"
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

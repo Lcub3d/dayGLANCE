@@ -334,7 +334,7 @@ describe('vault task scope, end to end', () => {
     expect(A.all().find((t) => t.title.startsWith('Recent'))?.completed).toBe(true);
   });
 
-  it('8. idle: ten minutes of ticks with nothing changing writes no rows, no files, and no data.json', async () => {
+  it('8. idle: ten minutes of ticks with nothing changing writes no rows but its own lease renewals, no files, and no data.json', async () => {
     await bootWithScopedNote();
     const seq = s.vault.maxSeq;
     const saves = s.plugin.data.saves;
@@ -347,7 +347,11 @@ describe('vault task scope, end to end', () => {
       await s.advance(30_000);
       if (i % 10 === 9) await A.sync();
     }
-    expect(s.vault.maxSeq).toBe(seq);
+    // The applier lease (scenario 22) is the ONE idle write: renewed at half
+    // its five minutes, own-ack suppressed, waking nothing that writes.
+    const moved = s.vault.all(BRIDGE_VAULT_APP).filter((r) => r.seq > seq);
+    expect(moved.map((r) => r.entityId)).toEqual(moved.length ? ['meta:applier'] : []);
+    expect(s.vault.maxSeq - seq).toBeLessThanOrEqual(4);
     expect(s.plugin.data.saves).toBe(saves);
     expect(s.plugin.app.vault.writes).toBe(writes);
     expect(s.text(NOTE)).toBe(text);
@@ -694,6 +698,44 @@ describe('vault task scope, end to end', () => {
     await s.settle();
     await A.sync();
     expect(A.state.dailyNotes['2026-09-11']!.text).toContain('Evening: read');
+  });
+
+  it('22. ONE APPLIER PER VAULT (2026-09-13): two plugin copies drain the same burst; only the lease holder applies, in one write per note; the other takes over when the holder quits', async () => {
+    await bootWithScopedNote();
+    const B = s.plugin.second('plugin-B');
+    // B lists the lease A claimed at boot and stands down.
+    await B.transport.drain();
+    const writesBefore = s.plugin.app.vault.writes;
+    const append = (n: number) => A.emit('task_append', {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: `Line ${n}`, startTime: null, duration: null, isAllDay: true, date: null, blockId: `burst000${n}` },
+    });
+    // Four intents against one note in a burst (the field sequence).
+    for (const n of [1, 2, 3, 4]) await append(n);
+    await s.plugin.transport.drain();
+    await B.transport.drain();
+    const text = s.text(NOTE)!;
+    for (const n of [1, 2, 3, 4]) expect(text.match(new RegExp(`Line ${n} \\^dg-burst000${n}`, 'g'))).toHaveLength(1);
+    // One write for the burst, one applier: B consumed nothing and the rows are gone.
+    expect(s.plugin.app.vault.writes - writesBefore).toBe(1);
+    expect(B.data.bridge!.appliedIds).toEqual([]);
+    expect(s.vault.live(BRIDGE_VAULT_APP).filter((r) => r.entityId.startsWith('int:'))).toHaveLength(0);
+    // A quits; its lease lapses by expiry. A new intent waits for B to claim and settle, then B applies it.
+    s.plugin.shutdown();
+    await append(9);
+    await B.transport.drain();
+    expect(s.text(NOTE)).not.toContain('Line 9'); // A's lease still stands
+    await s.advance(100_000);
+    await B.transport.drain();
+    expect(s.text(NOTE)).not.toContain('Line 9'); // still stands: five minutes, not ninety seconds
+    await s.advance(210_000);
+    await B.transport.drain();                    // expired: B claims
+    expect(s.text(NOTE)).not.toContain('Line 9'); // and settles first
+    await s.advance(2500);
+    await B.transport.drain();
+    expect(s.text(NOTE)).toContain('Line 9 ^dg-burst0009');
+    expect(B.data.bridge!.appliedIds).toHaveLength(1);
+    B.shutdown();
   });
 
   it('9. a plugin reload republishes the pairing meta WITH the scope (harness finding)', async () => {

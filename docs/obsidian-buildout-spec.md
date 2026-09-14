@@ -347,6 +347,70 @@ edit; Obsidian's own writes and restores set a fresh mtime.
 saved from the app, stamps the real text newer than the stale copy and
 every tier converges on it.
 
+### 2.8 Field incident record (2026-09-13): the double apply
+
+**What happened.** Four project tasks were auto-scheduled from the app in
+quick succession while Obsidian ran on the Mac AND the Windows PC, both
+plugin copies paired to the same vault. Each copy drained the same four
+intent rows within a second of each other, before either had deleted any,
+and each applied them to its own copy of the project note. Obsidian Sync
+then merged two independently edited versions of the same lines: two
+lines were duplicated with their tokens intact, two were removed from
+their place and re-added lower down, and one lost the space after its
+checkbox (`- [ ]17:15-17:45`, no longer a task line to any parser). The
+same double drain doubled every list call, which is where the week's two
+429s came from.
+
+**What the app did with the damaged note.** The malformed line read as a
+vanished task while an older observation still showed it unscheduled, so
+the scheduled copy and a resupplied unscheduled copy fought through the
+cross-list reconciler until the war guard parked both after three rounds
+(correct). The duplicate token lines are a real app defect the damage
+exposed: a second line carrying a live token is treated as tokenless,
+minted, and for one line the derived token collided with the live task and
+the identity move overwrote the live record with the fresh import (notes
+emptied, color reset, order dropped); for the other a new token was minted
+and a duplicate task created. The re-mint refusal guards a tombstoned
+successor, not a live one. Its fix follows in its own PR.
+
+**The design gap.** Device-local plugin state (Phase 6's build record)
+reasoned that "applied intents are deleted from the stream, so a copy
+re-applies nothing that was applied elsewhere". That holds when copies
+drain minutes apart, and stream speed made them drain together. The
+harness reproduced the same burst on one plugin copy cleanly: four
+in-place edits, no moves, no duplicates. The vector is the second copy.
+
+**The ruling (owner, 2026-09-13): an intent has ONE applier per vault.**
+Built as a plaintext lease row, `meta:applier` (`BRIDGE_APPLIER_META_ID`),
+naming the copy that applies: claimed when absent or expired, renewed at
+half its five minutes by the holder while Obsidian runs, lapsing by expiry
+on a quit or crash (no release on unload: a plugin reload or update is an
+unload too, and the same copy resumes its lease on return). Every other
+copy leaves intent rows listable through the cursor floor and receives
+the result through Obsidian Sync, exactly as it receives the user's own
+edits. A fresh claim is acted on only after a two-second settle: the
+server has no compare-and-set, so two copies that claim within the same
+second both write, the later write wins the row, and both read the winner
+back before either applies. Convergence, not mutual exclusion; the settle
+covers the write-to-visibility gap of the second claim. Within a drain the
+holder applies every intent for one note in a single `Vault.process`
+write, so a burst of four is one edit and one editor reload. Costs stated:
+the lease is the one write an idle plugin makes (two per five minutes,
+own-ack suppressed, waking nothing that writes; scope scenario 8 now says
+so), and a quit hands over within five minutes plus a tick rather than at
+once. Pinned by scope scenario 22: two plugin copies over one vault, the
+burst applied once in one write, the second copy consuming nothing, the
+takeover after expiry.
+
+**Considered and not built.** Claim by deleting the row first: the server
+re-tombstones an already-deleted row with a fresh seq and answers success
+to both deleters, so a delete carries no claim. Applying an open note
+through an editor transaction built from a line diff: the merge damage
+came from two copies, not from one copy's reload, and one applier with one
+write per burst leaves the current open-clean path in the case it was
+designed for. Cleanup of the damaged note was by hand: the space restored,
+the two duplicate lines removed.
+
 ---
 
 ## 3. Decisions of record

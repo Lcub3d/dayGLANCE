@@ -162,6 +162,7 @@ export default class DayGlanceBridgePlugin extends Plugin {
       getScope: () => this.scope(),
       getProjectNotes: () => normalizeProjectNoteSettings(this.data.projectNotes),
       getViewer: () => this.viewer(),
+      getDeviceId: () => this.deviceId,
       // A note linked or unlinked while open: its completed-line hiding
       // follows the map without waiting for the next edit.
       onLinkedNotesChanged: () => refreshEditorHiding(this.app),

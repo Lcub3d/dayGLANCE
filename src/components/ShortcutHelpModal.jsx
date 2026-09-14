@@ -2,14 +2,22 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { cyclerStates, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
+
+const VIEW_LABEL_KEYS = { multi: 'shortcuts.view3Day', day: 'shortcuts.viewDay', week: 'shortcuts.viewWeek', month: 'shortcuts.viewMonth', sched: 'shortcuts.viewSched' };
 
 const ShortcutHelpModal = () => {
   const { t } = useTranslation();
   const {
     setShowShortcutHelp,
     cardBg, borderClass, textPrimary, textSecondary, darkMode,
-    canShowViewCycler, schedOnlyCycler,
+    canShowViewCycler, schedOnlyCycler, hiddenViews,
   } = useDayPlannerCtx();
+  // The view keys this width offers, minus views turned off on this device:
+  // the same list the cycler and the number keys work from.
+  const viewRows = canShowViewCycler || schedOnlyCycler
+    ? [...cyclerStates(canShowViewCycler, false, hiddenViews).map((v) => [VIEW_SHORTCUT_KEYS[v], t(VIEW_LABEL_KEYS[v])]), ['C', t('shortcuts.cycleViews')]]
+    : [];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowShortcutHelp(false)}>
@@ -33,19 +41,7 @@ const ShortcutHelpModal = () => {
               ['Space', t('shortcuts.monthStepDay')],
               ['\u2191 / \u2193', t('shortcuts.monthStepWeek')],
               ['Enter', t('shortcuts.monthOpenDay')],
-              ...(canShowViewCycler ? [
-                ['1', t('shortcuts.view3Day')],
-                ['2', t('shortcuts.viewDay')],
-                ['3', t('shortcuts.viewWeek')],
-                ['4', t('shortcuts.viewMonth')],
-                ['5', t('shortcuts.viewSched')],
-                ['C', t('shortcuts.cycleViews')],
-              ] : schedOnlyCycler ? [
-                ['1', t('shortcuts.view3Day')],
-                ['4', t('shortcuts.viewMonth')],
-                ['5', t('shortcuts.viewSched')],
-                ['C', t('shortcuts.cycleViews')],
-              ] : []),
+              ...viewRows,
             ].map(([key, desc]) => (
               <div key={key} className={`flex items-center gap-3 py-1 ${textSecondary}`}>
                 <kbd className={`px-1.5 py-0.5 rounded text-xs font-mono min-w-[2rem] text-center ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'}`}>{key}</kbd>

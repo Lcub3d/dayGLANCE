@@ -215,7 +215,7 @@ On wide screens a view cycler appears in the timeline header, letting you switch
 - **MULTI**: adjacent days side by side (up to three at once), the default multi-day timeline.
 - **DAY**: a single day, with the full 24 hours wrapped across columns so nothing is off-screen.
 - **WEEK**: a seven-day grid for planning the week at a glance.
-- **MONTH**: the whole month, each day a small timeline of its blocks. Tap a day to open its agenda in a sheet and swipe or use the arrow keys to move between days. On phones it is the fourth mode of the view toggle.
+- **MONTH**: the whole month, each day a small timeline of its blocks. Tap a day to open its agenda in a sheet and swipe or use the arrow keys to move between days. On phones it is the third mode of the view toggle, between LIST and SCHED.
 
 Views you do not use on a given device can be turned off under Settings, "Views on this device": they leave the switcher, the number keys and the default-view picker there, and nothing else changes. At least one view stays on.
 

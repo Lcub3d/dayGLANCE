@@ -79,11 +79,13 @@ describe('MonthStats', () => {
     expect(html).toContain('width:0%');
   });
 
-  it('compact: the percentage over the ratio, for the phone header', async () => {
+  it('compact: the percentage with its bar over the ratio, for the phone header', async () => {
     const html = await render('en', { selectedDate: today, tasks, unscheduledTasks }, { compact: true });
     expect(tiles(html)).toEqual([]);
     expect(text(html).trim()).toBe('67% 2/3 completed');
     expect(html).toContain('data-month-stats-percent="67"');
+    expect(html).toContain('width:67%');
+    expect(html).toContain('bg-brand');
   });
 
   it('takes the sizing class it is given', async () => {

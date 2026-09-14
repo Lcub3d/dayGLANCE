@@ -6,6 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../../locales.js';
 import { DayPlannerContext } from '../../context/DayPlannerContext.jsx';
 import { FeaturesContext } from '../../context/FeaturesContext.jsx';
+import { SyncContext } from '../../context/SyncContext.jsx';
 import MonthView, { monthViewRangeFor } from './MonthView.jsx';
 
 // Static markup, no DOM. The range lifecycle (publish while mounted, replace
@@ -25,19 +26,30 @@ async function i18nFor(language) {
   return i18n;
 }
 
-const render = (i18n, selectedDate, weekStartDay = 0) => {
+const render = (i18n, selectedDate, weekStartDay = 0, extra = {}) => {
   const planner = {
     selectedDate, weekStartDay,
     goToDate: vi.fn(), setMonthViewRange: vi.fn(),
+    // What the docked panel's SchedView and day header read.
+    tasks: [], unscheduledTasks: [], expandedRecurringTasks: [], schedDaysShown: 14, setSchedDaysShown: vi.fn(),
+    currentTime: selectedDate, setNewTask: vi.fn(), setShowAddTask: vi.fn(), scheduleTaskAtNextSlot: vi.fn(),
+    borderClass: 'border-stone-300', cardBg: 'bg-white', textPrimary: 'text-stone-900', textSecondary: 'text-stone-500', hoverBg: '',
+    calendarRef: { current: null }, darkMode: false, dailyNotes: {}, setDailyNotesModalDate: vi.fn(), openNewAllDayTask: vi.fn(),
+    formatTime: (t) => t, use24HourClock: true, isTablet: false,
+    toggleComplete: vi.fn(), openMobileEditTask: vi.fn(), postponeTask: vi.fn(),
+    updateTaskNotes: vi.fn(), addSubtask: vi.fn(), toggleSubtask: vi.fn(), deleteSubtask: vi.fn(), updateSubtaskTitle: vi.fn(),
+    ...extra,
     getTasksForDate: (date) => (date.getDate() === 16 && date.getMonth() === 8 ? [{ id: 't1', title: 'Design review', date: '2026-09-16', startTime: '14:00', duration: 60, isAllDay: false, completed: false }] : []),
     getDeadlineTasksForDate: () => [],
   };
-  const features = { routinesEnabled: false, todayRoutines: [], routinesDate: null, routineCompletions: {} };
+  const features = { routinesEnabled: false, todayRoutines: [], routinesDate: null, routineCompletions: {}, isVisibleForUser: () => true, focusLog: {}, setFocusLogModalDate: vi.fn(), habitsEnabled: false, habitLogs: {}, activeHabits: [], projects: [], goals: [], goalsProjectsEnabled: false, aiConfig: { features: {} } };
   return renderToStaticMarkup(
     <I18nextProvider i18n={i18n}>
       <DayPlannerContext.Provider value={planner}>
         <FeaturesContext.Provider value={features}>
-          <MonthView width={1120} height={700} />
+          <SyncContext.Provider value={{}}>
+            <MonthView width={1120} height={700} />
+          </SyncContext.Provider>
         </FeaturesContext.Provider>
       </DayPlannerContext.Provider>
     </I18nextProvider>,
@@ -73,5 +85,25 @@ describe('MonthView', () => {
     expect(html).toMatch(/data-month-cell="2027-01-05"[^>]*data-selected="true"/);
     const weekdays = html.slice(html.indexOf('data-month-grid-weekdays'), html.indexOf('data-month-grid-area'));
     expect(weekdays.indexOf('Mo')).toBeLessThan(weekdays.indexOf('So'));
+  });
+
+  it('renders the sheet layout below the DAY breakpoint: no panel, the header row owns the day header', async () => {
+    const html = render(await i18nFor('en'), new Date(2026, 8, 16, 12), 0, { canShowViewCycler: false });
+    expect(html).toContain('data-month-view-layout="sheet"');
+    expect(html).not.toContain('data-month-panel');
+    expect(html).not.toContain('data-sched-view');
+  });
+
+  it("docks the selected day's agenda beside the grid at the DAY breakpoint, with the day header on top", async () => {
+    const html = render(await i18nFor('en'), new Date(2026, 8, 16, 12), 0, { canShowViewCycler: true });
+    expect(html).toContain('data-month-view-layout="docked"');
+    expect(html).toContain('data-month-panel="2026-09-16"');
+    // The panel is the scoped SCHED for exactly that day, headed by the shared day header.
+    expect(html).toContain('data-sched-view="scoped"');
+    expect(html).toContain('data-day-header="2026-09-16"');
+    expect(html).toContain('Design review');
+    expect(html).not.toContain('data-month-day-sheet');
+    // The panel comes after the grid in the row.
+    expect(html.indexOf('data-month-grid=')).toBeLessThan(html.indexOf('data-month-panel='));
   });
 });

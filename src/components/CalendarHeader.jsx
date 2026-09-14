@@ -238,7 +238,10 @@ const CalendarHeader = () => {
       <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
         {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
       </div>
-      <DayHeaderCell date={selectedDate} className="flex-1" />
+      {/* At the width DAY needs, MonthView docks the day's agenda beside the
+          grid and the day's header sits at the top of that panel; the row
+          here keeps the switcher and the month's numbers. */}
+      {canShowViewCycler ? <div className="flex-1" /> : <DayHeaderCell date={selectedDate} className="flex-1" />}
       <MonthStats />
     </>
   ) : effectiveViewMode === 'multi' ? (

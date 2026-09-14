@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { routinesForDate } from '@glance-apps/agenda-core';
 import MonthGrid from './MonthGrid.jsx';
-import MonthDaySheet from './MonthDaySheet.jsx';
+import MonthDaySheet, { MONTH_DAY_SHEET_HISTORY_KEY } from './MonthDaySheet.jsx';
+import SchedView from '../sched/SchedView.jsx';
+import DayHeaderCell from '../DayHeader.jsx';
 import { tagKind } from '../../utils/monthCellLayout.js';
 import { monthGridDates, monthOf } from '../../utils/monthGrid.js';
 import { dateToString } from '../../utils/taskUtils.js';
@@ -12,11 +14,19 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
  * MONTH view. A view over `selectedDate` like DAY and WEEK: the grid shows
  * selectedDate's month, the app chrome's arrows page it (useNavigation
  * strides a month here) and Today brings it back, and the highlighted cell
- * is selectedDate itself. Tapping a cell selects that day and opens its
- * sheet; paging inside the sheet moves the selection with it, so closing
- * the sheet leaves the grid, and every other view, on the day the visit
- * ended on. A new scheduled task from the FAB therefore lands on the
- * selected day for free.
+ * is selectedDate itself.
+ *
+ * The selected day's agenda is the same scoped SCHED in one of two homes,
+ * never both:
+ *  • Wide desktop (the 3-column breakpoint DAY needs, canShowViewCycler): a
+ *    panel docked to the right of the grid. The grid answers "what does the
+ *    month look like", the panel "what is on this day", and nothing covers
+ *    the selected cell. Tapping a cell just selects it and the panel
+ *    follows; Enter moves focus into the panel.
+ *  • Everywhere else: the bottom sheet. Tapping a cell selects the day and
+ *    opens its sheet; paging inside the sheet moves the selection with it.
+ * Either way closing or switching leaves the grid, and every other view, on
+ * the day the visit ended on, and a new task from the FAB lands on it.
  *
  * Recurring occurrences: App.jsx expands them over the union of every
  * view's window. This view publishes its grid's range (monthViewRange) for
@@ -54,17 +64,24 @@ export function monthViewRangeFor(year, month, weekStartDay) {
   return { from: cells[0].dateStr, to: cells[cells.length - 1].dateStr };
 }
 
+/** The docked panel's width. Wide enough for SCHED's cards, narrower than the GLANCE sidebar. */
+export const MONTH_PANEL_WIDTH_PX = 380;
+
 /**
  * @param {object} [props]
  * @param {number} [props.width]   fixed grid-area size, for static rendering
  * @param {number} [props.height]  and tests; the app measures instead
  */
 export default function MonthView({ width, height } = {}) {
-  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef } = useDayPlannerCtx();
+  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef, canShowViewCycler, borderClass, cardBg } = useDayPlannerCtx();
   const itemsForDate = useMonthItemsForDate();
   const selectedStr = dateToString(selectedDate);
   const { year, month } = monthOf(selectedStr);
   const [sheetDate, setSheetDate] = useState(null);
+  // The docked panel takes the sheet's place at the width DAY needs; the two
+  // are never on screen together.
+  const docked = !!canShowViewCycler;
+  const panelRef = useRef(null);
 
   useEffect(() => {
     if (!setMonthViewRange) return undefined;
@@ -72,31 +89,65 @@ export default function MonthView({ width, height } = {}) {
     return () => setMonthViewRange(null);
   }, [year, month, weekStartDay, setMonthViewRange]);
 
+  // Crossing the breakpoint with the sheet open: the panel takes over, and
+  // the sheet's history entry goes with it so a later Back does not swallow
+  // a press on a sheet that is no longer there.
+  useEffect(() => {
+    if (!docked || !sheetDate) return;
+    setSheetDate(null);
+    if (typeof window !== 'undefined' && window.history?.state?.[MONTH_DAY_SHEET_HISTORY_KEY]) window.history.back();
+  }, [docked, sheetDate]);
+
   const showDay = (dateStr) => {
-    setSheetDate(dateStr);
+    if (!docked) setSheetDate(dateStr);
     goToDate(dateStr);
   };
 
-  // Enter (useKeyboardShortcuts) opens the selected day while this view is up.
+  // Enter (useKeyboardShortcuts): the sheet for the selected day, or, when
+  // the panel is docked, focus into it (its first control, else the panel).
   useEffect(() => {
     if (!openMonthDaySheetRef) return undefined;
-    openMonthDaySheetRef.current = () => setSheetDate(selectedStr);
+    openMonthDaySheetRef.current = () => {
+      if (!docked) { setSheetDate(selectedStr); return; }
+      const panel = panelRef.current;
+      const first = panel?.querySelector('[data-month-panel-content] button, [data-month-panel-content] [tabindex]');
+      (first || panel)?.focus?.();
+    };
     return () => { openMonthDaySheetRef.current = null; };
-  }, [openMonthDaySheetRef, selectedStr]);
+  }, [openMonthDaySheetRef, selectedStr, docked]);
 
   return (
-    <div data-month-view className="flex-1 min-h-0 flex flex-col">
-      <MonthGrid
-        year={year}
-        month={month}
-        itemsForDate={itemsForDate}
-        weekStartDay={weekStartDay}
-        selectedDate={selectedStr}
-        onSelectDate={showDay}
-        width={width}
-        height={height}
-      />
-      {sheetDate && (
+    <div data-month-view data-month-view-layout={docked ? 'docked' : 'sheet'} className="flex-1 min-h-0 flex flex-row">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+        <MonthGrid
+          year={year}
+          month={month}
+          itemsForDate={itemsForDate}
+          weekStartDay={weekStartDay}
+          selectedDate={selectedStr}
+          onSelectDate={showDay}
+          width={width}
+          height={height}
+        />
+      </div>
+      {docked && (
+        <aside
+          ref={panelRef}
+          data-month-panel={selectedStr}
+          tabIndex={-1}
+          aria-label={`${selectedStr}`}
+          className={`shrink-0 min-h-0 flex flex-col border-l ${borderClass} ${cardBg} outline-none`}
+          style={{ width: MONTH_PANEL_WIDTH_PX }}
+        >
+          {/* The selected day's header lives here when docked: the header
+              row above the grid keeps the switcher and the month's numbers. */}
+          <DayHeaderCell date={selectedDate} className={`shrink-0 border-b ${borderClass}`} />
+          <div data-month-panel-content className="flex-1 min-h-0 overflow-y-auto">
+            <SchedView dateRange={{ from: selectedStr, to: selectedStr }} embedded />
+          </div>
+        </aside>
+      )}
+      {!docked && sheetDate && (
         <MonthDaySheet
           date={sheetDate}
           onNavigate={showDay}

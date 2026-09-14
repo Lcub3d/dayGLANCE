@@ -214,6 +214,37 @@ export function resolveRetirement(record, id, maxHops = 10) {
 }
 
 /**
+ * THE LIVE-COLLISION REFUSAL (2026-09-13 incident, buildout spec 2.8, the
+ * app half). deriveBlockId is deterministic on (note key, title), so a
+ * SECOND line carrying the same title in the same note derives the id of
+ * the task that already owns the first line. Minting it is not assigning
+ * identity to a new task: it records a retirement onto a LIVE successor,
+ * and the retirement apply then redirects this row's content over that
+ * task (whole-row LWW, the fresh import being newer) — notes emptied, color
+ * reset, order dropped, which is what the incident's duplicate lines did.
+ * A live successor was deliberately exempt from isTombstonedRemint because
+ * the lagging-device bridge (a copy still holding the pre-stamp id) relies
+ * on the retirement to converge; that bridge runs through the SCAN (the
+ * legacy hint matches the tokenized line), never through a mint, so the
+ * mint site can refuse a live collision without touching it.
+ *
+ * Refused: the derived id is live as a DIFFERENT task. The row keeps its
+ * legacy id and the line stays untagged; a duplicate line is a human's to
+ * remove, and a copy still syncing from another device resolves on its own
+ * once the tokenized line arrives.
+ *
+ * @param {string} taskId       the untagged task about to be stamped
+ * @param {string} successorId  the app id the derived token would mint
+ * @param {Set<string>} liveIds ids currently live across the task lists
+ * @returns {boolean}
+ */
+export function isLiveCollisionMint(taskId, successorId, liveIds) {
+  if (!(liveIds instanceof Set)) return false;
+  const successor = String(successorId);
+  return successor !== String(taskId) && liveIds.has(successor);
+}
+
+/**
  * THE RE-MINT REFUSAL (2026-08-31 db-tier retire/tombstone war — the fix at
  * the MINTING site). True when assigning `successorId` to `taskId` would
  * re-create an identity this record shows was ALREADY minted for this exact

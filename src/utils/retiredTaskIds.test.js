@@ -7,6 +7,7 @@ import {
   applyTaskRetirements,
   applyRetirementsToTaskLists,
   isTombstonedRemint,
+  isLiveCollisionMint,
 } from './retiredTaskIds.js';
 
 const T1 = '2026-07-08T10:00:00.000Z';
@@ -138,6 +139,19 @@ describe('applyTaskRetirements — the (d) supersede-regardless-of-timestamps ru
   it('returns the same array when the record touches nothing', () => {
     const list = [task('X', T1)];
     expect(applyTaskRetirements(list, REC, new Set(['X']))).toBe(list);
+  });
+});
+
+describe('isLiveCollisionMint — the live-collision refusal (2026-09-13 duplicate lines)', () => {
+  it('REFUSES when the derived id is live as a different task (a second line with the same title in the same note)', () => {
+    expect(isLiveCollisionMint('obsidian-2026-09-13-legacy', 'obsidian-dg-s1mdh1zu', new Set(['obsidian-dg-s1mdh1zu']))).toBe(true);
+  });
+  it('does NOT refuse a derived id nobody holds (an ordinary first stamp), nor the task deriving its own id', () => {
+    expect(isLiveCollisionMint('obsidian-2026-09-13-legacy', 'obsidian-dg-s1mdh1zu', new Set(['obsidian-dg-other']))).toBe(false);
+    expect(isLiveCollisionMint('obsidian-dg-s1mdh1zu', 'obsidian-dg-s1mdh1zu', new Set(['obsidian-dg-s1mdh1zu']))).toBe(false);
+  });
+  it('never refuses without a live-id set', () => {
+    expect(isLiveCollisionMint('x', 'obsidian-dg-s1mdh1zu', null)).toBe(false);
   });
 });
 

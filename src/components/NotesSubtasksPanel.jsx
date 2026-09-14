@@ -84,6 +84,10 @@ const NotesSubtasksPanel = ({
   const linkedNoteOriginalRef = useRef({}); // { noteName: textAtLoad } — to detect changes
   const onSaveWikiNoteRef = useRef(onSaveWikiNote);
   useEffect(() => { onSaveWikiNoteRef.current = onSaveWikiNote; }, [onSaveWikiNote]);
+  const requestedNotesRef = useRef(new Set()); // note names a load has been started for
+  // Notes the vault migration just moved out of this record: the linked note
+  // shows them until the plugin has written it (see the wikilinks effect).
+  const migratedNotesRef = useRef(null);
 
   // Additional notes navigated to via [[wikilink]] clicks inside note content
   const [additionalNotes, setAdditionalNotes] = useState([]);
@@ -125,10 +129,19 @@ const NotesSubtasksPanel = ({
     noteTs:       'text-gray-400',
   };
 
-  const loadNote = (noteName) => {
-    if (linkedNoteStates[noteName]) return; // already loaded or loading
-    setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: true, error: null } }));
+  /**
+   * Start a load for a linked note, once. With `seededText` the panel already
+   * shows the text the migration moved into this note, so an absent or
+   * unreadable note keeps that text instead of an empty editor or an error;
+   * only a note the vault actually returns replaces it.
+   */
+  const loadNote = (noteName, seededText = null) => {
+    if (requestedNotesRef.current.has(noteName)) return; // already loaded or loading
+    requestedNotesRef.current.add(noteName);
+    const seeded = seededText !== null;
+    if (!seeded) setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: true, error: null } }));
     onLoadWikiNote?.(noteName).then(result => {
+      if (seeded && (result === null || result?.notFound)) return;
       if (result === null) {
         // Vault unavailable or the read failed — no editor, fail closed.
         setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: false, error: 'not_found' } }));
@@ -151,6 +164,7 @@ const NotesSubtasksPanel = ({
       linkedNoteTextsRef.current[noteName] = text;
       linkedNoteOriginalRef.current[noteName] = text;
     }).catch(err => {
+      if (seeded) return;
       setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: false, error: err.message } }));
     });
   };
@@ -161,14 +175,6 @@ const NotesSubtasksPanel = ({
     }
     loadNote(noteName);
   };
-
-  // Load wiki notes on mount
-  useEffect(() => {
-    if (!wikilinks || wikilinks.length === 0 || !onLoadWikiNote) return;
-    wikilinks.forEach(noteName => loadNote(noteName));
-    // Load only on mount; wikilinks/loaders are read once when the panel opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Save unsaved linked note changes on unmount. Intentionally reads the refs'
   // CURRENT values at unmount to flush the latest edits — the lint suggestion to
@@ -198,11 +204,39 @@ const NotesSubtasksPanel = ({
     // local text still equals what the record said before. With an edit
     // in flight the local text wins, as it always did.
     if (localNotesRef.current === taskNotesRef.current && localNotesRef.current !== next) {
+      // The migration clears the notes as the wikilink joins the title:
+      // keep the text for the linked note that appears in the same commit.
+      if (!next && taskNotesRef.current) migratedNotesRef.current = taskNotesRef.current;
       setLocalNotes(next);
       setIsEditingNotes(!next);
     }
     taskNotesRef.current = next;
   }, [task.notes]);
+
+  // Load the linked notes: those the panel opened with, and any the title
+  // gains while it is open (the vault migration adds one). A note the
+  // migration just created is shown with the migrated text at once and
+  // refreshed from the vault when the plugin has written it, so the panel
+  // never sits on "Loading" or offers an empty editor for text it just had.
+  // Declared after the notes effect above, which records that text first.
+  const wikilinksKey = (wikilinks || []).join('\n');
+  useEffect(() => {
+    if (!wikilinksKey || !onLoadWikiNote) return;
+    for (const noteName of wikilinks) {
+      if (requestedNotesRef.current.has(noteName)) continue;
+      const migrated = migratedNotesRef.current;
+      migratedNotesRef.current = null;
+      if (migrated) {
+        setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: migrated, lastModified: null, loading: false, error: null } }));
+        setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
+        linkedNoteTextsRef.current[noteName] = migrated;
+        linkedNoteOriginalRef.current[noteName] = migrated;
+      }
+      loadNote(noteName, migrated);
+    }
+    // loadNote reads only refs and the loader; the key stands in for the array identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wikilinksKey, onLoadWikiNote]);
   useEffect(() => {
     taskIdRef.current = task.id;
     isInboxRef.current = isInbox;

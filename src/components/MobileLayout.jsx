@@ -39,6 +39,7 @@ import MobileBottomSheets from './MobileBottomSheets.jsx';
 import MobileGlanceSection from './MobileGlanceSection.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
 import DayHeaderCell from './DayHeader.jsx';
+import MonthStats from './month/MonthStats.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import MobileListView from './MobileListView.jsx';
 import SchedView from './sched/SchedView.jsx';
@@ -762,6 +763,7 @@ const MobileLayout = () => {
                         />
                       );
                     })}
+                    {mobileViewMode === 'month' && <MonthStats compact />}
                   </div>
 
                   {mobileViewMode === 'grid' && <MobileAllDaySection />}

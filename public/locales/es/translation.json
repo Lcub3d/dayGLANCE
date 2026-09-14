@@ -1342,7 +1342,8 @@
     "routines_one": "{{count}} rutina",
     "routines_other": "{{count}} rutinas",
     "deadlines_one": "{{count}} fecha límite",
-    "deadlines_other": "{{count}} fechas límite"
+    "deadlines_other": "{{count}} fechas límite",
+    "statsHint": "este mes, hasta hoy"
   },
   "dial": {
     "timeLeft": "Quedan {{left}}",

@@ -31,7 +31,15 @@ manually or via BRAT, not submitted to the community directory.
   writes) from GLANCEvault and applies them to the vault through a pure,
   idempotent applier shared with dayGLANCE — drain on open plus a 30-second
   interval while foregrounded, with an applied-ID set and high-water mark
-  persisted per batch so crash replay is a no-op. In the other direction it
+  persisted per batch so crash replay is a no-op. **One applier per vault**
+  (buildout spec 2.8): a plaintext `meta:applier` lease row names the copy
+  that applies intents; every other copy of this vault (a second desktop)
+  leaves the rows listable and receives the result through Obsidian Sync.
+  The lease lasts five minutes, is renewed at half by its holder, and lapses
+  when the holder quits or crashes, after which the next copy to drain
+  claims it and applies from its following drain (a two-second settle
+  covers two copies claiming at once). Within a drain the holder applies
+  every intent for one note in a single write. In the other direction it
   reports plain **observations** — the latest state of daily notes and
   task-marked files, one upserted row per path — and never interprets an
   edit; that is dayGLANCE's scan pipeline's job.

@@ -48,6 +48,8 @@ import {
   BRIDGE_PAIRING_META_ID,
   BRIDGE_CONFIG_META_ID,
   BRIDGE_INTENT_PREFIX,
+  BRIDGE_APPLIER_META_ID,
+  decodePlainBridgeRow,
   noteKeyForPath,
   noteInScope,
   normalizeScope,
@@ -116,6 +118,38 @@ export interface BridgeState {
 // data.json — the transport sees one object either way.
 
 const APPLIED_IDS_CAP = 1000;
+
+// ONE APPLIER PER VAULT (2026-09-13 incident; buildout spec 2.8). The
+// applied-intent set is per copy (localState.ts) and the design relied on
+// the first applier deleting the row before a second copy listed it. That
+// holds when copies drain minutes apart; at stream speed two desktops listed
+// the same four rows within a second and each applied them to its own copy
+// of the note, and Obsidian Sync's merge of the two edited copies duplicated
+// lines, moved lines and mangled one. So intents now have ONE applier: a
+// plaintext lease row (meta:applier) names the copy that applies; every
+// other copy leaves intent rows listable (the cursor floor) and receives the
+// result through Sync. The lease is claimed when absent or expired, renewed
+// by its holder while Obsidian runs, and lapses by expiry when the holder
+// quits or crashes (no release on unload: a plugin reload or update is an
+// unload too, and the same copy resumes its lease on return instead of
+// re-claiming and settling). A fresh claim is acted on only after a settle: two copies that
+// claim within the same second both write, the later write wins the row,
+// and both read the winner back before either applies. The server has no
+// compare-and-set, so this is convergence, not mutual exclusion; the
+// settle covers the write-to-visibility gap of the second claim.
+// Five minutes, renewed at half: two lease writes per idle five minutes
+// from the holder (own-ack suppressed; a renewal wakes nothing that writes),
+// and a quit or crash hands over within five minutes plus a tick.
+const APPLIER_LEASE_MS = 300_000;
+const APPLIER_RENEW_AFTER_MS = 150_000;
+const APPLIER_CLAIM_SETTLE_MS = 2_000;
+interface ApplierLease { deviceId: string; claimedAt: number; until: number }
+// Intent types that rewrite one note's text and can share a single write
+// (coalesced per note per drain: a burst of four is one edit and one
+// editor reload, the other half of the incident's fix).
+const COALESCED_INTENT_TYPES = new Set(['task_state', 'task_retitle', 'task_append', 'task_remove', 'completion_log_append', 'daily_note_write']);
+type ApplyOutcome = 'applied' | 'unsupported' | 'deferred' | 'failed';
+interface PendingIntent { intent: Record<string, unknown>; intentId: string; entityId: string; seq: number }
 // The full link rescan (every markdown file's frontmatter, from the
 // metadata cache) runs at most this often; per-file events cover the rest.
 const LINK_RESCAN_MS = 5 * 60_000;
@@ -195,6 +229,8 @@ export interface BridgeHost {
   getViewer?(): string | null;
   /** The linked-notes map changed (a link made, moved or broken). Display-only consumers. */
   onLinkedNotesChanged?(): void;
+  /** This vault copy's device id (the heartbeat's wire key). Names the applier lease. */
+  getDeviceId?(): string;
 }
 
 /** The intents that CREATE a daily note when it is missing (the template ladder's daily creation point). */
@@ -330,6 +366,10 @@ export class BridgeTransport {
   private unsupported = new Set<string>();
   // Paths with an observation armed or in flight (see BridgeState.pendingObservations).
   private pendingObs = new Set<string>();
+  // The applier lease as last read or written (ONE APPLIER PER VAULT).
+  private applier: ApplierLease | null = null;
+  private applierKnownGeneration: string | null = null;
+  private applierFollowerLogged = false;
   private linkScanAt = 0;
   private adopted = new Set<string>();
   private adoptQueue: string[] = [];
@@ -533,6 +573,144 @@ export class BridgeTransport {
     return createVaultClient({
       vaultUrl: pairing.vaultUrl, vaultToken: pairing.deviceToken, fetchImpl: obsidianFetch,
     });
+  }
+
+  // ── ONE APPLIER PER VAULT (see the constants above) ─────────────────────
+
+  private parseApplierRow(row: { envelope?: string | null; deleted?: boolean } | null | undefined): ApplierLease | null {
+    if (!row || row.deleted || !row.envelope) return null;
+    const p = decodePlainBridgeRow(row.envelope) as { kind?: string; deviceId?: string; claimedAt?: string; until?: string } | null;
+    if (!p || p.kind !== 'applier' || typeof p.deviceId !== 'string' || !p.deviceId) return null;
+    const claimedAt = Date.parse(String(p.claimedAt ?? ''));
+    const until = Date.parse(String(p.until ?? ''));
+    if (!Number.isFinite(claimedAt) || !Number.isFinite(until)) return null;
+    return { deviceId: p.deviceId, claimedAt, until };
+  }
+
+  private async writeApplierLease(client: VaultClient, pairing: BridgePairing, deviceId: string, claimedAt: number, now: number): Promise<void> {
+    const until = now + APPLIER_LEASE_MS;
+    const res = await client.batch(BRIDGE_VAULT_APP, {
+      accountId: pairing.accountId,
+      rows: [{
+        entityId: BRIDGE_APPLIER_META_ID,
+        envelope: encodePlainBridgeRow({
+          v: 1, kind: 'applier', deviceId,
+          claimedAt: new Date(claimedAt).toISOString(), until: new Date(until).toISOString(),
+        }),
+        createdAt: now,
+      }],
+    });
+    const seq = Number((res as { maxSeq?: unknown } | null)?.maxSeq);
+    if (Number.isFinite(seq)) this.sseGate.recordOwnSeq(seq);
+    this.applier = { deviceId, claimedAt, until };
+  }
+
+  /** Whether this drain applies intents. Runs every drain so the holder
+   *  renews while Obsidian runs and a claim settles before intents arrive. */
+  private async applierRole(client: VaultClient, pairing: BridgePairing, now: number): Promise<'leader' | 'follower' | 'settling'> {
+    const me = this.host.getDeviceId?.() ?? '';
+    if (!me) return 'leader'; // a host without a device id: the pre-lease behaviour
+    if (this.applierKnownGeneration !== pairing.generation) {
+      // First drain of this pairing (or a reload): the row's seq may sit
+      // below the cursor, so read it directly once.
+      const row = await client.getRow(BRIDGE_VAULT_APP, BRIDGE_APPLIER_META_ID, pairing.accountId) as
+        { envelope?: string | null; deleted?: boolean } | null;
+      this.applier = this.parseApplierRow(row);
+      this.applierKnownGeneration = pairing.generation;
+    }
+    const a = this.applier;
+    if (a && a.until > now && a.deviceId !== me) {
+      if (!this.applierFollowerLogged) {
+        this.applierFollowerLogged = true;
+        console.info(`dayGLANCE bridge: another copy of this vault (${a.deviceId}) applies intents; this copy receives them through sync.`);
+      }
+      return 'follower';
+    }
+    this.applierFollowerLogged = false;
+    if (a && a.until > now && a.deviceId === me) {
+      if (APPLIER_LEASE_MS - (a.until - now) >= APPLIER_RENEW_AFTER_MS) await this.writeApplierLease(client, pairing, me, a.claimedAt, now);
+      return now - a.claimedAt < APPLIER_CLAIM_SETTLE_MS ? 'settling' : 'leader';
+    }
+    await this.writeApplierLease(client, pairing, me, now, now);
+    return 'settling';
+  }
+
+  /** Apply this drain's intents as the lease holder: one write per note for
+   *  the coalescable kinds, the single path for everything else. */
+  private async applyPending(items: PendingIntent[]): Promise<Map<string, ApplyOutcome>> {
+    const out = new Map<string, ApplyOutcome>();
+    const groups = new Map<string, PendingIntent[]>();
+    const singles: PendingIntent[] = [];
+    for (const it of items) {
+      const type = String(it.intent.type ?? '');
+      const path = typeof it.intent.path === 'string' && it.intent.path ? normalizePath(it.intent.path) : '';
+      if (COALESCED_INTENT_TYPES.has(type) && path) {
+        const g = groups.get(path) ?? [];
+        g.push(it);
+        groups.set(path, g);
+      } else {
+        singles.push(it);
+      }
+    }
+    for (const it of singles) out.set(it.intentId, await this.safeApplyOne(it.intent));
+    for (const [path, group] of groups) {
+      if (group.length === 1) { out.set(group[0].intentId, await this.safeApplyOne(group[0].intent)); continue; }
+      for (const [id, o] of await this.applyGroup(path, group)) out.set(id, o);
+    }
+    return out;
+  }
+
+  private async safeApplyOne(intent: Record<string, unknown>): Promise<ApplyOutcome> {
+    try {
+      return await this.applyOne(intent);
+    } catch (e) {
+      // A vault-write failure leaves the row AND the id unapplied; the
+      // cursor floor makes the retry real.
+      console.error('dayGLANCE bridge: intent apply failed', e);
+      return 'failed';
+    }
+  }
+
+  /** Several intents against one existing note, applied in seq order inside
+   *  ONE Vault.process callback: one write, one editor reload. The write
+   *  rule is the single path's (dirty defers the whole group); a missing
+   *  note falls back to the single path so the creation ladder runs. */
+  private async applyGroup(path: string, group: PendingIntent[]): Promise<Map<string, ApplyOutcome>> {
+    const out = new Map<string, ApplyOutcome>();
+    const adapter = this.host.app.vault.adapter;
+    const file = this.host.app.vault.getAbstractFileByPath(path);
+    if (!(await adapter.exists(path)) || !(file instanceof TFile)) {
+      for (const it of group) out.set(it.intentId, await this.safeApplyOne(it.intent));
+      return out;
+    }
+    const current = await adapter.read(path);
+    if (this.markdownViews(path).some((v) => v.getViewData() !== current)) {
+      for (const it of group) out.set(it.intentId, 'deferred');
+      return out;
+    }
+    try {
+      await this.host.app.vault.process(file, (data) => {
+        let text = data;
+        for (const it of group) {
+          const r = applyBridgeIntent(text, it.intent);
+          if ('unsupported' in r) {
+            out.set(it.intentId, 'unsupported');
+            if (!this.warnedUnsupported) {
+              this.warnedUnsupported = true;
+              console.warn(`dayGLANCE bridge: skipping intent type "${String(it.intent.type)}" this plugin build does not know`);
+            }
+            continue;
+          }
+          out.set(it.intentId, 'applied'); // a refusal is an outcome too (the single path's rule)
+          if (!('error' in r) && r.changed && r.text !== null) text = r.text;
+        }
+        return text;
+      });
+    } catch (e) {
+      console.error('dayGLANCE bridge: intent apply failed', e);
+      for (const it of group) out.set(it.intentId, 'failed');
+    }
+    return out;
   }
 
   // Best-effort intent-row cleanup, fire-and-forget by design (the applied-ID
@@ -806,6 +984,10 @@ export class BridgeTransport {
       // (deferred on a dirty buffer, or apply failed). The drain cursor is
       // clamped below it so the row stays listable — the retry mechanism.
       let retryFloor = Infinity;
+      // This drain's intent rows, applied after the listing by the lease
+      // holder only (ONE APPLIER PER VAULT); every other copy keeps them
+      // listable through the cursor floor.
+      const pendingIntents: PendingIntent[] = [];
       let hasMore = true;
       while (hasMore && !this.disposed) {
         const page = await client.list(BRIDGE_VAULT_APP, { accountId: pairing.accountId, since });
@@ -816,6 +998,11 @@ export class BridgeTransport {
         for (const row of rows) {
           const seq = Number(row.seq) || 0;
           if (seq > batchMax) batchMax = seq;
+          if (String(row.entityId ?? '') === BRIDGE_APPLIER_META_ID) {
+            // The lease, live or released (a tombstone means no holder).
+            this.applier = this.parseApplierRow(row);
+            continue;
+          }
           if (row.deleted) {
             // TOMBSTONE — cursor movement only, NEVER a deleteRow. The server
             // re-tombstones on every delete: soft-deleting an already-deleted
@@ -866,67 +1053,70 @@ export class BridgeTransport {
             this.deleteIntentRow(client, entityId, pairing.accountId);
             continue;
           }
-          try {
-            const outcome = await this.applyOne(intent as Record<string, unknown>);
-            if (outcome === 'deferred') {
-              // Dirty editor buffer — nothing was written. Hold the drain
-              // cursor below this row (see retryFloor) so the next drain
-              // re-lists and retries it.
-              retryFloor = Math.min(retryFloor, seq);
-              continue;
-            }
-            applied.add(intentId);
-            appliedDirty = true;
-            if (outcome === 'applied') {
-              this.deleteIntentRow(client, entityId, pairing.accountId);
-            } else {
-              this.unsupported.add(intentId); // persisted with the applied set below
-            }
-          } catch (e) {
-            // A vault-write failure leaves the row AND the id unapplied — and
-            // the cursor floor below makes the retry REAL: before it, the
-            // cursor advanced past the failed row and stranded it until a
-            // plugin reload re-listed from the persisted hwm.
-            retryFloor = Math.min(retryFloor, seq);
-            console.error('dayGLANCE bridge: intent apply failed', e);
-          }
+          pendingIntents.push({ intent: intent as Record<string, unknown>, intentId, entityId, seq });
         }
         since = batchMax;
-        // THE CURSOR FLOOR: `since` keeps advancing so pagination works, but
-        // neither the in-memory nor the persisted cursor may pass an intent
-        // row that is still unconsumed (deferred on a dirty buffer, or
-        // failed) — the row's seq is fixed at write time, so a cursor past
-        // it makes it invisible to every future list. Rows between the floor
-        // and batchMax get re-listed next drain; re-seeing them is free
-        // (applied-set hits and tombstone skips are cursor-movement-only).
-        const cursor = Math.min(since, retryFloor - 1);
-        this.memHwm = Math.max(this.memHwm, cursor);
-        // PERSIST ON INTENT ACTIVITY ONLY. The old rule — persist per
-        // row-bearing page — meant every config row and every observation
-        // (including this plugin's own, listed right back on the next
-        // drain) rewrote data.json, i.e. one vault write per ~30s cadence
-        // that Obsidian Sync then fought ("Download cancelled because file
-        // was changed locally"). Now:
-        //  • applied-set changes persist immediately, same crash window as
-        //    before — an applied intent is never re-applied after a crash
-        //    (and replay would be idempotent anyway);
-        //  • cursor movement over NON-intent rows lives in memHwm only; a
-        //    plugin reload re-lists that backlog once and re-skips it —
-        //    cheap reads, no writes — bounded by the gap persist below so
-        //    the replay can't grow unboundedly on an intent-quiet stream.
-        if (!this.disposed && (appliedDirty || cursor - persistedHwm > HWM_PERSIST_GAP)) {
-          const ids = [...applied];
-          // stateSnapshot carries every other field (config, adopted scope,
-          // linked notes, pending observations, unsupported ids) forward —
-          // this save REPLACES the state object, and a bare object here
-          // once dropped the linked-note map on every intent persist.
-          await this.host.saveBridgeState(this.stateSnapshot({
-            appliedIds: ids.slice(Math.max(0, ids.length - APPLIED_IDS_CAP)),
-            hwm: Math.max(persistedHwm, cursor),
-          }));
-          persistedHwm = Math.max(persistedHwm, cursor);
-          appliedDirty = false;
+      }
+      // ONE APPLIER PER VAULT: the role is decided every drain (the holder
+      // renews, a claim settles), the intents applied only by the holder.
+      const role = this.disposed ? 'follower' : await this.applierRole(client, pairing, Date.now());
+      if (pendingIntents.length > 0 && role !== 'leader') {
+        for (const p of pendingIntents) retryFloor = Math.min(retryFloor, p.seq);
+      } else if (pendingIntents.length > 0) {
+        const outcomes = await this.applyPending(pendingIntents);
+        for (const p of pendingIntents) {
+          const outcome = outcomes.get(p.intentId) ?? 'failed';
+          if (outcome === 'deferred' || outcome === 'failed') {
+            // Dirty editor buffer (nothing written) or a failed write: hold
+            // the drain cursor below this row (see retryFloor) so the next
+            // drain re-lists and retries it.
+            retryFloor = Math.min(retryFloor, p.seq);
+            continue;
+          }
+          applied.add(p.intentId);
+          appliedDirty = true;
+          if (outcome === 'applied') {
+            this.deleteIntentRow(client, p.entityId, pairing.accountId);
+          } else {
+            this.unsupported.add(p.intentId); // persisted with the applied set below
+          }
         }
+      }
+      // THE CURSOR FLOOR: `since` keeps advancing so pagination works, but
+      // neither the in-memory nor the persisted cursor may pass an intent
+      // row that is still unconsumed (deferred on a dirty buffer, failed, or
+      // left for the lease holder) — the row's seq is fixed at write time,
+      // so a cursor past it makes it invisible to every future list. Rows
+      // between the floor and the last page get re-listed next drain;
+      // re-seeing them is free (applied-set hits and tombstone skips are
+      // cursor-movement-only).
+      const cursor = Math.min(since, retryFloor - 1);
+      this.memHwm = Math.max(this.memHwm, cursor);
+      // PERSIST ON INTENT ACTIVITY ONLY. The old rule — persist per
+      // row-bearing page — meant every config row and every observation
+      // (including this plugin's own, listed right back on the next
+      // drain) rewrote data.json, i.e. one vault write per ~30s cadence
+      // that Obsidian Sync then fought ("Download cancelled because file
+      // was changed locally"). Now:
+      //  • applied-set changes persist immediately, same crash window as
+      //    before — an applied intent is never re-applied after a crash
+      //    (and replay would be idempotent anyway);
+      //  • cursor movement over NON-intent rows lives in memHwm only; a
+      //    plugin reload re-lists that backlog once and re-skips it —
+      //    cheap reads, no writes — bounded by the gap persist below so
+      //    the replay can't grow unboundedly on an intent-quiet stream.
+      if (!this.disposed && (appliedDirty || cursor - persistedHwm > HWM_PERSIST_GAP)) {
+        const ids = [...applied];
+        // stateSnapshot carries every other field (config, adopted scope,
+        // linked notes, pending observations, unsupported ids) forward —
+        // this save REPLACES the state object, and a bare object here
+        // once dropped the linked-note map on every intent persist.
+        await this.host.saveBridgeState(this.stateSnapshot({
+          appliedIds: ids.slice(Math.max(0, ids.length - APPLIED_IDS_CAP)),
+          hwm: Math.max(persistedHwm, cursor),
+        }));
+        persistedHwm = Math.max(persistedHwm, cursor);
+        appliedDirty = false;
       }
       this.noteSuccess();
       // PROOF: a successful authenticated drain is what arms (or re-arms)

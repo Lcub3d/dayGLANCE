@@ -99,6 +99,10 @@ export const BRIDGE_VAULT_APP = 'dayglance-bridge';
 export const BRIDGE_PAIRING_META_ID = 'meta:pairing';
 export const BRIDGE_CONFIG_META_ID = 'meta:config';
 export const BRIDGE_INTENT_PREFIX = 'int:';
+// The applier lease (plaintext, like meta:pairing): which plugin copy applies
+// intents for this vault right now. See the plugin's drain (bridge.ts, "ONE
+// APPLIER PER VAULT") and buildout spec 2.8 (2026-09-13).
+export const BRIDGE_APPLIER_META_ID = 'meta:applier';
 export const BRIDGE_OBSERVATION_PREFIX = 'obs:';
 // ACTION rows (companion spec 4.2, the sidebar view): plugin-authored,
 // dayGLANCE-consumed — the reverse of intents. The plugin READS the data

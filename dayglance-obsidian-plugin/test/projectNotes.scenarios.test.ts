@@ -377,6 +377,46 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.plugin.transport.drain();
     expect((s.text(NOTE)!.match(/- \[ \] Chore /g) ?? []).length).toBe(30);
   });
+  it('12. notes typed on a placed project task become a note in the project folder, linked from the line; the record empties; a same-title task gets its own suffixed note; a second pass writes nothing', async () => {
+    await bootLinked();
+    A.add({ title: 'Fix the gutter', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    const first = A.all().find((t) => t.title.startsWith('Fix the gutter'))!;
+    expect(first.id).toMatch(/^obsidian-dg-/);
+    // The notes, typed in dayGLANCE (the panel's save), migrate on the next pass.
+    A.patch(first.id, { notes: 'Call the roofer first' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    const TASK_NOTE = 'Projects/Fix the gutter.md';
+    expect(s.text(TASK_NOTE)).toMatch(/^---\n/);
+    expect(s.text(TASK_NOTE)).toContain('Call the roofer first');
+    expect(s.text(NOTE)).toMatch(/- \[ \] Fix the gutter \[\[Projects\/Fix the gutter\]\] \^dg-[a-z0-9]{8}/);
+    const migrated = A.all().find((t) => t.id === first.id)!;
+    expect(migrated.title).toBe('Fix the gutter [[Projects/Fix the gutter]] #obsidian');
+    expect(migrated.notes).toBe('');
+    // The observation round trip keeps the link in the title and the record empty.
+    await s.settle();
+    await A.sync();
+    const observed = A.all().find((t) => t.id === first.id)!;
+    expect(observed.title).toBe('Fix the gutter [[Projects/Fix the gutter]] #obsidian');
+    expect(observed.notes ?? '').toBe('');
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    // A second task with the same title: its own note, suffixed, never appended to the first.
+    A.add({ title: 'Fix the gutter', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    const second = A.all().find((t) => t.id !== first.id && t.title.startsWith('Fix the gutter'))!;
+    A.patch(second.id, { notes: 'The other gutter' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.text('Projects/Fix the gutter 2.md')).toContain('The other gutter');
+    expect(s.text(TASK_NOTE)).not.toContain('The other gutter');
+    expect(A.all().find((t) => t.id === second.id)!.title).toBe('Fix the gutter [[Projects/Fix the gutter 2]] #obsidian');
+  });
 });
 
 // ── Daily-note templates (companion §4.4 build record, 2026-09-06) ──────────

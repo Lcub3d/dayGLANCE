@@ -117,6 +117,13 @@ key records (#1588; 2.5 records what is not mirrored), and the
 late-observation gate (#1589; 2.7 records the ruling and the options not
 taken, harness scenario 21).
 
+**2026-09-13 and 2026-09-14.** The double-apply incident (2.8): one applier
+per vault in the plugin (#1645, plugin 0.9.1 in #1647) and the
+live-collision refusal in the app (#1646). The notes icon rule, the open
+book only for a note in the vault (#1658), and task notes in a linked
+project becoming a vault note in the project's folder (companion 4.3,
+harness scenario 12).
+
 ### 2.5 Known deferred items
 
 - **Issue #1358.** Surface unportable existing vault filenames in Settings, read-only, phrased as a portability note rather than an error.

@@ -892,6 +892,65 @@ linked project and later unassigned, leaves the vault. Pinned by
 move and the app-only unassignment across both notes' observations, the
 link as scope with a move between two linked notes, the pacing).
 
+#### Task notes in a linked project (owner, 2026-09-14): the notes become a vault note
+
+The notes button on a task card follows one rule (fixed the same day,
+#1658): the open book means the note is in the vault, reached through a
+`[[wikilink]]` in the title; notes typed in dayGLANCE get the regular icon
+whatever the task's origin. Under project routing that left a gap the
+owner named: a task in a linked project lives in the note, but its notes,
+typed in dayGLANCE, stayed in the app record with no vault counterpart.
+The owner could already put a note in the vault by hand, by typing a new
+title in a wikilink and editing the note, which creates the file under the
+default new-notes folder. The ruling makes that automatic for one case and
+one case only: notes added to a task in a linked project.
+
+- **What happens.** The first time a placed project task (its line in the
+  linked note, under a token) has notes in the app and no wikilink in its
+  title, the writeback creates a note in the project note's folder, named
+  after the task, holding the notes; inserts the wikilink into the title
+  before the display tag; and clears the app notes. From then on the task
+  is a wikilinked task like any hand-linked one: the card shows the open
+  book, the panel edits the vault note, the line carries the link.
+- **The name.** Derived from the title once, at creation, through the same
+  portability rules project notes use (`noteNameFromTitle`), wikilinks and
+  hashtags dropped, capped at 80 characters, and never following a later
+  retitle: the link is the identity, and a rename in Obsidian updates the
+  link like any other. Folder-qualified (`[[Projects/Fix the gutter]]`) so
+  the link resolves by path, bare only when the project note sits at the
+  vault root.
+- **Collisions.** The app suffixes against every name it knows: the
+  targets and basenames of every task's wikilinks (Obsidian resolves a
+  bare link by basename anywhere), the projects' and goals' own notes, and
+  the project note itself. For a note the app cannot know about, the
+  applier's `create_or_append` mode appends the notes to the existing note
+  and never replaces it; the append is idempotent, so a second device's
+  copy of the same migration, or a retried enqueue, changes nothing.
+- **Migrate later.** The step runs only where a pass can write to the
+  vault: plugin-authoritative, like placement. Notes typed on a phone
+  without the plugin, or offline, stay in the app with the regular icon
+  and migrate on the next pass that can write, on any device. A task that
+  is not yet home (not placed, or still moving between notes) waits too.
+  Open tasks only.
+- **Where it runs.** Inside the writeback's retitle loop: the migration is
+  a retitle (the link joins the title) plus one `wiki_note_write`, emitted
+  ahead of the line write in stream order, committed on enqueue like every
+  write on that path (title, notes, snapshot). The notes panel adopts the
+  clearing when it holds no unsaved edit, so a panel left open across the
+  migration switches to the vault note instead of re-saving the old text;
+  with an edit in flight the local text still wins and simply stays in the
+  app, since a task that already carries a wikilink never migrates again.
+
+*Considered and rejected:* letting the plugin choose the name and edit the
+line itself, with the app adopting the link from the observation. That
+puts a retitle into the observation path, which §3.6 forbids, and leaves
+the app clearing notes it cannot yet match to a note. Also rejected: the
+default new-notes folder for these notes; the owner wants them beside the
+project's index note. Pinned by `projectNotes.scenarios.test.ts` 12
+(creation in the folder, the link on the line, the emptied record, the
+round trip, the same-title suffix, the quiet second pass), the
+`taskNoteName` unit tests and the applier's append tests.
+
 ---
 
 ### 4.4 Templater, via guarded delegation

@@ -377,14 +377,6 @@ const MobileSettingsPanel = () => {
         </button>
       )}
       <button
-        onClick={() => setMobileSettingsView('todoist')}
-        className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
-      >
-        <CheckSquare size={20} className={textSecondary} />
-        <span className={`font-medium ${textPrimary} flex-1 text-left`}>{t('todoist.title')}</span>
-        <ChevronRight size={18} className={textSecondary} />
-      </button>
-      <button
         onClick={() => setMobileSettingsView('cloudsync')}
         className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
       >
@@ -425,6 +417,14 @@ const MobileSettingsPanel = () => {
           <ChevronRight size={18} className={textSecondary} />
         </button>
       )}
+      <button
+        onClick={() => setMobileSettingsView('todoist')}
+        className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
+      >
+        <CheckSquare size={20} className={textSecondary} />
+        <span className={`font-medium ${textPrimary} flex-1 text-left`}>{t('todoist.title')}</span>
+        <ChevronRight size={18} className={textSecondary} />
+      </button>
       <button
         onClick={() => setMobileSettingsView('intent')}
         className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}

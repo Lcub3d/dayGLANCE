@@ -22,8 +22,14 @@ export default function TodoistSettings({ variant = 'section' }) {
   const scope = mode;
   const busy = status === 'syncing';
   const disabled = busy || sync.multiUserEnabled;
-  const fieldClass = `w-full rounded-lg border p-2 text-sm ${borderClass} ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`;
-  const buttonClass = `rounded-lg border px-3 py-2 text-sm ${borderClass} disabled:opacity-40`;
+  // These mirror the classes the rest of the settings panel uses. They were
+  // originally their own thing (bg-gray-900 in dark, a bare bordered button),
+  // which read as a noticeably darker, unfocusable panel sitting inside the
+  // normal one. bg-gray-700/text-white and bg-white/text-stone-900 are the
+  // app-wide field colours, and the focus ring is what every other field has.
+  const fieldClass = `w-full px-3 py-2 border ${borderClass} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`;
+  const buttonClass = `px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary}`;
+  const primaryButtonClass = 'px-4 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50';
   const toggle = (field, value) => updateSettings({ [field]: settings[field].includes(value)
     ? settings[field].filter(item => item !== value) : [...settings[field], value] });
   const choices = field => {
@@ -73,7 +79,7 @@ export default function TodoistSettings({ variant = 'section' }) {
         <input id={`${id}-token`} type="password" value={input} autoComplete="off" spellCheck={false}
           onChange={event => setInput(event.target.value)} disabled={disabled} className={fieldClass} />
         <p className={`text-xs ${textSecondary}`}>{t('todoist.tokenHelp')}</p>
-        <button type="submit" disabled={disabled || !input.trim()} className={`${buttonClass} inline-flex items-center gap-2`}>
+        <button type="submit" disabled={disabled || !input.trim()} className={`${primaryButtonClass} inline-flex items-center gap-2`}>
           <Link size={14} />{t('todoist.connect')}
         </button>
       </form> : <div className="space-y-2">
@@ -135,7 +141,7 @@ export default function TodoistSettings({ variant = 'section' }) {
         {!selected.length && <p className="text-xs text-amber-700 dark:text-amber-400">{t(`todoist.reasons.${emptyReason}`)}</p>}
       </div>}
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={disabled || !connected} className={`${buttonClass} flex items-center gap-2 font-medium`} onClick={sync.syncNow}>
+        <button type="button" disabled={disabled || !connected} className={`${primaryButtonClass} flex items-center gap-2 font-medium`} onClick={sync.syncNow}>
           <RefreshCw size={14} className={busy ? 'animate-spin' : ''} />{t('todoist.sync')}
         </button>
         <button type="button" disabled={disabled || !connected} className={buttonClass} onClick={sync.preview}>{t('todoist.refresh')}</button>

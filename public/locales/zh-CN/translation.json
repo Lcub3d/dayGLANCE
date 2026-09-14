@@ -653,8 +653,7 @@
     "weatherLocationPlaceholder": "例如 100000 或北京",
     "viewMonth": "月",
     "viewsOnDevice": "此设备上的视图",
-    "viewsOnDeviceHint": "在此关闭的视图仅在此设备上从切换器、快捷键和默认视图选项中移除。其内容不会丢失。",
-    "viewAlwaysOn": "始终开启"
+    "viewsOnDeviceHint": "在此关闭的视图仅在此设备上从切换器、快捷键和默认视图选项中移除。其内容不会丢失。至少保留一个视图开启。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

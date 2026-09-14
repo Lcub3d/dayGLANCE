@@ -25,19 +25,25 @@ const render = async (language, planner, props) => renderToStaticMarkup(
 const toggles = (html) => [...html.matchAll(/data-view-toggle="([a-z]+)" data-on="(true|false)"/g)].map((m) => `${m[1]}:${m[2]}`);
 
 describe('ViewToggles', () => {
-  it('lists the views in switcher order, hidden ones off, the home view always on and disabled', async () => {
-    const html = await render('en', { hiddenViews: ['week', 'sched'] }, { views: DESKTOP_VIEW_MODES, label: (v) => v.toUpperCase() });
-    expect(toggles(html)).toEqual(['multi:true', 'day:true', 'week:false', 'month:true', 'sched:false']);
+  it('lists the views in switcher order with hidden ones off, and any view can be turned off', async () => {
+    const html = await render('en', { hiddenViews: ['multi', 'sched'] }, { views: DESKTOP_VIEW_MODES, label: (v) => v.toUpperCase() });
+    expect(toggles(html)).toEqual(['multi:false', 'day:true', 'week:true', 'month:true', 'sched:false']);
     expect(html).toContain('Views on this device');
-    expect(html).toContain('Always on');
-    expect(html).toMatch(/data-view-toggle="multi"[^>]*>[\s\S]*?<input[^>]*disabled/);
-    expect(html).not.toMatch(/data-view-toggle="day"[^>]*>[\s\S]*?<input[^>]*disabled[\s\S]*?data-view-toggle="week"/);
+    expect(html).not.toContain('disabled');
     expect(html).toContain('MULTI');
   });
 
-  it('treats a missing hidden list as everything on, and is localized', async () => {
-    const html = await render('de', { hiddenViews: undefined }, { views: MOBILE_VIEW_MODES, label: (v) => v });
-    expect(toggles(html)).toEqual(['grid:true', 'list:true', 'month:true', 'sched:true']);
+  it('disables the last switch still on, so at least one view stays on', async () => {
+    const html = await render('en', { hiddenViews: ['grid', 'list', 'sched'] }, { views: MOBILE_VIEW_MODES, label: (v) => v });
+    expect(toggles(html)).toEqual(['grid:false', 'list:false', 'month:true', 'sched:false']);
+    expect(html).toMatch(/data-view-toggle="month"[^>]*>[\s\S]*?<input[^>]*disabled/);
+    expect(html).not.toMatch(/data-view-toggle="grid"[^>]*>[\s\S]*?<input[^>]*disabled[\s\S]*?data-view-toggle="list"/);
+  });
+
+  it('shows a note beside a view when given one, treats a missing hidden list as everything on, and is localized', async () => {
+    const html = await render('de', { hiddenViews: undefined }, { views: ['grid', 'list', 'multi', 'month', 'sched'], label: (v) => v, note: (v) => (v === 'multi' ? 'Querformat' : null) });
+    expect(toggles(html)).toEqual(['grid:true', 'list:true', 'multi:true', 'month:true', 'sched:true']);
+    expect(html).toContain('Querformat');
     expect(html).toContain('Ansichten auf diesem Gerät');
     expect(html).not.toContain('Views on this device');
   });

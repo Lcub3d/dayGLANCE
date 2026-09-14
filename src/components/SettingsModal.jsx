@@ -474,8 +474,13 @@ const SettingsModal = () => {
                               ))}
                             </div>
                           </div>
-                          {/* MONTH and SCHED are one view in both orientations, so one set of switches covers the tablet. */}
-                          <ViewToggles views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
+                          {/* One set of switches for both orientations: GRID and LIST are portrait's,
+                              MULTI is landscape's, MONTH and SCHED are the same view in either. */}
+                          <ViewToggles
+                            views={['grid', 'list', 'multi', 'month', 'sched']}
+                            label={(v) => (v === 'multi' ? desktopViewLabel(v) : mobileViewLabel(v))}
+                            note={(v) => (v === 'grid' || v === 'list' ? t('settings.portraitViewDefault', 'Portrait view') : v === 'multi' ? t('settings.landscapeViewDefault', 'Landscape view') : null)}
+                          />
                           {mobileViewMode === 'list' && (
                             <div className="mt-3 space-y-1.5">
                               <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>

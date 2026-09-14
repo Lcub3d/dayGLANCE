@@ -653,8 +653,7 @@
     "weatherLocationPlaceholder": "ad es. 00100 o Roma",
     "viewMonth": "Mese",
     "viewsOnDevice": "Viste su questo dispositivo",
-    "viewsOnDeviceHint": "Una vista disattivata qui scompare dal selettore, dalle scorciatoie e dalla scelta predefinita solo su questo dispositivo. Non si perde nulla.",
-    "viewAlwaysOn": "Sempre attiva"
+    "viewsOnDeviceHint": "Una vista disattivata qui scompare dal selettore, dalle scorciatoie e dalla scelta predefinita solo su questo dispositivo. Non si perde nulla. Almeno una vista resta attiva."
   },
   "dailyNotes": {
     "quickNotes": "Note rapide",

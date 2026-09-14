@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, ALWAYS_ON_VIEWS, HIDEABLE_VIEWS, VIEW_SHORTCUT_KEYS,
-  resolveStoredView, normalizeHiddenViews, enabledViews, cyclerStates, mobileToggleStates, nextState,
+  DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, ALL_VIEWS, VIEW_SHORTCUT_KEYS,
+  resolveStoredView, normalizeHiddenViews, enabledViews, homeView, cyclerStates, mobileToggleStates, nextState,
 } from './views.js';
 
 describe('view modes', () => {
@@ -42,31 +42,42 @@ describe('view modes', () => {
 });
 
 describe('views turned off per device', () => {
-  it('cleans a persisted hidden list: known and hideable only, in canonical order, never a home view', () => {
-    expect(normalizeHiddenViews(['sched', 'day', 'multi', 'grid', 'agenda', 'day'])).toEqual(['day', 'sched']);
+  it('cleans a persisted hidden list: known views only, in canonical order, never all of them', () => {
+    expect(normalizeHiddenViews(['sched', 'day', 'grid', 'agenda', 'day'])).toEqual(['day', 'grid', 'sched']);
     expect(normalizeHiddenViews(null)).toEqual([]);
     expect(normalizeHiddenViews('day')).toEqual([]);
-    expect(HIDEABLE_VIEWS.some((v) => ALWAYS_ON_VIEWS.includes(v))).toBe(false);
+    expect(normalizeHiddenViews([...ALL_VIEWS])).toEqual([]);
+    expect(normalizeHiddenViews(ALL_VIEWS.filter((v) => v !== 'week'))).toEqual(ALL_VIEWS.filter((v) => v !== 'week'));
   });
 
-  it('drops hidden views from every switcher but never the home view', () => {
+  it('drops hidden views from every switcher, the home view included', () => {
     expect(enabledViews(DESKTOP_VIEW_MODES, ['day', 'week'])).toEqual(['multi', 'month', 'sched']);
-    expect(enabledViews(MOBILE_VIEW_MODES, ['list', 'month', 'sched'])).toEqual(['grid']);
-    // A hidden list that names the home views (a hand-edited value) changes nothing.
-    expect(enabledViews(DESKTOP_VIEW_MODES, ['multi'])).toEqual(DESKTOP_VIEW_MODES);
-    expect(cyclerStates(true, false, ['sched'])).toEqual(['multi', 'day', 'week', 'month']);
+    expect(enabledViews(DESKTOP_VIEW_MODES, ['multi'])).toEqual(['day', 'week', 'month', 'sched']);
+    expect(enabledViews(MOBILE_VIEW_MODES, ['grid', 'list', 'month'])).toEqual(['sched']);
+    expect(cyclerStates(true, false, ['multi', 'sched'])).toEqual(['day', 'week', 'month']);
     expect(cyclerStates(false, false, ['month'])).toEqual(['multi', 'sched']);
     expect(cyclerStates(true, true, ['day'])).toEqual(['multi', 'week', 'sched']);
-    expect(mobileToggleStates(false, ['list'])).toEqual(['grid', 'month', 'sched']);
+    expect(mobileToggleStates(false, ['grid'])).toEqual(['list', 'month', 'sched']);
     expect(mobileToggleStates(true, ['sched'])).toEqual(['grid', 'list']);
   });
 
-  it('cycles within the enabled views, and a home view alone still cycles to itself', () => {
+  it('lands on the first view still on, and on the first view regardless when a width leaves none', () => {
+    expect(homeView(DESKTOP_VIEW_MODES, ['multi'])).toBe('day');
+    expect(homeView(MOBILE_VIEW_MODES, ['grid', 'list'])).toBe('month');
+    // Only DAY on: a narrow window offers none of MULTI, MONTH and SCHED, so MULTI shows anyway.
+    const onlyDay = ALL_VIEWS.filter((v) => v !== 'day');
+    expect(homeView(NARROW_DESKTOP_VIEW_MODES, onlyDay)).toBe('multi');
+    expect(cyclerStates(false, false, onlyDay)).toEqual(['multi']);
+    expect(mobileToggleStates(false, onlyDay)).toEqual(['grid']);
+    // Only MONTH on while the Day Dial is up: the cycler falls back the same way.
+    expect(cyclerStates(true, true, ALL_VIEWS.filter((v) => v !== 'month'))).toEqual(['multi']);
+    expect(resolveStoredView('week', enabledViews(DESKTOP_VIEW_MODES, ['week']), homeView(DESKTOP_VIEW_MODES, ['week']))).toBe('multi');
+    expect(resolveStoredView('multi', enabledViews(DESKTOP_VIEW_MODES, ['multi']), homeView(DESKTOP_VIEW_MODES, ['multi']))).toBe('day');
+  });
+
+  it('cycles within the enabled views, and a single view cycles to itself', () => {
     expect(nextState(cyclerStates(true, false, ['day', 'week']), 'multi')).toBe('month');
-    expect(nextState(cyclerStates(true, false, ['day', 'week', 'month', 'sched']), 'multi')).toBe('multi');
-    // A stored view that is now hidden resolves to the home view.
-    expect(resolveStoredView('week', enabledViews(DESKTOP_VIEW_MODES, ['week']), 'multi')).toBe('multi');
-    expect(resolveStoredView('sched', enabledViews(MOBILE_VIEW_MODES, ['sched']), 'grid')).toBe('grid');
+    expect(nextState(cyclerStates(true, false, ['multi', 'day', 'week', 'month']), 'sched')).toBe('sched');
   });
 
   it('keys the desktop views 1 to 5 in switcher order', () => {

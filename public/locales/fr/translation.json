@@ -653,8 +653,7 @@
     "weatherLocationPlaceholder": "par ex. 75001 ou Paris",
     "viewMonth": "Mois",
     "viewsOnDevice": "Vues sur cet appareil",
-    "viewsOnDeviceHint": "Une vue désactivée ici disparaît du sélecteur, des raccourcis et du choix par défaut sur cet appareil seulement. Rien n'est perdu.",
-    "viewAlwaysOn": "Toujours active"
+    "viewsOnDeviceHint": "Une vue désactivée ici disparaît du sélecteur, des raccourcis et du choix par défaut sur cet appareil seulement. Rien n'est perdu. Au moins une vue reste active."
   },
   "dailyNotes": {
     "quickNotes": "Notes rapides",

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { cyclerStates, nextState } from '../constants/views.js';
+import { cyclerStates, nextState, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
 
 const LABEL_KEYS = { multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', sched: 'sched.viewSchedShort', month: 'sched.viewMonthShort' };
 const ORANGE = '#fe8b00';
@@ -60,13 +60,14 @@ const MonthIcon = () => (
 const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon };
 
 const ViewCycler = () => {
-  const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial } = useDayPlannerCtx();
+  const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();
   const label = t(LABEL_KEYS[effectiveViewMode]);
 
   // Narrow desktop (1-2 columns) offers MULTI, SCHED and MONTH — DAY/WEEK need
-  // the full 3-column breakpoint. MONTH steps out while the Day Dial is up.
-  const states = cyclerStates(canShowViewCycler, !!showDayDial);
+  // the full 3-column breakpoint. MONTH steps out while the Day Dial is up,
+  // and views turned off on this device are out altogether.
+  const states = cyclerStates(canShowViewCycler, !!showDayDial, hiddenViews);
 
   // Display + cycle from effectiveViewMode, not the raw stored mode: a stored
   // DAY/WEEK at narrow width renders as MULTI, and the picker must agree with
@@ -79,7 +80,7 @@ const ViewCycler = () => {
     <button
       onClick={cycle}
       className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-1 hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded"
-      title={t('sched.viewTooltip', 'View: {{view}} ({{keys}} or C to switch)', { view: label, keys: canShowViewCycler ? '1/2/3/4/5' : '1/4/5' })}
+      title={t('sched.viewTooltip', 'View: {{view}} ({{keys}} or C to switch)', { view: label, keys: states.map((v) => VIEW_SHORTCUT_KEYS[v]).join('/') })}
       aria-label={t('sched.viewAria', 'Current view: {{view}}. Click to cycle view.', { view: label })}
     >
       <Icon />

@@ -51,6 +51,8 @@ import { buildLocalizedTaskHeading } from '../utils/dailyNoteTemplate.js';
 import LanguagePicker from './LanguagePicker.jsx';
 import { notBucketed } from '../utils/bucketList.js';
 import CalendarList from './CalendarList.jsx';
+import { MOBILE_VIEW_MODES, enabledViews } from '../constants/views.js';
+import ViewToggles from './ViewToggles.jsx';
 
 const MobileSettingsPanel = () => {
   
@@ -79,6 +81,7 @@ const MobileSettingsPanel = () => {
     toggleSettingsSection,
     mobileViewMode, setMobileViewMode,
     mobileDefaultView, setMobileDefaultView,
+    hiddenViews,
     listEndOfDayTime, setListEndOfDayTime,
     glancePage, setGlancePage,
   } = useDayPlannerCtx();
@@ -227,6 +230,7 @@ const MobileSettingsPanel = () => {
   });
   const [muSyncStatus, setMuSyncStatus] = useState(null);
   const { t } = useTranslation(); // null | 'syncing' | 'ok' | 'error'
+  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched');
 
   // Commit staged routines on unmount (e.g. user switches tabs while in routines view)
   // For the Local Integrations row card only: Electron presence + on/off dot.
@@ -561,12 +565,7 @@ const MobileSettingsPanel = () => {
         </div>
         <p className={`text-xs ${textSecondary}`}>{t('settings.viewDefaultDesc')}</p>
         <div className="flex gap-2">
-          {[
-            { value: 'grid', label: t('settings.viewGrid') },
-            { value: 'list', label: t('settings.viewList') },
-            { value: 'sched', label: t('settings.viewSched') },
-            { value: 'month', label: t('sched.viewMonthShort') },
-          ].map(({ value, label }) => (
+          {enabledViews(MOBILE_VIEW_MODES, hiddenViews).map((value) => ({ value, label: mobileViewLabel(value) })).map(({ value, label }) => (
             <button
               key={value}
               onClick={() => { setMobileDefaultView(value); setMobileViewMode(value); }}
@@ -579,6 +578,9 @@ const MobileSettingsPanel = () => {
               {label}
             </button>
           ))}
+        </div>
+        <div className="pt-2">
+          <ViewToggles views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
         </div>
 
         {/* End of day (LIST view only) */}

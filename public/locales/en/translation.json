@@ -651,7 +651,9 @@
     "trmnlOneDeviceHint": "TRMNL accepts a limited number of updates per hour for the whole plugin, so enable this on one device that is usually running.",
     "usersSyncPathHint": "WebDAV path where the shared user list is stored. Must match across all GLANCE apps.",
     "weatherLocationPlaceholder": "e.g. 90210 or Seattle",
-    "viewMonth": "Month"
+    "viewMonth": "Month",
+    "viewsOnDevice": "Views on this device",
+    "viewsOnDeviceHint": "A view turned off here leaves the switcher, the shortcuts and the default picker on this device only. Nothing it shows is lost. Keep at least one view on."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { isMonthDaySheetOpen } from '../components/month/MonthDaySheet.jsx';
-import { cyclerStates, nextState } from '../constants/views.js';
+import { cyclerStates, nextState, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
 
 const getNextQuarterHour = () => {
   const now = new Date();
@@ -67,7 +67,7 @@ export default function useKeyboardShortcuts({
   // date navigation (arrows)
   changeDate, setSelectedDate,
   // view cycler (1/2/3)
-  setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
+  setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews,
 }) {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -307,35 +307,22 @@ export default function useKeyboardShortcuts({
         }
       }
 
-      // 1/2/3/4/5 to jump directly to multi/day/week/month/sched view. On
-      // narrow desktop (schedOnlyCycler) only MULTI, MONTH and SCHED are
-      // available. (The Day Dial's modal check above already stands every
+      // 1/2/3/4/5 to jump directly to multi/day/week/month/sched view: the
+      // views the cycler offers at this width, minus any turned off on this
+      // device. (The Day Dial's modal check above already stands every
       // shortcut down while it is up, MONTH included.)
-      if (e.key === '1' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
-        e.preventDefault();
-        setViewMode('multi');
-      }
-      if (e.key === '2' && noModifiers && canShowViewCycler) {
-        e.preventDefault();
-        setViewMode('day');
-      }
-      if (e.key === '3' && noModifiers && canShowViewCycler) {
-        e.preventDefault();
-        setViewMode('week');
-      }
-      if (e.key === '4' && noModifiers && (canShowViewCycler || schedOnlyCycler) && !showDayDial) {
-        e.preventDefault();
-        setViewMode('month');
-      }
-      if (e.key === '5' && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
-        e.preventDefault();
-        setViewMode('sched');
+      if (noModifiers && (canShowViewCycler || schedOnlyCycler) && Object.values(VIEW_SHORTCUT_KEYS).includes(e.key)) {
+        const view = Object.keys(VIEW_SHORTCUT_KEYS).find((v) => VIEW_SHORTCUT_KEYS[v] === e.key);
+        if (cyclerStates(canShowViewCycler, showDayDial, hiddenViews).includes(view)) {
+          e.preventDefault();
+          setViewMode(view);
+        }
       }
       // C cycles through whichever views the current width offers — always
       // valid, unlike the direct-jump numbers (2/3 need the 3-column grid).
       if ((e.key === 'c' || e.key === 'C') && noModifiers && (canShowViewCycler || schedOnlyCycler)) {
         e.preventDefault();
-        const states = cyclerStates(canShowViewCycler, showDayDial);
+        const states = cyclerStates(canShowViewCycler, showDayDial, hiddenViews);
         // Cycle from the EFFECTIVE mode, matching the ViewCycler: a stored
         // DAY/WEEK renders as MULTI at narrow widths, so cycling must start
         // from what's on screen, not the raw stored mode.
@@ -373,5 +360,5 @@ export default function useKeyboardShortcuts({
     // action callbacks (changeDate/goToToday/performUndo/performRedo/playUISound),
     // all stable or read through refs — listing them would needlessly re-bind.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthViewActive, selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, effectiveViewMode]);
+  }, [monthViewActive, selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews]);
 }

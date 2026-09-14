@@ -31,6 +31,7 @@ import {
   readRetiredTaskIds,
   recordRetirements as recordRetirementEntries,
   isTombstonedRemint,
+  isLiveCollisionMint,
   RETIRED_TASK_IDS_STORAGE_KEY,
   RETIRED_ID_DUAL_WRITE,
   resolveRetirement,
@@ -1559,6 +1560,16 @@ export default function useObsidianSync({
             logRemintRefusalOnce(task.id, minted, `Obsidian: REFUSING to re-mint ^dg-${minted} for ${task.id} while placing it in ${home} (retire/tombstone oscillation guard).`);
             continue;
           }
+          // LIVE COLLISION (spec 2.8, the app half): a second app task with
+          // the same title entering the same note derives the first task's
+          // token. Two distinct tasks get two tokens: the second derives
+          // from the title AND its own app id, deterministic on every
+          // device, written onto the line with the append so it never
+          // exists untagged. The alternative, the identity move onto the
+          // live task, merged the two silently.
+          if (isLiveCollisionMint(task.id, appIdForBlockId(minted), writebackLiveIds)) {
+            minted = deriveBlockId(home, `${rawTitle}\u0000${task.id}`);
+          }
           remintRefusalLoggedRef.current.delete(`${task.id}>${minted}`);
           blockId = minted;
         }
@@ -1771,6 +1782,17 @@ export default function useObsidianSync({
           `Obsidian: REFUSING to re-mint ^dg-${assignBlockId} for ${task.id} — the retirement record already names this exact successor and that successor is tombstoned (retire/tombstone oscillation guard). Delete or edit the vault line to resolve.`);
         assignBlockId = null;
         // A stamp was this write's only reason → nothing left to write.
+        if (!titleChanged && !stateChanged && !dateChanged) continue;
+      } else if (assignBlockId && isLiveCollisionMint(task.id, appIdForBlockId(assignBlockId), writebackLiveIds)) {
+        // THE LIVE-COLLISION REFUSAL (spec 2.8, the app half; see
+        // isLiveCollisionMint). The derived token already names a live
+        // task: this line is a duplicate of that task's line (the incident:
+        // a merge doubled two lines), or a copy still syncing in. Minting
+        // would retire this row onto the live task and redirect its content
+        // over it. The row keeps its legacy id and the line stays untagged.
+        logRemintRefusalOnce(task.id, assignBlockId,
+          `Obsidian: REFUSING to mint ^dg-${assignBlockId} for ${task.id}: a live task already holds that token (a second line with the same title in the same note). Remove the duplicate line to resolve; a copy syncing from another device resolves on its own.`);
+        assignBlockId = null;
         if (!titleChanged && !stateChanged && !dateChanged) continue;
       } else if (assignBlockId) {
         remintRefusalLoggedRef.current.delete(`${task.id}>${assignBlockId}`);

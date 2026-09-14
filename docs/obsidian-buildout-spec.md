@@ -411,6 +411,28 @@ write per burst leaves the current open-clean path in the case it was
 designed for. Cleanup of the damaged note was by hand: the space restored,
 the two duplicate lines removed.
 
+**The app half: the live-collision refusal (built, PR #1646).** The
+damage exposed a second defect, in the app. `deriveBlockId` is
+deterministic on (note key, title), so the duplicated line's copy derived
+the id of the task that already owned the line. Stamp-on-sight treated
+that as an identity move: it recorded a retirement onto a LIVE successor,
+and the retirement apply then redirected the copy's content over the live
+task by whole-row LWW, the fresh import being newer. That is how notes
+emptied, colors reset and order dropped. `isLiveCollisionMint` names the
+case (the derived id is live as a different task) and both mint sites
+consult it. Stamp-on-sight refuses, logs once, and leaves the row on its
+legacy id with the line untagged: a duplicate line is a human's to
+remove, and a copy still syncing from another device resolves on its own
+once the tokenized line arrives. The placement step, where a second app
+task with the same title enters the same note, derives an alternate token
+from the title and the task's own app id, deterministic on every device,
+so two distinct tasks get two tokens rather than a silent merge. The
+live-successor exemption in the re-mint refusal (2.6) stays: the
+lagging-device bridge that relies on it runs through the scan, never
+through a mint. Pinned by scope scenario 23: a tokenized line doubled, the
+live task's fields intact, the refusal logged, one token in the note, and
+the removal of the duplicate converging back to one task.
+
 ---
 
 ## 3. Decisions of record

@@ -738,6 +738,38 @@ describe('vault task scope, end to end', () => {
     B.shutdown();
   });
 
+  it('23. THE LIVE-COLLISION REFUSAL (2026-09-13): a duplicated tokenized line never overwrites the live task; removing the duplicate resolves it', async () => {
+    await bootWithScopedNote();
+    const id = A.byPath(NOTE)[0].id;
+    A.patch(id, { notes: 'keep me', color: 'bg-orange-500' });
+    // A merge doubled the line, token and all (the incident's shape).
+    const line = s.text(NOTE)!.split('\n').find((l) => l.includes('^dg-'))!;
+    await s.write(NOTE, s.text(NOTE)!.replace(line, `${line}\n${line}`));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await s.settle();
+      await A.sync();
+      await A.writeback();
+      await s.plugin.transport.drain();
+      await s.settle();
+      await A.sync();
+      // The live task keeps its app fields; nothing was redirected over it.
+      expect(A.all().find((t) => t.id === id)).toMatchObject({ notes: 'keep me', color: 'bg-orange-500' });
+      expect(errSpy.mock.calls.some((c) => String(c[0]).includes('REFUSING to mint'))).toBe(true);
+      // The note still carries exactly one token: no second identity was minted.
+      expect((s.text(NOTE)!.match(/\^dg-/g) ?? []).length).toBe(2); // two lines, one token each, same token
+      expect(new Set(s.text(NOTE)!.match(/\^dg-[a-z0-9]{8}/g)).size).toBe(1);
+    } finally { errSpy.mockRestore(); }
+    // The human removes the duplicate; the app converges to one task with its fields intact.
+    await s.write(NOTE, s.text(NOTE)!.replace(`${line}\n${line}`, line));
+    await s.settle();
+    await A.sync();
+    await s.advance(100_000);
+    await A.sync();
+    expect(A.byPath(NOTE).map((t) => t.id)).toEqual([id]);
+    expect(A.all().find((t) => t.id === id)).toMatchObject({ notes: 'keep me', color: 'bg-orange-500' });
+  });
+
   it('9. a plugin reload republishes the pairing meta WITH the scope (harness finding)', async () => {
     await bootWithScopedNote();
     s.plugin.reload();

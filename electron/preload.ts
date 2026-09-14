@@ -42,6 +42,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
   proxyFetch: (method: string, url: string, headers: Record<string, string>, body: string | null) =>
     ipcRenderer.invoke('proxy-fetch', method, url, headers, body),
 
+  // Per-origin permission for private network addresses, so a self-hosted
+  // GLANCEvault on a LAN, a Docker host or Tailscale is reachable from the
+  // desktop app (issue #1642). The renderer cannot grant anything itself:
+  // `request` raises a native dialog the main process owns, and the policy
+  // lives in electron/proxyUrlPolicy.ts.
+  proxyTrust: {
+    /** Is this URL blocked as private, and could a grant unlock it? */
+    inspect: (url: string): Promise<unknown> => ipcRenderer.invoke('proxy-trust:inspect', url),
+    /**
+     * Ask the user, via a native dialog. Call ONLY from an explicit click.
+     * `labels` carries the translated dialog chrome (the main process holds no
+     * locale bundle); the origin and resolved addresses it shows are composed
+     * by main and cannot be altered from here.
+     */
+    request: (url: string, labels?: unknown): Promise<unknown> =>
+      ipcRenderer.invoke('proxy-trust:request', url, labels),
+    list: (): Promise<unknown> => ipcRenderer.invoke('proxy-trust:list'),
+    revoke: (origin: string): Promise<unknown> => ipcRenderer.invoke('proxy-trust:revoke', origin),
+  },
+
   // Sets the macOS dock badge to the number of incomplete tasks today.
   setBadgeCount: (count: number) => ipcRenderer.send('set-badge-count', count),
   // Asks the main process to leave native fullscreen (no-op when not fullscreen).

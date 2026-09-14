@@ -51,6 +51,16 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // but the LOGIC is the vault getSalt probe — see testVaultConnection).
   const [vaultTesting, setVaultTesting] = useState(false);
   const [vaultTestResult, setVaultTestResult] = useState(null);
+  // Desktop-only (issue #1642): origins the user has permitted the Electron IPC
+  // proxy to reach despite resolving to a private network address. The main
+  // process owns the list and the consent dialog; this is a view over it.
+  const proxyTrust = typeof window !== 'undefined' ? window.electronAPI?.proxyTrust : null;
+  const [trustedHosts, setTrustedHosts] = useState([]);
+  const refreshTrustedHosts = React.useCallback(async () => {
+    if (!proxyTrust) return;
+    try { setTrustedHosts(await proxyTrust.list() ?? []); } catch { /* list is decorative */ }
+  }, [proxyTrust]);
+  React.useEffect(() => { refreshTrustedHosts(); }, [refreshTrustedHosts]);
 
   const activeProvider = cloudSyncProviders[formData.provider] || provider;
   const requiredFieldsFilled = activeProvider.configFields.every(f => formData[f.key]) && !!formData.syncFolder;
@@ -254,6 +264,44 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     } finally {
       setVaultTesting(false);
     }
+  };
+
+  // Raise the main process's native permission dialog for the entered vault URL,
+  // then re-run the test so a granted address turns straight into a green
+  // "Connected." The dialog is deliberately reachable only from this click.
+  const handleGrantPrivateAddress = async () => {
+    if (!proxyTrust) return;
+    setVaultTesting(true);
+    try {
+      // The main process owns the dialog but holds no locale bundle, so the
+      // translated chrome travels with the request (applicationMenu.ts pattern).
+      const result = await proxyTrust.request(vaultUrl.trim(), {
+        title: t('sync.form.vaultConsentTitle'),
+        question: t('sync.form.vaultConsentQuestion'),
+        resolvesTo: t('sync.form.vaultConsentResolvesTo'),
+        warning: t('sync.form.vaultConsentWarning'),
+        scope: t('sync.form.vaultConsentScope'),
+        allow: t('sync.form.vaultConsentAllow'),
+        cancel: t('common.cancel'),
+      });
+      await refreshTrustedHosts();
+      if (!result?.ok) {
+        setVaultTestResult({ ok: false, message: result?.reason || t('sync.form.vaultUnreachableSimple') });
+        return;
+      }
+    } catch {
+      setVaultTestResult({ ok: false, message: t('sync.form.vaultUnreachableSimple') });
+      return;
+    } finally {
+      setVaultTesting(false);
+    }
+    await handleVaultTest();
+  };
+
+  const handleRevokePrivateAddress = async (origin) => {
+    if (!proxyTrust) return;
+    try { await proxyTrust.revoke(origin); } catch { /* refresh below shows the truth */ }
+    await refreshTrustedHosts();
   };
 
   // Shared section-header style (uppercase, like the lastGLANCE layout).
@@ -527,6 +575,41 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               <p className={`text-sm ${vaultTestResult.ok ? 'text-green-500' : 'text-red-500'}`}>
                 {vaultTestResult.message}
               </p>
+            )}
+            {/* A private-network vault (LAN, Docker host, Tailscale) is refused by
+                the desktop proxy until this origin is permitted. Offer the prompt
+                right where the refusal is reported. */}
+            {vaultTestResult?.canGrant && proxyTrust && (
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={handleGrantPrivateAddress}
+                  disabled={vaultTesting}
+                  className={secondaryBtn}
+                >
+                  {t('sync.form.vaultAllowPrivateAddress')}
+                </button>
+                <p className={`text-xs ${textSecondary}`}>{t('sync.form.vaultAllowPrivateAddressHint')}</p>
+              </div>
+            )}
+            {proxyTrust && trustedHosts.length > 0 && (
+              <div className="space-y-1">
+                <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
+                <ul className="space-y-1">
+                  {trustedHosts.map((h) => (
+                    <li key={h.origin} className="flex items-center justify-between gap-2">
+                      <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRevokePrivateAddress(h.origin)}
+                        className="text-xs text-red-500 hover:underline shrink-0"
+                      >
+                        {t('sync.form.vaultTrustedHostRemove')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <p className={`text-xs ${textSecondary}`}>{t('sync.form.vaultReloadHint')}</p>
             {!vaultEncryptionReady && (

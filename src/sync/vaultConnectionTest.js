@@ -27,7 +27,21 @@ export const VAULT_TEST_OUTCOMES = {
   NETWORK: 'NETWORK',
   SERVER_ERROR: 'SERVER_ERROR',
   BAD_INPUT: 'BAD_INPUT',
+  // Desktop only: the Electron IPC proxy refused the URL because it resolves to
+  // a private network address and this origin has no grant (issue #1642). The
+  // vault was never contacted, so this must NOT be reported as a vault error
+  // like the generic 400 path did; when `canGrant` is set the form offers the
+  // permission prompt that clears it.
+  BLOCKED_PRIVATE_ADDRESS: 'BLOCKED_PRIVATE_ADDRESS',
 };
+
+// The desktop proxy's private-address inspector, or null off desktop (where no
+// such block exists: the browser build and the mobile native HTTP bridge both
+// reach a private vault directly).
+const defaultInspectProxyTrust = () =>
+  (typeof window !== 'undefined' && window.electronAPI?.proxyTrust?.inspect)
+    ? (url) => window.electronAPI.proxyTrust.inspect(url)
+    : null;
 
 /**
  * Probe the vault with the entered credentials and classify the result.
@@ -50,6 +64,31 @@ export async function testVaultConnection(credentials = {}, opts = {}) {
       code: VAULT_TEST_OUTCOMES.BAD_INPUT,
       message: 'Enter the vault URL, device token, and account ID first.',
     };
+  }
+
+  // Pre-flight on desktop: ask the main process whether its SSRF guard will
+  // refuse this URL before spending a request on it. Without this the guard's
+  // synthetic 400 reached the user as "The vault rejected the request (status
+  // 400)", which points at the wrong machine entirely (the vault never saw it).
+  const inspectProxyTrust = opts.inspectProxyTrust ?? defaultInspectProxyTrust();
+  if (inspectProxyTrust) {
+    try {
+      const verdict = await inspectProxyTrust(vaultUrl);
+      if (verdict?.blocked) {
+        return {
+          ok: false,
+          code: VAULT_TEST_OUTCOMES.BLOCKED_PRIVATE_ADDRESS,
+          message: verdict.canGrant
+            ? `${verdict.origin} is on a private network, so dayGLANCE needs your permission to connect to it.`
+            : `${verdict.origin} is a loopback or link-local address, which dayGLANCE will not connect to.`,
+          canGrant: !!verdict.canGrant,
+          origin: verdict.origin,
+        };
+      }
+    } catch {
+      // The inspector is a diagnostic, never a gate. If it fails, fall through
+      // and let the real probe classify whatever happens.
+    }
   }
 
   let client;

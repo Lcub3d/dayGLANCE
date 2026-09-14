@@ -120,3 +120,58 @@ describe('testVaultConnection', () => {
     expect(res.code).toBe(VAULT_TEST_OUTCOMES.NETWORK);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Issue #1642: on desktop the Electron proxy refuses a private address before
+// the request leaves the machine. That refusal used to surface as the proxy's
+// synthetic 400, which the classifier reported as "The vault rejected the
+// request (status 400)" — pointing the user at a server that never saw the
+// call. The pre-flight inspector gives it its own outcome instead.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('testVaultConnection — private address block (desktop)', () => {
+  it('BLOCKED: a grantable private address reports canGrant and never probes', async () => {
+    const vaultClient = { getSalt: vi.fn(async () => SALT) };
+    const inspectProxyTrust = vi.fn(async () => ({
+      blocked: true, canGrant: true, origin: 'https://vault.example.com', addresses: ['100.101.102.103'],
+    }));
+
+    const res = await testVaultConnection(CREDS, { vaultClient, inspectProxyTrust });
+
+    expect(inspectProxyTrust).toHaveBeenCalledWith('https://vault.example.com');
+    // The credentials must NOT go out to a host the proxy will refuse anyway.
+    expect(vaultClient.getSalt).not.toHaveBeenCalled();
+    expect(res.ok).toBe(false);
+    expect(res.code).toBe(VAULT_TEST_OUTCOMES.BLOCKED_PRIVATE_ADDRESS);
+    expect(res.canGrant).toBe(true);
+    expect(res.origin).toBe('https://vault.example.com');
+    expect(res.message).toContain('private network');
+  });
+
+  it('BLOCKED: a loopback/link-local address reports canGrant false', async () => {
+    const inspectProxyTrust = vi.fn(async () => ({
+      blocked: true, canGrant: false, origin: 'https://127.0.0.1:8443', reason: 'Private/reserved address',
+    }));
+    const res = await testVaultConnection(CREDS, { vaultClient: { getSalt: vi.fn() }, inspectProxyTrust });
+
+    expect(res.code).toBe(VAULT_TEST_OUTCOMES.BLOCKED_PRIVATE_ADDRESS);
+    expect(res.canGrant).toBe(false);
+  });
+
+  it('an unblocked URL falls straight through to the normal probe', async () => {
+    const vaultClient = { getSalt: vi.fn(async () => SALT) };
+    const inspectProxyTrust = vi.fn(async () => ({ blocked: false }));
+    const res = await testVaultConnection(CREDS, { vaultClient, inspectProxyTrust });
+
+    expect(vaultClient.getSalt).toHaveBeenCalledWith('acct-1');
+    expect(res.code).toBe(VAULT_TEST_OUTCOMES.SUCCESS);
+  });
+
+  it('a throwing inspector is a diagnostic, not a gate — the probe still runs', async () => {
+    const vaultClient = { getSalt: vi.fn(async () => SALT) };
+    const inspectProxyTrust = vi.fn(async () => { throw new Error('ipc gone'); });
+    const res = await testVaultConnection(CREDS, { vaultClient, inspectProxyTrust });
+
+    expect(vaultClient.getSalt).toHaveBeenCalled();
+    expect(res.code).toBe(VAULT_TEST_OUTCOMES.SUCCESS);
+  });
+});

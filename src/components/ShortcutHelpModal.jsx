@@ -73,7 +73,10 @@ const ShortcutHelpModal = () => {
                 <span className="text-sm flex-1">{desc}</span>
               </div>
             ))}
-            <h3 className={`text-xs font-semibold uppercase ${textSecondary} mt-3 mb-2`}>{t('shortcuts.sectionEdit')}</h3>
+          </div>
+          <div>
+            {/* EDIT opens the second column so the two columns run to similar lengths. */}
+            <h3 className={`text-xs font-semibold uppercase ${textSecondary} mb-2`}>{t('shortcuts.sectionEdit')}</h3>
             {(() => {
               const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
               return [
@@ -86,9 +89,7 @@ const ShortcutHelpModal = () => {
                 <span className="text-sm flex-1">{desc}</span>
               </div>
             ))}
-          </div>
-          <div>
-            <h3 className={`text-xs font-semibold uppercase ${textSecondary} mb-2`}>{t('shortcuts.sectionCreate')}</h3>
+            <h3 className={`text-xs font-semibold uppercase ${textSecondary} mt-3 mb-2`}>{t('shortcuts.sectionCreate')}</h3>
             {[
               ['N', t('shortcuts.newScheduledTask')],
               ['I', t('shortcuts.newInboxTask')],

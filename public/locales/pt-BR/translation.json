@@ -1343,7 +1343,8 @@
     "routines_other": "{{count}} rotinas",
     "deadlines_one": "{{count}} prazo",
     "deadlines_other": "{{count}} prazos",
-    "statsHint": "este mês, até hoje"
+    "statsHint": "este mês, até hoje",
+    "ofPlanned": "de {{planned}} planejados"
   },
   "dial": {
     "timeLeft": "Faltam {{left}}",

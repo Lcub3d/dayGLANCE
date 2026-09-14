@@ -1343,7 +1343,8 @@
     "routines_other": "{{count}} Routinen",
     "deadlines_one": "{{count}} Frist",
     "deadlines_other": "{{count}} Fristen",
-    "statsHint": "dieser Monat, bis heute"
+    "statsHint": "dieser Monat, bis heute",
+    "ofPlanned": "von {{planned}} geplant"
   },
   "dial": {
     "timeLeft": "{{left}} übrig",

@@ -240,9 +240,11 @@ const CalendarHeader = () => {
       </div>
       {/* At the width DAY needs, MonthView docks the day's agenda beside the
           grid and the day's header sits at the top of that panel; the row
-          here keeps the switcher and the month's numbers. */}
-      {canShowViewCycler ? <div className="flex-1" /> : <DayHeaderCell date={selectedDate} className="flex-1" />}
-      <MonthStats />
+          here keeps the switcher and the month's numbers, which fill it.
+          Narrower, the day's header shares the row with the numbers. */}
+      {canShowViewCycler
+        ? <MonthStats className="flex-1" />
+        : <><DayHeaderCell date={selectedDate} className="flex-none px-6" /><MonthStats className="flex-1" dense /></>}
     </>
   ) : effectiveViewMode === 'multi' ? (
     <>

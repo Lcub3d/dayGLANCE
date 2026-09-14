@@ -123,6 +123,9 @@ async function boot(lists: { projects?: Row[]; goals?: Row[] }): Promise<void> {
   await A.sync();
   for (let i = 0; i < 5 && s.plugin.transport.stampingState() !== 'armed'; i++) { await s.advance(1000); await s.plugin.transport.drain(); }
   if (s.plugin.transport.stampingState() !== 'armed') throw new Error('boot: plugin not armed');
+  // The applier lease claimed on the first drain settles before any scenario
+  // emits (ONE APPLIER PER VAULT, scope scenario 22).
+  await s.advance(2500);
   // The map writer, wired as main.ts wires it, fed by the app's lists in place of the mirror.
   blocks = new NoteBlockWriter({
     app: s.plugin.app,

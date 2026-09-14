@@ -164,6 +164,7 @@ export function pairingOfferFresh(createdAtIso: string, nowMs?: number): boolean
 // ── bridge intent stream ────────────────────────────────────────────────────
 export const BRIDGE_VAULT_APP: string;
 export const BRIDGE_PAIRING_META_ID: string;
+export const BRIDGE_APPLIER_META_ID: string;
 export const BRIDGE_CONFIG_META_ID: string;
 export const BRIDGE_INTENT_PREFIX: string;
 export const BRIDGE_OBSERVATION_PREFIX: string;

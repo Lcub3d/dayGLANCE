@@ -61,11 +61,15 @@ let generationCounter = 0;
 export interface PluginSide {
   app: App;
   transport: BridgeTransport;
-  data: { pairing?: BridgePairing; bridge?: BridgeState; scope?: VaultScope; projectNotes?: Partial<ProjectNoteSettings>; saves: number };
+  data: { pairing?: BridgePairing; bridge?: BridgeState; scope?: VaultScope; projectNotes?: Partial<ProjectNoteSettings>; saves: number; deviceId?: string };
   setScope(scope: Partial<VaultScope>): Promise<void>;
   /** Simulate a plugin reload: a fresh transport over the same data.json. */
   reload(): void;
   shutdown(): void;
+  /** A SECOND copy of this vault's plugin (another desktop): its own device
+   *  id and device-local state, the same files, the same GLANCEvault. It
+   *  wires no vault events (it reports nothing); it drains. */
+  second(deviceId: string): { transport: BridgeTransport; data: PluginSide['data']; shutdown(): void };
 }
 
 export interface Scenario {
@@ -109,11 +113,12 @@ export async function createScenario(): Promise<Scenario> {
   };
 
   const app = new App();
-  const data: PluginSide['data'] = { pairing, bridge: { appliedIds: [], hwm: 0 }, saves: 0 };
+  const data: PluginSide['data'] = { pairing, bridge: { appliedIds: [], hwm: 0 }, saves: 0, deviceId: 'plugin-A' };
   let transport!: BridgeTransport;
   const host = () => ({
     app,
     getPairing: () => data.pairing,
+    getDeviceId: () => data.deviceId ?? 'plugin-A',
     getBridgeState: () => data.bridge ?? { appliedIds: [], hwm: 0 },
     saveBridgeState: async (state: BridgeState) => { data.bridge = state; data.saves++; },
     getScope: () => (data.scope ? normalizeScope(data.scope) : null),
@@ -136,6 +141,20 @@ export async function createScenario(): Promise<Scenario> {
     },
     reload: () => { transport.shutdown(); boot(); },
     shutdown: () => transport.shutdown(),
+    second: (deviceId) => {
+      const other: PluginSide['data'] = { pairing, bridge: { appliedIds: [], hwm: 0 }, saves: 0, deviceId };
+      const t = new BridgeTransport({
+        app,
+        getPairing: () => other.pairing,
+        getDeviceId: () => deviceId,
+        getBridgeState: () => other.bridge ?? { appliedIds: [], hwm: 0 },
+        saveBridgeState: async (state: BridgeState) => { other.bridge = state; other.saves++; },
+        getScope: () => (other.scope ? normalizeScope(other.scope) : null),
+        getProjectNotes: () => normalizeProjectNoteSettings(other.projectNotes ?? null),
+        getViewer: () => pairing.userSyncId ?? null,
+      } as unknown as ConstructorParameters<typeof BridgeTransport>[0]);
+      return { transport: t, data: other, shutdown: () => t.shutdown() };
+    },
   };
 
   return {

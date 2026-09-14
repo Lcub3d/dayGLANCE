@@ -52,7 +52,7 @@ const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched
 const MobileViewToggle = () => {
   const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();
-  const states = mobileToggleStates(!!showDayDial, hiddenViews);
+  const states = mobileToggleStates(!!showDayDial, hiddenViews?.mobile);
   const next = nextState(states, mobileViewMode);
   const label = (mode) => t(LABEL_KEYS[mode] || LABEL_KEYS.grid);
 

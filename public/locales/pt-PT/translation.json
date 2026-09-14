@@ -664,7 +664,9 @@
     "weatherLocationPlaceholder": "por ex., 1000-001 ou Lisboa",
     "viewMonth": "Mês",
     "viewsOnDevice": "Vistas neste dispositivo",
-    "viewsOnDeviceHint": "Uma vista desativada aqui sai do seletor, dos atalhos e da escolha predefinida apenas neste dispositivo. Nada se perde. Pelo menos uma vista fica ativa."
+    "viewsOnDeviceHint": "Uma vista desativada aqui sai do seletor, dos atalhos e da escolha predefinida apenas neste dispositivo. Nada se perde. Pelo menos uma vista fica ativa.",
+    "viewsInPortrait": "Vistas em retrato",
+    "viewsInLandscape": "Vistas em paisagem"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

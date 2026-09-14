@@ -664,7 +664,9 @@
     "weatherLocationPlaceholder": "e.g. 90210 or Seattle",
     "viewMonth": "Month",
     "viewsOnDevice": "Views on this device",
-    "viewsOnDeviceHint": "A view turned off here leaves the switcher, the shortcuts and the default picker on this device only. Nothing it shows is lost. Keep at least one view on."
+    "viewsOnDeviceHint": "A view turned off here leaves the switcher, the shortcuts and the default picker on this device only. Nothing it shows is lost. Keep at least one view on.",
+    "viewsInPortrait": "Views in portrait",
+    "viewsInLandscape": "Views in landscape"
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

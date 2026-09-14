@@ -67,7 +67,7 @@ const ViewCycler = () => {
   // Narrow desktop (1-2 columns) offers MULTI, SCHED and MONTH — DAY/WEEK need
   // the full 3-column breakpoint. MONTH steps out while the Day Dial is up,
   // and views turned off on this device are out altogether.
-  const states = cyclerStates(canShowViewCycler, !!showDayDial, hiddenViews);
+  const states = cyclerStates(canShowViewCycler, !!showDayDial, hiddenViews?.desktop);
 
   // Display + cycle from effectiveViewMode, not the raw stored mode: a stored
   // DAY/WEEK at narrow width renders as MULTI, and the picker must agree with

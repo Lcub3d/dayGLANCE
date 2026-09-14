@@ -16,7 +16,7 @@ const ShortcutHelpModal = () => {
   // The view keys this width offers, minus views turned off on this device:
   // the same list the cycler and the number keys work from.
   const viewRows = canShowViewCycler || schedOnlyCycler
-    ? [...cyclerStates(canShowViewCycler, false, hiddenViews).map((v) => [VIEW_SHORTCUT_KEYS[v], t(VIEW_LABEL_KEYS[v])]), ['C', t('shortcuts.cycleViews')]]
+    ? [...cyclerStates(canShowViewCycler, false, hiddenViews?.desktop).map((v) => [VIEW_SHORTCUT_KEYS[v], t(VIEW_LABEL_KEYS[v])]), ['C', t('shortcuts.cycleViews')]]
     : [];
 
   return (

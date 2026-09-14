@@ -664,7 +664,9 @@
     "weatherLocationPlaceholder": "ex.: 01310-100 ou São Paulo",
     "viewMonth": "Mês",
     "viewsOnDevice": "Visualizações neste dispositivo",
-    "viewsOnDeviceHint": "Uma visualização desativada aqui sai do seletor, dos atalhos e da escolha padrão somente neste dispositivo. Nada se perde. Pelo menos uma visualização fica ativa."
+    "viewsOnDeviceHint": "Uma visualização desativada aqui sai do seletor, dos atalhos e da escolha padrão somente neste dispositivo. Nada se perde. Pelo menos uma visualização fica ativa.",
+    "viewsInPortrait": "Visualizações em retrato",
+    "viewsInLandscape": "Visualizações em paisagem"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

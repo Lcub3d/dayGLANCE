@@ -74,7 +74,8 @@ const SettingsModal = () => {
     listEndOfDayTime, setListEndOfDayTime,
     formatTime,
   } = useDayPlannerCtx();
-  const desktopViewLabel = (v) => v === 'multi' ? t('settings.viewMultiDay') : v === 'day' ? t('settings.viewDay') : v === 'week' ? t('settings.viewWeek') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' });
+  // The pickers name the views the way the cycler does: MULTI, DAY, WEEK, MONTH, SCHED.
+  const desktopViewLabel = (v) => t({ multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', month: 'sched.viewMonthShort', sched: 'sched.viewSchedShort' }[v]);
   const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
   const formatHour = (hour) => new Intl.DateTimeFormat(locale, {
     hour: 'numeric', hour12: !use24HourClock, timeZone: 'UTC',
@@ -317,11 +318,11 @@ const SettingsModal = () => {
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.defaultViewOnLoad')}</label>
                           <div className="flex gap-2">
-                            {enabledViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, hiddenViews).map(v => (
+                            {enabledViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
                               <button
                                 key={v}
                                 onClick={() => setDefaultView(v)}
-                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors capitalize ${
+                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors uppercase ${
                                   defaultView === v
                                     ? 'bg-blue-600 text-white'
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
@@ -332,7 +333,7 @@ const SettingsModal = () => {
                             ))}
                           </div>
                         </div>
-                        <ViewToggles views={canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} />
+                        <ViewToggles scope="desktop" views={canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} />
                         {canShowViewCycler && (<>
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.dayViewMode')}</label>
@@ -441,7 +442,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.portraitViewDefault', 'Portrait view')}</label>
                             <div className="flex gap-2">
-                              {enabledViews(MOBILE_VIEW_MODES, hiddenViews).map(mode => (
+                              {enabledViews(MOBILE_VIEW_MODES, hiddenViews?.mobile).map(mode => (
                                 <button
                                   key={mode}
                                   onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
@@ -459,7 +460,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.landscapeViewDefault', 'Landscape view')}</label>
                             <div className="flex gap-2">
-                              {enabledViews(NARROW_DESKTOP_VIEW_MODES, hiddenViews).map(v => (
+                              {enabledViews(NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
                                 <button
                                   key={v}
                                   onClick={() => { setDefaultView(v); setViewMode(v); }}
@@ -474,13 +475,10 @@ const SettingsModal = () => {
                               ))}
                             </div>
                           </div>
-                          {/* One set of switches for both orientations: GRID and LIST are portrait's,
-                              MULTI is landscape's, MONTH and SCHED are the same view in either. */}
-                          <ViewToggles
-                            views={['grid', 'list', 'multi', 'month', 'sched']}
-                            label={(v) => (v === 'multi' ? desktopViewLabel(v) : mobileViewLabel(v))}
-                            note={(v) => (v === 'grid' || v === 'list' ? t('settings.portraitViewDefault', 'Portrait view') : v === 'multi' ? t('settings.landscapeViewDefault', 'Landscape view') : null)}
-                          />
+                          {/* One group per orientation, as with the defaults above: the phone
+                              toggle's views for portrait, the narrow cycler's for landscape. */}
+                          <ViewToggles scope="mobile" views={MOBILE_VIEW_MODES} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
+                          <ViewToggles scope="desktop" views={NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} heading={t('settings.viewsInLandscape')} hint={false} />
                           {mobileViewMode === 'list' && (
                             <div className="mt-3 space-y-1.5">
                               <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>

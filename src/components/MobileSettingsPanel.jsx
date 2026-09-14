@@ -565,7 +565,7 @@ const MobileSettingsPanel = () => {
         </div>
         <p className={`text-xs ${textSecondary}`}>{t('settings.viewDefaultDesc')}</p>
         <div className="flex gap-2">
-          {enabledViews(MOBILE_VIEW_MODES, hiddenViews).map((value) => ({ value, label: mobileViewLabel(value) })).map(({ value, label }) => (
+          {enabledViews(MOBILE_VIEW_MODES, hiddenViews?.mobile).map((value) => ({ value, label: mobileViewLabel(value) })).map(({ value, label }) => (
             <button
               key={value}
               onClick={() => { setMobileDefaultView(value); setMobileViewMode(value); }}
@@ -580,7 +580,7 @@ const MobileSettingsPanel = () => {
           ))}
         </div>
         <div className="pt-2">
-          <ViewToggles views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
+          <ViewToggles scope="mobile" views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
         </div>
 
         {/* End of day (LIST view only) */}

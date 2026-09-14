@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { routinesForDate } from '@glance-apps/agenda-core';
 import MonthGrid from './MonthGrid.jsx';
 import MonthDaySheet, { MONTH_DAY_SHEET_HISTORY_KEY } from './MonthDaySheet.jsx';
 import SchedView from '../sched/SchedView.jsx';
 import DayHeaderCell from '../DayHeader.jsx';
 import { tagKind } from '../../utils/monthCellLayout.js';
-import { monthGridDates, monthOf } from '../../utils/monthGrid.js';
+import { monthGridDates, monthOf, monthPanelWidth } from '../../utils/monthGrid.js';
+import { MONTH_CELL_LAYOUT } from '../../constants/monthView.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
@@ -64,8 +65,13 @@ export function monthViewRangeFor(year, month, weekStartDay) {
   return { from: cells[0].dateStr, to: cells[cells.length - 1].dateStr };
 }
 
-/** The docked panel's width. Wide enough for SCHED's cards, narrower than the GLANCE sidebar. */
-export const MONTH_PANEL_WIDTH_PX = 380;
+/**
+ * The docked panel's width bounds (utils/monthGrid.js monthPanelWidth): a
+ * third of the row, or more when the grid's capped cells leave width unused,
+ * never under the minimum SCHED's cards need nor over a width where one
+ * day's agenda only gets wider lines.
+ */
+export const MONTH_PANEL_WIDTH = Object.freeze({ min: 380, max: 640, share: 1 / 3 });
 
 /**
  * @param {object} [props]
@@ -82,6 +88,27 @@ export default function MonthView({ width, height } = {}) {
   // are never on screen together.
   const docked = !!canShowViewCycler;
   const panelRef = useRef(null);
+  const rootRef = useRef(null);
+
+  // The panel's width follows the row's width and the grid's height (its
+  // natural width depends on the height alone, so the panel changing the
+  // grid's width feeds nothing back). Fixed sizes stand in for both when
+  // rendered statically.
+  const [rowWidth, setRowWidth] = useState(width || 0);
+  const [gridAreaHeight, setGridAreaHeight] = useState(height || 0);
+  const onGridMeasure = useCallback((area) => setGridAreaHeight(area.height), []);
+  useLayoutEffect(() => {
+    if (!docked || width) return undefined;
+    const el = rootRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const read = () => setRowWidth(el.clientWidth);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [docked, width]);
+  const rows = useMemo(() => monthGridDates(year, month, weekStartDay).rows, [year, month, weekStartDay]);
+  const panelWidth = monthPanelWidth(rowWidth, gridAreaHeight, rows, MONTH_CELL_LAYOUT, MONTH_PANEL_WIDTH);
 
   useEffect(() => {
     if (!setMonthViewRange) return undefined;
@@ -117,7 +144,7 @@ export default function MonthView({ width, height } = {}) {
   }, [openMonthDaySheetRef, selectedStr, docked]);
 
   return (
-    <div data-month-view data-month-view-layout={docked ? 'docked' : 'sheet'} className="flex-1 min-h-0 flex flex-row">
+    <div ref={rootRef} data-month-view data-month-view-layout={docked ? 'docked' : 'sheet'} className="flex-1 min-h-0 flex flex-row">
       <div className="flex-1 min-w-0 min-h-0 flex flex-col">
         <MonthGrid
           year={year}
@@ -128,6 +155,7 @@ export default function MonthView({ width, height } = {}) {
           onSelectDate={showDay}
           width={width}
           height={height}
+          onMeasure={onGridMeasure}
         />
       </div>
       {docked && (
@@ -137,7 +165,7 @@ export default function MonthView({ width, height } = {}) {
           tabIndex={-1}
           aria-label={`${selectedStr}`}
           className={`shrink-0 min-h-0 flex flex-col border-l ${borderClass} ${cardBg} outline-none`}
-          style={{ width: MONTH_PANEL_WIDTH_PX }}
+          style={{ width: panelWidth }}
         >
           {/* The selected day's header lives here when docked: the header
               row above the grid keeps the switcher and the month's numbers. */}

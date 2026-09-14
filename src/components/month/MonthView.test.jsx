@@ -26,7 +26,7 @@ async function i18nFor(language) {
   return i18n;
 }
 
-const render = (i18n, selectedDate, weekStartDay = 0, extra = {}) => {
+const render = (i18n, selectedDate, weekStartDay = 0, extra = {}, size = { width: 1120, height: 700 }) => {
   const planner = {
     selectedDate, weekStartDay,
     goToDate: vi.fn(), setMonthViewRange: vi.fn(),
@@ -48,7 +48,7 @@ const render = (i18n, selectedDate, weekStartDay = 0, extra = {}) => {
       <DayPlannerContext.Provider value={planner}>
         <FeaturesContext.Provider value={features}>
           <SyncContext.Provider value={{}}>
-            <MonthView width={1120} height={700} />
+            <MonthView width={size.width} height={size.height} />
           </SyncContext.Provider>
         </FeaturesContext.Provider>
       </DayPlannerContext.Provider>
@@ -105,5 +105,15 @@ describe('MonthView', () => {
     expect(html).not.toContain('data-month-day-sheet');
     // The panel comes after the grid in the row.
     expect(html.indexOf('data-month-grid=')).toBeLessThan(html.indexOf('data-month-panel='));
+  });
+
+  it('sizes the docked panel from the row: the minimum on a narrow row, more where the grid leaves width unused', async () => {
+    const i18n = await i18nFor('en');
+    // 1120 wide, 700 tall: the grid uses 980 of it, a third is 373, so the minimum holds.
+    expect(render(i18n, new Date(2026, 8, 16, 12), 0, { canShowViewCycler: true })).toMatch(/data-month-panel=[^>]*width:380px/);
+    // 1800 wide, 700 tall: the grid still uses 980, the panel absorbs the rest up to its maximum.
+    expect(render(i18n, new Date(2026, 8, 16, 12), 0, { canShowViewCycler: true }, { width: 1800, height: 700 })).toMatch(/data-month-panel=[^>]*width:640px/);
+    // 1800 wide, 1400 tall: the cells hit their cap, the grid uses 1400, the third (600) wins.
+    expect(render(i18n, new Date(2026, 8, 16, 12), 0, { canShowViewCycler: true }, { width: 1800, height: 1400 })).toMatch(/data-month-panel=[^>]*width:600px/);
   });
 });

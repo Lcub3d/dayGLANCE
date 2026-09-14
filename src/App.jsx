@@ -197,6 +197,7 @@ import { useTranslation } from 'react-i18next';
 import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
+import { nativeFetchWindowFor, windowDates, NATIVE_FETCH_RADIUS_DAYS } from './utils/nativeFetchWindow.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
 
 // Encode a string that may contain non-ASCII characters as Base64.
@@ -3957,9 +3958,14 @@ const DayPlanner = () => {
 
   // ── Native Calendar Events (mobile bridge + macOS Electron) ──────────────
   // Fetches events from the device calendar for a ±2-day window around the
-  // selected date and merges them into `tasks` as _native-flagged entries.
-  // _native tasks are excluded from saveData so they're never persisted.
-  // nativeEventToTask now lives in src/utils/nativeCalendar.js.
+  // selected date (the whole grid while MONTH is up, see
+  // utils/nativeFetchWindow.js) and merges them into `tasks` as _native-
+  // flagged entries. _native tasks are excluded from saveData so they're
+  // never persisted. nativeEventToTask now lives in src/utils/nativeCalendar.js.
+  const nativeFetchWindow = useMemo(() => nativeFetchWindowFor(selectedDate, monthViewRange), [selectedDate, monthViewRange]);
+  // The effect below keys on the span, not the selection: moving inside the
+  // month keeps the span, so it neither refetches nor lets events flicker.
+  const nativeFetchKey = `${nativeFetchWindow.from}..${nativeFetchWindow.to}`;
 
   // Fetch available device calendars once on load
   useEffect(() => {
@@ -3989,12 +3995,7 @@ const DayPlanner = () => {
     // shown rather than waiting for an unrelated dependency to change.
     if (!shouldFetchNativeEvents({ isTrayMode, popupVisible: trayPopupVisible })) return;
 
-    const dates = [];
-    for (let offset = -2; offset <= 2; offset++) {
-      const d = new Date(selectedDate);
-      d.setDate(d.getDate() + offset);
-      dates.push(dateToString(d));
-    }
+    const dates = windowDates(nativeFetchWindow);
 
     // `results` is a per-day array aligned to `dates` — each entry is that day's
     // event list (or null). The mobile and Electron transports both produce this
@@ -4086,7 +4087,28 @@ const DayPlanner = () => {
     if (isNativeApp()) {
       // nativeGetEvents uses synchronous XHR under the hood (iOS bridge). Calling it
       // inside Promise.then() blocks the XHR on WKWebView, so we fetch synchronously.
-      applyEvents(dates.map(d => nativeGetEvents(d)));
+      if (dates.length <= 2 * NATIVE_FETCH_RADIUS_DAYS + 1) {
+        applyEvents(dates.map(d => nativeGetEvents(d)));
+      } else {
+        // MONTH: up to six weeks of synchronous bridge calls. Walk them in
+        // week-sized chunks with a yield between, and apply once at the end
+        // (applyEvents replaces every _native task, so a partial apply would
+        // drop the days not yet fetched). The events already on screen stay
+        // until the whole span is in.
+        let cancelled = false;
+        const acc = new Array(dates.length).fill(null);
+        let i = 0;
+        const CHUNK = 7;
+        const step = () => {
+          if (cancelled) return;
+          const endIdx = Math.min(i + CHUNK, dates.length);
+          for (; i < endIdx; i++) acc[i] = nativeGetEvents(dates[i]);
+          if (i < dates.length) setTimeout(step, 0);
+          else applyEvents(acc);
+        };
+        step();
+        return () => { cancelled = true; };
+      }
     } else {
       // Electron (macOS): async IPC pre-fetch over the same window (Option A), then
       // feed the identical merge path. Guard against out-of-order resolves on rapid
@@ -4100,7 +4122,7 @@ const DayPlanner = () => {
       return () => { cancelled = true; };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, calendarFilter, nativeCalendarKey, trayPopupVisible]);
+  }, [nativeFetchKey, calendarFilter, nativeCalendarKey, trayPopupVisible]);
 
   // Wider native-calendar fetch for the spotlight search. The timeline effect above
   // only loads a ±2-day window, so device-calendar events on other dates never reach

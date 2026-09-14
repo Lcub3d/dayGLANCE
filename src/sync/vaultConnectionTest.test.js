@@ -147,9 +147,9 @@ describe('testVaultConnection — private address block (desktop)', () => {
     expect(res.message).toContain('private network');
   });
 
-  it('BLOCKED: a loopback/link-local address reports canGrant false', async () => {
+  it('BLOCKED: a reserved address that cannot be granted reports canGrant false', async () => {
     const inspectProxyTrust = vi.fn(async () => ({
-      blocked: true, canGrant: false, origin: 'https://127.0.0.1:8443', reason: 'Private/reserved address',
+      blocked: true, canGrant: false, origin: 'https://169.254.169.254', reason: 'Private/reserved address',
     }));
     const res = await testVaultConnection(CREDS, { vaultClient: { getSalt: vi.fn() }, inspectProxyTrust });
 

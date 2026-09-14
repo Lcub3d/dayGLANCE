@@ -10,6 +10,7 @@ import {
   decideProxyUrl,
   canRequestConsent,
   formatHostKey,
+  isLoopbackHost,
   sanitizeConsentLabels,
   DEFAULT_CONSENT_LABELS,
   defaultTrustedHosts,
@@ -17,8 +18,11 @@ import {
 } from './proxyUrlPolicy.js';
 
 // Issue #1642's rule under test: a private address is still refused by default,
-// but a SPECIFIC origin the user consented to gets through, and no grant ever
-// reaches loopback, link-local, or a redirect hop.
+// but a SPECIFIC origin the user consented to gets through. A grant is scoped to
+// one scheme+host+port and never reaches a redirect hop, link-local, or the
+// unspecified address. Loopback IS grantable (a vault in Docker on this machine
+// is a normal setup) but only per port, and it is flagged so the dialog can say
+// something sharper.
 
 const grant = (over: Partial<TrustedHost> = {}): TrustedHost => ({
   host: 'vault.example.com',
@@ -73,14 +77,36 @@ describe('isPrivateOrReservedIp', () => {
   });
 });
 
+describe('isLoopbackHost', () => {
+  it('recognises loopback by NAME, so it does not depend on DNS', () => {
+    expect(isLoopbackHost('localhost')).toBe(true);
+    expect(isLoopbackHost('LOCALHOST')).toBe(true);
+    expect(isLoopbackHost('vault.localhost')).toBe(true); // RFC 6761
+    expect(isLoopbackHost('127.0.0.1')).toBe(true);
+    expect(isLoopbackHost('127.1.2.3')).toBe(true);
+    expect(isLoopbackHost('::1')).toBe(true);
+    expect(isLoopbackHost('::ffff:127.0.0.1')).toBe(true);
+  });
+
+  it('does not over-match a name that merely contains "localhost"', () => {
+    expect(isLoopbackHost('localhost.evil.com')).toBe(false);
+    expect(isLoopbackHost('notlocalhost')).toBe(false);
+    expect(isLoopbackHost('192.168.1.10')).toBe(false);
+  });
+});
+
 describe('isNeverExemptibleIp', () => {
-  it('covers loopback, link-local and 0.0.0.0/8 — no consent unlocks these', () => {
-    expect(isNeverExemptibleIp('127.0.0.1')).toBe(true);
-    expect(isNeverExemptibleIp('127.1.2.3')).toBe(true);
+  it('covers link-local and the unspecified address — no consent unlocks these', () => {
     expect(isNeverExemptibleIp('0.0.0.0')).toBe(true);
+    expect(isNeverExemptibleIp('0.1.2.3')).toBe(true);
     expect(isNeverExemptibleIp('169.254.169.254')).toBe(true);
-    expect(isNeverExemptibleIp('::1')).toBe(true);
+    expect(isNeverExemptibleIp('::')).toBe(true);
     expect(isNeverExemptibleIp('fe80::1')).toBe(true);
+  });
+
+  it('leaves LOOPBACK grantable: a vault in Docker on this machine is a real setup', () => {
+    expect(isNeverExemptibleIp('127.0.0.1')).toBe(false);
+    expect(isNeverExemptibleIp('::1')).toBe(false);
   });
 
   it('leaves the ranges a self-hosted vault legitimately uses grantable', () => {
@@ -92,7 +118,7 @@ describe('isNeverExemptibleIp', () => {
 
   it('is a strict subset of the blocked set, so nothing is exemptible-but-public', () => {
     const samples = [
-      '127.0.0.1', '0.0.0.0', '169.254.169.254', '::1', 'fe80::1',
+      '127.0.0.1', '0.0.0.0', '169.254.169.254', '::1', '::', 'fe80::1',
       '192.168.1.1', '10.0.0.1', '172.16.0.1', '100.64.0.1', 'fd00::1',
     ];
     for (const ip of samples) {
@@ -165,12 +191,20 @@ describe('parseTrustedHosts', () => {
     expect(parseTrustedHosts('{"version":1}')).toEqual(defaultTrustedHosts());
   });
 
-  it('drops a hand-edited entry that would unlock loopback or metadata', () => {
+  it('drops a hand-edited entry that would unlock metadata or the unspecified address', () => {
     const raw = JSON.stringify({
       version: 1,
-      hosts: [grant({ host: '127.0.0.1' }), grant({ host: '169.254.169.254' }), grant()],
+      hosts: [grant({ host: '169.254.169.254' }), grant({ host: '0.0.0.0' }), grant()],
     });
     expect(parseTrustedHosts(raw).hosts.map((h) => h.host)).toEqual(['vault.example.com']);
+  });
+
+  it('keeps a loopback grant, which is a legitimate same-machine vault', () => {
+    const raw = JSON.stringify({
+      version: 1,
+      hosts: [grant({ host: '127.0.0.1', port: '8080' }), grant({ host: 'localhost', port: '8080' })],
+    });
+    expect(parseTrustedHosts(raw).hosts.map((h) => h.host)).toEqual(['127.0.0.1', 'localhost']);
   });
 
   it('drops entries missing the fields a grant is keyed by', () => {
@@ -203,6 +237,7 @@ describe('decideProxyUrl', () => {
       kind: 'needs-consent',
       key: { host: 'vault.example.com', protocol: 'https:', port: '' },
       addresses: ['100.101.102.103'],
+      loopback: false,
     });
   });
 
@@ -242,45 +277,97 @@ describe('decideProxyUrl', () => {
     })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
   });
 
-  it('denies loopback and metadata outright, even with a matching grant on file', () => {
+  it('denies metadata and the unspecified address, even with a grant on file', () => {
     // grantTrustedHost does not filter, so this is the strongest form of the
     // check: the grant is present and is still ignored.
-    const trusted = grantTrustedHost(empty, grant({ host: '169.254.169.254' }));
     expect(decideProxyUrl({
       urlString: 'https://169.254.169.254/latest/meta-data/',
       resolvedAddresses: ['169.254.169.254'],
-      trusted,
-    })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
-
-    expect(decideProxyUrl({
-      urlString: 'https://127.0.0.1:11434/api/tags',
-      resolvedAddresses: ['127.0.0.1'],
-      trusted: grantTrustedHost(empty, grant({ host: '127.0.0.1', port: '11434' })),
-    })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
-  });
-
-  it('denies a hostname that resolves to BOTH public and loopback addresses', () => {
-    // The rebinding shape: one public record to look legitimate, one loopback
-    // record to actually reach. A never-exemptible hit wins over everything.
-    expect(decideProxyUrl({
-      urlString: 'https://mixed.example.com/',
-      resolvedAddresses: ['203.0.113.10', '127.0.0.1'],
-      trusted: grantTrustedHost(empty, grant({ host: 'mixed.example.com' })),
-    })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
-  });
-
-  it('refuses localhost and 0.0.0.0 by name, whatever they resolve to', () => {
-    expect(decideProxyUrl({
-      urlString: 'https://localhost:8443/',
-      resolvedAddresses: ['203.0.113.10'],
-      trusted: empty,
+      trusted: grantTrustedHost(empty, grant({ host: '169.254.169.254' })),
     })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
 
     expect(decideProxyUrl({
       urlString: 'http://0.0.0.0:8443/',
       resolvedAddresses: ['203.0.113.10'],
-      trusted: empty,
+      trusted: grantTrustedHost(empty, grant({ host: '0.0.0.0', port: '8443' })),
     })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
+  });
+
+  // ── loopback: grantable, but only for the exact port consented to ──────────
+
+  it('asks for consent for a same-machine vault, and flags it as loopback', () => {
+    expect(decideProxyUrl({
+      urlString: 'http://localhost:8080/salt/acc',
+      resolvedAddresses: ['127.0.0.1'],
+      trusted: empty,
+    })).toEqual({
+      kind: 'needs-consent',
+      key: { host: 'localhost', protocol: 'http:', port: '8080' },
+      addresses: ['127.0.0.1'],
+      loopback: true,
+    });
+  });
+
+  it('allows a granted loopback origin', () => {
+    const trusted = grantTrustedHost(empty, grant({ host: 'localhost', protocol: 'http:', port: '8080' }));
+    expect(decideProxyUrl({
+      urlString: 'http://localhost:8080/salt/acc',
+      resolvedAddresses: ['127.0.0.1'],
+      trusted,
+    })).toEqual({ kind: 'allow' });
+  });
+
+  it('does NOT let a loopback grant reach another port on this machine', () => {
+    // The property that bounds the blast radius: permitting the vault on :8080
+    // buys nothing for a model runner on :11434 or any other local service.
+    const trusted = grantTrustedHost(empty, grant({ host: 'localhost', protocol: 'http:', port: '8080' }));
+    for (const url of [
+      'http://localhost:11434/api/tags',
+      'http://localhost:7893/mcp',
+      'http://127.0.0.1:8080/salt/acc', // same port, different spelling of the host
+      'https://localhost:8080/salt/acc', // same host and port, different scheme
+    ]) {
+      expect(decideProxyUrl({ urlString: url, resolvedAddresses: ['127.0.0.1'], trusted }).kind)
+        .toBe('needs-consent');
+    }
+  });
+
+  it('treats a loopback host as private even when DNS claims otherwise', () => {
+    // Chromium sends `localhost` to loopback without asking DNS, so a resolver
+    // answering with a public address must not turn into an allow.
+    expect(decideProxyUrl({
+      urlString: 'http://localhost:8080/',
+      resolvedAddresses: ['203.0.113.10'],
+      trusted: empty,
+    })).toMatchObject({ kind: 'needs-consent', loopback: true });
+  });
+
+  it('still refuses a loopback redirect target, grant or no grant', () => {
+    const trusted = grantTrustedHost(empty, grant({ host: 'localhost', protocol: 'http:', port: '8080' }));
+    expect(decideProxyUrl({
+      urlString: 'http://localhost:8080/salt/acc',
+      resolvedAddresses: ['127.0.0.1'],
+      trusted,
+      isRedirect: true,
+    })).toEqual({ kind: 'deny', reason: 'Private/reserved address' });
+  });
+
+  it('flags a mixed public+loopback resolution as needing consent, not as public', () => {
+    // The rebinding shape: one public record to look legitimate, one loopback
+    // record to actually reach. The private hit still governs.
+    expect(decideProxyUrl({
+      urlString: 'https://mixed.example.com/',
+      resolvedAddresses: ['203.0.113.10', '127.0.0.1'],
+      trusted: empty,
+    })).toMatchObject({ kind: 'needs-consent', addresses: ['127.0.0.1'], loopback: true });
+  });
+
+  it('does not flag a LAN address as loopback', () => {
+    expect(decideProxyUrl({
+      urlString: 'https://192.168.1.50:8443/',
+      resolvedAddresses: ['192.168.1.50'],
+      trusted: empty,
+    })).toMatchObject({ kind: 'needs-consent', loopback: false });
   });
 
   it('refuses a non-http(s) scheme', () => {
@@ -299,12 +386,18 @@ describe('canRequestConsent', () => {
       ok: true,
       key: { host: 'vault.example.com', protocol: 'https:', port: '' },
       addresses: ['100.101.102.103'],
+      loopback: false,
     });
   });
 
-  it('refuses to prompt for loopback or metadata', () => {
-    expect(canRequestConsent('https://127.0.0.1:11434/', ['127.0.0.1']).ok).toBe(false);
+  it('approves a prompt for a same-machine vault, flagged as loopback', () => {
+    expect(canRequestConsent('http://localhost:8080/', ['127.0.0.1']))
+      .toMatchObject({ ok: true, loopback: true });
+  });
+
+  it('refuses to prompt for metadata or the unspecified address', () => {
     expect(canRequestConsent('https://169.254.169.254/', ['169.254.169.254']).ok).toBe(false);
+    expect(canRequestConsent('http://0.0.0.0:8443/', ['0.0.0.0']).ok).toBe(false);
   });
 
   it('refuses to prompt for an address that needs no permission', () => {
@@ -338,9 +431,12 @@ describe('sanitizeConsentLabels', () => {
   });
 
   it('takes the translated strings it is given', () => {
-    const labels = sanitizeConsentLabels({ allow: 'Zulassen', cancel: 'Abbrechen' });
+    const labels = sanitizeConsentLabels({
+      allow: 'Zulassen', cancel: 'Abbrechen', warningLoopback: 'Dienst auf diesem Computer.',
+    });
     expect(labels.allow).toBe('Zulassen');
     expect(labels.cancel).toBe('Abbrechen');
+    expect(labels.warningLoopback).toBe('Dienst auf diesem Computer.');
     // Untranslated fields keep the default rather than going blank.
     expect(labels.title).toBe(DEFAULT_CONSENT_LABELS.title);
   });

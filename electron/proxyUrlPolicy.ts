@@ -30,7 +30,10 @@
 //      that 302s into private space is the classic SSRF shape and the one this
 //      guard exists for; a grant for the vault must not also buy a redirect hop
 //      from some unrelated calendar feed. Callers pass `isRedirect: true`.
-//   3. Loopback and link-local are never exemptible at all (see NEVER_EXEMPTIBLE).
+//   3. Link-local and the unspecified address are never exemptible at all
+//      (see isNeverExemptibleIp). Loopback IS grantable, because a vault in
+//      Docker on this same machine is a normal setup, but it is scoped to the
+//      one port consented to and gets its own dialog copy.
 
 /** A granted exemption. Scoped to one origin, never to a range. */
 export interface TrustedHost {
@@ -89,21 +92,39 @@ export function isPrivateOrReservedIp(ip: string): boolean {
   );
 }
 
+// True for a host that always means "this computer", judged by NAME rather than
+// by resolution: `localhost` and any `*.localhost` label (RFC 6761), plus the
+// loopback literals. Chromium routes `localhost` to loopback itself without
+// consulting DNS, so a resolver that answered something else for it would not
+// change where the request actually goes; classifying by name keeps this
+// function's answer and the socket's destination in agreement.
+export function isLoopbackHost(host: string): boolean {
+  const h = host.toLowerCase();
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  if (h === '::1') return true;
+  // An IPv4-mapped loopback literal is still loopback, so it earns the same
+  // dialog copy rather than the "server on your network" wording.
+  if (/^::ffff:127\./i.test(h)) return true;
+  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  return !!ipv4 && Number(ipv4[1]) === 127;
+}
+
 // Addresses NO consent can unlock, because nothing a user would legitimately
 // call a vault lives there and every one of them is a known SSRF prize:
 //
-//   127.0.0.0/8, ::1, ::   loopback. Every other app's unauthenticated local
-//                          API is here (model runners, database admin UIs, and
-//                          dayGLANCE's own MCP listener). Note this preserves
-//                          the pre-#1642 behaviour exactly: `localhost` and
-//                          `0.0.0.0` were already refused by name. A vault on
-//                          the same machine as the desktop app is therefore
-//                          still out of reach; if that turns out to be a real
-//                          deployment, moving loopback out of this function is
-//                          the whole change.
 //   169.254.0.0/16, fe80::/10  link-local, which carries the cloud metadata
 //                          endpoint 169.254.169.254 (instance credentials).
-//   0.0.0.0/8              "this network"; 0.0.0.0 is a common loopback alias.
+//   0.0.0.0/8, ::          the unspecified address. Not a destination anyone
+//                          configures; on some platforms it lands on loopback
+//                          and on others it simply fails.
+//
+// LOOPBACK IS DELIBERATELY NOT HERE. Running GLANCEvault in Docker on the same
+// machine as the desktop app is a normal self-hosting setup, and refusing it
+// would recreate issue #1642 for those users. It is grantable, not free: it
+// still takes an explicit consent naming the exact port, it gets its own,
+// sharper dialog copy, and the three properties in the header keep the blast
+// radius to that one port. A grant for the vault on :8080 is not a grant for a
+// model runner on :11434 or for dayGLANCE's own MCP listener.
 //
 // Everything else private (RFC1918, CGNAT/Tailscale, ULA) is refused by default
 // but CAN be granted per origin.
@@ -113,10 +134,10 @@ export function isNeverExemptibleIp(ip: string): boolean {
   const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4) {
     const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-    return a === 127 || a === 0 || (a === 169 && b === 254);
+    return a === 0 || (a === 169 && b === 254);
   }
 
-  return h === '::1' || h === '::' || /^fe80:/i.test(h);
+  return h === '::' || /^fe80:/i.test(h);
 }
 
 /**
@@ -194,7 +215,7 @@ export function parseTrustedHosts(raw: string): TrustedHostsFile {
 export type ProxyUrlDecision =
   | { kind: 'allow' }
   | { kind: 'deny'; reason: string }
-  | { kind: 'needs-consent'; key: HostKey; addresses: string[] };
+  | { kind: 'needs-consent'; key: HostKey; addresses: string[]; loopback: boolean };
 
 export interface DecideProxyUrlInput {
   urlString: string;
@@ -225,14 +246,16 @@ export function decideProxyUrl(input: DecideProxyUrlInput): ProxyUrlDecision {
   }
   const key = hostKeyOf(urlString)!;
 
-  // Refused by name before any resolution, so a resolver that hands back a
-  // public address for these cannot talk the policy into allowing them.
-  if (key.host === 'localhost' || key.host === '0.0.0.0') {
-    return { kind: 'deny', reason: 'Private/reserved address' };
-  }
+  // Refused by name before any resolution: nobody configures a server at the
+  // unspecified address, and judging it by name means a resolver that answered
+  // something public for it cannot talk the policy into allowing it.
+  if (key.host === '0.0.0.0') return { kind: 'deny', reason: 'Private/reserved address' };
 
+  // A loopback host counts as a private hit on its NAME, so `localhost` does not
+  // depend on DNS agreeing with Chromium about where it points.
+  const loopbackByName = isLoopbackHost(key.host);
   const privateHits = resolvedAddresses.filter((a) => isPrivateOrReservedIp(a));
-  if (privateHits.length === 0) return { kind: 'allow' };
+  if (!loopbackByName && privateHits.length === 0) return { kind: 'allow' };
 
   if (privateHits.some((a) => isNeverExemptibleIp(a))) {
     return { kind: 'deny', reason: 'Private/reserved address' };
@@ -244,7 +267,13 @@ export function decideProxyUrl(input: DecideProxyUrlInput): ProxyUrlDecision {
 
   if (findTrustedHost(trusted, key)) return { kind: 'allow' };
 
-  return { kind: 'needs-consent', key, addresses: privateHits };
+  // Report the name for a loopback host that resolved to nothing usable, so the
+  // dialog and the settings list always have something to show.
+  const addresses = privateHits.length > 0 ? privateHits : [key.host];
+  // Drives the sharper dialog copy: reaching another service on this very
+  // machine is a different ask from reaching a box across the room.
+  const loopback = loopbackByName || addresses.every((a) => isLoopbackHost(a));
+  return { kind: 'needs-consent', key, addresses, loopback };
 }
 
 /**
@@ -255,14 +284,14 @@ export function decideProxyUrl(input: DecideProxyUrlInput): ProxyUrlDecision {
 export function canRequestConsent(
   urlString: string,
   resolvedAddresses: string[],
-): { ok: true; key: HostKey; addresses: string[] } | { ok: false; reason: string } {
+): { ok: true; key: HostKey; addresses: string[]; loopback: boolean } | { ok: false; reason: string } {
   const decision = decideProxyUrl({
     urlString,
     resolvedAddresses,
     trusted: defaultTrustedHosts(),
   });
   if (decision.kind === 'needs-consent') {
-    return { ok: true, key: decision.key, addresses: decision.addresses };
+    return { ok: true, key: decision.key, addresses: decision.addresses, loopback: decision.loopback };
   }
   if (decision.kind === 'allow') {
     // Nothing private about it, so there is nothing to grant.
@@ -283,6 +312,8 @@ export interface ConsentLabels {
   question: string;
   resolvesTo: string;
   warning: string;
+  /** Used instead of `warning` when the address is on this machine. */
+  warningLoopback: string;
   scope: string;
   allow: string;
   cancel: string;
@@ -296,6 +327,10 @@ export const DEFAULT_CONSENT_LABELS: ConsentLabels = {
     'Only allow this if it is your own server, on your own network (a home or office LAN, '
     + 'a Docker host, or a VPN such as Tailscale). dayGLANCE will be able to reach it, and '
     + 'anything it returns becomes part of your data.',
+  warningLoopback:
+    'This address is a service running on this computer. Only allow it if it is your own '
+    + 'GLANCEvault and the port is the one it listens on. Other programs on this machine '
+    + 'are reachable at other ports, and this permission does not cover them.',
   scope: 'This applies to this one address only. You can remove it later in Settings, under Cloud Sync.',
   allow: 'Allow',
   cancel: 'Cancel',

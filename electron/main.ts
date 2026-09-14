@@ -557,7 +557,11 @@ const PROXY_ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 
 // fd7a:115c:a1e0::/48) all landed in it, while Android, iOS and the browser
 // build reached the same server fine. Private addresses are still refused by
 // default; the user can now grant ONE origin at a time, and only from the
-// explicit button that reaches requestProxyTrust() below.
+// explicit button that reaches requestProxyTrust() below. That includes a vault
+// on this very machine (localhost), which is grantable per PORT and carries its
+// own dialog copy: permitting the vault on :8080 grants nothing to whatever else
+// is listening locally. Link-local and the unspecified address stay refused
+// outright. See proxyUrlPolicy.ts for why each line of that is where it is.
 
 const TRUSTED_HOSTS_FILE = 'proxy-trusted-hosts.json';
 function trustedHostsPath(): string {
@@ -657,7 +661,7 @@ async function requestProxyTrust(urlString: string, rawLabels: unknown): Promise
     message: `${labels.question}\n\n${origin}`,
     detail: [
       `${labels.resolvesTo} ${check.addresses.join(', ')}`,
-      labels.warning,
+      check.loopback ? labels.warningLoopback : labels.warning,
       labels.scope,
     ].join('\n\n'),
   };

@@ -80,7 +80,7 @@ export async function testVaultConnection(credentials = {}, opts = {}) {
           code: VAULT_TEST_OUTCOMES.BLOCKED_PRIVATE_ADDRESS,
           message: verdict.canGrant
             ? `${verdict.origin} is on a private network, so dayGLANCE needs your permission to connect to it.`
-            : `${verdict.origin} is a loopback or link-local address, which dayGLANCE will not connect to.`,
+            : `${verdict.origin} is a reserved address that dayGLANCE will not connect to.`,
           canGrant: !!verdict.canGrant,
           origin: verdict.origin,
         };

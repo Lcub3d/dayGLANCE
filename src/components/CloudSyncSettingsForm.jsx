@@ -280,6 +280,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         question: t('sync.form.vaultConsentQuestion'),
         resolvesTo: t('sync.form.vaultConsentResolvesTo'),
         warning: t('sync.form.vaultConsentWarning'),
+        warningLoopback: t('sync.form.vaultConsentWarningLoopback'),
         scope: t('sync.form.vaultConsentScope'),
         allow: t('sync.form.vaultConsentAllow'),
         cancel: t('common.cancel'),

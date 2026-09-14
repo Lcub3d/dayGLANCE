@@ -70,6 +70,7 @@
       "vaultConsentQuestion": "Permitir que o dayGLANCE se ligue a este endereço?",
       "vaultConsentResolvesTo": "Aponta para um endereço de rede privada:",
       "vaultConsentWarning": "Só permita se for o seu próprio servidor, na sua própria rede (uma rede doméstica ou de escritório, um anfitrião Docker ou uma VPN como o Tailscale). O dayGLANCE poderá aceder-lhe, e tudo o que devolver passará a fazer parte dos seus dados.",
+      "vaultConsentWarningLoopback": "Este endereço é um serviço em execução neste computador. Só permita se for o seu próprio GLANCEvault e a porta for aquela em que este escuta. Outros programas nesta máquina ficam acessíveis noutras portas, e esta permissão não os abrange.",
       "vaultConsentScope": "Isto aplica-se apenas a este endereço. Pode removê-lo mais tarde nas Definições, em Sincronização na nuvem.",
       "vaultConsentAllow": "Permitir",
       "vaultSkipped_one": "Não foi possível ler {{count}} item (ignorado). Normalmente significa que foi utilizada uma frase-passe de sincronização diferente noutro dispositivo.",

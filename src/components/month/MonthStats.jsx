@@ -77,7 +77,7 @@ export default function MonthStats({ className = '', dense = false, compact = fa
       <div
         {...dataAttrs}
         title={title}
-        className={`flex-shrink-0 flex flex-col items-end justify-center pr-2 leading-tight tabular-nums ${className}`}
+        className={`flex-shrink-0 flex flex-col items-end justify-center px-2 leading-tight tabular-nums ${className}`}
       >
         <span className="flex items-center gap-1.5">
           <span className={`text-sm font-semibold ${textPrimary}`}>{percentText}</span>

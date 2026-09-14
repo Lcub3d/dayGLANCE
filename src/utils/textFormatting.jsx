@@ -211,12 +211,16 @@ export const hasOnlySubtasks = (task) => {
 };
 
 // Check if task should show the vault-linked note icon (BookOpen).
-// True for Obsidian-imported tasks OR any task whose title contains [[wikilinks]],
-// as long as it isn't purely a link/URL and has no subtasks.
+// The icon describes where the NOTES live, not where the task came from:
+// the open book means the note is in the vault, reached through a
+// [[wikilink]] in the title. Notes typed in dayGLANCE get the regular
+// icon whatever the task's origin. (An import-source shortcut used to
+// live here; it became wrong once project routing stamped importSource
+// onto every task assigned to a linked project, 2026-09.) Origin has its
+// own badge on the timeline card.
 export const isObsidianNoteOnlyTask = (task) => {
   if (task.subtasks && task.subtasks.length > 0) return false;
   if (isLinkOnlyTask(task)) return false;
-  if (task.importSource === 'obsidian') return true;
   return /\[\[[^\]]+\]\]/.test(task.title || '');
 };
 

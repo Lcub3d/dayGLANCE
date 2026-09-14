@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES } from '../constants/views.js';
+import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, enabledViews } from '../constants/views.js';
+import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
@@ -63,6 +64,7 @@ const SettingsModal = () => {
     tasks, setTasks, setUnscheduledTasks,
     dailyNoteTemplate, setDailyNoteTemplate,
     defaultView, setDefaultView,
+    hiddenViews,
     dayViewMode, setDayViewMode,
     weekViewMode, setWeekViewMode,
     canShowViewCycler, schedOnlyCycler, setViewMode,
@@ -72,6 +74,8 @@ const SettingsModal = () => {
     listEndOfDayTime, setListEndOfDayTime,
     formatTime,
   } = useDayPlannerCtx();
+  const desktopViewLabel = (v) => v === 'multi' ? t('settings.viewMultiDay') : v === 'day' ? t('settings.viewDay') : v === 'week' ? t('settings.viewWeek') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' });
+  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
   const formatHour = (hour) => new Intl.DateTimeFormat(locale, {
     hour: 'numeric', hour12: !use24HourClock, timeZone: 'UTC',
   }).format(new Date(Date.UTC(2020, 0, 1, hour)));
@@ -313,7 +317,7 @@ const SettingsModal = () => {
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.defaultViewOnLoad')}</label>
                           <div className="flex gap-2">
-                            {(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES).map(v => (
+                            {enabledViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, hiddenViews).map(v => (
                               <button
                                 key={v}
                                 onClick={() => setDefaultView(v)}
@@ -323,11 +327,12 @@ const SettingsModal = () => {
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}
                               >
-                                {v === 'multi' ? t('settings.viewMultiDay') : v === 'day' ? t('settings.viewDay') : v === 'week' ? t('settings.viewWeek') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                {desktopViewLabel(v)}
                               </button>
                             ))}
                           </div>
                         </div>
+                        <ViewToggles views={canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} />
                         {canShowViewCycler && (<>
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.dayViewMode')}</label>
@@ -436,7 +441,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.portraitViewDefault', 'Portrait view')}</label>
                             <div className="flex gap-2">
-                              {MOBILE_VIEW_MODES.map(mode => (
+                              {enabledViews(MOBILE_VIEW_MODES, hiddenViews).map(mode => (
                                 <button
                                   key={mode}
                                   onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
@@ -446,7 +451,7 @@ const SettingsModal = () => {
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
-                                  {mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                  {mobileViewLabel(mode)}
                                 </button>
                               ))}
                             </div>
@@ -454,7 +459,7 @@ const SettingsModal = () => {
                           <div>
                             <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.landscapeViewDefault', 'Landscape view')}</label>
                             <div className="flex gap-2">
-                              {NARROW_DESKTOP_VIEW_MODES.map(v => (
+                              {enabledViews(NARROW_DESKTOP_VIEW_MODES, hiddenViews).map(v => (
                                 <button
                                   key={v}
                                   onClick={() => { setDefaultView(v); setViewMode(v); }}
@@ -464,11 +469,13 @@ const SettingsModal = () => {
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
-                                  {v === 'multi' ? t('settings.viewMultiDay') : v === 'month' ? t('settings.viewMonth') : t('settings.viewSched', { defaultValue: 'SCHED' })}
+                                  {desktopViewLabel(v)}
                                 </button>
                               ))}
                             </div>
                           </div>
+                          {/* MONTH and SCHED are one view in both orientations, so one set of switches covers the tablet. */}
+                          <ViewToggles views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
                           {mobileViewMode === 'list' && (
                             <div className="mt-3 space-y-1.5">
                               <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>

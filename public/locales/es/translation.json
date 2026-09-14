@@ -651,7 +651,10 @@
     "trmnlOneDeviceHint": "TRMNL acepta un número limitado de actualizaciones por hora para todo el plugin, así que activa esto en un solo dispositivo que suela estar en marcha.",
     "usersSyncPathHint": "Ruta WebDAV donde se guarda la lista compartida de usuarios. Debe coincidir en todas las aplicaciones GLANCE.",
     "weatherLocationPlaceholder": "p. ej., 28001 o Madrid",
-    "viewMonth": "Mes"
+    "viewMonth": "Mes",
+    "viewsOnDevice": "Vistas en este dispositivo",
+    "viewsOnDeviceHint": "Una vista desactivada aquí desaparece del selector, de los atajos y de la vista predeterminada solo en este dispositivo. No se pierde nada.",
+    "viewAlwaysOn": "Siempre activa"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

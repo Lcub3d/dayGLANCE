@@ -48,11 +48,11 @@ const MonthIcon = () => (
 const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon };
 const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort' };
 
-// GRID → LIST → MONTH → SCHED → GRID (MONTH steps out while the Day Dial is up)
+// GRID → LIST → MONTH → SCHED → GRID (MONTH steps out while the Day Dial is up; views turned off on this device are out altogether)
 const MobileViewToggle = () => {
-  const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial } = useDayPlannerCtx();
+  const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();
-  const states = mobileToggleStates(!!showDayDial);
+  const states = mobileToggleStates(!!showDayDial, hiddenViews);
   const next = nextState(states, mobileViewMode);
   const label = (mode) => t(LABEL_KEYS[mode] || LABEL_KEYS.grid);
 

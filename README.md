@@ -217,6 +217,8 @@ On wide screens a view cycler appears in the timeline header, letting you switch
 - **WEEK**: a seven-day grid for planning the week at a glance.
 - **MONTH**: the whole month, each day a small timeline of its blocks. Tap a day to open its agenda in a sheet and swipe or use the arrow keys to move between days. On phones it is the fourth mode of the view toggle.
 
+Views you do not use on a given device can be turned off under Settings, "Views on this device": they leave the switcher, the number keys and the default-view picker there, and nothing else changes. The home view (MULTI on desktop, GRID on phones) is always on.
+
 | MULTI | DAY | WEEK |
 |:-:|:-:|:-:|
 | ![Multi-day view](screenshots/desktop-multi.png) | ![Single-day view](screenshots/desktop-day.png) | ![Week view](screenshots/desktop-week.png) |

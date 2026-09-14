@@ -173,7 +173,7 @@ import DesktopLayout from './components/DesktopLayout.jsx';
 import GlanceSidebar from './components/GlanceSidebar.jsx';
 import TrayApp from './components/TrayApp.jsx';
 import MobileLayout from './components/MobileLayout.jsx';
-import { DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, resolveStoredView } from './constants/views.js';
+import { DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, resolveStoredView, normalizeHiddenViews, enabledViews } from './constants/views.js';
 import ShortcutHelpModal from './components/ShortcutHelpModal.jsx';
 import FocusModeModal from './components/FocusModeModal.jsx';
 import HyperGlanceModeModal from './components/HyperGlanceModeModal.jsx';
@@ -326,13 +326,24 @@ const DayPlanner = () => {
   const [tabletActiveTab, setTabletActiveTab] = useState('glance'); // 'glance' | 'inbox' — for landscape tabbed panel
   // Override visible days: tablet uses orientation (static panel always present), mobile always 1, desktop uses width-based hook
   const visibleDays = isTablet ? (isLandscape ? 2 : 1) : isMobile ? 1 : _visibleDays;
+  // Views turned off on this device (settings, "Views on this device"). Per
+  // device by nature, like the default-view keys beside it: a hidden view
+  // leaves the switchers, the shortcuts and the default pickers here only.
+  // Each form factor's home view (MULTI, GRID) cannot be hidden, so every
+  // list below keeps at least one entry and a fallback.
+  const [hiddenViews, setHiddenViews] = useState(() => {
+    const saved = localStorage.getItem('day-planner-hidden-views');
+    try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return []; }
+  });
   const [viewMode, setViewMode] = useState(() => {
+    const allowed = enabledViews(DESKTOP_VIEW_MODES, hiddenViews);
     // URL ?view= param takes priority over defaultView on cold load.
     const urlView = new URLSearchParams(window.location.search).get('view');
-    if (urlView && DESKTOP_VIEW_MODES.includes(urlView)) return urlView;
+    if (urlView && allowed.includes(urlView)) return urlView;
     const def = localStorage.getItem('day-planner-default-view');
-    // A value this build does not know (written by another build, or by hand) falls back to MULTI.
-    try { return resolveStoredView(def ? JSON.parse(def) : null, DESKTOP_VIEW_MODES, 'multi'); } catch { return 'multi'; }
+    // A value this build does not know (written by another build, or by hand),
+    // or a view since turned off here, falls back to MULTI.
+    try { return resolveStoredView(def ? JSON.parse(def) : null, allowed, 'multi'); } catch { return 'multi'; }
   });
   // Only expose the cycler (and honour viewMode) when the 3-day breakpoint is active
   const canShowViewCycler = !isTablet && !isMobile && _visibleDays === 3;
@@ -349,7 +360,7 @@ const DayPlanner = () => {
     : 'multi';
   const [defaultView, setDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-default-view');
-    try { return resolveStoredView(saved ? JSON.parse(saved) : null, DESKTOP_VIEW_MODES, 'multi'); } catch { return 'multi'; }
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(DESKTOP_VIEW_MODES, hiddenViews), 'multi'); } catch { return 'multi'; }
   });
   const [dayViewMode, setDayViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-day-view-mode');
@@ -364,13 +375,24 @@ const DayPlanner = () => {
   const [mobileDefaultView, _setMobileDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-mobile-default-view')
       || localStorage.getItem('day-planner-mobile-view-mode');
-    try { return resolveStoredView(saved ? JSON.parse(saved) : null, MOBILE_VIEW_MODES, 'grid'); } catch { return 'grid'; }
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(MOBILE_VIEW_MODES, hiddenViews), 'grid'); } catch { return 'grid'; }
   });
   const setMobileDefaultView = (mode) => {
     _setMobileDefaultView(mode);
     localStorage.setItem('day-planner-mobile-default-view', JSON.stringify(mode));
   };
   const [mobileViewMode, setMobileViewMode] = useState(mobileDefaultView);
+  // Turning a view off on this device. Whatever was on it, or defaulted to
+  // it, lands on the form factor's home view; turning it back on restores
+  // nothing, the user picks it again.
+  const setViewHidden = (view, hidden) => {
+    setHiddenViews((prev) => normalizeHiddenViews(hidden ? [...prev, view] : prev.filter((v) => v !== view)));
+    if (!hidden) return;
+    if (viewMode === view) setViewMode('multi');
+    if (defaultView === view) setDefaultView('multi');
+    if (mobileViewMode === view) setMobileViewMode('grid');
+    if (mobileDefaultView === view) setMobileDefaultView('grid');
+  };
   // SCHED agenda rolling-window length (days). Lives here, not in
   // useSchedAgendaState, because expandedRecurringTasks must expand recurring
   // occurrences across the agenda's whole window — the hook's consumers all
@@ -1785,6 +1807,10 @@ const DayPlanner = () => {
   useEffect(() => {
     localStorage.setItem('day-planner-default-view', JSON.stringify(defaultView));
   }, [defaultView]);
+
+  useEffect(() => {
+    localStorage.setItem('day-planner-hidden-views', JSON.stringify(hiddenViews));
+  }, [hiddenViews]);
 
   useEffect(() => {
     localStorage.setItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
@@ -3493,7 +3519,7 @@ const DayPlanner = () => {
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
-    setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
+    setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews,
   });
 
   const changeViewedMonth = (delta) => {
@@ -8401,6 +8427,7 @@ const DayPlanner = () => {
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
     monthViewActive, openMonthDaySheetRef,
     defaultView, setDefaultView,
+    hiddenViews, setViewHidden,
     dayViewMode, setDayViewMode,
     dayViewColumns,
     weekViewMode, setWeekViewMode,

@@ -36,6 +36,7 @@ import {
   RETIRED_ID_DUAL_WRITE,
   resolveRetirement,
 } from '../utils/retiredTaskIds.js';
+import { planTaskNoteMigration } from '../utils/taskNoteName.js';
 import { blockIdWritesEnabled, completionMarkerWritesEnabled } from '../utils/obsidianWritePolicy.js';
 import { titleConflictNoticeText } from '../utils/obsidianTitleConflict.js';
 import { withCreationFrontmatter } from '../utils/obsidianFrontmatter.js';
@@ -1622,10 +1623,32 @@ export default function useObsidianSync({
       }
     }
 
-    for (const task of allObsidian) {
-      if (placed.has(String(task.id))) continue;
-      const p = prev[task.id];
+    // TASK NOTES INTO THE VAULT (companion §4.3, owner 2026-09-14; the
+    // plan is utils/taskNoteName.js). Notes typed in dayGLANCE on a placed
+    // project task become a note of their own in the project's folder,
+    // linked from the line: the migration is a retitle (the wikilink joins
+    // the title) plus one wiki_note_write, riding this loop's retitle path
+    // so the line write, the enqueue discipline and the commit are the
+    // ones every retitle uses. Plugin-authoritative only, like placement.
+    // Notes typed where nothing can write wait here for the pass that can.
+    const migrateNotes = authoritative && blockIdWritesEnabled();
+    const projectsForNotes = migrateNotes ? (projectsRef.current || []) : [];
+    const reservedNotePaths = migrateNotes
+      ? [...projectsForNotes, ...(goalsRef.current || [])].map((e) => e?.obsidianNotePath).filter(Boolean)
+      : [];
+    const tasksForNotes = migrateNotes ? [...tasks, ...unscheduledTasks] : [];
+
+    for (const taskRow of allObsidian) {
+      if (placed.has(String(taskRow.id))) continue;
+      const p = prev[taskRow.id];
       if (!p) continue;
+
+      const migration = migrateNotes && taskRow.projectId
+        ? planTaskNoteMigration(taskRow, projectsForNotes.find((pr) => pr && String(pr.id) === String(taskRow.projectId)), { tasks: tasksForNotes, reservedNotePaths })
+        : null;
+      // The task as this pass writes it: with the link in its title and the
+      // notes on their way to the vault. Committed below, on enqueue.
+      const task = migration ? { ...taskRow, title: migration.title, notes: '' } : taskRow;
 
       const titleChanged = p.title !== undefined && p.title !== task.title;
       const stateChanged = p.completed !== task.completed || p.startTime !== (task.startTime || null) || p.duration !== (task.duration || null);
@@ -1863,6 +1886,17 @@ export default function useObsidianSync({
       // identity move), and applyBridgeIntent mirrors its line rewrite, so
       // a paired vault copy converges byte-for-byte whichever side lands
       // first. Fail-silent; a stream problem never touches the direct write.
+      if (migration) {
+        // The note first, the line's link after it, in stream order. An
+        // existing note under the derived name is appended to, never
+        // replaced (create_or_append); a refused enqueue leaves the notes
+        // in the app for the next pass.
+        const noteQueued = emitBridgeIntent('wiki_note_write', {
+          noteName: migration.target, content: migration.content,
+          newNotesFolder: obsidianConfig?.newNotesFolder ?? 'dayGLANCE', mode: 'create_or_append',
+        });
+        if (!noteQueued) { reportTaskWriteFailure(); continue; }
+      }
       const queued = emitBridgeIntent(rawTitleChanged ? 'task_retitle' : 'task_state', {
         path: target.path,
         date: sourceDate,
@@ -1929,6 +1963,20 @@ export default function useObsidianSync({
         // Deferred via nativeCommits so the entry moves operate on the
         // fresh snapshot, exactly like a confirmed native write.
         if (titleUpdate || assignBlockId) nativeCommits.push(commit);
+        if (migration) {
+          // Commit on enqueue, like every write on this path: the title
+          // takes the link, the notes leave the record, the snapshot moves
+          // with them so the next pass sees no further change.
+          const id = task.id;
+          const fields = { title: migration.title, notes: '', lastModified: new Date().toISOString() };
+          nativeCommits.push(() => {
+            const apply = (t) => (t.id === id ? { ...t, ...fields } : t);
+            setTasks((prevTasks) => prevTasks.map(apply));
+            setUnscheduledTasks((prevTasks) => prevTasks.map(apply));
+            const snap = obsidianPrevTaskStateRef.current;
+            if (snap[id]) snap[id] = { ...snap[id], title: migration.title };
+          });
+        }
         continue;
       }
 

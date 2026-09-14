@@ -190,7 +190,19 @@ const NotesSubtasksPanel = ({
 
   // Keep refs in sync
   useEffect(() => { localNotesRef.current = localNotes; }, [localNotes]);
-  useEffect(() => { taskNotesRef.current = task.notes || ''; }, [task.notes]);
+  useEffect(() => {
+    const next = task.notes || '';
+    // An external change to the record (another device, or the vault
+    // migration that moved these notes into a linked note and cleared
+    // them here) is adopted when this panel holds no unsaved edit: the
+    // local text still equals what the record said before. With an edit
+    // in flight the local text wins, as it always did.
+    if (localNotesRef.current === taskNotesRef.current && localNotesRef.current !== next) {
+      setLocalNotes(next);
+      setIsEditingNotes(!next);
+    }
+    taskNotesRef.current = next;
+  }, [task.notes]);
   useEffect(() => {
     taskIdRef.current = task.id;
     isInboxRef.current = isInbox;

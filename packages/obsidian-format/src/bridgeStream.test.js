@@ -387,3 +387,24 @@ describe('dailyNoteCreationBody / creation through the two daily-note intents', 
     expect(out.text).toContain('## Done\n- 10:00 Did the thing');
   });
 });
+
+describe('wiki_note_write create_or_append (task notes into the vault, companion §4.3)', () => {
+  const intent = { type: 'wiki_note_write', noteName: 'Projects/Fix the gutter', content: 'Call the roofer first', mode: 'create_or_append' };
+  it('creates like any wiki note write when the note is absent', () => {
+    const r = applyBridgeIntent(null, intent);
+    expect(r.changed).toBe(true);
+    expect(r.text).toMatch(/^---\n/);
+    expect(r.text).toContain('Call the roofer first');
+  });
+  it('appends to an existing note instead of replacing it, once', () => {
+    const first = applyBridgeIntent('# Gutter\n\nOwner notes.\n', intent);
+    expect(first).toEqual({ text: '# Gutter\n\nOwner notes.\n\nCall the roofer first\n', changed: true });
+    // A second copy of the same migration (another device, a retried enqueue) changes nothing.
+    expect(applyBridgeIntent(first.text, intent)).toEqual({ text: first.text, changed: false });
+  });
+  it('without the mode an existing note is still replaced (the linked-note editor)', () => {
+    const { mode, ...plain } = intent;
+    void mode;
+    expect(applyBridgeIntent('old', plain)).toEqual({ text: 'Call the roofer first', changed: true });
+  });
+});

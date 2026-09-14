@@ -32,7 +32,9 @@
 //   task_append      {path, date, task:{title,startTime,duration,isAllDay,
 //                     date,blockId}, heading, template}
 //   daily_note_write {path, content}
-//   wiki_note_write  {noteName, content, newNotesFolder}
+//   wiki_note_write  {noteName, content, newNotesFolder, mode?} — mode
+//                     'create_or_append' appends to an existing note
+//                     instead of replacing it (task notes into the vault)
 //   completion_log_append {path, date, heading, template, entry} — entry is
 //                     the FINISHED log line, formatted by the emitter
 //                     (completionLog.js), inserted at section end
@@ -444,6 +446,16 @@ export function applyBridgeIntent(currentText, intent) {
         const reason = validateWikiNoteName(intent.noteName);
         if (reason) return { error: 'unportable_name', reason };
         return { text: withCreationFrontmatter(intent.content), changed: true };
+      }
+      if (intent.mode === 'create_or_append') {
+        // TASK NOTES INTO THE VAULT (companion §4.3, 2026-09-14): the note
+        // is named after a task, so one that already exists under that
+        // name is someone's. The notes are appended, never written over.
+        // Idempotent: text already present (a second device's copy of the
+        // same migration, a retried enqueue) changes nothing.
+        const body = String(intent.content ?? '').trim();
+        if (!body || currentText.includes(body)) return { text: currentText, changed: false };
+        return { text: `${currentText.replace(/\s+$/, '')}\n\n${body}\n`, changed: true };
       }
       const text = intent.content;
       return { text, changed: text !== currentText };

@@ -9,6 +9,7 @@ import {
 import ViewCycler from './ViewCycler.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
 import DayHeaderCell, { DayHeaderActions, DayHabitRings } from './DayHeader.jsx';
+import MonthStats from './month/MonthStats.jsx';
 import DayViewAllDaySection from './DayViewAllDaySection.jsx';
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
@@ -238,6 +239,7 @@ const CalendarHeader = () => {
         {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
       </div>
       <DayHeaderCell date={selectedDate} className="flex-1" />
+      <MonthStats />
     </>
   ) : effectiveViewMode === 'multi' ? (
     <>

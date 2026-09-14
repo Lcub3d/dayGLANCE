@@ -1342,7 +1342,8 @@
     "routines_one": "{{count}} rotina",
     "routines_other": "{{count}} rotinas",
     "deadlines_one": "{{count}} prazo",
-    "deadlines_other": "{{count}} prazos"
+    "deadlines_other": "{{count}} prazos",
+    "statsHint": "este mês, até hoje"
   },
   "dial": {
     "timeLeft": "Faltam {{left}}",

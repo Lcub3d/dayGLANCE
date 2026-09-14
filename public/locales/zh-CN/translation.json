@@ -1342,7 +1342,8 @@
     "routines_one": "{{count}} 个例行事项",
     "routines_other": "{{count}} 个例行事项",
     "deadlines_one": "{{count}} 个截止日期",
-    "deadlines_other": "{{count}} 个截止日期"
+    "deadlines_other": "{{count}} 个截止日期",
+    "statsHint": "本月，截至今天"
   },
   "dial": {
     "timeLeft": "剩余 {{left}}",

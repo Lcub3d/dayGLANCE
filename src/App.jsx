@@ -7403,6 +7403,7 @@ const DayPlanner = () => {
     setTasks,
     moveToRecycleBin,
     clearDeadline,
+    postponeTask,
     goalsProjectsEnabled,
     goToDate,
     scrollToHour,

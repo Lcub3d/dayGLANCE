@@ -48,10 +48,24 @@ describe('useSchedAgendaState dateRange', () => {
     expect(out.overdue).toEqual(['old', 'a']);
   });
 
-  it('scopes to exactly one date, shows it even when empty, and drops the overdue section', () => {
+  it("scopes to exactly one date, shows it even when empty, and drops the overdue section on any day but today", () => {
     expect(probe({ dateRange: { from: '2026-09-16', to: '2026-09-16' } })).toEqual({ scoped: true, days: ['2026-09-16:cb:dl'], overdue: [] });
     expect(probe({ dateRange: { from: '2026-09-30', to: '2026-09-30' } })).toEqual({ scoped: true, days: ['2026-09-30:d:'], overdue: [] });
     expect(probe({ dateRange: { from: '2026-09-20', to: '2026-09-20' } })).toEqual({ scoped: true, days: ['2026-09-20::'], overdue: [] });
+  });
+
+  it("carries the overdue section, exactly as the rolling agenda has it, when the range starts today", () => {
+    const today = dateToStr(new Date());
+    const rolling = probe(undefined);
+    const scopedToday = probe({ dateRange: { from: today, to: today } });
+    expect(scopedToday.scoped).toBe(true);
+    expect(scopedToday.days).toHaveLength(1);
+    expect(scopedToday.days[0].startsWith(today)).toBe(true);
+    expect(scopedToday.overdue).toEqual(rolling.overdue);
+    expect(scopedToday.overdue).toContain('old');
+    // A range that merely contains today but starts earlier is not today's agenda.
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    expect(probe({ dateRange: { from: dateToStr(yesterday), to: today } }).overdue).toEqual([]);
   });
 
   it('covers a multi-day range inclusively, in order', () => {

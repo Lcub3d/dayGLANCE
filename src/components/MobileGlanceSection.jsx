@@ -4,7 +4,7 @@ import {
   Calendar, CalendarClock, CalendarDays, Check, CheckCircle, CheckSquare, ChevronDown,
   ChevronUp, Clock, ExternalLink, FileText, Filter, Flag, Inbox, LayoutGrid,
   Loader, Mic, Minus, Moon, Plus, RefreshCw, Repeat,
-  Search, Settings, Sparkles, Sun, Target, Telescope, Trash2, X, Zap,
+  Search, Settings, SkipForward, Sparkles, Sun, Target, Telescope, Trash2, X, Zap,
 } from 'lucide-react';
 import { nativeGetNextAlarm } from '../native.js';
 import { nextAlarmWithinTomorrow, alarmHHMM } from '../utils/nextAlarm.js';
@@ -72,6 +72,7 @@ const MobileGlanceSection = () => {
     toggleSection,
     toggleComplete,
     clearDeadline,
+    postponeTask,
     pushUndo,
     scheduleTaskAtNextSlot,
     setShowSpotlight,
@@ -670,6 +671,21 @@ const MobileGlanceSection = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Postpone: the timeline card's one-day-forward action, so
+                      yesterday's task lands on today in one click. */}
+                  {task._overdueType === 'scheduled' && task.recurrenceType !== 'daily' && (
+                    <button
+                      onClick={() => {
+                        postponeTask(task.id);
+                      }}
+                      className={`p-1.5 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-stone-100 text-stone-500'} active:scale-95 transition-transform`}
+                      title={t('common.postpone')}
+                      aria-label={t('common.postpone')}
+                      data-overdue-postpone={task.id}
+                    >
+                      <SkipForward size={14} />
+                    </button>
+                  )}
                   {task.isRecurring ? (
                     <>
                       <span

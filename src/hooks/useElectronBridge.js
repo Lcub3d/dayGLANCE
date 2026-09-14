@@ -97,6 +97,7 @@ export default function useElectronBridge({
   setTasks,
   moveToRecycleBin,
   clearDeadline,
+  postponeTask,
   goalsProjectsEnabled,
   goToDate,
   scrollToHour,
@@ -139,6 +140,7 @@ export default function useElectronBridge({
   const setTasksRef = useRef(setTasks);
   const moveToRecycleBinRef = useRef(moveToRecycleBin);
   const clearDeadlineRef = useRef(clearDeadline);
+  const postponeTaskRef = useRef(postponeTask);
   const scrollToHourRef = useRef(scrollToHour);
   const setHabitCountRef = useRef(setHabitCount);
   const snoozeReminderRef = useRef(snoozeReminder);
@@ -172,6 +174,7 @@ export default function useElectronBridge({
   setTasksRef.current = setTasks;
   moveToRecycleBinRef.current = moveToRecycleBin;
   clearDeadlineRef.current = clearDeadline;
+  postponeTaskRef.current = postponeTask;
   scrollToHourRef.current = scrollToHour;
   setHabitCountRef.current = setHabitCount;
   snoozeReminderRef.current = snoozeReminder;
@@ -303,6 +306,7 @@ export default function useElectronBridge({
       setTasksRef,
       moveToRecycleBinRef,
       clearDeadlineRef,
+      postponeTaskRef,
       exitFocusModeRef,
       skipFocusPhaseRef,
       dismissReminderRef,

@@ -18,6 +18,7 @@ export function dispatchBackgroundAction(payload, refs) {
     setTasksRef,
     moveToRecycleBinRef,
     clearDeadlineRef,
+    postponeTaskRef,
     exitFocusModeRef,
     skipFocusPhaseRef,
     dismissReminderRef,
@@ -40,6 +41,8 @@ export function dispatchBackgroundAction(payload, refs) {
     moveToRecycleBinRef.current?.(payload.taskId, !!payload.isInbox);
   } else if (payload.action === 'clear-deadline' && payload.taskId) {
     clearDeadlineRef.current?.(payload.taskId);
+  } else if (payload.action === 'postpone-task' && payload.taskId) {
+    postponeTaskRef?.current?.(payload.taskId);
   } else if (payload.action === 'focus-stop') {
     exitFocusModeRef.current?.(true);
   } else if (payload.action === 'focus-skip') {

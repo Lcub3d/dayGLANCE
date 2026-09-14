@@ -9,7 +9,7 @@ import { dispatchBackgroundAction } from './trayActionDispatch.js';
 const REF_NAMES = [
   'toggleCompleteRef', 'setUnscheduledTasksRef', 'incrementHabitRef',
   'setHabitCountRef', 'toggleRoutineCompletionRef', 'setTasksRef',
-  'moveToRecycleBinRef', 'clearDeadlineRef', 'exitFocusModeRef',
+  'moveToRecycleBinRef', 'clearDeadlineRef', 'postponeTaskRef', 'exitFocusModeRef',
   'skipFocusPhaseRef', 'dismissReminderRef', 'snoozeReminderRef',
 ];
 
@@ -63,6 +63,14 @@ describe('dispatchBackgroundAction routing', () => {
     dispatchBackgroundAction({ action: 'move-to-inbox', taskId: 't1' }, refs);
     expect(refs.setTasksRef.current).toHaveBeenCalledTimes(1);
     expect(refs.setUnscheduledTasksRef.current).not.toHaveBeenCalled();
+  });
+
+  it('postpone-task routes the task id (the GLANCE overdue postpone from the tray)', () => {
+    dispatchBackgroundAction({ action: 'postpone-task', taskId: 't1' }, refs);
+    expect(refs.postponeTaskRef.current).toHaveBeenCalledWith('t1');
+    calledOnly('postponeTaskRef');
+    dispatchBackgroundAction({ action: 'postpone-task' }, refs);
+    expect(refs.postponeTaskRef.current).toHaveBeenCalledTimes(1);
   });
 
   it('move-to-recycle-bin normalizes isInbox to a boolean', () => {

@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 // Day Dial render-budget spike — the scene: a fixed day's worth of dial
 // elements at the REAL dial's element counts, drawn roughly. The geometry is
@@ -35,15 +36,20 @@ struct DialSpikeShape: Shape {
     let geometry: DialSpikeElement.Geometry
 
     func path(in rect: CGRect) -> Path {
-        let s = min(rect.width, rect.height) / 1000
-        let c = CGPoint(x: rect.midX, y: rect.midY)
+        // Everything here is Double on purpose. Mixing a CGFloat scale into
+        // `r * s * cos(a)` makes `cos` ambiguous between the CoreGraphics
+        // (CGFloat) and Darwin (Double) overloads, which is a compile error.
+        let s = Double(min(rect.width, rect.height)) / 1000
+        let cx = Double(rect.midX)
+        let cy = Double(rect.midY)
+        let c = CGPoint(x: cx, y: cy)
         func angle(_ minute: Double) -> Angle { .degrees(minute / 1440 * 360 - 90) }
         func point(_ r: Double, _ minute: Double) -> CGPoint {
-            let a = angle(minute).radians
-            return CGPoint(x: c.x + r * s * cos(a), y: c.y + r * s * sin(a))
+            let a: Double = angle(minute).radians
+            return CGPoint(x: cx + r * s * Foundation.cos(a), y: cy + r * s * Foundation.sin(a))
         }
         func square(_ center: CGPoint, _ r: Double) -> CGRect {
-            CGRect(x: center.x - r * s, y: center.y - r * s, width: 2 * r * s, height: 2 * r * s)
+            CGRect(x: Double(center.x) - r * s, y: Double(center.y) - r * s, width: 2 * r * s, height: 2 * r * s)
         }
 
         var p = Path()
@@ -83,16 +89,18 @@ struct DialSpikeFace: View {
 
     var body: some View {
         GeometryReader { geo in
-            let s = min(geo.size.width, geo.size.height) / 1000
-            let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            // Double throughout, for the same overload reason as DialSpikeShape.
+            let s = Double(min(geo.size.width, geo.size.height)) / 1000
+            let cx = Double(geo.size.width) / 2
+            let cy = Double(geo.size.height) / 2
             ZStack {
                 ForEach(elements) { el in
                     if case let .label(text, atR, minute, size) = el.geometry {
-                        let a = (minute / 1440 * 360 - 90) * .pi / 180
+                        let a: Double = (minute / 1440 * 360 - 90) * Double.pi / 180
                         Text(text)
                             .font(.system(size: size * s, weight: .medium, design: .rounded))
                             .foregroundStyle(el.color.opacity(el.opacity))
-                            .position(x: c.x + atR * s * cos(a), y: c.y + atR * s * sin(a))
+                            .position(x: cx + atR * s * Foundation.cos(a), y: cy + atR * s * Foundation.sin(a))
                     } else {
                         DialSpikeShape(geometry: el.geometry)
                             .fill(el.color.opacity(el.opacity))

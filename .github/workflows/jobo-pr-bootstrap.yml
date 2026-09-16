@@ -1,32 +1,46 @@
-name: Jobo source bootstrap
+name: Jobo source port publication
 on:
   push:
     branches: [build/jobo-pr-bootstrap]
+    paths: ['.jobo-publish-ready']
 permissions:
-  contents: read
+  contents: write
 jobs:
-  export:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: d1ef05275b7c7e30434a81c73b4b38039105ece5
-          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify and decode source-only patch
+        run: |
+          cat .jobo-patch-part-* | base64 --decode > /tmp/jobo.patch.xz
+          echo 'bde630fdbb015c28fad02302bb80a91d04707b27a0489b71e2e486a00e4d017d  /tmp/jobo.patch.xz' | sha256sum --check
+          xz --decompress --stdout /tmp/jobo.patch.xz > /tmp/jobo.patch
+      - name: Create fresh source branch without bootstrap files
+        run: |
+          if git ls-remote --exit-code --heads origin dayGLANCE-jobo; then
+            echo 'Refusing to replace an existing branch'; exit 1
+          fi
+          git checkout -b dayGLANCE-jobo d1ef05275b7c7e30434a81c73b4b38039105ece5
+          git apply --check /tmp/jobo.patch
+          git apply --index /tmp/jobo.patch
+          git diff --cached --check
+          git config user.name 'Lcub3d'
+          git config user.email '46134215+Lcub3d@users.noreply.github.com'
+          git commit -m 'feat: add opt-in Jobo plan/do journal and PDCA source prototype'
+          git push origin HEAD:refs/heads/dayGLANCE-jobo
+          git rev-parse HEAD > /tmp/JOBOPR-COMMIT.txt
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Export pinned source without git metadata or credentials
-        run: |
-          mkdir -p /tmp/jobo-bootstrap
-          git archive --format=tar.gz HEAD > /tmp/jobo-bootstrap/upstream-source.tar.gz
-          git rev-parse HEAD > /tmp/jobo-bootstrap/COMMIT.txt
-      - name: Install pinned dependencies for offline verification
-        run: npm ci --ignore-scripts
-      - name: Package dependency tree only
-        run: tar -czf /tmp/jobo-bootstrap/node_modules-linux.tar.gz node_modules
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jobo-upstream-bootstrap
-          path: /tmp/jobo-bootstrap/
-          retention-days: 3
+          name: jobo-source-port-commit
+          path: /tmp/JOBOPR-COMMIT.txt
+          retention-days: 7

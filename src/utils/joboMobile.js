@@ -9,7 +9,7 @@ export function latestMobileAttempt(state, taskId) {
     record.sourceTaskId === String(taskId) || record.planId === String(taskId));
 }
 
-export function mobileRecordDraft({ record, source, date, initial, now = new Date() }) {
+export function mobileRecordDraft({ record, source, seed, date, initial, now = new Date() }) {
   let interval;
   if (record) interval = record;
   else if (initial != null) interval = { date, startTime: initial, duration: source?.duration || 30 };
@@ -21,10 +21,10 @@ export function mobileRecordDraft({ record, source, date, initial, now = new Dat
     date: interval.date,
     startTime: interval.startTime,
     end: C.clock(end),
-    title: record?.title ?? source?.title ?? '',
-    color: record?.color || source?.color || 'bg-blue-500',
+    title: record?.title ?? source?.title ?? seed?.title ?? '',
+    color: record?.color || source?.color || seed?.color || 'bg-blue-500',
     progress: record?.progress || 'complete',
-    notes: source ? source.notes || '' : record?.notes || '',
+    notes: source ? source.notes || '' : record?.notes || seed?.notes || '',
     tags: (record?.tags || []).join(' '),
   };
 }
@@ -46,15 +46,40 @@ export function mobileRecordPatch(form) {
   };
 }
 
+// Only compare fields this editor can overwrite. Shared source notes may refresh
+// while the sheet is open; that is not a conflicting edit to the actual interval.
+export function mobileRecordRevision(record) {
+  if (!record) return null;
+  return JSON.stringify([
+    record.id, record.planId, record.sourceTaskId, record.title, record.date,
+    record.startTime, record.duration, record.color, record.progress,
+    record.tags || [], record.notesOwn, record.notesOwn ? record.notes : null,
+  ]);
+}
+
+// Recurring expansion and native stores can expose the same id more than once.
+// A chooser must never offer duplicate identities or imported read-only events.
+export function mobileRecordSources(tasks) {
+  const unique = new Map();
+  for (const task of tasks) {
+    if (!task || task.imported || task.isExample || task.id == null) continue;
+    const id = String(task.id);
+    if (!unique.has(id)) unique.set(id, task);
+  }
+  return [...unique.values()];
+}
+
 // Construct the entire edit before the single durable commit. A quota failure
 // must not leave half of a new record behind and create a duplicate on retry.
 export function saveMobileRecord(store, { record, source, form }, id = crypto.randomUUID()) {
   const patch = mobileRecordPatch(form);
   let next = store.get();
-  if (record && !next.records.some(item => item.id === record.id)) throw new Error('missing');
+  const current = record && next.records.find(item => item.id === record.id);
+  if (record && !current) throw new Error('missing');
+  if (record && mobileRecordRevision(current) !== mobileRecordRevision(record)) throw new Error('conflict');
   const recordId = record?.id || id;
   if (!record) next = C.createRecord(next, source || null, patch, recordId);
-  next = C.updateRecord(next, recordId, { ...patch, notesOwn: !source });
+  next = C.updateRecord(next, recordId, { ...patch, notes: source ? String(source.notes || '') : patch.notes, notesOwn: !source });
   store.commit(next);
   return recordId;
 }

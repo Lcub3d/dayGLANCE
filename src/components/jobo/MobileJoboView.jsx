@@ -6,7 +6,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
 import * as C from '../../utils/jobo.js';
-import { MOBILE_HOUR_HEIGHT, latestMobileAttempt, mobileRecordDraft, mobileScrollMinute, mobileTapTime, saveMobileRecord } from '../../utils/joboMobile.js';
+import { MOBILE_HOUR_HEIGHT, latestMobileAttempt, mobileRecordDraft, mobileRecordSources, mobileScrollMinute, mobileTapTime, saveMobileRecord } from '../../utils/joboMobile.js';
 import S from '../../jobo/store.js';
 import './mobileJobo.css';
 
@@ -31,7 +31,7 @@ export default function MobileJoboView() {
   const checklist = dayTasks.filter(task => !task.imported);
   const records = C.recordsOnDate(state, date).filter(record => !features.projectFilter || record.projectId === features.projectFilter);
   const sources = [...ctx.tasks, ...ctx.unscheduledTasks, ...(ctx.expandedRecurringTasks || [])];
-  const nativeSources = sources.filter(task => !task.imported && !task.isExample);
+  const nativeSources = mobileRecordSources(sources);
   const sourceFor = record => sources.find(task => String(task.id) === record?.sourceTaskId);
   const startAt = useRef(0);
   startAt.current = mobileScrollMinute([...plans, ...records], date, ctx.currentTime);
@@ -128,7 +128,7 @@ export default function MobileJoboView() {
     </section>
     <section aria-label={t('joboMobile.view')} className="jobo-mobile-comparison">
       <div className={`jobo-mobile-head border-b ${ctx.borderClass}`}>
-        <div><b>{t('jobo.plan')}</b><button type="button" className="jobo-mobile-icon text-blue-500" aria-label={t('joboMobile.addPlan')} onClick={() => addPlan()}><Plus size={18} /></button></div>
+        <div><b>{t('jobo.plan')}</b><button type="button" className="jobo-mobile-icon text-orange-500" aria-label={t('joboMobile.addPlan')} onClick={() => addPlan()}><Plus size={18} /></button></div>
         <span />
         <div><b>{t('joboMobile.actual')}</b><button type="button" className="jobo-mobile-icon text-blue-500" aria-label={t('jobo.addDo')} onClick={() => setEditor({})}><Plus size={18} /></button></div>
       </div>
@@ -154,17 +154,20 @@ export default function MobileJoboView() {
     </section>
     {(message || storageError) && <div role="alert" className="jobo-mobile-error">{message || storageError}<button type="button" aria-label={t('common.close')} onClick={() => setMessage('')}><X size={16} /></button></div>}
     {editor && <MobileRecordSheet key={`${date}:${editor.record?.id || editor.source?.id || 'new'}`} {...editor} date={date} sources={nativeSources}
-      onClose={() => setEditor(null)} onSaved={() => { setEditor(null); setMessage(''); }} />}
+      onClose={() => setEditor(null)} onSaved={() => { setEditor(null); setMessage(''); }}
+      onRepeat={record => setEditor({ source: sourceFor(record), seed: { title: record.title, color: record.color, notes: record.notes } })} />}
   </section>;
 }
 
-function MobileRecordSheet({ record, source: initialSource, initial, date, sources, onClose, onSaved }) {
+function MobileRecordSheet({ record, source: initialSource, seed, initial, date, sources, onClose, onSaved, onRepeat }) {
   const ctx = useDayPlannerCtx();
   const { t } = useTranslation();
   const [source, setSource] = useState(initialSource);
-  const [form, setForm] = useState(() => mobileRecordDraft({ record, source: initialSource, date, initial, now: ctx.currentTime }));
+  const [form, setForm] = useState(() => mobileRecordDraft({ record, source: initialSource, seed, date, initial, now: ctx.currentTime }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const attemptId = useRef(null);
   const panel = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -201,14 +204,18 @@ function MobileRecordSheet({ record, source: initialSource, initial, date, sourc
   }, []);
   function save(event) {
     event.preventDefault();
-    if (busy || event.nativeEvent?.isComposing) return;
+    if (saving.current || event.nativeEvent?.isComposing) return;
+    saving.current = true;
     setBusy(true);
     try {
-      saveMobileRecord(S, { record, source, form });
+      if (!attemptId.current) attemptId.current = crypto.randomUUID();
+      const currentSource = sources.find(task => String(task.id) === String(source?.id)) || source;
+      saveMobileRecord(S, { record, source: currentSource, form }, attemptId.current);
       onSaved();
     } catch (err) {
       const code = ['title', 'date', 'time', 'progress', 'missing'].includes(err.message) ? err.message : 'storage';
       setError(t(`joboMobile.error${code[0].toUpperCase()}${code.slice(1)}`));
+      saving.current = false;
       setBusy(false);
     }
   }
@@ -216,15 +223,15 @@ function MobileRecordSheet({ record, source: initialSource, initial, date, sourc
     <form ref={panel} onSubmit={save} className={`jobo-mobile-sheet ${ctx.cardBg} ${ctx.textPrimary}`} role="dialog" aria-modal="true" aria-labelledby="jobo-mobile-sheet-title">
       <div className="jobo-mobile-sheet-title"><b id="jobo-mobile-sheet-title">{record ? t('jobo.record') : t('jobo.addDo')}</b><button type="button" className="jobo-mobile-icon" aria-label={t('common.close')} onClick={onClose}><X size={20} /></button></div>
       <label>{t('jobo.title')}<input className={inputClass} value={form.title} onChange={event => field('title', event.target.value)} required maxLength={2000} /></label>
+      <label>{t('jobo.date')}<input className={inputClass} type="date" value={form.date} onChange={event => field('date', event.target.value)} required /></label>
+      <div className="jobo-mobile-times"><label>{t('jobo.start')}<input className={inputClass} type="time" value={form.startTime} onChange={event => field('startTime', event.target.value)} required /></label><label>{t('jobo.end')}<input className={inputClass} type="time" value={form.end} onChange={event => field('end', event.target.value)} required /></label></div>
+      {C.minutes(form.end) < C.minutes(form.startTime) && <small className={ctx.textSecondary}>{t('joboMobile.nextDay')}</small>}
+      <details className="jobo-mobile-details"><summary>{t('joboMobile.details')}</summary>
       {!record && <label>{t('joboMobile.linkTask')}<select className={inputClass} value={source?.id || ''} onChange={event => {
         const task = sources.find(item => String(item.id) === event.target.value);
         setSource(task);
         if (task) setForm(current => ({ ...current, title: task.title, color: task.color || current.color, notes: task.notes || '' }));
       }}><option value="">{t('joboMobile.unlinked')}</option>{sources.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}</select></label>}
-      <label>{t('jobo.date')}<input className={inputClass} type="date" value={form.date} onChange={event => field('date', event.target.value)} required /></label>
-      <div className="jobo-mobile-times"><label>{t('jobo.start')}<input className={inputClass} type="time" value={form.startTime} onChange={event => field('startTime', event.target.value)} required /></label><label>{t('jobo.end')}<input className={inputClass} type="time" value={form.end} onChange={event => field('end', event.target.value)} required /></label></div>
-      {C.minutes(form.end) < C.minutes(form.startTime) && <small className={ctx.textSecondary}>{t('joboMobile.nextDay')}</small>}
-      <details className="jobo-mobile-details"><summary>{t('joboMobile.details')}</summary>
         <label>{t('jobo.progress')}<select className={inputClass} value={form.progress} onChange={event => field('progress', event.target.value)}>{C.PROGRESS.map(value => <option key={value} value={value}>{t(`jobo.${value}`)}</option>)}</select></label>
         <label>{t('jobo.custom')}<input className={inputClass} value={form.tags} onChange={event => field('tags', event.target.value)} /></label>
         {!source && <label>{t('jobo.notes')}<textarea className={inputClass} rows={3} value={form.notes} onChange={event => field('notes', event.target.value)} /></label>}
@@ -232,6 +239,7 @@ function MobileRecordSheet({ record, source: initialSource, initial, date, sourc
         <div className="jobo-mobile-colors">{ctx.colors.map(color => <button key={color.class} type="button" aria-label={t(`colors.${color.name.toLowerCase()}`, { defaultValue: color.name })} aria-pressed={form.color === color.class} className={`jobo-mobile-color-choice ${color.class} ${form.color === color.class ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`} onClick={() => field('color', color.class)} />)}</div>
       </details>
       {error && <p role="alert" className="text-red-500 text-sm">{error}</p>}
+      {record && <button type="button" data-mobile-repeat className={`flex items-center justify-center gap-2 w-full min-h-[44px] rounded-lg text-[13px] mt-1 border ${ctx.borderClass} ${ctx.hoverBg}`} onClick={() => onRepeat(record)}><Plus size={16} />{t('jobo.addDo')}</button>}
       <div className="jobo-mobile-sheet-actions">
         {record && <button type="button" className="jobo-mobile-icon text-red-500" aria-label={t('jobo.remove')} onClick={() => {
           if (!window.confirm(t('joboMobile.deleteConfirm'))) return;

@@ -21,7 +21,7 @@ describe('nativeEventToTask', () => {
   it('maps a timed event with derived duration and _native flag', () => {
     const task = nativeEventToTask(ev());
     expect(task).toMatchObject({
-      id: 'native-cal-ABC-123',
+      id: 'native-cal-ABC-123-2026-06-22',
       nativeEventId: 'ABC-123',
       title: 'Standup',
       date: '2026-06-22',
@@ -55,7 +55,7 @@ describe('nativeEventToTask', () => {
       end: '2026-06-22',
     });
     expect(task).toMatchObject({
-      id: 'native-cal-ABC-123',
+      id: 'native-cal-ABC-123-2026-06-22',
       date: '2026-06-22',
       startTime: null,
       isAllDay: true,
@@ -91,6 +91,28 @@ describe('nativeEventToTask', () => {
   it('flags task-list calendars via the task- id prefix', () => {
     const task = nativeEventToTask(ev({ id: 'task-42' }));
     expect(task.isTaskCalendar).toBe(true);
-    expect(task.id).toBe('native-cal-task-42');
+    expect(task.id).toBe('native-cal-task-42-2026-06-22');
+  });
+
+  // Every platform reports one event id for all occurrences of a recurring
+  // series, and the merge in App.jsx dedupes by task id. A fetch spanning
+  // several occurrences (MONTH's grid) must keep each of them.
+  it('gives each occurrence of a recurring event its own id', () => {
+    const weekly = (day) => ev({ id: 'MEETING', start: `2026-06-${day}T14:00:00`, end: `2026-06-${day}T15:00:00` });
+    const ids = ['01', '08', '15', '22', '29'].map((d) => nativeEventToTask(weekly(d)).id);
+    expect(new Set(ids).size).toBe(5);
+    expect(ids[0]).toBe('native-cal-MEETING-2026-06-01');
+  });
+
+  it('keeps one id for the same occurrence returned by adjacent day queries', () => {
+    // A single-day all-day event that CalendarContract also returns for the
+    // neighbouring query date, and a timed event crossing midnight: both
+    // are one occurrence and must still collapse in the id-based dedup.
+    const allDay = { ...ev(), allDay: true, start: '2026-06-22', end: '2026-06-22' };
+    expect(nativeEventToTask({ ...allDay, _queryDate: '2026-06-22' }).id)
+      .toBe(nativeEventToTask({ ...allDay, _queryDate: '2026-06-23' }).id);
+    const overnight = ev({ start: '2026-06-22T23:00:00', end: '2026-06-23T01:00:00' });
+    expect(nativeEventToTask({ ...overnight, _queryDate: '2026-06-22' }).id)
+      .toBe(nativeEventToTask({ ...overnight, _queryDate: '2026-06-23' }).id);
   });
 });

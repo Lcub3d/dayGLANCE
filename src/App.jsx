@@ -4095,6 +4095,8 @@ const DayPlanner = () => {
 
       // Deduplicate by task id: CalendarContract can return the same all-day event
       // in adjacent day windows (especially in UTC+ timezones). Keep first occurrence.
+      // The id is per occurrence (event id + date, see nativeEventToTask), so the
+      // occurrences of a recurring event across this window all survive.
       const seen = new Set();
       const fetched = allEvents
         .filter(e => !filterSet || filterSet.has(e.calendarId))

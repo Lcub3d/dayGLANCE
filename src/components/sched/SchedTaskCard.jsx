@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
+import { BookOpen, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { taskColorToHex, hexToRgba } from '../../utils/colorUtils.js';
-import { renderTitleWithoutTags, URL_REGEX } from '../../utils/textFormatting.jsx';
+import { isObsidianNoteOnlyTask, renderTitleWithoutTags, URL_REGEX } from '../../utils/textFormatting.jsx';
 import { dateToString, extractTags, extractWikilinks } from '../../utils/taskUtils.js';
 import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
 
@@ -93,7 +93,9 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
     ? projects.find(p => p.id === task.projectId)
     : null;
   const wikilinks = extractWikilinks(task.title || '');
-  const hasNotesContent = !!(task.notes || subtasks.length > 0);
+  // A wikilinked note in the vault counts as notes (the open-book rule,
+  // #1658): the button lights and shows the open book, as on every other card.
+  const hasNotesContent = !!(task.notes || subtasks.length > 0 || wikilinks.length > 0);
 
   const handleTap = () => {
     if (isEvent) return;
@@ -184,7 +186,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                 title={hasNotesContent ? t('sched.notesSubtasks', 'Notes & subtasks') : t('sched.addNotesSubtasks', 'Add notes or subtasks')}
                 aria-label={hasNotesContent ? t('sched.viewNotesSubtasks', 'View notes and subtasks') : t('sched.addNotesSubtasks', 'Add notes or subtasks')}
               >
-                <FileText size={10} />
+                {isObsidianNoteOnlyTask(task) ? <BookOpen size={10} /> : <FileText size={10} />}
                 {subtasks.length > 0 && (
                   <span className="flex items-center gap-0.5">
                     <CheckSquare size={10} />

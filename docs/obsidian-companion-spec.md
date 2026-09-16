@@ -951,6 +951,41 @@ project's index note. Pinned by `projectNotes.scenarios.test.ts` 12
 round trip, the same-title suffix, the quiet second pass), the
 `taskNoteName` unit tests and the applier's append tests.
 
+#### The re-append (owner, 2026-09-16): a record that wins existence gets its line back
+
+Ruling 6 (§3.10) decides existence between a note and a record by the
+newer side: a line confirmed removed from a note tombstones its task at
+the note's mtime, and a record edited after that mtime keeps the task.
+For a daily-note task the next scan settles the rest. For a task in a
+linked project note nothing did: placement writes only a task whose home
+is elsewhere, and the write path treats a missing line as reconciled by
+the next observation. The 2026-09-13 wipe (buildout 2.8) left six open
+tasks in that state for three days.
+
+- **The rule.** A task that survives the existence rule because its
+  record is newer than the note has its line re-appended on the next
+  pass, under its own token, at the end of the Tasks section like any
+  placement. The record won existence; the vault reflects it. A record
+  older than the wipe follows the vault and is dropped, exactly as
+  before: this completes ruling 6, it does not change what wins.
+- **Once per wipe.** The tombstone stamp is the note mtime at which the
+  line was confirmed absent. A device remembers the stamps it has acted
+  on (`day-planner-obsidian-line-reappends`, pruned to stamps the
+  tombstone map still carries), so the append is emitted once; a later
+  wipe stamps a newer tombstone and fires again. The applier's append is
+  idempotent regardless, so the memory saves intents, not correctness.
+- **Scope.** Open tasks only, plugin-authoritative only, like placement.
+  A completed task's record is the completion log.
+- **The accepted edge.** A line deleted in Obsidian on purpose, then the
+  task edited in the app before the hold commits, comes back: the record
+  is newer, so the edit wins over the delete. That is ruling 6 applied
+  consistently, and the same answer the daily-note path already gives.
+
+Pinned by `projectNotes.scenarios.test.ts` 13: two lines wiped, one task
+edited after the wipe returns to the note and settles under its id with
+its app fields; the untouched one is dropped; a second pass writes
+nothing.
+
 ---
 
 ### 4.4 Templater, via guarded delegation

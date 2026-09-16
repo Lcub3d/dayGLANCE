@@ -37,6 +37,7 @@ import {
   resolveRetirement,
 } from '../utils/retiredTaskIds.js';
 import { planTaskNoteMigration } from '../utils/taskNoteName.js';
+import { lineReappendStamp, readLineReappends, writeLineReappends } from '../utils/obsidianLineReappend.js';
 import { blockIdWritesEnabled, completionMarkerWritesEnabled } from '../utils/obsidianWritePolicy.js';
 import { titleConflictNoticeText } from '../utils/obsidianTitleConflict.js';
 import { withCreationFrontmatter } from '../utils/obsidianFrontmatter.js';
@@ -1532,6 +1533,14 @@ export default function useObsidianSync({
       const linkedProjectPaths = new Set(projectsNow.map(noteOf).filter(Boolean));
       const homeFor = (t) => noteOf(t.projectId ? projectsNow.find(pr => pr && String(pr.id) === String(t.projectId)) : null);
       const schedFmt = tasksPluginRef.current ? 'tasks' : 'dataview';
+      // THE RE-APPEND (owner ruling 2026-09-16; utils/obsidianLineReappend.js).
+      // A task at home whose line was confirmed removed (its tombstone, at
+      // the note's mtime) but whose record is newer survives the existence
+      // rule; the vault then reflects it: the line is appended again under
+      // its own token. Once per tombstone stamp, remembered per device.
+      const obsidianTombstones = remintTombstoneBundles[1] || {};
+      const reappended = readLineReappends();
+      let reappendedDirty = false;
       let budget = PLACEMENT_PER_PASS;
       for (const task of [...tasks, ...unscheduledTasks]) {
         if (budget <= 0) break;
@@ -1545,13 +1554,16 @@ export default function useObsidianSync({
         // Out of a linked note with nowhere to go: unassigned, reassigned to
         // an unlinked project, or completed while being reassigned.
         const leaves = isVault && !!here && linkedProjectPaths.has(here) && here !== home && !wantsMove;
-        if (!wantsMove && !leaves) continue;
+        // Home, line gone, record newer: back into the note (the re-append).
+        const reappendStamp = !wantsMove && !leaves && isVault && !!home && here === home ? lineReappendStamp(task, obsidianTombstones) : null;
+        const reappend = !!reappendStamp && reappended[String(task.id)] !== reappendStamp;
+        if (!wantsMove && !leaves && !reappend) continue;
         budget--;
 
         // The line as it will read in its new home: no project field (the
         // note is the project, ruling H), the schedule as metadata (B).
         const baseRaw = isVault ? task.obsidianRawTitle : String(task.title || '').replace(/\s*#obsidian\b/gi, '').trim();
-        const rawTitle = wantsMove ? withScheduledMetadata(withProjectMetadata(baseRaw, null), task.date || null, schedFmt) : null;
+        const rawTitle = wantsMove || reappend ? withScheduledMetadata(withProjectMetadata(baseRaw, null), task.date || null, schedFmt) : null;
 
         let blockId = task.obsidianBlockId || null;
         let minted = null;
@@ -1579,11 +1591,11 @@ export default function useObsidianSync({
         // observations may arrive in either order — the cross-note case
         // the wall-clock confirmation hold exists for.
         let ok = true;
-        if (isVault) {
+        if (isVault && !reappend) {
           const from = writebackTargetFor(task, obsidianConfig, defaultTaskHeading);
           if (from) ok = !!emitBridgeIntent('task_remove', { path: from.path, blockId: task.obsidianBlockId || null, obsidianRawTitle: task.obsidianRawTitle });
         }
-        if (wantsMove && ok) {
+        if ((wantsMove || reappend) && ok) {
           ok = !!emitBridgeIntent('task_append', {
             path: home, date: null, noteTask: true, heading: '## Tasks',
             task: {
@@ -1597,6 +1609,14 @@ export default function useObsidianSync({
         }
         if (!ok) { reportTaskWriteFailure(); continue; }
         placed.add(String(task.id));
+        if (reappend) {
+          // Nothing moves: the task was home all along. Remember the stamp
+          // so this pass's append is the only one for this wipe.
+          reappended[String(task.id)] = reappendStamp;
+          reappendedDirty = true;
+          console.warn(`Obsidian: re-appending the line of ${task.id} to ${home}: it was confirmed removed at ${reappendStamp} but the record is newer, so existence follows the record (ruling 6, the re-append).`);
+          continue;
+        }
 
         // Commit on enqueue (gate (a), the general rule): the outbox is
         // durable, so the enqueue is the write and the bookkeeping rides it.
@@ -1621,6 +1641,7 @@ export default function useObsidianSync({
           }
         });
       }
+      if (reappendedDirty) writeLineReappends(reappended, obsidianTombstones);
     }
 
     // TASK NOTES INTO THE VAULT (companion §4.3, owner 2026-09-14; the

@@ -440,6 +440,30 @@ through a mint. Pinned by scope scenario 23: a tokenized line doubled, the
 live task's fields intact, the refusal logged, one token in the note, and
 the removal of the duplicate converging back to one task.
 
+**The wipe, found on 2026-09-16.** The same evening, at 7:04 PM, a single
+revision from the Windows machine replaced the project note's Tasks
+section body with four completed lines from its middle, after a shared
+`- [` prefix: 21 lines gone in one write, 45 minutes after #1645 merged
+and before 0.9.1 ran on both desktops. The shape is an Obsidian Sync
+merge on that machine, not an intent: nothing in the app writes a note
+that way. The app saw the lines missing, pended the tasks, and tombstoned
+them at the note's mtime; every task edited after that mtime (the
+evening's scheduling and cleanup, the 2026-09-14 notes migration) then
+kept its record under the channel's last-writer-wins, as ruling 6 says.
+And there it stopped: a task that says it is home is never placed, and
+the ordinary write path treats a missing line as the next scan's to
+reconcile, so six open tasks sat in the app for three days with no line
+in the note. **Ruling (owner, 2026-09-16): a task that survives the
+existence rule because its record is newer than the note has its line
+re-appended on the next pass.** Built in the placement step
+(`utils/obsidianLineReappend.js`): the tombstone stamp names the wipe,
+the record beats it, the line goes back under its own token, once per
+stamp, remembered per device; a record older than the wipe follows the
+vault and is dropped as before. Open tasks only. Pinned by project-notes
+scenario 13. Recovery of the damaged note is the owner's choice: restore
+the version before the wipe by hand (all 21 lines, the app's completed
+state wins on merge), or let the re-append return the six open lines.
+
 ---
 
 ## 3. Decisions of record

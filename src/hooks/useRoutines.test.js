@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resetRoutineCompletionsForToday, rolloverRemovedTodayRoutineIds, sanitizeMergedRoutineCompletions, startOfTodayIso } from './useRoutines.js';
+import { mergeRoutineCompletions } from '../mergeSync.js';
 
 const TODAY = '2026-07-03';
 const MIDNIGHT = '2026-07-03T00:00:00.000Z'; // local-midnight stand-in for the tests
@@ -89,15 +90,66 @@ describe('sanitizeMergedRoutineCompletions (#1196 symptom 2 — sync-apply)', ()
     expect(timestamps.chip1).toBe(TODAY_MORNING_TS);
   });
 
-  it('does not lower a stale completion whose timestamp is already past midnight', () => {
-    // Inconsistent pair (yesterday-dated completion, today-stamped ts — clock skew
-    // or a cross-midnight write): the completion is still dropped, but the newer
-    // timestamp is kept so LWW ordering is preserved.
+  it('bumps a stale completion whose timestamp is already past midnight by 1ms — never keeps it verbatim', () => {
+    // Inconsistent pair (yesterday-dated completion, today-stamped ts — clock skew,
+    // a cross-midnight write, or a peer whose day rolled earlier): the completion
+    // is dropped and the tombstone lands one millisecond AFTER the stale stamp.
+    // Keeping the stamp verbatim is the losing move: the merge resolves equal
+    // timestamps in favour of presence, so the vault's copy re-admits the
+    // completion on every pull and the engine re-pushes it every cycle.
     const { completions, timestamps } = sanitizeMergedRoutineCompletions(
       { chip1: YESTERDAY }, { chip1: TODAY_MORNING_TS }, TODAY, MIDNIGHT,
     );
     expect(completions.chip1).toBeUndefined();
-    expect(timestamps.chip1).toBe(TODAY_MORNING_TS);
+    expect(timestamps.chip1).toBe(new Date(new Date(TODAY_MORNING_TS).getTime() + 1).toISOString());
+    expect(timestamps.chip1 > TODAY_MORNING_TS).toBe(true);
+  });
+
+  it('bumps a stale completion stamped exactly at midnight past the tombstone', () => {
+    const { timestamps } = sanitizeMergedRoutineCompletions(
+      { chip1: YESTERDAY }, { chip1: MIDNIGHT }, TODAY, MIDNIGHT,
+    );
+    expect(timestamps.chip1).toBe('2026-07-03T00:00:00.001Z');
+  });
+
+  it('falls back to midnight for an unparseable stale timestamp', () => {
+    const { timestamps } = sanitizeMergedRoutineCompletions(
+      { chip1: YESTERDAY }, { chip1: 'not-a-date' }, TODAY, MIDNIGHT,
+    );
+    expect(timestamps.chip1).toBe(MIDNIGHT);
+  });
+
+  it('converges the pull → sanitize → push cycle instead of re-pushing the stale completion forever', () => {
+    // Regression for the one-write-per-pull loop: the vault holds a prior-day
+    // completion whose stamp is at/after local midnight, this device holds the
+    // sanitized (absent) copy at the SAME stamp. Each engine cycle merges the
+    // vault row into the mirror (mergeRoutineCompletions), pushes the merged
+    // mirror, then commits it through the sanitizer. Before the fix the merge
+    // re-admitted the completion at the tie every cycle and every push carried
+    // it back to the vault. After the fix the first sanitize out-dates the stale
+    // stamp, the next merge keeps it dropped, and the pushes stop changing.
+    const T = TODAY_MORNING_TS;
+    let vaultC = { chip1: YESTERDAY }, vaultTs = { chip1: T };
+    let localC = {}, localTs = { chip1: T };
+    const pushed = [];
+    for (let cycle = 0; cycle < 4; cycle++) {
+      const m = mergeRoutineCompletions(localC, vaultC, localTs, vaultTs);
+      vaultC = m.merged; vaultTs = m.mergedTimestamps;   // push: the merged mirror
+      pushed.push(m.merged);
+      const s = sanitizeMergedRoutineCompletions(m.merged, m.mergedTimestamps, TODAY, MIDNIGHT);
+      localC = s.completions; localTs = s.timestamps;    // commit: sanitized state
+    }
+    // Cycle 0 may still carry the stale completion (the tie); from cycle 1 on the
+    // vault holds the dropped state and stays there.
+    expect(pushed[1]).toEqual({});
+    expect(pushed[2]).toEqual({});
+    expect(pushed[3]).toEqual({});
+    expect(vaultTs.chip1 > T).toBe(true);
+    // And the second cycle onward is a no-op merge in BOTH directions — nothing
+    // dirty to push, nothing to re-apply.
+    const settled = mergeRoutineCompletions(localC, vaultC, localTs, vaultTs);
+    expect(settled.localChanged).toBe(false);
+    expect(settled.remoteChanged).toBe(false);
   });
 
   it('tolerates a stale completion with no timestamp at all (legacy data)', () => {

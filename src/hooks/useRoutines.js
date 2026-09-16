@@ -71,9 +71,21 @@ export const rolloverRemovedTodayRoutineIds = (existing = {}, clearedRoutines = 
 // completion absent) carries its real recency and downgrading it to midnight
 // would let a stale remote complete win the next merge. So: keep today's
 // completions and ALL timestamps verbatim; only a dropped stale completion has
-// its timestamp raised to the midnight tombstone (midnight out-dates any
-// prior-day stamp, so the heal propagates back to the fleet instead of only
-// masking the symptom locally).
+// its timestamp raised so the heal out-dates the stale stamp and propagates
+// back to the fleet instead of only masking the symptom locally.
+//
+// The raised stamp must be STRICTLY newer than the one the stale completion
+// carried. mergeRoutineCompletions resolves equal timestamps in favour of
+// presence (the legacy no-timestamp fallback), so a dropped completion that
+// keeps the incoming stamp verbatim can never win: the next pull re-admits
+// the completion from the vault at the same stamp, the engine pushes the
+// re-merged (present) mirror back, the commit sanitizes it away again, and
+// the snapshot-diff marks the row dirty every cycle — one vault write per
+// pull, forever, until the vault rate-limits the device. A prior-day stamp is
+// raised to midnight (already strictly newer); a stamp at or past midnight
+// (a cross-midnight write, clock skew, or a peer in an earlier-rolling
+// timezone) is bumped by one millisecond — the smallest step that wins the
+// LWW while staying older than any genuine completion made later today.
 export const sanitizeMergedRoutineCompletions = (
   incomingCompletions = {}, incomingTimestamps = {}, todayStr, midnightIso,
 ) => {
@@ -83,11 +95,19 @@ export const sanitizeMergedRoutineCompletions = (
     if (date === todayStr) {
       completions[id] = date;
     } else {
-      const t = timestamps[id];
-      if (!(typeof t === 'string' && t >= midnightIso)) timestamps[id] = midnightIso;
+      timestamps[id] = tombstoneNewerThan(timestamps[id], midnightIso);
     }
   }
   return { completions, timestamps };
+};
+
+// The tombstone stamp for a dropped stale completion: midnight when that is
+// already newer than the stale stamp, else the stale stamp plus one
+// millisecond. Never returns a stamp equal to or older than `staleIso`.
+export const tombstoneNewerThan = (staleIso, midnightIso) => {
+  const staleMs = typeof staleIso === 'string' ? new Date(staleIso).getTime() : NaN;
+  if (Number.isNaN(staleMs) || staleMs < new Date(midnightIso).getTime()) return midnightIso;
+  return new Date(staleMs + 1).toISOString();
 };
 
 const useRoutines = ({ currentTime, onboardingProgress, setOnboardingProgress, hrOwnerRef }) => {

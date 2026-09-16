@@ -28,7 +28,8 @@ jobs:
           mkdir -p review-artifacts
           git archive --format=tar.gz -o review-artifacts/source.tar.gz HEAD
           git rev-parse HEAD > review-artifacts/commit.txt
-          git rev-parse v5.2.0 > review-artifacts/base-tag.txt
+          git merge-base --is-ancestor 266d1ec0a9774fd1a1d2724d8640e5ad78520ef3 HEAD
+          echo 266d1ec0a9774fd1a1d2724d8640e5ad78520ef3 > review-artifacts/base-tag.txt
       - uses: actions/upload-artifact@v4
         with:
           name: jobo-mobile-source

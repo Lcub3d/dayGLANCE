@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { canUseJobo, useJoboEnabled, setJoboEnabled } from '../../jobo/preference.js';
+const Mobile = lazy(() => import('./MobileJoboView.jsx'));
 const Day = lazy(() => import('./JoboViews.jsx').then(m => ({
   default: m.JoboDayView
 })));
@@ -12,23 +13,28 @@ const Week = lazy(() => import('./JoboViews.jsx').then(m => ({
 const Carry = lazy(() => import('./JoboViews.jsx').then(m => ({
   default: m.JoboCarryButton
 })));
-function useAvailable() {
+export function useJoboAvailable() {
   return canUseJobo(useJoboEnabled(), useDayPlannerCtx(), useFeaturesCtx());
 }
 export function JoboDayRoute({
   fallback
 }) {
-  const available = useAvailable();
+  const available = useJoboAvailable();
   return available ? <Suspense fallback={fallback}><Day /></Suspense> : fallback;
+}
+export function JoboMobileRoute({ fallback }) {
+  const available = useJoboAvailable();
+  const { isPhone } = useDayPlannerCtx();
+  return available && isPhone ? <Suspense fallback={fallback}><Mobile /></Suspense> : fallback;
 }
 export function JoboWeekRoute({
   fallback
 }) {
-  const available = useAvailable();
+  const available = useJoboAvailable();
   return available ? <Suspense fallback={fallback}><Week /></Suspense> : fallback;
 }
 export function JoboCarryRoute() {
-  const available = useAvailable();
+  const available = useJoboAvailable();
   return available ? <Suspense fallback={null}><Carry /></Suspense> : null;
 }
 export function JoboSettings() {

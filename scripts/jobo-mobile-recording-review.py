@@ -55,9 +55,15 @@ with sync_playwright() as playwright:
         def optional_fields():
             page.locator('[data-jobo-mobile]').get_by_role('button', name='新增执行', exact=True).click()
             dialog = page.get_by_role('dialog')
-            expect(dialog.get_by_label('关联任务', exact=True)).not_to_be_visible()
+            # A wrapping label includes option text in Playwright's text matching.
+            # Require the real control to exist even while its details are closed.
+            linked = dialog.get_by_label('关联任务', exact=False)
+            expect(linked).to_have_count(1)
+            expect(linked).not_to_be_visible()
             dialog.locator('summary').click()
-            expect(dialog.get_by_label('关联任务', exact=True)).to_be_visible()
+            expect(linked).to_be_visible()
+            linked.select_option('review-english')
+            expect(dialog.get_by_label('名称', exact=True)).to_have_value('学习英语')
             dialog.get_by_role('button', name='取消', exact=True).click()
         check('secondary recording fields stay collapsed until requested', optional_fields, page)
     finally:

@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DayPlannerContext } from '../../context/DayPlannerContext.jsx';
 import { FeaturesContext } from '../../context/FeaturesContext.jsx';
@@ -37,6 +37,21 @@ const Probe = ({ options }) => {
 const probe = (options) => JSON.parse(renderToStaticMarkup(
   <DayPlannerContext.Provider value={planner}><FeaturesContext.Provider value={features}><Probe options={options} /></FeaturesContext.Provider></DayPlannerContext.Provider>,
 ).replace(/<[^>]+>/g, '').replace(/&quot;/g, '"'));
+
+// The overdue section is the one thing this hook resolves against the REAL
+// wall clock rather than the fixture's currentTime: useSchedAgendaState.js:196
+// reads `new Date()` so a kiosk left running rolls over at midnight, which is
+// the behaviour we want and not something to change for a test's convenience.
+// The consequence is that every assertion below about a date that is NOT today
+// only holds while the runner's clock agrees with that. Unpinned, this file
+// went red on 2026-09-16 and would have again on the 20th and the 30th — the
+// three dates the cases below name. Pin the clock to the fixture's own day so
+// the suite means the same thing on every date it is ever run.
+beforeAll(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-09-12T12:00:00'));
+});
+afterAll(() => { vi.useRealTimers(); });
 
 describe('useSchedAgendaState dateRange', () => {
   it('leaves the rolling window untouched when no options are passed', () => {

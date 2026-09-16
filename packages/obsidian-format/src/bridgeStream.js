@@ -255,6 +255,35 @@ export function decodePlainBridgeRow(text) {
  *   `unsupported` marks a type this build doesn't know — the applier skips
  *   it without failing the batch (forward compatibility).
  */
+/** Paragraph blocks of a text: runs of non-blank lines, each line trimmed right. */
+function textBlocks(text) {
+  const out = [];
+  let cur = [];
+  for (const raw of String(text ?? '').replace(/\r\n?/g, '\n').split('\n')) {
+    const line = raw.replace(/\s+$/, '');
+    if (line.trim() === '') { if (cur.length) { out.push(cur.join('\n')); cur = []; } }
+    else cur.push(line);
+  }
+  if (cur.length) out.push(cur.join('\n'));
+  return out;
+}
+
+/**
+ * True when the body's paragraph blocks appear in the note as a consecutive
+ * run of whole blocks (the create_or_append idempotency guard).
+ */
+export function noteContainsBlock(text, body) {
+  const want = textBlocks(body);
+  if (want.length === 0) return true;
+  const have = textBlocks(text);
+  for (let i = 0; i + want.length <= have.length; i++) {
+    let ok = true;
+    for (let j = 0; j < want.length; j++) if (have[i + j] !== want[j]) { ok = false; break; }
+    if (ok) return true;
+  }
+  return false;
+}
+
 export function applyBridgeIntent(currentText, intent) {
   switch (intent?.type) {
     case 'task_state':
@@ -451,10 +480,17 @@ export function applyBridgeIntent(currentText, intent) {
         // TASK NOTES INTO THE VAULT (companion §4.3, 2026-09-14): the note
         // is named after a task, so one that already exists under that
         // name is someone's. The notes are appended, never written over.
-        // Idempotent: text already present (a second device's copy of the
-        // same migration, a retried enqueue) changes nothing.
+        // Idempotent on BLOCK boundaries (2026-09-17, report F1): the body's
+        // paragraphs already present as a consecutive run (a second device's
+        // copy of the same migration, a retried enqueue) change nothing; a
+        // short body that merely occurs inside a longer line is appended.
+        // The skip is logged so nothing vanishes without a trace.
         const body = String(intent.content ?? '').trim();
-        if (!body || currentText.includes(body)) return { text: currentText, changed: false };
+        if (!body) return { text: currentText, changed: false };
+        if (noteContainsBlock(currentText, body)) {
+          console.info(`dayGLANCE bridge: notes already present in ${String(intent.noteName ?? '')}, not appended`);
+          return { text: currentText, changed: false };
+        }
         return { text: `${currentText.replace(/\s+$/, '')}\n\n${body}\n`, changed: true };
       }
       const text = intent.content;

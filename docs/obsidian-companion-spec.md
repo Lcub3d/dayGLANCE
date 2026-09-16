@@ -951,6 +951,62 @@ project's index note. Pinned by `projectNotes.scenarios.test.ts` 12
 round trip, the same-title suffix, the quiet second pass), the
 `taskNoteName` unit tests and the applier's append tests.
 
+#### Linked-task notes and the record's note target (owner, 2026-09-17, option B)
+
+The 2026-09-14 migration converted notes only for a task with no link in
+its title; notes arriving on a task that already carried its link stayed
+in the local field, which the panel hid (fixed the same day: the panel
+shows local notes beneath the linked note, and the card shows the
+document icon while any exist). The rule now, from the report
+`docs/reports/obsidian-linked-note-append.md`:
+
+- **The record names its note.** A migration writes the target it created
+  onto the record as `obsidianNoteTarget`. Later notes on that task, from
+  any writer, are appended to that note (`wiki_note_write`,
+  `create_or_append`) and the field clears again, committed on enqueue
+  like the migration itself. The discriminator is the stored target or,
+  for a task migrated before the field, a link in the project note's
+  folder whose basename is the name the current title derives (collision
+  suffix allowed); a task renamed since and carrying no stored target
+  reads as hand-linked.
+- **Hand-linked and shared notes are never appended to.** Their local
+  notes stay local and visible. Option A (append under a task heading)
+  was considered and declined: it writes dayGLANCE bookkeeping into
+  documents the user wrote for other purposes.
+- **A fresh migration is unchanged**, including the append into a
+  derived-name file that already exists (option D). Creating a suffixed
+  note instead needs the plugin to choose the name and report it back,
+  since the app commits the link on enqueue and has no cheap existence
+  oracle; that design (a `task_note_create` intent with a link-style
+  report) is parked.
+- **The re-assert.** The migration's retitle rides the applier's
+  write-time title guard: a line whose body moved off the app's base (an
+  Obsidian edit before the fresh line was observed, the create-with-notes
+  bug) keeps its own title while the note lands and the field clears, and
+  the next observation reverts the app's title. With the record naming
+  its note, the writeback puts the link back once per observation, on
+  the line's own base, until an observation shows the line carrying it
+  (`obsidianNoteLinkSeen`). After that, a NEWER observation without the
+  link is the user's unlink and clears the target; a report no newer than
+  the one that showed the link (`obsidianNoteLinkSeenAt`, the note mtime)
+  is a lagging plugin copy and clears nothing. Removing the link from the
+  title in dayGLANCE clears the target too.
+- **Idempotency on block boundaries.** `create_or_append` skips a body
+  whose paragraphs are already present as a consecutive run, and logs the
+  skip; a short body that merely occurs inside a longer line is appended.
+  Accepted edge: a retry arriving after the user edited the appended
+  block in Obsidian re-appends it.
+- **The sent-notes journal** (`day-planner-obsidian-notes-sent`) keeps the
+  last body each migration sent, per task, for 30 days. Device-local like
+  the outbox: it does not survive a storage purge; it covers consumed
+  rows, server-side loss and debugging.
+
+Pinned by `projectNotes.scenarios.test.ts` 14 to 20 (the append, the
+hand-linked task, the existing derived-name file, the re-assert, the
+unlink in Obsidian and in dayGLANCE, create with notes in one call), the
+`taskNoteName`, `mergeObsidianTasks` and journal unit tests, and the
+applier's block-guard tests.
+
 #### The re-append (owner, 2026-09-16): a record that wins existence gets its line back
 
 Ruling 6 (§3.10) decides existence between a note and a record by the

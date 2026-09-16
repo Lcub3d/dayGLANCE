@@ -74,6 +74,15 @@ export const extractWikilinks = (title) => {
   return matches.map(m => m[1]);
 };
 
+// Two wikilink targets (or a target and a stored note target) name the same
+// note: heading and alias dropped, .md dropped, case-insensitive (vault paths
+// are case-insensitive on macOS and Windows).
+export const sameNoteTarget = (a, b) => {
+  const norm = (v) => String(v ?? '').split('#')[0].split('|')[0].replace(/\.md$/i, '').trim().toLowerCase();
+  const x = norm(a); const y = norm(b);
+  return !!x && x === y;
+};
+
 // Strip [[wikilinks]] — hashtags stay visible in the UI.
 export const stripWikilinks = (title) =>
   title.replace(/\[\[[^\]]+\]\]/g, '').replace(/\s+/g, ' ').trim();

@@ -458,6 +458,158 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.plugin.transport.drain();
     expect(s.plugin.app.vault.writes).toBe(writes);
   });
+  it('14. LINKED-TASK NOTES (option B, 2026-09-17): notes on a task whose own note is linked are appended to it, the field clears, the body is journaled; a second pass writes nothing; the same body again is not appended twice', async () => {
+    await bootLinked();
+    A.add({ title: 'Gutter', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((t) => t.title.startsWith('Gutter'))!.id;
+    A.patch(id, { notes: 'first' });
+    await A.writeback();
+    await s.plugin.transport.drain(); // the fresh migration: note created, link in the title, target stored
+    expect(A.all().find((t) => t.id === id)).toMatchObject({ obsidianNoteTarget: 'Projects/Gutter', notes: '' });
+    await s.settle();
+    await A.sync(); // the line observed carrying the link
+    expect(A.all().find((t) => t.id === id)).toMatchObject({ obsidianNoteLinkSeen: true, title: 'Gutter [[Projects/Gutter]] #obsidian' });
+    A.patch(id, { notes: 'second' });
+    await A.writeback();
+    await s.plugin.transport.drain(); // the append
+    expect(s.text('Projects/Gutter.md')).toContain('first');
+    expect(s.text('Projects/Gutter.md')).toContain('second');
+    expect(A.all().find((t) => t.id === id)!.notes).toBe('');
+    expect(JSON.parse(A.store.get('day-planner-obsidian-notes-sent')!)[id]).toMatchObject({ target: 'Projects/Gutter', body: 'second' });
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    // The same body again: the block guard skips it, the field still clears.
+    A.patch(id, { notes: 'second' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect((s.text('Projects/Gutter.md')!.match(/second/g) ?? []).length).toBe(1);
+    expect(A.all().find((t) => t.id === id)!.notes).toBe('');
+  });
+
+  it('15. a hand-linked task keeps its notes local: nothing is written, the shared note is untouched', async () => {
+    await bootLinked();
+    await s.write('Shared doc.md', 'shared body\n');
+    A.add({ title: 'Setup [[Shared doc]]', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((t) => t.title.startsWith('Setup'))!.id;
+    A.patch(id, { notes: 'local text' });
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    expect(s.text('Shared doc.md')).toBe('shared body\n');
+    const t = A.all().find((x) => x.id === id)!;
+    expect(t.notes).toBe('local text');
+    expect(t.obsidianNoteTarget).toBeUndefined();
+  });
+
+  it('16. a fresh migration whose derived-name file already exists appends into it (option D), adds the link and stores the target', async () => {
+    await bootLinked();
+    await s.write('Projects/Fence.md', '# Fence\n\nOwner text.\n');
+    A.add({ title: 'Fence', projectId: 'p1', notes: 'gate hinge' });
+    await A.writeback();
+    await s.plugin.transport.drain(); // placement
+    await A.writeback();
+    await s.plugin.transport.drain(); // migration
+    expect(s.text('Projects/Fence.md')).toBe('# Fence\n\nOwner text.\n\ngate hinge\n');
+    expect(A.all().find((x) => x.title.startsWith('Fence'))).toMatchObject({ title: 'Fence [[Projects/Fence]] #obsidian', notes: '', obsidianNoteTarget: 'Projects/Fence' });
+  });
+
+  it('17. THE RE-ASSERT: a retitle the line guard refused (an Obsidian edit before the line was observed) is put back once from the stored target; the next observation marks the link seen', async () => {
+    await bootLinked();
+    A.add({ title: 'Epsilon', projectId: 'p1', notes: 'eps notes' });
+    await A.writeback();
+    await s.plugin.transport.drain(); // placement, not yet observed
+    await s.write(NOTE, s.text(NOTE)!.replace('Epsilon ^', 'Epsilon edited ^'));
+    await A.writeback();
+    await s.plugin.transport.drain(); // migration: the note is written, the retitle is refused by the guard
+    expect(s.text('Projects/Epsilon.md')).toContain('eps notes');
+    expect(s.text(NOTE)).not.toContain('[[Projects/Epsilon]]');
+    await s.settle();
+    await A.sync(); // the vault's title wins: the link is gone from the app, the target stays
+    const mid = A.all().find((x) => x.title.startsWith('Epsilon'))!;
+    expect(mid).toMatchObject({ title: 'Epsilon edited #obsidian', obsidianNoteTarget: 'Projects/Epsilon', notes: '' });
+    expect(mid.obsidianNoteLinkSeen).toBeFalsy();
+    await A.writeback();
+    await s.plugin.transport.drain(); // the re-assert, on the line's own base
+    expect(s.text(NOTE)).toMatch(/- \[ \] Epsilon edited \[\[Projects\/Epsilon\]\] \^dg-/);
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((x) => x.title.startsWith('Epsilon'))).toMatchObject({ title: 'Epsilon edited [[Projects/Epsilon]] #obsidian', obsidianNoteLinkSeen: true });
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+  });
+
+  it('18. the user removes the link in Obsidian after it was seen: the record forgets its note and nothing re-asserts', async () => {
+    await bootLinked();
+    A.add({ title: 'Hedge', projectId: 'p1', notes: 'trim' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((x) => x.title.startsWith('Hedge'))!.id;
+    expect(A.all().find((x) => x.id === id)).toMatchObject({ obsidianNoteLinkSeen: true });
+    await s.write(NOTE, s.text(NOTE)!.replace(' [[Projects/Hedge]]', ''));
+    await s.settle();
+    await A.sync();
+    const t = A.all().find((x) => x.id === id)!;
+    expect(t.title).toBe('Hedge #obsidian');
+    expect(t.obsidianNoteTarget).toBeNull();
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    expect(s.text(NOTE)).not.toContain('[[Projects/Hedge]]');
+  });
+
+  it('19. the user removes the link in dayGLANCE: the record forgets its note and the line follows', async () => {
+    await bootLinked();
+    A.add({ title: 'Path', projectId: 'p1', notes: 'gravel' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((x) => x.title.startsWith('Path'))!.id;
+    A.patch(id, { title: 'Path #obsidian' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(A.all().find((x) => x.id === id)!.obsidianNoteTarget).toBeNull();
+    expect(s.text(NOTE)).toMatch(/- \[ \] Path \^dg-/);
+  });
+
+  it('20. create with notes in one call, inbox and scheduled: the note is created, the link lands on the line, the target is stored and seen', async () => {
+    await bootLinked();
+    A.add({ title: 'Iota', projectId: 'p1', notes: 'iota notes' });
+    A.add({ title: 'Kappa', projectId: 'p1', notes: 'kappa notes', date: '2026-09-06', startTime: '10:00', duration: 30 });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    expect(s.text(NOTE)).toMatch(/- \[ \] Iota \[\[Projects\/Iota\]\] \^dg-/);
+    expect(s.text(NOTE)).toMatch(/- \[ \] 10:00-10:30 Kappa \[\[Projects\/Kappa\]\] \[scheduled:: 2026-09-06\] \^dg-/);
+    expect(s.text('Projects/Iota.md')).toContain('iota notes');
+    expect(s.text('Projects/Kappa.md')).toContain('kappa notes');
+    for (const name of ['Iota', 'Kappa']) {
+      expect(A.all().find((x) => x.title.startsWith(name))).toMatchObject({ notes: '', obsidianNoteTarget: `Projects/${name}`, obsidianNoteLinkSeen: true });
+    }
+  });
 });
 
 // ── Daily-note templates (companion §4.4 build record, 2026-09-06) ──────────

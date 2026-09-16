@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   sealBridgeEnvelope,
   openBridgeEnvelope,
   encodePlainBridgeRow,
   decodePlainBridgeRow,
   applyBridgeIntent,
+  noteContainsBlock,
   mintIntentId,
   observationEntityId,
   BRIDGE_INTENT_PREFIX,
@@ -406,5 +407,26 @@ describe('wiki_note_write create_or_append (task notes into the vault, companion
     const { mode, ...plain } = intent;
     void mode;
     expect(applyBridgeIntent('old', plain)).toEqual({ text: 'Call the roofer first', changed: true });
+  });
+});
+
+describe('create_or_append block guard (report F1)', () => {
+  const intent = (content) => ({ type: 'wiki_note_write', noteName: 'Projects/Fix the gutter', content, mode: 'create_or_append' });
+  it('a short body that only occurs inside a longer line is still appended', () => {
+    const r = applyBridgeIntent('# Gutter\n\nDone and dusted.\n', intent('Done'));
+    expect(r).toEqual({ text: '# Gutter\n\nDone and dusted.\n\nDone\n', changed: true });
+  });
+  it('an exact block already present is not appended again, and the skip is logged', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const r = applyBridgeIntent('# Gutter\n\nDone\n\nMore.\n', intent('Done'));
+      expect(r).toEqual({ text: '# Gutter\n\nDone\n\nMore.\n', changed: false });
+      expect(info).toHaveBeenCalledWith(expect.stringContaining('already present in Projects/Fix the gutter'));
+    } finally { info.mockRestore(); }
+  });
+  it('a multi-paragraph body matches only as a consecutive run of whole blocks', () => {
+    expect(noteContainsBlock('a\n\nb\n\nc\n', 'a\n\nb')).toBe(true);
+    expect(noteContainsBlock('a\n\nx\n\nb\n', 'a\n\nb')).toBe(false);
+    expect(noteContainsBlock('a\r\n\r\nb\r\n', 'a\n\nb')).toBe(true);
   });
 });

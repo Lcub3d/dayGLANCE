@@ -1,3 +1,4 @@
+import { extractWikilinks, sameNoteTarget } from './taskUtils.js';
 import { isObsidianTombstoned, obsidianKeyDate } from './obsidianDeletions.js';
 import { LINE_OWNED_TASK_FIELDS } from '@glance-apps/obsidian-format';
 
@@ -166,12 +167,36 @@ const LINE_OWNED = new Set(APP_LINE_OWNED_TASK_FIELDS);
 // the task is scheduled from the line (§8 ruling, 2026-09-08).
 const SCAN_DECIDED = new Set(['obsidianClearedTime']);
 
-export function preserveObsidianAppFields(old, scanned = {}) {
+export function preserveObsidianAppFields(old, scanned = {}, noteMtime = undefined) {
   const carried = {};
   for (const k of Object.keys(old)) {
     if (!LINE_OWNED.has(k) && !SCAN_DECIDED.has(k) && old[k] !== undefined) carried[k] = old[k];
   }
   if (carried.transitionId !== undefined && !!old.completed !== !!scanned.completed) delete carried.transitionId;
+  // THE RECORD'S NOTE TARGET (utils/taskNoteName.js, 2026-09-17): the
+  // observed line either carries the link to the task's own note or it does
+  // not. Carrying it once marks the link as seen; a later line without it,
+  // after it was seen, is the user's unlink and clears the target, so the
+  // writeback never puts back a link the user removed in Obsidian. A line
+  // without the link that was never seen carrying it is the vault dropping
+  // the migration's retitle, which the writeback re-asserts.
+  // The unlink is judged by the note's mtime, the same evidence the
+  // late-observation gate uses for daily notes (spec 2.7): a report no
+  // newer than the one that showed the link is a lagging copy (a second
+  // plugin copy behind Obsidian Sync), not the user's edit, and clears
+  // nothing. A report without a real mtime falls back to arrival order.
+  if (old.obsidianNoteTarget && typeof scanned.obsidianRawTitle === 'string') {
+    const carries = extractWikilinks(scanned.obsidianRawTitle).some((l) => sameNoteTarget(l, old.obsidianNoteTarget));
+    const t = typeof noteMtime === 'string' ? ts(noteMtime) : 0;
+    const seenAt = typeof old.obsidianNoteLinkSeenAt === 'string' ? ts(old.obsidianNoteLinkSeenAt) : 0;
+    if (carries) {
+      carried.obsidianNoteLinkSeen = true;
+      if (t && t > seenAt) carried.obsidianNoteLinkSeenAt = noteMtime;
+    } else if (old.obsidianNoteLinkSeen) {
+      const stale = t > 0 && seenAt > 0 && t <= seenAt;
+      if (!stale) { carried.obsidianNoteTarget = null; carried.obsidianNoteLinkSeen = null; carried.obsidianNoteLinkSeenAt = null; }
+    }
+  }
   return {
     ...carried,
     ...(old.completedAt !== undefined ? { completedAt: old.completedAt } : {}),
@@ -198,7 +223,8 @@ export function mergeObsidianTasks(prevList, scannedList, scannedIdsAllLists, pr
     // to stomp a value the SCAN itself produced — Step 2's per-field
     // vault-edit adoption sets `deadline` on the scan result, and a blind
     // old-side carry here would silently undo the adoption.
-    return old ? { ...t, ...preserveAppFields(old, t) } : t;
+    const noteKey = t.obsidianNotePath || t.obsidianFileDate || obsidianKeyDate(String(t.id));
+    return old ? { ...t, ...preserveAppFields(old, t, noteKey ? noteMtimes[noteKey] : undefined) } : t;
   }).map(t => reviveScannedAgainstTombstone(t, tombstones, noteMtimes))
     .filter(t => !isObsidianTombstoned(tombstones, String(t.id), t.lastModified));
   const retained = oldObsidian.filter(t =>

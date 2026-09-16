@@ -12,35 +12,57 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Verify and decode source-only patch
+      - name: Reconstruct and verify source-only patch
         run: |
-          cat .jobo-patch-part-* | base64 --decode > /tmp/jobo.patch.xz
-          echo 'bde630fdbb015c28fad02302bb80a91d04707b27a0489b71e2e486a00e4d017d  /tmp/jobo.patch.xz' | sha256sum --check
-          xz --decompress --stdout /tmp/jobo.patch.xz > /tmp/jobo.patch
-      - name: Create fresh source branch without bootstrap files
+          mkdir -p /tmp/jobo-validation
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, lzma
+          files = sorted(Path('.').glob('.jobo-patch-part-*'))
+          assert len(files) == 4, 'Unexpected source checkpoint'
+          prefix_bytes = base64.b64decode(''.join(p.read_text() for p in files), validate=True)
+          assert hashlib.sha256(prefix_bytes).hexdigest() == '057bd2da52e9a23d35afbb404edcc105476d22ccb67a54e6e1612ca0b91bb344'
+          recovered = lzma.LZMADecompressor().decompress(prefix_bytes)
+          marker = b'diff --git a/src/utils/jobo.js b/src/utils/jobo.js\n'
+          assert recovered.count(marker) == 1
+          prefix = recovered[:recovered.index(marker)]
+          tail = lzma.decompress(base64.b64decode(Path('.jobo-source-tail.b64').read_text(), validate=True))
+          assert hashlib.sha256(tail).hexdigest() == '8b6bf5099dac8e54b13e3a06289ab29641c208b8755c6b9b92cbffefb2b34aaa'
+          patch = prefix + tail
+          assert hashlib.sha256(patch).hexdigest() == '6f5da9e4467270a66a1511410b71ccfd0c533ba84484f1645c84e50192e40513'
+          Path('/tmp/jobo.patch').write_bytes(patch)
+          PY
+      - name: Prepare clean source branch
         run: |
           if git ls-remote --exit-code --heads origin dayGLANCE-jobo; then
             echo 'Refusing to replace an existing branch'; exit 1
           fi
-          git checkout -b dayGLANCE-jobo d1ef05275b7c7e30434a81c73b4b38039105ece5
+          git fetch https://github.com/krelltunez/dayGLANCE.git a39d73c9ead3456ad0ea69e00d142b28008a9ff6
+          git checkout -b dayGLANCE-jobo a39d73c9ead3456ad0ea69e00d142b28008a9ff6
           git apply --check /tmp/jobo.patch
           git apply --index /tmp/jobo.patch
           git diff --cached --check
+          git diff --cached --stat | tee /tmp/jobo-validation/changes.txt
           git config user.name 'Lcub3d'
           git config user.email '46134215+Lcub3d@users.noreply.github.com'
           git commit -m 'feat: add opt-in Jobo plan/do journal and PDCA source prototype'
-          git push origin HEAD:refs/heads/dayGLANCE-jobo
-          git rev-parse HEAD > /tmp/JOBOPR-COMMIT.txt
+          git rev-parse HEAD > /tmp/jobo-validation/COMMIT.txt
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci --ignore-scripts
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts
+      - name: Lint
+        run: set -o pipefail; npm run lint 2>&1 | tee /tmp/jobo-validation/lint.log
+      - name: Full test suite
+        run: set -o pipefail; npm test 2>&1 | tee /tmp/jobo-validation/tests.log
+      - name: Production web build
+        run: set -o pipefail; npm run build 2>&1 | tee /tmp/jobo-validation/build.log
+      - name: Publish validated source branch to the fork
+        run: git push origin HEAD:refs/heads/dayGLANCE-jobo
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jobo-source-port-commit
-          path: /tmp/JOBOPR-COMMIT.txt
+          name: jobo-source-validation
+          path: /tmp/jobo-validation/
           retention-days: 7

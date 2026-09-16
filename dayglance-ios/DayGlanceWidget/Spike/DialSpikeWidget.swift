@@ -73,6 +73,13 @@ import UIKit
 //     96 gaps over ~5 s, or a footprint over ~20 MB at any point means the
 //     strategy is not one to build on — it has no headroom for real data,
 //     text, or a second widget instance.
+//
+// DECIDING
+//   docs/day-dial-widget-handoff.md §6 "Deciding between the two paths" is
+//   the rule. In short: cached image clean → cached. Cached image defective
+//   and live fast+light → live. Cached image defective and live slow or
+//   heavy → neither is ready; stop and talk. A cache defect reopens the
+//   question on its own; it does not need live to also pass.
 // ─────────────────────────────────────────────────────────────────────────────
 
 struct DialSpikeEntry: TimelineEntry {

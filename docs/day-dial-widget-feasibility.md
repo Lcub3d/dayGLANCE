@@ -11,8 +11,8 @@ reason: not memory, but the fact that neither platform can move the needle
 smoothly.**
 
 The parts you would expect to be hard are not. The geometry is already a pure,
-tested module (`src/utils/dayDial.js`, 1101 lines, 144 passing tests with
-`src/utils/solar.test.js`). The snapshot pipeline already exists end to end on
+tested module (`src/utils/dayDial.js`; at the time 131 tests in
+`dayDial.test.js` plus 13 in `solar.test.js` = 144). The snapshot pipeline already exists end to end on
 both platforms and has ~187 KB of headroom under its own cap. The payload delta
 is about 2 KB. Android's bitmap problem has a known escape hatch. iOS's 30 MB
 widget limit is not the binding constraint.
@@ -149,8 +149,9 @@ providers run in the same process (`SharedDataStore.kt:74-82`).
 
 **The schema** is defined in one place, `src/App.jsx:7874-7955`, and mirrored
 (partially) into Swift as `struct WidgetSnapshot` in `WidgetModels.swift:7-16`.
-Note the Swift struct decodes only 7 of the 23 top-level keys — the rest are
-read on Android via `org.json` or ignored.
+Note the Swift struct decodes only a handful of the top-level keys (7 at the
+time; `sky` and `dial` since) — the rest are read on Android via `org.json` or
+ignored.
 
 ```
 date, dateLabel, steps, use24Hour,
@@ -213,8 +214,9 @@ With goals/projects disabled (allGoals/allProjects/hyperGlance empty):
 already fully separated.** `src/utils/dayDial.js` (1101 ln) exports 40
 functions and constants, all pure; `DayDial.jsx:36-38` says so in its own
 header — *"All geometry and rollups come from utils/dayDial.js; this file only
-draws."* `src/utils/dayDial.test.js` + `src/utils/solar.test.js` = **144 tests,
-all passing** (verified in this session).
+draws."* `src/utils/dayDial.test.js` (131) + `src/utils/solar.test.js` (13) =
+**144 tests, all passing** at the time of this investigation (140 + 13 after
+Phase 0 added `computeSkySnapshot` and `projectDialSnapshot`).
 
 Props consumed per render (`DayDial.jsx:570`):
 
@@ -290,6 +292,19 @@ elements total.
 ---
 
 ## 5. Payload delta — what the dial needs that the snapshot lacks
+
+> **Correction, found in Phase 0 and worth reading before the table below.**
+> This section originally said the day's timed blocks were "already there" in
+> the snapshot. They were not, for a dial: every agenda-shaped field
+> (`sections[].tasks`, `overdueToday[]`, `nextTask`, `upcomingTasks`) is built
+> from `todayAgenda` (`App.jsx`, the `useMemo` near line 6706), which **drops a
+> completed task once it has ended** — its own comment reads *"Past: hide
+> completed tasks."* An agenda should do that; a dial that draws past blocks
+> dimmed cannot live with it, and a completed 9 AM block would simply be
+> missing from the ring by afternoon. The fix is a separate `dial` field built
+> from `computeDialModel` over the unfiltered day (`projectDialSnapshot`), not
+> a change to `todayAgenda`, which has a dozen consumers. See
+> `docs/day-dial-widget-handoff.md` §5 for the field as shipped.
 
 **Three of your six items are already in the snapshot.** Correcting the
 premise:

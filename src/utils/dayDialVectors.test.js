@@ -43,6 +43,14 @@ describe('dayDial vectors fixture', () => {
     expect(sky.computeSkySnapshot.cases.find((c) => c.input.site === 'nowhere').expected).toBeNull();
   });
 
+  it('pins the wire shape of the snapshot\'s `dial` field', () => {
+    const { snapshot } = buildDialVectors();
+    const dense = snapshot.projectDialSnapshot.cases[0].expected;
+    expect(dense.blocks.length).toBeGreaterThan(15);
+    expect(new Set(dense.blocks.map((b) => b.type))).toEqual(new Set(['task', 'event', 'routine', 'sleep']));
+    expect(dense.blocks.some((b) => b.completed === true)).toBe(true);
+  });
+
   it('is serialisable without loss: every number survives a JSON round trip', () => {
     const v = buildDialVectors();
     expect(JSON.parse(JSON.stringify(v))).toEqual(v);

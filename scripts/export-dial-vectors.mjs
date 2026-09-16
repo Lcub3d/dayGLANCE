@@ -23,4 +23,4 @@ const vectors = buildDialVectors();
 const out = resolve(root, VECTORS_PATH);
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, `${JSON.stringify(vectors, null, 2)}\n`);
-console.log(`export-dial-vectors: wrote ${VECTORS_PATH} — ${vectors.counts.geometry} geometry + ${vectors.counts.sky} sky cases (TZ=${VECTORS_TIMEZONE})`);
+console.log(`export-dial-vectors: wrote ${VECTORS_PATH} — ${vectors.counts.geometry} geometry + ${vectors.counts.sky} sky + ${vectors.counts.snapshot} snapshot cases (TZ=${VECTORS_TIMEZONE})`);

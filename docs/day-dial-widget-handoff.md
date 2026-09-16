@@ -119,12 +119,73 @@ at small size. Moon is an outlined circle with the lit fraction filled.
 
 ## 5. Data
 
-Most of what the dial needs already ships. Per the feasibility findings, only
-hourly sun/moon strength, sunrise/sunset and moon phase are genuinely absent;
-timed blocks, the sleep window and routines are already in the snapshot.
+Everything the widget draws arrives in one JSON snapshot, built in
+`src/App.jsx`'s widget effect and handed to `WidgetBridge.updateSnapshot`
+(200,000-byte cap at `WidgetBridge.swift:27`). Decoded on the Swift side by
+`WidgetModels.swift`. As of Phase 0 it carries, for the dial:
 
-Current snapshot is ~12,834 bytes against a 200,000 cap — 6% of budget, with
-`allProjects` accounting for 44% of it. The additions are not a size concern.
+**`dial` — the ring.** Every timed block of the local day, *whether or not it
+is done or already over*, plus the sleep window and today's routines, in one
+start-sorted list. Produced by `projectDialSnapshot` (`src/utils/dayDial.js`)
+over `computeDialModel` — the same model the in-app dial renders, so the
+widget and the dial cannot disagree about the day's shape. Per block:
+
+| field | notes |
+|---|---|
+| `type` | `task` · `event` (read-only imported calendar) · `routine` · `sleep` |
+| `startMin`, `durationMin` | local minutes from midnight; `durationMin` is the **drawn** span, already clipped at midnight — `endsNextDay: true` + `endMinTrue` carry the real end when it was |
+| `completed` | tasks, events, routines. Shipped now even though the ring dims by time alone, so rendering unfinished past blocks differently later is not a second snapshot change |
+| `kind` | `effort` · `restore` — the energy axis, tasks/events only |
+| `colorHex` | tasks/events only; routine and sleep take the widget's fixed colours (spec: `#4ec9b0`, `#6f6f9e`) |
+| `title`, `tag` | display title (no wikilinks, no `#tags`) and the first tag *without* its `#`, on every task/event/routine. On every block, not only the running one: the widget renders a 24-hour timeline from one snapshot, and which block is "current" changes with the entry, not with when the snapshot was pushed |
+| `lane`, `laneCount` | concentric lane for overlapping blocks; a lone block is 0 of 1 |
+| `startedPrevDay: true` | last night's overrun, drawn from midnight |
+
+Nothing else: no notes, subtasks, project links, or anything the ring and hub
+do not draw. Not tag-filtered (`getTasksForDate(today, false)`): the home
+screen shows the day, not a filtered view of it.
+
+**Why this is its own field.** The snapshot's agenda-shaped fields —
+`sections[].tasks`, `overdueToday[]`, `nextTask`, `upcomingTasks` — are all
+built from `todayAgenda` (`App.jsx`, the `useMemo` near line 6706), which
+**hides a completed task once it has ended** (*"Past: hide completed tasks"*).
+That is right for an agenda and wrong for a dial: a completed 9 AM block still
+has to be on the ring at 3 PM, dimmed. `todayAgenda` is deliberately untouched
+— it also feeds the now-marker, three context values, the mobile and desktop
+layouts, the Glance sidebar, the Electron bridge and the Stream Deck payload.
+
+**`sky` — the sky ring.** From `computeSkySnapshot`, the same solar and lunar
+math as the in-app bands, never re-solved in Swift (§4):
+
+```json
+{"sunriseMin":391,"sunsetMin":1138,"polar":null,
+ "hours":[{"sun":0,"moon":0}, …24 entries sampled at hh:30…],
+ "moon":{"fraction":0.306,"waxing":true,"glyphMin":1148}}
+```
+
+`sunriseMin`/`sunsetMin` are the exact local minutes for the glyph angles
+(null, with `polar` set, on a polar day or night); `hours[h]` is the strength
+at the hour's **midpoint**, the value §4's per-segment rule wants; `moon` has
+the lit `fraction` for the glyph and `glyphMin`, the minute the in-app dial
+places its moon glyph at. Null until the weather feature has geocoded a
+location, in which case the ring is not drawn.
+
+**Hub.** Title, tag, and end time come from whichever `dial` block contains
+the entry's time (`startMin ≤ t < startMin + durationMin`); "until hh:mm ·
+Xm left" from its end against the entry's time; "then Xh open" from the gap to
+the following block. Derive these from `dial` per entry — `daySummary.upNext`
+also carries a preformatted `timeLabel` and countdown, but that is the Live
+Activity's single-moment fact and is only right for the entry at push time.
+`dateLabel` and `use24Hour` for the date rows are already present.
+
+**Size**, on the spec's dense day (20 dial blocks) against the 200,000 cap:
+
+| | bytes | of cap |
+|---|---|---|
+| `sky` | 633 | 0.3% |
+| `dial` | 3,285 (~164 per block) | 1.6% |
+| whole snapshot, typical | **16,752** | **8.4%** |
+| whole snapshot, goals/projects off | 9,309 | 4.7% |
 
 ---
 
@@ -154,22 +215,41 @@ dragged constantly, and every edit that should be reflected costs a
 
 `Text(style: .timer)` stays live between entries — use it for the countdown.
 
+### Deciding between the two paths
+
+Measured on an A15 with the spike from PR #1670 (its file header says how to
+read the numbers). The criteria are not conjunctive: a defect in the cache path
+is enough on its own to reopen the question, whatever live paths measure.
+
+| cached image | live paths | decision |
+|---|---|---|
+| clean — `baseImage` under ~500 ms, correct at device scale, PNG survives across provider calls, per-entry gap small | anything | **cached image.** The default; live clearing its bar too is noted, not acted on |
+| **defect** | fast and light — median inter-entry gap < ~15 ms **and** footprint < ~15 MB across all 96 | **live paths** |
+| **defect** | slow or heavy | **neither is ready — stop and talk.** The options on the table are batching same-style shapes (cuts live's view count ~80%), fewer entries, or a different architecture; none is a default |
+| clean per entry, but total archival > ~5 s | — | cached, with fewer entries (48 at 30 min) as a last resort — it makes the needle worse |
+
+"Clean" and "defect" are about the cache path's own behaviour, not about how
+it compares to live.
+
 ---
 
 ## 7. Known gaps
 
 - **`Canvas` does not render in WidgetKit.** Use `Path` / `Shape`.
 - **The glow does not survive.** The web dial uses `feGaussianBlur`
-  (`dayDial.js:1226`); there's no cheap `Path` equivalent in a widget. Flat fills.
-  The widget will be slightly more austere than the desktop render.
-- **The hub is an HTML overlay, not SVG** (`dayDial.js:1363`), so the centre
+  (`DayDial.jsx:1225-1227`); there's no cheap `Path` equivalent in a widget. Flat
+  fills. The widget will be slightly more austere than the desktop render.
+- **The hub is an HTML overlay, not SVG** (`DayDial.jsx:1363`), so the centre
   stack is new work rather than a port.
 - **Complications are out.** They need ≥520px (`DialComplications.jsx:47`);
   `systemLarge` is ~364pt.
-- **`dayDial.js` geometry is reusable as logic, not as drawing** — 1101 lines,
-  40 pure exports, 144 passing tests. Export those test vectors as JSON and run
-  them against the Swift port. It won't reduce the work, but it stops the two
-  implementations silently diverging.
+- **`dayDial.js` geometry is reusable as logic, not as drawing** — 42 pure
+  exports; 140 tests in `dayDial.test.js` (the "144" quoted earlier was 131
+  there plus 13 in `solar.test.js`). The vectors are exported:
+  `dayglance-ios/TestFixtures/dayDial.vectors.json` — 171 geometry, 16 sky and
+  2 snapshot cases, regenerated by `npm run ios:vectors` and held to the code
+  by `dayDialVectors.test.js`. Run the Swift port against them; it won't
+  reduce the work, but it stops the two implementations silently diverging.
 - **Lora must be bundled in the extension target.** Google Fonts is not
   reachable from a widget process. Lora is OFL, so bundling is permitted;
   it needs the font file in the target and attribution in the app.
@@ -189,6 +269,11 @@ dragged constantly, and every edit that should be reflected costs a
    disappear, raise the floor and compress the range rather than widening.
 3. Lora 500 at 28pt — display serifs can go spindly when shrunk. May need 600.
 4. Dense-day legibility of the separator cut at 1.6pt.
+5. **Sunrise/sunset glyph angles match real solar times** for the device's
+   location — the spec fixture's 05:37 / 20:31 are placeholders. Compare the
+   drawn glyphs against `sky.sunriseMin` / `sunsetMin` in the snapshot and
+   against a reference almanac for the day; a mismatch is a `computeSkySnapshot`
+   or angle-mapping bug, not a design question.
 
 ---
 
@@ -199,12 +284,16 @@ the total is more reliable than any single line below.
 
 | # | Phase | Est. | Done when |
 |---|---|---|---|
-| 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported |
+| 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported. **Open**: the spike compiles (`ios.yml` green) but has not run on an A15 |
+| 0b | Dial blocks in the snapshot | 0.5d | `dial` field carries every timed block of the day (§5). **Landed** in the follow-up to #1670. Parallel to Phase 1; gates Phase 2 |
 | 1 | Geometry port | 3–4d | Swift agrees with `dayDial.js` on every exported vector. No UI. |
 | 2 | Static dial | 3d | Sky ring, ticks, labels, block band, separators, glyphs match the spec render side by side |
 | 3 | Hub | 2d | All seven rows correct; a long task title truncates gracefully |
 | 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
 | 5 | States + ship | 2–3d | Placeholder, empty day, no current task, rollover, DST, `widgetURL`, Lora bundled |
+
+**Phase 0b is done and Phase 0 is not.** The rendering decision waits on the
+A15 run; nothing in phases 2–5 starts before it.
 
 **Phase 0 is a gate, not a warm-up.** If the cached-image path wins, phase 2
 collapses to a single `ImageRenderer` pass and phase 4 gets simpler. If live

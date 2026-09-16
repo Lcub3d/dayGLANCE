@@ -12,7 +12,8 @@
   },
   "counts": {
     "geometry": 171,
-    "sky": 16
+    "sky": 16,
+    "snapshot": 2
   },
   "geometry": {
     "dialAngle": {
@@ -8020,6 +8021,435 @@
             "glyphMin": null,
             "fraction": 0.0018190641364241311,
             "waxing": false
+          }
+        }
+      ]
+    }
+  },
+  "snapshot": {
+    "projectDialSnapshot": {
+      "description": "The `dial` field of the widget snapshot: every timed block of the day, typed, start-sorted, drawn spans clipped at midnight.",
+      "cases": [
+        {
+          "name": "the widget spec's dense day, with a done block, an event, an overrun and a window",
+          "input": {
+            "date": "2026-09-16",
+            "dayTasks": [
+              {
+                "id": 1,
+                "title": "Morning routine",
+                "startTime": "06:25",
+                "duration": 35,
+                "isAllDay": false,
+                "completed": true
+              },
+              {
+                "id": 2,
+                "title": "Email #admin",
+                "startTime": "07:15",
+                "duration": 45,
+                "isAllDay": false,
+                "completed": true
+              },
+              {
+                "id": 3,
+                "title": "Standup #work",
+                "startTime": "08:00",
+                "duration": 60,
+                "isAllDay": false,
+                "completed": true
+              },
+              {
+                "id": 4,
+                "title": "Planning #work",
+                "startTime": "09:00",
+                "duration": 60,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 5,
+                "title": "Write API documentation #work",
+                "startTime": "10:00",
+                "duration": 150,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 6,
+                "title": "Lunch #break",
+                "startTime": "12:30",
+                "duration": 60,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 7,
+                "title": "Review #work",
+                "startTime": "13:30",
+                "duration": 60,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 8,
+                "title": "Expenses #admin",
+                "startTime": "14:30",
+                "duration": 45,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 9,
+                "title": "Deep work #work",
+                "startTime": "15:15",
+                "duration": 120,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 10,
+                "title": "Walk",
+                "startTime": "17:15",
+                "duration": 45,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 11,
+                "title": "Dentist",
+                "startTime": "18:00",
+                "duration": 60,
+                "isAllDay": false,
+                "completed": false,
+                "imported": true
+              },
+              {
+                "id": 12,
+                "title": "Calls #admin",
+                "startTime": "19:00",
+                "duration": 45,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 13,
+                "title": "Dinner with [[friends]]",
+                "startTime": "19:45",
+                "duration": 105,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 14,
+                "title": "Evening routine",
+                "startTime": "21:30",
+                "duration": 40,
+                "isAllDay": false,
+                "completed": false
+              },
+              {
+                "id": 15,
+                "title": "Late film",
+                "startTime": "23:00",
+                "duration": 120,
+                "isAllDay": false,
+                "completed": false
+              }
+            ],
+            "prevDayTasks": [
+              {
+                "id": "y1",
+                "title": "Late session",
+                "startTime": "23:00",
+                "duration": 150,
+                "isAllDay": false,
+                "completed": false
+              }
+            ],
+            "dayWindow": {
+              "start": "06:25",
+              "stop": "22:30"
+            },
+            "routines": [
+              {
+                "id": "r1",
+                "name": "Stretch",
+                "startTime": "07:00",
+                "duration": 15
+              },
+              {
+                "id": "r2",
+                "name": "Journal",
+                "startTime": "21:00",
+                "duration": 30
+              },
+              {
+                "id": "r3",
+                "name": "Vitamins",
+                "isAllDay": true
+              }
+            ],
+            "routineCompletions": {
+              "r1": true
+            }
+          },
+          "expected": {
+            "date": "2026-09-16",
+            "blocks": [
+              {
+                "type": "task",
+                "id": "y1",
+                "title": "Late session",
+                "tag": null,
+                "startMin": 0,
+                "durationMin": 90,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1,
+                "startedPrevDay": true
+              },
+              {
+                "type": "sleep",
+                "startMin": 0,
+                "durationMin": 385
+              },
+              {
+                "type": "task",
+                "id": 1,
+                "title": "Morning routine",
+                "tag": null,
+                "startMin": 385,
+                "durationMin": 35,
+                "kind": "effort",
+                "completed": true,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "routine",
+                "id": "r1",
+                "title": "Stretch",
+                "startMin": 420,
+                "durationMin": 15,
+                "completed": true,
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 2,
+                "title": "Email",
+                "tag": "admin",
+                "startMin": 435,
+                "durationMin": 45,
+                "kind": "effort",
+                "completed": true,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 3,
+                "title": "Standup",
+                "tag": "work",
+                "startMin": 480,
+                "durationMin": 60,
+                "kind": "effort",
+                "completed": true,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 4,
+                "title": "Planning",
+                "tag": "work",
+                "startMin": 540,
+                "durationMin": 60,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 5,
+                "title": "Write API documentation",
+                "tag": "work",
+                "startMin": 600,
+                "durationMin": 150,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 6,
+                "title": "Lunch",
+                "tag": "break",
+                "startMin": 750,
+                "durationMin": 60,
+                "kind": "restore",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 7,
+                "title": "Review",
+                "tag": "work",
+                "startMin": 810,
+                "durationMin": 60,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 8,
+                "title": "Expenses",
+                "tag": "admin",
+                "startMin": 870,
+                "durationMin": 45,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 9,
+                "title": "Deep work",
+                "tag": "work",
+                "startMin": 915,
+                "durationMin": 120,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 10,
+                "title": "Walk",
+                "tag": null,
+                "startMin": 1035,
+                "durationMin": 45,
+                "kind": "restore",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "event",
+                "id": 11,
+                "title": "Dentist",
+                "tag": null,
+                "startMin": 1080,
+                "durationMin": 60,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 12,
+                "title": "Calls",
+                "tag": "admin",
+                "startMin": 1140,
+                "durationMin": 45,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 13,
+                "title": "Dinner with",
+                "tag": null,
+                "startMin": 1185,
+                "durationMin": 105,
+                "kind": "restore",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "routine",
+                "id": "r2",
+                "title": "Journal",
+                "startMin": 1260,
+                "durationMin": 30,
+                "completed": false,
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "task",
+                "id": 14,
+                "title": "Evening routine",
+                "tag": null,
+                "startMin": 1290,
+                "durationMin": 40,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1
+              },
+              {
+                "type": "sleep",
+                "startMin": 1350,
+                "durationMin": 90
+              },
+              {
+                "type": "task",
+                "id": 15,
+                "title": "Late film",
+                "tag": null,
+                "startMin": 1380,
+                "durationMin": 60,
+                "kind": "effort",
+                "completed": false,
+                "colorHex": "#3b82f6",
+                "lane": 0,
+                "laneCount": 1,
+                "endsNextDay": true,
+                "endMinTrue": 60
+              }
+            ]
+          }
+        },
+        {
+          "name": "an empty day with no window",
+          "input": {
+            "date": "2026-09-16",
+            "dayTasks": []
+          },
+          "expected": {
+            "date": "2026-09-16",
+            "blocks": []
           }
         }
       ]

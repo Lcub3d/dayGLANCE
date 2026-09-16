@@ -34,6 +34,7 @@ import {
   stepDialSelection,
   computeDaylightBand,
   computeSkySnapshot,
+  projectDialSnapshot,
   dialPeakUv,
   DAYLIGHT_FLOOR,
   DAYLIGHT_PEAK,
@@ -1368,5 +1369,114 @@ describe('computeSkySnapshot', () => {
     const sky = computeSkySnapshot(date, DENVER);
     const skyPeakHour = sky.hours.reduce((best, x, h) => (x.sun > sky.hours[best].sun ? h : best), 0);
     expect(Math.abs(skyPeakHour - bandPeakHour)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('projectDialSnapshot', () => {
+  // The widget's ring reads this. Its reason to exist is the first test: the
+  // agenda-shaped snapshot fields hide a completed task once it has ended,
+  // and a dial cannot draw the day's shape without it.
+  const day = [
+    task({ id: 1, title: 'Standup #work', startTime: '09:00', duration: 30, completed: true }),
+    task({ id: 2, title: 'Lunch #break', startTime: '12:30', duration: 45 }),
+    task({ id: 3, title: 'Dentist', startTime: '15:00', duration: 60, imported: true }),
+    task({ id: 4, title: 'Sync [[Q3 plan]] #work #deep', startTime: '16:00', duration: 60,
+      notes: 'bring the deck', subtasks: [{ title: 'x', completed: false }], projectId: 'p1' }),
+    task({ id: 5, title: 'Holiday', isAllDay: true }),
+    task({ id: 6, title: 'Inbox thing', startTime: null }),
+  ];
+  const routines = [
+    { id: 'r1', name: 'Stretch', startTime: '07:00', duration: 15 },
+    { id: 'r2', name: 'Vitamins', isAllDay: true },
+  ];
+  const snap = () => projectDialSnapshot({
+    date: '2026-09-16', dayTasks: day, dayWindow: { start: '07:00', stop: '22:30' },
+    routines, routineCompletions: { r1: true },
+  });
+
+  it('keeps a completed block on the ring — the thing todayAgenda drops', () => {
+    const done = snap().blocks.find((b) => b.id === 1);
+    expect(done).toMatchObject({ type: 'task', startMin: 540, durationMin: 30, completed: true });
+  });
+
+  it('types every block so sleep, routine, event and task are told apart', () => {
+    const types = snap().blocks.map((b) => [b.startMin, b.type]);
+    expect(types).toEqual([
+      [0, 'sleep'], [420, 'routine'], [540, 'task'], [750, 'task'],
+      [900, 'event'], [960, 'task'], [1350, 'sleep'],
+    ]);
+  });
+
+  it('is start-sorted, carries the date, and leaves all-day and unscheduled items off', () => {
+    const { date, blocks } = snap();
+    expect(date).toBe('2026-09-16');
+    expect(blocks.map((b) => b.startMin)).toEqual([...blocks.map((b) => b.startMin)].sort((a, b) => a - b));
+    expect(blocks.some((b) => b.id === 5 || b.id === 6)).toBe(false);
+  });
+
+  it('carries only what the ring and hub draw — no notes, subtasks or project links', () => {
+    const rich = snap().blocks.find((b) => b.id === 4);
+    expect(Object.keys(rich).sort()).toEqual([
+      'colorHex', 'completed', 'durationMin', 'id', 'kind', 'lane', 'laneCount',
+      'startMin', 'tag', 'title', 'type',
+    ]);
+    // The same cleaning the dial's own hub applies (splitHubTitle in
+    // DayDial.jsx): the wikilink goes entirely, tags come out of the title
+    // and the first is kept bare — the consumer prefixes the '#', as the Up
+    // Next widget already does for nextTask.tags.
+    expect(rich.title).toBe('Sync');
+    expect(rich.tag).toBe('work');
+    expect(rich.kind).toBe('effort');
+    expect(rich.colorHex).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it('gives routines and sleep only the fields their fixed styling needs', () => {
+    const { blocks } = snap();
+    const routine = blocks.find((b) => b.type === 'routine');
+    expect(routine).toEqual({
+      type: 'routine', id: 'r1', title: 'Stretch', startMin: 420, durationMin: 15,
+      completed: true, lane: 0, laneCount: 1,
+    });
+    const sleep = blocks.filter((b) => b.type === 'sleep');
+    expect(sleep).toEqual([
+      { type: 'sleep', startMin: 0, durationMin: 420 },
+      { type: 'sleep', startMin: 1350, durationMin: 90 },
+    ]);
+  });
+
+  it('classifies energy the way the dial does', () => {
+    const { blocks } = snap();
+    expect(blocks.find((b) => b.id === 2).kind).toBe('restore');
+    expect(blocks.find((b) => b.id === 1).kind).toBe('effort');
+  });
+
+  it('clips a block at midnight for drawing and keeps its true end', () => {
+    const { blocks } = projectDialSnapshot({
+      date: 'd', dayTasks: [task({ id: 'late', startTime: '23:00', duration: 120 })],
+    });
+    expect(blocks[0]).toMatchObject({ startMin: 1380, durationMin: 60, endsNextDay: true, endMinTrue: 60 });
+  });
+
+  it('carries last night\'s overrun in from midnight, flagged', () => {
+    const { blocks } = projectDialSnapshot({
+      date: 'd',
+      dayTasks: [task({ id: 1, startTime: '09:00', duration: 60 })],
+      prevDayTasks: [task({ id: 'y', title: 'Late session', startTime: '23:00', duration: 150 })],
+    });
+    expect(blocks[0]).toMatchObject({ id: 'y', startMin: 0, durationMin: 90, startedPrevDay: true });
+    expect(blocks[0].endsNextDay).toBeUndefined();
+  });
+
+  it('lanes overlapping blocks the way the ring stacks them', () => {
+    const { blocks } = projectDialSnapshot({
+      date: 'd',
+      dayTasks: [task({ id: 'a', startTime: '09:00', duration: 120 }), task({ id: 'b', startTime: '09:30', duration: 60 })],
+    });
+    expect(blocks.map((b) => [b.id, b.lane, b.laneCount])).toEqual([['a', 0, 2], ['b', 1, 2]]);
+  });
+
+  it('draws no sleep without a full window and no routines without any', () => {
+    const { blocks } = projectDialSnapshot({ date: 'd', dayTasks: [task()], dayWindow: { start: '07:00', stop: null } });
+    expect(blocks.map((b) => b.type)).toEqual(['task']);
   });
 });

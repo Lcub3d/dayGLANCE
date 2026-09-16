@@ -5713,9 +5713,17 @@ const DayPlanner = () => {
         todayRoutines: stampTaskTimestamps(allTodayRoutines, 'day-planner-today-routines'),
         routinesDate,
         routineCompletions,
-        // Sibling LWW timestamps for routine completions (no React state in the
-        // payload closure — read from localStorage, like habitLogTimestamps).
-        routineCompletionTimestamps: JSON.parse(localStorage.getItem('day-planner-routine-completion-timestamps') || '{}'),
+        // Sibling LWW timestamps for routine completions, read from the SAME
+        // render as the completions above — never from localStorage. The two
+        // must always describe one state: the open-across-midnight rollover
+        // (useRoutines) writes its midnight tombstones to localStorage
+        // synchronously while the completions only clear on the next render,
+        // so a payload built in that gap from localStorage carried yesterday's
+        // completions stamped at today's midnight. That pair is the seed of the
+        // one-write-per-pull loop PR #1674 heals (a stale completion tied at
+        // the midnight stamp). React commits both state updates together, so
+        // reading both from state cannot produce it.
+        routineCompletionTimestamps,
         minimizedSections,
         use24HourClock,
         weatherZip,

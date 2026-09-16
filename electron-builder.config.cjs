@@ -21,6 +21,25 @@
 //   - CFBundleVersion defaults to the app `version` (bump it per release, as usual);
 //     set BUILD_NUMBER only if you need to upload twice under the same version.
 
+const { readdirSync } = require('node:fs');
+const path = require('node:path');
+
+// The languages dayGLANCE is actually translated into, read from the same
+// directory i18n resolves its bundles from (src/locales.js globs it). Listing
+// them here by hand would recreate exactly the drift that file exists to
+// prevent — adding public/locales/<tag>/translation.json now reaches the macOS
+// bundle metadata too, with nothing else to remember.
+const SHIPPED_LANGUAGES = readdirSync(path.join(__dirname, 'public', 'locales'), { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => e.name)
+  .sort();
+
+// Apple's spelling for a tag where it differs from ours. zh-CN is the legacy
+// identifier; zh-Hans is what App Store Connect lists as "Chinese, Simplified".
+// Only CFBundleLocalizations goes through this — electronLanguages is matched
+// against Electron's own .lproj names, which use zh_CN.
+const APPLE_LANGUAGE_IDS = { 'zh-CN': 'zh-Hans' };
+
 const hasCert = Boolean(process.env.CSC_LINK);
 // MAS builds sign from the keychain (no CSC_LINK), so they must never inherit the
 // dev ad-hoc `identity: null` below — that would skip signing entirely. The mas
@@ -86,11 +105,41 @@ module.exports = {
     category: 'public.app-category.productivity',
     entitlements: 'electron/entitlements.mac.plist',
     entitlementsInherit: 'electron/entitlements.mac.plist',
+    // Which of Electron's bundled locales survive into the .app. Without this,
+    // electron-builder keeps all ~54 of Chromium's, each as an <lang>.lproj
+    // folder in Contents/Resources — and Apple reads those folders as the app's
+    // supported languages, so the Mac App Store listing advertised 50+ languages
+    // for an app translated into eight. Nothing in App Store Connect can correct
+    // that; the folders have to not be there.
+    //
+    // Declared on mac, NOT on mas, and that is deliberate twice over: mas
+    // inherits it through the same deepAssign documented on extraResources
+    // above, and declaring it in both places would CONCATENATE the two arrays
+    // rather than replace. Direct dmg/zip builds get the trim as well, which
+    // also drops a few MB of locale paks nobody can read.
+    //
+    // Values are matched case-insensitively with '-' and '_' treated alike
+    // (app-builder-lib's removeUnusedLanguagesIfNeeded), so our 'pt-BR' matches
+    // Electron's pt_BR.lproj as written — no need to transcribe the underscored
+    // folder names. Matching is also prefix-wise in both directions, so bare
+    // 'en' and 'es' additionally keep en_GB.lproj and es_419.lproj. That is
+    // accepted rather than worked around: the App Store may list those two as
+    // separate regional entries, but the alternative (writing 'en-US' to
+    // exclude en_GB) relies on Electron shipping a bare en.lproj for a
+    // region-qualified tag to prefix-match, and if that ever stopped holding,
+    // English itself would be deleted from the bundle.
+    electronLanguages: SHIPPED_LANGUAGES,
     // Calendar (EventKit) permission strings shown in the system prompt. macOS 14+
     // uses the FullAccess variant; older releases use NSCalendarsUsageDescription.
     extendInfo: {
       NSCalendarsUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
       NSCalendarsFullAccessUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
+      // Declares the same set as a bundle property. Belt and braces: the .lproj
+      // folders above are what actually shortens the listing (CFBundleLocalizations
+      // is additive, it cannot subtract a folder that is present), but this states
+      // the intent in the artifact and covers a build where the folder naming
+      // shifts. Also mac-only, for the array-concatenation reason above.
+      CFBundleLocalizations: SHIPPED_LANGUAGES.map((l) => APPLE_LANGUAGE_IDS[l] || l),
     },
     // Bundle the signed EventKit calendar helper (built by scripts/build-calendar-helper.sh)
     // into Contents/Resources/calendar-helper. electron-builder signs nested binaries.

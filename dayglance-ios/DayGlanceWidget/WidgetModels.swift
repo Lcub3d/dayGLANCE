@@ -12,7 +12,39 @@ struct WidgetSnapshot: Codable {
     var upcomingTasks: [UpcomingTaskData]?
     var allGoals: [GoalData]?
     var allProjects: [ProjectData]?
+    var sky: SkySnapshot?
     var updatedAt: Double?
+}
+
+// The Day Dial widget's sky ring, derived on the JS side from the same solar
+// and lunar math the in-app dial draws with (computeSkySnapshot in
+// src/utils/dayDial.js). Consumed, never re-solved here — see
+// docs/day-dial-widget-handoff.md §4. Nil until the app has a geocoded
+// location, in which case the ring is simply not drawn.
+struct SkySnapshot: Codable {
+    /// Minutes past local midnight; nil on a polar day/night (see `polar`).
+    var sunriseMin: Int?
+    var sunsetMin: Int?
+    /// "day" (sun never sets), "night" (never rises), or nil for an ordinary day.
+    var polar: String?
+    /// 24 entries, each sampled at hh:30. Strengths in 0...1; the consumer
+    /// applies its own opacity mapping. Moon is 0 while the sun is up.
+    var hours: [SkyHour]?
+    var moon: SkyMoon?
+}
+
+struct SkyHour: Codable {
+    var sun: Double?
+    var moon: Double?
+}
+
+struct SkyMoon: Codable {
+    /// Lit portion of the disc, 0 (new) to 1 (full).
+    var fraction: Double?
+    var waxing: Bool?
+    /// Where the dial places the moon glyph, minutes past midnight; nil when
+    /// no night stretch is long enough to carry one.
+    var glyphMin: Int?
 }
 
 // Lightweight task used to fill leftover space in the Up Next widget when the

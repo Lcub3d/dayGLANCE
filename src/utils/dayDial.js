@@ -2,7 +2,7 @@ import { computeDaySummary } from './daySummary.js';
 import { deriveBlockEnergy } from './energyAxis.js';
 import { taskColorToHex } from './colorUtils.js';
 import { getMoonAltitude, getMoonIllumination } from './lunar.js';
-import { getPeakSunElevation, getSunElevation, POLAR_DAY } from './solar.js';
+import { getPeakSunElevation, getSunElevation, getSunTimes, POLAR_DAY } from './solar.js';
 import { assignLanes } from './intervalLanes.js';
 
 // Model + geometry for the Day Dial — the ambient 24-hour instrument view.
@@ -935,6 +935,69 @@ function sunUpPredicate(sun) {
     ? (m) => m >= sunriseMin && m < sunsetMin
     // Sunset before sunrise on the clock: the lit span wraps midnight.
     : (m) => m >= sunriseMin || m < sunsetMin;
+}
+
+/**
+ * The hour-by-hour sky for the home-screen widget, derived here and shipped
+ * in the widget snapshot rather than re-solved natively. The widget's sky
+ * ring is 24 hour-aligned segments (docs/day-dial-widget-handoff.md §4), so
+ * this is the per-hour sample of exactly what computeDaylightBand and
+ * computeMoonBand draw: the same solar elevation, the same lunar altitude,
+ * the same peak-normalisation, and the same rule that the moon band is
+ * clipped to the hours the sun is down. Only the final opacity mapping is
+ * left to the consumer — a strength in [0, 1] is what it wants, and the
+ * dial's own floor/peak constants are the dial's business.
+ *
+ * Strength is purely astronomical. The in-app daylight band also scales by
+ * the forecast's peak UV (computeDaylightBand's uvScale); the widget has no
+ * weather feed, and a band that dims on an overcast day is a nicety the
+ * 6pt ring cannot show anyway.
+ *
+ * @param date   The local calendar day to describe.
+ * @param coords {lat, lon} or null. Null → null: with no location there is
+ *               nothing honest to draw, same as the in-app layers.
+ * @returns {null|{
+ *   sunriseMin: number|null, sunsetMin: number|null, polar: 'day'|'night'|null,
+ *   hours: Array<{sun: number, moon: number}>,   // 24, sampled at hh:30
+ *   moon: {fraction: number, waxing: boolean, glyphMin: number|null},
+ * }}
+ */
+export function computeSkySnapshot(date, coords) {
+  if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lon)) return null;
+  const sun = getSunTimes(date, coords.lat, coords.lon);
+  const sunUp = sunUpPredicate(sun);
+  const peakSin = Math.sin((getPeakSunElevation(coords.lat) * Math.PI) / 180) || 1;
+  const moonRef = Math.sin((MOON_ALTITUDE_REFERENCE * Math.PI) / 180);
+  const { fraction, waxing } = getMoonIllumination(
+    new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12));
+  const round = (v) => Math.round(v * 1e3) / 1e3;
+
+  const hours = [];
+  for (let h = 0; h < 24; h++) {
+    const mid = h * 60 + 30;
+    const elev = getSunElevation(date, coords.lat, coords.lon, mid);
+    const sunStrength = Math.min(1, Math.max(0, Math.sin((elev * Math.PI) / 180)) / peakSin);
+
+    let moonStrength = 0;
+    if (!sunUp(mid)) {
+      const alt = getMoonAltitude(
+        new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, mid), coords.lat, coords.lon);
+      if (alt > 0) {
+        moonStrength = Math.min(1, Math.sin((alt * Math.PI) / 180) / moonRef) * fraction;
+      }
+    }
+    hours.push({ sun: round(sunStrength), moon: round(moonStrength) });
+  }
+
+  return {
+    sunriseMin: sun.sunriseMin,
+    sunsetMin: sun.sunsetMin,
+    polar: sun.polar,
+    hours,
+    // glyphMin from the same stretch logic the dial uses, so the widget's
+    // moon glyph and the dial's sit at the same minute.
+    moon: { fraction: round(fraction), waxing, glyphMin: computeMoonBand(date, coords, sun).glyphMin },
+  };
 }
 
 /**

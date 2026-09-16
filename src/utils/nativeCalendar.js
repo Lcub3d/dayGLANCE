@@ -144,8 +144,18 @@ export const nativeEventToTask = (event) => {
     duration = Math.max(15, timeToMinutes(endTime) - timeToMinutes(startTime));
   }
   return {
-    // Multi-day all-day events get a per-day ID so each day's copy survives dedup
-    id:                   isMultiDay ? `native-cal-${event.id}-${date}` : `native-cal-${event.id}`,
+    // The id names one occurrence on one day, never just the event: every
+    // platform reports the same event id for each occurrence of a recurring
+    // series (EventKit's eventIdentifier, CalendarContract's EVENT_ID), and
+    // the merge in App.jsx dedupes by task id. With the event id alone, a
+    // fetch spanning several occurrences (MONTH's six-week grid, or a daily
+    // event inside the timeline's window) kept only the first and silently
+    // dropped the rest. The date suffix also gives a multi-day all-day event
+    // a per-day copy on each day it spans. Two occurrences on the same day
+    // still collapse; the same event returned for two adjacent query dates
+    // (an all-day event in UTC+ zones, a timed one crossing midnight) still
+    // dedupes, because both resolve to the same start date.
+    id:                   `native-cal-${event.id}-${date}`,
     nativeEventId:        event.id,
     nativeCalendarColor:  event.color || '',
     title:                event.title || '',

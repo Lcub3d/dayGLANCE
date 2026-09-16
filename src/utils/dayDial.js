@@ -1043,8 +1043,16 @@ export function projectDialSnapshot({
   // Same cleaning the Up Next projection applies: wikilinks and #tags out of
   // the display title; the first tag kept separately for the hub's italic line.
   const cleanTitle = (t) => stripWikilinks(t || '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim();
+  // The widget decodes this with a strict JSONDecoder (WidgetModels.swift):
+  // `id` is String?, the minute fields are Int?, and ONE mismatch anywhere in
+  // the array fails the whole snapshot, blanking every iOS widget. Every id
+  // producer in the app emits strings and every duration path emits whole
+  // minutes today, but this list carries every block of the day, so the wire
+  // shape is pinned here rather than trusted: ids stringified, minutes rounded.
+  const idStr = (v) => (v == null ? null : String(v));
+  const minute = (n) => Math.round(n);
   const clipFlags = (b) => ({
-    ...(b.endsNextDay ? { endsNextDay: true, endMinTrue: b.endMinTrue } : {}),
+    ...(b.endsNextDay ? { endsNextDay: true, endMinTrue: minute(b.endMinTrue) } : {}),
     ...(b.startedPrevDay ? { startedPrevDay: true } : {}),
   });
 
@@ -1054,11 +1062,11 @@ export function projectDialSnapshot({
       // that is not the user's own block; computeDialModel already knows
       // it as "not completable".
       type: b.completable ? 'task' : 'event',
-      id: b.id,
+      id: idStr(b.id),
       title: cleanTitle(b.title),
       tag: extractTags(b.title)[0] ?? null,
-      startMin: b.startMin,
-      durationMin: b.endMin - b.startMin,
+      startMin: minute(b.startMin),
+      durationMin: minute(b.endMin - b.startMin),
       kind: b.kind,
       completed: b.completed,
       colorHex: b.colorHex,
@@ -1068,10 +1076,10 @@ export function projectDialSnapshot({
     })),
     ...bars.map((r) => ({
       type: 'routine',
-      id: r.id,
+      id: idStr(r.id),
       title: cleanTitle(r.title),
-      startMin: r.startMin,
-      durationMin: r.endMin - r.startMin,
+      startMin: minute(r.startMin),
+      durationMin: minute(r.endMin - r.startMin),
       completed: r.completed,
       lane: r.lane,
       laneCount: r.laneCount,
@@ -1079,8 +1087,8 @@ export function projectDialSnapshot({
     })),
     ...model.sleep.map((seg) => ({
       type: 'sleep',
-      startMin: seg.startMin,
-      durationMin: seg.endMin - seg.startMin,
+      startMin: minute(seg.startMin),
+      durationMin: minute(seg.endMin - seg.startMin),
     })),
   ].sort((a, b) => a.startMin - b.startMin || a.durationMin - b.durationMin);
 

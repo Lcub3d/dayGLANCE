@@ -1395,7 +1395,7 @@ describe('projectDialSnapshot', () => {
   });
 
   it('keeps a completed block on the ring — the thing todayAgenda drops', () => {
-    const done = snap().blocks.find((b) => b.id === 1);
+    const done = snap().blocks.find((b) => b.id === '1');
     expect(done).toMatchObject({ type: 'task', startMin: 540, durationMin: 30, completed: true });
   });
 
@@ -1411,11 +1411,11 @@ describe('projectDialSnapshot', () => {
     const { date, blocks } = snap();
     expect(date).toBe('2026-09-16');
     expect(blocks.map((b) => b.startMin)).toEqual([...blocks.map((b) => b.startMin)].sort((a, b) => a - b));
-    expect(blocks.some((b) => b.id === 5 || b.id === 6)).toBe(false);
+    expect(blocks.some((b) => b.id === '5' || b.id === '6')).toBe(false);
   });
 
   it('carries only what the ring and hub draw — no notes, subtasks or project links', () => {
-    const rich = snap().blocks.find((b) => b.id === 4);
+    const rich = snap().blocks.find((b) => b.id === '4');
     expect(Object.keys(rich).sort()).toEqual([
       'colorHex', 'completed', 'durationMin', 'id', 'kind', 'lane', 'laneCount',
       'startMin', 'tag', 'title', 'type',
@@ -1446,8 +1446,8 @@ describe('projectDialSnapshot', () => {
 
   it('classifies energy the way the dial does', () => {
     const { blocks } = snap();
-    expect(blocks.find((b) => b.id === 2).kind).toBe('restore');
-    expect(blocks.find((b) => b.id === 1).kind).toBe('effort');
+    expect(blocks.find((b) => b.id === '2').kind).toBe('restore');
+    expect(blocks.find((b) => b.id === '1').kind).toBe('effort');
   });
 
   it('clips a block at midnight for drawing and keeps its true end', () => {
@@ -1478,5 +1478,28 @@ describe('projectDialSnapshot', () => {
   it('draws no sleep without a full window and no routines without any', () => {
     const { blocks } = projectDialSnapshot({ date: 'd', dayTasks: [task()], dayWindow: { start: '07:00', stop: null } });
     expect(blocks.map((b) => b.type)).toEqual(['task']);
+  });
+
+  // WidgetModels.swift decodes this strictly — id as String?, minutes as Int? —
+  // and a single mismatch in the array nils the whole snapshot. The wire shape
+  // is therefore pinned here, whatever the source data looked like.
+  it('always ships string ids and whole minutes, whatever the source carried', () => {
+    const { blocks } = projectDialSnapshot({
+      date: 'd',
+      dayTasks: [
+        task({ id: 42, startTime: '09:00', duration: 22.5 }),
+        task({ id: 'late', startTime: '23:00', duration: 90.4 }),
+      ],
+      routines: [{ id: 7, name: 'Stretch', startTime: '07:00', duration: 15 }],
+    });
+    for (const b of blocks) {
+      if ('id' in b) expect(typeof b.id).toBe('string');
+      expect(Number.isInteger(b.startMin)).toBe(true);
+      expect(Number.isInteger(b.durationMin)).toBe(true);
+      if ('endMinTrue' in b) expect(Number.isInteger(b.endMinTrue)).toBe(true);
+    }
+    expect(blocks.find((b) => b.id === '42')).toMatchObject({ startMin: 540, durationMin: 23 });
+    expect(blocks.find((b) => b.id === '7').type).toBe('routine');
+    expect(blocks.find((b) => b.id === 'late')).toMatchObject({ durationMin: 60, endsNextDay: true, endMinTrue: 30 });
   });
 });

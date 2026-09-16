@@ -1,0 +1,6 @@
+Source-only Jobo prototype for krelltunez/dayGLANCE:main.
+Pinned upstream: a39d73c9ead3456ad0ea69e00d142b28008a9ff6
+Verified complete patch SHA256: 6f5da9e4467270a66a1511410b71ccfd0c533ba84484f1645c84e50192e40513
+Target branch: Lcub3d/dayGLANCE:dayGLANCE-jobo
+Run lint, the full test suite, and production build before publishing.
+No binaries, bootstrap files, credentials, or generated bundles enter the feature branch.

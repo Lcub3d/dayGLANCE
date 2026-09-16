@@ -24,9 +24,10 @@
 .jobo-mobile-axis::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 1px solid currentColor; opacity: .14; }
 .jobo-mobile-hour { position: absolute; left: 0; right: 0; height: 24px; transform: translateY(-50%); display: flex; justify-content: center; align-items: center; }
 .jobo-mobile-hour span { display: flex; align-items: center; justify-content: center; font-size: 10px; font-variant-numeric: tabular-nums; width: 23px; height: 23px; border-radius: 50%; z-index: 1; }
-.jobo-mobile-card { position: absolute; z-index: 2; padding: 5px 7px; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; overflow: hidden; min-width: 0; }
-.jobo-mobile-card-title { display: block; font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.jobo-mobile-card-time { font-size: 10px; line-height: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; opacity: .85; }
+/* Both text rows must fit inside even a 36px short-duration block. */
+.jobo-mobile-card { position: absolute; z-index: 2; padding: 4px 7px; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 0; overflow: hidden; min-width: 0; }
+.jobo-mobile-card-title { display: block; flex-shrink: 0; font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.jobo-mobile-card-time { flex-shrink: 0; font-size: 10px; line-height: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; opacity: .85; }
 .jobo-mobile-now { position: absolute; left: 0; right: 0; border-top: 1px solid #ef4444; z-index: 3; pointer-events: none; opacity: .65; }
 .jobo-mobile-note-preview { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; width: 100%; min-height: 64px; line-height: 22px; padding: 6px 8px; border-radius: 6px; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; }
 .jobo-mobile-tools { display: flex; padding: 4px; gap: 4px; }
@@ -45,3 +46,7 @@
 .jobo-mobile-source-note { min-height: 44px; font-size: 13px; padding: 4px 8px; border-radius: 6px; }
 .jobo-mobile-sheet-actions { display: flex; gap: 8px; align-items: center; padding-top: 10px; }
 .jobo-mobile-sheet-actions > button:not(.jobo-mobile-icon) { flex: 1; min-height: 44px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+@media (max-height: 800px) {
+  /* Leave room for capture and notes on short phones, not two giant calendars. */
+  .jobo-mobile-timeline { height: clamp(220px, calc(100dvh - 494px), 336px); }
+}

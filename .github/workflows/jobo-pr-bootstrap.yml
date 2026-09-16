@@ -1,0 +1,32 @@
+name: Jobo source bootstrap
+on:
+  push:
+    branches: [build/jobo-pr-bootstrap]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: d1ef05275b7c7e30434a81c73b4b38039105ece5
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export pinned source without git metadata or credentials
+        run: |
+          mkdir -p /tmp/jobo-bootstrap
+          git archive --format=tar.gz HEAD > /tmp/jobo-bootstrap/upstream-source.tar.gz
+          git rev-parse HEAD > /tmp/jobo-bootstrap/COMMIT.txt
+      - name: Install pinned dependencies for offline verification
+        run: npm ci --ignore-scripts
+      - name: Package dependency tree only
+        run: tar -czf /tmp/jobo-bootstrap/node_modules-linux.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jobo-upstream-bootstrap
+          path: /tmp/jobo-bootstrap/
+          retention-days: 3

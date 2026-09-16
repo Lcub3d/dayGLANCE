@@ -2146,8 +2146,8 @@
     "preferenceError": "Could not save the Jobo preference."
   },
   "joboMobile": {
-    "view": "Plan / Actual",
-    "toggle": "Switch between Plan / Actual and the original time grid",
+    "view": "Plan / Do",
+    "toggle": "Switch between Plan / Do and the original time grid",
     "tasks": "Tasks",
     "addTask": "Add task",
     "tools": "Journal actions",
@@ -2168,7 +2168,6 @@
     "errorProgress": "Choose a valid progress level.",
     "errorMissing": "This record was deleted elsewhere. Close and refresh.",
     "errorStorage": "Could not save. Your input is still in the editor. Copy it before checking storage or refreshing.",
-    "actual": "Actual",
     "daily": "Daily note"
   }
 }

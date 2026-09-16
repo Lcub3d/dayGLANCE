@@ -2146,8 +2146,8 @@
     "preferenceError": "无法保存 Jobo 设置。"
   },
   "joboMobile": {
-    "view": "计划 / 实际",
-    "toggle": "切换计划对照与原始时间网格",
+    "view": "计划 / 执行",
+    "toggle": "切换计划 / 执行与原始时间网格",
     "tasks": "任务清单",
     "addTask": "添加任务",
     "tools": "账簿操作",
@@ -2168,7 +2168,6 @@
     "errorProgress": "请选择有效进度。",
     "errorMissing": "这条记录已在其他地方删除，请关闭后刷新。",
     "errorStorage": "保存失败，输入仍保留在编辑框中。请先复制内容，再检查存储空间或刷新。",
-    "actual": "实际",
     "daily": "今日笔记"
   }
 }

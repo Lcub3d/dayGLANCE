@@ -66,6 +66,22 @@ with sync_playwright() as playwright:
             expect(dialog.get_by_label('名称', exact=True)).to_have_value('学习英语')
             dialog.get_by_role('button', name='取消', exact=True).click()
         check('secondary recording fields stay collapsed until requested', optional_fields, page)
+        def chinese_copy():
+            expect(page.locator('.jobo-mobile-head b')).to_have_text(['计划', '执行'])
+            expect(page.locator('.jobo-mobile-comparison')).to_have_attribute('aria-label', '计划 / 执行')
+            expect(page.locator('[data-jobo-mobile-toggle]')).to_have_text('Plan / Do')
+        check('Chinese comparison uses the shared Plan / Do labels', chinese_copy, page)
+
+        def english_copy():
+            page.evaluate("localStorage.setItem('i18nextLng', 'en')")
+            page.reload(wait_until='networkidle')
+            page.get_by_role('button').filter(has=page.get_by_text('Timeline', exact=True)).click()
+            expect(page.locator('[data-jobo-mobile]')).to_be_visible()
+            expect(page.locator('.jobo-mobile-head b')).to_have_text(['Plan', 'Do'])
+            expect(page.locator('.jobo-mobile-comparison')).to_have_attribute('aria-label', 'Plan / Do')
+            expect(page.locator('[data-jobo-mobile-toggle]')).to_have_attribute('aria-label', 'Switch between Plan / Do and the original time grid')
+            base['shot'](page, 'mobile-english-plan-do')
+        check('English heading and accessible labels use Plan / Do', english_copy, page)
     finally:
         context.close()
         browser.close()

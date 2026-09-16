@@ -130,7 +130,7 @@ export default function MobileJoboView() {
       <div className={`jobo-mobile-head border-b ${ctx.borderClass}`}>
         <div><b>{t('jobo.plan')}</b><button type="button" className="jobo-mobile-icon text-orange-500" aria-label={t('joboMobile.addPlan')} onClick={() => addPlan()}><Plus size={18} /></button></div>
         <span />
-        <div><b>{t('joboMobile.actual')}</b><button type="button" className="jobo-mobile-icon text-blue-500" aria-label={t('jobo.addDo')} onClick={() => setEditor({})}><Plus size={18} /></button></div>
+        <div><b>{t('jobo.do')}</b><button type="button" className="jobo-mobile-icon text-blue-500" aria-label={t('jobo.addDo')} onClick={() => setEditor({})}><Plus size={18} /></button></div>
       </div>
       <div className={`jobo-mobile-timeline ${ctx.darkMode ? 'dark-scrollbar' : ''}`} ref={scroll} data-mobile-timeline>
         <div className="jobo-mobile-grid" style={{ height: 24 * MOBILE_HOUR_HEIGHT }}>

@@ -21,11 +21,13 @@ export default function TraySpotlight({ darkMode, onClose }) {
     archived: t('common.completed'),
     recurring: t('sched.recurring'),
     deleted: t('spotlight.groupDeleted'),
+    dailynote: t('common.dailyNote'),
   };
   const matchFieldLabels = {
     tag: t('sched.tags'),
     notes: t('task.notes'),
     subtask: t('task.subtasks'),
+    dailynote: t('common.dailyNote'),
   };
 
   // Enable spotlight result computation (normally gated on showSpotlight).

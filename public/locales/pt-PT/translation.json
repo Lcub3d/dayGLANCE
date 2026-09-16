@@ -1181,8 +1181,8 @@
     "monthOpenDay": "Em MÊS: abrir o dia selecionado"
   },
   "spotlight": {
-    "placeholder": "Pesquisar tarefas…",
-    "typeToSearch": "Escreva para pesquisar em todas as tarefas…",
+    "placeholder": "Pesquisar tarefas e notas…",
+    "typeToSearch": "Escreva para pesquisar em todas as tarefas e notas…",
     "noResults": "Nenhum resultado encontrado",
     "groupToday": "Hoje",
     "groupThisWeek": "Esta semana",

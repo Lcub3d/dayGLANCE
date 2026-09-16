@@ -15,6 +15,7 @@ export default function useNavigation({
   setTabletActiveTab,
   setInboxProjectFilter,
   setInboxArchivedExpanded,
+  setDailyNotesModalDate,
   calendarRef,
 }) {
   const changeDate = useCallback((direction) => {
@@ -106,8 +107,15 @@ export default function useNavigation({
       scrollAndHighlight(`[data-task-id="recurring-${task.id}-${date}"]`);
     } else if (source === 'deleted') {
       scrollAndHighlight(`[data-task-id="bin-${task.id}"]`);
+    } else if (source === 'dailynote') {
+      // A daily-note hit opens that day's note on top of the day it belongs to.
+      if (isMobile) {
+        setMobileActiveTab('timeline');
+      }
+      goToDate(result.date);
+      setDailyNotesModalDate?.(result.date);
     }
-  }, [setShowSpotlight, isMobile, setMobileActiveTab, setTabletActiveTab, setInboxProjectFilter, setInboxArchivedExpanded, calendarRef, goToDate]);
+  }, [setShowSpotlight, isMobile, setMobileActiveTab, setTabletActiveTab, setInboxProjectFilter, setInboxArchivedExpanded, setDailyNotesModalDate, calendarRef, goToDate]);
 
   return { changeDate, goToToday, goToDate, handleSpotlightSelect };
 }

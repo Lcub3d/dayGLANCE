@@ -1181,8 +1181,8 @@
     "monthOpenDay": "In MONAT: ausgewählten Tag öffnen"
   },
   "spotlight": {
-    "placeholder": "Aufgaben suchen…",
-    "typeToSearch": "Tippen um alle Aufgaben zu durchsuchen…",
+    "placeholder": "Aufgaben und Notizen suchen…",
+    "typeToSearch": "Tippen um alle Aufgaben und Notizen zu durchsuchen…",
     "noResults": "Keine Ergebnisse gefunden",
     "groupToday": "Heute",
     "groupThisWeek": "Diese Woche",

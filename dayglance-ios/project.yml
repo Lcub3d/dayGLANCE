@@ -171,6 +171,12 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "CTZ7352A3G"
         SWIFT_VERSION: "5.9"
+        # Extra Swift compilation conditions, injected by scripts/gen-ios-project.sh
+        # from DG_WIDGET_FLAGS (empty by default). Used for the Day Dial
+        # render-budget spike: DIAL_SPIKE registers the measurement widget,
+        # DIAL_SPIKE_LIVE_PATHS switches it to the live-Path strategy. See
+        # DayGlanceWidget/Spike/DialSpikeWidget.swift. Never set for a release.
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ${DG_WIDGET_FLAGS}"
     info:
       path: DayGlanceWidget/Info.plist
       properties:

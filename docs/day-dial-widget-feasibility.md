@@ -296,7 +296,7 @@ premise:
 
 | You listed | Reality |
 |---|---|
-| all blocks with start/end/category color | **Already there**, split across `sections[].tasks` (`serTask`, `App.jsx:7588` — has `startTime`, `duration`, `colorHex`) and `overdueToday[]` (`:7507`, same fields). Missing only `completed` and the energy `kind`. |
+| all blocks with start/end/category color | **Mostly there — with one gap this document originally missed.** Timed blocks ship split across `sections[].tasks` (`serTask`, `App.jsx:7588` — has `startTime`, `duration`, `colorHex`) and `overdueToday[]` (`:7507`, same fields). But both are built from `todayAgenda`, which **drops completed tasks once they have ended** (`App.jsx:6720`, *"Past: hide completed tasks"*). The dial draws past blocks dimmed, so it needs them; the snapshot will need a dial-specific block list that keeps them. Also missing: `completed` and the energy `kind`. *(Corrected in Phase 0, PR day-dial-widget-phase0.)* |
 | sleep window | **Already there** — `daySummary.windowStart` / `windowEnd` (`App.jsx:7909-7910`), which is exactly `getDayWindow()`, the same input `computeDialModel` takes as `dayWindow`. |
 | routines | **Already there** (`App.jsx:7647`) — but missing `duration`, which `computeDialRoutines` requires (`dayDial.js:413`: it filters on `(r.duration \|\| 0) > 0`). |
 | hourly temps | Absent. |

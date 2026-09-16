@@ -37,6 +37,8 @@ import {
 } from './utils/icloudSyncPref.js';
 import { evaluateMissingSnapshot, ICLOUD_LAST_SYNCED_KEY } from './utils/icloudSeedGuard.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
+import { computeSkySnapshot } from './utils/dayDial.js';
+import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
@@ -7942,6 +7944,13 @@ const DayPlanner = () => {
           },
         };
       })(),
+      // ── Sky, for the Day Dial widget's ring ────────────────────────────
+      // Derived here, never re-solved natively (docs/day-dial-widget-handoff.md
+      // §4): 24 hourly sun/moon strengths plus the rise/set minutes and the
+      // moon's phase, from the same solar and lunar math the in-app dial
+      // draws with. Null until the weather feature has geocoded a location,
+      // and then the widget honestly draws no sky, like the dial. ~0.6 KB.
+      sky: computeSkySnapshot(today, getStoredWeatherCoords()),
       updatedAt: Date.now(),
     };
 

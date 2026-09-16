@@ -33,6 +33,7 @@ import {
   precipRuns,
   stepDialSelection,
   computeDaylightBand,
+  computeSkySnapshot,
   dialPeakUv,
   DAYLIGHT_FLOOR,
   DAYLIGHT_PEAK,
@@ -1270,5 +1271,102 @@ describe('dialDateFits', () => {
     expect(dialDateFits(null, DIAL)).toBe(true);
     expect(dialDateFits(0, DIAL)).toBe(true);
     expect(dialDateFits(348, null)).toBe(true);
+  });
+});
+
+describe('computeSkySnapshot', () => {
+  // The widget's sky ring reads this instead of re-solving the sky natively
+  // (docs/day-dial-widget-handoff.md §4), so what matters here is that it is
+  // the SAME sky the in-app bands draw, sampled once per hour.
+  const DENVER = { lat: 39.7392, lon: -104.9903 };
+  const TROMSO = { lat: 69.65, lon: 18.95 };
+  const midsummer = new Date(2026, 5, 21, 12);
+  const midwinter = new Date(2026, 11, 21, 12);
+
+  it('is null without a location, like every other sky layer', () => {
+    expect(computeSkySnapshot(midsummer, null)).toBeNull();
+    expect(computeSkySnapshot(midsummer, { lat: NaN, lon: 1 })).toBeNull();
+  });
+
+  it('samples 24 hours, each strength inside [0, 1], to three decimals', () => {
+    const sky = computeSkySnapshot(midsummer, DENVER);
+    expect(sky.hours).toHaveLength(24);
+    for (const { sun, moon } of sky.hours) {
+      expect(sun).toBeGreaterThanOrEqual(0);
+      expect(sun).toBeLessThanOrEqual(1);
+      expect(moon).toBeGreaterThanOrEqual(0);
+      expect(moon).toBeLessThanOrEqual(1);
+      expect(Math.round(sun * 1e3) / 1e3).toBe(sun);
+      expect(Math.round(moon * 1e3) / 1e3).toBe(moon);
+    }
+  });
+
+  it('carries the hairlines\' own rise/set solution', () => {
+    const sky = computeSkySnapshot(midsummer, DENVER);
+    const sun = getSunTimes(midsummer, DENVER.lat, DENVER.lon);
+    expect(sky.sunriseMin).toBe(sun.sunriseMin);
+    expect(sky.sunsetMin).toBe(sun.sunsetMin);
+    expect(sky.polar).toBe(sun.polar);
+  });
+
+  it('lights the sun only while it is up, brightest near solar noon', () => {
+    const sky = computeSkySnapshot(midsummer, DENVER);
+    const sun = getSunTimes(midsummer, DENVER.lat, DENVER.lon);
+    const up = sun.sunsetMin > sun.sunriseMin
+      ? (m) => m >= sun.sunriseMin && m < sun.sunsetMin
+      : (m) => m >= sun.sunriseMin || m < sun.sunsetMin;
+    sky.hours.forEach(({ sun: s }, h) => {
+      // An hour whose midpoint is a full hour clear of the horizon is
+      // unambiguous either way; the crossing hours can honestly go both ways.
+      if (up(h * 60 + 30 - 60) && up(h * 60 + 30 + 60)) expect(s).toBeGreaterThan(0);
+      if (!up(h * 60 + 30 - 60) && !up(h * 60 + 30 + 60)) expect(s).toBe(0);
+    });
+    const peakHour = sky.hours.reduce((best, x, h) => (x.sun > sky.hours[best].sun ? h : best), 0);
+    // Local solar noon is within a couple of hours of clock noon anywhere
+    // inside a sensible zone; the exact hour depends on the host clock.
+    const noonish = ((sun.sunriseMin + sun.sunsetMin) / 2 + (sun.sunsetMin < sun.sunriseMin ? 720 : 0)) % 1440;
+    expect(Math.abs(peakHour * 60 + 30 - noonish)).toBeLessThanOrEqual(120);
+  });
+
+  it('never lights the moon while the sun is up — the band\'s own clipping rule', () => {
+    for (const date of [midsummer, midwinter, new Date(2026, 8, 10, 12)]) {
+      const sky = computeSkySnapshot(date, DENVER);
+      sky.hours.forEach(({ sun, moon }) => {
+        if (sun > 0) expect(moon).toBe(0);
+      });
+    }
+  });
+
+  it('caps the moon at its lit fraction', () => {
+    const sky = computeSkySnapshot(midwinter, DENVER);
+    for (const { moon } of sky.hours) expect(moon).toBeLessThanOrEqual(sky.moon.fraction + 1e-9);
+    expect(sky.moon.fraction).toBeGreaterThanOrEqual(0);
+    expect(sky.moon.fraction).toBeLessThanOrEqual(1);
+    expect(typeof sky.moon.waxing).toBe('boolean');
+  });
+
+  it('puts the moon glyph where the dial puts it', () => {
+    const date = new Date(2026, 8, 10, 12);
+    const sun = getSunTimes(date, DENVER.lat, DENVER.lon);
+    expect(computeSkySnapshot(date, DENVER).moon.glyphMin)
+      .toBe(computeMoonBand(date, DENVER, sun).glyphMin);
+  });
+
+  it('is dark all day through a polar night and flags it', () => {
+    const sky = computeSkySnapshot(midwinter, TROMSO);
+    expect(sky.polar).toBe('night');
+    expect(sky.sunriseMin).toBeNull();
+    expect(sky.hours.every(({ sun }) => sun === 0)).toBe(true);
+  });
+
+  it('agrees with computeDaylightBand about which hour is brightest', () => {
+    const date = new Date(2026, 8, 10, 12);
+    const sun = getSunTimes(date, DENVER.lat, DENVER.lon);
+    const band = computeDaylightBand(date, DENVER, sun);
+    const bandPeak = band.reduce((a, b) => (a.opacity >= b.opacity ? a : b));
+    const bandPeakHour = Math.floor(((bandPeak.startMin + bandPeak.endMin) / 2 % DIAL_DAY_MINUTES) / 60);
+    const sky = computeSkySnapshot(date, DENVER);
+    const skyPeakHour = sky.hours.reduce((best, x, h) => (x.sun > sky.hours[best].sun ? h : best), 0);
+    expect(Math.abs(skyPeakHour - bandPeakHour)).toBeLessThanOrEqual(1);
   });
 });

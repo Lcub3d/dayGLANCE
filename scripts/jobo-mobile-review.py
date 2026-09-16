@@ -79,7 +79,8 @@ with sync_playwright() as playwright:
             expect(page.locator('[data-mobile-axis]')).to_have_count(1),
             expect(page.locator('.jobo-mobile-hour')).to_have_count(25),
             expect(page.locator('[data-mobile-lane]')).to_have_count(2),
-            require(no_overflow(page), 'Horizontal overflow')), page)
+            require(no_overflow(page), 'Horizontal overflow'),
+            expect(page.get_by_role('button', name='重新聚焦时间线', exact=True)).not_to_be_visible()), page)
         shot(page, 'mobile-light-393')
         page.locator('[data-mobile-card="do"]').first.click()
         expect(page.get_by_role('dialog')).to_be_visible()
@@ -135,15 +136,50 @@ with sync_playwright() as playwright:
             dialog.get_by_role('button', name='保存', exact=True).click()
             expect(dialog.get_by_role('alert')).to_be_visible()
             expect(dialog.get_by_label('名称', exact=True)).to_have_value('保存失败也不能丢失')
-            page.evaluate('Storage.prototype.setItem = window.reviewOriginalSetItem')
+            page.evaluate('() => { Storage.prototype.setItem = window.reviewOriginalSetItem; }')
             dialog.get_by_role('button', name='保存', exact=True).click()
             expect(dialog).not_to_be_visible()
             require(len(read_ledger(page)['records']) == 3, 'Retry created duplicate/missing record')
         check('quota failure keeps input, retry creates exactly one record', quota_failure, page)
+        def refocus():
+            grid = page.locator('[data-mobile-timeline]')
+            grid.evaluate('(el) => { el.scrollTop = 0; }')
+            page.get_by_role('button', name='重新聚焦时间线', exact=True).click()
+            page.wait_for_timeout(800)
+            require(abs(grid.evaluate('(el) => el.scrollTop') - 16*84) < 5, 'Refocus scrolled wrong container')
+            expect(page.get_by_role('button', name='重新聚焦时间线', exact=True)).not_to_be_visible()
+        check('native refocus action targets shared inner axis', refocus, page)
+        def native_add():
+            page.locator('[data-jobo-mobile]').get_by_role('button', name='添加计划', exact=True).click()
+            title = page.get_by_placeholder('任务标题', exact=True)
+            title.fill('通过原生编辑器添加计划')
+            page.locator('form').filter(has=title).locator('button[type="submit"]').click()
+            expect(title).not_to_be_visible()
+            require(any(task['title'] == '通过原生编辑器添加计划' and task['date'] == DATE for task in page.evaluate('JSON.parse(localStorage.getItem("day-planner-tasks"))')), 'Native plan was not saved')
+        check('Plan plus uses original task form and original store', native_add, page)
+        def checklist_record():
+            page.get_by_role('button', name='记录「锻炼身体」的实际时间', exact=True).click()
+            dialog = page.get_by_role('dialog')
+            expect(dialog.get_by_label('名称', exact=True)).to_have_value('锻炼身体')
+            dialog.get_by_role('button', name='保存', exact=True).click()
+            expect(dialog).not_to_be_visible()
+            record = read_ledger(page)['records'][-1]
+            require(record['sourceTaskId'] == 'review-fitness', 'Task link missing')
+            page.locator('[data-mobile-card="do"][data-record-id="'+record['id']+'"]').click()
+            page.once('dialog', lambda prompt: prompt.accept())
+            page.get_by_role('dialog').get_by_role('button', name='删除执行记录', exact=True).click()
+            require(not any(item['id'] == record['id'] for item in read_ledger(page)['records']), 'Delete failed')
+            page.get_by_role('button', name='账簿操作', exact=True).click()
+            page.get_by_role('button', name='撤销账簿操作', exact=True).click()
+            require(any(item['id'] == record['id'] for item in read_ledger(page)['records']), 'Undo failed')
+            require(not next(task for task in page.evaluate('JSON.parse(localStorage.getItem("day-planner-tasks"))') if task['id'] == 'review-fitness')['completed'], 'Recording completed the native task')
+        check('task checklist records, deletes and undoes independently', checklist_record, page)
         context.close(); context = None
         for width, height, dark in [(393,852,True),(320,740,False),(430,932,False)]:
             context, page = profile(browser, width, height, dark)
-            check(f'{width}px {"dark" if dark else "light"} no horizontal overflow', lambda: require(no_overflow(page), 'Horizontal overflow'), page)
+            check(f'{width}px {"dark" if dark else "light"} no horizontal overflow or lost heading', lambda: (
+                require(no_overflow(page), 'Horizontal overflow'),
+                require(page.locator('.jobo-mobile-section-title').first.bounding_box()['y'] >= 100, 'Outer calendar auto-scrolled past task list')) , page)
             shot(page, f'mobile-{"dark" if dark else "light"}-{width}')
             context.close(); context = None
         context, page = profile(browser, enabled=False)

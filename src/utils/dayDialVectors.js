@@ -45,6 +45,7 @@ import {
   moonPhasePath,
   muteDialColor,
   padDialSegment,
+  projectDialSnapshot,
   stepDialSelection,
 } from './dayDial.js';
 
@@ -333,6 +334,42 @@ const sky = () => ({
   }))(skyDates()),
 });
 
+// What the snapshot ships under `dial` — the ring's own model, projected.
+// The ports consume this; pinning it here means a change to the wire shape
+// shows up in the drift test before it shows up as a blank ring.
+const snapshot = () => ({
+  projectDialSnapshot: {
+    description: 'The `dial` field of the widget snapshot: every timed block of the day, typed, start-sorted, drawn spans clipped at midnight.',
+    cases: [
+      {
+        name: 'the widget spec\'s dense day, with a done block, an event, an overrun and a window',
+        input: {
+          date: '2026-09-16',
+          dayTasks: [
+            [385, 35, 'Morning routine', { completed: true }], [435, 45, 'Email #admin', { completed: true }],
+            [480, 60, 'Standup #work', { completed: true }], [540, 60, 'Planning #work'],
+            [600, 150, 'Write API documentation #work'], [750, 60, 'Lunch #break'],
+            [810, 60, 'Review #work'], [870, 45, 'Expenses #admin'], [915, 120, 'Deep work #work'],
+            [1035, 45, 'Walk'], [1080, 60, 'Dentist', { imported: true }], [1140, 45, 'Calls #admin'],
+            [1185, 105, 'Dinner with [[friends]]'], [1290, 40, 'Evening routine'], [1380, 120, 'Late film'],
+          ].map(([s, d, title, over = {}], i) => task({
+            id: i + 1, title, startTime: `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`, duration: d, ...over,
+          })),
+          prevDayTasks: [task({ id: 'y1', title: 'Late session', startTime: '23:00', duration: 150 })],
+          dayWindow: { start: '06:25', stop: '22:30' },
+          routines: [
+            { id: 'r1', name: 'Stretch', startTime: '07:00', duration: 15 },
+            { id: 'r2', name: 'Journal', startTime: '21:00', duration: 30 },
+            { id: 'r3', name: 'Vitamins', isAllDay: true },
+          ],
+          routineCompletions: { r1: true },
+        },
+      },
+      { name: 'an empty day with no window', input: { date: '2026-09-16', dayTasks: [] } },
+    ].map(({ name, input }) => ({ name, input, expected: projectDialSnapshot(input) })),
+  },
+});
+
 /**
  * Build the whole fixture. Deterministic given the code and the host clock's
  * zone; callers pin process.env.TZ to VECTORS_TIMEZONE first.
@@ -340,6 +377,7 @@ const sky = () => ({
 export function buildDialVectors() {
   const g = geometry();
   const s = sky();
+  const w = snapshot();
   const count = (section) => Object.values(section).reduce((n, f) => n + f.cases.length, 0);
   return {
     format: VECTORS_FORMAT,
@@ -349,8 +387,9 @@ export function buildDialVectors() {
     dayMinutes: DIAL_DAY_MINUTES,
     // How close is close enough for a port comparing doubles.
     tolerance: { coordinate: 0.001, radians: 1e-9, opacity: 0.0005, strength: 0.0005 },
-    counts: { geometry: count(g), sky: count(s) },
+    counts: { geometry: count(g), sky: count(s), snapshot: count(w) },
     geometry: g,
     sky: s,
+    snapshot: w,
   };
 }

@@ -4,6 +4,7 @@ import { taskColorToHex } from './colorUtils.js';
 import { getMoonAltitude, getMoonIllumination } from './lunar.js';
 import { getPeakSunElevation, getSunElevation, getSunTimes, POLAR_DAY } from './solar.js';
 import { assignLanes } from './intervalLanes.js';
+import { extractTags, stripWikilinks } from './taskUtils.js';
 
 // Model + geometry for the Day Dial — the ambient 24-hour instrument view.
 // Pure functions only: DayDial.jsx stays presentational and every angle,
@@ -998,6 +999,92 @@ export function computeSkySnapshot(date, coords) {
     // moon glyph and the dial's sit at the same minute.
     moon: { fraction: round(fraction), waxing, glyphMin: computeMoonBand(date, coords, sun).glyphMin },
   };
+}
+
+/**
+ * The whole local day as the home-screen widget's ring wants it: every timed
+ * block whether or not it is done or over, plus the sleep window and the
+ * routines, in one start-sorted list with just enough per block to draw it.
+ *
+ * Why this exists: the agenda-shaped parts of the widget snapshot are built
+ * from todayAgenda, which hides a completed task once it has ended (that is
+ * right for an agenda — a done thing leaves the list). A dial draws the day's
+ * shape, so a completed 9 AM block still has to be on the ring at 3 PM, dimmed.
+ * This projection comes from computeDialModel instead, the same model the
+ * in-app dial renders, so the widget and the dial cannot disagree about what
+ * the day looks like.
+ *
+ * Deliberately NOT here: notes, subtasks, project links, anything the ring
+ * and hub do not draw. Titles ARE here, on every block rather than only the
+ * running one: the widget renders a 24-hour timeline from one snapshot, and
+ * whichever block is "current" changes with the entry being rendered, not
+ * with when the snapshot was pushed. The hub at entry 40 of 96 needs that
+ * entry's block's title, and the app may be suspended by then.
+ *
+ * @param opts.date          'YYYY-MM-DD' of the day described.
+ * @param opts.dayTasks      The day's tasks (getTasksForDate shape, no tag filter).
+ * @param opts.prevDayTasks  Yesterday's, for the overnight carry (see computeDialModel).
+ * @param opts.dayWindow     {start, stop} 'HH:MM' or null → no sleep blocks.
+ * @param opts.routines      Today's routines or null.
+ * @param opts.routineCompletions  {id: bool}.
+ * @returns {{date: string, blocks: Array<{
+ *   type: 'task'|'event'|'routine'|'sleep',
+ *   startMin: number, durationMin: number,   // durationMin is the DRAWN span, clipped at midnight
+ *   id?, title?, tag?, kind?: 'effort'|'restore', completed?: boolean, colorHex?,
+ *   lane?: number, laneCount?: number,
+ *   endsNextDay?: true, endMinTrue?: number, startedPrevDay?: true,
+ * }>}}
+ */
+export function projectDialSnapshot({
+  date, dayTasks, prevDayTasks = null, dayWindow = null, routines = null, routineCompletions = null,
+}) {
+  const model = computeDialModel(dayTasks, dayWindow, prevDayTasks);
+  const bars = computeDialRoutines(routines, routineCompletions);
+  // Same cleaning the Up Next projection applies: wikilinks and #tags out of
+  // the display title; the first tag kept separately for the hub's italic line.
+  const cleanTitle = (t) => stripWikilinks(t || '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim();
+  const clipFlags = (b) => ({
+    ...(b.endsNextDay ? { endsNextDay: true, endMinTrue: b.endMinTrue } : {}),
+    ...(b.startedPrevDay ? { startedPrevDay: true } : {}),
+  });
+
+  const blocks = [
+    ...model.blocks.map((b) => ({
+      // A read-only imported calendar event is the one thing on the ring
+      // that is not the user's own block; computeDialModel already knows
+      // it as "not completable".
+      type: b.completable ? 'task' : 'event',
+      id: b.id,
+      title: cleanTitle(b.title),
+      tag: extractTags(b.title)[0] ?? null,
+      startMin: b.startMin,
+      durationMin: b.endMin - b.startMin,
+      kind: b.kind,
+      completed: b.completed,
+      colorHex: b.colorHex,
+      lane: b.lane,
+      laneCount: b.laneCount,
+      ...clipFlags(b),
+    })),
+    ...bars.map((r) => ({
+      type: 'routine',
+      id: r.id,
+      title: cleanTitle(r.title),
+      startMin: r.startMin,
+      durationMin: r.endMin - r.startMin,
+      completed: r.completed,
+      lane: r.lane,
+      laneCount: r.laneCount,
+      ...clipFlags(r),
+    })),
+    ...model.sleep.map((seg) => ({
+      type: 'sleep',
+      startMin: seg.startMin,
+      durationMin: seg.endMin - seg.startMin,
+    })),
+  ].sort((a, b) => a.startMin - b.startMin || a.durationMin - b.durationMin);
+
+  return { date, blocks };
 }
 
 /**

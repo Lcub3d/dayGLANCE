@@ -37,7 +37,7 @@ import {
 } from './utils/icloudSyncPref.js';
 import { evaluateMissingSnapshot, ICLOUD_LAST_SYNCED_KEY } from './utils/icloudSeedGuard.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
-import { computeSkySnapshot } from './utils/dayDial.js';
+import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -7951,6 +7951,25 @@ const DayPlanner = () => {
       // draws with. Null until the weather feature has geocoded a location,
       // and then the widget honestly draws no sky, like the dial. ~0.6 KB.
       sky: computeSkySnapshot(today, getStoredWeatherCoords()),
+      // ── The whole day, for the Day Dial widget's ring ──────────────────
+      // NOT from todayAgenda: that list hides a completed task once it has
+      // ended, which is right for an agenda and wrong for a dial that draws
+      // the day's shape. computeDialModel over the unfiltered day instead —
+      // the same model the in-app dial renders — via projectDialSnapshot.
+      // Yesterday is passed for the overnight carry, exactly as DayDialModal
+      // does. No tag filter: the home screen shows the day, not a view of it.
+      dial: (() => {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return projectDialSnapshot({
+          date: todayStr,
+          dayTasks: getTasksForDate(today, false),
+          prevDayTasks: getTasksForDate(yesterday, false),
+          dayWindow: getDayWindow(todayStr),
+          routines: todayRoutines,
+          routineCompletions,
+        });
+      })(),
       updatedAt: Date.now(),
     };
 

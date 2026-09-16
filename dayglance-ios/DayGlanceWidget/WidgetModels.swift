@@ -13,6 +13,7 @@ struct WidgetSnapshot: Codable {
     var allGoals: [GoalData]?
     var allProjects: [ProjectData]?
     var sky: SkySnapshot?
+    var dial: DialSnapshot?
     var updatedAt: Double?
 }
 
@@ -120,4 +121,39 @@ func loadSnapshot() -> WidgetSnapshot? {
     guard let defaults = UserDefaults(suiteName: kAppGroupSuite),
           let data = defaults.data(forKey: kSnapshotKey) else { return nil }
     return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
+}
+
+// The whole local day for the Day Dial widget's ring — every timed block
+// regardless of completion or elapse, plus sleep and routines — projected on
+// the JS side by projectDialSnapshot (src/utils/dayDial.js) from the same
+// model the in-app dial renders. Built from the unfiltered day, NOT from the
+// agenda that hides completed past tasks. See docs/day-dial-widget-handoff.md §5.
+struct DialSnapshot: Codable {
+    var date: String?
+    /// Start-sorted. `durationMin` is the DRAWN span, already clipped at
+    /// midnight; `endMinTrue` carries the real end when `endsNextDay`.
+    var blocks: [DialBlock]?
+}
+
+struct DialBlock: Codable {
+    /// "task" | "event" (read-only imported calendar) | "routine" | "sleep".
+    var type: String?
+    var id: String?
+    /// Cleaned for display: no wikilinks, no #tags. Absent on sleep.
+    var title: String?
+    /// The first #tag, for the hub's italic line. Absent on routine/sleep.
+    var tag: String?
+    var startMin: Int?
+    var durationMin: Int?
+    /// "effort" | "restore" — the energy axis. Tasks/events only.
+    var kind: String?
+    var completed: Bool?
+    /// Tasks/events only; routine and sleep take the widget's fixed colours.
+    var colorHex: String?
+    /// Concentric lane for overlapping blocks; a lone block is 0 of 1.
+    var lane: Int?
+    var laneCount: Int?
+    var endsNextDay: Bool?
+    var endMinTrue: Int?
+    var startedPrevDay: Bool?
 }

@@ -417,6 +417,47 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     expect(s.text(TASK_NOTE)).not.toContain('The other gutter');
     expect(A.all().find((t) => t.id === second.id)!.title).toBe('Fix the gutter [[Projects/Fix the gutter 2]] #obsidian');
   });
+  it('13. THE RE-APPEND (owner ruling 2026-09-16): a line wiped from the note comes back for a task whose record is newer than the wipe; an untouched task follows the vault and is dropped', async () => {
+    await bootLinked();
+    A.add({ title: 'Survivor', projectId: 'p1' });
+    A.add({ title: 'Follower', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const survivor = A.all().find((t) => t.title.startsWith('Survivor'))!;
+    const follower = A.all().find((t) => t.title.startsWith('Follower'))!;
+    expect(s.text(NOTE)).toMatch(lineFor('Survivor'));
+    // The 2026-09-13 shape: a merge on another machine replaced the section body; both lines are gone.
+    await s.write(NOTE, s.text(NOTE)!.split('\n').filter((l) => !l.includes('Survivor') && !l.includes('Follower')).join('\n'));
+    await s.settle();
+    await A.sync(); // candidates pended, the wall-clock hold running
+    expect(A.all().map((t) => t.id).sort()).toEqual([follower.id, survivor.id].sort());
+    await s.advance(5_000);
+    A.patch(survivor.id, { color: 'bg-orange-500' }); // an app edit newer than the wipe
+    await s.advance(95_000);
+    await A.sync(); // the hold commits: tombstones stamped at the note's mtime
+    expect(A.all().find((t) => t.id === follower.id)).toBeUndefined(); // the vault owns existence
+    expect(A.all().find((t) => t.id === survivor.id)).toBeDefined();   // the record won
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toMatch(lineFor('Survivor'));
+    expect(s.text(NOTE)).toContain(`^dg-${survivor.obsidianBlockId}`);
+    expect(s.text(NOTE)).not.toContain('Follower');
+    // Once per wipe: a second pass writes nothing.
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    // The line's observation re-admits it under the same id, app fields intact, and settles.
+    await s.settle();
+    await A.sync();
+    expect(A.all().filter((t) => t.title.startsWith('Survivor')).map((t) => t.id)).toEqual([survivor.id]);
+    expect(A.all().find((t) => t.id === survivor.id)).toMatchObject({ color: 'bg-orange-500', projectId: 'p1', obsidianNotePath: NOTE });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+  });
 });
 
 // ── Daily-note templates (companion §4.4 build record, 2026-09-06) ──────────

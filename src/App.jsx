@@ -190,6 +190,7 @@ import FramesModal from './components/FramesModal.jsx';
 import MobileWelcomeModal from './components/MobileWelcomeModal.jsx';
 import DesktopWelcomeModal from './components/DesktopWelcomeModal.jsx';
 import SpotlightModal from './components/SpotlightModal.jsx';
+import { buildSpotlightResults } from './utils/spotlightSearch.js';
 import BucketListModal from './components/BucketListModal.jsx';
 import HabitModal from './components/HabitModal.jsx';
 import SubscriptionWall from './components/SubscriptionWall.jsx';
@@ -1366,6 +1367,7 @@ const DayPlanner = () => {
     setTabletActiveTab,
     setInboxProjectFilter,
     setInboxArchivedExpanded,
+    setDailyNotesModalDate,
     calendarRef,
   });
 
@@ -6597,110 +6599,23 @@ const DayPlanner = () => {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Spotlight search results
+  // Spotlight search results (utils/spotlightSearch.js). Daily notes are
+  // searched only while Obsidian is off: with the integration on, the app's
+  // copy is a retention-bounded mirror of the vault and Obsidian's own search
+  // is the right tool for what lives there (issue #1672).
   const spotlightResults = useMemo(() => {
     if (!showSpotlight || !spotlightQuery.trim()) return [];
-    const q = spotlightQuery.trim().toLowerCase();
-    const results = [];
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate());
-    const cutoffStr = dateToString(cutoff);
-
-    const matchTask = (task, source, sourceLabel, date) => {
-      // Respect multi-user visibility — don't surface other users' tasks.
-      // (Native calendar events carry no assignment, so they stay visible.)
-      if (!isVisibleForUser(task)) return;
-      // Skip scheduled tasks older than 2 years
-      if (date && date < cutoffStr) return;
-      // Check title
-      if (task.title.toLowerCase().includes(q)) {
-        results.push({ task, source, sourceLabel, match: { field: 'title', text: task.title }, date });
-        return;
-      }
-      // Check tags
-      const tags = extractTags(task.title);
-      const matchedTag = tags.find(t => t.toLowerCase().includes(q));
-      if (matchedTag) {
-        results.push({ task, source, sourceLabel, match: { field: 'tag', text: '#' + matchedTag }, date });
-        return;
-      }
-      // Check notes
-      if (task.notes && task.notes.toLowerCase().includes(q)) {
-        results.push({ task, source, sourceLabel, match: { field: 'notes', text: task.notes }, date });
-        return;
-      }
-      // Check subtasks
-      const matchedSub = (task.subtasks || []).find(s => s.title.toLowerCase().includes(q));
-      if (matchedSub) {
-        results.push({ task, source, sourceLabel, match: { field: 'subtask', text: matchedSub.title }, date });
-      }
-    };
-
-    // Scheduled tasks. Native (device-calendar) events that the timeline merged into
-    // `tasks` for the current ±2-day window are skipped here — they're searched via
-    // the wider spotlightNativeTasks set below so they aren't listed twice.
-    for (const task of tasks) {
-      if (task._native) continue;
-      matchTask(task, 'scheduled', 'Scheduled', task.date);
-    }
-    // Native calendar events fetched over the wider spotlight window
-    for (const task of spotlightNativeTasks) {
-      matchTask(task, 'event', 'Calendar', task.date);
-    }
-    // Inbox tasks (archived get their own source/label)
-    for (const task of unscheduledTasks) {
-      if (task.archived) {
-        matchTask(task, 'archived', 'Completed', task.deadline || null);
-      } else {
-        matchTask(task, 'inbox', 'Inbox', task.deadline || null);
-      }
-    }
-    // Recurring templates
-    for (const template of recurringTasks) {
-      matchTask(template, 'recurring', 'Recurring', template.startDate || null);
-    }
-    // Recycle bin
-    for (const task of recycleBin) {
-      matchTask(task, 'deleted', 'Deleted', task.date || null);
-    }
-
-    // Assign a time-based group to each result
-    const todayStr = dateToString(now);
-    const weekEndDate = new Date(now);
-    weekEndDate.setDate(weekEndDate.getDate() + 7);
-    const weekEndStr = dateToString(weekEndDate);
-    const groupOrder = { today: 0, thisweek: 1, future: 2, nodate: 3, past: 4, deleted: 5, archived: 6 };
-    const getGroup = (r) => {
-      if (r.source === 'deleted') return 'deleted';
-      if (r.source === 'archived') return 'archived';
-      const d = r.date;
-      if (!d) return 'nodate';
-      if (d < todayStr) return 'past';
-      if (d === todayStr) return 'today';
-      if (d <= weekEndStr) return 'thisweek';
-      return 'future';
-    };
-    results.forEach(r => { r.group = getGroup(r); });
-
-    // Sort: by group, then title match, then source priority, then date
-    const sourcePriority = { scheduled: 0, event: 1, inbox: 2, recurring: 3, deleted: 4, archived: 5 };
-    results.sort((a, b) => {
-      const gA = groupOrder[a.group] ?? 6;
-      const gB = groupOrder[b.group] ?? 6;
-      if (gA !== gB) return gA - gB;
-      const aTitle = a.match.field === 'title' ? 0 : 1;
-      const bTitle = b.match.field === 'title' ? 0 : 1;
-      if (aTitle !== bTitle) return aTitle - bTitle;
-      const aPri = sourcePriority[a.source] ?? 4;
-      const bPri = sourcePriority[b.source] ?? 4;
-      if (aPri !== bPri) return aPri - bPri;
-      // Past: most recent first; everything else: soonest first
-      if (a.group === 'past') return (b.date || '').localeCompare(a.date || '');
-      return (a.date || '').localeCompare(b.date || '');
+    return buildSpotlightResults({
+      query: spotlightQuery,
+      tasks,
+      nativeTasks: spotlightNativeTasks,
+      unscheduledTasks,
+      recurringTasks,
+      recycleBin,
+      dailyNotes: obsidianConfig?.enabled ? null : dailyNotes,
+      isVisibleForUser,
     });
-
-    return results.slice(0, 50);
-  }, [showSpotlight, spotlightQuery, tasks, unscheduledTasks, recurringTasks, recycleBin, spotlightNativeTasks, isVisibleForUser]);
+  }, [showSpotlight, spotlightQuery, tasks, unscheduledTasks, recurringTasks, recycleBin, spotlightNativeTasks, dailyNotes, obsidianConfig?.enabled, isVisibleForUser]);
 
   // Compute today's agenda for dayGLANCE section (excludes past events)
   const todayAgenda = useMemo(() => {

@@ -269,7 +269,7 @@ For a wall display or kiosk, append `?dial` to the URL to boot straight into it,
 
 ### Spotlight Search
 
-`Ctrl+K` / `Cmd+K` searches across all tasks (scheduled, inbox, recurring, and deleted) with highlighted matches.
+`Ctrl+K` / `Cmd+K` searches across all tasks (scheduled, inbox, recurring, and deleted), matching titles, tags, task notes, and subtasks, plus the text of your daily notes, with highlighted matches. Daily notes are left out of the search when the Obsidian integration is enabled — use Obsidian's own search for what lives in your vault.
 
 ### Notifications & Reminders
 

@@ -1181,8 +1181,8 @@
     "monthOpenDay": "月视图：打开所选日期"
   },
   "spotlight": {
-    "placeholder": "搜索任务...",
-    "typeToSearch": "键入以搜索所有任务...",
+    "placeholder": "搜索任务和笔记...",
+    "typeToSearch": "键入以搜索所有任务和笔记...",
     "noResults": "没有找到结果",
     "groupToday": "今天",
     "groupThisWeek": "本周",

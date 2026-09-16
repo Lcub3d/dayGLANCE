@@ -1181,8 +1181,8 @@
     "monthOpenDay": "In MESE: apri il giorno selezionato"
   },
   "spotlight": {
-    "placeholder": "Cerca attività…",
-    "typeToSearch": "Digita per cercare tra tutte le attività…",
+    "placeholder": "Cerca attività e note…",
+    "typeToSearch": "Digita per cercare tra tutte le attività e le note…",
     "noResults": "Nessun risultato trovato",
     "groupToday": "Oggi",
     "groupThisWeek": "Questa settimana",

@@ -2491,8 +2491,17 @@ const DayPlanner = () => {
   }, [users, multiUserEnabled, cloudSyncConfig?.enabled, cloudSyncConfig?.nextcloudUrl, cloudSyncConfig?.webdavUrl, cloudSyncLastSynced]);
 
   // Only track obsidianConfig on non-native apps; native apps auto-populate fields from the vault.
+  // Content-keyed (like icsCalendars above), NOT identity-keyed: every vault
+  // sync cycle commits its mirror through applyEngineData, which rebuilds the
+  // obsidianConfig object even when nothing changed. Keyed on identity, this
+  // effect restamped obsidianConfigUpdatedAt whenever the commit's render ran
+  // past writeConfigTimestamp's 500ms remote-apply window (a large dataset on a
+  // busy machine), which made singleton:obsidianConfig dirty on the next
+  // snapshot-diff → one pointless vault write per slow cycle, feeding the
+  // request budget. An equal config never restamps now.
+  const obsidianConfigJson = JSON.stringify(obsidianConfig ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (!isNativeApp()) writeConfigTimestamp('day-planner-obsidian-config-updated-at'); }, [obsidianConfig]);
+  useEffect(() => { if (!isNativeApp()) writeConfigTimestamp('day-planner-obsidian-config-updated-at'); }, [obsidianConfigJson]);
 
   // ── iCloud sync ──────────────────────────────────────────────────────────
   // Runs independently alongside any configured WebDAV/Nextcloud sync so that
@@ -6105,7 +6114,10 @@ const DayPlanner = () => {
         }));
       } else {
         localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
-        setObsidianConfig(data.obsidianConfig);
+        // Keep the state object when the committed config is content-equal so
+        // an unchanged sync cycle doesn't re-render the app (and doesn't churn
+        // the identity the config-timestamp effect above used to key on).
+        setObsidianConfig(prev => (JSON.stringify(prev ?? null) === JSON.stringify(data.obsidianConfig) ? prev : data.obsidianConfig));
       }
       if (data.obsidianConfigUpdatedAt) localStorage.setItem('day-planner-obsidian-config-updated-at', data.obsidianConfigUpdatedAt);
     }

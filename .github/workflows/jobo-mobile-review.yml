@@ -1,0 +1,58 @@
+name: Jobo mobile review
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/jobo-mobile-plan-do]
+permissions:
+  contents: read
+concurrency:
+  group: jobo-mobile-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Archive exact review sources
+        run: |
+          mkdir -p review-artifacts
+          git archive --format=tar.gz -o review-artifacts/source.tar.gz HEAD
+          git rev-parse HEAD > review-artifacts/commit.txt
+          git rev-parse v5.2.0 > review-artifacts/base-tag.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobo-mobile-source
+          path: review-artifacts/
+          retention-days: 7
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Archive reproducible dependency environment
+        run: tar -czf review-artifacts/node_modules.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobo-mobile-dependencies
+          path: review-artifacts/node_modules.tar.gz
+          retention-days: 3
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jobo-mobile-web-build
+          path: dist/
+          if-no-files-found: ignore
+          retention-days: 7

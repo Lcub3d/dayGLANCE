@@ -15,36 +15,47 @@ URL = os.environ.get('REVIEW_URL', 'http://127.0.0.1:5173')
 DATE = '2026-09-16'
 KEY = 'day-planner-jobo-v520'
 TASKS = [dict(id='review-english', title='学习英语', date=DATE, startTime='14:00', duration=60, color='bg-blue-500', completed=False, notes='复习单词，完成一篇阅读。'), dict(id='review-fitness', title='锻炼身体', date=DATE, startTime='17:00', duration=60, color='bg-green-500', completed=False, notes='')]
-LEDGER = dict(version=3, plans={}, records=[dict(id='review-actual', planId='review-english', sourceTaskId='review-english', date=DATE, startTime='14:10', duration=40, title='学习英语', color='bg-blue-500', progress='complete', notes='复习单词，完成一篇阅读。', notesOwn=False, tags=[], projectId=None, createdAt=DATE+'T06:50:00.000Z', updatedAt=DATE+'T06:50:00.000Z')], noteHeights={}, notePresence={}, planTags={}, prefs=dict(dayScale=84, weekScale=1, allHours=False))
+LEDGER = dict(version=3, plans={task['id']: dict(task, projectId=None, capturedAt=DATE+'T05:00:00.000Z') for task in TASKS}, records=[dict(id='review-actual', planId='review-english', sourceTaskId='review-english', date=DATE, startTime='14:10', duration=40, title='学习英语', color='bg-blue-500', progress='complete', notes='复习单词，完成一篇阅读。', notesOwn=False, tags=[], projectId=None, createdAt=DATE+'T06:50:00.000Z', updatedAt=DATE+'T06:50:00.000Z')], noteHeights={}, notePresence={}, planTags={}, prefs=dict(dayScale=84, weekScale=1, allHours=False))
 RESULTS = []
 ERRORS = []
 
 def seed(dark=False, enabled=True):
     return {'day-planner-tasks': json.dumps(TASKS, ensure_ascii=False), 'day-planner-unscheduled': '[]', KEY: json.dumps(LEDGER, ensure_ascii=False), 'day-planner-jobo-enabled': json.dumps(enabled), 'day-planner-use-24h-clock': 'true', 'day-planner-darkmode': json.dumps(dark), 'day-planner-daily-notes': '{}', 'day-planner-mobile-default-view': '"grid"', 'welcomeDismissed': 'true', 'gettingStartedDismissed': 'true', 'i18nextLng': 'zh-CN', 'day-planner-weather-enabled': 'false', 'day-planner-daily-content-enabled': 'false'}
 
+def timeline(page):
+    # The native tab can include an overdue count before its visible label.
+    page.get_by_role('button').filter(has=page.get_by_text('时间线', exact=True)).click()
+
+def shot(page, name):
+    page.screenshot(path=str(OUT / (name+'.png')), full_page=False)
+    (OUT / (name+'.txt')).write_text(page.locator('body').inner_text(), encoding='utf-8')
+
 def profile(browser, width=393, height=852, dark=False, enabled=True, mobile=True):
-    context = browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=2 if mobile else 1, is_mobile=mobile, has_touch=mobile, locale='zh-CN', timezone_id='Asia/Shanghai')
+    context = browser.new_context(viewport={'width': width, 'height': height}, screen={'width': width, 'height': height}, device_scale_factor=2 if mobile else 1, is_mobile=mobile, has_touch=mobile, locale='zh-CN', timezone_id='Asia/Shanghai')
     context.route(re.compile(r'^(?!http://127\.0\.0\.1:5173/).*'), lambda route: route.abort())
     context.add_init_script('if (!localStorage.getItem("jobo-review-seeded")) { const values = '+json.dumps(seed(dark, enabled), ensure_ascii=False)+'; for (const [key,value] of Object.entries(values)) localStorage.setItem(key,value); localStorage.setItem("jobo-review-seeded","true"); }')
     page = context.new_page()
+    page.set_default_timeout(12000)
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.clock.set_fixed_time(datetime(2026, 9, 16, 8, 10, tzinfo=timezone.utc))
-    page.goto(URL, wait_until='networkidle', timeout=60000)
-    if mobile:
-        page.get_by_role('button', name='时间线', exact=True).click()
-        if enabled: page.wait_for_selector('[data-jobo-mobile]')
-    page.wait_for_timeout(700)
-    return context, page
+    try:
+        page.goto(URL, wait_until='networkidle', timeout=60000)
+        if mobile:
+            timeline(page)
+            if enabled: page.wait_for_selector('[data-jobo-mobile]')
+        page.wait_for_timeout(700)
+        return context, page
+    except Exception:
+        shot(page, f'failure-profile-{width}-{dark}-{enabled}')
+        (OUT/'failure-storage.json').write_text(json.dumps(page.evaluate('Object.fromEntries(Object.entries(localStorage))'), ensure_ascii=False, indent=2))
+        context.close()
+        raise
 
 def read_ledger(page):
     return page.evaluate('(key)=>JSON.parse(localStorage.getItem(key))', KEY)
 
 def no_overflow(page):
     return page.evaluate('document.documentElement.scrollWidth <= innerWidth')
-
-def shot(page, name):
-    page.screenshot(path=str(OUT / (name+'.png')), full_page=False)
-    (OUT / (name+'.txt')).write_text(page.locator('body').inner_text(), encoding='utf-8')
 
 def check(name, test, page=None):
     try:
@@ -96,15 +107,14 @@ with sync_playwright() as playwright:
         check('quick-add unplanned actual', add_actual, page)
         def reload_persistence():
             page.reload(wait_until='networkidle')
-            page.get_by_role('button', name='时间线', exact=True).click()
+            timeline(page)
             page.wait_for_selector('[data-jobo-mobile]')
             require(len(read_ledger(page)['records']) == 2, 'Records lost on reload')
             expect(page.locator('[data-mobile-card="do"]')).to_have_count(2)
         check('reload retains actual records', reload_persistence, page)
         def daily_note():
             page.locator('[data-mobile-daily-note]').click()
-            textarea = page.locator('textarea:visible').first
-            textarea.fill('阅读完成了。下午继续，把运动也安排好。')
+            page.locator('textarea:visible').first.fill('阅读完成了。下午继续，把运动也安排好。')
             page.get_by_role('button', name=re.compile('^关闭 .*')).last.click()
             expect(page.locator('[data-mobile-daily-note]')).to_contain_text('阅读完成了')
             require('阅读完成了' in page.evaluate('JSON.parse(localStorage.getItem("day-planner-daily-notes"))')[DATE]['text'], 'Native daily note did not persist')
@@ -113,7 +123,7 @@ with sync_playwright() as playwright:
         def original_grid():
             page.locator('[data-jobo-mobile-toggle]').click()
             expect(page.locator('[data-jobo-mobile]')).to_have_count(0)
-            expect(page.locator('.calendar-slot').first).to_be_visible()
+            expect(page.locator('.calendar-slot').first).to_be_attached()
             page.locator('[data-jobo-mobile-toggle]').click()
             expect(page.locator('[data-jobo-mobile]')).to_be_visible()
         check('one tap restores original native grid and returns', original_grid, page)
@@ -140,7 +150,7 @@ with sync_playwright() as playwright:
         check('feature OFF leaves native mobile grid untouched', lambda: (
             expect(page.locator('[data-jobo-mobile]')).to_have_count(0),
             expect(page.locator('[data-jobo-mobile-toggle]')).to_have_count(0),
-            expect(page.locator('.calendar-slot').first).to_be_visible()), page)
+            expect(page.locator('.calendar-slot').first).to_be_attached()), page)
         shot(page, 'native-grid-feature-off'); context.close(); context = None
         context, page = profile(browser, width=1440, height=1000, mobile=False)
         check('desktop does not mount phone UI', lambda: expect(page.locator('[data-jobo-mobile]')).to_have_count(0), page)

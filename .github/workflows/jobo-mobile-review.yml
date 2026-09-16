@@ -4,7 +4,7 @@ on:
   push:
     branches: [feature/jobo-mobile-plan-do]
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: jobo-mobile-review-${{ github.ref }}
   cancel-in-progress: true
@@ -16,16 +16,8 @@ jobs:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
-      - name: Integrate exact native mobile hooks once
-        if: hashFiles('scripts/apply-mobile-integration.py') != ''
-        run: |
-          python scripts/apply-mobile-integration.py
-          rm scripts/apply-mobile-integration.py
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/components/MobileLayout.jsx src/components/MobileSettingsPanel.jsx public/locales scripts/apply-mobile-integration.py
-          git commit -m 'feat: connect optional mobile Plan/Actual to native task and note editors'
-          git push origin HEAD:feature/jobo-mobile-plan-do
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22

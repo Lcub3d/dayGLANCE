@@ -12,6 +12,7 @@
     "build:android": "./node_modules/.bin/vite build --config vite.config.android.js",
     "build:ios": "./node_modules/.bin/vite build --config vite.config.ios.js",
     "ios:generate": "bash scripts/gen-ios-project.sh",
+    "ios:vectors": "node scripts/export-dial-vectors.mjs",
     "ios": "npm run build:ios && npm run ios:generate",
     "preview": "vite preview",
     "reviewer-code": "node scripts/reviewer-code.js",

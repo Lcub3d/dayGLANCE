@@ -1,0 +1,41 @@
+name: Recover Jobo source checkpoint
+on:
+  push:
+    branches: [build/jobo-pr-bootstrap]
+    paths: ['.github/workflows/jobo-recover.yml']
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Export source checkpoint without credentials
+        run: |
+          mkdir -p /tmp/jobo-checkpoint
+          cp .jobo-patch-part-* /tmp/jobo-checkpoint/
+          python3 - <<'PY'
+          import pathlib, base64, lzma, json
+          root = pathlib.Path('/tmp/jobo-checkpoint')
+          data = base64.b64decode(''.join(p.read_text() for p in sorted(root.glob('.jobo-patch-part-*'))))
+          decoder = lzma.LZMADecompressor()
+          recovered = decoder.decompress(data)
+          (root / 'recovered-incomplete.patch').write_bytes(recovered)
+          (root / 'recovery.json').write_text(json.dumps({'compressed_bytes':len(data),'recovered_bytes':len(recovered),'complete':decoder.eof}))
+          PY
+      - uses: actions/checkout@v4
+        with:
+          repository: krelltunez/dayGLANCE
+          ref: a39d73c9ead3456ad0ea69e00d142b28008a9ff6
+          path: upstream-checkpoint
+          persist-credentials: false
+      - name: Export pinned current upstream source
+        run: git -C upstream-checkpoint archive --format=tar.gz HEAD > /tmp/jobo-checkpoint/upstream-current.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobo-recovered-source-checkpoint
+          path: /tmp/jobo-checkpoint/
+          include-hidden-files: true
+          retention-days: 7

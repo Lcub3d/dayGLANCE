@@ -1,194 +1,55 @@
-# Contributing to dayGLANCE
+# Contributing to Jobo
 
-Thanks for your interest in contributing! Whether you're fixing a typo, squashing a bug, or building a new feature, you're welcome here. This guide will get you up and running.
+Jobo is maintained by [Lcub3d](https://github.com/Lcub3d) in the **`jobo-main`** branch of this repository. It is an independently maintained dayGLANCE-based development preview, not an official upstream release.
 
----
+## Choose the correct base
 
-## Table of Contents
-
-- [Running the app locally](#running-the-app-locally)
-- [Running tests](#running-tests)
-- [Regenerating screenshots](#regenerating-screenshots)
-- [Project structure](#project-structure)
-- [Making a pull request](#making-a-pull-request)
-- [Reporting security issues](#reporting-security-issues)
-- [Reporting bugs](#reporting-bugs)
-- [License](#license)
-
----
-
-## Running the app locally
-
-**Prerequisites:** Node.js 18+ and npm.
+Create a fresh branch for each bounded change:
 
 ```bash
-git clone https://github.com/krelltunez/dayGLANCE.git
-cd dayGLANCE
-npm install
-npm run dev
+git fetch origin jobo-main
+git switch -c feature/your-change origin/jobo-main
 ```
 
-The app will be available at `http://localhost:5173`. It hot-reloads on save.
+Target this repository's `jobo-main` when opening a Jobo PR. Do not rely on GitHub's default base selection: the repository may still open on its legacy `main` branch.
 
-Other useful commands:
+- `jobo-main`: ongoing Jobo development and integration.
+- `main`: legacy code/reference and repository-entry guidance; not the base for new Jobo features.
+- `dayGLANCE-jobo`: retained source of upstream PR #1673.
+- `feature/jobo-mobile-plan-do`: retained source of upstream PR #1675.
 
-| Command | What it does |
-|---|---|
-| `npm run build` | Production web build |
-| `npm run preview` | Preview the production build locally |
-| `npm run build:android` | Build the web bundle for the Android app |
+Do not delete, rename, force-push, or add unrelated features to the two upstream PR branches. Changes requested in their existing reviews should be handled explicitly and separately. Check current PR state and branch head before updating an existing review branch.
 
-### Android app
+## Describe behaviour, not just screenshots
 
-The Android app is a WebView shell that loads the bundled web app. To build and install it on a connected device:
+Provide the user scenario, current and expected behaviour, reproduction steps, environment, and a concise explanation of changes. Use synthetic data in screenshots and fixtures. Identify data migrations and integration side effects explicitly.
+
+Where this fork's issue tracker is unavailable, use the agreed discussion channel or a focused PR against `jobo-main`; do not send Jobo-specific support requests to upstream as though they were upstream defects.
+
+## Validate the actual revision
+
+Use Node.js 22 and the committed lockfile:
 
 ```bash
-./build-and-install.sh
+npm ci
+npm run lint
+npm test
+npm run build
+npm run build:android
 ```
 
-**Prerequisites for Android:**
-- Android Studio or the Android SDK command-line tools
-- A `keystore.properties` file (copy from `keystore.properties.example` and fill in your signing details)
-- Min SDK 26 (Android 8.0), target SDK 35
+`Jobo CI` runs the complete test suite, builds, existing browser scenarios and provenance checks. Read the result for the exact submitted SHA. Browser mobile emulation is not physical-device testing; Android-web output is not an APK; a source build is not a signed release. Do not skip tests or weaken assertions to manufacture a green result. Report failures and matched baseline evidence separately.
 
-The web bundle is copied into `dayglance-android/app/src/main/assets/web/` as part of the build.
+## Data and compatibility
 
----
+Read [AGENTS.md](AGENTS.md), [the desktop design record](docs/jobo-design.md) and [the mobile addendum](docs/jobo-mobile-review.md). The original desktop document describes the historical desktop-only PR; mobile support in this branch is described in the addendum.
 
-## Running tests
+Preserve the distinction between task completion, time recorded and per-attempt progress. Journal data is original user data, not an expendable cache. Do not mass-rename storage keys, native app IDs, updater channels or provider identities as a branding cleanup. Export/restore, migrations, failed writes, repeated attempts, concurrency and undo require explicit regression coverage when affected.
 
-```bash
-npm run test
-```
+Translations belong in the existing locale bundles. English fallbacks in other bundles provide key coverage, not proof of reviewed translation. Keep the established labels **Plan / Do** and **计划 / 执行**.
 
-Tests run with [Vitest](https://vitest.dev/). Test files live next to the source files they cover and use the `.test.js` suffix (e.g. `mergeSync.test.js`).
+## Upstream contributions
 
-When adding new logic, please add a test file alongside it if the logic is non-trivial (data transformations, sync/merge behaviour, etc.). UI-heavy code doesn't need to be tested exhaustively.
+Maintain collaboration without making upstream acceptance a gate for Jobo development. Only open or modify an upstream dayGLANCE PR when the owner explicitly requests it. Prepare focused contributions against an appropriate current upstream base; do not send independent branding, fork governance or unrelated product changes upstream by default.
 
----
-
-## Regenerating screenshots
-
-The images in `screenshots/` (used by `README.md`) and `screenshots/app-store/` (store listings) are generated from the running app rather than captured by hand, so they stay consistent as the UI evolves. Two scripts drive a headless Chromium (via [Playwright](https://playwright.dev/)) against the dev server, seed realistic demo data, and capture each view:
-
-| Script | Output |
-|---|---|
-| `scripts/gen-readme-screenshots.mjs` | `screenshots/*.png` (the images `README.md` references) |
-| `scripts/gen-appstore-screenshots.mjs` | `screenshots/app-store/{phone,tablet,desktop}/*.png` |
-
-To run them:
-
-```bash
-npm i -D playwright          # not a runtime dependency, install on demand
-npx playwright install chromium
-npm run dev                  # in one terminal (serves on :5173 or :5174)
-node scripts/gen-readme-screenshots.mjs
-node scripts/gen-appstore-screenshots.mjs both   # light | dark | both
-```
-
-How they work, briefly:
-
-- **Seeding:** each run evaluates `scripts/seed-demo-data.js` inside the page to write demo tasks, goals, routines, and habits into `localStorage`, then reloads so the app boots with that state.
-- **Frozen clock:** the browser clock is pinned to a fixed weekday mid-morning, so the day reads as in progress (one live task plus upcoming ones) instead of overdue, and so runs are deterministic.
-- **Device sizing:** the viewport and device scale factor select the phone, tablet, or desktop layout; the app's own responsive breakpoints do the rest.
-
-Notes:
-
-- The dev server must be running first. Set `DAYGLANCE_URL` if it is not on the default port.
-- A few views cannot be produced headlessly and are captured on a real device when needed: an Android home screen widget lives in the OS launcher, and the Obsidian inline note needs a live vault (the File System Access API).
-
----
-
-## Project structure
-
-```
-dayGLANCE/
-├── src/
-│   ├── App.jsx             # Top-level orchestrator, wires state, hooks, and layout
-│   ├── main.jsx            # Entry point
-│   ├── ai.js               # AI provider integration (API calls, config)
-│   ├── ai-prompts.js       # Prompt templates for all AI features
-│   ├── native.js           # Bridge to Android native APIs
-│   ├── obsidian.js         # Obsidian vault integration
-│   ├── mergeSync.js        # WebDAV sync and three-way merge logic
-│   ├── trmnl.js            # TRMNL e-ink display integration
-│   ├── versionCheck.js     # Update checking
-│   ├── components/         # React UI components (modals, cards, layout, etc.)
-│   │   ├── goals/          # Goal-related components
-│   │   └── projects/       # Project-related components
-│   ├── hooks/              # Custom React hooks (one concern per hook)
-│   ├── context/            # React Context definitions
-│   │   ├── DayPlannerContext.jsx
-│   │   ├── FeaturesContext.jsx
-│   │   └── SyncContext.jsx
-│   ├── utils/              # Pure utility functions (formatting, task helpers, etc.)
-│   ├── constants/          # Static data (default frames, habit presets)
-│   ├── config/             # Runtime configuration (feature flags, reviewer access)
-│   ├── intents/            # @glance-apps/intents: intent polling, handling, logging
-│   └── sync/
-│       └── adapter.js      # @glance-apps/sync adapter with dayGLANCE-specific config
-├── api/                    # Vercel serverless functions (WebDAV and calendar proxies)
-├── public/                 # Static assets (icons, service worker)
-├── dayglance-android/      # Android native wrapper (Kotlin/WebView)
-│   └── app/src/main/
-│       ├── java/com/dayglance/app/
-│       │   ├── MainActivity.kt          # WebView shell
-│       │   ├── widget/                  # Home screen widget
-│       │   └── bridge/                  # Native bridge implementations
-│       └── res/layout/widget_*.xml      # Widget layouts
-├── vite.config.js          # Web build config
-├── vite.config.android.js  # Android-specific build config
-└── build-and-install.sh    # Full Android build + install script
-```
-
-If you're looking for a specific feature, searching for a UI string or function name is faster than browsing linearly. The hooks in `src/hooks/` are named by concern (e.g. `useTaskActions`, `useHabits`, `useCloudSync`) and are a good starting point when tracing a feature end-to-end.
-
----
-
-## Making a pull request
-
-1. **Fork the repo** and create a branch from `main`:
-   ```bash
-   git checkout -b my-fix-or-feature
-   ```
-
-2. **Keep changes focused.** One logical change per PR makes review much easier. If you find an unrelated bug while working, open a separate issue or PR for it.
-
-3. **Test your change**: run `npm run test` and make sure nothing is broken. If you're touching the Android widget, build and check it on a real device or emulator if you can.
-
-4. **Write a clear PR description.** Explain *what* changed and *why*, not just what the code does. If it fixes a bug, link the issue.
-
-5. **Don't sweat perfection.** If you're unsure about something, open the PR as a draft and ask. We'd rather see a rough PR than no PR.
-
-### Guidelines
-
-- Follow the existing code style. The project uses standard React/JSX conventions and Tailwind for styling.
-- Avoid adding dependencies unless necessary, since the bundle size matters on mobile.
-- No em dashes in user-facing copy (UI strings, docs, READMEs). Commit messages and PR descriptions are fine.
-- Plain text only in AI prompt responses, with no markdown or emojis (see `ai-prompts.js` for examples).
-- Widget layouts use `sp` units for text and `dp` for spacing. Minimum text size is `11sp`.
-
----
-
-## Reporting security issues
-
-Please do **not** file public issues for security vulnerabilities. Use GitHub's [private vulnerability reporting](https://github.com/krelltunez/dayGLANCE/security/advisories/new) instead, which sends the report directly to maintainers without exposing it publicly. This applies to anything that could compromise user data: sync credential leaks, encryption flaws, XSS, etc.
-
-For non-sensitive bugs, use the public issue tracker as described below.
-
----
-
-## Reporting bugs
-
-Please [open an issue](https://github.com/krelltunez/dayGLANCE/issues) and include:
-
-- **What you expected** to happen
-- **What actually happened** (error message, screenshot, or screen recording if relevant)
-- **Steps to reproduce**: the more specific, the better
-- **Environment:** browser/OS, or Android version and device if it's an Android-specific issue
-
-If you're not sure whether something is a bug or by design, open an issue anyway and we'll figure it out together.
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+Preserve original authorship and the MIT license. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md). The previous upstream contribution guide is preserved as [CONTRIBUTING.upstream.md](CONTRIBUTING.upstream.md) for reference; its branch and submission defaults do not govern this fork.

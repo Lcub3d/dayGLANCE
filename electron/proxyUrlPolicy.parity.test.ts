@@ -1,64 +1,115 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import dns from 'node:dns';
 import { isPrivateOrReservedIp, isNeverExemptibleIp } from './proxyUrlPolicy.js';
+// @ts-expect-error - plain JS modules, no type declarations
+import { classifyAddress, assertSafeUrl } from '../api/_ssrfGuard.mjs';
 // @ts-expect-error - plain JS module, no type declarations
-import { classifyAddress } from '../api/_ssrfGuard.mjs';
+import { buildSsrfVectors, VECTORS_PATH } from '../scripts/export-ssrf-vectors.mjs';
 
-// dayGLANCE judges addresses in two places that must not disagree:
+// Conformance against the canonical address table in api/ssrf-vectors.json.
 //
-//   electron/proxyUrlPolicy.ts  the desktop app's IPC proxy (issue #1642)
-//   api/_ssrfGuard.mjs          the four server-side proxies (issue #1664)
+// The same policy is implemented four times across three repositories, for
+// good reasons (strict TypeScript compiled into the Electron bundle; plain ESM
+// copied into a Docker image; a Vercel function), and a range added to one and
+// forgotten in another is the drift that produced four divergent copies to
+// begin with. Each repo commits the same vectors file and checks its own
+// implementation against it, the way dayDial.vectors.json keeps the JS and
+// Swift dial geometry in agreement.
 //
-// They are separate modules on purpose — one is strict TypeScript compiled into
-// the Electron main bundle, the other is plain ESM copied into a Docker image
-// and bundled by Vercel — but they encode the SAME table, and a range added to
-// one and forgotten in the other is exactly the drift that left four divergent
-// copies of this logic in the repo to begin with.
+// dayGLANCE holds two implementations, so both are checked here:
+//   api/_ssrfGuard.mjs         the four server-side proxies
+//   electron/proxyUrlPolicy.ts the desktop IPC proxy (issue #1642)
 //
-// The mapping is exact:
-//   classify === 'ok'      → neither private nor never-exemptible
-//   classify === 'private' → private, but grantable
-//   classify === 'always'  → private AND never exemptible
-//
-// If this fails, do not relax it: make the two tables agree.
+// If this fails, do not relax it: make the implementation match the table, or
+// change the table deliberately and re-run `npm run ssrf:vectors`.
 
-const ADDRESSES = [
-  // public
-  '8.8.8.8', '1.1.1.1', '203.0.113.10', '172.15.0.1', '172.32.0.1',
-  '100.63.255.255', '100.128.0.0', '2606:4700::1111', '::ffff:8.8.8.8',
-  // private, grantable
-  '10.0.0.5', '10.255.255.255', '172.16.0.1', '172.31.255.254',
-  '192.168.0.1', '192.168.255.255', '127.0.0.1', '127.1.2.3',
-  '100.64.0.0', '100.101.102.103', '100.127.255.255',
-  '::1', 'fd00::1', 'fc00::1', 'fd7a:115c:a1e0::1',
-  '::ffff:127.0.0.1', '::ffff:10.0.0.5', '::ffff:7f00:1',
-  // always blocked
-  '0.0.0.0', '0.1.2.3', '169.254.169.254', '169.254.0.1',
-  '192.0.0.1', '192.0.0.255', '198.18.0.1', '198.19.255.255',
-  '224.0.0.1', '239.255.255.255', '240.0.0.1', '255.255.255.255',
-  '::', 'fe80::1', 'feb0::1', 'ff02::1',
-  '::ffff:169.254.169.254', '::ffff:a9fe:a9fe', '::ffff:0.0.0.0',
-];
+interface Vector {
+  address: string;
+  family: number;
+  class: 'ok' | 'private' | 'always';
+  hosted: 'allow' | 'deny';
+  selfHost: 'allow' | 'deny';
+  note: string;
+}
 
-describe('desktop policy and proxy guard agree on every address', () => {
-  it.each(ADDRESSES)('%s', (ip) => {
-    const family = ip.includes(':') ? 6 : 4;
-    const cls = classifyAddress(ip, family) as 'ok' | 'private' | 'always';
+const committed = JSON.parse(readFileSync(VECTORS_PATH, 'utf-8'));
+const vectors: Vector[] = committed.vectors;
 
-    expect({ ip, private: isPrivateOrReservedIp(ip), never: isNeverExemptibleIp(ip) })
-      .toEqual({ ip, private: cls !== 'ok', never: cls === 'always' });
+afterEach(() => { vi.restoreAllMocks(); });
+
+describe('ssrf-vectors.json', () => {
+  it('matches what the generator produces, so the committed file is current', () => {
+    // The dayDial vectors guard: an edited implementation with a stale file
+    // would otherwise pass. Run `npm run ssrf:vectors` and commit the result.
+    expect(committed).toEqual(buildSsrfVectors());
   });
 
-  it('never marks an address exemptible-but-public, in either module', () => {
-    for (const ip of ADDRESSES) {
-      if (isNeverExemptibleIp(ip)) expect(isPrivateOrReservedIp(ip)).toBe(true);
+  it('covers all three classes and both families', () => {
+    const classes = new Set(vectors.map((v) => v.class));
+    expect([...classes].sort()).toEqual(['always', 'ok', 'private']);
+    expect(vectors.some((v) => v.family === 6)).toBe(true);
+    expect(vectors.length).toBeGreaterThan(40);
+  });
+});
+
+describe('api/_ssrfGuard.mjs classifies every vector as the table says', () => {
+  it.each(vectors.map((v) => [v.address, v.family, v.class, v.note] as const))(
+    '%s (%s) is %s: %s',
+    (address, family, expected) => {
+      expect(classifyAddress(address, family)).toBe(expected);
+    },
+  );
+});
+
+describe('electron/proxyUrlPolicy.ts agrees with the same table', () => {
+  // The desktop module answers with two predicates rather than a classifier.
+  // The mapping is exact: `ok` is neither, `private` is private but grantable,
+  // `always` is both private and never exemptible.
+  it.each(vectors.map((v) => [v.address, v.class, v.note] as const))(
+    '%s is %s: %s',
+    (address, expected) => {
+      expect({
+        private: isPrivateOrReservedIp(address),
+        never: isNeverExemptibleIp(address),
+      }).toEqual({
+        private: expected !== 'ok',
+        never: expected === 'always',
+      });
+    },
+  );
+
+  it('never marks an address exemptible but public', () => {
+    for (const { address } of vectors) {
+      if (isNeverExemptibleIp(address)) expect(isPrivateOrReservedIp(address)).toBe(true);
     }
   });
+});
 
-  it('refuses the mapped metadata endpoint that used to be grantable', () => {
-    // Regression pin. Before the tables were aligned, ::ffff:169.254.169.254
-    // read as merely "private" on the desktop side, so a user could consent to
-    // the cloud metadata endpoint by spelling it in IPv4-mapped form.
-    expect(isNeverExemptibleIp('::ffff:169.254.169.254')).toBe(true);
-    expect(isNeverExemptibleIp('::ffff:a9fe:a9fe')).toBe(true);
-  });
+// The verdicts are the contract every implementation in every repo must meet,
+// driven through its outermost validate function rather than an internal
+// classifier, so a repo that exposes no classifier can run the same table.
+describe('assertSafeUrl produces the table verdict in both postures', () => {
+  const stub = (address: string, family: number) =>
+    vi.spyOn(dns.promises, 'lookup').mockResolvedValue([{ address, family } as never]);
+
+  it.each(vectors.map((v) => [v.address, v.family, v.hosted, v.note] as const))(
+    'hosted: %s (%s) -> %s: %s',
+    async (address, family, verdict) => {
+      stub(address, family);
+      const call = assertSafeUrl('https://target.example.com/x', { allowPrivate: false });
+      if (verdict === 'allow') await expect(call).resolves.toBeTruthy();
+      else await expect(call).rejects.toMatchObject({ status: 403 });
+    },
+  );
+
+  it.each(vectors.map((v) => [v.address, v.family, v.selfHost, v.note] as const))(
+    'self-host: %s (%s) -> %s: %s',
+    async (address, family, verdict) => {
+      stub(address, family);
+      const call = assertSafeUrl('https://target.example.com/x', { allowPrivate: true });
+      if (verdict === 'allow') await expect(call).resolves.toBeTruthy();
+      else await expect(call).rejects.toMatchObject({ status: 403 });
+    },
+  );
 });

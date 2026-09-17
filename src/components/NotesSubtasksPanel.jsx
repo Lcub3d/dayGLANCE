@@ -318,7 +318,7 @@ const NotesSubtasksPanel = ({
     >
       {/* Notes section: the linked vault note for a wikilinked task, and
           beneath it the local notes whenever the record holds any (a note
-          can live in both places: report docs/reports/obsidian-linked-note-append.md, F4). */}
+          can live in both places: the report in PR #1690, F4). */}
       {showLinked && (
         <div className="mb-3 space-y-3">
           {[...(wikilinks || []), ...additionalNotes].map((noteName) => {

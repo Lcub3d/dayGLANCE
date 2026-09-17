@@ -6,8 +6,8 @@ import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 
-// A linked task can hold notes in two places (report
-// docs/reports/obsidian-linked-note-append.md, F4): the panel shows the
+// A linked task can hold notes in two places (the report in PR #1690,
+// F4): the panel shows the
 // linked-note editor and, beneath it, the local notes whenever the record
 // holds any. Without the linked-note loader (a surface that does not wire
 // it) the local block renders alone, as it always did.

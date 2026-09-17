@@ -957,8 +957,9 @@ The 2026-09-14 migration converted notes only for a task with no link in
 its title; notes arriving on a task that already carried its link stayed
 in the local field, which the panel hid (fixed the same day: the panel
 shows local notes beneath the linked note, and the card shows the
-document icon while any exist). The rule now, from the report
-`docs/reports/obsidian-linked-note-append.md`:
+document icon while any exist). The rule now, from the report in
+PR #1690 (https://github.com/krelltunez/dayGLANCE/pull/1690, closed
+unmerged; the report lives on that PR's branch):
 
 - **The record names its note.** A migration writes the target it created
   onto the record as `obsidianNoteTarget`. Later notes on that task, from

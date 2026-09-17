@@ -770,6 +770,36 @@ describe('vault task scope, end to end', () => {
     expect(A.all().find((t) => t.id === id)).toMatchObject({ notes: 'keep me', color: 'bg-orange-500' });
   });
 
+  it('24. THE GATE COVERS PARSED TASKS (2026-09-17): a stale report of a daily note with the old title does not revert a dayGLANCE retitle; a newer Obsidian edit still wins', async () => {
+    await bootWithScopedNote();
+    const DAILY = 'Daily/2026-09-04.md';
+    await s.write(DAILY, '## Tasks\n- [ ] Fix the boiler\n');
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((t) => t.title.startsWith('Fix the boiler'))!.id;
+    A.patch(id, { title: 'Fix the boiler valve #obsidian' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Fix the boiler valve #obsidian');
+    const applied = JSON.parse((globalThis as any).localStorage.getItem('dayglance-obsidian-last-applied-mtime'))['2026-09-04'];
+    expect(typeof applied).toBe('string');
+    // The lagging copy: the old line under the old mtime.
+    await s.write(DAILY, s.text(DAILY)!.replace('Fix the boiler valve', 'Fix the boiler'));
+    s.file(DAILY).stat.mtime = Date.parse(applied) - 60_000;
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Fix the boiler valve #obsidian');
+    expect(A.all().filter((t) => t.title.startsWith('Fix the boiler')).length).toBe(1);
+    // A genuinely newer edit still wins.
+    await s.advance(5_000);
+    await s.write(DAILY, s.text(DAILY)!.replace('Fix the boiler', 'Fix the boiler pump'));
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Fix the boiler pump #obsidian');
+  });
+
   it('9. a plugin reload republishes the pairing meta WITH the scope (harness finding)', async () => {
     await bootWithScopedNote();
     s.plugin.reload();

@@ -610,6 +610,39 @@ describe('project and goal notes: creation, the maintained map, the project fiel
       expect(A.all().find((x) => x.title.startsWith(name))).toMatchObject({ notes: '', obsidianNoteTarget: `Projects/${name}`, obsidianNoteLinkSeen: true });
     }
   });
+  it('21. THE LATE-OBSERVATION GATE FOR PROJECT NOTES (2026-09-17): a stale follower report with the old title does not revert a dayGLANCE retitle; a genuinely newer Obsidian edit still wins', async () => {
+    await bootLinked();
+    A.add({ title: 'Lawn', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    const id = A.all().find((t) => t.title.startsWith('Lawn'))!.id;
+    A.patch(id, { title: 'Lawn mowed #obsidian' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Lawn mowed #obsidian');
+    const applied = JSON.parse(A.store.get('dayglance-obsidian-last-applied-mtime')!)[NOTE];
+    expect(typeof applied).toBe('string');
+    // A lagging plugin copy reports the OLD line under the old version's mtime.
+    await s.write(NOTE, s.text(NOTE)!.replace('Lawn mowed ^', 'Lawn ^'));
+    s.file(NOTE).stat.mtime = Date.parse(applied) - 60_000;
+    const info = vi.spyOn(console, 'info');
+    await s.settle();
+    await A.sync();
+    expect(info.mock.calls.some((c) => String(c[0]).includes('late observation skipped'))).toBe(true);
+    info.mockRestore();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Lawn mowed #obsidian');
+    expect(JSON.parse(A.store.get('dayglance-obsidian-last-applied-mtime')!)[NOTE]).toBe(applied);
+    // A genuinely newer edit in Obsidian still wins the title.
+    await s.advance(5_000);
+    await s.write(NOTE, s.text(NOTE)!.replace('Lawn ^', 'Lawn trimmed ^'));
+    await s.settle();
+    await A.sync();
+    expect(A.all().find((t) => t.id === id)!.title).toBe('Lawn trimmed #obsidian');
+  });
 });
 
 // ── Daily-note templates (companion §4.4 build record, 2026-09-06) ──────────

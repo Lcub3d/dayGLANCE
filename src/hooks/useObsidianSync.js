@@ -20,7 +20,7 @@ import { validateWikiNoteName } from '../utils/obsidianFilename.js';
 import { classifyVaultPaths } from '../utils/vaultPortability.js';
 import { mergeObsidianDailyNotes } from '../utils/mergeObsidianDailyNotes.js';
 import { mergeObsidianTasks, preserveObsidianAppFields, noteMtimesFromDailyNotes, noteMtimesFromScopedNotes } from '../utils/mergeObsidianTasks.js';
-import { applyLateObservationGate } from '../utils/lateObservationGate.js';
+import { applyLateObservationGate, dropTasksOfSkippedNotes } from '../utils/lateObservationGate.js';
 import { detectObsidianDeletions, addObsidianTombstones, commitObsidianTombstones } from '../utils/obsidianDeletions.js';
 import { reattachTasksMetadata } from '../utils/obsidianTasksMetadata.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
@@ -745,6 +745,32 @@ export default function useObsidianSync({
               })
             : null;
 
+          // LATE-OBSERVATION GATE (spec 2.7 ruling, 2026-09-09; extended
+          // 2026-09-17 to scoped notes and to the tasks parsed from a note):
+          // judged at the head of the batch, before anything reads it, so a
+          // stale report's text, tasks and mtime evidence never reach the
+          // deletion inference, the bin restore or the merges. Keyed by date
+          // for daily notes and by path for scoped ones; the parsed tasks of
+          // a skipped note leave the batch and its scanned-id set, so the
+          // app's own copies are retained untouched.
+          if (applied) {
+            const allMtimes = applied.noteMtimes
+              ?? { ...noteMtimesFromDailyNotes(applied.dailyNotes), ...noteMtimesFromScopedNotes(applied.scopedNotes) };
+            const gate = applyLateObservationGate(applied.dailyNotes, allMtimes, undefined, applied.scopedNotes);
+            applied.dailyNotes = gate.dailyNotes;
+            applied.scopedNotes = gate.scopedNotes;
+            applied.noteMtimes = gate.noteMtimes;
+            if (gate.skippedKeys.size) {
+              applied.scheduledTasks = dropTasksOfSkippedNotes(applied.scheduledTasks, gate.skippedKeys);
+              applied.inboxTasks = dropTasksOfSkippedNotes(applied.inboxTasks, gate.skippedKeys);
+              const kept = [...applied.scheduledTasks, ...applied.inboxTasks];
+              applied.scannedIds = new Set([
+                ...kept.map((t) => String(t.id)),
+                ...kept.filter((t) => t.obsidianLegacyId).map((t) => String(t.obsidianLegacyId)),
+              ]);
+            }
+          }
+
           // PROJECT AND GOAL NOTES (companion §4.3, rulings A and F): the
           // plugin reports which note carries each entity's id key — on
           // link, rename (new path, same id), deletion (the note is missing;
@@ -881,15 +907,11 @@ export default function useObsidianSync({
             // mtime is re-admitted with lastModified lifted to that mtime.
             // Real mtimes only (audit fix M10): a note the plugin reported
             // without an mtime is no revival evidence at all.
-            const observedNoteMtimesAll = applied.noteMtimes
-              ?? { ...noteMtimesFromDailyNotes(applied.dailyNotes), ...noteMtimesFromScopedNotes(applied.scopedNotes) };
-            // LATE-OBSERVATION GATE (spec 2.7 ruling, 2026-09-09): a daily
-            // note observed with an mtime older than the last one this device
-            // applied is stale evidence; its text and its mtime are dropped.
-            // Same rule on the direct-scan path below.
-            const streamGate = applyLateObservationGate(applied.dailyNotes, observedNoteMtimesAll);
-            setDailyNotes(prev => mergeObsidianDailyNotes(prev, streamGate.dailyNotes, tombstones));
-            const observedNoteMtimes = streamGate.noteMtimes;
+            // The late-observation gate ran at the head of this batch: the
+            // notes, the parsed tasks and the mtime evidence here are the
+            // fresh ones. Same rule on the direct-scan path below.
+            setDailyNotes(prev => mergeObsidianDailyNotes(prev, applied.dailyNotes, tombstones));
+            const observedNoteMtimes = applied.noteMtimes;
             // FIRST-IMPORT ASSIGNMENT (utils/obsidianUserScope.js): a task new
             // to the app is the vault's viewer's — here the pairing meta's
             // user, since every device on the account applies this stream.
@@ -1095,6 +1117,16 @@ export default function useObsidianSync({
       // both paths.
       const scanGate = applyLateObservationGate(result.dailyNotes, scannedNoteMtimesAll);
       setDailyNotes(prev => mergeObsidianDailyNotes(prev, scanGate.dailyNotes, tombstones));
+      // The tasks parsed from a skipped note are stale too (2026-09-17):
+      // they leave the merge and the snapshot, and their ids leave the
+      // MERGE's scanned set so the app's copies are retained. The deletion
+      // detector above already ran on the full key set, so nothing reads as
+      // removed from the vault.
+      const scanScheduled = dropTasksOfSkippedNotes(result.scheduledTasks, scanGate.skippedKeys);
+      const scanInbox = dropTasksOfSkippedNotes(result.inboxTasks, scanGate.skippedKeys);
+      const mergeScannedIds = scanGate.skippedKeys.size
+        ? new Set([...scanScheduled, ...scanInbox].flatMap((t) => [String(t.id), ...(t.obsidianLegacyId ? [String(t.obsidianLegacyId)] : [])]))
+        : scannedObsidianIds;
 
       // BIN-VERSUS-VAULT (§3.10 ruling 5): a scanned line whose task sits in
       // the recycle bin restores it — the vault controls task existence, and
@@ -1105,8 +1137,8 @@ export default function useObsidianSync({
       // the scanned slot through the normal merges below.
       const binRestore = restoreBinnedVaultTasks({
         recycleBin: recycleBinRef.current,
-        scheduledTasks: result.scheduledTasks,
-        inboxTasks: result.inboxTasks,
+        scheduledTasks: scanScheduled,
+        inboxTasks: scanInbox,
         // The live-copy guard (ruling 5 correction): ids live in app state,
         // either list, are binned DUPLICATES, never restore candidates.
         liveIds: new Set(
@@ -1135,8 +1167,8 @@ export default function useObsidianSync({
       const directKnown = knownTaskIds(currentTasks, currentInbox, recycleBinRef.current);
       const scheduledIn = assignVaultViewer(binRestore.scheduledTasks, { viewer: directViewer, knownIds: directKnown });
       const inboxIn = assignVaultViewer(binRestore.inboxTasks, { viewer: directViewer, knownIds: directKnown });
-      setTasks(prev => mergeObsidianTasks(prev, scheduledIn, scannedObsidianIds, preserveObsidianAppFields, tombstones, scannedNoteMtimes));
-      setUnscheduledTasks(prev => mergeObsidianTasks(prev, inboxIn, scannedObsidianIds, preserveObsidianAppFields, tombstones, scannedNoteMtimes));
+      setTasks(prev => mergeObsidianTasks(prev, scheduledIn, mergeScannedIds, preserveObsidianAppFields, tombstones, scannedNoteMtimes));
+      setUnscheduledTasks(prev => mergeObsidianTasks(prev, inboxIn, mergeScannedIds, preserveObsidianAppFields, tombstones, scannedNoteMtimes));
 
       // Snapshot the fresh task state so the writeback effect doesn't re-trigger
       const snapshot = {};

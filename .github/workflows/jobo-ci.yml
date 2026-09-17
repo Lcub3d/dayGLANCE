@@ -1,0 +1,94 @@
+name: Jobo CI
+
+on:
+  push:
+    branches: [jobo-main]
+  pull_request:
+    branches: [jobo-main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jobo-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify integrated PR history and original license
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p review-artifacts
+          for commit in \
+            dc78bcb938f74552702b67507947e3834bc1269b \
+            e9e2d951c259a85b18749925715e2ec0ab4823a6 \
+            bf7fd2fca2301b6ab5a76680b4c587ddfef7da9a \
+            4fdf3b9a0c187de346f9ab388c16239483c22da9 \
+            8a6a11cb41e43cdeca5d3d8cdb347d37695c5084; do
+            git merge-base --is-ancestor "$commit" HEAD
+            printf 'Included ancestor: %s\n' "$commit" | tee -a review-artifacts/provenance.txt
+          done
+          test "$(git rev-parse HEAD:LICENSE)" = 9f2ee04eeea6c05347e68dd450dbb81733a17724
+          git diff --check 8a6a11cb41e43cdeca5d3d8cdb347d37695c5084 HEAD
+          printf 'Original MIT LICENSE preserved unchanged.\n' | tee -a review-artifacts/provenance.txt
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Full test suite
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee review-artifacts/unit-tests.txt
+      - name: Web and Android WebView builds
+        run: |
+          npm run build
+          npm run build:android
+      - name: Install browser-test tools
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Browser regression checks and real compiled-app screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 5173 > review-artifacts/server.txt 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5173/ >/dev/null
+          python scripts/jobo-mobile-recording-review.py
+      - name: Archive exact reviewed source
+        if: always()
+        run: |
+          mkdir -p review-artifacts
+          git rev-parse HEAD > review-artifacts/commit.txt
+          git archive --format=tar.gz -o review-artifacts/source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jobo-review-${{ github.sha }}
+          path: |
+            review-artifacts/
+            dist/
+          retention-days: 14

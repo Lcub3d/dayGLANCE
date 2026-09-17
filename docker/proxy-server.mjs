@@ -5,38 +5,44 @@
 // (nginx's $arg_* variables are not URL-decoded, so proxy_pass receives the
 // encoded value "https%3A%2F%2F..." which it rejects as an invalid prefix.)
 //
-// SECURITY: This proxy is intentionally OPEN — no origin allowlist, no rate
-// limiting, and (unlike the Vercel functions) no SSRF/private-range blocking —
-// because self-hosters legitimately point it at CalDAV/WebDAV/calendar servers
-// on their own LAN. That makes it an unauthenticated open relay. It binds to
-// 127.0.0.1 and is meant to sit behind the bundled nginx on a trusted network.
-// Do NOT expose this container directly to the public internet without putting
-// authentication and/or a reverse proxy with access controls in front of it;
-// doing so would let anyone relay requests through your network.
-'use strict';
+// SECURITY POSTURE (see issue #1664 — this used to say "intentionally OPEN"):
+//
+// There is no origin allowlist and no rate limiting here, because this server
+// only ever runs inside the self-hosted image, bound to 127.0.0.1 behind the
+// bundled nginx. TARGET addresses, however, are now checked, by the same policy
+// module the hosted Vercel functions use (api/_ssrfGuard.mjs):
+//
+//   • PRIVATE / LAN targets are ALLOWED by default. Self-hosters legitimately
+//     point this at a NAS on 192.168.x.x, a Docker host on 10.x, a Tailscale
+//     node on 100.64/10, or a service on the same host. That is the whole point
+//     of the self-hosted image and nothing here changes it. Deployments that
+//     want the hosted lock-down can set WEBDAV_PROXY_BLOCK_PRIVATE=1.
+//   • METADATA, link-local, multicast, reserved and benchmarking ranges are
+//     ALWAYS refused, whatever that variable says. Nothing serves WebDAV or
+//     CalDAV there, and 169.254.169.254 hands out cloud instance credentials to
+//     anyone who can reach this container. Previously it did.
+//
+// This is still an unauthenticated relay to anything else on your network, so
+// do NOT expose the container directly to the public internet without putting
+// authentication or an access-controlled reverse proxy in front of it.
+//
+// Run as ESM (.mjs) rather than .js: the image copies bare files into /app with
+// no package.json beside them, where Node reads .js as CommonJS and the shared
+// guard's `import` would fail. The Dockerfile mirrors the repo's directory
+// layout (/app/docker/ and /app/api/) so this relative import resolves the same
+// way in the image as it does in a checkout.
 
-const http = require('http');
+import http from 'node:http';
+import { safeRequest, SsrfError } from '../api/_ssrfGuard.mjs';
 
-// ---------------------------------------------------------------------------
-// Shared URL validation (mirrors api/webdav-proxy.js and api/calendar-proxy.js)
-// ---------------------------------------------------------------------------
-
-function validateProxyUrl(urlString) {
-  let parsed;
-  try {
-    parsed = new URL(urlString);
-  } catch {
-    throw new Error('Invalid URL');
-  }
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('Only http and https URLs are allowed');
-  }
-
-  // This server runs only in self-hosted Docker deployments, where users need
-  // to reach WebDAV/calendar servers on their local network. Private IP ranges
-  // are intentionally allowed here; SSRF checks are only enforced on Vercel.
-  return parsed;
+// Private/LAN targets stay reachable unless a deployment opts into the hosted
+// lock-down. Same variable name lifeGLANCE uses, so anyone self-hosting more
+// than one GLANCE app configures them identically.
+const BLOCK_PRIVATE = process.env.WEBDAV_PROXY_BLOCK_PRIVATE === '1' ||
+  process.env.WEBDAV_PROXY_BLOCK_PRIVATE === 'true';
+const ALLOW_PRIVATE = !BLOCK_PRIVATE;
+if (BLOCK_PRIVATE) {
+  process.stdout.write('[proxy] WEBDAV_PROXY_BLOCK_PRIVATE set — private/LAN targets will be refused\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -88,24 +94,27 @@ async function handleWebDAVProxy(req, res, targetUrl) {
   if (req.headers['if-match'])      headers['If-Match']      = req.headers['if-match'];
   if (req.headers['if-none-match']) headers['If-None-Match'] = req.headers['if-none-match'];
 
-  const fetchOptions = { method: req.method, headers };
+  let body = null;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     const rawBody = await readBody(req);
-    if (rawBody) fetchOptions.body = rawBody;
+    if (rawBody) body = rawBody;
   }
 
   try {
-    const response = await fetch(targetUrl, fetchOptions);
-    const body = await response.text();
+    const response = await safeRequest(targetUrl, {
+      method: req.method, headers, body, allowPrivate: ALLOW_PRIVATE,
+    });
     const resHeaders = {
-      'Content-Type': response.headers.get('content-type') || 'text/plain',
+      'Content-Type': response.headers['content-type'] || 'text/plain',
       'Cache-Control': 'no-store',
     };
-    const etag = response.headers.get('etag');
-    if (etag) resHeaders['ETag'] = etag;
+    if (response.headers.etag) resHeaders['ETag'] = response.headers.etag;
     res.writeHead(response.status, resHeaders);
-    res.end(body);
-  } catch {
+    res.end(response.body);
+  } catch (err) {
+    // A policy refusal (including on a redirect hop) carries its own status;
+    // anything else is an ordinary upstream failure.
+    if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
     sendJson(res, 502, { error: 'Failed to proxy WebDAV request' });
   }
 }
@@ -117,14 +126,16 @@ async function handleCalendarProxy(req, res, targetUrl) {
   }
 
   try {
-    const response = await fetch(targetUrl, { headers: fetchHeaders });
-    const body = await response.text();
+    const response = await safeRequest(targetUrl, {
+      headers: fetchHeaders, allowPrivate: ALLOW_PRIVATE,
+    });
     res.writeHead(response.status, {
-      'Content-Type': response.headers.get('content-type') || 'text/plain',
+      'Content-Type': response.headers['content-type'] || 'text/plain',
       'Cache-Control': 'public, max-age=900, stale-while-revalidate=60',
     });
-    res.end(body);
-  } catch {
+    res.end(response.body);
+  } catch (err) {
+    if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
     sendJson(res, 502, { error: 'Failed to fetch calendar' });
   }
 }
@@ -146,12 +157,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
-
-  try {
-    validateProxyUrl(targetUrl);
-  } catch (err) {
-    return sendJson(res, 400, { error: err.message });
-  }
 
   if (isWebDAV)   return handleWebDAVProxy(req, res, targetUrl);
   if (isCalendar) return handleCalendarProxy(req, res, targetUrl);

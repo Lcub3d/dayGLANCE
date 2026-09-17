@@ -36,7 +36,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx config and proxy server
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY docker/proxy-server.js /app/proxy-server.js
+# The proxy and the SSRF policy it shares with the hosted functions. The repo's
+# directory layout is preserved so proxy-server.mjs's ../api/ import resolves.
+COPY docker/proxy-server.mjs /app/docker/proxy-server.mjs
+COPY api/_ssrfGuard.mjs /app/api/_ssrfGuard.mjs
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 

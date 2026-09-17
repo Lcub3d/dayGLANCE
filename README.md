@@ -50,6 +50,8 @@ docker compose up -d
 
 The image is built for `linux/amd64` and `linux/arm64`, so it runs on a Raspberry Pi or other ARM single-board computer as well as on an x86 server. Docker pulls the right one automatically.
 
+The bundled proxy (used for WebDAV and calendar feeds that do not send CORS headers) can reach servers on your own network by design: a NAS on `192.168.x.x`, another container on `10.x`, a Tailscale node, or a service on the same host. It always refuses the cloud metadata endpoint and other reserved ranges, which no sync server uses. If your instance is reachable by people you do not want relaying requests into your network, set `WEBDAV_PROXY_BLOCK_PRIVATE=1` in the container environment to refuse private targets too, matching the hosted deployment. Either way, do not expose the container directly to the public internet without authentication or an access-controlled reverse proxy in front of it.
+
 Available at `http://localhost:6767`. For HTTPS with Caddy:
 
 ```caddy
@@ -376,6 +378,8 @@ The sync engine resolves conflicts at the task level using timestamps, not last-
 **Setup:** Settings → Cloud Sync → choose Nextcloud or Generic WebDAV → enter URL and credentials. Syncs automatically every 15 minutes or on demand.
 
 **End-to-end encryption** is available as an opt-in. When enabled, all sync data is encrypted with AES-256-GCM before leaving your device, and your passphrase never leaves your device and the server never sees plaintext. On Android, the derived key is stored in the hardware-backed Android Keystore; on iOS it is kept in the device Keychain, along with the GLANCEvault connection, so it survives a WebKit storage purge. Enable in **Settings → Cloud Sync → Enable end-to-end encryption**.
+
+One address policy backs all of this, and it is implemented separately in the desktop app, the four server-side proxies, and the sibling GLANCE apps. `api/ssrf-vectors.json` is the canonical table those implementations are checked against; regenerate it with `npm run ssrf:vectors` after any policy change and copy it to the siblings, the same way `dayDial.vectors.json` keeps the dial geometry in agreement across platforms.
 
 **Reaching a server on your own network (desktop app).** The desktop app routes sync through the Electron main process, which refuses private network addresses by default so that a hostile URL cannot be used to probe your LAN. A self-hosted GLANCEvault usually *is* on a private address, though, whether that is a LAN box on `192.168.x.x`, a Docker host on `10.x.x.x`, or a Tailscale node (Tailscale hands out addresses in `100.64.0.0/10` and `fd7a:115c:a1e0::/48`, both of which count as private even when you point a public domain name at them). Run **Settings → Cloud Sync → Test Connection**: if the address is blocked, the app offers **Allow this address…** and asks you to confirm in a native dialog. The permission covers that one scheme, host and port, never a whole range, and it never applies to a redirect. Granted addresses are listed under the vault fields and can be removed there at any time. A vault on the same machine as the app (`localhost`, `127.0.0.1`) works the same way, and is permitted only for the exact port you confirm, so allowing the vault on one port grants nothing to anything else listening locally. Link-local addresses, which include the cloud metadata endpoint, cannot be permitted at all. The browser and mobile apps connect directly and are unaffected.
 

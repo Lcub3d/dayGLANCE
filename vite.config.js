@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'fs'
+import { assertSafeUrl, SsrfError } from './api/_ssrfGuard.mjs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
@@ -11,44 +12,6 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 // identically to the deployed environment.
 // ---------------------------------------------------------------------------
 function devApiProxy() {
-  // Identical validation logic to api/webdav-proxy.js and api/calendar-proxy.js.
-  function validateProxyUrl(urlString) {
-    let parsed;
-    try { parsed = new URL(urlString); } catch { throw new Error('Invalid URL'); }
-
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('Only http and https URLs are allowed');
-    }
-
-    const hostname = parsed.hostname.toLowerCase();
-
-    if (hostname === 'localhost' || hostname === '0.0.0.0') {
-      throw new Error('Private/reserved addresses are not allowed');
-    }
-
-    const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-    if (ipv4) {
-      const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-      if (
-        a === 10 ||
-        (a === 172 && b >= 16 && b <= 31) ||
-        (a === 192 && b === 168) ||
-        a === 127 ||
-        (a === 169 && b === 254) ||
-        a === 0 ||
-        (a === 100 && b >= 64 && b <= 127)
-      ) throw new Error('Private/reserved addresses are not allowed');
-    }
-
-    if (
-      hostname === '::1' || hostname === '::' ||
-      /^::ffff:/i.test(hostname) || /^fe80:/i.test(hostname) ||
-      /^fc/i.test(hostname)      || /^fd/i.test(hostname)
-    ) throw new Error('Private/reserved addresses are not allowed');
-
-    return parsed;
-  }
-
   function readBody(req) {
     return new Promise((resolve, reject) => {
       let data = '';
@@ -77,8 +40,12 @@ function devApiProxy() {
         const targetUrl = new URL(req.url, 'http://localhost').searchParams.get('url');
         if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
 
-        try { validateProxyUrl(targetUrl); }
-        catch (err) { return sendJson(res, 400, { error: err.message }); }
+        // The dev server runs on the developer's own machine, so it takes the
+        // SELF-HOST posture: private/LAN targets are reachable (you may well be
+        // developing against a NAS or a container), metadata and reserved
+        // ranges never are. Same shared policy as the other three proxies.
+        try { await assertSafeUrl(targetUrl, { allowPrivate: true }); }
+        catch (err) { return sendJson(res, err instanceof SsrfError ? err.status : 400, { error: err.message }); }
 
         const headers = {};
         if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -111,8 +78,12 @@ function devApiProxy() {
         const targetUrl = new URL(req.url, 'http://localhost').searchParams.get('url');
         if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
 
-        try { validateProxyUrl(targetUrl); }
-        catch (err) { return sendJson(res, 400, { error: err.message }); }
+        // The dev server runs on the developer's own machine, so it takes the
+        // SELF-HOST posture: private/LAN targets are reachable (you may well be
+        // developing against a NAS or a container), metadata and reserved
+        // ranges never are. Same shared policy as the other three proxies.
+        try { await assertSafeUrl(targetUrl, { allowPrivate: true }); }
+        catch (err) { return sendJson(res, err instanceof SsrfError ? err.status : 400, { error: err.message }); }
 
         const fetchHeaders = { Accept: 'text/calendar, text/plain, */*' };
         if (req.headers['x-calendar-auth']) fetchHeaders['Authorization'] = req.headers['x-calendar-auth'];

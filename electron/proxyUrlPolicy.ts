@@ -6,7 +6,7 @@
 // WHY THIS IS NOT A FLAT BLOCK (issue #1642)
 //
 // The proxy used to reject every private, loopback, link-local, CGNAT or ULA
-// address outright. On a hosted relay (api/webdav-proxy.js, docker/proxy-server.js)
+// address outright. On a hosted relay (api/webdav-proxy.js, docker/proxy-server.mjs)
 // that is correct and stays correct: those run on someone else's network and a
 // flat block is the only thing standing between a stranger's URL and the
 // operator's internal services.

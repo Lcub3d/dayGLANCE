@@ -124,6 +124,13 @@ book only for a note in the vault (#1658), and task notes in a linked
 project becoming a vault note in the project's folder (companion 4.3,
 harness scenario 12).
 
+**2026-09-16 and 2026-09-17.** The re-append of a task that outlives a
+wipe of its note (#1681, scenario 13); the Planner card's notes icon
+(#1689); local notes shown beneath a linked note (#1691); the linked-task
+notes migration with the record's note target, the re-assert and the
+block-boundary guard (companion 4.3, scenarios 14 to 20; the report
+`docs/reports/obsidian-linked-note-append.md`).
+
 ### 2.5 Known deferred items
 
 - **Issue #1358.** Surface unportable existing vault filenames in Settings, read-only, phrased as a portability note rather than an error.

@@ -36,7 +36,8 @@ import {
   RETIRED_ID_DUAL_WRITE,
   resolveRetirement,
 } from '../utils/retiredTaskIds.js';
-import { planTaskNoteMigration } from '../utils/taskNoteName.js';
+import { planTaskNoteMigration, planLinkedNoteAppend, planNoteLinkReassert, titleLinksTarget } from '../utils/taskNoteName.js';
+import { recordSentNotes } from '../utils/obsidianNotesJournal.js';
 import { lineReappendStamp, readLineReappends, writeLineReappends } from '../utils/obsidianLineReappend.js';
 import { blockIdWritesEnabled, completionMarkerWritesEnabled } from '../utils/obsidianWritePolicy.js';
 import { titleConflictNoticeText } from '../utils/obsidianTitleConflict.js';
@@ -1664,14 +1665,59 @@ export default function useObsidianSync({
       const p = prev[taskRow.id];
       if (!p) continue;
 
-      const migration = migrateNotes && taskRow.projectId
-        ? planTaskNoteMigration(taskRow, projectsForNotes.find((pr) => pr && String(pr.id) === String(taskRow.projectId)), { tasks: tasksForNotes, reservedNotePaths })
+      // Three shapes (utils/taskNoteName.js, 2026-09-17): 'create' (no link
+      // yet: the note is created, the link joins the title), 'append' (the
+      // task's own note is linked: the notes go to it, the title stays) and
+      // 'reassert' (the record names its note, the title lost the link before
+      // any observation showed it: the link goes back, no note write).
+      const projectOfRow = migrateNotes && taskRow.projectId
+        ? projectsForNotes.find((pr) => pr && String(pr.id) === String(taskRow.projectId))
+        : null;
+      // Order: a lost link goes back first (the notes then append on the
+      // next pass, to the note the record already names), then the fresh
+      // migration, then the append to an own linked note.
+      const migration = projectOfRow
+        ? (planNoteLinkReassert(taskRow, projectOfRow)
+          ?? planTaskNoteMigration(taskRow, projectOfRow, { tasks: tasksForNotes, reservedNotePaths })
+          ?? planLinkedNoteAppend(taskRow, projectOfRow))
         : null;
       // The task as this pass writes it: with the link in its title and the
       // notes on their way to the vault. Committed below, on enqueue.
-      const task = migration ? { ...taskRow, title: migration.title, notes: '' } : taskRow;
+      const task = migration
+        ? { ...taskRow, ...(migration.title !== undefined ? { title: migration.title } : {}), ...(migration.content !== undefined ? { notes: '' } : {}) }
+        : taskRow;
+
+      if (migration?.kind === 'append') {
+        // Notes onto the task's own linked note: one wiki_note_write, the
+        // field cleared on enqueue, the body journaled; no line write is
+        // needed, so this rides ahead of the change detection below.
+        const noteQueued = emitBridgeIntent('wiki_note_write', {
+          noteName: migration.target, content: migration.content,
+          newNotesFolder: obsidianConfig?.newNotesFolder ?? 'dayGLANCE', mode: 'create_or_append',
+        });
+        if (!noteQueued) { reportTaskWriteFailure(); continue; }
+        const id = taskRow.id;
+        const fields = { notes: '', lastModified: new Date().toISOString() };
+        nativeCommits.push(() => {
+          const apply = (t) => (t.id === id ? { ...t, ...fields } : t);
+          setTasks((prevTasks) => prevTasks.map(apply));
+          setUnscheduledTasks((prevTasks) => prevTasks.map(apply));
+          recordSentNotes({ id, target: migration.target, body: migration.content });
+        });
+      }
 
       const titleChanged = p.title !== undefined && p.title !== task.title;
+      if (titleChanged && taskRow.obsidianNoteTarget && migration?.kind !== 'reassert'
+        && titleLinksTarget(p.title, taskRow.obsidianNoteTarget) && !titleLinksTarget(task.title, taskRow.obsidianNoteTarget)) {
+        // The link left the title in dayGLANCE: the record forgets its note,
+        // so nothing re-asserts a link the user removed here.
+        const id = taskRow.id;
+        nativeCommits.push(() => {
+          const apply = (t) => (t.id === id ? { ...t, obsidianNoteTarget: null, obsidianNoteLinkSeen: null } : t);
+          setTasks((prevTasks) => prevTasks.map(apply));
+          setUnscheduledTasks((prevTasks) => prevTasks.map(apply));
+        });
+      }
       const stateChanged = p.completed !== task.completed || p.startTime !== (task.startTime || null) || p.duration !== (task.duration || null);
 
       // Detect rescheduling to a different day by comparing against the prev
@@ -1907,7 +1953,7 @@ export default function useObsidianSync({
       // identity move), and applyBridgeIntent mirrors its line rewrite, so
       // a paired vault copy converges byte-for-byte whichever side lands
       // first. Fail-silent; a stream problem never touches the direct write.
-      if (migration) {
+      if (migration?.kind === 'create') {
         // The note first, the line's link after it, in stream order. An
         // existing note under the derived name is appended to, never
         // replaced (create_or_append); a refused enqueue leaves the notes
@@ -1984,18 +2030,24 @@ export default function useObsidianSync({
         // Deferred via nativeCommits so the entry moves operate on the
         // fresh snapshot, exactly like a confirmed native write.
         if (titleUpdate || assignBlockId) nativeCommits.push(commit);
-        if (migration) {
+        if (migration && migration.kind !== 'append') {
           // Commit on enqueue, like every write on this path: the title
-          // takes the link, the notes leave the record, the snapshot moves
-          // with them so the next pass sees no further change.
+          // takes the link, the notes leave the record (create) and the
+          // record learns its note's target; the snapshot moves with them
+          // so the next pass sees no further change. A re-assert moves the
+          // title alone.
           const id = task.id;
-          const fields = { title: migration.title, notes: '', lastModified: new Date().toISOString() };
+          const now = new Date().toISOString();
+          const fields = migration.kind === 'create'
+            ? { title: migration.title, notes: '', obsidianNoteTarget: migration.target, obsidianNoteLinkSeen: null, lastModified: now }
+            : { title: migration.title, lastModified: now };
           nativeCommits.push(() => {
             const apply = (t) => (t.id === id ? { ...t, ...fields } : t);
             setTasks((prevTasks) => prevTasks.map(apply));
             setUnscheduledTasks((prevTasks) => prevTasks.map(apply));
             const snap = obsidianPrevTaskStateRef.current;
             if (snap[id]) snap[id] = { ...snap[id], title: migration.title };
+            if (migration.kind === 'create') recordSentNotes({ id, target: migration.target, body: migration.content });
           });
         }
         continue;

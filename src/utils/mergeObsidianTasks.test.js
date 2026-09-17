@@ -156,3 +156,32 @@ describe('preserveObsidianAppFields', () => {
     expect(out[0]).toEqual(prev[0]);
   });
 });
+
+describe('preserveObsidianAppFields: the record\'s note target (2026-09-17)', () => {
+  const old = { id: 'obsidian-dg-a1', title: 'Gutter [[Projects/Gutter]] #obsidian', obsidianRawTitle: 'Gutter [[Projects/Gutter]]', obsidianNoteTarget: 'Projects/Gutter', color: 'bg-red-500' };
+  it('an observed line carrying the link marks it seen', () => {
+    const out = preserveObsidianAppFields(old, { obsidianRawTitle: 'Gutter [[Projects/Gutter]]' }, '2026-09-17T10:00:00.000Z');
+    expect(out).toMatchObject({ obsidianNoteTarget: 'Projects/Gutter', obsidianNoteLinkSeen: true, obsidianNoteLinkSeenAt: '2026-09-17T10:00:00.000Z' });
+  });
+  it('a line without the link, never seen carrying it, keeps the target (the writeback re-asserts)', () => {
+    const out = preserveObsidianAppFields(old, { obsidianRawTitle: 'Gutter edited' });
+    expect(out).toMatchObject({ obsidianNoteTarget: 'Projects/Gutter' });
+    expect(out.obsidianNoteLinkSeen).toBeUndefined();
+  });
+  it('a NEWER line without the link after it was seen is the user\'s unlink: the target clears', () => {
+    const seen = { ...old, obsidianNoteLinkSeen: true, obsidianNoteLinkSeenAt: '2026-09-17T10:00:00.000Z' };
+    const out = preserveObsidianAppFields(seen, { obsidianRawTitle: 'Gutter' }, '2026-09-17T10:05:00.000Z');
+    expect(out).toMatchObject({ obsidianNoteTarget: null, obsidianNoteLinkSeen: null, obsidianNoteLinkSeenAt: null });
+    // Without mtime evidence on either side, arrival order decides, as before.
+    expect(preserveObsidianAppFields({ ...old, obsidianNoteLinkSeen: true }, { obsidianRawTitle: 'Gutter' })).toMatchObject({ obsidianNoteTarget: null });
+  });
+  it('a STALE report without the link (mtime no newer than when the link was seen) is a lagging copy, not an unlink', () => {
+    const seen = { ...old, obsidianNoteLinkSeen: true, obsidianNoteLinkSeenAt: '2026-09-17T10:00:00.000Z' };
+    const out = preserveObsidianAppFields(seen, { obsidianRawTitle: 'Gutter' }, '2026-09-17T09:59:00.000Z');
+    expect(out).toMatchObject({ obsidianNoteTarget: 'Projects/Gutter', obsidianNoteLinkSeen: true, obsidianNoteLinkSeenAt: '2026-09-17T10:00:00.000Z' });
+  });
+  it('the comparison ignores case, heading and extension', () => {
+    const out = preserveObsidianAppFields(old, { obsidianRawTitle: 'Gutter [[projects/gutter#Notes]]' });
+    expect(out.obsidianNoteLinkSeen).toBe(true);
+  });
+});

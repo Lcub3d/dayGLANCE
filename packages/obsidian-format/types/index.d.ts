@@ -215,6 +215,7 @@ export function sealBridgeEnvelope(subkey: CryptoKey, payload: unknown): Promise
 export function openBridgeEnvelope(subkey: CryptoKey, text: string): Promise<unknown | null>;
 export function encodePlainBridgeRow(payload: unknown): string;
 export function decodePlainBridgeRow(text: string): unknown | null;
+export function noteContainsBlock(text: string, body: string): boolean;
 export function applyBridgeIntent(
   currentText: string | null, intent: unknown,
 ): { text: string | null; changed: boolean }

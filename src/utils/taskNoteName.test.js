@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { taskNoteNameFor, taskNoteTargetFor, folderOfNotePath, planTaskNoteMigration } from './taskNoteName.js';
+import { taskNoteNameFor, taskNoteTargetFor, folderOfNotePath, planTaskNoteMigration, planLinkedNoteAppend, planNoteLinkReassert, isOwnTaskNote, plainTaskTitle, titleWithNoteLink } from './taskNoteName.js';
 
 const project = { id: 'p1', title: 'House', obsidianNotePath: 'Projects/House.md' };
 const placed = (over = {}) => ({
@@ -42,6 +42,7 @@ describe('planTaskNoteMigration', () => {
   it('plans the note in the project folder and the title with the link before the tag', () => {
     const plan = planTaskNoteMigration(placed(), project, { tasks: [placed()] });
     expect(plan).toEqual({
+      kind: 'create',
       target: 'Projects/Fix the gutter',
       title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian',
       content: 'Call the roofer first',
@@ -63,5 +64,56 @@ describe('planTaskNoteMigration', () => {
     expect(planTaskNoteMigration(placed(), { ...project, obsidianNoteMissingAt: '2026-09-14T00:00:00Z' })).toBeNull();
     expect(planTaskNoteMigration(placed(), { id: 'p1', title: 'Unlinked' })).toBeNull();
     expect(planTaskNoteMigration(placed({ recurringTemplateId: 'r1' }), project)).toBeNull();
+  });
+});
+
+describe('plainTaskTitle and titleWithNoteLink', () => {
+  it('cleans and inserts before the display tag', () => {
+    expect(plainTaskTitle('Read [[Book]] tonight #urgent #obsidian')).toBe('Read tonight');
+    expect(titleWithNoteLink('Fix the gutter #obsidian', 'Projects/Fix the gutter')).toBe('Fix the gutter [[Projects/Fix the gutter]] #obsidian');
+    expect(titleWithNoteLink('Fix the gutter', 'Projects/Fix the gutter')).toBe('Fix the gutter [[Projects/Fix the gutter]]');
+  });
+});
+
+describe('isOwnTaskNote (the discriminator, option B)', () => {
+  const linked = (over = {}) => placed({ title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian', ...over });
+  it('by the stored target, rename-proof', () => {
+    expect(isOwnTaskNote(linked({ obsidianNoteTarget: 'Projects/Fix the gutter' }), project, 'Projects/Fix the gutter')).toBe(true);
+    expect(isOwnTaskNote(linked({ title: 'Renamed [[Projects/Fix the gutter]] #obsidian', obsidianNoteTarget: 'Projects/Fix the gutter' }), project, 'Projects/Fix the gutter')).toBe(true);
+    expect(isOwnTaskNote(linked({ obsidianNoteTarget: 'Projects/Fix the gutter' }), project, 'Projects/Other')).toBe(false);
+  });
+  it('without the field: folder and derived name, suffix allowed; renamed reads as hand-linked', () => {
+    expect(isOwnTaskNote(linked(), project, 'Projects/Fix the gutter')).toBe(true);
+    expect(isOwnTaskNote(linked(), project, 'Projects/Fix the gutter 2')).toBe(true);
+    expect(isOwnTaskNote(linked(), project, 'Fix the gutter')).toBe(false); // wrong folder
+    expect(isOwnTaskNote(linked(), project, 'Projects/GLANCE-repo-setup')).toBe(false);
+    expect(isOwnTaskNote(linked({ title: 'Renamed [[Projects/Fix the gutter]] #obsidian' }), project, 'Projects/Fix the gutter')).toBe(false);
+  });
+});
+
+describe('planLinkedNoteAppend', () => {
+  it('appends to the task\'s own note and nothing else', () => {
+    const own = placed({ title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian', notes: 'more', obsidianNoteTarget: 'Projects/Fix the gutter' });
+    expect(planLinkedNoteAppend(own, project)).toEqual({ kind: 'append', target: 'Projects/Fix the gutter', content: 'more' });
+    const shared = placed({ title: 'Setup [[GLANCE-repo-setup]] #obsidian', notes: 'more' });
+    expect(planLinkedNoteAppend(shared, project)).toBeNull();
+    const twoLinks = placed({ title: 'Fix the gutter [[Notes/Other]] [[Projects/Fix the gutter]] #obsidian', notes: 'more' });
+    expect(planLinkedNoteAppend(twoLinks, project)).toEqual({ kind: 'append', target: 'Projects/Fix the gutter', content: 'more' });
+  });
+  it('is null without notes, without a link, when not placed, or for an unportable stored target', () => {
+    expect(planLinkedNoteAppend(placed({ title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian', notes: '' }), project)).toBeNull();
+    expect(planLinkedNoteAppend(placed({ notes: 'x' }), project)).toBeNull();
+    expect(planLinkedNoteAppend(placed({ title: 'Fix [[Projects/Fix the gutter]] #obsidian', notes: 'x', obsidianBlockId: null }), project)).toBeNull();
+    expect(planLinkedNoteAppend(placed({ title: 'Fix [[Projects/plans?]] #obsidian', notes: 'x', obsidianNoteTarget: 'Projects/plans?' }), project)).toBeNull();
+  });
+});
+
+describe('planNoteLinkReassert', () => {
+  it('puts the link back only while it was never observed on the line', () => {
+    const lost = placed({ title: 'Fix the gutter #obsidian', obsidianNoteTarget: 'Projects/Fix the gutter', notes: '' });
+    expect(planNoteLinkReassert(lost, project)).toEqual({ kind: 'reassert', target: 'Projects/Fix the gutter', title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian' });
+    expect(planNoteLinkReassert({ ...lost, obsidianNoteLinkSeen: true }, project)).toBeNull();
+    expect(planNoteLinkReassert({ ...lost, title: 'Fix the gutter [[Projects/Fix the gutter]] #obsidian' }, project)).toBeNull();
+    expect(planNoteLinkReassert({ ...lost, obsidianNoteTarget: null }, project)).toBeNull();
   });
 });

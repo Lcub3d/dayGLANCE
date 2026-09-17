@@ -305,10 +305,18 @@ function upsertCollection(data, kind, value) {
     // archived it. Carry archived forward when the winner OMITS it (undefined)
     // but our local copy had archived:true. An explicit archived:false on the
     // winner is a real unarchive and is honored (not undefined → not carried).
+    //
+    // `originalPlan` (utils/originalPlan.js) is sticky for the same reason and
+    // carried unconditionally: it is write-once and nothing can clear it, so an
+    // absent value on the winner can only mean that device never had it.
     const local = data[kind][idx];
-    const merged = (value && value.archived === undefined && local && local.archived === true)
-      ? { ...value, archived: true }
-      : value;
+    let merged = value;
+    if (merged && merged.archived === undefined && local && local.archived === true) {
+      merged = { ...merged, archived: true };
+    }
+    if (merged && merged.originalPlan === undefined && local && local.originalPlan !== undefined) {
+      merged = { ...merged, originalPlan: local.originalPlan };
+    }
     data[kind][idx] = merged;
     // Re-push when we enriched the pulled row so the vault converges to the
     // superset (mirrors the bundle-superset re-push).

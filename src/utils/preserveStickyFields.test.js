@@ -1,0 +1,101 @@
+import { describe, it, expect } from 'vitest';
+import { preserveStickyFields } from './preserveStickyFields.js';
+
+// The applyEngineData second-pass strip: a merged/remote copy that OMITS `archived`
+// must not silently un-archive a locally-archived item (which also caused the
+// re-stamp/push churn). A real remote unarchive (archived:false explicit) still wins.
+
+describe('preserveStickyFields', () => {
+  it('back-fills archived:true when the incoming copy omits it (the churn fix)', () => {
+    const existing = [{ id: 'a', archived: true }];
+    const incoming = [{ id: 'a', title: 'x' }]; // merged row dropped archived
+    expect(preserveStickyFields(incoming, existing)).toEqual([{ id: 'a', title: 'x', archived: true }]);
+  });
+
+  it('does NOT override an explicit remote unarchive (archived:false propagates)', () => {
+    const existing = [{ id: 'a', archived: true }];
+    const incoming = [{ id: 'a', title: 'x', archived: false }];
+    expect(preserveStickyFields(incoming, existing)[0].archived).toBe(false);
+  });
+
+  it('leaves a never-archived item alone (no archived key injected)', () => {
+    const existing = [{ id: 'a' }];
+    const incoming = [{ id: 'a', title: 'x' }];
+    const out = preserveStickyFields(incoming, existing);
+    expect('archived' in out[0]).toBe(false);
+  });
+
+  it('carries a local archived:false forward when incoming omits it', () => {
+    // Local explicitly un-archived; incoming (older) lacks the flag → keep local false.
+    const existing = [{ id: 'a', archived: false }];
+    const incoming = [{ id: 'a', title: 'x' }];
+    expect(preserveStickyFields(incoming, existing)[0].archived).toBe(false);
+  });
+
+  it('an incoming archived:true is kept even if local lacks it', () => {
+    const existing = [{ id: 'a' }];
+    const incoming = [{ id: 'a', archived: true }];
+    expect(preserveStickyFields(incoming, existing)[0].archived).toBe(true);
+  });
+
+  it('matches by id across both lists (scheduled↔inbox move) and ignores unmatched', () => {
+    const existing = [{ id: 'sched-1', archived: true }, { id: 'inbox-9', archived: true }];
+    const incoming = [{ id: 'inbox-9', title: 'moved' }, { id: 'new-1', title: 'fresh' }];
+    const out = preserveStickyFields(incoming, existing);
+    expect(out[0].archived).toBe(true);          // matched → healed
+    expect('archived' in out[1]).toBe(false);     // no local match → untouched
+  });
+
+  it('handles empty/undefined inputs without throwing', () => {
+    expect(preserveStickyFields(undefined, undefined)).toEqual([]);
+    expect(preserveStickyFields([], [{ id: 'a', archived: true }])).toEqual([]);
+    expect(preserveStickyFields([{ id: 'a' }], undefined)).toEqual([{ id: 'a' }]);
+  });
+
+  it('the 24-item repro: all locally-archived items survive a merge that dropped archived', () => {
+    const ids = Array.from({ length: 24 }, (_, i) => `id-${i}`);
+    const existing = ids.map((id) => ({ id, completed: true, archived: true }));
+    const incoming = ids.map((id) => ({ id, completed: true })); // vault row without archived
+    const out = preserveStickyFields(incoming, existing);
+    expect(out.every((t) => t.archived === true)).toBe(true);
+  });
+});
+
+describe('preserveStickyFields — originalPlan', () => {
+  // The apply path is where the loss would otherwise become permanent: it runs
+  // with suppressTimestampRef set, so the persist pass skips stampOriginalPlan
+  // and writes storage without the field. Carrying it here is what stops a merge
+  // from an older device erasing the baseline for good.
+  const PLAN = { date: '2026-09-17', startTime: '09:00', duration: 60 };
+
+  it('back-fills the baseline when the incoming copy omits it', () => {
+    const existing = [{ id: 'a', originalPlan: PLAN }];
+    const incoming = [{ id: 'a', title: 'x', startTime: '16:00' }];
+    const [out] = preserveStickyFields(incoming, existing);
+    expect(out.originalPlan).toEqual(PLAN);
+    expect(out.startTime).toBe('16:00'); // the incoming reschedule is untouched
+  });
+
+  it('never overwrites a baseline the incoming copy already has', () => {
+    const existing = [{ id: 'a', originalPlan: PLAN }];
+    const incoming = [{ id: 'a', originalPlan: { date: '2026-01-01', startTime: '07:00' } }];
+    expect(preserveStickyFields(incoming, existing)[0].originalPlan)
+      .toEqual({ date: '2026-01-01', startTime: '07:00' });
+  });
+
+  it('injects nothing when neither side has one', () => {
+    const [out] = preserveStickyFields([{ id: 'a' }], [{ id: 'a' }]);
+    expect('originalPlan' in out).toBe(false);
+  });
+
+  it('carries archived and originalPlan independently', () => {
+    const existing = [{ id: 'a', archived: true, originalPlan: PLAN }];
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], existing);
+    expect(out).toEqual({ id: 'a', title: 'x', archived: true, originalPlan: PLAN });
+  });
+
+  it('leaves a task with no local counterpart alone', () => {
+    const [out] = preserveStickyFields([{ id: 'new' }], [{ id: 'a', originalPlan: PLAN }]);
+    expect(out.originalPlan).toBeUndefined();
+  });
+});

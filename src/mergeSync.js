@@ -474,14 +474,26 @@ export const mergeSyncData = (local, remote, retentionDays) => {
     const localById = new Map((local?.[listKey] || []).map((t) => [String(t.id), t]));
     const remoteById = new Map((remote?.[listKey] || []).map((t) => [String(t.id), t]));
     for (const item of mergedList) {
-      if (!item || item.archived !== undefined) continue;
+      if (!item) continue;
       const l = localById.get(String(item.id));
       const r = remoteById.get(String(item.id));
-      if (l?.archived === true || r?.archived === true) {
+      if (item.archived === undefined && (l?.archived === true || r?.archived === true)) {
         item.archived = true;
         // The side whose copy we enriched needs the corrected value written back.
         if (l?.archived !== true) result.localChanged = true;
         if (r?.archived !== true) result.remoteChanged = true;
+      }
+      // `originalPlan` is sticky for the same reason, and carried unconditionally:
+      // it is write-once and nothing can clear it, so absent on the winner can
+      // only mean that side never had it. Either side's copy will do — a task has
+      // at most one baseline, so they cannot disagree.
+      if (item.originalPlan === undefined) {
+        const plan = l?.originalPlan ?? r?.originalPlan;
+        if (plan !== undefined) {
+          item.originalPlan = plan;
+          if (l?.originalPlan === undefined) result.localChanged = true;
+          if (r?.originalPlan === undefined) result.remoteChanged = true;
+        }
       }
     }
   }

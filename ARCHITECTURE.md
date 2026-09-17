@@ -171,6 +171,15 @@ backfilled, because a rescheduled task's current schedule is precisely not its
 original plan and inventing one would be indistinguishable from the real thing.
 Being a field on the task, it rides existing backup, restore and sync for free.
 
+That last part costs something: a field only some devices carry is dropped
+whenever whole-entity last-writer-wins picks a copy without it. `originalPlan` is
+therefore carried forward at all four places a sticky task field must be, the same
+set `archived` needs — `utils/stampTimestamps.js` (so gaining it cannot fake an
+edit), `sync/dbAdapter.js` and `mergeSync.js` (the two transports' LWW), and
+`utils/preserveStickyFields.js` (the apply). Its rule is simpler than `archived`'s:
+being write-once and impossible to clear, an absent value can only mean the other
+device never had it, so it is carried unconditionally.
+
 ### Recurring task template
 
 Recurring tasks are stored as templates with a `recurrence` descriptor. Occurrences are computed on the fly via `getOccurrencesInRange()`. They are never written to the tasks array.

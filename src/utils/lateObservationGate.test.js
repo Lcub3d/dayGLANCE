@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  gateLateObservations, applyLateObservationGate, readLastAppliedMtimes,
+  gateLateObservations, applyLateObservationGate, readLastAppliedMtimes, dropTasksOfSkippedNotes,
   LAST_APPLIED_MTIME_KEY, LAST_APPLIED_RETAIN_DAYS,
 } from './lateObservationGate.js';
 
@@ -28,7 +28,7 @@ describe('gateLateObservations (spec 2.7, newest mtime wins for text)', () => {
     );
     expect(r.fresh).toEqual({});
     expect(r.evidence).toEqual({});
-    expect(r.skipped).toEqual([{ date: '2026-09-08', mtime: T0, lastApplied: T1 }]);
+    expect(r.skipped).toEqual([{ key: '2026-09-08', date: '2026-09-08', mtime: T0, lastApplied: T1 }]);
     expect(r.next).toEqual({ '2026-09-08': T1 }); // memory unchanged by a skip
   });
 
@@ -90,5 +90,42 @@ describe('applyLateObservationGate (storage round trip and the console line)', (
     const s = storage();
     s.setItem(LAST_APPLIED_MTIME_KEY, '{nope');
     expect(readLastAppliedMtimes(s)).toEqual({});
+  });
+});
+
+describe('scoped notes and parsed tasks (2026-09-17)', () => {
+  const PATH = 'Projects/House.md';
+  it('a scoped note is judged by path exactly like a daily note by date', () => {
+    const stale = gateLateObservations({}, { [PATH]: T0 }, { [PATH]: T1 }, { now: NOW, scopedNotes: { [PATH]: { lastModified: T0 } } });
+    expect(stale.freshScoped).toEqual({});
+    expect(stale.evidence).toEqual({});
+    expect(stale.skipped).toEqual([{ key: PATH, date: PATH, mtime: T0, lastApplied: T1 }]);
+    const newer = gateLateObservations({}, { [PATH]: T2 }, { [PATH]: T1 }, { now: NOW, scopedNotes: { [PATH]: { lastModified: T2 } } });
+    expect(newer.freshScoped).toEqual({ [PATH]: { lastModified: T2 } });
+    expect(newer.next).toEqual({ [PATH]: T2 });
+  });
+  it('a path key ages out of the memory by the mtime it remembers; a date key by its date', () => {
+    const oldIso = new Date(NOW - (LAST_APPLIED_RETAIN_DAYS + 1) * 86400000).toISOString();
+    const r = gateLateObservations({}, {}, { 'Old/Note.md': oldIso, 'Fresh/Note.md': T1, '2026-09-01': oldIso }, { now: NOW });
+    expect(r.next).toEqual({ 'Fresh/Note.md': T1, '2026-09-01': oldIso });
+  });
+  it('the tasks parsed from a skipped note are dropped, others kept, same array when nothing drops', () => {
+    const tasks = [
+      { id: 'a', obsidianNotePath: PATH, title: 'stale line' },
+      { id: 'b', obsidianFileDate: '2026-09-08', title: 'stale daily line' },
+      { id: 'c', obsidianFileDate: '2026-09-09', title: 'fresh' },
+    ];
+    expect(dropTasksOfSkippedNotes(tasks, new Set([PATH, '2026-09-08']))).toEqual([tasks[2]]);
+    expect(dropTasksOfSkippedNotes(tasks, new Set())).toBe(tasks);
+  });
+  it('applyLateObservationGate returns the fresh scoped notes and the skipped keys', () => {
+    const s = storage();
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    applyLateObservationGate({}, { [PATH]: T1 }, s, { [PATH]: { lastModified: T1 } });
+    const late = applyLateObservationGate({}, { [PATH]: T0 }, s, { [PATH]: { lastModified: T0 } });
+    expect(late.scopedNotes).toEqual({});
+    expect([...late.skippedKeys]).toEqual([PATH]);
+    expect(info).toHaveBeenCalledWith(expect.stringContaining('late observation skipped'), expect.stringContaining(PATH));
+    info.mockRestore();
   });
 });

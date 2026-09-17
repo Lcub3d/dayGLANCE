@@ -21,6 +21,22 @@
 // Known edge, accepted in the ruling: a note put back to an older version by
 // a tool that preserves the old mtime is not seen until its next edit.
 // Obsidian's own writes and restores set a fresh mtime.
+//
+// SCOPED NOTES AND PARSED TASKS (2026-09-17, after #1692's assessment). The
+// gate judged daily notes only, and only their text: the tasks parsed from
+// a stale report still merged, and a scoped note (a linked project note, a
+// note in the vault task scope) was never judged at all. A second plugin
+// copy reporting its lagging Obsidian Sync copy of a project note could
+// then revert a dayGLANCE retitle for a round, or for good if that copy's
+// last report was the stale one. Now every observed note is judged, keyed
+// by date (daily) or path (scoped), and the tasks parsed from a skipped
+// note are dropped with its text. The signal is the file's own mtime as the
+// plugin reports it: Obsidian Sync carries a file's mtime with it, so a
+// lagging copy reports the OLD version's mtime, not the time it arrived;
+// the one exception the plugin makes (a note that arrived at a path by
+// create or move reports its arrival time) is deliberate revival evidence.
+// Path keys never parse as dates, so their memory entries are pruned by the
+// age of the stored mtime instead.
 
 export const LAST_APPLIED_MTIME_KEY = 'dayglance-obsidian-last-applied-mtime';
 // Daily-note dates older than this fall out of the memory map.
@@ -57,50 +73,72 @@ export function writeLastAppliedMtimes(map, storage = defaultStorage()) {
  * @param {Record<string, string>} lastApplied  date → mtime ISO of the last applied observation
  * @param {{now?: number}} [opts]
  */
-export function gateLateObservations(dailyNotes, noteMtimes, lastApplied, { now = Date.now() } = {}) {
+export function gateLateObservations(dailyNotes, noteMtimes, lastApplied, { now = Date.now(), scopedNotes = null } = {}) {
   const fresh = {};
+  const freshScoped = {};
   const evidence = {};
   const skipped = [];
   const next = {};
   const cutoff = now - LAST_APPLIED_RETAIN_DAYS * DAY_MS;
-  for (const [date, iso] of Object.entries(lastApplied || {})) {
-    const day = Date.parse(date);
-    if (Number.isNaN(day) || day >= cutoff) next[date] = iso;
+  for (const [key, iso] of Object.entries(lastApplied || {})) {
+    const day = Date.parse(key);
+    // A date key ages by its date; a path key by the mtime it remembers.
+    const age = Number.isNaN(day) ? Date.parse(iso) : day;
+    if (Number.isNaN(age) || age >= cutoff) next[key] = iso;
   }
-  for (const [date, note] of Object.entries(dailyNotes || {})) {
-    const mtime = noteMtimes?.[date];
+  const judge = (key, note, out) => {
+    const mtime = noteMtimes?.[key];
     const t = typeof mtime === 'string' ? Date.parse(mtime) : NaN;
     if (Number.isNaN(t)) {
-      fresh[date] = note; // no real mtime: no evidence either way
-      continue;
+      out[key] = note; // no real mtime: no evidence either way
+      return;
     }
-    const last = next[date] ? Date.parse(next[date]) : NaN;
+    const last = next[key] ? Date.parse(next[key]) : NaN;
     if (!Number.isNaN(last) && t < last) {
-      skipped.push({ date, mtime, lastApplied: next[date] });
-      continue;
+      skipped.push({ key, date: key, mtime, lastApplied: next[key] });
+      return;
     }
-    fresh[date] = note;
-    evidence[date] = mtime;
-    next[date] = mtime;
-  }
-  // Evidence for notes the gate did not judge (scoped notes keyed by path,
-  // dates not in this observation) passes through untouched.
+    out[key] = note;
+    evidence[key] = mtime;
+    next[key] = mtime;
+  };
+  for (const [date, note] of Object.entries(dailyNotes || {})) judge(date, note, fresh);
+  for (const [path, note] of Object.entries(scopedNotes || {})) judge(path, note, freshScoped);
+  // Evidence for notes the gate did not judge (keys not in this observation)
+  // passes through untouched.
   for (const [key, iso] of Object.entries(noteMtimes || {})) {
-    if (!(key in (dailyNotes || {}))) evidence[key] = iso;
+    if (!(key in (dailyNotes || {})) && !(key in (scopedNotes || {}))) evidence[key] = iso;
   }
-  return { fresh, evidence, skipped, next };
+  return { fresh, freshScoped, evidence, skipped, next };
+}
+
+/** The note key a parsed task claims its line from: a scoped note's path, or a daily note's date. */
+export function taskNoteKey(task) {
+  return task?.obsidianNotePath || task?.obsidianFileDate || null;
 }
 
 /**
- * The gate as the sync hook uses it: read the memory, judge, persist, log.
- * @returns {{dailyNotes: object, noteMtimes: object, skipped: Array}}
+ * Drop the tasks parsed from skipped notes: stale evidence about the line is
+ * stale evidence about the task. Returns the same array when nothing was
+ * dropped.
  */
-export function applyLateObservationGate(dailyNotes, noteMtimes, storage = defaultStorage()) {
-  const { fresh, evidence, skipped, next } = gateLateObservations(dailyNotes, noteMtimes, readLastAppliedMtimes(storage));
+export function dropTasksOfSkippedNotes(tasks, skippedKeys) {
+  if (!Array.isArray(tasks) || !skippedKeys || skippedKeys.size === 0) return tasks || [];
+  const out = tasks.filter((t) => { const k = taskNoteKey(t); return !(k && skippedKeys.has(k)); });
+  return out.length === tasks.length ? tasks : out;
+}
+
+/**
+ * The gate as the sync hook uses it: read the memory, judge daily notes (by
+ * date) and scoped notes (by path), persist, log.
+ * @returns {{dailyNotes: object, scopedNotes: object, noteMtimes: object, skipped: Array, skippedKeys: Set<string>}}
+ */
+export function applyLateObservationGate(dailyNotes, noteMtimes, storage = defaultStorage(), scopedNotes = null) {
+  const { fresh, freshScoped, evidence, skipped, next } = gateLateObservations(dailyNotes, noteMtimes, readLastAppliedMtimes(storage), { scopedNotes });
   writeLastAppliedMtimes(next, storage);
   if (skipped.length) {
     console.info('[Obsidian] late observation skipped (older than the last applied mtime, spec 2.7):',
-      skipped.map((s) => `${s.date} ${s.mtime} < ${s.lastApplied}`).join('; '));
+      skipped.map((s) => `${s.key} ${s.mtime} < ${s.lastApplied}`).join('; '));
   }
-  return { dailyNotes: fresh, noteMtimes: evidence, skipped };
+  return { dailyNotes: fresh, scopedNotes: freshScoped, noteMtimes: evidence, skipped, skippedKeys: new Set(skipped.map((s) => s.key)) };
 }

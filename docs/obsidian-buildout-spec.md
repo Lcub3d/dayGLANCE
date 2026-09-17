@@ -357,6 +357,28 @@ stale copy still gets through). Accepted edge: a note put back to an older
 version by a tool that preserves the old mtime is not seen until its next
 edit; Obsidian's own writes and restores set a fresh mtime.
 
+**Extended to scoped notes and parsed tasks (2026-09-17).** The gate had
+judged daily notes only, and only their text: the tasks parsed from a
+stale report still merged, and a scoped note (a linked project note, a
+note in the vault task scope) was never judged. A second plugin copy
+reporting its lagging Obsidian Sync copy of a project note could revert a
+dayGLANCE retitle for a round, or for good if that copy's last report was
+the stale one (#1692's assessment). Now every observed note is judged,
+keyed by date or path, at the head of the batch, and the tasks parsed
+from a skipped note leave the batch with its text; on the direct-scan
+path the skipped notes' tasks leave the merge while the vault-wide
+deletion detector keeps the full key set, so nothing reads as removed.
+The signal is unchanged: the file's own mtime as the plugin reports it.
+Obsidian Sync carries a file's mtime with the file, so a lagging copy
+reports the old version's time, not its arrival; the plugin's one
+exception (a note that arrived at a path by create or move reports its
+arrival time) is deliberate revival evidence. Clock skew between two
+devices that WRITE the same note remains the accepted edge above. The
+record-level check that guards a task's note target (#1692) keeps its own
+comparison against the same signal: the gate's memory is device-local,
+the record's is synced, so a device with no memory for a note is still
+protected. Pinned by project-notes scenario 21 and scope scenario 24.
+
 **Manual end to a running loop.** A small edit to the note on the desktop,
 saved from the app, stamps the real text newer than the stale copy and
 every tier converges on it.

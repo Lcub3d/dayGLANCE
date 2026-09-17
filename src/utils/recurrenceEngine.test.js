@@ -106,6 +106,62 @@ describe('maxResults', () => {
   });
 });
 
+describe('weekly occurrence limits after fast-forwarding', () => {
+  it.each([
+    ['weekly', '2026-08-24'],
+    ['biweekly', '2026-09-14'],
+  ])('%s: does not revive an exhausted series in a later window', (type, rangeStart) => {
+    const t = template({ type, startDate: '2026-08-03', daysOfWeek: [1], maxOccurrences: 3 });
+    expect(getOccurrencesInRange(t, '2026-08-03', '2026-09-30')).toHaveLength(3);
+    expect(getOccurrencesInRange(t, rangeStart, '2026-09-30')).toEqual([]);
+  });
+
+  it.each([
+    ['weekly', '2026-08-10'],
+    ['biweekly', '2026-08-17'],
+  ])('%s: counts only eligible weekdays in the first partial week', (type, rangeStart) => {
+    const t = template({ type, startDate: '2026-08-05', daysOfWeek: [1, 3, 5], maxOccurrences: 3 });
+    expect(getOccurrencesInRange(t, '2026-08-05', '2026-09-30'))
+      .toEqual(['2026-08-05', '2026-08-07', rangeStart]);
+    expect(getOccurrencesInRange(t, rangeStart, '2026-09-30')).toEqual([rangeStart]);
+  });
+
+  it('preserves occurrences when the first week has no eligible weekdays', () => {
+    const t = template({ type: 'weekly', startDate: '2026-08-06', daysOfWeek: [1], maxOccurrences: 2 });
+    expect(getOccurrencesInRange(t, '2026-08-10', '2026-09-30'))
+      .toEqual(['2026-08-10', '2026-08-17']);
+  });
+
+  it.each(['deleted', 'skipped'])('still counts a %s occurrence in an earlier week', (exception) => {
+    const t = template(
+      { type: 'weekly', startDate: '2026-08-03', daysOfWeek: [1], maxOccurrences: 3 },
+      { exceptions: { '2026-08-10': { [exception]: true } } },
+    );
+    expect(getOccurrencesInRange(t, '2026-08-03', '2026-09-30'))
+      .toEqual(['2026-08-03', '2026-08-17']);
+    expect(getOccurrencesInRange(t, '2026-08-17', '2026-09-30')).toEqual(['2026-08-17']);
+  });
+
+  it('honours the limit when the weekday defaults to the start date', () => {
+    const t = template({ type: 'weekly', startDate: '2026-08-03', maxOccurrences: 1 });
+    expect(getOccurrencesInRange(t, '2026-08-10', '2026-09-30')).toEqual([]);
+  });
+
+  it.each([
+    ['2026-03-01', '2026-03-22', '2026-03-29'],
+    ['2026-10-18', '2026-11-08', '2026-11-15'],
+  ])('keeps the limit across the season starting %s', (startDate, rangeStart, rangeEnd) => {
+    const t = template({ type: 'weekly', startDate, daysOfWeek: [0], maxOccurrences: 3 });
+    expect(getOccurrencesInRange(t, startDate, rangeEnd)).toHaveLength(3);
+    expect(getOccurrencesInRange(t, rangeStart, rangeEnd)).toEqual([]);
+  });
+
+  it.each(['weekly', 'biweekly'])('%s: has no next occurrence after its limit', (type) => {
+    const t = template({ type, startDate: '2026-08-03', daysOfWeek: [1], maxOccurrences: 2 });
+    expect(getNextOccurrence(t)).toBeNull();
+  });
+});
+
 describe('getNextOccurrence', () => {
   it('returns today when the series occurs today', () => {
     expect(getNextOccurrence(template({ type: 'daily', startDate: '2026-01-01' })))

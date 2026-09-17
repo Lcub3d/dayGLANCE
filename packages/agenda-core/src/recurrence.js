@@ -74,10 +74,11 @@ export const getOccurrencesInRange = (template, rangeStartStr, rangeEndStr, maxR
       const cyclesSkip = Math.max(0, Math.floor((rangeWeekStart.getTime() - weekStart.getTime()) / msPerCycle));
       if (cyclesSkip > 0) {
         weekStart.setDate(weekStart.getDate() + cyclesSkip * 7 * step);
-        // Conservatively under-count to avoid cutting off valid occurrences.
-        // Each skipped cycle has at most days.length occurrences; subtract one
-        // cycle as a safety buffer so early occurrences in the window aren't missed.
-        count = Math.max(0, (cyclesSkip - 1)) * days.length;
+        // The first cycle may start partway through its selected weekdays.
+        // Count its eligible days plus every complete cycle skipped after it,
+        // including occurrences hidden by exceptions, just like addIfInRange.
+        const firstCycleCount = days.filter((dow) => dow >= startDate.getDay()).length;
+        count = firstCycleCount + (cyclesSkip - 1) * days.length;
       }
     }
     const cursor = new Date(weekStart);

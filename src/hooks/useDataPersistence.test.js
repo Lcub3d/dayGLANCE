@@ -164,3 +164,89 @@ describe('loadData normalization write-back', () => {
     expect(setters.setDataLoaded).toHaveBeenCalledWith(true);
   });
 });
+
+// ── The original-plan baseline (utils/originalPlan.js) ──────────────────────
+// Recorded in the persist pass because only there are both the new state and the
+// stored copy it replaces visible at once, which is what tells a task being
+// scheduled apart from one being rescheduled.
+describe('saveData records the original plan', () => {
+  let setItem;
+
+  const saveProps = (over = {}) => ({
+    ...makeProps().props,
+    tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: [], routinesDate: '',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: {}, goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    ...over,
+  });
+
+  const written = (key) => JSON.parse(Object.fromEntries(setItem.mock.calls)[key]);
+
+  beforeEach(() => {
+    setItem = vi.fn();
+    globalThis.localStorage = { getItem: vi.fn(() => null), setItem, removeItem: vi.fn() };
+  });
+
+  afterEach(() => {
+    delete globalThis.localStorage;
+    delete globalThis.window;
+  });
+
+  it('stamps a task that is newly scheduled', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    const tasks = [{ id: 't1', title: 'Report', date: '2026-09-17', startTime: '09:00', duration: 60 }];
+
+    useDataPersistence(saveProps({ tasks })).saveData();
+
+    expect(written('day-planner-tasks')[0].originalPlan)
+      .toEqual({ date: '2026-09-17', startTime: '09:00', duration: 60 });
+  });
+
+  it('does not stamp a task that storage already had scheduled', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    const stored = [{ id: 't1', title: 'Report', date: '2026-09-10', startTime: '14:00', lastModified: '2026-09-10T00:00:00Z' }];
+    globalThis.localStorage.getItem = vi.fn((k) =>
+      k === 'day-planner-tasks' ? JSON.stringify(stored) : null);
+    const tasks = [{ ...stored[0], date: '2026-09-17', startTime: '09:00' }];
+
+    useDataPersistence(saveProps({ tasks })).saveData();
+
+    expect(written('day-planner-tasks')[0].originalPlan).toBeUndefined();
+  });
+
+  it('leaves the other four task stores alone', async () => {
+    // Only the scheduled-task store opts in. The fixtures below are deliberately
+    // given a full date and time, which real routines and recurring templates do
+    // not have, so this fails if the flag is ever added to another store rather
+    // than passing because the fixture happened to look unscheduled.
+    const useDataPersistence = await loadHookAs('main');
+    const timed = (id) => ({ id, title: id, date: '2026-09-17', startTime: '09:00' });
+
+    useDataPersistence(saveProps({
+      unscheduledTasks: [timed('u1')],
+      recycleBin: [timed('r1')],
+      recurringTasks: [timed('rec1')],
+      todayRoutines: [timed('rt1')],
+    })).saveData();
+
+    for (const key of ['day-planner-unscheduled', 'day-planner-recycle-bin',
+      'day-planner-recurring-tasks', 'day-planner-today-routines']) {
+      expect(written(key)[0].originalPlan).toBeUndefined();
+    }
+  });
+
+  it('records nothing while remote data is being applied', async () => {
+    // suppressTimestampRef is set during an apply pass. This device did not
+    // witness the scheduling, so claiming a baseline from whatever arrived would
+    // invent one from a schedule that may already have been changed elsewhere.
+    const useDataPersistence = await loadHookAs('main');
+    const tasks = [{ id: 't1', title: 'Report', date: '2026-09-17', startTime: '09:00' }];
+
+    useDataPersistence(saveProps({ tasks, suppressTimestampRef: { current: true } })).saveData();
+
+    expect(written('day-planner-tasks')[0].originalPlan).toBeUndefined();
+  });
+});

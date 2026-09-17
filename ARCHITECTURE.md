@@ -156,8 +156,20 @@ Tombstone maps (deleted IDs with timestamps) exist for tasks, routine chips, hab
   imported: boolean?,         // true for calendar events
   importSource: "obsidian" | "calendar"?,
   lastModified: string,       // ISO 8601: used for sync conflict resolution
+  originalPlan: {             // the schedule this task was FIRST given; write-once
+    date, startTime, duration?
+  }?,                         // absent = not known (never backfilled). See below.
 }
 ```
+
+`originalPlan` records the schedule a task was first given, so an intention
+survives being rescheduled over. `src/utils/originalPlan.js` writes it during the
+persist pass, the one place that sees both the new state and the stored copy it
+replaces, which is what distinguishes a task being *scheduled* from one being
+*rescheduled*. It is never written twice and tasks that predate it are never
+backfilled, because a rescheduled task's current schedule is precisely not its
+original plan and inventing one would be indistinguishable from the real thing.
+Being a field on the task, it rides existing backup, restore and sync for free.
 
 ### Recurring task template
 

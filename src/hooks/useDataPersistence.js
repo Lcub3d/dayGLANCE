@@ -1,6 +1,7 @@
 import { dateToString } from '../utils/taskUtils.js';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { stampTimestamps } from '../utils/stampTimestamps.js';
+import { stampOriginalPlan } from '../utils/originalPlan.js';
 import { rolloverRemovedTodayRoutineIds, startOfTodayIso } from './useRoutines.js';
 
 // Read-only CalDAV/ICS-subscription events (importSource 'sync', non-task,
@@ -39,8 +40,16 @@ export default function useDataPersistence({
   cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
   setUndoToast,
 }) {
-  // Stamp lastModified on tasks that changed since last save
-  const stampTaskTimestamps = (currentTasks, storageKey) => {
+  // Stamp lastModified on tasks that changed since last save.
+  //
+  // `captureOriginalPlan` additionally records the schedule a task is first given
+  // (utils/originalPlan.js). It rides here rather than at the dozen-odd sites that
+  // assign a date and time because this is the one place that sees BOTH the new
+  // state and the stored copy it replaces, which is what distinguishes a task
+  // being scheduled from one being rescheduled. The suppressTimestamp gate below
+  // covers it too, and deliberately: while remote data is being applied, this
+  // device did not witness any scheduling and must not claim it did.
+  const stampTaskTimestamps = (currentTasks, storageKey, { captureOriginalPlan = false } = {}) => {
     if (suppressTimestampRef.current) return currentTasks;
     let prev;
     try { prev = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { prev = []; }
@@ -54,7 +63,8 @@ export default function useDataPersistence({
           console.warn(`[stamp] re-stamped ${storageKey} ${id} — changed:`, changedKeys);
       }
     } catch { /* ignore */ }
-    return stampTimestamps(currentTasks, prev, new Date().toISOString(), onRestamp);
+    const stampable = captureOriginalPlan ? stampOriginalPlan(currentTasks, prev) : currentTasks;
+    return stampTimestamps(stampable, prev, new Date().toISOString(), onRestamp);
   };
 
   const loadData = () => {
@@ -217,7 +227,8 @@ export default function useDataPersistence({
     // subscription imports so they don't reappear (stale) on the next reload.
     const stampedTasks = stampTaskTimestamps(
       tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t))),
-      'day-planner-tasks'
+      'day-planner-tasks',
+      { captureOriginalPlan: true }
     );
     const stampedUnscheduled = stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled');
     const stampedRecycleBin = stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin');

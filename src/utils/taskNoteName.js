@@ -1,6 +1,6 @@
 // Task notes into the vault (companion spec §4.3, owner ruling 2026-09-14;
 // the linked-task half and the record's note target, owner 2026-09-17,
-// report docs/reports/obsidian-linked-note-append.md). Pure.
+// the report in PR #1690). Pure.
 //
 // A task in a project with a linked note lives in that note (project
 // routing). Its NOTES, typed in dayGLANCE, used to stay in the app record

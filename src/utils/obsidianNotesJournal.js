@@ -1,6 +1,6 @@
-// The sent-notes journal (report docs/reports/obsidian-linked-note-append.md,
-// F3). Device-local, like the bridge outbox: it lives in this device's web
-// storage and does not survive a storage purge. What it covers: the body of
+// The sent-notes journal (the report in PR #1690, F3). Device-local, like
+// the bridge outbox: it lives in this device's web storage and does not
+// survive a storage purge. What it covers: the body of
 // every notes migration this device committed, so text that left the record
 // on enqueue can be read back after the intent row was consumed, after a
 // server-side loss, or while debugging. Pruned at 30 days. Pure over the

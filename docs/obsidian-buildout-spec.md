@@ -128,8 +128,9 @@ harness scenario 12).
 wipe of its note (#1681, scenario 13); the Planner card's notes icon
 (#1689); local notes shown beneath a linked note (#1691); the linked-task
 notes migration with the record's note target, the re-assert and the
-block-boundary guard (companion 4.3, scenarios 14 to 20; the report
-`docs/reports/obsidian-linked-note-append.md`).
+block-boundary guard (companion 4.3, scenarios 14 to 20; the report in
+PR #1690, https://github.com/krelltunez/dayGLANCE/pull/1690, closed
+unmerged, so the report lives on that PR's branch).
 
 ### 2.5 Known deferred items
 

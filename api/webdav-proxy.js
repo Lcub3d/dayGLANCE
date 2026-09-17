@@ -1,4 +1,5 @@
 import { rejectIfBlocked } from './_proxyGuard.js';
+import { safeRequest, SsrfError } from './_ssrfGuard.mjs';
 
 // Disable Vercel's default body parser so we can forward raw request bodies
 // (e.g. text/calendar) without them being mangled or rejected as unsupported.
@@ -7,68 +8,6 @@ export const config = {
     bodyParser: false,
   },
 };
-
-function validateProxyUrl(urlString) {
-  let parsed;
-  try {
-    parsed = new URL(urlString);
-  } catch {
-    throw new Error('Invalid URL');
-  }
-
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('Only http and https URLs are allowed');
-  }
-
-  // SSRF protection only applies on Vercel. Self-hosted Docker deployments need
-  // to reach WebDAV servers on the local network, so we skip these checks there.
-  if (!process.env.VERCEL) return parsed;
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  if (hostname === 'localhost' || hostname === '0.0.0.0') {
-    throw new Error('Private/reserved addresses are not allowed');
-  }
-
-  // Block IPv4 private/reserved ranges
-  const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-    if (
-      a === 10 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      a === 0 ||
-      (a === 100 && b >= 64 && b <= 127)
-    ) {
-      throw new Error('Private/reserved addresses are not allowed');
-    }
-  }
-
-  // Block IPv6 loopback, unspecified, link-local, and private/ULA ranges.
-  //   ::1        — loopback
-  //   ::         — unspecified
-  //   ::ffff:…   — IPv4-mapped (e.g. ::ffff:127.0.0.1 bypasses the IPv4 check above)
-  //   fe80:…     — link-local
-  //   fc… / fd…  — Unique Local (ULA, fc00::/7); original code only blocked fd
-  // NOTE: DNS rebinding (public hostname → private IP at connection time) is a
-  // known limitation that cannot be fixed without a post-connection IP check,
-  // which fetch() does not expose.  Risk is low on Vercel (IPv4-only runtime).
-  if (
-    hostname === '::1' ||
-    hostname === '::' ||
-    /^::ffff:/i.test(hostname) ||
-    /^fe80:/i.test(hostname) ||
-    /^fc/i.test(hostname) ||
-    /^fd/i.test(hostname)
-  ) {
-    throw new Error('Private/reserved addresses are not allowed');
-  }
-
-  return parsed;
-}
 
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
@@ -101,12 +40,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    validateProxyUrl(url);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-
-  try {
     const headers = {};
 
     // Only set Content-Type for requests that have a body — sending it on
@@ -134,27 +67,26 @@ export default async function handler(req, res) {
       headers['If-None-Match'] = req.headers['if-none-match'];
     }
 
-    const fetchOptions = {
-      method: req.method,
-      headers,
-    };
-
+    let body = null;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       const rawBody = await readRawBody(req);
-      if (rawBody) {
-        fetchOptions.body = rawBody;
-      }
+      if (rawBody) body = rawBody;
     }
 
-    const response = await fetch(url, fetchOptions);
-    const body = await response.text();
+    // Hosted deployment: NO allowPrivate. These functions run on Vercel, where a
+    // private target is never the user's own machine and always someone else's
+    // internal network. The self-hosted image takes the other posture; the
+    // policy, the redirect re-validation and the connection pinning are shared
+    // (api/_ssrfGuard.mjs).
+    const response = await safeRequest(url, { method: req.method, headers, body });
 
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'text/plain');
+    res.setHeader('Content-Type', response.headers['content-type'] || 'text/plain');
     res.setHeader('Cache-Control', 'no-store');
-    const etag = response.headers.get('etag');
-    if (etag) res.setHeader('ETag', etag);
-    res.status(response.status).send(body);
+    if (response.headers.etag) res.setHeader('ETag', response.headers.etag);
+    res.status(response.status).send(response.body);
   } catch (err) {
+    // A policy refusal (including on a redirect hop) carries its own status.
+    if (err instanceof SsrfError) return res.status(err.status).json({ error: err.message });
     res.status(502).json({ error: 'Failed to proxy WebDAV request' });
   }
 }

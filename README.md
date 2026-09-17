@@ -50,6 +50,8 @@ docker compose up -d
 
 The image is built for `linux/amd64` and `linux/arm64`, so it runs on a Raspberry Pi or other ARM single-board computer as well as on an x86 server. Docker pulls the right one automatically.
 
+The bundled proxy (used for WebDAV and calendar feeds that do not send CORS headers) can reach servers on your own network by design: a NAS on `192.168.x.x`, another container on `10.x`, a Tailscale node, or a service on the same host. It always refuses the cloud metadata endpoint and other reserved ranges, which no sync server uses. If your instance is reachable by people you do not want relaying requests into your network, set `WEBDAV_PROXY_BLOCK_PRIVATE=1` in the container environment to refuse private targets too, matching the hosted deployment. Either way, do not expose the container directly to the public internet without authentication or an access-controlled reverse proxy in front of it.
+
 Available at `http://localhost:6767`. For HTTPS with Caddy:
 
 ```caddy

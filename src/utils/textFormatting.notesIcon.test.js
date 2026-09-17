@@ -18,6 +18,11 @@ describe('isObsidianNoteOnlyTask (the open-book rule)', () => {
     expect(isObsidianNoteOnlyTask(projectTask)).toBe(false);
   });
 
+  it('local notes on a linked task mean the document, lit: notes live in both places (F4)', () => {
+    expect(isObsidianNoteOnlyTask({ title: 'Prepare [[Projects/dayGLANCE/NEXT- Prepare]] #obsidian', notes: 'stranded text' })).toBe(false);
+    expect(isObsidianNoteOnlyTask({ title: 'Prepare [[Projects/dayGLANCE/NEXT- Prepare]] #obsidian', notes: '   ' })).toBe(true);
+  });
+
   it('an Obsidian-origin task without a wikilink has no vault note to open', () => {
     expect(isObsidianNoteOnlyTask({ title: 'Daily standup', importSource: 'obsidian' })).toBe(false);
     expect(isObsidianNoteOnlyTask({ title: 'Plain task' })).toBe(false);

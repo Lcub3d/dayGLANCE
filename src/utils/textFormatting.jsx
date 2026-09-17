@@ -221,6 +221,9 @@ export const hasOnlySubtasks = (task) => {
 export const isObsidianNoteOnlyTask = (task) => {
   if (task.subtasks && task.subtasks.length > 0) return false;
   if (isLinkOnlyTask(task)) return false;
+  // Notes in dayGLANCE on a linked task: the honest icon is the document,
+  // lit, and the panel shows both (report: docs/reports/obsidian-linked-note-append.md, F4).
+  if (typeof task.notes === 'string' && task.notes.trim()) return false;
   return /\[\[[^\]]+\]\]/.test(task.title || '');
 };
 

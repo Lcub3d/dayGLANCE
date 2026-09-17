@@ -733,6 +733,7 @@
     "goal": "Objectif",
     "assignTo": "Attribuer à",
     "notes": "Notes",
+    "localNotes": "Notes dans dayGLANCE",
     "subtasks": "Sous-tâches",
     "addSubtask": "Ajouter une sous-tâche",
     "generateSubtasks": "Générer des sous-tâches",

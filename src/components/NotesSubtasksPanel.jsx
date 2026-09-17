@@ -28,7 +28,7 @@ function renderNoteContent(text, onWikilinkClick, darkMode, t) {
   return segments.map((seg, i) => {
     const m = seg.match(/^\[\[([^\]]+)\]\]$/);
     if (m) {
-      return (
+  return (
         <button
           key={i}
           type="button"
@@ -307,13 +307,19 @@ const NotesSubtasksPanel = ({
   const noteMinH = compact ? 'min-h-[4.5rem]' : 'min-h-[12rem]';
   const textareaClass = `w-full text-sm px-2 py-1.5 rounded border outline-none ${th.textarea} ${noteMinH} ${compact ? 'resize-none' : 'resize-y'}`;
 
+  const showLinked = !!(wikilinks && wikilinks.length > 0 && onLoadWikiNote);
+  // Keyed on the local draft too, so the block does not vanish mid-edit.
+  const hasLocalNotes = !!((localNotes || '').trim() || (task.notes || '').trim());
+
   return (
     <div
       className={`mt-2 p-3 rounded-lg ${th.panel}`}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Notes section — replaced by linked vault note for Obsidian wikilink tasks */}
-      {wikilinks && wikilinks.length > 0 && onLoadWikiNote ? (
+      {/* Notes section: the linked vault note for a wikilinked task, and
+          beneath it the local notes whenever the record holds any (a note
+          can live in both places: report docs/reports/obsidian-linked-note-append.md, F4). */}
+      {showLinked && (
         <div className="mb-3 space-y-3">
           {[...(wikilinks || []), ...additionalNotes].map((noteName) => {
             const state = linkedNoteStates[noteName] || { text: '', lastModified: null, loading: true, error: null };
@@ -393,9 +399,10 @@ const NotesSubtasksPanel = ({
             );
           })}
         </div>
-      ) : (
-        <div className="mb-3">
-          <div className={`text-xs font-semibold mb-1 ${th.label}`}>{t('task.notes')}</div>
+      )}
+      {(!showLinked || hasLocalNotes) && (
+        <div className="mb-3" data-local-notes={showLinked ? 'beside-linked' : 'only'}>
+          <div className={`text-xs font-semibold mb-1 ${th.label}`}>{showLinked ? t('task.localNotes') : t('task.notes')}</div>
           {isEditingNotes ? (
             <textarea
               value={localNotes}

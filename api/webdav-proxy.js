@@ -1,5 +1,5 @@
 import { rejectIfBlocked } from './_proxyGuard.js';
-import { assertSafeUrl, SsrfError } from './_ssrfGuard.mjs';
+import { safeRequest, SsrfError } from './_ssrfGuard.mjs';
 
 // Disable Vercel's default body parser so we can forward raw request bodies
 // (e.g. text/calendar) without them being mangled or rejected as unsupported.
@@ -39,17 +39,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing url parameter' });
   }
 
-  // Hosted deployment: NO allowPrivate. These functions run on Vercel, where a
-  // private target is never the user's own machine and always someone else's
-  // internal network. The self-hosted image takes the other posture; the policy
-  // itself is shared (api/_ssrfGuard.mjs).
-  try {
-    await assertSafeUrl(url);
-  } catch (err) {
-    const status = err instanceof SsrfError ? err.status : 400;
-    return res.status(status).json({ error: err.message });
-  }
-
   try {
     const headers = {};
 
@@ -78,27 +67,26 @@ export default async function handler(req, res) {
       headers['If-None-Match'] = req.headers['if-none-match'];
     }
 
-    const fetchOptions = {
-      method: req.method,
-      headers,
-    };
-
+    let body = null;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       const rawBody = await readRawBody(req);
-      if (rawBody) {
-        fetchOptions.body = rawBody;
-      }
+      if (rawBody) body = rawBody;
     }
 
-    const response = await fetch(url, fetchOptions);
-    const body = await response.text();
+    // Hosted deployment: NO allowPrivate. These functions run on Vercel, where a
+    // private target is never the user's own machine and always someone else's
+    // internal network. The self-hosted image takes the other posture; the
+    // policy, the redirect re-validation and the connection pinning are shared
+    // (api/_ssrfGuard.mjs).
+    const response = await safeRequest(url, { method: req.method, headers, body });
 
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'text/plain');
+    res.setHeader('Content-Type', response.headers['content-type'] || 'text/plain');
     res.setHeader('Cache-Control', 'no-store');
-    const etag = response.headers.get('etag');
-    if (etag) res.setHeader('ETag', etag);
-    res.status(response.status).send(body);
+    if (response.headers.etag) res.setHeader('ETag', response.headers.etag);
+    res.status(response.status).send(response.body);
   } catch (err) {
+    // A policy refusal (including on a redirect hop) carries its own status.
+    if (err instanceof SsrfError) return res.status(err.status).json({ error: err.message });
     res.status(502).json({ error: 'Failed to proxy WebDAV request' });
   }
 }

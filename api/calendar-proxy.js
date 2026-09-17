@@ -1,5 +1,5 @@
 import { rejectIfBlocked } from './_proxyGuard.js';
-import { assertSafeUrl, SsrfError } from './_ssrfGuard.mjs';
+import { safeRequest, SsrfError } from './_ssrfGuard.mjs';
 
 export default async function handler(req, res) {
   // Origin allowlist + per-IP rate limiting. Only the web/PWA build reaches
@@ -12,31 +12,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing url parameter' });
   }
 
-  // Hosted deployment: NO allowPrivate. These functions run on Vercel, where a
-  // private target is never the user's own machine and always someone else's
-  // internal network. The self-hosted image takes the other posture; the policy
-  // itself is shared (api/_ssrfGuard.mjs).
-  try {
-    await assertSafeUrl(url);
-  } catch (err) {
-    const status = err instanceof SsrfError ? err.status : 400;
-    return res.status(status).json({ error: err.message });
-  }
-
   try {
     const fetchHeaders = { Accept: 'text/calendar, text/plain, */*' };
     const calendarAuth = req.headers['x-calendar-auth'];
     if (calendarAuth) {
       fetchHeaders['Authorization'] = calendarAuth;
     }
-    const response = await fetch(url, { headers: fetchHeaders });
+    // Hosted deployment: NO allowPrivate. See api/_ssrfGuard.mjs for the policy,
+    // the per-hop redirect re-validation and the connection pinning.
+    const response = await safeRequest(url, { headers: fetchHeaders });
 
-    const body = await response.text();
-
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'text/plain');
+    res.setHeader('Content-Type', response.headers['content-type'] || 'text/plain');
     res.setHeader('Cache-Control', 'no-store');
-    res.status(response.status).send(body);
+    res.status(response.status).send(response.body);
   } catch (err) {
+    if (err instanceof SsrfError) return res.status(err.status).json({ error: err.message });
     res.status(502).json({ error: 'Failed to fetch calendar' });
   }
 }

@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'fs'
-import { assertSafeUrl, SsrfError } from './api/_ssrfGuard.mjs'
+import { safeRequest, SsrfError } from './api/_ssrfGuard.mjs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
@@ -40,13 +40,6 @@ function devApiProxy() {
         const targetUrl = new URL(req.url, 'http://localhost').searchParams.get('url');
         if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
 
-        // The dev server runs on the developer's own machine, so it takes the
-        // SELF-HOST posture: private/LAN targets are reachable (you may well be
-        // developing against a NAS or a container), metadata and reserved
-        // ranges never are. Same shared policy as the other three proxies.
-        try { await assertSafeUrl(targetUrl, { allowPrivate: true }); }
-        catch (err) { return sendJson(res, err instanceof SsrfError ? err.status : 400, { error: err.message }); }
-
         const headers = {};
         if (req.method !== 'GET' && req.method !== 'HEAD') {
           headers['Content-Type'] = req.headers['content-type'] || 'application/octet-stream';
@@ -57,18 +50,21 @@ function devApiProxy() {
         const body = (req.method !== 'GET' && req.method !== 'HEAD')
           ? await readBody(req) : undefined;
 
+        // The dev server runs on the developer's own machine, so it takes the
+        // SELF-HOST posture: private/LAN targets are reachable (you may well be
+        // developing against a NAS or a container), metadata and reserved ranges
+        // never are. Shared policy, redirect re-validation and connection
+        // pinning, same as the other three proxies.
         try {
-          const response = await fetch(targetUrl, {
-            method: req.method,
-            headers,
-            ...(body ? { body } : {}),
+          const response = await safeRequest(targetUrl, {
+            method: req.method, headers, body: body ?? null, allowPrivate: true,
           });
-          const responseBody = await response.text();
           res.writeHead(response.status, {
-            'Content-Type': response.headers.get('content-type') || 'text/plain',
+            'Content-Type': response.headers['content-type'] || 'text/plain',
           });
-          res.end(responseBody);
-        } catch {
+          res.end(response.body);
+        } catch (err) {
+          if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
           sendJson(res, 502, { error: 'Failed to proxy WebDAV request' });
         }
       });
@@ -78,25 +74,21 @@ function devApiProxy() {
         const targetUrl = new URL(req.url, 'http://localhost').searchParams.get('url');
         if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
 
-        // The dev server runs on the developer's own machine, so it takes the
-        // SELF-HOST posture: private/LAN targets are reachable (you may well be
-        // developing against a NAS or a container), metadata and reserved
-        // ranges never are. Same shared policy as the other three proxies.
-        try { await assertSafeUrl(targetUrl, { allowPrivate: true }); }
-        catch (err) { return sendJson(res, err instanceof SsrfError ? err.status : 400, { error: err.message }); }
-
         const fetchHeaders = { Accept: 'text/calendar, text/plain, */*' };
         if (req.headers['x-calendar-auth']) fetchHeaders['Authorization'] = req.headers['x-calendar-auth'];
 
+        // Self-host posture, as above.
         try {
-          const response = await fetch(targetUrl, { headers: fetchHeaders });
-          const responseBody = await response.text();
+          const response = await safeRequest(targetUrl, {
+            headers: fetchHeaders, allowPrivate: true,
+          });
           res.writeHead(response.status, {
-            'Content-Type': response.headers.get('content-type') || 'text/plain',
+            'Content-Type': response.headers['content-type'] || 'text/plain',
             'Cache-Control': 'public, max-age=900, stale-while-revalidate=60',
           });
-          res.end(responseBody);
-        } catch {
+          res.end(response.body);
+        } catch (err) {
+          if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
           sendJson(res, 502, { error: 'Failed to fetch calendar' });
         }
       });

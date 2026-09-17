@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import dns from 'node:dns';
-import { classifyAddress, assertSafeUrl, SsrfError } from './_ssrfGuard.mjs';
+import http from 'node:http';
+import zlib from 'node:zlib';
+import { classifyAddress, assertSafeUrl, safeRequest, SsrfError } from './_ssrfGuard.mjs';
 
 // Issue #1664's claim under test, in two halves:
 //
@@ -11,7 +13,7 @@ import { classifyAddress, assertSafeUrl, SsrfError } from './_ssrfGuard.mjs';
 //      "no user impact" argument for turning the guard on in the Docker proxy,
 //      so it is pinned here rather than left to review.
 //
-// Before this, none of the three proxies had any test coverage at all.
+// Before this, none of the four proxies had any test coverage at all.
 
 const resolveTo = (...addresses) =>
   vi.spyOn(dns.promises, 'lookup').mockResolvedValue(
@@ -147,5 +149,111 @@ describe('assertSafeUrl — self-hosted posture (allowPrivate on)', () => {
     resolveTo(address);
     await expect(assertSafeUrl('https://target.example.com/', { allowPrivate: true }))
       .rejects.toThrow(SsrfError);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// safeRequest: the two holes that stay open if a validated URL is then handed
+// to global fetch. Both were live in all four proxies before this, and the
+// redirect one was demonstrated against a running server: a 302 from an allowed
+// address to a blocked one returned the blocked server's body.
+//
+// These run against real loopback servers rather than mocks, because what is
+// under test is what the transport actually does with a 3xx and with a socket,
+// which a mocked dns.lookup cannot show.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('safeRequest', () => {
+  let servers = [];
+  const listen = (handler, host = '127.0.0.1') => new Promise((resolve) => {
+    const s = http.createServer(handler).listen(0, host, () => {
+      servers.push(s);
+      resolve(s.address().port);
+    });
+  });
+
+  afterEach(async () => {
+    await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+    servers = [];
+  });
+
+  it('follows a redirect to an allowed address, as fetch did', async () => {
+    const dest = await listen((_q, s) => { s.writeHead(200); s.end('ARRIVED'); });
+    const src = await listen((_q, s) => {
+      s.writeHead(302, { Location: `http://127.0.0.1:${dest}/next` }); s.end();
+    });
+    const res = await safeRequest(`http://127.0.0.1:${src}/`, { allowPrivate: true });
+    expect(res.body).toBe('ARRIVED');
+    expect(res.status).toBe(200);
+  });
+
+  it('REFUSES a redirect into a blocked address', async () => {
+    // 0.0.0.0 is in the always-blocked set and on Linux lands on loopback, so a
+    // server can actually answer there — which is what made the old behaviour
+    // demonstrable rather than theoretical.
+    const secret = await listen((_q, s) => { s.writeHead(200); s.end('SECRET'); }, '0.0.0.0');
+    const src = await listen((_q, s) => {
+      s.writeHead(302, { Location: `http://0.0.0.0:${secret}/x` }); s.end();
+    });
+    await expect(safeRequest(`http://127.0.0.1:${src}/`, { allowPrivate: true }))
+      .rejects.toMatchObject({ status: 403 });
+  });
+
+  it('bounds a redirect loop instead of hanging', async () => {
+    let port;
+    port = await listen((_q, s) => {
+      s.writeHead(302, { Location: `http://127.0.0.1:${port}/loop` }); s.end();
+    });
+    await expect(safeRequest(`http://127.0.0.1:${port}/`, { allowPrivate: true }))
+      .rejects.toThrow(/Too many redirects/);
+  });
+
+  it('turns a 303 into a bodyless GET, matching fetch', async () => {
+    const dest = await listen((q, s) => {
+      let d = ''; q.on('data', (c) => { d += c; });
+      q.on('end', () => { s.writeHead(200); s.end(`${q.method}|${d}`); });
+    });
+    const src = await listen((_q, s) => {
+      s.writeHead(303, { Location: `http://127.0.0.1:${dest}/after` }); s.end();
+    });
+    const res = await safeRequest(`http://127.0.0.1:${src}/`, {
+      method: 'POST', body: 'x=1', allowPrivate: true,
+    });
+    expect(res.body).toBe('GET|');
+  });
+
+  it('forwards method, body and headers, and returns response headers', async () => {
+    const port = await listen((q, s) => {
+      let d = ''; q.on('data', (c) => { d += c; });
+      q.on('end', () => {
+        s.writeHead(200, { ETag: 'W/"t1"', 'Content-Type': 'text/xml' });
+        s.end(`${q.method}|${d}|${q.headers.authorization || '-'}|${q.headers.depth || '-'}`);
+      });
+    });
+    const res = await safeRequest(`http://127.0.0.1:${port}/`, {
+      method: 'PROPFIND',
+      headers: { Authorization: 'Basic abc', Depth: '1' },
+      body: '<propfind/>',
+      allowPrivate: true,
+    });
+    expect(res.body).toBe('PROPFIND|<propfind/>|Basic abc|1');
+    expect(res.headers.etag).toBe('W/"t1"');
+    expect(res.headers['content-type']).toBe('text/xml');
+  });
+
+  it('decompresses gzip, so switching off fetch does not return bytes as text', async () => {
+    const port = await listen((_q, s) => {
+      s.writeHead(200, { 'Content-Encoding': 'gzip' });
+      s.end(zlib.gzipSync(Buffer.from('COMPRESSED')));
+    });
+    const res = await safeRequest(`http://127.0.0.1:${port}/`, { allowPrivate: true });
+    expect(res.body).toBe('COMPRESSED');
+  });
+
+  it('refuses the FIRST hop by policy too, without a request going out', async () => {
+    let hit = false;
+    const port = await listen((_q, s) => { hit = true; s.writeHead(200); s.end('x'); });
+    await expect(safeRequest(`http://127.0.0.1:${port}/`, { allowPrivate: false }))
+      .rejects.toMatchObject({ status: 403 });
+    expect(hit).toBe(false);
   });
 });

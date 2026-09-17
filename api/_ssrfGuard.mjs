@@ -1,7 +1,8 @@
-// Shared SSRF address guard for all three proxy entry points:
+// Shared SSRF guard for all four proxy entry points:
 //   • api/webdav-proxy.js     (Vercel, hosted)      allowPrivate: false
 //   • api/calendar-proxy.js   (Vercel, hosted)      allowPrivate: false
 //   • docker/proxy-server.mjs (self-hosted image)   allowPrivate: true by default
+//   • vite.config.js          (dev middleware)      allowPrivate: true
 //
 // Ported from krelltunez/lifeGLANCE `proxy/ssrfGuard.js`, which had already
 // worked this problem out. See issue #1664 for the comparison that led here.
@@ -30,13 +31,9 @@
 //               a multi-tenant deployment.
 //   'ok'      — everything else.
 //
-// ── What this does NOT do ──────────────────────────────────────────────────
-// It does not pin the connection. lifeGLANCE's version exports a `pinnedLookup`
-// for http.request's `lookup` option, so the socket reuses the addresses that
-// were validated and DNS cannot be re-resolved to a different IP in between
-// (rebinding). All three dayGLANCE proxies issue their request with global
-// fetch, which has no lookup hook, so that window stays open here. Closing it
-// means moving them off fetch onto http(s).request; see #1664.
+// Validating the address is only the first of three things this module does;
+// see "The request path" below for the redirect and rebinding halves, which the
+// proxies get by calling safeRequest rather than issuing their own fetch.
 import dns from 'node:dns';
 
 export class SsrfError extends Error {
@@ -183,4 +180,123 @@ export async function assertSafeUrl(target, { allowPrivate = false } = {}) {
     }
   }
   return { url, addresses };
+}
+
+// ── The request path ───────────────────────────────────────────────────────
+//
+// Validating the URL is only half the job. Two holes stay open if the caller
+// then hands the target to global fetch, and both were open in every dayGLANCE
+// proxy before this:
+//
+//   1. REDIRECTS. fetch defaults to redirect:'follow', so it chases 3xx hops
+//      itself and the guard never sees them. One 302 from an allowed address to
+//      169.254.169.254 and the body comes back to the caller. Demonstrated
+//      against the real server before this was written.
+//   2. REBINDING. fetch re-resolves the hostname when it connects, so a
+//      resolver under an attacker's control can answer with a public address
+//      for the check and a private one for the connect.
+//
+// Neither is fixable through fetch: it has no redirect-aware validation hook and
+// no `lookup` option. http(s).request has both, so the proxies issue their
+// requests through here instead. Every hop is validated, and every connection is
+// pinned to an address that was validated a moment earlier. TLS is unaffected:
+// `lookup` changes only which IP the socket dials, so SNI and certificate
+// verification still use the hostname from the URL.
+import http from 'node:http';
+import https from 'node:https';
+import zlib from 'node:zlib';
+
+// A `lookup` for http(s).request options that hands back addresses already
+// checked, closing the gap between validation and connect.
+function pinnedLookup(addresses) {
+  return (hostname, options, callback) => {
+    if (typeof options === 'function') {
+      callback = options;
+      options = {};
+    }
+    if (options && options.all) return callback(null, addresses);
+    const first = addresses[0];
+    return callback(null, first.address, first.family);
+  };
+}
+
+function decompress(buffer, encoding) {
+  const enc = (encoding || '').toLowerCase();
+  if (enc === 'gzip' || enc === 'x-gzip') return zlib.gunzipSync(buffer);
+  if (enc === 'deflate') return zlib.inflateSync(buffer);
+  if (enc === 'br') return zlib.brotliDecompressSync(buffer);
+  return buffer;
+}
+
+function once(url, { method, headers, body, addresses }) {
+  return new Promise((resolve, reject) => {
+    const mod = url.protocol === 'https:' ? https : http;
+    const req = mod.request(
+      url,
+      { method, headers, lookup: pinnedLookup(addresses) },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          try {
+            const raw = Buffer.concat(chunks);
+            resolve({
+              status: res.statusCode,
+              headers: res.headers,
+              body: decompress(raw, res.headers['content-encoding']).toString('utf8'),
+            });
+          } catch (err) {
+            reject(err);
+          }
+        });
+        res.on('error', reject);
+      },
+    );
+    req.on('error', reject);
+    if (body != null && body !== '') req.write(body);
+    req.end();
+  });
+}
+
+const MAX_REDIRECTS = 5;
+
+/**
+ * Validate, then fetch, following redirects by hand so each hop is validated and
+ * pinned in turn. Same policy knob as assertSafeUrl.
+ *
+ * @returns {Promise<{status:number, headers:object, body:string}>}
+ * @throws {SsrfError} on a policy refusal (including on a redirect target)
+ */
+export async function safeRequest(target, {
+  method = 'GET', headers = {}, body = null, allowPrivate = false,
+} = {}) {
+  let currentUrl = target;
+  let currentMethod = (method || 'GET').toUpperCase();
+  let currentBody = body;
+
+  // Ask for compression the way fetch did, so switching transports does not
+  // quietly multiply the bytes pulled for every calendar feed. Anything the
+  // caller set itself wins.
+  const hasAcceptEncoding = Object.keys(headers).some((h) => h.toLowerCase() === 'accept-encoding');
+  const baseHeaders = hasAcceptEncoding ? headers : { ...headers, 'Accept-Encoding': 'gzip, deflate, br' };
+
+  for (let hop = 0; ; hop++) {
+    const { url, addresses } = await assertSafeUrl(currentUrl, { allowPrivate });
+    const res = await once(url, {
+      method: currentMethod, headers: baseHeaders, body: currentBody, addresses,
+    });
+
+    const location = res.status >= 300 && res.status < 400 ? res.headers.location : null;
+    if (!location) return res;
+    if (hop >= MAX_REDIRECTS) throw new SsrfError(502, 'Too many redirects');
+
+    // Mirror fetch's method-rewrite semantics so following by hand behaves the
+    // way following automatically did: 303 always becomes a bodyless GET, and so
+    // do 301/302 on a POST.
+    if (res.status === 303 || ((res.status === 301 || res.status === 302) && currentMethod === 'POST')) {
+      currentMethod = 'GET';
+      currentBody = null;
+    }
+    currentUrl = new URL(location, url).toString();
+  }
 }

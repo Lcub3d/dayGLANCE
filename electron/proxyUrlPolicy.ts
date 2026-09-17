@@ -68,8 +68,26 @@ export function defaultTrustedHosts(): TrustedHostsFile {
 // True for an IP address (v4 or v6 literal, no brackets) that is loopback,
 // private (RFC1918), link-local, CGNAT, or otherwise reserved. Shared by the
 // literal-host path and the DNS-resolution path so both judge the same ranges.
+// An IPv4-mapped IPv6 address carries a real IPv4 address inside it, in either
+// the dotted or the compressed hex form. Decoding it is what stops
+// ::ffff:169.254.169.254 being judged on its v6 spelling rather than on the
+// address it actually reaches.
+function mappedIPv4(h: string): string | null {
+  const m = h.match(/^::ffff:(.+)$/i);
+  if (!m) return null;
+  const rest = m[1];
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(rest)) return rest;
+  const hex = rest.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (!hex) return null;
+  const hi = parseInt(hex[1], 16);
+  const lo = parseInt(hex[2], 16);
+  return `${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`;
+}
+
 export function isPrivateOrReservedIp(ip: string): boolean {
   const h = ip.toLowerCase();
+  const mapped = mappedIPv4(h);
+  if (mapped) return isPrivateOrReservedIp(mapped);
 
   const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4) {
@@ -81,14 +99,20 @@ export function isPrivateOrReservedIp(ip: string): boolean {
       a === 127 ||
       (a === 169 && b === 254) ||
       a === 0 ||
-      (a === 100 && b >= 64 && b <= 127)
+      (a === 100 && b >= 64 && b <= 127) ||
+      // Reserved space that carries no reachable server. Kept in step with
+      // api/_ssrfGuard.mjs; proxyUrlPolicy.parity.test.ts fails if they drift.
+      (a === 192 && b === 0 && Number(ipv4[3]) === 0) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      (a >= 224 && a <= 239) ||
+      a >= 240
     );
   }
 
   return (
     h === '::1' || h === '::' ||
-    /^::ffff:/i.test(h) || /^fe80:/i.test(h) ||
-    /^fc/i.test(h)      || /^fd/i.test(h)
+    /^fe[89ab]/i.test(h) || /^ff/i.test(h) ||
+    /^fc/i.test(h)       || /^fd/i.test(h)
   );
 }
 
@@ -117,6 +141,10 @@ export function isLoopbackHost(host: string): boolean {
 //   0.0.0.0/8, ::          the unspecified address. Not a destination anyone
 //                          configures; on some platforms it lands on loopback
 //                          and on others it simply fails.
+//   192.0.0.0/24, 198.18.0.0/15, 224.0.0.0/4, 240.0.0.0/4, ff00::/8
+//                          IETF assignments, benchmarking, multicast and
+//                          reserved space. You cannot run a vault on any of
+//                          them, so consent would be meaningless.
 //
 // LOOPBACK IS DELIBERATELY NOT HERE. Running GLANCEvault in Docker on the same
 // machine as the desktop app is a normal self-hosting setup, and refusing it
@@ -130,14 +158,26 @@ export function isLoopbackHost(host: string): boolean {
 // but CAN be granted per origin.
 export function isNeverExemptibleIp(ip: string): boolean {
   const h = ip.toLowerCase();
+  const mapped = mappedIPv4(h);
+  // Without this, ::ffff:169.254.169.254 read as "merely private" and was
+  // therefore GRANTABLE: a user could consent to the cloud metadata endpoint
+  // by spelling it in IPv4-mapped form.
+  if (mapped) return isNeverExemptibleIp(mapped);
 
   const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (ipv4) {
     const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-    return a === 0 || (a === 169 && b === 254);
+    return (
+      a === 0 ||
+      (a === 169 && b === 254) ||
+      (a === 192 && b === 0 && Number(ipv4[3]) === 0) ||  // IETF assignments
+      (a === 198 && (b === 18 || b === 19)) ||            // benchmarking
+      (a >= 224 && a <= 239) ||                           // multicast
+      a >= 240                                            // reserved
+    );
   }
 
-  return h === '::' || /^fe80:/i.test(h);
+  return h === '::' || /^fe[89ab]/i.test(h) || /^ff/i.test(h);
 }
 
 /**

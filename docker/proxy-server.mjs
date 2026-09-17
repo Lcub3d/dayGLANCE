@@ -33,7 +33,7 @@
 // way in the image as it does in a checkout.
 
 import http from 'node:http';
-import { assertSafeUrl, SsrfError } from '../api/_ssrfGuard.mjs';
+import { safeRequest, SsrfError } from '../api/_ssrfGuard.mjs';
 
 // Private/LAN targets stay reachable unless a deployment opts into the hosted
 // lock-down. Same variable name lifeGLANCE uses, so anyone self-hosting more
@@ -94,24 +94,27 @@ async function handleWebDAVProxy(req, res, targetUrl) {
   if (req.headers['if-match'])      headers['If-Match']      = req.headers['if-match'];
   if (req.headers['if-none-match']) headers['If-None-Match'] = req.headers['if-none-match'];
 
-  const fetchOptions = { method: req.method, headers };
+  let body = null;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     const rawBody = await readBody(req);
-    if (rawBody) fetchOptions.body = rawBody;
+    if (rawBody) body = rawBody;
   }
 
   try {
-    const response = await fetch(targetUrl, fetchOptions);
-    const body = await response.text();
+    const response = await safeRequest(targetUrl, {
+      method: req.method, headers, body, allowPrivate: ALLOW_PRIVATE,
+    });
     const resHeaders = {
-      'Content-Type': response.headers.get('content-type') || 'text/plain',
+      'Content-Type': response.headers['content-type'] || 'text/plain',
       'Cache-Control': 'no-store',
     };
-    const etag = response.headers.get('etag');
-    if (etag) resHeaders['ETag'] = etag;
+    if (response.headers.etag) resHeaders['ETag'] = response.headers.etag;
     res.writeHead(response.status, resHeaders);
-    res.end(body);
-  } catch {
+    res.end(response.body);
+  } catch (err) {
+    // A policy refusal (including on a redirect hop) carries its own status;
+    // anything else is an ordinary upstream failure.
+    if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
     sendJson(res, 502, { error: 'Failed to proxy WebDAV request' });
   }
 }
@@ -123,14 +126,16 @@ async function handleCalendarProxy(req, res, targetUrl) {
   }
 
   try {
-    const response = await fetch(targetUrl, { headers: fetchHeaders });
-    const body = await response.text();
+    const response = await safeRequest(targetUrl, {
+      headers: fetchHeaders, allowPrivate: ALLOW_PRIVATE,
+    });
     res.writeHead(response.status, {
-      'Content-Type': response.headers.get('content-type') || 'text/plain',
+      'Content-Type': response.headers['content-type'] || 'text/plain',
       'Cache-Control': 'public, max-age=900, stale-while-revalidate=60',
     });
-    res.end(body);
-  } catch {
+    res.end(response.body);
+  } catch (err) {
+    if (err instanceof SsrfError) return sendJson(res, err.status, { error: err.message });
     sendJson(res, 502, { error: 'Failed to fetch calendar' });
   }
 }
@@ -152,13 +157,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (!targetUrl) return sendJson(res, 400, { error: 'Missing url parameter' });
-
-  try {
-    await assertSafeUrl(targetUrl, { allowPrivate: ALLOW_PRIVATE });
-  } catch (err) {
-    const status = err instanceof SsrfError ? err.status : 400;
-    return sendJson(res, status, { error: err.message });
-  }
 
   if (isWebDAV)   return handleWebDAVProxy(req, res, targetUrl);
   if (isCalendar) return handleCalendarProxy(req, res, targetUrl);

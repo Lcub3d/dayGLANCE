@@ -1,1166 +1,1195 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "+%lld more": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld weitere"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "+%lld more" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld weitere"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld más"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld más"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld de plus"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld de plus"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld altri"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld altri"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld mais"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld mais"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+%lld mais"
-          }
-        }
-      }
-    },
-    "Add Inbox Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aufgabe zum Posteingang hinzufügen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Añadir tarea a la bandeja de entrada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter une tâche à la boîte de réception"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aggiungi attività alla posta in arrivo"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa à caixa de entrada"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa à caixa de entrada"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld mais"
           }
         }
       }
     },
-    "Add Scheduled Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geplante Aufgabe hinzufügen"
+    "Add Inbox Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe zum Posteingang hinzufügen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Añadir tarea programada"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir tarea a la bandeja de entrada"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter une tâche planifiée"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter une tâche à la boîte de réception"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aggiungi attività programmata"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi attività alla posta in arrivo"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa agendada"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa à caixa de entrada"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa agendada"
-          }
-        }
-      }
-    },
-    "Add Task by Voice": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aufgabe per Sprache hinzufügen"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Añadir tarea por voz"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter une tâche à la voix"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aggiungi attività con la voce"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa por voz"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adicionar tarefa por voz"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa à caixa de entrada"
           }
         }
       }
     },
-    "Add a task to today's schedule.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fügt eine Aufgabe zum heutigen Plan hinzu."
+    "Add Scheduled Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geplante Aufgabe hinzufügen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Añade una tarea al plan de hoy."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir tarea programada"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajoute une tâche au planning du jour."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter une tâche planifiée"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aggiunge un'attività al programma di oggi."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi attività programmata"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adiciona uma tarefa ao plano de hoje."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa agendada"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Adiciona uma tarefa ao plano de hoje."
-          }
-        }
-      }
-    },
-    "Capture a task by voice.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erfasst eine Aufgabe per Sprache."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Captura una tarea por voz."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capturez une tâche à la voix."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cattura un'attività con la voce."
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture uma tarefa por voz."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture uma tarefa por voz."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa agendada"
           }
         }
       }
     },
-    "Complete Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aufgabe abschließen"
+    "Add Task by Voice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe per Sprache hinzufügen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Completar tarea"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir tarea por voz"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminer la tâche"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter une tâche à la voix"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Completa attività"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi attività con la voce"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Concluir tarefa"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa por voz"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Concluir tarefa"
-          }
-        }
-      }
-    },
-    "Done": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erledigt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hecho"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fait"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fatto"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feito"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feito"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar tarefa por voz"
           }
         }
       }
     },
-    "GOAL": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ZIEL"
+    "Add a task to today's schedule." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügt eine Aufgabe zum heutigen Plan hinzu."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OBJETIVO"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade una tarea al plan de hoy."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OBJECTIF"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute une tâche au planning du jour."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OBIETTIVO"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiunge un'attività al programma di oggi."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OBJETIVO"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adiciona uma tarefa ao plano de hoje."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OBJETIVO"
-          }
-        }
-      }
-    },
-    "Goal": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziel"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivo"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objectif"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obiettivo"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Objetivo"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adiciona uma tarefa ao plano de hoje."
           }
         }
       }
     },
-    "Inbox Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Posteingang"
+    "Capture a task by voice." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfasst eine Aufgabe per Sprache."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bandeja de entrada"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura una tarea por voz."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Boîte de réception"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturez une tâche à la voix."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In arrivo"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cattura un'attività con la voce."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Caixa de entrada"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture uma tarefa por voz."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Caixa de entrada"
-          }
-        }
-      }
-    },
-    "No active goals": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine aktiven Ziele"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay objetivos activos"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun objectif actif"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessun obiettivo attivo"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum objetivo ativo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum objetivo ativo"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture uma tarefa por voz."
           }
         }
       }
     },
-    "No active projects": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine aktiven Projekte"
+    "Complete Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe abschließen"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No hay proyectos activos"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completar tarea"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun projet actif"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminer la tâche"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessun progetto attivo"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completa attività"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum projeto ativo"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concluir tarefa"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum projeto ativo"
-          }
-        }
-      }
-    },
-    "Nothing scheduled": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nichts geplant"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nada programado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rien de planifié"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Niente in programma"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nada agendado"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nada agendado"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concluir tarefa"
           }
         }
       }
     },
-    "PROJECT": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROJEKT"
+    "Done" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erledigt"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROYECTO"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hecho"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROJET"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fait"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROGETTO"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fatto"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROJETO"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feito"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PROJETO"
-          }
-        }
-      }
-    },
-    "Progress on a goal. Long-press to choose which one.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fortschritt eines Ziels. Zum Auswählen gedrückt halten."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progreso de un objetivo. Mantén pulsado para elegir cuál."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progression d'un objectif. Appui long pour choisir lequel."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avanzamento di un obiettivo. Tieni premuto per scegliere quale."
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progresso de um objetivo. Toque sem soltar para escolher qual."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progresso de um objetivo. Toque sem soltar para escolher qual."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feito"
           }
         }
       }
     },
-    "Progress on a project. Long-press to choose which one.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fortschritt eines Projekts. Zum Auswählen gedrückt halten."
+    "GOAL" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ZIEL"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progreso de un proyecto. Mantén pulsado para elegir cuál."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OBJETIVO"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progression d'un projet. Appui long pour choisir lequel."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OBJECTIF"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avanzamento di un progetto. Tieni premuto per scegliere quale."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OBIETTIVO"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progresso de um projeto. Toque sem soltar para escolher qual."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OBJETIVO"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progresso de um projeto. Toque sem soltar para escolher qual."
-          }
-        }
-      }
-    },
-    "Project": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projekt"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Proyecto"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projet"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progetto"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projeto"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projeto"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OBJETIVO"
           }
         }
       }
     },
-    "Quickly capture a task to your inbox.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erfasst schnell eine Aufgabe in Ihrem Posteingang."
+    "Goal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziel"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Captura rápidamente una tarea en tu bandeja de entrada."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Objetivo"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capturez rapidement une tâche dans votre boîte de réception."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Objectif"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cattura rapidamente un'attività nella posta in arrivo."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obiettivo"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture rapidamente uma tarefa na caixa de entrada."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Objetivo"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capture rapidamente uma tarefa na caixa de entrada."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Objetivo"
           }
         }
       }
     },
-    "Scheduled Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geplante Aufgabe"
+    "Inbox Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posteingang"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarea programada"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bandeja de entrada"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tâche planifiée"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boîte de réception"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Attività programmata"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In arrivo"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarefa agendada"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caixa de entrada"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarefa agendada"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caixa de entrada"
           }
         }
       }
     },
-    "Select Goal": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziel auswählen"
+    "No active goals" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine aktiven Ziele"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elegir objetivo"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay objetivos activos"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisir un objectif"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun objectif actif"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scegli obiettivo"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun obiettivo attivo"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolher objetivo"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum objetivo ativo"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolher objetivo"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum objetivo ativo"
           }
         }
       }
     },
-    "Select Project": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projekt auswählen"
+    "No active projects" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine aktiven Projekte"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elegir proyecto"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay proyectos activos"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choisir un projet"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun projet actif"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scegli progetto"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun progetto attivo"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolher projeto"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum projeto ativo"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolher projeto"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum projeto ativo"
           }
         }
       }
     },
-    "Start Focus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fokus starten"
+    "Nothing scheduled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts geplant"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar concentración"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada programado"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démarrer la concentration"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien de planifié"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avvia concentrazione"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niente in programma"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar foco"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada agendado"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar foco"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada agendado"
           }
         }
       }
     },
-    "Task ID": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aufgaben-ID"
+    "PROJECT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROJEKT"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID de tarea"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROYECTO"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID de tâche"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROJET"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID attività"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROGETTO"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID da tarefa"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROJETO"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ID da tarefa"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROJETO"
           }
         }
       }
     },
-    "UP NEXT": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ALS NÄCHSTES"
+    "Progress on a goal. Long-press to choose which one." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritt eines Ziels. Zum Auswählen gedrückt halten."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A CONTINUACIÓN"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progreso de un objetivo. Mantén pulsado para elegir cuál."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À SUIVRE"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progression d'un objectif. Appui long pour choisir lequel."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A SEGUIRE"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avanzamento di un obiettivo. Tieni premuto per scegliere quale."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A SEGUIR"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progresso de um objetivo. Toque sem soltar para escolher qual."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A SEGUIR"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progresso de um objetivo. Toque sem soltar para escolher qual."
           }
         }
       }
     },
-    "Untitled": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ohne Titel"
+    "Progress on a project. Long-press to choose which one." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritt eines Projekts. Zum Auswählen gedrückt halten."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sin título"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progreso de un proyecto. Mantén pulsado para elegir cuál."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sans titre"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progression d'un projet. Appui long pour choisir lequel."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Senza titolo"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avanzamento di un progetto. Tieni premuto per scegliere quale."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sem título"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progresso de um projeto. Toque sem soltar para escolher qual."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sem título"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progresso de um projeto. Toque sem soltar para escolher qual."
           }
         }
       }
     },
-    "Up Next": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Als Nächstes"
+    "Project" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A continuación"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À suivre"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projet"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A seguire"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Progetto"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A seguir"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projeto"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A seguir"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projeto"
           }
         }
       }
     },
-    "Voice Task": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sprachaufgabe"
+    "Quickly capture a task to your inbox." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfasst schnell eine Aufgabe in Ihrem Posteingang."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarea por voz"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura rápidamente una tarea en tu bandeja de entrada."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tâche vocale"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturez rapidement une tâche dans votre boîte de réception."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Attività vocale"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cattura rapidamente un'attività nella posta in arrivo."
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarefa por voz"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture rapidamente uma tarefa na caixa de entrada."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tarefa por voz"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture rapidamente uma tarefa na caixa de entrada."
           }
         }
       }
     },
-    "Your next scheduled task.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ihre nächste geplante Aufgabe."
+    "Scheduled Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geplante Aufgabe"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tu próxima tarea programada."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarea programada"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Votre prochaine tâche planifiée."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche planifiée"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La tua prossima attività programmata."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attività programmata"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A sua próxima tarefa agendada."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarefa agendada"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A sua próxima tarefa agendada."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarefa agendada"
+          }
+        }
+      }
+    },
+    "Select Goal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziel auswählen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir objetivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un objectif"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli obiettivo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher objetivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher objetivo"
+          }
+        }
+      }
+    },
+    "Select Project" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt auswählen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir proyecto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un projet"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli progetto"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher projeto"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolher projeto"
+          }
+        }
+      }
+    },
+    "Start Focus" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fokus starten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar concentración"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Démarrer la concentration"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avvia concentrazione"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar foco"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar foco"
+          }
+        }
+      }
+    },
+    "Task ID" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgaben-ID"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de tarea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de tâche"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID attività"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID da tarefa"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID da tarefa"
+          }
+        }
+      }
+    },
+    "UP NEXT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ALS NÄCHSTES"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A CONTINUACIÓN"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À SUIVRE"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A SEGUIRE"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A SEGUIR"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A SEGUIR"
+          }
+        }
+      }
+    },
+    "Untitled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Titel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin título"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans titre"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senza titolo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem título"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem título"
+          }
+        }
+      }
+    },
+    "Up Next" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Nächstes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A continuación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À suivre"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A seguire"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A seguir"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A seguir"
+          }
+        }
+      }
+    },
+    "Voice Task" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprachaufgabe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarea por voz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tâche vocale"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attività vocale"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarefa por voz"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarefa por voz"
+          }
+        }
+      }
+    },
+    "Your next scheduled task." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihre nächste geplante Aufgabe."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu próxima tarea programada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre prochaine tâche planifiée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua prossima attività programmata."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sua próxima tarefa agendada."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sua próxima tarefa agendada."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

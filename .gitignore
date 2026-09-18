@@ -33,6 +33,9 @@ dayglance-android/app/src/main/assets/web
 # Stream Deck pack output
 *.streamDeckPlugin
 
+# Obsidian bridge plugin release bundles (attached to GitHub releases by hand)
+dayglance-obsidian-plugin/*.zip
+
 # Local release signing secrets — never commit
 .env.release
 *.p12

@@ -160,9 +160,12 @@ enum DialSpikeFixture {
     static let precipRuns: [(Double, Double)] = [(60, 120), (180, 220), (1000, 1040)]
 
     /// Anything that changes the static face must change this, because it
-    /// names the cached image.
+    /// names the cached image. Bumped to v2 so an install over the first
+    /// device run renders the base image cold instead of hitting the PNG that
+    /// run left in the App Group — the ImageRenderer cost is one of the
+    /// numbers the spike exists to produce, and a disk hit hides it.
     static var hashSeed: String {
-        "v1|\(blocks.count)|\(sunriseMin)-\(sunsetMin)|\(moonStartMin)-\(moonEndMin)|\(routines.count)|\(focusSpans.count)"
+        "v2|\(blocks.count)|\(sunriseMin)-\(sunsetMin)|\(moonStartMin)-\(moonEndMin)|\(routines.count)|\(focusSpans.count)"
     }
 
     /// The face: everything that does not move with the needle.

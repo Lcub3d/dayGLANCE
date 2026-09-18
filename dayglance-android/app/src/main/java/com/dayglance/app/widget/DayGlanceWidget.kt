@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import android.widget.RemoteViews
 import androidx.work.WorkManager
 import com.dayglance.app.MainActivity
@@ -75,22 +76,35 @@ class DayGlanceWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_layout)
 
-        // ── Header: date label + last-updated ─────────────────────────────
+        // ── Header: date label + last-updated, or the stale banner ────────
         try {
             val dataStore = SharedDataStore(context)
             val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
+            val freshness = snapshotFreshness(snapshot, dataStore)
+            val use24Hour = widgetUses24HourClock(context, snapshot)
+            // The snapshot's own label: on a stale snapshot that is yesterday's
+            // date, which is the truth. Only a missing snapshot says "today".
             val dateLabel = snapshot?.optString("dateLabel")?.takeIf { it.isNotBlank() }
                 ?: formatTodayLabel(context)
             views.setTextViewText(R.id.tv_date, dateLabel)
 
-            val updatedAt = dataStore.widgetSnapshotUpdatedAt
-            if (updatedAt > 0) {
-                val use24Hour = widgetUses24HourClock(context, snapshot)
-                val pattern = if (use24Hour) "H:mm" else "h:mm a"
-                val time = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(updatedAt))
-                views.setTextViewText(R.id.tv_updated, time)
-            } else {
+            if (freshness.isStale) {
+                // A bare "8:42 PM" next to yesterday's content reads as tonight.
+                // The banner carries the full absolute timestamp instead, and
+                // the list dims so the state registers before any text is read.
                 views.setTextViewText(R.id.tv_updated, "")
+                views.setTextViewText(R.id.tv_stale, formatStaleLabel(context, freshness, use24Hour))
+                views.setViewVisibility(R.id.tv_stale, View.VISIBLE)
+                views.setFloat(R.id.lv_agenda, "setAlpha", STALE_CONTENT_ALPHA)
+            } else {
+                val updatedAt = dataStore.widgetSnapshotUpdatedAt
+                if (updatedAt > 0) {
+                    val pattern = if (use24Hour) "H:mm" else "h:mm a"
+                    val time = SimpleDateFormat(pattern, Locale.getDefault()).format(Date(updatedAt))
+                    views.setTextViewText(R.id.tv_updated, time)
+                } else {
+                    views.setTextViewText(R.id.tv_updated, "")
+                }
             }
         } catch (_: Throwable) {
             views.setTextViewText(R.id.tv_date, formatTodayLabel(context))

@@ -61,11 +61,28 @@ class UpNextWidget : AppWidgetProvider() {
         val dataStore = SharedDataStore(context)
         val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
         val use24Hour = widgetUses24HourClock(context, snapshot)
+        val freshness = snapshotFreshness(snapshot, dataStore)
 
-        // Header date
+        // Header date — the snapshot's own label, which on a stale snapshot is
+        // yesterday's date and belongs there.
         val dateLabel = snapshot?.optString("dateLabel")?.takeIf { it.isNotBlank() }
             ?: formatTodayLabel(context)
         views.setTextViewText(R.id.tv_upnext_date, dateLabel)
+
+        // Stale: "UP NEXT" is a claim about now, so the pill becomes the state
+        // label, the banner carries the absolute capture time, and both content
+        // states dim. The task itself stays visible — it is what the user last
+        // saw, and hiding it would look like data loss.
+        if (freshness.isStale) {
+            views.setTextViewText(R.id.tv_upnext_pill, context.getString(R.string.widget_outdated))
+            views.setTextViewText(R.id.tv_upnext_stale, formatStaleLabel(context, freshness, use24Hour))
+            views.setViewVisibility(R.id.tv_upnext_stale, View.VISIBLE)
+            views.setFloat(R.id.layout_upnext_task, "setAlpha", STALE_CONTENT_ALPHA)
+            views.setFloat(R.id.layout_upnext_empty, "setAlpha", STALE_CONTENT_ALPHA)
+            // "Nothing up next / all done for today" is present tense too.
+            views.setTextViewText(R.id.tv_upnext_empty_title, context.getString(R.string.widget_outdated))
+            views.setTextViewText(R.id.tv_upnext_empty_sub, context.getString(R.string.widget_open_to_refresh))
+        }
 
         // Tap root to open app
         val launchIntent = Intent(context, MainActivity::class.java)
@@ -90,7 +107,7 @@ class UpNextWidget : AppWidgetProvider() {
         if (nextTask != null) {
             views.setViewVisibility(R.id.layout_upnext_task, View.VISIBLE)
             views.setViewVisibility(R.id.layout_upnext_empty, View.GONE)
-            bindTaskViews(context, views, nextTask, use24Hour)
+            bindTaskViews(context, views, nextTask, use24Hour, live = !freshness.isStale)
         } else {
             views.setViewVisibility(R.id.layout_upnext_task, View.GONE)
             views.setViewVisibility(R.id.layout_upnext_empty, View.VISIBLE)
@@ -99,7 +116,8 @@ class UpNextWidget : AppWidgetProvider() {
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 
-    private fun bindTaskViews(context: Context, views: RemoteViews, task: JSONObject, use24Hour: Boolean) {
+    /** @param live whether the snapshot is today's; false suppresses every countdown and in-progress claim. */
+    private fun bindTaskViews(context: Context, views: RemoteViews, task: JSONObject, use24Hour: Boolean, live: Boolean) {
         // Color bar
         try {
             val colorHex = task.optString("colorHex", "#3b82f6")
@@ -112,7 +130,7 @@ class UpNextWidget : AppWidgetProvider() {
         // Time range + time-until countdown
         val startTime = task.optString("startTime", "")
         val duration = task.optInt("duration", 0)
-        val (timeStr, timeUntilStr) = buildTimeStrings(context, startTime, duration, use24Hour)
+        val (timeStr, timeUntilStr) = buildTimeStrings(context, startTime, duration, use24Hour, live)
         views.setTextViewText(R.id.tv_upnext_time, timeStr)
         if (timeUntilStr.isNotEmpty()) {
             views.setTextViewText(R.id.tv_upnext_time_until, timeUntilStr)
@@ -185,12 +203,19 @@ class UpNextWidget : AppWidgetProvider() {
      *
      * timeRangeStr: e.g. "2:30 PM – 3:15 PM" or "14:30 – 15:15"
      * timeUntilStr: e.g. "in 15m", "in 1h 30m", "in progress", or "" when ended
+     *
+     * The task carries only "HH:mm", a time on the SNAPSHOT'S day, so the
+     * wall-clock comparison behind timeUntilStr is meaningful only when that
+     * day is today ([live]). On any other day the range still prints — it is
+     * a fact about the block — and the countdown is left empty rather than
+     * reporting yesterday's 8 AM block as "in progress" this morning.
      */
     private fun buildTimeStrings(
         context: Context,
         startTime: String,
         duration: Int,
         use24Hour: Boolean,
+        live: Boolean,
     ): Pair<String, String> {
         if (startTime.isEmpty()) return Pair("", "")
         return try {
@@ -212,6 +237,7 @@ class UpNextWidget : AppWidgetProvider() {
             val now = LocalTime.now()
             val nowMin = now.hour * 60 + now.minute
             val timeUntilStr = when {
+                !live -> ""
                 nowMin < startMin -> {
                     val diff = startMin - nowMin
                     if (diff >= 60) {

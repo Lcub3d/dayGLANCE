@@ -147,4 +147,12 @@
     <string name="reminder_precise_message">dayGLANCE necessita dell’autorizzazione a programmare allarmi esatti affinché i promemoria delle attività arrivino puntuali, anche quando l’app è chiusa.\n\nTocca «Concedi accesso», quindi abilita «dayGLANCE» nella schermata successiva.</string>
     <string name="grant_access">Concedi accesso</string>
     <string name="not_now">Non ora</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">Non aggiornato</string>
+    <string name="widget_as_of">al %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">%1$d giorno fa</item>
+        <item quantity="other">%1$d giorni fa</item>
+    </plurals>
+    <string name="widget_open_to_refresh">Apri dayGLANCE per aggiornare</string>
 </resources>

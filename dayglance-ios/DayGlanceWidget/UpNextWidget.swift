@@ -14,15 +14,22 @@ struct UpNextProvider: TimelineProvider {
         completion(UpNextEntry(date: Date(), snapshot: loadSnapshot()))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<UpNextEntry>) -> Void) {
-        let entry = UpNextEntry(date: Date(), snapshot: loadSnapshot())
+        // One snapshot, two entries: now and the next local midnight, so the
+        // stale state flips on the minute (WidgetFreshness.swift).
+        let snapshot = loadSnapshot()
+        let entries = WidgetTimelineDates.withMidnightRollover().map { UpNextEntry(date: $0, snapshot: snapshot) }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        completion(Timeline(entries: [entry], policy: .after(next)))
+        completion(Timeline(entries: entries, policy: .after(next)))
     }
 }
 
 struct UpNextWidgetView: View {
     var entry: UpNextEntry
     @Environment(\.widgetFamily) var family
+
+    // Against the entry's date, not the clock: the midnight entry is what
+    // turns this true at 00:00 (see WidgetTimelineDates).
+    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
 
     var body: some View {
         if let task = entry.snapshot?.nextTask {
@@ -35,10 +42,16 @@ struct UpNextWidgetView: View {
     private var emptyView: some View {
         VStack(alignment: .leading, spacing: 4) {
             header
+            if freshness.isStale {
+                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
+            }
             Spacer()
-            Text("Nothing scheduled")
+            // "Nothing scheduled" is a claim about today; a stale snapshot
+            // cannot make it.
+            Text(freshness.isStale ? String(localized: "Open dayGLANCE to refresh") : String(localized: "Nothing scheduled"))
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .staleDimmed(freshness)
             Spacer()
         }
         .padding()
@@ -48,7 +61,25 @@ struct UpNextWidgetView: View {
     private func taskView(task: NextTaskData) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            if freshness.isStale {
+                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
+            }
             Divider().padding(.vertical, 3)
+            taskBody(task: task)
+                .staleDimmed(freshness)
+            // Pack everything to the top; leftover space falls to the bottom.
+            Spacer(minLength: 0)
+        }
+        .padding()
+        .containerBackground(.background, for: .widget)
+    }
+
+    // The task itself stays visible on a stale snapshot — it is what the user
+    // last saw, and hiding it would look like data loss — but dimmed, and with
+    // the buttons gone (see below).
+    @ViewBuilder
+    private func taskBody(task: NextTaskData) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 8) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(Color(hex: task.colorHex ?? "#3b82f6"))
@@ -91,20 +122,36 @@ struct UpNextWidgetView: View {
                     // web layer drains on foreground. AppIntent-based buttons that
                     // try to act in the background never reliably reached the web
                     // layer, so the task was never completed / focus never started.
-                    HStack(spacing: 8) {
-                        if let id = task.id?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                           let doneURL = URL(string: "dayglance://completeTask?id=\(id)") {
-                            Link(destination: doneURL) {
-                                actionLabel(String(localized: "Done"), systemImage: "checkmark.circle")
+                    //
+                    // Not offered on a stale snapshot. "Done" would complete
+                    // yesterday's task by id (possibly already completed on
+                    // another device), and "Focus" would start a session on a
+                    // block that ended a day ago. A disabled button is a dead
+                    // control that still invites the tap, so instead the row
+                    // says what the only useful action is: the widget's own tap
+                    // opens the app, and foregrounding is exactly what pushes a
+                    // fresh snapshot.
+                    if freshness.isStale {
+                        Text("Open dayGLANCE to refresh")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 3)
+                    } else {
+                        HStack(spacing: 8) {
+                            if let id = task.id?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                               let doneURL = URL(string: "dayglance://completeTask?id=\(id)") {
+                                Link(destination: doneURL) {
+                                    actionLabel(String(localized: "Done"), systemImage: "checkmark.circle")
+                                }
+                            }
+                            if let focusURL = URL(string: "dayglance://startFocus") {
+                                Link(destination: focusURL) {
+                                    actionLabel("Focus", systemImage: "play.circle")
+                                }
                             }
                         }
-                        if let focusURL = URL(string: "dayglance://startFocus") {
-                            Link(destination: focusURL) {
-                                actionLabel("Focus", systemImage: "play.circle")
-                            }
-                        }
+                        .padding(.top, 1)
                     }
-                    .padding(.top, 1)
                 }
             }
             // Keep the main row at its natural height — the color bar is a
@@ -145,11 +192,7 @@ struct UpNextWidgetView: View {
                     }
                 }
             }
-            // Pack everything to the top; leftover space falls to the bottom.
-            Spacer(minLength: 0)
         }
-        .padding()
-        .containerBackground(.background, for: .widget)
     }
 
     // Notes are only rendered on the Large family, and only when present.
@@ -168,9 +211,12 @@ struct UpNextWidgetView: View {
 
     private var header: some View {
         HStack {
-            Text("UP NEXT")
+            // "UP NEXT" is a claim about now; on a stale snapshot the pill
+            // becomes the state. The date label stays: it is the snapshot's own
+            // day, yesterday's on a stale one, which is the truth.
+            Text(freshness.isStale ? String(localized: "OUTDATED") : String(localized: "UP NEXT"))
                 .font(.caption2).fontWeight(.bold)
-                .foregroundColor(.secondary)
+                .foregroundColor(freshness.isStale ? .orange : .secondary)
             Spacer()
             Text(entry.snapshot?.dateLabel ?? "")
                 .font(.caption2)

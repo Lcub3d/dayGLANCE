@@ -318,6 +318,7 @@ the total is more reliable than any single line below.
 | 2 | Static dial | 3d | Sky ring, ticks, labels, block band, separators, glyphs match the spec render side by side |
 | 3 | Hub | 2d | All seven rows correct; a long task title truncates gracefully |
 | 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
+| 4b | Day rollover without the app | per plan | The dial shows the right day after midnight with the app backgrounded. **Ship gate**: an option from `docs/widget-background-refresh-plan.md` chosen and landed before phase 5 closes; until then the dial inherits the shared stale state (WidgetFreshness.swift / .kt) and shows yesterday dimmed with an "as of" line, which is honest but, on a full-face graphic, very visible |
 | 5 | States + ship | 2–3d | Placeholder, empty day, no current task, rollover, DST, `widgetURL`, Lora bundled |
 
 **Phases 0 and 0b are done.** The cached-image path won (§6 "Result"), so
@@ -326,6 +327,14 @@ the needle, the past-dimming sector and reload debouncing on top of a cached
 PNG; neither inherits render-budget pressure. Phase 1 is next. The spike
 stays in the tree behind `DIAL_SPIKE` until phase 2 replaces it with the real
 face; nothing else should be built on it.
+
+**Phase 4b is a gate, found late.** Only the WebView writes widget content, so
+every shipping widget held yesterday's data after a night in the background;
+the fix that landed (stale detection, dimming, "as of" label, present-tense
+claims suppressed) makes that honest, not fresh. A stale Up Next line is a
+small thing; a stale dial is a picture of the wrong day. The plan document
+lays out the options with cost; one of them has to land before the dial
+ships. Phases 1–3 do not wait on it.
 
 **Phase 1 is the largest single block and the most mechanical.** It is isolated
 deliberately: it has no UI, it is fully testable against the exported fixtures,

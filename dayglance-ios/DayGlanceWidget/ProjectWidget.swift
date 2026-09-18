@@ -63,9 +63,14 @@ struct ProjectProvider: AppIntentTimelineProvider {
         ProjectEntry(date: Date(), snapshot: loadSnapshot(), selectedProjectId: configuration.project?.id)
     }
     func timeline(for configuration: SelectProjectIntent, in context: Context) async -> Timeline<ProjectEntry> {
-        let entry = ProjectEntry(date: Date(), snapshot: loadSnapshot(), selectedProjectId: configuration.project?.id)
+        // One snapshot, two entries: now and the next local midnight, so the
+        // stale state flips on the minute (WidgetFreshness.swift).
+        let snapshot = loadSnapshot()
+        let entries = WidgetTimelineDates.withMidnightRollover().map {
+            ProjectEntry(date: $0, snapshot: snapshot, selectedProjectId: configuration.project?.id)
+        }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        return Timeline(entries: [entry], policy: .after(next))
+        return Timeline(entries: entries, policy: .after(next))
     }
 }
 
@@ -83,18 +88,27 @@ struct ProjectWidgetView: View {
         return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
     }
 
+    // Against the entry's date, not the clock (see WidgetTimelineDates).
+    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().padding(.vertical, 4)
-            if let proj = selectedProject {
-                projectView(proj: proj)
-            } else {
-                Text("No active projects")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
+            if freshness.isStale {
+                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
             }
+            Divider().padding(.vertical, 4)
+            Group {
+                if let proj = selectedProject {
+                    projectView(proj: proj)
+                } else {
+                    Text("No active projects")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+            }
+            .staleDimmed(freshness)
         }
         .padding()
         .containerBackground(.background, for: .widget)

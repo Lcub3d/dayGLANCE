@@ -134,3 +134,26 @@ describe('rendering outside the timeline', () => {
     expect(html).toContain('09:00');
   });
 });
+
+describe('the surfaces that carry it', () => {
+  // Four now: the timeline card, SCHED, LIST, and MONTH's embedded SCHED pane.
+  // LIST was missed when the badge first shipped and found in manual testing, so
+  // this pins the rule rather than the wiring: any card showing a task's time
+  // should offer its history, and a calendar event never should.
+  const MOVED = { id: 't1', ...PLANNED, startTime: '16:00', originalPlan: PLANNED };
+
+  it('offers history for a task that has moved', async () => {
+    expect(await render(MOVED)).toContain('lucide-history');
+  });
+
+  it('takes the icon size of the row it sits in', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <DayPlannerContext.Provider value={ctx}>
+          <TaskPlanHistory task={MOVED} size={11} />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(html).toContain('width="11"');
+  });
+});

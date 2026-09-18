@@ -88,6 +88,10 @@ struct DialSpikeEntry: TimelineEntry {
     let nowMin: Double
     let index: Int
     let total: Int
+    /// What the timeline build cost, printed in the widget's corner so the
+    /// measurement can be read off the home screen without Console: the
+    /// base-image source and render time, and the process footprint at build.
+    let note: String
 }
 
 // MARK: - Cache (cachedImage mode)
@@ -97,6 +101,9 @@ struct DialSpikeEntry: TimelineEntry {
 enum DialSpikeCache {
     static var image: UIImage?
     static var key = ""
+    /// Short form of the last prepare() outcome for the corner label:
+    /// "img cold 312ms" / "img disk" / "img mem" / "img FAILED".
+    static var summary = "img none"
 
     static func directory() -> URL? {
         FileManager.default
@@ -113,11 +120,12 @@ enum DialSpikeCache {
     @MainActor
     static func prepare(size: CGSize, scale: CGFloat) -> String {
         let k = key(size: size, scale: scale)
-        if image != nil, key == k { return "memory hit" }
+        if image != nil, key == k { summary = "img mem"; return "memory hit" }
 
         let file = directory()?.appendingPathComponent("\(k).png")
         if let file, let data = try? Data(contentsOf: file), let img = UIImage(data: data, scale: scale) {
             image = img; key = k
+            summary = "img disk"
             return "disk hit (\(data.count) bytes)"
         }
 
@@ -131,12 +139,14 @@ enum DialSpikeCache {
         renderer.scale = scale
         guard let rendered = renderer.uiImage else {
             sp.endInterval("baseImage", state)
+            summary = "img FAILED"
             DialSpikeLog.logger.error("baseImage: ImageRenderer returned nil — entries will fall back to live paths")
             return "render FAILED"
         }
         let ms = (CFAbsoluteTimeGetCurrent() - t0) * 1000
         sp.endInterval("baseImage", state)
         image = rendered; key = k
+        summary = "img cold \(Int(ms.rounded()))ms"
 
         var stored = "not stored"
         if let file, let dir = directory(), let png = rendered.pngData() {
@@ -160,12 +170,12 @@ struct DialSpikeProvider: TimelineProvider {
     }
 
     func placeholder(in context: Context) -> DialSpikeEntry {
-        DialSpikeEntry(date: Date(), nowMin: 680, index: -1, total: 1)
+        DialSpikeEntry(date: Date(), nowMin: 680, index: -1, total: 1, note: "placeholder")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DialSpikeEntry) -> Void) {
         let now = Date()
-        completion(DialSpikeEntry(date: now, nowMin: minuteOfDay(now), index: -1, total: 1))
+        completion(DialSpikeEntry(date: now, nowMin: minuteOfDay(now), index: -1, total: 1, note: "snapshot"))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<DialSpikeEntry>) -> Void) {
@@ -191,9 +201,14 @@ struct DialSpikeProvider: TimelineProvider {
             if dialSpikeMode == .cachedImage {
                 imageNote = DialSpikeCache.prepare(size: size, scale: scale)
             }
+            // What the corner shows for every entry of this timeline: how the
+            // base image was obtained (and its render time when cold), plus the
+            // footprint once the timeline is built — the two numbers the
+            // decision table wants that a glance at the home screen can give.
+            let note = "\(dialSpikeMode == .cachedImage ? DialSpikeCache.summary : "live") · \(Int(DialSpikeLog.footprintMB().rounded()))MB"
             let entries = (0..<Self.entryCount).map { i -> DialSpikeEntry in
                 let d = start.addingTimeInterval(Double(i * Self.stepMinutes) * 60)
-                return DialSpikeEntry(date: d, nowMin: minuteOfDay(d), index: i, total: Self.entryCount)
+                return DialSpikeEntry(date: d, nowMin: minuteOfDay(d), index: i, total: Self.entryCount, note: note)
             }
             let ms = (CFAbsoluteTimeGetCurrent() - t0) * 1000
             DialSpikeLog.logger.notice("timeline mode=\(dialSpikeMode.rawValue, privacy: .public) entries=\(entries.count, privacy: .public) static=\(DialSpikeFixture.staticElements(nowMin: nil).count, privacy: .public) moving=\(DialSpikeFixture.movingElements().count, privacy: .public) size=\(Int(size.width), privacy: .public)x\(Int(size.height), privacy: .public)pt@\(Int(scale), privacy: .public)x builtMs=\(ms, format: .fixed(precision: 1), privacy: .public) baseImage=\(imageNote, privacy: .public) footprintMB=\(DialSpikeLog.footprintMB(), format: .fixed(precision: 1), privacy: .public) availMB=\(DialSpikeLog.availableMemoryMB(), format: .fixed(precision: 1), privacy: .public)")
@@ -230,10 +245,13 @@ struct DialSpikeWidgetView: View {
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Text("\(dialSpikeMode == .livePaths ? "live" : "cached") · \(entry.index + 1)/\(entry.total) · \(entry.date, format: .dateTime.hour().minute())")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .padding(6)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\(dialSpikeMode == .livePaths ? "live" : "cached") · \(entry.index + 1)/\(entry.total) · \(entry.date, format: .dateTime.hour().minute())")
+                    Text(entry.note)
+                }
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.5))
+                .padding(6)
             }
         }
         .containerBackground(DialSpikeFixture.background, for: .widget)

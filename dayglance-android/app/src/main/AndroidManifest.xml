@@ -296,6 +296,17 @@
             </intent-filter>
         </receiver>
 
+        <!-- Fires at the next local midnight so every widget re-resolves the day
+             on the minute (see widget/MidnightRolloverReceiver.kt). Exact when
+             SCHEDULE_EXACT_ALARM is granted, inexact-while-idle otherwise. -->
+        <receiver
+            android:name=".widget.MidnightRolloverReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dayglance.app.widget.MIDNIGHT_ROLLOVER" />
+            </intent-filter>
+        </receiver>
+
         <!-- FileProvider: used by NativeBridge.shareFile() to expose cache-dir JSON
              backup files to the system share sheet without WRITE_EXTERNAL_STORAGE. -->
         <provider

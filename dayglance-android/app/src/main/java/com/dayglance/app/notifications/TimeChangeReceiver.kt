@@ -36,6 +36,14 @@ class TimeChangeReceiver : BroadcastReceiver() {
             Intent.ACTION_TIME_CHANGED -> {
                 runCatching { NotificationBridge(context).reregisterPersistedReminders() }
                 runCatching { UpNextNotificationUpdater.refresh(context) }
+                // Midnight moved with the zone or the clock: re-arm the widget
+                // day-boundary alarm against the new local midnight, and
+                // re-render now, since "today" may already be a different day.
+                runCatching { com.dayglance.app.widget.MidnightRolloverReceiver.arm(context) }
+                runCatching { com.dayglance.app.widget.DayGlanceWidget.requestUpdate(context) }
+                runCatching { com.dayglance.app.widget.UpNextWidget.requestUpdate(context) }
+                runCatching { com.dayglance.app.widget.GoalWidget.requestUpdate(context) }
+                runCatching { com.dayglance.app.widget.ProjectWidget.requestUpdate(context) }
             }
         }
     }

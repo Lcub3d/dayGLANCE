@@ -38,6 +38,10 @@ class ReminderReceiver : BroadcastReceiver() {
         // reminder whose trigger time is still in the future. Shared with the
         // WidgetUpdateWorker backstop and TimeChangeReceiver.
         NotificationBridge(context).reregisterPersistedReminders()
+        // The widget day-boundary alarm is one-shot too; the worker would
+        // re-arm it within 15 minutes, but a reboot at 23:58 should not miss
+        // the boundary.
+        runCatching { com.dayglance.app.widget.MidnightRolloverReceiver.arm(context) }
     }
 
     private fun showReminder(context: Context, intent: Intent) {

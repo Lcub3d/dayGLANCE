@@ -57,12 +57,28 @@ final class WidgetBridge {
             return
         }
         defaults.set(data, forKey: Self.snapshotKey)
+        // A push whose only change is to a day no widget is showing (the
+        // day-keyed payload's later days; see utils/widgetSnapshotDedupe.js)
+        // is stored and NOT reloaded: the JS side says so with
+        // reloadWidgets=false. The bytes are there for the midnight timeline
+        // entry and the next scheduled reload; no timeline is spent on
+        // something invisible. Absent flag = reload, so an older web bundle
+        // behaves as before.
+        guard Self.wantsReload(data) else { return }
         WidgetCenter.shared.reloadAllTimelines()
         // Same JSON drives the day-summary Live Activity — one entry point,
         // no separate JS bridge call to keep in sync.
         if #available(iOS 16.2, *) {
             LiveActivityBridge.shared.sync(fromSnapshotJSON: json)
         }
+    }
+
+    private struct ReloadEnvelope: Decodable { var reloadWidgets: Bool? }
+
+    /// Reads only the `reloadWidgets` key; every other key is ignored, and a
+    /// snapshot this cannot decode is reloaded rather than silently dropped.
+    static func wantsReload(_ data: Data) -> Bool {
+        (try? JSONDecoder().decode(ReloadEnvelope.self, from: data))?.reloadWidgets ?? true
     }
 
     /// The stored snapshot JSON, as last written by updateSnapshot — read by

@@ -145,3 +145,22 @@ internal fun formatStaleLabel(context: Context, freshness: WidgetFreshness, use2
     }
     return parts.joinToString("  ·  ")
 }
+
+/**
+ * The one flag the native side reads off a pushed snapshot BEFORE storing it
+ * as-is: whether this push should redraw the widgets. The JS dedupe sets it
+ * false when nothing the widgets currently show has changed (a day beyond
+ * tomorrow in the day-keyed payload); see utils/widgetSnapshotDedupe.js.
+ *
+ * A key match on the raw text rather than a full parse: the payload is tens
+ * of kilobytes and is parsed again by every widget that renders, so this path
+ * stays O(1)-ish, and the key name exists nowhere else in the snapshot.
+ * Absent or unparseable → true, so an older web bundle keeps its old
+ * behaviour and a malformed flag can never suppress a redraw.
+ */
+object WidgetSnapshotEnvelope {
+    private val RELOAD_FALSE = Regex("\"reloadWidgets\"\\s*:\\s*false")
+
+    fun wantsReload(snapshotJson: String?): Boolean =
+        snapshotJson == null || !RELOAD_FALSE.containsMatchIn(snapshotJson)
+}

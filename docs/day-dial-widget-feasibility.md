@@ -382,8 +382,10 @@ Two things do blow up, and both have trivial fixes:
   in one extension invocation, each at 1.25 Mpx. This is where the extension
   actually dies — on the render watchdog, not the memory ceiling. **[device]**
   This is the single number I cannot give you from the repo. It must be
-  measured on an A15-class device with Instruments attached to the widget
-  extension.
+  measured on a device. *(Measured in Phase 0 on an iPhone 15: the cached-image
+  path renders the static face once in 28 ms at a 13 MB footprint and shows all
+  96 entries on schedule; see the handoff §6 "Result". The ×96 live-path cost
+  was never paid.)*
 
 **The cheaper option, and it is not close: a static base layer plus a rotated
 needle layer.** The repo's own numbers make the case — §4 shows **18 of 985

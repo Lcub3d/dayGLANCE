@@ -80,6 +80,13 @@ import UIKit
 //   and live fast+light → live. Cached image defective and live slow or
 //   heavy → neither is ready; stop and talk. A cache defect reopens the
 //   question on its own; it does not need live to also pass.
+//
+// RESULT (Phase 0 closed)
+//   iPhone 15 (A16), cachedImage mode: cold ImageRenderer pass 28 ms,
+//   footprint 13–18 MB, all 96 entries shown on schedule, crisp, no crashes.
+//   Cached image is the chosen architecture; live paths were not measured.
+//   Details in docs/day-dial-widget-handoff.md §6 "Result". This spike stays
+//   behind DIAL_SPIKE only until Phase 2 replaces it with the real face.
 // ─────────────────────────────────────────────────────────────────────────────
 
 struct DialSpikeEntry: TimelineEntry {

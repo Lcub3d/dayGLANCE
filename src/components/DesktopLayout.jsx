@@ -7,7 +7,7 @@ import {
 import { dateToString, extractWikilinks, formatDateRange } from '../utils/taskUtils.js';
 import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormatting.js';
 import { findRunningTask } from '../utils/runningTask.js';
-import { renderTitle } from '../utils/textFormatting.jsx';
+import { renderTitle, renderTitleWithNoteLinks } from '../utils/textFormatting.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import DesktopHeader from './DesktopHeader.jsx';
@@ -474,8 +474,13 @@ const DesktopLayout = () => {
   return (
       <>
       {/* macOS traffic-light drag region — the NOW bar when a task is running,
-          today's summary-strip pills otherwise (TitlebarSummaryStrip). Both are
-          display-only, so the whole bar stays a drag area. */}
+          today's summary-strip pills otherwise (TitlebarSummaryStrip). The bar
+          stays a drag area; the only carve-outs are the strip's unblocked pill
+          and, in the NOW bar, a [[wikilink]] in the running task's title, which
+          renders as a link that opens the note in Obsidian. The other NOW
+          banners strip wikilinks (renderTitle) because the running task's card
+          sits in the timeline below them, notes button and all; the title bar
+          has no such card, so the link stays. */}
       {isElectronMac && (
         <div
           style={{ height: titlebarH, WebkitAppRegion: 'drag', flexShrink: 0, paddingLeft: '85px', paddingRight: '85px' }}
@@ -488,7 +493,13 @@ const DesktopLayout = () => {
           {titlebarRunningTask ? (
             <>
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
-              <span className="truncate">{t('common.now')}: {titlebarRunningTask.title}</span>
+              <span className="truncate">
+                {t('common.now')}: {renderTitleWithNoteLinks(
+                  titlebarRunningTask.title,
+                  openInObsidian,
+                  { openLabel: (name) => t('task.openWikiNoteInObsidian', { name }) },
+                )}
+              </span>
             </>
           ) : (
             <TitlebarSummaryStrip />

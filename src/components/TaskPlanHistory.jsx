@@ -59,9 +59,14 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
   );
 }
 
-export default function TaskPlanHistory({ task }) {
+// `size` matches the icon scale of whichever card row this sits in: 12 on the
+// timeline card, 10 on the denser SCHED row.
+export default function TaskPlanHistory({ task, size = 12 }) {
   const { t } = useTranslation();
-  const { formatTime } = useDayPlannerCtx();
+  // SCHED cards also render inside the project planner, which is not guaranteed
+  // to sit under the day-planner provider. Falling back to the raw value keeps
+  // the history readable there instead of throwing.
+  const formatTime = useDayPlannerCtx()?.formatTime ?? ((value) => value);
   const [open, setOpen] = useState(false);
   // Fixed coordinates, measured from the button when it opens. An absolutely
   // positioned panel is clipped by the timeline column and by the card itself —
@@ -115,7 +120,7 @@ export default function TaskPlanHistory({ task }) {
         title={t('task.planHistory')}
         aria-expanded={open}
       >
-        <History size={12} />
+        <History size={size} />
       </button>
       {open && pos && (
         <div

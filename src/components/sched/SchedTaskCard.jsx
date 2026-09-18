@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
+import TaskPlanHistory from '../TaskPlanHistory.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
@@ -177,6 +178,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
               <span className={`flex-shrink-0 ${isPastDueTask ? 'text-red-400 font-medium' : ''}`}>{timeLabel}</span>
             )}
             {isRecurring && <Repeat size={10} className="opacity-60 flex-shrink-0" />}
+            {!isEvent && <TaskPlanHistory task={task} size={10} />}
             {!isEvent && (
               <button
                 onClick={openNotesPanel}

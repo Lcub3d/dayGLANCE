@@ -41,6 +41,7 @@ import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
+import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
@@ -2103,26 +2104,15 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-refresh page at midnight (00:00:01) to reset the timeline to the new day
+  // Auto-refresh the page shortly after midnight to reset the timeline to the
+  // new day. The offset (00:00:30, not 00:00:01) is deliberate: it lets the
+  // 15s clock tick fire and the in-app routine rollover (useRoutines) complete
+  // and sync BEFORE the reload, instead of racing it. See utils/midnightRefresh.js.
   useEffect(() => {
     if (isTrayMode) return;
-    const calculateMsUntilMidnight = () => {
-      const now = new Date();
-      const midnight = new Date(now);
-      midnight.setDate(midnight.getDate() + 1);
-      midnight.setHours(0, 0, 1, 0); // 00:00:01
-      return midnight.getTime() - now.getTime();
-    };
-
-    const scheduleRefresh = () => {
-      const msUntilMidnight = calculateMsUntilMidnight();
-      return setTimeout(() => {
-        window.location.reload();
-      }, msUntilMidnight);
-    };
-
-    const midnightTimer = scheduleRefresh();
-
+    const midnightTimer = setTimeout(() => {
+      window.location.reload();
+    }, msUntilMidnightRefresh());
     return () => clearTimeout(midnightTimer);
   }, []);
 

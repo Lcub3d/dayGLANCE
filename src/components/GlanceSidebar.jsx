@@ -3,6 +3,7 @@ import {
   AlarmClock, AlertCircle, AlertTriangle, BookOpen, BrainCircuit, Calendar, CalendarClock, CalendarDays, Check, CheckCircle, CheckSquare, ChevronDown, ChevronUp, Clock, Filter, Flag, Hash, Inbox, LayoutGrid, Loader, Mic, Minus, Moon, Plus, RefreshCw, Repeat, Search, Settings, SkipForward, Sparkles, Sun, Target, Telescope, Trash2, X, Zap, FileText,
 } from 'lucide-react';
 import { renderTitle } from '../utils/textFormatting.jsx';
+import TaskStarButton from './TaskStarButton.jsx';
 import { nativeGetNextAlarm } from '../native.js';
 import { nextAlarmWithinTomorrow, alarmHHMM } from '../utils/nextAlarm.js';
 import GoalRing from './GoalRing.jsx';
@@ -1046,6 +1047,9 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               {task.importSource === 'obsidian' && <BookOpen size={13} className="flex-shrink-0 opacity-60" title={t('app.fromObsidian')} />}
               {task.obsidianRecurrence && <Repeat size={13} className="flex-shrink-0 opacity-60" title={t('app.obsidianRecurrenceHint')} />}
               {task.obsidianNotePath && <FileText size={13} className="flex-shrink-0 opacity-60" title={t('task.obsidianNoteSource', { note: task.obsidianNotePath.replace(/\.md$/, ''), defaultValue: 'In {{note}} (Obsidian)' })} />}
+              {/* Read-only here: GLANCE reports on the day, it is not where you
+                  edit it. Set and unset a star on the task card itself. */}
+              <TaskStarButton task={task} size={13} readOnly />
               <span className="truncate">{renderTitle(task.title)}</span>
             </div>
             <div className={`text-sm ${textSecondary} flex items-center gap-1`}>

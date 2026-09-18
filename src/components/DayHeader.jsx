@@ -24,6 +24,11 @@ export function DayHeaderActions({ dateStr, size = 14, className = '' }) {
   const btn = 'p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors';
   return (
     <span data-day-header-actions={dateStr} className={`inline-flex items-center gap-1 ${className}`}>
+      {/* First, because it is the most important thing a day header can say
+          (#1684). Absent on any day with no starred tasks, which does mean the
+          note and focus buttons sit a little further right on the days that
+          have one. */}
+      <DayKeyTasks dateStr={dateStr} size={size} />
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setDailyNotesModalDate?.(dateStr); }}
@@ -44,9 +49,6 @@ export function DayHeaderActions({ dateStr, size = 14, className = '' }) {
       >
         <Target size={size} />
       </button>
-      {/* Absent on any day with no starred tasks, so the cell keeps its width
-          (#1684). Last, so the two always-present buttons never shift. */}
-      <DayKeyTasks dateStr={dateStr} size={size} />
     </span>
   );
 }

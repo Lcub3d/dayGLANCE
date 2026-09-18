@@ -59,3 +59,51 @@ describe('TaskStarButton', () => {
     expect(await render(task({ starredDate: DAY }))).toContain('Remove key-task star');
   });
 });
+
+describe('read-only mode, for surfaces that report rather than edit', () => {
+  const renderRO = async (task) => renderToStaticMarkup(
+    <I18nextProvider i18n={await i18n()}>
+      <DayPlannerContext.Provider value={{ setTasks: vi.fn() }}>
+        <TaskStarButton task={task} readOnly />
+      </DayPlannerContext.Provider>
+    </I18nextProvider>,
+  );
+
+  it('shows a filled star for a starred task', async () => {
+    const html = await renderRO(task({ starredDate: DAY }));
+    expect(html).toContain('lucide-star');
+    expect(html).toContain('fill="currentColor"');
+  });
+
+  it('shows nothing at all for an unstarred task', async () => {
+    // A faint outline you cannot act on would be noise on every row.
+    expect(await renderRO(task())).toBe('');
+  });
+
+  it('offers no toggle', async () => {
+    expect(await renderRO(task({ starredDate: DAY }))).not.toContain('<button');
+  });
+
+  it('still renders without anything to toggle with', async () => {
+    const html = renderToStaticMarkup(<TaskStarButton task={task({ starredDate: DAY })} readOnly />);
+    expect(html).toContain('lucide-star');
+  });
+});
+
+describe('recurring occurrences', () => {
+  // Generated for display, with no stored row behind them: setTasks maps the real
+  // tasks by id and would match none of them, so a toggle would look like it
+  // worked and change nothing.
+  const occurrence = { id: 'recurring-abc-2026-09-18', title: 'Standup', date: DAY, startTime: '09:00' };
+
+  it('gets no toggle', async () => {
+    expect(await render(occurrence)).toBe('');
+  });
+
+  it('gets no read-only star either, even if one is somehow set', async () => {
+    const html = renderToStaticMarkup(
+      <TaskStarButton task={{ ...occurrence, starredDate: DAY }} readOnly />,
+    );
+    expect(html).toBe('');
+  });
+});

@@ -9,6 +9,7 @@ import {
   Phone,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import TaskStarButton from './TaskStarButton.jsx';
 import { renderTitle, isLinkOnlyTask, getLinkUrl, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, stripWikilinksAndTags } from '../utils/taskUtils.js';
 import { taskColorToHex } from '../utils/colorUtils.js';
@@ -221,6 +222,7 @@ const TaskCard = React.memo(({
         <div className={`text-[10px] leading-none ${textSecondary} flex items-center gap-1`}>
           {timeStr}
           {isRecurring && <RefreshCw size={9} className="flex-shrink-0 opacity-60" />}
+          {!isCalendarEvent && <TaskStarButton task={item} size={10} />}
         </div>
         {/* Calendar name / location (calendar events only) */}
         {isCalendarEvent && (item.calendarName || item.location) && (

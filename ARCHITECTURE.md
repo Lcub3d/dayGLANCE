@@ -156,6 +156,7 @@ Tombstone maps (deleted IDs with timestamps) exist for tasks, routine chips, hab
   imported: boolean?,         // true for calendar events
   importSource: "obsidian" | "calendar"?,
   lastModified: string,       // ISO 8601: used for sync conflict resolution
+  starredDate: "YYYY-MM-DD"?, // the day this was marked a key task; null = unstarred
   originalPlan: {             // the schedule this task was FIRST given; write-once
     date, startTime, duration?
   }?,                         // absent = not known (never backfilled). See below.
@@ -174,10 +175,18 @@ backfilled, because a rescheduled task's current schedule is precisely not its
 original plan and inventing one would be indistinguishable from the real thing.
 Being a field on the task, it rides existing backup, restore and sync for free.
 
-That last part costs something: a field only some devices carry is dropped
-whenever whole-entity last-writer-wins picks a copy without it. `originalPlan` is
-therefore carried forward at all four places a sticky task field must be, the same
-set `archived` needs — `utils/stampTimestamps.js` (so gaining it cannot fake an
+`starredDate` marks a task as one of the few to move forward that day
+(`src/utils/starredTasks.js`). It records the day the star was *for*, so a task
+reads as starred only while that is still the day it sits on; reschedule it and
+the star falls away, and no cleanup is ever needed. Unstarring writes an explicit
+`null` rather than dropping the key, so a merge can tell a real unstar from a
+device that predates the field. It is deliberately independent of `priority`:
+priority is a property of the task, a star is a property of today.
+
+Sticky fields cost something: a field only some devices carry is dropped
+whenever whole-entity last-writer-wins picks a copy without it. `archived`,
+`originalPlan` and `starredDate` are therefore each carried forward at all four
+places a sticky task field must be — `utils/stampTimestamps.js` (so gaining it cannot fake an
 edit), `sync/dbAdapter.js` and `mergeSync.js` (the two transports' LWW), and
 `utils/preserveStickyFields.js` (the apply). Its rule is simpler than `archived`'s:
 being write-once and impossible to clear, an absent value can only mean the other

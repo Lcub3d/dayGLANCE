@@ -495,6 +495,17 @@ export const mergeSyncData = (local, remote, retentionDays) => {
           if (r?.originalPlan === undefined) result.remoteChanged = true;
         }
       }
+      // `starredDate` likewise. An unstar writes an explicit null, so only an
+      // absent value means the side never carried the field; a null from either
+      // side is a real unstar and is left to win on its own timestamp.
+      if (item.starredDate === undefined) {
+        const starred = l?.starredDate !== undefined ? l.starredDate : r?.starredDate;
+        if (starred !== undefined) {
+          item.starredDate = starred;
+          if (l?.starredDate === undefined) result.localChanged = true;
+          if (r?.starredDate === undefined) result.remoteChanged = true;
+        }
+      }
     }
   }
 

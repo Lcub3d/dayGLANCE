@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import TaskStarButton from './TaskStarButton.jsx';
 import {
   AlarmClock, AlertCircle, AlertTriangle, BookOpen, BrainCircuit,
   Calendar, CalendarClock, CalendarDays, Check, CheckCircle, CheckSquare, ChevronDown,
@@ -959,6 +960,9 @@ const MobileGlanceSection = () => {
               {task.importSource === 'obsidian' && <BookOpen size={13} className="flex-shrink-0 opacity-60" title={t('app.fromObsidian')} />}
               {task.obsidianRecurrence && <Repeat size={13} className="flex-shrink-0 opacity-60" title={t('app.obsidianRecurrenceHint')} />}
               {task.obsidianNotePath && <FileText size={13} className="flex-shrink-0 opacity-60" title={t('task.obsidianNoteSource', { note: task.obsidianNotePath.replace(/\.md$/, ''), defaultValue: 'In {{note}} (Obsidian)' })} />}
+              {/* Read-only, matching the desktop sidebar: GLANCE reports on the
+                  day, it is not where you edit it. */}
+              <TaskStarButton task={task} size={13} readOnly accent />
               <span className="truncate">{renderTitle(task.title)}</span>
             </div>
             <div className={`text-sm ${textSecondary} flex items-center gap-1`}>

@@ -15,7 +15,7 @@ import { trmnlContentFingerprint, trmnlPushDecision, trmnlBackoffAfterRateLimit,
 import { checkForUpdate } from './versionCheck.js';
 import { getStorageUsage, formatBytes } from './utils/storage.js';
 import { tombstoneCutoff, pruneCompletedTaskUids } from './sync/tombstoneRetention.js';
-import { preserveArchived } from './utils/preserveArchived.js';
+import { preserveStickyFields } from './utils/preserveStickyFields.js';
 import { rescueUnsyncedTasks } from './utils/rescueUnsyncedTasks.js';
 import { withProjectMetadata } from '@glance-apps/obsidian-format';
 import { projectRefFor } from './utils/obsidianProjectNotes.js';
@@ -5842,7 +5842,7 @@ const DayPlanner = () => {
     // sends archived:false explicitly and still propagates; only an ABSENT flag
     // falls back to local. Read the LIVE refs (not the closure, which can predate
     // the heal render) for the localStorage writes; the setState calls below use
-    // their own `prev` (the authoritative current state). See utils/preserveArchived.js.
+    // their own `prev` (the authoritative current state). See utils/preserveStickyFields.js.
     const existingArchivedList = [...tasksLiveRef.current, ...unscheduledLiveRef.current];
 
     // Drop CalDAV-imported calendar events from the cloud sync payload — they are ephemeral
@@ -5856,8 +5856,8 @@ const DayPlanner = () => {
       !(t.imported && !t.isTaskCalendar && t.importSource !== 'file')
       && !(multiUserEnabled && t.imported && t.importSource === 'sync'));
 
-    let normalizedTasks = data.tasks ? preserveArchived(filterTasks(normalizeTasks(data.tasks)), existingArchivedList) : null;
-    let normalizedUnsched = data.unscheduledTasks ? preserveArchived(filterTasks(normalizeTasks(data.unscheduledTasks)), existingArchivedList) : null;
+    let normalizedTasks = data.tasks ? preserveStickyFields(filterTasks(normalizeTasks(data.tasks)), existingArchivedList) : null;
+    let normalizedUnsched = data.unscheduledTasks ? preserveStickyFields(filterTasks(normalizeTasks(data.unscheduledTasks)), existingArchivedList) : null;
 
     // Id-retirement supersede pass (utils/retiredTaskIds.js): a merged/pulled
     // row whose id the record maps to a LIVE successor is dropped — with its
@@ -6154,10 +6154,10 @@ const DayPlanner = () => {
     // reconcile already resolved, and rescuing it undid that move every cycle
     // (utils/rescueUnsyncedTasks.js, the cross-list guard).
     if (normalizedTasks) setTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveArchived(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
       retiredRecord, retiredLiveIds));
     if (normalizedUnsched) setUnscheduledTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveArchived(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
       retiredRecord, retiredLiveIds));
     if (data.unscheduledOrderTimestamp) {
       setUnscheduledOrderTimestamp(data.unscheduledOrderTimestamp);

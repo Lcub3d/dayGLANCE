@@ -156,8 +156,29 @@ Tombstone maps (deleted IDs with timestamps) exist for tasks, routine chips, hab
   imported: boolean?,         // true for calendar events
   importSource: "obsidian" | "calendar"?,
   lastModified: string,       // ISO 8601: used for sync conflict resolution
+  originalPlan: {             // the schedule this task was FIRST given; write-once
+    date, startTime, duration?
+  }?,                         // absent = not known (never backfilled). See below.
 }
 ```
+
+`originalPlan` records the schedule a task was first given, so an intention
+survives being rescheduled over. `src/utils/originalPlan.js` writes it during the
+persist pass, the one place that sees both the new state and the stored copy it
+replaces, which is what distinguishes a task being *scheduled* from one being
+*rescheduled*. It is never written twice and tasks that predate it are never
+backfilled, because a rescheduled task's current schedule is precisely not its
+original plan and inventing one would be indistinguishable from the real thing.
+Being a field on the task, it rides existing backup, restore and sync for free.
+
+That last part costs something: a field only some devices carry is dropped
+whenever whole-entity last-writer-wins picks a copy without it. `originalPlan` is
+therefore carried forward at all four places a sticky task field must be, the same
+set `archived` needs — `utils/stampTimestamps.js` (so gaining it cannot fake an
+edit), `sync/dbAdapter.js` and `mergeSync.js` (the two transports' LWW), and
+`utils/preserveStickyFields.js` (the apply). Its rule is simpler than `archived`'s:
+being write-once and impossible to clear, an absent value can only mean the other
+device never had it, so it is carried unconditionally.
 
 ### Recurring task template
 

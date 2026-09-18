@@ -179,3 +179,46 @@ describe('stampTimestamps — priority presence is not an edit', () => {
     }
   });
 });
+
+describe('stampTimestamps — gaining an originalPlan is not an edit', () => {
+  // originalPlan (see utils/originalPlan.js) is written by the persist pass, not
+  // by the user. If its appearance counted as a change it would re-stamp
+  // lastModified, and a fabricated stamp outranks a real completion made
+  // elsewhere — the resurrection bug this whole module exists to prevent.
+  const plan = { date: '2026-09-17', startTime: '09:00', duration: 60 };
+
+  it('does NOT re-stamp when the stored copy predates the field', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-17', startTime: '09:00', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, originalPlan: plan }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('does NOT re-stamp the reverse flip either', () => {
+    const stored = { id: 1, title: 'Report', originalPlan: plan, lastModified: ISO(60) };
+    const { originalPlan: _drop, ...withoutPlan } = stored;
+    const out = stampTimestamps([withoutPlan], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('still persists the field, it just does not claim the task was edited', () => {
+    const stored = { id: 1, title: 'Report', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, originalPlan: plan }], [stored], 'NOW');
+    expect(out[0].originalPlan).toEqual(plan);
+  });
+
+  it('a real edit alongside a new originalPlan still stamps', () => {
+    const stored = { id: 1, title: 'Report', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, title: 'Report v2', originalPlan: plan }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('a completion elsewhere survives a device that is only adding the field', () => {
+    // The end-to-end shape of the resurrection bug, aimed at this field.
+    const shared = { id: 1, title: 'Report', date: '2026-09-17', startTime: '09:00', completed: false, lastModified: ISO(120) };
+    const completedElsewhere = { ...shared, completed: true, lastModified: ISO(5) };
+    const staleDevice = stampTimestamps([{ ...shared, originalPlan: plan }], [shared], ISO(0));
+    const { merged } = mergeTaskArrays(staleDevice, [completedElsewhere], {});
+    expect(merged).toHaveLength(1);
+    expect(merged[0].completed).toBe(true);
+  });
+});

@@ -81,3 +81,88 @@ describe('vault applyRemoteEntity preserves archived across LWW', () => {
     expect(rePush).toEqual([]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The same hazard, aimed at `originalPlan` (utils/originalPlan.js): the schedule
+// a task was first given. It is written only by the device that observed the
+// scheduling, so every fleet with a device on an older build — or simply one that
+// has not reloaded since — has copies without it, and whole-entity LWW drops the
+// baseline the moment one of those wins.
+//
+// Unlike archived there is no explicit-value case to honor: the field is
+// write-once and nothing in the app can clear it, so absent on the winner can
+// only ever mean "that device never had it".
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PLAN = { date: '2026-09-17', startTime: '09:00', duration: 60 };
+const task = (extra) => ({
+  id: 'p1', title: 'Report', date: '2026-09-17', startTime: '09:00',
+  lastModified: '2026-09-17T09:00:00.000Z', ...extra,
+});
+
+describe('file-tier mergeSyncData preserves originalPlan across LWW', () => {
+  it('local baseline vs a NEWER remote without one → baseline kept', () => {
+    const local = { tasks: [task({ originalPlan: PLAN })] };
+    const remote = { tasks: [task({ title: 'Report v2', startTime: '16:00', lastModified: '2026-09-17T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].originalPlan).toEqual(PLAN);
+    expect(data.tasks[0].startTime).toBe('16:00'); // the reschedule still wins
+    expect(data.tasks[0].title).toBe('Report v2');
+  });
+
+  it('remote baseline vs a NEWER local without one → baseline kept', () => {
+    const local = { tasks: [task({ lastModified: '2026-09-17T12:00:00.000Z' })] };
+    const remote = { tasks: [task({ originalPlan: PLAN })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].originalPlan).toEqual(PLAN);
+  });
+
+  it('a task with no baseline on either side stays without one', () => {
+    const local = { tasks: [task()] };
+    const remote = { tasks: [task({ lastModified: '2026-09-17T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].originalPlan).toBeUndefined();
+  });
+
+  it('survives into the recycle bin, so a restored task keeps its baseline', () => {
+    const local = { recycleBin: [task({ originalPlan: PLAN })] };
+    const remote = { recycleBin: [task({ lastModified: '2026-09-17T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.recycleBin[0].originalPlan).toEqual(PLAN);
+  });
+});
+
+describe('vault applyRemoteEntity preserves originalPlan across LWW', () => {
+  it('pulling a task WITHOUT a baseline over a local one keeps it + re-pushes', () => {
+    const data = { tasks: [task({ originalPlan: PLAN })] };
+    const pulled = { _kind: 'tasks', value: task({ title: 'Report v2', lastModified: '2026-09-17T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].originalPlan).toEqual(PLAN);
+    expect(data.tasks[0].title).toBe('Report v2'); // the real edit still applies
+    expect(rePush).toHaveLength(1);                // vault converges to the superset
+  });
+
+  it('pulling over a local without a baseline leaves it absent, no re-push', () => {
+    const data = { tasks: [task()] };
+    const pulled = { _kind: 'tasks', value: task({ lastModified: '2026-09-17T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].originalPlan).toBeUndefined();
+    expect(rePush).toEqual([]);
+  });
+
+  it('a pulled baseline is taken when the local copy has none', () => {
+    const data = { tasks: [task()] };
+    const pulled = { _kind: 'tasks', value: task({ originalPlan: PLAN, lastModified: '2026-09-17T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].originalPlan).toEqual(PLAN);
+    expect(rePush).toEqual([]);
+  });
+
+  it('carries archived and originalPlan independently in one pull', () => {
+    const data = { tasks: [task({ archived: true, originalPlan: PLAN })] };
+    const pulled = { _kind: 'tasks', value: task({ lastModified: '2026-09-17T12:00:00.000Z' }) };
+    applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].archived).toBe(true);
+    expect(data.tasks[0].originalPlan).toEqual(PLAN);
+  });
+});

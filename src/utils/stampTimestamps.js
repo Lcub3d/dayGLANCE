@@ -31,11 +31,20 @@
 // are the SAME state ("none"); read as a change, that presence flip
 // re-stamped a scheduled task on every phone that scanned a stale vault copy,
 // and the fabricated stamp outranked a real completion made elsewhere.
+//
+// `originalPlan` is stripped outright rather than defaulted, because unlike the
+// fields above it is not a user-visible value at all: utils/originalPlan.js
+// writes it during the persist pass, once, when a task is first observed being
+// scheduled, and never rewrites it. So its appearance or absence can never be
+// something the user did, and it must not out-rank something they did do on
+// another device. Without this, the first save after the feature ships would
+// re-stamp every newly scheduled task and those fabricated timestamps would beat
+// real completions made elsewhere — the exact resurrection described above.
 function normalizeField(task) {
   // obsidianClearedTime is bookkeeping for the inbox merge (utils/inboxMove.js):
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
-  const { lastModified: _omit, obsidianClearedTime: _marker, ...rest } = task;
+  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, ...rest } = task;
   return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0 };
 }
 

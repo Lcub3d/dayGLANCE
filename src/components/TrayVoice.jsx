@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Mic, MicOff, X, Loader, RotateCcw } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import { stripWikilinks } from '../utils/taskUtils.js';
 
 export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
   const { t } = useTranslation();
@@ -66,7 +67,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
         <div className="flex-1 overflow-y-auto space-y-1.5 mb-3">
           {(voiceParsedTasks || []).map((task, i) => (
             <div key={i} className={`${cardBg} rounded-lg px-3 py-2`}>
-              <div className={`text-sm font-medium ${textPrimary} truncate`}>{task.title}</div>
+              <div className={`text-sm font-medium ${textPrimary} truncate`}>{stripWikilinks(task.title)}</div>
               {(task.date || task.startTime) && (
                 <div className={`text-xs ${textSecondary} mt-0.5`}>
                   {task.date && <span>{task.date}</span>}

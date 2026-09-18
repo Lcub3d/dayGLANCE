@@ -4,7 +4,7 @@ import {
   morningSummarySystemPrompt, morningSummaryUserPrompt,
   eveningReflectionSystemPrompt, eveningReflectionUserPrompt,
 } from '../ai-prompts.js';
-import { dateToString, localDateStr } from '../utils/taskUtils.js';
+import { dateToString, localDateStr, stripWikilinks } from '../utils/taskUtils.js';
 import { getOccurrencesInRange } from '../utils/recurrenceEngine.js';
 import { notBucketed } from '../utils/bucketList.js';
 
@@ -48,12 +48,12 @@ export default function useDailyBriefings({
       const scheduledToday = tasks.filter(t => t.date === todayStr && !t.imported && !t.isExample && isVisibleForUser(t));
       // Gather imported calendar events for today
       const calendarEventsToday = tasks.filter(t => t.date === todayStr && t.imported && !t.isTaskCalendar)
-        .map(t => ({ title: t.title, time: t.startTime, isAllDay: t.isAllDay || false, duration: t.duration || 0 }))
+        .map(t => ({ title: stripWikilinks(t.title), time: t.startTime, isAllDay: t.isAllDay || false, duration: t.duration || 0 }))
         .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
       // Gather today's recurring tasks (series-level assignment → filter templates)
       const todayRecurring = recurringTasks.filter(isVisibleForUser).flatMap(t => {
         const occs = getOccurrencesInRange(t, todayStr, todayStr);
-        return occs.map(() => ({ title: t.title, time: t.startTime, completed: (t.completedDates || []).includes(todayStr) }));
+        return occs.map(() => ({ title: stripWikilinks(t.title), time: t.startTime, completed: (t.completedDates || []).includes(todayStr) }));
       }).filter(t => !t.completed);
       // Inbox count — split into free inbox tasks vs project-assigned tasks
       const activeUnscheduled = unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample && isVisibleForUser(t));
@@ -76,14 +76,14 @@ export default function useDailyBriefings({
       const data = {
         todayDate: todayStr,
         dayOfWeek,
-        scheduledTasks: scheduledToday.map(t => ({ title: t.title, time: t.startTime, priority: t.priority || 0 })),
+        scheduledTasks: scheduledToday.map(t => ({ title: stripWikilinks(t.title), time: t.startTime, priority: t.priority || 0 })),
         recurringTasks: todayRecurring.map(t => ({ title: t.title, time: t.time })),
         calendarEvents: calendarEventsToday,
         inboxCount,
         projectTaskCount,
-        overdueTasks: overdueTasks.map(t => ({ title: t.title })),
-        deadlinesToday: deadlinesToday.map(t => ({ title: t.title })),
-        upcomingDeadlines: upcomingDeadlines.map(t => ({ title: t.title, deadline: t.deadline })),
+        overdueTasks: overdueTasks.map(t => ({ title: stripWikilinks(t.title) })),
+        deadlinesToday: deadlinesToday.map(t => ({ title: stripWikilinks(t.title) })),
+        upcomingDeadlines: upcomingDeadlines.map(t => ({ title: stripWikilinks(t.title), deadline: t.deadline })),
         totalMinutes,
       };
 
@@ -152,7 +152,7 @@ export default function useDailyBriefings({
       const incompleteToday = tasks.filter(t => t.date === todayStr && !t.completed && !t.imported && !t.isExample && isVisibleForUser(t));
       const tomorrowTasks = tasks.filter(t => t.date === tomorrowStr && !t.imported && !t.isExample && isVisibleForUser(t));
       const tomorrowCalendarEvents = tasks.filter(t => t.date === tomorrowStr && t.imported && !t.isTaskCalendar)
-        .map(t => ({ title: t.title, time: t.startTime, isAllDay: t.isAllDay || false }))
+        .map(t => ({ title: stripWikilinks(t.title), time: t.startTime, isAllDay: t.isAllDay || false }))
         .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
       // For suggestions, only surface free inbox tasks — project tasks have their own home
       const inboxItems = unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample && (!goalsProjectsEnabled || !t.projectId) && isVisibleForUser(t))
@@ -164,12 +164,12 @@ export default function useDailyBriefings({
       const data = {
         todayDate: todayStr,
         dayOfWeek,
-        completedTasks: completedToday.map(t => ({ title: t.title, priority: t.priority || 0 })),
-        incompleteTasks: incompleteToday.map(t => ({ title: t.title, priority: t.priority || 0 })),
+        completedTasks: completedToday.map(t => ({ title: stripWikilinks(t.title), priority: t.priority || 0 })),
+        incompleteTasks: incompleteToday.map(t => ({ title: stripWikilinks(t.title), priority: t.priority || 0 })),
         completionRate,
-        tomorrowTasks: tomorrowTasks.map(t => ({ title: t.title, time: t.startTime })),
+        tomorrowTasks: tomorrowTasks.map(t => ({ title: stripWikilinks(t.title), time: t.startTime })),
         tomorrowCalendarEvents,
-        inboxSuggestions: inboxItems.slice(0, 3).map(t => ({ title: t.title, priority: t.priority || 0 })),
+        inboxSuggestions: inboxItems.slice(0, 3).map(t => ({ title: stripWikilinks(t.title), priority: t.priority || 0 })),
       };
 
       const text = await aiComplete(eveningReflectionSystemPrompt(), eveningReflectionUserPrompt(data), aiConfig);

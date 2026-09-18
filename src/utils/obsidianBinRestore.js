@@ -42,6 +42,7 @@
 // back to the bin.
 
 import { stripObsidianDisplayTag } from './obsidianTitleConflict.js';
+import { stripWikilinks } from './taskUtils.js';
 
 // App-owned fields carried from the bin copy onto the restored task —
 // the same set the scan pipeline carries from a live existing task
@@ -80,7 +81,7 @@ export function binRestoreNoticeText(restored) {
   if (restored.length === 1) {
     const r = restored[0];
     const where = r.dateStr ? `your ${r.dateStr} daily note` : 'your Obsidian vault';
-    return `Restored "${stripObsidianDisplayTag(r.title)}" from the recycle bin. Its line still exists in ${where}.`;
+    return `Restored "${stripWikilinks(stripObsidianDisplayTag(r.title))}" from the recycle bin. Its line still exists in ${where}.`;
   }
   return `${restored.length} tasks were restored from the recycle bin. Their lines still exist in your vault. See each task's notes.`;
 }

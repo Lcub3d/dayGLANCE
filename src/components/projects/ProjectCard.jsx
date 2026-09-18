@@ -392,7 +392,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                     : <Square size={11} className={`${textSecondary} opacity-50 flex-shrink-0`} />
                   }
                   <span className={`text-xs ${t.completed ? `line-through ${textSecondary} opacity-50` : textPrimary} truncate`}>
-                    {t.title}
+                    {renderTitle(t.title)}
                   </span>
                 </div>
               ))}

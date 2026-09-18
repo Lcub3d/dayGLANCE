@@ -8,7 +8,7 @@ import {
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import DeadlinePickerPopover from './DeadlinePickerPopover.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import { dateToString, extractWikilinks, formatDeadlineDate } from '../utils/taskUtils.js';
+import { dateToString, extractWikilinks, formatDeadlineDate, stripWikilinks } from '../utils/taskUtils.js';
 import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -172,7 +172,7 @@ const GroupChips = ({ tasks, deadlineTasks = [], date, dateStr, darkMode, border
                     {task.completed && <Check size={10} strokeWidth={3} />}
                   </button>
                   <AlertCircle size={14} className="flex-shrink-0" />
-                  <div className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`} title={task.title}>
+                  <div className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`} title={stripWikilinks(task.title)}>
                     {renderTitle(task.title)}
                   </div>
                 </div>

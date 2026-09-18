@@ -172,7 +172,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
             <div className="flex items-center justify-between gap-2">
               <div
                 className="font-semibold text-sm leading-tight truncate flex-1 min-w-0"
-                title={task.title}
+                title={stripWikilinks(task.title)}
               >
                 {stripWikilinks(task.title)}
               </div>
@@ -276,7 +276,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                             startEditingTask(task, false);
                           }
                         } : undefined}
-                        title={task.title}
+                        title={stripWikilinks(task.title)}
                       >
                         {renderTitleWithoutTags(task.title)}
                       </div>

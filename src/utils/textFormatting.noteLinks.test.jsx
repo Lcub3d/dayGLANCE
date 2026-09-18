@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { renderTitleWithNoteLinks, splitTitleNoteLinks } from './textFormatting.jsx';
+import { renderTitleWithNoteLinks } from './textFormatting.jsx';
+import { splitTitleNoteLinks } from './taskUtils.js';
 
 // The NOW banner in the macOS title bar used to print the running task's title
 // raw, [[wikilink]] and all. It now keeps the link as a link: the note opens

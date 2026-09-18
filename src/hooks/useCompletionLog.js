@@ -9,7 +9,7 @@ import { isStreamPosture } from '../utils/obsidianVaultPosture.js';
 import {
   readDailyNoteFresh, writeDailyNoteFile, readDailyNoteNative, writeDailyNoteNative,
 } from '../obsidian.js';
-import { completionTimestamp } from '../utils/taskUtils.js';
+import { completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { isTrayMode } from '../utils/trayMode.js';
 
 // COMPLETION LOG detector (companion spec 4.1). Watches task state for
@@ -244,7 +244,7 @@ export default function useCompletionLog({
             // The intent IS the write. Nothing re-emits a log entry, so a
             // dropped emit must surface (the task_append precedent).
             if (!queued) {
-              setObsidianSyncError?.(`Completion of "${candidate.title}" was not logged to your vault: the bridge queue is unavailable.`);
+              setObsidianSyncError?.(`Completion of "${stripWikilinks(candidate.title)}" was not logged to your vault: the bridge queue is unavailable.`);
               setObsidianSyncStatus?.('error');
             }
             continue;

@@ -15,7 +15,7 @@ import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
 import { isNativeAndroid, nativeUpdateEvent } from '../native.js';
 import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
-import { dateToString, extractWikilinks, formatDeadlineDate, formatShortDate } from '../utils/taskUtils.js';
+import { dateToString, extractWikilinks, formatDeadlineDate, formatShortDate, stripWikilinks } from '../utils/taskUtils.js';
 import { findRunningTask } from '../utils/runningTask.js';
 import { HABIT_COLORS, HABIT_ICONS } from '../constants/habits.js';
 import { MiniHabitRing } from './HabitRing.jsx';
@@ -478,7 +478,7 @@ const CalendarHeader = () => {
                     {task.completed && <Check size={10} strokeWidth={3} />}
                   </button>
                   <AlertCircle size={14} className="flex-shrink-0" />
-                  <div className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`} title={task.title}>{renderTitle(task.title)}</div>
+                  <div className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`} title={stripWikilinks(task.title)}>{renderTitle(task.title)}</div>
                 </div>
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                   <button
@@ -719,7 +719,7 @@ const CalendarHeader = () => {
                     <AlertCircle size={14} className="flex-shrink-0" />
                     <div
                       className={`font-semibold text-sm truncate ${task.completed ? 'line-through' : ''}`}
-                      title={task.title}
+                      title={stripWikilinks(task.title)}
                     >
                       {renderTitle(task.title)}
                     </div>

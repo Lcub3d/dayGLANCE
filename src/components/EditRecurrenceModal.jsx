@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { getRecurrencePresets } from '../utils/recurrenceEngine.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import { renderTitle } from '../utils/textFormatting.jsx';
 
 const EditRecurrenceModal = () => {
   const { t, i18n } = useTranslation();
@@ -43,7 +44,7 @@ const EditRecurrenceModal = () => {
                 <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('modal.editRecurrenceTitle')}</h3>
               </div>
               <p className={`${textSecondary} mb-3 text-sm`}>
-                {template.title}
+                {renderTitle(template.title)}
               </p>
               <div className="flex flex-col gap-1">
                 <button

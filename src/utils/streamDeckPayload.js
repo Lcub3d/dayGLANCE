@@ -9,7 +9,7 @@
 // was verified byte-identical against the pre-extraction payload.
 
 import { taskColorToHex, TAILWIND_TO_HEX } from './colorUtils.js';
-import { dateToString } from './taskUtils.js';
+import { dateToString, stripWikilinks } from './taskUtils.js';
 import { calculateGoalProgress } from './goalProgress.js';
 import { calculateProjectProgress } from './projectProgress.js';
 import { PROTOCOL_VERSION, MSG_DAY_STATE } from '../../electron/protocol';
@@ -72,7 +72,7 @@ export function buildStreamDeckState({
 
   const mapTask = (t) => t ? {
     id: t.id,
-    title: t.title,
+    title: stripWikilinks(t.title),
     startTime: t.startTime ?? null,
     duration: t.duration || 0,
     colorHex: t.colorHex || taskColorToHex(t.color, t.nativeCalendarColor),
@@ -223,7 +223,7 @@ export function buildStreamDeckState({
       cycleCount: focusCycleCount || 0,
       nextFocusTask: (() => {
         const t = (focusBlockTasks || []).find(t => !t.completed && !focusCompletedTasks?.has(t.id));
-        return t ? { id: t.id, title: t.title } : null;
+        return t ? { id: t.id, title: stripWikilinks(t.title) } : null;
       })(),
     },
     habits,
@@ -262,7 +262,7 @@ export function buildStreamDeckState({
           if (!hyperGlanceProjectId) return null;
           const allT = [...(tasks || []), ...(unscheduledTasks || [])];
           const t = allT.find(t => t.projectId === hyperGlanceProjectId && !t.archived && !t.completed);
-          return t ? { id: t.id, title: t.title } : null;
+          return t ? { id: t.id, title: stripWikilinks(t.title) } : null;
         })(),
       } : null,
     },

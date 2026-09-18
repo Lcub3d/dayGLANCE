@@ -44,6 +44,8 @@
 // (never part of the daily-note line format) and is not in the writeback's
 // change-detection snapshot, so preserving the rename cannot trigger a write.
 
+import { stripWikilinks } from './taskUtils.js';
+
 /** The ' #obsidian' display tag the app appends; mirror of the writeback's strip. */
 export function stripObsidianDisplayTag(title) {
   return String(title ?? '').replace(/\s*#obsidian\b/gi, '').trim();
@@ -81,5 +83,5 @@ export function appendTitleConflictNote(notes, dgTitle, dateIso) {
 
 /** The fire-and-forget toast text (neutral, never red, never latched). */
 export function titleConflictNoticeText(vaultTitle) {
-  return `Title conflict: Obsidian's edit "${vaultTitle}" won. Your dayGLANCE rename is saved in the task's notes.`;
+  return `Title conflict: Obsidian's edit "${stripWikilinks(vaultTitle)}" won. Your dayGLANCE rename is saved in the task's notes.`;
 }

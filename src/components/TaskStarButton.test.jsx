@@ -107,3 +107,56 @@ describe('recurring occurrences', () => {
     expect(html).toBe('');
   });
 });
+
+describe('the accent tone', () => {
+  // A set star earns colour on neutral surfaces (SCHED, LIST, GLANCE) where it
+  // sits among grey system badges and means something different from them. On a
+  // coloured timeline card it stays currentColor like every other icon there.
+  //
+  // Both the toggle and the read-only paths render their own <Star>, and an
+  // edit that reached only one of them shipped white stars in LIST while GLANCE
+  // was amber. Hence a case for each.
+  const amber = /text-amber-500/;
+
+  it('colours a set star in the toggle path', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <DayPlannerContext.Provider value={{ setTasks: vi.fn() }}>
+          <TaskStarButton task={task({ starredDate: DAY })} accent />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(html).toMatch(amber);
+  });
+
+  it('colours a set star in the read-only path', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <TaskStarButton task={task({ starredDate: DAY })} readOnly accent />
+      </I18nextProvider>,
+    );
+    expect(html).toMatch(amber);
+  });
+
+  it('leaves an UNSET star neutral, because it is an affordance not a mark', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <DayPlannerContext.Provider value={{ setTasks: vi.fn() }}>
+          <TaskStarButton task={task()} accent />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(html).not.toMatch(amber);
+  });
+
+  it('leaves a set star neutral without accent, for the coloured cards', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <DayPlannerContext.Provider value={{ setTasks: vi.fn() }}>
+          <TaskStarButton task={task({ starredDate: DAY })} />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(html).not.toMatch(amber);
+  });
+});

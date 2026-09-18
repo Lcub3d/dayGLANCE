@@ -180,7 +180,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
             )}
             {isRecurring && <Repeat size={10} className="opacity-60 flex-shrink-0" />}
             {!isEvent && <TaskPlanHistory task={task} size={10} />}
-            {!isEvent && <TaskStarButton task={task} size={10} />}
+            {!isEvent && <TaskStarButton task={task} size={10} accent />}
             {!isEvent && (
               <button
                 onClick={openNotesPanel}

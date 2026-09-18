@@ -1049,7 +1049,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               {task.obsidianNotePath && <FileText size={13} className="flex-shrink-0 opacity-60" title={t('task.obsidianNoteSource', { note: task.obsidianNotePath.replace(/\.md$/, ''), defaultValue: 'In {{note}} (Obsidian)' })} />}
               {/* Read-only here: GLANCE reports on the day, it is not where you
                   edit it. Set and unset a star on the task card itself. */}
-              <TaskStarButton task={task} size={13} readOnly />
+              <TaskStarButton task={task} size={13} readOnly accent />
               <span className="truncate">{renderTitle(task.title)}</span>
             </div>
             <div className={`text-sm ${textSecondary} flex items-center gap-1`}>

@@ -11,10 +11,22 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // glance; an affordance you have to go looking for cannot do that. Unstarred it
 // sits at low opacity so a screen of tasks does not read as a screen of stars.
 //
-// Filled versus outline carries the state, not colour. Timeline cards come in a
-// dozen background colours with white text while SCHED rows are on the card
-// background, so `currentColor` is the only fill that reads correctly on all of
-// them in both themes.
+// COLOUR IS PER SURFACE, and the rule is that the star takes each surface's icon
+// treatment and earns colour only where that treatment is neutral.
+//
+// A timeline card is white-on-colour by design and every icon on it is white —
+// notes, skip, pencil, inbox, the plan-history badge — so the star is white too,
+// and `currentColor` is the only fill that survives a dozen user-chosen
+// backgrounds in both themes. The day header is blue-tinted chrome, same answer.
+//
+// On a neutral row (SCHED, LIST, GLANCE) the opposite applies. There the star
+// sits among system badges — recurring, Obsidian, repeat, note-source — all of
+// them grey, and it means something categorically different from all of them:
+// YOU chose this, the rest are the app reporting. `accent` separates the two.
+//
+// Only the SET state takes colour. An unstarred star is an affordance rather
+// than a mark, so it stays faint and neutral, and the colour arriving on click
+// is itself the confirmation.
 //
 // Deliberately NOT tied to priority. A star is a property of today; priority is
 // a property of the task. See utils/starredTasks.js.
@@ -22,7 +34,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // the task is actually starred. The GLANCE sidebar wants that: it reports on the
 // day rather than being a place you edit it, and a faint unstarred outline on
 // every row there would be noise you cannot act on.
-export default function TaskStarButton({ task, size = 12, readOnly = false }) {
+export default function TaskStarButton({ task, size = 12, readOnly = false, accent = false }) {
   const { t } = useTranslation();
   const setTasks = useDayPlannerCtx()?.setTasks;
 
@@ -37,11 +49,14 @@ export default function TaskStarButton({ task, size = 12, readOnly = false }) {
   if (typeof task.id === 'string' && task.id.startsWith('recurring-')) return null;
 
   const starred = isStarred(task);
+  // amber-500 rather than 400 in light mode: 400 is too pale to hold at 12-13px
+  // on white.
+  const tone = starred && accent ? 'text-amber-500 dark:text-amber-400' : '';
 
   // Read-only surfaces show the star only when there is one to show.
   if (readOnly) {
     return starred
-      ? <Star size={size} fill="currentColor" className="flex-shrink-0" aria-label={t('task.starKeyTask')} />
+      ? <Star size={size} fill="currentColor" className={`flex-shrink-0 ${tone}`} aria-label={t('task.starKeyTask')} />
       : null;
   }
 
@@ -61,7 +76,7 @@ export default function TaskStarButton({ task, size = 12, readOnly = false }) {
       aria-pressed={starred}
       aria-label={starred ? t('task.unstarKeyTask') : t('task.starKeyTask')}
     >
-      <Star size={size} fill={starred ? 'currentColor' : 'none'} />
+      <Star size={size} fill={starred ? 'currentColor' : 'none'} className={tone} />
     </button>
   );
 }

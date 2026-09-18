@@ -217,7 +217,7 @@ const TaskCard = React.memo(({
             clamped content. items-start keeps it on the first line when the
             title wraps. */}
         <div className="flex items-start gap-1.5 min-w-0">
-          {!isCalendarEvent && <TaskStarButton task={item} size={12} />}
+          {!isCalendarEvent && <TaskStarButton task={item} size={12} accent />}
           <div
             className={`text-sm font-medium leading-snug min-w-0 ${textPrimary} ${item.completed ? 'line-through opacity-50' : (isCalendarEvent && isPast) ? 'line-through' : ''}`}
             style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}

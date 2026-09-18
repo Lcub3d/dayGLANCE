@@ -147,4 +147,12 @@
     <string name="reminder_precise_message">dayGLANCE a besoin de l’autorisation de programmer des alarmes exactes afin que vos rappels de tâches arrivent à l’heure, même lorsque l’application est fermée.\n\nTouchez « Accorder l’accès », puis activez « dayGLANCE » sur l’écran suivant.</string>
     <string name="grant_access">Accorder l’accès</string>
     <string name="not_now">Pas maintenant</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">Obsolète</string>
+    <string name="widget_as_of">au %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">vieux de %1$d jour</item>
+        <item quantity="other">vieux de %1$d jours</item>
+    </plurals>
+    <string name="widget_open_to_refresh">Ouvrez dayGLANCE pour actualiser</string>
 </resources>

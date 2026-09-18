@@ -33,6 +33,17 @@ import java.util.concurrent.TimeUnit
  *
  * If no JS snapshot exists yet (first launch, freshly installed) the worker writes a
  * minimal calendar-only snapshot so the widget shows something useful immediately.
+ *
+ * What it must NOT do — and did, until the stale-state fix: restamp `date`,
+ * `dateLabel` and the store's capture timestamp onto content it did not
+ * regenerate. Only the WebView writes task content, so after midnight with the
+ * app backgrounded the stored snapshot is yesterday's; restamping it presented
+ * yesterday's agenda under today's date with a fresh "updated" time, and
+ * patching today's calendar events beside it blended two days. The decision
+ * is [WidgetSnapshotPatchPolicy]: same-day snapshot → patch native fields
+ * only, stamps untouched; other-day snapshot → leave it alone, so the widgets
+ * render it as stale (see WidgetFreshness.kt); no snapshot → build and stamp
+ * the calendar-only one, whose content really is today's.
  */
 class WidgetUpdateWorker(
     private val context: Context,
@@ -43,17 +54,35 @@ class WidgetUpdateWorker(
         val today = LocalDate.now()
         val dataStore = SharedDataStore(context)
 
-        // 1. Fetch fresh native data
-        val steps = try { HealthRepository(context).getSteps(today) } catch (_: Throwable) { -1 }
-        val calEvents = try { CalendarRepository(context).getEvents(today) } catch (_: Throwable) { emptyList() }
-
-        // 2. Patch the existing snapshot (or build a new minimal one)
+        // 1. Decide what this run may touch, BEFORE fetching anything: a stale
+        //    snapshot gets no native data patched into it, so there is nothing
+        //    to fetch for it.
         val existing = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
-        val patched = patchSnapshot(today, steps, calEvents, existing)
-        dataStore.widgetSnapshot = patched.toString()
-        dataStore.widgetSnapshotUpdatedAt = System.currentTimeMillis()
+        val decision = WidgetSnapshotPatchPolicy.decide(
+            existingSnapshotDate = existing?.optString("date", ""),
+            hasExisting = existing != null,
+            today = today,
+        )
 
-        // 3. Trigger widget updates
+        if (decision != SnapshotPatchDecision.LEAVE_UNTOUCHED) {
+            // 2. Fetch fresh native data
+            val steps = try { HealthRepository(context).getSteps(today) } catch (_: Throwable) { -1 }
+            val calEvents = try { CalendarRepository(context).getEvents(today) } catch (_: Throwable) { emptyList() }
+
+            // 3. Patch the existing same-day snapshot, or build a new minimal one.
+            //    Only the CREATE case regenerated its content, so only it may
+            //    carry today's date and a fresh capture time.
+            val patched = patchSnapshot(today, steps, calEvents, existing, stamp = decision == SnapshotPatchDecision.CREATE)
+            dataStore.widgetSnapshot = patched.toString()
+            if (decision == SnapshotPatchDecision.CREATE) {
+                dataStore.widgetSnapshotUpdatedAt = System.currentTimeMillis()
+            }
+        }
+
+        // 4. Trigger widget updates. This runs in every case, the untouched
+        //    stale one included: the widgets re-evaluate freshness on each
+        //    render, so this is what flips them to the stale state within a
+        //    period of midnight even though nothing was written.
         try {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, DayGlanceWidget::class.java))
@@ -96,7 +125,11 @@ class WidgetUpdateWorker(
      * Patches native-sourced fields into [existing] (if present) or builds a new snapshot.
      *
      * Fields owned by native (always overwritten):
-     *   steps, nativeCalEvents, dateLabel, date
+     *   steps, nativeCalEvents
+     *
+     * Fields stamped only when [stamp] is true, i.e. when this call BUILT the
+     * snapshot: date, dateLabel, updatedAt. On a patch they belong to the JS
+     * content already there and describe when THAT was captured.
      *
      * Fields owned by JS (preserved if present):
      *   overdue, habits, allDay, deadlines, sections, routines
@@ -110,13 +143,16 @@ class WidgetUpdateWorker(
         steps: Int,
         calEvents: List<CalendarRepository.CalEvent>,
         existing: JSONObject?,
+        stamp: Boolean,
     ): JSONObject {
         val snapshot = existing ?: JSONObject()
 
-        snapshot.put("date", date.toString())
-        snapshot.put("dateLabel", formatWidgetDate(context, date))
+        if (stamp) {
+            snapshot.put("date", date.toString())
+            snapshot.put("dateLabel", formatWidgetDate(context, date))
+            snapshot.put("updatedAt", System.currentTimeMillis())
+        }
         snapshot.put("steps", steps)
-        snapshot.put("updatedAt", System.currentTimeMillis())
 
         // Write native calendar events into a separate key
         val eventsArray = JSONArray()

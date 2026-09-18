@@ -57,9 +57,14 @@ struct GoalProvider: AppIntentTimelineProvider {
         GoalEntry(date: Date(), snapshot: loadSnapshot(), selectedGoalId: configuration.goal?.id)
     }
     func timeline(for configuration: SelectGoalIntent, in context: Context) async -> Timeline<GoalEntry> {
-        let entry = GoalEntry(date: Date(), snapshot: loadSnapshot(), selectedGoalId: configuration.goal?.id)
+        // One snapshot, two entries: now and the next local midnight, so the
+        // stale state flips on the minute (WidgetFreshness.swift).
+        let snapshot = loadSnapshot()
+        let entries = WidgetTimelineDates.withMidnightRollover().map {
+            GoalEntry(date: $0, snapshot: snapshot, selectedGoalId: configuration.goal?.id)
+        }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
-        return Timeline(entries: [entry], policy: .after(next))
+        return Timeline(entries: entries, policy: .after(next))
     }
 }
 
@@ -77,18 +82,27 @@ struct GoalWidgetView: View {
         return goals.first
     }
 
+    // Against the entry's date, not the clock (see WidgetTimelineDates).
+    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().padding(.vertical, 4)
-            if let goal = selectedGoal {
-                goalView(goal: goal)
-            } else {
-                Text("No active goals")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
+            if freshness.isStale {
+                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
             }
+            Divider().padding(.vertical, 4)
+            Group {
+                if let goal = selectedGoal {
+                    goalView(goal: goal)
+                } else {
+                    Text("No active goals")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                }
+            }
+            .staleDimmed(freshness)
         }
         .padding()
         .containerBackground(.background, for: .widget)
@@ -118,7 +132,10 @@ struct GoalWidgetView: View {
                             .font(.subheadline).fontWeight(.semibold)
                             .lineLimit(2)
                         Spacer()
-                        if let days = goal.daysUntilDue {
+                        // daysUntilDue was computed by JS against the snapshot's
+                        // day; on a stale snapshot "Due today" is off by the
+                        // snapshot's age, so it is not shown at all.
+                        if !freshness.isStale, let days = goal.daysUntilDue {
                             dueBadge(days: days)
                         }
                     }

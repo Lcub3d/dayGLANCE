@@ -15,6 +15,7 @@ import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
@@ -108,6 +109,11 @@ class DayGlanceWidgetListFactory(
 
     private val items = mutableListOf<AgendaItem>()
     private var use24Hour = android.text.format.DateFormat.is24HourFormat(context)
+    // Whether the snapshot describes the current local day (WidgetFreshness.kt).
+    // Every present-tense claim below — the IN PROGRESS badge, the GLANCEahead
+    // preview, "All caught up" — is gated on it. Default true so a snapshot
+    // with no date keeps the historical behaviour.
+    private var snapshotIsToday = true
 
     // ── RemoteViewsFactory lifecycle ─────────────────────────────────────────
 
@@ -115,9 +121,12 @@ class DayGlanceWidgetListFactory(
 
     override fun onDataSetChanged() {
         items.clear()
-        val snapshotJson = SharedDataStore(context).widgetSnapshot ?: return
+        val dataStore = SharedDataStore(context)
+        val snapshotJson = dataStore.widgetSnapshot ?: return
         try {
-            buildItems(JSONObject(snapshotJson))
+            val snapshot = JSONObject(snapshotJson)
+            snapshotIsToday = !snapshotFreshness(snapshot, dataStore, LocalDate.now()).isStale
+            buildItems(snapshot)
         } catch (_: Throwable) {
             items += AgendaItem.Empty
         }
@@ -346,8 +355,11 @@ class DayGlanceWidgetListFactory(
             }
         }
 
-        // 7. GLANCEahead — tomorrow preview (when day is done or evening)
-        val glanceAheadObj = snapshot.optJSONObject("glanceAhead")
+        // 7. GLANCEahead — tomorrow preview (when day is done or evening).
+        //    "Tomorrow" was computed against the snapshot's day; on a stale
+        //    snapshot it names today or an earlier day as a preview, so it is
+        //    dropped rather than shown dimmed.
+        val glanceAheadObj = if (snapshotIsToday) snapshot.optJSONObject("glanceAhead") else null
         if (glanceAheadObj != null) {
             val dayLabel = glanceAheadObj.optString("dayLabel", "")
             val isEmpty = glanceAheadObj.optBoolean("isEmpty", true)
@@ -385,8 +397,14 @@ class DayGlanceWidgetListFactory(
         if (items.isEmpty()) items += AgendaItem.Empty
     }
 
-    /** Builds the "9:30 – 10:00" time string for a task JSON object. */
+    /**
+     * Whether the wall clock is inside this task's block. Date-aware: the task
+     * carries only "HH:mm", and that time belongs to the SNAPSHOT'S day, so the
+     * comparison is meaningful only when that day is today. Without the guard,
+     * yesterday's 08:00–09:00 block read as IN PROGRESS at 08:15 this morning.
+     */
     private fun isInProgress(t: JSONObject): Boolean {
+        if (!snapshotIsToday) return false
         val start = t.optString("startTime", "")
         val duration = t.optInt("duration", 0)
         if (start.isEmpty() || duration <= 0) return false
@@ -687,9 +705,12 @@ class DayGlanceWidgetListFactory(
     }
 
     private fun buildEmptyView(): RemoteViews {
-        // Reuse the section layout to show an "all caught up" message
+        // Reuse the section layout to show an "all caught up" message — or, on a
+        // stale snapshot, no claim at all: "all caught up" is about today, and
+        // the snapshot is not.
         val rv = RemoteViews(context.packageName, R.layout.widget_item_section)
-        rv.setTextViewText(R.id.tv_section_label, context.getString(R.string.widget_all_caught_up))
+        val label = if (snapshotIsToday) R.string.widget_all_caught_up else R.string.widget_outdated
+        rv.setTextViewText(R.id.tv_section_label, context.getString(label))
         rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
         return rv
     }

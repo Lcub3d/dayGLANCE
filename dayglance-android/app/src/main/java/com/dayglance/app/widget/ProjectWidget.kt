@@ -61,6 +61,16 @@ class ProjectWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_project)
         val dataStore = SharedDataStore(context)
         val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val freshness = snapshotFreshness(snapshot, dataStore)
+
+        // Stale banner + dimmed card (WidgetFreshness.kt). A project card makes
+        // no present-tense claim beyond "as of when": the banner supplies that.
+        if (freshness.isStale) {
+            views.setTextViewText(R.id.tv_project_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
+            views.setViewVisibility(R.id.tv_project_widget_stale, View.VISIBLE)
+            views.setFloat(R.id.layout_project_content, "setAlpha", STALE_CONTENT_ALPHA)
+            views.setFloat(R.id.layout_project_empty, "setAlpha", STALE_CONTENT_ALPHA)
+        }
 
         // Tap root to open app
         val launchPi = PendingIntent.getActivity(

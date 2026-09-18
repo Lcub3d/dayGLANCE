@@ -75,6 +75,21 @@
 
         </LinearLayout>
 
+        <!-- Stale banner: shown only when the snapshot describes another day
+             (WidgetFreshness.kt). Warning tint, never the overdue red. -->
+        <TextView
+            android:id="@+id/tv_goal_widget_stale"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text=""
+            android:textColor="@color/widget_deadline_text"
+            android:textStyle="bold"
+            android:textSize="11sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:visibility="gone" />
+
         <!-- Hairline divider -->
         <TextView
             android:layout_width="match_parent"

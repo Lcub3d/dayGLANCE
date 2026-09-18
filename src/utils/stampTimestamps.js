@@ -32,6 +32,12 @@
 // re-stamped a scheduled task on every phone that scanned a stale vault copy,
 // and the fabricated stamp outranked a real completion made elsewhere.
 //
+// `starredDate` is DEFAULTED rather than stripped, because unlike the fields
+// below it is a real user action: starring a task is an edit and must re-stamp
+// so it wins on other devices. Only the absent/null pair is canonicalised, since
+// both mean "not starred" and a passive normalization between them is not an
+// edit anyone should out-rank.
+//
 // `originalPlan` is stripped outright rather than defaulted, because unlike the
 // fields above it is not a user-visible value at all: utils/originalPlan.js
 // writes it during the persist pass, once, when a task is first observed being
@@ -45,7 +51,7 @@ function normalizeField(task) {
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
   const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, ...rest } = task;
-  return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0 };
+  return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null };
 }
 
 // Order-INSENSITIVE stringify of the normalized task. A defaulted field (archived,

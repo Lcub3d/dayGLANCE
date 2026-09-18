@@ -166,3 +166,73 @@ describe('vault applyRemoteEntity preserves originalPlan across LWW', () => {
     expect(data.tasks[0].originalPlan).toEqual(PLAN);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// And again for `starredDate` (utils/starredTasks.js). This one has BOTH cases:
+// like archived it can be explicitly cleared, and like originalPlan a device on
+// an older build simply does not carry it. Unstarring writes an explicit null
+// precisely so the merge can tell "the user unstarred it" from "that device has
+// never heard of stars".
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DAY = '2026-09-18';
+const starrable = (extra) => ({
+  id: 's1', title: 'Write the report', date: DAY, startTime: '09:00',
+  lastModified: '2026-09-18T09:00:00.000Z', ...extra,
+});
+
+describe('file-tier mergeSyncData preserves starredDate across LWW', () => {
+  it('a star survives a NEWER copy from a device without the field', () => {
+    const local = { tasks: [starrable({ starredDate: DAY })] };
+    const remote = { tasks: [starrable({ title: 'Write the report v2', lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].starredDate).toBe(DAY);
+    expect(data.tasks[0].title).toBe('Write the report v2'); // the real edit still wins
+  });
+
+  it('honours a real unstar: a NEWER explicit null beats a local star', () => {
+    const local = { tasks: [starrable({ starredDate: DAY })] };
+    const remote = { tasks: [starrable({ starredDate: null, lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].starredDate).toBeNull();
+  });
+
+  it('a star on the remote side survives a newer local copy without the field', () => {
+    const local = { tasks: [starrable({ lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const remote = { tasks: [starrable({ starredDate: DAY })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].starredDate).toBe(DAY);
+  });
+
+  it('an unstarred task on both sides stays without the key', () => {
+    const local = { tasks: [starrable()] };
+    const remote = { tasks: [starrable({ lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].starredDate).toBeUndefined();
+  });
+});
+
+describe('vault applyRemoteEntity preserves starredDate across LWW', () => {
+  it('pulling a copy WITHOUT the field over a local star keeps it + re-pushes', () => {
+    const data = { tasks: [starrable({ starredDate: DAY })] };
+    const pulled = { _kind: 'tasks', value: starrable({ title: 'v2', lastModified: '2026-09-18T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].starredDate).toBe(DAY);
+    expect(rePush).toHaveLength(1);
+  });
+
+  it('pulling an explicit null (a real unstar) is honoured, no re-push', () => {
+    const data = { tasks: [starrable({ starredDate: DAY })] };
+    const pulled = { _kind: 'tasks', value: starrable({ starredDate: null, lastModified: '2026-09-18T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].starredDate).toBeNull();
+    expect(rePush).toEqual([]);
+  });
+
+  it('takes a pulled star when the local copy has none', () => {
+    const data = { tasks: [starrable()] };
+    const pulled = { _kind: 'tasks', value: starrable({ starredDate: DAY, lastModified: '2026-09-18T12:00:00.000Z' }) };
+    applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].starredDate).toBe(DAY);
+  });
+});

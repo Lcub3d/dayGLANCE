@@ -13,16 +13,24 @@
 // EXPLICITLY, which is not `undefined`, so it is left alone and still propagates.
 //
 // `originalPlan` (utils/originalPlan.js) is the schedule a task was first given.
-// Its rule is simpler than archived's, because the field is write-once and
-// nothing in the app can ever clear it: an absent value on the incoming copy can
-// ONLY mean "this device never had it", never "the user removed it". So it is
-// carried forward unconditionally, with no explicit-value escape hatch. Losing it
-// is not corruption — nothing reads the field yet — but it is unrecoverable, and
-// a baseline that survives only until the first merge from an older device is not
-// a baseline at all.
+// It is write-once and nothing in the app can clear it, so an absent value can
+// only ever mean "this device never had it". Losing it is not corruption —
+// nothing else depends on the field — but it is unrecoverable, and a baseline
+// that survives only until the first merge from an older device is not a baseline.
+//
+// `starredDate` (utils/starredTasks.js) marks a task as one of today's few.
+// Unstarring writes an explicit `null` precisely so this rule can tell the two
+// cases apart: `null` is a real unstar and propagates, absent means the winning
+// device predates the field and the local value stands.
+//
+// All three share one rule — carry forward when the incoming copy's value is
+// `undefined`, honour any explicit value — so they are listed rather than
+// written out three times. A fourth sticky field belongs in STICKY_FIELDS and
+// nowhere else in this file.
 //
 // Items are matched by id. Fields are handled independently: a task can be
-// missing one and carry the other.
+// missing one and carry another.
+export const STICKY_FIELDS = ['archived', 'originalPlan', 'starredDate'];
 //
 // @param {object[]} incoming  the merged/remote tasks about to be applied
 // @param {object[]} existing  the current in-memory tasks (source of the values)
@@ -36,11 +44,10 @@ export function preserveStickyFields(incoming, existing) {
     const prev = local.get(String(t.id));
     if (!prev) return t;
     let out = t;
-    if (out.archived === undefined && prev.archived !== undefined) {
-      out = { ...out, archived: prev.archived };
-    }
-    if (out.originalPlan === undefined && prev.originalPlan !== undefined) {
-      out = { ...out, originalPlan: prev.originalPlan };
+    for (const field of STICKY_FIELDS) {
+      if (out[field] === undefined && prev[field] !== undefined) {
+        out = { ...out, [field]: prev[field] };
+      }
     }
     return out;
   });

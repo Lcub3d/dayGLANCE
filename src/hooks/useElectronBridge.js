@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { taskColorToHex } from '../utils/colorUtils.js';
-import { stripWikilinks } from '../utils/taskUtils.js';
+import { extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import { buildStreamDeckState, timeToMinutes } from '../utils/streamDeckPayload.js';
 import { dispatchBackgroundAction } from '../utils/trayActionDispatch.js';
 import {
@@ -359,6 +359,9 @@ export default function useElectronBridge({
     window.electronAPI.pushCurrentTask(inProgress ? {
       id: inProgress.id,
       title: stripWikilinks(inProgress.title),
+      // The task's vault note, when its title carries one: the tray's NOW bar
+      // shows an open-book button for it, the popup's one way to a note.
+      note: extractWikilinks(inProgress.title)[0] ?? null,
       startTime: inProgress.startTime ?? null,
       duration: inProgress.duration || 0,
       colorHex: inProgress.colorHex || taskColorToHex(inProgress.color, inProgress.nativeCalendarColor),

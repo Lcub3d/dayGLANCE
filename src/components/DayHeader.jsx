@@ -1,4 +1,5 @@
 import React from 'react';
+import DayKeyTasks from './DayKeyTasks.jsx';
 import { NotebookPen, Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -43,6 +44,9 @@ export function DayHeaderActions({ dateStr, size = 14, className = '' }) {
       >
         <Target size={size} />
       </button>
+      {/* Absent on any day with no starred tasks, so the cell keeps its width
+          (#1684). Last, so the two always-present buttons never shift. */}
+      <DayKeyTasks dateStr={dateStr} size={size} />
     </span>
   );
 }

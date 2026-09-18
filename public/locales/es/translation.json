@@ -703,7 +703,7 @@
     "titlePlaceholderScheduled": "Título de la tarea (#etiqueta, @fecha, ~hora, %mins, ^todo-el-día)",
     "titlePlaceholderInbox": "Título de la tarea (#etiqueta, $fecha-límite, !prioridad, %mins)",
     "addedByLastGlance": "Añadido por lastGLANCE",
-    "keyTasksToday": "Tareas clave de hoy",
+    "keyTasks": "Tareas clave",
     "keyTasksOverGuideline": "Más de {{count}} en un mismo día",
     "starKeyTask": "Marcar como tarea clave de hoy",
     "unstarKeyTask": "Quitar la marca",

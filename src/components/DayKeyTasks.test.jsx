@@ -6,11 +6,11 @@ import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 import { DayPlannerContext } from '../context/DayPlannerContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
-import TodayKeyTasks from './TodayKeyTasks.jsx';
+import DayKeyTasks from './DayKeyTasks.jsx';
 
-// The control is absent unless today has starred tasks, which for most people on
-// most days is always. That is the whole reason another button in a busy header
-// is acceptable, so it is the case most worth pinning.
+// The control is absent unless that day has starred tasks, which for most days
+// is always. That is what keeps a third button out of an already tight header
+// cell, so it is the case most worth pinning.
 
 async function i18n() {
   const bundle = await loaders.en();
@@ -30,12 +30,12 @@ const render = async (tasks, extra = {}) => renderToStaticMarkup(
       darkMode: false, textSecondary: 'text-stone-500', hoverBg: 'hover:bg-stone-100',
       ...extra,
     }}>
-      <TodayKeyTasks />
+      <DayKeyTasks dateStr={TODAY} />
     </DayPlannerContext.Provider>
   </I18nextProvider>,
 );
 
-describe('TodayKeyTasks', () => {
+describe('DayKeyTasks', () => {
   it('renders nothing when nothing is starred today', async () => {
     expect(await render([task(), task({ id: 't2' })])).toBe('');
   });
@@ -45,7 +45,15 @@ describe('TodayKeyTasks', () => {
   });
 
   it('renders nothing without a day-planner provider', async () => {
-    const html = renderToStaticMarkup(<TodayKeyTasks />);
+    expect(renderToStaticMarkup(<DayKeyTasks dateStr={TODAY} />)).toBe('');
+  });
+
+  it('renders nothing without a date', async () => {
+    const html = renderToStaticMarkup(
+      <DayPlannerContext.Provider value={{ getTasksForDate: () => [task({ starredDate: TODAY })] }}>
+        <DayKeyTasks />
+      </DayPlannerContext.Provider>,
+    );
     expect(html).toBe('');
   });
 
@@ -68,5 +76,41 @@ describe('TodayKeyTasks', () => {
     const html = await render([task({ starredDate: TODAY })]);
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain('Write the report');
+  });
+});
+
+describe('DayKeyTasks is per-day, not per-today', () => {
+  // The whole reason it moved out of the app header: a star belongs beside the
+  // date it was made for, so WEEK's Tuesday column answers for Tuesday.
+  const OTHER = '2026-11-03';
+
+  const renderFor = async (dateStr, tasksByDate) => renderToStaticMarkup(
+    <I18nextProvider i18n={await i18n()}>
+      <DayPlannerContext.Provider value={{
+        getTasksForDate: (d) => tasksByDate[dateStr] ?? [],
+        goToDate: vi.fn(), scrollToHour: vi.fn(), formatTime: (t) => t,
+        darkMode: false, textSecondary: 'text-stone-500', hoverBg: 'hover:bg-stone-100',
+      }}>
+        <DayKeyTasks dateStr={dateStr} />
+      </DayPlannerContext.Provider>
+    </I18nextProvider>,
+  );
+
+  it('counts the stars belonging to the day it was given', async () => {
+    const html = await renderFor(OTHER, {
+      [OTHER]: [
+        { id: 'x1', title: 'Ship it', date: OTHER, startTime: '10:00', starredDate: OTHER },
+        { id: 'x2', title: 'Other', date: OTHER, startTime: '12:00' },
+      ],
+    });
+    expect(html).toContain('>1<');
+    expect(html).toContain(`data-day-key-tasks="${OTHER}"`);
+  });
+
+  it('stays absent on a day whose tasks are starred for a different date', async () => {
+    const html = await renderFor(OTHER, {
+      [OTHER]: [{ id: 'x1', title: 'Ship it', date: OTHER, startTime: '10:00', starredDate: TODAY }],
+    });
+    expect(html).toBe('');
   });
 });

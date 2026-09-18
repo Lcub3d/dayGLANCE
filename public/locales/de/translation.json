@@ -703,7 +703,7 @@
     "titlePlaceholderScheduled": "Aufgabentitel (#Tag, @Datum, ~Zeit, %Min, ^Ganztägig)",
     "titlePlaceholderInbox": "Aufgabentitel (#Tag, $Frist, !Priorität, %Min)",
     "addedByLastGlance": "Hinzugefügt von lastGLANCE",
-    "keyTasksToday": "Heutige Schlüsselaufgaben",
+    "keyTasks": "Schlüsselaufgaben",
     "keyTasksOverGuideline": "Mehr als {{count}} an einem Tag",
     "starKeyTask": "Als Schlüsselaufgabe für heute markieren",
     "unstarKeyTask": "Markierung entfernen",

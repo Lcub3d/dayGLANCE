@@ -703,7 +703,7 @@
     "titlePlaceholderScheduled": "Titre de la tâche (#étiquette, @date, ~heure, %mins, ^tout-le-jour)",
     "titlePlaceholderInbox": "Titre de la tâche (#étiquette, $échéance, !priorité, %mins)",
     "addedByLastGlance": "Ajouté par lastGLANCE",
-    "keyTasksToday": "Tâches clés du jour",
+    "keyTasks": "Tâches clés",
     "keyTasksOverGuideline": "Plus de {{count}} pour une seule journée",
     "starKeyTask": "Marquer comme tâche clé du jour",
     "unstarKeyTask": "Retirer le marquage",

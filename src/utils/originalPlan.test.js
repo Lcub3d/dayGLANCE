@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { stampOriginalPlan } from './originalPlan.js';
+import { stampOriginalPlan, applyBaselines } from './originalPlan.js';
+import { preserveStickyFields } from './preserveStickyFields.js';
 
 const task = (over = {}) => ({ id: 't1', title: 'Write the report', date: '2026-09-17', startTime: '09:00', duration: 60, ...over });
 
@@ -142,5 +143,105 @@ describe('robustness', () => {
 
   it('handles an empty task list', () => {
     expect(stampOriginalPlan([], [])).toEqual([]);
+  });
+});
+
+describe('identity stability', () => {
+  // The persist pass writes the result back into React state, so "did anything
+  // change?" has to be answerable by reference or every save re-renders and
+  // re-saves forever.
+  it('returns the same array when nothing was added', () => {
+    const tasks = [task({ originalPlan: { date: '2026-09-01', startTime: '08:00' } }), { id: 't2' }];
+    expect(stampOriginalPlan(tasks, tasks)).toBe(tasks);
+  });
+
+  it('returns a new array when a baseline was added', () => {
+    const tasks = [task()];
+    expect(stampOriginalPlan(tasks, [])).not.toBe(tasks);
+  });
+
+  it('settles after exactly one pass', () => {
+    const first = stampOriginalPlan([task()], []);
+    expect(stampOriginalPlan(first, first)).toBe(first);
+  });
+});
+
+describe('applyBaselines', () => {
+  const PLAN = { date: '2026-09-17', startTime: '09:00', duration: 60 };
+
+  it('copies a baseline onto the matching task', () => {
+    const all = [task(), { id: 't2', title: 'Other' }];
+    const out = applyBaselines(all, [task({ originalPlan: PLAN })]);
+    expect(out[0].originalPlan).toEqual(PLAN);
+    expect(out[1].originalPlan).toBeUndefined();
+  });
+
+  it('keeps rows the persist pass filtered out', () => {
+    // saveData drops _native rows before persisting. Writing its array back
+    // wholesale would delete them from state.
+    const native = { id: 'n1', title: 'Calendar event', _native: true };
+    const out = applyBaselines([task(), native], [task({ originalPlan: PLAN })]);
+    expect(out).toHaveLength(2);
+    expect(out[1]).toBe(native);
+  });
+
+  it('never overwrites a baseline a task already has', () => {
+    const existing = task({ originalPlan: { date: '2026-01-01', startTime: '07:00' } });
+    const out = applyBaselines([existing], [task({ originalPlan: PLAN })]);
+    expect(out[0]).toBe(existing);
+  });
+
+  it('returns the same array when there is nothing to copy', () => {
+    const all = [task()];
+    expect(applyBaselines(all, [])).toBe(all);
+  });
+
+  it('tolerates null rows and a missing list', () => {
+    expect(applyBaselines(undefined, [])).toEqual([]);
+    expect(applyBaselines([null], [task({ originalPlan: PLAN })])).toEqual([null]);
+  });
+});
+
+describe('the vault round trip that erased the baseline in the field', () => {
+  // Reported from a real install: 0 of 626 tasks carried a baseline, including a
+  // task created seconds earlier. The persist pass was stamping correctly; the
+  // field just never reached React state, and state is what the sync layer reads.
+  //
+  //   save      → storage gets originalPlan, state does not
+  //   push      → buildSyncPayload reads STATE, so the vault gets a row without it
+  //   pull      → applyEngineData hands preserveStickyFields the live STATE as the
+  //               source of sticky values, which also does not have it
+  //   apply     → state and storage rewritten without it; gone for good, because a
+  //               task already scheduled in storage is never re-stamped
+  //
+  // Every link needs state to carry the field, which is what the write-back does.
+  const live = () => [{ id: 't1', title: 'Report', date: '2026-09-17', startTime: '09:00', duration: 60 }];
+
+  it('survives a pull from a device that never had the field', () => {
+    // 1. the save pass stamps, and the result goes back into state
+    const stored = stampOriginalPlan(live(), []);
+    const state = applyBaselines(live(), stored);
+    expect(state[0].originalPlan).toBeDefined(); // the link that was missing
+
+    // 2. the old-build device edits the duration and pushes; its row has no baseline
+    const pulled = [{ ...live()[0], duration: 90, lastModified: '2026-09-18T10:00:00Z' }];
+
+    // 3. the apply carries sticky fields from the live state
+    const applied = preserveStickyFields(pulled, state);
+
+    expect(applied[0].originalPlan).toEqual({ date: '2026-09-17', startTime: '09:00', duration: 60 });
+    expect(applied[0].duration).toBe(90); // the remote edit still wins
+  });
+
+  it('is unrecoverable without it, which is why the write-back matters', () => {
+    // The same sequence with state left un-enriched, as originally shipped.
+    const stateWithoutBaseline = live();
+    const pulled = [{ ...live()[0], duration: 90 }];
+    const applied = preserveStickyFields(pulled, stateWithoutBaseline);
+    expect(applied[0].originalPlan).toBeUndefined();
+
+    // And the next save cannot put it back: storage now shows the task as already
+    // scheduled, so the no-backfill rule correctly refuses to invent one.
+    expect(stampOriginalPlan(applied, applied)[0].originalPlan).toBeUndefined();
   });
 });

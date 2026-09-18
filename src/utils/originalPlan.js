@@ -62,19 +62,54 @@ function scheduleOf(task) {
  * Return `currentTasks` with `originalPlan` added to any task observed being
  * scheduled for the first time. Pure; every other task is returned by reference.
  *
+ * Returns `currentTasks` ITSELF when nothing was added. Callers rely on that
+ * identity to know whether anything changed, and the write-back in the persist
+ * pass uses it to avoid re-rendering (and so re-saving) on every save.
+ *
  * @param {object[]} currentTasks  in-memory task array about to be persisted
  * @param {object[]} prevTasks     the stored copy, to tell a new schedule from an
  *                                 existing one
  */
 export function stampOriginalPlan(currentTasks, prevTasks) {
   const prevMap = new Map((prevTasks || []).map((t) => [String(t.id), t]));
-  return currentTasks.map((task) => {
+  let changed = false;
+  const out = currentTasks.map((task) => {
     if (task.originalPlan) return task;
     const prevTask = prevMap.get(String(task.id));
-    if (prevTask && prevTask.originalPlan) return { ...task, originalPlan: prevTask.originalPlan };
+    if (prevTask && prevTask.originalPlan) {
+      changed = true;
+      return { ...task, originalPlan: prevTask.originalPlan };
+    }
     const plan = scheduleOf(task);
     if (!plan) return task;
     if (prevTask && scheduleOf(prevTask)) return task;
+    changed = true;
     return { ...task, originalPlan: plan };
   });
+  return changed ? out : currentTasks;
+}
+
+/**
+ * Copy the baselines from `planned` onto `all`, matching by id.
+ *
+ * The persist pass works on a FILTERED array (native calendar rows and, on some
+ * devices, subscription imports are dropped before saving), so its result cannot
+ * be written back to state wholesale without deleting those rows. This enriches
+ * in place instead: nothing is added, nothing is removed, and an existing
+ * baseline is never overwritten.
+ */
+export function applyBaselines(all, planned) {
+  const byId = new Map(
+    planned.filter((t) => t && t.originalPlan).map((t) => [String(t.id), t.originalPlan]),
+  );
+  const list = all || [];
+  let changed = false;
+  const out = list.map((task) => {
+    if (!task || task.originalPlan) return task;
+    const plan = byId.get(String(task.id));
+    if (!plan) return task;
+    changed = true;
+    return { ...task, originalPlan: plan };
+  });
+  return changed ? out : list;
 }

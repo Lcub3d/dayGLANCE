@@ -250,3 +250,71 @@ describe('saveData records the original plan', () => {
     expect(written('day-planner-tasks')[0].originalPlan).toBeUndefined();
   });
 });
+
+// ── Regression: the baseline has to reach React STATE, not just storage ──────
+// First shipped, the persist pass wrote originalPlan to localStorage and stopped
+// there. State never carried it, so everything that reads state — buildSyncPayload
+// and the preserveStickyFields source in applyEngineData — could not see it. On a
+// vault-synced install the next apply wrote state back over storage and the
+// baseline was gone seconds after it was written, which is why a fresh install
+// reported 0 of 626 tasks with a baseline.
+describe('saveData feeds the baseline back into state', () => {
+  let setItem;
+  const saveProps = (over = {}) => ({
+    ...makeProps().props,
+    tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: [], routinesDate: '',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: {}, goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    ...over,
+  });
+
+  beforeEach(() => {
+    setItem = vi.fn();
+    globalThis.localStorage = { getItem: vi.fn(() => null), setItem, removeItem: vi.fn() };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; });
+
+  const task = { id: 't1', title: 'Report', date: '2026-09-17', startTime: '09:00', duration: 60 };
+
+  it('calls setTasks with the baseline applied when it stamps one', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    const { props } = makeProps();
+    const setTasks = props.setTasks;
+
+    useDataPersistence(saveProps({ tasks: [task], setTasks })).saveData();
+
+    expect(setTasks).toHaveBeenCalledTimes(1);
+    const updated = setTasks.mock.calls[0][0]([task]); // functional update
+    expect(updated[0].originalPlan).toEqual({ date: '2026-09-17', startTime: '09:00', duration: 60 });
+  });
+
+  it('does NOT touch state when there is no new baseline to add', async () => {
+    // Termination: the write-back re-runs the save effect, and that second pass
+    // must be a no-op or the two bounce forever.
+    const useDataPersistence = await loadHookAs('main');
+    const { props } = makeProps();
+    const already = { ...task, originalPlan: { date: '2026-09-17', startTime: '09:00', duration: 60 } };
+
+    useDataPersistence(saveProps({ tasks: [already], setTasks: props.setTasks })).saveData();
+
+    expect(props.setTasks).not.toHaveBeenCalled();
+  });
+
+  it('the write-back never drops tasks the persist pass filters out', async () => {
+    // saveData persists a FILTERED array (no _native rows). Writing that back
+    // wholesale would delete those rows from state, so the update has to enrich
+    // in place rather than replace.
+    const useDataPersistence = await loadHookAs('main');
+    const { props } = makeProps();
+    const native = { id: 'n1', title: 'Calendar event', _native: true, date: '2026-09-17', startTime: '10:00' };
+
+    useDataPersistence(saveProps({ tasks: [task, native], setTasks: props.setTasks })).saveData();
+
+    const updated = props.setTasks.mock.calls[0][0]([task, native]);
+    expect(updated).toHaveLength(2);
+    expect(updated.find((t) => t.id === 'n1')).toBeDefined();
+  });
+});

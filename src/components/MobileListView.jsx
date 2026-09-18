@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { renderTitle, isLinkOnlyTask, getLinkUrl, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
-import { dateToString } from '../utils/taskUtils.js';
+import { dateToString, stripWikilinksAndTags } from '../utils/taskUtils.js';
 import { taskColorToHex } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -640,7 +640,7 @@ function NowRow({ nowMin, nextItem, formatTime, textSecondary, darkMode, use24Ho
 
   const diff = nextItem ? timeToMinutes_pure(nextItem.startTime) - nowMin : null;
   const rawTitle = nextItem?.title || nextItem?.name || nextItem?.label || '';
-  const cleanTitle = rawTitle.replace(/\[\[[^\]]*\]\]/g, '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim();
+  const cleanTitle = stripWikilinksAndTags(rawTitle);
   const countdownStr = diff !== null && diff > 0
     ? t('mobileList.untilNext', {
       duration: countdownText(diff, t),
@@ -746,7 +746,7 @@ function AllDayTaskPill({ item, accentHex, textPrimary, toggleComplete }) {
         className={`text-[11px] font-medium truncate ${textPrimary} ${item.completed ? 'line-through opacity-50' : ''}`}
         style={{ padding: '0 8px 0 5px', maxWidth: 164, display: 'flex', alignItems: 'center' }}
       >
-        {item.title}
+        {renderTitle(item.title)}
       </span>
     </button>
   );

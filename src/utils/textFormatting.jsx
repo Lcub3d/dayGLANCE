@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
 import { isOnlyPhoneNumber, phoneTelUrl, canDialHere } from './phoneNumber.js';
+import { splitTitleNoteLinks, stripTags, stripWikilinks, stripWikilinksAndTags } from './taskUtils.js';
 
 // URL detection regex for notes
 export const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
@@ -228,9 +229,14 @@ export const isObsidianNoteOnlyTask = (task) => {
   return /\[\[[^\]]+\]\]/.test(task.title || '');
 };
 
-// Strip wikilinks from displayed text; style hashtags
+// Strip wikilinks from displayed text; style hashtags. Spacing is kept as
+// typed (renderTitleWithNoteLinks feeds it the runs between links), except
+// that a title with no words besides its links and tags takes stripWikilinks'
+// answer, the note's name, rather than rendering blank.
 export const renderTitle = (title) => {
-  const stripped = title.replace(/\[\[[^\]]+\]\]/g, '');
+  const raw = title || '';
+  let stripped = raw.replace(/\[\[[^\]]+\]\]/g, '');
+  if (stripped !== raw && !stripTags(stripped).trim()) stripped = stripWikilinks(raw);
   const parts = stripped.split(/(#\p{L}[\p{L}\p{N}_]*)/gu);
   return parts.map((part, i) => {
     if (part.match(/^#\p{L}[\p{L}\p{N}_]*$/u)) {
@@ -240,29 +246,6 @@ export const renderTitle = (title) => {
   });
 };
 
-// The pieces of a title with its [[wikilinks]] kept as links rather than
-// stripped: `{ text }` runs and `{ note, label }` links. `note` is the target
-// as extractWikilinks reports it (path and heading, alias dropped), the name
-// every open-in-Obsidian handler takes; `label` is what a reader sees, the
-// alias when the link carries one, else the note's own name without its
-// folders. Pure, so the shape is testable without a renderer.
-export const splitTitleNoteLinks = (title) => {
-  const parts = [];
-  const re = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
-  let last = 0;
-  let m;
-  while ((m = re.exec(title || '')) !== null) {
-    if (m.index > last) parts.push({ text: title.slice(last, m.index) });
-    const note = m[1].trim();
-    const alias = (m[2] || '').trim();
-    const label = alias || note.split('#')[0].split('/').pop().trim() || note;
-    parts.push({ note, label });
-    last = m.index + m[0].length;
-  }
-  if (last < (title || '').length) parts.push({ text: title.slice(last) });
-  return parts;
-};
-
 // Like renderTitle, but each [[wikilink]] becomes a link that opens the note
 // in Obsidian instead of disappearing. For surfaces that cannot host the
 // notes panel: the NOW banner in the macOS title bar names a task whose only
@@ -270,7 +253,7 @@ export const splitTitleNoteLinks = (title) => {
 // The bar is a drag region, so each link carves itself out with no-drag;
 // the text around it stays draggable. `openLabel(note)` is the accessible
 // name of a link; `onOpenNote(note)` receives the target as extractWikilinks
-// reports it.
+// reports it. splitTitleNoteLinks (taskUtils) is the pure half.
 export const renderTitleWithNoteLinks = (title, onOpenNote, { openLabel } = {}) => (
   splitTitleNoteLinks(title).map((part, i) => {
     if (part.text !== undefined) return <React.Fragment key={i}>{renderTitle(part.text)}</React.Fragment>;
@@ -295,7 +278,7 @@ export const renderTitleWithNoteLinks = (title, onOpenNote, { openLabel } = {}) 
 // Split a title into display text and trailing hashtag for week view chip rendering.
 // Returns [text, tag] where tag is null if no trailing hashtag exists.
 export const splitChipTitleTag = (title) => {
-  const stripped = title.replace(/\[\[[^\]]+\]\]/g, '').trim();
+  const stripped = stripWikilinks(title);
   const match = stripped.match(/^(.*?)\s+(#\p{L}[\p{L}\p{N}_]*)$/su);
   if (match) return [match[1], match[2]];
   return [stripped, null];
@@ -323,7 +306,6 @@ export const highlightMatch = (text, query) => {
   );
 };
 
-// Remove wikilinks AND hashtags (used for AI context only)
-export const renderTitleWithoutTags = (title) => {
-  return title.replace(/\[\[[^\]]+\]\]/g, '').replace(/#\p{L}[\p{L}\p{N}_]*/gu, '').replace(/\s+/g, ' ').trim();
-};
+// Remove wikilinks AND hashtags: the compact rows (SCHED, Bucket List, the
+// timeline's narrow card) and AI context. Same rule as stripWikilinksAndTags.
+export const renderTitleWithoutTags = (title) => stripWikilinksAndTags(title);

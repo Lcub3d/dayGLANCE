@@ -41,7 +41,7 @@ import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
-import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
+import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
@@ -7140,7 +7140,7 @@ const DayPlanner = () => {
           // the task app-only with no signal at all.
           if (isStreamPosture(bridgeHeartbeatRef.current)) {
             if (!queued) {
-              setObsidianSyncError(`Task "${task.title}" was not written to your vault: the bridge queue is unavailable.`);
+              setObsidianSyncError(`Task "${stripWikilinks(task.title)}" was not written to your vault: the bridge queue is unavailable.`);
               setObsidianSyncStatus('error');
             }
             return;
@@ -7222,7 +7222,7 @@ const DayPlanner = () => {
     if (!task) return;
     pushUndo();
     setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? demoteToBucket(t) : t));
-    setUndoToast({ message: `"${task.title}" sent to Bucket List`, actionable: true });
+    setUndoToast({ message: `"${stripWikilinks(task.title)}" sent to Bucket List`, actionable: true });
   };
 
   // Focus mode availability: current task or back-to-back block >= 45 min remaining
@@ -7437,7 +7437,7 @@ const DayPlanner = () => {
       .filter(t => t._overdueType === 'scheduled' ? t.date < todayStr : true)
       .map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinksAndTags(t.title),
         colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
         overdueType: t._overdueType || 'scheduled',
         projectName: getProjectName(t),
@@ -7447,7 +7447,7 @@ const DayPlanner = () => {
       .filter(t => t._overdueType === 'scheduled' && t.date === todayStr)
       .map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinksAndTags(t.title),
         colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
         startTime: t.startTime || '',
         duration: t.duration || 0,
@@ -7488,7 +7488,7 @@ const DayPlanner = () => {
       .filter(t => t._agendaType === 'allday')
       .map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinksAndTags(t.title),
         colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
         projectName: getProjectName(t),
       }));
@@ -7498,7 +7498,7 @@ const DayPlanner = () => {
       .filter(t => t._agendaType === 'deadline')
       .map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinksAndTags(t.title),
         colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
         projectName: getProjectName(t),
       }));
@@ -7524,9 +7524,12 @@ const DayPlanner = () => {
       }
     }
 
+    // Every title the widget draws goes through the same rule: no
+    // [[wikilinks]] (a widget cannot open a note) and no #tags (they ride
+    // the `tags` field where the widget wants them).
     const serTask = t => ({
       id: t.id,
-      title: t.title,
+      title: stripWikilinksAndTags(t.title),
       colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
       startTime: t.startTime || '',
       duration: t.duration || 0,
@@ -7626,7 +7629,7 @@ const DayPlanner = () => {
     const nextTaskCandidate = sortedUpcoming[0] || null;
     const nextTaskItem = nextTaskCandidate ? {
       id: nextTaskCandidate.id,
-      title: nextTaskCandidate.title.replace(/\[\[[^\]]*\]\]/g, '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim(),
+      title: stripWikilinksAndTags(nextTaskCandidate.title),
       colorHex: taskColorToHex(nextTaskCandidate.color, nextTaskCandidate.nativeCalendarColor),
       startTime: nextTaskCandidate.startTime || '',
       duration: nextTaskCandidate.duration || 0,
@@ -7643,7 +7646,7 @@ const DayPlanner = () => {
     // primary task has no subtasks/notes. Cap at 4 (the Large widget's max).
     const upcomingTaskItems = sortedUpcoming.slice(1, 5).map(t => ({
       id: t.id,
-      title: t.title.replace(/\[\[[^\]]*\]\]/g, '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim(),
+      title: stripWikilinksAndTags(t.title),
       colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
       startTime: t.startTime || '',
       duration: t.duration || 0,
@@ -7714,7 +7717,7 @@ const DayPlanner = () => {
               tasks: [...ptasks]
                 .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
                 .slice(0, 6)
-                .map(t => ({ id: t.id, title: t.title, completed: !!t.completed })),
+                .map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), completed: !!t.completed })),
             };
           })
       : [];
@@ -7979,7 +7982,7 @@ const DayPlanner = () => {
       !t.archived && !t.completed && isVisibleForUser(t) && (!t.date || t.date >= todayStr));
     const items = allTasks.map(t => ({
       id: t.id,
-      title: t.title.replace(/\[\[[^\]]*\]\]/g, '').replace(/#\S+/g, '').replace(/\s+/g, ' ').trim(),
+      title: stripWikilinksAndTags(t.title),
       date: t.date || t.startTime || undefined,
       notes: (t.notes || '').substring(0, 500) || undefined,
     }));
@@ -8154,7 +8157,7 @@ const DayPlanner = () => {
       const systemPrompt = smartScheduleSystemPrompt();
       const taskData = inboxTasks.map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinks(t.title),
         duration: t.duration || 30,
         priority: t.priority || 0,
         deadline: t.deadline || null,
@@ -8266,7 +8269,7 @@ const DayPlanner = () => {
 
       const taskData = tasksToReschedule.map(t => ({
         id: t.id,
-        title: t.title,
+        title: stripWikilinks(t.title),
         duration: t.duration || 30,
         priority: t.priority || 0,
         deadline: t.deadline || null,
@@ -8318,7 +8321,7 @@ const DayPlanner = () => {
     if (!aiConfig?.enabled || !aiConfig.features?.aiSubtasks || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')) return;
     setAiSubtasksLoadingForTask(taskId);
     try {
-      const result = await aiJSON(aiSubtasksSystemPrompt(), aiSubtasksUserPrompt({ title: taskTitle, notes: taskNotes }), aiConfig);
+      const result = await aiJSON(aiSubtasksSystemPrompt(), aiSubtasksUserPrompt({ title: stripWikilinks(taskTitle), notes: taskNotes }), aiConfig);
       const newSubtasks = (result?.subtasks || [])
         .filter(st => st?.title?.trim())
         .map(st => ({

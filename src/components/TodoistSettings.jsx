@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { active } from '../todoist/core.js';
+import { stripWikilinks } from '../utils/taskUtils.js';
+import { renderTitle } from '../utils/textFormatting.jsx';
 
 export default function TodoistSettings({ variant = 'section' }) {
   const { t, i18n } = useTranslation();
@@ -182,13 +184,13 @@ export default function TodoistSettings({ variant = 'section' }) {
               onChange={event => updateSettings({ completionWriteback: event.target.checked })} />{t('todoist.writeback')}
           </label>
           <p className="leading-relaxed text-amber-700 dark:text-amber-400">{t('todoist.writeWarning')}</p>
-          {!!sync.blockedWrites.length && <p>{t('todoist.blocked', { count: sync.blockedWrites.length })} {sync.blockedWrites.slice(0, 10).map(task => task.title).join(' · ')}</p>}
+          {!!sync.blockedWrites.length && <p>{t('todoist.blocked', { count: sync.blockedWrites.length })} {sync.blockedWrites.slice(0, 10).map(task => stripWikilinks(task.title)).join(' · ')}</p>}
         </div>
       </details>
       {!!sync.conflicts.length && <div className={`border rounded-lg ${borderClass} p-3 space-y-3`}>
         <p className="text-xs">{t('todoist.conflicts')}</p>
         {sync.conflicts.map(task => <div key={task.id} className="space-y-1">
-          <p className="text-sm break-words">{task.title}</p>
+          <p className="text-sm break-words">{renderTitle(task.title)}</p>
           {Object.entries(task.todoist.conflicts).map(([field, value]) => <p key={field} className={`text-xs break-words ${textSecondary}`}>
             {field}: {String(task[field] ?? '-')} → {String(value ?? '-')}
           </p>)}

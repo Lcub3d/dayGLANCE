@@ -5,6 +5,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { BUCKET_LIST_IDS, promoteToInbox } from '../utils/bucketList.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../utils/longPressReorder.js';
+import { stripWikilinks } from '../utils/taskUtils.js';
 import { renderFormattedText, renderTitleWithoutTags, hasNotesOrSubtasks, hasOnlySubtasks } from '../utils/textFormatting.jsx';
 
 // Same iOS detection as ProjectPlanner/ProjectCard: grip-only touch drag on
@@ -97,7 +98,7 @@ const BucketListModal = () => {
   const sendToInbox = (task) => {
     pushUndo();
     setUnscheduledTasks(prev => prev.map(t => t.id === task.id ? promoteToInbox(t) : t));
-    setUndoToast({ message: `"${task.title}" sent to Inbox`, actionable: true });
+    setUndoToast({ message: `"${stripWikilinks(task.title)}" sent to Inbox`, actionable: true });
   };
 
   const scheduleNextSlot = (task) => {
@@ -289,7 +290,7 @@ const BucketListModal = () => {
         >
           {/* Tags stay in the stored title (searchable, editable in the task
               editor) but are visual noise in the pressure-free Bucket rows. */}
-          <span className="truncate">{renderTitleWithoutTags(task.title || '') || task.title}</span>
+          <span className="truncate">{renderTitleWithoutTags(task.title)}</span>
           {/* Passive has-notes glyph (not a button — the editor is the surface) */}
           {hasNotesOrSubtasks(task) && (
             hasOnlySubtasks(task)

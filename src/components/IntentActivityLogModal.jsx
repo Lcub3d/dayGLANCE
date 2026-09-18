@@ -5,6 +5,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { getActivityLog, clearActivityLog } from '../intents/intentLog.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import { renderTitle } from '../utils/textFormatting.jsx';
 
 const EVENT_COLORS = {
   completed:   'bg-green-100 text-green-700',
@@ -254,7 +255,7 @@ const IntentActivityLogModal = () => {
                           <DeliveryChip entry={entry} t={t} />
                         </div>
                         {entry.title && (
-                          <p className={`text-xs ${textPrimary} mt-0.5 truncate`}>{entry.title}</p>
+                          <p className={`text-xs ${textPrimary} mt-0.5 truncate`}>{renderTitle(entry.title)}</p>
                         )}
                         {entry.error && (
                           <div className="mt-0.5">

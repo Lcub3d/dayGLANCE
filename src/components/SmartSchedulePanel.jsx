@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrainCircuit, LayoutGrid, Inbox, CalendarDays, Check, Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { renderTitle } from '../utils/textFormatting.jsx';
 
 const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartScheduleLoading, smartScheduleError, smartScheduleAccepted, setSmartScheduleAccepted, onRun, onApply, onCancel, darkMode, textPrimary, textSecondary, borderClass, cardBg, hoverBg, gtdFrames, formatTime, mode = 'inbox' }) => {
   const { t } = useTranslation();
@@ -70,7 +71,7 @@ const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartS
                       {smartScheduleAccepted[p.taskId] && <Check size={12} />}
                     </button>
                     <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-medium ${textPrimary} truncate`}>{task?.title || 'Unknown task'}</div>
+                      <div className={`text-sm font-medium ${textPrimary} truncate`}>{task ? renderTitle(task.title) : 'Unknown task'}</div>
                       <div className={`text-xs ${textSecondary} mt-0.5`}>
                         {p.date} at {formatTime(p.time)} · {p.frameLabel}
                       </div>
@@ -91,7 +92,7 @@ const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartS
                 const task = findTaskById(u.taskId);
                 return (
                   <div key={u.taskId} className={`p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-stone-50'} text-xs`}>
-                    <span className={textPrimary}>{task?.title || 'Unknown task'}</span>
+                    <span className={textPrimary}>{task ? renderTitle(task.title) : 'Unknown task'}</span>
                     <span className={`${textSecondary} ml-1`}>— {u.reason}</span>
                   </div>
                 );

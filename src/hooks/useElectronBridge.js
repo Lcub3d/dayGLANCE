@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { taskColorToHex } from '../utils/colorUtils.js';
+import { stripWikilinks } from '../utils/taskUtils.js';
 import { buildStreamDeckState, timeToMinutes } from '../utils/streamDeckPayload.js';
 import { dispatchBackgroundAction } from '../utils/trayActionDispatch.js';
 import {
@@ -357,7 +358,7 @@ export default function useElectronBridge({
     }) || null;
     window.electronAPI.pushCurrentTask(inProgress ? {
       id: inProgress.id,
-      title: inProgress.title,
+      title: stripWikilinks(inProgress.title),
       startTime: inProgress.startTime ?? null,
       duration: inProgress.duration || 0,
       colorHex: inProgress.colorHex || taskColorToHex(inProgress.color, inProgress.nativeCalendarColor),

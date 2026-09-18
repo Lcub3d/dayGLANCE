@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { highlightMatch, renderTitle } from '../utils/textFormatting.jsx';
+import { stripWikilinks } from '../utils/taskUtils.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 
 const SpotlightModal = () => {
@@ -109,7 +110,7 @@ const SpotlightModal = () => {
                     <div className="flex-1 min-w-0">
                       <div className={`text-sm font-medium truncate ${textPrimary}`}>
                         {result.match.field === 'title'
-                          ? highlightMatch(result.task.title.replace(/\[\[[^\]]+\]\]/g, ''), spotlightQuery)
+                          ? highlightMatch(stripWikilinks(result.task.title), spotlightQuery)
                           : renderTitle(result.task.title)}
                       </div>
                       {result.match.field !== 'title' && (

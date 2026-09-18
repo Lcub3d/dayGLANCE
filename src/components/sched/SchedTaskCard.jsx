@@ -152,7 +152,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
       )}
       <div className="flex flex-col min-w-0 flex-1 gap-0.5">
         <span className={`text-sm font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
-          {renderTitleWithoutTags(task.title || '') || task.title}
+          {renderTitleWithoutTags(task.title)}
         </span>
         {/* Meta row — always rendered on editable tasks so cards stay uniform */}
         {(!isEvent || timeLabel) && (

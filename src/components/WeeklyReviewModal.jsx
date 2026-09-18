@@ -413,12 +413,12 @@ const WeeklyReviewModal = () => {
           .filter(t => !t.isExample)
           .sort((a, b) => (b.priority || 0) - (a.priority || 0))
           .slice(0, 5)
-          .map(t => ({ title: t.title, date: t.date, priority: t.priority || 0 }));
+          .map(t => ({ title: stripWikilinks(t.title), date: t.date, priority: t.priority || 0 }));
         const nextWeekCalendarEvents = nextImported
           .filter(t => !t.isTaskCalendar)
           .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.startTime || '').localeCompare(b.startTime || ''))
           .slice(0, 5)
-          .map(t => ({ title: t.title, date: t.date, time: t.startTime, isAllDay: t.isAllDay || false }));
+          .map(t => ({ title: stripWikilinks(t.title), date: t.date, time: t.startTime, isAllDay: t.isAllDay || false }));
 
         // Goals due in next 7 days (only goals with targetDate in range)
         const nextWeekDueGoals = goalsProjectsEnabled

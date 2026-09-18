@@ -68,10 +68,45 @@ export const extractTags = (title) => {
   return matches ? matches.map(tag => tag.slice(1).toLowerCase()) : [];
 };
 
+/** Drops every #tag from a text, leaving the whitespace around it. */
+export const stripTags = (text) => String(text ?? '').replace(TAG_IN_TEXT, '');
+
+// A [[wikilink]] in a title: the target (path and heading, as Obsidian
+// resolves it) and an optional |alias. One regex for every reader below.
+const WIKILINK_IN_TEXT = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+
 // Extract all [[wikilink]] note names from a title string.
 export const extractWikilinks = (title) => {
-  const matches = [...title.matchAll(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g)];
+  const matches = [...String(title ?? '').matchAll(WIKILINK_IN_TEXT)];
   return matches.map(m => m[1]);
+};
+
+// What a reader should see for one wikilink: the alias when the link carries
+// one, else the note's own name, folders and heading dropped.
+export const wikilinkLabel = (note, alias) => {
+  const a = String(alias ?? '').trim();
+  if (a) return a;
+  const n = String(note ?? '').trim();
+  return n.split('#')[0].split('/').pop().trim() || n;
+};
+
+// The pieces of a title with its [[wikilinks]] kept as links rather than
+// stripped: `{ text }` runs and `{ note, label }` links. `note` is the target
+// as extractWikilinks reports it, the name every open-in-Obsidian handler
+// takes; `label` is wikilinkLabel. Pure, so the shape is testable without a
+// renderer; textFormatting's renderTitleWithNoteLinks draws it.
+export const splitTitleNoteLinks = (title) => {
+  const str = String(title ?? '');
+  const parts = [];
+  let last = 0;
+  for (const m of str.matchAll(WIKILINK_IN_TEXT)) {
+    if (m.index > last) parts.push({ text: str.slice(last, m.index) });
+    const note = m[1].trim();
+    parts.push({ note, label: wikilinkLabel(note, m[2]) });
+    last = m.index + m[0].length;
+  }
+  if (last < str.length) parts.push({ text: str.slice(last) });
+  return parts;
 };
 
 // Two wikilink targets (or a target and a stored note target) name the same
@@ -83,9 +118,25 @@ export const sameNoteTarget = (a, b) => {
   return !!x && x === y;
 };
 
-// Strip [[wikilinks]] — hashtags stay visible in the UI.
-export const stripWikilinks = (title) =>
-  title.replace(/\[\[[^\]]+\]\]/g, '').replace(/\s+/g, ' ').trim();
+// The title without its [[wikilinks]]: the one rule for every surface that
+// cannot show a link (lists, tooltips, toasts, notifications, widgets, the
+// Stream Deck, TRMNL, AI context). Hashtags stay. A title that is nothing
+// but a link, or a link and tags, keeps the note's name in the link's place
+// rather than going blank: "[[Project brief]] #work" reads "Project brief
+// #work". Three surfaces used to fall back to the raw brackets for that case.
+export const stripWikilinks = (title) => {
+  const parts = splitTitleNoteLinks(title);
+  const text = parts.filter(p => p.text !== undefined).map(p => p.text).join(' ')
+    .replace(/\s+/g, ' ').trim();
+  const link = parts.find(p => p.note !== undefined);
+  if (!link || stripTags(text).trim()) return text;
+  return `${link.label} ${text}`.trim();
+};
+
+// stripWikilinks and the #tags too: what leaves for a surface that shows tags
+// on its own (the widget snapshot) or has no room for them.
+export const stripWikilinksAndTags = (title) =>
+  stripTags(stripWikilinks(title)).replace(/\s+/g, ' ').trim();
 
 const translateOrDefault = (translate, key, values, fallback) => typeof translate === 'function'
   ? translate(key, { ...values, defaultValue: fallback })

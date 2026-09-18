@@ -491,7 +491,7 @@ const MobileLayout = () => {
             {mobileActiveTab === 'timeline' && (
               <div className={`${cardBg} border-b ${borderClass} flex-shrink-0 relative ${showMonthView ? 'z-50' : 'z-30'}`}>
                 <div className="flex items-center justify-between px-4 py-3">
-                  <button onClick={() => changeDate(-1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('shortcuts.prevNextDay')}>
+                  <button onClick={() => changeDate(-1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('shortcuts.prevStep')}>
                     <ChevronLeft size={20} className={textSecondary} />
                   </button>
                   <div className="flex flex-col items-center gap-1">
@@ -515,7 +515,7 @@ const MobileLayout = () => {
                       </button>
                     )}
                   </div>
-                  <button onClick={() => changeDate(1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('shortcuts.prevNextDay')}>
+                  <button onClick={() => changeDate(1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('shortcuts.nextStep')}>
                     <ChevronRight size={20} className={textSecondary} />
                   </button>
                 </div>

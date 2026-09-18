@@ -1142,10 +1142,6 @@
     "sectionTaskEntry": "Task Entry",
     "sectionTaskEntrySuggestions": "Task Entry Suggestions",
     "goToToday": "Go to today",
-    "prevNextDay": "Previous / next day",
-    "viewDay": "View: Day",
-    "view3Day": "View: 3-day",
-    "viewWeek": "View: Week",
     "searchTasks": "Search tasks",
     "filterByTag": "Filter by tag",
     "focusMode": "Focus mode",
@@ -1177,16 +1173,18 @@
     "suggestionSubmit": "Submit task",
     "suggestionClose": "Close / cancel",
     "pressToClose": "Press ? or Esc to close",
-    "viewSched": "SCHED view",
     "cycleViews": "Cycle views",
     "dayDial": "Day Dial",
     "suggestionsHint": "Interacting with suggestions:",
     "taskTitleFieldHint": "Type in the task title field:",
     "toggleMonthNav": "Toggle month nav",
-    "viewMonth": "View: Month",
     "monthStepDay": "In MONTH: next day (Shift+Space: previous)",
     "monthStepWeek": "In MONTH: a week back / forward",
-    "monthOpenDay": "In MONTH: open the selected day"
+    "monthOpenDay": "In MONTH: open the selected day",
+    "viewNamed": "View: {{view}}",
+    "prevNext": "Previous / next, by current view",
+    "prevStep": "Previous, by current view",
+    "nextStep": "Next, by current view"
   },
   "spotlight": {
     "placeholder": "Search tasks and notes...",
@@ -1962,7 +1960,7 @@
     "offHint": "Off on this device. The iCloud copy and your other devices are unaffected."
   },
   "todoist": {
-    "title": "Todoist sync",
+    "title": "Todoist Sync",
     "beta": "Selective sync · beta",
     "intro": "Connect, choose a mode, then click Sync now. Automatic sync is optional. Existing dayGLANCE tasks are never uploaded.",
     "token": "Personal API token",

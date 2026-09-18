@@ -703,6 +703,8 @@
     "titlePlaceholderScheduled": "Task title (#tag, @date, ~time, %mins, ^all-day)",
     "titlePlaceholderInbox": "Task title (#tag, $deadline, !priority, %mins)",
     "addedByLastGlance": "Added by lastGLANCE",
+    "keyTasksToday": "Today's key tasks",
+    "keyTasksOverGuideline": "More than {{count}} for one day",
     "starKeyTask": "Star as a key task for today",
     "unstarKeyTask": "Remove key-task star",
     "planHistory": "Schedule history",

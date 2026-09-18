@@ -703,6 +703,8 @@
     "titlePlaceholderScheduled": "Titolo dell'attività (#etichetta, @data, ~ora, %min, ^tutto-il-giorno)",
     "titlePlaceholderInbox": "Titolo dell'attività (#etichetta, $scadenza, !priorità, %min)",
     "addedByLastGlance": "Aggiunto da lastGLANCE",
+    "keyTasksToday": "Attività chiave di oggi",
+    "keyTasksOverGuideline": "Più di {{count}} in un solo giorno",
     "starKeyTask": "Segna come attività chiave di oggi",
     "unstarKeyTask": "Rimuovi il contrassegno",
     "planHistory": "Cronologia pianificazione",

@@ -41,6 +41,7 @@ import MobileViewToggle from './MobileViewToggle.jsx';
 import DayHeaderCell from './DayHeader.jsx';
 import MonthStats from './month/MonthStats.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
+import TodayKeyTasks from './TodayKeyTasks.jsx';
 import MobileListView from './MobileListView.jsx';
 import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
@@ -692,6 +693,15 @@ const MobileLayout = () => {
               <div className={`${cardBg} border-b ${borderClass} sticky top-0 z-30`}>
                 <div className="relative flex items-center justify-center px-4 py-3">
                   <Wordmark className="text-3xl" darkMode={darkMode} />
+                  {/* Today's key tasks sit in the header's empty LEFT flank,
+                      mirroring the dial on the right. Absent on any day with no
+                      starred tasks, so the wordmark usually has both flanks. */}
+                  <TodayKeyTasks
+                    size={20}
+                    align="left"
+                    wrapperClass="absolute left-3"
+                    buttonClass={`p-2.5 rounded-lg ${hoverBg} active:bg-black/10 dark:active:bg-white/10 transition-colors`}
+                  />
                   {/* Touch entry to the Day Dial — mirrors the desktop header
                       button; the wordmark stays centered, the dial sits in the
                       header's empty right flank. */}

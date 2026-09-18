@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stampOriginalPlan, applyBaselines } from './originalPlan.js';
+import { stampOriginalPlan, applyBaselines, planHistory } from './originalPlan.js';
 import { preserveStickyFields } from './preserveStickyFields.js';
 
 const task = (over = {}) => ({ id: 't1', title: 'Write the report', date: '2026-09-17', startTime: '09:00', duration: 60, ...over });
@@ -243,5 +243,53 @@ describe('the vault round trip that erased the baseline in the field', () => {
     // And the next save cannot put it back: storage now shows the task as already
     // scheduled, so the no-backfill rule correctly refuses to invent one.
     expect(stampOriginalPlan(applied, applied)[0].originalPlan).toBeUndefined();
+  });
+});
+
+describe('planHistory', () => {
+  const planned = (over = {}) => ({
+    id: 't1', date: '2026-09-17', startTime: '09:00', duration: 60,
+    originalPlan: { date: '2026-09-17', startTime: '09:00', duration: 60 },
+    ...over,
+  });
+
+  it('reports nothing for a task with no baseline', () => {
+    expect(planHistory({ id: 't1', date: '2026-09-17', startTime: '09:00' })).toBeNull();
+  });
+
+  it('reports nothing for a task still where it was first put', () => {
+    // The affordance must not appear on a task with no story to tell.
+    expect(planHistory(planned())).toBeNull();
+  });
+
+  it('reports a moved date', () => {
+    const h = planHistory(planned({ date: '2026-09-20' }));
+    expect(h.changed).toMatchObject({ date: true, startTime: false, duration: false });
+    expect(h.plan.date).toBe('2026-09-17');
+  });
+
+  it('reports a moved time', () => {
+    expect(planHistory(planned({ startTime: '16:00' })).changed.startTime).toBe(true);
+  });
+
+  it('reports a changed duration', () => {
+    expect(planHistory(planned({ duration: 15 })).changed.duration).toBe(true);
+  });
+
+  it('reports several changes at once', () => {
+    const h = planHistory(planned({ date: '2026-09-20', startTime: '16:00', duration: 15 }));
+    expect(h.changed).toEqual({ date: true, startTime: true, duration: true });
+  });
+
+  it('does not treat a baseline without a duration as a duration change', () => {
+    // Baselines recorded from a task that had no duration carry no duration.
+    const task = planned({ originalPlan: { date: '2026-09-17', startTime: '09:00' } });
+    expect(planHistory(task)).toBeNull();
+    expect(planHistory({ ...task, startTime: '16:00' }).changed.duration).toBe(false);
+  });
+
+  it('tolerates a missing task', () => {
+    expect(planHistory(undefined)).toBeNull();
+    expect(planHistory(null)).toBeNull();
   });
 });

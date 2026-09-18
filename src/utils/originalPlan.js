@@ -113,3 +113,30 @@ export function applyBaselines(all, planned) {
   });
   return changed ? out : list;
 }
+
+/**
+ * Describe how a task's current schedule differs from the plan it was first
+ * given, or `null` when there is nothing to tell.
+ *
+ * `null` covers both "no baseline recorded" (every task that predates the
+ * feature, and every task still sitting where it was first put) and "a baseline
+ * that matches". Callers use it to decide whether to offer the history at all,
+ * which is why a task that was never moved must NOT be reported as having any:
+ * an affordance on every task that says "nothing happened" is worse than no
+ * affordance.
+ *
+ * A baseline recorded before durations were carried has no `duration`, so that
+ * field is only compared when the baseline actually holds one. An absent
+ * duration is not a change from the current one.
+ */
+export function planHistory(task) {
+  const plan = task?.originalPlan;
+  if (!plan) return null;
+  const changed = {
+    date: plan.date !== task.date,
+    startTime: plan.startTime !== task.startTime,
+    duration: typeof plan.duration === 'number' && plan.duration !== task.duration,
+  };
+  if (!changed.date && !changed.startTime && !changed.duration) return null;
+  return { plan, changed };
+}

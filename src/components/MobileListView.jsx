@@ -211,18 +211,24 @@ const TaskCard = React.memo(({
       <div style={barStyle} className={isInProgress ? 'animate-pulse' : undefined} />
       {/* Text content */}
       <div style={{ flex: 1, minWidth: 0, padding: '7px 0 7px 8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-        {/* Title */}
-        <div
-          className={`text-sm font-medium leading-snug ${textPrimary} ${item.completed ? 'line-through opacity-50' : (isCalendarEvent && isPast) ? 'line-through' : ''}`}
-          style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-        >
-          {renderTitle(item.title)}
+        {/* Title, with the star ahead of it as in GLANCE. The star is a sibling
+            rather than a child: the title clamps to two lines with -webkit-box,
+            and a button inside that container is both clipped and counted as
+            clamped content. items-start keeps it on the first line when the
+            title wraps. */}
+        <div className="flex items-start gap-1.5 min-w-0">
+          {!isCalendarEvent && <TaskStarButton task={item} size={12} />}
+          <div
+            className={`text-sm font-medium leading-snug min-w-0 ${textPrimary} ${item.completed ? 'line-through opacity-50' : (isCalendarEvent && isPast) ? 'line-through' : ''}`}
+            style={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+          >
+            {renderTitle(item.title)}
+          </div>
         </div>
         {/* Time + recurring indicator */}
         <div className={`text-[10px] leading-none ${textSecondary} flex items-center gap-1`}>
           {timeStr}
           {isRecurring && <RefreshCw size={9} className="flex-shrink-0 opacity-60" />}
-          {!isCalendarEvent && <TaskStarButton task={item} size={10} />}
         </div>
         {/* Calendar name / location (calendar events only) */}
         {isCalendarEvent && (item.calendarName || item.location) && (

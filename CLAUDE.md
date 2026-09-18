@@ -75,6 +75,42 @@ Strings live in the normal locale bundles under the `todoist` prefix, not in a
 feature-local namespace. Add new keys to `public/locales/*/translation.json`;
 `locales.test.js` enforces coverage across every language.
 
+# Adding a field to a task
+
+Task rows cross four subsystems, and a new field has to be declared to each one
+or it is silently dropped or, worse, mistaken for a user edit. Both failure modes
+have shipped. `archived` and `originalPlan` are the worked examples; follow them.
+
+**1. Does gaining the field count as an edit?** If the app writes it rather than
+the user (derived, bookkeeping, write-once), strip or default it in
+`normalizeField` in `src/utils/stampTimestamps.js`. Otherwise its appearance
+re-stamps `lastModified`, and a fabricated stamp outranks a real completion made
+on another device: the task resurrects. This is the dangerous one.
+
+**2. Do both transports carry it through last-writer-wins?** The merge keeps the
+newer copy WHOLE, so a copy from a device that never had the field wins and drops
+it. Carry it forward in `src/sync/dbAdapter.js` (vault) and `src/mergeSync.js`
+(file tier).
+
+**3. Does the apply carry it?** `src/utils/preserveStickyFields.js`, fed from the
+live task list in `applyEngineData`. Missing this makes the loss permanent rather
+than transient.
+
+**4. Does it reach React STATE, not just localStorage?** State is what
+`buildSyncPayload` pushes and what feeds `preserveStickyFields`. A field computed
+in the persist pass and written only to storage is invisible to the entire sync
+layer, and the next apply writes state back over it. If the persist pass is where
+it is derived, write the result back with the relevant setter.
+
+## Testing it
+
+Assert the field is observable where the app actually reads it, not that the
+function that computes it returned it. `originalPlan` had unit tests on every
+boundary and still shipped in a state where it never survived a single sync
+cycle, because nothing tested the path between the modules. Write at least one scenario that
+walks save → state → push → apply, and mutation-check each guard by removing it
+and confirming a test fails.
+
 # App.jsx — Ongoing Decomposition
 
 `App.jsx` started at ~30,000 lines and has been reduced to ~9,600 across four refactor passes. All previously listed extraction candidates are done:

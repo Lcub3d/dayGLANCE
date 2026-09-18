@@ -5835,15 +5835,18 @@ const DayPlanner = () => {
     // tasks appear newer than actual remote changes during merge.
     const normalizeTasks = (tasks) => tasks.map(t => ({ ...t, notes: t.notes ?? '', subtasks: t.subtasks ?? [] }));
 
-    // Preserve the app-only `archived` flag from the CURRENT in-memory copy when
-    // the merged/remote copy OMITS it — otherwise this apply silently un-archives
-    // items and re-stamps lastModified every sync (confirmed via the archived
-    // probe: applyEngineData is the second-pass stripper). A real remote unarchive
-    // sends archived:false explicitly and still propagates; only an ABSENT flag
-    // falls back to local. Read the LIVE refs (not the closure, which can predate
-    // the heal render) for the localStorage writes; the setState calls below use
-    // their own `prev` (the authoritative current state). See utils/preserveStickyFields.js.
-    const existingArchivedList = [...tasksLiveRef.current, ...unscheduledLiveRef.current];
+    // Source of the app-only "sticky" fields (`archived`, `originalPlan`) for the
+    // apply below: this is the FULL live task list, not a filtered one, because a
+    // merged/remote copy that OMITS such a field must fall back to whatever this
+    // device currently holds for that task. Without it, an apply silently
+    // un-archives items and re-stamps lastModified every sync (confirmed via the
+    // archived probe: applyEngineData is the second-pass stripper), and drops the
+    // original-plan baseline outright. A real remote unarchive sends
+    // archived:false explicitly and still propagates; only an ABSENT value falls
+    // back to local. Read the LIVE refs (not the closure, which can predate the
+    // heal render) for the localStorage writes; the setState calls below use their
+    // own `prev` (the authoritative current state). See utils/preserveStickyFields.js.
+    const stickyFieldSource = [...tasksLiveRef.current, ...unscheduledLiveRef.current];
 
     // Drop CalDAV-imported calendar events from the cloud sync payload — they are ephemeral
     // derivatives of the remote feed and must not be cloud-synced or the merge engine will
@@ -5856,8 +5859,8 @@ const DayPlanner = () => {
       !(t.imported && !t.isTaskCalendar && t.importSource !== 'file')
       && !(multiUserEnabled && t.imported && t.importSource === 'sync'));
 
-    let normalizedTasks = data.tasks ? preserveStickyFields(filterTasks(normalizeTasks(data.tasks)), existingArchivedList) : null;
-    let normalizedUnsched = data.unscheduledTasks ? preserveStickyFields(filterTasks(normalizeTasks(data.unscheduledTasks)), existingArchivedList) : null;
+    let normalizedTasks = data.tasks ? preserveStickyFields(filterTasks(normalizeTasks(data.tasks)), stickyFieldSource) : null;
+    let normalizedUnsched = data.unscheduledTasks ? preserveStickyFields(filterTasks(normalizeTasks(data.unscheduledTasks)), stickyFieldSource) : null;
 
     // Id-retirement supersede pass (utils/retiredTaskIds.js): a merged/pulled
     // row whose id the record maps to a LIVE successor is dropped — with its

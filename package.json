@@ -2,7 +2,7 @@
   "name": "dayglance",
   "private": true,
   "license": "MIT",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "homepage": "https://dayglance.app",
   "type": "module",
   "main": "dist-electron/main.js",

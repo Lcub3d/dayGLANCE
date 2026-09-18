@@ -375,6 +375,7 @@
     "dayViewMode": "Day view mode",
     "weekViewMode": "Week view mode",
     "weekTimelineStart": "Week timeline start",
+    "weekTimelineEnd": "Week timeline end",
     "glanceDefault": "GLANCE default",
     "glanceDefaultHabits": "Habits",
     "glanceDefaultGoals": "Goals",

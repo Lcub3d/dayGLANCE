@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { weekWindow, compactHourLabel } from '../utils/weekWindow.js';
 import * as Icons from 'lucide-react';
 import { Zap } from 'lucide-react';
 import { dateToString } from '../utils/taskUtils.js';
@@ -82,7 +83,7 @@ const fmtDur = (min) => {
   return min < 60 ? `${min}m` : m ? `${h}h${m}m` : `${h}h`;
 };
 
-const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, onTaskClick, activePopoverTaskId, isToday }) => {
+const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour, onTaskClick, activePopoverTaskId, isToday }) => {
   const {
     darkMode, borderClass, cardBg,
     getTasksForDate, getTaskCalendarStyle,
@@ -102,15 +103,15 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, onTaskCl
   const overflowPopoverRef = useRef(null);
   const colRef = useRef(null);
 
-  // Compute the snapped drop time for the cursor Y relative to this
-  // week-view column. Week columns always span 00:00..24:00, so startMinute
-  // is 0 and the max is clamped to 23:45 (minus the dragged task's length).
+  // Compute the snapped drop time for the cursor Y relative to this week-view
+  // column. The column spans the visible window, so a drop is clamped to it at
+  // both ends: you cannot drop a task into an hour the view is not showing you.
   const startMinute = startHour * 60;
   const timeFromEvent = (e, { taskDuration = 0 } = {}) => columnTimeFromEvent(e, colRef.current, {
     startMinute,
     hourHeight,
     minMinute: startMinute,
-    maxMinute: 24 * 60,
+    maxMinute: endHour * 60,
     taskDuration,
   });
 
@@ -182,7 +183,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, onTaskCl
       className={`flex-1 flex flex-col min-w-0 relative ${colIdx > 0 ? `border-l ${borderClass}` : ''} ${isToday ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
     >
       {/* Hour rows — only render visible hours */}
-      {Array.from({ length: 24 - startHour }, (_, i) => {
+      {Array.from({ length: endHour - startHour }, (_, i) => {
         const hour = startHour + i;
         return (
           <div
@@ -511,11 +512,17 @@ const WeekView = () => {
     expandedNotesTaskId, setExpandedNotesTaskId,
     getTasksForDate,
     weekTimelineStartHour,
+    weekTimelineEndHour,
   } = useDayPlannerCtx();
 
   const [showAllHours, setShowAllHours] = useState(false);
-  const startHour = showAllHours ? 0 : weekTimelineStartHour;
-  const visibleHours = 24 - startHour;
+  // showAllHours is the escape hatch for both bounds at once: whichever edge you
+  // reach for, you get the whole day back.
+  const { startHour, endHour, visibleHours } = weekWindow({
+    startHour: weekTimelineStartHour,
+    endHour: weekTimelineEndHour,
+    showAll: showAllHours,
+  });
 
   const hourHeight = useWeekViewHourHeight(calendarRef, stickyHeaderRef, visibleHours);
   const [popoverTask, setPopoverTask] = useState(null);
@@ -564,25 +571,26 @@ const WeekView = () => {
       >
         {Array.from({ length: visibleHours }, (_, i) => {
           const hour = startHour + i;
-          const isToggleRow = weekTimelineStartHour > 0 && hour === weekTimelineStartHour;
-          const toggleLabel = use24HourClock
-            ? `${String(weekTimelineStartHour).padStart(2, '0')}:00`
-            : weekTimelineStartHour === 0 ? '12AM'
-            : weekTimelineStartHour === 12 ? '12PM'
-            : weekTimelineStartHour < 12 ? `${weekTimelineStartHour}AM`
-            : `${weekTimelineStartHour - 12}PM`;
+          // A toggle sits at each TRIMMED edge, and either one restores the whole
+          // day. The arrow points the way the hidden hours lie: up at the top
+          // edge, down at the bottom, and the other way once they are showing.
+          const atTopEdge = weekTimelineStartHour > 0 && hour === weekTimelineStartHour;
+          const atBottomEdge = weekTimelineEndHour < 24 && hour === weekTimelineEndHour - 1;
+          const edgeHour = atTopEdge ? weekTimelineStartHour : weekTimelineEndHour;
+          const edgeLabel = compactHourLabel(edgeHour, use24HourClock);
+          const arrow = atTopEdge ? (showAllHours ? '▼' : '▲') : (showAllHours ? '▲' : '▼');
           return (
             <div
               key={hour}
               className="relative flex-shrink-0"
               style={{ height: `${hourHeight}px` }}
             >
-              {isToggleRow ? (
+              {(atTopEdge || atBottomEdge) ? (
                 <button
                   onClick={() => setShowAllHours(v => !v)}
                   className="absolute top-0.5 right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none"
                 >
-                  {showAllHours ? `▼ ${toggleLabel}` : `▲ ${toggleLabel}`}
+                  {`${arrow} ${edgeLabel}`}
                 </button>
               ) : (hour % 3 === 0 && (
                 <span
@@ -610,6 +618,7 @@ const WeekView = () => {
             colIdx={colIdx}
             hourHeight={hourHeight}
             startHour={startHour}
+            endHour={endHour}
             onTaskClick={handleTaskClick}
             activePopoverTaskId={popoverTask?.id}
             isToday={dateStr === todayStr}

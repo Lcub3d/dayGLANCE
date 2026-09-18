@@ -375,6 +375,7 @@
     "dayViewMode": "Modo de visualização diária",
     "weekViewMode": "Modo de visualização semanal",
     "weekTimelineStart": "Início da agenda semanal",
+    "weekTimelineEnd": "Fim da linha do tempo semanal",
     "glanceDefault": "Padrão do GLANCE",
     "glanceDefaultHabits": "Hábitos",
     "glanceDefaultGoals": "Objetivos",

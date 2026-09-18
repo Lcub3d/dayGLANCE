@@ -1,4 +1,5 @@
 import React from 'react';
+import { BookOpen } from 'lucide-react';
 import { isOnlyPhoneNumber, phoneTelUrl, canDialHere } from './phoneNumber.js';
 
 // URL detection regex for notes
@@ -238,6 +239,58 @@ export const renderTitle = (title) => {
     return part;
   });
 };
+
+// The pieces of a title with its [[wikilinks]] kept as links rather than
+// stripped: `{ text }` runs and `{ note, label }` links. `note` is the target
+// as extractWikilinks reports it (path and heading, alias dropped), the name
+// every open-in-Obsidian handler takes; `label` is what a reader sees, the
+// alias when the link carries one, else the note's own name without its
+// folders. Pure, so the shape is testable without a renderer.
+export const splitTitleNoteLinks = (title) => {
+  const parts = [];
+  const re = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(title || '')) !== null) {
+    if (m.index > last) parts.push({ text: title.slice(last, m.index) });
+    const note = m[1].trim();
+    const alias = (m[2] || '').trim();
+    const label = alias || note.split('#')[0].split('/').pop().trim() || note;
+    parts.push({ note, label });
+    last = m.index + m[0].length;
+  }
+  if (last < (title || '').length) parts.push({ text: title.slice(last) });
+  return parts;
+};
+
+// Like renderTitle, but each [[wikilink]] becomes a link that opens the note
+// in Obsidian instead of disappearing. For surfaces that cannot host the
+// notes panel: the NOW banner in the macOS title bar names a task whose only
+// note is in the vault, and a stripped title would leave no way to reach it.
+// The bar is a drag region, so each link carves itself out with no-drag;
+// the text around it stays draggable. `openLabel(note)` is the accessible
+// name of a link; `onOpenNote(note)` receives the target as extractWikilinks
+// reports it.
+export const renderTitleWithNoteLinks = (title, onOpenNote, { openLabel } = {}) => (
+  splitTitleNoteLinks(title).map((part, i) => {
+    if (part.text !== undefined) return <React.Fragment key={i}>{renderTitle(part.text)}</React.Fragment>;
+    const name = openLabel ? openLabel(part.note) : part.note;
+    return (
+      <button
+        key={i}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenNote?.(part.note); }}
+        title={name}
+        aria-label={name}
+        style={{ WebkitAppRegion: 'no-drag' }}
+        className="inline-flex items-center gap-1 align-baseline underline decoration-dotted underline-offset-2 hover:opacity-75 transition-opacity"
+      >
+        <BookOpen size={11} className="flex-shrink-0" />
+        <span>{part.label}</span>
+      </button>
+    );
+  })
+);
 
 // Split a title into display text and trailing hashtag for week view chip rendering.
 // Returns [text, tag] where tag is null if no trailing hashtag exists.

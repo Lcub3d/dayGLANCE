@@ -191,9 +191,11 @@ Activity's single-moment fact and is only right for the entry at push time.
 
 ## 6. Rendering approach
 
-**Spike this first — it decides the architecture.** The open question is whether
-a `Path`-heavy dial survives WidgetKit's render budget across a full timeline on
-older hardware (A15). Answer it before committing to design work.
+**Decided: cached image.** The spike in PR #1670 ran on device (iPhone 15, A16)
+and the cached-image path cleared every bar in the table below by a wide
+margin; the numbers are under "Result" at the end of this section. Live paths
+were not measured — the decision rule does not need them once the cache path
+is clean.
 
 The findings give the likely answer: 18 of ~985 elements move with the needle
 (1.8%), and `NowLine` is rotationally invariant. So:
@@ -217,9 +219,9 @@ dragged constantly, and every edit that should be reflected costs a
 
 ### Deciding between the two paths
 
-Measured on an A15 with the spike from PR #1670 (its file header says how to
-read the numbers). The criteria are not conjunctive: a defect in the cache path
-is enough on its own to reopen the question, whatever live paths measure.
+Measured with the spike from PR #1670 (its file header says how to read the
+numbers). The criteria are not conjunctive: a defect in the cache path is
+enough on its own to reopen the question, whatever live paths measure.
 
 | cached image | live paths | decision |
 |---|---|---|
@@ -230,6 +232,31 @@ is enough on its own to reopen the question, whatever live paths measure.
 
 "Clean" and "defect" are about the cache path's own behaviour, not about how
 it compares to live.
+
+### Result
+
+Cached-image mode, iPhone 15 (A16), read off the widget's corner readout
+(PRs #1709 and #1710) rather than Console; the earlier Console run matched.
+
+| measured | value | bar | result |
+|---|---|---|---|
+| `baseImage` cold `ImageRenderer` pass (key forced to miss) | 28 ms | < ~500 ms | clean |
+| footprint on the entry that rendered it | 13 MB | < ~20 MB | clean |
+| footprint / headroom on the first entry of the earlier run | 18.1 MB / 11.9 MB avail | < ~20 MB | clean; the two sum to the 30 MB cap, so headroom is real |
+| entries shown | corner `1/96 · 08:01` → `18/96 · 12:16`, exactly on the 15-minute schedule over 4 h 15 min | all 96, on time | clean |
+| image at device scale | crisp, no blur; needle at the correct angle | correct at device scale | clean |
+| PNG across provider calls | later reloads in the first build hit the on-disk PNG (which is why the cold cost had to be forced with a new cache key) | survives | clean |
+| crashes | none in Settings ▸ Analytics Data | none | clean |
+
+Derating for the fleet: A16 is ~1.1–1.15× an A15 and ~1.8× the A12 floor
+(iPhone XS/XR, the extension's iOS 17 minimum). Memory numbers transfer as
+measured; the cold render becomes ~32 ms on an A15 and ~50 ms on an A12, still
+an order of magnitude inside the bar. No reason to re-run on older hardware
+before Phase 2.
+
+Two things seen on the glass that are not defects: the hub is empty (Phase 3
+draws it) and some detail is too small to read at widget size (the spike draws
+web geometry unchanged; sizing is Phase 2 design work, see §7).
 
 ---
 
@@ -263,7 +290,8 @@ it compares to live.
 
 ## 8. Still to verify on device
 
-1. Render budget across the timeline on an A15. **Do this first.**
+1. ~~Render budget across the timeline.~~ **Verified** (§6 "Result"): 96
+   entries on schedule, 28 ms cold render, 13–18 MB footprint on an A16.
 2. Low-opacity sky-ring segments at dawn and dusk on OLED in daylight — opacity
    carries the signal alone now that width is constant. If the faintest segments
    disappear, raise the floor and compress the range rather than widening.
@@ -284,7 +312,7 @@ the total is more reliable than any single line below.
 
 | # | Phase | Est. | Done when |
 |---|---|---|---|
-| 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported. **Open**: the spike compiles (`ios.yml` green) but has not run on an A15 |
+| 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported. **Closed**: cached image chosen on the iPhone 15 run (§6 "Result") |
 | 0b | Dial blocks in the snapshot | 0.5d | `dial` field carries every timed block of the day (§5). **Landed** in the follow-up to #1670. Parallel to Phase 1; gates Phase 2 |
 | 1 | Geometry port | 3–4d | Swift agrees with `dayDial.js` on every exported vector. No UI. |
 | 2 | Static dial | 3d | Sky ring, ticks, labels, block band, separators, glyphs match the spec render side by side |
@@ -292,13 +320,12 @@ the total is more reliable than any single line below.
 | 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
 | 5 | States + ship | 2–3d | Placeholder, empty day, no current task, rollover, DST, `widgetURL`, Lora bundled |
 
-**Phase 0b is done and Phase 0 is not.** The rendering decision waits on the
-A15 run; nothing in phases 2–5 starts before it.
-
-**Phase 0 is a gate, not a warm-up.** If the cached-image path wins, phase 2
-collapses to a single `ImageRenderer` pass and phase 4 gets simpler. If live
-`Path` wins, phase 2 is the substantial rendering work and phase 4 inherits the
-budget pressure. Do not start phase 2 before phase 0 has numbers.
+**Phases 0 and 0b are done.** The cached-image path won (§6 "Result"), so
+phase 2 is a single `ImageRenderer` pass over the static face and phase 4 is
+the needle, the past-dimming sector and reload debouncing on top of a cached
+PNG; neither inherits render-budget pressure. Phase 1 is next. The spike
+stays in the tree behind `DIAL_SPIKE` until phase 2 replaces it with the real
+face; nothing else should be built on it.
 
 **Phase 1 is the largest single block and the most mechanical.** It is isolated
 deliberately: it has no UI, it is fully testable against the exported fixtures,

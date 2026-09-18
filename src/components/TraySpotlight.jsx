@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, X } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { stripWikilinks } from '../utils/taskUtils.js';
 
 export default function TraySpotlight({ darkMode, onClose }) {
   const { t } = useTranslation();
@@ -103,7 +104,7 @@ export default function TraySpotlight({ darkMode, onClose }) {
             >
               <div className={`w-2 h-2 rounded-full flex-shrink-0 bg-${task.color || 'gray'}-400`} />
               <div className="min-w-0 flex-1">
-                <div className={`text-sm font-medium truncate ${textPrimary}`}>{task.title}</div>
+                <div className={`text-sm font-medium truncate ${textPrimary}`}>{stripWikilinks(task.title)}</div>
                 <div className={`text-xs ${textSecondary} flex items-center gap-1`}>
                   {date && <span>{date}</span>}
                   {sourceLabel && <span className="opacity-60">· {sourceLabels[result.source] ?? sourceLabel}</span>}

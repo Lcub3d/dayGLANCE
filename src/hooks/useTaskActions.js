@@ -2,7 +2,7 @@ import { cleanTitle } from '../utils/suggestionParser.js';
 import { toInboxCopy } from '../utils/inboxMove.js';
 import { stripBucketId } from '../utils/bucketList.js';
 import { stripSpans } from '../utils/quickAddParser.js';
-import { dateToString, extractTags, formatDeadlineDate, completionTimestamp } from '../utils/taskUtils.js';
+import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
 
@@ -810,7 +810,7 @@ export default function useTaskActions({
     setSyncNotification({
       type: 'success',
       title: 'Task Scheduled',
-      message: `"${task.title}" placed at ${startTime} in ${frame.label}`,
+      message: `"${stripWikilinks(task.title)}" placed at ${startTime} in ${frame.label}`,
     });
   };
 

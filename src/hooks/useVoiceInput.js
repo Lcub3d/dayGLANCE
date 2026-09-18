@@ -5,7 +5,7 @@ import {
   nativeStartRecording, nativeStopRecording, triggerHaptic,
   nativeSupportsSpeech, nativeStartSpeech, nativeStopSpeech, nativeCancelSpeech,
 } from '../native.js';
-import { dateToString, completionTimestamp } from '../utils/taskUtils.js';
+import { dateToString, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { parseTranscriptTasks } from '../utils/voiceQuickAdd.js';
 
@@ -391,7 +391,7 @@ export default function useVoiceInput({
     // Scheduled tasks (yesterday + today + future — user may reschedule past tasks)
     const relevant = tasks.filter(t => !t.imported && !t.isExample && t.date >= yesterdayStr).slice(0, 40);
     relevant.forEach(t => {
-      let d = `"${t.title}" — ${t.date}`;
+      let d = `"${stripWikilinks(t.title)}" — ${t.date}`;
       if (t.startTime) d += ` at ${t.startTime}`;
       d += `, ${t.duration || 30}min`;
       if (t.completed) d += ' [COMPLETED]';
@@ -399,7 +399,7 @@ export default function useVoiceInput({
     });
     // Inbox tasks (uncompleted)
     unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).slice(0, 20).forEach(t => {
-      let d = `"${t.title}" — inbox, ${t.duration || 30}min`;
+      let d = `"${stripWikilinks(t.title)}" — inbox, ${t.duration || 30}min`;
       if (t.priority > 0) d += `, priority: ${['none', 'low', 'medium', 'high'][t.priority]}`;
       if (t.deadline) d += `, deadline: ${t.deadline}`;
       lines.push(d);

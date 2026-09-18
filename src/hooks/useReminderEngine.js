@@ -318,7 +318,9 @@ export default function useReminderEngine({
           futureReminders.push({
             id: point.key,
             taskId: String(task.id),
-            title: task.title,
+            // Same rule as the foreground path's taskTitle above: a notification
+            // shade cannot open a note, so the [[wikilink]] goes.
+            title: stripWikilinks(task.title),
             body: reminderMessage(point.type),
             type: point.type,
             isCalendarEvent: !!(task.imported && !task.isTaskCalendar),

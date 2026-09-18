@@ -9,6 +9,7 @@
 
 import { getOccurrencesInRange } from './utils/recurrenceEngine.js';
 import { notBucketed } from './utils/bucketList.js';
+import { stripWikilinks } from './utils/taskUtils.js';
 
 // ---------------------------------------------------------------------------
 // Data helpers
@@ -117,7 +118,7 @@ export function gatherTrmnlData({
     return {
       time: fmtTime(t.startTime, use24HourClock),
       dur: fmtDuration(t.duration),
-      title: (t.title || '').slice(0, 40),
+      title: stripWikilinks(t.title).slice(0, 40),
       done: !!t.completed,
       pri: priorityLabel(t.priority),
       allDay: !!t.allDay,
@@ -140,7 +141,7 @@ export function gatherTrmnlData({
     .slice(0, 3)
     .map((t) => ({
       time: fmtTime(t.startTime, use24HourClock),
-      title: (t.title || '').slice(0, 32),
+      title: stripWikilinks(t.title).slice(0, 32),
     }));
 
   // Next task

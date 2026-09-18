@@ -9,7 +9,7 @@ import { isNativeAndroid, isNativeApp, nativeUpdateEvent, SOURCE_APPS } from '..
 import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import UserAssignmentBadge from './UserAssignmentBadge.jsx';
-import { extractWikilinks } from '../utils/taskUtils.js';
+import { extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -211,7 +211,7 @@ const AllDayTaskCard = ({ task, fillWidth = true }) => {
                     startEditingTask(task, false);
                   }
                 } : undefined}
-                title={task.title}
+                title={stripWikilinks(task.title)}
               >
                 {!isTablet && editingTaskId === task.id ? (
                   <div className="relative tag-autocomplete-container">

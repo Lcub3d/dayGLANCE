@@ -3,6 +3,7 @@ import { Archive, ChevronDown, RotateCcw } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { notBucketed } from '../utils/bucketList.js';
+import { renderTitle } from '../utils/textFormatting.jsx';
 import { useTranslation } from 'react-i18next';
 
 const InboxArchivedBar = () => {
@@ -47,7 +48,7 @@ const InboxArchivedBar = () => {
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg ${hoverBg} min-w-0`}
               >
                 <span className={`text-xs ${textSecondary} flex-1 min-w-0 truncate line-through opacity-60`}>
-                  {task.title}
+                  {renderTitle(task.title)}
                 </span>
                 {proj && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>

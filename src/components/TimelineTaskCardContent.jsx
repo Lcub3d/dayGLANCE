@@ -11,6 +11,7 @@ import { extractTags, extractWikilinks, stripWikilinks } from '../utils/taskUtil
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import TaskPlanHistory from './TaskPlanHistory.jsx';
+import TaskStarButton from './TaskStarButton.jsx';
 import UserAssignmentBadge from './UserAssignmentBadge.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -235,6 +236,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                 {task.obsidianRecurrence && <Repeat size={12} className="flex-shrink-0 opacity-75" title={t('task.obsidianRecurrenceManaged', { defaultValue: "Recurring in Obsidian — this task's recurrence is managed by the Tasks plugin; completing it here won't create the next instance" })} />}
                 {task.source_app === SOURCE_APPS.LASTGLANCE && <LastGlanceBadge size={12} className="flex-shrink-0" title={t('task.addedByLastGlance')} />}
                 {!isImported && <TaskPlanHistory task={task} />}
+                {!isImported && <TaskStarButton task={task} />}
               {task.obsidianNotePath && <FileText size={12} className="flex-shrink-0 opacity-75" title={t('task.obsidianNoteSource', { note: task.obsidianNotePath.replace(/\.md$/, ''), defaultValue: 'In {{note}} (Obsidian)' })} />}
                 {multiUserEnabled && <UserAssignmentBadge users={users} assignedUserSyncIds={task.assignedUserSyncIds} size={14} />}
                 <div className="flex-1 min-w-0">
@@ -328,6 +330,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                 {task.obsidianRecurrence && <Repeat size={12} className="flex-shrink-0 opacity-75" title={t('task.obsidianRecurrenceManaged', { defaultValue: "Recurring in Obsidian — this task's recurrence is managed by the Tasks plugin; completing it here won't create the next instance" })} />}
                 {task.source_app === SOURCE_APPS.LASTGLANCE && <LastGlanceBadge size={12} className="flex-shrink-0" title={t('task.addedByLastGlance')} />}
                 {!isImported && <TaskPlanHistory task={task} />}
+                {!isImported && <TaskStarButton task={task} />}
                 {multiUserEnabled && <UserAssignmentBadge users={users} assignedUserSyncIds={task.assignedUserSyncIds} size={14} />}
                 <div className="flex-1 min-w-0">
                   {!isTablet && editingTaskId === task.id ? (

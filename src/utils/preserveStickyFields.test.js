@@ -99,3 +99,26 @@ describe('preserveStickyFields — originalPlan', () => {
     expect(out.originalPlan).toBeUndefined();
   });
 });
+
+describe('preserveStickyFields — starredDate', () => {
+  const DAY = '2026-09-18';
+
+  it('back-fills a star the incoming copy omits', () => {
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], [{ id: 'a', starredDate: DAY }]);
+    expect(out.starredDate).toBe(DAY);
+  });
+
+  it('honours an explicit unstar rather than restoring the star', () => {
+    const [out] = preserveStickyFields([{ id: 'a', starredDate: null }], [{ id: 'a', starredDate: DAY }]);
+    expect(out.starredDate).toBeNull();
+  });
+
+  it('carries all three sticky fields independently in one pass', () => {
+    const existing = [{ id: 'a', archived: true, starredDate: DAY, originalPlan: { date: DAY, startTime: '08:00' } }];
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], existing);
+    expect(out).toEqual({
+      id: 'a', title: 'x', archived: true, starredDate: DAY,
+      originalPlan: { date: DAY, startTime: '08:00' },
+    });
+  });
+});

@@ -703,6 +703,8 @@
     "titlePlaceholderScheduled": "Título da tarefa (#etiqueta, @data, ~hora, %mins, ^dia-inteiro)",
     "titlePlaceholderInbox": "Título da tarefa (#etiqueta, $prazo, !prioridade, %mins)",
     "addedByLastGlance": "Adicionado pelo lastGLANCE",
+    "starKeyTask": "Marcar como tarefa principal de hoje",
+    "unstarKeyTask": "Remover a marcação",
     "planHistory": "Histórico de agendamento",
     "originallyPlanned": "Planejado originalmente",
     "nowScheduled": "Agora",

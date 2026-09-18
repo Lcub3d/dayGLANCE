@@ -317,6 +317,11 @@ function upsertCollection(data, kind, value) {
     if (merged && merged.originalPlan === undefined && local && local.originalPlan !== undefined) {
       merged = { ...merged, originalPlan: local.originalPlan };
     }
+    // `starredDate` (utils/starredTasks.js) the same way. An unstar writes an
+    // explicit null, so only an ABSENT value means the winner predates the field.
+    if (merged && merged.starredDate === undefined && local && local.starredDate !== undefined) {
+      merged = { ...merged, starredDate: local.starredDate };
+    }
     data[kind][idx] = merged;
     // Re-push when we enriched the pulled row so the vault converges to the
     // superset (mirrors the bundle-superset re-push).

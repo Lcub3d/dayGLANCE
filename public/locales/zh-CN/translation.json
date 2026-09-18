@@ -703,6 +703,8 @@
     "titlePlaceholderScheduled": "任务标题（#tag、@date、~time、%mins、^all-day）",
     "titlePlaceholderInbox": "任务标题（#tag、$deadline、!priority、%mins）",
     "addedByLastGlance": "添加者 lastGLANCE",
+    "starKeyTask": "标记为今日要事",
+    "unstarKeyTask": "取消标记",
     "planHistory": "计划历史",
     "originallyPlanned": "原计划",
     "nowScheduled": "现在",

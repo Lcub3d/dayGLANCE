@@ -703,6 +703,8 @@
     "titlePlaceholderScheduled": "Aufgabentitel (#Tag, @Datum, ~Zeit, %Min, ^Ganztägig)",
     "titlePlaceholderInbox": "Aufgabentitel (#Tag, $Frist, !Priorität, %Min)",
     "addedByLastGlance": "Hinzugefügt von lastGLANCE",
+    "starKeyTask": "Als Schlüsselaufgabe für heute markieren",
+    "unstarKeyTask": "Markierung entfernen",
     "planHistory": "Terminverlauf",
     "originallyPlanned": "Ursprünglich geplant",
     "nowScheduled": "Jetzt",

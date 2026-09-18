@@ -222,3 +222,35 @@ describe('stampTimestamps — gaining an originalPlan is not an edit', () => {
     expect(merged[0].completed).toBe(true);
   });
 });
+
+describe('stampTimestamps — starring IS an edit, but absent and null are not', () => {
+  // Unlike archived and originalPlan, a star is a deliberate user action and has
+  // to re-stamp so it wins on other devices. Only the absent/null pair is
+  // canonicalised, because both mean "not starred".
+  const DAY = '2026-09-18';
+
+  it('stamps a real star', () => {
+    const stored = { id: 1, title: 'Report', date: DAY, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, starredDate: DAY }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('stamps a real unstar', () => {
+    const stored = { id: 1, title: 'Report', date: DAY, starredDate: DAY, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, starredDate: null }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('does NOT re-stamp when storage omits the key and memory says null', () => {
+    const stored = { id: 1, title: 'Report', date: DAY, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, starredDate: null }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('does NOT re-stamp the reverse flip either', () => {
+    const stored = { id: 1, title: 'Report', date: DAY, starredDate: null, lastModified: ISO(60) };
+    const { starredDate: _drop, ...without } = stored;
+    const out = stampTimestamps([without], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+});

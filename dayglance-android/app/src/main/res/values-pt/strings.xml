@@ -147,4 +147,12 @@
     <string name="reminder_precise_message">O dayGLANCE precisa de permissão para agendar alarmes exatos, para que os lembretes de tarefas cheguem a horas mesmo com a aplicação fechada.\n\nToque em «Conceder acesso» e ative «dayGLANCE» no ecrã seguinte.</string>
     <string name="grant_access">Conceder acesso</string>
     <string name="not_now">Agora não</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">Desatualizado</string>
+    <string name="widget_as_of">em %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">há %1$d dia</item>
+        <item quantity="other">há %1$d dias</item>
+    </plurals>
+    <string name="widget_open_to_refresh">Abra o dayGLANCE para atualizar</string>
 </resources>

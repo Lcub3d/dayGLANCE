@@ -148,4 +148,12 @@
     <string name="reminder_precise_message">dayGLANCE 需要精确闹钟权限，才能在应用关闭时仍按时发送任务提醒。\n\n点击“授予权限”，然后在下一页启用 dayGLANCE。</string>
     <string name="grant_access">授予权限</string>
     <string name="not_now">暂不</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">已过期</string>
+    <string name="widget_as_of">截至 %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">%1$d 天前</item>
+        <item quantity="other">%1$d 天前</item>
+    </plurals>
+    <string name="widget_open_to_refresh">打开 dayGLANCE 以刷新</string>
 </resources>

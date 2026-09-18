@@ -147,4 +147,12 @@
     <string name="reminder_precise_message">dayGLANCE benötigt die Berechtigung zum Planen exakter Alarme, damit Ihre Aufgabenerinnerungen auch bei geschlossener App pünktlich eintreffen.\n\nTippen Sie auf „Zugriff gewähren“ und aktivieren Sie dann auf dem nächsten Bildschirm „dayGLANCE“.</string>
     <string name="grant_access">Zugriff gewähren</string>
     <string name="not_now">Nicht jetzt</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">Veraltet</string>
+    <string name="widget_as_of">Stand: %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">%1$d Tag alt</item>
+        <item quantity="other">%1$d Tage alt</item>
+    </plurals>
+    <string name="widget_open_to_refresh">dayGLANCE öffnen, um zu aktualisieren</string>
 </resources>

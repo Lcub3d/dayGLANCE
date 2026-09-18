@@ -161,4 +161,12 @@ Open dayGLANCE to sync your data, then try adding the widget again.</string>
     <string name="reminder_precise_message">DayGlance needs permission to schedule exact alarms so your task reminders arrive on time, even when the app is closed.\n\nTap \"Grant access\", then enable \"DayGlance\" on the next screen.</string>
     <string name="grant_access">Grant access</string>
     <string name="not_now">Not now</string>
+    <!-- Stale widget state: the stored snapshot describes another day (WidgetFreshness.kt) -->
+    <string name="widget_outdated">Outdated</string>
+    <string name="widget_as_of">as of %1$s</string>
+    <plurals name="widget_days_old">
+        <item quantity="one">%1$d day old</item>
+        <item quantity="other">%1$d days old</item>
+    </plurals>
+    <string name="widget_open_to_refresh">Open dayGLANCE to refresh</string>
 </resources>

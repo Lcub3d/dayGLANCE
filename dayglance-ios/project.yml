@@ -1,9 +1,14 @@
 name: DayGlance
 
 packages:
+  # RevenueCat 5.90.1 as a prebuilt xcframework. Xcode 27 cannot compile the
+  # source package (purchases-ios#7730, a Swift 6.4 regression on code the
+  # app never calls); the binary's Swift interface links fine. The wrapper
+  # package pins the release URL and checksum; see its Package.swift for the
+  # why, how to bump, and how to return to the source package
+  # (https://github.com/RevenueCat/purchases-ios-spm, minorVersion 5.0.0).
   RevenueCat:
-    url: https://github.com/RevenueCat/purchases-ios-spm
-    minorVersion: "5.0.0"
+    path: Packages/RevenueCatBinary
 
 options:
   bundleIdPrefix: com.dayglance

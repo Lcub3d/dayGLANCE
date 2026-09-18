@@ -177,12 +177,14 @@ struct DialSpikeProvider: TimelineProvider {
 
         // Entries start on the current quarter hour, so the needle steps on
         // the clock's own grid rather than on whenever the widget was added.
+        // Floored by rebuilding the date from its components: the earlier
+        // `date(bySetting: .second, value: 0)` rounds FORWARD to the next whole
+        // minute, which put the first device run's entries at :01/:16/:31/:46.
         let now = Date()
         let cal = Calendar.current
-        let minute = cal.component(.minute, from: now)
-        let start = cal.date(byAdding: .minute, value: -(minute % Self.stepMinutes), to: now).map {
-            cal.date(bySetting: .second, value: 0, of: $0) ?? $0
-        } ?? now
+        var comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: now)
+        comps.minute = (comps.minute ?? 0) - ((comps.minute ?? 0) % Self.stepMinutes)
+        let start = cal.date(from: comps) ?? now
 
         Task { @MainActor in
             var imageNote = "n/a (live paths)"

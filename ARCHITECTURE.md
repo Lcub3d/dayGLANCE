@@ -166,7 +166,10 @@ Tombstone maps (deleted IDs with timestamps) exist for tasks, routine chips, hab
 survives being rescheduled over. `src/utils/originalPlan.js` writes it during the
 persist pass, the one place that sees both the new state and the stored copy it
 replaces, which is what distinguishes a task being *scheduled* from one being
-*rescheduled*. It is never written twice and tasks that predate it are never
+*rescheduled*. The persist pass then writes the result back into React state,
+which is not optional: state is what `buildSyncPayload` pushes and what
+`applyEngineData` hands to `preserveStickyFields`, so a baseline living only in
+storage is invisible to the sync layer and the next apply erases it. It is never written twice and tasks that predate it are never
 backfilled, because a rescheduled task's current schedule is precisely not its
 original plan and inventing one would be indistinguishable from the real thing.
 Being a field on the task, it rides existing backup, restore and sync for free.

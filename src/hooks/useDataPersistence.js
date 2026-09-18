@@ -1,7 +1,7 @@
 import { dateToString } from '../utils/taskUtils.js';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { stampTimestamps } from '../utils/stampTimestamps.js';
-import { stampOriginalPlan } from '../utils/originalPlan.js';
+import { stampOriginalPlan, applyBaselines } from '../utils/originalPlan.js';
 import { rolloverRemovedTodayRoutineIds, startOfTodayIso } from './useRoutines.js';
 
 // Read-only CalDAV/ICS-subscription events (importSource 'sync', non-task,
@@ -40,19 +40,16 @@ export default function useDataPersistence({
   cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
   setUndoToast,
 }) {
-  // Stamp lastModified on tasks that changed since last save.
-  //
-  // `captureOriginalPlan` additionally records the schedule a task is first given
-  // (utils/originalPlan.js). It rides here rather than at the dozen-odd sites that
-  // assign a date and time because this is the one place that sees BOTH the new
-  // state and the stored copy it replaces, which is what distinguishes a task
-  // being scheduled from one being rescheduled. The suppressTimestamp gate below
-  // covers it too, and deliberately: while remote data is being applied, this
-  // device did not witness any scheduling and must not claim it did.
-  const stampTaskTimestamps = (currentTasks, storageKey, { captureOriginalPlan = false } = {}) => {
+  const readStored = (storageKey) => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  };
+
+  // Stamp lastModified on tasks that changed since last save. `prevTasks` lets a
+  // caller that has already parsed the stored copy hand it in rather than paying
+  // for a second parse of the whole array.
+  const stampTaskTimestamps = (currentTasks, storageKey, prevTasks) => {
     if (suppressTimestampRef.current) return currentTasks;
-    let prev;
-    try { prev = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { prev = []; }
+    const prev = prevTasks ?? readStored(storageKey);
     // Opt-in diagnostic: set localStorage 'dayglance-debug-stamp' = '1' to log
     // which fields trip a re-stamp. Use it to catch a phantom re-stamp (a default
     // or unexpected field, not a real edit) if task resurrection ever recurs.
@@ -63,8 +60,7 @@ export default function useDataPersistence({
           console.warn(`[stamp] re-stamped ${storageKey} ${id} — changed:`, changedKeys);
       }
     } catch { /* ignore */ }
-    const stampable = captureOriginalPlan ? stampOriginalPlan(currentTasks, prev) : currentTasks;
-    return stampTimestamps(stampable, prev, new Date().toISOString(), onRestamp);
+    return stampTimestamps(currentTasks, prev, new Date().toISOString(), onRestamp);
   };
 
   const loadData = () => {
@@ -225,11 +221,32 @@ export default function useDataPersistence({
 
     // Never persist _native events; on native-calendar devices also drop ephemeral
     // subscription imports so they don't reappear (stale) on the next reload.
-    const stampedTasks = stampTaskTimestamps(
-      tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t))),
-      'day-planner-tasks',
-      { captureOriginalPlan: true }
-    );
+    // Record the schedule a task is first given (utils/originalPlan.js). This is
+    // the one place that sees both the new state and the stored copy it replaces,
+    // which is what distinguishes a task being SCHEDULED from one being
+    // rescheduled, so the capture rides here rather than at the dozen-odd sites
+    // that assign a date and time.
+    //
+    // The result must go back into React STATE and not only to storage. State is
+    // what buildSyncPayload pushes and what applyEngineData hands to
+    // preserveStickyFields, so a baseline that exists only in storage is invisible
+    // to both: the vault never receives it, and the next apply writes state back
+    // over storage and erases it. That is not theoretical — it is what made a real
+    // vault-synced install report 0 of 626 tasks with a baseline.
+    //
+    // Enriching in place (applyBaselines) rather than writing `liveTasks` back
+    // wholesale, because that array is filtered and would drop the native rows.
+    // The write-back re-runs this effect once; the second pass finds every task
+    // already carrying a baseline, stampOriginalPlan returns the SAME array, and
+    // nothing further happens. suppressTimestampRef covers it as before: while
+    // remote data is being applied this device witnessed no scheduling.
+    const prevStoredTasks = readStored('day-planner-tasks');
+    const liveTasks = tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t)));
+    const plannedTasks = suppressTimestampRef.current
+      ? liveTasks
+      : stampOriginalPlan(liveTasks, prevStoredTasks);
+    if (plannedTasks !== liveTasks) setTasks(prev => applyBaselines(prev, plannedTasks));
+    const stampedTasks = stampTaskTimestamps(plannedTasks, 'day-planner-tasks', prevStoredTasks);
     const stampedUnscheduled = stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled');
     const stampedRecycleBin = stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin');
     const stampedRecurring = stampTaskTimestamps(recurringTasks, 'day-planner-recurring-tasks');

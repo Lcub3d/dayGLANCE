@@ -379,6 +379,8 @@
     "weekViewMode": "周视图模式",
     "weekTimelineStart": "周时间线起始时间",
     "weekTimelineEnd": "周视图时间轴结束",
+    "weekTimelineHidden": "{{count}} 项任务不在此范围内",
+    "weekTimelineHidden_other": "{{count}} 项任务不在此范围内",
     "glanceDefault": "GLANCE 默认页",
     "glanceDefaultHabits": "习惯",
     "glanceDefaultGoals": "目标",

@@ -376,6 +376,8 @@
     "weekViewMode": "Week view mode",
     "weekTimelineStart": "Week timeline start",
     "weekTimelineEnd": "Week timeline end",
+    "weekTimelineHidden": "{{count}} task outside this range",
+    "weekTimelineHidden_other": "{{count}} tasks outside this range",
     "glanceDefault": "GLANCE default",
     "glanceDefaultHabits": "Habits",
     "glanceDefaultGoals": "Goals",

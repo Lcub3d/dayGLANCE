@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { weekWindow, compactHourLabel } from './weekWindow.js';
+import { weekWindow, compactHourLabel, clippedCounts } from './weekWindow.js';
 
 describe('weekWindow', () => {
   it('defaults to the whole day', () => {
@@ -61,5 +61,44 @@ describe('compactHourLabel', () => {
   it('reads an end hour of 24 as midnight rather than 24:00', () => {
     expect(compactHourLabel(24, false)).toBe('12AM');
     expect(compactHourLabel(24, true)).toBe('00:00');
+  });
+});
+
+describe('clippedCounts', () => {
+  const t = (startTime, extra = {}) => ({ id: startTime, startTime, ...extra });
+
+  it('counts nothing when the window is the whole day', () => {
+    expect(clippedCounts([t('06:00'), t('23:30')], { startHour: 0, endHour: 24 }))
+      .toEqual({ above: 0, below: 0 });
+  });
+
+  it('splits by which side of the window a task falls', () => {
+    const tasks = [t('03:00'), t('06:30'), t('09:00'), t('21:00'), t('23:30')];
+    expect(clippedCounts(tasks, { startHour: 7, endHour: 20 })).toEqual({ above: 2, below: 2 });
+  });
+
+  it('counts by START hour, so a task running past the end is not hidden', () => {
+    // Its chip is on screen; only the tail is clipped.
+    expect(clippedCounts([t('21:30', { duration: 120 })], { startHour: 7, endHour: 22 }))
+      .toEqual({ above: 0, below: 0 });
+  });
+
+  it('treats the end hour as exclusive', () => {
+    expect(clippedCounts([t('22:00')], { startHour: 7, endHour: 22 }).below).toBe(1);
+    expect(clippedCounts([t('21:59')], { startHour: 7, endHour: 22 }).below).toBe(0);
+  });
+
+  it('ignores all-day items, which have their own row', () => {
+    expect(clippedCounts([t('00:00', { isAllDay: true })], { startHour: 7, endHour: 22 }))
+      .toEqual({ above: 0, below: 0 });
+  });
+
+  it('ignores anything without a usable start time', () => {
+    expect(clippedCounts([null, {}, t(''), t('later')], { startHour: 7, endHour: 22 }))
+      .toEqual({ above: 0, below: 0 });
+  });
+
+  it('tolerates a missing list', () => {
+    expect(clippedCounts(undefined)).toEqual({ above: 0, below: 0 });
   });
 });

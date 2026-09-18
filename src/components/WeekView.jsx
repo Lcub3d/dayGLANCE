@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { weekWindow, compactHourLabel } from '../utils/weekWindow.js';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { weekWindow, compactHourLabel, clippedCounts } from '../utils/weekWindow.js';
 import * as Icons from 'lucide-react';
 import { Zap } from 'lucide-react';
 import { dateToString } from '../utils/taskUtils.js';
@@ -503,6 +504,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
 // ── WeekView ──────────────────────────────────────────────────────────────────
 
 const WeekView = () => {
+  const { t } = useTranslation();
   const {
     calendarRef, stickyHeaderRef,
     weekViewDates,
@@ -523,6 +525,17 @@ const WeekView = () => {
     endHour: weekTimelineEndHour,
     showAll: showAllHours,
   });
+
+  // What the band is hiding, so the toggle can say so. Counted against the
+  // SETTINGS rather than the resolved window: while the day is expanded nothing
+  // is hidden, and the counts are suppressed below instead of going stale.
+  const clipped = useMemo(
+    () => clippedCounts(
+      weekViewDates.flatMap((d) => getTasksForDate(d)),
+      { startHour: weekTimelineStartHour, endHour: weekTimelineEndHour },
+    ),
+    [weekViewDates, getTasksForDate, weekTimelineStartHour, weekTimelineEndHour],
+  );
 
   const hourHeight = useWeekViewHourHeight(calendarRef, stickyHeaderRef, visibleHours);
   const [popoverTask, setPopoverTask] = useState(null);
@@ -579,6 +592,9 @@ const WeekView = () => {
           const edgeHour = atTopEdge ? weekTimelineStartHour : weekTimelineEndHour;
           const edgeLabel = compactHourLabel(edgeHour, use24HourClock);
           const arrow = atTopEdge ? (showAllHours ? '▼' : '▲') : (showAllHours ? '▲' : '▼');
+          // Only while collapsed: expanded, nothing is hidden and a count would
+          // be describing a state that is no longer on screen.
+          const hiddenHere = showAllHours ? 0 : (atTopEdge ? clipped.above : clipped.below);
           return (
             <div
               key={hour}
@@ -589,8 +605,9 @@ const WeekView = () => {
                 <button
                   onClick={() => setShowAllHours(v => !v)}
                   className="absolute top-0.5 right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none"
+                  title={hiddenHere ? t('settings.weekTimelineHidden', { count: hiddenHere }) : undefined}
                 >
-                  {`${arrow} ${edgeLabel}`}
+                  {hiddenHere ? `${arrow} ${edgeLabel} · ${hiddenHere}` : `${arrow} ${edgeLabel}`}
                 </button>
               ) : (hour % 3 === 0 && (
                 <span

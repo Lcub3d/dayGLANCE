@@ -376,6 +376,8 @@
     "weekViewMode": "Modo de vista semanal",
     "weekTimelineStart": "Início da agenda semanal",
     "weekTimelineEnd": "Fim da linha temporal semanal",
+    "weekTimelineHidden": "{{count}} tarefa fora deste intervalo",
+    "weekTimelineHidden_other": "{{count}} tarefas fora deste intervalo",
     "glanceDefault": "Predefinição do GLANCE",
     "glanceDefaultHabits": "Hábitos",
     "glanceDefaultGoals": "Objetivos",

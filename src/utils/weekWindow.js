@@ -43,3 +43,28 @@ export function compactHourLabel(hour, use24HourClock) {
   if (h === 12) return '12PM';
   return h < 12 ? `${h}AM` : `${h - 12}PM`;
 }
+
+/**
+ * How many of `tasks` start outside the window, split by which side.
+ *
+ * WEEK's container clips rather than scrolls, so a task outside the band simply
+ * is not there — no scrollbar, no edge, nothing. That is tolerable for a bound
+ * you chose, and intolerable without a way to know it is happening, which is
+ * what these counts are for: the gutter's toggle can say how much it is hiding.
+ *
+ * Counted by START hour, so a task that begins inside the window and runs past
+ * its end is not "hidden" — its chip is on screen. All-day items live in their
+ * own row above the grid and are never clipped by the band.
+ */
+export function clippedCounts(tasks, { startHour = 0, endHour = 24 } = {}) {
+  let above = 0;
+  let below = 0;
+  for (const task of tasks || []) {
+    if (!task || task.isAllDay || !task.startTime) continue;
+    const hour = Number(String(task.startTime).split(':')[0]);
+    if (!Number.isFinite(hour)) continue;
+    if (hour < startHour) above += 1;
+    else if (hour >= endHour) below += 1;
+  }
+  return { above, below };
+}

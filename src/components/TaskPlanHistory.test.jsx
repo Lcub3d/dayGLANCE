@@ -98,3 +98,39 @@ describe('PlanHistoryPanel', () => {
     expect(html).toContain('09:00');
   });
 });
+
+describe('rendering outside the timeline', () => {
+  const MOVED = { id: 't1', ...PLANNED, startTime: '16:00', originalPlan: PLANNED };
+
+  it('takes the icon size of the row it sits in', async () => {
+    // SCHED rows use 10px icons; the timeline card uses 12.
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <DayPlannerContext.Provider value={ctx}>
+          <TaskPlanHistory task={MOVED} size={10} />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(html).toContain('width="10"');
+  });
+
+  it('renders without the day-planner provider at all', async () => {
+    // SchedTaskCard is also used by the project planner, which is not guaranteed
+    // to sit under that provider. Reading formatTime off a null context threw.
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <TaskPlanHistory task={MOVED} />
+      </I18nextProvider>,
+    );
+    expect(html).toContain('lucide-history');
+  });
+
+  it('falls back to the raw time in the panel when there is no provider', async () => {
+    const html = renderToStaticMarkup(
+      <I18nextProvider i18n={await i18n()}>
+        <PlanHistoryPanel history={planHistory(MOVED)} task={MOVED} formatTime={(v) => v} />
+      </I18nextProvider>,
+    );
+    expect(html).toContain('09:00');
+  });
+});

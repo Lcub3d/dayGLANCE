@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { weekWindow, compactHourLabel, clippedCounts } from './weekWindow.js';
+import { weekWindow, compactHourLabel, clippedCounts, gutterEdge } from './weekWindow.js';
 
 describe('weekWindow', () => {
   it('defaults to the whole day', () => {
@@ -100,5 +100,43 @@ describe('clippedCounts', () => {
 
   it('tolerates a missing list', () => {
     expect(clippedCounts(undefined)).toEqual({ above: 0, below: 0 });
+  });
+});
+
+describe('gutterEdge', () => {
+  const window = { startHour: 7, endHour: 22 };
+
+  it('puts the start toggle on the row the band opens with', () => {
+    expect(gutterEdge(7, window)).toBe('top');
+  });
+
+  // The bug this exists for: the end toggle used to ride the top of the last
+  // row, so "22:00" printed on the 21:00 line with an hour of grid below it and
+  // WEEK looked like it was ignoring the setting. It was not. The row is the
+  // 21:00 row; the label belongs at its foot.
+  it('puts the end toggle on the LAST row, which is the hour before the end', () => {
+    expect(gutterEdge(21, window)).toBe('bottom');
+    expect(gutterEdge(22, window)).toBeNull();
+  });
+
+  it('marks no edge on an ordinary row', () => {
+    for (const hour of [8, 12, 18, 20]) expect(gutterEdge(hour, window)).toBeNull();
+  });
+
+  it('offers no toggle at an untrimmed edge', () => {
+    expect(gutterEdge(0, { startHour: 0, endHour: 22 })).toBeNull();
+    expect(gutterEdge(23, { startHour: 7, endHour: 24 })).toBeNull();
+    expect(gutterEdge(7, { startHour: 7, endHour: 24 })).toBe('top');
+  });
+
+  it('defaults to the whole day, where neither edge is trimmed', () => {
+    expect(gutterEdge(0)).toBeNull();
+    expect(gutterEdge(23)).toBeNull();
+  });
+
+  // A one-hour band is both edges at once. Either toggle restores the whole
+  // day, so the ambiguity costs nothing as long as it resolves to exactly one.
+  it('resolves a one-hour band to a single toggle', () => {
+    expect(gutterEdge(21, { startHour: 21, endHour: 22 })).toBe('top');
   });
 });

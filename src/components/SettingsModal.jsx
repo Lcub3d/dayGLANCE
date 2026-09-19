@@ -407,7 +407,15 @@ const SettingsModal = () => {
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineEnd')}</label>
                           <div className="flex flex-wrap gap-2">
-                            {[18, 20, 21, 22, 24].map(h => (
+                            {/* A stored end that is no longer offered still keeps its
+                                button, so the picker cannot show nothing selected
+                                while the grid is visibly trimmed. 18 was offered
+                                before this list was; another device may send any
+                                value at all. */}
+                            {[...new Set([20, 21, 22, 23, 24, weekTimelineEndHour])]
+                              .filter(h => h > 0 && h <= 24)
+                              .sort((a, b) => a - b)
+                              .map(h => (
                               <button
                                 key={h}
                                 onClick={() => setWeekTimelineEndHour(h)}

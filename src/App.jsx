@@ -44,6 +44,7 @@ import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
 import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
+import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
@@ -1125,6 +1126,22 @@ const DayPlanner = () => {
     () => allTodayRoutines.filter(r => ownedBy(r, meUserSyncId)),
     [allTodayRoutines, ownedBy, meUserSyncId]
   );
+
+  // The single description of "what routines occupy a date", shared by the MCP
+  // read surface, frame availability, and the drag-and-drop conflict resolver.
+  // Before this existed each of those three answered the question its own way
+  // and two of them disagreed: frame availability counted no routines at all,
+  // so the "N min free" readouts over-reported whenever a routine sat inside a
+  // frame. `routines` is the OWNER-SCOPED list for the same reason the bridge
+  // gets it: isVisibleForUser tests assignedUserSyncIds, which routines do not
+  // carry, so it would admit every member's.
+  const routineOccupancy = useMemo(() => ({
+    routines: todayRoutines,
+    routinesDate,
+    routineCompletions,
+    routinesEnabled,
+    todayDate: dateToString(currentTime),
+  }), [todayRoutines, routinesDate, routineCompletions, routinesEnabled, currentTime]);
 
   // SCHED: give a routine a concrete time today (pill → placed timeline block),
   // the tap-a-time equivalent of dragging the pill onto the grid.
@@ -3073,70 +3090,19 @@ const DayPlanner = () => {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
-  // Check if a task placement would conflict with imported calendar events or reminders
-  // Returns { conflicted: boolean, adjustedStartTime: string, conflictingEvent: task }
-  const getAdjustedTimeForImportedConflicts = (taskId, startTime, duration, dateStr) => {
-    // Get all imported calendar events and task calendar reminders for this date
-    const importedEvents = tasks.filter(t =>
-      t.date === dateStr &&
-      t.imported &&
-      !t.isAllDay &&
-      t.id !== taskId
-    );
-
-    // Also treat today's timeline-placed routine chips as obstacles
-    const todayStr = dateToString(new Date());
-    if (routinesEnabled && dateStr === todayStr) {
-      todayRoutines.filter(r => !r.isAllDay && r.startTime).forEach(r => {
-        importedEvents.push({ startTime: r.startTime, duration: r.duration, title: r.name, id: `routine-${r.id}` });
-      });
-    }
-
-    if (importedEvents.length === 0) {
-      return { conflicted: false, adjustedStartTime: startTime, conflictingEvent: null };
-    }
-
-    let currentStart = timeToMinutes(startTime);
-    let currentEnd = currentStart + duration;
-    let conflictingEvent = null;
-    let wasAdjusted = false;
-
-    // Keep adjusting until no conflicts with imported events
-    let maxIterations = 100; // Prevent infinite loops
-    while (maxIterations > 0) {
-      maxIterations--;
-      let foundConflict = false;
-
-      for (const event of importedEvents) {
-        const eventStart = timeToMinutes(event.startTime);
-        const eventEnd = eventStart + event.duration;
-
-        // Check for overlap
-        if (currentStart < eventEnd && currentEnd > eventStart) {
-          foundConflict = true;
-          wasAdjusted = true;
-          conflictingEvent = event;
-          // Move to end of this event
-          currentStart = eventEnd;
-          currentEnd = currentStart + duration;
-          break;
-        }
-      }
-
-      if (!foundConflict) break;
-    }
-
-    // Cap at end of day
-    if (currentStart >= 24 * 60) {
-      currentStart = 24 * 60 - duration;
-    }
-
-    return {
-      conflicted: wasAdjusted,
-      adjustedStartTime: minutesToTime(currentStart),
-      conflictingEvent
-    };
-  };
+  // Slide a placement past the things it cannot share time with: imported
+  // calendar events, task-calendar reminders, and routines. Your own tasks are
+  // deliberately absent: the timeline renders overlapping tasks in conflict
+  // columns, so auto-sliding off one would fight the user. Routines are folded
+  // in by the shared model rather than appended here.
+  const getAdjustedTimeForImportedConflicts = (taskId, startTime, duration, dateStr) => (
+    adjustPastConflicts(routineOccupancy, dateStr, {
+      startTime,
+      duration,
+      excludeId: taskId,
+      tasks: tasks.filter(t => t.date === dateStr && t.imported && !t.isAllDay),
+    })
+  );
 
   const toggleSection = (sectionName) => {
     setMinimizedSections(prev => ({
@@ -6959,83 +6925,28 @@ const DayPlanner = () => {
     generateFrameNudge();
   }, [activeFrameNudgeKey, activeFrameForNudge, aiConfig, gtdFrames, frameNudgeDismissedKey, generateFrameNudge, myFrames]);
 
-  // Compute available time slots within a frame instance, subtracting existing tasks/events.
-  // For today, elapsed time is excluded: each slot's start is clipped to the current time.
+  // Free time inside a frame instance, subtracting tasks, routines, and (for
+  // today) elapsed time. The arithmetic, the buffer
+  // merging, and the now-floor all live in src/utils/dayOccupancy.js, which is
+  // pure and tested; this only resolves the date and supplies the task list.
+  //
+  // The list stays TAG-FILTERED (getTasksForDate applies the active filter by
+  // default), preserving today's behaviour exactly. That coupling is dubious
+  // on its own terms, since a view preference should not change how much time
+  // the app believes you have, but unpicking it changes numbers on screen for
+  // anyone with a filter active and does not belong in the same change as the
+  // routine fix.
   const computeAvailableSlots = useCallback((frameInstance, date) => {
-    const allDayTasks = getTasksForDate(date instanceof Date ? date : new Date(frameInstance.date + 'T12:00:00'));
-    const timedTasks = allDayTasks.filter(t => !t.isAllDay && t.startTime);
-    const frameStartMin = timeToMinutes(frameInstance.start);
-    const frameEndMin = timeToMinutes(frameInstance.end);
-    const buffer = frameInstance.bufferMinutes || 0;
-
-    // Determine the "now" floor: for today, clip slots to current time;
-    // for past dates all time is elapsed; for future dates no clipping.
     const slotDate = date instanceof Date ? date : new Date(frameInstance.date + 'T12:00:00');
-    const slotDateStr = dateToString(slotDate);
-    const todayStr = dateToString(new Date());
-    let nowFloor = frameStartMin; // future dates: no clipping
-    if (slotDateStr === todayStr) {
-      const now = new Date();
-      nowFloor = now.getHours() * 60 + now.getMinutes();
-    } else if (slotDateStr < todayStr) {
-      nowFloor = frameEndMin; // past dates: everything elapsed
-    }
-
-    // Collect occupied intervals within the frame
-    const occupied = [];
-    for (const task of timedTasks) {
-      const tStart = timeToMinutes(task.startTime);
-      const tEnd = tStart + (task.duration || 30);
-      // Only include if it overlaps the frame
-      if (tEnd > frameStartMin && tStart < frameEndMin) {
-        occupied.push({
-          start: Math.max(tStart, frameStartMin),
-          end: Math.min(tEnd, frameEndMin),
-        });
-      }
-    }
-
-    // Sort occupied by start time
-    occupied.sort((a, b) => a.start - b.start);
-
-    // Merge overlapping intervals
-    const merged = [];
-    for (const o of occupied) {
-      if (merged.length > 0 && o.start <= merged[merged.length - 1].end + buffer) {
-        merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, o.end);
-      } else {
-        merged.push({ ...o });
-      }
-    }
-
-    // Compute free gaps, clipping to nowFloor for today
-    const slots = [];
-    let cursor = frameStartMin;
-    for (const m of merged) {
-      const gapStart = cursor + (cursor === frameStartMin ? 0 : buffer);
-      const gapEnd = m.start - buffer;
-      const clippedStart = Math.max(gapStart, nowFloor);
-      if (gapEnd > clippedStart) {
-        slots.push({
-          start: minutesToTime(clippedStart),
-          end: minutesToTime(gapEnd),
-          minutes: gapEnd - clippedStart,
-        });
-      }
-      cursor = m.end;
-    }
-    // Final gap after last occupied block
-    const finalStart = Math.max(cursor + (cursor === frameStartMin ? 0 : buffer), nowFloor);
-    if (finalStart < frameEndMin) {
-      slots.push({
-        start: minutesToTime(finalStart),
-        end: minutesToTime(frameEndMin),
-        minutes: frameEndMin - finalStart,
-      });
-    }
-
-    return slots;
-  }, [getTasksForDate]);
+    const now = new Date();
+    return computeAvailableSlotsPure(frameInstance, {
+      state: routineOccupancy,
+      tasks: getTasksForDate(slotDate).filter(t => !t.isAllDay && t.startTime),
+      dateStr: dateToString(slotDate),
+      todayStr: dateToString(now),
+      nowMinutes: now.getHours() * 60 + now.getMinutes(),
+    });
+  }, [getTasksForDate, routineOccupancy]);
 
   const {
     setDeadline,

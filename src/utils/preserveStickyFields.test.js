@@ -122,3 +122,25 @@ describe('preserveStickyFields — starredDate', () => {
     });
   });
 });
+
+describe('preserveStickyFields — deferrals merge rather than carry', () => {
+  it('keeps the higher of the two counts', () => {
+    const [out] = preserveStickyFields([{ id: 'a', deferrals: 2 }], [{ id: 'a', deferrals: 7 }]);
+    expect(out.deferrals).toBe(7);
+  });
+
+  it('takes a higher incoming count', () => {
+    const [out] = preserveStickyFields([{ id: 'a', deferrals: 9 }], [{ id: 'a', deferrals: 1 }]);
+    expect(out.deferrals).toBe(9);
+  });
+
+  it('keeps a local count the incoming copy omits', () => {
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], [{ id: 'a', deferrals: 4 }]);
+    expect(out.deferrals).toBe(4);
+  });
+
+  it('injects nothing when neither side has one', () => {
+    const [out] = preserveStickyFields([{ id: 'a' }], [{ id: 'a' }]);
+    expect('deferrals' in out).toBe(false);
+  });
+});

@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "Récurrence dans Obsidian: la récurrence de cette tâche est gérée par l’extension Tasks ; la terminer ici ne créera pas l’occurrence suivante",
     "openLink": "Ouvrir le lien",
     "priorityUnavailableForProject": "Non disponible pour les tâches de projet",
-    "unscheduledHint": "(ajouter à la carte du projet, sans date ni heure)"
+    "unscheduledHint": "(ajouter à la carte du projet, sans date ni heure)",
+    "deferredTimes": "Reportée une fois",
+    "deferredTimes_other": "Reportée {{count}} fois"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}er",

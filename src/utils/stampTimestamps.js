@@ -32,6 +32,11 @@
 // re-stamped a scheduled task on every phone that scanned a stale vault copy,
 // and the fabricated stamp outranked a real completion made elsewhere.
 //
+// `deferrals` (utils/deferrals.js) is stripped for the same reason as
+// `originalPlan`: the app writes it, not the user. It is derived from a
+// reschedule that has already stamped on its own, and it also moves when a merge
+// takes a higher count from another device, which is nobody's edit at all.
+//
 // `starredDate` is DEFAULTED rather than stripped, because unlike the fields
 // below it is a real user action: starring a task is an edit and must re-stamp
 // so it wins on other devices. Only the absent/null pair is canonicalised, since
@@ -50,7 +55,7 @@ function normalizeField(task) {
   // obsidianClearedTime is bookkeeping for the inbox merge (utils/inboxMove.js):
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
-  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, ...rest } = task;
+  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, ...rest } = task;
   return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null };
 }
 

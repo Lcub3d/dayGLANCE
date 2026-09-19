@@ -236,3 +236,68 @@ describe('vault applyRemoteEntity preserves starredDate across LWW', () => {
     expect(data.tasks[0].starredDate).toBe(DAY);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `deferrals` (utils/deferrals.js) is the first field here whose rule is a MERGE
+// rather than a carry. It is a monotonic count, so both transports take the
+// higher value: summing would double-count a slip both devices watched, and
+// letting a winner without the field through would erase a real count.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const slipped = (extra) => ({
+  id: 'd1', title: 'Write the report', date: DAY, startTime: '09:00',
+  lastModified: '2026-09-18T09:00:00.000Z', ...extra,
+});
+
+describe('file-tier mergeSyncData merges deferrals by max', () => {
+  it('takes the higher count when the two sides disagree', () => {
+    const local = { tasks: [slipped({ deferrals: 5 })] };
+    const remote = { tasks: [slipped({ deferrals: 2, lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].deferrals).toBe(5);
+  });
+
+  it('does not sum, so a slip both devices watched is counted once', () => {
+    const local = { tasks: [slipped({ deferrals: 3 })] };
+    const remote = { tasks: [slipped({ deferrals: 3, lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].deferrals).toBe(3);
+  });
+
+  it('survives a NEWER copy from a device that never had the field', () => {
+    const local = { tasks: [slipped({ deferrals: 4 })] };
+    const remote = { tasks: [slipped({ title: 'v2', lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].deferrals).toBe(4);
+    expect(data.tasks[0].title).toBe('v2');
+  });
+
+  it('stays absent when neither side ever counted one', () => {
+    const { data } = mergeSyncData({ tasks: [slipped()] }, { tasks: [slipped()] }, 90);
+    expect(data.tasks[0].deferrals).toBeUndefined();
+  });
+});
+
+describe('vault applyRemoteEntity merges deferrals by max', () => {
+  it('keeps the higher local count when the pulled row is behind', () => {
+    const data = { tasks: [slipped({ deferrals: 6 })] };
+    const pulled = { _kind: 'tasks', value: slipped({ deferrals: 2, lastModified: '2026-09-18T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].deferrals).toBe(6);
+    expect(rePush).toHaveLength(1); // the vault converges upward
+  });
+
+  it('takes a higher pulled count', () => {
+    const data = { tasks: [slipped({ deferrals: 1 })] };
+    const pulled = { _kind: 'tasks', value: slipped({ deferrals: 9, lastModified: '2026-09-18T12:00:00.000Z' }) };
+    applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].deferrals).toBe(9);
+  });
+
+  it('keeps a local count a pulled row omits entirely', () => {
+    const data = { tasks: [slipped({ deferrals: 3 })] };
+    const pulled = { _kind: 'tasks', value: slipped({ lastModified: '2026-09-18T12:00:00.000Z' }) };
+    applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].deferrals).toBe(3);
+  });
+});

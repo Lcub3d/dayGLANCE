@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "Recurring in Obsidian: this task's recurrence is managed by the Tasks plugin; completing it here won't create the next instance",
     "openLink": "Open Link",
     "priorityUnavailableForProject": "Not available for project tasks",
-    "unscheduledHint": "(add to project card, no date/time)"
+    "unscheduledHint": "(add to project card, no date/time)",
+    "deferredTimes": "Deferred once",
+    "deferredTimes_other": "Deferred {{count}} times"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}st",

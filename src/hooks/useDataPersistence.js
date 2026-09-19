@@ -2,6 +2,7 @@ import { dateToString } from '../utils/taskUtils.js';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { stampTimestamps } from '../utils/stampTimestamps.js';
 import { stampOriginalPlan, applyBaselines } from '../utils/originalPlan.js';
+import { stampDeferrals, applyDeferrals } from '../utils/deferrals.js';
 import { rolloverRemovedTodayRoutineIds, startOfTodayIso } from './useRoutines.js';
 
 // Read-only CalDAV/ICS-subscription events (importSource 'sync', non-task,
@@ -242,11 +243,22 @@ export default function useDataPersistence({
     // remote data is being applied this device witnessed no scheduling.
     const prevStoredTasks = readStored('day-planner-tasks');
     const liveTasks = tasks.filter(t => !t._native && !(hasNativeCalendar() && isSubscriptionImport(t)));
+    //
+    // `deferrals` (utils/deferrals.js) rides the same pass and the same reasoning:
+    // this is the only place that sees the schedule a task HAD next to the one it
+    // has now, which is what tells a slip from a fresh plan. Suppressed during a
+    // remote apply for the same reason as the baseline — a reschedule made on
+    // another device is that device's to count, and counting it again here would
+    // inflate every task on every sync.
     const plannedTasks = suppressTimestampRef.current
       ? liveTasks
       : stampOriginalPlan(liveTasks, prevStoredTasks);
+    const countedTasks = suppressTimestampRef.current
+      ? plannedTasks
+      : stampDeferrals(plannedTasks, prevStoredTasks);
     if (plannedTasks !== liveTasks) setTasks(prev => applyBaselines(prev, plannedTasks));
-    const stampedTasks = stampTaskTimestamps(plannedTasks, 'day-planner-tasks', prevStoredTasks);
+    if (countedTasks !== plannedTasks) setTasks(prev => applyDeferrals(prev, countedTasks));
+    const stampedTasks = stampTaskTimestamps(countedTasks, 'day-planner-tasks', prevStoredTasks);
     const stampedUnscheduled = stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled');
     const stampedRecycleBin = stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin');
     const stampedRecurring = stampTaskTimestamps(recurringTasks, 'day-planner-recurring-tasks');

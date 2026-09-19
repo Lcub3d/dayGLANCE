@@ -45,6 +45,7 @@ import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
 import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
+import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
@@ -6782,35 +6783,17 @@ const DayPlanner = () => {
   // --- GTD Frames: Instance computation + Available time calculation ---
 
   // Get frame instances for a given date (which templates apply)
-  const getFrameInstancesForDate = useCallback((date) => {
-    const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
-    const dateStr = dateToString(date);
-    return gtdFrames
-      .filter(f => {
-        if (!f.enabled) return false;
-        if (!ownedBy(f, meUserSyncId)) return false; // everyday/timeline shows only my frames
-        if (f.singleDate) return f.singleDate === dateStr;
-        return f.days.includes(dayOfWeek);
-      })
-      .map(f => {
-        // Check for per-day exceptions
-        const exception = f.exceptions?.[dateStr];
-        if (exception?.deleted) return null;
-        return {
-          frameId: f.id,
-          templateId: f.id,
-          date: dateStr,
-          start: exception?.start || f.start,
-          end: exception?.end || f.end,
-          label: f.label,
-          color: f.color,
-          tagAffinity: f.tagAffinity || [],
-          energyLevel: f.energyLevel || 'medium',
-          bufferMinutes: f.bufferMinutes ?? 5,
-        };
-      })
-      .filter(Boolean);
-  }, [gtdFrames, ownedBy, meUserSyncId]);
+  // Thin wrapper over the pure module. Ownership is applied HERE rather than
+  // inside it: frames carry ownerSyncId (single-owner), which the shared
+  // isVisibleForUser predicate does not understand, so the scoping cannot be
+  // delegated to a generic filter without leaking other members' frames.
+  const getFrameInstancesForDate = useCallback(
+    (date) => frameInstancesForDate(
+      gtdFrames.filter(f => ownedBy(f, meUserSyncId)),
+      dateToString(date),
+    ),
+    [gtdFrames, ownedBy, meUserSyncId],
+  );
 
   // --- Frame Nudge --- (must be after getFrameInstancesForDate and getTasksForDate)
   const activeFrameForNudge = useMemo(() => {
@@ -7224,6 +7207,15 @@ const DayPlanner = () => {
     // routinesDate really is today before reporting routines (see the date
     // guard in mcpRoutines.js).
     todayDate: dateToString(currentTime),
+    // FRAMES (read-only). `myFrames` is the OWNER-SCOPED memo, for exactly the
+    // reason routines above are: frames carry ownerSyncId and isVisibleForUser
+    // tests assignedUserSyncIds, so the generic filter would admit every
+    // member's frames. Both slices are scoped here, before the bridge.
+    frames: myFrames,
+    // Frame availability clips today's free slots to the present, so the model
+    // needs the current minute. Supplied rather than read inside the model,
+    // which stays pure.
+    nowMinutes: currentTime.getHours() * 60 + currentTime.getMinutes(),
     // Bulk undo moves undone creates to the recycle bin (the UI's own delete
     // shape), so the undo path needs the current bin to append to.
     recycleBin,

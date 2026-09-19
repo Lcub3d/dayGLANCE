@@ -19,6 +19,7 @@ import { calculateGoalProgress } from './goalProgress.js';
 import { calculateProjectProgress } from './projectProgress.js';
 import { notBucketed } from './bucketList.js';
 import { buildRoutineBlocks } from './mcpRoutines.js';
+import { buildFrames } from './mcpFrames.js';
 
 /**
  * The §5.1 distinct type flag. 'device_calendar_event' marks data that came
@@ -114,7 +115,13 @@ export function buildDayBlocks(state, params) {
     if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
     return toMinutes(a.start_time) - toMinutes(b.start_time);
   });
-  return { blocks };
+
+  // Frames ride ALONGSIDE blocks, not inside them. A block is a thing on the
+  // day; a frame is a window the user set aside, and the useful part of it is
+  // what is still empty. Putting frames in `blocks` would make every existing
+  // caller that iterates blocks start seeing windows as if they were work.
+  const frames = buildFrames(state, date, { includeNative });
+  return { blocks, frames };
 }
 
 /**

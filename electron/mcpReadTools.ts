@@ -65,6 +65,18 @@ const NATIVE_NOTE =
 // Same reasoning as NATIVE_NOTE: state the limit in the description so the
 // model knows it before it spends a call finding out. A routine is occupied
 // time, which is the part that matters when looking for a free slot.
+// Frames are the answer to "where could this go", so the description has to
+// say that available_slots is already net of everything: a caller that
+// re-subtracts the blocks it can see would double-count, and one that ignores
+// the buffer would propose times the app itself would not.
+const FRAME_NOTE =
+  ' The response also carries "frames": the time windows the user set aside for a kind of work ' +
+  '(GTD frames), each with available_slots and available_minutes ALREADY NET of tasks, routines, ' +
+  'and, for today, time that has already passed, with the frame\'s buffer applied. Do not subtract ' +
+  'the blocks again. Each frame carries tag_affinity, the #tags that window is meant for: match your ' +
+  'own candidate tasks against it, dayGLANCE does not filter anything for you. Frames are read-only ' +
+  'and are windows rather than work, so they are NOT in "blocks".';
+
 const ROUTINE_NOTE =
   ' Items with type "routine" are dayGLANCE routine blocks. They OCCUPY the time they cover, ' +
   'exactly like a task, so treat them as busy when looking for a free slot. They are read-only ' +
@@ -89,7 +101,7 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
       description:
         "Today's schedule from dayGLANCE. Resolves the current LOCAL calendar date on the " +
         'user\'s machine. Use this instead of guessing the date. Response echoes the resolved ' +
-        'date and IANA timezone; times are local wall-clock HH:MM.' + NATIVE_NOTE + ROUTINE_NOTE,
+        'date and IANA timezone; times are local wall-clock HH:MM.' + NATIVE_NOTE + ROUTINE_NOTE + FRAME_NOTE,
     },
     async () => getDay(localDateOf(deps.now(), deps.timeZone())),
   );
@@ -100,7 +112,7 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
       description:
         'The dayGLANCE schedule for one LOCAL calendar date (YYYY-MM-DD, no time component, ' +
         'no UTC, no offsets). Response echoes the resolved date and IANA timezone; times are ' +
-        'local wall-clock HH:MM. For the current date, prefer dayglance_get_today.' + NATIVE_NOTE + ROUTINE_NOTE,
+        'local wall-clock HH:MM. For the current date, prefer dayglance_get_today.' + NATIVE_NOTE + ROUTINE_NOTE + FRAME_NOTE,
       inputSchema: z.object({
         date: z.string().describe('Local calendar date, strict YYYY-MM-DD. Not a timestamp.'),
       }),

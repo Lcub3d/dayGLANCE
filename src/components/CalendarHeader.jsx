@@ -278,6 +278,19 @@ const CalendarHeader = () => {
     );
   })}
     </>
+  ) : effectiveViewMode === 'jobo' ? (
+    /* JOBO: one day, the selected one, at its natural width with room either
+       side, and nothing to its right. The empty stretch is not unfinished: it
+       is where JOBO's own controls will go, and the header should not fill it
+       with a second day that the view does not show. Same shape as MONTH's
+       single-day cell above. */
+    <>
+    <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
+      {isTablet && !isLandscape ? <MobileViewToggle /> : ((canShowViewCycler || schedOnlyCycler) && <ViewCycler />)}
+    </div>
+    <DayHeaderCell date={selectedDate} className="flex-none px-6" />
+    <div className="flex-1" />
+    </>
   ) : (() => {
     // Day mode: build date groups from dayViewColumns — start at x=0 so column
     // boundaries align exactly with DayView's flex-1 columns below.

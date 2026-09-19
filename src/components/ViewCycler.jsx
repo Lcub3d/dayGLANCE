@@ -57,7 +57,20 @@ const MonthIcon = () => (
   </svg>
 );
 
-const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon };
+// JOBO: plan versus actual. Three bars gaining opacity left to right, read as
+// Original Plan → Final Plan → Do: an intention becoming what actually
+// happened. It is DayIcon run backwards on purpose. DAY fades from today into
+// the days ahead; JOBO fills from the plan into the record. The two views are
+// the same three-bar family, so the two glyphs should rhyme rather than differ.
+const JoboIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <rect x="1"   y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="0.28" />
+    <rect x="7.5" y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="0.55" />
+    <rect x="14"  y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="1"    />
+  </svg>
+);
+
+const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon };
 
 const ViewCycler = () => {
   const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial, hiddenViews } = useDayPlannerCtx();

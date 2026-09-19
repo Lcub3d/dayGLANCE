@@ -2,9 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { cyclerStates, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
-
-const VIEW_LABEL_KEYS = { multi: 'shortcuts.view3Day', day: 'shortcuts.viewDay', week: 'shortcuts.viewWeek', month: 'shortcuts.viewMonth', sched: 'shortcuts.viewSched' };
+import { cyclerStates, VIEW_LABEL_KEYS, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
 
 const ShortcutHelpModal = () => {
   const { t } = useTranslation();
@@ -15,8 +13,24 @@ const ShortcutHelpModal = () => {
   } = useDayPlannerCtx();
   // The view keys this width offers, minus views turned off on this device:
   // the same list the cycler and the number keys work from.
+  const views = cyclerStates(canShowViewCycler, false, hiddenViews?.desktop);
+  // Named the way the cycler button names them, from one shared map, so the two
+  // cannot drift — and localised, since a German build's button reads TAGE.
   const viewRows = canShowViewCycler || schedOnlyCycler
-    ? [...cyclerStates(canShowViewCycler, false, hiddenViews?.desktop).map((v) => [VIEW_SHORTCUT_KEYS[v], t(VIEW_LABEL_KEYS[v])]), ['C', t('shortcuts.cycleViews')]]
+    ? [
+      ...views.map((v) => [VIEW_SHORTCUT_KEYS[v], t('shortcuts.viewNamed', { view: t(VIEW_LABEL_KEYS[v]) })]),
+      ['C', t('shortcuts.cycleViews')],
+    ]
+    : [];
+  // MONTH is the only view with navigation of its own, so its three rows are
+  // listed only where MONTH is actually reachable.
+  const monthRows = views.includes('month')
+    ? [
+      ['M', t('shortcuts.toggleMonthNav')],
+      ['Space', t('shortcuts.monthStepDay')],
+      ['\u2191 / \u2193', t('shortcuts.monthStepWeek')],
+      ['Enter', t('shortcuts.monthOpenDay')],
+    ]
     : [];
 
   return (
@@ -36,11 +50,8 @@ const ShortcutHelpModal = () => {
             <h3 className={`text-xs font-semibold uppercase ${textSecondary} mb-2`}>{t('shortcuts.sectionNavigation')}</h3>
             {[
               ['T', t('shortcuts.goToToday')],
-              ['\u2190 / \u2192', t('shortcuts.prevNextDay')],
-              ['M', t('shortcuts.toggleMonthNav')],
-              ['Space', t('shortcuts.monthStepDay')],
-              ['\u2191 / \u2193', t('shortcuts.monthStepWeek')],
-              ['Enter', t('shortcuts.monthOpenDay')],
+              ['\u2190 / \u2192', t('shortcuts.prevNext')],
+              ...monthRows,
               ...viewRows,
             ].map(([key, desc]) => (
               <div key={key} className={`flex items-center gap-3 py-1 ${textSecondary}`}>

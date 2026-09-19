@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { cyclerStates, nextState, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
+import { cyclerStates, nextState, VIEW_LABEL_KEYS, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
 
-const LABEL_KEYS = { multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', sched: 'sched.viewSchedShort', month: 'sched.viewMonthShort' };
+
 const ORANGE = '#fe8b00';
 
 const MultiIcon = () => (
@@ -62,7 +62,7 @@ const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon
 const ViewCycler = () => {
   const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();
-  const label = t(LABEL_KEYS[effectiveViewMode]);
+  const label = t(VIEW_LABEL_KEYS[effectiveViewMode]);
 
   // Narrow desktop (1-2 columns) offers MULTI, SCHED and MONTH — DAY/WEEK need
   // the full 3-column breakpoint. MONTH steps out while the Day Dial is up,

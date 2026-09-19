@@ -30,6 +30,17 @@ export const VIEW_SCOPES = { desktop: DESKTOP_VIEW_MODES, mobile: MOBILE_VIEW_MO
 /** The number key that jumps to each desktop view. */
 export const VIEW_SHORTCUT_KEYS = { multi: '1', day: '2', week: '3', month: '4', sched: '5' };
 
+/** The short, localised view name each surface shows: MULTI / DAY / WEEK …, or a
+ *  locale's own (German TAGE / WOCHE). Shared so the cycler button and the
+ *  shortcut sheet cannot drift apart. */
+export const VIEW_LABEL_KEYS = {
+  multi: 'sched.viewMultiShort',
+  day: 'sched.viewDayShort',
+  week: 'sched.viewWeekShort',
+  month: 'sched.viewMonthShort',
+  sched: 'sched.viewSchedShort',
+};
+
 /** A persisted or URL view value, or the fallback when it is not one we know (an older or newer build wrote it). */
 export function resolveStoredView(value, allowed, fallback) {
   return allowed.includes(value) ? value : fallback;

@@ -70,6 +70,11 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
         {stops.length > 0 && (<>
           <div className="opacity-60 mt-1.5 mb-0.5">{t('task.movedVia')}</div>
           <div className="space-y-0.5">
+            {/* Stands in for the stops that fell off the front of the capped
+                trail, and sits FIRST because those moves happened first. It
+                says "not shown" rather than reading as a continuation: a line
+                beginning "and ..." above the list it precedes looks like the
+                list it belongs to went missing. */}
             {earlier > 0 && (
               <div className="italic opacity-70">{t('task.earlierMoves', { count: earlier })}</div>
             )}

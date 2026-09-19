@@ -781,8 +781,8 @@
     "deferredTimes": "推迟过 1 次",
     "deferredTimes_other": "推迟过 {{count}} 次",
     "movedVia": "中途经过",
-    "earlierMoves": "以及更早的 1 次改期",
-    "earlierMoves_other": "以及更早的 {{count}} 次改期"
+    "earlierMoves": "更早的 1 次改期未显示",
+    "earlierMoves_other": "更早的 {{count}} 次改期未显示"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

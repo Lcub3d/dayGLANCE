@@ -781,8 +781,8 @@
     "deferredTimes": "Reportée une fois",
     "deferredTimes_other": "Reportée {{count}} fois",
     "movedVia": "Déplacé par",
-    "earlierMoves": "et 1 déplacement antérieur",
-    "earlierMoves_other": "et {{count}} déplacements antérieurs"
+    "earlierMoves": "1 déplacement antérieur non affiché",
+    "earlierMoves_other": "{{count}} déplacements antérieurs non affichés"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}er",

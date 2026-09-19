@@ -781,8 +781,8 @@
     "deferredTimes": "Adiada uma vez",
     "deferredTimes_other": "Adiada {{count}} vezes",
     "movedVia": "Movido por",
-    "earlierMoves": "e 1 adiamento anterior",
-    "earlierMoves_other": "e {{count}} adiamentos anteriores"
+    "earlierMoves": "1 adiamento anterior não exibido",
+    "earlierMoves_other": "{{count}} adiamentos anteriores não exibidos"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

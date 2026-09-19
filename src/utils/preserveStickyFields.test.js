@@ -144,3 +144,23 @@ describe('preserveStickyFields — deferrals merge rather than carry', () => {
     expect('deferrals' in out).toBe(false);
   });
 });
+
+describe('preserveStickyFields — the plan trail unions rather than carries', () => {
+  const STOP_A = { at: 1000, date: '2026-09-15', startTime: '09:00' };
+  const STOP_B = { at: 2000, date: '2026-09-17', startTime: '14:00' };
+
+  it('recovers a stop the incoming copy never had', () => {
+    const [out] = preserveStickyFields([{ id: 'a', planTrail: [STOP_B] }], [{ id: 'a', planTrail: [STOP_A] }]);
+    expect(out.planTrail).toEqual([STOP_A, STOP_B]);
+  });
+
+  it('carries the local trail when the incoming copy has none', () => {
+    const [out] = preserveStickyFields([{ id: 'a', title: 'x' }], [{ id: 'a', planTrail: [STOP_A] }]);
+    expect(out.planTrail).toEqual([STOP_A]);
+  });
+
+  it('leaves a task neither side has a trail for alone', () => {
+    const [out] = preserveStickyFields([{ id: 'a' }], [{ id: 'a' }]);
+    expect('planTrail' in out).toBe(false);
+  });
+});

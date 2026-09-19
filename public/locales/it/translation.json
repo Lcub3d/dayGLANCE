@@ -779,7 +779,10 @@
     "priorityUnavailableForProject": "Non disponibile per le attività di progetto",
     "unscheduledHint": "(aggiungi alla scheda del progetto, senza data/ora)",
     "deferredTimes": "Rinviata una volta",
-    "deferredTimes_other": "Rinviata {{count}} volte"
+    "deferredTimes_other": "Rinviata {{count}} volte",
+    "movedVia": "Spostamenti recenti",
+    "earlierMoves": "+1 precedente",
+    "earlierMoves_other": "+{{count}} precedenti"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

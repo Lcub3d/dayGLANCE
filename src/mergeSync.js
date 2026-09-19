@@ -4,6 +4,7 @@
 // directly (which would default to `updatedAt`).
 import { mergeArrayById, mergeSyncData as upstreamMergeSyncData, pruneTombstones } from '@glance-apps/sync';
 import { mergeDeferrals } from './utils/deferrals.js';
+import { mergePlanTrail, sameTrail } from './utils/planTrail.js';
 import {
   TOMBSTONE_BUNDLE_KEYS,
   tombstoneCutoff,
@@ -516,6 +517,17 @@ export const mergeSyncData = (local, remote, retentionDays) => {
         if (count !== undefined) {
           if ((Number(l?.deferrals) || 0) < count) result.localChanged = true;
           if ((Number(r?.deferrals) || 0) < count) result.remoteChanged = true;
+        }
+      }
+      // `planTrail` merges by UNION, the list-shaped version of that same rule:
+      // each side may hold slips the other never saw, and a carry-forward would
+      // keep only one side's. Either side missing a stop has to be written back.
+      {
+        const trail = mergePlanTrail(l?.planTrail, r?.planTrail);
+        if (trail !== undefined && !sameTrail(trail, item.planTrail)) item.planTrail = trail;
+        if (trail !== undefined) {
+          if (!sameTrail(trail, l?.planTrail)) result.localChanged = true;
+          if (!sameTrail(trail, r?.planTrail)) result.remoteChanged = true;
         }
       }
     }

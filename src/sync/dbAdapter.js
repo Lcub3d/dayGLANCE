@@ -28,6 +28,7 @@
 
 import { mergeHabitLogs, mergeRoutineDefinitions, mergeRoutineCompletions, mergeCompletedDates } from '../mergeSync.js';
 import { mergeDeferrals } from '../utils/deferrals.js';
+import { mergePlanTrail, sameTrail } from '../utils/planTrail.js';
 import { TOMBSTONE_BUNDLE_KEYS, tombstoneCutoff, pruneCompletedTaskUids } from './tombstoneRetention.js';
 import { mergeRetiredTaskIds } from '../utils/retiredTaskIds.js';
 import { mergeDayWindowMaps } from './dayWindowSync.js';
@@ -329,6 +330,14 @@ function upsertCollection(data, kind, value) {
     {
       const count = mergeDeferrals(merged?.deferrals, local?.deferrals);
       if (merged && count !== merged.deferrals) merged = { ...merged, deferrals: count };
+    }
+    // `planTrail` (utils/planTrail.js) is the count's detail and merges by
+    // UNION for the same reason the count takes the max: each device may have
+    // watched different slips, and whichever copy wins would otherwise drop the
+    // other's history, which nothing can reconstruct.
+    {
+      const trail = mergePlanTrail(merged?.planTrail, local?.planTrail);
+      if (merged && !sameTrail(trail, merged.planTrail)) merged = { ...merged, planTrail: trail };
     }
     data[kind][idx] = merged;
     // Re-push when we enriched the pulled row so the vault converges to the

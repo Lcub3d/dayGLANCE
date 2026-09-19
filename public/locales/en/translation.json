@@ -779,7 +779,10 @@
     "priorityUnavailableForProject": "Not available for project tasks",
     "unscheduledHint": "(add to project card, no date/time)",
     "deferredTimes": "Deferred once",
-    "deferredTimes_other": "Deferred {{count}} times"
+    "deferredTimes_other": "Deferred {{count}} times",
+    "movedVia": "Recent moves",
+    "earlierMoves": "+1 earlier",
+    "earlierMoves_other": "+{{count}} earlier"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}st",

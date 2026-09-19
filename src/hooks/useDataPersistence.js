@@ -3,6 +3,7 @@ import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { stampTimestamps } from '../utils/stampTimestamps.js';
 import { stampOriginalPlan, applyBaselines } from '../utils/originalPlan.js';
 import { stampDeferrals, applyDeferrals } from '../utils/deferrals.js';
+import { stampPlanTrail, applyPlanTrail } from '../utils/planTrail.js';
 import { rolloverRemovedTodayRoutineIds, startOfTodayIso } from './useRoutines.js';
 
 // Read-only CalDAV/ICS-subscription events (importSource 'sync', non-task,
@@ -256,9 +257,18 @@ export default function useDataPersistence({
     const countedTasks = suppressTimestampRef.current
       ? plannedTasks
       : stampDeferrals(plannedTasks, prevStoredTasks);
+    // `planTrail` (utils/planTrail.js) records WHERE each of those slips landed,
+    // off the same comparison and under the same suppression. Stamped from
+    // `countedTasks` so a task that gains both in one pass keeps them: reading
+    // `plannedTasks` here would build the trail on a copy without the new count
+    // and then overwrite it.
+    const trailedTasks = suppressTimestampRef.current
+      ? countedTasks
+      : stampPlanTrail(countedTasks, prevStoredTasks);
     if (plannedTasks !== liveTasks) setTasks(prev => applyBaselines(prev, plannedTasks));
     if (countedTasks !== plannedTasks) setTasks(prev => applyDeferrals(prev, countedTasks));
-    const stampedTasks = stampTaskTimestamps(countedTasks, 'day-planner-tasks', prevStoredTasks);
+    if (trailedTasks !== countedTasks) setTasks(prev => applyPlanTrail(prev, trailedTasks));
+    const stampedTasks = stampTaskTimestamps(trailedTasks, 'day-planner-tasks', prevStoredTasks);
     const stampedUnscheduled = stampTaskTimestamps(unscheduledTasks, 'day-planner-unscheduled');
     const stampedRecycleBin = stampTaskTimestamps(recycleBin, 'day-planner-recycle-bin');
     const stampedRecurring = stampTaskTimestamps(recurringTasks, 'day-planner-recurring-tasks');

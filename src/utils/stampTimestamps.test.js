@@ -293,3 +293,38 @@ describe('stampTimestamps — a deferral count changing is not an edit', () => {
     expect(merged[0].completed).toBe(true);
   });
 });
+
+describe('stampTimestamps — a plan trail growing is not an edit', () => {
+  // The same hazard as the count, and worse: the trail merges by UNION, so it
+  // grows whenever another device's history arrives. Nobody touched this device.
+  const TRAIL = [{ at: 1, date: '2026-09-18', startTime: '09:00' }];
+
+  it('does NOT re-stamp when a stop arrived from elsewhere', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', planTrail: TRAIL, lastModified: ISO(60) };
+    const grown = [...TRAIL, { at: 2, date: '2026-09-19', startTime: '09:00' }];
+    const out = stampTimestamps([{ ...stored, planTrail: grown }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('does NOT re-stamp when the stored copy predates the field', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, planTrail: TRAIL }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('still persists the trail, it just does not claim the task was edited', () => {
+    const stored = { id: 1, title: 'Report', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, planTrail: TRAIL }], [stored], 'NOW');
+    expect(out[0].planTrail).toEqual(TRAIL);
+  });
+
+  it('a completion elsewhere survives a device that is only gaining stops', () => {
+    const shared = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', completed: false, planTrail: TRAIL, lastModified: ISO(120) };
+    const completedElsewhere = { ...shared, completed: true, lastModified: ISO(5) };
+    const grown = [...TRAIL, { at: 2, date: '2026-09-20', startTime: '11:00' }];
+    const staleDevice = stampTimestamps([{ ...shared, planTrail: grown }], [shared], ISO(0));
+    const { merged } = mergeTaskArrays(staleDevice, [completedElsewhere], {});
+    expect(merged).toHaveLength(1);
+    expect(merged[0].completed).toBe(true);
+  });
+});

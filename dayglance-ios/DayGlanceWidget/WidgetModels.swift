@@ -14,7 +14,28 @@ struct WidgetSnapshot: Codable {
     var allProjects: [ProjectData]?
     var sky: SkySnapshot?
     var dial: DialSnapshot?
+    /// today+1 … today+N, projected in advance (utils/widgetDayProjection.js)
+    /// so a timeline can switch days at midnight with the app in the
+    /// background. Resolved against the entry's local day by
+    /// `ResolvedWidgetDay` (WidgetFreshness.swift); never read directly.
+    var days: [WidgetDay]?
     var updatedAt: Double?
+}
+
+/// One projected day: the per-day fields only. The day-invariant blocks
+/// (goals, projects, clock preference) live once on the snapshot. A projected
+/// day is right about the SHAPE of the day and silent about state that cannot
+/// exist yet — see the JS module's header. Its `nextTask` is the first
+/// incomplete timed task of the day and `upcomingTasks` the whole rest of the
+/// list, uncapped: the view promotes through it by the clock when the day
+/// arrives, which a day built in advance cannot do.
+struct WidgetDay: Codable {
+    var date: String?
+    var dateLabel: String?
+    var nextTask: NextTaskData?
+    var upcomingTasks: [UpcomingTaskData]?
+    var sky: SkySnapshot?
+    var dial: DialSnapshot?
 }
 
 // The Day Dial widget's sky ring, derived on the JS side from the same solar
@@ -56,6 +77,10 @@ struct UpcomingTaskData: Codable {
     var colorHex: String?
     var startTime: String?
     var duration: Int?
+    /// Present on a projected day's rows (kept at full richness there so a
+    /// promoted row loses nothing); absent on the pushed day's light rows.
+    var tags: [String]?
+    var projectName: String?
 }
 
 struct NextTaskData: Codable {

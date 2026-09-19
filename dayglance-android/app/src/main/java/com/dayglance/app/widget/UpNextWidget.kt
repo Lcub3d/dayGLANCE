@@ -61,13 +61,22 @@ class UpNextWidget : AppWidgetProvider() {
         val dataStore = SharedDataStore(context)
         val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
         val use24Hour = widgetUses24HourClock(context, snapshot)
-        val freshness = snapshotFreshness(snapshot, dataStore)
+        val resolved = resolveWidgetDay(snapshot, dataStore)
+        val freshness = resolved.freshness
 
-        // Header date — the snapshot's own label, which on a stale snapshot is
-        // yesterday's date and belongs there.
-        val dateLabel = snapshot?.optString("dateLabel")?.takeIf { it.isNotBlank() }
+        // Header date — the rendered day's own label: a projected day's when
+        // today is one of the payload's days, yesterday's on a stale snapshot.
+        val dateLabel = resolved.fields?.optString("dateLabel")?.takeIf { it.isNotBlank() }
             ?: formatTodayLabel(context)
         views.setTextViewText(R.id.tv_upnext_date, dateLabel)
+
+        if (resolved.isProjected) {
+            // Soft tier: it IS today's Up Next, planned in advance. Secondary
+            // line, nothing dimmed, countdown live, buttons as usual.
+            views.setTextViewText(R.id.tv_upnext_stale, formatPlannedLabel(context, freshness, use24Hour))
+            views.setTextColor(R.id.tv_upnext_stale, context.getColor(R.color.widget_text_secondary))
+            views.setViewVisibility(R.id.tv_upnext_stale, View.VISIBLE)
+        }
 
         // Stale: "UP NEXT" is a claim about now, so the pill becomes the state
         // label, the banner carries the absolute capture time, and both content
@@ -102,8 +111,15 @@ class UpNextWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.btn_upnext_refresh, refreshPi)
 
-        // Show task or empty state
-        val nextTask = snapshot?.optJSONObject("nextTask")
+        // Show task or empty state. A projected day shipped its first task and
+        // the whole rest of its list; promote by the clock, because a day built
+        // yesterday evening cannot know it is 15:10 now.
+        val nextTask = if (resolved.isProjected && resolved.fields != null) {
+            val now = LocalTime.now()
+            promoteProjectedUpNext(resolved.fields, now.hour * 60 + now.minute).first
+        } else {
+            resolved.fields?.optJSONObject("nextTask")
+        }
         if (nextTask != null) {
             views.setViewVisibility(R.id.layout_upnext_task, View.VISIBLE)
             views.setViewVisibility(R.id.layout_upnext_empty, View.GONE)

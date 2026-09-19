@@ -1,8 +1,9 @@
 # Widget background refresh — options
 
-*Status: plan only. Nothing here is built. This is a ship gate for the Day
-Dial widget (handoff §9, phase 4b) and the follow-up to the stale-state fix
-that landed with it.*
+*Status: **implemented** as iOS-A + Android-A + Android-C, with the reload
+decoupling, in the PR after #1717. iOS-B, Android-B1 and Android-B2 were not
+built. The sections below are kept as the record of the options; the
+"What landed" section at the end says what is true now.*
 
 ## The problem, precisely
 
@@ -218,3 +219,91 @@ snapshot dated yesterday into the shared store, add the widgets, and look.
 Under A the expected result changes from "dimmed yesterday" to "today's
 projection with the softer label"; under C, watch the flip land at 00:00
 rather than at the next worker run.
+
+---
+
+## What landed
+
+**Payload.** `src/utils/widgetDayProjection.js` builds today+1 … today+3
+(`WIDGET_PROJECTION_DAYS = 3`) from the same helpers today uses, and the
+snapshot carries them as `days: [...]` keyed by date. Day-invariant blocks
+(`allGoals`, `allProjects`, clock preference) go once. A projected day carries
+the shape of the day — timed blocks with **tags and project references at the
+pushed day's richness**, all-day items, deadlines, frames, goals due, sky and
+dial — and none of the state that cannot exist yet: no completions or habit
+counts, no routines (chips are placed per day; a new day starts empty, so a
+projected dial honestly shows fewer blocks than the day will eventually have),
+no repeated overdue list, no GLANCEahead, no hyperGLANCE sessions, no Live
+Activity summary, no notes/subtasks on the next task.
+
+**Measured** on a deliberately busy synthetic day (24 timed tasks with
+48-character titles, tags and projects, 36-character ids, 26 dial blocks, a
+next task with 300 characters of notes and 7 subtasks, 5 goals × 4 projects,
+12 projects × 6 tasks), through the real serialisers:
+
+| | bytes |
+|---|---|
+| today with invariants, unchanged shape | 33,776 |
+| one projected day, before trimming | 17,402 |
+| one projected day, after trimming | 17,596 |
+| N=3 worst case | 86,564 = 21.6 % of the 400 KB cap (43.3 % of the old 200 KB) |
+
+The trims removed ~3.3 KB of state per day; the uncapped, tag-carrying Up
+Next list a projected day needs to stay correct through the afternoon (the
+native side promotes through it by the clock) added ~4.2 KB back. A typical
+day at 8–12 tasks is roughly half of this.
+
+**Cap.** `WidgetBridge.swift` now refuses above 400 KB and logs at 300 KB;
+the JS side (`guardSnapshotSize`) warns at 300 KB and, above 400 KB, drops the
+projected days from that push loudly rather than losing today. The old
+200 KB had been chosen as "safely under 30 MB", not measured; the Phase 0
+spike put the extension at 13–18 MB with everything decoded.
+
+**Reloads.** Two fingerprints (`widgetSnapshotDedupe.js`): a push happens when
+anything changed; `reloadWidgets: true` rides it only when today, the
+invariants or tomorrow changed. Both bridges store a `reloadWidgets: false`
+push without a redraw. An edit three days out is stored and costs no
+timeline.
+
+**Per-tick cost.** Rebuilding three busy projected days measured 1.7 ms per
+run in Node on the build container (a phone's JS core will be slower, the
+ratio holds). The projected days are memoized on their data and the day key,
+not on `currentTime`, so the 15-second tick pays nothing; they recompute on a
+data change or at midnight.
+
+**Recurring expansion.** The expansion range is now computed by
+`recurringExpansionRange.js` and anchored at today AND today+N, with tests for
+a visible range behind today (the real trigger), ahead of today, and at
+today. Before this, a user parked on last week had no recurring instances for
+the projected days.
+
+**Timelines.** iOS providers emit one entry per local midnight the payload
+can render plus one to flip to Outdated (`WidgetTimelineDates.rolloverDates`),
+so the day switch needs no reload and no background execution. Android arms
+`MidnightRolloverReceiver` on every push, from the 15-minute worker, on a
+timezone or clock change and after boot; exact when `SCHEDULE_EXACT_ALARM` is
+granted (checked at arm time, every time), `setAndAllowWhileIdle` otherwise.
+
+**Labels.** Pushed day: nothing. Projected day: "Planned as of Thu 8:42 PM",
+secondary tint, nothing dimmed, actions live (its task ids are real).
+Beyond the payload: the hard "Outdated" state from #1717, unchanged.
+
+### Behaviour at the edges
+
+- **Midnight with the app foregrounded.** The snapshot effect re-runs on the
+  15-second clock tick; `date` changes, both fingerprints change, a full push
+  with a reload goes out within seconds. The app also reloads itself at
+  00:00:30 (`utils/midnightRefresh.js`), which pushes again. The midnight
+  timeline entry and the Android alarm fire too; all three converge on the
+  same content, and the dedupe absorbs the duplicates.
+- **Timezone change mid-window.** Every date in the payload is a local-day
+  string and every time is a local-clock `HH:mm`, both written in the zone
+  the app was in when it pushed. After the device changes zone, the widgets
+  resolve the *new* local day against those strings: the right day object is
+  picked, but its clock times are still the old zone's until the app
+  foregrounds and re-pushes (which it does on any foreground). Android's
+  `TimeChangeReceiver` re-arms the midnight alarm for the new zone's midnight
+  and re-renders immediately; iOS timelines are rebuilt by WidgetKit on a
+  significant time change. A day that no longer matches any string (crossing
+  the date line) falls to the Outdated state until the next push, which is the
+  honest answer.

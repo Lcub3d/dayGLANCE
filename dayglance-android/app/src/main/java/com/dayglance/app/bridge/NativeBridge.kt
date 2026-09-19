@@ -331,8 +331,23 @@ class NativeBridge(
     @JavascriptInterface
     fun updateWidgetSnapshot(snapshotJson: String) {
         try {
+            // Android has no hard cap (SharedPreferences takes it), but the same
+            // signal as iOS: past 300 KB the day-keyed payload has outgrown its
+            // measurement (utils/widgetDayProjection.js), and someone should know.
+            if (snapshotJson.length > 300_000) {
+                android.util.Log.w("DayGlanceWidget", "Widget snapshot is ${snapshotJson.length} chars, past the 300 KB warning line. Something grew — see utils/widgetDayProjection.js.")
+            }
             dataStore.widgetSnapshot = snapshotJson
             dataStore.widgetSnapshotUpdatedAt = System.currentTimeMillis()
+            // The day boundary alarm rides every push: it is what re-renders the
+            // widgets at 00:00 when nothing else wakes the device.
+            runCatching { com.dayglance.app.widget.MidnightRolloverReceiver.arm(context) }
+            // A push whose only change is to a day the widgets are not showing
+            // (day-keyed payload, see utils/widgetSnapshotDedupe.js) is stored
+            // and NOT broadcast: the JS side says so with reloadWidgets=false.
+            // The data is there for the midnight alarm and the next render;
+            // no widget redraws for something invisible.
+            if (!com.dayglance.app.widget.WidgetSnapshotEnvelope.wantsReload(snapshotJson)) return
             com.dayglance.app.widget.DayGlanceWidget.requestUpdate(context)
             com.dayglance.app.widget.UpNextWidget.requestUpdate(context)
             com.dayglance.app.widget.GoalWidget.requestUpdate(context)

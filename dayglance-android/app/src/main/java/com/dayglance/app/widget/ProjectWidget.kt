@@ -61,11 +61,17 @@ class ProjectWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_project)
         val dataStore = SharedDataStore(context)
         val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
-        val freshness = snapshotFreshness(snapshot, dataStore)
+        val resolved = resolveWidgetDay(snapshot, dataStore)
+        val freshness = resolved.freshness
 
-        // Stale banner + dimmed card (WidgetFreshness.kt). A project card makes
-        // no present-tense claim beyond "as of when": the banner supplies that.
-        if (freshness.isStale) {
+        // Projects are day-invariant: a projected day adds only the soft label.
+        // Stale banner + dimmed card (WidgetFreshness.kt): a project card makes
+        // no present-tense claim beyond "as of when", and the banner supplies that.
+        if (resolved.isProjected) {
+            views.setTextViewText(R.id.tv_project_widget_stale, formatPlannedLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
+            views.setTextColor(R.id.tv_project_widget_stale, context.getColor(R.color.widget_text_secondary))
+            views.setViewVisibility(R.id.tv_project_widget_stale, View.VISIBLE)
+        } else if (freshness.isStale) {
             views.setTextViewText(R.id.tv_project_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
             views.setViewVisibility(R.id.tv_project_widget_stale, View.VISIBLE)
             views.setFloat(R.id.layout_project_content, "setAlpha", STALE_CONTENT_ALPHA)

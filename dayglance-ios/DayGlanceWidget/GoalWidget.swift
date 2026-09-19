@@ -60,7 +60,7 @@ struct GoalProvider: AppIntentTimelineProvider {
         // One snapshot, two entries: now and the next local midnight, so the
         // stale state flips on the minute (WidgetFreshness.swift).
         let snapshot = loadSnapshot()
-        let entries = WidgetTimelineDates.withMidnightRollover().map {
+        let entries = WidgetTimelineDates.rolloverDates(midnights: 1 + (snapshot?.days?.count ?? 0)).map {
             GoalEntry(date: $0, snapshot: snapshot, selectedGoalId: configuration.goal?.id)
         }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
@@ -82,14 +82,19 @@ struct GoalWidgetView: View {
         return goals.first
     }
 
-    // Against the entry's date, not the clock (see WidgetTimelineDates).
-    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
+    // Against the entry's date, not the clock (see ResolvedWidgetDay). Goals
+    // are day-invariant, so a projected day changes only the label and the
+    // due badge's reference day.
+    private var day: ResolvedWidgetDay { .resolve(entry.snapshot, at: entry.date) }
+    private var freshness: WidgetFreshness { day.freshness }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if freshness.isStale {
+            if day.isStale {
                 StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
+            } else if day.isProjected {
+                PlannedBanner(day: day, use24Hour: entry.snapshot?.use24Hour)
             }
             Divider().padding(.vertical, 4)
             Group {
@@ -114,7 +119,7 @@ struct GoalWidgetView: View {
                 .font(.caption2).fontWeight(.bold)
                 .foregroundColor(.secondary)
             Spacer()
-            Text(entry.snapshot?.dateLabel ?? "")
+            Text(day.dateLabel ?? "")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
@@ -132,10 +137,13 @@ struct GoalWidgetView: View {
                             .font(.subheadline).fontWeight(.semibold)
                             .lineLimit(2)
                         Spacer()
-                        // daysUntilDue was computed by JS against the snapshot's
-                        // day; on a stale snapshot "Due today" is off by the
-                        // snapshot's age, so it is not shown at all.
-                        if !freshness.isStale, let days = goal.daysUntilDue {
+                        // Computed at RENDER time against the entry's day from
+                        // the goal's target date, so it is right on the pushed
+                        // day and on a projected one; the push-time value is
+                        // only a fallback for a goal with no target date
+                        // string. Not shown at all on a stale snapshot.
+                        if !freshness.isStale,
+                           let days = ResolvedWidgetDay.daysUntil(goal.targetDate, from: entry.date) ?? goal.daysUntilDue {
                             dueBadge(days: days)
                         }
                     }

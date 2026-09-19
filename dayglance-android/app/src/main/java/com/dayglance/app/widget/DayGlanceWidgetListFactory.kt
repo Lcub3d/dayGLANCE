@@ -124,9 +124,11 @@ class DayGlanceWidgetListFactory(
         val dataStore = SharedDataStore(context)
         val snapshotJson = dataStore.widgetSnapshot ?: return
         try {
-            val snapshot = JSONObject(snapshotJson)
-            snapshotIsToday = !snapshotFreshness(snapshot, dataStore, LocalDate.now()).isStale
-            buildItems(snapshot)
+            // The day to draw: today's pushed fields, a projected day's fields
+            // when today is one of the payload's days, or the stale root.
+            val resolved = resolveWidgetDay(JSONObject(snapshotJson), dataStore, LocalDate.now())
+            snapshotIsToday = !resolved.isStale
+            buildItems(resolved.fields ?: return)
         } catch (_: Throwable) {
             items += AgendaItem.Empty
         }

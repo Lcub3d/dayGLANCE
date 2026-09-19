@@ -38,6 +38,8 @@ import {
 import { evaluateMissingSnapshot, ICLOUD_LAST_SYNCED_KEY } from './utils/icloudSeedGuard.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
+import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
+import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -6451,26 +6453,13 @@ const DayPlanner = () => {
   // In week view, expand over the full week range (which may extend beyond visibleDates).
   const expandedRecurringTasks = useMemo(() => {
     if (recurringTasks.length === 0) return [];
-    // The SCHED agenda window (mobile SchedView / desktop SchedDashboard)
-    // reads days well beyond visibleDates/weekViewDates — on phones weekViewDates
-    // is even empty (effectiveViewMode is 'multi'). Always include the agenda's
-    // full rolling window so recurring occurrences exist for every rendered day.
-    const schedWindowEnd = new Date(selectedDate);
-    schedWindowEnd.setDate(schedWindowEnd.getDate() + schedDaysShown - 1);
+    // The range's anchors — the SCHED rolling window, TODAY, and TODAY + the
+    // widget projection horizon — are computed and tested in
+    // utils/recurringExpansionRange.js; the reasons live there.
     const today = getTodayStr();
-    // TODAY is anchored into the range unconditionally: plenty of consumers ask
-    // about today regardless of where the user has navigated — todayAgenda (and
-    // through it GLANCE and the widget snapshot / Live Activity), the macOS NOW
-    // bar and title-bar strip. Without the anchor, navigating wholly past (or
-    // before) today silently dropped today's recurring instances from all of
-    // them — visible as tag pills vanishing from the title bar when paging
-    // forward off a weekend-only recurring task's day.
-    const allDateStrs = [...visibleDates.map(d => dateToString(d)),
-      ...weekViewDates.map(d => dateToString(d)),
-      ...(monthViewRange ? [monthViewRange.from, monthViewRange.to] : []),
-      dateToString(selectedDate), dateToString(schedWindowEnd), today].sort();
-    const rangeStart = allDateStrs[0];
-    const rangeEnd = allDateStrs[allDateStrs.length - 1];
+    const { rangeStart, rangeEnd } = computeRecurringExpansionRange({
+      visibleDates, weekViewDates, monthViewRange, selectedDate, schedDaysShown, today: new Date(),
+    });
     const instances = [];
     for (const template of recurringTasks) {
       const occurrences = getOccurrencesInRange(template, rangeStart, rangeEnd);
@@ -7413,6 +7402,65 @@ const DayPlanner = () => {
   // whatever the previous process left behind.
   const lastWidgetSnapshotRef = useRef('');
 
+  // ── Projected days for the day-keyed widget snapshot ─────────────────────
+  // today+1 … today+N, each built by utils/widgetDayProjection.js from the
+  // same helpers today uses, so a widget can switch days at midnight with the
+  // app in the background (docs/widget-background-refresh-plan.md, iOS-A /
+  // Android-A). Memoized on the DATA, deliberately not on currentTime: the
+  // snapshot effect below re-runs on the 15-second tick, and rebuilding three
+  // days of sections, sky and dial on every tick would quadruple its work for
+  // nothing — a projected day has no clock in it. The day key rolls the memo
+  // at midnight; a foregrounded app then also reloads at 00:00:30
+  // (utils/midnightRefresh.js).
+  const widgetTodayKey = dateToString(currentTime);
+  const projectedWidgetDays = useMemo(() => {
+    if (!dataLoaded) return [];
+    if (!isNativeAndroid() && !isNativeIOS()) return [];
+    const today = new Date(widgetTodayKey + 'T12:00:00');
+    const projectNameFor = (task) => (goalsProjectsEnabled && task.projectId)
+      ? (projects.find(p => p.id === task.projectId)?.title || '')
+      : '';
+    const allTasksCombined = [...tasks, ...unscheduledTasks].filter(isVisibleForUser);
+    const visibleProjects = projects.filter(isVisibleForUser);
+    const visibleGoals = goals.filter(isVisibleForUser);
+    const coords = getStoredWeatherCoords();
+    return projectionDates(today).map((date) => {
+      const dateStr = dateToString(date);
+      const prev = new Date(date);
+      prev.setDate(prev.getDate() - 1);
+      const goalsDue = goalsProjectsEnabled
+        ? visibleGoals
+            .filter(g => g.status === 'active' && g.targetDate === dateStr)
+            .map(g => {
+              const progressPct = Math.round(calculateGoalProgress(g.id, visibleProjects, allTasksCombined) * 100);
+              const childProjects = visibleProjects.filter(p => p.goalId === g.id && p.status !== 'archived');
+              const totalTasks = allTasksCombined.filter(t => childProjects.some(p => p.id === t.projectId) && !t.archived).length;
+              const completedTasks = allTasksCombined.filter(t => childProjects.some(p => p.id === t.projectId) && !t.archived && t.completed).length;
+              return { id: g.id, title: g.title, progressPct, totalTasks, completedTasks };
+            })
+        : [];
+      return buildProjectedDay({
+        date,
+        dateStr,
+        dateLabel: formatLocalizedDate(date, { weekday: 'short', month: 'short', day: 'numeric' }),
+        dayTasks: getTasksForDate(date, false),
+        prevDayTasks: getTasksForDate(prev, false),
+        deadlineTasks: unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
+        frames: getFrameInstancesForDate(date),
+        frameAvailableMinutes: (frame) => computeAvailableSlots(frame, date).reduce((sum, slot) => sum + slot.minutes, 0),
+        dayWindow: getDayWindow(dateStr),
+        coords,
+        goalsDue,
+        projectNameFor,
+      });
+    });
+    // `t` stands in for the locale, which formats dateLabel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
+    tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t,
+  ]);
+
   // ── Native Android widget snapshot sync ──────────────────────────────────
   // Pushes a rich snapshot of today's agenda to the native widget via NativeBridge.
   // Runs whenever tasks, habits, routines, or frames change so the widget is always
@@ -7514,79 +7562,18 @@ const DayPlanner = () => {
     const overdueIdSet = new Set([...overdueItems, ...overdueTodayItems].map(t => String(t.id)));
     const scheduledW = todayAgenda.filter(t => t._agendaType === 'scheduled' && !overdueIdSet.has(String(t.id)));
 
-    const taskFrameMapW = new Map();
-    for (const task of scheduledW) {
-      if (!task.startTime) continue;
-      const tStart = timeToMinutes(task.startTime);
-      const tEnd = tStart + (task.duration || 0);
-      for (const frame of todayFramesW) {
-        if (tStart >= timeToMinutes(frame.start) && tEnd <= timeToMinutes(frame.end)) {
-          taskFrameMapW.set(String(task.id), frame.frameId);
-          break;
-        }
-      }
-    }
-
     // Every title the widget draws goes through the same rule: no
     // [[wikilinks]] (a widget cannot open a note) and no #tags (they ride
-    // the `tags` field where the widget wants them).
-    const serTask = t => ({
-      id: t.id,
-      title: stripWikilinksAndTags(t.title),
-      colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
-      startTime: t.startTime || '',
-      duration: t.duration || 0,
-      tags: (t.tags || []).slice(0, 3),
-      projectName: (goalsProjectsEnabled && t.projectId)
-        ? (projects.find(p => p.id === t.projectId)?.title || '')
-        : '',
+    // the `tags` field where the widget wants them). The row shape and the
+    // frame/unframed assembly live in utils/widgetDayProjection.js, shared
+    // with the projected days below so the two cannot drift.
+    const serTask = t => serializeWidgetTask(t, getProjectName);
+    const sections = buildScheduleSections({
+      scheduled: scheduledW,
+      frames: todayFramesW,
+      frameAvailableMinutes: (frame) => computeAvailableSlots(frame, today).reduce((s, slot) => s + slot.minutes, 0),
+      serialize: serTask,
     });
-
-    const sections = [];
-    const sortedFramesW = [...todayFramesW].sort(
-      (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
-    );
-    const assignedIdsW = new Set();
-    let schedIdxW = 0;
-
-    for (const frame of sortedFramesW) {
-      const fStart = timeToMinutes(frame.start);
-      const beforeTasks = [];
-      while (schedIdxW < scheduledW.length) {
-        const t = scheduledW[schedIdxW];
-        if (timeToMinutes(t.startTime || '00:00') < fStart && !taskFrameMapW.has(String(t.id))) {
-          beforeTasks.push(t);
-          assignedIdsW.add(String(t.id));
-          schedIdxW++;
-        } else break;
-      }
-      if (beforeTasks.length > 0) {
-        sections.push({ type: 'unframed', tasks: beforeTasks.map(serTask) });
-      }
-
-      const frameTasks = scheduledW.filter(t => taskFrameMapW.get(String(t.id)) === frame.frameId);
-      const availSlots = computeAvailableSlots(frame, today);
-      const totalAvail = availSlots.reduce((s, slot) => s + slot.minutes, 0);
-      const frameColorHex = TAILWIND_TO_HEX[frame.color] || '#3b82f6';
-
-      if (totalAvail > 0 || frameTasks.length > 0) {
-        sections.push({
-          type: 'frame',
-          name: frame.label,
-          colorHex: frameColorHex,
-          start: frame.start,
-          end: frame.end,
-          availableMinutes: totalAvail,
-          tasks: frameTasks.map(serTask),
-        });
-      }
-      frameTasks.forEach(t => assignedIdsW.add(String(t.id)));
-      while (schedIdxW < scheduledW.length && assignedIdsW.has(String(scheduledW[schedIdxW].id))) schedIdxW++;
-    }
-    const remainingW = scheduledW.filter(t => !assignedIdsW.has(String(t.id)));
-    if (remainingW.length > 0) {
-      sections.push({ type: 'unframed', tasks: remainingW.map(serTask) });
-    }
 
     // ── Routines ──────────────────────────────────────────────────────────
     const routineItems = todayRoutines.map(r => ({
@@ -7913,6 +7900,12 @@ const DayPlanner = () => {
           routineCompletions,
         });
       })(),
+      // ── The next three days, keyed by date ──────────────────────────────
+      // Built above from the same helpers; the native side switches to the
+      // matching entry at each midnight and labels it "planned as of". Only
+      // the pushed day above carries state (completions, habits, routines,
+      // overdue); a projected day carries the shape of the day.
+      days: projectedWidgetDays,
       updatedAt: Date.now(),
     };
 
@@ -7924,11 +7917,19 @@ const DayPlanner = () => {
     // and each one makes the native side run reloadAllTimelines() and sync the
     // Live Activity. The comparison must exclude `updatedAt` or it never matches;
     // see utils/widgetSnapshotDedupe.js.
-    const { push, fingerprint } = evaluateSnapshotPush(snapshot, lastWidgetSnapshotRef.current);
+    //
+    // Two fingerprints since the payload became day-keyed: `push` when
+    // anything changed, `reload` only when something a widget can currently
+    // show changed (today, the invariants, tomorrow). An edit three days out
+    // is stored — it is what the widget will switch to at that midnight — and
+    // sent with reloadWidgets:false, which both bridges store without a
+    // redraw. The dial's reload budget is not spent on the invisible.
+    const { push, reload, fingerprint } = evaluateSnapshotPush(snapshot, lastWidgetSnapshotRef.current);
     if (push) {
       lastWidgetSnapshotRef.current = fingerprint;
       try {
-        window.DayGlanceNative.updateWidgetSnapshot(JSON.stringify(snapshot));
+        const { json } = guardSnapshotSize({ ...snapshot, reloadWidgets: reload });
+        window.DayGlanceNative.updateWidgetSnapshot(json);
       } catch (_) {}
     }
 
@@ -7969,6 +7970,7 @@ const DayPlanner = () => {
     listEndOfDayTime,
     liveActivityEnabled,
     widgetSnapshotTick,
+    projectedWidgetDays,
     t,
   ]);
 

@@ -80,15 +80,24 @@ class DayGlanceWidget : AppWidgetProvider() {
         try {
             val dataStore = SharedDataStore(context)
             val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
-            val freshness = snapshotFreshness(snapshot, dataStore)
+            val resolved = resolveWidgetDay(snapshot, dataStore)
+            val freshness = resolved.freshness
             val use24Hour = widgetUses24HourClock(context, snapshot)
-            // The snapshot's own label: on a stale snapshot that is yesterday's
-            // date, which is the truth. Only a missing snapshot says "today".
-            val dateLabel = snapshot?.optString("dateLabel")?.takeIf { it.isNotBlank() }
+            // The rendered day's own label: the projected day's when today is
+            // one of the payload's days, yesterday's on a stale snapshot, which
+            // is the truth. Only a missing snapshot says "today".
+            val dateLabel = resolved.fields?.optString("dateLabel")?.takeIf { it.isNotBlank() }
                 ?: formatTodayLabel(context)
             views.setTextViewText(R.id.tv_date, dateLabel)
 
-            if (freshness.isStale) {
+            if (resolved.isProjected) {
+                // Soft tier: the day's shape is right, its state is unknown.
+                // The "updated" time would describe a different day's content.
+                views.setTextViewText(R.id.tv_updated, "")
+                views.setTextViewText(R.id.tv_stale, formatPlannedLabel(context, freshness, use24Hour))
+                views.setTextColor(R.id.tv_stale, context.getColor(R.color.widget_text_secondary))
+                views.setViewVisibility(R.id.tv_stale, View.VISIBLE)
+            } else if (freshness.isStale) {
                 // A bare "8:42 PM" next to yesterday's content reads as tonight.
                 // The banner carries the full absolute timestamp instead, and
                 // the list dims so the state registers before any text is read.

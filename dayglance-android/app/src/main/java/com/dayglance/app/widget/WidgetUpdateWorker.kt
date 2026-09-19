@@ -79,6 +79,10 @@ class WidgetUpdateWorker(
             }
         }
 
+        // Backstop for the midnight alarm: a periodic worker outlives process
+        // death and OEM battery killers that drop one-shot alarms.
+        try { MidnightRolloverReceiver.arm(context) } catch (_: Throwable) { }
+
         // 4. Trigger widget updates. This runs in every case, the untouched
         //    stale one included: the widgets re-evaluate freshness on each
         //    render, so this is what flips them to the stale state within a

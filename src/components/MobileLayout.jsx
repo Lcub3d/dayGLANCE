@@ -34,6 +34,7 @@ import MobileSettingsPanel from './MobileSettingsPanel.jsx';
 import GoalDashboard from './goals/GoalDashboard.jsx';
 import MobileTimeGrid from './MobileTimeGrid.jsx';
 import SummaryStrip from './SummaryStrip.jsx';
+import { MOBILE_HOUR_GUTTER_W } from '../constants/timeline.js';
 import MobileAllDaySection from './MobileAllDaySection.jsx';
 import MobileBottomSheets from './MobileBottomSheets.jsx';
 import MobileGlanceSection from './MobileGlanceSection.jsx';
@@ -779,7 +780,7 @@ const MobileLayout = () => {
                       sticky overlay there reads as an extension of the list's
                       spine, so it sits below the day as its own element.
                       DesktopLayout renders the tablet's pair the same way. */}
-                  {mobileViewMode === 'grid' && <SummaryStrip compact fabClearance />}
+                  {mobileViewMode === 'grid' && <SummaryStrip compact fabClearance gutterInset={MOBILE_HOUR_GUTTER_W} />}
                   {mobileViewMode === 'list' && <SummaryStrip compact fabClearance staticPlacement />}
                 </div>
 

@@ -68,3 +68,22 @@ export function clippedCounts(tasks, { startHour = 0, endHour = 24 } = {}) {
   }
   return { above, below };
 }
+
+/**
+ * Which expand toggle, if either, belongs on the gutter row for `hour`.
+ *
+ * The two toggles name an hour, and they do NOT anchor the same way. The start
+ * hour is the head of its row, so "▲ 07:00" sits at that row's top and doubles
+ * as its hour label. The end hour is the FOOT of the last row: an end of 22:00
+ * trims after the 21:00 row, so a "22:00" label pinned to that row's top lands
+ * on the 21:00 line with a full hour of grid beneath it — which reads as the
+ * window being ignored. It was not; the label was simply an hour early.
+ *
+ * Returns 'top', 'bottom' or null. A one-hour band is both edges at once and
+ * resolves to 'top', since either toggle restores the whole day anyway.
+ */
+export function gutterEdge(hour, { startHour = 0, endHour = 24 } = {}) {
+  if (startHour > 0 && hour === startHour) return 'top';
+  if (endHour < 24 && hour === endHour - 1) return 'bottom';
+  return null;
+}

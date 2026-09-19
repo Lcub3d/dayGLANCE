@@ -6,6 +6,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import DayWindowMenu from './DayWindowMenu.jsx';
 import { dateToString, formatShortDate } from '../utils/taskUtils.js';
 import { computeDaySummary, formatMinutes } from '../utils/daySummary.js';
+import { HOUR_GUTTER_W } from '../constants/timeline.js';
 
 // Collapse choice is a per-window view preference, same class as
 // minimizedSections. Default collapsed: the strip only collapses on touch
@@ -69,7 +70,7 @@ export const summaryPillClass = (darkMode) =>
  *              strip, since the bar cannot describe it. Never set alongside
  *              compact: the title bar only exists on macOS desktop.
  */
-export default function SummaryStrip({ compact = false, fabClearance = false, staticPlacement = false, titlebarPills = false }) {
+export default function SummaryStrip({ compact = false, fabClearance = false, staticPlacement = false, titlebarPills = false, gutterInset = HOUR_GUTTER_W }) {
   const {
     selectedDate, getTasksForDate, listEndOfDayTime, visibleDays, isToday,
     darkMode, textPrimary, textSecondary,
@@ -148,15 +149,28 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
   // closing "Good work" line and needs visible separation from it.
   const container = staticPlacement
     ? `relative pt-4 pb-2 pl-2 pointer-events-none ${fabClearance ? 'pr-20' : 'pr-2'}`
-    : `sticky bottom-0 z-30 pl-2 pb-2 pointer-events-none ${fabClearance ? 'pr-20' : 'pr-2'}`;
+    : `sticky bottom-0 z-30 pb-2 pointer-events-none ${fabClearance ? 'pr-20' : 'pr-2'}`;
+
+  // The sticky strip floats over a timeline, and every timeline view opens with
+  // an hour gutter. Starting at the container's left edge put the first pill
+  // over the hour labels, which the pills say nothing about — they are the DAY's
+  // numbers and belong over the day columns. Clearing the gutter also frees
+  // WEEK's end-hour toggle, which hangs at the foot of that same column.
+  //
+  // LIST (staticPlacement) has no gutter and keeps its flush left padding. The
+  // width is a prop because the phone's timeline runs a narrower column than
+  // the desktop one, and over-indenting a phone would cost more than the
+  // overlap did.
+  const leftInset = staticPlacement ? undefined : gutterInset + 8;
 
   return (
-    <div className={container}>
+    <div className={container} style={leftInset ? { paddingLeft: leftInset } : undefined}>
       {menuOpen && (
         <DayWindowMenu
           dateStr={dateStr}
           onClose={() => setMenuOpen(false)}
-          anchorClass="absolute bottom-full mb-1 left-2"
+          anchorClass="absolute bottom-full mb-1"
+          anchorStyle={{ left: leftInset ?? 8 }}
         />
       )}
       {/* Pills hidden, popover still mounted: the grid's START/END marker chips

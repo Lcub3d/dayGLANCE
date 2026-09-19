@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { weekWindow, compactHourLabel, clippedCounts } from '../utils/weekWindow.js';
+import { weekWindow, compactHourLabel, clippedCounts, gutterEdge } from '../utils/weekWindow.js';
+import { HOUR_GUTTER_W } from '../constants/timeline.js';
 import * as Icons from 'lucide-react';
 import { Zap } from 'lucide-react';
 import { dateToString } from '../utils/taskUtils.js';
@@ -77,7 +78,7 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
 
 // ── WeekViewColumn ────────────────────────────────────────────────────────────
 
-const WEEK_GUTTER_W = 64; // px — matches the hour-label column width
+const WEEK_GUTTER_W = HOUR_GUTTER_W; // the shared hour-label column (constants/timeline.js)
 
 const fmtDur = (min) => {
   const h = Math.floor(min / 60), m = min % 60;
@@ -587,8 +588,13 @@ const WeekView = () => {
           // A toggle sits at each TRIMMED edge, and either one restores the whole
           // day. The arrow points the way the hidden hours lie: up at the top
           // edge, down at the bottom, and the other way once they are showing.
-          const atTopEdge = weekTimelineStartHour > 0 && hour === weekTimelineStartHour;
-          const atBottomEdge = weekTimelineEndHour < 24 && hour === weekTimelineEndHour - 1;
+          // Which end it is also decides where in the row it hangs — see
+          // gutterEdge.
+          const edge = gutterEdge(hour, {
+            startHour: weekTimelineStartHour,
+            endHour: weekTimelineEndHour,
+          });
+          const atTopEdge = edge === 'top';
           const edgeHour = atTopEdge ? weekTimelineStartHour : weekTimelineEndHour;
           const edgeLabel = compactHourLabel(edgeHour, use24HourClock);
           const arrow = atTopEdge ? (showAllHours ? '▼' : '▲') : (showAllHours ? '▲' : '▼');
@@ -601,15 +607,20 @@ const WeekView = () => {
               className="relative flex-shrink-0"
               style={{ height: `${hourHeight}px` }}
             >
-              {(atTopEdge || atBottomEdge) ? (
+              {edge && (
                 <button
                   onClick={() => setShowAllHours(v => !v)}
-                  className="absolute top-0.5 right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none"
+                  className={`absolute ${atTopEdge ? 'top-0.5' : 'bottom-0.5'} right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none`}
                   title={hiddenHere ? t('settings.weekTimelineHidden', { count: hiddenHere }) : undefined}
                 >
                   {hiddenHere ? `${arrow} ${edgeLabel} · ${hiddenHere}` : `${arrow} ${edgeLabel}`}
                 </button>
-              ) : (hour % 3 === 0 && (
+              )}
+              {/* The top toggle stands in for its row's hour label, since the
+                  two name the same line. The bottom one sits at the row's FOOT
+                  and names the next line down, so that row still shows its own
+                  hour at its head like every other. */}
+              {!atTopEdge && hour % 3 === 0 && (
                 <span
                   className={`absolute top-0.5 right-2 text-[10px] leading-none ${textSecondary} select-none`}
                 >
@@ -618,7 +629,7 @@ const WeekView = () => {
                     : hour === 0 ? '12 AM' : hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour - 12} PM`
                   }
                 </span>
-              ))}
+              )}
             </div>
           );
         })}

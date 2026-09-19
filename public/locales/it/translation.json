@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "Ricorrente in Obsidian: la ricorrenza di questa attività è gestita dal plugin Tasks; completarla qui non creerà l’occorrenza successiva",
     "openLink": "Apri link",
     "priorityUnavailableForProject": "Non disponibile per le attività di progetto",
-    "unscheduledHint": "(aggiungi alla scheda del progetto, senza data/ora)"
+    "unscheduledHint": "(aggiungi alla scheda del progetto, senza data/ora)",
+    "deferredTimes": "Rinviata una volta",
+    "deferredTimes_other": "Rinviata {{count}} volte"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

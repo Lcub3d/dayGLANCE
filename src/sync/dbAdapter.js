@@ -27,6 +27,7 @@
 // per-completion remodeling.
 
 import { mergeHabitLogs, mergeRoutineDefinitions, mergeRoutineCompletions, mergeCompletedDates } from '../mergeSync.js';
+import { mergeDeferrals } from '../utils/deferrals.js';
 import { TOMBSTONE_BUNDLE_KEYS, tombstoneCutoff, pruneCompletedTaskUids } from './tombstoneRetention.js';
 import { mergeRetiredTaskIds } from '../utils/retiredTaskIds.js';
 import { mergeDayWindowMaps } from './dayWindowSync.js';
@@ -321,6 +322,13 @@ function upsertCollection(data, kind, value) {
     // explicit null, so only an ABSENT value means the winner predates the field.
     if (merged && merged.starredDate === undefined && local && local.starredDate !== undefined) {
       merged = { ...merged, starredDate: local.starredDate };
+    }
+    // `deferrals` (utils/deferrals.js) merges by MAX rather than carrying: both
+    // devices may have watched the same slip, so summing double-counts, and a
+    // winner that never carried the field would otherwise erase a real count.
+    {
+      const count = mergeDeferrals(merged?.deferrals, local?.deferrals);
+      if (merged && count !== merged.deferrals) merged = { ...merged, deferrals: count };
     }
     data[kind][idx] = merged;
     // Re-push when we enriched the pulled row so the vault converges to the

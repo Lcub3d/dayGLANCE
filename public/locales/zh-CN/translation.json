@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "在 Obsidian 中重复：此任务的重复规则由 Tasks 插件管理；在这里完成任务不会创建下一个实例",
     "openLink": "打开链接",
     "priorityUnavailableForProject": "项目任务无法单独设置优先级",
-    "unscheduledHint": "（添加到项目卡片，不设置日期/时间）"
+    "unscheduledHint": "（添加到项目卡片，不设置日期/时间）",
+    "deferredTimes": "推迟过 1 次",
+    "deferredTimes_other": "推迟过 {{count}} 次"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

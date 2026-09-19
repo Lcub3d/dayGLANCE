@@ -29,7 +29,8 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // render of the closed badge cannot reach.
 export function PlanHistoryPanel({ history, task, formatTime }) {
   const { t } = useTranslation();
-  const { plan, changed } = history;
+  const { plan, changed } = history ?? { plan: null, changed: {} };
+  const deferrals = Number(task?.deferrals) || 0;
 
   // A changed value is stated plainly; an unchanged one is dimmed, so the eye
   // lands on what actually moved rather than on three values of equal weight.
@@ -51,10 +52,20 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
 
   return (
     <>
-      <div className="opacity-60 mb-0.5">{t('task.originallyPlanned')}</div>
-      {row(plan.date, plan.startTime, plan.duration)}
-      <div className="opacity-60 mt-1.5 mb-0.5">{t('task.nowScheduled')}</div>
-      {row(task.date, task.startTime, task.duration)}
+      {history && (<>
+        <div className="opacity-60 mb-0.5">{t('task.originallyPlanned')}</div>
+        {row(plan.date, plan.startTime, plan.duration)}
+        <div className="opacity-60 mt-1.5 mb-0.5">{t('task.nowScheduled')}</div>
+        {row(task.date, task.startTime, task.duration)}
+      </>)}
+      {/* The count is the other half of the story: two points say WHERE it moved,
+          this says how often it slipped. Counted only for moves made after the
+          task came due, so planning does not inflate it (utils/deferrals.js). */}
+      {deferrals > 0 && (
+        <div className={`opacity-60 ${history ? 'mt-1.5' : ''}`}>
+          {t('task.deferredTimes', { count: deferrals })}
+        </div>
+      )}
     </>
   );
 }
@@ -109,7 +120,11 @@ export default function TaskPlanHistory({ task, size = 12 }) {
   }, [open]);
 
   const history = planHistory(task);
-  if (!history) return null;
+  // A task that slipped before the baseline shipped has a count but no plan to
+  // compare against. That is still something to tell, so the badge appears for
+  // either half.
+  const hasCount = (Number(task?.deferrals) || 0) > 0;
+  if (!history && !hasCount) return null;
 
   return (
     <span ref={ref} className="relative flex-shrink-0 inline-flex">

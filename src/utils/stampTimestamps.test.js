@@ -254,3 +254,42 @@ describe('stampTimestamps — starring IS an edit, but absent and null are not',
     expect(out[0].lastModified).toBe(stored.lastModified);
   });
 });
+
+describe('stampTimestamps — a deferral count changing is not an edit', () => {
+  // The increment itself rides a reschedule, which stamps on its own. What this
+  // guards is the count moving ALONE, which happens when a merge takes a higher
+  // value from another device: nobody edited anything here, and a fabricated
+  // stamp would outrank a real completion made elsewhere.
+  it('does NOT re-stamp when only the count rose', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', deferrals: 2, lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deferrals: 5 }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('does NOT re-stamp when the stored copy predates the field', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deferrals: 1 }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('still persists the count, it just does not claim the task was edited', () => {
+    const stored = { id: 1, title: 'Report', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, deferrals: 3 }], [stored], 'NOW');
+    expect(out[0].deferrals).toBe(3);
+  });
+
+  it('the reschedule that caused it still stamps, as it always did', () => {
+    const stored = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, startTime: '16:00', deferrals: 1 }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+
+  it('a completion elsewhere survives a device that is only raising a count', () => {
+    const shared = { id: 1, title: 'Report', date: '2026-09-19', startTime: '09:00', completed: false, deferrals: 1, lastModified: ISO(120) };
+    const completedElsewhere = { ...shared, completed: true, lastModified: ISO(5) };
+    const staleDevice = stampTimestamps([{ ...shared, deferrals: 4 }], [shared], ISO(0));
+    const { merged } = mergeTaskArrays(staleDevice, [completedElsewhere], {});
+    expect(merged).toHaveLength(1);
+    expect(merged[0].completed).toBe(true);
+  });
+});

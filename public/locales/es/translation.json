@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "Recurrente en Obsidian: la recurrencia de esta tarea la gestiona el complemento Tasks; completarla aquí no creará la siguiente instancia",
     "openLink": "Abrir enlace",
     "priorityUnavailableForProject": "No disponible para tareas de proyecto",
-    "unscheduledHint": "(añadir a la tarjeta del proyecto, sin fecha ni hora)"
+    "unscheduledHint": "(añadir a la tarjeta del proyecto, sin fecha ni hora)",
+    "deferredTimes": "Aplazada una vez",
+    "deferredTimes_other": "Aplazada {{count}} veces"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

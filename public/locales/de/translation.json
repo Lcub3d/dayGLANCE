@@ -777,7 +777,9 @@
     "obsidianRecurrenceManaged": "Wiederkehrend in Obsidian: die Wiederholung dieser Aufgabe wird vom Tasks-Plugin verwaltet; beim Abschließen hier wird keine nächste Instanz erstellt",
     "openLink": "Link öffnen",
     "priorityUnavailableForProject": "Für Projektaufgaben nicht verfügbar",
-    "unscheduledHint": "(zur Projektkarte hinzufügen, ohne Datum/Uhrzeit)"
+    "unscheduledHint": "(zur Projektkarte hinzufügen, ohne Datum/Uhrzeit)",
+    "deferredTimes": "Einmal verschoben",
+    "deferredTimes_other": "{{count}}-mal verschoben"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

@@ -3,6 +3,7 @@
 // mergeTaskArrays pins timestampField rather than re-exporting the alias
 // directly (which would default to `updatedAt`).
 import { mergeArrayById, mergeSyncData as upstreamMergeSyncData, pruneTombstones } from '@glance-apps/sync';
+import { mergeDeferrals } from './utils/deferrals.js';
 import {
   TOMBSTONE_BUNDLE_KEYS,
   tombstoneCutoff,
@@ -504,6 +505,17 @@ export const mergeSyncData = (local, remote, retentionDays) => {
           item.starredDate = starred;
           if (l?.starredDate === undefined) result.localChanged = true;
           if (r?.starredDate === undefined) result.remoteChanged = true;
+        }
+      }
+      // `deferrals` merges by MAX, not by carrying: both sides may have watched
+      // the same slip, so summing double-counts, and the lower side needs the
+      // corrected value written back.
+      {
+        const count = mergeDeferrals(l?.deferrals, r?.deferrals);
+        if (count !== undefined && count !== item.deferrals) item.deferrals = count;
+        if (count !== undefined) {
+          if ((Number(l?.deferrals) || 0) < count) result.localChanged = true;
+          if ((Number(r?.deferrals) || 0) < count) result.remoteChanged = true;
         }
       }
     }

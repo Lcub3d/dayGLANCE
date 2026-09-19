@@ -30,6 +30,8 @@
 //
 // Items are matched by id. Fields are handled independently: a task can be
 // missing one and carry another.
+import { mergeDeferrals } from './deferrals.js';
+
 export const STICKY_FIELDS = ['archived', 'originalPlan', 'starredDate'];
 //
 // @param {object[]} incoming  the merged/remote tasks about to be applied
@@ -49,6 +51,11 @@ export function preserveStickyFields(incoming, existing) {
         out = { ...out, [field]: prev[field] };
       }
     }
+    // `deferrals` is not in that list because its rule is different: a monotonic
+    // count merges by taking the higher value, which subsumes carrying an absent
+    // one and also protects a local count the incoming copy has fallen behind.
+    const count = mergeDeferrals(out.deferrals, prev.deferrals);
+    if (count !== out.deferrals) out = { ...out, deferrals: count };
     return out;
   });
 }

@@ -9,6 +9,7 @@ import {
   Phone,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import TaskPlanHistory from './TaskPlanHistory.jsx';
 import TaskStarButton from './TaskStarButton.jsx';
 import { renderTitle, isLinkOnlyTask, getLinkUrl, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, stripWikilinksAndTags } from '../utils/taskUtils.js';
@@ -225,10 +226,13 @@ const TaskCard = React.memo(({
             {renderTitle(item.title)}
           </div>
         </div>
-        {/* Time + recurring indicator */}
+        {/* Time, recurring indicator, and the plan history — which belongs beside
+            the time it is about, the way SCHED places it, rather than beside the
+            title like the star. Absent unless the task has actually moved. */}
         <div className={`text-[10px] leading-none ${textSecondary} flex items-center gap-1`}>
           {timeStr}
           {isRecurring && <RefreshCw size={9} className="flex-shrink-0 opacity-60" />}
+          {!isCalendarEvent && <TaskPlanHistory task={item} size={11} />}
         </div>
         {/* Calendar name / location (calendar events only) */}
         {isCalendarEvent && (item.calendarName || item.location) && (

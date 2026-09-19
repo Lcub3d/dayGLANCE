@@ -440,7 +440,7 @@ Let an AI assistant on the same computer read your day and manage your tasks. da
 
 - **Local only.** The listener binds to `127.0.0.1` and is never reachable from the network. Nothing is sent anywhere by dayGLANCE.
 - **Three separate opt-ins.** Reading dayGLANCE data, writing changes, and reading your device calendar are each their own consent
-- **12 tools and 3 read-only resources** covering the schedule, inbox, goals and projects
+- **12 tools and 3 read-only resources** covering the schedule, inbox, goals, projects and today's routines
 - **Every change is undoable.** Writes land in a session journal you can reverse per task or in bulk, from the app or the macOS tray. A kill switch stops the server outright
 - Device calendar events are always read-only, and writes to them are refused
 

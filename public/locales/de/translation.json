@@ -341,6 +341,7 @@
     "mcpSetupClaudeTitle": "Fügt der Konfiguration von Claude Desktop einen dayGLANCE-Eintrag hinzu, der auf die mit dieser App gebündelte Bridge verweist. Alles andere in der Datei bleibt erhalten, und zuerst wird eine Sicherung erstellt.",
     "mcpSetupCreated": "Claude-Desktop-Konfiguration erstellt.",
     "mcpSetupGuide": "Einrichtungsanleitung",
+    "mcpSetupGuideLink": "Einrichtungsanleitung öffnen",
     "mcpSetupGuidePrefix": "Informationen zum Verbinden von Claude Desktop oder anderen MCP-Apps findest du in der",
     "mcpSetupGuideSuffix": ". Du fügst das oben angezeigte Zugriffstoken in deinen MCP-Client ein.",
     "mcpSetupRestart": "Starte Claude Desktop neu, um die Verbindung herzustellen.",

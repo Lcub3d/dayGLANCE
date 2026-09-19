@@ -227,3 +227,27 @@ export function adjustPastConflicts(state, date, { startTime, duration, tasks = 
 
   return { conflicted: wasAdjusted, adjustedStartTime: minutesToTime(currentStart), conflictingEvent };
 }
+
+/**
+ * The routine a placement would land on, or null when the time is clear.
+ *
+ * ROUTINES ONLY, deliberately. Task-on-task overlap stays legal: the timeline
+ * renders overlapping tasks in conflict columns, it is a thing users do on
+ * purpose, and either side can be dragged away afterwards. A routine is
+ * different in kind. It cannot be moved through the write surface at all, so
+ * a caller that lands on one has no way to recover from either side, and the
+ * user is left with two things claiming the same minutes and no gesture that
+ * separates them.
+ *
+ * All-day placements never conflict: they occupy no span, so there is nothing
+ * to collide with.
+ */
+export function findRoutineConflict(state, date, { startTime, durationMinutes, allDay = false } = {}) {
+  if (allDay || !startTime) return null;
+  const start = timeToMinutes(startTime);
+  if (start === null) return null;
+  const duration = typeof durationMinutes === 'number' && durationMinutes > 0 ? durationMinutes : 0;
+  if (duration === 0) return null;
+  const end = start + duration;
+  return routineIntervals(state, date).find((r) => start < r.end && end > r.start) ?? null;
+}

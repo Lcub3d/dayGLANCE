@@ -28,8 +28,8 @@ directly (`claude mcp add --transport http`).
   routine block as busy when looking for a free slot. Every write tool rejects them with
   `routine_readonly`: routines are managed in the dayGLANCE routines dashboard, whose write shape
   is not a task mutation. Routines exist only for the current day, so past and future dates never
-  carry them. Note that the write tools do not themselves check routine occupancy, so read the day
-  first if you are choosing a time (see Known limitations).
+  carry them. Writing to time a routine covers is refused with `routine_conflict`, and dayGLANCE
+  will NOT shift your task to the next free slot, so read the day first when choosing a time.
 - **Consent gating**: the read surface exists only while the MCP server is enabled; device
   calendar events appear in reads only under the calendar tier; write tools return
   `read_only_mode` unless writes are enabled — all in Settings → Local Integrations.
@@ -45,6 +45,7 @@ directly (`claude mcp add --transport http`).
 | `not_found` | No task/block/user with that id. |
 | `device_calendar_readonly` | Target is a device calendar event (EventKit read-only). |
 | `routine_readonly` | Target is a routine block. Routines are read-only over MCP by design. |
+| `routine_conflict` | The requested time overlaps a routine block. dayGLANCE will not shift the task for you; pick a non-overlapping time. |
 | `read_only_mode` | Writes are not enabled in Settings → Local Integrations. |
 | `rate_limited` | Write gate: 30 writes/minute sliding window reached. |
 | `writes_disabled` | Repeated rate-limit violations auto-disabled writes; re-enable requires user action. |
@@ -130,6 +131,15 @@ Goal and project progress, duration-weighted, matching what the app shows.
 ---
 
 ## Write tools
+
+Placements are checked against routine occupancy. `dayglance_create_task` (with a start),
+`dayglance_schedule_task`, `dayglance_move_block`, and `dayglance_resize_block` refuse with
+`routine_conflict` when the requested span overlaps a routine block, naming the routine and its
+span. **dayGLANCE does not shift your task to the next free time**, which would make the tool
+report a placement you did not ask for. Task-on-task overlap remains allowed; only routines are
+protected, because they cannot be moved over MCP. A task ending exactly when a routine begins
+does not conflict.
+
 
 All write tools run the same pipeline, in order: writes-enabled check (`read_only_mode`),
 idempotency replay, rate gate (`rate_limited` / `writes_disabled`), argument validation,
@@ -238,17 +248,6 @@ write MCP does not perform.
 
 All three read over the same renderer path as the tools and respect the same consent tiers;
 failures throw with the same code + message text a tool error would carry.
-
----
-
-## Known limitations
-
-**Write tools do not consult routine occupancy.** `dayglance_schedule_task`,
-`dayglance_move_block`, and `dayglance_resize_block` will place a task on top of a routine
-block without complaining. The read surface reports routines so you can schedule around them,
-but the write validators do not check them for you. **Read the day before choosing a time.**
-This is a scoped decision (spec §5.5), not a bug to report: making writes routine-aware is a
-behaviour change to the write surface with its own open questions.
 
 ---
 

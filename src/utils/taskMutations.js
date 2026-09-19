@@ -23,6 +23,7 @@
 // so no day-planner-native-time-overrides entry can ever be written from it.
 
 import { parseRoutineBlockId, routineBlockId } from './mcpRoutines.js';
+import { findRoutineConflict, minutesToTime } from './dayOccupancy.js';
 import { completionTimestamp } from './taskUtils.js';
 
 export const WRITE_ERROR_CODES = Object.freeze({
@@ -30,6 +31,7 @@ export const WRITE_ERROR_CODES = Object.freeze({
   VALIDATION: 'validation',
   NATIVE_READONLY: 'device_calendar_readonly',
   ROUTINE_READONLY: 'routine_readonly',
+  ROUTINE_CONFLICT: 'routine_conflict',
 });
 
 const err = (code, message) => ({ ok: false, error: { code, message } });
@@ -72,6 +74,51 @@ function routineGuard(state, id, operation) {
   const raw = (state?.routines ?? []).some((r) => String(r.id) === String(id));
   if (raw) return err(WRITE_ERROR_CODES.ROUTINE_READONLY, ROUTINE_MSG(routineBlockId(id), operation));
   return null;
+}
+
+/**
+ * Reject a placement that would land on a routine (spec §5.2).
+ *
+ * WHY REJECT RATHER THAN SLIDE. The app's own drag-and-drop resolver slides a
+ * dropped task past a routine, and mirroring that here was the alternative.
+ * It is the wrong behaviour for an agent: a model that asked for 10:00 and
+ * received a success will tell the user "scheduled at 10:00", and the silent
+ * twenty-minute shift only surfaces when the user looks at the timeline. A
+ * human dragging a block watches it land somewhere else and sees the
+ * adjustment; a model has no such feedback channel. So the write fails, names
+ * what it hit, and the model re-plans against get_day, which reports routine
+ * blocks as of PR #1729.
+ *
+ * ROUTINES ONLY. Task-on-task overlap stays legal here exactly as it is in
+ * the UI: users double-book on purpose and the timeline renders conflict
+ * columns for it. A routine is different because MCP cannot move it, so a
+ * collision has no recovery from either side.
+ *
+ * There is deliberately no force flag. The app offers no gesture that drops a
+ * task onto a routine either, so an escape hatch here would make the agent
+ * surface more permissive than the UI it is standing in for.
+ */
+const ROUTINE_CONFLICT_MSG = (conflict, startTime, duration) =>
+  `${startTime}-${minutesToTime(timeToMinutesStrict(startTime) + duration)} overlaps the routine ` +
+  `${JSON.stringify(conflict.label)} (${minutesToTime(conflict.start)}-${minutesToTime(conflict.end)}). ` +
+  'Routines are read-only over MCP, so dayGLANCE cannot move it out of the way and will not silently ' +
+  'shift your task instead. Pick a time that does not overlap; dayglance_get_day lists routine blocks ' +
+  'for the date so you can see what is free.';
+
+/** Local HH:MM to minutes; callers here have already validated the shape. */
+const timeToMinutesStrict = (hhmm) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm ?? '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+};
+
+/**
+ * @returns an error result when the placement hits a routine, else null.
+ * `state` carries the routine slices the renderer already threads for reads.
+ */
+function routineConflictGuard(state, date, { startTime, durationMinutes, allDay }) {
+  const conflict = findRoutineConflict(state, date, { startTime, durationMinutes, allDay });
+  if (!conflict) return null;
+  return err(WRITE_ERROR_CODES.ROUTINE_CONFLICT, ROUTINE_CONFLICT_MSG(conflict, startTime, durationMinutes));
 }
 
 /** The recurring-instance id shape, mirroring App.jsx parseRecurringId. */
@@ -161,6 +208,17 @@ export function applyCreateTask(state, {
   };
 
   if (schedule) {
+    // Placed directly on the calendar, so it can land on a routine exactly as
+    // schedule_task can. Checked after the `existing` replay branch above: a
+    // retry of a create that already succeeded must stay a no-op replay even
+    // if a routine has since been placed over it.
+    const conflict = routineConflictGuard(state, schedule.date, {
+      startTime: schedule.startTime,
+      durationMinutes: schedule.durationMinutes,
+      allDay: !!schedule.allDay,
+    });
+    if (conflict) return conflict;
+
     const task = {
       ...base,
       date: schedule.date,
@@ -208,6 +266,12 @@ export function applyScheduleTask(state, { taskId, date, startTime, durationMinu
     return err(WRITE_ERROR_CODES.NOT_FOUND, `No unscheduled task with id ${taskId}`);
   }
   if (task._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(taskId));
+
+  const scheduleConflict = routineConflictGuard(state, date, {
+    startTime,
+    durationMinutes: durationMinutes ?? task.duration ?? 30,
+  });
+  if (scheduleConflict) return scheduleConflict;
 
   const { priority: _p, deadline: _d, ...preserved } = task;
   const scheduledTask = {
@@ -379,6 +443,14 @@ export function applyMoveBlock(state, { blockId, date, startTime, transitionId }
   if (found.task.transitionId && transitionId && found.task.transitionId === transitionId) {
     return { ok: true, replayed: true, tasks, task: found.task };
   }
+  // After the replay check by design: a retry of a move that already landed
+  // must not start failing because a routine was placed there afterwards.
+  const moveConflict = routineConflictGuard(state, date, {
+    startTime,
+    durationMinutes: found.task.duration ?? 30,
+  });
+  if (moveConflict) return moveConflict;
+
   const moved = { ...found.task, startTime, date, isAllDay: false, ...(transitionId ? { transitionId } : {}) };
   return { ok: true, replayed: false, tasks: tasks.map((t) => (t.id === blockId ? moved : t)), task: moved };
 }
@@ -397,6 +469,15 @@ export function applyResizeBlock(state, { blockId, durationMinutes, transitionId
   if (found.task.transitionId && transitionId && found.task.transitionId === transitionId) {
     return { ok: true, replayed: true, tasks, task: found.task };
   }
+  // A resize keeps its start and grows its end, so it reaches a routine that
+  // the original span cleared.
+  const resizeConflict = routineConflictGuard(state, found.task.date, {
+    startTime: found.task.startTime,
+    durationMinutes,
+    allDay: !!found.task.isAllDay,
+  });
+  if (resizeConflict) return resizeConflict;
+
   const resized = { ...found.task, duration: durationMinutes, ...(transitionId ? { transitionId } : {}) };
   return { ok: true, replayed: false, tasks: tasks.map((t) => (t.id === blockId ? resized : t)), task: resized };
 }

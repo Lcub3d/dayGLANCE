@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { planHistory } from '../utils/originalPlan.js';
+import { intermediatePlans, hiddenStops } from '../utils/planTrail.js';
 import { formatShortDate } from '../utils/taskUtils.js';
 import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -31,6 +32,8 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
   const { t } = useTranslation();
   const { plan, changed } = history ?? { plan: null, changed: {} };
   const deferrals = Number(task?.deferrals) || 0;
+  const stops = intermediatePlans(task);
+  const earlier = hiddenStops(task);
 
   // A changed value is stated plainly; an unchanged one is dimmed, so the eye
   // lands on what actually moved rather than on three values of equal weight.
@@ -38,23 +41,45 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
     <span className={didChange ? 'font-semibold' : 'opacity-60'}>{value}</span>
   );
 
-  const row = (date, startTime, duration) => (
+  // `emphasis` marks what moved between the FIRST plan and the current one. An
+  // intermediate stop is not either of those, so it passes false and reads flat:
+  // bolding it against a diff it took no part in would point at nothing.
+  const row = (date, startTime, duration, emphasis = changed) => (
     <div className="flex items-center gap-1.5 whitespace-nowrap">
-      {part(formatShortDate(new Date(`${date}T12:00:00`)), changed.date)}
+      {part(formatShortDate(new Date(`${date}T12:00:00`)), emphasis.date)}
       <span className="opacity-40">·</span>
-      {part(formatTime(startTime), changed.startTime)}
+      {part(formatTime(startTime), emphasis.startTime)}
       {typeof duration === 'number' && (<>
         <span className="opacity-40">·</span>
-        {part(formatLocalizedDurationMinutes(duration), changed.duration)}
+        {part(formatLocalizedDurationMinutes(duration), emphasis.duration)}
       </>)}
     </div>
   );
+  const NO_EMPHASIS = {};
 
   return (
     <>
       {history && (<>
         <div className="opacity-60 mb-0.5">{t('task.originallyPlanned')}</div>
         {row(plan.date, plan.startTime, plan.duration)}
+        {/* The stops in between, which is what makes this a history rather than
+            a before-and-after. Dimmed as a block: the eye should travel from
+            where it started to where it is now, with the middle read only if
+            the shape of the slide is the question. Duration is left off — a
+            stop records a schedule move, and a resize is not one. */}
+        {stops.length > 0 && (<>
+          <div className="opacity-60 mt-1.5 mb-0.5">{t('task.movedVia')}</div>
+          <div className="space-y-0.5">
+            {earlier > 0 && (
+              <div className="italic opacity-70">{t('task.earlierMoves', { count: earlier })}</div>
+            )}
+            {stops.map((stop) => (
+              <div key={`${stop.at}-${stop.date}-${stop.startTime}`}>
+                {row(stop.date, stop.startTime, undefined, NO_EMPHASIS)}
+              </div>
+            ))}
+          </div>
+        </>)}
         <div className="opacity-60 mt-1.5 mb-0.5">{t('task.nowScheduled')}</div>
         {row(task.date, task.startTime, task.duration)}
       </>)}

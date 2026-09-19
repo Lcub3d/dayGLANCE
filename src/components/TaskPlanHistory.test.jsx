@@ -157,3 +157,56 @@ describe('the surfaces that carry it', () => {
     expect(html).toContain('width="11"');
   });
 });
+
+// The question this answers, asked of the shipped feature: "the popup shows the
+// original plan and the current plan, nothing in between. Is this by design?"
+// It was, because nothing recorded the in-between. Now something does.
+describe('PlanHistoryPanel — the stops in between', () => {
+  const renderPanel = async (task) => renderToStaticMarkup(
+    <I18nextProvider i18n={await i18n()}>
+      <PlanHistoryPanel history={planHistory(task)} task={task} formatTime={(v) => v} />
+    </I18nextProvider>,
+  );
+  const stop = (at, date, startTime) => ({ at, date, startTime });
+
+  const SLID = {
+    id: 't1', date: '2026-09-20', startTime: '14:00', duration: 60,
+    originalPlan: PLANNED, deferrals: 2,
+    planTrail: [stop(1, '2026-09-18', '11:00'), stop(2, '2026-09-20', '14:00')],
+  };
+
+  it('lists the schedules the task passed through', async () => {
+    const html = await renderPanel(SLID);
+    expect(html).toContain('Moved via');
+    expect(html).toContain('11:00');
+  });
+
+  it('does not repeat the final stop, which is already the current plan', async () => {
+    const html = await renderPanel(SLID);
+    // "14:00" belongs to the "Now" line only — one occurrence, not two.
+    expect(html.match(/14:00/g)).toHaveLength(1);
+  });
+
+  it('says nothing about stops when there are none to show', async () => {
+    const html = await renderPanel({ id: 't1', ...PLANNED, startTime: '16:00', originalPlan: PLANNED });
+    expect(html).not.toContain('Moved via');
+  });
+
+  // The trail is capped and the count is not, which is exactly why both exist.
+  it('accounts for the slips that fell off the front of the trail', async () => {
+    const html = await renderPanel({ ...SLID, deferrals: 9 });
+    expect(html).toContain('7 earlier moves');
+  });
+
+  it('claims no missing stops when the trail still holds them all', async () => {
+    const html = await renderPanel(SLID);
+    expect(html).not.toContain('earlier move');
+  });
+
+  // An intermediate stop took no part in the baseline-versus-now diff, so
+  // bolding it against that diff would point at nothing.
+  it('renders the stops flat rather than emphasised', async () => {
+    const html = await renderPanel(SLID);
+    expect(html).not.toMatch(/font-semibold[^>]*>11:00/);
+  });
+});

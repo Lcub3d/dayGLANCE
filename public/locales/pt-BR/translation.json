@@ -779,7 +779,10 @@
     "priorityUnavailableForProject": "Indisponível para tarefas de projeto",
     "unscheduledHint": "(adicionar ao cartão do projeto, sem data/hora)",
     "deferredTimes": "Adiada uma vez",
-    "deferredTimes_other": "Adiada {{count}} vezes"
+    "deferredTimes_other": "Adiada {{count}} vezes",
+    "movedVia": "Movido por",
+    "earlierMoves": "e 1 adiamento anterior",
+    "earlierMoves_other": "e {{count}} adiamentos anteriores"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

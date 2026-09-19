@@ -31,6 +31,7 @@
 // Items are matched by id. Fields are handled independently: a task can be
 // missing one and carry another.
 import { mergeDeferrals } from './deferrals.js';
+import { mergePlanTrail, sameTrail } from './planTrail.js';
 
 export const STICKY_FIELDS = ['archived', 'originalPlan', 'starredDate'];
 //
@@ -56,6 +57,10 @@ export function preserveStickyFields(incoming, existing) {
     // one and also protects a local count the incoming copy has fallen behind.
     const count = mergeDeferrals(out.deferrals, prev.deferrals);
     if (count !== out.deferrals) out = { ...out, deferrals: count };
+    // `planTrail` is that same rule in list form: a union, which subsumes the
+    // carry and also recovers stops the incoming copy has fallen behind on.
+    const trail = mergePlanTrail(out.planTrail, prev.planTrail);
+    if (!sameTrail(trail, out.planTrail)) out = { ...out, planTrail: trail };
     return out;
   });
 }

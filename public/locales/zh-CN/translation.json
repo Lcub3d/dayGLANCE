@@ -779,7 +779,10 @@
     "priorityUnavailableForProject": "项目任务无法单独设置优先级",
     "unscheduledHint": "（添加到项目卡片，不设置日期/时间）",
     "deferredTimes": "推迟过 1 次",
-    "deferredTimes_other": "推迟过 {{count}} 次"
+    "deferredTimes_other": "推迟过 {{count}} 次",
+    "movedVia": "中途经过",
+    "earlierMoves": "以及更早的 1 次改期",
+    "earlierMoves_other": "以及更早的 {{count}} 次改期"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

@@ -318,3 +318,97 @@ describe('saveData feeds the baseline back into state', () => {
     expect(updated.find((t) => t.id === 'n1')).toBeDefined();
   });
 });
+
+// ── The trail of stops between the baseline and the current plan ────────────
+// Same pass, same suppression, same state write-back as the baseline and the
+// count. The state half is not belt-and-braces: a field that reaches only
+// localStorage is invisible to buildSyncPayload and to preserveStickyFields, and
+// the next apply writes state back over it. That is not hypothetical here — it
+// is what happened to originalPlan on a real vault-synced install.
+describe('saveData records where a slipped task landed', () => {
+  let setItem;
+  const saveProps = (over = {}) => ({
+    ...makeProps().props,
+    tasks: [], unscheduledTasks: [], recycleBin: [], recurringTasks: [], todayRoutines: [],
+    darkMode: false, syncUrl: '', taskCalendarUrl: '', syncRetentionDays: 0,
+    completedTaskUids: new Set(), routineDefinitions: [], routinesDate: '',
+    removedTodayRoutineIds: {}, habits: [], habitLogs: {}, habitsEnabled: false,
+    routinesEnabled: false, gtdFrames: {}, goals: [], projects: [], areas: [],
+    goalsProjectsEnabled: false, unscheduledOrderTimestamp: null,
+    ...over,
+  });
+  const written = (key) => JSON.parse(Object.fromEntries(setItem.mock.calls)[key]);
+
+  // Both dates are in the past, so the task had come due before it was moved:
+  // a slip, not planning. (utils/deferrals.js draws that line.)
+  const before = { id: 't1', title: 'Report', date: '2026-01-05', startTime: '09:00', duration: 60, lastModified: '2026-01-05T00:00:00Z' };
+  const after = { ...before, date: '2026-01-07', startTime: '14:00' };
+
+  const withStored = (stored) => {
+    globalThis.localStorage.getItem = vi.fn((k) =>
+      k === 'day-planner-tasks' ? JSON.stringify(stored) : null);
+  };
+
+  beforeEach(() => {
+    setItem = vi.fn();
+    globalThis.localStorage = { getItem: vi.fn(() => null), setItem, removeItem: vi.fn() };
+  });
+  afterEach(() => { delete globalThis.localStorage; delete globalThis.window; });
+
+  it('appends the schedule the task moved TO', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    withStored([before]);
+
+    useDataPersistence(saveProps({ tasks: [after] })).saveData();
+
+    const [stop] = written('day-planner-tasks')[0].planTrail;
+    expect(stop).toMatchObject({ date: '2026-01-07', startTime: '14:00' });
+    expect(typeof stop.at).toBe('number');
+  });
+
+  it('records nothing for a move made before the task came due', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    const future = { ...before, date: '2099-01-05' };
+    withStored([future]);
+
+    useDataPersistence(saveProps({ tasks: [{ ...future, date: '2099-01-09' }] })).saveData();
+
+    expect(written('day-planner-tasks')[0].planTrail).toBeUndefined();
+  });
+
+  it('records nothing while remote data is being applied', async () => {
+    // A reschedule made on another device is that device's to record. Doing it
+    // again here would invent a stop for a move this device never witnessed.
+    const useDataPersistence = await loadHookAs('main');
+    withStored([before]);
+
+    useDataPersistence(saveProps({ tasks: [after], suppressTimestampRef: { current: true } })).saveData();
+
+    expect(written('day-planner-tasks')[0].planTrail).toBeUndefined();
+  });
+
+  it('feeds the stop back into React state, not just localStorage', async () => {
+    const useDataPersistence = await loadHookAs('main');
+    const { props } = makeProps();
+    withStored([before]);
+
+    useDataPersistence(saveProps({ tasks: [after], setTasks: props.setTasks })).saveData();
+
+    const updated = props.setTasks.mock.calls.reduce((list, [fn]) => fn(list), [after]);
+    expect(updated[0].planTrail).toHaveLength(1);
+    expect(updated[0].deferrals).toBe(1);
+  });
+
+  it('does NOT touch state on a pass with no new stop', async () => {
+    // Termination: each write-back re-runs the save effect, and the second pass
+    // has to be a no-op or the two bounce forever.
+    const useDataPersistence = await loadHookAs('main');
+    const { props } = makeProps();
+    const settled = { ...after, originalPlan: { date: '2026-01-05', startTime: '09:00', duration: 60 } };
+    withStored([settled]);
+
+    useDataPersistence(saveProps({ tasks: [settled], setTasks: props.setTasks })).saveData();
+
+    expect(props.setTasks).not.toHaveBeenCalled();
+  });
+});

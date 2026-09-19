@@ -779,7 +779,10 @@
     "priorityUnavailableForProject": "Non disponible pour les tâches de projet",
     "unscheduledHint": "(ajouter à la carte du projet, sans date ni heure)",
     "deferredTimes": "Reportée une fois",
-    "deferredTimes_other": "Reportée {{count}} fois"
+    "deferredTimes_other": "Reportée {{count}} fois",
+    "movedVia": "Déplacé par",
+    "earlierMoves": "et 1 déplacement antérieur",
+    "earlierMoves_other": "et {{count}} déplacements antérieurs"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}er",

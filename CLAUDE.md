@@ -90,7 +90,10 @@ on another device: the task resurrects. This is the dangerous one.
 **2. Do both transports carry it through last-writer-wins?** The merge keeps the
 newer copy WHOLE, so a copy from a device that never had the field wins and drops
 it. Carry it forward in `src/sync/dbAdapter.js` (vault) and `src/mergeSync.js`
-(file tier).
+(file tier). A field that accumulates needs a MERGE rather than a carry, or two
+devices that each saw something different keep only one side's: `deferrals` takes
+the max and `planTrail` takes the union. Either rule has to be order-independent
+and idempotent, since both tiers may apply it more than once and in either order.
 
 **3. Does the apply carry it?** `src/utils/preserveStickyFields.js`, fed from the
 live task list in `applyEngineData`. Missing this makes the loss permanent rather

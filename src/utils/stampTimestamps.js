@@ -37,6 +37,11 @@
 // reschedule that has already stamped on its own, and it also moves when a merge
 // takes a higher count from another device, which is nobody's edit at all.
 //
+// `planTrail` (utils/planTrail.js) is the same field in list form and is
+// stripped on the same grounds. Its merge is a UNION, so it grows whenever
+// another device's history arrives — a change no user made, on a device nobody
+// touched.
+//
 // `starredDate` is DEFAULTED rather than stripped, because unlike the fields
 // below it is a real user action: starring a task is an edit and must re-stamp
 // so it wins on other devices. Only the absent/null pair is canonicalised, since
@@ -55,7 +60,7 @@ function normalizeField(task) {
   // obsidianClearedTime is bookkeeping for the inbox merge (utils/inboxMove.js):
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
-  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, ...rest } = task;
+  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, planTrail: _stops, ...rest } = task;
   return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null };
 }
 

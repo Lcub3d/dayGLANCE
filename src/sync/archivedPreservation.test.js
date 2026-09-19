@@ -301,3 +301,59 @@ describe('vault applyRemoteEntity merges deferrals by max', () => {
     expect(data.tasks[0].deferrals).toBe(3);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `planTrail` (utils/planTrail.js) is the detail behind that count, and takes
+// the list-shaped version of the same rule: a UNION. Each device may have
+// watched different slips, and whichever copy wins last-writer-wins would
+// otherwise drop the other's stops — history nothing can reconstruct.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const STOP_A = { at: 1000, date: '2026-09-15', startTime: '09:00' };
+const STOP_B = { at: 2000, date: '2026-09-17', startTime: '14:00' };
+
+describe('file-tier mergeSyncData unions the plan trail', () => {
+  it('keeps stops only one side saw', () => {
+    const local = { tasks: [slipped({ planTrail: [STOP_A] })] };
+    const remote = { tasks: [slipped({ planTrail: [STOP_B], lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].planTrail).toEqual([STOP_A, STOP_B]);
+  });
+
+  it('does not duplicate a stop both devices recorded', () => {
+    const local = { tasks: [slipped({ planTrail: [STOP_A] })] };
+    const remote = { tasks: [slipped({ planTrail: [STOP_A], lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].planTrail).toHaveLength(1);
+  });
+
+  it('survives a NEWER copy from a device that never had the field', () => {
+    const local = { tasks: [slipped({ planTrail: [STOP_A] })] };
+    const remote = { tasks: [slipped({ title: 'v2', lastModified: '2026-09-18T12:00:00.000Z' })] };
+    const { data } = mergeSyncData(local, remote, 90);
+    expect(data.tasks[0].planTrail).toEqual([STOP_A]);
+    expect(data.tasks[0].title).toBe('v2');
+  });
+
+  it('stays absent when neither side ever recorded a stop', () => {
+    const { data } = mergeSyncData({ tasks: [slipped()] }, { tasks: [slipped()] }, 90);
+    expect(data.tasks[0].planTrail).toBeUndefined();
+  });
+});
+
+describe('vault applyRemoteEntity unions the plan trail', () => {
+  it('keeps a local stop the pulled row is missing, and re-pushes', () => {
+    const data = { tasks: [slipped({ planTrail: [STOP_A] })] };
+    const pulled = { _kind: 'tasks', value: slipped({ planTrail: [STOP_B], lastModified: '2026-09-18T12:00:00.000Z' }) };
+    const rePush = applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].planTrail).toEqual([STOP_A, STOP_B]);
+    expect(rePush).toHaveLength(1); // the vault converges to the superset
+  });
+
+  it('keeps a local trail a pulled row omits entirely', () => {
+    const data = { tasks: [slipped({ planTrail: [STOP_A] })] };
+    const pulled = { _kind: 'tasks', value: slipped({ lastModified: '2026-09-18T12:00:00.000Z' }) };
+    applyRemoteEntity(data, pulled);
+    expect(data.tasks[0].planTrail).toEqual([STOP_A]);
+  });
+});

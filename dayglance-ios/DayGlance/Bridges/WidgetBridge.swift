@@ -22,9 +22,18 @@ final class WidgetBridge {
     /// has more than one writer.
     static let pendingActionKey = "widgetPendingAction"
 
-    /// Widgets are killed at 30 MB with no warning. 200 KB is safely under that
-    /// even with the full snapshot structure.
-    private static let snapshotCapBytes = 200_000
+    /// Widgets are killed at 30 MB with no warning. 400 KB is the ceiling for
+    /// one snapshot, and it has a basis now: 200 KB before it had been chosen
+    /// as "safely under 30 MB" rather than measured. The Phase 0 dial spike put
+    /// the extension at 13–18 MB footprint with all of this decoded, and the
+    /// day-keyed payload (today + 3 projected days, utils/widgetDayProjection.js)
+    /// measured ~86 KB on a deliberately busy day before trimming. Mirrored by
+    /// WIDGET_SNAPSHOT_CAP_BYTES on the JS side, which drops the projected days
+    /// rather than the whole push when it is exceeded.
+    private static let snapshotCapBytes = 400_000
+    /// Past this, log loudly: something grew, and the next person should get a
+    /// signal here rather than a truncation later.
+    private static let snapshotWarnBytes = 300_000
 
     /// First logging in this target. os.Logger costs nothing when nothing is
     /// listening and surfaces in Console.app filtered by subsystem, so a dropped
@@ -45,6 +54,9 @@ final class WidgetBridge {
             // multi-line literal is a needless risk for a diagnostic line.
             Self.log.error("Widget snapshot dropped: \(byteCount, privacy: .public) bytes exceeds the \(Self.snapshotCapBytes, privacy: .public) byte cap. Widgets and the Live Activity keep their previous data.")
             return
+        }
+        if byteCount > Self.snapshotWarnBytes {
+            Self.log.error("Widget snapshot is \(byteCount, privacy: .public) bytes, past the \(Self.snapshotWarnBytes, privacy: .public) byte warning line (cap \(Self.snapshotCapBytes, privacy: .public)). Something grew — see utils/widgetDayProjection.js.")
         }
         guard let data = json.data(using: .utf8) else {
             Self.log.error("Widget snapshot dropped: JSON could not be encoded as UTF-8.")

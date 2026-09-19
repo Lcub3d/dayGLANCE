@@ -59,17 +59,22 @@ class GoalWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_goal)
         val dataStore = SharedDataStore(context)
         val snapshot = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
-        val freshness = snapshotFreshness(snapshot, dataStore)
+        val resolved = resolveWidgetDay(snapshot, dataStore)
+        val freshness = resolved.freshness
 
-        // Header date — the snapshot's own label, yesterday's on a stale snapshot.
-        val dateLabel = snapshot?.optString("dateLabel")?.takeIf { it.isNotBlank() }
+        // Header date — the rendered day's own label (projected or yesterday's).
+        val dateLabel = resolved.fields?.optString("dateLabel")?.takeIf { it.isNotBlank() }
             ?: formatTodayLabel(context)
         views.setTextViewText(R.id.tv_goal_widget_date, dateLabel)
 
-        // Stale banner + dimmed card (WidgetFreshness.kt). Progress numbers are
-        // facts about the goal as last seen and stay; the due badge is a
-        // present-tense claim computed at push time and is dropped below.
-        if (freshness.isStale) {
+        // Goals are day-invariant: a projected day changes only the soft label
+        // and the due badge's reference day. Stale: banner + dimmed card;
+        // progress numbers are facts about the goal as last seen and stay.
+        if (resolved.isProjected) {
+            views.setTextViewText(R.id.tv_goal_widget_stale, formatPlannedLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
+            views.setTextColor(R.id.tv_goal_widget_stale, context.getColor(R.color.widget_text_secondary))
+            views.setViewVisibility(R.id.tv_goal_widget_stale, View.VISIBLE)
+        } else if (freshness.isStale) {
             views.setTextViewText(R.id.tv_goal_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
             views.setViewVisibility(R.id.tv_goal_widget_stale, View.VISIBLE)
             views.setFloat(R.id.layout_goal_content, "setAlpha", STALE_CONTENT_ALPHA)
@@ -137,11 +142,14 @@ class GoalWidget : AppWidgetProvider() {
         // Title
         views.setTextViewText(R.id.tv_goal_widget_title, goal.optString("title", context.getString(R.string.widget_untitled)))
 
-        // Due date badge. daysUntilDue was computed by JS against the snapshot's
-        // day, so on a stale snapshot "due today" / "2d left" are wrong by the
-        // snapshot's age: not shown at all rather than shown dimmed.
-        val daysUntilDue = if (goal.isNull("daysUntilDue")) null else goal.optInt("daysUntilDue")
+        // Due date badge, computed at RENDER time from the target date against
+        // today, so it is right on the pushed day and on a projected one; the
+        // push-time value is only a fallback for a goal whose target date does
+        // not parse. Not shown at all on a stale snapshot.
         val targetDate = goal.optString("targetDate", "")
+        val daysUntilDue = WidgetFreshnessRules.parseDay(targetDate)
+            ?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.LocalDate.now(), it).toInt() }
+            ?: (if (goal.isNull("daysUntilDue")) null else goal.optInt("daysUntilDue"))
         if (showDueBadge && daysUntilDue != null && targetDate.isNotEmpty()) {
             val dueLabel = when {
                 daysUntilDue < 0  -> context.getString(R.string.widget_due_overdue, -daysUntilDue)

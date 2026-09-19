@@ -169,4 +169,6 @@ Open dayGLANCE to sync your data, then try adding the widget again.</string>
         <item quantity="other">%1$d days old</item>
     </plurals>
     <string name="widget_open_to_refresh">Open dayGLANCE to refresh</string>
+    <string name="widget_planned_as_of">Planned as of %1$s</string>
+    <string name="widget_planned_in_advance">Planned in advance</string>
 </resources>

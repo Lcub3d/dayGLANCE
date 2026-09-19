@@ -17,7 +17,10 @@ struct UpNextProvider: TimelineProvider {
         // One snapshot, two entries: now and the next local midnight, so the
         // stale state flips on the minute (WidgetFreshness.swift).
         let snapshot = loadSnapshot()
-        let entries = WidgetTimelineDates.withMidnightRollover().map { UpNextEntry(date: $0, snapshot: snapshot) }
+        // One entry per day the payload can render, plus one to flip to
+        // Outdated when it runs out (WidgetTimelineDates.rolloverDates).
+        let entries = WidgetTimelineDates.rolloverDates(midnights: 1 + (snapshot?.days?.count ?? 0))
+            .map { UpNextEntry(date: $0, snapshot: snapshot) }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
         completion(Timeline(entries: entries, policy: .after(next)))
     }
@@ -27,24 +30,33 @@ struct UpNextWidgetView: View {
     var entry: UpNextEntry
     @Environment(\.widgetFamily) var family
 
-    // Against the entry's date, not the clock: the midnight entry is what
-    // turns this true at 00:00 (see WidgetTimelineDates).
-    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
+    // Which day of the payload this entry renders, against the ENTRY's date,
+    // not the clock: the midnight entries are what switch days at 00:00
+    // (WidgetFreshness.swift, ResolvedWidgetDay).
+    private var day: ResolvedWidgetDay { .resolve(entry.snapshot, at: entry.date) }
+    private var freshness: WidgetFreshness { day.freshness }
 
     var body: some View {
-        if let task = entry.snapshot?.nextTask {
+        if let task = day.nextTask {
             taskView(task: task)
         } else {
             emptyView
         }
     }
 
+    @ViewBuilder
+    private var dayBanner: some View {
+        if day.isStale {
+            StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
+        } else if day.isProjected {
+            PlannedBanner(day: day, use24Hour: entry.snapshot?.use24Hour)
+        }
+    }
+
     private var emptyView: some View {
         VStack(alignment: .leading, spacing: 4) {
             header
-            if freshness.isStale {
-                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
-            }
+            dayBanner
             Spacer()
             // "Nothing scheduled" is a claim about today; a stale snapshot
             // cannot make it.
@@ -61,9 +73,7 @@ struct UpNextWidgetView: View {
     private func taskView(task: NextTaskData) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if freshness.isStale {
-                StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
-            }
+            dayBanner
             Divider().padding(.vertical, 3)
             taskBody(task: task)
                 .staleDimmed(freshness)
@@ -171,7 +181,8 @@ struct UpNextWidgetView: View {
                             .lineLimit(1)
                     }
                 }
-            } else if !showsNotes(task), let upcoming = entry.snapshot?.upcomingTasks, !upcoming.isEmpty {
+            } else if !showsNotes(task), !day.upcomingTasks.isEmpty {
+                let upcoming = day.upcomingTasks
                 // The primary task is simple, so fill the leftover space with the
                 // next upcoming tasks (title + time only — no action buttons).
                 Divider().padding(.vertical, 3)
@@ -218,7 +229,7 @@ struct UpNextWidgetView: View {
                 .font(.caption2).fontWeight(.bold)
                 .foregroundColor(freshness.isStale ? .orange : .secondary)
             Spacer()
-            Text(entry.snapshot?.dateLabel ?? "")
+            Text(day.dateLabel ?? "")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }

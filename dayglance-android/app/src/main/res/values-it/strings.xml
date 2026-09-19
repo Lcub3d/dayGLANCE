@@ -155,4 +155,6 @@
         <item quantity="other">%1$d giorni fa</item>
     </plurals>
     <string name="widget_open_to_refresh">Apri dayGLANCE per aggiornare</string>
+    <string name="widget_planned_as_of">Pianificato al %1$s</string>
+    <string name="widget_planned_in_advance">Pianificato in anticipo</string>
 </resources>

@@ -1,5 +1,6 @@
 /**
- * Skips widget-snapshot pushes whose content has not changed.
+ * Skips widget-snapshot pushes whose content has not changed, and — for the
+ * day-keyed payload — separates "store it" from "redraw for it".
  *
  * ── Why ────────────────────────────────────────────────────────────────────
  * The snapshot effect re-runs far more often than the snapshot changes. Its
@@ -30,22 +31,31 @@
  * other input is stable between block boundaries — computeDaySummary takes no
  * clock argument, and the rest of buildUpNextFact's output is derived from the
  * entry's own times.
+ *
+ * ── Two fingerprints, since the payload became day-keyed ───────────────────
+ * The snapshot now carries `days: [tomorrow, +2, +3]` (widgetDayProjection.js).
+ * A change three days out has to be STORED — it is the content a widget will
+ * switch to at that midnight — but nothing on any home screen shows it, so it
+ * must not spend a timeline reload; the dial already has reload-budget
+ * pressure from drag-editing. Hence:
+ *
+ *   full  — everything: decides whether to push at all.
+ *   hot   — everything a widget can currently be showing: today's fields,
+ *           the day-invariant blocks, and TOMORROW (the midnight timeline
+ *           entry on iOS renders it before any reload). Decides whether the
+ *           push carries `reloadWidgets: true`.
+ *
+ * Both bridges store a `reloadWidgets: false` push without redrawing
+ * (WidgetBridge.swift, NativeBridge.kt); the flag is absent-means-true so an
+ * older native build keeps its old behaviour.
  */
 
-/**
- * Content fingerprint of a snapshot: its JSON minus the always-changing
- * `updatedAt` stamp.
- *
- * Key order is insertion order and the snapshot is built from a single object
- * literal, so stringify is stable across calls and safe to compare directly.
- *
- * @param {object} snapshot
- * @returns {string}
- */
-export function snapshotFingerprint(snapshot) {
-  if (!snapshot || typeof snapshot !== 'object') return '';
+/** Days of `days[]` a widget can be showing without a reload: tomorrow only. */
+const HOT_PROJECTED_DAYS = 1;
+
+const stripStamps = (snapshot) => {
   // eslint-disable-next-line no-unused-vars
-  const { updatedAt, daySummary, ...rest } = snapshot;
+  const { updatedAt, reloadWidgets, daySummary, ...rest } = snapshot;
 
   // daySummary.upNext.countdownStartMs is the second wall-clock stamp, and it is
   // easy to miss: buildUpNextFact returns `inProgress ? startMs : nowMs`, so for
@@ -65,29 +75,72 @@ export function snapshotFingerprint(snapshot) {
     const { countdownStartMs, ...upNext } = ds.upNext;
     ds = { ...ds, upNext };
   }
+  return { ...rest, daySummary: ds };
+};
 
+const safeStringify = (value) => {
   try {
-    return JSON.stringify({ ...rest, daySummary: ds });
+    return JSON.stringify(value);
   } catch {
     // A cyclic or otherwise unserialisable snapshot cannot be fingerprinted.
     // Return '' so the caller pushes rather than silently suppressing an update
     // — failing toward "send it" is the safe direction for a widget.
     return '';
   }
+};
+
+/**
+ * Content fingerprint of a snapshot: its JSON minus the always-changing
+ * `updatedAt` stamp (and the push-time `reloadWidgets` flag).
+ *
+ * Key order is insertion order and the snapshot is built from a single object
+ * literal, so stringify is stable across calls and safe to compare directly.
+ *
+ * @param {object} snapshot
+ * @returns {string}
+ */
+export function snapshotFingerprint(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return '';
+  return safeStringify(stripStamps(snapshot));
 }
 
 /**
- * Decides whether this snapshot needs sending.
- *
- * An empty fingerprint (unserialisable snapshot) always pushes: a widget showing
- * stale data is a worse failure than a redundant bridge call.
+ * Fingerprint of what a widget can currently be showing: the snapshot with
+ * `days` cut to tomorrow. A change beyond that is stored, not redrawn.
  *
  * @param {object} snapshot
- * @param {string} lastFingerprint  fingerprint of the last snapshot actually sent
- * @returns {{push: boolean, fingerprint: string}}
+ * @returns {string}
  */
-export function evaluateSnapshotPush(snapshot, lastFingerprint) {
-  const fingerprint = snapshotFingerprint(snapshot);
-  if (!fingerprint) return { push: true, fingerprint: '' };
-  return { push: fingerprint !== lastFingerprint, fingerprint };
+export function hotSnapshotFingerprint(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return '';
+  const stripped = stripStamps(snapshot);
+  if (Array.isArray(stripped.days)) {
+    stripped.days = stripped.days.slice(0, HOT_PROJECTED_DAYS);
+  }
+  return safeStringify(stripped);
+}
+
+/**
+ * Decides whether this snapshot needs sending, and whether the send should
+ * redraw the widgets.
+ *
+ * An empty fingerprint (unserialisable snapshot) always pushes with a reload:
+ * a widget showing stale data is a worse failure than a redundant bridge call.
+ *
+ * @param {object} snapshot
+ * @param {{full: string, hot: string}|string} last  what was last sent — the
+ *        object this returns, or (legacy) the full fingerprint string.
+ * @returns {{push: boolean, reload: boolean, fingerprint: {full: string, hot: string}}}
+ */
+export function evaluateSnapshotPush(snapshot, last) {
+  const prev = typeof last === 'string' ? { full: last, hot: last } : (last || { full: '', hot: '' });
+  const full = snapshotFingerprint(snapshot);
+  const hot = hotSnapshotFingerprint(snapshot);
+  const fingerprint = { full, hot };
+  if (!full) return { push: true, reload: true, fingerprint };
+  const push = full !== prev.full;
+  // A reload is owed whenever the visible part changed — including the first
+  // push, when nothing has been sent yet.
+  const reload = push && (!hot || hot !== prev.hot);
+  return { push, reload, fingerprint };
 }

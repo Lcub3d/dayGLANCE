@@ -156,4 +156,6 @@
         <item quantity="other">%1$d 天前</item>
     </plurals>
     <string name="widget_open_to_refresh">打开 dayGLANCE 以刷新</string>
+    <string name="widget_planned_as_of">计划截至 %1$s</string>
+    <string name="widget_planned_in_advance">提前计划</string>
 </resources>

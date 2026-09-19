@@ -66,7 +66,7 @@ struct ProjectProvider: AppIntentTimelineProvider {
         // One snapshot, two entries: now and the next local midnight, so the
         // stale state flips on the minute (WidgetFreshness.swift).
         let snapshot = loadSnapshot()
-        let entries = WidgetTimelineDates.withMidnightRollover().map {
+        let entries = WidgetTimelineDates.rolloverDates(midnights: 1 + (snapshot?.days?.count ?? 0)).map {
             ProjectEntry(date: $0, snapshot: snapshot, selectedProjectId: configuration.project?.id)
         }
         let next = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
@@ -88,14 +88,18 @@ struct ProjectWidgetView: View {
         return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
     }
 
-    // Against the entry's date, not the clock (see WidgetTimelineDates).
-    private var freshness: WidgetFreshness { .of(entry.snapshot, at: entry.date) }
+    // Against the entry's date, not the clock (see ResolvedWidgetDay).
+    // Projects are day-invariant, so a projected day changes only the label.
+    private var day: ResolvedWidgetDay { .resolve(entry.snapshot, at: entry.date) }
+    private var freshness: WidgetFreshness { day.freshness }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            if freshness.isStale {
+            if day.isStale {
                 StaleBanner(freshness: freshness, use24Hour: entry.snapshot?.use24Hour)
+            } else if day.isProjected {
+                PlannedBanner(day: day, use24Hour: entry.snapshot?.use24Hour)
             }
             Divider().padding(.vertical, 4)
             Group {
@@ -120,7 +124,7 @@ struct ProjectWidgetView: View {
                 .font(.caption2).fontWeight(.bold)
                 .foregroundColor(.secondary)
             Spacer()
-            Text(entry.snapshot?.dateLabel ?? "")
+            Text(day.dateLabel ?? "")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }

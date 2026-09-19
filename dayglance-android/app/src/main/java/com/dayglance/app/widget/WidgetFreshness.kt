@@ -4,6 +4,7 @@ import android.content.Context
 import android.text.format.DateFormat
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -163,4 +164,101 @@ object WidgetSnapshotEnvelope {
 
     fun wantsReload(snapshotJson: String?): Boolean =
         snapshotJson == null || !RELOAD_FALSE.containsMatchIn(snapshotJson)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Day resolution — which day of the payload a render shows, and how honest its
+// label has to be. The snapshot carries today at the top level and
+// `days: [today+1 … today+N]` (utils/widgetDayProjection.js).
+//
+//   PUSHED     the current local day is the day the snapshot was built: full
+//              content, no label.
+//   PROJECTED  the current day is one of `days`, built in advance: the day's
+//              shape, "Planned as of …", nothing dimmed. Up Next is promoted
+//              through the day's list by the clock (promoteProjectedUpNext).
+//   STALE      beyond the payload (or before it): the hard "Outdated" state
+//              from the first fix, unchanged.
+//   UNKNOWN    the snapshot did not say what day it is: rendered as pushed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class WidgetDayTier { PUSHED, PROJECTED, STALE, UNKNOWN }
+
+object WidgetDayResolverRules {
+    /** The tier for [today] and, for PROJECTED, the index into [projectedDates]. Pure. */
+    fun resolve(pushedDate: String?, projectedDates: List<String?>, today: LocalDate): Pair<WidgetDayTier, Int> {
+        val pushed = WidgetFreshnessRules.parseDay(pushedDate) ?: return WidgetDayTier.UNKNOWN to -1
+        if (pushed == today) return WidgetDayTier.PUSHED to -1
+        val idx = projectedDates.indexOfFirst { WidgetFreshnessRules.parseDay(it) == today }
+        return if (idx >= 0) WidgetDayTier.PROJECTED to idx else WidgetDayTier.STALE to -1
+    }
+
+    /**
+     * Index of the first row that has not ended at [nowMin], rows as
+     * (startMin, durationMin). A zero-length row counts until its start. Equal
+     * to rows.size when everything has ended. Pure.
+     */
+    fun firstNotEnded(rows: List<Pair<Int, Int>>, nowMin: Int): Int {
+        val idx = rows.indexOfFirst { (start, dur) -> if (dur > 0) start + dur > nowMin else start >= nowMin }
+        return if (idx < 0) rows.size else idx
+    }
+}
+
+data class ResolvedWidgetDay(
+    val tier: WidgetDayTier,
+    /** Freshness of what is RENDERED: stale only for STALE. */
+    val freshness: WidgetFreshness,
+    /** The whole snapshot: day-invariant blocks (goals, projects, clock). */
+    val root: JSONObject?,
+    /** The per-day fields: the matching `days[]` entry, or the root itself. */
+    val fields: JSONObject?,
+) {
+    val isStale: Boolean get() = tier == WidgetDayTier.STALE
+    val isProjected: Boolean get() = tier == WidgetDayTier.PROJECTED
+}
+
+/** Which day of the stored payload the widgets should draw right now. */
+internal fun resolveWidgetDay(
+    root: JSONObject?,
+    dataStore: SharedDataStore,
+    today: LocalDate = LocalDate.now(),
+): ResolvedWidgetDay {
+    val pushed = snapshotFreshness(root, dataStore, today)
+    if (root == null) return ResolvedWidgetDay(WidgetDayTier.UNKNOWN, pushed, null, null)
+    val days: JSONArray? = root.optJSONArray("days")
+    val dates = (0 until (days?.length() ?: 0)).map { days?.optJSONObject(it)?.optString("date", "") }
+    val (tier, idx) = WidgetDayResolverRules.resolve(root.optString("date", ""), dates, today)
+    return if (tier == WidgetDayTier.PROJECTED) {
+        ResolvedWidgetDay(tier, pushed.copy(isStale = false, daysOld = 0), root, days?.optJSONObject(idx))
+    } else {
+        ResolvedWidgetDay(tier, pushed, root, root)
+    }
+}
+
+/**
+ * A projected day's Up Next, promoted by the clock: the JS side shipped the
+ * first incomplete timed task as `nextTask` and the WHOLE rest as
+ * `upcomingTasks` (uncapped, because this is where it gets consumed). Returns
+ * the first row that has not ended and the rows after it.
+ */
+internal fun promoteProjectedUpNext(fields: JSONObject, nowMin: Int): Pair<JSONObject?, JSONArray> {
+    val rows = mutableListOf<JSONObject>()
+    fields.optJSONObject("nextTask")?.let { rows += it }
+    fields.optJSONArray("upcomingTasks")?.let { arr -> for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { rows += it } }
+    val spans = rows.map { r ->
+        val parts = r.optString("startTime", "").split(":")
+        val start = runCatching { parts[0].trim().toInt() * 60 + (parts.getOrNull(1)?.trim()?.toInt() ?: 0) }.getOrDefault(0)
+        start to r.optInt("duration", 0)
+    }
+    val idx = WidgetDayResolverRules.firstNotEnded(spans, nowMin)
+    val rest = JSONArray().also { out -> rows.drop(idx + 1).forEach { out.put(it) } }
+    return rows.getOrNull(idx) to rest
+}
+
+/** "Planned as of Thu 8:42 PM" — the soft tier's line. Secondary, not a warning. */
+internal fun formatPlannedLabel(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): String {
+    if (freshness.capturedAtMs <= 0L) return context.getString(R.string.widget_planned_in_advance)
+    val locale = context.resources.configuration.locales.let { if (it.isEmpty) Locale.getDefault() else it[0] }
+    val pattern = DateFormat.getBestDateTimePattern(locale, if (use24Hour) "EEEHm" else "EEEhm")
+    val stamp = SimpleDateFormat(pattern, locale).format(Date(freshness.capturedAtMs))
+    return context.getString(R.string.widget_planned_as_of, stamp)
 }

@@ -105,3 +105,49 @@ class WidgetFreshnessTest {
         )
     }
 }
+
+/** Day resolution against the day-keyed payload, and the clock promotion rule. */
+class WidgetDayResolverRulesTest {
+    private val today = LocalDate.of(2026, 9, 18)
+    private val days = listOf("2026-09-19", "2026-09-20", "2026-09-21")
+
+    @Test
+    fun `the pushed day wins when it is today`() {
+        assertEquals(WidgetDayTier.PUSHED to -1, WidgetDayResolverRules.resolve("2026-09-18", days, today))
+    }
+
+    @Test
+    fun `a day inside the payload is projected, with its index`() {
+        assertEquals(WidgetDayTier.PROJECTED to 0, WidgetDayResolverRules.resolve("2026-09-17", days, LocalDate.of(2026, 9, 19).minusDays(1).plusDays(1)))
+        assertEquals(WidgetDayTier.PROJECTED to 2, WidgetDayResolverRules.resolve("2026-09-18", days, LocalDate.of(2026, 9, 21)))
+    }
+
+    @Test
+    fun `past the payload it is stale - the hard state from the first fix`() {
+        assertEquals(WidgetDayTier.STALE to -1, WidgetDayResolverRules.resolve("2026-09-18", days, LocalDate.of(2026, 9, 22)))
+    }
+
+    @Test
+    fun `a clock moved back before the pushed day is stale, not projected`() {
+        assertEquals(WidgetDayTier.STALE to -1, WidgetDayResolverRules.resolve("2026-09-18", days, LocalDate.of(2026, 9, 17)))
+    }
+
+    @Test
+    fun `no payload days - yesterday's snapshot is simply stale`() {
+        assertEquals(WidgetDayTier.STALE to -1, WidgetDayResolverRules.resolve("2026-09-17", emptyList(), today))
+    }
+
+    @Test
+    fun `an undated snapshot is unknown, never flagged`() {
+        assertEquals(WidgetDayTier.UNKNOWN to -1, WidgetDayResolverRules.resolve("", days, today))
+    }
+
+    @Test
+    fun `promotion skips rows that have ended and keeps a zero-length row until its start`() {
+        val rows = listOf(9 * 60 to 60, 10 * 60 to 0, 11 * 60 to 30)
+        assertEquals(0, WidgetDayResolverRules.firstNotEnded(rows, 9 * 60 + 30))
+        assertEquals(1, WidgetDayResolverRules.firstNotEnded(rows, 10 * 60))
+        assertEquals(2, WidgetDayResolverRules.firstNotEnded(rows, 10 * 60 + 1))
+        assertEquals(3, WidgetDayResolverRules.firstNotEnded(rows, 12 * 60))
+    }
+}

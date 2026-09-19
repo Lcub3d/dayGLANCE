@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { snapshotFingerprint, evaluateSnapshotPush } from './widgetSnapshotDedupe.js';
+import { snapshotFingerprint, hotSnapshotFingerprint, evaluateSnapshotPush } from './widgetSnapshotDedupe.js';
 
 const snap = (over = {}) => ({
   date: '2026-08-08',
@@ -98,7 +98,8 @@ describe('evaluateSnapshotPush', () => {
   it('pushes the first snapshot, when nothing has been sent yet', () => {
     const r = evaluateSnapshotPush(snap(), '');
     expect(r.push).toBe(true);
-    expect(r.fingerprint).not.toBe('');
+    expect(r.reload).toBe(true);
+    expect(r.fingerprint.full).not.toBe('');
   });
 
   // The 108-identical-pushes case from the device.
@@ -106,14 +107,15 @@ describe('evaluateSnapshotPush', () => {
     const first = evaluateSnapshotPush(snap({ updatedAt: 1 }), '');
     const second = evaluateSnapshotPush(snap({ updatedAt: 2 }), first.fingerprint);
     expect(second.push).toBe(false);
-    expect(second.fingerprint).toBe(first.fingerprint);
+    expect(second.fingerprint).toEqual(first.fingerprint);
   });
 
   it('pushes again once content actually changes', () => {
     const first = evaluateSnapshotPush(snap(), '');
     const changed = evaluateSnapshotPush(snap({ date: '2026-08-09' }), first.fingerprint);
     expect(changed.push).toBe(true);
-    expect(changed.fingerprint).not.toBe(first.fingerprint);
+    expect(changed.reload).toBe(true);
+    expect(changed.fingerprint.full).not.toBe(first.fingerprint.full);
   });
 
   // The device case: 88 pushes of an idle snapshot where BOTH wall-clock stamps
@@ -141,8 +143,74 @@ describe('evaluateSnapshotPush', () => {
     const cyclic = snap();
     cyclic.self = cyclic;
     const bad = evaluateSnapshotPush(cyclic, '');
-    expect(bad.fingerprint).toBe('');
+    expect(bad.fingerprint).toEqual({ full: '', hot: '' });
     // The empty fingerprint must not match the next real one and swallow it.
     expect(evaluateSnapshotPush(snap(), bad.fingerprint).push).toBe(true);
+  });
+});
+
+// ── Day-keyed payload: store a far-day change, redraw only for a visible one ──
+const keyed = (over = {}) => snap({
+  days: [
+    { date: '2026-08-09', nextTask: { title: 'Tomorrow 9am' } },
+    { date: '2026-08-10', nextTask: { title: 'Day after' } },
+    { date: '2026-08-11', nextTask: { title: 'Three out' } },
+  ],
+  ...over,
+});
+const withDay = (index, title) => {
+  const s = keyed();
+  s.days = s.days.map((d, i) => (i === index ? { ...d, nextTask: { title } } : d));
+  return s;
+};
+
+describe('hot vs full fingerprints', () => {
+  it('the hot fingerprint sees today, the invariants and tomorrow only', () => {
+    expect(hotSnapshotFingerprint(keyed())).toBe(hotSnapshotFingerprint(withDay(2, 'moved')));
+    expect(hotSnapshotFingerprint(keyed())).not.toBe(hotSnapshotFingerprint(withDay(0, 'moved')));
+    expect(hotSnapshotFingerprint(keyed())).not.toBe(hotSnapshotFingerprint(keyed({ date: '2026-08-09' })));
+  });
+
+  it('the full fingerprint sees every day', () => {
+    expect(snapshotFingerprint(keyed())).not.toBe(snapshotFingerprint(withDay(2, 'moved')));
+  });
+
+  it('neither fingerprint counts the reloadWidgets flag itself', () => {
+    expect(snapshotFingerprint(keyed({ reloadWidgets: true }))).toBe(snapshotFingerprint(keyed({ reloadWidgets: false })));
+    expect(hotSnapshotFingerprint(keyed({ reloadWidgets: true }))).toBe(hotSnapshotFingerprint(keyed({ reloadWidgets: false })));
+  });
+
+  it('a change three days out is pushed WITHOUT a reload', () => {
+    const first = evaluateSnapshotPush(keyed(), '');
+    const far = evaluateSnapshotPush(withDay(2, 'moved'), first.fingerprint);
+    expect(far.push).toBe(true);
+    expect(far.reload).toBe(false);
+  });
+
+  it('a change to tomorrow is pushed WITH a reload — the midnight entry shows it', () => {
+    const first = evaluateSnapshotPush(keyed(), '');
+    const tomorrow = evaluateSnapshotPush(withDay(0, 'moved'), first.fingerprint);
+    expect(tomorrow.push).toBe(true);
+    expect(tomorrow.reload).toBe(true);
+  });
+
+  it('a change to today is pushed WITH a reload', () => {
+    const first = evaluateSnapshotPush(keyed(), '');
+    const today = evaluateSnapshotPush(keyed({ sections: [{ id: 2, title: 'Changed' }] }), first.fingerprint);
+    expect(today.push).toBe(true);
+    expect(today.reload).toBe(true);
+  });
+
+  it('after a no-reload push, an identical snapshot is not pushed again', () => {
+    const first = evaluateSnapshotPush(keyed(), '');
+    const far = evaluateSnapshotPush(withDay(2, 'moved'), first.fingerprint);
+    const again = evaluateSnapshotPush(withDay(2, 'moved'), far.fingerprint);
+    expect(again.push).toBe(false);
+  });
+
+  it('accepts the legacy string form of the last fingerprint', () => {
+    const first = evaluateSnapshotPush(keyed(), '');
+    const legacy = evaluateSnapshotPush(keyed({ updatedAt: 99 }), first.fingerprint.full);
+    expect(legacy.push).toBe(false);
   });
 });

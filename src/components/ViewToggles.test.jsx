@@ -5,7 +5,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 import { DayPlannerContext } from '../context/DayPlannerContext.jsx';
-import { DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES } from '../constants/views.js';
+import { DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, offeredViews } from '../constants/views.js';
 import ViewToggles from './ViewToggles.jsx';
 
 async function i18nFor(language) {
@@ -25,13 +25,22 @@ const render = async (language, planner, props) => renderToStaticMarkup(
 const toggles = (html) => [...html.matchAll(/data-view-toggle="([a-z]+)" data-on="(true|false)"/g)].map((m) => `${m[1]}:${m[2]}`);
 
 describe('ViewToggles', () => {
+  // Settings hands this the views a device may turn on or off: the registry
+  // minus every experimental view whose flag is off (offeredViews). JOBO off is
+  // the everyday case, so it gets no switch here.
   it("lists a switcher's views in order with its hidden ones off, and any view can be turned off", async () => {
-    const html = await render('en', { hiddenViews: { desktop: ['multi', 'sched'], mobile: ['month'] } }, { scope: 'desktop', views: DESKTOP_VIEW_MODES, label: (v) => v.toUpperCase() });
+    const html = await render('en', { hiddenViews: { desktop: ['multi', 'sched'], mobile: ['month'] } }, { scope: 'desktop', views: offeredViews(DESKTOP_VIEW_MODES), label: (v) => v.toUpperCase() });
     expect(toggles(html)).toEqual(['multi:false', 'day:true', 'week:true', 'month:true', 'sched:false']);
     expect(html).toContain('data-view-toggles="desktop"');
     expect(html).toContain('Views on this device');
     expect(html).not.toContain('disabled');
     expect(html).toContain('MULTI');
+  });
+
+  it('offers JOBO a switch of its own only once its flag is on', async () => {
+    const views = offeredViews(DESKTOP_VIEW_MODES, { joboEnabled: true });
+    const html = await render('en', { hiddenViews: { desktop: [], mobile: [] } }, { scope: 'desktop', views, label: (v) => v.toUpperCase() });
+    expect(toggles(html)).toEqual(['multi:true', 'day:true', 'week:true', 'month:true', 'sched:true', 'jobo:true']);
   });
 
   it("reads the other switcher's list for scope mobile, and disables the last switch still on", async () => {

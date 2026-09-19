@@ -178,6 +178,20 @@ it('uses 领域 consistently for Chinese Areas without changing regional setting
 });
 
 describe.each(languages)('%s view labels', (language) => {
+  it('names JOBO the same everywhere and keys it 6 only when the flag is on', async () => {
+    const i18n = await translation(language);
+    expect(i18n.t('sched.viewJoboShort')).toBe('JOBO');
+    const render = (hidden) => renderToStaticMarkup(
+      <I18nextProvider i18n={i18n}>
+        <DayPlannerContext.Provider value={{ effectiveViewMode: 'jobo', canShowViewCycler: true, hiddenViews: { desktop: hidden } }}>
+          <ViewCycler />
+        </DayPlannerContext.Provider>
+      </I18nextProvider>,
+    );
+    expect(render([])).toContain(`title="${escape(i18n.t('sched.viewTooltip', { view: 'JOBO', keys: '1/2/3/4/5/6' }))}"`);
+    expect(render(['jobo'])).not.toContain('1/2/3/4/5/6');
+  });
+
   it.each(['multi', 'day', 'week', 'sched', 'month'])('localizes %s label, tooltip and accessible name', async (view) => {
     const i18n = await translation(language);
     const key = `sched.view${view[0].toUpperCase()}${view.slice(1)}Short`;
@@ -185,9 +199,12 @@ describe.each(languages)('%s view labels', (language) => {
     const label = i18n.t(key);
     for (const canShowViewCycler of [false, true]) {
       if (!canShowViewCycler && (view === 'day' || view === 'week')) continue;
+      // `hiddenViews` is what App puts in context: the user's choices plus every
+      // experimental view whose flag is off (gateExperimentalViews). JOBO off is
+      // the everyday case, so its key is not in the tooltip here.
       const html = renderToStaticMarkup(
         <I18nextProvider i18n={i18n}>
-          <DayPlannerContext.Provider value={{ effectiveViewMode: view, canShowViewCycler }}>
+          <DayPlannerContext.Provider value={{ effectiveViewMode: view, canShowViewCycler, hiddenViews: { desktop: ['jobo'] } }}>
             <ViewCycler />
           </DayPlannerContext.Provider>
         </I18nextProvider>,

@@ -178,7 +178,7 @@ import DesktopLayout from './components/DesktopLayout.jsx';
 import GlanceSidebar from './components/GlanceSidebar.jsx';
 import TrayApp from './components/TrayApp.jsx';
 import MobileLayout from './components/MobileLayout.jsx';
-import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_SCOPES, resolveStoredView, normalizeHiddenViews, enabledViews, homeView } from './constants/views.js';
+import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_SCOPES, resolveStoredView, normalizeHiddenViews, enabledViews, homeView, gateExperimentalViews } from './constants/views.js';
 import ShortcutHelpModal from './components/ShortcutHelpModal.jsx';
 import FocusModeModal from './components/FocusModeModal.jsx';
 import HyperGlanceModeModal from './components/HyperGlanceModeModal.jsx';
@@ -339,10 +339,24 @@ const DayPlanner = () => {
   // differ by orientation. At least one view stays on in each; wherever a
   // view has to be landed on, it is the first still on for the width
   // (constants/views.js homeView).
-  const [hiddenViews, setHiddenViews] = useState(() => {
+  // JOBO (plan versus actual, #1673) is landing in slices behind this flag.
+  // Off by default, and off means the view does not exist on this device: it
+  // is folded into the hidden-views list below, so nothing that consumes that
+  // list needs to know the flag exists. Per device, like the hidden views, and
+  // deliberately not part of a backup: an experiment is opted into where it is
+  // being tried, not carried to every device by a restore.
+  const [joboEnabled, setJoboEnabled] = useState(() => {
+    const saved = localStorage.getItem('day-planner-jobo-enabled');
+    return saved !== null ? JSON.parse(saved) === true : false;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
   });
+  // What the app treats as hidden: the user's choices plus every experimental
+  // view whose flag is off. The stored list is only ever the user's choices.
+  const hiddenViews = gateExperimentalViews(storedHiddenViews, { joboEnabled });
   const [viewMode, setViewMode] = useState(() => {
     const allowed = enabledViews(DESKTOP_VIEW_MODES, hiddenViews.desktop);
     // URL ?view= param takes priority over defaultView on cold load.
@@ -401,8 +415,8 @@ const DayPlanner = () => {
   // view, or defaulted to it, lands on the first view still on there;
   // turning it back on restores nothing, the user picks it again.
   const setViewHidden = (scope, view, hidden) => {
-    const list = hiddenViews[scope] || [];
-    const next = normalizeHiddenViews({ ...hiddenViews, [scope]: hidden ? [...list, view] : list.filter((v) => v !== view) });
+    const list = storedHiddenViews[scope] || [];
+    const next = normalizeHiddenViews({ ...storedHiddenViews, [scope]: hidden ? [...list, view] : list.filter((v) => v !== view) });
     if (hidden && enabledViews(VIEW_SCOPES[scope], next[scope]).length === 0) return;
     setHiddenViews(next);
     if (!hidden) return;
@@ -1841,8 +1855,8 @@ const DayPlanner = () => {
   }, [defaultView]);
 
   useEffect(() => {
-    localStorage.setItem('day-planner-hidden-views', JSON.stringify(hiddenViews));
-  }, [hiddenViews]);
+    localStorage.setItem('day-planner-hidden-views', JSON.stringify(storedHiddenViews));
+  }, [storedHiddenViews]);
 
   useEffect(() => {
     localStorage.setItem('day-planner-day-view-mode', JSON.stringify(dayViewMode));
@@ -8890,6 +8904,7 @@ const DayPlanner = () => {
     habits, setHabits,
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
+    joboEnabled, setJoboEnabled,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

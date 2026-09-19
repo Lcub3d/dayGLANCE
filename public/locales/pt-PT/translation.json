@@ -421,6 +421,10 @@
     "enableRoutines": "Ativar rotinas",
     "habitTracking": "Monitorização de hábitos",
     "enableHabitTracking": "Ativar monitorização de hábitos",
+    "experimental": "Experimental",
+    "experimentalHint": "Funcionalidades ainda em construção, a chegar por partes. Desativadas por omissão; nada muda a menos que ative uma.",
+    "enableJobo": "Vista JOBO",
+    "enableJoboHint": "Planeado versus realizado. Uma sexta vista, na tecla 6, que registará o que foi feito face ao planeado.",
     "inbox": "Caixa de entrada",
     "inboxAutoArchive": "Arquivar automaticamente tarefas concluídas da caixa de entrada",
     "inboxArchiveNever": "Nunca",
@@ -1779,6 +1783,7 @@
     "viewDayShort": "DIA",
     "viewWeekShort": "SEM.",
     "viewSchedShort": "AGEN.",
+    "viewJoboShort": "JOBO",
     "filterProject": "Filtro: {{project}}",
     "filter": "Filtrar",
     "filterTasks": "Filtrar tarefas",
@@ -1966,6 +1971,10 @@
     "title": "Sincronização com o iCloud",
     "onHint": "Ativada. Este dispositivo sincroniza automaticamente com os seus outros dispositivos Apple.",
     "offHint": "Desativada neste dispositivo. A cópia no iCloud e os seus outros dispositivos não são afetados."
+  },
+  "jobo": {
+    "title": "JOBO",
+    "placeholder": "Planeado versus realizado. Esta vista está a ser construída por partes; a primeira é o interruptor que a mostra."
   },
   "todoist": {
     "title": "Sincronização com o Todoist",

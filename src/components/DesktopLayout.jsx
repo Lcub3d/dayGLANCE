@@ -22,6 +22,7 @@ import WeekView from './WeekView.jsx';
 import SchedDashboard from './sched/SchedDashboard.jsx';
 import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
+import JoboView from './JoboView.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -850,6 +851,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'week' && <WeekView />}
                     {effectiveViewMode === 'sched' && <SchedDashboard />}
                     {effectiveViewMode === 'month' && <MonthView />}
+                    {effectiveViewMode === 'jobo' && <JoboView />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.
@@ -864,7 +866,7 @@ const DesktopLayout = () => {
                         titlebarPills lets it stand down for today while the
                         macOS title bar carries the same numbers — always false
                         on a tablet, since that bar is Electron-on-macOS only. */}
-                    {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && (
+                    {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && (
                       <SummaryStrip
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}

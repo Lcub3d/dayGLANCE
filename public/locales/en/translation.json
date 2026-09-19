@@ -424,6 +424,10 @@
     "enableRoutines": "Enable routines",
     "habitTracking": "Habit Tracking",
     "enableHabitTracking": "Enable habit tracking",
+    "experimental": "Experimental",
+    "experimentalHint": "Features still being built, landing in slices. Off by default; nothing changes unless you turn one on.",
+    "enableJobo": "JOBO view",
+    "enableJoboHint": "Plan versus actual. A sixth view, on key 6, that will record what was done against what was planned.",
     "inbox": "Inbox",
     "inboxAutoArchive": "Auto-archive completed Inbox tasks",
     "inboxArchiveNever": "Never",
@@ -1779,6 +1783,7 @@
     "viewDayShort": "DAY",
     "viewWeekShort": "WEEK",
     "viewSchedShort": "SCHED",
+    "viewJoboShort": "JOBO",
     "filterProject": "Filter: {{project}}",
     "filter": "Filter",
     "filterTasks": "Filter tasks",
@@ -1966,6 +1971,10 @@
     "title": "iCloud sync",
     "onHint": "On. This device syncs with your other Apple devices automatically.",
     "offHint": "Off on this device. The iCloud copy and your other devices are unaffected."
+  },
+  "jobo": {
+    "title": "JOBO",
+    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it."
   },
   "todoist": {
     "title": "Todoist Sync",

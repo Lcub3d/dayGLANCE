@@ -55,6 +55,7 @@ const SettingsModal = () => {
     weekStartDay, setWeekStartDay,
     homeTimezone, setHomeTimezone,
     weekTimelineStartHour, setWeekTimelineStartHour,
+    weekTimelineEndHour, setWeekTimelineEndHour,
     soundEnabled, setSoundEnabled,
     setOnboardingProgress,
     isMobile, isTablet,
@@ -394,6 +395,24 @@ const SettingsModal = () => {
                                 onClick={() => setWeekTimelineStartHour(h)}
                                 className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                   weekTimelineStartHour === h
+                                    ? 'bg-blue-600 text-white'
+                                    : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                                }`}
+                              >
+                                {formatHour(h)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineEnd')}</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[18, 20, 21, 22, 24].map(h => (
+                              <button
+                                key={h}
+                                onClick={() => setWeekTimelineEndHour(h)}
+                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                                  weekTimelineEndHour === h
                                     ? 'bg-blue-600 text-white'
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}

@@ -551,6 +551,16 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) : 0;
   });
   useEffect(() => { localStorage.setItem('day-planner-week-timeline-start-hour', JSON.stringify(weekTimelineStartHour)); }, [weekTimelineStartHour]);
+  // The matching upper bound. 24 means "no trim", which is the default: WEEK has
+  // always drawn the whole day, and trimming it is opt-in exactly as the start
+  // hour is. Together they are what make a WEEK row tall enough to read — the
+  // view divides its height by the hours on show rather than scrolling, so an
+  // 07:00-22:00 window is 15 rows in the space 24 used to take.
+  const [weekTimelineEndHour, setWeekTimelineEndHour] = useState(() => {
+    const saved = localStorage.getItem('day-planner-week-timeline-end-hour');
+    return saved !== null ? JSON.parse(saved) : 24;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-week-timeline-end-hour', JSON.stringify(weekTimelineEndHour)); }, [weekTimelineEndHour]);
   const { weather, setWeather, weatherZip, setWeatherZip, weatherTempUnit, setWeatherTempUnit, fetchWeather } = useWeather();
   const [weatherEnabled, setWeatherEnabled] = useState(() => {
     const saved = localStorage.getItem('day-planner-weather-enabled');
@@ -8481,6 +8491,7 @@ const DayPlanner = () => {
     weekStartDay, setWeekStartDay,
     homeTimezone, setHomeTimezone,
     weekTimelineStartHour, setWeekTimelineStartHour,
+    weekTimelineEndHour, setWeekTimelineEndHour,
     minimizedSections, setMinimizedSections,
     showSettings, setShowSettings,
     collapsedSettings, setCollapsedSettings,

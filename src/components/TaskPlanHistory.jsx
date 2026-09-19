@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { planHistory } from '../utils/originalPlan.js';
-import { intermediatePlans } from '../utils/planTrail.js';
+import { intermediatePlans, hiddenStops } from '../utils/planTrail.js';
 import { formatShortDate } from '../utils/taskUtils.js';
 import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -32,7 +32,10 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
   const { t } = useTranslation();
   const { plan, changed } = history ?? { plan: null, changed: {} };
   const deferrals = Number(task?.deferrals) || 0;
-  const stops = intermediatePlans(task);
+  // Reversed HERE rather than in the util: the data's order is chronological,
+  // and which way the panel reads is a layout decision.
+  const stops = [...intermediatePlans(task)].reverse();
+  const earlier = hiddenStops(task);
 
   // A changed value is stated plainly; an unchanged one is dimmed, so the eye
   // lands on what actually moved rather than on three values of equal weight.
@@ -58,22 +61,24 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
 
   return (
     <>
+      {/* NEWEST FIRST, top to bottom, which is what lets the panel hold three
+          things at once: dates that descend without a break, stops labelled
+          "recent" that really are the recent ones, and the count of what the cap
+          dropped sitting in its true chronological slot — after the oldest stop
+          still kept and before the baseline it followed. Read the other way
+          round, that count has nowhere to go: at the head of the list it reads
+          as a fragment with something missing above it, and reversing only the
+          middle section leaves the dates running 15, 18, 15, 19 down the page.
+          It is also how every other history reads: newest at the top. */}
       {history && (<>
-        <div className="opacity-60 mb-0.5">{t('task.originallyPlanned')}</div>
-        {row(plan.date, plan.startTime, plan.duration)}
+        <div className="opacity-60 mb-0.5">{t('task.nowScheduled')}</div>
+        {row(task.date, task.startTime, task.duration)}
         {/* The stops in between, which is what makes this a history rather than
-            a before-and-after. Dimmed as a block: the eye should travel from
-            where it started to where it is now, with the middle read only if
+            a before-and-after. Flat rather than emphasised: the eye should land
+            on where it is now and where it began, with the middle read only if
             the shape of the slide is the question. Duration is left off — a
             stop records a schedule move, and a resize is not one. */}
         {stops.length > 0 && (<>
-          {/* "Recent" rather than a complete-sounding heading with a caveat
-              hung off it. The trail is capped at six stops, and an earlier
-              version said so in the panel — which put a line there to explain a
-              storage decision, on the rare task that has slipped seven times,
-              in a panel whose last line already gives the true total. Saying
-              "recent" is accurate whether or not anything was dropped and needs
-              nothing else to hold it up. */}
           <div className="opacity-60 mt-1.5 mb-0.5">{t('task.movedVia')}</div>
           <div className="space-y-0.5">
             {stops.map((stop) => (
@@ -81,10 +86,16 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
                 {row(stop.date, stop.startTime, undefined, NO_EMPHASIS)}
               </div>
             ))}
+            {/* Everything the cap dropped, in one line, where those moves
+                actually happened: older than the last stop shown, newer than
+                the baseline below. */}
+            {earlier > 0 && (
+              <div className="opacity-50">{t('task.earlierMoves', { count: earlier })}</div>
+            )}
           </div>
         </>)}
-        <div className="opacity-60 mt-1.5 mb-0.5">{t('task.nowScheduled')}</div>
-        {row(task.date, task.startTime, task.duration)}
+        <div className="opacity-60 mt-1.5 mb-0.5">{t('task.originallyPlanned')}</div>
+        {row(plan.date, plan.startTime, plan.duration)}
       </>)}
       {/* The count is the other half of the story: two points say WHERE it moved,
           this says how often it slipped. Counted only for moves made after the

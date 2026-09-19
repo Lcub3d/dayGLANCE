@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   TRAIL_CAP, stampPlanTrail, mergePlanTrail, sameTrail, applyPlanTrail,
-  intermediatePlans,
+  intermediatePlans, hiddenStops,
 } from './planTrail.js';
 
 const NOW = new Date('2026-09-19T10:00:00');
@@ -131,6 +131,26 @@ describe('intermediatePlans', () => {
   it('has nothing to show for a task that never slipped', () => {
     expect(intermediatePlans(task())).toEqual([]);
     expect(intermediatePlans(undefined)).toEqual([]);
+  });
+});
+
+describe('hiddenStops', () => {
+  // The count is uncapped and the trail is not, which is the whole reason both
+  // exist: the number stays true while the detail is necessarily partial.
+  it('reports the slips that fell off the front', () => {
+    const t = task({
+      deferrals: 30,
+      planTrail: Array.from({ length: TRAIL_CAP }, (_, i) => stop(i + 1, '2026-09-01', '09:00')),
+    });
+    expect(hiddenStops(t)).toBe(30 - TRAIL_CAP);
+  });
+
+  it('reports none while the trail still holds every slip', () => {
+    expect(hiddenStops(task({ deferrals: 2, planTrail: [stop(1, '2026-09-10', '09:00'), stop(2, '2026-09-11', '09:00')] }))).toBe(0);
+  });
+
+  it('never goes negative when a union outruns an unmerged count', () => {
+    expect(hiddenStops(task({ deferrals: 1, planTrail: [stop(1, '2026-09-10', '09:00'), stop(2, '2026-09-11', '09:00')] }))).toBe(0);
   });
 });
 

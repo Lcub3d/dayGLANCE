@@ -169,10 +169,16 @@ describe('PlanHistoryPanel — the stops in between', () => {
   );
   const stop = (at, date, startTime) => ({ at, date, startTime });
 
+  // Two intermediate stops, on distinct days, so the order assertions below can
+  // actually catch a list that renders the wrong way round.
   const SLID = {
     id: 't1', date: '2026-09-20', startTime: '14:00', duration: 60,
-    originalPlan: PLANNED, deferrals: 2,
-    planTrail: [stop(1, '2026-09-18', '11:00'), stop(2, '2026-09-20', '14:00')],
+    originalPlan: PLANNED, deferrals: 3,
+    planTrail: [
+      stop(1, '2026-09-18', '11:00'),
+      stop(2, '2026-09-19', '13:00'),
+      stop(3, '2026-09-20', '14:00'),
+    ],
   };
 
   it('lists the schedules the task passed through', async () => {
@@ -192,15 +198,29 @@ describe('PlanHistoryPanel — the stops in between', () => {
     expect(html).not.toContain('Recent moves');
   });
 
-  // The trail is capped at six, so the heading says RECENT rather than claiming
-  // the list is everything. The total lives on the count line at the foot of the
-  // panel; an earlier version printed the arithmetic between the two and read as
-  // a fragment with something missing around it.
-  it('does not print the arithmetic between the trail and the count', async () => {
+  // Newest first, top to bottom, all the way down: "Now", then the stops in
+  // descending order, then the baseline. A panel that reverses only its middle
+  // section runs its dates 15, 18, 15, 19 down the page.
+  it('reads newest first from top to bottom', async () => {
+    const html = await renderPanel(SLID);
+    const order = ['Sep 20', 'Sep 19', 'Sep 18', 'Sep 17'];
+    const at = order.map((d) => html.indexOf(d));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+  });
+
+  // The count of what the cap dropped sits where those moves happened: after
+  // the oldest stop still kept, before the baseline it followed. That is the
+  // position that lets it read as a list tail rather than a dangling fragment.
+  it('puts the dropped-stop count below the stops and above the baseline', async () => {
     const html = await renderPanel({ ...SLID, deferrals: 9 });
-    expect(html).toContain('Recent moves');
-    expect(html).toContain('Deferred 9 times');
-    expect(html).not.toMatch(/\b7\b/);
+    expect(html.indexOf('+6 earlier')).toBeGreaterThan(html.indexOf('11:00'));
+    expect(html.indexOf('+6 earlier')).toBeLessThan(html.indexOf('Originally planned'));
+  });
+
+  it('says nothing about dropped stops when the trail holds them all', async () => {
+    const html = await renderPanel(SLID);
+    expect(html).not.toContain('earlier');
   });
 
   // An intermediate stop took no part in the baseline-versus-now diff, so

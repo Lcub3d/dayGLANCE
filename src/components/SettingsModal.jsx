@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
+import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, enabledViews } from '../constants/views.js';
+import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_LABEL_KEYS, enabledViews, offeredViews } from '../constants/views.js';
 import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -75,8 +75,8 @@ const SettingsModal = () => {
     listEndOfDayTime, setListEndOfDayTime,
     formatTime,
   } = useDayPlannerCtx();
-  // The pickers name the views the way the cycler does: MULTI, DAY, WEEK, MONTH, SCHED.
-  const desktopViewLabel = (v) => t({ multi: 'sched.viewMultiShort', day: 'sched.viewDayShort', week: 'sched.viewWeekShort', month: 'sched.viewMonthShort', sched: 'sched.viewSchedShort' }[v]);
+  // The pickers name the views the way the cycler does, from the one shared map.
+  const desktopViewLabel = (v) => t(VIEW_LABEL_KEYS[v]);
   const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
   const formatHour = (hour) => new Intl.DateTimeFormat(locale, {
     hour: 'numeric', hour12: !use24HourClock, timeZone: 'UTC',
@@ -119,6 +119,7 @@ const SettingsModal = () => {
     : (isNativeAndroid() && window.DayGlanceObsidian?.setLaunchOnWrite) ? 'android' : null;
   const {
     habitsEnabled, setHabitsEnabled,
+    joboEnabled, setJoboEnabled,
     routinesEnabled, setRoutinesEnabled,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     aiConfig, setAiConfig, aiSuppressed,
@@ -334,7 +335,7 @@ const SettingsModal = () => {
                             ))}
                           </div>
                         </div>
-                        <ViewToggles scope="desktop" views={canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} />
+                        <ViewToggles scope="desktop" views={offeredViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, { joboEnabled })} label={desktopViewLabel} />
                         {canShowViewCycler && (<>
                         <div>
                           <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.dayViewMode')}</label>
@@ -831,6 +832,34 @@ const SettingsModal = () => {
                         </div>
                         <span className={`text-sm ${textPrimary}`}>{t('settings.enableHabitTracking')}</span>
                       </label>
+                    </div>
+
+                    <hr className={borderClass} />
+
+                    {/* Experimental: features landing in slices, off by default.
+                        The switch is the only thing a regular user ever sees of
+                        them; everything behind it stays absent until it is on. */}
+                    <div className="space-y-3">
+                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                        <FlaskConical size={16} className={textSecondary} />
+                        {t('settings.experimental')}
+                      </h4>
+                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.experimentalHint')}</p>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={joboEnabled}
+                            onChange={(e) => setJoboEnabled(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
+                      </label>
+                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHint')}</p>
                     </div>
 
                     <hr className={borderClass} />

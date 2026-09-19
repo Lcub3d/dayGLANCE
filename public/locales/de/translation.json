@@ -421,6 +421,10 @@
     "enableRoutines": "Routinen aktivieren",
     "habitTracking": "Gewohnheitsverfolgung",
     "enableHabitTracking": "Gewohnheitsverfolgung aktivieren",
+    "experimental": "Experimentell",
+    "experimentalHint": "Funktionen, die noch in Arbeit sind und schrittweise eintreffen. Standardmäßig aus; ohne Einschalten ändert sich nichts.",
+    "enableJobo": "JOBO-Ansicht",
+    "enableJoboHint": "Plan gegen Ist. Eine sechste Ansicht auf Taste 6, die festhält, was gegenüber dem Plan tatsächlich getan wurde.",
     "inbox": "Posteingang",
     "inboxAutoArchive": "Abgeschlossene Posteingangsaufgaben automatisch archivieren",
     "inboxArchiveNever": "Nie",
@@ -1779,6 +1783,7 @@
     "viewDayShort": "TAG",
     "viewWeekShort": "WOCHE",
     "viewSchedShort": "PLAN",
+    "viewJoboShort": "JOBO",
     "filterProject": "Filter: {{project}}",
     "filter": "Filter",
     "filterTasks": "Aufgaben filtern",
@@ -1966,6 +1971,10 @@
     "title": "iCloud-Synchronisierung",
     "onHint": "Ein. Dieses Gerät synchronisiert automatisch mit Ihren anderen Apple-Geräten.",
     "offHint": "Auf diesem Gerät aus. Die iCloud-Kopie und Ihre anderen Geräte sind nicht betroffen."
+  },
+  "jobo": {
+    "title": "JOBO",
+    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt."
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",

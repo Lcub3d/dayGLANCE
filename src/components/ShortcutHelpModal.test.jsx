@@ -21,12 +21,16 @@ const render = async (planner) => renderToStaticMarkup(
     </DayPlannerContext.Provider>
   </I18nextProvider>,
 );
-const keys = (html) => [...html.matchAll(/<kbd[^>]*>([^<]+)<\/kbd>/g)].map((m) => m[1]).filter((k) => /^[1-5C]$/.test(k));
+const keys = (html) => [...html.matchAll(/<kbd[^>]*>([^<]+)<\/kbd>/g)].map((m) => m[1]).filter((k) => /^[1-6C]$/.test(k));
 
 describe('ShortcutHelpModal view keys', () => {
+  // `hiddenViews` here is what the app puts in context: the user's choices with
+  // every experimental view whose flag is off folded in (gateExperimentalViews).
+  // So `['jobo']` is the everyday case and `[]` is JOBO switched on.
   it('lists the keys this width offers, minus views turned off on this device', async () => {
-    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: [] } }))).toEqual(['1', '2', '3', '4', '5', 'C']);
-    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['month', 'day'], mobile: ['month'] } }))).toEqual(['1', '3', '5', 'C']);
+    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['jobo'] } }))).toEqual(['1', '2', '3', '4', '5', 'C']);
+    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: [] } }))).toEqual(['1', '2', '3', '4', '5', '6', 'C']);
+    expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['month', 'day', 'jobo'], mobile: ['month'] } }))).toEqual(['1', '3', '5', 'C']);
     expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: { desktop: ['sched'] } }))).toEqual(['1', '4', 'C']);
     expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: false, hiddenViews: { desktop: [] } }))).toEqual([]);
   });

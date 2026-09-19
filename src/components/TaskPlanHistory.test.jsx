@@ -198,12 +198,12 @@ describe('PlanHistoryPanel — the stops in between', () => {
   // continuation of a list that is not there.
   it('accounts for the slips that fell off the front of the trail', async () => {
     const html = await renderPanel({ ...SLID, deferrals: 9 });
-    expect(html).toContain('7 earlier moves not shown');
+    expect(html).toContain('+7 earlier');
   });
 
   it('claims no missing stops when the trail still holds them all', async () => {
     const html = await renderPanel(SLID);
-    expect(html).not.toContain('earlier move');
+    expect(html).not.toContain('earlier');
   });
 
   // An intermediate stop took no part in the baseline-versus-now diff, so

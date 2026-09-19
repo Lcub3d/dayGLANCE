@@ -781,8 +781,8 @@
     "deferredTimes": "Einmal verschoben",
     "deferredTimes_other": "{{count}}-mal verschoben",
     "movedVia": "Verschoben über",
-    "earlierMoves": "1 frühere Verschiebung nicht angezeigt",
-    "earlierMoves_other": "{{count}} frühere Verschiebungen nicht angezeigt"
+    "earlierMoves": "+1 früher",
+    "earlierMoves_other": "+{{count}} frühere"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

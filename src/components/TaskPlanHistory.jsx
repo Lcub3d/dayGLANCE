@@ -68,16 +68,21 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
             the shape of the slide is the question. Duration is left off — a
             stop records a schedule move, and a resize is not one. */}
         {stops.length > 0 && (<>
-          <div className="opacity-60 mt-1.5 mb-0.5">{t('task.movedVia')}</div>
-          <div className="space-y-0.5">
-            {/* Stands in for the stops that fell off the front of the capped
-                trail, and sits FIRST because those moves happened first. It
-                says "not shown" rather than reading as a continuation: a line
-                beginning "and ..." above the list it precedes looks like the
-                list it belongs to went missing. */}
+          {/* What the cap dropped is said IN the heading rather than on a line
+              of its own. On its own line it was the panel's only italic, set
+              apart from the heading above and the stops below, and read as a
+              fragment with something missing around it — which is exactly what
+              a reader reported. As part of the heading it is what it always
+              was: a qualifier on "moved via", not an entry in the list.
+              Kept to the terse "+N" idiom because it shares one 230px line with
+              the heading, and the longer wording overflowed it in German. */}
+          <div className="opacity-60 mt-1.5 mb-0.5">
+            {t('task.movedVia')}
             {earlier > 0 && (
-              <div className="italic opacity-70">{t('task.earlierMoves', { count: earlier })}</div>
+              <span className="opacity-70"> · {t('task.earlierMoves', { count: earlier })}</span>
             )}
+          </div>
+          <div className="space-y-0.5">
             {stops.map((stop) => (
               <div key={`${stop.at}-${stop.date}-${stop.startTime}`}>
                 {row(stop.date, stop.startTime, undefined, NO_EMPHASIS)}

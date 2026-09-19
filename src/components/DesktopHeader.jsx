@@ -148,6 +148,8 @@ const DesktopHeader = () => {
                 ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, i18n.resolvedLanguage || i18n.language)
                 : effectiveViewMode === 'day'
                 ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, i18n.resolvedLanguage || i18n.language)
+                : effectiveViewMode === 'jobo'
+                ? formatDateRange([selectedDate], t, i18n.resolvedLanguage || i18n.language)
                 : effectiveViewMode === 'week' && weekViewDates.length > 0
                 ? formatDateRange(weekViewDates, t, i18n.resolvedLanguage || i18n.language)
                 : formatDateRange(visibleDates, t, i18n.resolvedLanguage || i18n.language)}

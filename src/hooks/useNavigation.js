@@ -25,7 +25,7 @@ export default function useNavigation({
       setSelectedDate(prev => shiftDateByMonths(prev, direction));
       return;
     }
-    const stride = effectiveViewMode === 'day' ? 1
+    const stride = effectiveViewMode === 'day' || effectiveViewMode === 'jobo' ? 1
       : effectiveViewMode === 'week' || effectiveViewMode === 'sched' ? 7
       : visibleDays;
     setSelectedDate(prev => {

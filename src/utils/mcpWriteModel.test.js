@@ -386,3 +386,186 @@ describe('routine ids are rejected by every write tool', () => {
     expect(r.error.code).toBe('not_found');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Routine COLLISIONS are rejected, not silently adjusted (spec §5.2).
+//
+// Distinct from routine_readonly above: there the caller targeted the routine
+// itself; here it targeted a perfectly ordinary task at a time a routine
+// already occupies. The app's drag-and-drop resolver slides past the routine
+// in that situation, and mirroring that here would be wrong for an agent: a
+// model that asked for 10:00 and got a success reports "scheduled at 10:00",
+// and the shift only surfaces when the user looks at the timeline.
+// ---------------------------------------------------------------------------
+describe('routine collisions are rejected rather than adjusted', () => {
+  const DATE = '2026-08-10';
+  const ROUTINE = { id: 'r1', name: 'Morning pages', startTime: '09:00', duration: 60, isAllDay: false };
+
+  // buildRoutineBlocks only reports routines for today, so the fixture's
+  // notion of "today" has to be the date under test.
+  const withRoutine = (over = {}) => ({
+    tasks: [], unscheduledTasks: [], users: [],
+    routines: [ROUTINE], routinesDate: DATE, routineCompletions: {},
+    routinesEnabled: true, todayDate: DATE,
+    ...over,
+  });
+
+  const expectConflict = (r) => {
+    expect(r.ok).toBe(false);
+    expect(r.error.code).toBe('routine_conflict');
+    // The message has to name what was hit and its span, or the model cannot
+    // re-plan without another round trip.
+    expect(r.error.message).toContain('Morning pages');
+    expect(r.error.message).toContain('09:00-10:00');
+  };
+
+  it('schedule_task into a routine is rejected', () => {
+    const setters = makeSetters();
+    const r = handleMcpWrite(
+      withRoutine({ unscheduledTasks: [{ id: 'u1', title: 'Inbox item', duration: 30 }] }),
+      setters,
+      { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '09:30' } },
+    );
+    expectConflict(r);
+    for (const fn of Object.values(setters)) expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('does not silently shift the task past the routine', () => {
+    // The behaviour explicitly rejected: the app's drop resolver would place
+    // this at 10:00 and report success. A success carrying a different time
+    // than the model asked for is worse than a failure, because nothing
+    // surfaces the difference to the user the model then talks to.
+    const setters = makeSetters();
+    const r = handleMcpWrite(
+      withRoutine({ unscheduledTasks: [{ id: 'u1', title: 'Inbox item', duration: 30 }] }),
+      setters,
+      { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '09:30' } },
+    );
+    // No entity comes back, so there is no placement to misreport, and no
+    // undo descriptor, so nothing reaches the journal.
+    expect(r.ok).toBe(false);
+    expect(r.data).toBeUndefined();
+    expect(r.undo).toBeUndefined();
+    expect(setters.setTasks).not.toHaveBeenCalled();
+    expect(setters.setUnscheduledTasks).not.toHaveBeenCalled();
+  });
+
+  it('create_task with a scheduled start into a routine is rejected', () => {
+    const r = handleMcpWrite(withRoutine(), makeSetters(), {
+      method: 'create_task',
+      params: { taskId: 'new1', title: 'Deep work', schedule: { date: DATE, startTime: '09:15', durationMinutes: 30 } },
+    });
+    expectConflict(r);
+  });
+
+  it('move_block onto a routine is rejected', () => {
+    const r = handleMcpWrite(
+      withRoutine({ tasks: [B({ id: 'b1', date: DATE, startTime: '14:00', duration: 30 })] }),
+      makeSetters(),
+      { method: 'move_block', params: { blockId: 'b1', date: DATE, startTime: '09:30' } },
+    );
+    expectConflict(r);
+  });
+
+  it('resize_block that grows into a routine is rejected', () => {
+    // 08:00 + 30 clears the 09:00 routine; 08:00 + 120 does not.
+    const state = withRoutine({ tasks: [B({ id: 'b1', date: DATE, startTime: '08:00', duration: 30 })] });
+    expect(handleMcpWrite(state, makeSetters(), {
+      method: 'resize_block', params: { blockId: 'b1', durationMinutes: 45 },
+    }).ok).toBe(true);
+    expectConflict(handleMcpWrite(state, makeSetters(), {
+      method: 'resize_block', params: { blockId: 'b1', durationMinutes: 120 },
+    }));
+  });
+
+  it('allows a placement that merely abuts the routine', () => {
+    // Half-open intervals: ending exactly at 09:00 is not an overlap, and
+    // treating it as one would make back-to-back scheduling impossible.
+    const r = handleMcpWrite(
+      withRoutine({ unscheduledTasks: [{ id: 'u1', title: 'Inbox item', duration: 30 }] }),
+      makeSetters(),
+      { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '08:30' } },
+    );
+    expect(r.ok).toBe(true);
+    const after = handleMcpWrite(
+      withRoutine({ unscheduledTasks: [{ id: 'u2', title: 'Later', duration: 30 }] }),
+      makeSetters(),
+      { method: 'schedule_task', params: { taskId: 'u2', date: DATE, startTime: '10:00' } },
+    );
+    expect(after.ok).toBe(true);
+  });
+
+  it('still allows task-on-task overlap, which users do on purpose', () => {
+    const state = withRoutine({
+      routinesEnabled: false,
+      tasks: [B({ id: 'existing', date: DATE, startTime: '14:00', duration: 60 })],
+      unscheduledTasks: [{ id: 'u1', title: 'Overlapping', duration: 30 }],
+    });
+    const r = handleMcpWrite(state, makeSetters(), {
+      method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '14:15' },
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('does not reject an all-day placement, which occupies no span', () => {
+    const r = handleMcpWrite(withRoutine(), makeSetters(), {
+      method: 'create_task',
+      params: { taskId: 'n1', title: 'All day', schedule: { date: DATE, startTime: '09:30', durationMinutes: 30, allDay: true } },
+    });
+    expect(r.ok).toBe(true);
+  });
+
+  it('does not reject when routines are disabled', () => {
+    const r = handleMcpWrite(
+      withRoutine({ routinesEnabled: false, unscheduledTasks: [{ id: 'u1', title: 'x', duration: 30 }] }),
+      makeSetters(),
+      { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '09:30' } },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it('does not reject on a date the routines do not belong to', () => {
+    const r = handleMcpWrite(
+      withRoutine({ unscheduledTasks: [{ id: 'u1', title: 'x', duration: 30 }] }),
+      makeSetters(),
+      { method: 'schedule_task', params: { taskId: 'u1', date: '2026-08-11', startTime: '09:30' } },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it('never rejects a REPLAY, even if a routine now covers the time', () => {
+    // Idempotency outranks the conflict check: the write already landed, and
+    // failing the retry would make a crashed agent believe its own successful
+    // write never happened. Each guard sits after its replay branch.
+    const already = B({ id: 'b1', date: DATE, startTime: '09:30', duration: 30, transitionId: 'k1' });
+    const move = handleMcpWrite(withRoutine({ tasks: [already] }), makeSetters(), {
+      method: 'move_block', params: { blockId: 'b1', date: DATE, startTime: '09:30', transitionId: 'k1' },
+    });
+    expect(move.ok).toBe(true);
+    expect(move.data.replayed).toBe(true);
+
+    const resize = handleMcpWrite(withRoutine({ tasks: [already] }), makeSetters(), {
+      method: 'resize_block', params: { blockId: 'b1', durationMinutes: 30, transitionId: 'k1' },
+    });
+    expect(resize.data.replayed).toBe(true);
+
+    const create = handleMcpWrite(
+      withRoutine({ tasks: [B({ id: 'dup', date: DATE, startTime: '09:30', duration: 30 })] }),
+      makeSetters(),
+      { method: 'create_task', params: { taskId: 'dup', title: 'x', schedule: { date: DATE, startTime: '09:30', durationMinutes: 30 } } },
+    );
+    expect(create.data.replayed).toBe(true);
+  });
+
+  it('ignores an unplaced routine, which occupies no time', () => {
+    const r = handleMcpWrite(
+      withRoutine({
+        routines: [{ id: 'r9', name: 'Unplaced', startTime: null, isAllDay: true }],
+        unscheduledTasks: [{ id: 'u1', title: 'x', duration: 30 }],
+      }),
+      makeSetters(),
+      { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '09:30' } },
+    );
+    expect(r.ok).toBe(true);
+  });
+});

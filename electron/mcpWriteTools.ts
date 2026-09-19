@@ -102,6 +102,17 @@ const CANNOT_MODIFY_NATIVE =
   ' Cannot target device calendar events (type "device_calendar_event"): dayGLANCE has read-only ' +
   'access to the device calendar, and such calls return a device_calendar_readonly error.';
 
+// Stated in the description for the same reason as CANNOT_MODIFY_NATIVE: the
+// model should know the rule before it spends a call discovering it. The
+// "will not shift it for you" half matters most: the app's own drag-and-drop
+// slides past a routine, so a model reasoning from how dayGLANCE behaves in
+// the UI would otherwise expect an adjustment rather than a refusal.
+const ROUTINE_TIME_IS_OCCUPIED =
+  ' Time covered by a routine block (type "routine") is occupied and cannot be scheduled over: such ' +
+  'calls return a routine_conflict error naming the routine and its span. dayGLANCE will NOT silently ' +
+  'shift your task to the next free time, so pick a time that does not overlap. Use dayglance_get_day ' +
+  'or dayglance_get_today first to see which parts of the day routines already hold.';
+
 /** "YYYY-MM-DD HH:MM", both halves validated separately for precise §5.3 errors. */
 function parseStart(start: unknown, timeZone: string): { date: string; time: string } | { invalid: string } {
   if (typeof start !== 'string' || !/^\S+ \S+$/.test(start)) {
@@ -234,7 +245,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       description:
         'Create a new dayGLANCE task. Without start: an unscheduled inbox task (may carry priority and ' +
         'deadline). With start: a scheduled task placed directly onto the calendar in one call, with no separate ' +
-        'scheduling step. Returns the created task or block.',
+        'scheduling step. Returns the created task or block.' + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: createTaskSchema,
     },
     async (args: Record<string, unknown>) => {
@@ -305,7 +316,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         'Schedule an unscheduled dayGLANCE inbox task onto a day and time. start is local: ' +
         '"YYYY-MM-DD HH:MM", no UTC, no offsets. Returns the resulting block. If the inbox task ' +
         'carried a priority or deadline, scheduling drops them BY DESIGN and the response lists ' +
-        'them in dropped_fields. Tell the user rather than treating it as an error.' + CANNOT_MODIFY_NATIVE,
+        'them in dropped_fields. Tell the user rather than treating it as an error.' + CANNOT_MODIFY_NATIVE + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: z.object({
         task_id: z.string(),
         start: z.string().describe('Local "YYYY-MM-DD HH:MM". Times inside a DST gap or repeat are rejected.'),
@@ -333,7 +344,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     {
       description:
         'Move a scheduled dayGLANCE block to a new local start: new_start is "YYYY-MM-DD HH:MM" ' +
-        '(same or different day). Returns the resulting block.' + CANNOT_MODIFY_NATIVE,
+        '(same or different day). Returns the resulting block.' + CANNOT_MODIFY_NATIVE + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: z.object({
         block_id: z.string(),
         new_start: z.string().describe('Local "YYYY-MM-DD HH:MM". Times inside a DST gap or repeat are rejected.'),
@@ -356,7 +367,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     {
       description:
         'Change the duration of a scheduled dayGLANCE block without moving its start. ' +
-        'Returns the resulting block.' + CANNOT_MODIFY_NATIVE,
+        'Returns the resulting block.' + CANNOT_MODIFY_NATIVE + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: z.object({
         block_id: z.string(),
         duration_minutes: z.number().int().describe('New duration, 1-1440 minutes.'),

@@ -277,13 +277,19 @@ Resource subscriptions are technically straightforward given the existing store 
 
 ---
 
-### 5.5 Known limitation: routine occupancy is read-only, and writes do not consult it
+### 5.5 Routine occupancy on write: reject, never adjust
 
-`schedule_task`, `move_block`, and `resize_block` do **not** check whether the time they are writing to is covered by a routine. A model that reads first and then writes will now schedule around routines correctly, because `get_day` reports them. A model that writes blind can still land a task on top of one.
+`create_task` (with a start), `schedule_task`, `move_block`, and `resize_block` all check whether the time they are writing to is covered by a routine, and refuse with a typed `routine_conflict` error naming the routine and its span.
 
-This is a scoped decision, not an oversight. Closing the read gap and closing the write gap are different changes: the read gap is a reporting bug (the server said "free" about time that was occupied, which is false), while consulting routine occupancy on write is a behaviour change to the write surface, with its own questions the read change does not raise: whether a collision is a hard rejection or an adjustment, whether it matches the in-app conflict resolver at `App.jsx` (which already treats routines as obstacles, and would be the thing to reuse), and whether it applies when the user has explicitly asked for that time. Those deserve deciding on their own rather than riding along.
+**Why reject rather than slide.** The app's own drag-and-drop resolver slides a dropped task past a routine, and mirroring that here was the alternative on the table. It is the wrong behaviour for an agent. A model that asked for 10:00 and received a success will tell the user "scheduled at 10:00"; the silent twenty-minute shift then surfaces only when the user next looks at the timeline, and by then the model's account of what it did is wrong. A human dragging a block watches it land somewhere else and takes the adjustment as feedback. A model has no such channel, so the adjustment has to be an error it can read.
 
-The asymmetry is deliberate and bounded: reading is where the falsehood was, and a read-then-write agent is the normal case. If blind writes onto routines turn out to happen in practice, the fix is to extend the write validators against the same `buildRoutineBlocks` output the read path already produces.
+**Why routines and not general overlap.** Task-on-task overlap stays legal, exactly as in the UI: users double-book on purpose and the timeline renders conflict columns for it. A routine is different in kind, because the write surface cannot move it (§5.2). A caller that lands on a routine has no recovery from either side, and the user is left with two things claiming the same minutes and no gesture that separates them.
+
+**No force flag, deliberately.** The app offers no gesture that drops a task onto a routine either, so an escape hatch here would make the agent surface more permissive than the UI it stands in for. If a user genuinely wants to double-book a routine, that is a request to change what routines mean, not a parameter.
+
+**Ordering against idempotency.** Each conflict check sits AFTER its replay branch. A retried write that already landed must stay a no-op replay even if a routine has since been placed over the time, because failing the retry would tell a crashed agent that its own successful write never happened.
+
+Half-open intervals throughout: a task ending exactly when a routine starts does not conflict, or back-to-back scheduling would be impossible. All-day placements never conflict, having no span.
 
 ## 6. Consent and privacy model
 

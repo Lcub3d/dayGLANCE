@@ -22,8 +22,9 @@
 // times would otherwise carry thirty records forever, on every device, through
 // every sync. The count keeps rising after the trail stops growing, which is
 // exactly why `deferrals` is not derived from `trail.length`: the number stays
-// true while the detail is necessarily partial, and the panel can say "showing
-// the last 6 of 30" because it has both.
+// true while the detail is necessarily partial. The panel says so by labelling
+// the stops RECENT and leaving the total to the count, rather than printing the
+// arithmetic between them.
 
 import { isDeferral } from './deferrals.js';
 
@@ -150,19 +151,4 @@ export function intermediatePlans(task) {
   const last = trail[trail.length - 1];
   const atCurrent = last.date === task.date && last.startTime === task.startTime;
   return atCurrent ? trail.slice(0, -1) : trail;
-}
-
-/**
- * How many slips happened before the ones the trail still holds.
- *
- * Measured against the count, which is uncapped, rather than against the trail,
- * which is not — that is the whole reason both exist. Every RECORDED stop is on
- * screen somewhere (the last one as "now scheduled", the rest as intermediates),
- * so the gap is the count minus the trail's length, not minus the intermediates.
- *
- * Never negative: a union can briefly leave the trail longer than a count that
- * has not merged yet.
- */
-export function hiddenStops(task) {
-  return Math.max(0, (Number(task?.deferrals) || 0) - clean(task?.planTrail).length);
 }

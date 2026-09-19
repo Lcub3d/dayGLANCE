@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { planHistory } from '../utils/originalPlan.js';
-import { intermediatePlans, hiddenStops } from '../utils/planTrail.js';
+import { intermediatePlans } from '../utils/planTrail.js';
 import { formatShortDate } from '../utils/taskUtils.js';
 import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -33,7 +33,6 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
   const { plan, changed } = history ?? { plan: null, changed: {} };
   const deferrals = Number(task?.deferrals) || 0;
   const stops = intermediatePlans(task);
-  const earlier = hiddenStops(task);
 
   // A changed value is stated plainly; an unchanged one is dimmed, so the eye
   // lands on what actually moved rather than on three values of equal weight.
@@ -68,20 +67,14 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
             the shape of the slide is the question. Duration is left off — a
             stop records a schedule move, and a resize is not one. */}
         {stops.length > 0 && (<>
-          {/* What the cap dropped is said IN the heading rather than on a line
-              of its own. On its own line it was the panel's only italic, set
-              apart from the heading above and the stops below, and read as a
-              fragment with something missing around it — which is exactly what
-              a reader reported. As part of the heading it is what it always
-              was: a qualifier on "moved via", not an entry in the list.
-              Kept to the terse "+N" idiom because it shares one 230px line with
-              the heading, and the longer wording overflowed it in German. */}
-          <div className="opacity-60 mt-1.5 mb-0.5">
-            {t('task.movedVia')}
-            {earlier > 0 && (
-              <span className="opacity-70"> · {t('task.earlierMoves', { count: earlier })}</span>
-            )}
-          </div>
+          {/* "Recent" rather than a complete-sounding heading with a caveat
+              hung off it. The trail is capped at six stops, and an earlier
+              version said so in the panel — which put a line there to explain a
+              storage decision, on the rare task that has slipped seven times,
+              in a panel whose last line already gives the true total. Saying
+              "recent" is accurate whether or not anything was dropped and needs
+              nothing else to hold it up. */}
+          <div className="opacity-60 mt-1.5 mb-0.5">{t('task.movedVia')}</div>
           <div className="space-y-0.5">
             {stops.map((stop) => (
               <div key={`${stop.at}-${stop.date}-${stop.startTime}`}>

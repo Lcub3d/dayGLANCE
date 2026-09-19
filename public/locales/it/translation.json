@@ -780,9 +780,7 @@
     "unscheduledHint": "(aggiungi alla scheda del progetto, senza data/ora)",
     "deferredTimes": "Rinviata una volta",
     "deferredTimes_other": "Rinviata {{count}} volte",
-    "movedVia": "Spostato via",
-    "earlierMoves": "+1 precedente",
-    "earlierMoves_other": "+{{count}} precedenti"
+    "movedVia": "Spostamenti recenti"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

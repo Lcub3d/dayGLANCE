@@ -780,9 +780,7 @@
     "unscheduledHint": "(zur Projektkarte hinzufügen, ohne Datum/Uhrzeit)",
     "deferredTimes": "Einmal verschoben",
     "deferredTimes_other": "{{count}}-mal verschoben",
-    "movedVia": "Verschoben über",
-    "earlierMoves": "+1 früher",
-    "earlierMoves_other": "+{{count}} frühere"
+    "movedVia": "Letzte Verschiebungen"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}",

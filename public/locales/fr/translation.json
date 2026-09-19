@@ -780,9 +780,7 @@
     "unscheduledHint": "(ajouter à la carte du projet, sans date ni heure)",
     "deferredTimes": "Reportée une fois",
     "deferredTimes_other": "Reportée {{count}} fois",
-    "movedVia": "Déplacé par",
-    "earlierMoves": "+1 antérieur",
-    "earlierMoves_other": "+{{count}} antérieurs"
+    "movedVia": "Déplacements récents"
   },
   "recurrence": {
     "ordinal_ordinal_one": "{{count}}er",

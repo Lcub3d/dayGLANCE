@@ -177,7 +177,7 @@ describe('PlanHistoryPanel — the stops in between', () => {
 
   it('lists the schedules the task passed through', async () => {
     const html = await renderPanel(SLID);
-    expect(html).toContain('Moved via');
+    expect(html).toContain('Recent moves');
     expect(html).toContain('11:00');
   });
 
@@ -189,21 +189,18 @@ describe('PlanHistoryPanel — the stops in between', () => {
 
   it('says nothing about stops when there are none to show', async () => {
     const html = await renderPanel({ id: 't1', ...PLANNED, startTime: '16:00', originalPlan: PLANNED });
-    expect(html).not.toContain('Moved via');
+    expect(html).not.toContain('Recent moves');
   });
 
-  // The trail is capped and the count is not, which is exactly why both exist.
-  // The wording matters as much as the number: this line sits ABOVE the stops it
-  // precedes, so it has to read as a note about what is missing rather than as a
-  // continuation of a list that is not there.
-  it('accounts for the slips that fell off the front of the trail', async () => {
+  // The trail is capped at six, so the heading says RECENT rather than claiming
+  // the list is everything. The total lives on the count line at the foot of the
+  // panel; an earlier version printed the arithmetic between the two and read as
+  // a fragment with something missing around it.
+  it('does not print the arithmetic between the trail and the count', async () => {
     const html = await renderPanel({ ...SLID, deferrals: 9 });
-    expect(html).toContain('+7 earlier');
-  });
-
-  it('claims no missing stops when the trail still holds them all', async () => {
-    const html = await renderPanel(SLID);
-    expect(html).not.toContain('earlier');
+    expect(html).toContain('Recent moves');
+    expect(html).toContain('Deferred 9 times');
+    expect(html).not.toMatch(/\b7\b/);
   });
 
   // An intermediate stop took no part in the baseline-versus-now diff, so

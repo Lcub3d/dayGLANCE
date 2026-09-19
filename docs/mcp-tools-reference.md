@@ -68,6 +68,25 @@ carries a `type`. All of them occupy the time they cover.
 
 Branch on `read_only` rather than on `type`: more than one type carries it, and more may later.
 
+**Frames are not blocks.** `dayglance_get_today`, `dayglance_get_day`, and the schedule resources
+also return a `frames` array beside `blocks`. A block is work ON the day; a frame is a window the
+user set aside FOR a kind of work, so it is reported separately and never appears in `blocks`.
+
+| Field | Meaning |
+|---|---|
+| `id` | `frame-<id>-<date>`: a frame recurs, so the id names the instance |
+| `start` / `end` | the window itself |
+| `available_slots` | free gaps, **already net** of tasks, routines, elapsed time (today), and the frame's buffer |
+| `available_minutes` | the sum of those slots |
+| `tag_affinity` | the `#tags` this window is meant for |
+| `energy_level` | `low` / `medium` / `high`, as the user set it |
+| `buffer_minutes` | breathing room kept around each occupied stretch |
+| `read_only` | always true; frames are edited in the app |
+
+Do **not** subtract `blocks` from a frame yourself: `available_slots` has already done it, with the
+buffer applied, and re-subtracting double-counts. Do your own matching against `tag_affinity`:
+dayGLANCE reports the tags and filters nothing on your behalf.
+
 An unplaced routine (chosen for today but never given a time) reports `all_day: true` with
 `start_time` and `duration_minutes` both `null`: it is on the day but occupies no part of it.
 

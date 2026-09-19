@@ -291,6 +291,22 @@ Resource subscriptions are technically straightforward given the existing store 
 
 Half-open intervals throughout: a task ending exactly when a routine starts does not conflict, or back-to-back scheduling would be impossible. All-day placements never conflict, having no span.
 
+### 5.6 Frames on the read surface
+
+`get_day`, `get_today`, and both schedule resources return a `frames` array beside `blocks`.
+
+**Beside, not inside.** A block is work on the day; a frame is a window set aside for a kind of work. Folding frames into `blocks` would make every existing caller that iterates blocks start treating windows as work, and the useful part of a frame is not the window but what is still empty in it.
+
+**Availability is computed, not left to the caller.** Each frame carries `available_slots` and `available_minutes`, already net of tasks, routines, today's elapsed time, and the frame's own buffer. A caller cannot reliably derive this from `blocks`: the buffer merging is non-obvious, and a caller that re-subtracts what it can already see double-counts.
+
+**Affinity is reported, not applied.** `tag_affinity` goes out as data and the model matches candidate tasks itself. A `suggest_tasks_for_frame` tool was the alternative and is deliberately not built: it would bake one ranking rule into the wire protocol, and choosing which open tasks suit a two-hour deep-work window is exactly what a model is good at. `filterFrameScheduleTasks` remains the app's own rule for the app's own modal.
+
+**The task list is unfiltered, unlike the UI's.** In the app, frame availability comes from `getTasksForDate`, which applies the active tag filter by default, so hiding a tag in the sidebar makes the app report more free time than exists. Over MCP that would make an assistant's view of the day depend silently on a view preference it cannot see, so the renderer passes the whole day. The UI behaviour is unchanged; see §5.5's sibling note in `dayOccupancy.js`.
+
+**Device calendar events follow the consent tier.** A `_native` event genuinely occupies a window, but without the calendar tier it is excluded from availability as well as from `blocks`. Counting it either way would leak the shape of the user's calendar: `available_minutes` would shrink around meetings the caller cannot see, and comparing free time against visible blocks would reveal both their existence and their spans. Availability describes exactly the data the tier permits.
+
+Frames are rule-based and resolve for any date, so unlike routines they need no date guard. They are read-only; there are no frame write tools.
+
 ## 6. Consent and privacy model
 
 ### 6.1 The exposure, stated plainly
@@ -317,7 +333,7 @@ Reads are split into **three tiers rather than two** (this closes open question 
 | Tier | Default | Meaning |
 |---|---|---|
 | Off | **Default** | Listener not bound. No port open. |
-| Read: dayGLANCE data only | Opt-in | Scheduled blocks, the unscheduled inbox, goals and projects, and today's routine blocks (read-only, `type: "routine"`). `_native` device calendar events are excluded from every tool and resource. Writes return a consent error. |
+| Read: dayGLANCE data only | Opt-in | Scheduled blocks, the unscheduled inbox, goals and projects, today's routine blocks (read-only, `type: "routine"`), and the day's frames with their free time. `_native` device calendar events are excluded from every tool and resource, AND from frame availability, so free time never reveals a calendar the user has not shared. Writes return a consent error. |
 | Read: include device calendar | **Separate opt-in with its own consent copy** (§6.4) | Adds `_native` events to the read surface, flagged per §5.1. Always read-only — writes to them are rejected with a typed error regardless of the write tier (§5.2). |
 
 **Habits are not exposed, and this row once said they were.** As written in r1 this line read "Tasks, blocks, goals, habits, routines", which was wrong on both of the last two: neither crossed the renderer bridge. Routines were added to the read surface later (§5.1); habits remain out of scope deliberately, being a daily count with no time span, so they cannot affect scheduling. The in-app consent copy never inherited the error and has always described the real surface.

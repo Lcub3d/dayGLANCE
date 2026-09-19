@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { weekWindow, compactHourLabel, clippedCounts, gutterEdge } from '../utils/weekWindow.js';
+import { HOUR_GUTTER_W } from '../constants/timeline.js';
 import * as Icons from 'lucide-react';
 import { Zap } from 'lucide-react';
 import { dateToString } from '../utils/taskUtils.js';
@@ -77,7 +78,7 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
 
 // ── WeekViewColumn ────────────────────────────────────────────────────────────
 
-const WEEK_GUTTER_W = 64; // px — matches the hour-label column width
+const WEEK_GUTTER_W = HOUR_GUTTER_W; // the shared hour-label column (constants/timeline.js)
 
 const fmtDur = (min) => {
   const h = Math.floor(min / 60), m = min % 60;

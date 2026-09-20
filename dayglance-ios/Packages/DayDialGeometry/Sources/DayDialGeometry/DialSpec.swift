@@ -28,6 +28,21 @@ public enum DialSpec {
     public static let tickMinorRadius: Double = 161
     public static let tickMajorWidth: Double = 1.5
     public static let tickMinorWidth: Double = 1.0
+    // White at 30 % (major, round caps) and 13 % (minor).
+    public static let tickMajorOpacity: Double = 0.30
+    public static let tickMinorOpacity: Double = 0.13
+
+    // The ground and the block track: white at 4.5 % beneath the blocks.
+    public static let backgroundHex = "#0b0b0e"
+    public static let trackOpacity: Double = 0.045
+
+    // Hour labels: 10.5pt, weight 500, tracking 1.4, white at 44 %.
+    public static let labelFontSize: Double = 10.5
+    public static let labelTracking: Double = 1.4
+    public static let labelOpacity: Double = 0.44
+
+    // The needle's colour, the only moving element.
+    public static let needleColorHex = "#f5a623"
 
     // Hour labels: cardinals at 172, diagonals pushed out 9pt to clear the
     // ticks (the collision is with the label box's corner, not its centre).
@@ -109,11 +124,67 @@ public enum DialSpec {
     /// list: where the separator cuts go. Exact equality, as the spec's
     /// `nxt.s !== b.e` — a one-minute gap is a gap, not a boundary.
     public static func separatorMinutes(blocks: [DialRingBlock]) -> [Double] {
+        separatorMinutes(spans: blocks.map { (startMin: $0.startMin, endMin: $0.endMin) })
+    }
+
+    /// The same rule over resolved block styles (what the face draws).
+    public static func separatorMinutes(styles: [DialBlockStyle]) -> [Double] {
+        separatorMinutes(spans: styles.map { (startMin: $0.startMin, endMin: $0.endMin) })
+    }
+
+    public static func separatorMinutes(spans: [(startMin: Double, endMin: Double)]) -> [Double] {
         var out: [Double] = []
-        for (i, b) in blocks.enumerated().dropLast() where blocks[i + 1].startMin == b.endMin {
+        for (i, b) in spans.enumerated().dropLast() where spans[i + 1].startMin == b.endMin {
             out.append(b.endMin)
         }
         return out
+    }
+
+    // MARK: Glyphs (handoff §4 "Glyphs"; the spec's sunGlyph / moonGlyph)
+
+    /// A line segment in a glyph's own coordinates (y down, origin at the
+    /// glyph's centre on the ring).
+    public struct GlyphSegment: Equatable {
+        public var x1: Double, y1: Double, x2: Double, y2: Double
+        public init(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
+            self.x1 = x1; self.y1 = y1; self.x2 = x2; self.y2 = y2
+        }
+    }
+
+    /// Sunrise and sunset: a half-disc on a horizon line with three rays,
+    /// plus a chevron — up and above the disc for sunrise, down and below
+    /// the horizon for sunset. Two independent cues, so it still reads if
+    /// one is lost at small size. Drawn upright at `glyphRadius`, translated
+    /// there, never rotated.
+    public enum SunGlyph {
+        public static let sunriseColorHex = "#f5c542"
+        public static let sunsetColorHex = "#f59942"
+        public static let strokeWidth: Double = 1.3
+        public static let strokeOpacity: Double = 0.92
+        public static let horizonOpacity: Double = 0.62
+        public static let discFillOpacity: Double = 0.92
+        public static let rays: [GlyphSegment] = [
+            GlyphSegment(-4.10, 2.13, -5.65, 1.04),
+            GlyphSegment(0, 0, 0, -1.9),
+            GlyphSegment(4.10, 2.13, 5.65, 1.04),
+        ]
+        /// The half-disc: radius 3.4, its flat side on the horizon at y = 5.
+        public static let discRadius: Double = 3.4
+        public static let horizonY: Double = 5
+        public static let horizon = GlyphSegment(-7, 5, 7, 5)
+        /// Three points of the open chevron, in drawing order.
+        public static let sunriseChevron: [DialPoint] = [DialPoint(x: -2.4, y: -3.2), DialPoint(x: 0, y: -5.6), DialPoint(x: 2.4, y: -3.2)]
+        public static let sunsetChevron: [DialPoint] = [DialPoint(x: -2.4, y: 7.0), DialPoint(x: 0, y: 9.4), DialPoint(x: 2.4, y: 7.0)]
+    }
+
+    /// The moon: an outlined circle with the lit fraction filled
+    /// (`MoonPhase.geometry(r: 3.6, …)`), at `sky.moon.glyphMin`.
+    public enum MoonGlyph {
+        public static let colorHex = "#d8d8f0"
+        public static let radius: Double = 3.6
+        public static let strokeWidth: Double = 1.1
+        public static let strokeOpacity: Double = 0.55
+        public static let fillOpacity: Double = 0.85
     }
 
     // MARK: Sky ring

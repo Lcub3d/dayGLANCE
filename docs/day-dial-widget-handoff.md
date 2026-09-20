@@ -1,7 +1,8 @@
 # Day Dial — iOS `systemLarge` widget: handoff
 
-**Status:** design settled, ready to build. iOS only for now.
+**Status:** phases 0–2 landed; hub (3) and timeline (4) next. iOS only for now.
 **Companion files:** `docs/day-dial-widget-spec.html` (reference render, exact geometry),
+`docs/day-dial-palette-study.html` (block band treatment; variant C is what ships),
 `docs/day-dial-widget-feasibility.md` (prior investigation, PR #1665).
 
 The HTML spec is the source of truth for geometry. Its constants are named at the
@@ -32,7 +33,7 @@ Canvas 364×382pt. Centre `(182, 189)`. 24-hour, midnight at top, clockwise.
 | Element | Radius | Width | Notes |
 |---|---|---|---|
 | Sky ring | 119 | 6 | Constant width. 24 hour-aligned segments, butt caps. |
-| Block band | 140 | 22 | Past blocks at 42% of category alpha. |
+| Block band | 140 | 22 | Variant C: sector fill + outer rim per block, toned by state (below). The spec render's solid band and its 42 % past dimming are superseded. |
 | Block track | 140 | 22 | White @ 4.5% beneath the blocks. |
 | Tick ring | 155–166 | 1.5 | 24 major ticks. |
 | Minor ticks | 161–166 | 1.0 | 3 per hour (every 15 min), white @ 13%. |
@@ -50,6 +51,78 @@ Three constraints worth not breaking:
   tick ring by ~4.6pt; at 181 they clear it by 4.4pt.
 - **Needle inner end at 126** leaves a 4pt gap above the sky ring's outer edge
   (122). Anything lower touches it.
+
+### Block band: variant C
+
+Decided in Phase 2 from `docs/day-dial-palette-study.html`. The spec render's
+one-stroke-per-category band at a fixed alpha, past at 42 %, is replaced by
+the app's own treatment reweighted for widget scale: the study's variant C.
+Pure logic in `DayDialGeometry` (`DialPalette.swift`, `DialBand.swift`, vector
+tested in `PaletteTests.swift`); drawn by `DayGlanceWidget/Dial/DialFaceView.swift`.
+
+- **Colour.** `muteDialColor` exactly as `dayDial.js`: hue kept, saturation
+  capped at 0.5, lightness pinned at 0.73. The ten Tailwind hexes the task
+  palette stores are in the vectors with the study's swatch values. Routine
+  `#5eead4` and sleep `#c4b5fd` are fixed, not muted; an unparseable colour
+  falls back to `#93c5fd` raw, as the JS does.
+- **Each block** is an annular sector fill across the 22pt band (its lane's
+  share when blocks overlap, `dialLaneBand`) plus a rim stroke on the OUTER
+  edge, drawn inside the band, butt caps:
+
+  ```
+  t            = min(1, durationMin / 180)
+  fill opacity = min(1, (0.05 + 0.11t) × 3.5 × stateFill)
+  rim width    = 1.5 + 1.0t  pt
+  rim opacity  = min(1, (0.45 + 0.55t) × stateEdge)
+  ```
+
+- **State multipliers** (fill / edge), as `DayDial.jsx`'s `blockTone`.
+  `completed` is read before `past`: a block ticked off early is done now.
+
+  | state | fill | edge |
+  |---|---|---|
+  | future / current | 1.0 | 1.0 |
+  | completed | 0.6 | 0.25 |
+  | past, undone (task) | 0.35 | 1.0 |
+  | past event, or last night's overrun | 0.6 | 0.6 |
+  | sleep | 0.6 | 0.6 |
+  | sleep, past | 0.36 | 0.36 |
+
+- **Routines** are rim only: opacity 0.5, completed 0.18, ABSOLUTE (no
+  duration curve), rim width from `t` as above. No fill.
+- **Separators:** a 1.6pt cut in the background colour where two consecutive
+  blocks touch (§3), drawn last.
+- **Not surviving:** the web dial's blurred glow (§7). Flat fills only.
+
+**Projected days: required rule.** A projected day's completion flags are
+always false, because the state cannot be known. Under the multipliers above
+every past block on such a day would render as "past undone" with a full
+rim, and each morning the widget would mark finished work as unfinished. So
+on a day the resolution tier marks as projected (`WidgetDayTier.projected`),
+every past task and routine takes the past-event tone (0.6 / 0.6; routines
+0.18) regardless of its flag, and completion is not read at all, even on the
+future half. Only the pushed day uses completion. Stale and unknown tiers
+draw as pushed: their flags are the user's own, merely old. Both paths are
+tested (`testProjectedDayNeverMarksPastWorkAsUndone`,
+`testProjectedRuleReachesTheStyledBlocks`).
+
+**Cache key.** Past/future now depends on the time, not only on the
+snapshot: a block changes state when it ends. The cached static face
+(`DialFaceCache`) is keyed on
+
+```
+face-v1 | digest(face input) | <w>x<h>@<scale>  -b<n>
+```
+
+where the face input is exactly what the ring and sky draw (blocks with
+their flags and colours, the 24 sky strengths, sunrise/sunset/moon, the
+tier) and `n` is `DialBand.pastBucket`: the number of blocks whose end is at
+or before the entry's minute. The ended set is a prefix of the blocks in end
+order, so its size names it; the key changes precisely at each distinct end
+minute, 8–12 cold renders on a full day against Phase 0's 28 ms. Digesting
+the face input rather than the raw snapshot means a push that only moved
+goals or the Up Next list leaves the image valid. Old files are pruned on
+each cold render.
 
 ### Hub
 
@@ -134,7 +207,7 @@ widget and the dial cannot disagree about the day's shape. Per block:
 |---|---|
 | `type` | `task` · `event` (read-only imported calendar) · `routine` · `sleep` |
 | `startMin`, `durationMin` | local minutes from midnight; `durationMin` is the **drawn** span, already clipped at midnight — `endsNextDay: true` + `endMinTrue` carry the real end when it was |
-| `completed` | tasks, events, routines. Shipped now even though the ring dims by time alone, so rendering unfinished past blocks differently later is not a second snapshot change |
+| `completed` | tasks, events, routines. Read by the block band's state multipliers on the pushed day only (§2 "Block band"); on a projected day it is always false and is not read |
 | `kind` | `effort` · `restore` — the energy axis, tasks/events only |
 | `colorHex` | tasks/events only; routine and sleep take the widget's fixed colours (spec: `#4ec9b0`, `#6f6f9e`) |
 | `title`, `tag` | display title (no wikilinks, no `#tags`) and the first tag *without* its `#`, on every task/event/routine. On every block, not only the running one: the widget renders a 24-hour timeline from one snapshot, and which block is "current" changes with the entry, not with when the snapshot was pushed |
@@ -266,6 +339,7 @@ web geometry unchanged; sizing is Phase 2 design work, see §7).
 - **The glow does not survive.** The web dial uses `feGaussianBlur`
   (`DayDial.jsx:1225-1227`); there's no cheap `Path` equivalent in a widget. Flat
   fills. The widget will be slightly more austere than the desktop render.
+  Confirmed in Phase 2: the 2.4× halo stroke under the blur is not drawn.
 - **The hub is an HTML overlay, not SVG** (`DayDial.jsx:1363`), so the centre
   stack is new work rather than a port.
 - **Complications are out.** They need ≥520px (`DialComplications.jsx:47`);
@@ -315,18 +389,20 @@ the total is more reliable than any single line below.
 | 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported. **Closed**: cached image chosen on the iPhone 15 run (§6 "Result") |
 | 0b | Dial blocks in the snapshot | 0.5d | `dial` field carries every timed block of the day (§5). **Landed** in the follow-up to #1670. Parallel to Phase 1; gates Phase 2 |
 | 1 | Geometry port | landed | **Landed**: `dayglance-ios/Packages/DayDialGeometry`, pure Foundation, no UI. Its XCTest target loads `TestFixtures/dayDial.vectors.json` and asserts every geometry case; `ios.yml` runs it with `swift test`. Spec radii and rules win where the two dials differ (list below). Palette treatments are seams only (`DialPalette.swift`) — the Phase 2 gate |
-| 2 | Static dial | 3d | Sky ring, ticks, labels, block band, separators, glyphs match the spec render side by side |
+| 2 | Static dial | landed | **Landed**: `DayGlanceWidget/Dial/` — `DialFaceView` (sky ring, glyphs, track, ticks, labels, variant C block band, separators, needle; hub empty), `DialFaceCache` (ImageRenderer → PNG in the App Group, keyed as §2 "Cache key"), `DialFaceInput` (snapshot → what the face draws). Palette and band logic in `DayDialGeometry`, vector tested. To see it on device before Phase 3: `DG_WIDGET_FLAGS="DIAL_PREVIEW" npm run ios`, run on the phone, add the two "Dial Preview" widgets (pushed / projected) and hold them against the study's variant C, Dense |
 | 3 | Hub | 2d | All seven rows correct; a long task title truncates gracefully |
 | 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
 | 4b | Day rollover without the app | landed | **Landed** (day-keyed snapshot, `docs/widget-background-refresh-plan.md` "What landed"): the snapshot carries today+1…today+3 with per-block tags kept, iOS timelines get a midnight entry per day, Android an exact-or-inexact midnight alarm. The dial's Phase 4 timeline must be built from `ResolvedWidgetDay` so the entries after midnight draw tomorrow's `dial` from `days[]`; the projected tier's soft label matters less on the dial than on Up Next (past blocks dim by time, not completion — only the hub is really projecting), so do not over-treat it |
 | 5 | States + ship | 2–3d | Placeholder, empty day, no current task, rollover, DST, `widgetURL`, Lora bundled |
 
-**Phases 0 and 0b are done.** The cached-image path won (§6 "Result"), so
-phase 2 is a single `ImageRenderer` pass over the static face and phase 4 is
-the needle, the past-dimming sector and reload debouncing on top of a cached
-PNG; neither inherits render-budget pressure. Phase 1 is next. The spike
-stays in the tree behind `DIAL_SPIKE` until phase 2 replaces it with the real
-face; nothing else should be built on it.
+**Phases 0, 0b, 1 and 2 are done.** The cached-image path won (§6 "Result");
+phase 2 is the `ImageRenderer` pass over the static face, and phase 4 is the
+needle per entry, the timeline built from `ResolvedWidgetDay`, and reload
+debouncing on top of the cached PNG. There is no past-dimming sector any
+more: variant C tones each block by state, so the cache key carries the
+ended-block bucket instead (§2 "Cache key"). The spike (`DIAL_SPIKE`) is still
+in the tree for measurement; the preview widgets (`DIAL_PREVIEW`) are what to
+look at, and Phase 4 retires the spike once the real timeline exists.
 
 **Phase 4b was a gate, found late, and is closed.** Only the WebView writes
 widget content, so every shipping widget held yesterday's data after a night
@@ -339,8 +415,10 @@ opened yet:
   day genuinely starts empty, so a projected dial has no routine bars until
   the app opens that day. That is honest, not a bug; the soft "Planned as of"
   label covers it and nothing should try to synthesise them.
-- **No completions, no habit counts, no overdue carry.** Past blocks on the
-  dial dim by time, so the ring is right regardless; only the hub's
+- **No completions, no habit counts, no overdue carry.** The block band
+  reads completion on the pushed day only; on a projected day every past
+  block takes the past-event tone (§2 "Block band", the projected-day rule),
+  so the ring never claims a finished block was left undone. Only the hub's
   done/remaining phrasing is a projection.
 - **Per-block tags and project references are kept** at full richness, so
   the hub names each block and its tag as it becomes current.
@@ -358,7 +436,7 @@ Found while porting; each is named in the Swift where it applies.
 | Tick schedule | 288 ticks every 5 min: hour / quarter / minor (`dialTicks`) | 96: major on the hour, minor at 15 min, nothing finer. `DialTicks.schedule(stepMinutes:)` yields both; `DialSpec.ticks` is the spec's |
 | Hour labels | 8, every 3 h; one hides within 30 min of a sun glyph (`dialLabelYieldsToSun`) | 6, no `06`/`18`; cardinals at 172, diagonals at 181; glyphs sit at 104 so nothing yields |
 | Block edges | each arc padded by up to 3 min per side, yielding on slivers (`padDialSegment`) | exact spans, 1.6pt separator cut where two blocks touch (§3). `DialSegments.pad` is ported for the vectors; `DialSpec.separatorMinutes` is the spec's rule |
-| Block fill | per-task colour muted into one pastel family, intensity by duration, state multipliers | one stroke per category at a fixed alpha, past at 42 %. **Open** — protocols only in `DialPalette.swift` |
+| Block fill | per-task colour muted into one pastel family, intensity by duration, state multipliers, a blurred glow | **Decided for the app's treatment**, variant C (§2 "Block band"): the same mute, curve and multipliers, fills ×3.5 and the rim given a 1.5pt floor for widget scale, no glow, plus the projected-day rule the app never needed. The spec render's solid band is superseded |
 | Canvas | 1000-unit viewBox, ring 300–385 | 364×382pt, block band 129–151 at 140 |
 
 Nothing in the vectors contradicts the spec: the geometry functions are

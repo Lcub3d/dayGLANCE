@@ -24,6 +24,14 @@ public enum DialGeometry {
         (minutes / dayMinutes) * 2 * Double.pi
     }
 
+    /// The same angle as a y-down canvas measures it — from the +x axis,
+    /// clockwise positive — which is what CoreGraphics and SwiftUI `addArc`
+    /// take: `angle(minutes:) - π/2`. Midnight is straight up (-π/2), 06:00
+    /// is 0, 12:00 is +π/2. Here so the view layer does no angle arithmetic.
+    public static func canvasAngle(minutes: Double) -> Double {
+        angle(minutes: minutes) - Double.pi / 2
+    }
+
     /// Point at radius `r` for a minute-of-day around (cx, cy).
     public static func point(cx: Double, cy: Double, r: Double, minutes: Double) -> DialPoint {
         let a = angle(minutes: minutes)

@@ -161,7 +161,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       return admission.reason === 'writes_disabled'
         ? toolError(
             'writes_disabled',
-            'MCP writes have been automatically disabled after repeated rate-limit violations. The user must re-enable them (restart dayGLANCE in Phase 3).',
+            'MCP writes have been automatically disabled after repeated rate-limit violations. The user must re-enable them by restarting dayGLANCE.',
           )
         : toolError(
             'rate_limited',

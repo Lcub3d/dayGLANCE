@@ -30,7 +30,7 @@
 //   git status --porcelain screenshots/ | awk '{print $2}' \
 //     | grep -v 'day-dial.png$' | xargs -r git checkout --
 //
-// Output: screenshots/*.png (the 16 reproducible README images)
+// Output: screenshots/*.png (the 17 reproducible README images)
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -184,13 +184,67 @@ for (const [name, dark, size] of [
   } catch (e) { fail(name, e); }
 }
 
-// ---------- Widescreen view cycler: MULTI / DAY / WEEK (needs >=1600px wide) ----------
-for (const view of ['multi', 'day', 'week']) {
+// Surrounding work for the WEEK and MONTH captures.
+//
+// The shared seed is a single lived-in DAY (today plus a little of tomorrow),
+// which is right for the day-scale views and leaves the calendar-scale ones
+// mostly empty: WEEK showed two populated columns out of seven, and MONTH
+// would show 28 blank cells around one busy Thursday. Same reasoning as the
+// Day Dial's inline seeding below: data that exists to make one view legible
+// belongs with that view rather than in the shared persona, which every other
+// capture depends on staying exactly as it is.
+//
+// Nothing here is overdue. Every past day is completed and every future day is
+// simply scheduled, so the capture shows a month of work rather than a backlog.
+// The titles and colours are the persona's own, so the grid reads as the same
+// person's month as the day the other screenshots show.
+const CALENDAR_FILL = `(() => {
+  const P = (n) => String(n).padStart(2, '0');
+  const DAY = [
+    ['Morning routine & coffee #health', '08:00', 30, 'bg-teal-500'],
+    ['Review pull requests #work', '08:30', 60, 'bg-blue-500'],
+    ['Write API documentation #work', '11:00', 90, 'bg-indigo-500'],
+    ['Lunch & walk #health', '12:30', 60, 'bg-green-500'],
+    ['Deep work: billing integration #work', '14:00', 90, 'bg-red-500'],
+    ['Reply to community Discord questions #admin', '16:00', 30, 'bg-purple-500'],
+    ['End-of-day review & plan tomorrow #admin', '17:00', 30, 'bg-yellow-500'],
+  ];
+  const WEEKEND = [['Grocery run #personal', '10:00', 45, 'bg-green-500']];
+  const EXTRA = ['Client check-in call #work', '10:00', 45, 'bg-orange-500'];
+
+  const tasks = JSON.parse(localStorage.getItem('day-planner-tasks') || '[]');
+  let n = 0;
+  for (let d = 1; d <= 31; d += 1) {
+    // The seed owns Jul 2 and Jul 3; leave them exactly as they are.
+    if (d === 2 || d === 3) continue;
+    const date = '2026-07-' + P(d);
+    const dow = new Date(2026, 6, d).getDay();
+    const past = d < 2;
+    const pool = (dow === 0 || dow === 6)
+      ? WEEKEND
+      : DAY.slice(0, 4 + (d % 4)).concat(d % 3 === 0 ? [EXTRA] : []);
+    for (const [title, startTime, duration, color] of pool) {
+      tasks.push({
+        id: 'month-' + (++n), title, date, startTime, duration, color,
+        completed: past, isAllDay: false, lastModified: new Date().toISOString(),
+        ...(past ? { completedAt: date + 'T18:00:00.000Z' } : {}),
+      });
+    }
+  }
+  localStorage.setItem('day-planner-tasks', JSON.stringify(tasks));
+})();`;
+
+// WEEK and MONTH are the calendar-scale views: both need more than one day of
+// data to show what they are for.
+const CALENDAR_VIEWS = new Set(['week', 'month']);
+
+// ---------- Widescreen view cycler: MULTI / DAY / WEEK / MONTH (needs >=1600px wide) ----------
+for (const view of ['multi', 'day', 'week', 'month']) {
   const name = `desktop-${view}`;
   try {
     const { ctx, p } = await page({
       w: 1680, h: 980, dsf: 2, mobile: false, dark: true,
-      extra: `localStorage.setItem('day-planner-default-view', ${JSON.stringify(JSON.stringify(view))}); localStorage.setItem('day-planner-view-mode', ${JSON.stringify(JSON.stringify(view))});`,
+      extra: `localStorage.setItem('day-planner-default-view', ${JSON.stringify(JSON.stringify(view))}); localStorage.setItem('day-planner-view-mode', ${JSON.stringify(JSON.stringify(view))}); ${CALENDAR_VIEWS.has(view) ? CALENDAR_FILL : ''}`,
     });
     await save(p, name); ok(name);
     await ctx.close();

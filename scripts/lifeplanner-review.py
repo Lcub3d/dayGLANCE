@@ -42,7 +42,7 @@ def read_doc(page):
 def wait_count(page, collection, count):
     # Web Locks make commits asynchronous; wait for the durable document,
     # rather than assuming the click event is itself a completed save.
-    page.wait_for_function('([key,collection,count]) => JSON.parse(localStorage.getItem(key))[collection].length === count', arg=[KEY,collection,count])
+    page.wait_for_function('([key,collection,count]) => JSON.parse(localStorage.getItem(key))?.[collection]?.length === count', arg=[KEY,collection,count])
 
 
 def set_checkbox(locator, checked):
@@ -106,234 +106,301 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
     return context, page
 
 
-def add_wish(page, text='出版自己的代表作品'):
-    root = page.locator('[data-lifeplanner]')
-    root.get_by_role('textbox', name='写下一件你真正想实现的事……', exact=True).fill(text)
-    root.get_by_role('button', name='添加愿望', exact=True).click()
-    expect(root.get_by_role('button', name='编辑 · 人生愿望', exact=True).filter(has_text=text)).to_be_visible()
+def add_wish(page, text='出版一本自己的书'):
+    before=len((read_doc(page) or {}).get('wishes',[]))
+    field=page.get_by_label('空白愿望行 1',exact=True)
+    field.fill(text);field.press('Enter');wait_count(page,'wishes',before+1)
+    return read_doc(page)['wishes'][-1]['id']
 
 
-def open_vision(page, title='出版2本书'):
-    root = page.locator('[data-lifeplanner]')
-    root.get_by_role('button', name='添加五年愿景', exact=True).first.click()
-    sheet = page.locator('[data-life-vision]')
-    sheet.get_by_label('可衡量的愿景', exact=True).fill(title)
-    sheet.get_by_label('规划起点', exact=True).fill('2026-09-20')
+def root(page):
+    return page.locator('[data-lifeplanner]')
+
+
+def note(page):
+    return page.locator('form.lp-vision-sheet')
+
+
+def open_vision(page, title='出版2本书，3年内'):
+    root(page).locator('.lp-add-vision').first.click()
+    sheet=note(page)
+    sheet.get_by_label('可衡量的愿景',exact=True).fill(title)
+    sheet.get_by_label('现状值',exact=True).click()
     return sheet
 
 
-def save_vision(sheet):
-    sheet.get_by_role('button', name='保存', exact=True).click()
-    expect(sheet).not_to_be_visible()
+def save_vision(page):
+    sheet=note(page);sheet.get_by_role('button',name='保存',exact=True).click();expect(sheet).not_to_be_visible()
+
+
+def wait_idle(page):
+    page.wait_for_function("""() => !document.querySelector('[data-lifeplanner] [aria-busy="true"]') &&
+        ![...document.querySelectorAll('.lp-paper-footer')].some(el=>el.textContent.includes('正在保存'))""")
 
 
 def no_overflow(page):
-    require(page.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), 'Page has horizontal overflow')
-    root = page.locator('[data-lifeplanner]')
-    require(root.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'), 'Workspace has horizontal overflow')
+    require(page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),'Viewport overflow')
+    require(root(page).evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'),'Workspace overflow')
+
+
+def simulate_external(page, code):
+    page.evaluate("""([key,code])=>{const oldValue=localStorage.getItem(key),doc=JSON.parse(oldValue);
+      (new Function('doc',code))(doc); doc.revision++; const newValue=JSON.stringify(doc);
+      localStorage.setItem(key,newValue);window.dispatchEvent(new StorageEvent('storage',{key,oldValue,newValue,storageArea:localStorage}));}""",[KEY,code])
+
+
+def mouse_move_row(page, source, target, after=True):
+    source.hover()
+    handle=source.locator('.lp-block-handle').first
+    b=handle.bounding_box();destination=target.bounding_box()
+    page.mouse.move(b['x']+b['width']/2,b['y']+b['height']/2);page.mouse.down()
+    page.mouse.move(destination['x']+destination['width']/2,destination['y']+destination['height']*(.8 if after else .2),steps=14)
+    page.wait_for_timeout(80);page.mouse.up();wait_idle(page)
 
 
 with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(**({'executable_path': os.environ['CHROMIUM_EXECUTABLE']} if os.environ.get('CHROMIUM_EXECUTABLE') else {}))
-    context, page = profile(browser)
-    page.on('dialog', lambda dialog: dialog.accept())
-    original_native = native_snapshot(page)
+    browser=playwright.chromium.launch(**({'executable_path':os.environ['CHROMIUM_EXECUTABLE']} if os.environ.get('CHROMIUM_EXECUTABLE') else {}))
+    context,page=profile(browser)
+    page.on('dialog',lambda dialog:dialog.accept())
+    original_native=native_snapshot(page)
 
-    def empty_and_entry():
-        require(page.locator('[data-life-wish]').count() == 0, 'Must not prepopulate personal wishes')
-        expect(page.get_by_role('heading', name='100个人生愿望', exact=True)).to_be_visible()
-        expect(page.get_by_role('heading', name='格言（人生原则）', exact=True)).to_be_visible()
-        require(page.locator('[data-life-principle]').count() == 5, 'Workbook default principles missing')
-        require(page.locator('[data-life-guide]').count() == 0, 'Guidance must start collapsed')
-        require(page.locator('.lp-guide-button').evaluate('(el)=>getComputedStyle(el).backgroundColor') == 'rgb(254, 139, 0)', 'Guide button must use GLANCE brand')
-        no_overflow(page)
-        page.screenshot(path=str(OUT / 'desktop-empty.png'))
-    check('empty workspace, native brand and collapsed guidance', empty_and_entry, page)
+    def empty_notebook():
+        expect(root(page)).to_have_attribute('data-notebook-mode','notebook')
+        expect(root(page).get_by_role('heading',name='人生愿望清单',exact=True)).to_be_visible()
+        expect(root(page).get_by_role('heading',name='座右铭',exact=True)).to_be_visible()
+        expect(root(page).get_by_role('button',name='展开规划助手',exact=True)).to_contain_text('Planning Assistant')
+        require(root(page).locator('[data-life-wish]').count()==0,'Fabricated wishes')
+        require(root(page).locator('[data-life-principle]').count()==5,'Lost existing default mottos')
+        require(root(page).locator('[data-life-blank]').count()==8,'Blank ruled lines missing')
+        require(root(page).locator('[data-life-guide]').count()==0,'Assistant must start off')
+        require(root(page).locator('svg.lucide-arrow-up,svg.lucide-arrow-down').count()==0,'Up/down controls still visible')
+        no_overflow(page);page.screenshot(path=str(OUT/'notebook-empty.png'))
+    check('quiet ruled notebook, renamed headings, no fabricated wishes or move buttons',empty_notebook,page)
 
-    def purpose_and_star():
+    def assistant_view():
+        before=read_doc(page)
+        root(page).get_by_role('button',name='展开规划助手',exact=True).click()
+        expect(root(page)).to_have_attribute('data-notebook-mode','assistant')
+        require(root(page).locator('[data-life-category]').count()==11,'All categories must be present')
+        expect(root(page).locator('.lp-mottos')).to_have_count(0)
+        for category in root(page).locator('[data-life-category]').all():
+            require(category.locator('h2').inner_text().strip(),'Empty category name')
+            require(category.locator('.lp-assistant-explanation').inner_text().strip(),'Explanation missing')
+            require(category.locator('.lp-assistant-references').inner_text().strip(),'Prompts missing')
+            require(category.locator('textarea').get_attribute('placeholder'),'No default inspiration')
+        require(read_doc(page)==before,'Opening assistant persisted fake wishes or hid stored mottos')
+        page.screenshot(path=str(OUT/'assistant-empty.png'))
+        root(page).get_by_role('button',name='收起规划助手',exact=True).click()
+    check('assistant replaces the full page, hides mottos and lays out all 11 optional templates without data writes',assistant_view,page)
+
+    def writing():
         add_wish(page)
-        root = page.locator('[data-lifeplanner]')
-        root.get_by_role('button', name='收藏愿望 · 出版自己的代表作品', exact=True).click()
-        expect(root.get_by_role('button', name='取消收藏 · 出版自己的代表作品', exact=True)).to_have_attribute('aria-pressed', 'true')
-        require(read_doc(page)['wishes'][0]['starred'], 'Star was not persisted')
-    check('add purpose and replace its sequence number with a favorite star', purpose_and_star, page)
+        expect(root(page).get_by_label('人生愿望 · 1',exact=True)).to_have_value('出版一本自己的书')
+        for text in ['陪家人去看海','能用英语自在地交流','保持身心健康']:add_wish(page,text)
+        f=root(page).get_by_label('空白座右铭行 1',exact=True);f.fill('把时间留给真正重要的事。');f.press('Enter');wait_count(page,'principles',6)
+        f=root(page).get_by_label('人生愿望 · 2',exact=True);f.fill('和家人一起去看海');f.press('Tab');wait_idle(page)
+        page.wait_for_function('(key)=>JSON.parse(localStorage.getItem(key)).wishes[1].title==="和家人一起去看海"',arg=KEY)
+        require(native_snapshot(page)==original_native,'Writing touched native task/project stores')
+    check('write wishes and mottos directly on ruled lines; Enter and blur persist native text fields',writing,page)
 
-    def vision_and_milestones():
-        sheet = open_vision(page, '出版2本书，3年内')
-        sheet.get_by_label('现状值', exact=True).fill('0')
-        expect(sheet.get_by_label('愿景期限', exact=True)).to_have_value('3')
-        sheet.get_by_role('button', name='增加阶段', exact=True).click()
-        sheet.get_by_label('第1阶段的数值', exact=True).fill('1')
-        sheet.get_by_role('button', name='增加阶段', exact=True).click()
-        sheet.get_by_label('第2阶段的数值', exact=True).fill('2')
-        sheet.get_by_label('第2阶段的时长', exact=True).fill('2')
-        expect(sheet.locator('.lp-total')).to_contain_text('3')
-        page.screenshot(path=str(OUT / 'vision-breakdown.png'))
-        save_vision(sheet)
+    def stars():
+        root(page).get_by_role('button',name='收藏愿望 · 出版一本自己的书',exact=True).click()
+        expect(root(page).get_by_role('button',name='取消收藏 · 出版一本自己的书',exact=True)).to_have_attribute('aria-pressed','true')
+        require(read_doc(page)['wishes'][0]['starred'],'Star not persisted')
+    check('favorites still replace the ordinal without reordering',stars,page)
+
+    def sticky_vision():
+        sheet=open_vision(page)
+        expect(sheet.get_by_label('愿景期限',exact=True)).to_have_value('3')
+        for number,value,amount in [(1,'1','1'),(2,'2','2')]:
+            sheet.get_by_role('button',name='添加一行',exact=True).click()
+            sheet.get_by_label(f'第{number}阶段的数值',exact=True).fill(value)
+            sheet.get_by_label(f'第{number}阶段的时长',exact=True).fill(amount)
+        require(sheet.locator('h1,h2,header,details').count()==0,'Note still has repeated headings or explanations')
+        for unwanted in ['出版一本自己的书','可衡量结果','五年愿景','填写提示','继承','规划起点']:
+            require(unwanted not in sheet.inner_text(),'Unnecessary visible note content: '+unwanted)
+        require(sheet.locator('p.lp-helper').count()==0,'Prose helper still visible')
+        require(sheet.evaluate('(el)=>el.offsetWidth<=570 && el.offsetHeight<390'),'Note not compact')
+        expect(sheet.get_by_label('规划起点',exact=True)).to_have_count(0)
+        sheet.get_by_role('button',name='日期设置',exact=True).click()
+        sheet.get_by_label('规划起点',exact=True).fill('2026-09-20')
+        sheet.get_by_role('button',name='日期设置',exact=True).click()
+        page.mouse.move(3,3)
+        sheet.screenshot(path=str(OUT/'vision-note.png'));page.screenshot(path=str(OUT/'vision-note-in-app.png'))
+        save_vision(page)
         v=read_doc(page)['wishes'][0]['visions'][0]
-        require(v['title']=='出版2本书' and v['amount']==3 and len(v['steps'])==2, 'Wrong parsed/saved vision')
-    check('automatic measure/time recognition and sequential 3-year breakdown', vision_and_milestones, page)
+        require(v['title']=='出版2本书' and v['amount']==3 and len(v['steps'])==2,'Incorrect saved result')
+        page.mouse.move(3,3);page.screenshot(path=str(OUT/'notebook-filled.png'))
+    check('sticky-note editor contains only result, current state and stage lines; date options are hidden',sticky_vision,page)
 
     def independent_completion():
-        root=page.locator('[data-lifeplanner]')
-        set_checkbox(root.get_by_role('checkbox', name='标记愿景已实现 · 出版2本书', exact=True), True)
-        d=read_doc(page)
-        require(d['wishes'][0]['visions'][0]['completed'] and not d['wishes'][0]['completed'], 'Vision completed its purpose')
-        set_checkbox(root.get_by_role('checkbox', name='标记愿景已实现 · 出版2本书', exact=True), False)
-        set_checkbox(root.get_by_role('checkbox', name='标记愿望已实现 · 出版自己的代表作品', exact=True), True)
-        require(not read_doc(page)['wishes'][0]['visions'][0]['completed'], 'Purpose completed its vision')
-        set_checkbox(root.get_by_role('checkbox', name='标记愿望已实现 · 出版自己的代表作品', exact=True), False)
-        require(native_snapshot(page)==original_native, 'Planner completion modified native entities')
-    check('independent checkboxes never complete native tasks or projects', independent_completion, page)
+        set_checkbox(root(page).get_by_role('checkbox',name='标记愿景已实现 · 出版2本书',exact=True),True)
+        d=read_doc(page);require(d['wishes'][0]['visions'][0]['completed'] and not d['wishes'][0]['completed'],'Coupled completion')
+        set_checkbox(root(page).get_by_role('checkbox',name='标记愿景已实现 · 出版2本书',exact=True),False)
+        set_checkbox(root(page).get_by_role('checkbox',name='标记愿望已实现 · 出版一本自己的书',exact=True),True)
+        require(not read_doc(page)['wishes'][0]['visions'][0]['completed'],'Purpose completed its vision')
+        set_checkbox(root(page).get_by_role('checkbox',name='标记愿望已实现 · 出版一本自己的书',exact=True),False)
+        require(native_snapshot(page)==original_native,'Completion touched native records')
+    check('wish and vision completion remain independent of each other and native tasks',independent_completion,page)
+
+    def keyboard_drag():
+        before=read_doc(page)['wishes'];handle=root(page).locator(f'[data-life-wish="{before[2]["id"]}"]').locator('.lp-block-handle')
+        handle.focus();handle.press('Space');handle.press('Home');handle.press('Space')
+        page.wait_for_function('([key,id])=>JSON.parse(localStorage.getItem(key)).wishes[0].id===id',arg=[KEY,before[2]['id']])
+        handle.focus();handle.press('Space');handle.press('End');handle.press('Escape')
+        require(read_doc(page)['wishes'][0]['id']==before[2]['id'],'Cancelled drag saved a move')
+        expect(root(page)).to_be_visible()
+        handle.focus();handle.press('Space');handle.press('ArrowDown');handle.press('ArrowDown');handle.press('Space')
+        page.wait_for_function('([key,id])=>JSON.parse(localStorage.getItem(key)).wishes[2].id===id',arg=[KEY,before[2]['id']])
+    check('block handles support keyboard reorder and Escape cancels without closing the notebook',keyboard_drag,page)
+
+    def pointer_drag():
+        before=read_doc(page)['wishes'];rows=root(page).locator('[data-life-wish]')
+        mouse_move_row(page,rows.nth(0),rows.nth(2),True)
+        page.wait_for_function('([key,id])=>JSON.parse(localStorage.getItem(key)).wishes[2].id===id',arg=[KEY,before[0]['id']])
+        rows=root(page).locator('[data-life-wish]');mouse_move_row(page,rows.nth(2),rows.nth(0),False)
+        page.wait_for_function('([key,id])=>JSON.parse(localStorage.getItem(key)).wishes[0].id===id',arg=[KEY,before[0]['id']])
+        require(read_doc(page)['wishes']==before,'Moving back lost content, identity or linked vision')
+    check('pointer handle drag changes only order and preserves complete row content',pointer_drag,page)
+
+    def motto_drag():
+        before=read_doc(page)['principles'];rows=root(page).locator('[data-life-principle]')
+        mouse_move_row(page,rows.nth(0),rows.nth(2),True)
+        page.wait_for_function('([key,id])=>JSON.parse(localStorage.getItem(key)).principles[2].id===id',arg=[KEY,before[0]['id']])
+    check('mottos use the same draggable block handle, not up/down controls',motto_drag,page)
+
+    def assistant_write():
+        root(page).get_by_role('button',name='展开规划助手',exact=True).click()
+        category=root(page).locator('[data-life-category="creation"]');f=category.get_by_role('textbox').last
+        f.fill('完成一个自己的软件');f.press('Enter');wait_count(page,'wishes',5)
+        require(read_doc(page)['wishes'][-1]['category']=='creation','Writing lost category')
+        page.screenshot(path=str(OUT/'assistant-filled.png'))
+        root(page).get_by_role('button',name='收起规划助手',exact=True).click()
+        expect(root(page).get_by_role('heading',name='座右铭',exact=True)).to_be_visible()
+        require(len(read_doc(page)['principles'])==6,'Assistant deleted mottos')
+    check('write within an assistant category, then return to the same notebook and mottos',assistant_write,page)
 
     def native_project():
-        page.locator('.lp-vision-title').first.click()
-        sheet=page.locator('[data-life-vision]')
-        sheet.get_by_role('button', name='增加项目安排', exact=True).first.click()
+        root(page).locator('.lp-vision-title').first.click();sheet=note(page)
+        sheet.locator('[data-life-stage]').first.hover()
+        sheet.get_by_role('button',name='增加项目安排',exact=True).first.click()
         modal=page.locator('.lp-project-mask')
-        expect(modal.get_by_role('heading', name='新建项目', exact=True)).to_be_visible()
+        expect(modal.get_by_role('heading',name='新建项目',exact=True)).to_be_visible()
         expect(modal.locator('input').first).to_have_value('出版1本书')
-        page.screenshot(path=str(OUT / 'native-project-form.png'))
-        modal.get_by_role('button', name='创建项目', exact=True).click()
-        expect(modal).not_to_be_visible()
+        modal.get_by_role('button',name='创建项目',exact=True).click();expect(modal).not_to_be_visible()
         expect(sheet.get_by_role('button',name='打开项目规划',exact=True)).to_be_visible()
-        save_vision(sheet)
-        page.wait_for_timeout(500)
-        d=read_doc(page); pid=d['wishes'][0]['visions'][0]['steps'][0]['projectId']
-        native=native_snapshot(page)
+        save_vision(page);page.wait_for_timeout(300)
+        d=read_doc(page);pid=d['wishes'][0]['visions'][0]['steps'][0]['projectId'];native=native_snapshot(page)
         project=next((p for p in native['day-planner-projects'] if p['id']==pid),None)
-        require(project and project['title']=='出版1本书' and project['targetDate']=='2027-09-20', 'Native project missing or date incorrect')
-        require(len(native['day-planner-projects'])==2, 'Created duplicate projects')
-        require(native['day-planner-unscheduled']==original_native['day-planner-unscheduled'], 'Created tasks without permission')
-        require(native['day-planner-goals']==original_native['day-planner-goals'], 'Mutated native goals')
-    check('native ProjectForm creates exactly one real project with a stable link', native_project, page)
+        require(project and project['title']=='出版1本书' and project['targetDate']=='2027-09-20','Native project or calendar date incorrect')
+        require(len(native['day-planner-projects'])==2,'Duplicate native project')
+        require(native['day-planner-unscheduled']==original_native['day-planner-unscheduled'],'Created unsolicited tasks')
+    check('quiet stage action opens the original ProjectForm and creates one linked native project',native_project,page)
 
-    def guidance_filter_principles():
-        root=page.locator('[data-lifeplanner]')
-        root.get_by_role('button', name='展开规划引导', exact=True).click()
-        expect(page.locator('[data-life-guide]')).to_be_visible()
-        root.get_by_label('生活领域 · 出版自己的代表作品',exact=True).select_option('creation')
-        expect(root).to_contain_text('此生真正想创造并留下什么')
-        root.get_by_role('button', name='收起规划引导',exact=True).click()
-        root.get_by_label('搜索愿望与愿景',exact=True).fill('nonexistent')
-        require(page.locator('[data-life-wish]').count()==0, 'Search did not filter')
-        require(len(read_doc(page)['wishes'])==1, 'Search deleted data')
-        root.get_by_label('搜索愿望与愿景',exact=True).fill('')
-        root.get_by_label('写下一条想坚持的人生原则……',exact=True).fill('先把方向想清楚，再开始行动')
-        root.get_by_role('button',name='添加原则',exact=True).click()
-        wait_count(page, 'principles', 6)
-        require(len(read_doc(page)['principles'])==6,'Principle not stored')
-    check('guidance/category/filtering and editable principles', guidance_filter_principles, page)
+    def stage_drag():
+        root(page).locator('.lp-vision-title').first.click();sheet=note(page)
+        before=read_doc(page)['wishes'][0]['visions'][0]['steps']
+        handle=sheet.locator('.lp-block-handle').first;handle.focus();handle.press('Space');handle.press('End');handle.press('Space')
+        expect(sheet.get_by_label('第1阶段的数值',exact=True)).to_have_value('2')
+        save_vision(page)
+        current=read_doc(page)['wishes'][0]['visions'][0]['steps'];require(current==list(reversed(before)),'Stage move lost native link')
+        root(page).locator('.lp-vision-title').first.click();sheet=note(page)
+        handle=sheet.locator('.lp-block-handle').first;handle.focus();handle.press('Space');handle.press('End');handle.press('Space');save_vision(page)
+    check('vision stage handle reorders lines without losing project links',stage_drag,page)
 
-    def quota_retry():
-        before=len(read_doc(page)['wishes'])
-        page.evaluate("""(key)=>{const original=Storage.prototype.setItem;window.reviewRestoreStorage=()=>Storage.prototype.setItem=original;Storage.prototype.setItem=function(k,v){if(k===key)throw new DOMException('Quota','QuotaExceededError');return original.call(this,k,v);};}""",KEY)
-        root=page.locator('[data-lifeplanner]'); text='持续阅读与学习'
-        root.get_by_label('写下一件你真正想实现的事……',exact=True).fill(text)
-        root.get_by_role('button',name='添加愿望',exact=True).click()
-        expect(root.get_by_role('alert')).to_contain_text('保存失败')
-        expect(root.get_by_label('写下一件你真正想实现的事……',exact=True)).to_have_value(text)
-        require(len(read_doc(page)['wishes'])==before,'Failed save mutated data')
-        page.evaluate('() => { window.reviewRestoreStorage(); }')
-        root.get_by_role('button',name='添加愿望',exact=True).click()
-        wait_count(page, 'wishes', before+1)
-        require(len(read_doc(page)['wishes'])==before+1,'Retry duplicated wish')
-    check('storage failure preserves input and safe retry creates one wish',quota_retry,page)
+    def failed_write():
+        before=read_doc(page)
+        page.evaluate("""key=>{const orig=Storage.prototype.setItem;window.restoreNotebookStorage=()=>{Storage.prototype.setItem=orig;};Storage.prototype.setItem=function(k,v){if(k===key)throw Error('test quota');return orig.call(this,k,v);};}""",KEY)
+        f=root(page).get_by_label('空白愿望行 1',exact=True);f.fill('留给未来的愿望');f.press('Enter')
+        expect(root(page).get_by_role('alert')).to_contain_text('保存失败');expect(f).to_have_value('留给未来的愿望')
+        require(read_doc(page)==before,'Failed write modified durable document')
+        page.evaluate('()=>window.restoreNotebookStorage()');root(page).get_by_role('button',name='重试保存',exact=True).click()
+        wait_count(page,'wishes',len(before['wishes'])+1)
+    check('inline save failure retains text; retry persists exactly one wish',failed_write,page)
 
-    def conflict():
-        page.locator('.lp-vision-title').first.click(); sheet=page.locator('[data-life-vision]')
+    def stale_text():
+        f=root(page).get_by_label('人生愿望 · 1',exact=True);f.fill('本地尚未保存的文字')
+        simulate_external(page,'doc.wishes[0].title="另一处的新标题"')
+        f.press('Enter');expect(root(page).get_by_role('alert')).to_contain_text('其他地方被修改')
+        expect(f).to_have_value('本地尚未保存的文字');require(read_doc(page)['wishes'][0]['title']=='另一处的新标题','Stale text overwrote remote text')
+        f.press('Escape');expect(f).to_have_value('另一处的新标题')
+    check('stale inline title cannot overwrite newer content; Escape cancels only that draft',stale_text,page)
+
+    def vision_conflict_and_validation():
+        root(page).locator('.lp-vision-title').first.click();sheet=note(page)
         sheet.get_by_label('现状值',exact=True).fill('9')
-        page.evaluate("""key=>{const oldValue=localStorage.getItem(key),d=JSON.parse(oldValue);d.wishes[0].visions[0].current=1;d.revision++;const newValue=JSON.stringify(d);localStorage.setItem(key,newValue);window.dispatchEvent(new StorageEvent('storage',{key,oldValue,newValue,storageArea:localStorage}));}""",KEY)
+        simulate_external(page,'doc.wishes[0].visions[0].current=1')
         sheet.get_by_role('button',name='保存',exact=True).click()
-        expect(sheet.get_by_role('alert')).to_contain_text('其他地方被修改')
-        expect(sheet.get_by_label('现状值',exact=True)).to_have_value('9')
-        require(read_doc(page)['wishes'][0]['visions'][0]['current']==1,'Stale form overwrote new value')
+        expect(sheet.get_by_role('alert')).to_contain_text('其他地方被修改');expect(sheet.get_by_label('现状值',exact=True)).to_have_value('9')
+        require(read_doc(page)['wishes'][0]['visions'][0]['current']==1,'Stale note overwrote data')
         sheet.get_by_role('button',name='取消',exact=True).click()
-    check('stale vision editor retains draft and refuses to overwrite newer data',conflict,page)
+        root(page).locator('.lp-vision-title').first.click();sheet=note(page)
+        sheet.get_by_label('愿景期限',exact=True).fill('2');sheet.get_by_role('button',name='保存',exact=True).click()
+        expect(sheet.get_by_role('alert')).to_be_visible();require(read_doc(page)['wishes'][0]['visions'][0]['amount']==3,'Invalid horizon saved')
+        sheet.get_by_role('button',name='取消',exact=True).click()
+    check('minimal note retains conflict and horizon validation; invalid data never saves',vision_conflict_and_validation,page)
 
-    def removal_undo():
-        root=page.locator('[data-lifeplanner]'); before=native_snapshot(page)
-        root.get_by_role('button',name='删除 · 出版自己的代表作品',exact=True).click()
-        wait_count(page, 'wishes', 1)
-        require(len(read_doc(page)['wishes'])==1,'Delete failed')
-        root.get_by_role('button',name='撤销',exact=True).click()
-        wait_count(page, 'wishes', 2)
-        require(len(read_doc(page)['wishes'])==2,'Undo failed')
-        require(native_snapshot(page)==before,'Deleting a purpose modified native projects')
-    check('delete and undo purpose do not cascade into native projects',removal_undo,page)
+    def delete_undo():
+        before=native_snapshot(page);count=len(read_doc(page)['wishes'])
+        handle=root(page).locator('[data-life-wish]').first.locator('.lp-block-handle')
+        handle.focus();handle.press('Shift+F10')
+        root(page).locator('.lp-block-menu').get_by_role('button',name='删除',exact=True).click();wait_count(page,'wishes',count-1)
+        root(page).get_by_role('button',name='撤销',exact=True).click();wait_count(page,'wishes',count)
+        require(native_snapshot(page)==before,'Delete cascaded into native project')
+        require(read_doc(page)['wishes'][0]['visions'][0]['steps'][0]['projectId'],'Undo lost project link')
+    check('block menu deletion and undo preserve linked native projects',delete_undo,page)
 
-    def reload_and_backup():
-        previous=read_doc(page); page.reload(wait_until='domcontentloaded')
-        page.get_by_role('button',name='生活规划',exact=True).first.click()
-        require(read_doc(page)==previous,'Reload lost planner data')
-        root=page.locator('[data-lifeplanner]');root.get_by_role('button',name='更多操作',exact=True).click()
+    def backup_restore():
+        before=read_doc(page)
+        root(page).get_by_role('button',name='更多操作',exact=True).click()
         with page.expect_download() as download:
-            root.get_by_role('button',name='导出生活规划',exact=True).click()
-        path=OUT / 'synthetic-backup.json';download.value.save_as(path)
-        backup=json.loads(path.read_text())
-        require(backup['document']==previous,'Backup omitted data')
-        root.get_by_role('button',name='更多操作',exact=True).click()
-        page.locator('[data-lifeplanner] input[type=file]').set_input_files({'name':'bad.json','mimeType':'application/json','buffer':b'{}'})
-        expect(root.get_by_role('alert')).to_contain_text('有效的生活规划')
-        require(read_doc(page)==previous,'Invalid import overwrote data')
-        page.locator('[data-lifeplanner] input[type=file]').set_input_files(str(path))
-        expect(root.get_by_role('status')).to_contain_text('已导入')
-        require(read_doc(page)['wishes']==previous['wishes'],'Restore changed wishes')
-    check('reload, real JSON download and guarded import/restore',reload_and_backup,page)
+            root(page).get_by_role('button',name='导出生活规划',exact=True).click()
+        dest=OUT/'notebook-backup.json';download.value.save_as(str(dest))
+        backup=json.loads(dest.read_text());require(backup['document']['wishes']==before['wishes'],'Export lost wishes')
+        root(page).get_by_role('button',name='更多操作',exact=True).click()
+        root(page).locator('input[type=file]').set_input_files(str(dest))
+        expect(root(page).get_by_role('status').filter(has_text='已导入')).to_be_visible()
+        require(read_doc(page)['wishes']==before['wishes'],'Round trip lost data')
+        require(read_doc(page)['principles']==before['principles'],'Round trip lost mottos')
+    check('same JSON backup/import keeps notebook and native links intact',backup_restore,page)
 
-    def keyboard_and_exit():
-        root=page.locator('[data-lifeplanner]'); before=native_snapshot(page)
-        root.get_by_role('button',name='编辑 · 人生愿望',exact=True).first.click()
-        root.get_by_role('textbox',name='人生愿望',exact=True).fill('Temporary edit')
-        page.keyboard.press('Escape');expect(root).to_be_visible()
-        require(read_doc(page)['wishes'][0]['title']=='出版自己的代表作品','Escape saved a draft')
-        page.keyboard.press('Control+z');require(native_snapshot(page)==before,'Global undo leaked into native tasks')
-        root.locator('button').last.focus();page.keyboard.press('Tab')
-        require(root.evaluate('(el)=>el.contains(document.activeElement)'), 'Tab escaped modal')
-        root.get_by_role('button',name='关闭',exact=True).first.click()
-        expect(root).not_to_be_visible()
-        page.screenshot(path=str(OUT/'native-entry.png'))
-    check('keyboard focus, Escape, native undo isolation and original app return',keyboard_and_exit,page)
+    def reload():
+        before=read_doc(page);page.reload(wait_until='domcontentloaded');page.wait_for_timeout(1200)
+        if page.locator('[data-planning-choices]').count():page.locator('.planning-choices-snooze').click()
+        page.get_by_role('button',name='生活规划',exact=True).first.click()
+        require(read_doc(page)==before,'Reload changed data')
+    check('saved document survives closing and reopening the production app',reload,page)
+    data_snapshot=read_doc(page)
+    context.close()
 
-    context.close()
-    # Independent screenshot profile: examples are explicit test fixtures, not default personal content.
-    context,page=profile(browser); page.on('dialog',lambda d:d.accept())
-    def examples_screenshots():
-        root=page.locator('[data-lifeplanner]');root.get_by_role('button',name='展开规划引导',exact=True).click()
-        for count, category in enumerate(['self','career','wealth','learning','creation','health','family'], start=1):
-            root.get_by_label('人生规划引导',exact=True).select_option(category)
-            root.get_by_role('button',name='填入参考示例',exact=True).click()
-            wait_count(page, 'wishes', count)
-        require(len(read_doc(page)['wishes'])==7,'Explicit examples did not append')
-        page.screenshot(path=str(OUT/'desktop-guided.png'))
-        root.get_by_role('button',name='收起规划引导',exact=True).click()
-        root.get_by_role('button',name=re.compile('^收藏愿望')).nth(0).click()
-        root.get_by_role('button',name=re.compile('^收藏愿望')).nth(2).click()
-        no_overflow(page);page.screenshot(path=str(OUT/'desktop-simple.png'))
-        (OUT/'sample-document.json').write_text(json.dumps(read_doc(page),ensure_ascii=False,indent=2),encoding='utf-8')
-    check('optional workbook examples, dense collapsed and guided screenshots',examples_screenshots,page)
-    sample=read_doc(page)
-    context.close()
-    for mobile,dark,english,width,label in [(False,True,False,1440,'desktop-dark'),(False,False,True,1440,'desktop-english'),(True,False,False,393,'mobile-393'),(True,True,False,320,'mobile-320-dark')]:
+    for mobile,dark,english,width in [(False,False,True,1440),(False,True,False,1440),(False,False,False,1024),(True,False,False,393),(True,True,True,320)]:
         context,page=profile(browser,mobile=mobile,dark=dark,english=english,width=width)
-        page.on('dialog',lambda d:d.accept())
-        def responsive():
-            if not english and sample:
-                page.evaluate("""([key,d])=>{const oldValue=localStorage.getItem(key),newValue=JSON.stringify(d);localStorage.setItem(key,newValue);window.dispatchEvent(new StorageEvent('storage',{key,oldValue,newValue,storageArea:localStorage}));}""",[KEY,sample])
+        page.on('dialog',lambda dialog:dialog.accept())
+        def layout():
+            # Load the same synthetic old-schema document before re-opening.
+            page.evaluate('([key,value])=>localStorage.setItem(key,value)',[KEY,json.dumps(data_snapshot)])
+            root(page).get_by_role('button',name='Close' if english else '关闭',exact=True).first.click()
+            page.get_by_role('button',name='Life planning' if english else '生活规划',exact=True).first.click()
             no_overflow(page)
-            page.screenshot(path=str(OUT/(label+'.png')))
-            if mobile:
-                page.locator('.lp-vision-title').first.click()
-                expect(page.locator('[data-life-vision]')).to_be_visible()
-                require(page.locator('.lp-vision-sheet').evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'),'Vision modal overflows')
-                page.screenshot(path=str(OUT/(label+'-vision.png')))
-        check(label+' layout, language/theme and modal',responsive,page)
+            suffix=f'{width}-'+('en' if english else 'zh')+('-dark' if dark else '-light')
+            page.mouse.move(1,1);page.screenshot(path=str(OUT/f'notebook-{suffix}.png'))
+            root(page).locator('.lp-vision-title').first.click();sheet=note(page)
+            require(sheet.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'),'Note horizontal overflow')
+            page.mouse.move(1,1);sheet.screenshot(path=str(OUT/f'note-{suffix}.png'))
+            sheet.get_by_role('button',name='Cancel' if english else '取消',exact=True).click()
+            root(page).get_by_role('button',name='Open planning assistant' if english else '展开规划助手',exact=True).click()
+            require(root(page).locator('[data-life-category]').count()==11,'Category hidden on narrow layout')
+            no_overflow(page)
+            page.screenshot(path=str(OUT/f'assistant-{suffix}.png'))
+            scroller=root(page).locator('[data-lp-scroll]')
+            if width<1120:
+                require(scroller.evaluate('(el)=>el.scrollWidth>el.clientWidth'),'Wide handwritten spread should scroll within its own page')
+                scroller.evaluate('(el)=>el.scrollLeft=el.scrollWidth')
+                page.screenshot(path=str(OUT/f'assistant-writing-{suffix}.png'))
+        check(f'{width}px {"English" if english else "Chinese"} {"dark" if dark else "light"} notebook, full assistant and note; no page overflow',layout,page)
         context.close()
     browser.close()
-
-report={'environment':'Production dayGLANCE application in Chromium; synthetic data; no physical device/provider round trips.',
-        'tests':RESULTS,'uncaughtErrors':ERRORS}
-(OUT/'browser-review.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+report={'screenshots':'Compiled real application in Chromium, synthetic fixtures, not physical-device captures.','tests':RESULTS,'uncaughtErrors':ERRORS}
+(OUT/'notebook-browser-review.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps(report,ensure_ascii=False,indent=2))
-if ERRORS or any(not test['passed'] for test in RESULTS):
-    raise SystemExit(1)
+if ERRORS or any(not result['passed'] for result in RESULTS):raise SystemExit(1)

@@ -1,12 +1,14 @@
-import React, { useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, CalendarDays, Check, FolderPlus, Layers, Plus, Trash2, X } from 'lucide-react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { GripVertical, Check, FolderPlus, Layers, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { FormOverlay, ProjectForm } from '../goals/GoalDashboard.jsx';
-import { createVision, measureText, milestoneDate, parseVisionText, pretty, projectFields, reorder, saveVision, totalYears, uid, validateVision, years, MAX_VISION_STEPS } from '../../lifeplanner/model.js';
+import { createVision, measureText, milestoneDate, parseVisionText, pretty, projectFields, saveVision, totalYears, uid, validateVision, years, MAX_VISION_STEPS } from '../../lifeplanner/model.js';
 import useDialogFocus from './useDialogFocus.js';
+import useNotebookDrag from './useNotebookDrag.js';
+import { moveNotebookItem } from '../../lifeplanner/notebook.js';
 
 export default function VisionEditor({ wish, original, seed = '', store, onClose, onOpenProject }) {
   const ctx = useDayPlannerCtx();
@@ -19,17 +21,36 @@ export default function VisionEditor({ wish, original, seed = '', store, onClose
   const [notice, setNotice] = useState('');
   const [projectStep, setProjectStep] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [options, setOptions] = useState(false);
+  const outcome = useRef(null);
+  useLayoutEffect(() => {
+    if (!outcome.current) return;
+    outcome.current.style.height = '1px';
+    outcome.current.style.height = `${Math.max(34, outcome.current.scrollHeight)}px`;
+  }, [draft.title]);
   const saving = useRef(false);
   const root = useRef(null);
   const projectRoot = useRef(null);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(expected);
-  const close = () => { if (!dirty || window.confirm(t('lifeplanner.discard'))) onClose(); };
+  const initial = useRef(structuredClone(draft));
+  const dirty = JSON.stringify(draft) !== JSON.stringify(expected || initial.current);
+  const close = () => {
+    if (saving.current) return;
+    if (options) { setOptions(false); return; }
+    if (!dirty || window.confirm(t('lifeplanner.discard'))) onClose();
+  };
+  const drag = useNotebookDrag(root, {
+    t,
+    onMove: (_group, id, targetId, after, expectedIds) => {
+      try { field('steps', moveNotebookItem(draft.steps, id, targetId, after, expectedIds)); return true; }
+      catch { setError(t('lifeplanner.errors.conflict')); return false; }
+    },
+  });
   useDialogFocus(root, close, !projectStep);
   useDialogFocus(projectRoot, () => setProjectStep(null), !!projectStep);
   const metric = parseVisionText(draft.title);
   const field = (key, value) => setDraft(v => ({ ...v, [key]: value }));
   const stageField = (id, key, value) => setDraft(v => ({ ...v, steps: v.steps.map(s => s.id === id ? { ...s, [key]: value } : s) }));
-  const input = `lp-input ${ctx.cardBg} ${ctx.borderClass} ${ctx.textPrimary}`;
+  const input = 'lp-input';
   const explainError = err => t(`lifeplanner.errors.${err.message}`, { defaultValue: t('lifeplanner.errors.unknown') });
   async function persist() {
     const invalid = validateVision(draft);
@@ -84,72 +105,89 @@ export default function VisionEditor({ wish, original, seed = '', store, onClose
     } catch (err) { setError(explainError(err)); }
     saving.current = false; setBusy(false);
   }
-  function timeFields(value, onChange, label) {
+  function timeFields(value, onChange, label, outer = false) {
+    const units = ['year', 'month', 'day'];
     return <div className="lp-duration">
-      <span className={ctx.textSecondary}>{t('lifeplanner.in')}</span>
-      <input className={input} type="number" min="1" step="1" value={value.amount} aria-label={label} onChange={e => onChange('amount', e.target.value)} required />
-      <select className={input} value={value.unit} aria-label={`${label} · ${t('lifeplanner.time')}`} onChange={e => onChange('unit', e.target.value)}>
-        {['year', 'month', 'day'].map(unit => <option key={unit} value={unit}>{t(`lifeplanner.${unit}`)}</option>)}
+      {outer && <span className="sr-only">{t('lifeplanner.horizon')}</span>}
+      <input className={input} type="number" min="1" step="1" value={value.amount}
+        style={{ width: `${Math.max(2, String(value.amount).length + 1)}ch` }}
+        aria-label={label} onChange={e => onChange('amount', e.target.value)} required />
+      <select className={input} value={value.unit} aria-label={`${label} · ${t('lifeplanner.time')}`}
+        style={{ width: `${Math.max(3, ...units.map(unit => t(`lifeplanner.${unit}`).length + 1))}ch` }}
+        onChange={e => onChange('unit', e.target.value)}>
+        {units.map(unit => <option key={unit} value={unit}>{t(`lifeplanner.${unit}`)}</option>)}
       </select>
+      {outer && <span className="lp-duration-tail">{t('lifeplanner.within')}</span>}
     </div>;
   }
   function measureInput(value, onChange, label) {
     return <div className="lp-measure">
       <span>{metric.valid ? metric.prefix : ''}</span>
-      <input type="number" step="any" className={input} aria-label={label} value={value} onChange={e => onChange(e.target.value)} required />
+      <input type="number" step="any" className={input} aria-label={label} value={value}
+        style={{ width: `${Math.min(18, Math.max(2, String(value).length + 1))}ch` }}
+        onChange={e => onChange(e.target.value)} required />
       <span>{metric.valid ? metric.suffix : ''}</span>
     </div>;
   }
   const total = totalYears(draft), horizon = years(draft.amount, draft.unit);
-  return <div className="lp-sheet-mask" data-life-vision>
-    <form ref={root} className={`lp-vision-sheet ${ctx.cardBg} ${ctx.textPrimary}`} onSubmit={save} role="dialog" aria-modal={!projectStep} aria-labelledby="lp-vision-heading" tabIndex={-1} inert={projectStep ? '' : undefined}>
-      <header className={`lp-sheet-header border-b ${ctx.borderClass}`}>
-        <div><div className={`lp-eyebrow ${ctx.textSecondary}`}>{wish.title}</div><h2 id="lp-vision-heading">{t('lifeplanner.vision')}</h2></div>
-        <button type="button" className={`lp-icon ${ctx.hoverBg}`} aria-label={t('lifeplanner.close')} onClick={close}><X size={19} /></button>
-      </header>
-      <div className="lp-vision-body">
-        <p className={`lp-helper ${ctx.textSecondary}`}>{t('lifeplanner.measureHelp')}</p>
-        <div className={`lp-vision-target border ${ctx.borderClass} ${ctx.darkMode ? 'bg-gray-700/40' : 'bg-stone-50'}`}>
-          <label className="lp-label" htmlFor="lp-outcome">{t('lifeplanner.outcome')}</label>
-          <div className="lp-outcome-row">
-            <input id="lp-outcome" data-initial-focus className={`${input} font-semibold`} value={draft.title} maxLength={2000} placeholder={t('lifeplanner.outcomePlaceholder')} onChange={e => field('title', e.target.value)} onBlur={() => {
-              const p = parseVisionText(draft.title);
-              if (p.outcome !== draft.title.trim()) setDraft(v => ({ ...v, title: p.outcome, amount: p.amount, unit: p.unit }));
-            }} required />
-            {timeFields(draft, field, t('lifeplanner.horizon'))}
+  function appendStage() {
+    const fraction = Math.min(1, (total + 1) / (horizon || 5));
+    const current = Number(draft.current) || 0;
+    field('steps', [...draft.steps, { id: uid(), value: Math.round((current + (metric.target - current) * fraction) * 100) / 100, amount: 1, unit: 'year' }]);
+  }
+  return <div className="lp-sheet-mask" data-life-vision onClick={event => { if (event.target === event.currentTarget && !projectStep && !busy) close(); }}>
+    <form ref={root} className={`lp-vision-sheet ${ctx.darkMode ? 'lp-paper-dark' : ''}`} onSubmit={save}
+      role="dialog" aria-modal={!projectStep} aria-label={t('lifeplanner.vision')} tabIndex={-1} inert={projectStep ? '' : undefined}>
+      <div className="lp-vision-body" data-lp-scroll>
+        <fieldset className="lp-note-fields" disabled={busy}>
+          <div className="lp-outcome-row lp-note-line">
+            <span className="lp-note-gutter" aria-hidden="true" />
+            <textarea ref={outcome} rows={1} id="lp-outcome" data-initial-focus className="lp-note-outcome" aria-label={t('lifeplanner.outcome')}
+              value={draft.title} maxLength={2000} placeholder={t('lifeplanner.outcomePlaceholder')} onChange={e => field('title', e.target.value)}
+              onBlur={() => {
+                const p = parseVisionText(draft.title);
+                if (p.outcome !== draft.title.trim()) setDraft(v => ({ ...v, title: p.outcome, amount: p.amount, unit: p.unit }));
+              }} required />
+            {timeFields(draft, field, t('lifeplanner.horizon'), true)}
+            <span className="lp-note-tools-space" />
           </div>
-          <div className="lp-start"><CalendarDays size={14} className={ctx.textSecondary} /><label htmlFor="lp-start-date" className={ctx.textSecondary}>{t('lifeplanner.startDate')}</label><input className={input} id="lp-start-date" type="date" value={draft.startDate} onChange={e => field('startDate', e.target.value)} required /></div>
-        </div>
-        <div className={`lp-now border-b ${ctx.borderClass}`}><span className={`lp-step-index ${ctx.textSecondary}`}>○</span>{measureInput(draft.current, value => field('current', value), t('lifeplanner.current'))}<span className={`lp-now-label ${ctx.textSecondary}`}>{t('lifeplanner.now')}</span></div>
-        <div className="lp-stages">
-          {draft.steps.map((step, index) => {
-            const existing = projects.find(p => p.id === step.projectId);
-            let date = '';
-            try { date = milestoneDate(draft, step.id); } catch { /* Incomplete durations stay editable. */ }
-            return <div key={step.id} className={`lp-stage border-b ${ctx.borderClass}`} data-life-stage={step.id}>
-              <div className="lp-stage-main"><span className={`lp-step-index ${ctx.textSecondary}`}>{String(index + 1).padStart(2, '0')}</span>{measureInput(step.value, value => stageField(step.id, 'value', value), t('lifeplanner.milestoneValue', { number: index + 1 }))}{timeFields(step, (key, value) => stageField(step.id, key, value), t('lifeplanner.stepDuration', { number: index + 1 }))}</div>
-              <div className="lp-stage-bottom"><span className={`lp-helper ${ctx.textSecondary}`}>{date && t('lifeplanner.nextDate', { date })}</span><div className="lp-stage-actions">
-                <button type="button" disabled={busy} className={`lp-project-link ${ctx.hoverBg} text-blue-500`} onClick={() => arrange(step)}>{existing ? <Layers size={14} /> : <FolderPlus size={14} />}{existing ? t('lifeplanner.openProject') : step.projectId ? t('lifeplanner.missingProject') : t('lifeplanner.project')}</button>
-                <button type="button" className={`lp-icon ${ctx.hoverBg}`} disabled={!index || busy} aria-label={t('lifeplanner.up')} onClick={() => field('steps', reorder(draft.steps, step.id, -1))}><ArrowUp size={13} /></button>
-                <button type="button" className={`lp-icon ${ctx.hoverBg}`} disabled={index === draft.steps.length - 1 || busy} aria-label={t('lifeplanner.down')} onClick={() => field('steps', reorder(draft.steps, step.id, 1))}><ArrowDown size={13} /></button>
-                <button type="button" className={`lp-icon ${ctx.hoverBg}`} aria-label={t('lifeplanner.delete')} onClick={() => { if (!step.projectId || window.confirm(t('lifeplanner.removeConfirm'))) field('steps', draft.steps.filter(s => s.id !== step.id)); }}><Trash2 size={13} /></button>
-              </div></div>
-            </div>;
-          })}
-          {!draft.steps.length && <p className={`lp-empty-stages ${ctx.textSecondary}`}>{t('lifeplanner.noSteps')}</p>}
-        </div>
-        <button type="button" className={`lp-add-stage ${ctx.hoverBg} text-blue-500`} disabled={draft.steps.length >= MAX_VISION_STEPS || busy} onClick={() => {
-          const fraction = Math.min(1, (total + 1) / (horizon || 5));
-          const current = Number(draft.current) || 0;
-          field('steps', [...draft.steps, { id: uid(), value: Math.round((current + (metric.target - current) * fraction) * 100) / 100, amount: 1, unit: 'year' }]);
-        }}><Plus size={15} />{t('lifeplanner.addStep')}</button>
-        <div className={`lp-total ${ctx.darkMode ? 'bg-gray-700/40' : 'bg-stone-50'}`}><span>{t('lifeplanner.totalTime')}</span><b>{Number.isFinite(total) ? pretty(total) : '—'} {t('lifeplanner.year')}</b><span className={ctx.textSecondary}>{t('lifeplanner.planned', { planned: Number.isFinite(total) ? pretty(total) : '—', total: Number.isFinite(horizon) ? pretty(horizon) : '—' })}</span></div>
-        <p className={`lp-helper ${ctx.textSecondary}`}>{t('lifeplanner.durationHelp')}</p>
-        <p className={`lp-helper ${ctx.textSecondary}`}>{t('lifeplanner.projectHint')} {t('lifeplanner.savedProjectHint')}</p>
+          <div className="lp-now lp-note-line"><span className="lp-note-gutter" aria-hidden="true" />
+            {measureInput(draft.current, value => field('current', value), t('lifeplanner.current'))}
+            <span className="lp-now-label">{t('lifeplanner.now')}</span><span className="lp-note-tools-space" />
+          </div>
+          <div className="lp-stages">
+            {draft.steps.map((step, index) => {
+              const existing = projects.find(p => p.id === step.projectId);
+              const projectLabel = existing ? t('lifeplanner.openProject') : step.projectId ? t('lifeplanner.missingProject') : t('lifeplanner.project');
+              return <div key={step.id} className="lp-stage lp-note-line" data-life-stage={step.id} data-lp-sort={step.id} data-lp-group="stages">
+                <button {...drag.handleProps('stages', step.id, t('lifeplanner.milestone', { number: index + 1 }), busy)}><GripVertical size={14} /></button>
+                {measureInput(step.value, value => stageField(step.id, 'value', value), t('lifeplanner.milestoneValue', { number: index + 1 }))}
+                {timeFields(step, (key, value) => stageField(step.id, key, value), t('lifeplanner.stepDuration', { number: index + 1 }))}
+                <div className="lp-note-actions">
+                  <button type="button" disabled={busy} className={`lp-icon lp-project-link ${step.projectId ? 'lp-linked-project' : 'lp-row-action'}`}
+                    title={projectLabel} aria-label={projectLabel} onClick={() => arrange(step)}>{existing ? <Layers size={14} /> : <FolderPlus size={14} />}</button>
+                  <button type="button" disabled={busy} className="lp-icon lp-row-action" aria-label={t('lifeplanner.delete')}
+                    title={t('lifeplanner.delete')} onClick={() => { if (!step.projectId || window.confirm(t('lifeplanner.removeConfirm'))) field('steps', draft.steps.filter(s => s.id !== step.id)); }}><Trash2 size={13} /></button>
+                </div>
+              </div>;
+            })}
+          </div>
+          <div className="lp-note-tail"><button type="button" className="lp-add-stage" disabled={draft.steps.length >= MAX_VISION_STEPS || busy} onClick={appendStage}><Plus size={13} />{t('lifeplanner.addLine')}</button>
+            {draft.steps.length > 0 && <output className="lp-total" aria-label={t('lifeplanner.totalTime')}>{t('lifeplanner.totalShort')} {Number.isFinite(total) ? pretty(total) : '—'} {t('lifeplanner.year')}</output>}
+          </div>
+        </fieldset>
         {error && !projectStep && <p role="alert" className="lp-error">{error}</p>}
-        {notice && <p role="status" className="text-sm text-blue-500">{notice}</p>}
+        {notice && <p role="status" className="lp-note-notice">{notice}</p>}
       </div>
-      <footer className={`lp-sheet-footer border-t ${ctx.borderClass}`}><span className={`lp-helper ${ctx.textSecondary}`}>{dirty ? t('lifeplanner.unsaved') : t('lifeplanner.saved')}</span><button type="button" className={`lp-button ${ctx.hoverBg}`} onClick={close}>{t('lifeplanner.cancel')}</button><button type="submit" disabled={busy} className="lp-button bg-blue-600 hover:bg-blue-700 text-white"><Check size={15} />{t('lifeplanner.save')}</button></footer>
+      <footer className="lp-sheet-footer">
+        <div className="lp-note-options-anchor"><button type="button" className="lp-icon" aria-label={t('lifeplanner.noteOptions')}
+          title={t('lifeplanner.noteOptions')} aria-expanded={options} onClick={() => setOptions(value => !value)}><MoreHorizontal size={17} /></button>
+          {options && <div className="lp-note-options"><label htmlFor="lp-start-date">{t('lifeplanner.startDate')}</label><input className={input} id="lp-start-date" type="date" value={draft.startDate} onChange={e => field('startDate', e.target.value)} disabled={busy} /></div>}
+        </div>
+        <button type="button" className="lp-button" disabled={busy} onClick={close}>{t('lifeplanner.cancel')}</button>
+        <button type="submit" disabled={busy} className="lp-button lp-note-save"><Check size={14} />{t('lifeplanner.save')}</button>
+      </footer>
+      <span className="sr-only" id={drag.descriptionId}>{t('lifeplanner.moveInstructions')}</span><span className="sr-only" role="status">{drag.message}</span>
     </form>
     {projectStep && <div className="lp-project-mask" ref={projectRoot} role="dialog" aria-modal="true" aria-label={t('lifeplanner.project')}>
       <FormOverlay onClose={() => setProjectStep(null)} mobile={ctx.isMobile} cardBg={ctx.cardBg}>

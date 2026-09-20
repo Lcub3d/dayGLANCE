@@ -1,6 +1,52 @@
-# Life Planner — purpose, vision and principles prototype
+# Life Planner — notebook and planning assistant prototype
 
 Branch: `Lcub3d/dayGLANCE:lifeplanner`. Baseline: **main `5565d32bd69550999a7bb18400e24ed38a1f64b7` (5.2.1)**. This is a new source branch, not the earlier Jobo prototype branch.
+
+
+## Notebook follow-up (supersedes the original visual specification below)
+
+Based on the merged fork-local Life Planner at `e493e8b4`. The notebook and the
+Planning Assistant are two presentations of the **same existing v1 document**.
+This is a UI follow-up, not a new sync/model integration.
+
+- The headings are **Life wish list / 人生愿望清单** and **Mottos / 座右铭**.
+  The small yellow tab reads **Planning Assistant**; its accessible name is localized.
+- With the assistant off, wishes and mottos are written directly on ruled lines.
+  Enter or blur saves; Shift+Enter inserts a line break. Escape cancels the
+  focused draft, not the whole workspace. No task-style cards or always-visible
+  reorder/edit buttons. Saving failures and conflicting edits keep the typed text.
+- The wish's quiet **In five years… / 五年以后……** entry opens a sticky-note
+  editor; saved visions appear as their own clickable text. No misleading copy
+  or forced commitment is involved.
+- Assistant mode replaces the spread and temporarily hides (never removes)
+  mottos. All eleven workbook categories are laid out together with explanations,
+  prompts, a default example placeholder and writable wish/vision columns. Examples
+  are hints, **not fabricated saved wishes**. Every category can remain blank.
+- Pointer/touch handles reorder wishes and mottos; the same handle moves vision
+  stages. Space/Enter picks up and drops; arrow keys/Home/End position; Escape
+  cancels. Click/Shift+F10 on a wish/motto handle opens its small actions menu.
+  Normal text selection/touch scrolling remain native away from the handle.
+  Assistant sorting is within the selected category, not category reassignment.
+- The sticky note shows just the editable result/time, current value, checkpoint
+  lines, Add a line and a small total. No repeated inherited wish title, visible
+  "Five-year vision" heading, explanatory prose, date banner or separate stage
+  cards. Font remains inherited from dayGLANCE. Date settings are behind `…`.
+  Native project actions are small labelled icons by each stage. Save/Cancel,
+  validation and conflict protections remain; outside click/Escape does not
+  silently throw away a dirty draft.
+- Existing wishes, completed/starred flags, multiple visions, stages, native
+  project IDs and all mottos remain. No migration or new store. The old safety
+  bounds (100 wishes/mottos, 30 visions/stages) remain even though 100 is no
+  longer in the screen title. The store now preserves the inline-title validation
+  error instead of misreporting it as a storage failure.
+- On narrow screens the notebook stacks mottos below; the assistant deliberately
+  retains its full table and scrolls **inside** the workspace. No page-level
+  overflow or forced tiny compressed columns.
+
+Browser regression is `scripts/lifeplanner-review.py`; it now exercises these
+real notebook interactions rather than obsolete Add/Up/Down controls. The
+original switch/cadence suite is also run with its draft locator adapted to the
+new real textarea. Tests use synthetic data; no live providers are contacted.
 
 ## Scope and design
 

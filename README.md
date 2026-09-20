@@ -436,19 +436,18 @@ Once enabled in **Settings → AI**:
 
 ### AI Assistants (MCP Server)
 
-Let an AI assistant on the same computer read your day and manage your tasks. dayGLANCE's desktop app includes a local **MCP (Model Context Protocol)** server, so clients like Claude Desktop, Claude Code, and ChatGPT can ask what's scheduled, add and reschedule tasks, and check goal progress.
+Let an AI assistant on the same computer read your day and manage your tasks. dayGLANCE's desktop app includes a local **MCP (Model Context Protocol)** server, so clients like Claude Desktop, Claude Code, and ChatGPT can ask what's scheduled, find the free time in your day, add and reschedule tasks, and check goal progress.
 
 - **Local only.** The listener binds to `127.0.0.1` and is never reachable from the network. Nothing is sent anywhere by dayGLANCE.
 - **Three separate opt-ins.** Reading dayGLANCE data, writing changes, and reading your device calendar are each their own consent
-- **12 tools and 3 read-only resources** covering the schedule, inbox, goals, projects and today's routines
+- **12 tools and 3 read-only resources** covering the schedule, inbox, goals, projects, today's routines, and your frames: the windows you set aside for a kind of work, each reported with the time still free inside it and the tags it is meant for
 - **Every change is undoable.** Writes land in a session journal you can reverse per task or in bulk, from the app or the macOS tray. A kill switch stops the server outright
+- **Routines and frames are visible but untouchable.** An assistant can see them so it schedules around them, never through them: a write that would land on a routine is refused outright rather than quietly moved to the next free slot
 - Device calendar events are always read-only, and writes to them are refused
 
 **The tradeoff to understand:** an assistant that reads your data typically sends what it reads to its own AI provider over the internet. dayGLANCE cannot see or control what a client does with data it has read, and this sits outside dayGLANCE's own privacy guarantees. Review the privacy policy of any client you connect.
 
 **Setup:** Settings → Local Integrations. Claude Code connects directly over HTTP. Claude Desktop and ChatGPT connect through [`@glance-apps/mcp-bridge`](https://github.com/glance-apps/mcp-bridge), and direct-download builds on macOS and Windows can configure Claude Desktop for you with one click. Other clients, including ChatGPT, add the bridge through their own MCP settings. Full tool reference in [docs/mcp-tools-reference.md](docs/mcp-tools-reference.md).
-
-Still outstanding from the last exchange: the spec's §6.3 tier description carries the same habits-and-routines error, and it's worth checking whether the in-app consent dialog inherited that wording. That one is a disclosure accuracy problem rather than a docs one.
 
 ### Health Connect (Android)
 

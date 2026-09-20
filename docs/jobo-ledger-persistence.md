@@ -7,6 +7,10 @@ it is the slice that is hardest to change later, and because two people are
 building against it: the pure rules in `src/jobo/core.js` are slice 2 and are
 @Lcub3d's; the view is slice 5. Nothing here draws anything.
 
+Revised after @Lcub3d's review on #1744, which tightened the record contract,
+the identity rule and the storage failure semantics. Those revisions are
+marked where they changed a decision.
+
 The short version: **the ledger is a collection, not a task field and not a
 cache.** Each Do record is its own row with its own timestamp, stored in
 IndexedDB, mirrored into React state, registered with the sync layer as one
@@ -20,50 +24,92 @@ smaller than a ledger and cost real data.
 
 1. **A Do record never changes the plan.** The task's `date`, `startTime` and
    `duration` are the plan. Recording what happened writes a record and
-   nothing else. (From the #1623 discussion of Final Plan versus Do.)
-2. **Each record carries a snapshot of the plan it was recorded against.**
-   That snapshot is the Final Plan, and it is what survives the plan block
-   being tidied afterwards. It lives in the record, so the task gains no field.
+   nothing else.
+2. **A record captures once, then preserves.** Its `title` and `planSnapshot`
+   are copied at creation and never refreshed from the live task: not by a
+   progress edit, not by an interval correction, not by persistence, not by a
+   remote apply. Renaming, rescheduling or deleting the task never rewrites
+   its history. (Sharpened from "each record carries a snapshot" after
+   review; the important half is the second word.)
 3. **The flag gates the interface, never the data.** A device with
    `joboEnabled` off still loads, stores, pushes, pulls and merges records.
-   It only declines to show them. Otherwise the first sync from a device with
-   the flag off would push a payload without the collection and the vault
-   would treat that as deletion.
+   It only declines to show them, and does not create records from its own
+   completions. Otherwise the first sync from a device with the flag off
+   would push a payload without the collection.
 4. **Records reach React state, not only storage.** `buildSyncPayload` reads
-   state; `applyEngineData` writes state; `preserveStickyFields` reads state.
-   `originalPlan` shipped once written to localStorage and never to state, and
-   could not survive a single sync cycle. See "Adding a field to a task" in
-   `CLAUDE.md`, whose fourth question is this one.
+   state; `applyEngineData` writes state. `originalPlan` shipped once written
+   to localStorage and never to state, and could not survive a single sync
+   cycle. See "Adding a field to a task" in `CLAUDE.md`, whose fourth
+   question is this one.
 
 ## The record
 
-Slice 2 owns the fields that express progress and classification. This slice
-needs only the following to be present and stable, and asks slice 2 to treat
-them as fixed:
+The split agreed on #1744: **core owns the complete record shape, the
+snapshot semantics and the progress transitions; the hook and storage layer
+own coordinated durable writes; sync merges records without rebuilding them
+from today's task.**
+
+So `title` and `planSnapshot` are part of the core record, not something the
+hook adds. Core constructs and validates a record from ordinary inputs (the
+caller supplies the title, the copied plan values, the id and the timestamps)
+without reading React state, storage or the clock. The fields the sync and
+storage layers depend on, and ask core to keep fixed:
 
 ```js
 {
-  id: 'do:…',              // stable; see "Identity" below
-  taskId: 't1',            // the task this attempt was against; may be an id
-                           //   that no longer exists (see "Orphans")
-  date: '2026-09-19',      // the day the interval falls on
+  id: 'do:…',              // stable for the record's whole life; see "Identity"
+  taskId: 't1',            // the task this attempt was against, or null for an
+                           //   unlinked manual Do; may also be an id that no
+                           //   longer resolves (see "Orphans")
+  date: '2026-09-19',      // the day the interval starts on
   startTime: '14:30',
+  endDate: '2026-09-19',   // the day it ends on; equal to `date` except across
+                           //   midnight (explicit rather than inferred)
   endTime: '15:10',
-  planSnapshot: {          // invariant 2: the Final Plan, frozen at recording
+  title: 'Draft the report',   // captured once; the record reads on its own
+  planSnapshot: {          // the plan as observed when the record was made,
     date: '2026-09-19', startTime: '14:30', duration: 60,
-  },
-  title: 'Draft the report',   // so the record reads on its own if the task goes
-  source: 'completion',    // 'completion' | 'manual' | 'focus' | …; slice 2 may add
-  progress: 'completed',   // slice 2's vocabulary
+  },                       //   or null when there was no timed plan
+  source: 'completion',    // 'completion' | 'manual' | 'focus' | …; core's list
+  progress: 'completed',   // core's vocabulary, serialized once in core
   createdAt: '2026-09-19T15:10:02.000Z',
-  updatedAt: '2026-09-19T15:10:02.000Z',   // the LWW key; bumped on every edit
+  updatedAt: '2026-09-19T15:10:02.000Z',   // the LWW key; see "Identity" for
+                                           //   what the initial value anchors to
   deleted: false,          // soft tombstone; see "Deletion"
 }
 ```
 
 `updatedAt` is the only field the sync layer reads. Everything else passes
-through opaque, which is what lets slice 2 change its mind about
-classification without touching persistence.
+through opaque, which is what lets core change its mind about classification
+without touching persistence.
+
+Two nullables, both from review. `taskId: null` is a manual Do with no task
+behind it. `planSnapshot: null` means there genuinely was no timed plan to
+copy. An unavailable historical snapshot is not the same as "unplanned", and
+the hook must never manufacture one from today's task to fill the gap.
+
+**What the snapshot is, honestly.** A detector that runs on completion
+captures the plan as it stands at completion. It cannot prove what the plan
+was when work began if the plan changed in between. Where an earlier event
+supplies a reliable baseline (a recording started before completion, a focus
+session) the hook passes that plan in; otherwise the snapshot is the
+completion-time plan and the doc says so rather than promising history that
+was not captured. `originalPlan` on the task remains the Original Plan; the
+snapshot is the best available Final Plan, not a guaranteed one.
+
+**Progress.** Core keeps the prototype's vocabulary: Started, Partially
+completed, Mostly completed, Completed, with the serialized values defined
+once in core. "Not started" is the derived condition of a plan with no
+recorded attempt, not a record. The transition contract slice 4 builds on:
+
+- Completing creates a Completed attempt.
+- Un-completing changes that attempt to Partially completed, keeping its
+  interval and snapshot.
+- Completing again in a later session appends a new attempt; the earlier one
+  is untouched.
+
+That settles what the ledger records. It does not settle whether JOBO's own
+checkbox completes the task natively, which stays open on #1623.
 
 ## Where it lives, and the two homes rejected
 
@@ -99,51 +145,83 @@ does the same for the JSON payload. Records are small (roughly 200 bytes),
 append-mostly, and distinct attempts have distinct ids, so two devices
 recording different attempts never collide.
 
-### Storage medium: IndexedDB, through the existing door
+### Storage medium: IndexedDB, with a stricter door than the cache uses
 
-`createIdbKeyValue('dayglance-jobo')` from `src/utils/idbKeyValue.js`, holding
-the array under one key, the way `src/todoist/client.js` holds its cache. The
-helper's localStorage fallback is automatic where IndexedDB will not open, so
-the behaviour is identical everywhere and only the space ceiling differs.
+The database is `dayglance-jobo`, opened through the same machinery as
+`src/utils/idbKeyValue.js`, holding the array under one key, with the
+localStorage fallback for platforms where IndexedDB will not open.
 
-Why not localStorage, where tasks live: the ledger grows for as long as the
-app is used. At ten records a day it is roughly half a megabyte a year, and
-localStorage is capped near five megabytes for the whole origin, of which a
-real install already used three before #1629 and #1630 relieved it. This is
-the shape of data #1627 exists for.
+But the ledger cannot use `createIdbKeyValue`'s methods as they are, and
+review is what made that concrete. That helper is built for caches: every
+method resolves rather than rejects, `get()` falls through to the
+localStorage fallback when the IndexedDB read fails (so a broken read can
+come back as a stale or absent fallback value and look clean), and `set()`
+returns `false` when both paths fail rather than throwing. For a cache, "no
+value" is always the safe answer. For original user data it is the dangerous
+one: **an unreadable ledger must never become an authoritative `[]`.**
 
-IndexedDB is asynchronous, which is the one cost. The Todoist hook already
-pays it: `useTodoistSync` awaits `readAccountState` at mount and gates on a
-loaded flag. The ledger hook does the same, and nothing that reads records
-runs before the flag is set. In particular the first sync cycle must not push
-an empty collection because the load has not finished; the payload builder
-reads state, and state is empty until loaded, so the hook has to hold the
-collection out of the payload (undefined, not `[]`) until then. **An
-undefined collection means "not loaded"; an empty array means "empty".** Both
-tiers already distinguish absent from empty for other bundles.
+So the ledger gets its own store module, `src/jobo/store.js`, sharing the
+open-database plumbing but with three differences:
 
-## Reaching React state
+- **A strict read.** `read()` resolves to `{ ok: true, value }` or
+  `{ ok: false }`. Absent is `{ ok: true, value: undefined }`. A failed
+  IndexedDB read is `ok: false`, full stop; it does not consult the fallback,
+  because a fallback value is not the ledger. The hook treats `ok: false` as
+  "not loaded" (see "Lifecycle"), never as empty.
+- **A checked write.** Every write resolves to `{ ok, value }` and the hook
+  acknowledges a save, or reloads after a restore, only on `ok: true`.
+- **An atomic update.** `update(fn)` runs read → `fn(current)` → put inside
+  **one** readwrite transaction, then resolves with the committed value.
+  IndexedDB serializes readwrite transactions on a store, so two tabs that
+  both try to append see each other's record. Separate `get()` and `set()`
+  calls do not give that guarantee: both tabs read `[A]`, one writes
+  `[A, B]`, the other writes `[A, C]`, and B is gone before sync could merge
+  it. `fn` is always a merge by id, never a replace, so a concurrent record
+  from another tab survives even where the transaction guarantee is weaker.
 
-A hook, `src/hooks/useJoboLedger.js`, owns `joboRecords` as React state:
+The localStorage fallback has no cross-tab transaction. Policy there: the
+same read → merge by id → write, done synchronously in one turn (atomic
+within a tab), and the cross-tab window that remains is recorded as a known
+limitation of the fallback rather than papered over. Per-record merge by id
+bounds the damage to "a record written by another tab in that window is
+picked up on the next read", which sync then reconciles.
 
-- On mount, load from IndexedDB once, then set `loaded`.
-- Every mutation goes through the hook and writes through to IndexedDB. The
-  write is awaited before the hook reports success, because a record written
-  to state and not yet to disk is exactly what a crash loses.
-- `buildSyncPayload` (`src/App.jsx`) includes `joboRecords` from state, or
-  omits the key entirely while `loaded` is false.
-- `applyEngineData` writes the merged collection back to state **and** to
-  IndexedDB. Writing state alone repeats the `originalPlan` failure in the
-  other direction: the vault's records arrive, render, and are gone on
-  reload.
+Why not localStorage as the primary, where tasks live: the ledger grows for
+as long as the app is used. At ten records a day it is roughly half a
+megabyte a year, and localStorage is capped near five megabytes for the whole
+origin, of which a real install already used three before #1629 and #1630
+relieved it. This is the shape of data #1627 exists for.
 
-The hook is the only writer. The detector in slice 4, manual entry in slice 5
-and any later importer all go through it.
+## Lifecycle: reaching React state
+
+A hook, `src/hooks/useJoboLedger.js`, owns `joboRecords` as React state and
+is the only writer. Slice 4's detector, slice 5's manual entry and any later
+importer all go through it.
+
+- **Load.** On mount, one strict read. `ok: true` sets state and `loaded`.
+  `ok: false` leaves `loaded` false: the ledger is unreadable, and the hook
+  says so rather than pretending it is empty.
+- **Not loaded is not empty.** While `loaded` is false, `buildSyncPayload`
+  omits the `joboRecords` key entirely. `undefined` means "this device has
+  not loaded its ledger"; `[]` means "this device's ledger is empty". Both
+  tiers already distinguish an absent bundle from an empty one for other
+  data, and the vault tier treats absent as "does not carry it", never as a
+  delete.
+- **Applies during load are held.** A remote apply that arrives before
+  `loaded` is queued and merged after hydration. Merging it into the stale
+  initial state and then loading over it would drop it.
+- **Every mutation** goes through `update(fn)` and the hook refreshes state
+  from the committed value, not from what it intended to write. A record in
+  state that is not on disk is exactly what a crash loses.
+- **Remote apply preserves incoming timestamps.** `applyEngineData` writes
+  the merged collection to state and to disk without touching any record's
+  `updatedAt`. Under the remote-apply window (`suppressTimestampRef`,
+  `applyingRemoteDataRef`) the hook writes as an apply, not an edit.
 
 ## Both sync tiers
 
-**Vault tier (`src/sync/dbAdapter.js`).** One line in `COLLECTION_KINDS`. Per-
-record last-writer-wins on `updatedAt`. No sticky-field carry is needed,
+**Vault tier (`src/sync/dbAdapter.js`).** One line in `COLLECTION_KINDS`.
+Per-record last-writer-wins on `updatedAt`. No sticky-field carry is needed,
 because the record is the unit: a newer copy of a record is a newer copy of
 that record, not a task that might be missing a field. The cross-list
 reconciliation for `TASK_KINDS` does not apply; a record never moves between
@@ -154,62 +232,71 @@ with `mergeArrayById(local, remote, {}, horizon, { timestampField: 'updatedAt' }
 the same call `mergeTaskArrays` wraps. Set `localChanged` and `remoteChanged`
 on the same contract the habit-log merge uses.
 
-**The remote-apply window.** `applyEngineData` sets `suppressTimestampRef` and
-`applyingRemoteDataRef` while it writes. The ledger hook must treat writes
-that happen inside that window as applies, not edits: it does not bump
-`updatedAt`, and slice 4's detector must not observe the resulting state
-change as a local completion. The completion log's planner defers exactly
-this case; the ledger follows it.
+**A device that predates the collection.** An older build drops the key from
+its payload. The vault tier treats an absent bundle as "this device does not
+carry it"; the file-tier merge keeps the side that has it. Both are covered
+by the test plan.
 
-### The flag does not gate data
+## Identity, and idempotent creation
 
-Restating invariant 3 where it bites. The hook loads, persists and exposes
-records regardless of `joboEnabled`. `buildSyncPayload` includes them
-regardless. `applyEngineData` merges them regardless. The flag is read by the
-view and by slice 4's detector (a device with JOBO off does not create Do
-records from its own completions, but forwards everyone else's). A device
-that has never heard of the collection, running an older build, drops the key
-from its payload; the vault tier treats an absent bundle as "this device does
-not carry it" rather than "delete", which is the existing behaviour for every
-bundle added since the tier shipped, and the file-tier merge keeps the side
-that has it. Both are covered by the test plan below.
+Two devices can observe the same completion. Both run the detector. With
+random ids that is two records for one attempt. So a record the detector
+creates has a **deterministic id**, and, from review, creation is
+**ensure-present rather than write**. The rules together:
 
-## Identity, and why it matters for slice 4
-
-Two devices can observe the same completion. Both run the detector. Both
-create a record. With random ids that is two records for one attempt, and no
-merge rule can tell them apart afterwards.
-
-So a record the detector creates has a **deterministic id**:
-`do:${taskId}:${completedAt}`, where `completedAt` is the task's own completion
-timestamp, which both devices already agree on because it is on the task.
-Two devices then create the same id, and last-writer-wins collapses them. This
-is the same trick `useCompletionLog` uses: its entries are deterministic, so a
-second device logging the same completion is a no-op.
-
-Un-completing uses the same id: the record is kept, `progress` drops to the
-partial state, `updatedAt` bumps. A record is never deleted by an uncheck.
-
-Manual and focus records get random ids; they are created on one device by
-definition.
+- **Key.** `do:${taskId}:${completedAt}` for an ordinary task, where
+  `completedAt` is the task's own completion stamp. Every completion path
+  stamps it (`applySetCompletion` in `src/utils/taskMutations.js`, both
+  branches of `toggleComplete` in `src/hooks/useTaskActions.js`), so it is
+  a source-event timestamp both devices already agree on. For a recurring
+  instance, `do:${templateId}:${instanceDate}`: the instance date is the
+  semantic completion date and is deterministic without a timestamp, which
+  matters because `completedDatesTimestamps` is not present on every older
+  instance. A key must never be built from a device's current time; that
+  would defeat the point.
+- **Ensure-present.** Re-observing a completion whose record already exists
+  is a no-op. It does not rewrite the record and does not bump `updatedAt`.
+  Otherwise a late detector, holding the right id, would overwrite a user's
+  progress correction or a tombstone.
+- **The initial `updatedAt` is anchored to the source event**, not to when
+  the detector happened to run. Two devices then produce byte-identical
+  initial records, and any later user edit, with a later `updatedAt`, wins
+  over any re-observation.
+- **Un-completing targets the record by the previous key.** The detector is
+  a planner over prev and next snapshots, like `useCompletionLog`; on an
+  uncheck the task's `completedAt` is cleared in `next`, so the key is
+  computed from `prev`. The record's progress drops to Partially completed
+  and its `updatedAt` bumps. A record is never deleted by an uncheck.
+- **A later completion is a new key.** Editing a record's interval or
+  progress never changes its id.
+- **Manual and focus records** get generated ids, created once before the
+  write so that a retry reuses the same id rather than minting a second.
 
 ## Deletion
 
 Records are rarely deleted (an undo, a correction). When they are, the row
-gets `deleted: true` and a bumped `updatedAt`, and stays in the collection. Per-
-record last-writer-wins then propagates the deletion the same way it
-propagates an edit, with no new tombstone bundle and no new entry in the
-`day-planner-deleted-task-ids` map, which is for tasks. Soft-deleted rows are
-pruned after the fixed tombstone window in `src/sync/tombstoneRetention.js`,
-by every writer, so the collection stays bounded by use rather than by
-history.
+gets `deleted: true` and a bumped `updatedAt`, and stays in the collection.
+Per-record last-writer-wins propagates the deletion the same way it
+propagates an edit, with no new tombstone bundle and no entry in the
+`day-planner-deleted-task-ids` map, which is for tasks.
+
+**Soft-deleted rows are never pruned.** Review asked what protects the
+ledger from a stale device returning after the fixed tombstone window with
+an old live copy. For tasks the file tier has `syncHorizon` (a local-only
+item older than `tombstonePrunedBefore` is dropped as a presumed zombie), but
+the vault tier is grow-only and would accept the old row. Rather than depend
+on horizon logic on one tier and nothing on the other, the ledger keeps its
+tombstones. A tombstone row is about a hundred bytes, deletions are rare, and
+a kept tombstone is what makes a returning stale copy lose on `updatedAt`
+under every transport, at any age. The collection stays bounded by use.
 
 ## Orphans
 
 A record whose `taskId` no longer resolves is kept. The prototype's rule is
 right: a Do that happened is history, and history does not depend on the plan
-surviving. The record carries `title` and `planSnapshot` so it reads on its
-own. A task restored from the recycle bin relinks by id with no work.
+surviving. The record carries `title` and `planSnapshot`, captured once, so it
+reads on its own. A task restored from the recycle bin relinks by id with no
+work.
 
 ## Backup, restore, reset
 
@@ -217,18 +304,17 @@ own. A task restored from the recycle bin relinks by id with no work.
 and belongs in every backup the app makes, folder and file alike.
 
 **Restore.** Every restore path (`restoreFromBackupFolder`, restore from file,
-the cloud restore at `applyEngineData`'s call sites) writes the collection to
-IndexedDB **and awaits the write before reloading.** `resetVaultSyncCursor`
-notes that the snapshot's IndexedDB delete is not awaited because it races the
-unload and the snapshot was keyed to make the race harmless. The ledger has
-no such key; a restore that reloads before the write lands restores an empty
-ledger. Await it.
+the cloud restore at `applyEngineData`'s call sites) writes the collection
+through the checked write **and reloads only on `ok: true`.**
+`resetVaultSyncCursor` notes that the snapshot's IndexedDB delete is not
+awaited because it races the unload and the snapshot was keyed to make the
+race harmless. The ledger has no such key; a restore that reloads before the
+write lands, or after a write that failed, restores an empty or stale ledger.
 
 **Reset.** `KNOWN_INDEXEDDB_NAMES` in `src/utils/resetAppData.js` gains
-`'dayglance-jobo'`, so a full reset on iOS, where `indexedDB.databases()` is
-unavailable, deletes it. (While reading that list: it does not include
-`'dayglance-todoist'` either, so the Todoist cache currently survives a reset
-on iOS. Pre-existing and unrelated; a one-line fix.)
+`'dayglance-jobo'`. Since #1745 a test scans `src/` for every database name
+the app opens and fails when the list does not know one, so forgetting this
+is a red test rather than a store that outlives a reset on iOS.
 
 **Todoist and Obsidian.** Untouched. Records never leave the app in this
 slice. An Obsidian archive of Do intervals is the open question from #1623,
@@ -237,9 +323,10 @@ truth"; nothing here forecloses it.
 
 ## What is out of scope
 
-- The fields that express progress and classification (slice 2).
+- The fields that express progress and classification, and their rules
+  (slice 2).
 - Creating records from completions (slice 4), which depends on the identity
-  rule above and on the hook being the only writer.
+  rules above and on the hook being the only writer.
 - Any rendering (slice 5), including the history popover learning about Do.
 - Import of the prototype's JSON ledger. Worth doing, and small, once the
   record shape is final; not before.
@@ -247,53 +334,73 @@ truth"; nothing here forecloses it.
 ## Testing
 
 Per `CLAUDE.md`: assert where the app reads it, not that a function returned
-it, and mutation-check every guard. The scenarios, each as one test that walks
-the whole path rather than a unit test per module:
+it, and mutation-check every guard. Each scenario walks the whole path
+rather than unit-testing a module. The five from review are folded in.
 
 1. **save → state → push → apply.** Record through the hook; assert it is in
    state; build the payload and assert it is in `data.joboRecords`; merge
-   against a newer remote copy of an unrelated task; apply; assert it is still
-   in state and in IndexedDB.
+   against a newer remote copy of an unrelated task; apply; assert it is
+   still in state and on disk.
 2. **A device with the flag off forwards records.** `joboEnabled: false`,
-   records present in IndexedDB; assert they load, appear in the payload, and
+   records present on disk; assert they load, appear in the payload, and
    survive an apply.
 3. **A device that predates the collection does not delete it.** A payload
    without the key merges against one with it; the records survive on both
    tiers.
-4. **Same completion, two devices, one record.** Two hooks create a record with
-   the same deterministic id; merge; assert one record, newest `updatedAt`.
-5. **Un-complete keeps the record.** Assert the record remains with partial
-   progress after the task is unchecked.
-6. **Restore then reload keeps the ledger.** Restore with an awaited write;
-   simulate reload by constructing a fresh hook over the same store; assert
-   the records are there.
-7. **Not loaded is not empty.** Before the mount load resolves, the payload
-   omits the key; after, it carries `[]` for an empty ledger.
+4. **Same completion, two devices, one record.** Two hooks observe the same
+   completion; assert one record with the source-anchored `updatedAt`. Then
+   a user edit on one device, followed by a delayed re-observation on the
+   other; assert the edit survives. Then a deletion, followed by a delayed
+   re-observation; assert the tombstone survives.
+5. **Complete, reopen, re-complete.** Assert the first attempt drops to
+   Partially completed and keeps its interval and snapshot; assert the
+   second completion is a new record under a new key.
+6. **Frozen title and plan.** Rename and reschedule the task after the
+   record exists, then edit the record's interval; assert `title` and
+   `planSnapshot` are unchanged throughout.
+7. **Two tabs append different records.** Two stores over the same database
+   append concurrently; assert both records are on disk.
+8. **Remote apply during initial load.** An apply arrives before the load
+   resolves; assert it is merged after hydration, not lost.
+9. **Failures are not success.** A failed read leaves `loaded` false and the
+   payload without the key; a failed write is not acknowledged; a failed
+   restore write does not reload; at no point is an empty ledger published
+   in place of an unreadable one.
+10. **Unlinked and untimed.** A manual Do with `taskId: null` and
+    `planSnapshot: null` round-trips both tiers intact, and a cross-midnight
+    interval keeps its `endDate`.
+11. **Restore then reload keeps the ledger.** Restore with a checked write;
+    construct a fresh hook over the same store; assert the records are there.
 
-Mutation checks: remove the `COLLECTION_KINDS` entry (scenario 1 fails at
-apply), remove the flag-independence (2 fails), replace the deterministic id
-with a random one (4 yields two records), drop the awaited restore write (6
-fails), and return `[]` instead of undefined before load (7 fails).
+Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
+remove the flag-independence (2 fails); replace the deterministic id with a
+random one (4 yields two records); let re-observation write instead of
+ensure-present (4's edit is overwritten); refresh the snapshot from the live
+task on edit (6 fails); replace `update(fn)` with separate get and set (7
+loses a record); return `[]` from a failed read (9 fails); drop the checked
+restore write (11 fails).
 
 ## Files this touches
 
 | File | Change |
 | --- | --- |
-| `src/hooks/useJoboLedger.js` | new: state, load, write-through, the only writer |
+| `src/jobo/store.js` | new: strict read, checked write, atomic `update(fn)`, over the shared IndexedDB plumbing |
+| `src/hooks/useJoboLedger.js` | new: state, load, held applies, write-through, the only writer |
 | `src/sync/dbAdapter.js` | `joboRecords` in `COLLECTION_KINDS` |
 | `src/mergeSync.js` | merge `joboRecords` by `updatedAt` |
 | `src/App.jsx` | `buildSyncPayload` includes it; `applyEngineData` writes it back; backup export and every restore path |
 | `src/utils/resetAppData.js` | `'dayglance-jobo'` in `KNOWN_INDEXEDDB_NAMES` |
-| `CLAUDE.md` | a short section: the ledger is a collection; the hook is the only writer; the flag gates UI not data |
+| `CLAUDE.md` | a short section: the ledger is a collection; the hook is the only writer; the flag gates UI not data; never prune ledger tombstones |
 
-Nothing in `src/jobo/core.js`, nothing in any component.
+Nothing in `src/jobo/core.js` beyond consuming its record constructor, and
+nothing in any component.
 
-## Open questions for slice 2
+## Resolved after review
 
-Small, and they only affect field names:
-
-- Whether `title` and `planSnapshot` are part of the core record shape or are
-  added by the hook at write time. Either works; the hook adding them keeps
-  core purer.
-- The name and vocabulary of `progress`, and whether un-completing maps to a
-  specific existing value or a new one.
+Both open questions from the first draft are settled in @Lcub3d's favour:
+`title` and `planSnapshot` are core's, captured once and preserved, and the
+progress vocabulary is the prototype's, serialized once in core. The other
+changes from review are the strict store, ensure-present creation with
+source-anchored timestamps, held applies during load, `endDate`, the two
+nullables, and keeping tombstones forever. The collection design itself is
+unchanged.

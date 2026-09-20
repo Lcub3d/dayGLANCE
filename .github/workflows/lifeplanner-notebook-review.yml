@@ -40,6 +40,12 @@ jobs:
             git rm .github/notebook-patch-{0,1,2,3}.b64
             echo 'staged=true' >> "$GITHUB_OUTPUT"
           fi
+          for patch in .github/notebook-fix-*.patch; do
+            test -f "$patch" || continue
+            git apply --index "$patch"
+            git rm "$patch"
+            echo 'staged=true' >> "$GITHUB_OUTPUT"
+          done
           git diff --cached --check
           git write-tree > review-artifacts/candidate-tree.txt
           git diff --cached --binary > review-artifacts/candidate.patch

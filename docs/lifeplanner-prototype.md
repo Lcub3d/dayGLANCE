@@ -102,3 +102,36 @@ scripts/planning-choices-review.py` against the production build. Existing
 Life Planner browser fixtures now explicitly enable the opt-in feature. The
 prototype discussion remains #1686; this change does not close it or decide the
 final dayGLANCE/lifeGLANCE data-ownership boundary.
+
+
+## Compact guide follow-up (fork PR #4)
+
+The chooser is now a 420px warm-yellow guide: one first-person title, three
+native icons/names/switches, and **Don't show again today**. The eyebrow,
+introductory/descriptive paragraphs, visible lock label, link subrows, Done
+button, row dividers and close X are removed. The baseline remains checked and
+disabled with a screen-reader-only always-on explanation. The Life Planner icon
+is Compass, matching GlanceFabs. Clicking the backdrop or Escape dismisses just
+this opening. Enabled row names still open the existing feature, so removing the
+secondary links does not strand mobile users with Goals disabled.
+
+Automatic guidance is device-local. "Day" means a distinct local date on which
+the app is opened, not elapsed days since installation. On visits 1/2/4/7/15,
+on the 1st/2nd/4th/7th/15th **opened Monday** and separately **opened Sunday**,
+and on each calendar month's first day, the guide opens after native welcome
+and active editors finish. Overlapping rules yield only one opening. Dismissing
+by backdrop/Escape does not snooze future reloads that day. The explicit daily
+snooze survives reload; the yellow button remains available for manual access.
+The controller runs once per app mount, not once per responsive header or every
+minute. It does not run a background task while the application is closed.
+
+Counters saturate at 16 and retain only the latest visit date, not an unbounded
+usage history. Clock rollback does not recount earlier dates. Invalid/future
+cadence data and blocked writes fail closed (no auto-prompt loop). Failed snooze
+writes leave the dialog open with a retryable error. No native task/project,
+Life Planner document or Jobo record is changed by this cadence. It is not
+cross-device synchronization or an atomic multi-process transaction guarantee.
+
+Reproduce with `python scripts/planning-guide-review.py` against the production
+preview. It runs the existing choices tests plus new cadence/compactness checks.
+`python scripts/lifeplanner-review.py` still checks the original workspace.

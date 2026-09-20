@@ -33,7 +33,7 @@ def require(value, message):
         raise AssertionError(message)
 
 
-def profile(browser, *, language='en', width=1700, dark=False, seed=None):
+def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=False, now=None):
     context = browser.new_context(viewport={'width': width, 'height': 1000 if width > 600 else 852}, locale='zh-CN' if language == 'zh-CN' else 'en-US', timezone_id='Asia/Shanghai', is_mobile=width < 600, has_touch=width < 600, reduced_motion='reduce', service_workers='block')
     data = {
         'i18nextLng': language, 'welcomeDismissed': 'true', 'gettingStartedDismissed': 'true',
@@ -52,14 +52,20 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None):
         'daily':{'time':[f'2026-09-{d}' for d in range(20,26)], 'temperature_2m_max':[29,30,30,30,26,27], 'temperature_2m_min':[22,20,20,20,21,20], 'weather_code':[3,2,61,61,61,3]}
     }))
     page = context.new_page()
+    if now is not None:
+        page.clock.set_fixed_time(now)
     page.set_default_timeout(10000)
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.goto(BASE, wait_until='domcontentloaded')
     page.wait_for_timeout(1200)
+    if not auto and page.locator('[data-planning-choices]').count():
+        page.locator('.planning-choices-snooze').click()
     return context, page
 
 
 def open_choices(page):
+    if page.locator('[data-planning-choices]').count():
+        return page.locator('[data-planning-choices]')
     page.locator('[data-planning-choices-trigger]').filter(visible=True).first.click()
     expect(page.locator('[data-planning-choices]')).to_be_visible()
     return page.locator('[data-planning-choices]')
@@ -207,7 +213,7 @@ with sync_playwright() as playwright:
         open_choices(page)
         expect(switch(page,'review')).to_have_attribute('aria-checked','true')
         expect(page.get_by_role('button',name='Open Jobo preview',exact=True)).to_have_count(0)
-        expect(page.locator('[data-planning-choices]')).to_contain_text('hidden in Views on this device')
+        expect(page.locator('[data-planning-choices]')).not_to_contain_text('hidden in Views on this device')
         choose(page,'review',False);choose(page,'review',True)
         require(json.loads(page.evaluate("localStorage.getItem('day-planner-hidden-views')"))['desktop']==['jobo'],'Replaced native hidden views')
     check('enabling an experiment never overrides an explicit native hidden-view choice',native_hidden_choice,page)

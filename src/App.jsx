@@ -81,7 +81,7 @@ import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import LifePlanner from './components/lifeplanner/LifePlanner.jsx';
-import PlanningChoices from './components/lifeplanner/PlanningChoices.jsx';
+import { PlanningChoicesController } from './components/lifeplanner/PlanningChoices.jsx';
 import usePlanningPreferences from './hooks/usePlanningPreferences.js';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
@@ -10461,7 +10461,7 @@ const DayPlanner = () => {
       {/* Goals & Projects Dashboard */}
       <GoalDashboard />
       {showLifePlanner && <LifePlanner />}
-      {showPlanningChoices && <PlanningChoices />}
+      <PlanningChoicesController />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

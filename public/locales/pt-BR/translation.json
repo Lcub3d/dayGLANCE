@@ -2309,6 +2309,8 @@
     "joboDesktop": "The current Jobo preview is available in the wide desktop layout.",
     "joboHidden": "Jobo is enabled but hidden in Views on this device. That choice is unchanged.",
     "saveError": "This choice could not be saved. Nothing was switched. Please try again.",
-    "readError": "Saved choices could not be read. Check browser storage permissions, then try again."
+    "readError": "Saved choices could not be read. Check browser storage permissions, then try again.",
+    "notToday": "Don’t show again today",
+    "snoozeError": "Could not save today’s reminder choice. Please try again."
   }
 }

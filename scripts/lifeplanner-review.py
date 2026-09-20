@@ -81,6 +81,8 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.goto(BASE, wait_until='domcontentloaded')
     page.wait_for_timeout(1500)
+    if page.locator('[data-planning-choices]').count():
+        page.locator('.planning-choices-snooze').click()
     # Dismiss the native weekly reminder through its real UI when it covers
     # navigation on a Sunday. Do not hide overlays or force a blocked click.
     reminder = page.locator('.fixed.bottom-6.right-6.z-50.w-64')

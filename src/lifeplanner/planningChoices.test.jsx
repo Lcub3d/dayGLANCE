@@ -36,6 +36,16 @@ describe('planning choice presentation',()=>{
       expect(review.includes('planningChoices.openJobo')).toBe(checked);
     } finally {preferences.joboEnabled=false;vi.unstubAllGlobals();}
   });
+  it('removes the annotated explanations, footer Done, close control and dividers',()=>{
+    vi.stubGlobal('document',{body:{}});
+    try {
+      const html=renderToStaticMarkup(<PlanningChoices/>);
+      for (const key of ['eyebrow','intro','dailyDescription','reviewDescription','lifeDescription','keepsData','done']) expect(html).not.toContain(`planningChoices.${key}`);
+      expect(html).not.toContain('common.close');expect(html).not.toContain('border-b');
+      expect(html).toContain('lucide-compass');expect(html).not.toContain('lucide-telescope');
+      expect(html).toContain('planningChoices.notToday');
+    } finally {vi.unstubAllGlobals();}
+  });
   it('uses first-person copy, Plan/Do and the existing product name',()=>{
     expect(bundle('en').title).toBe('How do I want to use dayGLANCE?');expect(bundle('en').daily).toBe('My day, at a glance.');
     expect(bundle('en').reviewDescription).toContain('Plan and Do');expect(bundle('zh-CN').title).toContain('我');

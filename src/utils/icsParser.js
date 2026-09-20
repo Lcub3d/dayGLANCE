@@ -105,6 +105,24 @@ const extractTzid = (line) => {
 };
 
 /**
+ * True when a property line carries the VALUE=DATE parameter, i.e. an all-day
+ * marker. Parses the parameter list rather than substring-matching the raw
+ * line: a plain `includes('VALUE=DATE')` also matches VALUE=DATE-TIME, which
+ * means the exact OPPOSITE and turned every explicitly-timed event from such
+ * feeds into an all-day one (2026-09-20). Parameter names and the VALUE enum
+ * are case-insensitive per RFC 5545.
+ */
+const hasDateValueParam = (line) => {
+  const colonIdx = line.indexOf(':');
+  if (colonIdx === -1) return false;
+  return line
+    .substring(0, colonIdx)
+    .split(';')
+    .slice(1)
+    .some((param) => param.trim().toUpperCase() === 'VALUE=DATE');
+};
+
+/**
  * Resolves an ICS TZID to a usable IANA zone: Windows names via the CLDR map,
  * IANA names pass through (validated against Intl). Returns null when the
  * zone can't be resolved — callers then fall back to local-time parsing.
@@ -209,7 +227,7 @@ export const parseICS = (icsContent) => {
         }
       } else if (line.startsWith('DTSTART')) {
         // Detect all-day events (VALUE=DATE or 8-character date)
-        if (line.includes('VALUE=DATE') || line.split(':')[1]?.length === 8) {
+        if (hasDateValueParam(line) || line.split(':')[1]?.length === 8) {
           currentEvent.isAllDay = true;
         }
         const dateStr = line.split(':')[1];
@@ -229,7 +247,7 @@ export const parseICS = (icsContent) => {
         if (mins !== null) currentEvent.durationMinutes = mins;
       } else if (line.startsWith('DUE')) {
         // Handle VTODO due dates
-        if (line.includes('VALUE=DATE') || line.split(':')[1]?.length === 8) {
+        if (hasDateValueParam(line) || line.split(':')[1]?.length === 8) {
           currentEvent.dueIsAllDay = true;
         }
         const dateStr = line.split(':')[1];

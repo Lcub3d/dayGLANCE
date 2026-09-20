@@ -2287,5 +2287,30 @@
         "exampleVision": "完成1项个人挑战，3年内"
       }
     }
+  },
+  "planningChoices": {
+    "open": "选择我的使用方式",
+    "eyebrow": "我的工作方式",
+    "title": "我想怎样使用 dayGLANCE？",
+    "intro": "先从简单开始，再开启对我有帮助的功能。",
+    "group": "我的规划选择",
+    "daily": "我的一天，一目了然。",
+    "dailyDescription": "把日程和待办放在一起，一眼看清。",
+    "alwaysOn": "始终开启",
+    "review": "每日复盘",
+    "reviewDescription": "在 Jobo 中对照计划与执行，再决定如何调整。",
+    "life": "人生规划",
+    "lifeDescription": "在 Life Planner 中连接人生愿望、五年愿景与项目。",
+    "keepsData": "选择保存在当前设备。关闭功能只隐藏入口，不会删除已有记录。",
+    "done": "完成",
+    "openLife": "打开 Life Planner",
+    "openJobo": "打开 Jobo 预览",
+    "joboPreview": "Jobo 正在分阶段建设，这里启用的是当前预览，并非完整复盘系统。",
+    "joboDesktop": "当前 Jobo 预览仅在宽屏桌面布局中提供。",
+    "joboHidden": "Jobo 已启用，但在“此设备上的视图”中被隐藏，此处不改变该选择。",
+    "saveError": "这次选择未能保存，开关没有改变。请重试。",
+    "readError": "无法读取已保存的选择，请检查浏览器存储权限后重试。",
+    "notToday": "今天不再提示",
+    "snoozeError": "未能保存今天的提醒设置，请重试。"
   }
 }

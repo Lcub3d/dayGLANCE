@@ -10,6 +10,7 @@ import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
+import { PlanningChoicesButton } from './lifeplanner/PlanningChoices.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 
@@ -106,6 +107,8 @@ const DesktopHeader = () => {
               )}
             </>
           )}
+
+          <PlanningChoicesButton />
 
           {/* Rotating Daily Content - 1 item at a time (3-col only to avoid header overlap) */}
           {dailyContentEnabled && visibleDays >= 3 && (() => {

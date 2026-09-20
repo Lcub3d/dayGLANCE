@@ -67,6 +67,7 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
       const data = {
        'i18nextLng': LANG, 'welcomeDismissed':'true', 'gettingStartedDismissed':'true',
        'day-planner-darkmode': DARK, 'day-planner-goals-projects-enabled':'true',
+       'day-planner-lifeplanner-enabled':'true',
        'day-planner-glance-fabs-collapsed':'0',
        'day-planner-unscheduled':JSON.stringify([{id:'review-inbox',title:'整理本周阅读笔记',completed:false,notes:'',subtasks:[],color:'bg-blue-500'}]),
        'day-planner-goals':JSON.stringify([{id:'review-goal',title:'持续学习',status:'active',color:'bg-blue-500',createdAt:'2026-09-20T08:00:00Z',updatedAt:'2026-09-20T08:00:00Z'}]),
@@ -80,6 +81,8 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.goto(BASE, wait_until='domcontentloaded')
     page.wait_for_timeout(1500)
+    if page.locator('[data-planning-choices]').count():
+        page.locator('.planning-choices-snooze').click()
     # Dismiss the native weekly reminder through its real UI when it covers
     # navigation on a Sunday. Do not hide overlays or force a blocked click.
     reminder = page.locator('.fixed.bottom-6.right-6.z-50.w-64')

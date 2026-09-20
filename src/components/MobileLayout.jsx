@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import Wordmark from './Wordmark';
+import { PlanningChoicesButton } from './lifeplanner/PlanningChoices.jsx';
 import {
   Activity, AlertCircle, AlertTriangle, Archive, BarChart3, Bell, BookOpen, BrainCircuit,
   Calendar, CalendarDays, Check, CheckCircle, CheckSquare, ChevronDown,
@@ -438,7 +439,7 @@ const MobileLayout = () => {
     frameNudgeLoading, setFrameNudgeLoading,
     frameNudgeError, setFrameNudgeError,
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
-    goals, projects, goalsProjectsEnabled, setShowLifePlanner,
+    goals, projects, goalsProjectsEnabled, setShowLifePlanner, lifeplannerEnabled,
     projectFilter, setProjectFilter,
     reminderSettings, setReminderSettings,
     showRemindersSettings, setShowRemindersSettings,
@@ -520,6 +521,7 @@ const MobileLayout = () => {
                     <ChevronRight size={20} className={textSecondary} />
                   </button>
                 </div>
+                <div className="flex justify-end px-4 pb-2"><PlanningChoicesButton /></div>
                 {/* Month View Popup for mobile */}
                 {showMonthView && (
                   <div className={`month-view-container absolute left-4 right-4 top-full mt-1 ${cardBg} rounded-lg shadow-xl border ${borderClass} p-4 z-50`}>
@@ -653,10 +655,11 @@ const MobileLayout = () => {
                 <div className="px-4 pt-3 pb-1">
                   <h2 className={`font-bold text-lg ${textPrimary} flex items-center gap-2`}>
                     <GitBranch size={20} className="text-blue-500" /> Goals &amp; Projects
+                    <span className="ml-auto"><PlanningChoicesButton /></span>
                   </h2>
-                  <button type="button" onClick={() => setShowLifePlanner(true)} className={`mt-3 h-9 px-3 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-medium ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>
+                  {lifeplannerEnabled && <button type="button" onClick={() => setShowLifePlanner(true)} className={`mt-3 h-9 px-3 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-medium ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>
                     <Telescope size={15} />{t('lifeplanner.entry')}
-                  </button>
+                  </button>}
                 </div>
                 <div className="flex items-center gap-1 px-4 py-2">
                   <button
@@ -695,6 +698,7 @@ const MobileLayout = () => {
             {mobileActiveTab === 'dayglance' && (
               <div className={`${cardBg} border-b ${borderClass} sticky top-0 z-30`}>
                 <div className="relative flex items-center justify-center px-4 py-3">
+                  <div className="absolute left-3"><PlanningChoicesButton /></div>
                   <Wordmark className="text-3xl" darkMode={darkMode} />
                   {/* Touch entry to the Day Dial — mirrors the desktop header
                       button; the wordmark stays centered, the dial sits in the

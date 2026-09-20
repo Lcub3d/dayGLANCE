@@ -683,6 +683,10 @@
     "tasks": "Aufgaben"
   },
   "task": {
+    "contextNotesSubtasks": "Notizen / Unteraufgaben",
+    "contextGenerateSubtasks": "Unteraufgaben generieren (KI)",
+    "contextMoveTomorrow": "Auf morgen verschieben",
+    "contextMoveInbox": "In den Eingang verschieben",
     "obsidianNoteSource": "In {{note}} (Obsidian)",
     "openWikiNote": "„{{name}}“ öffnen",
     "openWikiNoteInObsidian": "„{{name}}“ in Obsidian öffnen",
@@ -1269,6 +1273,9 @@
     "openReview": "Wochenrückblick öffnen"
   },
   "reminders": {
+    "dismissAll": "Alle schließen",
+    "more_one": "+{{count}} weitere",
+    "more_other": "+{{count}} weitere",
     "permissionGranted": "Berechtigung erteilt",
     "permissionDenied": "Berechtigung verweigert — in den Browsereinstellungen aktivieren",
     "permissionRequest": "Berechtigung wird beim Aktivieren angefordert",
@@ -1626,6 +1633,8 @@
     "obsidianRecurrenceHint": "Wiederkehrend in Obsidian: die Wiederholung dieser Aufgabe wird vom Tasks-Plugin verwaltet; das Abschließen hier erstellt nicht die nächste Instanz"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}J",
     "linkedWithLifeGlance": "Mit lifeGLANCE verknüpft",
     "markGoalComplete": "Ziel als abgeschlossen markieren",
     "newGoal": "Neues Ziel",

@@ -683,6 +683,10 @@
     "tasks": "任务"
   },
   "task": {
+    "contextNotesSubtasks": "备注 / 子任务",
+    "contextGenerateSubtasks": "生成子任务（AI）",
+    "contextMoveTomorrow": "移至明天",
+    "contextMoveInbox": "移至收件箱",
     "obsidianNoteSource": "位于 {{note}}（Obsidian）",
     "openWikiNote": "打开“{{name}}”",
     "openWikiNoteInObsidian": "在 Obsidian 中打开“{{name}}”",
@@ -1276,6 +1280,9 @@
     "openReview": "打开回顾"
   },
   "reminders": {
+    "dismissAll": "全部关闭",
+    "more_one": "另有 {{count}} 条提醒",
+    "more_other": "另有 {{count}} 条提醒",
     "permissionGranted": "已授予权限",
     "permissionDenied": "权限被拒绝，请在浏览器设置中启用",
     "permissionRequest": "启用时将请求权限",
@@ -1633,6 +1640,8 @@
     "obsidianRecurrenceHint": "在 Obsidian 中重复：此任务的重复规则由 Tasks 插件管理；在此处完成任务不会创建下一次实例"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}个月",
+    "rangeYearsShort": "{{count}}年",
     "linkedWithLifeGlance": "已关联 lifeGLANCE",
     "markGoalComplete": "将目标标记为完成",
     "newGoal": "新建目标",

@@ -683,6 +683,10 @@
     "tasks": "Tareas"
   },
   "task": {
+    "contextNotesSubtasks": "Notas / subtareas",
+    "contextGenerateSubtasks": "Generar subtareas (IA)",
+    "contextMoveTomorrow": "Mover a mañana",
+    "contextMoveInbox": "Mover a la bandeja de entrada",
     "obsidianNoteSource": "En {{note}} (Obsidian)",
     "openWikiNote": "Abrir «{{name}}»",
     "openWikiNoteInObsidian": "Abrir «{{name}}» en Obsidian",
@@ -1276,6 +1280,9 @@
     "openReview": "Abrir revisión"
   },
   "reminders": {
+    "dismissAll": "Descartar todo",
+    "more_one": "+{{count}} más",
+    "more_other": "+{{count}} más",
     "permissionGranted": "Permiso concedido",
     "permissionDenied": "Permiso denegado; actívalo en los ajustes del navegador",
     "permissionRequest": "Se solicitará permiso al activarlo",
@@ -1633,6 +1640,8 @@
     "obsidianRecurrenceHint": "Recurrente en Obsidian: la recurrencia de esta tarea la administra el complemento Tasks; completarla aquí no creará la siguiente instancia"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}A",
     "linkedWithLifeGlance": "Vinculado con lifeGLANCE",
     "markGoalComplete": "Marcar objetivo como completado",
     "newGoal": "Nuevo objetivo",

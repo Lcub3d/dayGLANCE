@@ -10192,7 +10192,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Pencil size={14} />
-                  Edit
+                  {t('common.edit')}
                 </button>
               )}
               {/* Imported: only show Notes if the task actually has notes (no subtask support) */}
@@ -10207,7 +10207,7 @@ const DayPlanner = () => {
                     }}
                   >
                     <FileText size={14} />
-                    Notes
+                    {t('task.notes')}
                   </button>
                 )
               ) : (
@@ -10219,7 +10219,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <FileText size={14} />
-                  Notes / subtasks
+                  {t('task.contextNotesSubtasks')}
                 </button>
               )}
               {/* Energy-axis override (summary strip): cycles auto → Restore →
@@ -10251,7 +10251,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Sparkles size={14} />
-                  Generate subtasks (AI)
+                  {t('task.contextGenerateSubtasks')}
                 </button>
               )}
               {!isImported && !isInbox && !isDaily && (
@@ -10263,7 +10263,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <SkipForward size={14} />
-                  Move to tomorrow
+                  {t('task.contextMoveTomorrow')}
                 </button>
               )}
               {!isRecurring && !isImported && !isAllDay && !isInbox && (
@@ -10275,7 +10275,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Inbox size={14} />
-                  Move to inbox
+                  {t('task.contextMoveInbox')}
                 </button>
               )}
               {(!isImported || isTaskCalendar) && (
@@ -10287,7 +10287,7 @@ const DayPlanner = () => {
                   }}
                 >
                   {isCompleted ? <RotateCcw size={14} /> : <Check size={14} />}
-                  {isCompleted ? 'Uncomplete' : 'Complete'}
+                  {isCompleted ? t('voice.actions.uncomplete') : t('focus.complete')}
                 </button>
               )}
               {!isImported && (
@@ -10299,7 +10299,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Trash2 size={14} />
-                  Delete
+                  {t('common.delete')}
                 </button>
               )}
             </div>

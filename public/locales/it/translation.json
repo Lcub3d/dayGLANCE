@@ -683,6 +683,10 @@
     "tasks": "Attività"
   },
   "task": {
+    "contextNotesSubtasks": "Note / sottoattività",
+    "contextGenerateSubtasks": "Genera sottoattività (IA)",
+    "contextMoveTomorrow": "Sposta a domani",
+    "contextMoveInbox": "Sposta in Posta in arrivo",
     "obsidianNoteSource": "In {{note}} (Obsidian)",
     "openWikiNote": "Apri “{{name}}”",
     "openWikiNoteInObsidian": "Apri “{{name}}” in Obsidian",
@@ -1276,6 +1280,9 @@
     "openReview": "Apri la revisione settimanale"
   },
   "reminders": {
+    "dismissAll": "Ignora tutto",
+    "more_one": "+{{count}} altro",
+    "more_other": "+{{count}} altri",
     "permissionGranted": "Autorizzazione concessa",
     "permissionDenied": "Autorizzazione negata: abilitala nelle impostazioni del browser",
     "permissionRequest": "L'autorizzazione verrà richiesta all'attivazione",
@@ -1633,6 +1640,8 @@
     "obsidianRecurrenceHint": "Ricorrente in Obsidian: la ricorrenza di questa attività è gestita dal plugin Tasks; completarla qui non creerà l'istanza successiva"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}A",
     "linkedWithLifeGlance": "Collegato a lifeGLANCE",
     "markGoalComplete": "Segna l’obiettivo come completato",
     "newGoal": "Nuovo obiettivo",

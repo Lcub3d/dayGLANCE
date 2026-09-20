@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 
 const ReminderToasts = () => {
+  const { t } = useTranslation();
   const { cardBg, borderClass, textPrimary, textSecondary, darkMode, toggleComplete } = useDayPlannerCtx();
   const {
     activeReminders,
@@ -33,18 +35,19 @@ const ReminderToasts = () => {
                 </div>
                 <button
                   onClick={() => dismissReminder(reminder.id)}
+                  aria-label={t('common.dismiss')}
                   className={`${textSecondary} hover:${textPrimary} flex-shrink-0`}
                 >
                   <X size={14} />
                 </button>
               </div>
-              <div className="flex items-center justify-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
                 {reminder.type === 'end' && !reminder.isCalendarEvent && (
                   <button
                     onClick={() => { toggleComplete(reminder.taskId); dismissReminder(reminder.id); }}
                     className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
-                    Complete
+                    {t('focus.complete')}
                   </button>
                 )}
                 {reminder.type !== 'end' && reminder.type !== 'morning' && reminder.startTime && (
@@ -52,27 +55,27 @@ const ReminderToasts = () => {
                     onClick={() => snoozeReminder(reminder)}
                     className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                   >
-                    Snooze 15m
+                    {t('reminders.snoozeMinutes', { count: 15 })}
                   </button>
                 )}
                 <button
                   onClick={() => dismissReminder(reminder.id)}
                   className={`px-2.5 py-1 text-xs rounded transition-colors ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}
                 >
-                  Dismiss
+                  {t('common.dismiss')}
                 </button>
               </div>
             </div>
           ))}
           {activeReminders.length > 5 && (
-            <p className={`text-xs ${textSecondary} text-right`}>+{activeReminders.length - 5} more</p>
+            <p className={`text-xs ${textSecondary} text-right`}>{t('reminders.more', { count: activeReminders.length - 5 })}</p>
           )}
           {activeReminders.length > 1 && (
             <button
               onClick={dismissAllReminders}
               className={`text-xs ${textSecondary} hover:underline text-right`}
             >
-              Dismiss all
+              {t('reminders.dismissAll')}
             </button>
           )}
         </div>

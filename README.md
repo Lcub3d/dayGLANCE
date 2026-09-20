@@ -7,7 +7,7 @@ Part of the **GLANCE family**: focused, standalone apps connected through a shar
 [<img src="screenshots/badges/google-play.png" alt="Get it on Google Play" height="60">](https://play.google.com/store/apps/details?id=com.dayglance.app) [<img src="screenshots/badges/app-store.svg" alt="Download on the App Store" height="60">](https://apps.apple.com/app/id6771540599)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-5.2.1-green.svg)](https://github.com/krelltunez/dayglance/releases)
+[![Version](https://img.shields.io/badge/version-5.2.2-green.svg)](https://github.com/krelltunez/dayglance/releases)
 
 [**Live App**](https://dayglance.app) · [**Documentation**](https://docs.dayglance.app) · [**Releases**](https://github.com/krelltunez/dayglance/releases)
 
@@ -667,6 +667,8 @@ The **source code** is [MIT-licensed](LICENSE): free to build, self-host, modify
 The **paid Google Play and App Store builds** are a convenience distribution that funds continued development. When you buy those, you're paying for the packaged, signed, auto-updating binary and the store experience around it, not for the code itself, which remains free under the MIT license above.
 
 **Trademarks:** the dayGLANCE name, logo, and app icon are trademarks of the project and are **not** covered by the MIT license. The MIT license grants rights to the code only; it does not grant permission to use the dayGLANCE branding on your own builds or distributions.
+
+**Fonts:** [Lora](https://github.com/cyrealtype/Lora-Cyrillic) (© The Lora Project Authors) is bundled under the [SIL Open Font License 1.1](https://scripts.sil.org/OFL): a Latin subset for the wordmark on the web (`public/fonts/`), and the Medium face for the Day Dial widget's date on iOS (`dayglance-ios/DayGlanceWidget/Fonts/`, licence text alongside).
 
 ---
 

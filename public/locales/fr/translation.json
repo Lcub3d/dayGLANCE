@@ -683,6 +683,10 @@
     "tasks": "Tâches"
   },
   "task": {
+    "contextNotesSubtasks": "Notes / sous-tâches",
+    "contextGenerateSubtasks": "Générer des sous-tâches (IA)",
+    "contextMoveTomorrow": "Reporter à demain",
+    "contextMoveInbox": "Déplacer vers la boîte de réception",
     "obsidianNoteSource": "Dans {{note}} (Obsidian)",
     "openWikiNote": "Ouvrir « {{name}} »",
     "openWikiNoteInObsidian": "Ouvrir « {{name}} » dans Obsidian",
@@ -1107,6 +1111,7 @@
     "typeInstead": "Ou saisir du texte",
     "transcriptionUnavailableWithProvider": "L’enregistrement vocal n’est pas disponible ici et {{provider}} ne prend pas en charge la transcription. Saisissez vos tâches ci-dessous ; les dates, heures et répétitions seront toujours interprétées.",
     "transcriptionUnavailable": "L’enregistrement vocal n’est pas disponible sur cet appareil. Saisissez vos tâches ci-dessous ; les dates, heures et répétitions seront toujours interprétées.",
+    "speechServiceUnreachable": "Ce navigateur n’a pas pu joindre son service de reconnaissance vocale ; la saisie vocale n’est donc pas disponible ici. Saisissez vos tâches ci-dessous, ou essayez un autre navigateur.",
     "placeholder": "Ajoutez ou modifiez des tâches… ex. « appeler maman demain à 15 h » ou « déplacer le point quotidien à vendredi » ou « marquer le rapport comme terminé »",
     "useVoiceInstead": "Utiliser la voix",
     "parsing": "Analyse en cours…",
@@ -1137,6 +1142,16 @@
     "removeTag": "retirer",
     "notFound": "introuvable",
     "noResults": "Aucune tâche ni modification n’a été extraite de votre saisie.",
+    "heard": "Entendu :",
+    "editAndRetry": "Modifier et réessayer",
+    "aiUnexpectedShape": "L’IA a répondu dans un format que l’application n’a pas pu lire.",
+    "speechRecognitionError": "Erreur de reconnaissance vocale : {{error}}",
+    "micAccessDenied": "Accès au microphone refusé. Autorisez l’accès au microphone dans les paramètres de votre navigateur.",
+    "micAccessDeniedBrave": "Accès au microphone refusé. Brave Shields bloque peut-être l’accès : désactivez Shields pour ce site, ou autorisez l’accès au microphone dans les paramètres de votre navigateur.",
+    "micNotFound": "Aucun microphone détecté. Branchez un microphone et réessayez.",
+    "micError": "Erreur de microphone : {{error}}",
+    "transcriptionFailed": "Échec de la transcription : {{error}}",
+    "unknownError": "inconnue",
     "applyAll": "Tout appliquer ({{count}})",
     "applyEdit": "Appliquer la modification",
     "applyEdits": "Appliquer les modifications ({{count}})",
@@ -1265,6 +1280,9 @@
     "openReview": "Ouvrir la revue hebdomadaire"
   },
   "reminders": {
+    "dismissAll": "Tout fermer",
+    "more_one": "+{{count}} autre",
+    "more_other": "+{{count}} autres",
     "permissionGranted": "Autorisation accordée",
     "permissionDenied": "Autorisation refusée — activez-la dans les paramètres du navigateur",
     "permissionRequest": "L'autorisation sera demandée lors de l'activation",
@@ -1622,6 +1640,8 @@
     "obsidianRecurrenceHint": "Récurrente dans Obsidian: la récurrence de cette tâche est gérée par le module Tasks ; la terminer ici ne créera pas l’occurrence suivante"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}A",
     "linkedWithLifeGlance": "Lié à lifeGLANCE",
     "markGoalComplete": "Marquer l’objectif comme terminé",
     "newGoal": "Nouvel objectif",

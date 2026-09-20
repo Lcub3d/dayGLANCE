@@ -683,6 +683,10 @@
     "tasks": "Tasks"
   },
   "task": {
+    "contextNotesSubtasks": "Notes / subtasks",
+    "contextGenerateSubtasks": "Generate subtasks (AI)",
+    "contextMoveTomorrow": "Move to tomorrow",
+    "contextMoveInbox": "Move to inbox",
     "obsidianNoteSource": "In {{note}} (Obsidian)",
     "openWikiNote": "Open “{{name}}”",
     "openWikiNoteInObsidian": "Open “{{name}}” in Obsidian",
@@ -1107,6 +1111,7 @@
     "typeInstead": "Or type instead",
     "transcriptionUnavailableWithProvider": "Voice recording isn't available here, and {{provider}} doesn't support transcription. Type your tasks below — dates, times, and repeats are still understood.",
     "transcriptionUnavailable": "Voice recording is not available on this device. Type your tasks below — dates, times, and repeats are still understood.",
+    "speechServiceUnreachable": "This browser couldn't reach its speech recognition service, so voice input isn't available here. Type your tasks below instead, or try a different browser.",
     "placeholder": "Add or edit tasks... e.g. \"call mom tomorrow at 3pm\" or \"move standup to Friday\" or \"mark report as done\"",
     "useVoiceInstead": "Use voice instead",
     "parsing": "Parsing...",
@@ -1137,6 +1142,16 @@
     "removeTag": "remove",
     "notFound": "not found",
     "noResults": "No tasks or edits were parsed from your input.",
+    "heard": "Heard:",
+    "editAndRetry": "Edit and retry",
+    "aiUnexpectedShape": "The AI replied in a format the app couldn't read.",
+    "speechRecognitionError": "Speech recognition error: {{error}}",
+    "micAccessDenied": "Microphone access denied. Please allow microphone permissions in your browser settings.",
+    "micAccessDeniedBrave": "Microphone access denied. Brave Shields may be blocking access — try disabling Shields for this site, or allow microphone permissions in your browser settings.",
+    "micNotFound": "No microphone found. Please connect a microphone and try again.",
+    "micError": "Microphone error: {{error}}",
+    "transcriptionFailed": "Transcription failed: {{error}}",
+    "unknownError": "unknown",
     "applyAll": "Apply All ({{count}})",
     "applyEdit": "Apply Edit",
     "applyEdits": "Apply Edits ({{count}})",
@@ -1265,6 +1280,9 @@
     "openReview": "Open Review"
   },
   "reminders": {
+    "dismissAll": "Dismiss all",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more",
     "permissionGranted": "Permission granted",
     "permissionDenied": "Permission denied — enable in browser settings",
     "permissionRequest": "Will request permission when enabled",
@@ -1622,6 +1640,8 @@
     "obsidianRecurrenceHint": "Recurring in Obsidian: this task's recurrence is managed by the Tasks plugin; completing it here won't create the next instance"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}Y",
     "linkedWithLifeGlance": "Linked with lifeGLANCE",
     "markGoalComplete": "Mark goal complete",
     "newGoal": "New Goal",

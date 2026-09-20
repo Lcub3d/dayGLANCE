@@ -250,9 +250,9 @@ export default function useKeyboardShortcuts({
         setShowMobileTagFilter(false);
       }
 
-      // 'v' for voice task input — same gate as the mic buttons (default on,
-      // no AI required: platform speech + deterministic parse cover the rest)
-      if (e.key === 'v' && noModifiers && aiConfig.features?.voiceTaskInput !== false) {
+      // 'v' for voice task input — never gated: voice works without AI, and
+      // the Settings › AI toggle only decides whether AI is used for it.
+      if (e.key === 'v' && noModifiers) {
         e.preventDefault();
         setShowVoiceInput(true);
       }

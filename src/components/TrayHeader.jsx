@@ -2,13 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Mic } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusPanel } from './McpStatusControls.jsx';
 
 export default function TrayHeader({ darkMode, onSearchClick, onVoiceClick }) {
   const { t } = useTranslation();
   const { setUnscheduledTasks, borderClass } = useDayPlannerCtx();
-  const { aiConfig, voiceCanRecord } = useFeaturesCtx();
   const [text, setText] = useState('');
   const inputRef = useRef(null);
   const mcp = useMcpStatus();
@@ -53,8 +51,6 @@ export default function TrayHeader({ darkMode, onSearchClick, onVoiceClick }) {
     window.electronAPI?.backgroundAction({ action: 'add-inbox-task', task: newTask });
   };
 
-  const showVoice = aiConfig?.enabled && aiConfig?.features?.voiceTaskInput && voiceCanRecord;
-
   return (
     <div className={`flex-shrink-0 border-b ${borderClass}`}>
       <div className="px-3 pt-3 pb-2 flex items-center gap-1.5">
@@ -80,18 +76,20 @@ export default function TrayHeader({ darkMode, onSearchClick, onVoiceClick }) {
         >
           <Search size={16} />
         </button>
-        {showVoice && (
-          <button
-            onClick={onVoiceClick}
-            className={`flex-shrink-0 p-2 rounded-lg transition-opacity hover:opacity-70 ${
-              darkMode ? 'bg-white/10 text-purple-400' : 'bg-black/5 text-purple-600'
-            }`}
-            title={t('voice.title')}
-            aria-label={t('voice.title')}
-          >
-            <Mic size={16} />
-          </button>
-        )}
+        {/* Never gated: voice works without AI (TrayVoice falls back to typing
+            where no speech path exists), and the Settings › AI toggle decides
+            only whether AI is used for it — see src/utils/voiceAI.js. This used
+            to require AI on AND the toggle AND MediaRecorder. */}
+        <button
+          onClick={onVoiceClick}
+          className={`flex-shrink-0 p-2 rounded-lg transition-opacity hover:opacity-70 ${
+            darkMode ? 'bg-white/10 text-purple-400' : 'bg-black/5 text-purple-600'
+          }`}
+          title={t('voice.title')}
+          aria-label={t('voice.title')}
+        >
+          <Mic size={16} />
+        </button>
         {/* §6.5 ambient signal: visible only while the MCP listener is bound */}
         <McpBoltButton mcp={mcp} darkMode={darkMode} open={mcpOpen} onToggle={() => setMcpOpen((v) => !v)} variant="tray" />
       </div>

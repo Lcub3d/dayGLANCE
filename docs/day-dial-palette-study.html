@@ -1,0 +1,390 @@
+<title>Dial Palette Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f4f4f6; --fg:#17171a; --muted:#62626d; --line:#d8d8de;
+    --chip:#ffffff; --chip-on:#17171a; --chip-on-fg:#ffffff;
+    --wall-a:#2a2a3a; --wall-b:#14141c; --pick:#b8860b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#101013; --fg:#ededf0; --muted:#8e8e99; --line:#2a2a31;
+      --chip:#1c1c22; --chip-on:#ededf0; --chip-on-fg:#101013; --pick:#f5c542;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#101013; --fg:#ededf0; --muted:#8e8e99; --line:#2a2a31;
+    --chip:#1c1c22; --chip-on:#ededf0; --chip-on-fg:#101013; --pick:#f5c542;
+  }
+  * { box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--fg); margin:0;
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:20px 16px 56px;
+    display:flex; flex-direction:column; align-items:center; gap:20px;
+  }
+  header { text-align:center; max-width:560px; }
+  h1 { font-size:17px; margin:0 0 6px; letter-spacing:-.01em; text-wrap:balance; }
+  header p { font-size:13px; color:var(--muted); margin:0; line-height:1.55; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:640px; }
+  .group { display:flex; flex-wrap:wrap; background:var(--chip); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px; }
+  .group button {
+    font:inherit; font-size:12px; font-weight:500; padding:6px 12px; border:0; border-radius:999px;
+    background:transparent; color:var(--muted); cursor:pointer; white-space:nowrap;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .group button[aria-pressed="true"] { background:var(--chip-on); color:var(--chip-on-fg); }
+  .group button:focus-visible { outline:2px solid var(--pick); outline-offset:2px; }
+
+  .grid { display:flex; flex-wrap:wrap; justify-content:center; gap:28px 24px; max-width:880px; }
+  figure { margin:0; display:flex; flex-direction:column; gap:10px; max-width:100%; }
+  .stage {
+    background:radial-gradient(120% 90% at 20% 0%, var(--wall-a) 0%, var(--wall-b) 62%), var(--wall-b);
+    border-radius:34px; padding:26px 18px; box-shadow:0 10px 40px rgba(0,0,0,.28);
+    max-width:100%; overflow-x:auto;
+  }
+  .widget { width:364px; height:382px; border-radius:22px; background:#0b0b0e; overflow:hidden; box-shadow:0 2px 14px rgba(0,0,0,.5); }
+  .widget svg { display:block; width:364px; height:382px; }
+  figcaption { max-width:400px; padding:0 4px; }
+  .vname { display:flex; align-items:baseline; gap:8px; font-size:13.5px; font-weight:600; }
+  .vtag { font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--muted); }
+  .vpick { font-size:10.5px; font-weight:700; letter-spacing:.08em; color:var(--pick); text-transform:uppercase; }
+  .vspec { font-size:12px; color:var(--muted); line-height:1.5; margin-top:3px; font-variant-numeric:tabular-nums; }
+
+  .notes { max-width:640px; width:100%; font-size:13px; line-height:1.65; color:var(--muted); border-top:1px solid var(--line); padding-top:18px; }
+  .notes h2 { font-size:13px; color:var(--fg); margin:0 0 6px; font-weight:600; }
+  .notes p { margin:0 0 14px; }
+  .notes strong { color:var(--fg); font-weight:600; }
+
+  .swatches { width:100%; overflow-x:auto; margin-top:4px; }
+  table { border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; min-width:420px; }
+  th, td { text-align:left; padding:5px 10px 5px 0; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:11px; letter-spacing:.04em; }
+  td { color:var(--fg); }
+  .sw { display:inline-block; width:22px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:6px; box-shadow:inset 0 0 0 1px rgba(128,128,128,.25); }
+  code { font-family:ui-monospace, "SF Mono", Menlo, monospace; font-size:11.5px; }
+</style>
+
+<header>
+  <h1>Dial Palette Study</h1>
+  <p>Real colours through the app's own pipeline: <code>muteDialColor</code>, then <code>dialIntensity</code> by duration, then the state multipliers. Each widget is 364&times;382pt. Compare on the phone.</p>
+</header>
+
+<div class="controls">
+  <div class="group" id="g-day" role="group" aria-label="Day">
+    <button data-v="dense" aria-pressed="true">Dense</button>
+    <button data-v="sparse" aria-pressed="false">Sparse</button>
+  </div>
+  <div class="group" id="g-src" role="group" aria-label="Snapshot">
+    <button data-v="pushed" aria-pressed="true">Pushed day</button>
+    <button data-v="projlit" aria-pressed="false">Projected, as-is</button>
+    <button data-v="projneu" aria-pressed="false">Projected, neutral past</button>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="notes">
+  <h2>What's being compared</h2>
+  <p><strong>A</strong> is what the widget gets if Phase 2 ports the app treatment literally. The rim is 2 to 4 units in a 1000-unit viewBox, so it comes out at 0.8 to 1.5pt here. <strong>B</strong> gives the rim a minimum weight and raises the fills 2.5&times; so short blocks don't disappear. <strong>C</strong> raises the fills further, 3.5&times;, so the band reads close to solid but keeps the lit rim. <strong>D</strong> is the solid band from the spec you approved, now in the real colours. The colour source, the duration curve and the state logic are the same in all four. Only the fill and rim weights change.</p>
+  <p>Past blocks follow the app, not the spec. The app dims by state: completed blocks fade, including the rim, while <strong>past blocks left undone keep a full-strength rim</strong>. In the dense day that's the 09:00 red Todoist block. So the app already marks unfinished work, and the spec's plain 42% time dimming would lose that.</p>
+  <h2>The projected-day problem</h2>
+  <p>Switch to <strong>Projected, as-is</strong>. A projected day can't know what gets completed, so every flag arrives as <code>false</code>. Under the app's rules, every past block then shows as left undone. Each morning before you open the app, the widget would mark everything you already finished as unfinished. <strong>Projected, neutral past</strong> uses the app's past-event multipliers (0.6 / 0.6) instead, which say "this happened" without claiming anything about completion.</p>
+  <h2>Colours, stored and drawn</h2>
+  <div class="swatches">
+    <table>
+      <thead><tr><th>Source</th><th>Stored</th><th>Drawn (muted)</th></tr></thead>
+      <tbody id="swatch-rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+(function () {
+  var SVG = "http://www.w3.org/2000/svg";
+
+  // ---- palette (verified against Code's reported values) --------------------
+  function mute(hex) {
+    var h = hex.replace("#", "");
+    var r = parseInt(h.slice(0,2),16)/255, g = parseInt(h.slice(2,4),16)/255, b = parseInt(h.slice(4,6),16)/255;
+    var mx = Math.max(r,g,b), mn = Math.min(r,g,b), l = (mx+mn)/2, s = 0, hh = 0, d = mx-mn;
+    if (d) {
+      s = l > 0.5 ? d/(2-mx-mn) : d/(mx+mn);
+      hh = mx === r ? (g-b)/d + (g<b?6:0) : mx === g ? (b-r)/d + 2 : (r-g)/d + 4;
+      hh /= 6;
+    }
+    s = Math.min(s, 0.5); l = 0.73;
+    function hue(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+    var q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+    var out = [hue(p,q,hh+1/3), hue(p,q,hh), hue(p,q,hh-1/3)];
+    return "#" + out.map(function (c) { return ("0"+Math.round(c*255).toString(16)).slice(-2); }).join("");
+  }
+
+  var RAW = {
+    blue:"#3b82f6", ics:"#2563eb", red:"#ef4444", green:"#22c55e", purple:"#a855f7",
+    yellow:"#eab308", pink:"#ec4899", indigo:"#6366f1", orange:"#f97316", teal:"#14b8a6"
+  };
+  var LABEL = {
+    blue:"blue-500 (default)", ics:"blue-600 (ICS default)", red:"red-500 (Todoist)", green:"green-500",
+    purple:"purple-500", yellow:"yellow-500", pink:"pink-500", indigo:"indigo-500", orange:"orange-500", teal:"teal-500"
+  };
+  var ROUTINE = "#5eead4", SLEEP = "#c4b5fd";
+
+  // ---- fixtures -------------------------------------------------------------
+  var NOW = 11*60 + 20, CUR_END = 12*60 + 30;
+  var SUNRISE = 5*60 + 37, SUNSET = 20*60 + 31;
+  var MOON_PHASE = 0.5, MOONRISE = 21*60 + 30, MOONSET = 6*60 + 30;
+
+  // t: task | event | routine | sleep ; done: completion (tasks/routines)
+  var DAYS = {
+    dense: [
+      { s:0,    e:385,  t:"sleep" },
+      { s:385,  e:420,  t:"routine", done:true },
+      { s:435,  e:480,  t:"task",  c:"blue",   done:true },
+      { s:480,  e:540,  t:"event", c:"ics" },
+      { s:540,  e:600,  t:"task",  c:"red",    done:false },
+      { s:600,  e:750,  t:"task",  c:"blue",   done:false, label:"Write API documentation", tag:"work" },
+      { s:750,  e:810,  t:"task",  c:"green" },
+      { s:810,  e:870,  t:"event", c:"ics" },
+      { s:870,  e:915,  t:"task",  c:"yellow" },
+      { s:915,  e:1035, t:"task",  c:"purple" },
+      { s:1035, e:1080, t:"task",  c:"green" },
+      { s:1080, e:1140, t:"task",  c:"pink" },
+      { s:1140, e:1185, t:"task",  c:"red" },
+      { s:1185, e:1290, t:"task",  c:"indigo" },
+      { s:1290, e:1330, t:"routine" },
+      { s:1350, e:1440, t:"sleep" }
+    ],
+    sparse: [
+      { s:0,    e:420,  t:"sleep" },
+      { s:420,  e:455,  t:"routine", done:true },
+      { s:600,  e:750,  t:"task",  c:"blue", done:false, label:"Write API documentation", tag:"work" },
+      { s:1020, e:1140, t:"task",  c:"green" },
+      { s:1380, e:1440, t:"sleep" }
+    ]
+  };
+
+  var VARIANTS = [
+    { id:"A", name:"App treatment, literal", mode:"wedge", fillScale:1,   rimMin:0.81, rimMax:1.46,
+      spec:"Fill 0.05–0.16 · rim 0.8–1.5pt (web width × 0.364)" },
+    { id:"B", name:"App treatment, lifted", mode:"wedge", fillScale:2.5, rimMin:1.5,  rimMax:2.5,
+      spec:"Fill 0.13–0.40 (× 2.5) · rim 1.5–2.5pt" },
+    { id:"C", name:"Hybrid, heavy fill + rim", mode:"wedge", fillScale:3.5, rimMin:1.5, rimMax:2.5,
+      spec:"Fill 0.18–0.56 (× 3.5) · rim 1.5–2.5pt" },
+    { id:"D", name:"Spec solid band", mode:"solid",
+      spec:"Solid 22pt band · 0.72 ahead, 0.30 past, by time" }
+  ];
+
+  // ---- geometry (spec) ------------------------------------------------------
+  var CX = 182, CY = 189;
+  var R_LABEL_CARD = 172, R_LABEL_DIAG = 181;
+  var R_TICK_IN = 155, R_TICK_OUT = 166, R_TICK_MINOR = 161;
+  var R_BLOCK = 140, W_BLOCK = 22, R_IN = R_BLOCK - W_BLOCK/2, R_OUT = R_BLOCK + W_BLOCK/2;
+  var R_SKY = 119, W_SKY = 6, R_GLYPH = 104;
+  var NEEDLE_IN = 126, NEEDLE_OUT = 159, SEP_LINE_W = 1.6, HUB_RULE_Y = CY;
+  var SANS = "-apple-system, system-ui, sans-serif";
+  var SERIF = 'Lora, Georgia, "Times New Roman", serif';
+  var BG = "#0b0b0e";
+
+  var state = { day:"dense", src:"pushed" };
+
+  function polar(r, deg) { var a = (deg - 90) * Math.PI / 180; return { x: CX + r*Math.cos(a), y: CY + r*Math.sin(a) }; }
+  function toAngle(t) { return (t / 1440) * 360; }
+  function f2(n) { return n.toFixed(2); }
+  function arc(r, a0, a1) {
+    if (a1 - a0 >= 359.99) a1 = a0 + 359.99;
+    var p0 = polar(r, a0), p1 = polar(r, a1);
+    return "M " + f2(p0.x) + " " + f2(p0.y) + " A " + r + " " + r + " 0 " + ((a1-a0) > 180 ? 1 : 0) + " 1 " + f2(p1.x) + " " + f2(p1.y);
+  }
+  function sector(ri, ro, a0, a1) {
+    var big = (a1 - a0) > 180 ? 1 : 0;
+    var o0 = polar(ro, a0), o1 = polar(ro, a1), i1 = polar(ri, a1), i0 = polar(ri, a0);
+    return "M " + f2(o0.x) + " " + f2(o0.y) + " A " + ro + " " + ro + " 0 " + big + " 1 " + f2(o1.x) + " " + f2(o1.y) +
+           " L " + f2(i1.x) + " " + f2(i1.y) + " A " + ri + " " + ri + " 0 " + big + " 0 " + f2(i0.x) + " " + f2(i0.y) + " Z";
+  }
+  function el(n, a, t) { var e = document.createElementNS(SVG, n); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; return e; }
+  function fmt(min) { var m = ((min % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0"); }
+  function dur(m) { var h = Math.floor(m/60), mm = m%60; return h && mm ? h+"h "+mm+"m" : h ? h+"h" : mm+"m"; }
+
+  function sunStrength(t) { if (t <= SUNRISE || t >= SUNSET) return 0; return Math.sin(Math.PI*(t-SUNRISE)/(SUNSET-SUNRISE)); }
+  function moonStrength(t) { var span = (MOONSET-MOONRISE+1440)%1440, d = (t-MOONRISE+1440)%1440; return d >= span ? 0 : MOON_PHASE*Math.sin(Math.PI*(d/span)); }
+
+  function sunGlyph(rising, color) {
+    var g = el("g", {});
+    var st = { stroke:color, "stroke-opacity":"0.92", "stroke-width":"1.3", "stroke-linecap":"round", fill:"none" };
+    [[-4.10,2.13,-5.65,1.04],[0,0,0,-1.9],[4.10,2.13,5.65,1.04]].forEach(function (r) {
+      g.appendChild(el("line", Object.assign({ x1:r[0], y1:r[1], x2:r[2], y2:r[3] }, st)));
+    });
+    g.appendChild(el("path", { d:"M -3.4 5 A 3.4 3.4 0 0 1 3.4 5 Z", fill:color, "fill-opacity":"0.92" }));
+    g.appendChild(el("line", Object.assign({ x1:-7, y1:5, x2:7, y2:5 }, st, { "stroke-opacity":"0.62" })));
+    g.appendChild(el("path", Object.assign({ d: rising ? "M -2.4 -3.2 L 0 -5.6 L 2.4 -3.2" : "M -2.4 7.0 L 0 9.4 L 2.4 7.0" }, st)));
+    return g;
+  }
+  function moonGlyph(color) {
+    var g = el("g", {});
+    g.appendChild(el("circle", { cx:0, cy:0, r:3.6, fill:"none", stroke:color, "stroke-opacity":"0.55", "stroke-width":"1.1" }));
+    g.appendChild(el("path", { d:"M 0 -3.6 A 3.6 3.6 0 0 1 0 3.6 Z", fill:color, "fill-opacity":"0.85" }));
+    return g;
+  }
+  function placeGlyph(svg, node, t) { var p = polar(R_GLYPH, toAngle(t)); node.setAttribute("transform", "translate(" + f2(p.x) + "," + f2(p.y) + ")"); svg.appendChild(node); }
+
+  // ---- app treatment --------------------------------------------------------
+  // State multipliers from DayDial.jsx, as Code reported them.
+  function stateMult(b, src) {
+    var past = b.e <= NOW;
+    if (b.t === "sleep") return past ? { f:0.36, e:0.36 } : { f:0.6, e:0.6 };
+    if (!past) return { f:1, e:1 };
+    if (b.t === "event") return { f:0.6, e:0.6 };
+    if (src === "projneu") return { f:0.6, e:0.6 };             // past, completion unknown
+    var done = src === "projlit" ? false : !!b.done;             // projected payload: always false
+    return done ? { f:0.6, e:0.25 } : { f:0.35, e:1 };
+  }
+
+  function drawBlocksWedge(svg, blocks, v) {
+    blocks.forEach(function (b) {
+      var a0 = toAngle(b.s), a1 = toAngle(b.e), mins = b.e - b.s, t = Math.min(1, mins/180);
+      var rimW = v.rimMin + (v.rimMax - v.rimMin) * t;
+      var rimR = R_OUT - rimW/2;
+      if (b.t === "routine") {
+        var done = state.src === "projlit" ? false : !!b.done;
+        if (state.src === "projneu" && b.e <= NOW) done = true;   // treat as happened
+        svg.appendChild(el("path", { d: arc(rimR, a0, a1), fill:"none", stroke: ROUTINE,
+          "stroke-opacity": done ? "0.18" : "0.5", "stroke-width": f2(rimW), "stroke-linecap":"butt" }));
+        return;
+      }
+      var col = b.t === "sleep" ? SLEEP : mute(RAW[b.c]);
+      var m = stateMult(b, state.src);
+      var fill = Math.min(1, (0.05 + 0.11*t) * v.fillScale * m.f);
+      var edge = Math.min(1, (0.45 + 0.55*t) * m.e);
+      svg.appendChild(el("path", { d: sector(R_IN, R_OUT, a0, a1), fill: col, "fill-opacity": fill.toFixed(3) }));
+      svg.appendChild(el("path", { d: arc(rimR, a0, a1), fill:"none", stroke: col,
+        "stroke-opacity": edge.toFixed(3), "stroke-width": f2(rimW), "stroke-linecap":"butt" }));
+    });
+  }
+
+  function drawBlocksSolid(svg, blocks) {
+    blocks.forEach(function (b) {
+      var past = b.e <= NOW;
+      var col = b.t === "sleep" ? SLEEP : b.t === "routine" ? ROUTINE : mute(RAW[b.c]);
+      var base = b.t === "sleep" ? 0.34 : 0.72;
+      svg.appendChild(el("path", { d: arc(R_BLOCK, toAngle(b.s), toAngle(b.e)), fill:"none", stroke: col,
+        "stroke-opacity": (past ? base * 0.42 : base).toFixed(3), "stroke-width": W_BLOCK }));
+    });
+  }
+
+  function render(svg, v) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var blocks = DAYS[state.day];
+
+    for (var h = 0; h < 24; h++) {
+      var mid = h*60 + 30, sv = sunStrength(mid), mv = moonStrength(mid), sun = sv >= mv;
+      svg.appendChild(el("path", { d: arc(R_SKY, toAngle(h*60), toAngle(h*60+60)), fill:"none",
+        stroke: sun ? "#d9b33c" : "#c3c3e8",
+        "stroke-opacity": (sun ? 0.10 + sv*0.66 : 0.09 + mv*0.52).toFixed(3),
+        "stroke-width": W_SKY, "stroke-linecap":"butt" }));
+    }
+    placeGlyph(svg, sunGlyph(true, "#f5c542"), SUNRISE);
+    placeGlyph(svg, sunGlyph(false, "#f59942"), SUNSET);
+    placeGlyph(svg, moonGlyph("#d8d8f0"), (MOONRISE + ((MOONSET-MOONRISE+1440)%1440)/2) % 1440);
+
+    svg.appendChild(el("circle", { cx:CX, cy:CY, r:R_BLOCK, fill:"none", stroke:"#ffffff", "stroke-opacity":"0.045", "stroke-width":W_BLOCK }));
+
+    for (var i = 0; i < 24; i++) {
+      var a = i*15, p1 = polar(R_TICK_IN, a), p2 = polar(R_TICK_OUT, a);
+      svg.appendChild(el("line", { x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, stroke:"#ffffff", "stroke-opacity":"0.30", "stroke-width":"1.5", "stroke-linecap":"round" }));
+      for (var q = 1; q < 4; q++) {
+        var q1 = polar(R_TICK_MINOR, a + 3.75*q), q2 = polar(R_TICK_OUT, a + 3.75*q);
+        svg.appendChild(el("line", { x1:q1.x, y1:q1.y, x2:q2.x, y2:q2.y, stroke:"#ffffff", "stroke-opacity":"0.13", "stroke-width":"1" }));
+      }
+    }
+
+    if (v.mode === "wedge") drawBlocksWedge(svg, blocks, v); else drawBlocksSolid(svg, blocks);
+
+    blocks.forEach(function (b, i) {
+      var nxt = blocks[i+1];
+      if (!nxt || nxt.s !== b.e) return;
+      var a = toAngle(b.e), p1 = polar(R_IN, a), p2 = polar(R_OUT, a);
+      svg.appendChild(el("line", { x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, stroke:BG, "stroke-width":SEP_LINE_W }));
+    });
+
+    [{t:0,txt:"00",r:R_LABEL_CARD},{t:180,txt:"03",r:R_LABEL_DIAG},{t:540,txt:"09",r:R_LABEL_DIAG},
+     {t:720,txt:"12",r:R_LABEL_CARD},{t:900,txt:"15",r:R_LABEL_DIAG},{t:1260,txt:"21",r:R_LABEL_DIAG}
+    ].forEach(function (L) {
+      var p = polar(L.r, toAngle(L.t));
+      svg.appendChild(el("text", { x:p.x, y:p.y, fill:"#ffffff", "fill-opacity":"0.44", "font-size":"10.5", "font-weight":"500",
+        "letter-spacing":"1.4", "text-anchor":"middle", "dominant-baseline":"central", "font-family":SANS }, L.txt));
+    });
+
+    var na = toAngle(NOW), n1 = polar(NEEDLE_IN, na), n2 = polar(NEEDLE_OUT, na);
+    svg.appendChild(el("line", { x1:n1.x, y1:n1.y, x2:n2.x, y2:n2.y, stroke:"#f5a623", "stroke-width":"2.6", "stroke-linecap":"round" }));
+    svg.appendChild(el("circle", { cx:n2.x, cy:n2.y, r:3.4, fill:"#f5a623" }));
+
+    var cur = blocks.filter(function (b) { return b.label && b.s <= NOW && b.e > NOW; })[0];
+    var after = blocks.filter(function (b) { return b.s >= CUR_END; }).sort(function (a, b) { return a.s - b.s; })[0];
+    var gap = after ? after.s - CUR_END : 0;
+
+    svg.appendChild(el("text", { x:CX, y:138, fill:"#ffffff", "fill-opacity":"0.46", "font-size":"9.5", "font-weight":"600",
+      "letter-spacing":"3.2", "text-anchor":"middle", "font-family":SANS }, "TUESDAY"));
+    svg.appendChild(el("text", { x:CX, y:172, fill:"#ffffff", "fill-opacity":"0.96", "font-size":"28", "font-weight":"500",
+      "text-anchor":"middle", "font-family":SERIF }, "July 7"));
+    svg.appendChild(el("line", { x1:CX-34, y1:HUB_RULE_Y, x2:CX+34, y2:HUB_RULE_Y, stroke:"#ffffff", "stroke-opacity":"0.16", "stroke-width":"1" }));
+    if (cur) {
+      svg.appendChild(el("text", { x:CX, y:211, fill:"#ffffff", "fill-opacity":"0.95", "font-size":"15", "font-weight":"600",
+        "text-anchor":"middle", "font-family":SANS }, cur.label));
+      svg.appendChild(el("text", { x:CX, y:229, fill:"#ffffff", "fill-opacity":"0.44", "font-size":"11", "font-style":"italic",
+        "text-anchor":"middle", "font-family":SANS }, "#" + cur.tag));
+      svg.appendChild(el("text", { x:CX, y:249, fill:"#ffffff", "fill-opacity":"0.58", "font-size":"11.5",
+        "text-anchor":"middle", "font-family":SANS }, "until " + fmt(CUR_END) + " · " + dur(CUR_END - NOW) + " left"));
+      if (gap >= 30) {
+        svg.appendChild(el("text", { x:CX, y:266, fill:"#4ec9b0", "fill-opacity":"0.72", "font-size":"11",
+          "text-anchor":"middle", "font-family":SANS }, "then " + dur(gap) + " open"));
+      }
+    }
+  }
+
+  // ---- page -----------------------------------------------------------------
+  var grid = document.getElementById("grid");
+  var svgs = VARIANTS.map(function (v) {
+    var fig = document.createElement("figure");
+    fig.innerHTML =
+      '<div class="stage"><div class="widget"><svg viewBox="0 0 364 382" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Variant ' + v.id + ': ' + v.name + '"></svg></div></div>' +
+      '<figcaption><div class="vname"><span class="vtag">' + v.id + '</span><span>' + v.name + '</span>' +
+      (v.pick ? '<span class="vpick">My pick</span>' : '') + '</div><div class="vspec">' + v.spec + '</div></figcaption>';
+    grid.appendChild(fig);
+    return fig.querySelector("svg");
+  });
+
+  function renderAll() { VARIANTS.forEach(function (v, i) { render(svgs[i], v); }); }
+
+  function wire(id, key) {
+    var g = document.getElementById(id);
+    g.addEventListener("click", function (ev) {
+      var b = ev.target.closest("button"); if (!b) return;
+      Array.prototype.forEach.call(g.querySelectorAll("button"), function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      state[key] = b.getAttribute("data-v");
+      renderAll();
+    });
+  }
+  wire("g-day", "day");
+  wire("g-src", "src");
+
+  var rows = document.getElementById("swatch-rows");
+  Object.keys(RAW).forEach(function (k) {
+    var m = mute(RAW[k]);
+    rows.insertAdjacentHTML("beforeend",
+      "<tr><td>" + LABEL[k] + "</td><td><span class=\"sw\" style=\"background:" + RAW[k] + "\"></span>" + RAW[k] +
+      "</td><td><span class=\"sw\" style=\"background:" + m + "\"></span>" + m + "</td></tr>");
+  });
+  [["Routine (fixed, not muted)", ROUTINE], ["Sleep (fixed, not muted)", SLEEP]].forEach(function (r) {
+    rows.insertAdjacentHTML("beforeend",
+      "<tr><td>" + r[0] + "</td><td><span class=\"sw\" style=\"background:" + r[1] + "\"></span>" + r[1] +
+      "</td><td><span class=\"sw\" style=\"background:" + r[1] + "\"></span>" + r[1] + "</td></tr>");
+  });
+
+  renderAll();
+})();
+</script>

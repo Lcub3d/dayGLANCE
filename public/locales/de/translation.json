@@ -683,6 +683,10 @@
     "tasks": "Aufgaben"
   },
   "task": {
+    "contextNotesSubtasks": "Notizen / Unteraufgaben",
+    "contextGenerateSubtasks": "Unteraufgaben generieren (KI)",
+    "contextMoveTomorrow": "Auf morgen verschieben",
+    "contextMoveInbox": "In den Eingang verschieben",
     "obsidianNoteSource": "In {{note}} (Obsidian)",
     "openWikiNote": "„{{name}}“ öffnen",
     "openWikiNoteInObsidian": "„{{name}}“ in Obsidian öffnen",
@@ -1107,6 +1111,7 @@
     "typeInstead": "Oder stattdessen tippen",
     "transcriptionUnavailableWithProvider": "Sprachaufnahmen sind hier nicht verfügbar, und {{provider}} unterstützt keine Transkription. Gib deine Aufgaben unten ein – Datumsangaben, Uhrzeiten und Wiederholungen werden weiterhin verstanden.",
     "transcriptionUnavailable": "Sprachaufnahmen sind auf diesem Gerät nicht verfügbar. Gib deine Aufgaben unten ein – Datumsangaben, Uhrzeiten und Wiederholungen werden weiterhin verstanden.",
+    "speechServiceUnreachable": "Dieser Browser konnte seinen Spracherkennungsdienst nicht erreichen, daher ist die Spracheingabe hier nicht verfügbar. Gib deine Aufgaben stattdessen unten ein oder probiere einen anderen Browser.",
     "placeholder": "Aufgaben hinzufügen oder bearbeiten … z. B. „Mama morgen um 15 Uhr anrufen“ oder „Stand-up auf Freitag verschieben“ oder „Bericht als erledigt markieren“",
     "useVoiceInstead": "Spracheingabe verwenden",
     "parsing": "Wird analysiert…",
@@ -1137,6 +1142,16 @@
     "removeTag": "entfernen",
     "notFound": "nicht gefunden",
     "noResults": "Aus deiner Eingabe wurden keine Aufgaben oder Änderungen erkannt.",
+    "heard": "Gehört:",
+    "editAndRetry": "Bearbeiten und erneut versuchen",
+    "aiUnexpectedShape": "Die KI hat in einem Format geantwortet, das die App nicht lesen konnte.",
+    "speechRecognitionError": "Fehler bei der Spracherkennung: {{error}}",
+    "micAccessDenied": "Mikrofonzugriff verweigert. Bitte erlaube den Mikrofonzugriff in den Einstellungen deines Browsers.",
+    "micAccessDeniedBrave": "Mikrofonzugriff verweigert. Brave Shields blockiert möglicherweise den Zugriff – deaktiviere Shields für diese Seite oder erlaube den Mikrofonzugriff in den Einstellungen deines Browsers.",
+    "micNotFound": "Kein Mikrofon gefunden. Bitte schließe ein Mikrofon an und versuche es erneut.",
+    "micError": "Mikrofonfehler: {{error}}",
+    "transcriptionFailed": "Transkription fehlgeschlagen: {{error}}",
+    "unknownError": "unbekannt",
     "applyAll": "Alle anwenden ({{count}})",
     "applyEdit": "Änderung anwenden",
     "applyEdits": "Änderungen anwenden ({{count}})",
@@ -1265,6 +1280,9 @@
     "openReview": "Wochenrückblick öffnen"
   },
   "reminders": {
+    "dismissAll": "Alle schließen",
+    "more_one": "+{{count}} weitere",
+    "more_other": "+{{count}} weitere",
     "permissionGranted": "Berechtigung erteilt",
     "permissionDenied": "Berechtigung verweigert — in den Browsereinstellungen aktivieren",
     "permissionRequest": "Berechtigung wird beim Aktivieren angefordert",
@@ -1622,6 +1640,8 @@
     "obsidianRecurrenceHint": "Wiederkehrend in Obsidian: die Wiederholung dieser Aufgabe wird vom Tasks-Plugin verwaltet; das Abschließen hier erstellt nicht die nächste Instanz"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}J",
     "linkedWithLifeGlance": "Mit lifeGLANCE verknüpft",
     "markGoalComplete": "Ziel als abgeschlossen markieren",
     "newGoal": "Neues Ziel",

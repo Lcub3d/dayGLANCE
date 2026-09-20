@@ -10,6 +10,7 @@ import type { WebSocketServer } from 'ws';
 import type http from 'node:http';
 import { registerSubscriptionHandlers } from './subscription.js';
 import { registerCalendarHandlers } from './calendar.js';
+import { registerSpeechHandlers } from './speech.js';
 import { registerStorefrontHandlers } from './storefront.js';
 import { registerICloudHandlers } from './icloud.js';
 import { registerObsidianHandlers } from './obsidian.js';
@@ -1587,6 +1588,9 @@ app.whenReady().then(async () => {
 
   logStartup('storage migration: start');
   await migrateFileToAppStorage();
+  // Before any window exists: the preload reads speech support synchronously
+  // as the renderer boots (electron/preload.ts), so the handler must be there.
+  registerSpeechHandlers();
   logStartup('storage migration: done');
 
   const win = createWindow();

@@ -77,6 +77,16 @@ Run these once each on real hardware or a representative simulator:
   message, then a successful retry after reconnect).
 - Electron: the Mac App Store restore-purchase flow works, and the
   file-to-app storage migration runs cleanly on an upgrade.
+- Electron: voice input works WITHOUT an AI provider (AI off in Settings):
+  the mic button records through the bundled speech helper, a live partial
+  transcript appears while speaking, and stopping yields a parsed task. Then
+  with a transcribing provider on, the same flow through Whisper, and the
+  "Heard:" line above the preview shows the transcript. Both MUST run on the
+  signed build: an unsigned dev build has no Hardened Runtime, so it cannot
+  reveal a missing entitlement, and `webkitSpeechRecognition` in Chromium is
+  no stand-in for the helper — it fails with `network` in every packaged
+  build. Until this check existed, nothing in the release path would have
+  noticed desktop voice input being dead.
 
 Local integrations (Electron), whenever the MCP surface has changed:
 

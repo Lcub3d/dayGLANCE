@@ -131,6 +131,83 @@ describe('parseICS', () => {
   });
 });
 
+describe('VALUE=DATE-TIME is not all-day (issue #1747)', () => {
+  it('keeps an explicitly-timed event timed, with its real duration', () => {
+    const events = parseICS(wrap(vevent([
+      'UID:usos-1',
+      'SUMMARY:Algebra',
+      'DTSTART;VALUE=DATE-TIME:20261002T141500',
+      'DTEND;VALUE=DATE-TIME:20261002T160000',
+    ])));
+    expect(events[0].isAllDay).toBeUndefined();
+    const task = expandMultiDayEvent(events[0])[0];
+    expect(task.isAllDay).toBe(false);
+    expect(task.startTime).toBe('14:15');
+    // The all-day branch hardcodes duration to 60; the real span is 105.
+    expect(task.duration).toBe(105);
+  });
+
+  it('still treats VALUE=DATE as all-day', () => {
+    const events = parseICS(wrap(vevent([
+      'UID:allday-1',
+      'SUMMARY:Public holiday',
+      'DTSTART;VALUE=DATE:20261002',
+    ])));
+    expect(events[0].isAllDay).toBe(true);
+  });
+
+  it('matches the VALUE parameter case-insensitively, per RFC 5545', () => {
+    // Belt and braces: a lowercase VALUE=DATE is independently rescued by the
+    // 8-character-value fallback, so this direction locks in tolerance rather
+    // than fixing an observable bug. The date-time direction below is the one
+    // that would otherwise depend on the parameter comparison alone.
+    const lower = parseICS(wrap(vevent(['UID:lc', 'SUMMARY:Holiday', 'DTSTART;value=date:20261002'])));
+    expect(lower[0].isAllDay).toBe(true);
+    const lowerTimed = parseICS(wrap(vevent([
+      'UID:lc2', 'SUMMARY:Class', 'DTSTART;value=date-time:20261002T141500',
+    ])));
+    expect(lowerTimed[0].isAllDay).toBeUndefined();
+  });
+
+  it('is not fooled by VALUE=DATE-TIME alongside other parameters', () => {
+    const events = parseICS(wrap(vevent([
+      'UID:tz-1',
+      'SUMMARY:Lecture',
+      'DTSTART;VALUE=DATE-TIME;TZID=Europe/Warsaw:20261002T141500',
+      'DTEND;VALUE=DATE-TIME;TZID=Europe/Warsaw:20261002T160000',
+    ])));
+    expect(events[0].isAllDay).toBeUndefined();
+    expect(events[0].dtstartTzid).toBe('Europe/Warsaw');
+  });
+
+  it('keeps every occurrence of an explicitly-timed series timed', () => {
+    // The misclassification compounded here: the all-day branch of the
+    // recurrence expansion writes a bare 8-character date per occurrence,
+    // which then re-trips the 8-character check on re-parse.
+    const events = parseICS(wrap(vevent([
+      'UID:usos-weekly',
+      'SUMMARY:Seminar',
+      'DTSTART;VALUE=DATE-TIME:20261005T141500',
+      'DTEND;VALUE=DATE-TIME:20261005T160000',
+      'RRULE:FREQ=WEEKLY;BYDAY=MO;COUNT=3',
+    ])));
+    expect(events).toHaveLength(3);
+    const tasks = events.map(e => expandMultiDayEvent(e)[0]);
+    expect(tasks.map(t => t.startTime)).toEqual(['14:15', '14:15', '14:15']);
+    expect(tasks.map(t => t.duration)).toEqual([105, 105, 105]);
+    expect(tasks.every(t => t.isAllDay === false)).toBe(true);
+  });
+
+  it('treats a VTODO DUE of VALUE=DATE-TIME as timed', () => {
+    const events = parseICS(wrap(
+      'BEGIN:VTODO\r\nUID:todo-dt\r\nSUMMARY:Submit report\r\nDUE;VALUE=DATE-TIME:20261002T141500\r\nEND:VTODO'
+    ));
+    expect(events[0].dueIsAllDay).toBeUndefined();
+    expect(events[0].isAllDay).toBeUndefined();
+    expect(events[0].dtstart).toBe('20261002T141500');
+  });
+});
+
 describe('recurring event duration (field report, 2026-09-08)', () => {
   const durations = (ics) => parseICS(ics).map(e => expandMultiDayEvent(e)[0]).map(t => ({ date: t.date, startTime: t.startTime, duration: t.duration }));
 

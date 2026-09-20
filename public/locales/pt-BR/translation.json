@@ -683,6 +683,10 @@
     "tasks": "Tarefas"
   },
   "task": {
+    "contextNotesSubtasks": "Notas / subtarefas",
+    "contextGenerateSubtasks": "Gerar subtarefas (IA)",
+    "contextMoveTomorrow": "Mover para amanhã",
+    "contextMoveInbox": "Mover para a caixa de entrada",
     "obsidianNoteSource": "Em {{note}} (Obsidian)",
     "openWikiNote": "Abrir “{{name}}”",
     "openWikiNoteInObsidian": "Abrir “{{name}}” no Obsidian",
@@ -1107,6 +1111,7 @@
     "typeInstead": "Ou digite",
     "transcriptionUnavailableWithProvider": "A gravação de voz não está disponível aqui, e {{provider}} não oferece transcrição. Digite suas tarefas abaixo — datas, horários e repetições ainda serão entendidos.",
     "transcriptionUnavailable": "A gravação de voz não está disponível neste dispositivo. Digite suas tarefas abaixo — datas, horários e repetições ainda serão entendidos.",
+    "speechServiceUnreachable": "Este navegador não conseguiu acessar o serviço de reconhecimento de voz dele, então a entrada por voz não está disponível aqui. Digite suas tarefas abaixo ou tente outro navegador.",
     "placeholder": "Adicione ou edite tarefas... ex.: \"ligar para a mãe amanhã às 15h\", \"mover a reunião diária para sexta-feira\" ou \"marcar o relatório como concluído\"",
     "useVoiceInstead": "Usar voz",
     "parsing": "Analisando…",
@@ -1137,6 +1142,16 @@
     "removeTag": "remover",
     "notFound": "não encontrado",
     "noResults": "Nenhuma tarefa ou edição foi extraída da sua entrada.",
+    "heard": "Ouvido:",
+    "editAndRetry": "Editar e tentar novamente",
+    "aiUnexpectedShape": "A IA respondeu em um formato que o app não conseguiu ler.",
+    "speechRecognitionError": "Erro de reconhecimento de voz: {{error}}",
+    "micAccessDenied": "Acesso ao microfone negado. Permita o acesso ao microfone nas configurações do seu navegador.",
+    "micAccessDeniedBrave": "Acesso ao microfone negado. O Brave Shields pode estar bloqueando o acesso — desative o Shields para este site ou permita o acesso ao microfone nas configurações do seu navegador.",
+    "micNotFound": "Nenhum microfone encontrado. Conecte um microfone e tente novamente.",
+    "micError": "Erro do microfone: {{error}}",
+    "transcriptionFailed": "Falha na transcrição: {{error}}",
+    "unknownError": "desconhecido",
     "applyAll": "Aplicar tudo ({{count}})",
     "applyEdit": "Aplicar edição",
     "applyEdits": "Aplicar edições ({{count}})",
@@ -1265,6 +1280,9 @@
     "openReview": "Abrir revisão"
   },
   "reminders": {
+    "dismissAll": "Dispensar tudo",
+    "more_one": "+{{count}} mais",
+    "more_other": "+{{count}} mais",
     "permissionGranted": "Permissão concedida",
     "permissionDenied": "Permissão negada — ative nas configurações do navegador",
     "permissionRequest": "A permissão será solicitada ao ativar",
@@ -1622,6 +1640,8 @@
     "obsidianRecurrenceHint": "Recorrente no Obsidian: a recorrência desta tarefa é gerenciada pelo plugin Tasks; concluí-la aqui não criará a próxima ocorrência"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}A",
     "linkedWithLifeGlance": "Vinculado ao lifeGLANCE",
     "markGoalComplete": "Marcar objetivo como concluído",
     "newGoal": "Novo objetivo",

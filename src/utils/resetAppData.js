@@ -90,15 +90,23 @@ export const ICLOUD_SYNC_FILE = 'dayglance-sync.json';
  *
  * Keep in sync with the DB_NAME constants in:
  *   obsidian.js, intents/outbox.js, intents/intentsKeyStore.js,
- *   sync/dbEngine.js, utils/folderBackup.js
+ *   sync/dbEngine.js, utils/folderBackup.js, todoist/client.js
+ *
+ * That comment is not enough on its own: the vault sync snapshot (#1629) and
+ * the Todoist cache (#1630) each opened a database without landing here, so
+ * both outlived a full reset on iOS. resetAppData.test.js now scans src/ for
+ * every database name the app opens and fails on the first one this list does
+ * not know.
  */
 export const KNOWN_INDEXEDDB_NAMES = Object.freeze([
   'dayglance-crypto',
   'dayglance-db-crypto',
+  'dayglance-db-sync',
   'dayglance-folder-backup',
   'dayglance-intents-crypto',
   'dayglance-intents-outbox',
   'dayglance-obsidian',
+  'dayglance-todoist',
 ]);
 
 /**

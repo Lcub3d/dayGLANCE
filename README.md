@@ -15,6 +15,61 @@ Part of the **GLANCE family**: focused, standalone apps connected through a shar
 
 ---
 
+## Contents
+
+- [Why dayGLANCE?](#why-dayglance)
+- [Quick Start](#quick-start)
+  - [Try it now](#try-it-now)
+  - [Self-host with Docker](#self-host-with-docker)
+  - [Build from Source](#build-from-source)
+  - [Desktop App](#desktop-app)
+- [Android App](#android-app)
+- [iOS & macOS App Store](#ios--macos-app-store)
+- [Core Features](#core-features)
+  - [The Glance Panel](#the-glance-panel)
+  - [GLANCEahead](#glanceahead)
+  - [Visual Time-Blocking](#visual-time-blocking)
+  - [Frames](#frames)
+  - [Desktop Views: MULTI, DAY, WEEK, and MONTH](#desktop-views-multi-day-week-and-month)
+  - [Smart Inbox](#smart-inbox)
+  - [Focus Mode](#focus-mode)
+  - [Day Dial](#day-dial)
+  - [Spotlight Search](#spotlight-search)
+  - [Notifications & Reminders](#notifications--reminders)
+  - [Tags & Filtering](#tags--filtering)
+  - [Recycle Bin & Undo/Redo](#recycle-bin--undoredo)
+  - [Light & Dark Mode](#light--dark-mode)
+  - [Responsive Layout](#responsive-layout)
+  - [Progressive Web App](#progressive-web-app)
+  - [Weather & Daily Content](#weather--daily-content)
+- [Routines & Habits](#routines--habits)
+  - [Routines](#routines)
+  - [Recurring Tasks](#recurring-tasks)
+  - [Habit Tracking](#habit-tracking)
+  - [Weekly Review](#weekly-review)
+  - [Daily Summary & Statistics](#daily-summary--statistics)
+- [Goals & Projects](#goals--projects)
+- [Integrations](#integrations)
+  - [Nextcloud & WebDAV Sync](#nextcloud--webdav-sync)
+  - [CalDAV / iCal Calendar Import](#caldav--ical-calendar-import)
+  - [Stream Deck Plugin](#stream-deck-plugin)
+  - [TRMNL](#trmnl)
+  - [Obsidian](#obsidian)
+- [Optional Add-Ons](#optional-add-ons)
+  - [AI Assistant (BYO API Key)](#ai-assistant-byo-api-key)
+  - [AI Assistants (MCP Server)](#ai-assistants-mcp-server)
+  - [Health Connect (Android)](#health-connect-android)
+  - [Automation Intents: Tasker (Android)](#automation-intents-tasker-android)
+- [Auto-Backup](#auto-backup)
+- [Daily Notes](#daily-notes)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Tech Stack](#tech-stack)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+
+---
+
 ## Why dayGLANCE?
 
 Most day planners make you choose: polished but cloud-dependent, or self-hosted but clunky. dayGLANCE doesn't ask you to compromise.
@@ -210,6 +265,33 @@ Drag tasks onto a 24-hour timeline, resize by dragging edges, and filter by `#ta
 
 ![Time-Blocking on the Timeline](screenshots/timeline.png)
 
+### Frames
+
+Frames are the windows you set aside for a *kind* of work rather than for a
+specific task: "deep work, weekday mornings", "admin, Friday afternoon". They
+sit behind the timeline as shaded bands, and the day fills in around them.
+
+- **Recurring or one-off.** A frame either repeats on chosen days of the week
+  or pins to a single date. Any individual day can be adjusted or skipped
+  without touching the pattern.
+- **Available time, calculated.** Each frame shows how much of itself is still
+  free, after the tasks and routines already inside it and, for today, the time
+  that has already passed. A **buffer** (5 minutes by default) keeps a little
+  breathing room around each block, so back-to-back scheduling does not creep.
+- **Tag affinity.** Give a frame the `#tags` it is meant for and the schedule
+  helper offers matching work from your inbox first.
+- **Energy level.** Mark a frame low, medium or high energy, so a demanding
+  window does not get filled with whatever happened to be next.
+
+Drop a task into a frame from the timeline, or open the frame and pick from the
+filtered inbox. With the AI add-on enabled (**Settings → AI**), **Frame nudge**
+suggests a specific task while a frame is running, and **Smart Schedule** offers
+to fill your frames from the inbox in one pass.
+
+**Setup:** The grid button floating over the timeline opens Frames, where you
+create and edit them. On phones and tablets it is the same button, above the
+add-task button.
+
 ### Desktop Views: MULTI, DAY, WEEK, and MONTH
 
 On wide screens a view cycler appears in the timeline header, letting you switch how the day is laid out:
@@ -221,9 +303,13 @@ On wide screens a view cycler appears in the timeline header, letting you switch
 
 Views you do not use on a given device can be turned off under Settings, "Views on this device": they leave the switcher, the number keys and the default-view picker there, and nothing else changes. At least one view stays on.
 
-| MULTI | DAY | WEEK |
-|:-:|:-:|:-:|
-| ![Multi-day view](screenshots/desktop-multi.png) | ![Single-day view](screenshots/desktop-day.png) | ![Week view](screenshots/desktop-week.png) |
+| MULTI | DAY |
+|:-:|:-:|
+| ![Multi-day view](screenshots/desktop-multi.png) | ![Single-day view](screenshots/desktop-day.png) |
+
+| WEEK | MONTH |
+|:-:|:-:|
+| ![Week view](screenshots/desktop-week.png) | ![Month view](screenshots/desktop-month.png) |
 
 ### Smart Inbox
 
@@ -234,6 +320,17 @@ Capture tasks without scheduling them. Three priority levels, tag filtering, and
 ### Focus Mode
 
 A Pomodoro-style timer with customizable work, short break, and long break durations. Attach a timer session to a specific task and mark it complete when done. On mobile, goes fully immersive with Do Not Disturb and portrait lock.
+
+**Focus Mode only offers itself when there is something to focus on.** It becomes available when a task is *in progress right now*, and when that stretch of the timeline still has **45 minutes or more left to run**. Consecutive blocks count as one stretch: three back-to-back half-hour tasks are ninety minutes of focus, not three sessions too short to start. An all-day item or an already-completed task never counts.
+
+When it is available:
+
+- A pulsing target icon appears beside the current task in the GLANCE panel. Click it to start.
+- Press **`F`** from anywhere in the app.
+- Open it from the Day Dial when viewing today.
+- Trigger it from the Stream Deck plugin or an automation intent (`startFocus`).
+
+If nothing is running, or the current stretch has less than 45 minutes left, the icon is absent and `F` does nothing. That is the intended behaviour rather than a fault: the timer is for a block worth protecting, not for the last ten minutes of one.
 
 | Setup | Active Session |
 |:-:|:-:|
@@ -353,6 +450,12 @@ Organize long-horizon work into a hierarchy of **Goals → Projects → Tasks**,
 
 **Project Focus**: when a project has tasks scheduled for today, a Focus button appears on its card. Activating it filters the timeline down to just that project's tasks for a distraction-free work session.
 
+**hyperGLANCE** turns a project into a standing appointment with itself. Give a project a hyperGLANCE session and it gets a schedule (recurring weekdays or a one-off date), a start time, a duration, its own icon and colour, and a list of **template tasks** that are instantiated fresh at the start of every session.
+
+Scheduled sessions appear on the timeline, in the week and month views, and in the GLANCE panel's up-next, so a standing commitment to a project is visible the same way a meeting is. Starting one opens a fullscreen workspace: a Pomodoro timer, the session's task list, and the project's notes and subtasks in a side panel, with the linked Obsidian note in reach if the vault is connected. On Android it takes Do Not Disturb with it. Finishing a session records it against the project, so the cadence itself becomes something you can see.
+
+It is the difference between "this project exists" and "this project happens on Tuesday at 9". Projects that only ever get worked on when there is a gap tend to be the ones that stall.
+
 Progress is duration-weighted: a 2-hour task moves the needle more than a 15-minute one. Goals without target dates never show as overdue; goals and projects past their target date surface an amber warning. Projects inactive for 7+ days with incomplete tasks are flagged as **Stalled**.
 
 Archived goals and projects collapse into a disclosure section at the bottom and are excluded from all progress calculations.
@@ -412,6 +515,19 @@ Sync tasks and daily notes directly with your **Obsidian vault**, with no plugin
 - Daily notes sync **bidirectionally**
 
 **Setup:** Settings → Obsidian → select your vault folder. Available in the desktop app on macOS, Windows and Linux, in desktop browsers (Chrome, Edge, Brave), and in the Android app.
+
+#### Bridge plugin (optional)
+
+Folder sync above needs no plugin and never will. The **dayGLANCE Bridge** plugin is for the things a folder cannot do: it runs *inside* Obsidian, so it can work while dayGLANCE is closed and can put dayGLANCE's data in Obsidian's own UI.
+
+- **An agenda in the sidebar.** A mini month calendar over the selected day's scheduled tasks, recurring instances and imported calendar events, with the day's routines as a pill strip underneath. Tags render faded and `[[wikilinks]]` click through. Tick a task's box and a running dayGLANCE applies the completion, so its log, vault writeback and sync all fire properly rather than the box being flipped behind its back.
+- **Task sources beyond daily notes.** Point the plugin at folders or tags and the open tasks in those notes become dayGLANCE tasks, with completions tracked for a window you choose.
+- **Project and goal notes.** Link a note to a dayGLANCE project or goal. The link lives in a `dayglance-id` frontmatter key, so it survives renames and moves, and a `dayglance:` frontmatter map keeps status in sync for Dataview queries.
+- **No double writes.** One copy of a vault applies changes at a time, via a short lease, so a second desktop running the same vault through Obsidian Sync receives the result instead of racing to write it.
+
+Pairing is a code shown in dayGLANCE and entered in the plugin's settings tab. The agenda additionally needs your dayGLANCE sync passphrase entered once per device; the derived key is kept in that device's local storage and never written to the plugin's synced settings.
+
+**Setup:** The plugin is **unlisted** rather than in Obsidian's community directory: install it manually or through BRAT from [`dayglance-obsidian-plugin/`](dayglance-obsidian-plugin/). Then pair from **Settings → Obsidian → Bridge plugin**.
 
 ---
 

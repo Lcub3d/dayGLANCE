@@ -80,6 +80,7 @@ import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import GoalDashboard from './components/goals/GoalDashboard.jsx';
+import LifePlanner from './components/lifeplanner/LifePlanner.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
 import BackupMenuModal from './components/BackupMenuModal.jsx';
@@ -998,6 +999,7 @@ const DayPlanner = () => {
     addArea, updateArea, deleteArea, reorderAreas,
     addProject, updateProject, deleteProject, moveProject,
   } = useGoalsProjects();
+  const [showLifePlanner, setShowLifePlanner] = useState(false);
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -3527,7 +3529,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard,
+    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard, showLifePlanner,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -8920,6 +8922,7 @@ const DayPlanner = () => {
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
 
     // ── Goals & Projects ──────────────────────────────────────────────────────
+    showLifePlanner, setShowLifePlanner,
     goals, setGoals,
     projects, setProjects,
     areas, setAreas,
@@ -10457,6 +10460,7 @@ const DayPlanner = () => {
 
       {/* Goals & Projects Dashboard */}
       <GoalDashboard />
+      {showLifePlanner && <LifePlanner />}
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

@@ -473,13 +473,13 @@ const CreateNoteCheckbox = ({ checked, onChange }) => {
   );
 };
 
-export const ProjectForm = ({ initial, goals, defaultGoalId, onSave, onCancel, mobile }) => {
+export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, onCancel, mobile }) => {
   const { darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks, use24HourClock, isMobile, isTablet } =
     useDayPlannerCtx();
   const { multiUserEnabled, users } = useFeaturesCtx();
   const { t } = useTranslation();
 
-  const [title, setTitle] = useState(initial?.title || '');
+  const [title, setTitle] = useState(initial?.title || prefill?.title || '');
   const [goalId, setGoalId] = useState(initial?.goalId || defaultGoalId || '');
   const [status, setStatus] = useState(initial?.status || 'active');
   // Copy-at-creation inheritance: a new project defaults its color and assigned

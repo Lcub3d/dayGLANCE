@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, ChevronDown, ChevronUp, GitBranch, NotebookPen, Trash2 } from 'lucide-react';
+import { BarChart3, BookOpen, ChevronDown, ChevronUp, Compass, GitBranch, NotebookPen, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
@@ -36,7 +36,7 @@ export default function GlanceFabs() {
   } = useDayPlannerCtx();
   const { obsidianConfig, setShowMobileRecycleBin } = useSyncCtx();
   const {
-    goalsProjectsEnabled, setShowGoalsDashboard,
+    goalsProjectsEnabled, setShowGoalsDashboard, setShowLifePlanner,
     setShowWeeklyReview, showWeeklyReviewReminder, setShowWeeklyReviewReminder,
     weeklyReviewDismissedRef, lastWeeklyReviewFiredRef,
   } = useFeaturesCtx();
@@ -73,6 +73,13 @@ export default function GlanceFabs() {
       label: t('settings.goalsProjects'),
       title: 'Goals & Projects',
       onClick: () => setShowGoalsDashboard(true),
+    },
+    {
+      key: 'lifeplanner',
+      icon: <Compass size={15} />,
+      label: t('lifeplanner.entry'),
+      title: t('lifeplanner.title'),
+      onClick: () => setShowLifePlanner(true),
     },
   ].filter(Boolean);
 

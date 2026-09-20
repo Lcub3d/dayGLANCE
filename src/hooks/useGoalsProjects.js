@@ -127,16 +127,18 @@ const useGoalsProjects = () => {
 
   // ── Project CRUD ─────────────────────────────────────────────────────────────
 
-  const addProject = useCallback((fields) => {
+  const addProject = useCallback((fields, { id = crypto.randomUUID() } = {}) => {
     const now = new Date().toISOString();
     const newProject = {
       status: 'active',
       ...fields,
-      id: crypto.randomUUID(),
+      id,
       createdAt: now,
       updatedAt: now,
     };
-    setProjects(prev => [...prev, newProject]);
+    // An optional caller-reserved id makes a retried planner hand-off idempotent.
+    // Ordinary native creation keeps the same random-UUID behaviour.
+    setProjects(prev => prev.some(p => p.id === id) ? prev : [...prev, newProject]);
     return newProject;
   }, []);
 

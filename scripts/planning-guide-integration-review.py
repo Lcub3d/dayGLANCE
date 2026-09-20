@@ -37,7 +37,7 @@ def separate(a, b):
 with sync_playwright() as p:
     browser = p.chromium.launch(**({'executable_path': os.environ['CHROMIUM_EXECUTABLE']} if os.environ.get('CHROMIUM_EXECUTABLE') else {}))
     # Truly empty profiles, not a pre-populated inbox called a "fresh install".
-    for width, language in [(1366, 'en'), (393, 'zh-CN')]:
+    for width, language in [(1366, 'en'), (393, 'zh-CN'), (393, 'en')]:
         c = browser.new_context(viewport={'width': width, 'height': 900}, screen={'width': width, 'height': 900}, has_touch=width < 600, is_mobile=width < 600, timezone_id='Asia/Shanghai', service_workers='block')
         c.add_init_script("localStorage.setItem('i18nextLng',"+json.dumps(language)+"); window.guideEverSeen=false; new MutationObserver(()=>{if(document.querySelector('[data-planning-choices]'))window.guideEverSeen=true}).observe(document,{childList:true,subtree:true});")
         pg = c.new_page(); pg.on('pageerror', lambda e: ERRORS.append(str(e))); pg.clock.set_fixed_time(T)
@@ -100,12 +100,25 @@ with sync_playwright() as p:
             require(row.evaluate('el=>el.scrollWidth <= el.clientWidth+1'), 'Date row overflows')
             pg.screenshot(path=str(OUT / f'fixed-phone-date-{width}.png'))
             helpers['open_choices'](pg); pg.keyboard.press('Escape')
+            expect(pg.locator('[data-planning-choices]')).to_have_count(0)
+            expect(trigger).to_be_focused()
         check(f'phone {width}: date row is compact and all controls remain clickable', phone, pg)
         c.close()
 
+    c, pg = profile(browser, width=393, now=T)
+    def active_goals_escape():
+        pg.locator('.fixed.bottom-0 button').filter(has=pg.locator('svg.lucide-flag')).click()
+        expect(pg.get_by_role('heading', name='Goals & Projects')).to_be_visible()
+        trigger=pg.locator('[data-planning-choices-trigger]').filter(visible=True).first
+        helpers['open_choices'](pg);pg.keyboard.press('Escape')
+        expect(pg.locator('[data-planning-choices]')).to_have_count(0)
+        expect(trigger).to_be_focused()
+        expect(pg.get_by_role('heading', name='Goals & Projects')).to_be_visible()
+    check('active phone Goals tab yields Escape to the guide without closing the workspace',active_goals_escape,pg);c.close()
+
     for width, height in [(1024,768),(768,1024)]:
         c = browser.new_context(viewport={'width':width,'height':height}, screen={'width':width,'height':height}, has_touch=True, timezone_id='Asia/Shanghai', service_workers='block')
-        c.add_init_script("localStorage.setItem('day-planner-unscheduled',JSON.stringify([{id:'tablet-fixture',title:'Synthetic task',completed:false}]));localStorage.setItem('day-planner-planning-choices-dismissed-date',new Date().toLocaleDateString('sv-SE'));")
+        c.add_init_script("localStorage.setItem('day-planner-unscheduled',JSON.stringify([{id:'tablet-fixture',title:'Synthetic task',completed:false}]));localStorage.setItem('day-planner-planning-choices-dismissed-date','2026-09-02');")
         pg=c.new_page();pg.clock.set_fixed_time(T);pg.on('pageerror',lambda e:ERRORS.append(str(e)));pg.goto(BASE);pg.wait_for_timeout(1300)
         def tablet():
             require(pg.locator('.desktop-header').count()==0,'Did not exercise the native tablet header')
@@ -138,7 +151,7 @@ with sync_playwright() as p:
     c, pg = profile(browser, auto=True, now=T, wait_ms=0)
     def peer_snooze():
         pg.wait_for_function('k=>localStorage.getItem(k)!==null',arg=K)
-        other=c.new_page();other.goto(BASE)
+        other=c.new_page();other.clock.set_fixed_time(T);other.goto(BASE)
         other.evaluate('(k)=>localStorage.setItem(k,"2026-09-02")',D)
         pg.wait_for_timeout(2200)
         expect(pg.locator('[data-planning-choices]')).to_have_count(0)

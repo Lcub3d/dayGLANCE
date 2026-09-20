@@ -163,7 +163,9 @@ clickable. Actual touch-tablet headers also receive the entry; the phone timelin
 entry shares the existing date row rather than adding an otherwise empty row.
 
 Keyboard navigation wraps correctly from the initially focused heading, in both
-directions, and returns focus to the trigger after dismissal. The compact copy,
+directions, and returns focus to the trigger after dismissal. The cached mobile
+Goals dashboard no longer intercepts Escape while its tab is hidden, and yields
+to focused planner portals while active. The compact copy,
 warm colors, switches, outside/Escape dismissal and no-close-X design are kept.
 
 Run `python scripts/planning-guide-integration-review.py` on the production build

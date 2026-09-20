@@ -2420,9 +2420,11 @@ const GoalDashboard = ({ embedded = false, isActive = false, addGoalTrigger = 0,
   // Escape key — use capture phase so this fires before useModalClose and other handlers.
   // GoalDashboard owns all Escape behavior while it's visible.
   useEffect(() => {
-    if (!showGoalsDashboard && !embedded) return;
+    if (embedded ? !isActive : !showGoalsDashboard) return;
     const handler = (e) => {
       if (e.key !== 'Escape') return;
+      // Planner portals own their keys while above this cached mobile tab.
+      if (e.target?.closest?.('[data-planning-choices], [data-lifeplanner]')) return;
       // A task notes/subtasks overlay (e.g. opened from a SCHED/planner card)
       // sits above everything and closes itself — leave ESC to it.
       if (document.querySelector('.sched-notes-panel')) return;
@@ -2446,7 +2448,7 @@ const GoalDashboard = ({ embedded = false, isActive = false, addGoalTrigger = 0,
     };
     document.addEventListener('keydown', handler, true); // capture phase
     return () => document.removeEventListener('keydown', handler, true);
-  }, [showGoalsDashboard, embedded, goalForm, projectForm, areaForm, showManageAreas, showAddTask, expandedNotesTaskId,
+  }, [showGoalsDashboard, embedded, isActive, goalForm, projectForm, areaForm, showManageAreas, showAddTask, expandedNotesTaskId,
       plannerProjectId, setPlannerProjectId,
       setShowAddTask, setShowNewTaskDeadlinePicker, setShowGoalsDashboard, setExpandedNotesTaskId]);
 

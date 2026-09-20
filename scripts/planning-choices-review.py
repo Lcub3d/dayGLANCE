@@ -4,6 +4,8 @@ All fixtures are synthetic; screenshots are browser renders, not phone tests.
 """
 import json
 import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -44,7 +46,10 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=F
     }
     data.update(seed or {})
     if not auto:
-        context.add_init_script("localStorage.setItem('day-planner-planning-choices-dismissed-date',new Date().toLocaleDateString('sv-SE'))")
+        # Init scripts have no guaranteed order relative to Playwright's clock.
+        # Seed an explicit date, not a browser Date read before the clock installs.
+        local_now = (now or datetime.now(ZoneInfo('Asia/Shanghai'))).astimezone(ZoneInfo('Asia/Shanghai'))
+        data.setdefault('day-planner-planning-choices-dismissed-date', local_now.date().isoformat())
     context.add_init_script("if (!localStorage.getItem('choices-review-seeded')) { Object.entries(" + json.dumps(data) + ").forEach(([k,v])=>localStorage.setItem(k,v));localStorage.setItem('choices-review-seeded','1'); }")
     # Exercise the real weather component with synthetic API fixtures; no
     # screenshot claims these values are a live forecast or the user's city.
@@ -70,6 +75,7 @@ def open_choices(page):
         return page.locator('[data-planning-choices]')
     page.locator('[data-planning-choices-trigger]').filter(visible=True).first.click()
     expect(page.locator('[data-planning-choices]')).to_be_visible()
+    expect(page.locator('[data-planning-choices] [data-initial-focus]')).to_be_focused()
     return page.locator('[data-planning-choices]')
 
 

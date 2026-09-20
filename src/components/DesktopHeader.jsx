@@ -13,6 +13,7 @@ import DayDialIcon from './DayDialIcon.jsx';
 import { PlanningChoicesButton } from './lifeplanner/PlanningChoices.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import './desktopHeader.css';
 
 const DesktopHeader = () => {
   const {
@@ -76,39 +77,38 @@ const DesktopHeader = () => {
 
   return (
     <>
-      <div className={`${cardBg} border-b ${borderClass} px-4 py-2 flex items-center justify-between relative`} style={{ height: '80px' }}>
+      <div className={`${cardBg} border-b ${borderClass} desktop-header px-4 py-2 relative`} style={{ height: '80px' }}>
         {/* Left: Weather + Daily Content */}
-        <div className="flex items-center gap-4 min-w-0">
-          {weather && weatherEnabled && (
-            <>
-              {/* Current weather */}
-              <div className={`flex items-center gap-2 px-3 py-1.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-100'} rounded-lg flex-shrink-0`}>
+        <div className="desktop-header-leading">
+        <div className="desktop-header-leading-content">
+          <div className="desktop-header-weather-guide">
+            {weather && weatherEnabled && (
+              <div data-header-weather className={`flex items-center gap-2 px-3 py-1.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-100'} rounded-lg flex-shrink-0`}>
                 <div className="text-xl">{weather.icon}</div>
                 <div>
                   <div className={`text-sm font-bold ${textPrimary}`}>{weather.temp}°{weatherTempUnit === 'celsius' ? 'C' : 'F'}</div>
                   <div className={`text-[10px] ${textSecondary}`}>H: {weather.high}° L: {weather.low}°</div>
                 </div>
               </div>
-
-              {/* Forecast — proportional to visible day columns */}
-              {visibleDays >= 2 && weather.forecast && weather.forecast.length > 0 && (
-                <div className="hidden min-[1230px]:flex items-center gap-1.5 flex-shrink-0">
-                  {weather.forecast.slice(0, visibleDays === 3 ? 5 : 3).map((day, index) => (
-                    <div key={index} className={`px-2 py-1.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-100'} rounded-lg text-center`}>
-                      <div className={`text-[10px] font-semibold ${textSecondary}`}>{day.day}</div>
-                      <div className="text-base">{day.icon}</div>
-                      <div className={`text-[10px] ${textPrimary}`}>
-                        <span className="font-semibold">{day.high}°</span>
-                        <span className={`${textSecondary} ml-0.5`}>{day.low}°</span>
-                      </div>
-                    </div>
-                  ))}
+            )}
+            <PlanningChoicesButton />
+          </div>
+          {/* Forecasts yield to the real available space, never cover the date
+              controls or the current weather, and reveal more on wider headers. */}
+          {weather && weatherEnabled && visibleDays >= 2 && weather.forecast?.length > 0 && (
+            <div className="desktop-header-forecast items-center gap-1.5 flex-shrink-0">
+              {weather.forecast.slice(0, visibleDays === 3 ? 5 : 3).map((day, index) => (
+                <div key={index} className={`px-2 py-1.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-100'} rounded-lg text-center`}>
+                  <div className={`text-[10px] font-semibold ${textSecondary}`}>{day.day}</div>
+                  <div className="text-base">{day.icon}</div>
+                  <div className={`text-[10px] ${textPrimary}`}>
+                    <span className="font-semibold">{day.high}°</span>
+                    <span className={`${textSecondary} ml-0.5`}>{day.low}°</span>
+                  </div>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
-
-          <PlanningChoicesButton />
 
           {/* Rotating Daily Content - 1 item at a time (3-col only to avoid header overlap) */}
           {dailyContentEnabled && visibleDays >= 3 && (() => {
@@ -133,10 +133,12 @@ const DesktopHeader = () => {
           })()}
         </div>
 
+        </div>
+
         {/* Center: Date Nav */}
-        <div className="absolute inset-0 flex items-center justify-center max-[950px]:pr-36 pointer-events-none">
-        <div className="pointer-events-auto">
-          <div className="flex items-center gap-1 relative">
+        <div className="desktop-header-date">
+        <div className="min-w-0">
+          <div className="desktop-header-date-controls flex items-center gap-1 relative">
             <button onClick={() => changeDate(-1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors`} aria-label={t('common.back')}>
               <ChevronLeft size={20} className={textSecondary} />
             </button>
@@ -145,7 +147,7 @@ const DesktopHeader = () => {
                 if (!showMonthView) setViewedMonth(new Date(selectedDate));
                 setShowMonthView(!showMonthView);
               }}
-              className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center min-w-[13rem]`}
+              className={`desktop-header-date-label month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center min-w-[13rem]`}
             >
               {monthViewActive
                 ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, i18n.resolvedLanguage || i18n.language)
@@ -217,7 +219,7 @@ const DesktopHeader = () => {
         </div>
 
         {/* Right: Action buttons */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="desktop-header-actions flex items-center gap-1.5 flex-shrink-0">
           {!hasNativeCalendar() && <button
             onClick={() => {
               if (isSyncing) return;

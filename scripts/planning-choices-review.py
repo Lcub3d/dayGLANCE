@@ -33,7 +33,7 @@ def require(value, message):
         raise AssertionError(message)
 
 
-def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=False, now=None):
+def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=False, now=None, wait_ms=None):
     context = browser.new_context(viewport={'width': width, 'height': 1000 if width > 600 else 852}, locale='zh-CN' if language == 'zh-CN' else 'en-US', timezone_id='Asia/Shanghai', is_mobile=width < 600, has_touch=width < 600, reduced_motion='reduce', service_workers='block')
     data = {
         'i18nextLng': language, 'welcomeDismissed': 'true', 'gettingStartedDismissed': 'true',
@@ -43,6 +43,8 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=F
         'day-planner-unscheduled': json.dumps([{'id': 'review-inbox', 'title': 'Read this week’s notes', 'completed': False, 'notes': '', 'subtasks': [], 'color': 'bg-blue-500'}]),
     }
     data.update(seed or {})
+    if not auto:
+        context.add_init_script("localStorage.setItem('day-planner-planning-choices-dismissed-date',new Date().toLocaleDateString('sv-SE'))")
     context.add_init_script("if (!localStorage.getItem('choices-review-seeded')) { Object.entries(" + json.dumps(data) + ").forEach(([k,v])=>localStorage.setItem(k,v));localStorage.setItem('choices-review-seeded','1'); }")
     # Exercise the real weather component with synthetic API fixtures; no
     # screenshot claims these values are a live forecast or the user's city.
@@ -57,7 +59,7 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=F
     page.set_default_timeout(10000)
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.goto(BASE, wait_until='domcontentloaded')
-    page.wait_for_timeout(1200)
+    page.wait_for_timeout(wait_ms if wait_ms is not None else (2000 if auto else 1200))
     if not auto and page.locator('[data-planning-choices]').count():
         page.locator('.planning-choices-snooze').click()
     return context, page

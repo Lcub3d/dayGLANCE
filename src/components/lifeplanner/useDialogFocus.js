@@ -20,8 +20,8 @@ export default function useDialogFocus(ref, onClose, active = true) {
       if (event.key !== 'Tab') return;
       const list = controls(), first = list[0], last = list.at(-1);
       if (!first) { event.preventDefault(); root.focus(); }
-      else if (event.shiftKey && (document.activeElement === first || !root.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || !root.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+      else if (event.shiftKey && (document.activeElement === first || !list.includes(document.activeElement))) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (document.activeElement === last || !list.includes(document.activeElement))) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', keydown, true);
     return () => {

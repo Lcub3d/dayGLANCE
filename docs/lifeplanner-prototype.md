@@ -118,8 +118,9 @@ secondary links does not strand mobile users with Goals disabled.
 Automatic guidance is device-local. "Day" means a distinct local date on which
 the app is opened, not elapsed days since installation. On visits 1/2/4/7/15,
 on the 1st/2nd/4th/7th/15th **opened Monday** and separately **opened Sunday**,
-and on each calendar month's first day, the guide opens after native welcome
-and active editors finish. Overlapping rules yield only one opening. Dismissing
+and on each calendar month's first day, the guide opens after the native startup decision and a quiet interval,
+provided the current launch did not show native welcome/onboarding. Active
+editors take priority. Overlapping rules yield only one opening. Dismissing
 by backdrop/Escape does not snooze future reloads that day. The explicit daily
 snooze survives reload; the yellow button remains available for manual access.
 The controller runs once per app mount, not once per responsive header or every
@@ -135,3 +136,38 @@ cross-device synchronization or an atomic multi-process transaction guarantee.
 Reproduce with `python scripts/planning-guide-review.py` against the production
 preview. It runs the existing choices tests plus new cadence/compactness checks.
 `python scripts/lifeplanner-review.py` still checks the original workspace.
+
+
+## Integration fixes after fork PR #4
+
+The native startup decision is now a reactive barrier, rather than reading an
+initially-false `showWelcome` from a child effect. A launch that shows native
+welcome or inline onboarding counts as an opened date but skips automatic
+guidance for that entire launch: dismissing the native tour must not reveal a
+second tour. Manual access remains available after the native welcome closes.
+Other qualifying launches wait for 1.2 seconds of eligible idle time. The guide
+yields to native settings, task/event/note editing, focus mode, dialogs, menus,
+dragging and backup/restore surfaces; it never auto-opens in a hidden tab or
+while a text field has focus. Manual opening consumes any pending automatic
+opening for that mount. A pending automatic prompt rechecks today's snooze and
+local date at display time; it never replays tomorrow's stale queue. The
+requested visit/Monday/Sunday/monthly cadence and explicit daily snooze remain
+unchanged. This is not a global modal-manager refactor or cross-device sync.
+
+The desktop header now reserves actual layout columns instead of absolutely
+positioning dates over the weather controls. Current weather and the yellow
+question mark form one non-shrinking group; the question mark is immediately to
+the weather card's right. Forecasts yield first as space runs out. Date text can
+shrink in narrow desktop windows while its previous/next buttons remain
+clickable. Actual touch-tablet headers also receive the entry; the phone timeline
+entry shares the existing date row rather than adding an otherwise empty row.
+
+Keyboard navigation wraps correctly from the initially focused heading, in both
+directions, and returns focus to the trigger after dismissal. The compact copy,
+warm colors, switches, outside/Escape dismissal and no-close-X design are kept.
+
+Run `python scripts/planning-guide-integration-review.py` on the production build
+for fresh-profile welcome precedence, true touch-tablet detection, header hit
+testing at narrow widths, manual/pending prompt interaction and focus checks.
+These are Chromium viewport/touch emulations with synthetic fixtures, not signed
+native installers or physical-device launch tests.

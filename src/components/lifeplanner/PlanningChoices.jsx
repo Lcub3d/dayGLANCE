@@ -4,17 +4,23 @@ import { Compass, Eye, HelpCircle, NotebookPen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { dismissPlanningChoicesForToday, registerPlanningChoicesVisit } from '../../lifeplanner/planningChoicesPrompt.js';
+import { useSyncCtx } from '../../context/SyncContext.jsx';
+import { isPlanningGuideBlocked, isPlanningGuideDOMBusy } from '../../lifeplanner/planningGuideGuard.js';
+import { dismissPlanningChoicesForToday, localPromptDate, PLANNING_PROMPT_DISMISSED_KEY, registerPlanningChoicesVisit } from '../../lifeplanner/planningChoicesPrompt.js';
 import useDialogFocus from './useDialogFocus.js';
 import './planningChoices.css';
 
 export function PlanningChoicesButton() {
   const { t } = useTranslation();
-  const { showPlanningChoices, setShowPlanningChoices } = useFeaturesCtx();
+  const features = useFeaturesCtx();
+  const ctx = useDayPlannerCtx();
+  const sync = useSyncCtx();
+  const { showPlanningChoices, setShowPlanningChoices } = features;
+  const blocked = isPlanningGuideBlocked(ctx, features, sync || {});
   return <button type="button" data-planning-choices-trigger
     className="planning-choices-trigger bg-brand text-stone-950"
     aria-label={t('planningChoices.open')} title={t('planningChoices.open')}
-    aria-haspopup="dialog" aria-expanded={!!showPlanningChoices}
+    aria-haspopup="dialog" aria-expanded={!!showPlanningChoices} disabled={blocked}
     onClick={() => setShowPlanningChoices(true)}><HelpCircle size={20} aria-hidden="true" /></button>;
 }
 
@@ -38,24 +44,70 @@ export function PlanningChoiceRow({ name, title, checked, locked, onChange, onOp
   </div>;
 }
 
-// One controller per application, not one effect per responsive header button.
-// Only auto-open after native welcome/load and any active editing surfaces close.
+// One visit per app mount, never one per responsive header. The native welcome
+// decision is a reactive barrier: child effects otherwise run before useAppInit.
 export function PlanningChoicesController() {
   const ctx = useDayPlannerCtx();
   const features = useFeaturesCtx();
-  const attempted = useRef(false);
-  const ready = ctx.dataLoaded && !ctx.showWelcome && !ctx.showSettings && !ctx.showAddTask &&
-    !ctx.mobileEditingTask && !features.showLifePlanner && !features.showGoalsDashboard &&
-    !features.showWeeklyReview && !features.showVoiceInput && !ctx.showSpotlight;
+  const sync = useSyncCtx();
+  const visit = useRef(null);
+  const blocked = isPlanningGuideBlocked(ctx, features, sync || {});
   const { showPlanningChoices, setShowPlanningChoices } = features;
   useEffect(() => {
-    if (!ready || attempted.current) return;
-    attempted.current = true;
-    // Passing a wrapper keeps access to localStorage itself inside the guard.
-    const storage = { getItem: key => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value) };
-    if (registerPlanningChoicesVisit(storage)) setShowPlanningChoices(true);
-  }, [ready, setShowPlanningChoices]);
-  return showPlanningChoices ? <PlanningChoices /> : null;
+    if (!ctx.dataLoaded || !ctx.initialWelcomeChecked) return;
+    const storage = {
+      getItem: key => window.localStorage.getItem(key),
+      setItem: (key, value) => window.localStorage.setItem(key, value),
+    };
+    if (!visit.current) {
+      visit.current = {
+        date: localPromptDate(),
+        due: registerPlanningChoicesVisit(storage),
+        handled: false,
+      };
+    }
+    // Do not queue a second onboarding modal behind the native welcome tour.
+    // This launch still counts as an opened date; manual access remains available
+    // after welcome closes, and later launches retain the requested cadence.
+    if (ctx.showWelcome || ctx.showOnboarding) visit.current.handled = true;
+    if (showPlanningChoices) {
+      visit.current.handled = true; // manual use must not be followed by an auto-open
+      if (blocked) setShowPlanningChoices(false);
+      return;
+    }
+    if (blocked || visit.current.handled || !visit.current.due) return;
+    let timer;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      if (isPlanningGuideDOMBusy(document)) return;
+      timer = window.setTimeout(() => {
+        if (visit.current.handled || isPlanningGuideDOMBusy(document)) return;
+        // Never replay a pending prompt on a later local date. Re-read the snooze
+        // at display time so another tab can cancel a pending prompt as well.
+        if (localPromptDate() !== visit.current.date) { visit.current.handled = true; return; }
+        try {
+          if (storage.getItem(PLANNING_PROMPT_DISMISSED_KEY) === visit.current.date) return;
+        } catch { return; }
+        visit.current.handled = true;
+        setShowPlanningChoices(true);
+      }, 1200);
+    };
+    schedule();
+    document.addEventListener('visibilitychange', schedule);
+    document.addEventListener('focusout', schedule);
+    document.addEventListener('pointerup', schedule);
+    window.addEventListener('focus', schedule);
+    window.addEventListener('storage', schedule);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', schedule);
+      document.removeEventListener('focusout', schedule);
+      document.removeEventListener('pointerup', schedule);
+      window.removeEventListener('focus', schedule);
+      window.removeEventListener('storage', schedule);
+    };
+  }, [ctx.dataLoaded, ctx.initialWelcomeChecked, ctx.showWelcome, ctx.showOnboarding, blocked, showPlanningChoices, setShowPlanningChoices]);
+  return showPlanningChoices && !blocked ? <PlanningChoices /> : null;
 }
 
 export default function PlanningChoices() {

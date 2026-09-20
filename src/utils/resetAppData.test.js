@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   resetAppData,
   clearWebStorage,
@@ -149,6 +152,34 @@ describe('deleteIndexedDbDatabases', () => {
 
   it('is a no-op without indexedDB', async () => {
     expect(await deleteIndexedDbDatabases({ indexedDB: null }, [])).toEqual([]);
+  });
+
+  // The list is the only thing standing between a store and surviving a reset
+  // on iOS, where indexedDB.databases() does not exist. The Todoist cache
+  // (#1630) opened 'dayglance-todoist' and nobody added it here, so on iOS a
+  // full reset left it behind. This walks src/ for every database name the app
+  // opens and fails on the first one the list does not know, so the next store
+  // cannot repeat that quietly.
+  it('knows every IndexedDB database name the source opens', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+    const opened = new Set();
+    const patterns = [
+      /createIdbKeyValue\(\s*['"]([^'"]+)['"]/g,
+      /indexedDB\.open\(\s*['"]([^'"]+)['"]/g,
+      /DB_NAME\s*=\s*['"]([^'"]+)['"]/g,
+    ];
+    const walk = (dir) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) { walk(path); continue; }
+        if (!/\.(js|jsx|ts|tsx)$/.test(name) || /\.test\./.test(name)) continue;
+        const text = readFileSync(path, 'utf8');
+        for (const re of patterns) for (const m of text.matchAll(re)) opened.add(m[1]);
+      }
+    };
+    walk(root);
+    expect(opened.size).toBeGreaterThan(0);
+    for (const name of opened) expect(KNOWN_INDEXEDDB_NAMES, name).toContain(name);
   });
 });
 

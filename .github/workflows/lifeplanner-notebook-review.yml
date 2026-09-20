@@ -2,9 +2,11 @@ name: Life Planner notebook review
 on:
   push:
     branches: [feat/lifeplanner-notebook]
+  pull_request:
+    branches: [lifeplanner]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: lifeplanner-notebook-${{ github.ref }}
   cancel-in-progress: true
@@ -12,47 +14,22 @@ jobs:
   review:
     if: github.repository == 'Lcub3d/dayGLANCE'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Prepare source and remove one-time transport files
-        id: prepare
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p review-artifacts
-          git rev-parse HEAD > review-artifacts/checkout.txt
-          if test -f .github/notebook-patch-0.b64; then
-            python - <<'PY'
-          import base64, hashlib, lzma
-          from pathlib import Path
-          encoded = ''.join(Path(f'.github/notebook-patch-{i}.b64').read_text() for i in range(4))
-          patch = lzma.decompress(base64.b64decode(encoded))
-          assert hashlib.sha256(patch).hexdigest() == '3f6e2bf8f9e63a86fb6bb258f76e2ca5300cdaa4b65d8177ff18072c1b5de409'
-          Path('/tmp/notebook.patch').write_bytes(patch)
-          PY
-            git apply --unidiff-zero --check /tmp/notebook.patch
-            git apply --unidiff-zero --index /tmp/notebook.patch
-            git rm .github/notebook-patch-{0,1,2,3}.b64
-            echo 'staged=true' >> "$GITHUB_OUTPUT"
-          fi
-          for patch in .github/notebook-fix-*.patch; do
-            test -f "$patch" || continue
-            git apply --index "$patch"
-            git rm "$patch"
-            echo 'staged=true' >> "$GITHUB_OUTPUT"
-          done
-          git diff --cached --check
-          git write-tree > review-artifacts/candidate-tree.txt
-          git diff --cached --binary > review-artifacts/candidate.patch
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: Record exact reviewed revision
+        run: |
+          mkdir -p review-artifacts
+          git rev-parse HEAD > review-artifacts/commit.txt
+          git rev-parse HEAD^{tree} > review-artifacts/source-tree.txt
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Lint
@@ -92,24 +69,6 @@ jobs:
         run: |
           set -o pipefail
           REVIEW_OUT="$GITHUB_WORKSPACE/review-artifacts/guide" python scripts/planning-guide-review.py 2>&1 | tee review-artifacts/guide-browser.txt
-      - name: Publish validated source only to this feature branch
-        if: steps.prepare.outputs.staged == 'true' && steps.unit.outcome == 'success' && steps.notebook.outcome == 'success' && steps.guide.outcome == 'success'
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF_NAME" = feat/lifeplanner-notebook
-          git fetch origin feat/lifeplanner-notebook
-          test "$(git rev-parse origin/feat/lifeplanner-notebook)" = "$GITHUB_SHA"
-          git config user.name Lcub3d
-          git config user.email 46134215+Lcub3d@users.noreply.github.com
-          git commit -m "feat(lifeplanner): add ruled notebook, planning table and sticky-note vision editor"
-          git push origin HEAD:refs/heads/feat/lifeplanner-notebook
-      - name: Archive exact candidate and result
-        if: always()
-        run: |
-          mkdir -p review-artifacts
-          git rev-parse HEAD > review-artifacts/commit.txt
-          git write-tree > review-artifacts/final-tree.txt
-          git archive --format=tar.gz -o review-artifacts/source.tar.gz "$(git write-tree)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

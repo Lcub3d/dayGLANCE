@@ -593,23 +593,44 @@ Attach freeform notes to any day for journaling, reflections, or quick reference
 
 ## Keyboard Shortcuts
 
+Press `?` in the app for the complete list, including the task-entry syntax.
+These are the ones worth knowing by heart:
+
+**Moving around**
+
+| Shortcut | Action |
+|----------|--------|
+| `←` / `→` | Previous / next day |
+| `T` | Jump to today |
+| `1` `2` `3` `4` | Go straight to MULTI / DAY / WEEK / MONTH |
+| `C` | Cycle through the views |
+| `,` / `.` | Side panel: Glance / Inbox |
+| `M` | Toggle month nav |
+| `Space` | In MONTH: step a day |
+| `↑` / `↓` | In MONTH: a week back / forward |
+| `Enter` | In MONTH: open the selected day |
+
+**Doing things**
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl/Cmd + K` | Spotlight search |
 | `N` | New scheduled task |
 | `I` | New inbox task |
-| `G` | Open Goals & Projects |
-| `R` | Open routines dashboard |
-| `F` | Focus mode |
-| `T` | Jump to today |
-| `M` | Toggle month nav |
-| `Space` / `Shift+Space` | In MONTH: next / previous day |
-| `↑` / `↓` | In MONTH: a week back / forward |
-| `Enter` | In MONTH: open the selected day |
-| `D` | Toggle dark mode |
+| `V` | Voice task input |
+| `E` | Reschedule tasks |
+| `F` | Focus mode (when a block is running with 45+ minutes left) |
+| `O` | Day Dial |
+| `G` | Goals & Projects |
+| `R` | Routines dashboard |
+| `H` | Habits |
 | `/` | Toggle tag filter |
 | `Ctrl/Cmd + Z` | Undo |
 | `Ctrl/Cmd + Shift + Z` / `Ctrl/Cmd + Y` | Redo |
+| `D` | Toggle dark mode |
+| `S` | Settings |
+| `B` | Backup menu |
+| `L` | Intent activity log |
 | `Escape` | Close modal / dropdown |
 | `?` | Show full shortcut list |
 

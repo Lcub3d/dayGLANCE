@@ -314,7 +314,7 @@ the total is more reliable than any single line below.
 |---|---|---|---|
 | 0 | Spike + unblocked plumbing | 2d | Rendering architecture chosen on device evidence; snapshot extended; fixtures exported. **Closed**: cached image chosen on the iPhone 15 run (§6 "Result") |
 | 0b | Dial blocks in the snapshot | 0.5d | `dial` field carries every timed block of the day (§5). **Landed** in the follow-up to #1670. Parallel to Phase 1; gates Phase 2 |
-| 1 | Geometry port | 3–4d | Swift agrees with `dayDial.js` on every exported vector. No UI. |
+| 1 | Geometry port | landed | **Landed**: `dayglance-ios/Packages/DayDialGeometry`, pure Foundation, no UI. Its XCTest target loads `TestFixtures/dayDial.vectors.json` and asserts every geometry case; `ios.yml` runs it with `swift test`. Spec radii and rules win where the two dials differ (list below). Palette treatments are seams only (`DialPalette.swift`) — the Phase 2 gate |
 | 2 | Static dial | 3d | Sky ring, ticks, labels, block band, separators, glyphs match the spec render side by side |
 | 3 | Hub | 2d | All seven rows correct; a long task title truncates gracefully |
 | 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
@@ -348,6 +348,37 @@ opened yet:
 **Phase 1 is the largest single block and the most mechanical.** It is isolated
 deliberately: it has no UI, it is fully testable against the exported fixtures,
 and it is the only phase whose output serves a future Android port unchanged.
+
+### Where dayDial.js and the spec disagree (the spec wins for the widget)
+
+Found while porting; each is named in the Swift where it applies.
+
+| Topic | Web dial (`dayDial.js`, what the vectors pin) | Widget spec (what `DialSpec` implements) |
+|---|---|---|
+| Tick schedule | 288 ticks every 5 min: hour / quarter / minor (`dialTicks`) | 96: major on the hour, minor at 15 min, nothing finer. `DialTicks.schedule(stepMinutes:)` yields both; `DialSpec.ticks` is the spec's |
+| Hour labels | 8, every 3 h; one hides within 30 min of a sun glyph (`dialLabelYieldsToSun`) | 6, no `06`/`18`; cardinals at 172, diagonals at 181; glyphs sit at 104 so nothing yields |
+| Block edges | each arc padded by up to 3 min per side, yielding on slivers (`padDialSegment`) | exact spans, 1.6pt separator cut where two blocks touch (§3). `DialSegments.pad` is ported for the vectors; `DialSpec.separatorMinutes` is the spec's rule |
+| Block fill | per-task colour muted into one pastel family, intensity by duration, state multipliers | one stroke per category at a fixed alpha, past at 42 %. **Open** — protocols only in `DialPalette.swift` |
+| Canvas | 1000-unit viewBox, ring 300–385 | 364×382pt, block band 129–151 at 140 |
+
+Nothing in the vectors contradicts the spec: the geometry functions are
+radius-agnostic and the fixture evaluates them at both canvases, so no
+"stop and ask" case arose.
+
+### What the port does not re-derive, and why
+
+- **The sky** (`computeSkySnapshot`, `computeDaylightBand`, `computeMoonBand`,
+  `getSunTimes`): consumed from the snapshot per §4. The Swift test decodes
+  the fixture's sky cases and checks the 24-segment shape the ring draws from
+  and the spec's opacity mapping; it does not solve solar or lunar positions.
+- **Block data** (`kind`, `colorHex`, `completable`, titles, the day's
+  totals): `computeDialModel` derives these from task fields via
+  `deriveBlockEnergy` and `taskColorToHex`, which drag in the energy keyword
+  list, tag extraction and the Tailwind colour map. They travel in
+  `dial.blocks`; the port compares only the geometric fields of those cases.
+- **Routines on a projected day**: none (see phase 4b). `DialModel.routineBars`
+  is ported and vector-checked for the pushed day.
+- **`dialSelection`** (keyboard walk): web accessibility UI, no widget analogue.
 
 ### Android, if it happens
 

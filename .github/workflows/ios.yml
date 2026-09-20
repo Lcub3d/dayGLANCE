@@ -55,6 +55,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The Day Dial geometry package has its own XCTest target that loads
+      # dayglance-ios/TestFixtures/dayDial.vectors.json and asserts every
+      # case against the Swift port. `swift test` runs it on the runner
+      # itself — no simulator — so this step RUNS tests where the xcodebuild
+      # step below only compiles. A green iOS build check therefore means:
+      # the app, widget and share extension compile, AND the geometry
+      # vectors pass.
+      - name: Run DayDialGeometry vector tests
+        run: swift test --package-path dayglance-ios/Packages/DayDialGeometry
+
       - name: Install XcodeGen
         run: brew install xcodegen
 

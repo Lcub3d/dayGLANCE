@@ -341,6 +341,7 @@
     "mcpSetupClaudeTitle": "Aggiunge una voce dayGLANCE alla configurazione di Claude Desktop che punta al bridge incluso con questa app. Tutto il resto del file viene mantenuto e viene prima creata una copia di backup.",
     "mcpSetupCreated": "Configurazione di Claude Desktop creata.",
     "mcpSetupGuide": "guida di configurazione",
+    "mcpSetupGuideLink": "Apri la guida alla configurazione",
     "mcpSetupGuidePrefix": "Per connettere Claude Desktop o altre app MCP, consulta la",
     "mcpSetupGuideSuffix": ". Incollerai il token di accesso indicato sopra nel tuo client MCP.",
     "mcpSetupRestart": "Riavvia Claude Desktop per stabilire la connessione.",

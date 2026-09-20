@@ -341,6 +341,7 @@
     "mcpSetupClaudeTitle": "Ajoute à la configuration de Claude Desktop une entrée dayGLANCE qui pointe vers le pont fourni avec cette application. Tout le reste du fichier est conservé et une sauvegarde est d’abord créée.",
     "mcpSetupCreated": "Configuration de Claude Desktop créée.",
     "mcpSetupGuide": "guide de configuration",
+    "mcpSetupGuideLink": "Ouvrir le guide de configuration",
     "mcpSetupGuidePrefix": "Pour connecter Claude Desktop ou d’autres applications MCP, consultez le",
     "mcpSetupGuideSuffix": ". Vous collerez le jeton d’accès ci-dessus dans votre client MCP.",
     "mcpSetupRestart": "Redémarrez Claude Desktop pour établir la connexion.",

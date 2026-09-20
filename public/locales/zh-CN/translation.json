@@ -344,6 +344,7 @@
     "mcpSetupClaudeTitle": "在 Claude Desktop 配置中添加 dayGLANCE 条目，指向本应用随附的桥接程序。文件中的其他内容会全部保留，并先创建备份。",
     "mcpSetupCreated": "已创建 Claude Desktop 配置。",
     "mcpSetupGuide": "设置指南",
+    "mcpSetupGuideLink": "打开设置指南",
     "mcpSetupGuidePrefix": "要连接 Claude Desktop 或其他 MCP 应用，请参阅",
     "mcpSetupGuideSuffix": "。你需要将上面的访问令牌粘贴到 MCP 客户端中。",
     "mcpSetupRestart": "重启 Claude Desktop 以连接。",

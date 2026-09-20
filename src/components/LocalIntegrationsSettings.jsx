@@ -14,6 +14,17 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // consentConfirmed flags are only ever set by the Accept button of the
 // matching dialog below — there is no code path that enables MCP without one.
 
+// The canonical MCP how-to, per the spec's Phase 7 division of labour: the
+// bridge README covers every install path (setup button, .mcpb, npx, Claude
+// Code direct HTTP) plus troubleshooting, and the site page was only ever a
+// capability card that linked here rather than restating any of it.
+//
+// This used to point at https://glance-apps.com/dayglance/mcp, which 404s: no
+// such page was ever published. Hoisted to a constant because two places need
+// it, and the one that 404'd was the copy nobody could see from a normal build
+// (it renders only under __MAS_BUILD__).
+const MCP_SETUP_GUIDE_URL = 'https://github.com/glance-apps/mcp-bridge';
+
 // ── §6.4 consent copy ────────────────────────────────────────────────────────
 // Required content (base): other apps on this computer can read the data;
 // those apps typically send it to an AI provider over the internet; dayGLANCE
@@ -575,6 +586,23 @@ const LocalIntegrationsSettings = ({ variant }) => {
                               ? t('settings.mcpSetupUnavailable', { defaultValue: 'dayGLANCE could not run setup at all, so nothing was written. This is a fault in the app rather than in your configuration. Restart dayGLANCE, and if it persists, set the bridge up by hand with "npx -y @glance-apps/mcp-bridge" and please report the build.' })
                               : t('settings.mcpSetupWriteFailed', { defaultValue: 'The configuration could not be written automatically. To finish setup by hand, paste this entry into your Claude Desktop configuration file:' })}
                       </p>
+                      {setupResult.reason === 'bridge_missing' && (
+                        /* The message above says "follow the setup guide" and, until
+                           now, gave nothing to follow: the only link in this component
+                           rendered under __MAS_BUILD__, which is never the build that
+                           reaches this branch. This is the moment someone most needs
+                           it, their bridge install having just failed. */
+                        <p>
+                          <a
+                            href={MCP_SETUP_GUIDE_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-500 hover:underline"
+                          >
+                            {t('settings.mcpSetupGuideLink', { defaultValue: 'Open the setup guide' })}
+                          </a>
+                        </p>
+                      )}
                       {setupResult.path && <p className="font-mono break-all">{setupResult.path}</p>}
                       {setupResult.manualEntry && (
                         <pre className={`p-2 rounded overflow-x-auto ${darkMode ? 'bg-gray-700' : 'bg-stone-200'}`}>{setupResult.manualEntry}</pre>
@@ -587,7 +615,7 @@ const LocalIntegrationsSettings = ({ variant }) => {
                 <p className={`text-xs ${textSecondary}`}>
                   {t('settings.mcpSetupGuidePrefix', { defaultValue: 'To connect Claude Desktop or other MCP apps, see the' })}{' '}
                   <a
-                    href="https://glance-apps.com/dayglance/mcp"
+                    href={MCP_SETUP_GUIDE_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="text-blue-500 hover:underline"

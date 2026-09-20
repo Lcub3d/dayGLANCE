@@ -1524,37 +1524,37 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "bis %1$@ · %2$@ übrig"
+            "value" : "bis %@ · %@ übrig"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "hasta las %1$@ · quedan %2$@"
+            "value" : "hasta las %@ · quedan %@"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "jusqu'à %1$@ · reste %2$@"
+            "value" : "jusqu'à %@ · reste %@"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "fino alle %1$@ · restano %2$@"
+            "value" : "fino alle %@ · restano %@"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "até %1$@ · faltam %2$@"
+            "value" : "até %@ · faltam %@"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "até às %1$@ · faltam %2$@"
+            "value" : "até às %@ · faltam %@"
           }
         }
       }

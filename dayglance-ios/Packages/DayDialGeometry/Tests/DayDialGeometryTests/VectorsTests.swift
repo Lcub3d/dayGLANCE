@@ -45,13 +45,17 @@ final class VectorsTests: XCTestCase {
     // MARK: fixture
 
     private static var fixture: [String: Any] = {
-        // Tests/DayDialGeometryTests/VectorsTests.swift → dayglance-ios/TestFixtures.
+        // …/dayglance-ios/Packages/DayDialGeometry/Tests/DayDialGeometryTests/VectorsTests.swift
+        // → …/dayglance-ios/TestFixtures/dayDial.vectors.json. Five hops: the
+        // first drops the file name, the next four the directories up to and
+        // including Packages.
         let here = URL(fileURLWithPath: #filePath)
         let url = here
-            .deletingLastPathComponent()  // DayDialGeometryTests
-            .deletingLastPathComponent()  // Tests
-            .deletingLastPathComponent()  // DayDialGeometry
-            .deletingLastPathComponent()  // Packages
+            .deletingLastPathComponent()  // → DayDialGeometryTests/
+            .deletingLastPathComponent()  // → Tests/
+            .deletingLastPathComponent()  // → DayDialGeometry/
+            .deletingLastPathComponent()  // → Packages/
+            .deletingLastPathComponent()  // → dayglance-ios/
             .appendingPathComponent("TestFixtures/dayDial.vectors.json")
         guard let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

@@ -10,6 +10,33 @@ import { dateToString, extractTags } from './taskUtils.js';
  */
 export const EMPTY_SCHED_FILTERS = Object.freeze({ colors: [], tags: [], projectIds: [] });
 
+/**
+ * The rolling agenda window: the selected day and the `daysShown - 1` days
+ * after it, inclusive.
+ *
+ * One home for the rule because three things have to agree on it or the
+ * agenda renders days nothing has prepared: the window useSchedAgendaState
+ * walks, the range recurring templates are expanded over, and the span the
+ * device-calendar fetch covers. The last one disagreed — the fetch reached
+ * two days either side of the selection and no further — and device events
+ * simply never arrived for the rest of the fortnight on screen.
+ *
+ * @param {Date} selectedDate
+ * @param {number} daysShown  window length; anything under 1 is treated as 1.
+ * @returns {{ from: string, to: string }}  YYYY-MM-DD, inclusive.
+ */
+export const schedRollingWindow = (selectedDate, daysShown) => {
+  // Noon, not midnight, before the day arithmetic — the same convention
+  // windowDates uses. A zone whose DST transition skips 00:00 has no midnight
+  // to normalise to that day, and adding days from an hour near a transition
+  // can land on the wrong one. Noon is an hour every local day has.
+  const from = new Date(selectedDate);
+  from.setHours(12, 0, 0, 0);
+  const to = new Date(from);
+  to.setDate(to.getDate() + Math.max(1, Math.floor(daysShown || 1)) - 1);
+  return { from: dateToString(from), to: dateToString(to) };
+};
+
 export const hasActiveSchedFilters = (filters) =>
   !!(filters && (filters.colors.length || filters.tags.length || filters.projectIds.length));
 

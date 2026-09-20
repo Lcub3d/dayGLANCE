@@ -7,6 +7,7 @@
 // complete, just emptier. Silent. Hence the second anchor.
 
 import { dateToString } from './taskUtils.js';
+import { schedRollingWindow } from './schedAgenda.js';
 import { WIDGET_PROJECTION_DAYS } from './widgetDayProjection.js';
 
 /**
@@ -33,8 +34,7 @@ export function computeRecurringExpansionRange({
   // reads days well beyond visibleDates/weekViewDates — on phones weekViewDates
   // is even empty (effectiveViewMode is 'multi'). Always include the agenda's
   // full rolling window so recurring occurrences exist for every rendered day.
-  const schedWindowEnd = new Date(selectedDate);
-  schedWindowEnd.setDate(schedWindowEnd.getDate() + schedDaysShown - 1);
+  const schedWindow = schedRollingWindow(selectedDate, schedDaysShown);
 
   // TODAY is anchored into the range unconditionally: plenty of consumers ask
   // about today regardless of where the user has navigated — todayAgenda (and
@@ -55,7 +55,7 @@ export function computeRecurringExpansionRange({
     ...weekViewDates.map(d => dateToString(d)),
     ...(monthViewRange ? [monthViewRange.from, monthViewRange.to] : []),
     dateToString(selectedDate),
-    dateToString(schedWindowEnd),
+    schedWindow.to,
     dateToString(today),
     dateToString(horizon),
   ].sort();

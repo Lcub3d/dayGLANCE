@@ -51,6 +51,7 @@ import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, format
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
+import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
 import { CALENDAR_PROJECTION_WINDOW_DAYS } from './utils/obsidianCalendarProjection.js';
 import { shiftDateStr } from '@glance-apps/agenda-core';
@@ -5058,7 +5059,7 @@ const DayPlanner = () => {
     }
     const proxyHeaders = {};
     if (authValue) proxyHeaders['X-Calendar-Auth'] = authValue;
-    return fetch(`/api/calendar-proxy/?url=${url}`, { headers: proxyHeaders });
+    return fetch(buildCalendarProxyUrl(url), { headers: proxyHeaders });
   };
 
   // Strip userinfo (credentials) from a URL before logging so they don't appear

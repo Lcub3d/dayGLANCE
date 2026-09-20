@@ -9983,7 +9983,7 @@ const DayPlanner = () => {
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('app.legal')}</p>
                 <a
-                  href="https://glance-apps.com/dayglance/privacy"
+                  href="https://www.glance-apps.com/dayglance/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"

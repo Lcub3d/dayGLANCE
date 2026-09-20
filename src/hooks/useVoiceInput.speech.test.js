@@ -22,7 +22,12 @@ vi.mock('react', () => ({
     }];
   },
 }));
-vi.mock('i18next', () => ({ default: { t: (key, opts) => opts?.defaultValue ?? key } }));
+const i18nCalls = [];
+vi.mock('i18next', () => ({
+  default: {
+    t: (key, opts) => { i18nCalls.push([key, opts]); return opts?.defaultValue ?? key; },
+  },
+}));
 // No AI provider and no native STT: the Web Speech API is the only path left —
 // the browser/PWA tier. (The desktop app never reaches it: native speech takes
 // priority, see native.electronSpeech.test.js.)
@@ -93,6 +98,7 @@ beforeEach(() => {
   states = [];
   refs = [];
   recognition = undefined;
+  i18nCalls.length = 0;
   globalThis.window = {
     SpeechRecognition: FakeSpeechRecognition,
     navigator: { onLine: true, language: 'en-US' },
@@ -168,5 +174,36 @@ describe('the Settings › AI voice toggle routes the recording path', () => {
   it('toggle on: AI transcription, so no platform recogniser is constructed', () => {
     useTestVoice(whisperCapable(true)).voiceStartRecording();
     expect(recognition).toBeUndefined();
+  });
+});
+
+// Every mic/speech error the hook can show is a bundle key, never a literal:
+// locales.test.js enforces the keys exist in all eight languages, and this
+// pins that the hook actually asks for them.
+describe('mic and speech errors are localized', () => {
+  const keysRequested = () => i18nCalls.map(([key]) => key);
+
+  it('permission denial asks the bundle for voice.micAccessDenied', () => {
+    useTestVoice().voiceStartRecording();
+    failWith('not-allowed');
+    expect(keysRequested()).toContain('voice.micAccessDenied');
+    expect(seen.setVoiceParseError).toMatch(/microphone access denied/i);
+  });
+
+  it('any other recognition code goes through voice.speechRecognitionError with the code interpolated', () => {
+    useTestVoice().voiceStartRecording();
+    failWith('audio-capture');
+    const call = i18nCalls.find(([key]) => key === 'voice.speechRecognitionError');
+    expect(call).toBeDefined();
+    expect(call[1].error).toBe('audio-capture');
+  });
+
+  it('a recogniser that throws on start() is reported the same way', () => {
+    class Throwing extends FakeSpeechRecognition { start() { throw new Error('boom'); } }
+    globalThis.window.SpeechRecognition = Throwing;
+    useTestVoice().voiceStartRecording();
+    const call = i18nCalls.find(([key]) => key === 'voice.speechRecognitionError');
+    expect(call?.[1].error).toBe('boom');
+    expect(seen.setVoiceMicError).toBe('error');
   });
 });

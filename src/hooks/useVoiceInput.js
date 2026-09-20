@@ -168,7 +168,10 @@ export default function useVoiceInput({
           voiceRecorderRef.current = { nativeSpeech: true };
           setVoiceIsRecording(true);
         } else {
-          setVoiceParseError(`Speech recognition error: ${result?.error ?? 'unknown'}`);
+          setVoiceParseError(i18n.t('voice.speechRecognitionError', {
+            error: result?.error ?? i18n.t('voice.unknownError', { defaultValue: 'unknown' }),
+            defaultValue: 'Speech recognition error: {{error}}',
+          }));
           setVoiceMicError('error');
         }
         return;
@@ -194,7 +197,9 @@ export default function useVoiceInput({
           voiceRecorderRef.current = null;
           setVoiceIsRecording(false);
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-            setVoiceParseError('Microphone access denied. Please allow microphone permissions in your browser settings.');
+            setVoiceParseError(i18n.t('voice.micAccessDenied', {
+              defaultValue: 'Microphone access denied. Please allow microphone permissions in your browser settings.',
+            }));
             setVoiceMicError('error');
           } else if (e.error === 'network') {
             // The browser streams speech to its vendor's recognition service;
@@ -208,7 +213,9 @@ export default function useVoiceInput({
             setVoiceMicError('error');
             setVoiceManualMode(true);
           } else if (e.error !== 'aborted' && e.error !== 'no-speech') {
-            setVoiceParseError(`Speech recognition error: ${e.error}`);
+            setVoiceParseError(i18n.t('voice.speechRecognitionError', {
+              error: e.error, defaultValue: 'Speech recognition error: {{error}}',
+            }));
             setVoiceMicError('error');
           }
         };
@@ -227,7 +234,9 @@ export default function useVoiceInput({
           voiceRecorderRef.current = { speech: recognition };
           setVoiceIsRecording(true);
         } catch (err) {
-          setVoiceParseError(`Speech recognition error: ${err.message}`);
+          setVoiceParseError(i18n.t('voice.speechRecognitionError', {
+            error: err.message, defaultValue: 'Speech recognition error: {{error}}',
+          }));
           setVoiceMicError('error');
         }
         return;
@@ -245,7 +254,9 @@ export default function useVoiceInput({
         voiceRecorderRef.current = { native: true };
         setVoiceIsRecording(true);
       } else {
-        setVoiceParseError(`Microphone error: ${nativeResult.error ?? nativeResult}`);
+        setVoiceParseError(i18n.t('voice.micError', {
+          error: nativeResult.error ?? nativeResult, defaultValue: 'Microphone error: {{error}}',
+        }));
         setVoiceMicError('error');
       }
       return;
@@ -270,11 +281,15 @@ export default function useVoiceInput({
       console.error('Microphone error:', err);
       const msg = err.name === 'NotAllowedError'
         ? typeof navigator.brave !== 'undefined'
-          ? 'Microphone access denied. Brave Shields may be blocking access — try disabling Shields for this site, or allow microphone permissions in your browser settings.'
-          : 'Microphone access denied. Please allow microphone permissions in your browser settings.'
+          ? i18n.t('voice.micAccessDeniedBrave', {
+            defaultValue: 'Microphone access denied. Brave Shields may be blocking access — try disabling Shields for this site, or allow microphone permissions in your browser settings.',
+          })
+          : i18n.t('voice.micAccessDenied', {
+            defaultValue: 'Microphone access denied. Please allow microphone permissions in your browser settings.',
+          })
         : err.name === 'NotFoundError'
-        ? 'No microphone found. Please connect a microphone and try again.'
-        : `Microphone error: ${err.message}`;
+        ? i18n.t('voice.micNotFound', { defaultValue: 'No microphone found. Please connect a microphone and try again.' })
+        : i18n.t('voice.micError', { error: err.message, defaultValue: 'Microphone error: {{error}}' });
       setVoiceParseError(msg);
       setVoiceMicError('error');
     }
@@ -305,7 +320,10 @@ export default function useVoiceInput({
         voiceRecorderRef.current = null;
         setVoiceIsRecording(false);
         setVoiceIsTranscribing(false);
-        setVoiceParseError(`Speech recognition error: ${e.message || 'unknown'}`);
+        setVoiceParseError(i18n.t('voice.speechRecognitionError', {
+          error: e.message || i18n.t('voice.unknownError', { defaultValue: 'unknown' }),
+          defaultValue: 'Speech recognition error: {{error}}',
+        }));
         setVoiceMicError('error');
       }
     };
@@ -349,7 +367,10 @@ export default function useVoiceInput({
       setVoiceIsRecording(false);
       const result = nativeStopRecording();
       if (!result || result.error) {
-        setVoiceParseError(`Microphone error: ${result?.error ?? 'unknown'}`);
+        setVoiceParseError(i18n.t('voice.micError', {
+          error: result?.error ?? i18n.t('voice.unknownError', { defaultValue: 'unknown' }),
+          defaultValue: 'Microphone error: {{error}}',
+        }));
         setVoiceMicError('error');
         return;
       }
@@ -383,7 +404,9 @@ export default function useVoiceInput({
         if (text) await parseTranscriptNow(text);
       } catch (err) {
         console.error('Transcription error:', err);
-        setVoiceParseError(`Transcription failed: ${err.message}`);
+        setVoiceParseError(i18n.t('voice.transcriptionFailed', {
+          error: err.message, defaultValue: 'Transcription failed: {{error}}',
+        }));
         setVoiceManualMode(true); // fall back to text input
       }
       setVoiceIsTranscribing(false);

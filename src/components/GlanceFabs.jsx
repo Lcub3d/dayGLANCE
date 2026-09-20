@@ -36,7 +36,7 @@ export default function GlanceFabs() {
   } = useDayPlannerCtx();
   const { obsidianConfig, setShowMobileRecycleBin } = useSyncCtx();
   const {
-    goalsProjectsEnabled, setShowGoalsDashboard, setShowLifePlanner,
+    goalsProjectsEnabled, setShowGoalsDashboard, setShowLifePlanner, lifeplannerEnabled,
     setShowWeeklyReview, showWeeklyReviewReminder, setShowWeeklyReviewReminder,
     weeklyReviewDismissedRef, lastWeeklyReviewFiredRef,
   } = useFeaturesCtx();
@@ -74,7 +74,7 @@ export default function GlanceFabs() {
       title: 'Goals & Projects',
       onClick: () => setShowGoalsDashboard(true),
     },
-    {
+    lifeplannerEnabled && {
       key: 'lifeplanner',
       icon: <Compass size={15} />,
       label: t('lifeplanner.entry'),

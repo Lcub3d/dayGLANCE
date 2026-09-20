@@ -1,0 +1,46 @@
+.planning-choices-trigger { width: 40px; height: 40px; flex: 0 0 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; transition: filter 150ms; }
+.planning-choices-trigger:hover { filter: brightness(1.08); }
+.planning-choices-trigger:focus-visible, .planning-choice-switch:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.planning-choices-backdrop { position: fixed; inset: 0; z-index: 150; background: rgb(0 0 0 / .42); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.planning-choices-dialog { width: 540px; max-width: 100%; max-height: calc(100dvh - 48px); overflow-y: auto; border-radius: 18px; padding: 28px; box-shadow: 0 24px 70px rgb(0 0 0 / .18); }
+.planning-choices-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.planning-choices-eyebrow { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 9px; }
+.planning-choices-heading h2 { font-weight: 650; font-size: 23px; line-height: 1.4; letter-spacing: -.02em; }
+.planning-choices-close { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.planning-choices-intro { margin: 10px 0 20px; font-size: 13px; line-height: 1.7; }
+.planning-choice-row { display: grid; grid-template-columns: 38px minmax(0,1fr) 48px; gap: 12px; padding: 21px 0; align-items: start; }
+.planning-choice-symbol { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.planning-choice-title h3 { font-size: 15px; line-height: 24px; font-weight: 650; }
+.planning-choice-copy > p { font-size: 12px; line-height: 1.75; margin-top: 3px; }
+.planning-choice-included { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; margin-top: 6px; }
+.planning-choice-switch { height: 44px; width: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.planning-choice-switch:disabled { cursor: default; }
+.planning-choice-track { display: block; position: relative; width: 44px; height: 26px; border-radius: 999px; transition: background-color 150ms; }
+.planning-choice-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / .16); transition: transform 150ms; }
+.planning-choice-switch[aria-checked="true"] .planning-choice-thumb { transform: translateX(18px); }
+.planning-choice-detail { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.planning-choice-detail small { font-size: 11px; line-height: 1.65; }
+.planning-choice-link { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; font-size: 12px; text-align: left; }
+.planning-choices-footer { display: flex; gap: 18px; align-items: center; margin-top: 22px; }
+.planning-choices-footer p { font-size: 11px; line-height: 1.8; flex: 1; }
+.planning-choices-done { font-size: 13px; min-width: 80px; min-height: 38px; border-radius: 9px; padding: 8px 18px; }
+.planning-choices-error { margin-top: 12px; font-size: 12px; line-height: 1.7; }
+@media (max-width: 600px) {
+  .planning-choices-backdrop { padding: 12px; align-items: center; }
+  .planning-choices-dialog { padding: 22px 18px; max-height: calc(100dvh - 24px); padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+  .planning-choices-heading h2 { font-size: 20px; }
+  .planning-choice-row { grid-template-columns: 30px minmax(0,1fr) 48px; gap: 9px; padding: 16px 0; }
+  .planning-choice-symbol { width: 30px; height: 30px; }
+  .planning-choice-title h3 { font-size: 14px; }
+  .planning-choices-close { width: 38px; height: 38px; }
+  .planning-choices-done { min-height: 44px; }
+  .planning-choices-trigger { width: 44px; height: 44px; flex-basis: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planning-choices-trigger, .planning-choice-track, .planning-choice-thumb { transition: none; }
+}
+@media (forced-colors: active) {
+  .planning-choice-track, .planning-choices-trigger { border: 2px solid ButtonText; }
+  .planning-choice-thumb { background: ButtonText; }
+  .planning-choice-switch[aria-checked="true"] .planning-choice-track { border-color: Highlight; }
+}

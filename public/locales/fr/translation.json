@@ -2287,5 +2287,28 @@
         "exampleVision": "Complete 1 personal challenge, in 3 years"
       }
     }
+  },
+  "planningChoices": {
+    "open": "Choose how I use dayGLANCE",
+    "eyebrow": "My workspace",
+    "title": "How do I want to use dayGLANCE?",
+    "intro": "Start with the essentials. Add what helps, whenever it helps.",
+    "group": "My planning choices",
+    "daily": "My day, at a glance.",
+    "dailyDescription": "See my schedule and tasks in one place.",
+    "alwaysOn": "Always on",
+    "review": "Reflect on my day.",
+    "reviewDescription": "Compare Plan and Do in Jobo, then decide what to adjust.",
+    "life": "Plan my life.",
+    "lifeDescription": "Connect my life wishes, five-year visions and projects in Life Planner.",
+    "keepsData": "Choices are saved on this device. Turning a feature off hides its entry; it does not delete its records.",
+    "done": "Done",
+    "openLife": "Open Life Planner",
+    "openJobo": "Open Jobo preview",
+    "joboPreview": "Jobo is being built in stages. This enables the current preview, not the completed review system.",
+    "joboDesktop": "The current Jobo preview is available in the wide desktop layout.",
+    "joboHidden": "Jobo is enabled but hidden in Views on this device. That choice is unchanged.",
+    "saveError": "This choice could not be saved. Nothing was switched. Please try again.",
+    "readError": "Saved choices could not be read. Check browser storage permissions, then try again."
   }
 }

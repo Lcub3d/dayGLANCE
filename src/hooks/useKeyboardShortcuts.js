@@ -28,7 +28,7 @@ export default function useKeyboardShortcuts({
   // modal guard state
   showAddTask, showFocusMode, showRoutinesDashboard, showShortcutHelp, showSpotlight,
   showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput,
-  showHabitModal, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showLifePlanner,
+  showHabitModal, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showLifePlanner, showPlanningChoices,
   // day dial ('o') — the overlay owns its own keys (Esc, arrows) while open
   showDayDial, setShowDayDial,
   // bucket list ('u')
@@ -73,7 +73,7 @@ export default function useKeyboardShortcuts({
     const handleGlobalKeyDown = (e) => {
       // The Life Planner and its editors own keyboard input, including native
       // text undo. Do not send Ctrl+Z to the timeline beneath this workspace.
-      if (showLifePlanner) return;
+      if (showLifePlanner || showPlanningChoices) return;
       // Undo/Redo — works even when focus is in an input/textarea
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.key === 'z' && !e.shiftKey) {
@@ -363,5 +363,5 @@ export default function useKeyboardShortcuts({
     // action callbacks (changeDate/goToToday/performUndo/performRedo/playUISound),
     // all stable or read through refs — listing them would needlessly re-bind.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showLifePlanner, monthViewActive, selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews]);
+  }, [showLifePlanner, showPlanningChoices, monthViewActive, selectedDate, showAddTask, showShortcutHelp, showFocusMode, showRoutinesDashboard, showHabitModal, showMonthView, showSpotlight, showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput, showFramesModal, frameAdjustModal, showRescheduleModal, showGoalsDashboard, showBucketList, showDayDial, hoverPreviewTime, hoverPreviewDate, isMobile, tabletActiveTab, routinesEnabled, habitsEnabled, goalsProjectsEnabled, aiConfig, gtdFrames, canShowViewCycler, schedOnlyCycler, effectiveViewMode, hiddenViews]);
 }

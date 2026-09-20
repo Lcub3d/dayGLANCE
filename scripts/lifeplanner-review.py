@@ -67,6 +67,7 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
       const data = {
        'i18nextLng': LANG, 'welcomeDismissed':'true', 'gettingStartedDismissed':'true',
        'day-planner-darkmode': DARK, 'day-planner-goals-projects-enabled':'true',
+       'day-planner-lifeplanner-enabled':'true',
        'day-planner-glance-fabs-collapsed':'0',
        'day-planner-unscheduled':JSON.stringify([{id:'review-inbox',title:'整理本周阅读笔记',completed:false,notes:'',subtasks:[],color:'bg-blue-500'}]),
        'day-planner-goals':JSON.stringify([{id:'review-goal',title:'持续学习',status:'active',color:'bg-blue-500',createdAt:'2026-09-20T08:00:00Z',updatedAt:'2026-09-20T08:00:00Z'}]),

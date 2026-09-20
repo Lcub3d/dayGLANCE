@@ -9,7 +9,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const en=JSON.parse(fs.readFileSync(path.join(root,'public/locales/en/translation.json'),'utf8'));
 const zh=JSON.parse(fs.readFileSync(path.join(root,'public/locales/zh-CN/translation.json'),'utf8'));
 vi.mock('../context/DayPlannerContext.jsx',()=>({useDayPlannerCtx:()=>({darkMode:false,textPrimary:'text-stone-900',cardBg:'bg-white',textSecondary:'text-stone-500',borderClass:'border-stone-200',hoverBg:'hover:bg-stone-100',tasks:[],unscheduledTasks:[],recycleBin:[],actualTodayNonImportedTasks:[],actualTodayCompletedTasks:[],inboxCompletedTodayCount:0})}));
-vi.mock('../context/FeaturesContext.jsx',()=>({useFeaturesCtx:()=>({goalsProjectsEnabled:true,multiUserEnabled:false,users:[],projects:[],goals:[]})}));
+vi.mock('../context/FeaturesContext.jsx',()=>({useFeaturesCtx:()=>({goalsProjectsEnabled:true,lifeplannerEnabled:true,multiUserEnabled:false,users:[],projects:[],goals:[]})}));
 vi.mock('../context/SyncContext.jsx',()=>({useSyncCtx:()=>({obsidianConfig:{enabled:false}})}));
 vi.mock('../hooks/useGlanceFabs.js',()=>({default:()=>({collapsed:false,toggle:()=>{}})}));
 vi.mock('react-i18next',()=>({useTranslation:()=>({t:key=>key,i18n:{language:'en'}})}));

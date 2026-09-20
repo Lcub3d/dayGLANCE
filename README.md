@@ -668,6 +668,8 @@ The **paid Google Play and App Store builds** are a convenience distribution tha
 
 **Trademarks:** the dayGLANCE name, logo, and app icon are trademarks of the project and are **not** covered by the MIT license. The MIT license grants rights to the code only; it does not grant permission to use the dayGLANCE branding on your own builds or distributions.
 
+**Fonts:** [Lora](https://github.com/cyrealtype/Lora-Cyrillic) (© The Lora Project Authors) is bundled under the [SIL Open Font License 1.1](https://scripts.sil.org/OFL): a Latin subset for the wordmark on the web (`public/fonts/`), and the Medium face for the Day Dial widget's date on iOS (`dayglance-ios/DayGlanceWidget/Fonts/`, licence text alongside).
+
 ---
 
 ## Support

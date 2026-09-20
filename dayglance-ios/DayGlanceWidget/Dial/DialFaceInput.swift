@@ -62,7 +62,10 @@ struct DialFaceInput: Equatable {
                                  completed: b.completed ?? false,
                                  colorHex: b.colorHex,
                                  lane: b.lane ?? 0,
-                                 laneCount: max(1, b.laneCount ?? 1))
+                                 laneCount: max(1, b.laneCount ?? 1),
+                                 endMinTrue: b.endMinTrue.map(Double.init),
+                                 title: b.title,
+                                 tag: b.tag)
         }
         var segments: [DialSpec.SkySegment] = []
         var moon: DialMoonGlyph? = nil
@@ -77,8 +80,10 @@ struct DialFaceInput: Equatable {
                   moon: moon, projectedDay: projectedDay)
     }
 
-    /// A canonical text of everything above. Two inputs that draw the same
-    /// face have the same seed; the cache key is its digest.
+    /// A canonical text of everything the FACE draws. Two inputs that draw
+    /// the same face have the same seed; the cache key is its digest. Titles,
+    /// tags and true ends are the hub's (an overlay, never in the image) and
+    /// are deliberately left out, so the key is exactly Phase 2's.
     var seed: String {
         var parts: [String] = ["tier=\(projectedDay ? "projected" : "pushed")"]
         for b in blocks {

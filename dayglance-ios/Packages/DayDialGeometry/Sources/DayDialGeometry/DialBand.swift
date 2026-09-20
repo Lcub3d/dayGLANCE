@@ -53,10 +53,19 @@ public struct DialFaceBlock: Equatable {
     public var colorHex: String?
     public var lane: Int
     public var laneCount: Int
+    /// The TRUE end when `endsNextDay`, minutes into the next day (the
+    /// snapshot's `endMinTrue`). The hub counts down to it; the band does not
+    /// draw it.
+    public var endMinTrue: Double?
+    /// Display title and first tag (without `#`), for the hub. Absent on
+    /// sleep; the face never reads them, so they are not in the cache key.
+    public var title: String?
+    public var tag: String?
 
     public init(id: String, kind: DialBlockKind, startMin: Double, endMin: Double,
                 endsNextDay: Bool = false, startedPrevDay: Bool = false, completed: Bool = false,
-                colorHex: String? = nil, lane: Int = 0, laneCount: Int = 1) {
+                colorHex: String? = nil, lane: Int = 0, laneCount: Int = 1,
+                endMinTrue: Double? = nil, title: String? = nil, tag: String? = nil) {
         self.id = id
         self.kind = kind
         self.startMin = startMin
@@ -67,6 +76,16 @@ public struct DialFaceBlock: Equatable {
         self.colorHex = colorHex
         self.lane = lane
         self.laneCount = laneCount
+        self.endMinTrue = endMinTrue
+        self.title = title
+        self.tag = tag
+    }
+
+    /// Minutes from midnight to the block's real end: past 1440 for a block
+    /// that runs into tomorrow (DayDial.jsx `endsAt`).
+    public var trueEndMin: Double {
+        if endsNextDay, let endMinTrue { return DialGeometry.dayMinutes + endMinTrue }
+        return endMin
     }
 }
 

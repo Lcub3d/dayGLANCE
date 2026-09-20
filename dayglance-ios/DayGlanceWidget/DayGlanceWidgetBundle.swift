@@ -7,17 +7,13 @@ struct DayGlanceWidgetBundle: WidgetBundle {
         UpNextWidget()
         GoalWidget()
         ProjectWidget()
+        DayDialWidget()
         DaySummaryLiveActivity()
-        // Day Dial render-budget spike — measurement only, never shipped.
-        // Built in only with DG_WIDGET_FLAGS="DIAL_SPIKE" (see project.yml and
-        // Spike/DialSpikeWidget.swift).
-        #if DIAL_SPIKE
-        DialSpikeWidget()
-        #endif
         // Day Dial preview — the face and hub from fixture days, scenario
-        // chosen per instance in Edit Widget. Built in only with
+        // chosen per instance in Edit Widget; also how App Store screenshots
+        // are captured from a curated day. Built in only with
         // DG_WIDGET_FLAGS="DIAL_PREVIEW" (see project.yml and
-        // Dial/DialPreviewWidget.swift).
+        // Dial/DialPreviewWidget.swift). Kept alongside the real widget.
         #if DIAL_PREVIEW
         DialPreviewWidget()
         #endif

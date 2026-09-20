@@ -134,6 +134,14 @@ module.exports = {
     extendInfo: {
       NSCalendarsUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
       NSCalendarsFullAccessUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
+      // Voice input. The speech-recognition string is REQUIRED, not cosmetic:
+      // SFSpeechRecognizer.requestAuthorization refuses outright when the
+      // responsible bundle's Info.plist lacks it, before any prompt is shown —
+      // and the bundled speech helper's request attributes to this bundle.
+      // The microphone string names the feature in the TCC prompt (Electron
+      // ships a generic default). See electron/speech.ts.
+      NSMicrophoneUsageDescription: 'dayGLANCE uses the microphone for voice task input.',
+      NSSpeechRecognitionUsageDescription: 'dayGLANCE turns what you say into tasks on this Mac, without sending audio to an AI provider.',
       // Declares the same set as a bundle property. Belt and braces: the .lproj
       // folders above are what actually shortens the listing (CFBundleLocalizations
       // is additive, it cannot subtract a folder that is present), but this states
@@ -152,6 +160,9 @@ module.exports = {
     // scripts/verify-mas-compileout.mjs asserts this against the built artifact.
     extraResources: [
       { from: 'electron/native/calendar-helper/build/dayglance-calendar-helper', to: 'calendar-helper/dayglance-calendar-helper' },
+      // On-device speech recognition for voice input without an AI provider
+      // (built by scripts/build-speech-helper.sh, driven by electron/speech.ts).
+      { from: 'electron/native/speech-helper/build/dayglance-speech-helper', to: 'speech-helper/dayglance-speech-helper' },
       ...(isMasBuild ? [] : [{ from: 'node_modules/@glance-apps/mcp-bridge', to: 'mcp-bridge' }]),
     ],
     target: [
@@ -183,6 +194,14 @@ module.exports = {
     extendInfo: {
       NSCalendarsUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
       NSCalendarsFullAccessUsageDescription: 'dayGLANCE shows your calendar events alongside your tasks.',
+      // Voice input. The speech-recognition string is REQUIRED, not cosmetic:
+      // SFSpeechRecognizer.requestAuthorization refuses outright when the
+      // responsible bundle's Info.plist lacks it, before any prompt is shown —
+      // and the bundled speech helper's request attributes to this bundle.
+      // The microphone string names the feature in the TCC prompt (Electron
+      // ships a generic default). See electron/speech.ts.
+      NSMicrophoneUsageDescription: 'dayGLANCE uses the microphone for voice task input.',
+      NSSpeechRecognitionUsageDescription: 'dayGLANCE turns what you say into tasks on this Mac, without sending audio to an AI provider.',
       // Export compliance: the app uses only standard HTTPS/TLS (exempt encryption),
       // no proprietary or user-facing crypto. Declaring this in the binary stops
       // App Store Connect from prompting for encryption docs on every upload.

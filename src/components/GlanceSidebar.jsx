@@ -252,18 +252,17 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
         })()}
       </div>
     )}
-    {/* Voice quick-add works without AI (deterministic parsing + platform
-        speech recognition), so the button is no longer gated on AI being
-        enabled — only on the feature toggle (default on). */}
-    {aiConfig.features?.voiceTaskInput !== false && (
-      <button
-        onClick={() => setShowVoiceInput(true)}
-        className={`flex-shrink-0 self-stretch flex items-center px-2.5 rounded-lg transition-colors ${darkMode ? 'bg-white/10 text-purple-400' : 'bg-black/5 text-purple-600'} hover:opacity-80`}
-        title={`${t('shortcuts.voiceTaskInput')} (V)`}
-      >
-        <Mic size={16} />
-      </button>
-    )}
+    {/* Voice quick-add works without AI (platform speech + deterministic
+        parsing, typing always), so nothing gates the button. The "Voice task
+        input" toggle under Settings › AI decides only whether AI is used for
+        it — see src/utils/voiceAI.js. */}
+    <button
+      onClick={() => setShowVoiceInput(true)}
+      className={`flex-shrink-0 self-stretch flex items-center px-2.5 rounded-lg transition-colors ${darkMode ? 'bg-white/10 text-purple-400' : 'bg-black/5 text-purple-600'} hover:opacity-80`}
+      title={`${t('shortcuts.voiceTaskInput')} (V)`}
+    >
+      <Mic size={16} />
+    </button>
     <button
       onClick={() => setShowBucketList(true)}
       className={`flex-shrink-0 self-stretch flex items-center px-2.5 rounded-lg transition-colors ${darkMode ? 'bg-white/10 text-sky-400' : 'bg-black/5 text-sky-600'} hover:opacity-80`}

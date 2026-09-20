@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
-import { aiTranscribe, aiJSON, supportsTranscription } from '../ai.js';
+import i18n from 'i18next';
+import { aiTranscribe, aiJSON } from '../ai.js';
 import { voiceParseSystemPrompt, voiceParseUserPrompt } from '../ai-prompts.js';
 import {
   nativeStartRecording, nativeStopRecording, triggerHaptic,
@@ -8,6 +9,8 @@ import {
 import { dateToString, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { parseTranscriptTasks } from '../utils/voiceQuickAdd.js';
+import { normalizeVoiceParseResult } from '../utils/voiceParseResult.js';
+import { voiceUsesAI, voiceTranscribesWithAI } from '../utils/voiceAI.js';
 
 /**
  * Voice input pipeline — extracted from App.jsx (see "App.jsx — Ongoing
@@ -56,9 +59,15 @@ export default function useVoiceInput({
   //   4. Typing fallback                        — always available
   // Parsing (text → tasks): AI when configured, else the deterministic
   // quickAddParser (parseTranscriptTasks) — voice no longer requires AI.
-  const aiKeyed = !!(aiConfig.apiKey || aiConfig.provider === 'ollama');
-  const canWhisper = aiConfig.enabled && supportsTranscription(aiConfig) && aiKeyed;
-  const canAIParse = aiConfig.enabled && aiKeyed;
+  // Both honour the "Voice task input" toggle under Settings › AI: off means
+  // non-AI voice (platform speech + deterministic parse), never no voice.
+  const canWhisper = voiceTranscribesWithAI(aiConfig);
+  const canAIParse = voiceUsesAI(aiConfig);
+  // Web Speech (browser/PWA tier). The interface existing does not mean it
+  // works: it streams audio to the browser vendor's cloud service, and where
+  // that is unreachable the failure only arrives later as a 'network' error.
+  // On the desktop app it is never reached — native on-device speech (the
+  // Electron helper, see src/native.js) takes priority in voiceStartRecording.
   const webSpeechAvailable = typeof window !== 'undefined' &&
     !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -83,14 +92,10 @@ export default function useVoiceInput({
       };
       const result = await aiJSON(voiceParseSystemPrompt(context), voiceParseUserPrompt(trimmed), aiConfig);
       const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-      let newTasks = [];
-      let edits = [];
-      if (Array.isArray(result)) {
-        newTasks = result;
-      } else if (result && typeof result === 'object') {
-        newTasks = Array.isArray(result.newTasks) ? result.newTasks : [];
-        edits = Array.isArray(result.edits) ? result.edits : [];
-      }
+      // A response of unexpected shape throws here and lands in the catch
+      // below — deterministic parse plus a visible notice — instead of being
+      // read as "nothing to do" (see voiceParseResult.js for the report).
+      const { newTasks, edits } = normalizeVoiceParseResult(result);
       setVoiceParsedTasks(newTasks.map(t => ({ ...t, title: cap(t.title) })));
       setVoiceParsedEdits(edits.map(edit => {
         const match = voiceResolveTaskMatchRef.current(edit.taskMatch);
@@ -98,8 +103,11 @@ export default function useVoiceInput({
       }));
     } catch (parseErr) {
       // AI parse failed — fall back to the deterministic parser instead of a
-      // bare title-only task.
-      setVoiceParseError(parseErr.message);
+      // bare title-only task. A shape failure gets a message a person can act
+      // on rather than the internal description.
+      setVoiceParseError(parseErr?.code === 'VOICE_PARSE_SHAPE'
+        ? i18n.t('voice.aiUnexpectedShape', { defaultValue: "The AI replied in a format the app couldn't read." })
+        : parseErr.message);
       setVoiceParsedTasks(parseTranscriptTasks(trimmed));
       setVoiceParsedEdits([]);
     }
@@ -190,10 +198,15 @@ export default function useVoiceInput({
             setVoiceMicError('error');
           } else if (e.error === 'network') {
             // The browser streams speech to its vendor's recognition service;
-            // 'network' means that service is unreachable. Some browsers fail
-            // instantly on certain platforms (e.g. Edge outside Windows).
-            setVoiceParseError("This browser couldn't reach its speech recognition service, so voice input isn't available here. You can type instead, or try a different browser.");
+            // 'network' means that service is unreachable (Chromium forks
+            // without vendor keys, Edge outside Windows). Drop the user
+            // straight into typing with the reason, rather than leaving them
+            // facing a microphone that fails the same way on every press.
+            setVoiceParseError(i18n.t('voice.speechServiceUnreachable', {
+              defaultValue: "This browser couldn't reach its speech recognition service, so voice input isn't available here. Type your tasks below instead, or try a different browser.",
+            }));
             setVoiceMicError('error');
+            setVoiceManualMode(true);
           } else if (e.error !== 'aborted' && e.error !== 'no-speech') {
             setVoiceParseError(`Speech recognition error: ${e.error}`);
             setVoiceMicError('error');

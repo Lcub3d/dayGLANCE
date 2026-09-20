@@ -27,6 +27,11 @@
     <!-- Read access to the system Calendar via the EventKit helper -->
     <key>com.apple.security.personal-information.calendars</key>
     <true/>
+    <!-- Microphone capture for voice input (renderer getUserMedia and the
+         bundled speech helper, which inherits this via entitlements.mas.inherit).
+         Mandatory under the App Sandbox. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
     <!-- Obsidian vault: user picks folder via open panel -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>

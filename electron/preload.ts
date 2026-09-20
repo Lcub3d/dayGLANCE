@@ -309,6 +309,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCalendarEvents: (startDate: string, endDate: string): Promise<Record<string, unknown[]>> =>
     ipcRenderer.invoke('calendar:get-events', startDate, endDate),
 
+  // On-device speech recognition (macOS): a signed Swift helper wrapping
+  // SFSpeechRecognizer, spawned and driven by the main process
+  // (electron/speech.ts). This is the desktop leg of the DayGlanceNative speech
+  // contract Android and iOS implement; src/native.js adapts it to the same
+  // synchronous string API, so voice input works without an AI provider.
+  // `supported` is resolved ONCE here rather than per call: the voice modal
+  // reads it on every render, and a sync IPC round-trip per render would stall
+  // the renderer for nothing. False on Windows/Linux and when the helper did
+  // not ship.
+  speech: {
+    supported: (() => {
+      // Never let this hang or throw the whole bridge: no handler means no speech.
+      try { return ipcRenderer.sendSync('speech:supports') === true; } catch { return false; }
+    })(),
+    start: () => ipcRenderer.send('speech:start'),
+    stop: () => ipcRenderer.send('speech:stop'),
+    cancel: () => ipcRenderer.send('speech:cancel'),
+    // partial / final / error, in the exact shape window.__speechEvent expects.
+    onEvent: (callback: (event: unknown) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, event: unknown) => callback(event);
+      ipcRenderer.on('speech:event', handler);
+      return () => ipcRenderer.removeListener('speech:event', handler);
+    },
+  },
+
   // Tray popup listens for the signal to focus the quick-add input.
   onFocusQuickAdd: (callback: () => void) => {
     const handler = () => callback();

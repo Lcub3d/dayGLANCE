@@ -207,6 +207,8 @@ import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
 import { nativeFetchWindowFor, windowDates, NATIVE_FETCH_RADIUS_DAYS } from './utils/nativeFetchWindow.js';
+import { weekViewDatesFor } from './utils/weekViewDates.js';
+import { schedRollingWindow } from './utils/schedAgenda.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
 
 // Encode a string that may contain non-ASCII characters as Base64.
@@ -445,6 +447,10 @@ const DayPlanner = () => {
   // (effectiveViewMode) or the phone / portrait-tablet toggle (mobileViewMode).
   // Drives the chrome's month-long stride and month-name date display.
   const monthViewActive = effectiveViewMode === 'month' || ((isMobile || (isTablet && !isLandscape)) && mobileViewMode === 'month');
+  // SCHED on screen, by the same two switchers. Its rolling agenda runs a
+  // fortnight out and grows from there, so the device-calendar fetch has to
+  // follow it — see the fetch window below.
+  const schedViewActive = effectiveViewMode === 'sched' || ((isMobile || (isTablet && !isLandscape)) && mobileViewMode === 'sched');
   const [glancePage, setGlancePage] = useState(() => {
     const saved = localStorage.getItem('day-planner-glance-page');
     return saved !== null ? parseInt(saved, 10) : 0;
@@ -3994,15 +4000,50 @@ const DayPlanner = () => {
   // --- Focus Mode handlers ---
 
 
+  // ── The days each view is drawing ────────────────────────────────────────
+  // These two memos live HERE rather than beside the other date memos further
+  // down the file: the device-calendar fetch below is built from them, and a
+  // `const` declared later in this component is in the temporal dead zone
+  // while this render runs.
+
+  // The timeline's day columns.
+  const visibleDates = useMemo(() => Array.from({ length: visibleDays }, (_, i) => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + i);
+    return date;
+  }), [selectedDate, visibleDays]);
+
+  // Seven dates for week view — strict (calendar week) or rolling (today + 6
+  // days); empty outside the modes with a week strip, so it doesn't affect
+  // other views. The rule itself is utils/weekViewDates.js. The strip drives
+  // both WEEK view columns and the SCHED date navigation.
+  const weekViewDates = useMemo(
+    () => weekViewDatesFor({ viewMode: effectiveViewMode, selectedDate, weekViewMode, weekStartDay }),
+    [effectiveViewMode, selectedDate, weekViewMode, weekStartDay]);
+
+  // The SCHED agenda's rolling window, while SCHED is the view on screen.
+  // Null otherwise: this is the one span that grows without bound (every
+  // "show more days" adds a fortnight), and the mobile bridge fetches it a
+  // day at a time, so it is never fetched for a view that isn't showing it.
+  const schedWindow = useMemo(
+    () => (schedViewActive ? schedRollingWindow(selectedDate, schedDaysShown) : null),
+    [schedViewActive, selectedDate, schedDaysShown]);
+
   // ── Native Calendar Events (mobile bridge + macOS Electron) ──────────────
-  // Fetches events from the device calendar for a ±2-day window around the
-  // selected date (the whole grid while MONTH is up, see
-  // utils/nativeFetchWindow.js) and merges them into `tasks` as _native-
-  // flagged entries. _native tasks are excluded from saveData so they're
-  // never persisted. nativeEventToTask now lives in src/utils/nativeCalendar.js.
-  const nativeFetchWindow = useMemo(() => nativeFetchWindowFor(selectedDate, monthViewRange), [selectedDate, monthViewRange]);
+  // Fetches events from the device calendar for every day a mounted view is
+  // drawing and merges them into `tasks` as _native-flagged entries. _native
+  // tasks are excluded from saveData so they're never persisted.
+  // nativeEventToTask now lives in src/utils/nativeCalendar.js.
+  //
+  // The window is the union of those views' days, NOT a fixed radius around
+  // the selection — see utils/nativeFetchWindow.js for the two views that
+  // draw past the radius and lost their events to it.
+  const nativeFetchWindow = useMemo(
+    () => nativeFetchWindowFor(selectedDate, { visibleDates, weekViewDates, monthViewRange, schedWindow }),
+    [selectedDate, visibleDates, weekViewDates, monthViewRange, schedWindow]);
   // The effect below keys on the span, not the selection: moving inside the
-  // month keeps the span, so it neither refetches nor lets events flicker.
+  // month (or the week) keeps the span, so it neither refetches nor lets
+  // events flicker.
   const nativeFetchKey = `${nativeFetchWindow.from}..${nativeFetchWindow.to}`;
 
   // Fetch available device calendars once on load
@@ -6347,15 +6388,6 @@ const DayPlanner = () => {
     showWelcome, setShowWelcome,
   });
 
-  // Compute array of visible dates based on selectedDate and visibleDays
-  const visibleDates = useMemo(() => {
-    return Array.from({ length: visibleDays }, (_, i) => {
-      const date = new Date(selectedDate);
-      date.setDate(date.getDate() + i);
-      return date;
-    });
-  }, [selectedDate, visibleDays]);
-
   // Columns for DayView — three 8-hour windows.
   // 'calendar-day': fixed 00-08 / 08-16 / 16-24 for selectedDate.
   // 'rolling-24': leftmost column is the current 8-hour block; columns that
@@ -6389,36 +6421,6 @@ const DayPlanner = () => {
       { startHour: 16, endHour: 24, date: base, dateStr: baseStr },
     ];
   }, [selectedDate, dayViewMode, currentTime]);
-
-  // Seven dates for week view — strict (calendar week) or rolling (today + 6 days).
-  // Empty array when not in week mode so it doesn't affect other views.
-  const weekViewDates = useMemo(() => {
-    // The week strip drives both WEEK view columns and the SCHED date navigation.
-    if (effectiveViewMode !== 'week' && effectiveViewMode !== 'sched') return [];
-    const base = new Date(selectedDate);
-    base.setHours(0, 0, 0, 0);
-    const todayStr = dateToString(new Date());
-    const isViewingToday = dateToString(base) === todayStr;
-
-    if (weekViewMode === 'rolling' && isViewingToday) {
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(base);
-        d.setDate(d.getDate() + i);
-        return d;
-      });
-    }
-
-    // Strict: week containing selectedDate, starting on weekStartDay
-    const dayOfWeek = base.getDay();
-    const diff = (dayOfWeek - weekStartDay + 7) % 7;
-    const weekStart = new Date(base);
-    weekStart.setDate(weekStart.getDate() - diff);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-  }, [effectiveViewMode, selectedDate, weekViewMode, weekStartDay]);
 
   // Auto-select new tags when they appear (only truly new tags, not previously deselected ones)
   const prevAllTagsRef = useRef(new Set(allTags));

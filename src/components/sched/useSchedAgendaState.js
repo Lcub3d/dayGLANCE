@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { dateToString, extractTags } from '../../utils/taskUtils.js';
-import { EMPTY_SCHED_FILTERS, hasActiveSchedFilters, taskMatchesSchedFilters, limitRecurringToNextInstance, schedFiltersEqual, isPastEvent } from '../../utils/schedAgenda.js';
+import { EMPTY_SCHED_FILTERS, hasActiveSchedFilters, taskMatchesSchedFilters, limitRecurringToNextInstance, schedFiltersEqual, isPastEvent, schedRollingWindow } from '../../utils/schedAgenda.js';
 
 export const INITIAL_DAYS = 14;
 export const LOAD_MORE_DAYS = 14;
@@ -122,9 +122,14 @@ export default function useSchedAgendaState({ dateRange } = {}) {
       for (const d = new Date(`${scopeFrom}T12:00:00`); d <= end && out.length < 366; d.setDate(d.getDate() + 1)) out.push(new Date(d));
       return out;
     }
-    for (let i = 0; i < daysShown; i++) {
-      const date = new Date(selectedDate);
-      date.setDate(date.getDate() + i);
+    // schedRollingWindow owns the window's extent: the recurring expansion
+    // and the device-calendar fetch cover exactly this range, and a day this
+    // loop renders past it arrives with nothing prepared for it.
+    const { from, to } = schedRollingWindow(selectedDate, daysShown);
+    const last = new Date(`${to}T12:00:00`);
+    for (const d = new Date(`${from}T12:00:00`); d <= last; d.setDate(d.getDate() + 1)) {
+      const date = new Date(d);
+      date.setHours(0, 0, 0, 0);
       out.push(date);
     }
     return out;

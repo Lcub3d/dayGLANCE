@@ -117,7 +117,14 @@ const VoiceInputModal = () => {
                   ) : (
                     <div className="space-y-3">
                       {/* Text input — shown when voice not available or user chose to type */}
-                      {!voiceHasTranscription ? (
+                      {/* A mic failure drops straight into typing, so the reason has
+                          to be carried across with it — otherwise the user lands in a
+                          textarea with no idea why the microphone gave up. */}
+                      {voiceMicError === 'error' && voiceParseError ? (
+                        <div className={`p-3 rounded-lg ${darkMode ? 'bg-red-900/30 border border-red-800/50' : 'bg-red-50 border border-red-200'} text-xs`}>
+                          <p className="text-red-400">{voiceParseError}</p>
+                        </div>
+                      ) : !voiceHasTranscription ? (
                         <p className={`text-xs ${textSecondary}`}>
                           {aiConfig.enabled && !supportsTranscription(aiConfig)
                             ? t('voice.transcriptionUnavailableWithProvider', {
@@ -187,6 +194,16 @@ const VoiceInputModal = () => {
                 </>
               ) : (
                 <>
+                  {/* What was heard. Shown on the preview AND the no-results
+                      screen: without it, "nothing parsed" cannot be told apart
+                      from "nothing was captured", which is how a silent
+                      microphone hid behind an AI-parse symptom. */}
+                  {voiceTranscript.trim() && (
+                    <p className={`text-xs ${textSecondary} italic mb-3`}>
+                      {t('voice.heard', { defaultValue: 'Heard:' })} “{voiceTranscript.trim()}”
+                    </p>
+                  )}
+
                   {/* Parsed new tasks preview */}
                   {voiceParsedTasks && voiceParsedTasks.length > 0 && (
                   <div className="space-y-3">
@@ -351,7 +368,17 @@ const VoiceInputModal = () => {
 
                   {/* No results message */}
                   {(!voiceParsedTasks || voiceParsedTasks.length === 0) && (!voiceParsedEdits || voiceParsedEdits.length === 0) && (
-                    <p className={`text-sm ${textSecondary}`}>{t('voice.noResults', { defaultValue: 'No tasks or edits were parsed from your input.' })}</p>
+                    <div className="space-y-2">
+                      <p className={`text-sm ${textSecondary}`}>{t('voice.noResults', { defaultValue: 'No tasks or edits were parsed from your input.' })}</p>
+                      {voiceTranscript.trim() && (
+                        <button
+                          onClick={() => { setVoiceParsedTasks(null); setVoiceParsedEdits(null); setVoiceParseError(''); setVoiceManualMode(true); }}
+                          className={`text-xs ${textSecondary} hover:underline`}
+                        >
+                          {t('voice.editAndRetry', { defaultValue: 'Edit and retry' })}
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Action buttons */}

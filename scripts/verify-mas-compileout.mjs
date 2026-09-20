@@ -60,6 +60,16 @@ check('dist-electron/mcpDesktopSetup.js in app.asar', asarList.includes('/dist-e
 check('dist-electron/mcpDesktopConfig.js in app.asar', asarList.includes('/dist-electron/mcpDesktopConfig.js'));
 check('Resources/mcp-bridge bundled bridge', existsSync(join(resourcesDir, 'mcp-bridge', 'bridge.js')));
 
+// Bundled Swift helpers, both modes. Each is declared in mac.extraResources and
+// silently absent from the artifact if its build step was skipped: the calendar
+// helper degrades to CalDAV, but the speech helper IS desktop voice input
+// without an AI provider — nothing else serves that. Assert both shipped.
+for (const rel of ['calendar-helper/dayglance-calendar-helper', 'speech-helper/dayglance-speech-helper']) {
+  const present = existsSync(join(resourcesDir, ...rel.split('/')));
+  console.log(`${present ? 'OK  ' : 'FAIL'} Resources/${rel}: ${present ? 'present' : 'absent'} (expected present)`);
+  if (!present) problems.push(`missing helper Resources/${rel}`);
+}
+
 // Bloat guard, both modes: no source or project directory may ever reach the
 // asar. electron-builder 26 prepends '**/*' to a matcher containing only
 // negations (see electron-builder.config.cjs), which once packaged the whole

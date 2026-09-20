@@ -64,6 +64,74 @@ describe('MCP bridge packaging — every platform with a setup button ships one'
   });
 });
 
+// The on-device speech helper is desktop voice input WITHOUT an AI provider —
+// the path most users, and every Mac App Store user without an API key, are
+// on. Chromium's own SpeechRecognition cannot reach its cloud backend from an
+// Electron build (bare `webkitSpeechRecognition` fails with `network` in the
+// packaged app), so if this helper does not ship, desktop non-AI voice does
+// not exist. None of that fails a build: a missing extraResources entry, a
+// missing usage string, or a missing entitlement each ships silently and shows
+// up as a dead microphone on a user's machine. Every leg is asserted here.
+describe('on-device speech helper packaging (desktop voice without AI)', () => {
+  const SPEECH_HELPER = 'electron/native/speech-helper/build/dayglance-speech-helper';
+  const readFile = (f: string) => require('node:fs').readFileSync(f, 'utf-8') as string;
+
+  it.each([
+    ['direct build', undefined],
+    ['MAS build', 'com.dayglance'],
+  ])('%s bundles the speech helper into resources/speech-helper', (_label, appId) => {
+    const mac = resourcesOf(loadConfig({ DAYGLANCE_APP_ID: appId })['mac']);
+    const entry = mac.find((r) => r.from === SPEECH_HELPER);
+    expect(entry, 'mac.extraResources must declare the speech helper').toBeDefined();
+    expect(entry?.to).toBe('speech-helper/dayglance-speech-helper');
+  });
+
+  it('the helper source exists where the build script compiles it from', () => {
+    expect(require('node:fs').existsSync('electron/native/speech-helper/Sources/main.swift')).toBe(true);
+    expect(require('node:fs').existsSync('scripts/build-speech-helper.sh')).toBe(true);
+  });
+
+  it('build:helpers compiles the speech helper, so build:electron cannot skip it', () => {
+    const pkg = JSON.parse(readFile('package.json'));
+    expect(pkg.scripts['build:speech-helper']).toContain('build-speech-helper.sh');
+    expect(pkg.scripts['build:helpers']).toContain('build:speech-helper');
+    expect(pkg.scripts['build:electron']).toContain('build:helpers');
+  });
+
+  // SFSpeechRecognizer.requestAuthorization refuses before any prompt when the
+  // responsible bundle lacks NSSpeechRecognitionUsageDescription, and the
+  // helper's request attributes to the app bundle. Electron's default plist
+  // carries a microphone string but no speech one.
+  it.each(['mac', 'mas'])('%s Info.plist carries the speech and microphone usage strings', (block) => {
+    const config = loadConfig({ DAYGLANCE_APP_ID: block === 'mas' ? 'com.dayglance' : undefined });
+    const info = (config[block] as unknown as { extendInfo?: Record<string, unknown> })?.extendInfo ?? {};
+    expect(info['NSSpeechRecognitionUsageDescription'], `${block}: speech usage string`).toBeTruthy();
+    expect(info['NSMicrophoneUsageDescription'], `${block}: microphone usage string`).toBeTruthy();
+  });
+
+  // Hardened Runtime (Developer ID) and the App Sandbox (MAS) both gate the
+  // microphone on this entitlement. Without it the TCC grant is recorded — the
+  // app shows up under Privacy & Security › Microphone, switched on — and the
+  // capture is still refused. That is a silent failure with a convincing UI.
+  it.each([
+    'electron/entitlements.mac.plist',
+    'electron/entitlements.mas.plist',
+  ])('%s grants com.apple.security.device.audio-input', (plist) => {
+    const xml = readFile(plist);
+    const idx = xml.indexOf('<key>com.apple.security.device.audio-input</key>');
+    expect(idx, `${plist} must declare the audio-input entitlement`).toBeGreaterThan(-1);
+    expect(xml.slice(idx, idx + 120)).toMatch(/<true\/>/);
+  });
+
+  it('the child-process inherit entitlements stay minimal: sandbox + inherit only', () => {
+    // The helper gets audio-input by INHERITING the parent's, not by declaring
+    // its own. Adding capabilities here would be the wrong fix.
+    const xml = readFile('electron/entitlements.mas.inherit.plist');
+    expect(xml).toContain('com.apple.security.inherit');
+    expect(xml).not.toContain('audio-input');
+  });
+});
+
 // Architecture is a separate failure mode from packaging, and a quieter one.
 // An omitted `arch` does not mean "all architectures", it means "whatever the
 // build host is" — ubuntu-latest, so x64. Three releases shipped a Linux

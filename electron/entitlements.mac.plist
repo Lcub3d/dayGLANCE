@@ -14,6 +14,13 @@
     <!-- Read access to the system Calendar via the EventKit helper -->
     <key>com.apple.security.personal-information.calendars</key>
     <true/>
+    <!-- Microphone capture for voice input: getUserMedia in the renderer (AI
+         transcription) and the bundled speech helper (on-device recognition).
+         Required under Hardened Runtime: without it the TCC grant is recorded,
+         the app appears in Privacy & Security › Microphone, and the capture
+         itself is still refused. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
     <!-- iCloud entitlements are NOT needed for the Developer ID build: the app
          is unsandboxed and accesses the iCloud container via a plain file path.
          They will be added to a separate entitlements.mas.plist for the future

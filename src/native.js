@@ -589,17 +589,51 @@ export const nativeStopRecording = () => {
 //   bridge.cancelSpeechRecognition()   → 'ok'   (no final event)
 // Results are delivered to the WebView via the global callback:
 //   window.__speechEvent({ status: 'partial'|'final'|'error', text?, message? })
+//
+// The desktop app implements the same contract through a signed Swift helper
+// (SFSpeechRecognizer — electron/speech.ts), exposed by the preload as
+// window.electronAPI.speech with an async IPC surface. electronSpeechBridge()
+// below adapts that to the synchronous string API the mobile bridges have, so
+// every caller stays platform-agnostic. Its events arrive over IPC and are
+// forwarded to the very same window.__speechEvent callback. Chromium's own
+// SpeechRecognition is NOT a desktop option: it streams audio to the browser
+// vendor's cloud service, which Electron builds cannot reach (`network`).
+
+let electronSpeechWired = false;
+
+const electronSpeechBridge = () => {
+  const api = typeof window !== 'undefined' ? window.electronAPI?.speech : null;
+  if (!api) return null;
+  if (!electronSpeechWired && typeof api.onEvent === 'function') {
+    electronSpeechWired = true;
+    api.onEvent((event) => {
+      if (typeof window.__speechEvent === 'function') window.__speechEvent(event);
+    });
+  }
+  return {
+    supportsSpeechRecognition: () => (api.supported ? 'true' : 'false'),
+    // Errors (permission denied, no microphone, helper gone) come back as
+    // {status:'error'} events rather than a return value, exactly as on iOS,
+    // where start() also answers 'ok' before authorisation has run.
+    startSpeechRecognition: () => { api.start(); return 'ok'; },
+    stopSpeechRecognition: () => { api.stop(); return 'ok'; },
+    cancelSpeechRecognition: () => { api.cancel(); return 'ok'; },
+  };
+};
+
+/** The speech bridge for this platform: the mobile WebView bridge, or the desktop adapter. */
+export const speechBridge = () => nativeBridge() ?? electronSpeechBridge();
 
 /** True when the native layer offers on-device speech recognition. */
 export const nativeSupportsSpeech = () => {
-  const bridge = nativeBridge();
+  const bridge = speechBridge();
   if (!bridge?.supportsSpeechRecognition) return false;
   try { return bridge.supportsSpeechRecognition() === 'true'; } catch { return false; }
 };
 
 /** Starts native speech recognition. Returns 'ok', { error }, or null (no bridge). */
 export const nativeStartSpeech = () => {
-  const bridge = nativeBridge();
+  const bridge = speechBridge();
   if (!bridge?.startSpeechRecognition) return null;
   const result = bridge.startSpeechRecognition();
   if (result === 'ok') return 'ok';
@@ -608,13 +642,13 @@ export const nativeStartSpeech = () => {
 
 /** Stops recognition; the final transcript arrives via window.__speechEvent. */
 export const nativeStopSpeech = () => {
-  const bridge = nativeBridge();
+  const bridge = speechBridge();
   bridge?.stopSpeechRecognition?.();
 };
 
 /** Cancels recognition without a final result event. */
 export const nativeCancelSpeech = () => {
-  const bridge = nativeBridge();
+  const bridge = speechBridge();
   bridge?.cancelSpeechRecognition?.();
 };
 

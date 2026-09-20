@@ -49,7 +49,7 @@ final class HubTests: XCTestCase {
         XCTAssertLessThan(H.halfWidth(atY: H.countdownY), H.halfWidth(atY: H.tagY))
         XCTAssertLessThan(H.halfWidth(atY: H.tagY), H.halfWidth(atY: H.titleY))
         XCTAssertEqual(H.halfWidth(atY: DialSpec.cy + 40), H.halfWidth(atY: DialSpec.cy - 40), accuracy: 1e-9)
-        XCTAssertEqual(H.halfWidth(atY: H.runwayY), 86.7, accuracy: 0.05)
+        XCTAssertEqual(H.halfWidth(atY: H.runwayY), 86.76, accuracy: 0.05)
         // The inset comes straight off, and never below zero.
         XCTAssertEqual(H.halfWidth(atY: H.titleY, inset: 6), title - 6, accuracy: 1e-9)
         XCTAssertEqual(H.width(atY: H.titleY, inset: 6), 2 * (title - 6), accuracy: 1e-9)

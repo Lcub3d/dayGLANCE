@@ -30,7 +30,7 @@
 //   git status --porcelain screenshots/ | awk '{print $2}' \
 //     | grep -v 'day-dial.png$' | xargs -r git checkout --
 //
-// Output: screenshots/*.png (the 17 reproducible README images)
+// Output: screenshots/*.png (the 21 reproducible README images)
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -478,7 +478,11 @@ try {
 // ---------- Phone: focus setup + active ----------
 try {
   const { ctx, p } = await page({ ...PHONE, dark: true });
-  await p.getByRole('button', { name: 'Enter Focus Mode' }).click();
+  // "Focus mode", not "Enter Focus Mode": the entry point is the target icon
+  // beside the running task in the GLANCE panel, and its title comes from the
+  // shared shortcuts.focusMode string. The old name matched nothing, so this
+  // capture timed out on every run and the two images were kept by hand.
+  await p.getByRole('button', { name: 'Focus mode' }).click();
   await settle(ctx, p, 1500);
   await save(p, 'focus-mode-1'); ok('focus-mode-1');
   await p.getByRole('button', { name: 'Start Focus Session' }).click();

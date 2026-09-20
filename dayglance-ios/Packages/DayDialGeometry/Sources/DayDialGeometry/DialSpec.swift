@@ -64,6 +64,78 @@ public enum DialSpec {
     // Hub rule, collinear with the 06/18 tick row.
     public static var hubRuleY: Double { cy }
 
+    // MARK: Hub (handoff §2 "Hub"; the spec's centre stack)
+
+    /// The seven rows of the centre stack. Every `y` is a TEXT BASELINE: the
+    /// spec draws them as SVG `<text>` with `text-anchor: middle` and no
+    /// `dominant-baseline`, so `y` is where the glyphs sit, not the box's
+    /// centre. The hub is a SwiftUI overlay on the cached face, never part of
+    /// the image: its rows change per entry. Everything is SF except the date,
+    /// which is Lora 500 (bundled in the widget target).
+    public enum Hub {
+        /// `TUESDAY`: 9.5pt, weight 600, tracking 3.2, white @ 46 %.
+        public static let eyebrowY: Double = 138
+        public static let eyebrowFontSize: Double = 9.5
+        public static let eyebrowTracking: Double = 3.2
+        public static let eyebrowOpacity: Double = 0.46
+
+        /// `July 7`: Lora 500, 28pt, white @ 96 %.
+        public static let dateY: Double = 172
+        public static let dateFontSize: Double = 28
+        public static let dateOpacity: Double = 0.96
+        /// The bundled face's PostScript name (Lora-Medium.ttf, weight 500).
+        public static let dateFontName = "Lora-Medium"
+
+        /// The rule: 68pt wide at y = 189, 1pt, white @ 16 %.
+        public static var ruleY: Double { DialSpec.hubRuleY }
+        public static let ruleHalfWidth: Double = 34
+        public static let ruleLineWidth: Double = 1
+        public static let ruleOpacity: Double = 0.16
+
+        /// The current block's title: 15pt, weight 600, white @ 95 %, one line.
+        public static let titleY: Double = 211
+        public static let titleFontSize: Double = 15
+        public static let titleOpacity: Double = 0.95
+
+        /// `#work`: 11pt italic, white @ 44 %.
+        public static let tagY: Double = 229
+        public static let tagFontSize: Double = 11
+        public static let tagOpacity: Double = 0.44
+
+        /// `until 12:30 · 1h 10m left`: 11.5pt, white @ 58 %.
+        public static let countdownY: Double = 249
+        public static let countdownFontSize: Double = 11.5
+        public static let countdownOpacity: Double = 0.58
+
+        /// `then 1h open`: 11pt, teal @ 72 %, only when the gap to the next
+        /// block is at least `runwayMinimumMinutes`.
+        public static let runwayY: Double = 266
+        public static let runwayFontSize: Double = 11
+        public static let runwayOpacity: Double = 0.72
+        public static let runwayColorHex = "#4ec9b0"
+        public static let runwayMinimumMinutes: Double = 30
+
+        /// The hub's boundary: the sky ring's inner edge.
+        public static var radius: Double { DialSpec.skyRadius - DialSpec.skyWidth / 2 }
+
+        /// Usable half-width of a row whose baseline is at `y`: half the chord
+        /// of the hub circle at that height, less `inset` so text never kisses
+        /// the ring. The hub is circular, so the usable width shrinks as a row
+        /// moves away from the centre line — at y = 211 it is ~114pt a side,
+        /// at y = 266 ~87pt. Zero at or beyond the circle.
+        public static func halfWidth(atY y: Double, inset: Double = 0) -> Double {
+            let dy = y - DialSpec.cy
+            let r = radius
+            guard abs(dy) < r else { return 0 }
+            return Swift.max(0, (r * r - dy * dy).squareRoot() - inset)
+        }
+
+        /// The full usable width at `y`, for a text frame.
+        public static func width(atY y: Double, inset: Double = 0) -> Double {
+            2 * halfWidth(atY: y, inset: inset)
+        }
+    }
+
     /// The spec's tick schedule: major on the hour, minor at 15 minutes, 96 in
     /// all. The web dial's 5-minute schedule (`DialTicks.schedule()`) is what
     /// the vectors pin; the widget draws this one.

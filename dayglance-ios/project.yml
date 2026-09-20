@@ -199,6 +199,12 @@ targets:
         # Must match the app's version (App Store rejects mismatched embedded extensions).
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # Lora 500 for the Day Dial's date row (DialHubView). Bundled because a
+        # widget process cannot reach Google Fonts; SIL OFL, licence alongside
+        # the file in DayGlanceWidget/Fonts/. Registered here, not in the app:
+        # the extension is its own process with its own font registry.
+        UIAppFonts:
+          - Lora-Medium.ttf
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

@@ -8,9 +8,8 @@ import XCTest
 // projected-day rule on both paths, and the cache bucket.
 //
 // Tolerances: hex strings and the multipliers are exact. dialIntensity is
-// rounded to three decimals on both sides the same way (JSNumber.round3 is
-// `Number(n.toFixed(3))` for these inputs), so 1e-12 as for the other
-// rounded values. Variant C's products are compared at 1e-12: the formulae
+// rounded to three decimals on both sides the same way (JSNumber.toFixed3
+// is `Number(n.toFixed(3))`), so 1e-12 as for the other rounded values. Variant C's products are compared at 1e-12: the formulae
 // are evaluated in the study's order on both sides.
 // ─────────────────────────────────────────────────────────────────────────────
 

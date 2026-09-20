@@ -240,8 +240,10 @@ emit(["status": "ready"])
 // stdin arrives on a background thread; every recogniser call is marshalled to
 // the main thread, whose run loop below is what delivers the SFSpeech callbacks.
 var pending = Data()
-FileHandle.standardInput.readabilityHandler = { handle in
-    let chunk = handle.availableData
+// The parameter must not be called `handle`: inside the closure that name would
+// shadow the top-level `handle(command:)` and the dispatch below fails to compile.
+FileHandle.standardInput.readabilityHandler = { input in
+    let chunk = input.availableData
     if chunk.isEmpty {
         // EOF: the parent is gone. Nothing to report to; leave quietly.
         DispatchQueue.main.async { session.cancel(); exit(0) }

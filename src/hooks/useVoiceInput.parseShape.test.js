@@ -162,6 +162,21 @@ describe('AI voice parse — response shape', () => {
     ]);
   });
 
+  // The Settings › AI "Voice task input" toggle: off means the model is not
+  // consulted at all — deterministic parse, no notice — even with a keyed,
+  // enabled provider. It used to have no effect on the pipeline whatsoever.
+  it('with AI on but the voice toggle off, parses deterministically and never calls the model', async () => {
+    aiJSON.mockResolvedValue({ newTasks: [{ title: 'from the model' }], edits: [] });
+    await useParse('call mom tomorrow at 3pm', {
+      aiConfig: { enabled: true, provider: 'anthropic', apiKey: 'k', model: 'm', features: { voiceTaskInput: false } },
+    });
+
+    expect(aiJSON).not.toHaveBeenCalled();
+    expect(seen.setVoiceParseError).toBe('');
+    expect(seen.setVoiceParsedTasks[0].title).toMatch(/call mom/i);
+    expect(seen.setVoiceParsedEdits).toEqual([]);
+  });
+
   // Regression guard for the path that already worked: a thrown AI error keeps
   // its own message and still falls back.
   it('a failed AI call keeps its message and falls back, unchanged', async () => {

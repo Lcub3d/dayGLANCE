@@ -4,13 +4,13 @@ import { Mic, MicOff, X, Loader, RotateCcw } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { stripWikilinks } from '../utils/taskUtils.js';
+import { voiceUsesAI } from '../utils/voiceAI.js';
 
 export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
   const { t } = useTranslation();
   const { textPrimary, textSecondary, borderClass, cardBg } = useDayPlannerCtx();
   const {
     aiConfig,
-    voiceCanRecord,
     voiceIsRecording, voiceIsTranscribing, voiceIsParsing,
     voiceTranscript, setVoiceTranscript,
     voiceParsedTasks, setVoiceParsedTasks,
@@ -23,12 +23,16 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
   } = useFeaturesCtx();
 
   useEffect(() => {
-    if (autoStart && voiceCanRecord && !voiceIsRecording) voiceStartRecording();
+    if (autoStart && voiceHasTranscription && !voiceIsRecording) voiceStartRecording();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasParsed = voiceParsedTasks !== null && (voiceParsedTasks?.length > 0 || voiceParsedEdits?.length > 0);
   const isProcessing = voiceIsTranscribing || voiceIsParsing;
-  const canParse = aiConfig?.enabled && (voiceHasTranscription || voiceTranscript?.trim());
+  // Parsing never needs AI (deterministic parser otherwise); the tray used to
+  // hide the Parse button entirely without a provider — it never got #1268's
+  // un-gating. Text present is the whole condition, as in the main modal.
+  const canParse = !!voiceTranscript?.trim();
+  const usesAI = voiceUsesAI(aiConfig);
   const changeCount = (voiceParsedTasks?.length ?? 0) + (voiceParsedEdits?.length ?? 0);
   const actionLabels = {
     move: t('voice.actions.move'),
@@ -113,7 +117,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
       </div>
 
       {/* Mic button */}
-      {voiceCanRecord && !voiceManualMode && (
+      {voiceHasTranscription && !voiceManualMode && (
         <div className="flex justify-center mb-3">
           <button
             onClick={voiceIsRecording ? voiceStopRecording : voiceStartRecording}
@@ -156,7 +160,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
       )}
 
       {/* Transcript / manual textarea */}
-      {(voiceHasTranscription || voiceManualMode || !voiceCanRecord) && !isProcessing && (
+      {!isProcessing && (
         <textarea
           className={`flex-1 text-sm px-3 py-2 rounded-lg outline-none resize-none ${
             darkMode ? 'bg-white/10 text-white placeholder-gray-500' : 'bg-black/5 text-stone-900 placeholder-stone-400'
@@ -175,16 +179,16 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
       )}
 
       {/* Parse / reset */}
-      {!isProcessing && canParse && (
+      {!isProcessing && !voiceIsRecording && canParse && (
         <button
           onClick={voiceParseWithAI}
           className="mt-3 flex-shrink-0 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white transition-opacity hover:opacity-90"
         >
-          {t('voice.parseWithAI')}
+          {usesAI ? t('voice.parseWithAI') : t('voice.parse')}
         </button>
       )}
 
-      {voiceManualMode && voiceCanRecord && (
+      {voiceManualMode && voiceHasTranscription && (
         <button
           onClick={() => { setVoiceManualMode(false); setVoiceTranscript(''); }}
           className={`mt-2 flex-shrink-0 flex items-center justify-center gap-1 text-xs ${textSecondary} hover:opacity-70`}

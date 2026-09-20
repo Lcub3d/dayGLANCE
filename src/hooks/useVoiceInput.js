@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import i18n from 'i18next';
-import { aiTranscribe, aiJSON, supportsTranscription } from '../ai.js';
+import { aiTranscribe, aiJSON } from '../ai.js';
 import { voiceParseSystemPrompt, voiceParseUserPrompt } from '../ai-prompts.js';
 import {
   nativeStartRecording, nativeStopRecording, triggerHaptic,
@@ -10,6 +10,7 @@ import { dateToString, completionTimestamp, stripWikilinks } from '../utils/task
 import { notBucketed } from '../utils/bucketList.js';
 import { parseTranscriptTasks } from '../utils/voiceQuickAdd.js';
 import { normalizeVoiceParseResult } from '../utils/voiceParseResult.js';
+import { voiceUsesAI, voiceTranscribesWithAI } from '../utils/voiceAI.js';
 
 /**
  * Voice input pipeline — extracted from App.jsx (see "App.jsx — Ongoing
@@ -58,9 +59,10 @@ export default function useVoiceInput({
   //   4. Typing fallback                        — always available
   // Parsing (text → tasks): AI when configured, else the deterministic
   // quickAddParser (parseTranscriptTasks) — voice no longer requires AI.
-  const aiKeyed = !!(aiConfig.apiKey || aiConfig.provider === 'ollama');
-  const canWhisper = aiConfig.enabled && supportsTranscription(aiConfig) && aiKeyed;
-  const canAIParse = aiConfig.enabled && aiKeyed;
+  // Both honour the "Voice task input" toggle under Settings › AI: off means
+  // non-AI voice (platform speech + deterministic parse), never no voice.
+  const canWhisper = voiceTranscribesWithAI(aiConfig);
+  const canAIParse = voiceUsesAI(aiConfig);
   // Web Speech (browser/PWA tier). The interface existing does not mean it
   // works: it streams audio to the browser vendor's cloud service, and where
   // that is unreachable the failure only arrives later as a 'network' error.

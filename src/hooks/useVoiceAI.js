@@ -94,11 +94,10 @@ const useVoiceAI = () => {
     saveAIConfig(aiConfig);
   }, [aiConfig]);
 
-  // The tray popup gates its voice button on aiConfig.enabled /
-  // features.voiceTaskInput (TrayHeader) and its morning-glance card on
-  // features.smartScheduling (GlanceSidebar), reading both from
-  // day-planner-ai-config on mount — so toggling AI in Settings has to
-  // invalidate the popup's snapshot.
+  // The tray popup reads day-planner-ai-config on mount: its Parse label and
+  // pipeline follow features.voiceTaskInput (TrayVoice, via voiceAI.js) and
+  // its morning-glance card follows features.smartScheduling (GlanceSidebar)
+  // — so toggling AI in Settings has to invalidate the popup's snapshot.
   useNotifyTrayOnChange(aiConfig);
 
   return {

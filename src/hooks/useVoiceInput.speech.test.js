@@ -60,12 +60,12 @@ const SETTERS = [
 let seen;
 // Named use* to satisfy rules-of-hooks, matching useTodoistSync.test.js:
 // one call is one render of the hook.
-const useTestVoice = () => {
+const useTestVoice = (aiConfig = { enabled: false, provider: 'openai', apiKey: '' }) => {
   stateCursor = 0;
   refCursor = 0;
   seen = {};
   const deps = {
-    aiConfig: { enabled: false, provider: 'openai', apiKey: '' },
+    aiConfig,
     allTags: [], colors: [{ class: 'bg-blue-500' }],
     tasks: [], unscheduledTasks: [],
     isVisibleForUser: () => true,
@@ -150,5 +150,23 @@ describe('Web Speech tier — an unreachable recognition service', () => {
       expect(seen.setVoiceParseError).toBeUndefined();
       expect(seen.setVoiceMicError).toBeUndefined();
     }
+  });
+});
+
+// The other half of the toggle: not just WHAT parses, but WHERE the audio goes.
+// With a transcribing provider on and the toggle off, recording must take the
+// platform-speech route (here Web Speech), never MediaRecorder → Whisper.
+describe('the Settings › AI voice toggle routes the recording path', () => {
+  const whisperCapable = (voiceTaskInput) =>
+    ({ enabled: true, provider: 'openai', apiKey: 'k', model: 'whisper-1', features: { voiceTaskInput } });
+
+  it('toggle off: platform speech, not AI transcription', () => {
+    useTestVoice(whisperCapable(false)).voiceStartRecording();
+    expect(recognition?.started).toBe(true);
+  });
+
+  it('toggle on: AI transcription, so no platform recogniser is constructed', () => {
+    useTestVoice(whisperCapable(true)).voiceStartRecording();
+    expect(recognition).toBeUndefined();
   });
 });

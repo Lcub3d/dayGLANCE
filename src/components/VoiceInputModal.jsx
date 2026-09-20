@@ -6,6 +6,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import ClockTimePicker from './ClockTimePicker.jsx';
 import { supportsTranscription, PROVIDER_LABELS } from '../ai.js';
 import { renderTitle } from '../utils/textFormatting.jsx';
+import { voiceUsesAI } from '../utils/voiceAI.js';
 
 const VoiceInputModal = () => {
   const { t } = useTranslation();
@@ -126,7 +127,7 @@ const VoiceInputModal = () => {
                         </div>
                       ) : !voiceHasTranscription ? (
                         <p className={`text-xs ${textSecondary}`}>
-                          {aiConfig.enabled && !supportsTranscription(aiConfig)
+                          {voiceUsesAI(aiConfig) && !supportsTranscription(aiConfig)
                             ? t('voice.transcriptionUnavailableWithProvider', {
                               provider: PROVIDER_LABELS[aiConfig.provider] || aiConfig.provider,
                               defaultValue: "Voice recording isn't available here, and {{provider}} doesn't support transcription. Type your tasks below — dates, times, and repeats are still understood.",
@@ -166,14 +167,14 @@ const VoiceInputModal = () => {
                       >
                         {voiceIsParsing ? (
                           <Loader size={14} className="animate-spin" />
-                        ) : aiConfig.enabled ? (
+                        ) : voiceUsesAI(aiConfig) ? (
                           <BrainCircuit size={14} />
                         ) : (
                           <Plus size={14} />
                         )}
                         {voiceIsParsing
                           ? t('voice.parsing', { defaultValue: 'Parsing...' })
-                          : aiConfig.enabled
+                          : voiceUsesAI(aiConfig)
                             ? t('voice.parseWithAI', { defaultValue: 'Parse with AI' })
                             : t('voice.parse', { defaultValue: 'Parse' })}
                         {!voiceIsParsing && <kbd className="ml-1 px-1 py-0.5 rounded bg-white/20 text-[10px] font-mono">↵</kbd>}

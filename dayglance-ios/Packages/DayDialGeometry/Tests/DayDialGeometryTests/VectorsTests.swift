@@ -34,10 +34,9 @@ import XCTest
 //   minutes, lanes, flags, sweeps  exact.
 //
 // The sky section is CONSUMED by the widget, not re-solved (handoff §4); the
-// port decodes it and checks the shape it will draw from. `muteDialColor`,
-// `dialIntensity` and the keyboard selection walk are not ported in this
-// phase (DialPalette.swift says why for the first two; the third is web UI)
-// and are asserted only to still be present in the fixture.
+// port decodes it and checks the shape it will draw from. `muteDialColor`
+// and `dialIntensity` are held to the fixture in PaletteTests.swift; the
+// keyboard selection walk is web UI and is only asserted to still be present.
 // ─────────────────────────────────────────────────────────────────────────────
 
 final class VectorsTests: XCTestCase {
@@ -124,7 +123,7 @@ final class VectorsTests: XCTestCase {
         XCTAssertEqual(Self.fixture["format"] as? String, "dayDial.vectors/1")
         XCTAssertEqual(num(Self.fixture["dayMinutes"]), DialGeometry.dayMinutes)
         let counts = dict(Self.fixture["counts"])
-        XCTAssertEqual(Int(num(counts["geometry"])), 171)
+        XCTAssertEqual(Int(num(counts["geometry"])), 177)
         XCTAssertEqual(Int(num(counts["sky"])), 16)
         XCTAssertEqual(Int(num(counts["snapshot"])), 2)
     }
@@ -132,9 +131,11 @@ final class VectorsTests: XCTestCase {
     func testEveryGeometryFunctionInTheFixtureIsAccountedFor() {
         let ported: Set<String> = ["dialAngle", "dialPoint", "dialArcPath", "dialSectorPath", "dialTicks",
                                    "padDialSegment", "dialLaneBand", "assignDialLanes", "computeDialModel",
-                                   "computeDialRoutines", "moonPhasePath", "findDialFocusBlock"]
-        // Deliberately not ported in Phase 1; see DialPalette.swift and the file header.
-        let deferred: Set<String> = ["muteDialColor", "dialIntensity", "dialSelection"]
+                                   "computeDialRoutines", "moonPhasePath", "findDialFocusBlock",
+                                   // Phase 2, PaletteTests.swift.
+                                   "muteDialColor", "dialIntensity"]
+        // The keyboard selection walk is web accessibility UI with no widget analogue.
+        let deferred: Set<String> = ["dialSelection"]
         let present = Set(section("geometry").keys)
         XCTAssertEqual(present, ported.union(deferred),
                        "a geometry function was added to or removed from the fixture; port it or list it here")

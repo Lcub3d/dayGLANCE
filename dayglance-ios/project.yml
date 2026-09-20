@@ -188,7 +188,9 @@ targets:
         # from DG_WIDGET_FLAGS (empty by default). Used for the Day Dial
         # render-budget spike: DIAL_SPIKE registers the measurement widget,
         # DIAL_SPIKE_LIVE_PATHS switches it to the live-Path strategy. See
-        # DayGlanceWidget/Spike/DialSpikeWidget.swift. Never set for a release.
+        # DayGlanceWidget/Spike/DialSpikeWidget.swift. DIAL_PREVIEW registers
+        # the Phase 2 static-face preview widgets from a fixture day
+        # (DayGlanceWidget/Dial/DialPreviewWidget.swift). Never set for a release.
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ${DG_WIDGET_FLAGS}"
     info:
       path: DayGlanceWidget/Info.plist

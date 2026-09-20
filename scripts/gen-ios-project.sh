@@ -32,8 +32,10 @@ fi
 export DG_MARKETING_VERSION
 export DG_BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d.%H%M)}"
 # Extra Swift compilation conditions for the widget extension — empty unless
-# building the Day Dial render-budget spike (DayGlanceWidget/Spike/). e.g.
+# building the Day Dial render-budget spike (DayGlanceWidget/Spike/) or the
+# Phase 2 face preview (DayGlanceWidget/Dial/DialPreviewWidget.swift). e.g.
 #   DG_WIDGET_FLAGS="DIAL_SPIKE" npm run ios
+#   DG_WIDGET_FLAGS="DIAL_PREVIEW" npm run ios
 export DG_WIDGET_FLAGS="${DG_WIDGET_FLAGS:-}"
 
 echo "gen-ios-project: marketing=$DG_MARKETING_VERSION  build=$DG_BUILD_NUMBER  widget-flags=${DG_WIDGET_FLAGS:-<none>}"

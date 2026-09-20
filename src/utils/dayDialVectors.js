@@ -225,8 +225,10 @@ const geometry = () => ({
   },
 
   muteDialColor: {
-    description: 'Any task colour → the dial\'s pastel-emissive family; greys collapse to one neutral; junk falls back.',
-    cases: ['#3b82f6', '#ef4444', '#22c55e', '#a855f7', '#f59e0b', '#06b6d4', '#8b5cf6', '#4f46e5',
+    description: 'Any task colour → the dial\'s pastel-emissive family; greys collapse to one neutral; junk falls back. '
+      + 'The first ten are the task palette\'s Tailwind hexes (docs/day-dial-palette-study.html, swatch table).',
+    cases: ['#3b82f6', '#2563eb', '#ef4444', '#22c55e', '#a855f7', '#eab308', '#ec4899', '#6366f1', '#f97316', '#14b8a6',
+      '#f59e0b', '#06b6d4', '#8b5cf6', '#4f46e5',
       '#111111', '#ffffff', '#808080', '#6f6f9e', '#4ec9b0', '#5b7fa8', '#5f6b8f', '#a08a5b', '#8a6ba8',
       'not-a-color', null, '#abc']
       .map((hex) => ({ input: { hex }, expected: { hex: muteDialColor(hex) } })),

@@ -1001,7 +1001,7 @@ app.setAboutPanelOptions({
   credits: [
     'Support: support@glance-apps.com',
     'Web: https://www.glance-apps.com/',
-    'Privacy: https://glance-apps.com/dayglance/privacy',
+    'Privacy: https://www.glance-apps.com/dayglance/privacy',
     'Terms: https://www.glance-apps.com/eula',
   ].join('\n'),
 });

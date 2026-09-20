@@ -8,7 +8,13 @@ Reference IDs and URLs:
 
 - Apple App Store app ID (`APPLE_APP_ID`): `6771540599` (wired into the README
   and the web smart app banner).
-- Privacy policy: https://docs.dayglance.app/en/privacy-policy
+- Privacy policy: https://www.glance-apps.com/dayglance/privacy (the
+  dayGLANCE per-app policy; the GLANCE Apps umbrella policy covering the site
+  and the other apps is a separate document). Note the `www.`: this exact
+  form is what App Store Connect and the Play Console hold, so the in-app
+  links use it too. The old location, https://docs.dayglance.app/en/privacy-policy,
+  is now a stub page that tells the reader the policy has moved; it is not a
+  redirect, so do not treat it as a live address for a store listing.
 - EULA: https://www.glance-apps.com/eula
 
 ---
@@ -108,7 +114,8 @@ Local integrations (Electron), whenever the MCP surface has changed:
 
 Confirm the listing has:
 
-- Privacy policy URL: https://docs.dayglance.app/en/privacy-policy
+- Privacy policy URL: https://www.glance-apps.com/dayglance/privacy (exact
+  `www.` form, matching what is already in ASC and Play).
 - Support URL set.
 - EULA: https://www.glance-apps.com/eula
 - Review notes disclose the reviewer-unlock code so the reviewer can get past

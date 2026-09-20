@@ -1,7 +1,7 @@
-# jobo-pre: the existing prototype inside main's JOBO view
+# jobo: the existing prototype inside main's JOBO view
 
 This local experimental branch starts from dayGLANCE `main` at
-`441495a16015295d47d792b7c02f62e0eae7aaea`. It ports the existing Jobo interaction
+`5565d32bd69550999a7bb18400e24ed38a1f64b7`. It ports the existing Jobo interaction
 prototype from `Lcub3d/Jobo:main` (`3c847dd8a332eb19c9c37ecb5273af4eda94ef0b`,
 derived from #1673/#1675) into the independent sixth view established by #1725
 and tracked by [#1726](https://github.com/krelltunez/dayGLANCE/issues/1726).
@@ -9,6 +9,12 @@ and tracked by [#1726](https://github.com/krelltunez/dayGLANCE/issues/1726).
 It is the owner's working development branch, not the pure-core submission and
 not a replacement demo application. The separate `codex/jobo-core` draft remains
 independent. Nothing in this experiment constitutes an upstream design agreement.
+
+The branch was renamed from `jobo-pre` to `jobo` on 2026-09-20. Both branches live
+in the existing fork `Lcub3d/dayGLANCE`: `main` tracks the upstream baseline and
+`jobo` carries the experimental port. The local worktree directory keeps its
+existing `DayGlanceJobo-pre` name so launchers and the running preview stay valid.
+`origin` points to that fork; `upstream` points to `krelltunez/dayGLANCE`.
 
 ## What comes from main
 
@@ -77,5 +83,6 @@ The retained demo action adds marked sample data only after confirmation.
 
 Actual command and browser results are recorded in [jobo-pre-validation.md](jobo-pre-validation.md).
 Android-web builds do not produce an APK, and browser
-dimensions are not physical-device testing. No remote push or PR is part of this
-local adaptation.
+dimensions are not physical-device testing. The `jobo` branch is published to
+the owner's existing fork for continued development. Publishing it does not
+submit an upstream pull request.

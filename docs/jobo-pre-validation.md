@@ -90,3 +90,26 @@ CalendarHeader, view constants, Original Plan/plan-trail utilities, sync code an
 LICENSE were checked unchanged against the upstream base. The independent
 `codex/jobo-core` draft is not part of this branch. No push, PR or public comment
 was made.
+
+## Branch alignment and publication (2026-09-20 evening)
+
+The owner chose the existing `Lcub3d/dayGLANCE` fork, with `main` as the upstream
+baseline and `jobo` as the experimental development branch. The local branch was
+renamed from `jobo-pre` to `jobo` and rebased without conflicts onto upstream
+`5565d32bd69550999a7bb18400e24ed38a1f64b7`. The worktree directory remains unchanged.
+No new repository or upstream PR is involved.
+
+Validation rerun on that code state:
+
+- `npm run lint`: passed.
+- `npm run build`: passed.
+- Direct Android-web Vite build: passed; not an APK.
+- Complete `npm test`: 4989 passed, 45 failed, 324 test files. All 45 failure
+  headings match the previously reproduced upstream failures listed above.
+- Native App, Settings, views, task card, plan history, sync and LICENSE remain
+  identical to the new upstream base.
+
+The former fork `main` at `b89d99f830bed054a17882f62b682ca55258db10` is preserved
+in the local recovery bundle before its owner-authorized replacement. Existing
+remote feature branches are retained. Current logs and the recovery bundle are
+under `D:\PycharmProjects\.dayglance-backups\repo-migration-20260920-215506\`.

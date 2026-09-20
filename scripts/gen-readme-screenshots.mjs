@@ -169,16 +169,51 @@ const PHONE = { w: 430, h: 932, dsf: 3, mobile: true };
 const ok = (n) => console.log('ok', n);
 const fail = (n, e) => console.log('FAIL', n, e.message.split('\n')[0]);
 
-// ---------- Desktop 1/2/3-day (dark) + light-mode + hero ----------
+// ---------- Hero ----------
+// Two days rather than one, and taller than the other desktop captures, for
+// two reasons that are not cosmetic:
+//
+//   - a single day says "a planner"; two adjacent days say "a MULTI-DAY
+//     planner", which is the thing a first-time reader needs in half a second
+//     and the thing the old one-day hero never said.
+//   - at 760px the GLANCE action buttons, which are fixed to the viewport,
+//     landed on top of the panel's own task list. Two task titles in the
+//     previous hero were unreadable behind them. Collapsing the buttons to
+//     their handle fixes that at any height, and the extra height keeps the
+//     routines strip in frame.
+//
+// Kept narrower than desktop-3col on purpose: GitHub renders README images
+// into roughly an 880px column, so every extra pixel of native width is text
+// the reader sees smaller. 1360 is the widest that still reads at that scale.
+try {
+  const name = 'hero-dark';
+  const { ctx, p } = await page({
+    w: 1360, h: 900, dsf: 2, mobile: false, dark: true,
+    extra: `localStorage.setItem('day-planner-default-view', '"multi"'); `
+      + `localStorage.setItem('day-planner-view-mode', '"multi"'); `
+      + `localStorage.setItem('${'day-planner-glance-fabs-collapsed'}', '1');`,
+  });
+  await save(p, name); ok(name);
+  await ctx.close();
+} catch (e) { fail('hero-dark', e); }
+
+// ---------- Desktop 1/2/3-day (dark) + light-mode ----------
+// Widths carry the meaning here (one, two or three day columns), so only the
+// heights move: 760 was short enough that the GLANCE action buttons, fixed to
+// the viewport, sat on top of the panel's own task list. Same fix as the hero,
+// for the same reason: fold the buttons into their handle and give the column
+// the room to finish. 3col was already tall enough and keeps its height.
 for (const [name, dark, size] of [
-  ['hero-dark', true, { w: 1120, h: 760 }],
-  ['light-mode', false, { w: 1120, h: 760 }],
-  ['desktop-1col', true, { w: 1120, h: 760 }],
-  ['desktop-2col', true, { w: 1360, h: 860 }],
+  ['light-mode', false, { w: 1120, h: 900 }],
+  ['desktop-1col', true, { w: 1120, h: 900 }],
+  ['desktop-2col', true, { w: 1360, h: 900 }],
   ['desktop-3col', true, { w: 1680, h: 980 }],
 ]) {
   try {
-    const { ctx, p } = await page({ ...size, dsf: 2, mobile: false, dark });
+    const { ctx, p } = await page({
+      ...size, dsf: 2, mobile: false, dark,
+      extra: `localStorage.setItem('day-planner-glance-fabs-collapsed', '1');`,
+    });
     await save(p, name); ok(name);
     await ctx.close();
   } catch (e) { fail(name, e); }

@@ -132,14 +132,29 @@ enum JSNumber {
     /// `Number(n.toFixed(3))` then template-string interpolation: three
     /// decimals, trailing zeros dropped, integers bare, and -0 printed as 0.
     static func fixed3(_ v: Double) -> String {
-        plain(round3(v))
+        plain(toFixed3(v))
     }
 
-    /// Round to three decimals the way `Math.round(x * 1e3) / 1e3` and
-    /// `toFixed(3)` both do for the non-negative, non-tie inputs the dial
-    /// produces: nearest, ties away from zero.
+    /// `Math.round(x * 1e3) / 1e3` (dialLaneBand, moonPhasePath): the
+    /// PRODUCT is rounded, nearest, ties away from zero. Not the same as
+    /// toFixed — 0.0775 × 1000 is exactly 77.5 and rounds up here, while
+    /// toFixed(3) sees the double 0.07749999… and rounds down.
     static func round3(_ v: Double) -> Double {
         (v * 1000).rounded(.toNearestOrAwayFromZero) / 1000
+    }
+
+    /// `Number(n.toFixed(3))` (dayDial.js's `fmt`, used by dialIntensity and
+    /// the path strings): the EXACT binary value rounded to three decimals,
+    /// an exact tie going away from zero. `%.3f` does the first part (it
+    /// formats the exact value) but breaks an exact tie to even; an exact
+    /// tie at the fourth decimal is only possible at an odd sixteenth
+    /// (0.0625, 0.1875, …), so those are rounded explicitly.
+    static func toFixed3(_ v: Double) -> Double {
+        let sixteenths = v * 16
+        if sixteenths == sixteenths.rounded(), Int(sixteenths) % 2 != 0 {
+            return (v * 1000).rounded(.toNearestOrAwayFromZero) / 1000
+        }
+        return Double(String(format: "%.3f", v)) ?? v
     }
 
     /// A JS number in a template string: no exponent for these magnitudes,

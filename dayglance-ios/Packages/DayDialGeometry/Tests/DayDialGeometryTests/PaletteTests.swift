@@ -101,6 +101,22 @@ final class PaletteTests: XCTestCase {
         }
     }
 
+    /// The fixture's 45-minute case caught this: 0.05 + 0.25 × 0.11 is the
+    /// double 0.07749999…, which toFixed(3) prints as 0.077 while rounding
+    /// the product 77.5 gives 0.078. `fmt` is toFixed, so the port is too.
+    func testToFixedRoundsTheExactBinaryValueNotTheProduct() {
+        XCTAssertEqual(JSNumber.toFixed3(0.0775), 0.077)
+        XCTAssertEqual(JSNumber.round3(0.0775), 0.078)
+        XCTAssertEqual(JSNumber.toFixed3(0.05 + 0.25 * 0.11), 0.077)
+        // An exact binary tie (an odd sixteenth) goes away from zero, as JS.
+        XCTAssertEqual(JSNumber.toFixed3(0.0625), 0.063)
+        XCTAssertEqual(JSNumber.toFixed3(2.0625), 2.063)
+        XCTAssertEqual(JSNumber.toFixed3(-2.0625), -2.063)
+        XCTAssertEqual(JSNumber.toFixed3(1.0005), 1.0)   // 1.0005 is below the tie in binary
+        XCTAssertEqual(JSNumber.toFixed3(0.5), 0.5)
+        XCTAssertEqual(JSNumber.toFixed3(1), 1)
+    }
+
     // MARK: variant C
 
     func testVariantCNumbersAreTheStudys() {

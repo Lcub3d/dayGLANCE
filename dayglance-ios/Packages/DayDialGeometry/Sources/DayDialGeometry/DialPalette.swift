@@ -153,9 +153,9 @@ public struct WidgetDialPalette: DialColorMuting, DialIntensityProviding, DialSt
     /// Kept for the vectors; the widget draws `DialBandTreatment`.
     public static func webIntensity(durationMinutes: Double) -> DialIntensity {
         let t = t(durationMinutes: durationMinutes)
-        return DialIntensity(fillOpacity: JSNumber.round3(0.05 + t * 0.11),
-                             edgeOpacity: JSNumber.round3(0.45 + t * 0.55),
-                             edgeWidth: JSNumber.round3(2 + t * 2))
+        return DialIntensity(fillOpacity: JSNumber.toFixed3(0.05 + t * 0.11),
+                             edgeOpacity: JSNumber.toFixed3(0.45 + t * 0.55),
+                             edgeWidth: JSNumber.toFixed3(2 + t * 2))
     }
 
     public func intensity(durationMinutes: Double) -> DialIntensity { Self.webIntensity(durationMinutes: durationMinutes) }

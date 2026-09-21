@@ -274,7 +274,17 @@ math as the in-app bands, never re-solved in Swift (§4):
 at the hour's **midpoint**, the value §4's per-segment rule wants; `moon` has
 the lit `fraction` for the glyph and `glyphMin`, the minute the in-app dial
 places its moon glyph at. Null until the weather feature has geocoded a
-location, in which case the ring is not drawn.
+location (`useWeather` stores the coords after each successful fetch, so
+weather off or no location means no sky), in which case the face draws the
+ring **unlit** (a neutral track at the sky radius, `DialSpec.skyUnlitOpacity`)
+and no glyphs. Decided after the first device run of the real widget: the
+empty band read as a rendering fault, not as "no location". The widget's
+`daydial` Console line prints `sky=none` in that state, and
+`DayGlanceWidgetTests` pushes a live-shaped payload
+(`TestFixtures/widgetSnapshot.live.json`, from the real JS producers) through
+the decoder, day resolution and face mapping and samples the rendered ring,
+so the fixture-fed `DIAL_PREVIEW` widget can no longer hide a skyless live
+path.
 
 **Hub.** Title, tag, and end time come from whichever `dial` block contains
 the entry's time (`startMin ≤ t < startMin + durationMin`); "until hh:mm ·
@@ -490,8 +500,15 @@ curated fixture day, so it is not to be removed when the real widget changes.
   gate of its own.
 - **Console.** `subsystem:com.dayglance.app category:daydial` prints one line
   per timeline build (`entries= days= boundaries= faces= cold= coldMs= cache=N
-  files/M bytes builtMs= first= last=`); `category:dialface` prints each cold
-  render, each eviction and each discarded file.
+  files/M bytes builtMs= sky= first= last=`); `category:dialface` prints each
+  cold render, each eviction and each discarded file.
+- **Sky on the live path.** The first device run drew no sky ring: the
+  payload's `sky` was null (no geocoded location in the app) and the face
+  drew nothing there. The face now draws the ring unlit in that state (§5
+  "sky"), the `daydial` line says `sky=none`, and `DayGlanceWidgetTests`
+  (a simulator test target, run by `ios.yml`) pushes the live-shaped
+  fixture through the real decode → resolve → map → render path and samples
+  the ring, lit and unlit.
 
 **Phase 4b was a gate, found late, and is closed.** Only the WebView writes
 widget content, so every shipping widget held yesterday's data after a night

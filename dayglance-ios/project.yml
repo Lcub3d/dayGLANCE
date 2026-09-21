@@ -207,6 +207,35 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
+  # The widget extension's own unit tests. An app extension cannot host a
+  # test bundle, so the files under test are compiled INTO the bundle (the
+  # decoder, day resolution, the face mapping and the face view — everything
+  # between the stored bytes and the rendered PNG), on the simulator with no
+  # host app. `xcodebuild test -scheme DayGlanceWidgetTests` runs them; ios.yml
+  # does on every push. The fixture is the live-shaped snapshot that
+  # `npm run ios:vectors` writes from the real JS producers.
+  DayGlanceWidgetTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: DayGlanceWidgetTests
+      - path: DayGlanceWidget/WidgetModels.swift
+      - path: DayGlanceWidget/WidgetFreshness.swift
+      - path: DayGlanceWidget/ColorExtension.swift
+      - path: DayGlanceWidget/Dial/DialFaceInput.swift
+      - path: DayGlanceWidget/Dial/DialFaceView.swift
+      - path: TestFixtures/widgetSnapshot.live.json
+        buildPhase: resources
+    dependencies:
+      - package: DayDialGeometry
+        product: DayDialGeometry
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dayglance.widget.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.9"
+
   ShareExtension:
     type: app-extension
     platform: iOS
@@ -255,3 +284,11 @@ schemes:
       config: Debug
     archive:
       config: Release
+  DayGlanceWidgetTests:
+    build:
+      targets:
+        DayGlanceWidgetTests: all
+    test:
+      config: Debug
+      targets:
+        - DayGlanceWidgetTests

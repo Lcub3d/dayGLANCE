@@ -7389,11 +7389,14 @@ const DayPlanner = () => {
         projectNameFor,
       });
     });
-    // `t` stands in for the locale, which formats dateLabel.
+    // `t` stands in for the locale, which formats dateLabel. `weather` stands
+    // in for the stored coords: useWeather persists them right before it
+    // sets the forecast, so a geocode that lands after mount re-projects the
+    // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
-    tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t,
+    tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────
@@ -7819,8 +7822,10 @@ const DayPlanner = () => {
       // Derived here, never re-solved natively (docs/day-dial-widget-handoff.md
       // §4): 24 hourly sun/moon strengths plus the rise/set minutes and the
       // moon's phase, from the same solar and lunar math the in-app dial
-      // draws with. Null until the weather feature has geocoded a location,
-      // and then the widget honestly draws no sky, like the dial. ~0.6 KB.
+      // draws with. Null until the weather feature has geocoded a location
+      // (useWeather stores the coords after each successful fetch; weather
+      // off or no location → null), and then the widget draws the ring
+      // unlit and no glyphs, like the dial draws no solar layer. ~0.6 KB.
       sky: computeSkySnapshot(today, getStoredWeatherCoords()),
       // ── The whole day, for the Day Dial widget's ring ──────────────────
       // NOT from todayAgenda: that list hides a completed task once it has

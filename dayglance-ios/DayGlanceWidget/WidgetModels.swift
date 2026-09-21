@@ -42,7 +42,7 @@ struct WidgetDay: Codable {
 // and lunar math the in-app dial draws with (computeSkySnapshot in
 // src/utils/dayDial.js). Consumed, never re-solved here — see
 // docs/day-dial-widget-handoff.md §4. Nil until the app has a geocoded
-// location, in which case the ring is simply not drawn.
+// location, in which case the ring is drawn unlit and without glyphs.
 struct SkySnapshot: Codable {
     /// Minutes past local midnight; nil on a polar day/night (see `polar`).
     var sunriseMin: Int?
@@ -145,7 +145,16 @@ struct TaskSummary: Codable {
 func loadSnapshot() -> WidgetSnapshot? {
     guard let defaults = UserDefaults(suiteName: kAppGroupSuite),
           let data = defaults.data(forKey: kSnapshotKey) else { return nil }
-    return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
+    return decodeSnapshot(data)
+}
+
+/// The one decode of the stored bytes, whole or nothing: a single field in
+/// the wrong shape (a fractional minute where an Int? is declared) rejects
+/// the entire snapshot and every widget goes blank, which is why the JS side
+/// pins the wire shape (widgetSnapshotFixture.test.js) and the widget tests
+/// decode a live-shaped fixture through this exact function.
+func decodeSnapshot(_ data: Data) -> WidgetSnapshot? {
+    try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
 }
 
 // The whole local day for the Day Dial widget's ring — every timed block

@@ -35,6 +35,11 @@ public enum DialSpec {
     // The ground and the block track: white at 4.5 % beneath the blocks.
     public static let backgroundHex = "#0b0b0e"
     public static let trackOpacity: Double = 0.045
+    /// The sky ring with no sky data (the snapshot carries `sky: null`
+    /// until the app has a geocoded location): a neutral track at the sky
+    /// radius, the block track's tone. The ring reads as unlit, not missing,
+    /// and the face keeps its silhouette.
+    public static let skyUnlitOpacity: Double = 0.045
 
     // Hour labels: 10.5pt, weight 500, tracking 1.4, white at 44 %.
     public static let labelFontSize: Double = 10.5

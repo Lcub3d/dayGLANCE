@@ -10,7 +10,21 @@ import DayDialGeometry
 // OVERLAY on the cached face, never part of the PNG: the current block and
 // the countdown change per timeline entry, so baking them in would
 // invalidate the cache every entry instead of every block boundary, and
-// Phase 4 needs the countdown to be a live Text. The cache key is untouched.
+// the countdown is a live Text (Phase 4, below). The cache key is untouched.
+//
+// THE COUNTDOWN (Phase 4, decided for the live Text). Entries are 15 minutes
+// apart, so a static "1h 10m left" would read "1h 10m" for up to a quarter
+// of an hour after it stopped being true. With `countdownEnd` set the
+// duration is `Text(end, style: .relative)`, which the system re-renders
+// every minute with no timeline entry, inside the SAME localized phrase:
+// the catalog string is formatted with a marker in the duration's place and
+// split around it, so the words around the number stay translated and the
+// number is live. The system's relative style spells its units ("1 hour,
+// 10 minutes" where the static form says "1h 10m"), so the live row may
+// shrink like the title before it truncates. It never counts past zero: the
+// block's end is itself a timeline entry (DialTimeline), which replaces the
+// row. `countdownEnd` nil (the preview, App Store screenshots) keeps the
+// static, rounded form.
 //
 // Rows are placed by BASELINE, as the spec's SVG text is (DialSpec.Hub),
 // and each row's width is bounded by the chord of the hub circle at its
@@ -91,6 +105,8 @@ struct DialHubView: View {
     let date: Date
     let state: DialHubState
     let use24Hour: Bool?
+    /// The current block's end as an instant. Set: the countdown is live.
+    var countdownEnd: Date? = nil
 
     private typealias H = DialSpec.Hub
 
@@ -130,11 +146,12 @@ struct DialHubView: View {
                         metrics: UIFont.systemFont(ofSize: H.tagFontSize))
                 }
 
-                row(Text(verbatim: countdownText(c))
+                row(countdown(c)
                         .font(.system(size: H.countdownFontSize))
                         .foregroundStyle(Color.white.opacity(H.countdownOpacity)),
                     baseline: H.countdownY,
-                    metrics: UIFont.systemFont(ofSize: H.countdownFontSize))
+                    metrics: UIFont.systemFont(ofSize: H.countdownFontSize),
+                    minimumScale: countdownEnd == nil ? 1 : DialHubTypography.titleMinimumScale)
 
                 if let runway = state.runwayMinutes {
                     row(Text(verbatim: runwayText(runway))
@@ -150,9 +167,28 @@ struct DialHubView: View {
 
     /// "until 12:30 · 1h 10m left", through the string catalog.
     func countdownText(_ c: DialHubCurrent) -> String {
+        countdownPhrase(c, duration: DialHubClock.duration(minutes: c.minutesLeft))
+    }
+
+    /// The catalog phrase with `duration` in the second slot.
+    private func countdownPhrase(_ c: DialHubCurrent, duration: String) -> String {
         let clock = DialHubClock.text(minutesOfDay: c.endMin, use24Hour: use24Hour, reference: date)
-        let left = DialHubClock.duration(minutes: c.minutesLeft)
-        return String(localized: "until \(clock) · \(left) left")
+        return String(localized: "until \(clock) · \(duration) left")
+    }
+
+    /// A private-use character no translation contains, standing in for the
+    /// duration while the phrase is split around it.
+    private static let durationMarker = "\u{F8FF}"
+
+    /// The countdown row's Text: static when there is no end instant, live
+    /// (the translated words around a system-updated duration) when there is.
+    func countdown(_ c: DialHubCurrent) -> Text {
+        guard let end = countdownEnd else { return Text(verbatim: countdownText(c)) }
+        let phrase = countdownPhrase(c, duration: Self.durationMarker)
+        guard let range = phrase.range(of: Self.durationMarker) else { return Text(verbatim: countdownText(c)) }
+        return Text(verbatim: String(phrase[..<range.lowerBound]))
+            + Text(end, style: .relative)
+            + Text(verbatim: String(phrase[range.upperBound...]))
     }
 
     /// "then 1h open", through the string catalog.

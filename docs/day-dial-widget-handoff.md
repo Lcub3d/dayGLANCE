@@ -430,18 +430,68 @@ the total is more reliable than any single line below.
 | 1 | Geometry port | landed | **Landed**: `dayglance-ios/Packages/DayDialGeometry`, pure Foundation, no UI. Its XCTest target loads `TestFixtures/dayDial.vectors.json` and asserts every geometry case; `ios.yml` runs it with `swift test`. Spec radii and rules win where the two dials differ (list below). Palette treatments are seams only (`DialPalette.swift`) — the Phase 2 gate |
 | 2 | Static dial | landed | **Landed**: `DayGlanceWidget/Dial/` — `DialFaceView` (sky ring, glyphs, track, ticks, labels, variant C block band, separators, needle), `DialFaceCache` (ImageRenderer → PNG in the App Group, keyed as §2 "Cache key"), `DialFaceInput` (snapshot → what the face draws). Palette and band logic in `DayDialGeometry`, vector tested |
 | 3 | Hub | landed | **Landed**: `DialHubView` overlay (all seven rows, baseline-placed, chord-bounded; §2 "Hub"), `DialHub.resolve` in the package (tested), Lora bundled and registered, the two hub strings in the catalog. To see it: `DG_WIDGET_FLAGS="DIAL_PREVIEW" npm run ios`, run on the phone, add the "Dial Preview" widget once per scenario and long-press → Edit Widget → Scenario (short title, long title, sparse with runway, dense without, projected) |
-| 4 | Timeline + needle | 2–3d | Correct on a real phone across a full day; reloads debounced |
+| 4 | Timeline + needle | landed | **Landed**: `DayDialWidget` registered in the bundle (name and description only; Phase 5 does the metadata, placeholder and `widgetURL`), a `TimelineProvider` over `ResolvedWidgetDay`, the entry set from `DialTimeline` in the package (tested), the live countdown, the face cache's eviction policy, and the resize gate on the app's push. Details below |
 | 4b | Day rollover without the app | landed | **Landed** (day-keyed snapshot, `docs/widget-background-refresh-plan.md` "What landed"): the snapshot carries today+1…today+3 with per-block tags kept, iOS timelines get a midnight entry per day, Android an exact-or-inexact midnight alarm. The dial's Phase 4 timeline must be built from `ResolvedWidgetDay` so the entries after midnight draw tomorrow's `dial` from `days[]`; the projected tier's soft label matters less on the dial than on Up Next (past blocks dim by time, not completion — only the hub is really projecting), so do not over-treat it |
 | 5 | States + ship | 2–3d | Placeholder, empty day, no current task (the hub's idle copy), rollover, DST, `widgetURL` |
 
-**Phases 0, 0b, 1, 2 and 3 are done.** The cached-image path won (§6 "Result");
+**Phases 0 through 4 are done.** The cached-image path won (§6 "Result");
 phase 2 is the `ImageRenderer` pass over the static face, and phase 4 is the
-needle per entry, the timeline built from `ResolvedWidgetDay`, and reload
-debouncing on top of the cached PNG. There is no past-dimming sector any
-more: variant C tones each block by state, so the cache key carries the
-ended-block bucket instead (§2 "Cache key"). The spike (`DIAL_SPIKE`) is still
-in the tree for measurement; the preview widgets (`DIAL_PREVIEW`) are what to
-look at, and Phase 4 retires the spike once the real timeline exists.
+needle per entry, the timeline built from `ResolvedWidgetDay`, and the reload
+gate on top of the cached PNG. There is no past-dimming sector any more:
+variant C tones each block by state, so the cache key carries the ended-block
+bucket instead (§2 "Cache key"). The spike (`DIAL_SPIKE`,
+`DayGlanceWidget/Spike/`) was retired in Phase 4; its numbers live on in §6.
+The preview widget (`DIAL_PREVIEW`, `DialPreviewWidget.swift`) stays: it is
+how a scenario is eyeballed and how App Store screenshots are captured from a
+curated fixture day, so it is not to be removed when the real widget changes.
+
+**Phase 4, what landed and the decisions in it** (`DayDialWidget.swift`,
+`DialTimeline.swift`, `DialFaceCache.swift`, `DialHubView.swift`):
+
+- **Entry set.** The union of the 15-minute grid for 24 hours (the needle),
+  an exact entry at every block start and end in range on each renderable
+  day (the hub's current block, the band's past tone and the cache bucket all
+  change there; a block ending at 06:25 no longer waits for 06:30), each
+  local midnight the payload can render (the day switch through
+  `ResolvedWidgetDay`, as the other widgets do), and the midnight after the
+  last renderable day, which is the entry that renders Outdated. Deduplicated
+  and sorted; policy `.atEnd`. Counts, pinned by `TimelineTests`: the palette
+  study's dense day today and projected tomorrow gives **98** entries; 24
+  blocks a day at odd minutes gives **144**; the bound is 96 + 2 × blocks in
+  range + midnights. An entry carries the date and the decoded snapshot, never
+  an image.
+- **Needle.** Each entry composes the cached face PNG (fetched through
+  `DialFaceCache` at render time, one decoded face kept in memory), the hub
+  overlay and the needle. The face is re-rendered only when the cache key
+  changes, i.e. at a block end (the bucket), a tier change or a new size.
+- **Countdown: the live Text (option a).** `Text(end, style: .relative)` is
+  spliced into the catalog phrase "until %@ · %@ left" in the duration's
+  slot (the phrase is formatted with a marker and split around it, so the
+  translated words stay and the number is system-updated every minute). The
+  system spells the units ("1 hour, 10 minutes" against the static "1h 10m"),
+  so the row may shrink to 0.8 like the title before it truncates. It cannot
+  count past zero: the block's end is itself an entry. With no end instant
+  (the preview, screenshots) the static rounded form is drawn. If the spelled
+  units read badly on the phone, the fallback is one line in `DialHubView`.
+- **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
+  ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
+  file just written is never evicted. A timeline build ends by retaining only
+  the faces of the days it can render at the current size. A file that does
+  not decode, or decodes to the wrong pixel size, is deleted and re-rendered;
+  an entry never fails on a bad file. Writes are atomic, so a truncated file
+  cannot come from this code. The extension's state ceiling is the 12 MB plus
+  one decoded face in memory (~5 MB at 3×).
+- **Reloads.** Only the gate from #1721: the app pushes with
+  `reloadWidgets:true` only when today, tomorrow or the invariants changed,
+  and `WidgetBridge` reloads only then. Phase 4 added one gate on the app
+  side: the snapshot effect does nothing while a block is being **resized**
+  (a resize writes state at every 15-minute step of the drag; a move commits
+  on drop already) and pushes once when the drag ends. The provider adds no
+  gate of its own.
+- **Console.** `subsystem:com.dayglance.app category:daydial` prints one line
+  per timeline build (`entries= days= boundaries= faces= cold= coldMs= cache=N
+  files/M bytes builtMs= first= last=`); `category:dialface` prints each cold
+  render, each eviction and each discarded file.
 
 **Phase 4b was a gate, found late, and is closed.** Only the WebView writes
 widget content, so every shipping widget held yesterday's data after a night

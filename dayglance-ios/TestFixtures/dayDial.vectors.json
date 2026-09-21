@@ -11,7 +11,7 @@
     "strength": 0.0005
   },
   "counts": {
-    "geometry": 171,
+    "geometry": 177,
     "sky": 16,
     "snapshot": 2
   },
@@ -3292,7 +3292,7 @@
       ]
     },
     "muteDialColor": {
-      "description": "Any task colour → the dial's pastel-emissive family; greys collapse to one neutral; junk falls back.",
+      "description": "Any task colour → the dial's pastel-emissive family; greys collapse to one neutral; junk falls back. The first ten are the task palette's Tailwind hexes (docs/day-dial-palette-study.html, swatch table).",
       "cases": [
         {
           "input": {
@@ -3300,6 +3300,14 @@
           },
           "expected": {
             "hex": "#98b2dd"
+          }
+        },
+        {
+          "input": {
+            "hex": "#2563eb"
+          },
+          "expected": {
+            "hex": "#98addd"
           }
         },
         {
@@ -3324,6 +3332,46 @@
           },
           "expected": {
             "hex": "#bb98dd"
+          }
+        },
+        {
+          "input": {
+            "hex": "#eab308"
+          },
+          "expected": {
+            "hex": "#ddcc98"
+          }
+        },
+        {
+          "input": {
+            "hex": "#ec4899"
+          },
+          "expected": {
+            "hex": "#dd98ba"
+          }
+        },
+        {
+          "input": {
+            "hex": "#6366f1"
+          },
+          "expected": {
+            "hex": "#9899dd"
+          }
+        },
+        {
+          "input": {
+            "hex": "#f97316"
+          },
+          "expected": {
+            "hex": "#ddb498"
+          }
+        },
+        {
+          "input": {
+            "hex": "#14b8a6"
+          },
+          "expected": {
+            "hex": "#98ddd5"
           }
         },
         {

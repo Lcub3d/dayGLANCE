@@ -297,7 +297,7 @@ const ProjectPlanner = ({ project, onClose }) => {
         {/* Project color bar + header — sticky while the mobile sheet scrolls.
             The tint goes on backgroundImage so cardBg keeps the header opaque
             (content must not show through when stuck). */}
-        <div className={isMobile ? 'sticky top-0 z-10' : 'flex-shrink-0'}>
+        <div className={`flex-shrink-0 ${isMobile ? 'sticky top-0 z-10' : ''}`}>
         <div className="h-1.5" style={{ background: projectHex }} />
         <div
           className={`flex items-center justify-between px-4 py-3 border-b ${borderClass} ${cardBg}`}
@@ -332,13 +332,19 @@ const ProjectPlanner = ({ project, onClose }) => {
         </div>
 
         {/* Body — scrolls itself on desktop; on mobile the sheet scrolls (see
-            above) and the bottom padding clears the iOS home indicator */}
+            above) and the bottom padding clears the iOS home indicator.
+            Every section below carries flex-shrink-0: this is a flex COLUMN
+            with a bounded height, so a section that doesn't opt out is
+            SQUASHED when the content overflows instead of the body scrolling
+            past it. hyperGLANCE clips its own overflow, which drops its
+            automatic minimum size to zero — it collapsed to its two border
+            pixels and its settings became unreachable. */}
         <div
-          className={`p-4 flex flex-col gap-4 ${isMobile ? '' : 'flex-1 min-h-0 overflow-y-auto'}`}
+          className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : 'flex-1 min-h-0 overflow-y-auto'}`}
           style={isMobile ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}
         >
           {/* Notes — same interaction model as task notes panels */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 flex-shrink-0">
             <label className={`text-xs font-medium ${textSecondary}`}>{t('task.notes', 'Notes')}</label>
             {editingNotes ? (
               <textarea
@@ -373,7 +379,7 @@ const ProjectPlanner = ({ project, onClose }) => {
 
           {/* Task columns — tabbed on mobile, side by side on desktop */}
           {showTabs && (
-            <div className={`flex rounded-lg border ${borderClass} p-0.5 gap-0.5`}>
+            <div className={`flex rounded-lg border ${borderClass} p-0.5 gap-0.5 flex-shrink-0`}>
               {[
                 { key: 'scheduled', label: t('planner.scheduled', 'Scheduled'), count: incompleteScheduledCount },
                 { key: 'unscheduled', label: t('task.unscheduled', 'Unscheduled'), count: incompleteUnscheduled.length },
@@ -392,7 +398,7 @@ const ProjectPlanner = ({ project, onClose }) => {
               ))}
             </div>
           )}
-          <div className={`grid gap-4 ${gridColumns === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`grid gap-4 flex-shrink-0 ${gridColumns === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {/* Scheduled */}
             {showScheduled && (
             <div className="flex flex-col gap-2 min-w-0">
@@ -498,7 +504,7 @@ const ProjectPlanner = ({ project, onClose }) => {
             <button
               type="button"
               onClick={() => updateProject(project.id, { plannerScheduledHidden: false })}
-              className={`self-start text-xs ${textSecondary} hover:underline flex items-center gap-1`}
+              className={`self-start flex-shrink-0 text-xs ${textSecondary} hover:underline flex items-center gap-1`}
             >
               <Eye size={12} />
               {t('planner.showScheduled', 'Show Scheduled')}{incompleteScheduledCount > 0 ? ` (${incompleteScheduledCount})` : ''}

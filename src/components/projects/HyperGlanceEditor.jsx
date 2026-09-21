@@ -100,8 +100,11 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hgEnabled, hgIcon, hgColor, hgIsRecurring, hgScheduledDays, hgScheduledDate, hgScheduledTime, hgDuration, hgTemplateTasks]);
 
+  // flex-shrink-0 on the root: the editor clips its own overflow, so a host
+  // that lays it out as a flex child (the PLANNER body) would otherwise
+  // squash it to its borders and silently hide every setting inside it.
   return (
-    <div className={`rounded-xl border ${borderClass} overflow-hidden`}>
+    <div className={`rounded-xl border ${borderClass} overflow-hidden flex-shrink-0`}>
       {/* Toggle row */}
       <button
         type="button"

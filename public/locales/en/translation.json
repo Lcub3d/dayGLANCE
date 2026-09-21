@@ -683,6 +683,10 @@
     "tasks": "Tasks"
   },
   "task": {
+    "contextNotesSubtasks": "Notes / subtasks",
+    "contextGenerateSubtasks": "Generate subtasks (AI)",
+    "contextMoveTomorrow": "Move to tomorrow",
+    "contextMoveInbox": "Move to inbox",
     "obsidianNoteSource": "In {{note}} (Obsidian)",
     "openWikiNote": "Open “{{name}}”",
     "openWikiNoteInObsidian": "Open “{{name}}” in Obsidian",
@@ -1141,6 +1145,13 @@
     "heard": "Heard:",
     "editAndRetry": "Edit and retry",
     "aiUnexpectedShape": "The AI replied in a format the app couldn't read.",
+    "speechRecognitionError": "Speech recognition error: {{error}}",
+    "micAccessDenied": "Microphone access denied. Please allow microphone permissions in your browser settings.",
+    "micAccessDeniedBrave": "Microphone access denied. Brave Shields may be blocking access — try disabling Shields for this site, or allow microphone permissions in your browser settings.",
+    "micNotFound": "No microphone found. Please connect a microphone and try again.",
+    "micError": "Microphone error: {{error}}",
+    "transcriptionFailed": "Transcription failed: {{error}}",
+    "unknownError": "unknown",
     "applyAll": "Apply All ({{count}})",
     "applyEdit": "Apply Edit",
     "applyEdits": "Apply Edits ({{count}})",
@@ -1269,6 +1280,9 @@
     "openReview": "Open Review"
   },
   "reminders": {
+    "dismissAll": "Dismiss all",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more",
     "permissionGranted": "Permission granted",
     "permissionDenied": "Permission denied — enable in browser settings",
     "permissionRequest": "Will request permission when enabled",
@@ -1626,6 +1640,8 @@
     "obsidianRecurrenceHint": "Recurring in Obsidian: this task's recurrence is managed by the Tasks plugin; completing it here won't create the next instance"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}Y",
     "linkedWithLifeGlance": "Linked with lifeGLANCE",
     "markGoalComplete": "Mark goal complete",
     "newGoal": "New Goal",

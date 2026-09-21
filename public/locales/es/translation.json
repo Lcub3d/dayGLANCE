@@ -683,6 +683,10 @@
     "tasks": "Tareas"
   },
   "task": {
+    "contextNotesSubtasks": "Notas / subtareas",
+    "contextGenerateSubtasks": "Generar subtareas (IA)",
+    "contextMoveTomorrow": "Mover a mañana",
+    "contextMoveInbox": "Mover a la bandeja de entrada",
     "obsidianNoteSource": "En {{note}} (Obsidian)",
     "openWikiNote": "Abrir «{{name}}»",
     "openWikiNoteInObsidian": "Abrir «{{name}}» en Obsidian",
@@ -1141,6 +1145,13 @@
     "heard": "Escuchado:",
     "editAndRetry": "Editar y reintentar",
     "aiUnexpectedShape": "La IA respondió en un formato que la app no pudo leer.",
+    "speechRecognitionError": "Error de reconocimiento de voz: {{error}}",
+    "micAccessDenied": "Acceso al micrófono denegado. Permite el acceso al micrófono en la configuración de tu navegador.",
+    "micAccessDeniedBrave": "Acceso al micrófono denegado. Es posible que Brave Shields esté bloqueando el acceso: desactiva Shields para este sitio o permite el acceso al micrófono en la configuración de tu navegador.",
+    "micNotFound": "No se encontró ningún micrófono. Conecta un micrófono e inténtalo de nuevo.",
+    "micError": "Error del micrófono: {{error}}",
+    "transcriptionFailed": "La transcripción falló: {{error}}",
+    "unknownError": "desconocido",
     "applyAll": "Aplicar todo ({{count}})",
     "applyEdit": "Aplicar edición",
     "applyEdits": "Aplicar ediciones ({{count}})",
@@ -1269,6 +1280,9 @@
     "openReview": "Abrir revisión"
   },
   "reminders": {
+    "dismissAll": "Descartar todo",
+    "more_one": "+{{count}} más",
+    "more_other": "+{{count}} más",
     "permissionGranted": "Permiso concedido",
     "permissionDenied": "Permiso denegado; actívalo en los ajustes del navegador",
     "permissionRequest": "Se solicitará permiso al activarlo",
@@ -1626,6 +1640,8 @@
     "obsidianRecurrenceHint": "Recurrente en Obsidian: la recurrencia de esta tarea la administra el complemento Tasks; completarla aquí no creará la siguiente instancia"
   },
   "goals": {
+    "rangeMonthsShort": "{{count}}M",
+    "rangeYearsShort": "{{count}}A",
     "linkedWithLifeGlance": "Vinculado con lifeGLANCE",
     "markGoalComplete": "Marcar objetivo como completado",
     "newGoal": "Nuevo objetivo",

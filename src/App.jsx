@@ -210,6 +210,8 @@ import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
 import { nativeFetchWindowFor, windowDates, NATIVE_FETCH_RADIUS_DAYS } from './utils/nativeFetchWindow.js';
+import { weekViewDatesFor } from './utils/weekViewDates.js';
+import { schedRollingWindow } from './utils/schedAgenda.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
 
 // Encode a string that may contain non-ASCII characters as Base64.
@@ -443,6 +445,10 @@ const DayPlanner = () => {
   // (effectiveViewMode) or the phone / portrait-tablet toggle (mobileViewMode).
   // Drives the chrome's month-long stride and month-name date display.
   const monthViewActive = effectiveViewMode === 'month' || ((isMobile || (isTablet && !isLandscape)) && mobileViewMode === 'month');
+  // SCHED on screen, by the same two switchers. Its rolling agenda runs a
+  // fortnight out and grows from there, so the device-calendar fetch has to
+  // follow it — see the fetch window below.
+  const schedViewActive = effectiveViewMode === 'sched' || ((isMobile || (isTablet && !isLandscape)) && mobileViewMode === 'sched');
   const [glancePage, setGlancePage] = useState(() => {
     const saved = localStorage.getItem('day-planner-glance-page');
     return saved !== null ? parseInt(saved, 10) : 0;
@@ -3997,15 +4003,50 @@ const DayPlanner = () => {
   // --- Focus Mode handlers ---
 
 
+  // ── The days each view is drawing ────────────────────────────────────────
+  // These two memos live HERE rather than beside the other date memos further
+  // down the file: the device-calendar fetch below is built from them, and a
+  // `const` declared later in this component is in the temporal dead zone
+  // while this render runs.
+
+  // The timeline's day columns.
+  const visibleDates = useMemo(() => Array.from({ length: visibleDays }, (_, i) => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + i);
+    return date;
+  }), [selectedDate, visibleDays]);
+
+  // Seven dates for week view — strict (calendar week) or rolling (today + 6
+  // days); empty outside the modes with a week strip, so it doesn't affect
+  // other views. The rule itself is utils/weekViewDates.js. The strip drives
+  // both WEEK view columns and the SCHED date navigation.
+  const weekViewDates = useMemo(
+    () => weekViewDatesFor({ viewMode: effectiveViewMode, selectedDate, weekViewMode, weekStartDay }),
+    [effectiveViewMode, selectedDate, weekViewMode, weekStartDay]);
+
+  // The SCHED agenda's rolling window, while SCHED is the view on screen.
+  // Null otherwise: this is the one span that grows without bound (every
+  // "show more days" adds a fortnight), and the mobile bridge fetches it a
+  // day at a time, so it is never fetched for a view that isn't showing it.
+  const schedWindow = useMemo(
+    () => (schedViewActive ? schedRollingWindow(selectedDate, schedDaysShown) : null),
+    [schedViewActive, selectedDate, schedDaysShown]);
+
   // ── Native Calendar Events (mobile bridge + macOS Electron) ──────────────
-  // Fetches events from the device calendar for a ±2-day window around the
-  // selected date (the whole grid while MONTH is up, see
-  // utils/nativeFetchWindow.js) and merges them into `tasks` as _native-
-  // flagged entries. _native tasks are excluded from saveData so they're
-  // never persisted. nativeEventToTask now lives in src/utils/nativeCalendar.js.
-  const nativeFetchWindow = useMemo(() => nativeFetchWindowFor(selectedDate, monthViewRange), [selectedDate, monthViewRange]);
+  // Fetches events from the device calendar for every day a mounted view is
+  // drawing and merges them into `tasks` as _native-flagged entries. _native
+  // tasks are excluded from saveData so they're never persisted.
+  // nativeEventToTask now lives in src/utils/nativeCalendar.js.
+  //
+  // The window is the union of those views' days, NOT a fixed radius around
+  // the selection — see utils/nativeFetchWindow.js for the two views that
+  // draw past the radius and lost their events to it.
+  const nativeFetchWindow = useMemo(
+    () => nativeFetchWindowFor(selectedDate, { visibleDates, weekViewDates, monthViewRange, schedWindow }),
+    [selectedDate, visibleDates, weekViewDates, monthViewRange, schedWindow]);
   // The effect below keys on the span, not the selection: moving inside the
-  // month keeps the span, so it neither refetches nor lets events flicker.
+  // month (or the week) keeps the span, so it neither refetches nor lets
+  // events flicker.
   const nativeFetchKey = `${nativeFetchWindow.from}..${nativeFetchWindow.to}`;
 
   // Fetch available device calendars once on load
@@ -6350,15 +6391,6 @@ const DayPlanner = () => {
     showWelcome, setShowWelcome,
   });
 
-  // Compute array of visible dates based on selectedDate and visibleDays
-  const visibleDates = useMemo(() => {
-    return Array.from({ length: visibleDays }, (_, i) => {
-      const date = new Date(selectedDate);
-      date.setDate(date.getDate() + i);
-      return date;
-    });
-  }, [selectedDate, visibleDays]);
-
   // Columns for DayView — three 8-hour windows.
   // 'calendar-day': fixed 00-08 / 08-16 / 16-24 for selectedDate.
   // 'rolling-24': leftmost column is the current 8-hour block; columns that
@@ -6392,36 +6424,6 @@ const DayPlanner = () => {
       { startHour: 16, endHour: 24, date: base, dateStr: baseStr },
     ];
   }, [selectedDate, dayViewMode, currentTime]);
-
-  // Seven dates for week view — strict (calendar week) or rolling (today + 6 days).
-  // Empty array when not in week mode so it doesn't affect other views.
-  const weekViewDates = useMemo(() => {
-    // The week strip drives both WEEK view columns and the SCHED date navigation.
-    if (effectiveViewMode !== 'week' && effectiveViewMode !== 'sched') return [];
-    const base = new Date(selectedDate);
-    base.setHours(0, 0, 0, 0);
-    const todayStr = dateToString(new Date());
-    const isViewingToday = dateToString(base) === todayStr;
-
-    if (weekViewMode === 'rolling' && isViewingToday) {
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(base);
-        d.setDate(d.getDate() + i);
-        return d;
-      });
-    }
-
-    // Strict: week containing selectedDate, starting on weekStartDay
-    const dayOfWeek = base.getDay();
-    const diff = (dayOfWeek - weekStartDay + 7) % 7;
-    const weekStart = new Date(base);
-    weekStart.setDate(weekStart.getDate() - diff);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(weekStart);
-      d.setDate(d.getDate() + i);
-      return d;
-    });
-  }, [effectiveViewMode, selectedDate, weekViewMode, weekStartDay]);
 
   // Auto-select new tags when they appear (only truly new tags, not previously deselected ones)
   const prevAllTagsRef = useRef(new Set(allTags));
@@ -7390,11 +7392,14 @@ const DayPlanner = () => {
         projectNameFor,
       });
     });
-    // `t` stands in for the locale, which formats dateLabel.
+    // `t` stands in for the locale, which formats dateLabel. `weather` stands
+    // in for the stored coords: useWeather persists them right before it
+    // sets the forecast, so a geocode that lands after mount re-projects the
+    // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
-    tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t,
+    tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────
@@ -7409,6 +7414,12 @@ const DayPlanner = () => {
   useEffect(() => {
     if (!dataLoaded) return;
     if ((!isNativeAndroid() && !isNativeIOS()) || !window.DayGlanceNative?.updateWidgetSnapshot) return;
+    // A resize writes the block's duration to state at every 15-minute step
+    // of the drag, and each of those would be a push that reloads every
+    // widget timeline. Wait for the drop; the effect re-runs when isResizing
+    // clears and pushes the settled block once. (A drag-to-move already
+    // commits only on drop.)
+    if (isResizing) return;
     void widgetSnapshotTick; // re-push scheduled at the next block boundary below
 
     const today = new Date();
@@ -7814,8 +7825,10 @@ const DayPlanner = () => {
       // Derived here, never re-solved natively (docs/day-dial-widget-handoff.md
       // §4): 24 hourly sun/moon strengths plus the rise/set minutes and the
       // moon's phase, from the same solar and lunar math the in-app dial
-      // draws with. Null until the weather feature has geocoded a location,
-      // and then the widget honestly draws no sky, like the dial. ~0.6 KB.
+      // draws with. Null until the weather feature has geocoded a location
+      // (useWeather stores the coords after each successful fetch; weather
+      // off or no location → null), and then the widget draws the ring
+      // unlit and no glyphs, like the dial draws no solar layer. ~0.6 KB.
       sky: computeSkySnapshot(today, getStoredWeatherCoords()),
       // ── The whole day, for the Day Dial widget's ring ──────────────────
       // NOT from todayAgenda: that list hides a completed task once it has
@@ -7886,6 +7899,7 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dataLoaded,
+    isResizing,
     todayAgenda,
     activeHabits,
     habitsEnabled,
@@ -10196,7 +10210,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Pencil size={14} />
-                  Edit
+                  {t('common.edit')}
                 </button>
               )}
               {/* Imported: only show Notes if the task actually has notes (no subtask support) */}
@@ -10211,7 +10225,7 @@ const DayPlanner = () => {
                     }}
                   >
                     <FileText size={14} />
-                    Notes
+                    {t('task.notes')}
                   </button>
                 )
               ) : (
@@ -10223,7 +10237,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <FileText size={14} />
-                  Notes / subtasks
+                  {t('task.contextNotesSubtasks')}
                 </button>
               )}
               {/* Energy-axis override (summary strip): cycles auto → Restore →
@@ -10255,7 +10269,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Sparkles size={14} />
-                  Generate subtasks (AI)
+                  {t('task.contextGenerateSubtasks')}
                 </button>
               )}
               {!isImported && !isInbox && !isDaily && (
@@ -10267,7 +10281,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <SkipForward size={14} />
-                  Move to tomorrow
+                  {t('task.contextMoveTomorrow')}
                 </button>
               )}
               {!isRecurring && !isImported && !isAllDay && !isInbox && (
@@ -10279,7 +10293,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Inbox size={14} />
-                  Move to inbox
+                  {t('task.contextMoveInbox')}
                 </button>
               )}
               {(!isImported || isTaskCalendar) && (
@@ -10291,7 +10305,7 @@ const DayPlanner = () => {
                   }}
                 >
                   {isCompleted ? <RotateCcw size={14} /> : <Check size={14} />}
-                  {isCompleted ? 'Uncomplete' : 'Complete'}
+                  {isCompleted ? t('voice.actions.uncomplete') : t('focus.complete')}
                 </button>
               )}
               {!isImported && (
@@ -10303,7 +10317,7 @@ const DayPlanner = () => {
                   }}
                 >
                   <Trash2 size={14} />
-                  Delete
+                  {t('common.delete')}
                 </button>
               )}
             </div>

@@ -1,9 +1,9 @@
 name: iOS build
 
 # Verifies the iOS app, widget, and Share Extension still compile after web or
-# native changes. Build-only: no code signing, no device/simulator run, no
-# upload — just a "does Xcode still accept this" gate, since the iOS targets
-# have no other CI coverage (ci.yml is Linux-only and never touches Swift).
+# native changes, runs the Day Dial geometry package's tests on the runner,
+# and runs the widget extension's unit tests on a simulator. No code signing,
+# no device, no upload (ci.yml is Linux-only and never touches Swift).
 #
 # Runs on macOS (Xcode is macOS-only). Scoped to changes that can affect the iOS
 # build so ordinary web-only PRs don't spend a macOS runner. Note the Xcode
@@ -55,6 +55,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The Day Dial geometry package has its own XCTest target that loads
+      # dayglance-ios/TestFixtures/dayDial.vectors.json and asserts every
+      # case against the Swift port. `swift test` runs it on the runner
+      # itself — no simulator — so this step RUNS tests where the xcodebuild
+      # step below only compiles. A green iOS build check therefore means:
+      # the app, widget and share extension compile, AND the geometry
+      # vectors pass.
+      - name: Run DayDialGeometry vector tests
+        run: swift test --package-path dayglance-ios/Packages/DayDialGeometry
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -88,4 +98,30 @@ jobs:
             -scheme DayGlance \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+
+      # The widget extension's own unit tests (dayglance-ios/DayGlanceWidgetTests):
+      # the live-shaped snapshot fixture, written by `npm run ios:vectors` from
+      # the real JS producers, through the widget's decoder, day resolution and
+      # face mapping, then a real ImageRenderer pass with the sky ring sampled.
+      # These need a simulator, so the device is whichever iPhone the selected
+      # Xcode ships on its newest iOS runtime, by udid (a name alone is
+      # ambiguous across runtimes).
+      - name: Run DayGlanceWidget tests (simulator)
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted(r for r in devices if ".iOS-" in r)
+          for r in reversed(runtimes):
+              phones = [d for d in devices[r] if d["name"].startswith("iPhone")]
+              if phones:
+                  print(phones[-1]["udid"]); print(r, phones[-1]["name"], file=sys.stderr); break
+          ')
+          if [ -z "$UDID" ]; then echo "::error::no available iPhone simulator on this runner"; exit 1; fi
+          xcodebuild test \
+            -project dayglance-ios/DayGlance.xcodeproj \
+            -scheme DayGlanceWidgetTests \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$UDID" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO

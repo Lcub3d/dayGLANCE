@@ -33,12 +33,15 @@ jobs:
           patch = lzma.decompress(base64.b64decode(encoded))
           assert hashlib.sha256(patch).hexdigest() == '29be4d7ccc6f6437c547b17c81f485a79b07b33ee8fface07b1d4ddeffbb4a82'
           Path('/tmp/life-map.patch').write_bytes(patch)
+          fixes = Path('.github/life-map-fixes.patch')
+          fixes.write_text(fixes.read_text().replace('\n diff --git ', '\ndiff --git '))
           PY
           git apply --unidiff-zero --index /tmp/life-map.patch
-          git rm .github/life-map-patch-{0,1,2}.b64
+          git apply --index .github/life-map-fixes.patch
+          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch
           git diff --cached --check
           git write-tree > review-artifacts/tree.txt
-          test "$(git write-tree)" = 9fd6767621d45ec5f4bfc34a0998ec77d57f335d
+          test "$(git write-tree)" = efdc587c125d9bce8a6d73cb3fcd3d980506565c
       - uses: actions/setup-node@v4
         with:
           node-version: 22

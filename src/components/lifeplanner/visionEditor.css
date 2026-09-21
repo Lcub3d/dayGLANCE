@@ -1,0 +1,77 @@
+/* Only override the vision sheet's row controls. The parent workbook owns the
+   surface width, radius, shadow, and drag presentation. */
+.lp-sheet-mask>.lp-vision-sheet { position:relative; }
+.lp-vision-sheet .lp-vision-body { padding:20px 24px 12px; }
+.lp-vision-sheet .lp-note-fields { min-width:0; }
+.lp-vision-sheet .lp-note-line {
+  grid-template-columns:24px minmax(0,1fr) auto 68px;
+  column-gap:10px;
+  min-height:50px;
+  border-bottom:1px solid var(--lp-rule);
+}
+.lp-vision-sheet .lp-note-line:last-child { border-bottom:0; }
+.lp-vision-sheet .lp-note-gutter { min-width:0; }
+.lp-vision-sheet .lp-input,.lp-vision-sheet .lp-note-outcome { color:inherit; }
+.lp-vision-sheet .lp-note-outcome { font-size:16px; font-weight:600; line-height:24px; padding:8px 0; }
+.lp-vision-sheet .lp-input { font-size:14px; min-height:32px; }
+.lp-vision-sheet .lp-duration { gap:5px; font-variant-numeric:tabular-nums; }
+.lp-vision-sheet .lp-duration input { min-width:2ch; }
+.lp-vision-sheet .lp-duration-unit {
+  min-width:38px;
+  padding:4px 4px;
+  border-bottom:1px solid color-mix(in srgb, var(--lp-muted) 55%, transparent);
+  color:var(--lp-muted);
+  font-size:13px;
+  line-height:22px;
+  text-align:left;
+  white-space:nowrap;
+}
+.lp-vision-sheet .lp-duration-unit:hover { color:inherit; border-bottom-color:currentColor; }
+.lp-vision-sheet .lp-duration-tail { font-size:13px; }
+.lp-vision-sheet .lp-now-label { font-size:12px; letter-spacing:.02em; }
+.lp-vision-sheet .lp-measure { font-size:14px; line-height:24px; padding:7px 0; }
+.lp-vision-sheet .lp-measure input { min-width:2ch; }
+.lp-vision-sheet .lp-stage { transition:background .15s ease; }
+.lp-vision-sheet .lp-stage:hover,.lp-vision-sheet .lp-stage:focus-within { background:color-mix(in srgb, var(--lp-hover) 65%, transparent); }
+.lp-vision-sheet .lp-empty-stage { border-bottom:1px dashed color-mix(in srgb, var(--lp-rule) 85%, transparent); }
+.lp-vision-sheet .lp-empty-stage .lp-measure input::placeholder { color:var(--lp-muted); opacity:.55; }
+.lp-vision-sheet .lp-note-actions { justify-content:flex-end; }
+.lp-vision-sheet .lp-note-actions .lp-icon { width:30px; height:30px; }
+.lp-vision-sheet .lp-project-link {
+  color:#a16207 !important;
+  opacity:1 !important;
+}
+.lp-vision-sheet .lp-project-link:hover { background:#fef3c7; }
+.lp-vision-sheet .lp-linked-project { color:#15803d !important; }
+.lp-vision-sheet .lp-note-actions .lp-row-action:not(.lp-project-link) { opacity:0; color:var(--lp-muted); }
+.lp-vision-sheet .lp-stage:hover .lp-note-actions .lp-row-action:not(.lp-project-link),
+.lp-vision-sheet .lp-stage:focus-within .lp-note-actions .lp-row-action:not(.lp-project-link),
+.lp-vision-sheet .lp-note-actions .lp-row-action:not(.lp-project-link):focus-visible { opacity:1; }
+.lp-vision-sheet .lp-note-tail { min-height:34px; padding:2px 0 0 34px; }
+.lp-vision-sheet .lp-total { color:inherit; font-size:14px; font-weight:400; letter-spacing:0; }
+.lp-vision-sheet .lp-sheet-footer {
+  min-height:42px;
+  padding:8px 20px 12px;
+  border-top:0;
+  color:var(--lp-muted);
+}
+.lp-vision-sheet .lp-sheet-footer:empty { display:none; }
+.lp-vision-sheet .lp-note-options-anchor { margin-right:auto; }
+.lp-vision-sheet .lp-note-options { bottom:calc(100% + 6px); }
+.lp-vision-sheet .lp-error { padding:8px 34px; }
+.lp-vision-sheet .lp-note-notice { padding:6px 34px; }
+
+@media (max-width:760px) {
+  .lp-sheet-mask { padding:10px; }
+  .lp-vision-sheet { max-height:calc(100dvh - 20px); }
+  .lp-vision-sheet .lp-vision-body { padding:16px 16px 12px; }
+  .lp-vision-sheet .lp-note-line { grid-template-columns:16px minmax(0,1fr) auto 26px; column-gap:5px; min-height:52px; }
+  .lp-vision-sheet .lp-note-line>.lp-block-handle { width:18px; }
+  .lp-vision-sheet .lp-note-outcome { font-size:15px; }
+  .lp-vision-sheet .lp-note-actions .lp-icon { min-height:24px; height:24px; width:26px; }
+  .lp-vision-sheet .lp-note-tail { padding-left:21px; padding-right:26px; }
+  .lp-vision-sheet .lp-sheet-footer { padding:8px 16px 10px; }
+}
+@media (hover:none) {
+  .lp-vision-sheet .lp-note-actions .lp-row-action:not(.lp-project-link) { opacity:1; }
+}

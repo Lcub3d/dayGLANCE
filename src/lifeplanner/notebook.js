@@ -6,18 +6,24 @@ export function notebookCategories(wishes) {
   return CATEGORY_IDS.map(id => ({ id, wishes: wishes.filter(wish => wish.category === id) }));
 }
 
-export function moveNotebookItem(items, id, targetId, after = false, expectedIds = items.map(item => item.id)) {
+export function moveNotebookItems(items, movingIds, targetId, after = false, expectedIds = items.map(item => item.id)) {
   const scope = new Set(expectedIds);
   const currentIds = items.filter(item => scope.has(item.id)).map(item => item.id);
   if (JSON.stringify(currentIds) !== JSON.stringify(expectedIds)) throw new Error('conflict');
-  if (!scope.has(id) || !scope.has(targetId)) throw new Error('missing');
-  if (id === targetId) return items;
-  const item = items.find(entry => entry.id === id);
-  if (!item || !items.some(entry => entry.id === targetId)) throw new Error('missing');
-  const rest = items.filter(entry => entry.id !== id);
+  const ids = [...new Set(movingIds || [])].filter(id => scope.has(id));
+  if (!ids.length || ids.length !== (movingIds || []).length || !scope.has(targetId)) throw new Error('missing');
+  if (ids.includes(targetId)) return items;
+  const selected = new Set(ids);
+  const moving = items.filter(entry => selected.has(entry.id));
+  if (moving.length !== ids.length || !items.some(entry => entry.id === targetId)) throw new Error('missing');
+  const rest = items.filter(entry => !selected.has(entry.id));
   const position = rest.findIndex(entry => entry.id === targetId) + Number(after);
-  rest.splice(position, 0, item);
+  rest.splice(position, 0, ...moving);
   return rest;
+}
+
+export function moveNotebookItem(items, id, targetId, after = false, expectedIds = items.map(item => item.id)) {
+  return moveNotebookItems(items, [id], targetId, after, expectedIds);
 }
 
 export function commitNotebookText(doc, draft) {

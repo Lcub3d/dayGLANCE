@@ -2098,8 +2098,10 @@
     "title": "Life wish list",
     "principles": "Mottos",
     "guide": "Planning assistant",
-    "guideOn": "Close planning assistant",
-    "guideOff": "Open planning assistant",
+    "guideOn": "Hide details",
+    "guideOff": "Show details",
+    "collapseExplanations": "Nascondi spiegazioni e riferimenti",
+    "expandExplanations": "Mostra spiegazioni e riferimenti",
     "wish": "Life wish",
     "vision": "Five-year vision",
     "number": "Number",
@@ -2127,6 +2129,10 @@
     "cancel": "Cancel",
     "close": "Close",
     "delete": "Delete",
+    "trash": "Cestino",
+    "dropToDelete": "Rilascia qui per eliminare",
+    "moveToTrash": "Sposta nel cestino",
+    "dropToTrash": "Rilascia qui per eliminare",
     "up": "Move up",
     "down": "Move down",
     "examples": "Use this example",
@@ -2143,18 +2149,21 @@
     "removeConfirm": "Delete this item? Linked dayGLANCE projects and tasks will be kept.",
     "discard": "There are unsaved changes. Discard them?",
     "removed": "Deleted. Linked projects were kept.",
+    "deleted": "Eliminato",
     "undo": "Undo",
     "count": "{{count}} / 100",
     "limit": "Your list has 100 wishes. Edit or remove one before adding another.",
     "tools": "More actions",
     "startDate": "Planning starts",
     "outcome": "Measurable vision",
+    "measurable": "Misurabile",
     "outcomePlaceholder": "Publish 2 books",
     "in": "in",
     "now": "right now",
     "year": "years",
     "month": "months",
     "day": "days",
+    "cycleUnit": "Cambia unità di tempo",
     "current": "Current value",
     "target": "Target value",
     "milestone": "Milestone {{number}}",
@@ -2203,11 +2212,11 @@
       "title": "Enter some text; use the block menu to delete an existing entry."
     },
     "defaults": {
-      "longTerm": "Think long term",
-      "important": "Important before urgent",
-      "health": "Do not borrow against your health",
-      "honesty": "Be honest",
-      "margin": "Keep a margin of safety in key decisions"
+      "longTerm": "Pensare a lungo termine",
+      "important": "Prima l’importante dell’urgente",
+      "health": "Non sacrificare la salute",
+      "honesty": "Essere onesti",
+      "margin": "Lasciare un margine di sicurezza nelle decisioni importanti"
     },
     "categories": {
       "self": {
@@ -2288,12 +2297,24 @@
         "exampleVision": "Complete 1 personal challenge, in 3 years"
       }
     },
-    "assistant": "Planning Assistant",
+    "assistant": "Dettagli",
+    "mindMap": "Mappa mentale",
+    "mindMapUnavailable": "La mappa mentale non è ancora disponibile",
+    "selectedBlocks": "{{count}} selezionati",
+    "selectBlock": "Seleziona questo blocco",
+    "moveUp": "Sposta su",
+    "moveDown": "Sposta giù",
+    "moveToTop": "Sposta in cima",
+    "moveToBottom": "Sposta in fondo",
+    "clearSelection": "Annulla selezione",
+    "deleteSelected": "Elimina selezionati",
     "categoryColumn": "Category",
     "explanation": "Reflection",
     "visionInvitation": "In five years…",
     "blankWish": "Blank wish line",
     "blankMotto": "Blank motto line",
+    "blankStage": "Riga di fase vuota",
+    "stageValueSuggestion": "Valore suggerito",
     "templateHint": "Light text is a writing prompt, not a saved wish. Leave any category blank.",
     "tableScroll": "Scroll sideways to see the whole spread",
     "saving": "Saving…",
@@ -2310,7 +2331,52 @@
     "within": "ahead",
     "addLine": "Add a line",
     "totalShort": "Total",
-    "noteOptions": "Date settings"
+    "noteOptions": "Date settings",
+    "swot": {
+      "factorsTitle": "Understand the situation",
+      "strategiesTitle": "Choose your strategies",
+      "strategiesHint": "Write one strategy per line. Use the arrow to turn it into a five-year vision.",
+      "factors": {
+        "s": {
+          "label": "Strengths",
+          "hint": "What skills, experience or resources can I build on?"
+        },
+        "w": {
+          "label": "Weaknesses",
+          "hint": "What am I missing? What gets in my way?"
+        },
+        "o": {
+          "label": "Opportunities",
+          "hint": "What changes, support or openings could help?"
+        },
+        "t": {
+          "label": "Threats",
+          "hint": "What external risks or constraints should I prepare for?"
+        }
+      },
+      "groups": {
+        "so": "Punti di forza × Opportunità",
+        "wo": "Debolezze × Opportunità",
+        "st": "Punti di forza × Minacce",
+        "wt": "Debolezze × Minacce"
+      },
+      "strategyLabel": "{{group}} strategy {{number}}",
+      "addStrategy": "Add a strategy",
+      "addVision": "Add to five-year vision",
+      "openVision": "Open linked five-year vision",
+      "vision": "Add to vision",
+      "linked": "Linked",
+      "visionHint": "Make this strategy a measurable result, then save it to your five-year visions.",
+      "aiTitle": "AI analysis",
+      "analyze": "Genera con l’IA (facoltativo)",
+      "analyzing": "Analyzing…",
+      "aiHint": "Send this wish and analysis to {{provider}}. Review suggestions before adding them; your writing stays intact.",
+      "aiSetup": "Configura prima l’IA nelle impostazioni",
+      "aiError": "Analysis failed. Your writing is unchanged. Check your AI settings and try again.",
+      "aiSuggestions": "Suggested strategies",
+      "adopt": "Use",
+      "adopted": "Added"
+    }
   },
   "planningChoices": {
     "open": "Choose how I use dayGLANCE",

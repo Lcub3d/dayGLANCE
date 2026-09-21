@@ -182,10 +182,9 @@ const useWeather = () => {
     }
   }, []);
 
-  // Fetch on mount and refresh every hour
+  // App refreshes on mount and settings changes; keep the hourly refresh here.
   useEffect(() => {
     if (isTrayMode) return;
-    fetchWeather();
     const weatherInterval = setInterval(() => {
       fetchWeather();
     }, 60 * 60 * 1000);

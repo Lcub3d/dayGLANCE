@@ -45,16 +45,19 @@ const useGoalsProjects = () => {
 
   // ── Goal CRUD ────────────────────────────────────────────────────────────────
 
-  const addGoal = useCallback((fields) => {
+  const addGoal = useCallback((fields, { id = crypto.randomUUID() } = {}) => {
     const now = new Date().toISOString();
     const newGoal = {
       status: 'active',
-      id: crypto.randomUUID(),
       ...fields,
+      id,
       createdAt: now,
       updatedAt: now,
     };
-    setGoals(prev => [...prev, newGoal]);
+    // A reserved id makes a retried Life Planner hand-off idempotent. Existing
+    // native callers keep the same random-id behaviour because the option is
+    // omitted for ordinary goal creation.
+    setGoals(prev => prev.some(goal => goal.id === id) ? prev : [...prev, newGoal]);
     return newGoal;
   }, []);
 

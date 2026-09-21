@@ -587,7 +587,10 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-daily-content-enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });
-  useEffect(() => { localStorage.setItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled)); }, [weatherEnabled]);
+  useEffect(() => {
+    localStorage.setItem('day-planner-weather-enabled', JSON.stringify(weatherEnabled));
+    if (weatherEnabled && !isTrayMode) fetchWeather();
+  }, [weatherEnabled, fetchWeather]);
   useEffect(() => { localStorage.setItem('day-planner-daily-content-enabled', JSON.stringify(dailyContentEnabled)); }, [dailyContentEnabled]);
   const [syncUrl, setSyncUrl] = useState('');
   // When multi-user is on, whether to include CalDAV credentials (not just URLs)
@@ -8502,7 +8505,7 @@ const DayPlanner = () => {
     dailyNotesModalDate, setDailyNotesModalDate,
 
     // ── Weather ───────────────────────────────────────────────────────────────
-    weather, setWeather,
+    weather, setWeather, fetchWeather,
     weatherZip, setWeatherZip,
     weatherTempUnit, setWeatherTempUnit,
     weatherEnabled, setWeatherEnabled,

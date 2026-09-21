@@ -473,7 +473,7 @@ const CreateNoteCheckbox = ({ checked, onChange }) => {
   );
 };
 
-export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, onCancel, mobile }) => {
+export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, onCancel, mobile, hideGoalPicker = false }) => {
   const { darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks, use24HourClock, isMobile, isTablet } =
     useDayPlannerCtx();
   const { multiUserEnabled, users } = useFeaturesCtx();
@@ -538,7 +538,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
       </div>
 
       {/* Goal */}
-      <div className="flex flex-col gap-1">
+      {!hideGoalPicker && <div className="flex flex-col gap-1">
         <label className={`text-xs font-medium ${textSecondary}`}>{t('goals.goalOptional')}</label>
         <select
           value={goalId}
@@ -558,7 +558,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
             <option key={g.id} value={g.id}>{g.title}</option>
           ))}
         </select>
-      </div>
+      </div>}
 
       {/* Obsidian note (companion §4.3): link an existing note, or create one with the project */}
       {initial ? <NoteLinkRow kind="project" id={initial.id} /> : <CreateNoteCheckbox checked={createNote} onChange={setCreateNote} />}

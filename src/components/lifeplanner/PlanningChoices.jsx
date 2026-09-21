@@ -8,6 +8,8 @@ import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { isPlanningGuideBlocked, isPlanningGuideDOMBusy } from '../../lifeplanner/planningGuideGuard.js';
 import { dismissPlanningChoicesForToday, localPromptDate, PLANNING_PROMPT_DISMISSED_KEY, registerPlanningChoicesVisit } from '../../lifeplanner/planningChoicesPrompt.js';
 import useDialogFocus from './useDialogFocus.js';
+import usePlanningPromptDismissed, { PLANNING_PROMPT_CHANGED } from '../../hooks/usePlanningPromptDismissed.js';
+import { applyPlanningChoice } from '../../lifeplanner/applyPlanningChoice.js';
 import './planningChoices.css';
 
 export function PlanningChoicesButton() {
@@ -17,6 +19,8 @@ export function PlanningChoicesButton() {
   const sync = useSyncCtx();
   const { showPlanningChoices, setShowPlanningChoices } = features;
   const blocked = isPlanningGuideBlocked(ctx, features, sync || {});
+  const dismissed = usePlanningPromptDismissed();
+  if (dismissed) return null;
   return <button type="button" data-planning-choices-trigger
     className="planning-choices-trigger bg-brand text-stone-950"
     aria-label={t('planningChoices.open')} title={t('planningChoices.open')}
@@ -37,7 +41,7 @@ export function PlanningChoiceRow({ name, title, checked, locked, onChange, onOp
     <button type="button" role="switch" aria-checked={checked} disabled={locked}
       aria-labelledby={`${id}-label`} aria-describedby={locked ? `${id}-included` : undefined}
       className="planning-choice-switch" onClick={() => onChange?.(!checked)}>
-      <span aria-hidden="true" className={`planning-choice-track ${checked ? 'bg-blue-600' : ctx.darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+      <span aria-hidden="true" className={`planning-choice-track ${locked ? 'bg-stone-300' : checked ? 'bg-blue-600' : ctx.darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
         <span className="planning-choice-thumb" />
       </span>
     </button>
@@ -113,12 +117,15 @@ export function PlanningChoicesController() {
 export default function PlanningChoices() {
   const ctx = useDayPlannerCtx();
   const { t } = useTranslation();
-  const { setShowPlanningChoices, joboEnabled, setJoboEnabled, lifeplannerEnabled,
-    setLifeplannerEnabled, planningPreferenceError, setShowLifePlanner } = useFeaturesCtx();
+  const features = useFeaturesCtx();
+  const { setShowPlanningChoices, joboEnabled, lifeplannerEnabled,
+    planningPreferenceError, setShowLifePlanner } = features;
   const [snoozeError, setSnoozeError] = useState(false);
   const root = useRef(null), backdrop = useRef(null);
   const id = useId();
   const close = () => setShowPlanningChoices(false);
+  const chooseReview = enabled => applyPlanningChoice('review', enabled, features, ctx);
+  const chooseLife = enabled => applyPlanningChoice('life', enabled, features, ctx);
   useEffect(() => {
     const old = [...document.body.children].filter(el => el !== backdrop.current).map(el => [el, el.inert]);
     old.forEach(([el]) => { el.inert = true; });
@@ -126,19 +133,22 @@ export default function PlanningChoices() {
   }, []);
   useDialogFocus(root, close);
   const dismissToday = () => {
-    if (dismissPlanningChoicesForToday({ setItem: (key, value) => window.localStorage.setItem(key, value) })) close();
+    if (dismissPlanningChoicesForToday({ setItem: (key, value) => window.localStorage.setItem(key, value) })) {
+      window.dispatchEvent(new Event(PLANNING_PROMPT_CHANGED));
+      close();
+    }
     else setSnoozeError(true);
   };
   return createPortal(<div ref={backdrop} className="planning-choices-backdrop" onClick={event => { if (event.target === event.currentTarget) close(); }}>
     <section ref={root} data-planning-choices role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} tabIndex={-1}
-      className={`planning-choices-dialog ${ctx.textPrimary} ${ctx.darkMode ? 'planning-choices-dark' : ''}`}>
+      className="planning-choices-dialog text-stone-900">
       <h2 id={`${id}-title`} data-initial-focus tabIndex={-1}>{t('planningChoices.title')}</h2>
       <div role="group" aria-label={t('planningChoices.group')}>
         <PlanningChoiceRow name="daily" title={t('planningChoices.daily')} checked locked ctx={ctx} />
-        <PlanningChoiceRow name="review" title={t('planningChoices.review')} checked={joboEnabled} onChange={setJoboEnabled} ctx={ctx}
+        <PlanningChoiceRow name="review" title={t('planningChoices.review')} checked={joboEnabled} onChange={chooseReview} ctx={ctx}
           onOpen={joboEnabled && ctx.canShowViewCycler && !ctx.hiddenViews.desktop.includes('jobo') ? () => { ctx.setShowDayDial(false); ctx.setViewMode('jobo'); close(); } : undefined}
           openLabel={t('planningChoices.openJobo')} />
-        <PlanningChoiceRow name="life" title={t('planningChoices.life')} checked={lifeplannerEnabled} onChange={setLifeplannerEnabled} ctx={ctx}
+        <PlanningChoiceRow name="life" title={t('planningChoices.life')} checked={lifeplannerEnabled} onChange={chooseLife} ctx={ctx}
           onOpen={lifeplannerEnabled ? () => { close(); setShowLifePlanner(true); } : undefined} openLabel={t('planningChoices.openLife')} />
       </div>
       {planningPreferenceError && <p role="alert" className="planning-choices-error text-red-500">{t(`planningChoices.${planningPreferenceError}Error`)}</p>}

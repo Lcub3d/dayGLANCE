@@ -23,7 +23,8 @@ describe('vision note has handwriting-like layout without a new font or repeated
     const html = markup();
     for (const key of ['measureHelp', 'durationHelp', 'projectHint', 'writingHelp', 'unsaved', 'planned']) expect(html).not.toContain(`lifeplanner.${key}`);
     expect(html).toContain('aria-label="lifeplanner.noteOptions"'); expect(html).not.toContain('type="date"');
-    expect(html).toContain('lifeplanner.save'); expect(html).toContain('lifeplanner.cancel');
+    expect(html).not.toContain('lifeplanner.save'); expect(html).not.toContain('lifeplanner.cancel');
+    expect(html).not.toContain('<select'); expect(html).not.toContain('lifeplanner.addLine'); expect(html).toContain('lp-duration-unit');
   });
   it('keeps checkpoint text and duration editable and uses handle-only order controls', () => {
     const vision = createVision('Write 2 books', '2026-09-20', 'vision');

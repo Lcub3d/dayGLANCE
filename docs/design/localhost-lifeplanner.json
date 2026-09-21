@@ -1,0 +1,87 @@
+{
+  "source": "http://localhost:5186/",
+  "tokens": {
+    "spacing": {"scale": [4, 8, 12, 16, 20, 24, 32], "base_unit": 4},
+    "typography": {
+      "families": ["-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif"],
+      "scale": [
+        {"role": "page-title", "size": "22px", "line_height": "32px", "weight": "600", "family": "system UI"},
+        {"role": "section-title", "size": "15px", "line_height": "24px", "weight": "600", "family": "system UI"},
+        {"role": "body", "size": "14px", "line_height": "24px", "weight": "400", "family": "system UI"},
+        {"role": "mobile-strategy-input", "size": "16px", "weight": "400", "family": "system UI"},
+        {"role": "secondary", "size": "12px", "weight": "400", "family": "system UI"}
+      ]
+    },
+    "colors": [
+      {"role": "light-surface", "value": "#ffffff"},
+      {"role": "soft-surface", "value": "#fafaf9"},
+      {"role": "primary-text", "value": "#1c1917"},
+      {"role": "secondary-text", "value": "#57534e"},
+      {"role": "placeholder-text", "value": "#78716c"},
+      {"role": "row-rule", "value": "#e7e5e4"},
+      {"role": "input-border", "value": "#d6d3d1"},
+      {"role": "hover-surface", "value": "#f5f5f4"},
+      {"role": "interactive", "value": "#2563eb"},
+      {"role": "brand-entry", "value": "#fe8b00"},
+      {"role": "swot-entry-surface", "value": "#fee2e2"},
+      {"role": "swot-entry-text", "value": "#b91c1c"},
+      {"role": "measurable-surface", "value": "#dcfce7"},
+      {"role": "measurable-text", "value": "#166534"},
+      {"role": "drag-trash", "value": "#dc2626"},
+      {"role": "drag-trash-border", "value": "#ef4444"},
+      {"role": "dark-surface", "value": "#1f2937"},
+      {"role": "dark-primary-text", "value": "#f3f4f6"},
+      {"role": "dark-secondary-text", "value": "#9ca3af"},
+      {"role": "dark-rule", "value": "#374151"},
+      {"role": "dark-interactive", "value": "#60a5fa"}
+    ],
+    "radius": ["12px", "8px", "999px"],
+    "shadows": ["rgba(0, 0, 0, 0.133) 0px 16px 48px 0px"],
+    "image_ratios": [],
+    "grid": {"max_width": "1180px", "columns": 2, "gutter": "24px 32px"}
+  },
+  "taste": [
+    {
+      "name": "成组操作保持纸面秩序",
+      "trigger": "用户需要同时整理多个愿望，并为后续思维导图准备层级数据。",
+      "decision": "愿望与愿景增加连续细竖线；悬停显示行尾删除；框选、多选和整组拖动共用同一选择状态；详情与思维导图入口保持相邻。",
+      "reason": "保留紧凑的正文区域，让批量操作在选中后出现。",
+      "evidence": ["localhost隔离页已实际验证三块框选、非相邻选择、范围选择、整组拖动、菜单排序和批量删除撤销。", "Esc同时清除菜单与选择。", "393×852下默认页纵向堆叠，详情与思维导图保持相邻；详情表格可横向滚动。", "思维导图按钮禁用，本轮没有新页面。", "五级链路实际创建成功；原生目标面板显示1个项目、0/1个任务，第一年目标日期2027-09-21。", "本轮18文件357测试、全量lint和生产构建通过。"]
+    },
+    {
+      "name": "原生色彩与文字层级",
+      "trigger": "规划页同时承载可编辑正文、状态入口和帮助信息。",
+      "decision": "保留已有白色、灰阶、蓝色与橙色，正文使用14px/24px，状态胶囊使用语义红色与绿色。",
+      "reason": "让文字层级和状态语义由已有token控制。",
+      "evidence": ["正文computed style为14px。", "SWOT使用#fee2e2/#b91c1c，可测量愿景使用#dcfce7/#166534。"]
+    },
+    {
+      "name": "信息按需出现",
+      "trigger": "详情帮助列和愿景解释会占用可编辑宽度。",
+      "decision": "允许两列帮助整体收起，默认编辑区域移除愿望与愿景占位提示，仅座右铭空白行保留占位文案。",
+      "reason": "把持续可见的信息限制在当前编辑所需范围。",
+      "evidence": ["帮助收起后12行愿景边界与表头均为x=792.322937。", "默认页仅座右铭空白行保留占位文案，其他空白行仍保留。", "393×852px下sheet x=10px、宽=373.33px，document scrollWidth=393px，无横向溢出，trash保持在sheet内。"]
+    },
+    {
+      "name": "动作回退保持可追溯",
+      "trigger": "拖拽删除和愿景编辑都会改变用户已保存结构。",
+      "decision": "显示拖影，trash删除后保留Undo；保存愿景继续使用存储时长计算，UI偏移单独处理。",
+      "reason": "让删除可恢复，避免把显示坐标混入持久化数据。",
+      "evidence": ["真实鼠标删除测试愿望后Undo恢复同一愿景，拖影可见且trash未跑出sheet。", "两阶段outside click后重开仍为36@1y、52@2y、total=2；未触碰的空白阶段不会保存。", "第3年手填69后outside save/reopen内容正确。", "totalYears继续基于保存durations。"]
+    },
+    {
+      "name": "阶段编辑与原生流程",
+      "trigger": "阶段值按需编辑，并可从愿景进入原生项目创建。",
+      "decision": "只保存被触碰的阶段；支持空白阶段追加、相对单位循环与建议值；项目入口复用原生创建表单并保留取消返回。",
+      "reason": "让阶段编辑、自动保存和外部创建动作保持清晰的返回边界。",
+      "evidence": ["未触碰的空白阶段不保存，手填第3年69后outside save/reopen为69@3y。", "第4个空白阶段切换为5年后建议值100并自动保存；单位循环为5年→60个月→1825天→5年。", "空新愿景按Esc关闭；项目按钮打开原生创建项目表单并预填“阅读36本书”，取消后返回规划页。", "模型回归覆盖旧1个月节点后建议13个月、旧1天后建议366天、混合单位追加及不足一年补到最终期限，均可转换并保存。"]
+    },
+    {
+      "name": "默认内容按语言显示",
+      "trigger": "已保存默认座右铭需要随当前语言变化，而用户自定义文字必须保持原样。",
+      "decision": "仅对固定id和已知默认别名做翻译，其他文本直接保留。",
+      "reason": "区分可翻译种子与用户数据。",
+      "evidence": ["中文默认数据切换Français后5条变为法语，切回中文恢复。", "自定义座右铭未被helper替换。"]
+    }
+  ]
+}

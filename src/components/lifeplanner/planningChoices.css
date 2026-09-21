@@ -2,29 +2,28 @@
 .planning-choices-trigger:hover { filter: brightness(1.08); }
 .planning-choices-trigger:focus-visible, .planning-choice-switch:focus-visible, .planning-choices-snooze:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
 .planning-choices-backdrop { position: fixed; inset: 0; z-index: 150; background: rgb(0 0 0 / .32); display: flex; align-items: center; justify-content: center; padding: 16px; }
-.planning-choices-dialog { width: 420px; max-width: 100%; max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 24px; padding: 26px 26px 18px; background: #fff5d6; box-shadow: 0 20px 65px rgb(0 0 0 / .18); }
-.planning-choices-dark { background: #38301f; }
-.planning-choices-dialog h2 { margin: 0 0 18px; font-weight: 700; font-size: 25px; line-height: 1.3; letter-spacing: -.025em; outline: none; }
+.planning-choices-dialog { width: 420px; max-width: 100%; max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 8px; padding: 24px 24px 16px; background: #fff; box-shadow: 0 20px 65px rgb(0 0 0 / .18); }
+.planning-choices-dialog h2 { margin: 0 0 16px; font-weight: 600; font-size: 18px; line-height: 1.5; letter-spacing: 0; outline: none; }
 .planning-choice-row { display: grid; grid-template-columns: 24px minmax(0,1fr) 50px; gap: 12px; padding: 8px 0; align-items: center; }
-.planning-choice-row h3 { font-size: 18px; line-height: 1.4; font-weight: 600; }
+.planning-choice-row h3 { font-size: 14px; line-height: 1.5; font-weight: 600; }
 .planning-choice-name { text-align: start; border-radius: 4px; }
 .planning-choice-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .planning-choice-name:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
-.planning-choice-symbol { justify-self: center; }
-.planning-choice-switch { height: 44px; width: 50px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.planning-choice-symbol { justify-self: center; color: #57534e; }
+.planning-choice-switch { height: 44px; width: 50px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
 .planning-choice-switch:disabled { cursor: default; }
 .planning-choice-track { display: block; position: relative; width: 46px; height: 28px; border-radius: 999px; transition: background-color 150ms; }
 .planning-choice-thumb { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / .16); transition: transform 150ms; }
 .planning-choice-switch[aria-checked="true"] .planning-choice-thumb { transform: translateX(18px); }
-.planning-choices-footer { display: flex; justify-content: center; margin-top: 14px; }
-.planning-choices-snooze { min-height: 44px; border-radius: 12px; padding: 8px 20px; font-size: 14px; font-weight: 500; background: rgb(254 139 0 / .10); }
+.planning-choices-footer { display: flex; justify-content: center; margin-top: 12px; }
+.planning-choices-snooze { min-height: 44px; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 500; background: rgb(254 139 0 / .10); }
 .planning-choices-snooze:hover { background: rgb(254 139 0 / .19); }
-.planning-choices-error { margin-top: 10px; font-size: 12px; line-height: 1.6; }
+.planning-choices-error { margin-top: 8px; font-size: 12px; line-height: 1.5; }
 @media (max-width: 440px) {
-  .planning-choices-dialog { padding: 24px 20px 16px; }
-  .planning-choices-dialog h2 { font-size: 23px; }
+  .planning-choices-dialog { padding: 16px; }
+  .planning-choices-dialog h2 { font-size: 18px; }
   .planning-choice-row { gap: 8px; }
-  .planning-choice-row h3 { font-size: 17px; }
+  .planning-choice-row h3 { font-size: 14px; }
   .planning-choices-trigger { width: 44px; height: 44px; flex-basis: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .planning-choices-trigger, .planning-choice-track, .planning-choice-thumb { transition: none; } }

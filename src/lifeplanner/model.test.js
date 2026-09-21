@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as M from './model.js';
+import { ensureStepGoal, ensureStepProject, provenanceForStep, stableGoalId, stableProjectId } from './hierarchy.js';
 const wish = () => M.createWish('A meaningful working life', 'career', 'wish-1');
 const vision = () => M.createVision('Publish 2 books, in 3 years', '2026-09-20', 'vision-1');
 const doc = () => ({ ...M.defaultDocument(['Be honest']), wishes: [{ ...wish(), visions: [vision()] }] });
@@ -41,12 +42,71 @@ describe('Life Planner workbook model', () => {
     const step = { id:'s1',value:1,amount:1,unit:'year' };
     expect(M.validateVision({ ...vision(),steps:[step,step] })).toBe('steps');
   });
+  it('accepts optional native goal links and rejects malformed ones', () => {
+    const step = { id:'s1', value:1, amount:1, unit:'year', goalId:'goal-1', projectId:'project-1' };
+    expect(M.validateVision({ ...vision(), steps:[step] })).toBeNull();
+    expect(M.validateVision({ ...vision(), steps:[{ ...step, goalId: 7 }] })).toBe('steps');
+    expect(M.validateVision({ ...vision(), steps:[{ ...step, goalId: 'bad id' }] })).toBe('steps');
+    expect(M.validateVision({ ...vision(), steps:[{ ...step, projectId: 'bad id' }] })).toBe('steps');
+    expect(M.validateVision({ ...vision(), steps:[{ id:'s1', value:1, amount:1, unit:'year' }] })).toBeNull();
+  });
   it('sums successive time windows; values are results, not summed budgets', () => {
     const v = { ...vision(), steps: [{ id:'s1',value:1,amount:12,unit:'month' },{ id:'s2',value:2,amount:2,unit:'year' }] };
     expect(M.totalYears(v)).toBe(3);
     expect(M.validateVision(v)).toBeNull();
     expect(M.milestoneDate(v,'s2')).toBe('2029-09-20');
     expect(M.validateVision({ ...v, amount:3,steps:[...v.steps,{id:'s3',value:2,amount:1,unit:'day'}] })).toBe('total');
+  });
+  it('shows legacy successive durations as absolute checkpoint offsets and saves them back unchanged', () => {
+    const stored = { ...vision(), steps: [{ id:'s1',value:1,amount:1,unit:'year' }, { id:'s2',value:2,amount:2,unit:'year' }] };
+    const displayed = M.toAbsoluteVision(stored);
+    expect(displayed.steps.map(step => step.amount)).toEqual([1, 3]);
+    const roundTrip = M.toStoredVision(displayed);
+    expect(roundTrip.steps.map(step => step.amount)).toEqual([1, 2]);
+    expect(M.milestoneDate(roundTrip, 's2')).toBe(M.milestoneDate(stored, 's2'));
+    expect(M.toStoredVision({ ...displayed, steps: [displayed.steps[1]] }, stored).steps[0].amount).toBe(3);
+  });
+  it('preserves mixed calendar units and milestone dates when only the note text changes', () => {
+    const stored = { ...M.createVision('Reach the garden', '2028-02-29', 'mixed'), steps: [
+      { id:'d', value:1, amount:1, unit:'day' },
+      { id:'m', value:2, amount:1, unit:'month' },
+    ] };
+    const displayed = M.toAbsoluteVision(stored);
+    const roundTrip = M.toStoredVision({ ...displayed, title:'Reach the garden slowly' }, stored);
+    expect(roundTrip.steps).toEqual(stored.steps);
+    expect(M.milestoneDate(roundTrip, 'm')).toBe(M.milestoneDate(stored, 'm'));
+  });
+  it('suggests absolute year checkpoints and interpolates their values', () => {
+    const first = M.suggestVisionStep(vision());
+    expect(first).toMatchObject({ amount: 1, unit: 'year', value: .67 });
+    const second = M.suggestVisionStep({ ...vision(), steps: [first] });
+    expect(second).toMatchObject({ amount: 2, unit: 'year', value: 1.33 });
+    const third = M.suggestVisionStep({ ...vision(), steps: [first, second] });
+    expect(third).toMatchObject({ amount: 3, unit: 'year', value: 2 });
+    expect(M.suggestVisionStep({ ...vision(), steps: [first, second, third] })).toBeNull();
+  });
+  it('keeps default checkpoints editable for legacy month and day stages', () => {
+    const monthVision = { ...vision(), steps: [{ id:'m', value:1, amount:1, unit:'month' }] };
+    const monthNext = M.suggestVisionStep(monthVision);
+    expect(monthNext).toMatchObject({ amount:13, unit:'month', value: .72 });
+    const monthStored = M.toStoredVision({ ...monthVision, steps: [...monthVision.steps, monthNext] }, monthVision);
+    expect(M.validateVision(monthStored)).toBeNull();
+    expect(monthStored.steps.map(step => [step.amount, step.unit])).toEqual([[1, 'month'], [12, 'month']]);
+    const dayVision = { ...vision(), steps: [{ id:'d', value:1, amount:1, unit:'day' }] };
+    const dayNext = M.suggestVisionStep(dayVision);
+    expect(dayNext).toMatchObject({ amount:366, unit:'day' });
+    const dayStored = M.toStoredVision({ ...dayVision, steps: [...dayVision.steps, dayNext] }, dayVision);
+    expect(M.validateVision(dayStored)).toBeNull();
+    expect(dayStored.steps.map(step => [step.amount, step.unit])).toEqual([[1, 'day'], [365, 'day']]);
+    const mixed = { ...vision(), steps: [
+      { id:'d', value:1, amount:1, unit:'day' },
+      { id:'m', value:2, amount:1, unit:'month' },
+    ] };
+    const mixedDisplay = M.toAbsoluteVision(mixed);
+    const mixedNext = M.suggestVisionStep(mixedDisplay);
+    expect(mixedNext).toMatchObject({ amount:13, unit:'month' });
+    const mixedStored = M.toStoredVision({ ...mixedDisplay, steps: [...mixedDisplay.steps, mixedNext] }, mixed);
+    expect(M.validateVision(mixedStored)).toBeNull();
   });
   it.each([[0,'year'],[-1,'year'],[1.5,'month'],[6,'year'],[1,'unknown']])('rejects invalid stage duration %s %s', (amount,unit) => {
     expect(M.validateVision({ ...vision(),steps:[{id:'s1',value:1,amount,unit}] })).toBe('duration');
@@ -107,5 +167,43 @@ describe('Life Planner workbook model', () => {
   it('creates only native project fields, never task payloads or completion writes', () => {
     const step={id:'s1',value:1,amount:1,unit:'year'},v={...vision(),steps:[step]};
     expect(M.projectFields(wish(),v,step,'Context')).toEqual({title:'Publish 1 books',description:'Context',targetDate:'2027-09-20',color:'bg-blue-500'});
+    expect(M.projectFields(wish(),v,step,'Context',{ goalId:'goal-1', lifeplanner:{ wishId:'wish-1', visionId:v.id, stepId:step.id } })).toEqual({
+      title:'Publish 1 books', description:'Context', targetDate:'2027-09-20', color:'bg-blue-500',
+      goalId:'goal-1', lifeplanner:{ wishId:'wish-1', visionId:v.id, stepId:step.id },
+    });
+  });
+  it('validates a native hand-off built from real UUID identities', () => {
+    const lifeWish = M.createWish('Build a sustainable studio', 'creation', '6f8f9b31-7f41-4fc8-9e1d-d4c6f47f8f35');
+    const lifeVision = M.createVision('Publish 2 books', '2026-09-20', '0cc7e7a1-443f-4ce7-8f4d-b5d9dc0de2db');
+    const step = { id:'8e3c7a40-9e2b-4a47-8f8f-8d6a8e4c3210', value:1, amount:1, unit:'year' };
+    const provenance = provenanceForStep(lifeWish, lifeVision, step);
+    const linked = { ...lifeVision, steps: [{ ...step, goalId: stableGoalId(provenance.lifeplanner), projectId: stableProjectId(step.id) }] };
+    expect(linked.steps[0].goalId.length).toBeLessThanOrEqual(100);
+    expect(M.validateVision(linked)).toBeNull();
+    const saved = M.saveVision({ ...M.defaultDocument(), wishes:[lifeWish] }, lifeWish.id, linked, null);
+    expect(saved.wishes[0].visions[0].steps[0]).toMatchObject(linked.steps[0]);
+  });
+  it('creates the UUID native goal/project chain after the linked vision is valid', () => {
+    const lifeWish = M.createWish('Build a sustainable studio', 'creation', 'f2a37e4c-5df8-4a79-8d3a-8f779f84a10e');
+    const lifeVision = M.createVision('Publish 2 books', '2026-09-20', '44a1cb68-a5b9-4c0e-a251-90eec0cb1d16');
+    const step = { id:'c5b4f69a-67bd-4f9a-bf4a-fb6ed9a81623', value:1, amount:1, unit:'year' };
+    const goals = [], projects = [];
+    const addGoal = (fields, { id }) => { const goal = { ...fields, id }; goals.push(goal); return goal; };
+    const addProject = (fields, { id }) => { const project = { ...fields, id }; projects.push(project); return project; };
+    const goal = ensureStepGoal({ wish:lifeWish, vision:lifeVision, step, goals, addGoal });
+    const linkedStep = { ...step, goalId:goal.id, projectId:stableProjectId(step.id) };
+    const linkedVision = { ...lifeVision, steps:[linkedStep] };
+    expect(M.validateVision(linkedVision)).toBeNull();
+    const saved = M.saveVision({ ...M.defaultDocument(), wishes:[lifeWish] }, lifeWish.id, linkedVision, null);
+    const savedVision = saved.wishes[0].visions[0];
+    const project = ensureStepProject({
+      wish:lifeWish, vision:savedVision, step:savedVision.steps[0], goal:goal.goal, projects, addProject,
+      fields:M.projectFields(lifeWish, savedVision, savedVision.steps[0], 'Context', { goalId:goal.id }),
+    });
+    expect(goal.status).toBe('created');
+    expect(project.status).toBe('created');
+    expect(project.project).toMatchObject({ id:linkedStep.projectId, goalId:goal.id });
+    expect(project.project.source_app).toBe('app.dayglance.lifeplanner');
+    expect(project.project.lifeplanner).toEqual({ wishId:lifeWish.id, visionId:lifeVision.id, stepId:step.id });
   });
 });

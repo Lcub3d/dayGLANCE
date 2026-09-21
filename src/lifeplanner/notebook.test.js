@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORY_IDS, createVision, createWish, defaultDocument, validateDocument } from './model.js';
-import { commitNotebookText, moveNotebookItem, notebookCategories } from './notebook.js';
+import { commitNotebookText, moveNotebookItem, moveNotebookItems, notebookCategories } from './notebook.js';
 import { createPlannerStore } from './store.js';
 
 function doc() {
@@ -27,6 +27,23 @@ describe('notebook is a view of the existing Life Planner document', () => {
     expect(moved.map(w=>w.id)).toEqual(expected);
     expect(moved.find(w=>w.id==='a')).toBe(d.wishes[0]);
     expect(d.wishes.map(w=>w.id)).toEqual(['a','b','c']);
+  });
+  it.each([
+    [['b','c'], 'a', false, ['b','c','a','d']],
+    [['b','c'], 'd', true, ['a','d','b','c']],
+    [['a','c'], 'd', false, ['b','a','c','d']],
+  ])('moves a selected block as one unit while keeping internal order: %j', (moving, target, after, expected) => {
+    const d = doc(); d.wishes.push(createWish('d', 'creation', 'd'));
+    const moved = moveNotebookItems(d.wishes, moving, target, after);
+    expect(moved.map(item => item.id)).toEqual(expected);
+    expect(moved.find(item => item.id === 'b')).toBe(d.wishes[1]);
+    expect(moved.find(item => item.id === 'c')).toBe(d.wishes[2]);
+  });
+  it('rejects a batch target inside the selected block and stale batch snapshots', () => {
+    const d = doc();
+    expect(moveNotebookItems(d.wishes, ['b','c'], 'c', false)).toBe(d.wishes);
+    expect(() => moveNotebookItems([...d.wishes].reverse(), ['b','c'], 'a', false, ['a','b','c'])).toThrow('conflict');
+    expect(() => moveNotebookItems(d.wishes, ['a','outside'], 'c')).toThrow('missing');
   });
   it('reorders within the assistant category without changing category or dropping hidden rows', () => {
     const d=doc(), moved=moveNotebookItem(d.wishes,'b','a',false,['a','b']);

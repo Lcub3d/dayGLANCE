@@ -1,0 +1,79 @@
+diff --git a/scripts/life-map-review.py b/scripts/life-map-review.py
+index e86f5d1..6ab67fc 100644
+--- a/scripts/life-map-review.py
++++ b/scripts/life-map-review.py
+@@ -74,7 +74,7 @@ def open_planner(page, english=False, mobile=False):
+     if reminder.count():
+         reminder.locator('button').first.click()
+     if mobile:
+-        tabs = page.locator('button').filter(has=page.locator('svg.lucide-git-branch'))
++        tabs = page.locator('.fixed.bottom-0').get_by_role('button').filter(has=page.locator('svg.lucide-flag'))
+         if tabs.count():
+             tabs.first.click()
+     page.get_by_role('button', name='Life planning' if english else '生活规划', exact=True).first.click()
+@@ -130,6 +130,7 @@ def find_and_select(page, kind, text):
+     maproot(page).get_by_label('搜索人生蓝图', exact=True).fill(text)
+     item = node(page, kind, text)
+     expect(item).to_be_visible()
++    expect(item.locator('.lm-node-title')).to_be_in_viewport(ratio=.99)
+     item.locator('.lm-node-title').click()
+     expect(page.locator('.lm-inspector')).to_be_visible()
+     return item
+@@ -165,6 +166,8 @@ with sync_playwright() as playwright:
+             expect(node(page, 'wish')).to_have_count(1)
+             expect(node(page, 'goal')).to_have_count(1)
+             expect(node(page, 'task').first).to_have_class(__import__('re').compile('is-match'))
++            expect(node(page, 'task').first.locator('.lm-node-title')).to_be_in_viewport(ratio=.99)
++            page.locator('[data-lifeplanner]').screenshot(path=str(OUT / 'life-map-search.png'))
+             maproot(page).get_by_label('清空搜索', exact=True).click()
+             expect(node(page, 'task')).to_have_count(2)
+             maproot(page).get_by_label('展开全部分支', exact=True).click()
+@@ -322,6 +325,9 @@ with sync_playwright() as playwright:
+                 page.screenshot(path=str(OUT / f'life-map-{width}-{"en" if english else "zh"}-{"dark" if dark else "light"}.png'))
+             check(f'{width}px {"English" if english else "Chinese"} {"dark" if dark else "light"} renders the real map without overflow', responsive, page)
+             context.close()
++    except Exception as exc:
++        RESULTS.append({'name': 'browser setup or scenario bootstrap', 'passed': False, 'error': str(exc)})
++        raise
+     finally:
+         browser.close()
+         report = {'tests': RESULTS, 'uncaughtErrors': ERRORS, 'screenshots': 'Production app in Chromium with synthetic fixtures; not physical hardware.'}
+diff --git a/src/components/lifeplanner/LifeMap.jsx b/src/components/lifeplanner/LifeMap.jsx
+index 465a694..b60ac09 100644
+--- a/src/components/lifeplanner/LifeMap.jsx
++++ b/src/components/lifeplanner/LifeMap.jsx
+@@ -1,5 +1,5 @@
+ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+-import { ReactFlow, ReactFlowProvider, Background, Handle, Position, useNodesInitialized, useReactFlow } from '@xyflow/react';
++import { ReactFlow, ReactFlowProvider, Background, Handle, Position, getNodesBounds, getViewportForBounds, useNodesInitialized, useReactFlow } from '@xyflow/react';
+ import { ArrowUpRight, BookOpen, Check, CheckSquare, ChevronDown, ChevronRight, Compass, Expand, Layers, Minus, Network, Plus, Search, Star, Target, X } from 'lucide-react';
+ import { useTranslation } from 'react-i18next';
+ import { buildLifeMap, emptyMapView, filterLifeMap, layoutLifeMap, MAP_TOMBSTONE_KEYS, readMapTombstones, readMapView, writeMapView } from '../../lifeplanner/lifeMap.js';
+@@ -56,7 +56,7 @@ function MapCanvas({ document, goals, projects, tasks, unscheduledTasks, recurri
+   const ids = useMemo(() => graph.nodes.map(n => n.id), [graph]);
+   const filtered = useMemo(() => filterLifeMap(graph, { wishId, query, level, showUnlinked, collapsed: view.collapsed }), [graph, wishId, query, level, showUnlinked, view.collapsed]);
+   const projection = useMemo(() => layoutLifeMap(filtered, view.positions), [filtered, view.positions]);
+-  const { fitView, setCenter, zoomIn, zoomOut } = useReactFlow();
++  const { setViewport, setCenter, zoomIn, zoomOut } = useReactFlow();
+   const canvas = useRef(null), fitAll = useRef(false);
+   const initialized = useNodesInitialized();
+   const selected = filtered.nodes.find(n => n.id === selectedId);
+@@ -91,11 +91,16 @@ function MapCanvas({ document, goals, projects, tasks, unscheduledTasks, recurri
+         || projection[0];
+       if (!fitAll.current && canvas.current?.clientWidth < 600 && anchor) {
+         setCenter(anchor.position.x + 112, anchor.position.y + 48, { zoom: .95, duration: 0 });
+-      } else fitView({ padding: .16, maxZoom: 1, minZoom: .12, duration: 0 });
++      } else if (canvas.current) {
++        // Fit the current projection, not React Flow's previous internal node
++        // lookup while a filter is still propagating through its store.
++        const { clientWidth: width, clientHeight: height } = canvas.current;
++        setViewport(getViewportForBounds(getNodesBounds(projection), width, height, .12, 1, .16), { duration: 0 });
++      }
+       fitAll.current = false;
+     });
+     return () => cancelAnimationFrame(frame);
+-  }, [initialized, fitRevision, fitView, setCenter, projection, wishId]);
++  }, [initialized, fitRevision, setViewport, setCenter, projection, wishId]);
+   const fit = (all = false) => { fitAll.current = all; requestFit(value => value + 1); };
+   const reset = () => { readBlocked.current = false; update(() => emptyMapView()); fit(); };
+   const select = (_event, node) => setSelectedId(node.id);

@@ -38,10 +38,11 @@ jobs:
           PY
           git apply --unidiff-zero --index /tmp/life-map.patch
           git apply --index .github/life-map-fixes.patch
-          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch
+          git apply --index .github/life-map-geometry.patch
+          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch .github/life-map-geometry.patch
           git diff --cached --check
           git write-tree > review-artifacts/tree.txt
-          test "$(git write-tree)" = efdc587c125d9bce8a6d73cb3fcd3d980506565c
+          test "$(git write-tree)" = 4b985792360261d1a2eca89ce3c409adfce4ff4b
       - uses: actions/setup-node@v4
         with:
           node-version: 22

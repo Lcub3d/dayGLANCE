@@ -414,6 +414,8 @@
     "showWeatherInHeader": "Mostrar clima en el encabezado",
     "weatherZipLabel": "Código postal o nombre de ciudad",
     "weatherTempUnit": "Unidad de temperatura",
+    "location": "Ubicación",
+    "locationHelp": "El amanecer, el atardecer, la luna y el clima por horas de la esfera del día y su widget se calculan para este lugar.",
     "dailyContent": "Contenido diario",
     "showDailyContent": "Mostrar consejos y citas diarias en el encabezado",
     "goalsProjects": "Objetivos y proyectos",

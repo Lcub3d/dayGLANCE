@@ -414,6 +414,8 @@
     "showWeatherInHeader": "Mostra meteo nell'intestazione",
     "weatherZipLabel": "CAP o nome della città",
     "weatherTempUnit": "Unità di temperatura",
+    "location": "Posizione",
+    "locationHelp": "Alba, tramonto, luna e meteo orario del quadrante del giorno e del suo widget sono calcolati per questo luogo.",
     "dailyContent": "Contenuto quotidiano",
     "showDailyContent": "Mostra consigli e citazioni del giorno nell'intestazione",
     "goalsProjects": "Obiettivi e progetti",

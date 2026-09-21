@@ -1,0 +1,53 @@
+name: PR 7 portal source preparation
+on:
+  push:
+    branches: [feat/lifeplanner-life-map]
+    paths: [.github/workflows/pr7-portal-fix-preparation.yml]
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  prepare:
+    if: github.repository_id == '1353756657'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare the bounded source object without moving any branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import difflib, hashlib, json, os, subprocess
+          from pathlib import Path
+          repo = 'Lcub3d/dayGLANCE'
+          pr = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/pulls/7'], text=True))
+          assert pr['state'] == 'open' and not pr['merged']
+          assert pr['base']['ref'] == 'lifeplanner'
+          assert pr['head']['ref'] == 'feat/lifeplanner-life-map'
+          assert pr['head']['sha'] == os.environ['GITHUB_SHA']
+          path = 'src/components/goals/GoalDashboard.jsx'
+          original = Path(path).read_text()
+          assert hashlib.sha256(original.encode()).hexdigest() == '819fc3403f81cdeb4a054d76f0279a67be59f7ef667883be0f0997f53570cdcc'
+          old = "      // Planner portals own their keys while above this cached mobile tab.\n      if (e.target?.closest?.('[data-planning-choices], [data-lifeplanner]')) return;"
+          new = "      // Planner sheets are siblings of the notebook root, not its descendants.\n      // Yield to the mounted overlay even when focus briefly lands on body.\n      if (document.querySelector('[data-planning-choices], [data-lifeplanner], [data-life-vision], [data-life-swot]')) return;"
+          assert original.count(old) == 1
+          fixed = original.replace(old, new)
+          assert hashlib.sha256(fixed.encode()).hexdigest() == 'f84d4084a60239a3214b6fde32c88259cd1229943b83d0110affdeaf188e78e1'
+          payload = json.dumps({'content': fixed, 'encoding': 'utf-8'})
+          result = subprocess.run(['gh', 'api', '--method', 'POST', f'repos/{repo}/git/blobs', '--input', '-'], input=payload, text=True, capture_output=True, check=True)
+          blob = json.loads(result.stdout)
+          assert blob['sha'] == 'dca2a1a369b681957c287105fb021c5ef5393256'
+          out = Path('portal-fix-artifacts'); out.mkdir()
+          (out / 'source-object.json').write_text(json.dumps({'sha': blob['sha'], 'path': path, 'sourceCommit': os.environ['GITHUB_SHA']}, indent=2))
+          (out / 'GoalDashboard.jsx').write_text(fixed)
+          (out / 'portal.patch').write_text(''.join(difflib.unified_diff(original.splitlines(True), fixed.splitlines(True), fromfile='a/'+path, tofile='b/'+path)))
+          print('Prepared source object:', blob['sha'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr7-portal-source-object
+          path: portal-fix-artifacts/
+          retention-days: 1

@@ -1,0 +1,37 @@
+name: Life Map review
+on:
+  push:
+    branches: [feat/lifeplanner-life-map]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  environment:
+    if: github.repository == 'Lcub3d/dayGLANCE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm install --save-exact @xyflow/react@12.11.3 --no-audit --no-fund
+      - name: Archive source and offline review dependencies
+        run: |
+          mkdir -p /tmp/life-map-environment
+          git archive --format=tar.gz -o /tmp/life-map-environment/source.tar.gz HEAD
+          git diff -- package.json package-lock.json > /tmp/life-map-environment/dependencies.patch
+          tar -czf /tmp/life-map-environment/node-modules.tar.gz node_modules
+          git rev-parse HEAD > /tmp/life-map-environment/commit.txt
+          node --version > /tmp/life-map-environment/node-version.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: life-map-environment
+          path: /tmp/life-map-environment/
+          retention-days: 3

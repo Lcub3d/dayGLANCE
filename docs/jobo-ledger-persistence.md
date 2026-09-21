@@ -7,12 +7,12 @@ it is the slice that is hardest to change later, and because two people are
 building against it: the pure rules in `src/jobo/core.js` are slice 2 and are
 @Lcub3d's; the view is slice 5. Nothing here draws anything.
 
-Revised after two rounds of @Lcub3d's review on #1744. The first tightened
+Revised after three rounds of @Lcub3d's review on #1744. The first tightened
 the record contract, the identity rule and the storage failure semantics; the
 second closed a recurring-identity collision, replaced a convergence claim
 with a convergence rule, and removed a recovery promise the localStorage
-fallback could not keep. Those revisions are marked where they changed a
-decision.
+fallback could not keep; the third removed the sync horizon from the
+file-tier merge. Those revisions are marked where they changed a decision.
 
 The short version: **the ledger is a collection, not a task field and not a
 cache.** Each Do record is its own row with its own timestamp, stored in
@@ -262,10 +262,23 @@ a field. The cross-list reconciliation for `TASK_KINDS` does not apply; a
 record never moves between kinds.
 
 **File tier (`src/mergeSync.js`).** In `mergeSyncData`, merge `joboRecords`
-with `mergeArrayById(local, remote, {}, horizon, { timestampField: 'updatedAt' })`,
-the same call `mergeTaskArrays` wraps, with the pick rule supplied for the
-tie. Set `localChanged` and `remoteChanged` on the same contract the habit-log
-merge uses.
+with `mergeArrayById(local, remote, {}, null, { timestampField: 'updatedAt' })`,
+with the pick rule supplied for the tie, and set `localChanged` and
+`remoteChanged` on the same contract the habit-log merge uses. **The fourth
+argument is `null`, never the sync horizon.** (From the third review round;
+the first draft passed the horizon the way `mergeTaskArrays` does.) That
+helper drops any local-only row whose timestamp is older than the remote's
+`tombstonePrunedBefore`, on the theory that its tombstone was pruned and the
+row is a zombie. The theory holds for tasks, whose tombstones live in a map
+that is pruned at sixty days. It is wrong for the ledger twice over: the
+ledger's tombstones are rows that are never pruned (see "Deletion"), so a
+returning stale copy is caught by the row itself and no horizon is needed;
+and with the horizon in place, a device that had been offline past the
+window, or a merge against a payload from a build that predates the
+collection (`remote` absent, so every local row is local-only), would
+silently drop every Do record and every tombstone older than sixty days.
+`areas` already passes `null` here for the same reason. The regression is
+scenario 3.
 
 **A device that predates the collection.** An older build drops the key from
 its payload. The vault tier treats an absent bundle as "this device does not
@@ -349,7 +362,8 @@ an old live copy. For tasks the file tier has `syncHorizon` (a local-only
 item older than `tombstonePrunedBefore` is dropped as a presumed zombie), but
 the vault tier is grow-only and would accept the old row. Rather than depend
 on horizon logic on one tier and nothing on the other, the ledger keeps its
-tombstones. A tombstone row is about a hundred bytes, deletions are rare, and
+tombstones, and opts out of the horizon on the file tier, since the horizon
+would drop the very tombstones that make this work (see "Both sync tiers"). A tombstone row is about a hundred bytes, deletions are rare, and
 a kept tombstone is what makes a returning stale copy lose on `updatedAt`
 under every transport, at any age. The collection stays bounded by use.
 
@@ -407,9 +421,13 @@ rather than unit-testing a module. The five from review are folded in.
 2. **A device with the flag off forwards records.** `joboEnabled: false`,
    records present on disk; assert they load, appear in the payload, and
    survive an apply.
-3. **A device that predates the collection does not delete it.** A payload
-   without the key merges against one with it; the records survive on both
-   tiers.
+3. **A device that predates the collection does not delete it, and neither
+   does the horizon.** A payload without the key merges against one with it;
+   the records survive on both tiers. Then, on the file tier, a local-only
+   live record and a local-only tombstone both older than the remote's
+   `tombstonePrunedBefore` merge against a remote that lacks them; assert
+   both survive, and that the tombstone still beats a stale live copy of the
+   same id arriving afterwards.
 4. **Same completion, two devices, one record.** Two hooks observe the same
    completion; assert one record with the source-anchored `updatedAt`. Then
    a user edit on one device, followed by a delayed re-observation on the
@@ -446,7 +464,8 @@ rather than unit-testing a module. The five from review are folded in.
     construct a fresh hook over the same store; assert the records are there.
 
 Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
-remove the flag-independence (2 fails); replace the deterministic id with a
+remove the flag-independence (2 fails); pass the sync horizon to the
+file-tier merge (3 loses the old record and the old tombstone); replace the deterministic id with a
 random one (4 yields two records); let re-observation write instead of
 ensure-present (4's edit is overwritten); drop the `observedAt` tie-break and
 let each tier's own tie rule run (4's convergence case ends with a different
@@ -465,7 +484,7 @@ read (9 fails); drop the checked restore write (11 fails).
 | `src/jobo/store.js` | new: strict read, checked write, atomic `update(fn)`, over the shared IndexedDB plumbing; Web Lock or read-only on the fallback |
 | `src/hooks/useJoboLedger.js` | new: state, load, held applies, write-through, the only writer |
 | `src/sync/dbAdapter.js` | `joboRecords` in `COLLECTION_KINDS`, picking with `pickJoboRecord` |
-| `src/mergeSync.js` | merge `joboRecords` by `updatedAt`, picking with `pickJoboRecord` |
+| `src/mergeSync.js` | merge `joboRecords` by `updatedAt`, picking with `pickJoboRecord`, horizon `null` |
 | `src/App.jsx` | `buildSyncPayload` includes it; `applyEngineData` writes it back; backup export and every restore path |
 | `src/utils/resetAppData.js` | `'dayglance-jobo'` in `KNOWN_INDEXEDDB_NAMES` |
 | `CLAUDE.md` | a short section: the ledger is a collection; the hook is the only writer; the flag gates UI not data; never prune ledger tombstones |
@@ -489,4 +508,9 @@ tie-break on `observedAt` rather than by a claim that they are identical, and
 the tie-break is the same function under both transports because each tier's
 own tie rule is order-dependent. The localStorage fallback takes a Web Lock
 where one exists and is read-only where none does, in place of a recovery
-promise it could not keep. The collection design itself is unchanged.
+promise it could not keep.
+
+The third round caught one more: the file-tier merge must not be given the
+sync horizon, which would drop old local-only rows, tombstones included, on
+an offline device or against an older build's payload. The collection design
+itself is unchanged.

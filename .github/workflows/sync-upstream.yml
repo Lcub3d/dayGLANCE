@@ -1,4 +1,4 @@
-name: Sync upstream main
+name: Sync upstream and development branches
 
 on:
   schedule:
@@ -9,15 +9,54 @@ permissions:
   contents: write
 
 concurrency:
-  group: sync-upstream-main
+  group: sync-upstream-branches
   cancel-in-progress: true
 
 jobs:
-  sync:
+  sync-main:
     runs-on: ubuntu-latest
     steps:
       - name: Sync fork main with upstream
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api             --method POST             "/repos/${{ github.repository }}/merge-upstream"             -f branch=main
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/merge-upstream" \
+            -f branch=main
+
+  sync-development-branches:
+    needs: sync-main
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        branch:
+          - lifeplanner
+          - jobo
+
+    steps:
+      - name: Check out development branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream main
+        run: |
+          git remote add upstream https://github.com/krelltunez/dayGLANCE.git
+          git fetch upstream main
+
+      - name: Merge upstream main
+        run: |
+          git merge --no-edit upstream/main
+
+      - name: Push updated branch
+        run: |
+          git push origin HEAD:${{ matrix.branch }}

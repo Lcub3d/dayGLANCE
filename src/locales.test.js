@@ -171,8 +171,18 @@ describe('locale bundles', () => {
       ).toEqual([]);
     });
 
+    // A language may need a plural form English has no category for. Italian
+    // ordinals select `many` for 8 and 11, where English has only one/two/few/
+    // other, so `ordinal_ordinal_many` is legitimate in it and absent from en.
+    // Such a key is allowed when en carries the same family.
+    const PLURAL = /_(zero|one|two|few|many|other)$/;
+    const family = (key) => key.replace(PLURAL, '');
+
     it.each(TRANSLATED)('%s carries no keys that en does not', (lng) => {
-      const extra = [...keysOf(lng)].filter((k) => !keysOf('en').has(k));
+      const families = new Set([...keysOf('en')].map(family));
+      const extra = [...keysOf(lng)].filter(
+        (k) => !keysOf('en').has(k) && !(PLURAL.test(k) && families.has(family(k))),
+      );
       expect(extra, `${lng} has keys absent from en`).toEqual([]);
     });
   });

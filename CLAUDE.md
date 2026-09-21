@@ -75,6 +75,26 @@ Strings live in the normal locale bundles under the `todoist` prefix, not in a
 feature-local namespace. Add new keys to `public/locales/*/translation.json`;
 `locales.test.js` enforces coverage across every language.
 
+# JOBO ledger
+
+`src/jobo/` holds the plan-versus-actual ledger (#1726). The design is
+`docs/jobo-ledger-persistence.md`; the rules that are load-bearing:
+
+- **The ledger is a collection, not a task field and not a cache.** Each Do
+  record is its own row with its own `updatedAt`. The task gains no field.
+- **`useJoboLedger` is the only writer.** Detectors, manual entry, importers and
+  both sync tiers go through it; nothing else touches `dayglance-jobo`.
+- **Not loaded is not empty.** `joboRecords` is `undefined` until a strict read
+  succeeds, and the sync payload omits the key while it is. An unreadable
+  ledger is never published as `[]`.
+- **Both tiers pick with one rule.** Copies of one record converge by the
+  shared pick (newer `updatedAt`, then lower `observedAt`); each tier's own
+  "remote wins" tie is order-dependent and would never converge.
+- **Ledger tombstones are never pruned, and the file-tier merge gets no sync
+  horizon.** The horizon drops old local-only rows, tombstones included.
+- **The flag gates the interface, never the data.** A device with JOBO off
+  still loads, stores, pushes, pulls and merges records.
+
 # Adding a field to a task
 
 Task rows cross four subsystems, and a new field has to be declared to each one

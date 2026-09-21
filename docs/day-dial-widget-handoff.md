@@ -276,8 +276,9 @@ the lit `fraction` for the glyph and `glyphMin`, the minute the in-app dial
 places its moon glyph at. Null until a location has been geocoded
 (`useWeather` stores the coords after each successful geocode, whether or not
 header weather is on; the field is Settings → Weather on desktop and tablet and
-Settings → Location on phones, which had no way to set one until the dial
-shipped there), in which case the face draws the
+Settings → App Settings → Location on phones (`MobileSettingsPanel`, the
+phone's own settings surface; phones never open `SettingsModal`), which had no
+way to set one until the dial shipped there), in which case the face draws the
 ring **unlit** (a neutral track at the sky radius, `DialSpec.skyUnlitOpacity`)
 and no glyphs. Decided after the first device run of the real widget: the
 empty band read as a rendering fault, not as "no location". The widget's

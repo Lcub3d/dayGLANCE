@@ -4,7 +4,7 @@ import {
   CalendarDays, CheckCircle, CheckSquare, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, Clock, Cloud, ExternalLink, Plug,
   Footprints, FolderOpen, Globe, GripVertical, HelpCircle, Key, LayoutGrid,
-  Loader, Lock, Mic, Moon, Pencil, Plus,
+  Loader, Lock, MapPin, Mic, Moon, Pencil, Plus,
   Flag, RefreshCw, Save, Server, Settings, Sparkles, Sun, Target, Trash2,
   Undo2, Upload, Users, Volume2, VolumeX, Wifi, WifiOff, Zap,
 } from 'lucide-react';
@@ -67,6 +67,7 @@ const MobileSettingsPanel = () => {
     inboxAutoArchiveDays, setInboxAutoArchiveDays,
     weekStartDay, setWeekStartDay,
     homeTimezone, setHomeTimezone,
+    weatherZip, setWeatherZip, fetchWeather, weatherTempUnit, setWeatherTempUnit,
     collapsedSettings,
     soundEnabled, setSoundEnabled,
     setShowHelpModal,
@@ -646,6 +647,47 @@ const MobileSettingsPanel = () => {
             <option key={tz} value={tz}>{getTzLabel(tz)}</option>
           ))}
         </select>
+      </div>
+
+      {/* Location. The Day Dial's sunrise, sunset, moon and hourly weather,
+          in the app and on the home-screen widget, are computed for this
+          place; without it the dial draws an unlit sky. The same field,
+          geocode and unit as the desktop Weather block (SettingsModal),
+          without the header toggle: nothing on a phone renders header
+          weather, and useWeather geocodes regardless of that toggle. */}
+      <hr className={borderClass} />
+      <div className="space-y-2">
+        <label htmlFor="mobile-settings-location" className={`font-medium ${textPrimary} flex items-center gap-2`}>
+          <MapPin size={16} className={textSecondary} />
+          {t('settings.location')}
+        </label>
+        <p className={`text-xs ${textSecondary}`}>{t('settings.locationHelp')}</p>
+        <input
+          id="mobile-settings-location"
+          type="text"
+          placeholder={t('settings.weatherLocationPlaceholder', { defaultValue: 'e.g. 90210 or Seattle' })}
+          value={weatherZip}
+          onChange={(e) => setWeatherZip(e.target.value)}
+          onBlur={() => fetchWeather()}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        />
+        <div className={`text-xs ${textSecondary}`}>{t('settings.weatherTempUnit')}</div>
+        <div className="flex gap-2">
+          {[{ value: 'fahrenheit', label: '°F' }, { value: 'celsius', label: '°C' }].map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => { setWeatherTempUnit(value); setTimeout(fetchWeather, 100); }}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                weatherTempUnit === value
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* GLANCE default */}

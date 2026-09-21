@@ -703,9 +703,9 @@ const SettingsModal = () => {
 
                     {/* Weather — desktop and tablet (a tablet in landscape
                         already counted as desktop here; portrait now matches).
-                        Phones get the Location block below instead: they have
-                        no header to show weather in, but the Day Dial and its
-                        widget still need a place. */}
+                        Phones never open this modal: their settings live in
+                        MobileSettingsPanel, whose App Settings screen has a
+                        Location section with the same field and unit. */}
                     <div className="space-y-3">
                       <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
                         <Thermometer size={16} className={textSecondary} />
@@ -743,44 +743,6 @@ const SettingsModal = () => {
                           </div>
                         </>
                       )}
-                    </div>
-                    </>)}
-
-                    {isMobile && (<>
-                    <hr className={borderClass} />
-
-                    {/* Location — phones. The Day Dial's sunrise, sunset, moon
-                        and hourly weather, in the app and on the home-screen
-                        widget, are computed for this place; without it the
-                        dial draws an unlit sky. Same field, geocode and unit as
-                        the desktop Weather block, minus the header toggle,
-                        since nothing on a phone renders header weather (and
-                        useWeather geocodes regardless of that toggle). */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <MapPin size={16} className={textSecondary} />
-                        {t('settings.location')}
-                      </h4>
-                      <p className={`text-xs ${textSecondary}`}>{t('settings.locationHelp')}</p>
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherZipLabel')}</label>
-                        <input
-                          type="text"
-                          placeholder={t('settings.weatherLocationPlaceholder', { defaultValue: 'e.g. 90210 or Seattle' })}
-                          value={weatherZip}
-                          onChange={(e) => setWeatherZip(e.target.value)}
-                          onBlur={() => fetchWeather()}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        />
-                      </div>
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherTempUnit')}</label>
-                        <div className="flex gap-2">
-                          <button onClick={() => { setWeatherTempUnit('fahrenheit'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'fahrenheit' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°F</button>
-                          <button onClick={() => { setWeatherTempUnit('celsius'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'celsius' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°C</button>
-                        </div>
-                      </div>
                     </div>
                     </>)}
 

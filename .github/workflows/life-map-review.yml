@@ -39,10 +39,21 @@ jobs:
           git apply --unidiff-zero --index /tmp/life-map.patch
           git apply --index .github/life-map-fixes.patch
           git apply --index .github/life-map-geometry.patch
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/lifeplanner/LifeMap.jsx')
+          s = p.read_text().replace(', useNodesInitialized, useReactFlow', ', useReactFlow')
+          s = s.replace('const { setViewport, setCenter, zoomIn, zoomOut } = useReactFlow();', 'const { setViewport, setCenter, zoomIn, zoomOut, viewportInitialized } = useReactFlow();')
+          s = s.replace('  const initialized = useNodesInitialized();\n', '')
+          s = s.replace('if (!initialized || fitted.current === fitRevision) return;', 'if (!viewportInitialized || fitted.current === fitRevision) return;')
+          s = s.replace('[initialized, fitRevision, setViewport, setCenter, projection, wishId]', '[viewportInitialized, fitRevision, setViewport, setCenter, projection, wishId]')
+          p.write_text(s)
+          PY
+          git add src/components/lifeplanner/LifeMap.jsx
           git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch .github/life-map-geometry.patch
           git diff --cached --check
           git write-tree > review-artifacts/tree.txt
-          test "$(git write-tree)" = 4b985792360261d1a2eca89ce3c409adfce4ff4b
+          test "$(git write-tree)" = 51a23e7154438dd72887edd3842c00b19f94dbf1
       - uses: actions/setup-node@v4
         with:
           node-version: 22

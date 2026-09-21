@@ -7824,8 +7824,8 @@ const DayPlanner = () => {
       // moon's phase, from the same solar and lunar math the in-app dial
       // draws with. Null until a location has been geocoded (useWeather
       // stores the coords after each successful geocode, header weather on
-      // or off; Settings → Weather on desktop and tablet, Settings →
-      // Location on phones), and then the widget draws the ring unlit and
+      // or off; Settings → Weather on desktop and tablet, Settings → App
+      // Settings → Location on phones), and then the widget draws the ring unlit and
       // no glyphs, like the dial draws no solar layer. ~0.6 KB.
       sky: computeSkySnapshot(today, getStoredWeatherCoords()),
       // ── The whole day, for the Day Dial widget's ring ──────────────────

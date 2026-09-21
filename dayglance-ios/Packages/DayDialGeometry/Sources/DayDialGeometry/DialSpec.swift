@@ -56,6 +56,12 @@ public enum DialSpec {
 
     // Glyphs sit upright at 104; the needle runs 126–159 with a 3.4pt dot.
     public static let glyphRadius: Double = 104
+    /// The square a glyph view is laid out in, centred on `glyphPoint`. The
+    /// sun glyph spans x ±7 and y −5.6…9.4 plus stroke, the moon r 3.6; 24
+    /// holds both. A glyph must have a real frame: ImageRenderer rasterises
+    /// nothing for a zero-sized view, which is how the first live build of
+    /// the widget drew the sky ring and not one glyph.
+    public static let glyphFrame: Double = 24
     public static let needleInnerRadius: Double = 126
     public static let needleOuterRadius: Double = 159
     public static let needleWidth: Double = 2.6

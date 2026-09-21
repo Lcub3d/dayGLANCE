@@ -47,7 +47,7 @@ import DayDialGeometry
 enum DialFaceCache {
     /// Bump whenever anything in DialFaceView or the palette changes what
     /// the same input draws, or a stale PNG from the previous build is shown.
-    static let renderVersion = "face-v2"   // v2: the unlit sky ring
+    static let renderVersion = "face-v3"   // v2: the unlit sky ring; v3: glyphs drawn in a real frame
 
     static let maxBytes = 12 * 1024 * 1024
     static let maxFiles = 40

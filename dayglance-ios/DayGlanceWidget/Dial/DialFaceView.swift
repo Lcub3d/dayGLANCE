@@ -104,13 +104,13 @@ struct DialFaceView: View {
 
     @ViewBuilder private var glyphs: some View {
         if let rise = input.sunriseMin {
-            SunGlyphView(rising: true).offset(DialSpec.glyphPoint(minutes: rise))
+            SunGlyphView(rising: true).placed(at: DialSpec.glyphPoint(minutes: rise))
         }
         if let set = input.sunsetMin {
-            SunGlyphView(rising: false).offset(DialSpec.glyphPoint(minutes: set))
+            SunGlyphView(rising: false).placed(at: DialSpec.glyphPoint(minutes: set))
         }
         if let moon = input.moon {
-            MoonGlyphView(moon: moon).offset(DialSpec.glyphPoint(minutes: moon.minutes))
+            MoonGlyphView(moon: moon).placed(at: DialSpec.glyphPoint(minutes: moon.minutes))
         }
     }
 
@@ -217,10 +217,26 @@ struct DialCanvas<Content: View>: View {
 }
 
 // MARK: - Glyphs (DialSpec.SunGlyph / DialSpec.MoonGlyph, in glyph-local coordinates)
+//
+// Each glyph is drawn about its own origin, shifted to the centre of a real
+// DialSpec.glyphFrame square, and that square is centred on the dial point.
+// The first version gave the glyph views a zero-sized frame and offset them
+// to the point: on screen that draws, but ImageRenderer, which the face
+// cache renders through, rasterises nothing for a zero-sized view, so the
+// widget shipped a sky ring with no sunrise, sunset or moon. Pinned by
+// LiveSnapshotSkyTests, which samples the three glyph points.
 
 private extension View {
-    /// Places a glyph drawn about the origin at a point on the dial.
-    func offset(_ p: DialPoint) -> some View { offset(x: p.x, y: p.y) }
+    /// Lays a glyph out in its square and centres the square on `p`.
+    func placed(at p: DialPoint) -> some View {
+        frame(width: DialSpec.glyphFrame, height: DialSpec.glyphFrame)
+            .position(x: p.x, y: p.y)
+    }
+
+    /// Moves drawing done about the origin to the centre of the glyph square.
+    func centredInGlyphFrame() -> some View {
+        offset(x: DialSpec.glyphFrame / 2, y: DialSpec.glyphFrame / 2)
+    }
 }
 
 /// Half-disc on a horizon with three rays and a chevron: up above the disc
@@ -257,7 +273,7 @@ struct SunGlyphView: View {
             disc.fill(color.opacity(G.discFillOpacity))
             horizon.stroke(color.opacity(G.horizonOpacity), style: stroke)
         }
-        .frame(width: 0, height: 0)   // the paths sit about the origin; the frame is a point
+        .centredInGlyphFrame()
     }
 }
 
@@ -292,6 +308,6 @@ struct MoonGlyphView: View {
                 .stroke(color.opacity(G.strokeOpacity), lineWidth: G.strokeWidth)
             lit.fill(color.opacity(G.fillOpacity))
         }
-        .frame(width: 0, height: 0)
+        .centredInGlyphFrame()
     }
 }

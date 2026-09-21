@@ -264,7 +264,14 @@ record never moves between kinds.
 **File tier (`src/mergeSync.js`).** In `mergeSyncData`, merge `joboRecords`
 with `mergeArrayById(local, remote, {}, null, { timestampField: 'updatedAt' })`,
 with the pick rule supplied for the tie, and set `localChanged` and
-`remoteChanged` on the same contract the habit-log merge uses. **The fourth
+`remoteChanged` on the same contract the habit-log merge uses: when the pick
+replaces the local copy, raise `localChanged`; when it replaces the remote
+copy, raise `remoteChanged`; when the two copies are equal, raise neither. A
+merge that changes the data without the matching flag never applies or never
+pushes on that device, so it fails to converge; a merge that raises a flag
+without changing the data is the push churn the `archived` field once
+caused, and this collection has no fields for the persist pass to restamp,
+so the flags are the only place that churn could come from. **The fourth
 argument is `null`, never the sync horizon.** (From the third review round;
 the first draft passed the horizon the way `mergeTaskArrays` does.) That
 helper drops any local-only row whose timestamp is older than the remote's

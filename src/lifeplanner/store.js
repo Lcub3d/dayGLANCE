@@ -48,7 +48,7 @@ export function createPlannerStore({ storage, defaults = [], locks, target, now 
           return next;
         } catch (err) {
           if (current !== previous) emit();
-          throw err instanceof Error && ['conflict', 'missing', 'format', 'measure', 'horizon', 'number', 'duration', 'total', 'date', 'steps', 'size', 'limit'].includes(err.message) ? err : new Error('storageWrite');
+          throw err instanceof Error && ['title', 'conflict', 'missing', 'format', 'measure', 'horizon', 'number', 'duration', 'total', 'date', 'steps', 'size', 'limit'].includes(err.message) ? err : new Error('storageWrite');
         }
       };
       const run = () => locks ? locks.request(STORAGE_KEY, operation) : operation();

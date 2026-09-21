@@ -195,14 +195,15 @@ with sync_playwright() as playwright:
     def keep_open_draft():
         open_choices(page); choose(page, 'life', True)
         page.get_by_role('button', name='Open Life Planner', exact=True).click()
-        draft=page.locator('[data-lifeplanner] input[data-initial-focus]')
+        draft=page.locator('[data-lifeplanner] [data-life-blank] textarea').first
         draft.fill('An unsaved life wish')
         peer=context.new_page();peer.goto(BASE, wait_until='domcontentloaded');open_choices(peer)
         choose(peer,'life',False)
         expect(page.locator('[data-lifeplanner]')).to_be_visible()
-        expect(draft).to_have_value('An unsaved life wish')
+        require(page.locator('[data-lifeplanner] textarea').evaluate_all("els=>els.some(el=>el.value==='An unsaved life wish')"), 'Disabling lost the draft or its saved inline row')
         peer.close()
         page.once('dialog', lambda dialog: dialog.accept())
+        page.keyboard.press('Escape')
         page.keyboard.press('Escape')
         expect(page.get_by_role('button',name='Life planning',exact=True)).to_have_count(0)
     check('disabling in another tab preserves an already-open unsaved planner draft', keep_open_draft, page)

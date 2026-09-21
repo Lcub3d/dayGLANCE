@@ -38,11 +38,11 @@ describe('Life Planner native integration contracts',()=>{
     expect(keys(strings)).toEqual(keys(en.lifeplanner));
     for (const id of CATEGORY_IDS) for (const example of strings.categories[id].exampleVision.split('\n')) expect(validateVision(createVision(example,'2026-09-20','test'))).toBeNull();
   });
-  it('keeps the exact workbook headings and five default editable principles',()=>{
-    expect(zh.lifeplanner.title).toBe('100个人生愿望');expect(zh.lifeplanner.principles).toBe('格言（人生原则）');expect(Object.values(zh.lifeplanner.defaults)).toHaveLength(5);
+  it('uses the revised notebook headings and preserves five default mottos',()=>{
+    expect(zh.lifeplanner.title).toBe('人生愿望清单');expect(zh.lifeplanner.principles).toBe('座右铭');expect(Object.values(zh.lifeplanner.defaults)).toHaveLength(5);
   });
   it('uses the native brand token for the guide button; no diagram/mock overlay',()=>{
     const jsx=fs.readFileSync(path.join(root,'src/components/lifeplanner/LifePlanner.jsx'),'utf8');
-    expect(jsx).toContain('lp-guide-button bg-brand');expect(jsx).toContain('life planner');
+    expect(jsx).toContain('lp-guide-button bg-brand');expect(jsx).toContain("L('assistant')");
   });
 });

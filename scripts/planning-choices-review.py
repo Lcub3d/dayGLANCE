@@ -5,7 +5,6 @@ All fixtures are synthetic; screenshots are browser renders, not phone tests.
 import json
 import os
 from datetime import datetime
-from zoneinfo import ZoneInfo
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -28,6 +27,8 @@ def check(name, action, page):
         print('FAIL:', name, str(exc), flush=True)
         page.screenshot(path=str(OUT / f'choices-failure-{len(RESULTS)}.png'))
         (OUT / f'choices-failure-{len(RESULTS)}.txt').write_text(page.locator('body').inner_text(), encoding='utf-8')
+        (OUT/'choices-browser-review.json').write_text(json.dumps({'tests':RESULTS,'uncaughtErrors':ERRORS},ensure_ascii=False,indent=2),encoding='utf-8')
+        raise SystemExit(1)
 
 
 def require(value, message):
@@ -36,7 +37,10 @@ def require(value, message):
 
 
 def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=False, now=None, wait_ms=None):
+    now = now or datetime.fromisoformat('2026-09-23T10:00:00+08:00')
     context = browser.new_context(viewport={'width': width, 'height': 1000 if width > 600 else 852}, locale='zh-CN' if language == 'zh-CN' else 'en-US', timezone_id='Asia/Shanghai', is_mobile=width < 600, has_touch=width < 600, reduced_motion='reduce', service_workers='block')
+    # All tabs share a deterministic date, including peer tabs made by tests.
+    context.on('page', lambda page: page.clock.set_fixed_time(now))
     data = {
         'i18nextLng': language, 'welcomeDismissed': 'true', 'gettingStartedDismissed': 'true',
         'day-planner-darkmode': json.dumps(dark), 'day-planner-glance-fabs-collapsed': '0',
@@ -46,10 +50,12 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=F
     }
     data.update(seed or {})
     if not auto:
-        # Init scripts have no guaranteed order relative to Playwright's clock.
-        # Seed an explicit date, not a browser Date read before the clock installs.
-        local_now = (now or datetime.now(ZoneInfo('Asia/Shanghai'))).astimezone(ZoneInfo('Asia/Shanghai'))
-        data.setdefault('day-planner-planning-choices-dismissed-date', local_now.date().isoformat())
+        # Snoozing now hides the question mark too. For manual-entry scenarios,
+        # use a valid saturated cadence instead of secretly snoozing the UI.
+        data.setdefault('day-planner-planning-choices-cadence-v1', json.dumps({
+            'version': 1, 'lastVisit': now.date().isoformat(),
+            'days': 16, 'mondays': 16, 'sundays': 16,
+        }))
     context.add_init_script("if (!localStorage.getItem('choices-review-seeded')) { Object.entries(" + json.dumps(data) + ").forEach(([k,v])=>localStorage.setItem(k,v));localStorage.setItem('choices-review-seeded','1'); }")
     # Exercise the real weather component with synthetic API fixtures; no
     # screenshot claims these values are a live forecast or the user's city.
@@ -59,14 +65,12 @@ def profile(browser, *, language='en', width=1700, dark=False, seed=None, auto=F
         'daily':{'time':[f'2026-09-{d}' for d in range(20,26)], 'temperature_2m_max':[29,30,30,30,26,27], 'temperature_2m_min':[22,20,20,20,21,20], 'weather_code':[3,2,61,61,61,3]}
     }))
     page = context.new_page()
-    if now is not None:
-        page.clock.set_fixed_time(now)
     page.set_default_timeout(10000)
     page.on('pageerror', lambda error: ERRORS.append(str(error)))
     page.goto(BASE, wait_until='domcontentloaded')
     page.wait_for_timeout(wait_ms if wait_ms is not None else (2000 if auto else 1200))
     if not auto and page.locator('[data-planning-choices]').count():
-        page.locator('.planning-choices-snooze').click()
+        page.keyboard.press('Escape')
     return context, page
 
 
@@ -222,10 +226,15 @@ with sync_playwright() as playwright:
         open_choices(page)
         expect(switch(page,'review')).to_have_attribute('aria-checked','true')
         expect(page.get_by_role('button',name='Open Jobo preview',exact=True)).to_have_count(0)
-        expect(page.locator('[data-planning-choices]')).not_to_contain_text('hidden in Views on this device')
-        choose(page,'review',False);choose(page,'review',True)
-        require(json.loads(page.evaluate("localStorage.getItem('day-planner-hidden-views')"))['desktop']==['jobo'],'Replaced native hidden views')
-    check('enabling an experiment never overrides an explicit native hidden-view choice',native_hidden_choice,page)
+        require(json.loads(page.evaluate("localStorage.getItem('day-planner-hidden-views')"))['desktop']==['jobo'],'Opening chooser changed hidden views')
+        choose(page,'review',False)
+        require(json.loads(page.evaluate("localStorage.getItem('day-planner-hidden-views')"))['desktop']==['jobo'],'Disabling rewrote independent views')
+        # The current preset intentionally reveals Jobo on explicit enable.
+        choose(page,'review',True)
+        expect(page.get_by_role('button',name='Open Jobo preview',exact=True)).to_be_visible()
+        page.wait_for_function("!JSON.parse(localStorage.getItem('day-planner-hidden-views')).desktop.includes('jobo')")
+        require(page.evaluate("JSON.parse(localStorage.getItem('day-planner-default-view'))")=='jobo','Explicit preset did not select Jobo')
+    check('opening preserves hidden views; explicit review enable applies the current Jobo preset',native_hidden_choice,page)
     context.close()
 
     context,page=profile(browser, seed={DOC:'{"version":999,"keep":"recovery"}'})

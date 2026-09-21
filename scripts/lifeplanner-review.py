@@ -63,6 +63,7 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
                                   locale='en-US' if english else 'zh-CN', timezone_id='Asia/Shanghai',
                                   is_mobile=mobile, has_touch=mobile, device_scale_factor=1,
                                   reduced_motion='reduce', service_workers='block')
+    context.add_init_script("localStorage.setItem('day-planner-planning-choices-dismissed-date',new Date().toLocaleDateString('sv-SE'))")
     context.add_init_script("""if (!localStorage.getItem('lifeplanner-review-seeded')) {
       const data = {
        'i18nextLng': LANG, 'welcomeDismissed':'true', 'gettingStartedDismissed':'true',

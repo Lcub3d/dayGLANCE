@@ -6339,7 +6339,7 @@ const DayPlanner = () => {
   // Getting Started checklist — show until dismissed or all items complete
   const showGettingStarted = dataLoaded && !gettingStartedDismissed && !allGettingStartedComplete;
 
-  useAppInit({
+  const initialWelcomeChecked = useAppInit({
     loadData, fetchAllDailyContent, setContentRotation,
     dailyContentEnabled,
     dataLoaded, hasZeroRealTasks,
@@ -8394,7 +8394,7 @@ const DayPlanner = () => {
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,
     completedTaskUids, setCompletedTaskUids,
-    dataLoaded, setDataLoaded,
+    dataLoaded, setDataLoaded, initialWelcomeChecked,
     darkMode, setDarkMode,
 
     // ── Time ──────────────────────────────────────────────────────────────────

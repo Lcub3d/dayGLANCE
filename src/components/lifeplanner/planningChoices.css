@@ -33,3 +33,8 @@
   .planning-choice-thumb { background: ButtonText; }
   .planning-choice-switch[aria-checked="true"] .planning-choice-track { border-color: Highlight; }
 }
+
+/* The mobile trigger shares the date row; it never reserves a second toolbar. */
+.planning-mobile-date-header > button { flex-shrink: 0; }
+.planning-mobile-date-label > .month-view-toggle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planning-choices-trigger:disabled { cursor: default; }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { isNativeAndroid, isNativeApp } from '../native.js';
 
 import { isTrayMode } from '../utils/trayMode.js';
@@ -10,6 +10,8 @@ export default function useAppInit({
   hasCheckedInitialWelcome,
   showWelcome, setShowWelcome,
 }) {
+  const [initialWelcomeChecked, setInitialWelcomeChecked] = useState(false);
+
   // Load data and fetch daily content on mount; rotate content every 15 minutes
   useEffect(() => {
     loadData();
@@ -50,6 +52,9 @@ export default function useAppInit({
       } else {
         setShowWelcome(false);
       }
+      setInitialWelcomeChecked(true);
     }
   }, [dataLoaded, hasZeroRealTasks, hasCheckedInitialWelcome, setShowWelcome]);
+
+  return initialWelcomeChecked;
 }

@@ -50,10 +50,11 @@ jobs:
           p.write_text(s)
           PY
           git add src/components/lifeplanner/LifeMap.jsx
-          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch .github/life-map-geometry.patch
+          git apply --index .github/life-map-measurement.patch
+          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch .github/life-map-geometry.patch .github/life-map-measurement.patch
           git diff --cached --check
           git write-tree > review-artifacts/tree.txt
-          test "$(git write-tree)" = 51a23e7154438dd72887edd3842c00b19f94dbf1
+          test "$(git write-tree)" = a8c4a2c639ff2fb7b1f4c62a5595badaee06c66f
       - uses: actions/setup-node@v4
         with:
           node-version: 22

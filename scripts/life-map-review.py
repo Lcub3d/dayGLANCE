@@ -190,14 +190,22 @@ with sync_playwright() as playwright:
             expect(node(page, 'task')).to_have_count(5)
             expect(node(page, 'unlinked')).to_have_count(1)
             maproot(page).get_by_label('显示未关联事项', exact=True).uncheck()
+            expect(node(page, 'unlinked')).to_have_count(0)
+            expect(node(page, 'task')).to_have_count(4)
             require(storage(page) == original, 'Filters changed actual relationships')
         check('level, wish and unlinked filters never change ownership', filters, page)
 
         def drag_zoom():
             item = node(page, 'wish', '持续创作')
-            box = item.bounding_box(); require(box is not None, 'No draggable node')
-            page.mouse.move(box['x']+60, box['y']+40); page.mouse.down()
-            page.mouse.move(box['x']+90, box['y']+90, steps=10); page.mouse.up()
+            # Wait for the filtered canvas to settle before reading coordinates.
+            # Raw mouse events do not perform Playwright's stability/hit checks.
+            # Hover the actual node title, rather than a point from the old fit.
+            title = item.locator('.lm-node-title')
+            title.hover()
+            box = title.bounding_box(); require(box is not None, 'No draggable node')
+            x, y = box['x'] + box['width']/2, box['y'] + box['height']/2
+            page.mouse.move(x, y); page.mouse.down()
+            page.mouse.move(x+40, y+50, steps=10); page.mouse.up()
             page.wait_for_function('(key) => Object.keys(JSON.parse(localStorage.getItem(key)).positions).length > 0', arg=VIEW)
             require(storage(page) == original, 'Dragging moved a source task or changed order')
             before = maproot(page).locator('.lm-navigation span').inner_text()

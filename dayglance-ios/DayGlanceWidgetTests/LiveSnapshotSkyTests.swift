@@ -152,7 +152,8 @@ final class LiveSnapshotSkyTests: XCTestCase {
 
         let image = try render(input, nowMin: 12 * 60)
         let background = pixel(image, x: Int(DialSpec.cx), y: Int(DialSpec.cy))
-        for minutes in [30.0, 6 * 60 + 30, 12 * 60 + 30, 18 * 60 + 30] {
+        let samples: [Double] = [30, 6 * 60 + 30, 12 * 60 + 30, 18 * 60 + 30]
+        for minutes in samples {
             let p = skyPixel(image, minutes: minutes)
             // White at 4.5 % over the background: a few levels brighter,
             // and neutral (no warm or cool cast).

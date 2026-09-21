@@ -79,12 +79,24 @@ struct DialFaceView: View {
     }
 
     // MARK: sky ring (handoff §4): one band, colour and opacity by strength, width constant
+    //
+    // No sky data (the app has no geocoded location yet, so the snapshot's
+    // `sky` is null): the ring is drawn UNLIT, a neutral track at the sky
+    // radius in the block track's tone, never left out. An empty band at
+    // r = 119 looked like a rendering fault on a phone; a quiet ring says
+    // "nothing lit" and keeps the face's silhouette. No glyphs without a
+    // sky: rise, set and moon are facts about a place, and there is none.
 
-    private var skyRing: some View {
-        ForEach(input.sky, id: \.hour) { seg in
-            Path.dialArc(r: DialSpec.skyRadius, startMin: seg.startMin, endMin: seg.endMin)
-                .stroke(Color(hex: seg.body == .sun ? DialSpec.skySunColorHex : DialSpec.skyMoonColorHex).opacity(seg.opacity),
-                        style: StrokeStyle(lineWidth: DialSpec.skyWidth, lineCap: .butt))
+    @ViewBuilder private var skyRing: some View {
+        if input.sky.isEmpty {
+            Path.dialCircle(r: DialSpec.skyRadius)
+                .stroke(Color.white.opacity(DialSpec.skyUnlitOpacity), lineWidth: DialSpec.skyWidth)
+        } else {
+            ForEach(input.sky, id: \.hour) { seg in
+                Path.dialArc(r: DialSpec.skyRadius, startMin: seg.startMin, endMin: seg.endMin)
+                    .stroke(Color(hex: seg.body == .sun ? DialSpec.skySunColorHex : DialSpec.skyMoonColorHex).opacity(seg.opacity),
+                            style: StrokeStyle(lineWidth: DialSpec.skyWidth, lineCap: .butt))
+            }
         }
     }
 

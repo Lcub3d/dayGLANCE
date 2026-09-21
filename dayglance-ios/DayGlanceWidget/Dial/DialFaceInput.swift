@@ -21,8 +21,8 @@ struct DialMoonGlyph: Equatable {
 
 struct DialFaceInput: Equatable {
     var blocks: [DialFaceBlock]
-    /// Empty when the snapshot has no sky (no geocoded location): the ring
-    /// and its glyphs are simply not drawn (handoff §5).
+    /// Empty when the snapshot has no sky (no geocoded location, handoff
+    /// §5): the face draws the ring unlit and no glyphs (DialFaceView).
     var sky: [DialSpec.SkySegment]
     var sunriseMin: Double?
     var sunsetMin: Double?

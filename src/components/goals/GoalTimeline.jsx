@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { TAILWIND_TO_HEX } from '../../utils/colorUtils.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
 /** Hex value for a Tailwind bg-* class, falling back to blue. */
 const toHex = (bgClass) => TAILWIND_TO_HEX[bgClass] || '#3b82f6';
@@ -25,14 +26,12 @@ const darken = (hex, amt) => {
 const OPEN_ENDED_MASK = 'linear-gradient(to right, #000 0%, #000 55%, transparent 100%)';
 
 const PERIODS = [
-  { key: '1m', label: '1M', months: 1 },
-  { key: '3m', label: '3M', months: 3 },
-  { key: '6m', label: '6M', months: 6 },
-  { key: '1y', label: '1Y', months: 12 },
-  { key: '2y', label: '2Y', months: 24 },
+  { key: '1m', months: 1 },
+  { key: '3m', months: 3 },
+  { key: '6m', months: 6 },
+  { key: '1y', months: 12 },
+  { key: '2y', months: 24 },
 ];
-
-const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const TOP_PAD = 12;     // space above the first row
 const BOTTOM_PAD = 30;  // space for the month labels below the last row
@@ -57,7 +56,8 @@ const goalEndMs = (goal) => (goal.targetDate ? new Date(goal.targetDate + 'T00:0
  */
 const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoal }) => {
   const { darkMode, textPrimary, textSecondary, tasks, unscheduledTasks, isMobile } = useDayPlannerCtx();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage || i18n.language || 'en';
   const [periodKey, setPeriodKey] = useState('6m');
   const period = PERIODS.find(p => p.key === periodKey) || PERIODS[2];
 
@@ -98,8 +98,10 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
   // Short date like "Dec 20", adding the year only when it isn't the current one.
   const fmtDate = (ymd) => {
     const d = new Date(ymd + 'T00:00:00');
-    const base = `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
-    return d.getFullYear() === nowYear ? base : `${base} '${String(d.getFullYear()).slice(2)}`;
+    return formatLocalizedDate(d, {
+      month: 'short', day: 'numeric',
+      ...(d.getFullYear() !== nowYear ? { year: 'numeric' } : {}),
+    }, language);
   };
   const daysLabel = (goal) => {
     if (!goal.targetDate) return null;
@@ -279,7 +281,9 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
                 : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
-            {p.label}
+            {t(p.months < 12 ? 'goals.rangeMonthsShort' : 'goals.rangeYearsShort', {
+              count: p.months < 12 ? p.months : p.months / 12,
+            })}
           </button>
         ))}
       </div>
@@ -302,7 +306,10 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
                     className={`absolute text-[10px] ${textSecondary} opacity-70 whitespace-nowrap`}
                     style={{ bottom: -BOTTOM_PAD + 8, ...(atRightEdge ? { right: 2, textAlign: 'right' } : { left: 2 }) }}
                   >
-                    {MONTH_ABBR[tick.month]}{tick.month === 0 ? ` '${String(tick.year).slice(2)}` : ''}
+                    {formatLocalizedDate(new Date(tick.ms), {
+                      month: 'short',
+                      ...(tick.month === 0 ? { year: 'numeric' } : {}),
+                    }, language)}
                   </span>
                 </div>
               );

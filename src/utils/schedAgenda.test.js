@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EMPTY_SCHED_FILTERS, hasActiveSchedFilters, taskMatchesSchedFilters, toggleSchedFilter, groupProjectsForFilter, limitRecurringToNextInstance, schedFiltersEqual, isPastEvent } from './schedAgenda.js';
+import { EMPTY_SCHED_FILTERS, hasActiveSchedFilters, taskMatchesSchedFilters, toggleSchedFilter, groupProjectsForFilter, limitRecurringToNextInstance, schedFiltersEqual, isPastEvent, schedRollingWindow } from './schedAgenda.js';
 
 const task = { title: 'Write report #work #deep', color: 'bg-red-500', projectId: 'p1' };
 
@@ -167,5 +167,35 @@ describe('isPastEvent', () => {
   it('zero-duration events are past once their start time passes', () => {
     expect(isPastEvent(event({ startTime: '13:00', duration: 0 }), now)).toBe(true);
     expect(isPastEvent(event({ startTime: '14:30', duration: 0 }), now)).toBe(false);
+  });
+});
+
+// The agenda, the recurring expansion and the device-calendar fetch all read
+// this one rule. They used to each carry their own idea of how far SCHED
+// reaches, and the fetch's was two days — a fortnight of agenda arrived with
+// no device events past day three.
+describe('schedRollingWindow', () => {
+  const sel = new Date(2026, 8, 13, 12);
+
+  it('is the selected day and the days after it, inclusive of both ends', () => {
+    expect(schedRollingWindow(sel, 14)).toEqual({ from: '2026-09-13', to: '2026-09-26' });
+    expect(schedRollingWindow(sel, 28)).toEqual({ from: '2026-09-13', to: '2026-10-10' });
+  });
+
+  it('is one day when the window is one day, and never shorter than that', () => {
+    expect(schedRollingWindow(sel, 1)).toEqual({ from: '2026-09-13', to: '2026-09-13' });
+    for (const n of [0, -5, null, undefined, NaN]) {
+      expect(schedRollingWindow(sel, n)).toEqual({ from: '2026-09-13', to: '2026-09-13' });
+    }
+  });
+
+  it('reads the selected day locally and leaves the caller\'s Date alone', () => {
+    const late = new Date(2026, 8, 13, 23, 59);
+    expect(schedRollingWindow(late, 2)).toEqual({ from: '2026-09-13', to: '2026-09-14' });
+    expect(late.getHours()).toBe(23);
+  });
+
+  it('crosses months and years', () => {
+    expect(schedRollingWindow(new Date(2026, 11, 28, 12), 14)).toEqual({ from: '2026-12-28', to: '2027-01-10' });
   });
 });

@@ -9,6 +9,11 @@ packages:
   # (https://github.com/RevenueCat/purchases-ios-spm, minorVersion 5.0.0).
   RevenueCat:
     path: Packages/RevenueCatBinary
+  # The Day Dial's geometry, ported from src/utils/dayDial.js and held to the
+  # exported vectors by its own test target (`swift test --package-path
+  # Packages/DayDialGeometry`, which ios.yml runs). Pure Foundation, no UI.
+  DayDialGeometry:
+    path: Packages/DayDialGeometry
 
 options:
   bundleIdPrefix: com.dayglance
@@ -164,6 +169,9 @@ targets:
     sources:
       - path: DayGlanceWidget
       - path: Shared
+    dependencies:
+      - package: DayDialGeometry
+        product: DayDialGeometry
     entitlements:
       path: DayGlanceWidget/DayGlanceWidget.entitlements
       properties:
@@ -177,10 +185,11 @@ targets:
         DEVELOPMENT_TEAM: "CTZ7352A3G"
         SWIFT_VERSION: "5.9"
         # Extra Swift compilation conditions, injected by scripts/gen-ios-project.sh
-        # from DG_WIDGET_FLAGS (empty by default). Used for the Day Dial
-        # render-budget spike: DIAL_SPIKE registers the measurement widget,
-        # DIAL_SPIKE_LIVE_PATHS switches it to the live-Path strategy. See
-        # DayGlanceWidget/Spike/DialSpikeWidget.swift. Never set for a release.
+        # from DG_WIDGET_FLAGS (empty by default). DIAL_PREVIEW registers the
+        # Day Dial preview widget, which draws the face and hub from a fixture
+        # day chosen per instance (DayGlanceWidget/Dial/DialPreviewWidget.swift):
+        # for eyeballing a scenario and for App Store screenshots. Never set
+        # for a release build.
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) ${DG_WIDGET_FLAGS}"
     info:
       path: DayGlanceWidget/Info.plist
@@ -189,8 +198,43 @@ targets:
         # Must match the app's version (App Store rejects mismatched embedded extensions).
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        # Lora 500 for the Day Dial's date row (DialHubView). Bundled because a
+        # widget process cannot reach Google Fonts; SIL OFL, licence alongside
+        # the file in DayGlanceWidget/Fonts/. Registered here, not in the app:
+        # the extension is its own process with its own font registry.
+        UIAppFonts:
+          - Lora-Medium.ttf
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  # The widget extension's own unit tests. An app extension cannot host a
+  # test bundle, so the files under test are compiled INTO the bundle (the
+  # decoder, day resolution, the face mapping and the face view — everything
+  # between the stored bytes and the rendered PNG), on the simulator with no
+  # host app. `xcodebuild test -scheme DayGlanceWidgetTests` runs them; ios.yml
+  # does on every push. The fixture is the live-shaped snapshot that
+  # `npm run ios:vectors` writes from the real JS producers.
+  DayGlanceWidgetTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: DayGlanceWidgetTests
+      - path: DayGlanceWidget/WidgetModels.swift
+      - path: DayGlanceWidget/WidgetFreshness.swift
+      - path: DayGlanceWidget/ColorExtension.swift
+      - path: DayGlanceWidget/Dial/DialFaceInput.swift
+      - path: DayGlanceWidget/Dial/DialFaceView.swift
+      - path: TestFixtures/widgetSnapshot.live.json
+        buildPhase: resources
+    dependencies:
+      - package: DayDialGeometry
+        product: DayDialGeometry
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dayglance.widget.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.9"
 
   ShareExtension:
     type: app-extension
@@ -240,3 +284,11 @@ schemes:
       config: Debug
     archive:
       config: Release
+  DayGlanceWidgetTests:
+    build:
+      targets:
+        DayGlanceWidgetTests: all
+    test:
+      config: Debug
+      targets:
+        - DayGlanceWidgetTests

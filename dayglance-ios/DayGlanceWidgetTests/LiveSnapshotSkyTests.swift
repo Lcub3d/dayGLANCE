@@ -140,6 +140,50 @@ final class LiveSnapshotSkyTests: XCTestCase {
         }
     }
 
+    /// The strongest sun tint (r − b) and the brightest neutral pixel in a
+    /// window around a point: glyphs are a few points across, so one pixel
+    /// is too easy to miss.
+    private func window(_ image: CGImage, around p: DialPoint, radius: Int = 7) -> (warmth: Double, bright: Double) {
+        var warmth = -1.0, bright = 0.0
+        for dx in -radius...radius {
+            for dy in -radius...radius {
+                let x = Int(p.x.rounded()) + dx, y = Int(p.y.rounded()) + dy
+                guard x >= 0, y >= 0, x < image.width, y < image.height else { continue }
+                let c = pixel(image, x: x, y: y)
+                warmth = max(warmth, c.r - c.b)
+                bright = max(bright, (c.r + c.g + c.b) / 3)
+            }
+        }
+        return (warmth, bright)
+    }
+
+    @MainActor
+    func testTheSunAndMoonGlyphsAreDrawnOnTheRenderedLiveFace() throws {
+        // Glyphs are the other half of the sky (handoff §4): a live face with
+        // a ring but no rise, set or moon glyph is the bug this pins.
+        let snapshot = try loadFixture()
+        let input = DialFaceInput(day: ResolvedWidgetDay.resolve(snapshot, at: try noon(0, of: snapshot), calendar: calendar))
+        let rise = try XCTUnwrap(input.sunriseMin), set = try XCTUnwrap(input.sunsetMin), moon = try XCTUnwrap(input.moon)
+        let image = try render(input, nowMin: 12 * 60)
+        let background = pixel(image, x: Int(DialSpec.cx), y: Int(DialSpec.cy))
+
+        // The sunrise glyph (#f5c542) and sunset glyph (#f59942) sit at the
+        // glyph radius: warm against a near-black background.
+        let sunrise = window(image, around: DialSpec.glyphPoint(minutes: rise))
+        let sunset = window(image, around: DialSpec.glyphPoint(minutes: set))
+        XCTAssertGreaterThan(sunrise.warmth, 0.3, "the sunrise glyph is drawn at \(rise) min")
+        XCTAssertGreaterThan(sunset.warmth, 0.3, "the sunset glyph is drawn at \(set) min")
+
+        // The moon (#d8d8f0 at 0.85) is the brightest thing near its point.
+        let moonPx = window(image, around: DialSpec.glyphPoint(minutes: moon.minutes))
+        XCTAssertGreaterThan(moonPx.bright - (background.r + background.g + background.b) / 3, 0.3,
+                             "the moon glyph is drawn at \(moon.minutes) min")
+
+        // Control: a point on the glyph radius with no glyph is background.
+        let quiet = window(image, around: DialSpec.glyphPoint(minutes: 15 * 60 + 30), radius: 3)
+        XCTAssertLessThan(quiet.warmth, 0.1)
+    }
+
     @MainActor
     func testWithoutSkyDataTheRingIsUnlitNotMissing() throws {
         let snapshot = try loadFixture()

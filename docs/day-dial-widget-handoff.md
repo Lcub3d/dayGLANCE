@@ -505,6 +505,14 @@ curated fixture day, so it is not to be removed when the real widget changes.
   per timeline build (`entries= days= boundaries= faces= cold= coldMs= cache=N
   files/M bytes builtMs= sky= first= last=`); `category:dialface` prints each
   cold render, each eviction and each discarded file.
+- **Glyphs on the live path.** The second device run drew the ring and no
+  sunrise, sunset or moon glyph. The glyph views had a zero-sized frame,
+  offset to the glyph point: fine on screen, but `ImageRenderer`, which the
+  face cache renders through, rasterises nothing for a zero-sized view. They
+  now lay out in a real `DialSpec.glyphFrame` square centred on the point,
+  and `LiveSnapshotSkyTests` samples the three glyph points on the rendered
+  live face. (The `DIAL_PREVIEW` faces had the same gap; nobody had looked
+  for the glyphs there since the cache landed.)
 - **Sky on the live path.** The first device run drew no sky ring: the
   payload's `sky` was null (no geocoded location in the app) and the face
   drew nothing there. The face now draws the ring unlit in that state (§5

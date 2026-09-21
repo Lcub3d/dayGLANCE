@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { lazy, Suspense, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronsLeft, ChevronsRight, Download, GripVertical, MoreHorizontal, Network, Plus, Search, Star, Trash2, Upload, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
@@ -15,6 +15,8 @@ import useDialogFocus from './useDialogFocus.js';
 import useNotebookDrag from './useNotebookDrag.js';
 import useNotebookSelection from './useNotebookSelection.js';
 import './lifeplanner.css';
+
+const LifeMap = lazy(() => import('./LifeMap.jsx'));
 
 // A real textarea (IME, selection, screen readers and long text stay native),
 // but its appearance is ink on a ruled line rather than a boxed form field.
@@ -51,7 +53,7 @@ function RuledField({ value, onChange, onCommit, onCancel, label, placeholder, d
 
 export default function LifePlanner() {
   const ctx = useDayPlannerCtx();
-  const { setShowLifePlanner, setPlannerProjectId, multiUserEnabled, goals, projects, addGoal, updateGoal, addProject, updateProject } = useFeaturesCtx();
+  const { setShowLifePlanner, setPlannerProjectId, setShowGoalsDashboard, setGoalsDashboardFocusId, isVisibleForUser, multiUserEnabled, goals, projects, addGoal, updateGoal, addProject, updateProject } = useFeaturesCtx();
   const { t } = useTranslation();
   const L = (key, options) => t(`lifeplanner.${key}`, options);
   const [store] = useState(() => createPlannerStore({
@@ -62,6 +64,8 @@ export default function LifePlanner() {
   const doc = useSyncExternalStore(store.subscribe, store.get, store.get);
   const storageError = useSyncExternalStore(store.subscribe, store.error, store.error);
   const [guided, setGuided] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [notebookFocus, setNotebookFocus] = useState(null);
   const [referencesOpen, setReferencesOpen] = useState(true);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
@@ -103,7 +107,7 @@ export default function LifePlanner() {
   const migrationAttempts = useRef(new Set());
   const migrationRunning = useRef(false);
   useEffect(() => {
-    if (!hierarchyReady || editor || swotWish || pending || Object.keys(drafts).length || migrationRunning.current || !migrationPlan.operations.length) return;
+    if (!hierarchyReady || mapOpen || editor || swotWish || pending || Object.keys(drafts).length || migrationRunning.current || !migrationPlan.operations.length) return;
     const signature = JSON.stringify(migrationPlan.operations);
     if (migrationAttempts.current.has(signature)) return;
     migrationAttempts.current.add(signature);
@@ -113,7 +117,7 @@ export default function LifePlanner() {
       if (result.status === 'error') setError(t('lifeplanner.errors.storageWrite'));
     }).catch(err => setError(t(`lifeplanner.errors.${err.message}`, { defaultValue: t('lifeplanner.errors.unknown') })))
       .finally(() => { migrationRunning.current = false; setPending(count => count - 1); });
-  }, [hierarchyReady, editor, swotWish, pending, drafts, migrationPlan, executeMigration, t]);
+  }, [hierarchyReady, mapOpen, editor, swotWish, pending, drafts, migrationPlan, executeMigration, t]);
   const filtered = !!query.trim() || category !== 'all' || starred;
   const visible = doc.wishes.filter(w => (!starred || w.starred) && (category === 'all' || category === w.category) && `${w.title} ${w.visions.map(v => v.title).join(' ')}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const setDraftMap = transform => { draftsRef.current = transform(draftsRef.current); setDrafts(draftsRef.current); };
@@ -195,7 +199,7 @@ export default function LifePlanner() {
     onMove: moveBlocks,
     onTrash: (group, id, _expectedIds, movingIds = [id]) => removeMany(group, movingIds),
   });
-  const selection = useNotebookSelection(root, { onContextMenu: openBlockMenu, onMove: moveBlocks, onClear: () => setMenu(null), enabled: !readOnly && !editor && !swotWish });
+  const selection = useNotebookSelection(root, { onContextMenu: openBlockMenu, onMove: moveBlocks, onClear: () => setMenu(null), enabled: !mapOpen && !readOnly && !editor && !swotWish });
   const selectedIds = selection.selectedIds(selection.activeGroup);
   const selectedCount = selectedIds.length;
   async function moveSelectionToEnd(bottom) {
@@ -208,7 +212,51 @@ export default function LifePlanner() {
   async function toggleGuide() {
     drag.cancel();
     if (!await flushDrafts()) return;
-    selection.clear(); setMenu(null); setTools(false); setGuided(value => !value);
+    selection.clear(); setMenu(null); setTools(false);
+    if (mapOpen) { setMapOpen(false); setGuided(true); } else setGuided(value => !value);
+  }
+  const mapData = useMemo(() => {
+    const allowed = values => (values || []).filter(item => !multiUserEnabled || (isVisibleForUser && isVisibleForUser(item)));
+    return { goals: allowed(goals), projects: allowed(projects), tasks: allowed(ctx.tasks),
+      unscheduledTasks: allowed(ctx.unscheduledTasks), recurringTasks: allowed(ctx.recurringTasks) };
+  }, [goals, projects, ctx.tasks, ctx.unscheduledTasks, ctx.recurringTasks, multiUserEnabled, isVisibleForUser]);
+  async function toggleMap() {
+    drag.cancel();
+    if (!await flushDrafts()) return;
+    selection.clear(); setMenu(null); setTools(false); setMapOpen(value => !value);
+  }
+  function returnNotebook(wishId = '') {
+    setMapOpen(false); setGuided(false); setQuery(''); setCategory('all'); setStarred(false);
+    setNotebookFocus({ wishId });
+  }
+  useLayoutEffect(() => {
+    if (mapOpen || guided || !notebookFocus) return;
+    const row = [...(root.current?.querySelectorAll('[data-life-wish]') || [])].find(el => el.dataset.lifeWish === String(notebookFocus.wishId));
+    const field = row?.querySelector('textarea') || root.current?.querySelector('[data-life-blank] textarea');
+    field?.focus({ preventScroll: true }); row?.scrollIntoView({ block: 'nearest' });
+    setNotebookFocus(null);
+  }, [mapOpen, guided, notebookFocus]);
+  async function openMapNode(node) {
+    if (readOnly || !await flushDrafts()) return;
+    const wish = store.get().wishes.find(item => String(item.id) === String(node.wishId));
+    if (node.kind === 'wish') { if (wish) returnNotebook(wish.id); return; }
+    if (node.kind === 'vision' || node.planned) {
+      const vision = wish?.visions.find(item => String(item.id) === String(node.visionId));
+      if (vision) await openVision(wish, vision);
+      return;
+    }
+    if (node.kind === 'goal' && goals.some(item => String(item.id) === String(node.nativeId))) {
+      setShowLifePlanner(false); setGoalsDashboardFocusId(node.nativeId);
+      if (ctx.isMobile) ctx.setMobileActiveTab('goals'); else setShowGoalsDashboard(true);
+    } else if (node.kind === 'project' && projects.some(item => String(item.id) === String(node.nativeId))) {
+      setShowLifePlanner(false); setPlannerProjectId(node.nativeId);
+    } else if (node.kind === 'task') {
+      const task = (ctx[node.taskList] || []).find(item => String(item.id) === String(node.nativeId));
+      if (!task) return;
+      setShowLifePlanner(false);
+      if (node.recurring || node.imported) ctx.handleSpotlightSelect({ task, source: node.recurring ? 'recurring' : 'event' });
+      else ctx.openMobileEditTask(task, node.taskList === 'unscheduledTasks');
+    }
   }
   async function openVision(wish, original = null) {
     if (!await flushDrafts()) return;
@@ -344,17 +392,17 @@ export default function LifePlanner() {
     </div>;
   }
   return <div className="lp-backdrop">
-    <div ref={root} data-lifeplanner data-notebook-mode={guided ? 'assistant' : 'notebook'} role="dialog" aria-modal={!editor && !swotWish} aria-labelledby="lp-heading" tabIndex={-1}
+    <div ref={root} data-lifeplanner data-notebook-mode={mapOpen ? 'map' : guided ? 'assistant' : 'notebook'} role="dialog" aria-modal={!editor && !swotWish} aria-labelledby="lp-heading" tabIndex={-1}
       className={`lp-workspace ${ctx.textPrimary} ${ctx.darkMode ? 'lp-paper-dark dark-scrollbar' : ''}`} inert={editor || swotWish ? '' : undefined}>
-      <header className="lp-notebook-header"><div className="lp-title-row"><h1 id="lp-heading" data-initial-focus tabIndex={-1}>{L('title')}</h1>
-        <div className="lp-view-actions"><button type="button" aria-pressed={guided} aria-controls="lp-paper" aria-label={guided ? L('guideOn') : L('guideOff')} className="lp-guide-button bg-brand text-stone-950" onClick={toggleGuide} disabled={readOnly}>{L('assistant')}<ChevronDown size={12} className={guided ? 'rotate-180' : ''} /></button>
-        <button type="button" className="lp-map-button" disabled title={L('mindMapUnavailable')}><Network size={14} />{L('mindMap')}</button></div></div>
-        <div className="lp-header-actions">{!guided && <button type="button" className="lp-icon" aria-label={L('search')} aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}><Search size={16} /></button>}
+      <header className="lp-notebook-header"><div className="lp-title-row"><h1 id="lp-heading" data-initial-focus tabIndex={-1}>{mapOpen ? t('lifeMap.title') : L('title')}</h1>
+        <div className="lp-view-actions"><button type="button" aria-pressed={guided && !mapOpen} aria-controls="lp-paper" aria-label={guided && !mapOpen ? L('guideOn') : L('guideOff')} className="lp-guide-button bg-brand text-stone-950" onClick={toggleGuide} disabled={readOnly}>{L('assistant')}<ChevronDown size={12} className={guided && !mapOpen ? 'rotate-180' : ''} /></button>
+        <button type="button" className="lp-map-button" aria-pressed={mapOpen} onClick={toggleMap} aria-label={t('lifeMap.title')}><Network size={14} />{t('lifeMap.title')}</button></div></div>
+        <div className="lp-header-actions">{!guided && !mapOpen && <button type="button" className="lp-icon" aria-label={L('search')} aria-expanded={searchOpen} onClick={() => setSearchOpen(value => !value)}><Search size={16} /></button>}
           <button type="button" className="lp-icon" aria-label={L('tools')} aria-expanded={tools} onClick={() => setTools(value => !value)}><MoreHorizontal size={18} /></button>
           <button type="button" className="lp-icon" aria-label={L('close')} onClick={close}><X size={18} /></button></div>
         {tools && <div className="lp-tools"><button type="button" disabled={disabled} onClick={exportDocument}><Download size={14} />{L('backup')}</button><button type="button" disabled={disabled} onClick={() => importInput.current?.click()}><Upload size={14} />{L('restore')}</button>{storageError && <button type="button" onClick={() => { try { download(store.rawBackup(), 'lifeplanner-recovery.json'); } catch { setError(L('errors.storageRead')); } }}><Download size={14} />{L('rawBackup')}</button>}<p>{L('backupHint')}</p></div>}
       </header>
-      {searchOpen && !guided && <div className="lp-filter-strip"><input aria-label={L('search')} placeholder={L('search')} value={query} onChange={event => setQuery(event.target.value)} />
+      {searchOpen && !guided && !mapOpen && <div className="lp-filter-strip"><input aria-label={L('search')} placeholder={L('search')} value={query} onChange={event => setQuery(event.target.value)} />
         <select aria-label={L('category')} value={category} onChange={event => setCategory(event.target.value)}><option value="all">{L('all')}</option>{CATEGORY_IDS.map(id => <option key={id} value={id}>{L(`categories.${id}.label`)}</option>)}</select>
         <button type="button" className="lp-icon" aria-label={L('starred')} aria-pressed={starred} onClick={() => setStarred(value => !value)}><Star size={15} fill={starred ? 'currentColor' : 'none'} /></button>
       </div>}
@@ -363,7 +411,10 @@ export default function LifePlanner() {
         <button type="button" className="lp-icon" title={L('moveDown')} aria-label={L('moveDown')} disabled={disabled || (!guided && filtered)} onClick={() => selection.moveSelected(1)}><ArrowDown size={15} /></button>
         <button type="button" className="lp-icon" title={L('clearSelection')} aria-label={L('clearSelection')} onClick={() => { selection.clear(); setMenu(null); }}><X size={15} /></button>
       </div>}
-      <div id="lp-paper" className="lp-paper-scroll" data-lp-scroll {...selection.rootProps}>
+      {mapOpen ? <Suspense fallback={<p className="lp-no-results" role="status">{t('lifeMap.loading')}</p>}>
+        <LifeMap document={doc} {...mapData} darkMode={ctx.darkMode} readOnly={readOnly}
+          onOpen={openMapNode} onNotebook={() => returnNotebook()} />
+      </Suspense> : <div id="lp-paper" className="lp-paper-scroll" data-lp-scroll {...selection.rootProps}>
         {guided ? <section data-life-guide className={`lp-assistant-sheet ${referencesOpen ? '' : 'is-condensed'}`} aria-label={L('guide')}>
           <div className="lp-assistant-labels"><span>{L('categoryColumn')}{!referencesOpen && <button type="button" className="lp-column-toggle" aria-expanded={false} aria-label={L('expandExplanations')} title={L('expandExplanations')} onClick={() => setReferencesOpen(true)}><ChevronsRight size={14} /></button>}</span><span className="lp-assistant-explanation">{L('explanation')}</span><span className="lp-assistant-references">{L('references')}<button type="button" className="lp-column-toggle" aria-expanded={true} aria-label={L('collapseExplanations')} title={L('collapseExplanations')} onClick={() => setReferencesOpen(false)}><ChevronsLeft size={14} /></button></span><span>{L('wish')}</span><span>{L('vision')}</span></div>
           {notebookCategories(doc.wishes).map(({ id, wishes }) => <section key={id} data-life-category={id} className="lp-assistant-category" aria-label={L(`categories.${id}.label`)}>
@@ -383,9 +434,9 @@ export default function LifePlanner() {
           {Array.from({ length: Math.min(1, MAX_WISHES - doc.principles.length) }, (_, index) => <div className="lp-motto-row" key={`motto:${index}`}><span />{field(`motto:${index}`, 'principle', null, `${L('blankMotto')} ${index + 1}`, L('principlePlaceholder'))}</div>)}
           </aside>
         </div>}
-      </div>
-      {drag.presentation}
-      {selection.presentation}
+      </div>}
+      {!mapOpen && drag.presentation}
+      {!mapOpen && selection.presentation}
       {(error || storageError || multiUserEnabled) && <div role="alert" className="lp-workspace-alert lp-error">{error || (multiUserEnabled ? L('multiUser') : L(`errors.${storageError}`))}{hasDrafts() && <button type="button" onClick={flushDrafts} disabled={pending > 0}>{L('retry')}</button>}</div>}
       {notice && <div role="status" className="lp-notice"><span>{notice}</span>{undo && <button type="button" disabled={disabled} onClick={undoRemove}>{L('undo')}</button>}<button type="button" className="lp-icon" aria-label={L('close')} onClick={() => { setNotice(''); setUndo(null); }}><X size={13} /></button></div>}
       <span className="sr-only" id={drag.descriptionId}>{L('moveInstructions')}</span><span className="sr-only" role="status">{drag.message}</span>

@@ -33,6 +33,8 @@ def check(name, action, page):
             (OUT / ('failure-' + str(len(RESULTS)) + '.txt')).write_text(page.locator('body').inner_text(), encoding='utf-8')
         except Exception:
             pass
+        (OUT/'notebook-browser-review.json').write_text(json.dumps({'tests':RESULTS,'uncaughtErrors':ERRORS},ensure_ascii=False,indent=2),encoding='utf-8')
+        raise SystemExit(1)
 
 
 def read_doc(page):
@@ -92,7 +94,7 @@ def profile(browser, *, mobile=False, dark=False, english=False, width=None):
         expect(reminder).not_to_be_visible()
     if mobile:
         # The existing mobile Goals tab owns its header and the new entry below it.
-        tabs = page.locator('button').filter(has=page.locator('svg.lucide-git-branch'))
+        tabs = page.locator('.fixed.bottom-0').get_by_role('button').filter(has=page.locator('svg.lucide-flag'))
         if tabs.count():
             tabs.first.click()
         else:
@@ -131,7 +133,9 @@ def open_vision(page, title='出版2本书，3年内'):
 
 
 def save_vision(page):
-    sheet=note(page);sheet.get_by_role('button',name='保存',exact=True).click();expect(sheet).not_to_be_visible()
+    sheet=note(page)
+    # Current note saves on Escape/outside click; there is no Save/Cancel toolbar.
+    page.keyboard.press('Escape');expect(sheet).not_to_be_visible()
 
 
 def wait_idle(page):
@@ -169,10 +173,10 @@ with sync_playwright() as playwright:
         expect(root(page)).to_have_attribute('data-notebook-mode','notebook')
         expect(root(page).get_by_role('heading',name='人生愿望清单',exact=True)).to_be_visible()
         expect(root(page).get_by_role('heading',name='座右铭',exact=True)).to_be_visible()
-        expect(root(page).get_by_role('button',name='展开规划助手',exact=True)).to_contain_text('Planning Assistant')
+        expect(root(page).get_by_role('button',name='展开详情',exact=True)).to_have_text('详情')
         require(root(page).locator('[data-life-wish]').count()==0,'Fabricated wishes')
         require(root(page).locator('[data-life-principle]').count()==5,'Lost existing default mottos')
-        require(root(page).locator('[data-life-blank]').count()==8,'Blank ruled lines missing')
+        require(root(page).locator('[data-life-blank]').count()==3,'Blank ruled lines missing')
         require(root(page).locator('[data-life-guide]').count()==0,'Assistant must start off')
         require(root(page).locator('svg.lucide-arrow-up,svg.lucide-arrow-down').count()==0,'Up/down controls still visible')
         no_overflow(page);page.screenshot(path=str(OUT/'notebook-empty.png'))
@@ -180,7 +184,7 @@ with sync_playwright() as playwright:
 
     def assistant_view():
         before=read_doc(page)
-        root(page).get_by_role('button',name='展开规划助手',exact=True).click()
+        root(page).get_by_role('button',name='展开详情',exact=True).click()
         expect(root(page)).to_have_attribute('data-notebook-mode','assistant')
         require(root(page).locator('[data-life-category]').count()==11,'All categories must be present')
         expect(root(page).locator('.lp-mottos')).to_have_count(0)
@@ -191,7 +195,7 @@ with sync_playwright() as playwright:
             require(category.locator('textarea').get_attribute('placeholder'),'No default inspiration')
         require(read_doc(page)==before,'Opening assistant persisted fake wishes or hid stored mottos')
         page.screenshot(path=str(OUT/'assistant-empty.png'))
-        root(page).get_by_role('button',name='收起规划助手',exact=True).click()
+        root(page).get_by_role('button',name='收起详情',exact=True).click()
     check('assistant replaces the full page, hides mottos and lays out all 11 optional templates without data writes',assistant_view,page)
 
     def writing():
@@ -213,15 +217,18 @@ with sync_playwright() as playwright:
     def sticky_vision():
         sheet=open_vision(page)
         expect(sheet.get_by_label('愿景期限',exact=True)).to_have_value('3')
-        for number,value,amount in [(1,'1','1'),(2,'2','2')]:
-            sheet.get_by_role('button',name='添加一行',exact=True).click()
+        for number,value,amount in [(1,'1','1'),(2,'2','3')]:
+            expect(sheet.locator('[data-life-stage-empty]')).to_be_visible()
             sheet.get_by_label(f'第{number}阶段的数值',exact=True).fill(value)
             sheet.get_by_label(f'第{number}阶段的时长',exact=True).fill(amount)
+            sheet.get_by_label(f'第{number}阶段的数值',exact=True).press('Enter')
+            expect(sheet.locator('[data-life-stage]')).to_have_count(number)
         require(sheet.locator('h1,h2,header,details').count()==0,'Note still has repeated headings or explanations')
         for unwanted in ['出版一本自己的书','可衡量结果','五年愿景','填写提示','继承','规划起点']:
             require(unwanted not in sheet.inner_text(),'Unnecessary visible note content: '+unwanted)
         require(sheet.locator('p.lp-helper').count()==0,'Prose helper still visible')
-        require(sheet.evaluate('(el)=>el.offsetWidth<=570 && el.offsetHeight<390'),'Note not compact')
+        expect(sheet.get_by_role('button',name=re.compile('^(保存|取消|添加一行)$'))).to_have_count(0)
+        require(sheet.evaluate('(el)=>el.offsetWidth<=600 && el.offsetHeight<430 && el.scrollWidth<=el.clientWidth+1'),'Note exceeds its current compact layout')
         expect(sheet.get_by_label('规划起点',exact=True)).to_have_count(0)
         sheet.get_by_role('button',name='日期设置',exact=True).click()
         sheet.get_by_label('规划起点',exact=True).fill('2026-09-20')
@@ -271,12 +278,12 @@ with sync_playwright() as playwright:
     check('mottos use the same draggable block handle, not up/down controls',motto_drag,page)
 
     def assistant_write():
-        root(page).get_by_role('button',name='展开规划助手',exact=True).click()
+        root(page).get_by_role('button',name='展开详情',exact=True).click()
         category=root(page).locator('[data-life-category="creation"]');f=category.get_by_role('textbox').last
         f.fill('完成一个自己的软件');f.press('Enter');wait_count(page,'wishes',5)
         require(read_doc(page)['wishes'][-1]['category']=='creation','Writing lost category')
         page.screenshot(path=str(OUT/'assistant-filled.png'))
-        root(page).get_by_role('button',name='收起规划助手',exact=True).click()
+        root(page).get_by_role('button',name='收起详情',exact=True).click()
         expect(root(page).get_by_role('heading',name='座右铭',exact=True)).to_be_visible()
         require(len(read_doc(page)['principles'])==6,'Assistant deleted mottos')
     check('write within an assistant category, then return to the same notebook and mottos',assistant_write,page)
@@ -301,13 +308,31 @@ with sync_playwright() as playwright:
     def stage_drag():
         root(page).locator('.lp-vision-title').first.click();sheet=note(page)
         before=read_doc(page)['wishes'][0]['visions'][0]['steps']
-        handle=sheet.locator('.lp-block-handle').first;handle.focus();handle.press('Space');handle.press('End');handle.press('Space')
+        # Stage UI now shows absolute offsets, not successive durations.
+        # A move that would reverse time must fail without losing the links.
+        handle=sheet.locator('.lp-block-handle').first
+        handle.focus();handle.press('Space');handle.press('End');handle.press('Space')
+        expect(sheet.get_by_role('alert')).to_be_visible()
+        expect(sheet.get_by_label('第1阶段的数值',exact=True)).to_have_value('1')
+        require(read_doc(page)['wishes'][0]['visions'][0]['steps']==before,'Rejected move changed saved links')
+        # Change the offsets, then reorder into a valid chronology through the
+        # real handle. Both stage identities and their project links must follow.
+        sheet.get_by_label('第1阶段的时长',exact=True).fill('3')
+        sheet.get_by_label('第2阶段的时长',exact=True).fill('1')
+        handle.focus();handle.press('Space');handle.press('End');handle.press('Space')
         expect(sheet.get_by_label('第1阶段的数值',exact=True)).to_have_value('2')
         save_vision(page)
-        current=read_doc(page)['wishes'][0]['visions'][0]['steps'];require(current==list(reversed(before)),'Stage move lost native link')
+        current=read_doc(page)['wishes'][0]['visions'][0]['steps']
+        require([s['id'] for s in current]==[s['id'] for s in reversed(before)],'Valid drag failed')
+        require(current[1].get('projectId')==before[0].get('projectId'),'Stage move lost native link')
+        require([s['amount'] for s in current]==[1,2],'Absolute offsets were not stored as successive durations')
         root(page).locator('.lp-vision-title').first.click();sheet=note(page)
-        handle=sheet.locator('.lp-block-handle').first;handle.focus();handle.press('Space');handle.press('End');handle.press('Space');save_vision(page)
-    check('vision stage handle reorders lines without losing project links',stage_drag,page)
+        sheet.get_by_label('第1阶段的时长',exact=True).fill('3')
+        sheet.get_by_label('第2阶段的时长',exact=True).fill('1')
+        handle=sheet.locator('.lp-block-handle').first
+        handle.focus();handle.press('Space');handle.press('End');handle.press('Space');save_vision(page)
+        require(read_doc(page)['wishes'][0]['visions'][0]['steps']==before,'Restoring order lost stage data')
+    check('stage drag rejects reversed time and preserves links through a valid chronological move',stage_drag,page)
 
     def failed_write():
         before=read_doc(page)
@@ -331,14 +356,22 @@ with sync_playwright() as playwright:
         root(page).locator('.lp-vision-title').first.click();sheet=note(page)
         sheet.get_by_label('现状值',exact=True).fill('9')
         simulate_external(page,'doc.wishes[0].visions[0].current=1')
-        sheet.get_by_role('button',name='保存',exact=True).click()
+        page.keyboard.press('Escape')
         expect(sheet.get_by_role('alert')).to_contain_text('其他地方被修改');expect(sheet.get_by_label('现状值',exact=True)).to_have_value('9')
         require(read_doc(page)['wishes'][0]['visions'][0]['current']==1,'Stale note overwrote data')
-        sheet.get_by_role('button',name='取消',exact=True).click()
+        # A conflicting note deliberately keeps its draft. Reload explicitly discards
+        # that local draft without asking the product to bypass its safety guard.
+        page.reload(wait_until='domcontentloaded')
+        page.get_by_role('button',name='生活规划',exact=True).first.click()
+        expect(root(page)).to_be_visible()
         root(page).locator('.lp-vision-title').first.click();sheet=note(page)
-        sheet.get_by_label('愿景期限',exact=True).fill('2');sheet.get_by_role('button',name='保存',exact=True).click()
+        sheet.get_by_label('愿景期限',exact=True).fill('2');page.keyboard.press('Escape')
         expect(sheet.get_by_role('alert')).to_be_visible();require(read_doc(page)['wishes'][0]['visions'][0]['amount']==3,'Invalid horizon saved')
-        sheet.get_by_role('button',name='取消',exact=True).click()
+        # A conflicting note deliberately keeps its draft. Reload explicitly discards
+        # that local draft without asking the product to bypass its safety guard.
+        page.reload(wait_until='domcontentloaded')
+        page.get_by_role('button',name='生活规划',exact=True).first.click()
+        expect(root(page)).to_be_visible()
     check('minimal note retains conflict and horizon validation; invalid data never saves',vision_conflict_and_validation,page)
 
     def delete_undo():
@@ -388,8 +421,8 @@ with sync_playwright() as playwright:
             root(page).locator('.lp-vision-title').first.click();sheet=note(page)
             require(sheet.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'),'Note horizontal overflow')
             page.mouse.move(1,1);sheet.screenshot(path=str(OUT/f'note-{suffix}.png'))
-            sheet.get_by_role('button',name='Cancel' if english else '取消',exact=True).click()
-            root(page).get_by_role('button',name='Open planning assistant' if english else '展开规划助手',exact=True).click()
+            page.keyboard.press('Escape');expect(sheet).not_to_be_visible()
+            root(page).get_by_role('button',name='Show details' if english else '展开详情',exact=True).click()
             require(root(page).locator('[data-life-category]').count()==11,'Category hidden on narrow layout')
             no_overflow(page)
             page.screenshot(path=str(OUT/f'assistant-{suffix}.png'))

@@ -2,10 +2,11 @@ name: Life Map review
 on:
   push:
     branches: [feat/lifeplanner-life-map]
+  pull_request:
+    branches: [lifeplanner]
   workflow_dispatch:
 permissions:
-  contents: write
-  pull-requests: read
+  contents: read
 concurrency:
   group: life-map-${{ github.ref }}
   cancel-in-progress: true
@@ -19,50 +20,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Apply exact Life Map candidate
-        run: |
-          set -euo pipefail
-          mkdir -p review-artifacts
-          git rev-parse HEAD > review-artifacts/checkout.txt
-          git checkout 56c087c2cf4db5040ea5820f4fafff596870613a -- .github/workflows/life-map-review.yml
-          python - <<'PY'
-          import base64, lzma, hashlib
-          from pathlib import Path
-          encoded = ''.join(Path(f'.github/life-map-patch-{i}.b64').read_text() for i in range(3))
-          patch = lzma.decompress(base64.b64decode(encoded))
-          assert hashlib.sha256(patch).hexdigest() == '29be4d7ccc6f6437c547b17c81f485a79b07b33ee8fface07b1d4ddeffbb4a82'
-          Path('/tmp/life-map.patch').write_bytes(patch)
-          fixes = Path('.github/life-map-fixes.patch')
-          fixes.write_text(fixes.read_text().replace('\n diff --git ', '\ndiff --git '))
-          PY
-          git apply --unidiff-zero --index /tmp/life-map.patch
-          git apply --index .github/life-map-fixes.patch
-          git apply --index .github/life-map-geometry.patch
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/components/lifeplanner/LifeMap.jsx')
-          s = p.read_text().replace(', useNodesInitialized, useReactFlow', ', useReactFlow')
-          s = s.replace('const { setViewport, setCenter, zoomIn, zoomOut } = useReactFlow();', 'const { setViewport, setCenter, zoomIn, zoomOut, viewportInitialized } = useReactFlow();')
-          s = s.replace('  const initialized = useNodesInitialized();\n', '')
-          s = s.replace('if (!initialized || fitted.current === fitRevision) return;', 'if (!viewportInitialized || fitted.current === fitRevision) return;')
-          s = s.replace('[initialized, fitRevision, setViewport, setCenter, projection, wishId]', '[viewportInitialized, fitRevision, setViewport, setCenter, projection, wishId]')
-          p.write_text(s)
-          PY
-          git add src/components/lifeplanner/LifeMap.jsx
-          git apply --index .github/life-map-measurement.patch
-          git rm -f .github/life-map-patch-{0,1,2}.b64 .github/life-map-fixes.patch .github/life-map-geometry.patch .github/life-map-measurement.patch
-          git diff --cached --check
-          git write-tree > review-artifacts/tree.txt
-          test "$(git write-tree)" = a8c4a2c639ff2fb7b1f4c62a5595badaee06c66f
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: Record source
+        run: |
+          mkdir -p review-artifacts
+          git rev-parse HEAD > review-artifacts/commit.txt
+          git rev-parse HEAD^{tree} > review-artifacts/tree.txt
+          git archive --format=tar.gz -o review-artifacts/source.tar.gz HEAD
       - run: npm ci --no-audit --no-fund
-      - name: Lint and full unit suite
-        id: unit
-        continue-on-error: true
+      - name: Lint and unit tests
         run: |
           set -o pipefail
           npm run lint 2>&1 | tee review-artifacts/lint.txt
@@ -79,40 +49,14 @@ jobs:
           python -m playwright install --with-deps chromium
           sudo apt-get install -y fonts-noto-cjk
       - name: Real application browser checks
-        id: browser
-        continue-on-error: true
         run: |
           set -o pipefail
           npm run preview -- --host 127.0.0.1 --port 5173 > review-artifacts/server.txt 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5173/ >/dev/null && break || sleep 1; done
           REVIEW_OUT="$GITHUB_WORKSPACE/review-artifacts/life-map" python scripts/life-map-review.py 2>&1 | tee review-artifacts/browser.txt
-      - name: Publish validated source only to this feature branch
-        if: steps.unit.outcome == 'success' && steps.browser.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF_NAME" = feat/lifeplanner-life-map
-          test "$(gh api 'repos/Lcub3d/dayGLANCE/pulls?head=Lcub3d:feat%2Flifeplanner-life-map&state=closed' --jq '[.[] | select(.merged_at != null)] | length')" = 0
-          git fetch origin feat/lifeplanner-life-map
-          test "$(git rev-parse origin/feat/lifeplanner-life-map)" = "$GITHUB_SHA"
-          git config user.name Lcub3d
-          git config user.email 46134215+Lcub3d@users.noreply.github.com
-          git commit -m "feat(lifeplanner): add native-data Life Map with React Flow"
-          git push origin HEAD:refs/heads/feat/lifeplanner-life-map
-      - name: Archive exact candidate and source
-        if: always()
-        run: |
-          mkdir -p review-artifacts
-          git rev-parse HEAD > review-artifacts/commit.txt
-          git write-tree > review-artifacts/final-tree.txt
-          git archive --format=tar.gz -o review-artifacts/source.tar.gz "$(git write-tree)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: life-map-review
           path: review-artifacts/
           retention-days: 14
-      - name: Enforce review gates
-        if: always()
-        run: test '${{ steps.unit.outcome }}' = success && test '${{ steps.browser.outcome }}' = success

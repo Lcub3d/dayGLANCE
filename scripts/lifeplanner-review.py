@@ -176,7 +176,7 @@ with sync_playwright() as playwright:
         expect(root(page).get_by_role('button',name='展开详情',exact=True)).to_have_text('详情')
         require(root(page).locator('[data-life-wish]').count()==0,'Fabricated wishes')
         require(root(page).locator('[data-life-principle]').count()==5,'Lost existing default mottos')
-        require(root(page).locator('[data-life-blank]').count()==8,'Blank ruled lines missing')
+        require(root(page).locator('[data-life-blank]').count()==3,'Blank ruled lines missing')
         require(root(page).locator('[data-life-guide]').count()==0,'Assistant must start off')
         require(root(page).locator('svg.lucide-arrow-up,svg.lucide-arrow-down').count()==0,'Up/down controls still visible')
         no_overflow(page);page.screenshot(path=str(OUT/'notebook-empty.png'))
@@ -227,6 +227,7 @@ with sync_playwright() as playwright:
         for unwanted in ['出版一本自己的书','可衡量结果','五年愿景','填写提示','继承','规划起点']:
             require(unwanted not in sheet.inner_text(),'Unnecessary visible note content: '+unwanted)
         require(sheet.locator('p.lp-helper').count()==0,'Prose helper still visible')
+        expect(sheet.get_by_role('button',name=re.compile('^(保存|取消|添加一行)$'))).to_have_count(0)
         require(sheet.evaluate('(el)=>el.offsetWidth<=570 && el.offsetHeight<430'),'Note not compact')
         expect(sheet.get_by_label('规划起点',exact=True)).to_have_count(0)
         sheet.get_by_role('button',name='日期设置',exact=True).click()

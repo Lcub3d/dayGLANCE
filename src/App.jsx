@@ -7408,6 +7408,12 @@ const DayPlanner = () => {
   useEffect(() => {
     if (!dataLoaded) return;
     if ((!isNativeAndroid() && !isNativeIOS()) || !window.DayGlanceNative?.updateWidgetSnapshot) return;
+    // A resize writes the block's duration to state at every 15-minute step
+    // of the drag, and each of those would be a push that reloads every
+    // widget timeline. Wait for the drop; the effect re-runs when isResizing
+    // clears and pushes the settled block once. (A drag-to-move already
+    // commits only on drop.)
+    if (isResizing) return;
     void widgetSnapshotTick; // re-push scheduled at the next block boundary below
 
     const today = new Date();
@@ -7885,6 +7891,7 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dataLoaded,
+    isResizing,
     todayAgenda,
     activeHabits,
     habitsEnabled,

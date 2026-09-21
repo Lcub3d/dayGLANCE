@@ -56,9 +56,16 @@ const useWeather = () => {
 
   const fetchWeather = useCallback(async () => {
     try {
-      // Read settings from localStorage to avoid stale closures
+      // Read settings from localStorage to avoid stale closures.
+      //
+      // "Show weather in header" governs the FORECAST, not the location. The
+      // Day Dial's sunrise, sunset and moon, and the home-screen widget's sky
+      // ring, come from the geocoded coords (utils/solar.js), and a phone has
+      // no header to show weather in at all. So the geocode below runs
+      // whenever a location is set; only the forecast call is skipped when
+      // the header weather is off.
       const enabled = localStorage.getItem('day-planner-weather-enabled');
-      if (enabled !== null && !JSON.parse(enabled)) return;
+      const showWeather = enabled === null || !!JSON.parse(enabled);
 
       const zip = localStorage.getItem('day-planner-weather-zip') || '';
       const tempUnit = localStorage.getItem('day-planner-weather-temp-unit') || 'fahrenheit';
@@ -115,6 +122,12 @@ const useWeather = () => {
       // sunset locally from them (utils/solar.js), for any date and offline —
       // the forecast API's few-day window can't serve a pageable dial.
       storeWeatherCoords({ lat: latitude, lon: longitude });
+
+      if (!showWeather) {
+        // Location resolved and kept; no forecast wanted.
+        setWeather(null);
+        return;
+      }
 
       tz = tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
 

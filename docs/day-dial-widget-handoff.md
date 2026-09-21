@@ -273,9 +273,11 @@ math as the in-app bands, never re-solved in Swift (§4):
 (null, with `polar` set, on a polar day or night); `hours[h]` is the strength
 at the hour's **midpoint**, the value §4's per-segment rule wants; `moon` has
 the lit `fraction` for the glyph and `glyphMin`, the minute the in-app dial
-places its moon glyph at. Null until the weather feature has geocoded a
-location (`useWeather` stores the coords after each successful fetch, so
-weather off or no location means no sky), in which case the face draws the
+places its moon glyph at. Null until a location has been geocoded
+(`useWeather` stores the coords after each successful geocode, whether or not
+header weather is on; the field is Settings → Weather on desktop and tablet and
+Settings → Location on phones, which had no way to set one until the dial
+shipped there), in which case the face draws the
 ring **unlit** (a neutral track at the sky radius, `DialSpec.skyUnlitOpacity`)
 and no glyphs. Decided after the first device run of the real widget: the
 empty band read as a rendering fault, not as "no location". The widget's

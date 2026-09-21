@@ -414,6 +414,8 @@
     "showWeatherInHeader": "Afficher la météo dans l'en-tête",
     "weatherZipLabel": "Code postal ou nom de ville",
     "weatherTempUnit": "Unité de température",
+    "location": "Lieu",
+    "locationHelp": "Le lever et le coucher du soleil, la lune et la météo horaire du cadran du jour et de son widget sont calculés pour ce lieu.",
     "dailyContent": "Contenu quotidien",
     "showDailyContent": "Afficher les conseils et citations du jour dans l'en-tête",
     "goalsProjects": "Objectifs & Projets",

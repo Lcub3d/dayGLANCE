@@ -799,6 +799,7 @@
     "ordinal_ordinal_one": "{{count}}",
     "ordinal_ordinal_two": "{{count}}",
     "ordinal_ordinal_few": "{{count}}",
+    "ordinal_ordinal_many": "{{count}}",
     "ordinal_ordinal_other": "{{count}}",
     "custom": "Personalizzata",
     "everyDay": "Ogni giorno",
@@ -824,6 +825,7 @@
     "monthDayOrdinal_ordinal_one": "{{count}}",
     "monthDayOrdinal_ordinal_two": "{{count}}",
     "monthDayOrdinal_ordinal_few": "{{count}}",
+    "monthDayOrdinal_ordinal_many": "{{count}}",
     "monthDayOrdinal_ordinal_other": "{{count}}"
   },
   "dateRange": {

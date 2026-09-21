@@ -1,0 +1,1419 @@
+{
+  "date": "2026-09-21",
+  "dateLabel": "Mon, Sep 21",
+  "allDay": [],
+  "deadlines": [],
+  "sections": [
+    {
+      "type": "unframed",
+      "tasks": [
+        {
+          "id": "2026-09-21-run",
+          "title": "Run",
+          "colorHex": "#10b981",
+          "startTime": "06:40",
+          "duration": 35,
+          "tags": [
+            "health"
+          ],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-deep",
+          "title": "Deep work",
+          "colorHex": "#3b82f6",
+          "startTime": "09:00",
+          "duration": 90,
+          "tags": [
+            "deep"
+          ],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-standup",
+          "title": "Standup",
+          "colorHex": "#a855f7",
+          "startTime": "10:45",
+          "duration": 15,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-lunch",
+          "title": "Lunch",
+          "colorHex": "#f59e0b",
+          "startTime": "12:15",
+          "duration": 45,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-review",
+          "title": "Review PRs",
+          "colorHex": "#3b82f6",
+          "startTime": "14:05",
+          "duration": 55,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-dinner",
+          "title": "Dinner with Sam",
+          "colorHex": "#f43f5e",
+          "startTime": "18:30",
+          "duration": 90,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-21-read",
+          "title": "Read",
+          "colorHex": "#6366f1",
+          "startTime": "21:00",
+          "duration": 40,
+          "tags": [],
+          "projectName": ""
+        }
+      ]
+    }
+  ],
+  "goals": [],
+  "nextTask": {
+    "id": "2026-09-21-deep",
+    "title": "Deep work",
+    "colorHex": "#3b82f6",
+    "startTime": "09:00",
+    "duration": 90,
+    "tags": [
+      "deep"
+    ],
+    "projectName": ""
+  },
+  "upcomingTasks": [
+    {
+      "id": "2026-09-21-standup",
+      "title": "Standup",
+      "colorHex": "#a855f7",
+      "startTime": "10:45",
+      "duration": 15,
+      "tags": [],
+      "projectName": ""
+    },
+    {
+      "id": "2026-09-21-lunch",
+      "title": "Lunch",
+      "colorHex": "#f59e0b",
+      "startTime": "12:15",
+      "duration": 45,
+      "tags": [],
+      "projectName": ""
+    },
+    {
+      "id": "2026-09-21-review",
+      "title": "Review PRs",
+      "colorHex": "#3b82f6",
+      "startTime": "14:05",
+      "duration": 55,
+      "tags": [],
+      "projectName": ""
+    },
+    {
+      "id": "2026-09-21-dinner",
+      "title": "Dinner with Sam",
+      "colorHex": "#f43f5e",
+      "startTime": "18:30",
+      "duration": 90,
+      "tags": [],
+      "projectName": ""
+    },
+    {
+      "id": "2026-09-21-read",
+      "title": "Read",
+      "colorHex": "#6366f1",
+      "startTime": "21:00",
+      "duration": 40,
+      "tags": [],
+      "projectName": ""
+    }
+  ],
+  "sky": {
+    "sunriseMin": 406,
+    "sunsetMin": 1138,
+    "polar": null,
+    "hours": [
+      {
+        "sun": 0,
+        "moon": 0.138
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0
+      },
+      {
+        "sun": 0.13,
+        "moon": 0
+      },
+      {
+        "sun": 0.33,
+        "moon": 0
+      },
+      {
+        "sun": 0.508,
+        "moon": 0
+      },
+      {
+        "sun": 0.651,
+        "moon": 0
+      },
+      {
+        "sun": 0.749,
+        "moon": 0
+      },
+      {
+        "sun": 0.796,
+        "moon": 0
+      },
+      {
+        "sun": 0.789,
+        "moon": 0
+      },
+      {
+        "sun": 0.728,
+        "moon": 0
+      },
+      {
+        "sun": 0.618,
+        "moon": 0
+      },
+      {
+        "sun": 0.465,
+        "moon": 0
+      },
+      {
+        "sun": 0.28,
+        "moon": 0
+      },
+      {
+        "sun": 0.076,
+        "moon": 0
+      },
+      {
+        "sun": 0,
+        "moon": 0.412
+      },
+      {
+        "sun": 0,
+        "moon": 0.489
+      },
+      {
+        "sun": 0,
+        "moon": 0.517
+      },
+      {
+        "sun": 0,
+        "moon": 0.495
+      },
+      {
+        "sun": 0,
+        "moon": 0.424
+      }
+    ],
+    "moon": {
+      "fraction": 0.766,
+      "waxing": true,
+      "glyphMin": 1294
+    }
+  },
+  "dial": {
+    "date": "2026-09-21",
+    "blocks": [
+      {
+        "type": "sleep",
+        "startMin": 0,
+        "durationMin": 390
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-run",
+        "title": "Run",
+        "tag": "health",
+        "startMin": 400,
+        "durationMin": 35,
+        "kind": "restore",
+        "completed": true,
+        "colorHex": "#10b981",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-deep",
+        "title": "Deep work",
+        "tag": "deep",
+        "startMin": 540,
+        "durationMin": 90,
+        "kind": "effort",
+        "completed": false,
+        "colorHex": "#3b82f6",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-standup",
+        "title": "Standup",
+        "tag": null,
+        "startMin": 645,
+        "durationMin": 15,
+        "kind": "effort",
+        "completed": false,
+        "colorHex": "#a855f7",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-lunch",
+        "title": "Lunch",
+        "tag": null,
+        "startMin": 735,
+        "durationMin": 45,
+        "kind": "restore",
+        "completed": false,
+        "colorHex": "#f59e0b",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-review",
+        "title": "Review PRs",
+        "tag": null,
+        "startMin": 845,
+        "durationMin": 55,
+        "kind": "effort",
+        "completed": false,
+        "colorHex": "#3b82f6",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-dinner",
+        "title": "Dinner with Sam",
+        "tag": null,
+        "startMin": 1110,
+        "durationMin": 90,
+        "kind": "restore",
+        "completed": false,
+        "colorHex": "#f43f5e",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "task",
+        "id": "2026-09-21-read",
+        "title": "Read",
+        "tag": null,
+        "startMin": 1260,
+        "durationMin": 40,
+        "kind": "effort",
+        "completed": false,
+        "colorHex": "#6366f1",
+        "lane": 0,
+        "laneCount": 1
+      },
+      {
+        "type": "sleep",
+        "startMin": 1350,
+        "durationMin": 90
+      }
+    ]
+  },
+  "use24Hour": false,
+  "allGoals": [],
+  "allProjects": [],
+  "days": [
+    {
+      "date": "2026-09-22",
+      "dateLabel": "Tue, Sep 22",
+      "allDay": [],
+      "deadlines": [],
+      "sections": [
+        {
+          "type": "unframed",
+          "tasks": [
+            {
+              "id": "2026-09-22-run",
+              "title": "Run",
+              "colorHex": "#10b981",
+              "startTime": "06:40",
+              "duration": 35,
+              "tags": [
+                "health"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-deep",
+              "title": "Deep work",
+              "colorHex": "#3b82f6",
+              "startTime": "09:00",
+              "duration": 90,
+              "tags": [
+                "deep"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-standup",
+              "title": "Standup",
+              "colorHex": "#a855f7",
+              "startTime": "10:45",
+              "duration": 15,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-lunch",
+              "title": "Lunch",
+              "colorHex": "#f59e0b",
+              "startTime": "12:15",
+              "duration": 45,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-review",
+              "title": "Review PRs",
+              "colorHex": "#3b82f6",
+              "startTime": "14:05",
+              "duration": 55,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-dinner",
+              "title": "Dinner with Sam",
+              "colorHex": "#f43f5e",
+              "startTime": "18:30",
+              "duration": 90,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-22-read",
+              "title": "Read",
+              "colorHex": "#6366f1",
+              "startTime": "21:00",
+              "duration": 40,
+              "tags": [],
+              "projectName": ""
+            }
+          ]
+        }
+      ],
+      "goals": [],
+      "nextTask": {
+        "id": "2026-09-22-deep",
+        "title": "Deep work",
+        "colorHex": "#3b82f6",
+        "startTime": "09:00",
+        "duration": 90,
+        "tags": [
+          "deep"
+        ],
+        "projectName": ""
+      },
+      "upcomingTasks": [
+        {
+          "id": "2026-09-22-standup",
+          "title": "Standup",
+          "colorHex": "#a855f7",
+          "startTime": "10:45",
+          "duration": 15,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-22-lunch",
+          "title": "Lunch",
+          "colorHex": "#f59e0b",
+          "startTime": "12:15",
+          "duration": 45,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-22-review",
+          "title": "Review PRs",
+          "colorHex": "#3b82f6",
+          "startTime": "14:05",
+          "duration": 55,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-22-dinner",
+          "title": "Dinner with Sam",
+          "colorHex": "#f43f5e",
+          "startTime": "18:30",
+          "duration": 90,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-22-read",
+          "title": "Read",
+          "colorHex": "#6366f1",
+          "startTime": "21:00",
+          "duration": 40,
+          "tags": [],
+          "projectName": ""
+        }
+      ],
+      "sky": {
+        "sunriseMin": 407,
+        "sunsetMin": 1137,
+        "polar": null,
+        "hours": [
+          {
+            "sun": 0,
+            "moon": 0.34
+          },
+          {
+            "sun": 0,
+            "moon": 0.173
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0.127,
+            "moon": 0
+          },
+          {
+            "sun": 0.327,
+            "moon": 0
+          },
+          {
+            "sun": 0.504,
+            "moon": 0
+          },
+          {
+            "sun": 0.647,
+            "moon": 0
+          },
+          {
+            "sun": 0.745,
+            "moon": 0
+          },
+          {
+            "sun": 0.792,
+            "moon": 0
+          },
+          {
+            "sun": 0.784,
+            "moon": 0
+          },
+          {
+            "sun": 0.723,
+            "moon": 0
+          },
+          {
+            "sun": 0.612,
+            "moon": 0
+          },
+          {
+            "sun": 0.459,
+            "moon": 0
+          },
+          {
+            "sun": 0.274,
+            "moon": 0
+          },
+          {
+            "sun": 0.071,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0.43
+          },
+          {
+            "sun": 0,
+            "moon": 0.556
+          },
+          {
+            "sun": 0,
+            "moon": 0.631
+          },
+          {
+            "sun": 0,
+            "moon": 0.651
+          },
+          {
+            "sun": 0,
+            "moon": 0.613
+          }
+        ],
+        "moon": {
+          "fraction": 0.843,
+          "waxing": true,
+          "glyphMin": 1342
+        }
+      },
+      "dial": {
+        "date": "2026-09-22",
+        "blocks": [
+          {
+            "type": "sleep",
+            "startMin": 0,
+            "durationMin": 390
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-run",
+            "title": "Run",
+            "tag": "health",
+            "startMin": 400,
+            "durationMin": 35,
+            "kind": "restore",
+            "completed": true,
+            "colorHex": "#10b981",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-deep",
+            "title": "Deep work",
+            "tag": "deep",
+            "startMin": 540,
+            "durationMin": 90,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-standup",
+            "title": "Standup",
+            "tag": null,
+            "startMin": 645,
+            "durationMin": 15,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#a855f7",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-lunch",
+            "title": "Lunch",
+            "tag": null,
+            "startMin": 735,
+            "durationMin": 45,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f59e0b",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-review",
+            "title": "Review PRs",
+            "tag": null,
+            "startMin": 845,
+            "durationMin": 55,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-dinner",
+            "title": "Dinner with Sam",
+            "tag": null,
+            "startMin": 1110,
+            "durationMin": 90,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f43f5e",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-22-read",
+            "title": "Read",
+            "tag": null,
+            "startMin": 1260,
+            "durationMin": 40,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#6366f1",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "sleep",
+            "startMin": 1350,
+            "durationMin": 90
+          }
+        ]
+      }
+    },
+    {
+      "date": "2026-09-23",
+      "dateLabel": "Wed, Sep 23",
+      "allDay": [],
+      "deadlines": [],
+      "sections": [
+        {
+          "type": "unframed",
+          "tasks": [
+            {
+              "id": "2026-09-23-run",
+              "title": "Run",
+              "colorHex": "#10b981",
+              "startTime": "06:40",
+              "duration": 35,
+              "tags": [
+                "health"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-deep",
+              "title": "Deep work",
+              "colorHex": "#3b82f6",
+              "startTime": "09:00",
+              "duration": 90,
+              "tags": [
+                "deep"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-standup",
+              "title": "Standup",
+              "colorHex": "#a855f7",
+              "startTime": "10:45",
+              "duration": 15,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-lunch",
+              "title": "Lunch",
+              "colorHex": "#f59e0b",
+              "startTime": "12:15",
+              "duration": 45,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-review",
+              "title": "Review PRs",
+              "colorHex": "#3b82f6",
+              "startTime": "14:05",
+              "duration": 55,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-dinner",
+              "title": "Dinner with Sam",
+              "colorHex": "#f43f5e",
+              "startTime": "18:30",
+              "duration": 90,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-23-read",
+              "title": "Read",
+              "colorHex": "#6366f1",
+              "startTime": "21:00",
+              "duration": 40,
+              "tags": [],
+              "projectName": ""
+            }
+          ]
+        }
+      ],
+      "goals": [],
+      "nextTask": {
+        "id": "2026-09-23-deep",
+        "title": "Deep work",
+        "colorHex": "#3b82f6",
+        "startTime": "09:00",
+        "duration": 90,
+        "tags": [
+          "deep"
+        ],
+        "projectName": ""
+      },
+      "upcomingTasks": [
+        {
+          "id": "2026-09-23-standup",
+          "title": "Standup",
+          "colorHex": "#a855f7",
+          "startTime": "10:45",
+          "duration": 15,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-23-lunch",
+          "title": "Lunch",
+          "colorHex": "#f59e0b",
+          "startTime": "12:15",
+          "duration": 45,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-23-review",
+          "title": "Review PRs",
+          "colorHex": "#3b82f6",
+          "startTime": "14:05",
+          "duration": 55,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-23-dinner",
+          "title": "Dinner with Sam",
+          "colorHex": "#f43f5e",
+          "startTime": "18:30",
+          "duration": 90,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-23-read",
+          "title": "Read",
+          "colorHex": "#6366f1",
+          "startTime": "21:00",
+          "duration": 40,
+          "tags": [],
+          "projectName": ""
+        }
+      ],
+      "sky": {
+        "sunriseMin": 408,
+        "sunsetMin": 1135,
+        "polar": null,
+        "hours": [
+          {
+            "sun": 0,
+            "moon": 0.56
+          },
+          {
+            "sun": 0,
+            "moon": 0.408
+          },
+          {
+            "sun": 0,
+            "moon": 0.215
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0.123,
+            "moon": 0
+          },
+          {
+            "sun": 0.323,
+            "moon": 0
+          },
+          {
+            "sun": 0.5,
+            "moon": 0
+          },
+          {
+            "sun": 0.643,
+            "moon": 0
+          },
+          {
+            "sun": 0.74,
+            "moon": 0
+          },
+          {
+            "sun": 0.787,
+            "moon": 0
+          },
+          {
+            "sun": 0.779,
+            "moon": 0
+          },
+          {
+            "sun": 0.718,
+            "moon": 0
+          },
+          {
+            "sun": 0.607,
+            "moon": 0
+          },
+          {
+            "sun": 0.453,
+            "moon": 0
+          },
+          {
+            "sun": 0.268,
+            "moon": 0
+          },
+          {
+            "sun": 0.065,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0.419
+          },
+          {
+            "sun": 0,
+            "moon": 0.595
+          },
+          {
+            "sun": 0,
+            "moon": 0.722
+          },
+          {
+            "sun": 0,
+            "moon": 0.79
+          },
+          {
+            "sun": 0,
+            "moon": 0.795
+          }
+        ],
+        "moon": {
+          "fraction": 0.909,
+          "waxing": true,
+          "glyphMin": 1386
+        }
+      },
+      "dial": {
+        "date": "2026-09-23",
+        "blocks": [
+          {
+            "type": "sleep",
+            "startMin": 0,
+            "durationMin": 390
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-run",
+            "title": "Run",
+            "tag": "health",
+            "startMin": 400,
+            "durationMin": 35,
+            "kind": "restore",
+            "completed": true,
+            "colorHex": "#10b981",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-deep",
+            "title": "Deep work",
+            "tag": "deep",
+            "startMin": 540,
+            "durationMin": 90,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-standup",
+            "title": "Standup",
+            "tag": null,
+            "startMin": 645,
+            "durationMin": 15,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#a855f7",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-lunch",
+            "title": "Lunch",
+            "tag": null,
+            "startMin": 735,
+            "durationMin": 45,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f59e0b",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-review",
+            "title": "Review PRs",
+            "tag": null,
+            "startMin": 845,
+            "durationMin": 55,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-dinner",
+            "title": "Dinner with Sam",
+            "tag": null,
+            "startMin": 1110,
+            "durationMin": 90,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f43f5e",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-23-read",
+            "title": "Read",
+            "tag": null,
+            "startMin": 1260,
+            "durationMin": 40,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#6366f1",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "sleep",
+            "startMin": 1350,
+            "durationMin": 90
+          }
+        ]
+      }
+    },
+    {
+      "date": "2026-09-24",
+      "dateLabel": "Thu, Sep 24",
+      "allDay": [],
+      "deadlines": [],
+      "sections": [
+        {
+          "type": "unframed",
+          "tasks": [
+            {
+              "id": "2026-09-24-run",
+              "title": "Run",
+              "colorHex": "#10b981",
+              "startTime": "06:40",
+              "duration": 35,
+              "tags": [
+                "health"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-deep",
+              "title": "Deep work",
+              "colorHex": "#3b82f6",
+              "startTime": "09:00",
+              "duration": 90,
+              "tags": [
+                "deep"
+              ],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-standup",
+              "title": "Standup",
+              "colorHex": "#a855f7",
+              "startTime": "10:45",
+              "duration": 15,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-lunch",
+              "title": "Lunch",
+              "colorHex": "#f59e0b",
+              "startTime": "12:15",
+              "duration": 45,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-review",
+              "title": "Review PRs",
+              "colorHex": "#3b82f6",
+              "startTime": "14:05",
+              "duration": 55,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-dinner",
+              "title": "Dinner with Sam",
+              "colorHex": "#f43f5e",
+              "startTime": "18:30",
+              "duration": 90,
+              "tags": [],
+              "projectName": ""
+            },
+            {
+              "id": "2026-09-24-read",
+              "title": "Read",
+              "colorHex": "#6366f1",
+              "startTime": "21:00",
+              "duration": 40,
+              "tags": [],
+              "projectName": ""
+            }
+          ]
+        }
+      ],
+      "goals": [],
+      "nextTask": {
+        "id": "2026-09-24-deep",
+        "title": "Deep work",
+        "colorHex": "#3b82f6",
+        "startTime": "09:00",
+        "duration": 90,
+        "tags": [
+          "deep"
+        ],
+        "projectName": ""
+      },
+      "upcomingTasks": [
+        {
+          "id": "2026-09-24-standup",
+          "title": "Standup",
+          "colorHex": "#a855f7",
+          "startTime": "10:45",
+          "duration": 15,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-24-lunch",
+          "title": "Lunch",
+          "colorHex": "#f59e0b",
+          "startTime": "12:15",
+          "duration": 45,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-24-review",
+          "title": "Review PRs",
+          "colorHex": "#3b82f6",
+          "startTime": "14:05",
+          "duration": 55,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-24-dinner",
+          "title": "Dinner with Sam",
+          "colorHex": "#f43f5e",
+          "startTime": "18:30",
+          "duration": 90,
+          "tags": [],
+          "projectName": ""
+        },
+        {
+          "id": "2026-09-24-read",
+          "title": "Read",
+          "colorHex": "#6366f1",
+          "startTime": "21:00",
+          "duration": 40,
+          "tags": [],
+          "projectName": ""
+        }
+      ],
+      "sky": {
+        "sunriseMin": 409,
+        "sunsetMin": 1134,
+        "polar": null,
+        "hours": [
+          {
+            "sun": 0,
+            "moon": 0.778
+          },
+          {
+            "sun": 0,
+            "moon": 0.655
+          },
+          {
+            "sun": 0,
+            "moon": 0.478
+          },
+          {
+            "sun": 0,
+            "moon": 0.26
+          },
+          {
+            "sun": 0,
+            "moon": 0.014
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0
+          },
+          {
+            "sun": 0.12,
+            "moon": 0
+          },
+          {
+            "sun": 0.32,
+            "moon": 0
+          },
+          {
+            "sun": 0.496,
+            "moon": 0
+          },
+          {
+            "sun": 0.639,
+            "moon": 0
+          },
+          {
+            "sun": 0.736,
+            "moon": 0
+          },
+          {
+            "sun": 0.782,
+            "moon": 0
+          },
+          {
+            "sun": 0.774,
+            "moon": 0
+          },
+          {
+            "sun": 0.712,
+            "moon": 0
+          },
+          {
+            "sun": 0.601,
+            "moon": 0
+          },
+          {
+            "sun": 0.448,
+            "moon": 0
+          },
+          {
+            "sun": 0.263,
+            "moon": 0
+          },
+          {
+            "sun": 0.059,
+            "moon": 0
+          },
+          {
+            "sun": 0,
+            "moon": 0.376
+          },
+          {
+            "sun": 0,
+            "moon": 0.597
+          },
+          {
+            "sun": 0,
+            "moon": 0.773
+          },
+          {
+            "sun": 0,
+            "moon": 0.893
+          },
+          {
+            "sun": 0,
+            "moon": 0.949
+          }
+        ],
+        "moon": {
+          "fraction": 0.959,
+          "waxing": true,
+          "glyphMin": 1428
+        }
+      },
+      "dial": {
+        "date": "2026-09-24",
+        "blocks": [
+          {
+            "type": "sleep",
+            "startMin": 0,
+            "durationMin": 390
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-run",
+            "title": "Run",
+            "tag": "health",
+            "startMin": 400,
+            "durationMin": 35,
+            "kind": "restore",
+            "completed": true,
+            "colorHex": "#10b981",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-deep",
+            "title": "Deep work",
+            "tag": "deep",
+            "startMin": 540,
+            "durationMin": 90,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-standup",
+            "title": "Standup",
+            "tag": null,
+            "startMin": 645,
+            "durationMin": 15,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#a855f7",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-lunch",
+            "title": "Lunch",
+            "tag": null,
+            "startMin": 735,
+            "durationMin": 45,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f59e0b",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-review",
+            "title": "Review PRs",
+            "tag": null,
+            "startMin": 845,
+            "durationMin": 55,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#3b82f6",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-dinner",
+            "title": "Dinner with Sam",
+            "tag": null,
+            "startMin": 1110,
+            "durationMin": 90,
+            "kind": "restore",
+            "completed": false,
+            "colorHex": "#f43f5e",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "task",
+            "id": "2026-09-24-read",
+            "title": "Read",
+            "tag": null,
+            "startMin": 1260,
+            "durationMin": 40,
+            "kind": "effort",
+            "completed": false,
+            "colorHex": "#6366f1",
+            "lane": 0,
+            "laneCount": 1
+          },
+          {
+            "type": "sleep",
+            "startMin": 1350,
+            "durationMin": 90
+          }
+        ]
+      }
+    }
+  ],
+  "updatedAt": 1790013600000,
+  "reloadWidgets": true
+}

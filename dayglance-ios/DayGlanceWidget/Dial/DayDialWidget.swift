@@ -110,7 +110,12 @@ struct DayDialProvider: TimelineProvider {
             let ms = (CFAbsoluteTimeGetCurrent() - t0) * 1000
             let first = dates.first?.formatted(date: .omitted, time: .shortened) ?? "-"
             let last = dates.last?.formatted(date: .abbreviated, time: .shortened) ?? "-"
-            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
+            // Whether the day being rendered right now has a sky: "none"
+            // means the payload's `sky` is null (no geocoded location in the
+            // app), and the face is drawing the unlit ring on purpose.
+            let nowInput = DialFaceInput(day: ResolvedWidgetDay.resolve(snapshot, at: now, calendar: calendar))
+            let sky = nowInput.sky.isEmpty ? "none" : "\(nowInput.sky.count)h rise=\(nowInput.sunriseMin.map { "\(Int($0))" } ?? "-") set=\(nowInput.sunsetMin.map { "\(Int($0))" } ?? "-") moon=\(nowInput.moon == nil ? "no" : "yes")"
+            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) sky=\(sky, privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
 
             let entries = dates.map { DayDialEntry(date: $0, snapshot: snapshot) }
             completion(Timeline(entries: entries, policy: .atEnd))

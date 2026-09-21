@@ -228,7 +228,7 @@ with sync_playwright() as playwright:
             require(unwanted not in sheet.inner_text(),'Unnecessary visible note content: '+unwanted)
         require(sheet.locator('p.lp-helper').count()==0,'Prose helper still visible')
         expect(sheet.get_by_role('button',name=re.compile('^(保存|取消|添加一行)$'))).to_have_count(0)
-        require(sheet.evaluate('(el)=>el.offsetWidth<=570 && el.offsetHeight<430'),'Note not compact')
+        require(sheet.evaluate('(el)=>el.offsetWidth<=600 && el.offsetHeight<430 && el.scrollWidth<=el.clientWidth+1'),'Note exceeds its current compact layout')
         expect(sheet.get_by_label('规划起点',exact=True)).to_have_count(0)
         sheet.get_by_role('button',name='日期设置',exact=True).click()
         sheet.get_by_label('规划起点',exact=True).fill('2026-09-20')

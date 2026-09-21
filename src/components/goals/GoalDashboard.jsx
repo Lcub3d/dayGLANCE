@@ -2423,8 +2423,9 @@ const GoalDashboard = ({ embedded = false, isActive = false, addGoalTrigger = 0,
     if (embedded ? !isActive : !showGoalsDashboard) return;
     const handler = (e) => {
       if (e.key !== 'Escape') return;
-      // Planner portals own their keys while above this cached mobile tab.
-      if (e.target?.closest?.('[data-planning-choices], [data-lifeplanner]')) return;
+      // Planner sheets are siblings of the notebook root, not its descendants.
+      // Yield to the mounted overlay even when focus briefly lands on body.
+      if (document.querySelector('[data-planning-choices], [data-lifeplanner], [data-life-vision], [data-life-swot]')) return;
       // A task notes/subtasks overlay (e.g. opened from a SCHED/planner card)
       // sits above everything and closes itself — leave ESC to it.
       if (document.querySelector('.sched-notes-panel')) return;

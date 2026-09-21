@@ -417,6 +417,8 @@
     "showWeatherInHeader": "Show weather in header",
     "weatherZipLabel": "ZIP code or city name",
     "weatherTempUnit": "Temperature unit",
+    "location": "Location",
+    "locationHelp": "Sunrise, sunset, the moon and hourly weather on the Day Dial and its home-screen widget are worked out for this place.",
     "dailyContent": "Daily Content",
     "showDailyContent": "Show daily tips & quotes in header",
     "goalsProjects": "Goals & Projects",

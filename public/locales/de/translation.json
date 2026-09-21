@@ -414,6 +414,8 @@
     "showWeatherInHeader": "Wetter im Header anzeigen",
     "weatherZipLabel": "Postleitzahl oder Stadtname",
     "weatherTempUnit": "Temperatureinheit",
+    "location": "Standort",
+    "locationHelp": "Sonnenauf- und -untergang, Mond und stündliches Wetter auf der Tagesanzeige und ihrem Widget werden für diesen Ort berechnet.",
     "dailyContent": "Tägliche Inhalte",
     "showDailyContent": "Tägliche Tipps und Zitate im Header anzeigen",
     "goalsProjects": "Ziele & Projekte",

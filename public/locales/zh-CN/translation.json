@@ -420,6 +420,8 @@
     "showWeatherInHeader": "在标题中显示天气",
     "weatherZipLabel": "邮政编码或城市名称",
     "weatherTempUnit": "温度单位",
+    "location": "位置",
+    "locationHelp": "日程表盘及其主屏幕小组件上的日出、日落、月相和逐小时天气均按此位置计算。",
     "dailyContent": "每日内容",
     "showDailyContent": "在标题中显示每日提示和名言",
     "goalsProjects": "目标和项目",

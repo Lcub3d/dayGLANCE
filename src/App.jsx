@@ -7822,10 +7822,11 @@ const DayPlanner = () => {
       // Derived here, never re-solved natively (docs/day-dial-widget-handoff.md
       // §4): 24 hourly sun/moon strengths plus the rise/set minutes and the
       // moon's phase, from the same solar and lunar math the in-app dial
-      // draws with. Null until the weather feature has geocoded a location
-      // (useWeather stores the coords after each successful fetch; weather
-      // off or no location → null), and then the widget draws the ring
-      // unlit and no glyphs, like the dial draws no solar layer. ~0.6 KB.
+      // draws with. Null until a location has been geocoded (useWeather
+      // stores the coords after each successful geocode, header weather on
+      // or off; Settings → Weather on desktop and tablet, Settings →
+      // Location on phones), and then the widget draws the ring unlit and
+      // no glyphs, like the dial draws no solar layer. ~0.6 KB.
       sky: computeSkySnapshot(today, getStoredWeatherCoords()),
       // ── The whole day, for the Day Dial widget's ring ──────────────────
       // NOT from todayAgenda: that list hides a completed task once it has

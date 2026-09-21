@@ -414,6 +414,8 @@
     "showWeatherInHeader": "Mostrar meteorologia no cabeçalho",
     "weatherZipLabel": "Código postal ou nome da cidade",
     "weatherTempUnit": "Unidade de temperatura",
+    "location": "Localização",
+    "locationHelp": "Nascer e pôr do sol, lua e meteorologia horária no mostrador do dia e no seu widget são calculados para este local.",
     "dailyContent": "Conteúdo diário",
     "showDailyContent": "Mostrar dicas e citações diárias no cabeçalho",
     "goalsProjects": "Objetivos e projetos",

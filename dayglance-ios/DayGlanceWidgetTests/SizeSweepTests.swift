@@ -62,7 +62,7 @@ final class SizeSweepTests: XCTestCase {
     @MainActor
     private func render(w: CGFloat, h: CGFloat) throws -> CGImage {
         let renderer = ImageRenderer(content:
-            DialCanvas { DialFaceView(input: input, nowMin: 0, mono: true) }
+            DialCanvas { DialFaceView(input: self.input, nowMin: 0, mono: true) }
                 .frame(width: w, height: h))
         renderer.scale = 2
         return try XCTUnwrap(renderer.cgImage, "no image at \(w)×\(h)")

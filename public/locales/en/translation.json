@@ -143,8 +143,10 @@
     "yearly": "yearly"
   },
   "common": {
+    "durationMinutes": "{{minutes}}m",
+    "durationHours": "{{hours}}h",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
     "yesterday": "Yesterday",
-    "hoursShort": "{{count}}h",
     "blocked": "Blocked",
     "am": "AM",
     "pm": "PM",
@@ -1092,7 +1094,6 @@
     "elapsedDuration": "{{duration}} elapsed",
     "endSession": "End Session",
     "exitAndReturn": "Exit — I'll come back",
-    "hoursMinutesShort": "{{hours}}h {{minutes}}m",
     "longBreakEveryFourCycles": "Long break replaces break every 4 cycles.",
     "noProjectTasks": "No tasks — add them in the Goals dashboard.",
     "pause": "Pause",
@@ -1242,9 +1243,6 @@
     "total": "Local storage: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}}m",
-    "durationHours": "{{hours}}h",
-    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
     "tasksDone": "Tasks done",
     "completion": "Completion",
     "timeSpent": "Time spent",

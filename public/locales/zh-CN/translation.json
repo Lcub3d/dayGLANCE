@@ -143,12 +143,14 @@
     "yearly": "年度"
   },
   "common": {
+    "durationMinutes": "{{minutes}} 分钟",
+    "durationHours": "{{hours}} 小时",
+    "durationHoursMinutes": "{{hours}} 小时 {{minutes}} 分钟",
     "yesterday": "昨天",
     "am": "上午",
     "pm": "下午",
     "amShort": "上午",
     "pmShort": "下午",
-    "hoursShort": "{{count}} 小时",
     "blocked": "受阻",
     "cancel": "取消",
     "save": "保存",
@@ -1092,7 +1094,6 @@
     "elapsedDuration": "已进行 {{duration}}",
     "endSession": "结束会话",
     "exitAndReturn": "退出，稍后回来",
-    "hoursMinutesShort": "{{hours}} 小时 {{minutes}} 分钟",
     "longBreakEveryFourCycles": "每 4 个循环用一次长休息替代普通休息。",
     "noProjectTasks": "暂无任务，请在“目标”面板中添加任务。",
     "pause": "暂停",
@@ -1242,9 +1243,6 @@
     "total": "本地存储：{{used}} / 约 5 MB（{{percent}}%）"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} 分钟",
-    "durationHours": "{{hours}} 小时",
-    "durationHoursMinutes": "{{hours}} 小时 {{minutes}} 分钟",
     "tasksDone": "已完成任务",
     "completion": "完成率",
     "timeSpent": "投入时间",

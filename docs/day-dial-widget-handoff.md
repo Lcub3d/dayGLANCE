@@ -491,18 +491,20 @@ curated fixture day, so it is not to be removed when the real widget changes.
   `DialFaceCache` at render time, one decoded face kept in memory), the hub
   overlay and the needle. The face is re-rendered only when the cache key
   changes, i.e. at a block end (the bucket), a tier change or a new size.
-- **Countdown: static, after trying live.** Phase 4 shipped the live form —
-  `Text(end, style: .relative)` spliced into the catalog phrase "until %@ ·
-  %@ left" in the duration's slot, so the words stayed translated and the
-  number was system-updated — and on the phone it was rejected: under an
-  hour the relative style counts **seconds** ("17 min, 37 sec left"), which
-  read as noise, and it spells the units so the row shrank. The widget now
-  draws the static rounded form ("17m left", "35m open"), exact at each
-  entry; with the 15-minute grid plus an entry at every block boundary the
-  number is at most a quarter of an hour old and never counts past zero.
-  Tightening that to 5 minutes would triple the entry count (~300, each an
-  archived view). The live splice stays in `DialHubView` behind
-  `countdownEnd` / `openEnd`, unused by the widget.
+- **Countdown: three rows, live to the minute on iOS 18.** The first device
+  run rejected Phase 4's `Text(end, style: .relative)`: under an hour it
+  counts seconds ("17 min, 37 sec left"). A static form was exact only at
+  each entry, so up to a quarter of an hour old between them. The row is now
+  `Text(.currentDate, format: .offset(to:))` restricted to hours and minutes
+  (iOS 18+), spliced into the catalog phrase "%@ left": system-updated every
+  minute, never seconds, never past zero (the block's end is an entry).
+  Below iOS 18 the static "17m left" is drawn. And the end time has a row of
+  its own: title, "until 19:00", "17 minutes left", runway. Rows under the
+  title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch from 211) with
+  only the rows a state has, so the note still lands inside the ring when
+  tag, until, left, runway and note are all present (last baseline 291,
+  ~98pt usable; `HubTests`, `HubStatesTests`). The spec's fixed slots stay
+  in `DialSpec.Hub` as the reference.
 - **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
   ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
   file just written is never evicted. A timeline build ends by retaining only

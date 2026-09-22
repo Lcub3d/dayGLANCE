@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>dayGLANCE Goals &amp; Projects space</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;background:#1b2230;color:#e6e9ef}
+a{color:#7fb0ff}a:hover{color:#a9c9ff}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; background: #1b2230; color: #e6e9ef; font-size: 13px; overflow: hidden;">
+
+<!-- HEADER ROW -->
+<div style="height: 56px; flex-shrink: 0; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #1f2735; border-bottom: 1px solid #2c3647;">
+
+<!-- SPACE SWITCHER -->
+<div role="group" aria-label="Space" style="display: flex; flex-direction: row; gap: 2px; padding: 3px; background: #151b27; border: 1px solid #2f3a4c; border-radius: 8px;">
+<button type="button" aria-label="Calendar (G toggles)" title="Calendar  ·  G toggles" aria-pressed="{{isCal}}" onClick="{{pickCal}}" style="{{calBtnStyle}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+</button>
+<button type="button" aria-label="Goals &amp; Projects (G toggles)" title="Goals &amp; Projects  ·  G toggles" aria-pressed="{{isGoals}}" onClick="{{pickGoals}}" style="{{goalsBtnStyle}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>
+</button>
+</div>
+
+<!-- WIDGET CARD -->
+<div style="width: 250px; height: 40px; box-sizing: border-box; padding: 5px 10px; background: #2a3344; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+<div style="font-size: 10px; color: #9aa3b2;">Dad Joke</div>
+<div style="font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">"Dad, I'm hungry." Hello, Hungry. I'm Dad.</div>
+</div>
+
+<!-- CENTER -->
+<div style="flex-grow: 1; display: flex; justify-content: center; align-items: center; gap: 28px;">
+<sc-if value="{{isCal}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; gap: 28px;">
+<button type="button" aria-label="Previous days" style="background: none; border: none; color: #9aa3b2; padding: 6px; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg></button>
+<div style="font-size: 16px; font-weight: 600;">Sep 20–22, 2026</div>
+<button type="button" aria-label="Next days" style="background: none; border: none; color: #9aa3b2; padding: 6px; display: flex;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg></button>
+</div>
+</sc-if>
+<sc-if value="{{isGoals}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; align-items: baseline; gap: 10px;">
+<div style="font-size: 16px; font-weight: 600;">Goals &amp; Projects</div>
+<div style="font-size: 12px; color: #9aa3b2;">3 goals · 12 projects</div>
+</div>
+</sc-if>
+</div>
+
+<!-- ACTION CLUSTER -->
+<div style="display: flex; gap: 6px;">
+<button type="button" aria-label="Sync" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M3 21v-5h5"></path></svg></button>
+<button type="button" aria-label="Settings" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg></button>
+<button type="button" aria-label="Notifications" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg></button>
+<button type="button" aria-label="Theme" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M5 19l1.4-1.4M17.6 6.4L19 5"></path></svg></button>
+<button type="button" aria-label="Help" style="width: 30px; height: 30px; border: none; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"></path></svg></button>
+</div>
+</div>
+
+<!-- BODY -->
+<div style="flex-grow: 1; display: flex; min-height: 0;">
+
+<!-- ========== CALENDAR SPACE ========== -->
+<sc-if value="{{isCal}}" hint-placeholder-val="{{true}}">
+<div style="flex-grow: 1; display: flex; min-height: 0;">
+
+<!-- calendar sidebar -->
+<div style="width: 300px; flex-shrink: 0; box-sizing: border-box; background: #232b3a; border-right: 1px solid #2c3647; display: flex; flex-direction: column;">
+<div style="height: 44px; display: flex; border-bottom: 1px solid #2c3647;">
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: #7fb0ff; font-weight: 600; border-bottom: 2px solid #4c8dff;">GLANCE</div>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 6px; color: #c4cad6;">inbox <span style="background: #3b6fd8; color: #ffffff; font-size: 10px; border-radius: 8px; padding: 1px 6px;">1</span></div>
+</div>
+<div style="padding: 12px; display: flex; gap: 8px;">
+<label style="flex-grow: 1; display: flex; align-items: center; gap: 8px; height: 34px; box-sizing: border-box; padding: 0 10px; background: #2a3344; border-radius: 6px; color: #9aa3b2;">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-5-5"></path></svg>
+<input type="search" placeholder="Search" aria-label="Search" style="flex-grow: 1; min-width: 0; background: none; border: none; color: #e6e9ef; font: inherit; outline: none;">
+<span style="font-size: 11px;">Ctrl+K</span>
+</label>
+</div>
+<div style="text-align: center; color: #b4bccb; padding: 8px 0 16px;">No tasks scheduled for today</div>
+<div style="margin: 0 12px; padding: 12px; border: 1px solid #2f3a4c; border-radius: 8px; background: #262f3f;">
+<div style="font-size: 12px; color: #9aa3b2;"><span style="font-style: italic; font-weight: 600; color: #c4cad6;">GLANCEahead</span> — Monday</div>
+<div style="margin-top: 6px; font-style: italic; color: #c4cad6;">Tomorrow is wide open</div>
+</div>
+<div style="flex-grow: 1;"></div>
+<div style="padding: 12px;">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; background: #2a3344; border: none; border-radius: 15px; color: #c4cad6; font-size: 12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"></path></svg>Daily Note</button>
+</div>
+</div>
+
+<!-- calendar grid -->
+<div style="flex-grow: 1; display: flex; flex-direction: column; position: relative; min-width: 0;">
+<div style="height: 44px; flex-shrink: 0; display: flex; border-bottom: 1px solid #2c3647; background: #1f2735;">
+<div style="width: 56px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; letter-spacing: 1px; color: #9aa3b2;"><div style="width: 10px; height: 10px; background: #f28c28; border-radius: 2px;"></div>MULTI</div>
+<div style="flex-grow: 1; flex-basis: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #7fb0ff; background: #243150; border-left: 1px solid #2c3647;">Sun, Sep 20</div>
+<div style="flex-grow: 1; flex-basis: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; border-left: 1px solid #2c3647;">Mon, Sep 21</div>
+<div style="flex-grow: 1; flex-basis: 0; display: flex; align-items: center; justify-content: center; font-weight: 600; border-left: 1px solid #2c3647;">Tue, Sep 22</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column; position: relative;">
+<sc-for list="{{hours}}" as="h" hint-placeholder-count="7">
+<div style="height: 92px; display: flex; border-bottom: 1px solid #2a3445;">
+<div style="width: 56px; flex-shrink: 0; box-sizing: border-box; padding: 6px 0 0 10px; font-size: 12px; color: #b4bccb;">{{h.label}}</div>
+<div style="flex-grow: 1; flex-basis: 0; border-left: 1px solid #2c3647; background: {{h.bg}};"></div>
+<div style="flex-grow: 1; flex-basis: 0; border-left: 1px solid #2c3647; background: {{h.bg}};"></div>
+<div style="flex-grow: 1; flex-basis: 0; border-left: 1px solid #2c3647; background: {{h.bg}};"></div>
+</div>
+</sc-for>
+<div style="position: absolute; left: 56px; top: 526px; width: 308px; height: 2px; background: #e5484d;"></div>
+<div style="position: absolute; left: 52px; top: 523px; width: 8px; height: 8px; border-radius: 4px; background: #e5484d;"></div>
+<div style="position: absolute; left: 56px; right: 0; top: 548px; border-top: 1px dashed #6b6ef0;"></div>
+<div style="position: absolute; left: 193px; top: 541px; font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: #4f52c9; color: #ffffff;">END</div>
+<div style="position: absolute; left: 501px; top: 541px; font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: #4f52c9; color: #ffffff;">END</div>
+<div style="position: absolute; left: 809px; top: 541px; font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: #4f52c9; color: #ffffff;">END</div>
+</div>
+<!-- day status strip (calendar only) -->
+<div style="position: absolute; left: 10px; bottom: 8px; display: flex; gap: 6px;">
+<div style="height: 22px; display: flex; align-items: center; padding: 0 10px; border-radius: 11px; background: #161c28; border: 1px solid #2f3a4c; font-size: 11px;">Sun, Sep 20</div>
+<div style="height: 22px; display: flex; align-items: center; gap: 4px; padding: 0 10px; border-radius: 11px; background: #161c28; border: 1px solid #2f3a4c; font-size: 11px;"><b>16h</b> <span style="color: #9aa3b2;">unblocked ···</span></div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<!-- ========== GOALS & PROJECTS SPACE ========== -->
+<sc-if value="{{isGoals}}" hint-placeholder-val="{{false}}">
+<div style="flex-grow: 1; display: flex; min-height: 0;">
+
+<!-- goals sidebar -->
+<div style="width: 300px; flex-shrink: 0; box-sizing: border-box; background: #232b3a; border-right: 1px solid #2c3647; display: flex; flex-direction: column; min-height: 0;">
+<div role="tablist" aria-label="Goals and projects" style="height: 44px; flex-shrink: 0; display: flex; border-bottom: 1px solid #2c3647;">
+<button type="button" role="tab" aria-selected="{{isGoalsTab}}" onClick="{{pickGoalsTab}}" style="{{goalsTabStyle}}">Goals <span style="font-size: 11px; font-weight: 400; color: #8b95a6;">3</span></button>
+<button type="button" role="tab" aria-selected="{{isProjTab}}" onClick="{{pickProjTab}}" style="{{projTabStyle}}">Projects <span style="font-size: 11px; font-weight: 400; color: #8b95a6;">8</span></button>
+</div>
+
+<!-- goals list (area filter lives here: only goals have areas) -->
+<sc-if value="{{isGoalsTab}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; min-height: 0;">
+<div style="padding: 12px; display: flex; gap: 8px; flex-shrink: 0;">
+<select aria-label="Area" style="flex-grow: 1; height: 34px; box-sizing: border-box; padding: 0 8px; background: #2a3344; border: 1px solid #34405a; border-radius: 6px; color: #e6e9ef; font: inherit; font-size: 13px;">
+<option>All areas</option>
+<option>App Development</option>
+<option>[Area]</option>
+</select>
+<button type="button" aria-label="Manage areas" title="Manage areas" style="width: 34px; height: 34px; flex-shrink: 0; border: 1px solid #34405a; border-radius: 6px; background: #2a3344; color: #b4bccb; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 8px;">
+<sc-for list="{{goals}}" as="g" hint-placeholder-count="3">
+<button type="button" onClick="{{g.pick}}" aria-pressed="{{g.selected}}" style="{{g.rowStyle}}">
+<div style="width: 3px; align-self: stretch; border-radius: 2px; flex-shrink: 0; background: {{g.color}};"></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; text-align: left;">
+<div style="font-size: 13px; font-weight: 600; color: #e6e9ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{g.name}}</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9aa3b2;"><span style="width: 6px; height: 6px; border-radius: 3px; background: {{g.areaColor}};"></span>{{g.area}} · {{g.left}}</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<div style="flex-grow: 1; height: 4px; border-radius: 2px; background: #1b2230; overflow: hidden;"><div style="height: 4px; width: {{g.pctW}}; background: {{g.color}};"></div></div>
+<div style="font-size: 11px; color: #9aa3b2;">{{g.pct}}</div>
+</div>
+</div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<!-- projects list (no area filter: projects have no areas) -->
+<sc-if value="{{isProjTab}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; padding: 12px 8px 0; overflow: auto;">
+<div style="padding: 2px 8px 6px; font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; color: #8b95a6;">Standalone</div>
+<sc-for list="{{standalone}}" as="p" hint-placeholder-count="8">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px;">
+<div style="width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; background: {{p.color}};"></div>
+<div style="flex-grow: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.name}}</div>
+<div style="font-size: 11px; color: #9aa3b2;">{{p.count}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="flex-grow: 1;"></div>
+<div style="padding: 12px; flex-shrink: 0;">
+<sc-if value="{{isGoalsTab}}" hint-placeholder-val="{{true}}">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; background: #2a3344; border: none; border-radius: 15px; color: #9cc0ff; font-size: 12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg>Add Goal</button>
+</sc-if>
+<sc-if value="{{isProjTab}}" hint-placeholder-val="{{false}}">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; background: #2a3344; border: none; border-radius: 15px; color: #6ee7a8; font-size: 12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"></path></svg>Add Project</button>
+</sc-if>
+</div>
+</div>
+
+<!-- goals main -->
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0;">
+<div style="height: 44px; flex-shrink: 0; box-sizing: border-box; display: flex; align-items: center; gap: 16px; padding: 0 20px; border-bottom: 1px solid #2c3647; background: #1f2735;">
+<sc-if value="{{isGoalsTab}}" hint-placeholder-val="{{true}}">
+<div role="group" aria-label="View" style="display: flex; padding: 2px; border: 1px solid #2f3a4c; border-radius: 7px; background: #151b27;">
+<button type="button" aria-pressed="true" style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: none; border-radius: 5px; background: #2f4f8f; color: #cfe0ff; font-size: 12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect><rect x="13" y="13" width="7" height="7" rx="1"></rect></svg>List</button>
+<button type="button" aria-pressed="false" style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: none; border-radius: 5px; background: transparent; color: #9aa3b2; font-size: 12px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v16h16M8 15l4-4 3 3 5-6"></path></svg>Roadmap</button>
+</div>
+</sc-if>
+<div style="flex-grow: 1;"></div>
+<sc-if value="{{isGoalsTab}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; gap: 16px;">
+<button type="button" style="display: flex; align-items: center; gap: 6px; background: none; border: none; color: #b99bff; font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Add Area</button>
+<button type="button" style="display: flex; align-items: center; gap: 6px; background: none; border: none; color: #7fb0ff; font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg>Add Goal</button>
+</div>
+</sc-if>
+<button type="button" style="display: flex; align-items: center; gap: 6px; background: none; border: none; color: #6ee7a8; font-size: 13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"></path></svg>Add Project</button>
+</div>
+
+<!-- GOAL DETAIL -->
+<sc-if value="{{isGoalsTab}}" hint-placeholder-val="{{true}}">
+<div style="flex-grow: 1; box-sizing: border-box; padding: 20px; display: flex; flex-direction: column; overflow: auto;">
+<div style="align-self: center; width: 460px; flex-shrink: 0; border-radius: 12px; overflow: hidden; border-bottom: 2px solid #4b5563;">
+<div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: {{goal.color}};">
+<div style="flex-grow: 1; min-width: 0; font-size: 15px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{goal.name}}</div>
+<button type="button" aria-label="Open goal note in Obsidian" style="background: none; border: none; padding: 2px; color: rgba(255,255,255,0.7); display: flex;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"></path></svg></button>
+<button type="button" aria-label="Edit goal" style="background: none; border: none; padding: 2px; color: rgba(255,255,255,0.7); display: flex;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></button>
+</div>
+<div style="padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 8px; background: #1f2937;">
+<div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: #9ca3af;"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{goal.areaColor}};"></span>{{goal.area}}</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: #9ca3af;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>{{goal.left}}</div>
+<div style="height: 6px; border-radius: 3px; background: #374151; overflow: hidden;"><div style="height: 6px; width: {{goal.pctW}}; background: #3b82f6;"></div></div>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #9ca3af;"><span>{{goal.projCount}}</span><span style="opacity: 0.6;">+ Add</span><span style="flex-grow: 1;"></span><span>{{goal.pct}}</span></div>
+</div>
+</div>
+
+<sc-if value="{{goal.hasProjects}}" hint-placeholder-val="{{true}}">
+<div style="position: relative; height: 32px; flex-shrink: 0;">
+<div style="position: absolute; left: 50%; top: 0; height: 14px; border-left: 2px dashed {{goal.color}};"></div>
+<div style="position: absolute; left: 12.5%; right: 12.5%; top: 14px; border-top: 2px dashed {{goal.color}};"></div>
+<div style="position: absolute; left: 12.5%; top: 14px; height: 18px; border-left: 2px dashed {{goal.color}};"></div>
+<div style="position: absolute; left: 37.5%; top: 14px; height: 18px; border-left: 2px dashed {{goal.color}};"></div>
+<div style="position: absolute; left: 62.5%; top: 14px; height: 18px; border-left: 2px dashed {{goal.color}};"></div>
+<div style="position: absolute; left: 87.5%; top: 14px; height: 18px; border-left: 2px dashed {{goal.color}};"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start;">
+<sc-for list="{{goal.projects}}" as="p" hint-placeholder-count="4">
+<!-- PROJECT CARD (goal child: no eye toggle, count + progress shown) -->
+<div style="display: flex; flex-direction: column; background: #1f2937; border: 1px solid #374151; border-radius: 12px; overflow: hidden;">
+<div style="height: 6px; flex-shrink: 0; background: {{p.bar}};"></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 6px;">
+<span aria-label="Drag to reassign" style="flex-shrink: 0; margin-top: 1px; color: #9ca3af; opacity: 0.3; display: flex; cursor: grab;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="9" cy="19" r="1.6"></circle><circle cx="15" cy="5" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="15" cy="19" r="1.6"></circle></svg></span>
+<span style="flex-grow: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.25; color: #f3f4f6;">{{p.name}}</span>
+<button type="button" aria-label="Open project note" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #6b7280; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"></path></svg></button>
+<button type="button" aria-label="Edit" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #4b5563; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></button>
+<button type="button" aria-label="Delete" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #4b5563; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"></path></svg></button>
+</div>
+<span style="font-size: 12px; color: #9ca3af;">{{p.count}}</span>
+<div style="height: 6px; border-radius: 3px; background: #374151; overflow: hidden;"><div style="height: 6px; width: 0%; background: #3b82f6;"></div></div>
+<sc-if value="{{p.hasTasks}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid #374151;">
+<sc-for list="{{p.tasks}}" as="t" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; border-radius: 8px; border-left: 2px solid {{t.bar}};">
+<button type="button" aria-label="Mark complete" style="flex-shrink: 0; display: flex; align-items: center; padding: 6px 8px 6px 6px; background: none; border: none; color: #9ca3af; opacity: 0.6;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg></button>
+<span style="flex-grow: 1; min-width: 0; font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.text}}</span>
+<span style="{{t.noteStyle}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"></path></svg></span>
+<span aria-label="Drag to reorder" style="flex-shrink: 0; padding: 0 8px; color: #9ca3af; opacity: 0.3; display: flex; cursor: grab;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="9" cy="19" r="1.6"></circle><circle cx="15" cy="5" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="15" cy="19" r="1.6"></circle></svg></span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<button type="button" style="display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 8px; background: none; border: none; border-radius: 8px; color: #9ca3af; font-size: 12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Add task</button>
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 6px 8px; border: 1px solid #374151; border-radius: 8px; background: transparent; color: {{p.color}}; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="9" rx="1"></rect><rect x="13" y="4" width="7" height="5" rx="1"></rect><rect x="4" y="15" width="7" height="5" rx="1"></rect><rect x="13" y="11" width="7" height="9" rx="1"></rect></svg>Planner</button>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{goal.noProjects}}" hint-placeholder-val="{{false}}">
+<div style="margin-top: 32px; align-self: center; width: 460px; box-sizing: border-box; padding: 32px; border: 1px dashed #3a465c; border-radius: 12px; text-align: center; color: #9aa3b2;">
+<div style="font-size: 14px; color: #c4cad6;">No projects linked to this goal yet</div>
+<button type="button" style="margin-top: 12px; background: none; border: none; color: #6ee7a8; font-size: 13px;">+ Add Project</button>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<!-- STANDALONE PROJECTS -->
+<sc-if value="{{isProjTab}}" hint-placeholder-val="{{false}}">
+<div style="flex-grow: 1; box-sizing: border-box; padding: 20px; overflow: auto;">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start;">
+<sc-for list="{{standalone}}" as="p" hint-placeholder-count="8">
+<!-- PROJECT CARD (standalone: eye toggle; details hidden = no count/progress) -->
+<div style="display: flex; flex-direction: column; background: #1f2937; border: 1px solid #374151; border-radius: 12px; overflow: hidden;">
+<div style="height: 6px; flex-shrink: 0; background: {{p.bar}};"></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 6px;">
+<span aria-label="Drag to reorder" style="flex-shrink: 0; margin-top: 1px; color: #9ca3af; opacity: 0.3; display: flex; cursor: grab;"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="9" cy="19" r="1.6"></circle><circle cx="15" cy="5" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="15" cy="19" r="1.6"></circle></svg></span>
+<span style="flex-grow: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.25; color: #f3f4f6;">{{p.name}}</span>
+<sc-if value="{{p.hasNote}}" hint-placeholder-val="{{true}}">
+<button type="button" aria-label="Open project note" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #6b7280; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"></path></svg></button>
+</sc-if>
+<button type="button" aria-label="Show project details" title="Show details" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #4b5563; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7c2 0 3.8.7 5.2 1.6M22 12s-3.5 7-10 7c-2 0-3.8-.7-5.2-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18"></path></svg></button>
+<button type="button" aria-label="Edit" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #4b5563; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg></button>
+<button type="button" aria-label="Delete" style="flex-shrink: 0; background: none; border: none; padding: 2px; color: #4b5563; display: flex;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"></path></svg></button>
+</div>
+<sc-if value="{{p.hasTasks}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid #374151;">
+<sc-for list="{{p.tasks}}" as="t" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; border-radius: 8px; border-left: 2px solid {{t.bar}};">
+<button type="button" aria-label="Mark complete" style="flex-shrink: 0; display: flex; align-items: center; padding: 6px 8px 6px 6px; background: none; border: none; color: #9ca3af; opacity: 0.6;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg></button>
+<span style="flex-grow: 1; min-width: 0; font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{t.text}}</span>
+<sc-if value="{{t.book}}" hint-placeholder-val="{{false}}">
+<span style="{{t.noteStyle}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"></path></svg></span>
+</sc-if>
+<sc-if value="{{t.file}}" hint-placeholder-val="{{true}}">
+<span style="{{t.noteStyle}}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"></path></svg></span>
+</sc-if>
+<span aria-label="Drag to reorder" style="flex-shrink: 0; padding: 0 8px; color: #9ca3af; opacity: 0.3; display: flex; cursor: grab;"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="9" cy="19" r="1.6"></circle><circle cx="15" cy="5" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="15" cy="19" r="1.6"></circle></svg></span>
+</div>
+</sc-for>
+<sc-if value="{{p.hasMore}}" hint-placeholder-val="{{false}}">
+<button type="button" style="display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 2px; padding: 4px 6px; background: none; border: none; border-radius: 8px; color: #9ca3af; font-size: 12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>{{p.more}}</button>
+</sc-if>
+</div>
+</sc-if>
+<button type="button" style="display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 8px; background: none; border: none; border-radius: 8px; color: #9ca3af; font-size: 12px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>Add task</button>
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 6px 8px; border: 1px solid #374151; border-radius: 8px; background: transparent; color: {{p.color}}; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="9" rx="1"></rect><rect x="13" y="4" width="7" height="5" rx="1"></rect><rect x="4" y="15" width="7" height="5" rx="1"></rect><rect x="13" y="11" width="7" height="9" rx="1"></rect></svg>Planner</button>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { mode: 'goals', tab: 'goals', gsel: 0 }; }
+  renderVals() {
+    var self = this;
+    var mode = this.state.mode;
+    var tab = this.state.tab;
+    var base = 'width: 36px; height: 32px; border: none; border-radius: 5px; display: flex; align-items: center; justify-content: center; padding: 0;';
+    var on = base + ' background: #2f4f8f; color: #cfe0ff;';
+    var off = base + ' background: transparent; color: #7d8799;';
+    var tabBase = 'flex-grow: 1; flex-basis: 0; display: flex; align-items: center; justify-content: center; gap: 6px; background: none; border: none; font-size: 13px; ';
+    var tabOn = tabBase + 'color: #7fb0ff; font-weight: 600; border-bottom: 2px solid #4c8dff;';
+    var tabOff = tabBase + 'color: #c4cad6; border-bottom: 2px solid transparent;';
+    var labels = ['5 PM','6 PM','7 PM','8 PM','9 PM','10 PM','11 PM'];
+    var PURPLE = '#a855f7', GREEN = '#22c55e';
+
+    // Mirrors ProjectCard.jsx: color bar = hex+'bb', task left border = hex+'99',
+    // notes icon opacity .7 when the task has notes / a wikilink, else .25.
+    function tasks(color, list) {
+      return list.map(function (t) {
+        var book = /#obsidian|\bNEXT:|\bFEATURE:|\bENHANCE:/.test(t);
+        var hasNote = book || /#/.test(t);
+        return {
+          text: t, bar: color + '99', book: book, file: !book,
+          noteStyle: 'flex-shrink: 0; padding: 4px; color: #9ca3af; display: flex; opacity: ' + (hasNote ? '0.7' : '0.25') + ';'
+        };
+      });
+    }
+    function project(p) {
+      return Object.assign({}, p, { bar: p.color + 'bb', tasks: tasks(p.color, p.tasks), hasTasks: p.tasks.length > 0, hasMore: !!p.more, hasNote: p.hasNote !== false });
+    }
+
+    var goalsRaw = [
+      { name: 'Ship iOS Apps (lifeGLANCE and lastGLANCE)', color: GREEN, area: 'App Development', areaColor: '#f97316', left: '40d left', p: 0,
+        projects: [
+          { name: 'App Store Connect', color: PURPLE, count: '0/3 tasks', tasks: ['Create iOS screenshots #…', 'Write app store listing copy', 'Prepare review notes for App…'] },
+          { name: 'Setup App Billing', color: GREEN, count: '0/2 tasks', tasks: ['IAP and Subscription in App…', 'RevenueCat products and …'] },
+          { name: 'lifeGLANCE', color: PURPLE, count: '0/1 tasks', tasks: ['Verify iOS features (review…'] },
+          { name: 'lastGLANCE', color: GREEN, count: '0/0 tasks', tasks: [] }
+        ].map(project) },
+      { name: 'Ship Electron Apps (lifeGLANCE and lastGLANCE)', color: PURPLE, area: 'App Development', areaColor: '#f97316', left: '105d left', p: 0, projects: [] },
+      { name: '[Third goal]', color: '#3b82f6', area: '[Area]', areaColor: '#6b7587', left: '[n]d left', p: 0, projects: [] }
+    ];
+    var goals = goalsRaw.map(function (g, i) {
+      var sel = self.state.gsel === i;
+      return Object.assign({}, g, {
+        pct: g.p + '%', pctW: g.p + '%', selected: sel,
+        pick: function () { self.setState({ gsel: i }); },
+        rowStyle: 'display: flex; gap: 10px; width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid ' + (sel ? '#3b5487' : 'transparent') + '; border-radius: 8px; background: ' + (sel ? '#2c3a55' : 'transparent') + '; color: inherit; font: inherit;'
+      });
+    });
+    var g = goals[this.state.gsel];
+    var goal = Object.assign({}, g, {
+      projCount: g.projects.length + (g.projects.length === 1 ? ' project' : ' projects'),
+      hasProjects: g.projects.length > 0,
+      noProjects: g.projects.length === 0
+    });
+
+    var standalone = [
+      { name: 'dayGLANCE', color: '#f97316', count: '19', tasks: ['NEXT: Prepare for Obsidian…', 'FEATURE: Goals & Projects…', 'ENHANCE: Add alarm to D…'], more: '16 More' },
+      { name: 'lastGLANCE', color: GREEN, count: '2', tasks: ['Redesign settings (cloud s…', 'TRMNL recipe (OG & X lay…'] },
+      { name: 'lifeGLANCE', color: PURPLE, count: '2', tasks: ['Redesign settings (cloud s…', 'Build out "Lives" features (…'] },
+      { name: 'GitHub Config', color: '#ec4899', count: '0', tasks: [] },
+      { name: 'GLANCE Apps', color: '#ef4444', count: '4', tasks: ['GLANCEvault Pro #obsidian', 'lifeGLANCE Studio #obsidian', 'goalGLANCE #obsidian'], more: '1 More' },
+      { name: 'Dead Money', color: '#eab308', count: '3', tasks: ['Create character profiles …', 'Create location profiles #o…', 'Develop entire plot outline…'] },
+      { name: 'Employment', color: '#6366f1', count: '4', tasks: ['Reach out to Major Lindsa…', 'Contact Darren Zeidel #ob…', 'Contact Shawn Helms at …'], more: '1 More' },
+      { name: 'Random Things', color: '#eab308', count: '1', tasks: ['Add screenshots to GADC'], hasNote: false }
+    ].map(project);
+
+    return {
+      isCal: mode === 'cal',
+      isGoals: mode === 'goals',
+      pickCal: function () { self.setState({ mode: 'cal' }); },
+      pickGoals: function () { self.setState({ mode: 'goals' }); },
+      calBtnStyle: mode === 'cal' ? on : off,
+      goalsBtnStyle: mode === 'goals' ? on : off,
+      isGoalsTab: tab === 'goals',
+      isProjTab: tab === 'projects',
+      pickGoalsTab: function () { self.setState({ tab: 'goals' }); },
+      pickProjTab: function () { self.setState({ tab: 'projects' }); },
+      goalsTabStyle: tab === 'goals' ? tabOn : tabOff,
+      projTabStyle: tab === 'projects' ? tabOn : tabOff,
+      hours: labels.map(function (l, i) { return { label: l, bg: i % 2 ? '#222a38' : '#262f3f' }; }),
+      goals: goals,
+      goal: goal,
+      standalone: standalone
+    };
+  }
+}
+</script>
+</body>
+</html>

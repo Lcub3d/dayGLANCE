@@ -491,15 +491,18 @@ curated fixture day, so it is not to be removed when the real widget changes.
   `DialFaceCache` at render time, one decoded face kept in memory), the hub
   overlay and the needle. The face is re-rendered only when the cache key
   changes, i.e. at a block end (the bucket), a tier change or a new size.
-- **Countdown: the live Text (option a).** `Text(end, style: .relative)` is
-  spliced into the catalog phrase "until %@ · %@ left" in the duration's
-  slot (the phrase is formatted with a marker and split around it, so the
-  translated words stay and the number is system-updated every minute). The
-  system spells the units ("1 hour, 10 minutes" against the static "1h 10m"),
-  so the row may shrink to 0.8 like the title before it truncates. It cannot
-  count past zero: the block's end is itself an entry. With no end instant
-  (the preview, screenshots) the static rounded form is drawn. If the spelled
-  units read badly on the phone, the fallback is one line in `DialHubView`.
+- **Countdown: static, after trying live.** Phase 4 shipped the live form —
+  `Text(end, style: .relative)` spliced into the catalog phrase "until %@ ·
+  %@ left" in the duration's slot, so the words stayed translated and the
+  number was system-updated — and on the phone it was rejected: under an
+  hour the relative style counts **seconds** ("17 min, 37 sec left"), which
+  read as noise, and it spells the units so the row shrank. The widget now
+  draws the static rounded form ("17m left", "35m open"), exact at each
+  entry; with the 15-minute grid plus an entry at every block boundary the
+  number is at most a quarter of an hour old and never counts past zero.
+  Tightening that to 5 minutes would triple the entry count (~300, each an
+  archived view). The live splice stays in `DialHubView` behind
+  `countdownEnd` / `openEnd`, unused by the widget.
 - **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
   ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
   file just written is never evicted. A timeline build ends by retaining only

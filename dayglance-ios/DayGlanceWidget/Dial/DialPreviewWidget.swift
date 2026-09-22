@@ -166,8 +166,7 @@ struct DialPreviewView: View {
                                    hubDate: entry.date, use24Hour: true, mono: mono)
                 corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · \(entry.outcome.summary) · \(lora) · \(mode)")
             } else {
-                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
-                                  liveCountdown: entry.scenario == .screenshot)
+                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder))
                 corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
             }
         }

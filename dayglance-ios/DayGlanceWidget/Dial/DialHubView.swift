@@ -12,19 +12,18 @@ import DayDialGeometry
 // invalidate the cache every entry instead of every block boundary, and
 // the countdown is a live Text (Phase 4, below). The cache key is untouched.
 //
-// THE COUNTDOWN (Phase 4, decided for the live Text). Entries are 15 minutes
-// apart, so a static "1h 10m left" would read "1h 10m" for up to a quarter
-// of an hour after it stopped being true. With `countdownEnd` set the
-// duration is `Text(end, style: .relative)`, which the system re-renders
-// every minute with no timeline entry, inside the SAME localized phrase:
-// the catalog string is formatted with a marker in the duration's place and
-// split around it, so the words around the number stay translated and the
-// number is live. The system's relative style spells its units ("1 hour,
-// 10 minutes" where the static form says "1h 10m"), so the live row may
-// shrink like the title before it truncates. It never counts past zero: the
-// block's end is itself a timeline entry (DialTimeline), which replaces the
-// row. `countdownEnd` nil (the preview, App Store screenshots) keeps the
-// static, rounded form.
+// THE COUNTDOWN. The widget draws the STATIC rounded form ("1h 10m left"),
+// exact at each timeline entry: the grid is 15 minutes with an entry at
+// every block boundary (DialTimeline), so the number is at most a quarter
+// of an hour old and never counts past zero. The live alternative is still
+// here: with `countdownEnd` (or `openEnd`) set the duration is `Text(end,
+// style: .relative)`, spliced into the SAME localized phrase (the catalog
+// string is formatted with a marker in the duration's place and split
+// around it, so the words stay translated and the number is system
+// updated). Phase 4 shipped it live and Phase 5 turned it off: under an
+// hour the system's relative style counts seconds ("17 min, 37 sec"), which
+// read as noise on the phone, and it spells the units, so the row shrank
+// before it truncated.
 //
 // Rows are placed by BASELINE, as the spec's SVG text is (DialSpec.Hub),
 // and each row's width is bounded by the chord of the hub circle at its

@@ -585,12 +585,18 @@ curated fixture day, so it is not to be removed when the real widget changes.
   API documentation", a live countdown, "then 1h 30m open".
 - **Preview scenarios** now exist for every state above (`DialPreviewWidget`
   header lists them); the four face scenarios stay for palette comparison.
-  The preview's entries carry no images (the real widget's rule): the
-  provider warms the cache and the view fetches the face at render time. An
-  entry holding two 3× faces while a third rendered put the extension over
-  its budget and left the preview on its redacted placeholder. `ios.yml` now
-  generates the CI project with `DIAL_PREVIEW`, so the preview compiles in
-  CI; release builds still never set the flag.
+  The preview's provider renders NOTHING and returns at once; the view
+  fetches the face from the cache when it renders (cold the first time,
+  ~28 ms). The face scenarios sat on their redacted placeholder on device
+  for as long as the provider pre-rendered the PNG with `await MainActor
+  .run { DialFaceCache.image(…) }` inside the async `timeline(for:in:)`:
+  that hop never came back, while the state scenarios (no hop) and the real
+  widget (which warms from an unstructured `Task { @MainActor in }` in the
+  closure-based `getTimeline` and calls `completion` from there) rendered.
+  The earlier "two faces in the entry" explanation in #1771 was wrong about
+  the cause, though entries still carry no images. `ios.yml` generates the
+  CI project with `DIAL_PREVIEW`, so the preview compiles in CI; release
+  builds still never set the flag.
   The corner prints the rendering mode (`fullColor` / `accented`), so a
   tinted or clear Home Screen is confirmed as the accented mode at a glance.
 - **Rendering modes (the second Phase 5 PR).** Why tinted was blank: on a

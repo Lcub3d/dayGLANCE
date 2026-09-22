@@ -95,14 +95,10 @@ struct DialPreviewIntent: WidgetConfigurationIntent {
 struct DialPreviewEntry: TimelineEntry {
     let date: Date
     let scenario: DialPreviewScenario
-    /// Face scenarios: how the provider's warm-up obtained each face
-    /// ("cold 31ms", "disk", "mem"), for the corner. The entry carries NO
-    /// image — the same rule as the real widget (DayDialWidget's header): a
-    /// 3× face is ~5 MB decoded, and an entry holding two of them while the
-    /// provider renders a third is how the extension runs out of its ~30 MB
-    /// and the widget sits on its placeholder. The view fetches the face from
-    /// the cache at render time, as DayDialWidgetView does.
-    var warm: String = ""
+    /// Face scenarios carry nothing but the scenario: the view fetches the
+    /// face from the cache when it renders (a cold render the first time,
+    /// ~28 ms, then disk), exactly as DayDialWidgetView does. See the
+    /// provider for why nothing is pre-rendered here.
     /// State scenarios: the payload the real view resolves, and the entry it
     /// is rendered as. `date` is that entry's instant.
     var snapshot: WidgetSnapshot? = nil
@@ -118,27 +114,20 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
         entry(for: configuration.scenario, size: context.displaySize)
     }
 
+    /// Returns at once, for every scenario. Earlier versions pre-rendered the
+    /// face scenarios' PNG here with `await MainActor.run { DialFaceCache
+    /// .image(…) }`, and on device that timeline never arrived: the widget
+    /// sat on its redacted placeholder while the state scenarios, which do
+    /// not hop, rendered. The real widget warms its faces from
+    /// `getTimeline(completion:)` in an unstructured `Task { @MainActor in }`
+    /// and calls `completion` from there, which works; a hop to the main
+    /// actor from inside the async `timeline(for:in:)` does not come back.
+    /// So this provider does no rendering at all, and the first render of a
+    /// face scenario is a cold one in the view, like the real widget's own
+    /// fallback path.
     func timeline(for configuration: DialPreviewIntent, in context: Context) async -> Timeline<DialPreviewEntry> {
         let scenario = configuration.scenario
-        let size = context.displaySize
-        if scenario.isFaceScenario {
-            // Warm the cache for every rendering mode the widget may be shown
-            // in, one face at a time, keeping only the outcome; the view
-            // fetches the image it needs when it renders.
-            let input = DialPreviewFixture.input(for: scenario)
-            let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
-            let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
-            let warm = await MainActor.run { () -> String in
-                let scale = UIScreen.main.scale
-                return variants.map { mono in
-                    let outcome = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: mono).outcome
-                    return (mono ? "mono " : "") + outcome.summary.replacingOccurrences(of: "img ", with: "")
-                }.joined(separator: " / ")
-            }
-            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, warm: warm)
-            return Timeline(entries: [entry], policy: .never)
-        }
-        let entry = entry(for: scenario, size: size)
+        let entry = entry(for: scenario, size: context.displaySize)
         // The screenshot day is live: keep the needle moving like the real
         // widget. Every other state is a frozen instant.
         let policy: TimelineReloadPolicy = scenario == .screenshot
@@ -173,7 +162,7 @@ struct DialPreviewView: View {
                     DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: face.image,
                                        hubDate: entry.date, use24Hour: true, mono: mono)
                         .frame(width: geo.size.width, height: geo.size.height)
-                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · warm \(entry.warm) · \(face.outcome.summary) · \(lora) · \(mode)")
+                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · \(face.outcome.summary) · \(lora) · \(mode)")
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
                 }
             } else {

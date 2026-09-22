@@ -93,11 +93,28 @@ enum DialHubClock {
 
     /// "1h 10m", "45m", "2h" — hours and minutes in the locale's own narrow
     /// units, zero units hidden. System formatting, so no hand-written
-    /// plurals to get wrong per language.
-    static func duration(minutes: Double) -> String {
-        Duration.seconds(Int(minutes.rounded()) * 60)
-            .formatted(.units(allowed: [.hours, .minutes], width: .narrow))
+    /// plurals to get wrong per language. `.wide` ("1 hour, 10 minutes") is
+    /// what VoiceOver reads.
+    static func duration(minutes: Double, width: Duration.UnitsFormatStyle.UnitWidth = .narrow) -> String {
+        Duration.seconds(Swift.max(0, Int(minutes.rounded())) * 60)
+            .formatted(.units(allowed: [.hours, .minutes], width: width))
     }
+}
+
+/// What the hub's task rows show (Phase 5). The eyebrow, date and rule are
+/// always drawn; these decide the rest.
+enum DialHubStatus: Equatable {
+    /// A real day: the current block, sleep, or open time from `state`.
+    case live
+    /// The gallery and the pre-data render: weekday and date only.
+    case placeholder
+    /// Installed, never opened: the placeholder plus a line saying so.
+    case setUp
+    /// The payload is for another day: "Outdated" and its detail take the
+    /// task rows; the face is dimmed by the caller, the needle stays.
+    case outdated(detail: String?)
+    /// The payload's clock minutes are in another zone's wall clock.
+    case zoneChanged
 }
 
 struct DialHubView: View {
@@ -107,6 +124,12 @@ struct DialHubView: View {
     let use24Hour: Bool?
     /// The current block's end as an instant. Set: the countdown is live.
     var countdownEnd: Date? = nil
+    /// Open time's end as an instant. Set: "35m open" is live.
+    var openEnd: Date? = nil
+    var status: DialHubStatus = .live
+    /// The projected tier's soft note ("Planned as of Mon 8:42 PM"): the
+    /// lowest, smallest row, so the task rows read first.
+    var plannedAsOf: String? = nil
 
     private typealias H = DialSpec.Hub
 
@@ -129,41 +152,104 @@ struct DialHubView: View {
 
             rule
 
-            if let c = state.current {
-                row(Text(verbatim: c.title)
-                        .font(.system(size: H.titleFontSize, weight: .semibold))
-                        .foregroundStyle(Color.white.opacity(H.titleOpacity)),
-                    baseline: H.titleY,
-                    metrics: UIFont.systemFont(ofSize: H.titleFontSize, weight: .semibold),
+            switch status {
+            case .placeholder:
+                EmptyView()
+            case .setUp:
+                countdownRow(Text(verbatim: String(localized: "Open dayGLANCE to set up")))
+            case let .outdated(detail):
+                statusRow(String(localized: "Outdated"))
+                if let detail { countdownRow(Text(verbatim: detail)) }
+            case .zoneChanged:
+                statusRow(String(localized: "Time zone changed"))
+                countdownRow(Text(verbatim: String(localized: "Open dayGLANCE to refresh")))
+            case .live:
+                liveRows
+            }
+
+            if let plannedAsOf {
+                row(Text(verbatim: plannedAsOf)
+                        .font(.system(size: H.noteFontSize))
+                        .foregroundStyle(Color.white.opacity(H.noteOpacity)),
+                    baseline: H.noteY,
+                    metrics: UIFont.systemFont(ofSize: H.noteFontSize),
                     minimumScale: DialHubTypography.titleMinimumScale)
-
-                if let tag = c.tag {
-                    row(Text(verbatim: "#\(tag)")
-                            .font(.system(size: H.tagFontSize))
-                            .italic()
-                            .foregroundStyle(Color.white.opacity(H.tagOpacity)),
-                        baseline: H.tagY,
-                        metrics: UIFont.systemFont(ofSize: H.tagFontSize))
-                }
-
-                row(countdown(c)
-                        .font(.system(size: H.countdownFontSize))
-                        .foregroundStyle(Color.white.opacity(H.countdownOpacity)),
-                    baseline: H.countdownY,
-                    metrics: UIFont.systemFont(ofSize: H.countdownFontSize),
-                    minimumScale: countdownEnd == nil ? 1 : DialHubTypography.titleMinimumScale)
-
-                if let runway = state.runwayMinutes {
-                    row(Text(verbatim: runwayText(runway))
-                            .font(.system(size: H.runwayFontSize))
-                            .foregroundStyle(Color(hex: H.runwayColorHex).opacity(H.runwayOpacity)),
-                        baseline: H.runwayY,
-                        metrics: UIFont.systemFont(ofSize: H.runwayFontSize))
-                }
             }
         }
         .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
     }
+
+    // MARK: the live rows: current block, sleep, or open time
+
+    @ViewBuilder private var liveRows: some View {
+        if let c = state.current {
+            row(Text(verbatim: c.title)
+                    .font(.system(size: H.titleFontSize, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(H.titleOpacity)),
+                baseline: H.titleY,
+                metrics: UIFont.systemFont(ofSize: H.titleFontSize, weight: .semibold),
+                minimumScale: DialHubTypography.titleMinimumScale)
+
+            if let tag = c.tag {
+                row(Text(verbatim: "#\(tag)")
+                        .font(.system(size: H.tagFontSize))
+                        .italic()
+                        .foregroundStyle(Color.white.opacity(H.tagOpacity)),
+                    baseline: H.tagY,
+                    metrics: UIFont.systemFont(ofSize: H.tagFontSize))
+            }
+
+            row(countdown(c)
+                    .font(.system(size: H.countdownFontSize))
+                    .foregroundStyle(Color.white.opacity(H.countdownOpacity)),
+                baseline: H.countdownY,
+                metrics: UIFont.systemFont(ofSize: H.countdownFontSize),
+                minimumScale: countdownEnd == nil ? 1 : DialHubTypography.titleMinimumScale)
+
+            if let runway = state.runwayMinutes {
+                row(Text(verbatim: runwayText(runway, toSleep: state.runwayEndsAtSleep))
+                        .font(.system(size: H.runwayFontSize))
+                        .foregroundStyle(Color(hex: H.runwayColorHex).opacity(H.runwayOpacity)),
+                    baseline: H.runwayY,
+                    metrics: UIFont.systemFont(ofSize: H.runwayFontSize))
+            }
+        } else if let s = state.sleep {
+            // "Sleep", muted rather than teal: it is context, not a task.
+            row(Text(verbatim: String(localized: "Sleep"))
+                    .font(.system(size: H.titleFontSize, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(H.sleepOpacity)),
+                baseline: H.titleY,
+                metrics: UIFont.systemFont(ofSize: H.titleFontSize, weight: .semibold))
+            countdownRow(Text(verbatim: sleepText(s)))
+        } else if let o = state.open {
+            // Open time in the runway's teal, live like the countdown.
+            row(openTitle(o)
+                    .font(.system(size: H.titleFontSize, weight: .semibold))
+                    .foregroundStyle(Color(hex: H.openColorHex).opacity(H.titleOpacity)),
+                baseline: H.titleY,
+                metrics: UIFont.systemFont(ofSize: H.titleFontSize, weight: .semibold),
+                minimumScale: DialHubTypography.titleMinimumScale)
+            countdownRow(Text(verbatim: openDetail(o)))
+        }
+    }
+
+    private func statusRow(_ text: String) -> some View {
+        row(Text(verbatim: text)
+                .font(.system(size: H.titleFontSize, weight: .semibold))
+                .foregroundStyle(Color(hex: H.statusColorHex).opacity(H.titleOpacity)),
+            baseline: H.titleY,
+            metrics: UIFont.systemFont(ofSize: H.titleFontSize, weight: .semibold))
+    }
+
+    private func countdownRow(_ text: Text) -> some View {
+        row(text
+                .font(.system(size: H.countdownFontSize))
+                .foregroundStyle(Color.white.opacity(H.countdownOpacity)),
+            baseline: H.countdownY,
+            metrics: UIFont.systemFont(ofSize: H.countdownFontSize))
+    }
+
+    // MARK: copy
 
     /// "until 12:30 · 1h 10m left", through the string catalog.
     func countdownText(_ c: DialHubCurrent) -> String {
@@ -178,22 +264,104 @@ struct DialHubView: View {
 
     /// A private-use character no translation contains, standing in for the
     /// duration while the phrase is split around it.
-    private static let durationMarker = "\u{F8FF}"
+    static let durationMarker = "\u{F8FF}"
 
     /// The countdown row's Text: static when there is no end instant, live
     /// (the translated words around a system-updated duration) when there is.
     func countdown(_ c: DialHubCurrent) -> Text {
         guard let end = countdownEnd else { return Text(verbatim: countdownText(c)) }
-        let phrase = countdownPhrase(c, duration: Self.durationMarker)
-        guard let range = phrase.range(of: Self.durationMarker) else { return Text(verbatim: countdownText(c)) }
+        return Self.live(phrase: countdownPhrase(c, duration: Self.durationMarker), end: end)
+            ?? Text(verbatim: countdownText(c))
+    }
+
+    /// "35m open" — live when `openEnd` is set.
+    func openTitle(_ o: DialHubOpen) -> Text {
+        if let end = openEnd, let live = Self.live(phrase: String(localized: "\(Self.durationMarker) open"), end: end) {
+            return live
+        }
+        return Text(verbatim: openText(o))
+    }
+
+    func openText(_ o: DialHubOpen) -> String {
+        String(localized: "\(DialHubClock.duration(minutes: o.minutesUntil)) open")
+    }
+
+    /// What ends the open time: "until Lunch at 12:30", "until sleep at
+    /// 23:00", or "Nothing else today". The title is cut to the room the
+    /// phrase leaves it (Phase 3's chord rule), so the time always survives.
+    func openDetail(_ o: DialHubOpen) -> String {
+        guard let end = o.endMin else { return String(localized: "Nothing else today") }
+        let clock = DialHubClock.text(minutesOfDay: end, use24Hour: use24Hour, reference: date)
+        if o.nextIsSleep { return String(localized: "until sleep at \(clock)") }
+        let font = UIFont.systemFont(ofSize: H.countdownFontSize)
+        let room = H.width(atY: H.countdownY, inset: DialHubTypography.chordInset)
+        let frame = String(localized: "until \("") at \(clock)")
+        let title = DialHubTypography.fit(o.nextTitle ?? "", width: room - DialHubTypography.width(of: frame, font: font), font: font)
+        return String(localized: "until \(title) at \(clock)")
+    }
+
+    /// "until 06:25", the sleep row.
+    func sleepText(_ s: DialHubSleep) -> String {
+        String(localized: "until \(DialHubClock.text(minutesOfDay: s.endMin, use24Hour: use24Hour, reference: date))")
+    }
+
+    /// "then 1h open", or "then 1h until sleep" when the gap ends at bedtime.
+    func runwayText(_ minutes: Double, toSleep: Bool) -> String {
+        let d = DialHubClock.duration(minutes: minutes)
+        return toSleep ? String(localized: "then \(d) until sleep") : String(localized: "then \(d) open")
+    }
+
+    /// The translated words around a system-updated relative duration.
+    private static func live(phrase: String, end: Date) -> Text? {
+        guard let range = phrase.range(of: durationMarker) else { return nil }
         return Text(verbatim: String(phrase[..<range.lowerBound]))
             + Text(end, style: .relative)
             + Text(verbatim: String(phrase[range.upperBound...]))
     }
 
-    /// "then 1h open", through the string catalog.
-    func runwayText(_ minutes: Double) -> String {
-        String(localized: "then \(DialHubClock.duration(minutes: minutes)) open")
+    // MARK: VoiceOver
+
+    /// One spoken summary for the whole widget, so VoiceOver never walks the
+    /// paths: "Monday, September 21. Now: Write API documentation, 1 hour,
+    /// 10 minutes left. Then 4 hours, 30 minutes open." Same catalog strings
+    /// as the rows, wide durations.
+    static func summary(date: Date, state: DialHubState, use24Hour: Bool?, status: DialHubStatus,
+                        plannedAsOf: String?) -> String {
+        var parts = [date.formatted(Date.FormatStyle().weekday(.wide).month(.wide).day())]
+        let wide = { (m: Double) in DialHubClock.duration(minutes: m, width: .wide) }
+        let clock = { (m: Double) in DialHubClock.text(minutesOfDay: m, use24Hour: use24Hour, reference: date) }
+        switch status {
+        case .placeholder:
+            break
+        case .setUp:
+            parts.append(String(localized: "Open dayGLANCE to set up"))
+        case let .outdated(detail):
+            parts.append(([String(localized: "Outdated")] + [detail].compactMap { $0 }).joined(separator: ", "))
+        case .zoneChanged:
+            parts.append(String(localized: "Time zone changed"))
+            parts.append(String(localized: "Open dayGLANCE to refresh"))
+        case .live:
+            if let c = state.current {
+                parts.append(String(localized: "Now: \(c.title)") + ", " + String(localized: "\(wide(c.minutesLeft)) left"))
+                if let r = state.runwayMinutes {
+                    parts.append(state.runwayEndsAtSleep ? String(localized: "then \(wide(r)) until sleep")
+                                                         : String(localized: "then \(wide(r)) open"))
+                }
+            } else if let s = state.sleep {
+                parts.append(String(localized: "Sleep") + ", " + String(localized: "until \(clock(s.endMin))"))
+            } else if let o = state.open {
+                var line = String(localized: "\(wide(o.minutesUntil)) open")
+                if let end = o.endMin {
+                    line += ", " + (o.nextIsSleep ? String(localized: "until sleep at \(clock(end))")
+                                                  : String(localized: "until \(o.nextTitle ?? "") at \(clock(end))"))
+                } else {
+                    line += ", " + String(localized: "Nothing else today")
+                }
+                parts.append(line)
+            }
+        }
+        if let plannedAsOf { parts.append(plannedAsOf) }
+        return parts.joined(separator: ". ") + "."
     }
 
     /// One row: a single line, centred on the dial's axis with its baseline
@@ -214,5 +382,27 @@ struct DialHubView: View {
         p.move(to: CGPoint(x: DialSpec.cx - H.ruleHalfWidth, y: H.ruleY))
         p.addLine(to: CGPoint(x: DialSpec.cx + H.ruleHalfWidth, y: H.ruleY))
         return p.stroke(Color.white.opacity(H.ruleOpacity), lineWidth: H.ruleLineWidth)
+    }
+}
+
+extension DialHubTypography {
+    /// Measured width of `text` in `font`, for fitting one part of a phrase.
+    static func width(of text: String, font: UIFont) -> Double {
+        Double((text as NSString).size(withAttributes: [.font: font]).width)
+    }
+
+    /// `text` cut with an ellipsis to fit `width` in `font`; the whole text
+    /// when it already fits. Measured, not estimated, so a wide title is cut
+    /// where it actually overflows.
+    static func fit(_ text: String, width: Double, font: UIFont) -> String {
+        guard width > 0 else { return "…" }
+        if self.width(of: text, font: font) <= width { return text }
+        var chars = Array(text)
+        while !chars.isEmpty {
+            chars.removeLast()
+            let candidate = String(chars).trimmingCharacters(in: .whitespaces) + "…"
+            if self.width(of: candidate, font: font) <= width { return candidate }
+        }
+        return "…"
     }
 }

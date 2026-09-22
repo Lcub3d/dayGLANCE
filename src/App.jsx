@@ -631,6 +631,15 @@ const DayPlanner = () => {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location?.search ?? '').has('dial'));
   const showDayDialRef = useRef(showDayDial);
+  // dayglance://day?date=YYYY-MM-DD&view=dial — the Day Dial widget's tap
+  // (widgetURL). Lands on the day the widget was showing and, with
+  // view=dial, opens the Day Dial itself over it; without it, the day view.
+  const openDayFromLink = (url) => {
+    const d = url.searchParams.get('date');
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(new Date(d + 'T12:00:00'));
+    if (url.searchParams.get('view') === 'dial') setShowDayDial(true);
+    else setViewMode('day');
+  };
   showDayDialRef.current = showDayDial;
   useAmbientScreensaver({ showDayDialRef, setShowDayDial });
   const [viewedMonth, setViewedMonth] = useState(() => new Date());
@@ -2080,6 +2089,8 @@ const DayPlanner = () => {
               } else if (action === 'voiceInput') {
                 voiceAutoStartRef.current = true;
                 setShowVoiceInput(true);
+              } else if (action === 'day') {
+                openDayFromLink(url);
               }
             } catch (_) {}
           }
@@ -2400,6 +2411,7 @@ const DayPlanner = () => {
             voiceAutoStartRef.current = true;
             setShowVoiceInput(true);
           }
+          else if (action === 'day') openDayFromLink(url);
         } catch (_) {}
       }
     }
@@ -7853,6 +7865,12 @@ const DayPlanner = () => {
       // the pushed day above carries state (completions, habits, routines,
       // overdue); a projected day carries the shape of the day.
       days: projectedWidgetDays,
+      // The zone every clock minute above was computed in. A widget on a
+      // device that has since moved to a different UTC offset shows its own
+      // "time zone changed" state instead of blocks at the wrong angles
+      // (WidgetFreshness.zoneChanged); a zone change with the app open
+      // changes this field, so the hot fingerprint re-pushes on its own.
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       updatedAt: Date.now(),
     };
 

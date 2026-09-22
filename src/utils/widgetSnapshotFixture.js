@@ -66,6 +66,7 @@ export function buildLiveWidgetSnapshot() {
     allGoals: [],
     allProjects: [],
     days: projectionDates(today).map(day),
+    timezone: LIVE_SNAPSHOT_TIMEZONE,
     updatedAt: Date.UTC(2026, 8, 21, 18, 0, 0),
     reloadWidgets: true,
   };

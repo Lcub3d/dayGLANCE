@@ -73,13 +73,36 @@ struct WidgetFreshness {
         return calendar.startOfDay(for: date)
     }
 
+    /// The snapshot's clock minutes were computed in `snapshotZone`; if this
+    /// device's zone has a different UTC offset RIGHT NOW, every block on the
+    /// dial sits at the wrong angle until the app next pushes. Compared by
+    /// offset, not identifier: America/Chicago and US/Central are the same
+    /// clock, and a zone that only differs in DST rules is the same clock
+    /// today. Nil or unknown zone: never flagged (older payloads).
+    static func zoneChanged(snapshotZone: String?, at now: Date, current: TimeZone = .current) -> Bool {
+        guard let id = snapshotZone, let zone = TimeZone(identifier: id) else { return false }
+        return zone.secondsFromGMT(for: now) != current.secondsFromGMT(for: now)
+    }
+
     /// "Outdated · as of Thu, Sep 17, 8:42 PM", plus "· 3 days old" from two
     /// days on, so a phone left over a weekend never reads as "Thu" alone.
     /// Absolute on purpose: "2 hours ago" invites misreading and breaks down
     /// past a day. Day/month order follows the locale; the clock follows the
     /// snapshot's preference when it carries one, else the device.
     func label(use24Hour: Bool?) -> String {
-        var parts = [String(localized: "Outdated")]
+        ([String(localized: "Outdated")] + detailParts(use24Hour: use24Hour)).joined(separator: "  ·  ")
+    }
+
+    /// The label without its "Outdated" head, for a surface that shows the
+    /// head on its own row (the dial's hub): "as of Thu, Sep 17, 8:42 PM  ·
+    /// 3 days old", or nil when the snapshot carried no date at all.
+    func detailLabel(use24Hour: Bool?) -> String? {
+        let parts = detailParts(use24Hour: use24Hour)
+        return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
+    }
+
+    private func detailParts(use24Hour: Bool?) -> [String] {
+        var parts: [String] = []
         if let capturedAt {
             var style = Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day().minute()
             switch use24Hour {
@@ -95,7 +118,7 @@ struct WidgetFreshness {
         if daysOld >= 2 {
             parts.append(String(localized: "\(daysOld) days old"))
         }
-        return parts.joined(separator: "  ·  ")
+        return parts
     }
 
     /// The soft tier's line: "Planned as of Thu 8:42 PM". A projected day is

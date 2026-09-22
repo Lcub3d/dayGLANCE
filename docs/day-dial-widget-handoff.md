@@ -406,11 +406,13 @@ web geometry unchanged; sizing is Phase 2 design work, see §7).
   loraIsInstalled` checks the registration at runtime and the preview prints
   it in its corner, because the system serif fallback is close enough to
   fool a glance.
-- **A placeholder view is required.** WidgetKit renders it in the gallery and
-  before data resolves. A dial with no blocks has to look deliberate rather
-  than broken — draw the sky ring, ticks and labels, omit the block band and
-  hub task rows.
-- **`widgetURL`** so a tap deep-links into the app at the right day.
+- **A placeholder view is required.** Done in Phase 5: `DialFaceInput.
+  placeholder` (a fixed mid-latitude sky, ticks, labels, no block band) with
+  a hub of weekday and date only; a never-opened install shows the same face
+  plus "Open dayGLANCE to set up".
+- **`widgetURL`.** Done in Phase 5: `dayglance://day?date=YYYY-MM-DD&view=dial`,
+  handled by App.jsx's deep-link drain (`openDayFromLink`): the day the
+  widget showed is selected and the Day Dial opens over it.
 
 ---
 
@@ -445,9 +447,9 @@ the total is more reliable than any single line below.
 | 3 | Hub | landed | **Landed**: `DialHubView` overlay (all seven rows, baseline-placed, chord-bounded; §2 "Hub"), `DialHub.resolve` in the package (tested), Lora bundled and registered, the two hub strings in the catalog. To see it: `DG_WIDGET_FLAGS="DIAL_PREVIEW" npm run ios`, run on the phone, add the "Dial Preview" widget once per scenario and long-press → Edit Widget → Scenario (short title, long title, sparse with runway, dense without, projected) |
 | 4 | Timeline + needle | landed | **Landed**: `DayDialWidget` registered in the bundle (name and description only; Phase 5 does the metadata, placeholder and `widgetURL`), a `TimelineProvider` over `ResolvedWidgetDay`, the entry set from `DialTimeline` in the package (tested), the live countdown, the face cache's eviction policy, and the resize gate on the app's push. Details below |
 | 4b | Day rollover without the app | landed | **Landed** (day-keyed snapshot, `docs/widget-background-refresh-plan.md` "What landed"): the snapshot carries today+1…today+3 with per-block tags kept, iOS timelines get a midnight entry per day, Android an exact-or-inexact midnight alarm. The dial's Phase 4 timeline must be built from `ResolvedWidgetDay` so the entries after midnight draw tomorrow's `dial` from `days[]`; the projected tier's soft label matters less on the dial than on Up Next (past blocks dim by time, not completion — only the hub is really projecting), so do not over-treat it |
-| 5 | States + ship | 2–3d | Placeholder, empty day, no current task (the hub's idle copy), rollover, DST, `widgetURL` |
+| 5 | States + ship | landed | **Landed**: the hub's open-time, sleep and runway-to-sleep copy (`DialHub.resolve` + `DialHubView`, tested), placeholder and no-data faces, the projected note and the Outdated and time-zone-changed states in the hub, the hemisphere flag and mirrored moon, `widgetURL`, a single VoiceOver summary, the screenshot day and every state as a `DIAL_PREVIEW` scenario. Rendering modes and the size sweep are the follow-up PR (see "Phase 5 decisions") |
 
-**Phases 0 through 4 are done.** The cached-image path won (§6 "Result");
+**All phases are done for iOS.** The cached-image path won (§6 "Result");
 phase 2 is the `ImageRenderer` pass over the static face, and phase 4 is the
 needle per entry, the timeline built from `ResolvedWidgetDay`, and the reload
 gate on top of the cached PNG. There is no past-dimming sector any more:
@@ -513,6 +515,65 @@ curated fixture day, so it is not to be removed when the real widget changes.
   and `LiveSnapshotSkyTests` samples the three glyph points on the rendered
   live face. (The `DIAL_PREVIEW` faces had the same gap; nobody had looked
   for the glyphs there since the cache landed.)
+**Phase 5 decisions** (`DialHub.swift`, `DialHubView.swift`,
+`DayDialWidget.swift`, `DialPreviewWidget.swift`):
+
+- **Empty state.** Nothing narrated running → the title row is open time in
+  the runway's teal, live through the same marker splice as the countdown
+  ("35m open"), and the row below names what ends it: "until <title> at
+  14:00" (the title measured and cut so the time always survives), "until
+  sleep at 23:00", or "Nothing else today". Inside a sleep block: "Sleep",
+  muted, and "until 06:25" to its true end. The runway after a current block
+  may now end at sleep and says so: "then 2h 30m until sleep".
+- **Placeholder and no data.** `DialFaceInput.placeholder`: the study's sky
+  (a lit ring and glyphs), ticks and labels, no block band, hub with weekday
+  and date only. The gallery gets it; a never-opened install gets it plus
+  "Open dayGLANCE to set up". The unlit ring stays for a REAL day without a
+  location; a gallery card is not a real day.
+- **Freshness in the hub.** Projected day: "Planned as of Mon 8:42 PM" as the
+  lowest, smallest row (`DialSpec.Hub.noteY` = 281, 9pt, 40 %), under the
+  runway and inside the ring, shrinking to 0.8 before truncating; the task
+  rows read first. Outdated: the face alone is dimmed, the task rows become
+  "Outdated" and the "as of …" detail, and the needle stays because the time
+  is right. The old bottom capsule is gone.
+- **Time zone: labelled, not re-projected.** The snapshot now carries the IANA
+  zone its minutes were computed in (`timezone`). When the device's offset
+  differs at the entry's instant (`WidgetFreshness.zoneChanged`, compared by
+  offset so aliases and same-offset zones never flag), the dial dims the face
+  and shows "Time zone changed · Open dayGLANCE to refresh". Re-projection
+  was rejected: the payload is day-keyed and minute-based, so shifting by the
+  offset delta moves blocks across the midnight boundary into a day the
+  payload may not carry, splits the sleep block, and disagrees with the sky
+  (sampled in the old zone) — correct across day boundaries only with a
+  rebuild, which is what the next foreground push is.
+- **Southern moon.** `sky.southern` (the sign of the latitude, never the
+  coordinates) mirrors the moon glyph's lit limb via `MoonPhase.geometry(…,
+  mirror:)`, as DayDial.jsx does.
+- **`widgetURL`.** `dayglance://day?date=<shown day>&view=dial`: App.jsx
+  selects the day and opens the Day Dial over it (the app's dial is a modal
+  over the day, which is the route). Without a payload the link still opens
+  the app.
+- **VoiceOver.** One element, one label: "Monday, September 21. Now: Write API
+  documentation, 1 hour, 10 minutes left. Then 4 hours, 30 minutes open." —
+  the same catalog strings as the rows with wide durations
+  (`DialHubView.summary`, tested).
+- **Screenshot day.** A `DIAL_PREVIEW` scenario built as a real payload for
+  TODAY and rendered through `DayDialWidgetView` with the live countdown, so
+  the store shot is the shipping path. Shoot between 10:00 and 12:30: "Write
+  API documentation", a live countdown, "then 1h 30m open".
+- **Preview scenarios** now exist for every state above (`DialPreviewWidget`
+  header lists them); the four face scenarios stay for palette comparison.
+  The corner prints the rendering mode, for the follow-up.
+- **Deferred.** Rendering modes (tinted/clear) and the size sweep: a second
+  PR, since tinted needs device evidence for why the dial goes blank. The
+  Android port and Wear OS (§"Android, if it happens"). The projected-day
+  limitation stands: a day the app has not opened carries its shape, not its
+  state (no routines, no completions; §"Phase 4b").
+- **Release notes.** *Day Dial widget (iOS): your whole day as a dial on the
+  home screen — sky, blocks, the current task and what comes next, updated
+  through the day without opening the app.* And, from Phase 4: *Widgets no
+  longer reload on every step of a block resize; they update once when you
+  let go.*
 - **Sky on the live path.** The first device run drew no sky ring: the
   payload's `sky` was null (no geocoded location in the app) and the face
   drew nothing there. The face now draws the ring unlit in that state (§5

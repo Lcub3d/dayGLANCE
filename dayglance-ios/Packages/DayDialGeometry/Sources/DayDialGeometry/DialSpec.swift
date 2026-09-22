@@ -126,6 +126,20 @@ public enum DialSpec {
         public static let runwayColorHex = "#4ec9b0"
         public static let runwayMinimumMinutes: Double = 30
 
+        // Phase 5 states, in the same rows.
+        /// Open time takes the title row in the runway's teal: "35m open".
+        public static let openColorHex = runwayColorHex
+        /// "Sleep" in the title row, muted rather than teal.
+        public static let sleepOpacity: Double = 0.55
+        /// Outdated / time-zone-changed take the title row in a warning amber.
+        public static let statusColorHex = "#f0a848"
+        /// The freshness note ("Planned as of Mon 8:42 PM"): the lowest row,
+        /// smallest type, below the runway and inside the ring. At y = 281
+        /// the chord is ~132pt; the row may shrink to 0.8 before truncating.
+        public static let noteY: Double = 281
+        public static let noteFontSize: Double = 9
+        public static let noteOpacity: Double = 0.40
+
         /// The hub's boundary: the sky ring's inner edge.
         public static var radius: Double { DialSpec.skyRadius - DialSpec.skyWidth / 2 }
 

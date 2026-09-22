@@ -279,12 +279,23 @@ struct DialHubView: View {
     static let durationMarker = "\u{F8FF}"
 
     /// The translated words around a system-updated relative duration: the
-    /// form that archives and updates in Home Screen timeline entries.
+    /// form that archives and updates in Home Screen timeline entries. The
+    /// concatenation never starts with an empty Text or with the relative
+    /// Text itself: the Phase 5 open-state title ("%@ open", the duration
+    /// first) archived as nothing in Home Screen entries while the countdown
+    /// ("until %@ · %@ left", the duration in the middle) archived fine, so
+    /// a phrase that begins with the duration gets a hair space ahead of it.
     static func live(phrase: String, end: Date) -> Text? {
+        guard let parts = spliceParts(phrase) else { return nil }
+        return Text(verbatim: parts.prefix) + Text(end, style: .relative) + Text(verbatim: parts.suffix)
+    }
+
+    /// The words either side of the marker; an empty prefix becomes a hair
+    /// space so the archived concatenation never leads with the live Text.
+    static func spliceParts(_ phrase: String) -> (prefix: String, suffix: String)? {
         guard let range = phrase.range(of: durationMarker) else { return nil }
-        return Text(verbatim: String(phrase[..<range.lowerBound]))
-            + Text(end, style: .relative)
-            + Text(verbatim: String(phrase[range.upperBound...]))
+        let prefix = String(phrase[..<range.lowerBound])
+        return (prefix.isEmpty ? "\u{200A}" : prefix, String(phrase[range.upperBound...]))
     }
 
     func openText(_ o: DialHubOpen) -> String {

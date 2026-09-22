@@ -88,13 +88,18 @@ struct DayDialProvider: TimelineProvider {
         let payloadEnd = lastDay.flatMap { calendar.date(byAdding: .day, value: 1, to: $0) }
         let dates = DialTimeline.entryDates(now: now, days: days, payloadEnd: payloadEnd, calendar: calendar)
         let boundaries = days.reduce(0) { $0 + $1.boundaryMinutes.count }
-        // The rendering modes this widget may be shown in: full colour always;
-        // accented too on a tinted or clear Home Screen (iOS 18+), which needs
-        // the mono face (DialFaceCache's header). Warm each so the first
-        // tinted render is as warm as a full-colour one.
-        let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
-        let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
-
+        // Only the FULL-COLOUR face is warmed here. The mono face (a tinted or
+        // clear Home Screen, DialFaceCache's header) renders on demand in the
+        // view, once per bucket, and is cached like any other. The first
+        // version of the tinted work warmed both variants from this Task and
+        // read `context.environmentVariants.widgetRenderingMode` to decide;
+        // from that build on, the real widget never delivered another
+        // timeline on device: the Home Screen kept showing the previous
+        // build's entries for hours while the gallery (getSnapshot, no warm-
+        // up) rendered every new build correctly. The preview's face
+        // scenarios died the same way and recovered when their provider
+        // stopped warming. Whether it was the doubled render peak or the
+        // lookup, neither belongs in the timeline path.
         Task { @MainActor in
             // Warm every face this timeline can show onto disk, one bucket at a
             // time, so entries render from the cache and the App Group holds
@@ -108,15 +113,16 @@ struct DayDialProvider: TimelineProvider {
                 let day = ResolvedWidgetDay.resolve(snapshot, at: date, calendar: calendar)
                 let input = DialFaceInput(day: day)
                 let nowMin = DayDialClock.minuteOfDay(date, calendar: calendar)
-                for mono in variants {
-                    let key = DialFaceCache.key(input: input, nowMin: nowMin, size: size, scale: scale, mono: mono)
-                    prefixes.insert(DialFaceCache.facePrefix(input: input, size: size, scale: scale, mono: mono))
-                    guard !seen.contains(key) else { continue }
-                    seen.insert(key)
-                    if case let .rendered(ms, _) = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: scale, mono: mono).outcome {
-                        cold += 1
-                        coldMs += ms
-                    }
+                let key = DialFaceCache.key(input: input, nowMin: nowMin, size: size, scale: scale)
+                // Retain both variants' files: the view may have rendered a
+                // mono face for this day, and it must survive this build.
+                prefixes.insert(DialFaceCache.facePrefix(input: input, size: size, scale: scale))
+                prefixes.insert(DialFaceCache.facePrefix(input: input, size: size, scale: scale, mono: true))
+                guard !seen.contains(key) else { continue }
+                seen.insert(key)
+                if case let .rendered(ms, _) = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: scale).outcome {
+                    cold += 1
+                    coldMs += ms
                 }
             }
             DialFaceCache.retain(prefixes: prefixes)
@@ -130,7 +136,7 @@ struct DayDialProvider: TimelineProvider {
             let nowInput = DialFaceInput(day: ResolvedWidgetDay.resolve(snapshot, at: now, calendar: calendar))
             let sky = nowInput.sky.isEmpty ? "none" : "\(nowInput.sky.count)h rise=\(nowInput.sunriseMin.map { "\(Int($0))" } ?? "-") set=\(nowInput.sunsetMin.map { "\(Int($0))" } ?? "-") moon=\(nowInput.moon == nil ? "no" : "yes")"
             let zone = "\(snapshot?.timezone ?? "-")\(WidgetFreshness.zoneChanged(snapshotZone: snapshot?.timezone, at: now) ? " CHANGED" : "")"
-            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) modes=\(variants.count, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) sky=\(sky, privacy: .public) zone=\(zone, privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
+            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) sky=\(sky, privacy: .public) zone=\(zone, privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
 
             let entries = dates.map { DayDialEntry(date: $0, snapshot: snapshot) }
             completion(Timeline(entries: entries, policy: .atEnd))

@@ -498,16 +498,17 @@ curated fixture day, so it is not to be removed when the real widget changes.
   slot and split around it, so the words stay translated and the number is
   system-updated with no timeline entry. It never counts past zero (the
   block's end is an entry) and it spells its units, so the row shrinks to
-  0.8 before it truncates. Chosen on device over the two alternatives:
-  - A static form ("17m left") was exact only at each entry, so up to a
-    quarter of an hour old between them.
-  - The iOS 18 `Text(.currentDate, format: .offset(to:))` restricted to
-    hours and minutes renders in the widget **gallery** and archives as
-    **nothing** in Home Screen timeline entries — concatenated into the
-    phrase or standing alone in an HStack — and every hub row after it in
-    the ZStack goes with it: a blank hub under the date. (In the gallery the
-    HStack form also spread across the chord, the live text reserving the
-    whole width.) Do not retry it in the hub.
+  0.8 before it truncates. The concatenation never LEADS with the live Text:
+  the open-state title ("%@ open") archived as nothing in Home Screen
+  entries while the countdown (duration in the middle) archived fine, so an
+  empty prefix becomes a hair space (`DialHubView.spliceParts`, tested).
+  Chosen over a static form ("17m left"), exact only at each entry and so up
+  to a quarter of an hour old between them. The iOS 18 `Text(.currentDate,
+  format: .offset(to:))` (minutes, no seconds) was tried in two forms and
+  NOT verified either way: the builds that carried it never delivered a
+  timeline (see "The provider must not warm the mono face" below), so what
+  the Home Screen showed was an older timeline. It remains untested on the
+  Home Screen, not disproven.
   Rows under the title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch
   from 211) with only the rows a state has, so the note still lands inside
   the ring when tag, until, left, runway and note are all present (last
@@ -515,6 +516,20 @@ curated fixture day, so it is not to be removed when the real widget changes.
   fixed slots stay in `DialSpec.Hub` as the reference. The row's text is
   centre-aligned inside its frame: a time-driven Text reserves the widest
   width its value can take and would otherwise sit left of the axis.
+- **The provider must not warm the mono face.** From the tinted-mode build
+  on, `getTimeline` warmed both face variants and read
+  `context.environmentVariants.widgetRenderingMode`; from that build on the
+  real widget never delivered another timeline on device. The tell was the
+  widget **gallery** (`getSnapshot`, no warm-up) rendering every new build
+  correctly while the **Home Screen** kept the previous build's archived
+  entries for hours — the joined two-line countdown, and blank rows in the
+  open state. Several fixes were diagnosed against those stale entries
+  before this was noticed; when the gallery and the Home Screen disagree,
+  the provider has stopped delivering, and the `daydial` Console line is
+  absent. The provider now warms the full-colour face only; the mono face
+  renders on demand in the view (once per bucket, then cached) and its
+  files are retained. The preview's face scenarios failed and recovered the
+  same way.
 - **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
   ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
   file just written is never evicted. A timeline build ends by retaining only
@@ -593,13 +608,9 @@ curated fixture day, so it is not to be removed when the real widget changes.
   The preview's provider renders NOTHING and returns at once; the view
   fetches the face from the cache when it renders (cold the first time,
   ~28 ms). The face scenarios sat on their redacted placeholder on device
-  for as long as the provider pre-rendered the PNG with `await MainActor
-  .run { DialFaceCache.image(…) }` inside the async `timeline(for:in:)`:
-  that hop never came back, while the state scenarios (no hop) and the real
-  widget (which warms from an unstructured `Task { @MainActor in }` in the
-  closure-based `getTimeline` and calls `completion` from there) rendered.
-  The earlier "two faces in the entry" explanation in #1771 was wrong about
-  the cause, though entries still carry no images. `ios.yml` generates the
+  for as long as the provider warmed the faces (both variants, from the
+  tinted-mode build on), while the state scenarios, which never warmed,
+  rendered; see "The provider must not warm the mono face" under Phase 4. `ios.yml` generates the
   CI project with `DIAL_PREVIEW`, so the preview compiles in CI; release
   builds still never set the flag.
   The corner prints the rendering mode (`fullColor` / `accented`), so a

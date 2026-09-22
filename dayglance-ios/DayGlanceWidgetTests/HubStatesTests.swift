@@ -74,6 +74,12 @@ final class HubStatesTests: XCTestCase {
         XCTAssertNotNil(live.rows().stack[1].live)
         XCTAssertEqual(live.rows().stack[1].text, "1h 10m left")
         XCTAssertNil(DialHubView.live(phrase: "no marker here", end: noon), "a phrase without the marker is not spliced")
+        // The archived concatenation never leads with the live Text.
+        let leading = try! XCTUnwrap(DialHubView.spliceParts("\(DialHubView.durationMarker) left"))
+        XCTAssertEqual(leading.prefix, "\u{200A}")
+        XCTAssertEqual(leading.suffix, " left")
+        let middle = try! XCTUnwrap(DialHubView.spliceParts("then \(DialHubView.durationMarker) open"))
+        XCTAssertEqual(middle.prefix, "then ")
 
         // With a tag and the projected note the stack is five rows, the last
         // still inside the ring.

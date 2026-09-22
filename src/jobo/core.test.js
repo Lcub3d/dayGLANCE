@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   DO_SOURCES, TIMING, createDoRecord, validateDoRecord,
-  updateDoRecord, tombstoneDoRecord, completeDoAttempt,
+  updateDoRecord, tombstoneDoRecord, completeDoAttempt, migrateLegacyDoRecord,
   doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
 } from './core.js';
 
@@ -63,17 +63,16 @@ describe('Do record contract', () => {
     const source = freeze(input());
     assert.deepEqual(createDoRecord(source), source);
   });
-  it('keeps explicit unlinked/untimed manual entries', () => {
+  it('keeps explicit unlinked manual execution entries', () => {
     const r = record({ taskId: null, planSnapshot: null, source: 'manual' });
     assert.equal(r.taskId, null);
     assert.equal(r.planSnapshot, null);
     assert.equal(ownKey(r, 'progress'), false);
   });
-  it('keeps an unscheduled completion with unknown duration as a zero-minute record', () => {
-    const r = record({ planSnapshot: null, endTime: '14:30' });
-    assert.deepEqual(validateDoRecord(r), { ok: true, errors: [] });
-    assert.equal(doDurationMinutes(r), 0);
-    assert.equal(ownKey(r, 'progress'), false);
+  it('rejects zero-minute completion placeholders because Do is execution evidence', () => {
+    const candidate = input({ planSnapshot: null, endTime: '14:30' });
+    assert.equal(validateDoRecord(candidate).ok, false);
+    assert.throws(() => createDoRecord(candidate), TypeError);
   });
   it('keeps numeric native task identities without rewriting them', () => {
     assert.equal(record({ taskId: 7 }).taskId, 7);
@@ -92,6 +91,19 @@ describe('Do record contract', () => {
     assert.equal(validateDoRecord(candidate).ok, false);
     assert.throws(() => createDoRecord(candidate), TypeError);
   });
+  it('migrates legacy Do progress explicitly without retaining it on the record', () => {
+    const migrated = migrateLegacyDoRecord(input({ progress: 'partial' }));
+    assert.equal(migrated.legacyCompletionStatus, 'partly');
+    assert.equal(ownKey(migrated.record, 'progress'), false);
+    assert.equal(migrated.record.id, input().id);
+    assert.equal(migrated.record.updatedAt, T0);
+    assert.deepEqual(validateDoRecord(migrated.record), { ok: true, errors: [] });
+  });
+  it('maps legacy complete/completed spellings but rejects unknown legacy progress', () => {
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'complete' })).legacyCompletionStatus, 'completed');
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'completed' })).legacyCompletionStatus, 'completed');
+    assert.throws(() => migrateLegacyDoRecord(input({ progress: 'almost' })), TypeError);
+  });
   for (const source of DO_SOURCES) it(`accepts the documented ${source} source`, () => assert.equal(record({ source }).source, source));
   const invalid = [
     ['empty id', { id: '' }], ['blank title', { title: '  ' }],
@@ -102,12 +114,14 @@ describe('Do record contract', () => {
     ['zero year', { date: '0000-01-01' }], ['noncanonical date', { date: '2026-9-19' }],
     ['24:00 must use next endDate', { endTime: '24:00' }], ['un-padded clock', { startTime: '9:00' }],
     ['zero interval with a timed plan', { endTime: '14:30' }],
+    ['zero completion interval without a plan', { source: 'completion', planSnapshot: null, endTime: '14:30' }],
     ['zero manual interval without a plan', { source: 'manual', planSnapshot: null, endTime: '14:30' }],
     ['zero focus interval without a plan', { source: 'focus', planSnapshot: null, endTime: '14:30' }],
     ['backwards interval', { endTime: '14:00' }],
     ['backwards unscheduled completion', { planSnapshot: null, endTime: '14:00' }],
     ['bad endDate', { endDate: '2026-09-18' }],
     ['missing snapshot', { planSnapshot: undefined }], ['bad snapshot duration', { planSnapshot: plan({ duration: 0 }) }],
+    ['snapshot must not capture Plan completion', { planSnapshot: plan({ completionStatus: 'mostly' }) }],
     ['string snapshot duration', { planSnapshot: plan({ duration: '60' }) }],
     ['invalid snapshot date', { planSnapshot: plan({ date: '2026-02-30' }) }],
     ['NaN snapshot', { planSnapshot: plan({ duration: NaN }) }],
@@ -165,18 +179,6 @@ describe('local corrections and tombstones', () => {
     assert.throws(() => updateDoRecord(r, { endTime: '00:10' }, T2), TypeError);
     const changed = updateDoRecord(r, { startTime: '23:50', endDate: '2026-09-20', endTime: '00:10' }, T2);
     assert.equal(doDurationMinutes(changed), 20);
-  });
-  it('fills in actual time on a zero-minute completion without changing its captured history', () => {
-    const original = freeze(record({ planSnapshot: null, endTime: '14:30' }));
-    const changed = updateDoRecord(original, { startTime: '14:00' }, T2);
-    assert.equal(doDurationMinutes(changed), 30);
-    assert.equal(changed.planSnapshot, null);
-    assert.equal(changed.id, original.id);
-    assert.equal(changed.title, original.title);
-    assert.equal(ownKey(changed, 'progress'), false);
-    assert.equal(changed.updatedAt, T2);
-    assert.equal(doDurationMinutes(original), 0);
-    assert.throws(() => updateDoRecord(original, { endTime: '14:00' }, T2), TypeError);
   });
   it('never turns a deletion into removal or a subsequent edit into revival', () => {
     const r = record();
@@ -369,26 +371,6 @@ describe('civil intervals and timing classification', () => {
     assert.equal(final.recordedMinutes, 40);
     assert.throws(() => classifyAgainstPlan(plan(), [r], { knownUnplanned: true }), TypeError);
   });
-  it('counts a zero-minute completion as a live attempt, never as no execution record', () => {
-    const r = record({ planSnapshot: null, endTime: '14:30' });
-    const result = classifyAgainstPlan(null, [r], {
-      knownUnplanned: true, displayedPlan: plan(), now: now('17:00'),
-    });
-    assert.equal(result.recordedMinutes, 0);
-    assert.equal(result.attemptCount, 1);
-    assert.deepEqual(result.timing, [TIMING.UNPLANNED]);
-    const alternate = classifyAgainstPlan(plan({ startTime: '09:00' }), [r], { now: now('17:00') });
-    assert.deepEqual(alternate.timing, []); // Unknown work time proves no timing deviation or compliance.
-    assert.equal(alternate.recordedMinutes, 0);
-    assert.equal(alternate.attemptCount, 1);
-    const second = record({ id: 'second', planSnapshot: null, endTime: '14:30' });
-    assert.deepEqual(classifyAgainstPlan(null, [r, second], { knownUnplanned: true }).timing,
-      [TIMING.UNPLANNED, TIMING.INTERRUPTED]);
-    const gone = tombstoneDoRecord(r, T2);
-    const deleted = classifyAgainstPlan(null, [gone], { displayedPlan: plan(), now: now('17:00') });
-    assert.equal(deleted.attemptCount, 0);
-    assert.deepEqual(deleted.timing, [TIMING.NOT_STARTED]);
-  });
   it('rejects bad anchors/current plans/now instead of inventing a budget', () => {
     assert.throws(() => classifyAgainstPlan({}, [record()]), TypeError);
     assert.throws(() => classifyAgainstPlan(plan(), [], { displayedPlan: {}, now: now('16:00') }), TypeError);
@@ -414,6 +396,12 @@ describe('pickJoboRecord: drop-in #1762 callback', () => {
     const b = record({ observedAt: T2, title: 'a' });
     assert.equal(pickJoboRecord(a, b), a);
     assert.equal(pickJoboRecord(b, a), a);
+  });
+  it('prefers a migrated progress-free row on an exact version tie', () => {
+    const canonical = record();
+    const legacy = { ...canonical, progress: 'partial' };
+    assert.equal(pickJoboRecord(canonical, legacy), canonical);
+    assert.equal(pickJoboRecord(legacy, canonical), canonical);
   });
   it('compares the nested snapshot on an exact timestamp tie', () => {
     const a = record({ planSnapshot: plan({ duration: 30 }) });

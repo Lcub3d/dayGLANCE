@@ -7,7 +7,7 @@ storage, sync or task completion.
 
 The existing `classifyAgainstPlan()` API remains untouched for compatibility
 while this model is reviewed. New Slice 2 consumers should prefer
-`compareExecutionToPlan()` from `src/jobo/comparison.js`.
+`compareExecutionToPlan()` exported directly from `src/jobo/core.js`.
 
 ## Why the old five labels are not canonical
 
@@ -132,3 +132,8 @@ No single overall status is required.
 This layer does **not** infer procrastination, meeting interruption, low productivity, reasons for plan changes, or what the user should do next. Those belong to future Check / Act behavior.
 
 The model also does not modify `pickJoboRecord`, persistence, sync, backup, restore, native task completion or Life Planner.
+
+
+## Transition note
+
+`classifyAgainstPlan()` and the prototype `TIMING` constants are retained only as a temporary compatibility surface while downstream code is migrated. They are not canonical and should not be used for new persistence or analytics. Before Slice 2 is proposed upstream, either migrate the remaining consumers to `compareExecutionToPlan()` or keep the legacy wrapper explicitly documented as a UI adapter; do not maintain two independent business-rule engines long term.

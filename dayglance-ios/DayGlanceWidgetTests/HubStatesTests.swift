@@ -66,16 +66,6 @@ final class HubStatesTests: XCTestCase {
         XCTAssertNotNil(rows.title)
         XCTAssertEqual(rows.stack.count, 3, "until, left, runway (the fixture block has no tag)")
         XCTAssertEqual(rows.stack.map(\.text), ["until 12:30", "1h 10m left", "then 4h 30m open"])
-        XCTAssertNil(rows.stack[1].live, "no end instant: the static form")
-
-        // With an end instant the left row is a splice around the duration,
-        // its static fallback the same words, and the words are never in the
-        // live Text itself (they are drawn as separate Texts).
-        let live = DialHubView(date: noon, state: h.state, use24Hour: true, countdownEnd: noon.addingTimeInterval(70 * 60))
-        let splice = try! XCTUnwrap(live.rows().stack[1].live)
-        XCTAssertEqual(splice.prefix, "")
-        XCTAssertEqual(splice.suffix, " left")
-        XCTAssertEqual(splice.fallback, "1h 10m left")
 
         // With a tag and the projected note the stack is five rows, the last
         // still inside the ring.

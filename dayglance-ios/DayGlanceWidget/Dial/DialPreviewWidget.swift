@@ -31,7 +31,7 @@ import DayDialGeometry
 //     Southern moon         the moon glyph mirrored for a southern observer
 //     Placeholder           the gallery render
 //     No data               installed, never opened
-//     Screenshot day        TODAY, live: the App Store shot. Shoot between
+//     Screenshot day        TODAY, on the clock: the App Store shot. Shoot between
 //                           10:00 and 12:30 for "Write API documentation"
 //                           with a live countdown and "then 1h 30m open".
 //
@@ -128,8 +128,8 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
     func timeline(for configuration: DialPreviewIntent, in context: Context) async -> Timeline<DialPreviewEntry> {
         let scenario = configuration.scenario
         let entry = entry(for: scenario, size: context.displaySize)
-        // The screenshot day is live: keep the needle moving like the real
-        // widget. Every other state is a frozen instant.
+        // The screenshot day follows the clock: keep the needle moving like
+        // the real widget. Every other state is a frozen instant.
         let policy: TimelineReloadPolicy = scenario == .screenshot
             ? .after(Date().addingTimeInterval(15 * 60)) : .never
         return Timeline(entries: [entry], policy: policy)
@@ -166,8 +166,7 @@ struct DialPreviewView: View {
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
                 }
             } else {
-                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
-                                  liveCountdown: entry.scenario == .screenshot)
+                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder))
                 corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
             }
         }
@@ -195,17 +194,13 @@ struct DialPreviewView: View {
 /// The cached face, the hub overlay and the needle for one entry, with a
 /// live-drawn face as fallback so the widget never shows a hole
 /// (placeholder, gallery, a failed render). What the Day Dial's timeline
-/// entries are built from (DayDialWidget). `hubDate` nil draws no hub;
-/// `countdownEnd` set makes the hub's countdown a live Text (see
-/// DialHubView), nil keeps it static, which the preview and screenshots
-/// want.
+/// entries are built from (DayDialWidget). `hubDate` nil draws no hub.
 struct DialCachedFaceView: View {
     let input: DialFaceInput
     let nowMin: Double
     let face: UIImage?
     var hubDate: Date? = nil
     var use24Hour: Bool? = nil
-    var countdownEnd: Date? = nil
     /// The accented mode's face when `face` is nil (DialFaceView.mono).
     var mono: Bool = false
 
@@ -224,8 +219,7 @@ struct DialCachedFaceView: View {
                 }
                 .unredacted()
                 if let hubDate {
-                    DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin),
-                                use24Hour: use24Hour, countdownEnd: countdownEnd)
+                    DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin), use24Hour: use24Hour)
                 }
                 DialNeedleView(nowMin: nowMin)
                     .widgetAccentable()

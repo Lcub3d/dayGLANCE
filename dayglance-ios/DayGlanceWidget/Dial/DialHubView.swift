@@ -12,18 +12,23 @@ import DayDialGeometry
 // invalidate the cache every entry instead of every block boundary. The
 // cache key is untouched.
 //
-// THE COUNTDOWN is three rows: the title, "until 19:00", and "17m left",
-// the STATIC rounded form, exact at each timeline entry (the grid is 15
-// minutes with an entry at every block boundary, DialTimeline). Every live
-// form was tried on device and lost. Phase 4's `Text(end, style: .relative)`
-// archives and updates, but counts seconds under an hour ("17 min, 37 sec")
-// and read as noise. The iOS 18 `Text(.currentDate, format: .offset(to:))`,
-// restricted to hours and minutes, renders in the widget GALLERY and
-// archives as nothing in Home Screen timeline entries — concatenated into
-// the phrase or standing alone in an HStack — and takes every row after it
-// in this ZStack with it, which is a blank hub under the date. So no time-
-// driven Text is used here at all; how old the number can get is decided
-// by the entry set, not by this view.
+// THE COUNTDOWN is three rows: the title, "until 19:00", and the time left,
+// which is LIVE: `Text(end, style: .relative)` spliced into the SAME
+// localized phrase (the catalog string is formatted with a marker in the
+// duration's place and split around it, so the words stay translated and
+// the number is system-updated every second with no timeline entry). It
+// never counts past zero: the block's end is itself an entry (DialTimeline).
+// The relative style spells its units and counts seconds under an hour
+// ("17 min, 37 sec left"); that was weighed on device against the two
+// alternatives and chosen. A static form ("17m left") was exact only at
+// each entry, so up to a quarter of an hour old between them. The iOS 18
+// `Text(.currentDate, format: .offset(to:))`, restricted to hours and
+// minutes, renders in the widget GALLERY and archives as NOTHING in Home
+// Screen timeline entries — concatenated into the phrase or standing alone
+// in an HStack — taking every row after it in this ZStack with it: a blank
+// hub under the date. Do not try it again here. `countdownEnd` / `openEnd`
+// nil (the preview's fixed instants, App Store screenshots) draws the static
+// form.
 //
 // Rows are placed by BASELINE, as the spec's SVG text is (DialSpec.Hub):
 // the eyebrow, date and title at the spec's own y, the rows under the title
@@ -118,6 +123,10 @@ struct DialHubView: View {
     let date: Date
     let state: DialHubState
     let use24Hour: Bool?
+    /// The current block's end as an instant. Set: the time-left row is live.
+    var countdownEnd: Date? = nil
+    /// Open time's end as an instant. Set: "35m open" is live.
+    var openEnd: Date? = nil
     var status: DialHubStatus = .live
     /// The projected tier's soft note ("Planned as of Mon 8:42 PM"): the
     /// lowest, smallest row, so the task rows read first.
@@ -127,9 +136,12 @@ struct DialHubView: View {
 
     /// One row of the stack below the title: its words, its type, the UIFont
     /// its baseline is computed from, and how far it may shrink before it
-    /// truncates.
+    /// truncates. `live` is the same phrase with a system-updated duration
+    /// in it (see the header); `text` stays the static form, which is what
+    /// VoiceOver and the tests read.
     struct HubRow {
         var text: String
+        var live: Text? = nil
         var font: Font
         var color: Color
         var metrics: UIFont
@@ -228,9 +240,11 @@ struct DialHubView: View {
     }
 
     /// A detail row: 11.5pt, white at 58 % (the spec's countdown style).
-    private func detailRow(_ text: String) -> HubRow {
-        HubRow(text: text, font: .system(size: H.countdownFontSize), color: Color.white.opacity(H.countdownOpacity),
-               metrics: UIFont.systemFont(ofSize: H.countdownFontSize))
+    /// A live row spells its units, so it may shrink before it truncates.
+    private func detailRow(_ text: String, live: Text? = nil) -> HubRow {
+        HubRow(text: text, live: live, font: .system(size: H.countdownFontSize), color: Color.white.opacity(H.countdownOpacity),
+               metrics: UIFont.systemFont(ofSize: H.countdownFontSize),
+               minimumScale: live == nil ? 1 : DialHubTypography.titleMinimumScale)
     }
 
     // MARK: copy
@@ -245,15 +259,32 @@ struct DialHubView: View {
         String(localized: "\(DialHubClock.duration(minutes: c.minutesLeft)) left")
     }
 
-    /// The row under "until": the static rounded time left.
+    /// The row under "until": live when there is an end instant, else the
+    /// static rounded time left.
     func leftRow(_ c: DialHubCurrent) -> HubRow {
-        detailRow(leftText(c))
+        detailRow(leftText(c), live: countdownEnd.flatMap { Self.live(phrase: String(localized: "\(Self.durationMarker) left"), end: $0) })
     }
 
-    /// "35m open", the title row of the empty state, in the runway's teal.
+    /// "35m open", the title row of the empty state, in the runway's teal;
+    /// live when `openEnd` is set.
     func openTitle(_ o: DialHubOpen) -> HubRow {
-        HubRow(text: openText(o), font: titleFont, color: Color(hex: H.openColorHex).opacity(H.titleOpacity),
+        HubRow(text: openText(o),
+               live: openEnd.flatMap { Self.live(phrase: String(localized: "\(Self.durationMarker) open"), end: $0) },
+               font: titleFont, color: Color(hex: H.openColorHex).opacity(H.titleOpacity),
                metrics: titleMetrics, minimumScale: DialHubTypography.titleMinimumScale)
+    }
+
+    /// A private-use character no translation contains, standing in for the
+    /// duration while the phrase is split around it.
+    static let durationMarker = "\u{F8FF}"
+
+    /// The translated words around a system-updated relative duration: the
+    /// form that archives and updates in Home Screen timeline entries.
+    static func live(phrase: String, end: Date) -> Text? {
+        guard let range = phrase.range(of: durationMarker) else { return nil }
+        return Text(verbatim: String(phrase[..<range.lowerBound]))
+            + Text(end, style: .relative)
+            + Text(verbatim: String(phrase[range.upperBound...]))
     }
 
     func openText(_ o: DialHubOpen) -> String {
@@ -334,7 +365,7 @@ struct DialHubView: View {
     /// at `baseline`, no wider than the hub's chord there; it shrinks to
     /// `minimumScale` (the title only) and then truncates with an ellipsis.
     private func row(_ r: HubRow, baseline: Double) -> some View {
-        row(Text(verbatim: r.text).font(r.font).foregroundStyle(r.color),
+        row((r.live ?? Text(verbatim: r.text)).font(r.font).foregroundStyle(r.color),
             baseline: baseline, metrics: r.metrics, minimumScale: r.minimumScale)
     }
 
@@ -343,10 +374,11 @@ struct DialHubView: View {
         placed(text, baseline: baseline, metrics: metrics, minimumScale: minimumScale)
     }
 
-    /// The text alignment is kept although every row is static now: a time-
-    /// driven Text reserves the widest width its value can take and lays its
-    /// words leading-aligned inside that frame, which is how the Phase 4
-    /// countdown sat left of the axis. Harmless for a static row.
+    /// The text alignment is not redundant with the centred frame: a time-
+    /// driven Text reserves the widest width its value can take so the row
+    /// never jitters as it counts, and lays its visible words leading-aligned
+    /// inside that frame. The frame was centred; the words were not, and the
+    /// live row sat left of the axis on device.
     private func placed<V: View>(_ content: V, baseline: Double, metrics: UIFont, minimumScale: CGFloat) -> some View {
         content
             .lineLimit(1)

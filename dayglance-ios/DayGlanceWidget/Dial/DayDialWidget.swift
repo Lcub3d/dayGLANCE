@@ -140,6 +140,9 @@ struct DayDialProvider: TimelineProvider {
 
 struct DayDialWidgetView: View {
     let entry: DayDialEntry
+    /// The preview's fixed-time scenarios pass false: a relative Text counts
+    /// from the real clock, which a fixture instant is not.
+    var liveCountdown: Bool = true
     @Environment(\.displayScale) private var displayScale
     /// `.accented` on a tinted or clear Home Screen (iOS 18+): the face is
     /// the mono PNG (DialFaceCache's header), and the hub and needle, drawn
@@ -168,9 +171,12 @@ struct DayDialWidgetView: View {
         // A stale or mis-zoned payload dims the FACE only: the hub carries
         // the label and the needle stays, because the time itself is right.
         let dimmed = day.isStale || zoneChanged
-        // The hub's rows are static, exact at this entry (DialHubView's
-        // header says why no live Text is used); the entry set decides how
-        // old they can get.
+        // The end instants make the time-left and open-time rows live
+        // (DialHubView's header); the preview's fixed instants draw the
+        // static rounded form.
+        let live = liveCountdown && status == .live
+        let countdownEnd = live ? hub.current.flatMap { endDate(minute: $0.endMin, of: entry.date, calendar: calendar) } : nil
+        let openEnd = live ? hub.open?.endMin.flatMap { endDate(minute: $0, of: entry.date, calendar: calendar) } : nil
         let plannedAsOf = (status == .live && day.isProjected)
             ? day.freshness.plannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour) : nil
         let use24Hour = entry.snapshot?.use24Hour
@@ -183,6 +189,7 @@ struct DayDialWidgetView: View {
                         .opacity(dimmed ? 0.45 : 1)
                         .grayscale(dimmed ? 0.5 : 0)
                     DialHubView(date: entry.date, state: hub, use24Hour: use24Hour,
+                                countdownEnd: countdownEnd, openEnd: openEnd,
                                 status: status, plannedAsOf: plannedAsOf)
                     DialNeedleView(nowMin: nowMin)
                         .widgetAccentable()
@@ -220,6 +227,19 @@ struct DayDialWidgetView: View {
     }
 
 
+
+    /// The block's true end as a Date on the entry's day (or the next, past
+    /// 1440), for the live rows.
+    private func endDate(minute: Double, of date: Date, calendar: Calendar) -> Date? {
+        var dayStart = calendar.startOfDay(for: date)
+        var m = minute
+        if m >= DialGeometry.dayMinutes {
+            guard let next = calendar.date(byAdding: .day, value: 1, to: dayStart) else { return nil }
+            dayStart = next
+            m -= DialGeometry.dayMinutes
+        }
+        return DialTimeline.date(minute: m, of: dayStart, calendar: calendar)
+    }
 
     /// A tap opens the app on the day the widget is showing, in the Day
     /// Dial (App.jsx's `day` route: `date` selects the day, `view=dial`

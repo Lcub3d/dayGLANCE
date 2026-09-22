@@ -31,7 +31,7 @@ import DayDialGeometry
 //     Southern moon         the moon glyph mirrored for a southern observer
 //     Placeholder           the gallery render
 //     No data               installed, never opened
-//     Screenshot day        TODAY, on the clock: the App Store shot. Shoot between
+//     Screenshot day        TODAY, live: the App Store shot. Shoot between
 //                           10:00 and 12:30 for "Write API documentation"
 //                           with a live countdown and "then 1h 30m open".
 //
@@ -166,7 +166,8 @@ struct DialPreviewView: View {
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
                 }
             } else {
-                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder))
+                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
+                                  liveCountdown: entry.scenario == .screenshot)
                 corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
             }
         }

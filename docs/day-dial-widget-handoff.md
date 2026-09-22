@@ -491,28 +491,30 @@ curated fixture day, so it is not to be removed when the real widget changes.
   `DialFaceCache` at render time, one decoded face kept in memory), the hub
   overlay and the needle. The face is re-rendered only when the cache key
   changes, i.e. at a block end (the bucket), a tier change or a new size.
-- **Countdown: three rows, static.** Title, "until 19:00", "17m left",
-  runway. The time-left row is the static rounded form, exact at each
-  timeline entry, so with the 15-minute grid plus an entry at every block
-  boundary it is at most a quarter of an hour old and never counts past
-  zero. Every live form was tried on device and lost:
-  - Phase 4's `Text(end, style: .relative)` archives and updates, but under
-    an hour it counts seconds ("17 min, 37 sec left") and read as noise.
+- **Countdown: three rows, live with seconds.** Title, "until 19:00",
+  "17 min, 37 sec left", runway. The time-left row (and the empty state's
+  "35 min open" title) is `Text(end, style: .relative)` spliced into the
+  catalog phrase — the phrase is formatted with a marker in the duration's
+  slot and split around it, so the words stay translated and the number is
+  system-updated with no timeline entry. It never counts past zero (the
+  block's end is an entry) and it spells its units, so the row shrinks to
+  0.8 before it truncates. Chosen on device over the two alternatives:
+  - A static form ("17m left") was exact only at each entry, so up to a
+    quarter of an hour old between them.
   - The iOS 18 `Text(.currentDate, format: .offset(to:))` restricted to
     hours and minutes renders in the widget **gallery** and archives as
     **nothing** in Home Screen timeline entries — concatenated into the
     phrase or standing alone in an HStack — and every hub row after it in
     the ZStack goes with it: a blank hub under the date. (In the gallery the
     HStack form also spread across the chord, the live text reserving the
-    whole width.) So no time-driven Text is used in the hub at all.
+    whole width.) Do not retry it in the hub.
   Rows under the title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch
   from 211) with only the rows a state has, so the note still lands inside
   the ring when tag, until, left, runway and note are all present (last
   baseline 291, ~98pt usable; `HubTests`, `HubStatesTests`). The spec's
-  fixed slots stay in `DialSpec.Hub` as the reference. If the quarter-hour
-  staleness is not acceptable, the lever is the entry set (DialTimeline):
-  denser entries in the last minutes before each block end, at the cost of
-  more archived views per timeline.
+  fixed slots stay in `DialSpec.Hub` as the reference. The row's text is
+  centre-aligned inside its frame: a time-driven Text reserves the widest
+  width its value can take and would otherwise sit left of the axis.
 - **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
   ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
   file just written is never evicted. A timeline build ends by retaining only

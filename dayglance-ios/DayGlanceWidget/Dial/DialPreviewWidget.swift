@@ -95,13 +95,14 @@ struct DialPreviewIntent: WidgetConfigurationIntent {
 struct DialPreviewEntry: TimelineEntry {
     let date: Date
     let scenario: DialPreviewScenario
-    /// Face scenarios: the cached face resolved in the provider, and how it
-    /// was obtained. Nil → the view draws live. `monoFace` is the accented
-    /// mode's (a tinted or clear Home Screen), warmed only when the context
-    /// says the widget may be shown that way.
-    var face: UIImage? = nil
-    var monoFace: UIImage? = nil
-    var outcome: DialFaceCache.Outcome = .failed
+    /// Face scenarios: how the provider's warm-up obtained each face
+    /// ("cold 31ms", "disk", "mem"), for the corner. The entry carries NO
+    /// image — the same rule as the real widget (DayDialWidget's header): a
+    /// 3× face is ~5 MB decoded, and an entry holding two of them while the
+    /// provider renders a third is how the extension runs out of its ~30 MB
+    /// and the widget sits on its placeholder. The view fetches the face from
+    /// the cache at render time, as DayDialWidgetView does.
+    var warm: String = ""
     /// State scenarios: the payload the real view resolves, and the entry it
     /// is rendered as. `date` is that entry's instant.
     var snapshot: WidgetSnapshot? = nil
@@ -121,19 +122,20 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
         let scenario = configuration.scenario
         let size = context.displaySize
         if scenario.isFaceScenario {
+            // Warm the cache for every rendering mode the widget may be shown
+            // in, one face at a time, keeping only the outcome; the view
+            // fetches the image it needs when it renders.
             let input = DialPreviewFixture.input(for: scenario)
-            let scale = await MainActor.run { UIScreen.main.scale }
             let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
-            let result = await MainActor.run {
-                DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale)
+            let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
+            let warm = await MainActor.run { () -> String in
+                let scale = UIScreen.main.scale
+                return variants.map { mono in
+                    let outcome = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: mono).outcome
+                    return (mono ? "mono " : "") + outcome.summary.replacingOccurrences(of: "img ", with: "")
+                }.joined(separator: " / ")
             }
-            var mono: UIImage? = nil
-            if modes.contains(where: { $0 != .fullColor }) {
-                mono = await MainActor.run {
-                    DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: true).image
-                }
-            }
-            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, face: result.image, monoFace: mono, outcome: result.outcome)
+            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, warm: warm)
             return Timeline(entries: [entry], policy: .never)
         }
         let entry = entry(for: scenario, size: size)
@@ -156,15 +158,24 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
 struct DialPreviewView: View {
     let entry: DialPreviewEntry
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             if entry.scenario.isFaceScenario {
                 let input = DialPreviewFixture.input(for: entry.scenario)
                 let mono = renderingMode != .fullColor
-                DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: mono ? entry.monoFace : entry.face,
-                                   hubDate: entry.date, use24Hour: true, mono: mono)
-                corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · \(entry.outcome.summary) · \(lora) · \(mode)")
+                GeometryReader { geo in
+                    // The same fetch the real widget makes in its body: memory,
+                    // then the App Group PNG the provider just warmed.
+                    let face = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: geo.size,
+                                                   scale: displayScale, mono: mono)
+                    DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: face.image,
+                                       hubDate: entry.date, use24Hour: true, mono: mono)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · warm \(entry.warm) · \(face.outcome.summary) · \(lora) · \(mode)")
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
+                }
             } else {
                 DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
                                   liveCountdown: entry.scenario == .screenshot)

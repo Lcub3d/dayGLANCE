@@ -580,6 +580,12 @@ curated fixture day, so it is not to be removed when the real widget changes.
   API documentation", a live countdown, "then 1h 30m open".
 - **Preview scenarios** now exist for every state above (`DialPreviewWidget`
   header lists them); the four face scenarios stay for palette comparison.
+  The preview's entries carry no images (the real widget's rule): the
+  provider warms the cache and the view fetches the face at render time. An
+  entry holding two 3× faces while a third rendered put the extension over
+  its budget and left the preview on its redacted placeholder. `ios.yml` now
+  generates the CI project with `DIAL_PREVIEW`, so the preview compiles in
+  CI; release builds still never set the flag.
   The corner prints the rendering mode (`fullColor` / `accented`), so a
   tinted or clear Home Screen is confirmed as the accented mode at a glance.
 - **Rendering modes (the second Phase 5 PR).** Why tinted was blank: on a

@@ -491,25 +491,30 @@ curated fixture day, so it is not to be removed when the real widget changes.
   `DialFaceCache` at render time, one decoded face kept in memory), the hub
   overlay and the needle. The face is re-rendered only when the cache key
   changes, i.e. at a block end (the bucket), a tier change or a new size.
-- **Countdown: three rows, live to the minute on iOS 18.** The first device
-  run rejected Phase 4's `Text(end, style: .relative)`: under an hour it
-  counts seconds ("17 min, 37 sec left"). A static form was exact only at
-  each entry, so up to a quarter of an hour old between them. The row is now
-  `Text(.currentDate, format: .offset(to:))` restricted to hours and minutes
-  (iOS 18+), inside the catalog phrase "%@ left": system-updated every
-  minute, never seconds, never past zero (the block's end is an entry). The
-  phrase is drawn as three separate Texts around the live one, **never as a
-  `+` concatenation**: concatenated, the iOS 18 text archived as nothing on
-  the Home Screen and every hub row after it went with it, while the gallery
-  (rendered once, not archived ahead) showed it fine. Phase 4's relative
-  style concatenated without trouble; the new text does not.
-  Below iOS 18 the static "17m left" is drawn. And the end time has a row of
-  its own: title, "until 19:00", "17 minutes left", runway. Rows under the
-  title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch from 211) with
-  only the rows a state has, so the note still lands inside the ring when
-  tag, until, left, runway and note are all present (last baseline 291,
-  ~98pt usable; `HubTests`, `HubStatesTests`). The spec's fixed slots stay
-  in `DialSpec.Hub` as the reference.
+- **Countdown: three rows, live with seconds.** Title, "until 19:00",
+  "17 min, 37 sec left", runway. The time-left row (and the empty state's
+  "35 min open" title) is `Text(end, style: .relative)` spliced into the
+  catalog phrase — the phrase is formatted with a marker in the duration's
+  slot and split around it, so the words stay translated and the number is
+  system-updated with no timeline entry. It never counts past zero (the
+  block's end is an entry) and it spells its units, so the row shrinks to
+  0.8 before it truncates. Chosen on device over the two alternatives:
+  - A static form ("17m left") was exact only at each entry, so up to a
+    quarter of an hour old between them.
+  - The iOS 18 `Text(.currentDate, format: .offset(to:))` restricted to
+    hours and minutes renders in the widget **gallery** and archives as
+    **nothing** in Home Screen timeline entries — concatenated into the
+    phrase or standing alone in an HStack — and every hub row after it in
+    the ZStack goes with it: a blank hub under the date. (In the gallery the
+    HStack form also spread across the chord, the live text reserving the
+    whole width.) Do not retry it in the hub.
+  Rows under the title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch
+  from 211) with only the rows a state has, so the note still lands inside
+  the ring when tag, until, left, runway and note are all present (last
+  baseline 291, ~98pt usable; `HubTests`, `HubStatesTests`). The spec's
+  fixed slots stay in `DialSpec.Hub` as the reference. The row's text is
+  centre-aligned inside its frame: a time-driven Text reserves the widest
+  width its value can take and would otherwise sit left of the axis.
 - **Cache lifetime.** `DialFaceCache` bounds the App Group directory three
   ways, enforced on every write, oldest first: **12 MB, 40 files, 48 h**. The
   file just written is never evicted. A timeline build ends by retaining only

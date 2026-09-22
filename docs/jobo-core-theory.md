@@ -111,19 +111,38 @@ The thirteen values are:
 
 `before`, `meets`, `overlaps`, `starts`, `during`, `finishes`, `equals`, `started_by`, `contains`, `finished_by`, `overlapped_by`, `met_by`, `after`.
 
-## Summary labels
+## Canonical product summary
 
-`summarizeTiming()` is a convenience layer, not source of truth. It emits multiple simple labels where needed, for example:
+`summarizeTiming()` is the small product-level summary. It is derived from the richer theory dimensions above and is **multi-label**, not one mutually-exclusive status.
 
-- `late_start`
-- `late_finish`
+Canonical labels:
+
+- `on_plan`
+- `late`
 - `longer`
-- `split_sessions`
+- `split`
+- `not_started`
+- `unplanned`
 
-A perfect timing match can coexist with split sessions:
+Rules:
 
-- `matches_plan`
-- `split_sessions`
+- `on_plan`: a comparable planned execution exists and it is neither late nor longer. Early starts, early finishes and shorter execution can still be on-plan because they do not represent lateness or excess estimated effort.
+- `late`: start is late **or** finish is late under the supplied tolerance policy.
+- `longer`: recorded effort is longer than the plan duration under the supplied duration tolerance.
+- `split`: two or more live Do attempts exist.
+- `not_started`: no live attempt exists and the current displayed plan has fully elapsed.
+- `unplanned`: the caller explicitly knows there was no timed plan.
+- `unknown` remains a lower-level Plan Context state and intentionally emits no product summary label.
+
+Valid combinations include:
+
+- `late + longer`
+- `late + split`
+- `longer + split`
+- `late + longer + split`
+- `on_plan + split`
+
+Detailed dimensions such as early/late start, early/late finish, shorter/on-estimate/longer and Allen interval relation remain available for explanation, analytics and future UI drill-down. They are not canonical summary labels.
 
 No single overall status is required.
 

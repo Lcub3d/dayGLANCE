@@ -362,12 +362,19 @@ struct DialHubView: View {
     /// One row: a single line, centred on the dial's axis with its baseline
     /// at `baseline`, no wider than the hub's chord there; it shrinks to
     /// `minimumScale` (the title only) and then truncates with an ellipsis.
+    ///
+    /// The text alignment is not redundant with the centred frame: a live
+    /// `Text(date, style: .relative)` reserves the widest width its value
+    /// can take so the row never jitters as it counts, and lays its visible
+    /// words leading-aligned inside that frame. The frame was centred; the
+    /// words were not, and the countdown row sat left of the axis on device.
     private func row(_ text: Text, baseline: Double, metrics: UIFont, minimumScale: CGFloat = 1) -> some View {
         text
             .lineLimit(1)
             .truncationMode(.tail)
             .minimumScaleFactor(minimumScale)
-            .frame(maxWidth: H.width(atY: baseline, inset: DialHubTypography.chordInset))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: H.width(atY: baseline, inset: DialHubTypography.chordInset), alignment: .center)
             .position(x: DialSpec.cx, y: DialHubTypography.centerY(forBaseline: baseline, font: metrics))
     }
 

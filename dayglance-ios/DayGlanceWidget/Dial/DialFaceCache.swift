@@ -16,6 +16,7 @@ import DayDialGeometry
 //
 //     renderVersion | digest(face input) | size@scale  +  "-b<n>"
 //
+// with "-mono" after the version for the accented rendering mode (below),
 // where n = DialBand.pastBucket: the number of blocks that have ended at the
 // entry's minute. The ended set is a prefix of the blocks in end order, so
 // its size names it exactly; two entries in the same bucket draw the same
@@ -23,6 +24,20 @@ import DayDialGeometry
 // cold renders on a full day, against a 28 ms cold render measured in
 // Phase 0. A tier change (pushed → projected) changes the input digest, so
 // a projected morning never reuses last night's pushed face.
+//
+// RENDERING MODES (Phase 5). On a tinted or clear Home Screen (iOS 18+) the
+// system renders the widget in the ACCENTED mode: every view is painted
+// white at its own opacity, images included, and the container background
+// is replaced. The full-colour face is an OPAQUE PNG (the background is
+// baked in so the band's alpha composites once), and an opaque image in
+// that mode is one solid white rectangle, over which the white hub text and
+// the white needle vanish — the "completely blank" tinted dial. So the
+// accented mode gets its own face: DialFaceView's mono variant, white at
+// the spec's opacities on a transparent ground, separators cut out rather
+// than painted, rendered and cached under a key of its own ("-mono"). The
+// provider warms whichever modes the context says the widget may be shown
+// in (environmentVariants.widgetRenderingMode), so a tinted first render is
+// as warm as a full-colour one.
 //
 // THE LIFETIME (Phase 4). Files accumulate per bucket, per rendered day and
 // per size@scale, so the directory is bounded three ways, enforced on every
@@ -47,7 +62,7 @@ import DayDialGeometry
 enum DialFaceCache {
     /// Bump whenever anything in DialFaceView or the palette changes what
     /// the same input draws, or a stale PNG from the previous build is shown.
-    static let renderVersion = "face-v3"   // v2: the unlit sky ring; v3: glyphs drawn in a real frame
+    static let renderVersion = "face-v4"   // v3: glyphs drawn in a real frame; v4: the mono variant joins the key
 
     static let maxBytes = 12 * 1024 * 1024
     static let maxFiles = 40
@@ -89,13 +104,14 @@ enum DialFaceCache {
             .appendingPathComponent("dial-face", isDirectory: true)
     }
 
-    /// The input's part of the key: everything but the bucket.
-    static func facePrefix(input: DialFaceInput, size: CGSize, scale: CGFloat) -> String {
-        "\(renderVersion)-\(input.digest)-\(Int(size.width))x\(Int(size.height))@\(scale)"
+    /// The input's part of the key: everything but the bucket. `mono` is the
+    /// accented-mode face (see RENDERING MODES above).
+    static func facePrefix(input: DialFaceInput, size: CGSize, scale: CGFloat, mono: Bool = false) -> String {
+        "\(renderVersion)\(mono ? "-mono" : "")-\(input.digest)-\(Int(size.width))x\(Int(size.height))@\(scale)"
     }
 
-    static func key(input: DialFaceInput, nowMin: Double, size: CGSize, scale: CGFloat) -> String {
-        "\(facePrefix(input: input, size: size, scale: scale))-b\(DialBand.pastBucket(input.blocks, nowMin: nowMin))"
+    static func key(input: DialFaceInput, nowMin: Double, size: CGSize, scale: CGFloat, mono: Bool = false) -> String {
+        "\(facePrefix(input: input, size: size, scale: scale, mono: mono))-b\(DialBand.pastBucket(input.blocks, nowMin: nowMin))"
     }
 
     /// Pixels per point for a widget of `size` on a screen of `scale`: the
@@ -107,8 +123,8 @@ enum DialFaceCache {
     /// The face for one entry: memory, then the App Group PNG, then a fresh
     /// ImageRenderer pass (stored for next time). Callable from any thread:
     /// the render itself hops to the main actor, which ImageRenderer requires.
-    static func image(input: DialFaceInput, nowMin: Double, size: CGSize, scale: CGFloat) -> (image: UIImage?, outcome: Outcome) {
-        let k = key(input: input, nowMin: nowMin, size: size, scale: scale)
+    static func image(input: DialFaceInput, nowMin: Double, size: CGSize, scale: CGFloat, mono: Bool = false) -> (image: UIImage?, outcome: Outcome) {
+        let k = key(input: input, nowMin: nowMin, size: size, scale: scale, mono: mono)
         if let memory, memory.key == k { return (memory.image, .memory) }
 
         let file = directory()?.appendingPathComponent("\(k).png")
@@ -124,7 +140,7 @@ enum DialFaceCache {
         }
 
         let t0 = CFAbsoluteTimeGetCurrent()
-        let rendered = onMain { RenderBox(image: renderFace(input: input, nowMin: nowMin, pixelScale: px)) }.image
+        let rendered = onMain { RenderBox(image: renderFace(input: input, nowMin: nowMin, pixelScale: px, mono: mono)) }.image
         guard let rendered else {
             logger.error("face: ImageRenderer returned nil for \(k, privacy: .public)")
             return (nil, .failed)
@@ -142,11 +158,18 @@ enum DialFaceCache {
         return (rendered, .rendered(ms: ms, storedBytes: stored))
     }
 
+    /// The full-colour face over the widget's background (opaque, so the
+    /// band composites once); the mono face on nothing (its alpha IS the
+    /// picture in the accented mode).
     @MainActor
-    private static func renderFace(input: DialFaceInput, nowMin: Double, pixelScale: CGFloat) -> UIImage? {
-        let renderer = ImageRenderer(content:
-            DialFaceView(input: input, nowMin: nowMin)
-                .background(Color(hex: DialSpec.backgroundHex)))
+    private static func renderFace(input: DialFaceInput, nowMin: Double, pixelScale: CGFloat, mono: Bool) -> UIImage? {
+        let face = DialFaceView(input: input, nowMin: nowMin, mono: mono)
+        if mono {
+            let renderer = ImageRenderer(content: face)
+            renderer.scale = pixelScale
+            return renderer.uiImage
+        }
+        let renderer = ImageRenderer(content: face.background(Color(hex: DialSpec.backgroundHex)))
         renderer.scale = pixelScale
         return renderer.uiImage
     }

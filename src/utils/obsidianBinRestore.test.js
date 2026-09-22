@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import i18next from 'i18next';
 import {
   binRestoreNoteLine,
   appendBinRestoreNote,
@@ -6,6 +7,11 @@ import {
   restoreBinnedVaultTasks,
 } from './obsidianBinRestore.js';
 import { reconcileCrossList } from '../sync/dbAdapter.js';
+import en from '../../public/locales/en/translation.json';
+
+const i18n = i18next.createInstance();
+await i18n.init({ lng: 'en', fallbackLng: false, resources: { en: { translation: en } } });
+const t = i18n.t.bind(i18n);
 
 // §3.10 RULING 5 — the vault wins, un-bin visibly. A binned task whose line
 // the scan (or observation batch) still produces is restored from the bin,
@@ -201,7 +207,7 @@ describe('the transient toast', () => {
   });
 
   it('multiple restores point at each task\'s notes', () => {
-    const text = binRestoreNoticeText([{ id: 'a', title: 'A', dateStr: null }, { id: 'b', title: 'B', dateStr: null }]);
+    const text = binRestoreNoticeText([{ id: 'a', title: 'A', dateStr: null }, { id: 'b', title: 'B', dateStr: null }], t);
     expect(text).toBe('2 tasks were restored from the recycle bin. Their lines still exist in your vault. See each task\'s notes.');
   });
 });

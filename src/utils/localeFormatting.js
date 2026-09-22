@@ -41,3 +41,8 @@ export const localizedWeekdays = (width = 'short', language = activeLocale()) =>
   const sunday = Date.UTC(2024, 0, 7);
   return Array.from({ length: 7 }, (_, day) => formatter.format(new Date(sunday + day * 86400000)));
 };
+
+// "a, b and c" in whatever conjunction the language uses — a locale-aware
+// substitute for `list.join(' and ')`.
+export const localizedList = (items, language = activeLocale()) =>
+  new Intl.ListFormat(language, { type: 'conjunction' }).format(items);

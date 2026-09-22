@@ -77,13 +77,13 @@ export function appendBinRestoreNote(notes, dateStr) {
 }
 
 /** The fire-and-forget toast text (neutral, never red, never latched). */
-export function binRestoreNoticeText(restored) {
+export function binRestoreNoticeText(restored, t) {
   if (restored.length === 1) {
     const r = restored[0];
     const where = r.dateStr ? `your ${r.dateStr} daily note` : 'your Obsidian vault';
     return `Restored "${stripWikilinks(stripObsidianDisplayTag(r.title))}" from the recycle bin. Its line still exists in ${where}.`;
   }
-  return `${restored.length} tasks were restored from the recycle bin. Their lines still exist in your vault. See each task's notes.`;
+  return t('sync.binRestoredCount', { count: restored.length });
 }
 
 /**

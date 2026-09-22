@@ -1,5 +1,25 @@
 {
   "sync": {
+    "icalImportedCount_one": "{{count}} Termin importiert",
+    "icalImportedCount_other": "{{count}} Termine importiert",
+    "icalImportEmpty": "Keine Termine in der Datei gefunden",
+    "icalRemovedCount_one": "{{count}} aus der Datei importierter Termin entfernt",
+    "icalRemovedCount_other": "{{count}} aus der Datei importierte Termine entfernt",
+    "enterTaskCalendarUrl": "Bitte gib eine Aufgabenkalender-URL in den Synchronisierungseinstellungen ein",
+    "eventsCount_one": "{{count}} Termin",
+    "eventsCount_other": "{{count}} Termine",
+    "calendarNamed": "Kalender „{{name}}“",
+    "notIcalError": "Die URL hat keine Kalenderdatei zurückgegeben. Füge bei CalDAV-Servern (Nextcloud, Baikal usw.) ?export an die URL an (z. B. …/default/?export).",
+    "calendarWord": "Kalender",
+    "tasksCount_one": "{{count}} Aufgabe",
+    "tasksCount_other": "{{count}} Aufgaben",
+    "taskCalendarWord": "Aufgabenkalender",
+    "syncFailedWith": "Synchronisierung fehlgeschlagen: {{items}}. Stelle sicher, dass die URL korrekt und öffentlich erreichbar ist.",
+    "syncPartial": "Synchronisiert: {{successes}} — fehlgeschlagen: {{errors}}",
+    "syncSuccess": "Synchronisiert: {{items}}",
+    "urlAutoExportNote": " (?export wurde automatisch an deine Kalender-URL angehängt)",
+    "binRestoredCount_one": "{{count}} Aufgabe wurde aus dem Papierkorb wiederhergestellt. Ihre Zeile ist weiterhin in deinem Obsidian-Tresor vorhanden. Sieh dir die Notizen der jeweiligen Aufgabe an.",
+    "binRestoredCount_other": "{{count}} Aufgaben wurden aus dem Papierkorb wiederhergestellt. Ihre Zeilen sind weiterhin in deinem Obsidian-Tresor vorhanden. Sieh dir die Notizen der jeweiligen Aufgabe an.",
     "errors": {
       "AUTH_FAILURE": "Authentifizierung fehlgeschlagen. Überprüfen Sie Benutzernamen und Passwort in den Synchronisierungseinstellungen.",
       "FORBIDDEN": "Synchronisierung blockiert (403). Ihr Server blockiert möglicherweise die Anfrage.",
@@ -1217,6 +1237,8 @@
     "nextStep": "Vor, je nach Ansicht"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} Ergebnis",
+    "resultsCount_other": "{{count}} Ergebnisse",
     "placeholder": "Aufgaben und Notizen suchen…",
     "typeToSearch": "Tippen um alle Aufgaben und Notizen zu durchsuchen…",
     "noResults": "Keine Ergebnisse gefunden",
@@ -1559,6 +1581,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Aufgaben geplant",
+    "tasksPlacedCount_one": "{{count}} Aufgabe in deinem Zeitplan platziert",
+    "tasksPlacedCount_other": "{{count}} Aufgaben in deinem Zeitplan platziert",
+    "tasksRescheduledTitle": "Aufgaben verschoben",
+    "tasksMovedCount_one": "{{count}} Aufgabe in zukünftige Zeitfenster verschoben",
+    "tasksMovedCount_other": "{{count}} Aufgaben in zukünftige Zeitfenster verschoben",
     "closeDailySummary": "Tagesübersicht schließen",
     "closeRecycleBin": "Papierkorb schließen",
     "closeTagFilter": "Tag-Filter schließen",
@@ -1802,6 +1830,8 @@
     "openInbox": "Posteingang öffnen"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} Frist",
+    "deadlineCount_other": "{{count}} Fristen",
     "viewMultiShort": "TAGE",
     "viewDayShort": "TAG",
     "viewWeekShort": "WOCHE",

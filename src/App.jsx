@@ -47,7 +47,7 @@ import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
-import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
+import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
@@ -4681,10 +4681,10 @@ const DayPlanner = () => {
       const count = importedTasks.length;
       setSyncNotification({
         type: count > 0 ? 'success' : 'info',
-        title: 'iCal Import',
+        title: t('settings.importIcs'),
         message: count > 0
-          ? `Imported ${count} event${count !== 1 ? 's' : ''}`
-          : 'No events found in the file'
+          ? t('sync.icalImportedCount', { count })
+          : t('sync.icalImportEmpty')
       });
     };
     reader.readAsText(pendingImportFile);
@@ -4708,8 +4708,8 @@ const DayPlanner = () => {
     setTasks(prev => prev.filter(t => !isFileEvent(t)));
     setSyncNotification({
       type: 'success',
-      title: 'iCal Import',
-      message: `Removed ${targets.length} file-imported event${targets.length !== 1 ? 's' : ''}`
+      title: t('settings.importIcs'),
+      message: t('sync.icalRemovedCount', { count: targets.length })
     });
   };
 
@@ -5628,7 +5628,7 @@ const DayPlanner = () => {
   const syncAll = async ({ silent = false } = {}) => {
     const hasSyncTarget = hasNativeCalendar() ? !!taskCalendarUrl : !!(syncUrl || taskCalendarUrl || hasActiveIcsCalendars(icsCalendars));
     if (!hasSyncTarget) {
-      if (!silent) setSyncNotification({ type: 'info', message: 'Please enter a task calendar URL in sync settings' });
+      if (!silent) setSyncNotification({ type: 'info', message: t('sync.enterTaskCalendarUrl') });
       return;
     }
 
@@ -5657,31 +5657,32 @@ const DayPlanner = () => {
       const errors = [];
 
       if (calendarResult.success) {
-        successes.push(`${calendarResult.count} event${calendarResult.count !== 1 ? 's' : ''}`);
+        successes.push(t('sync.eventsCount', { count: calendarResult.count }));
         // Some feeds may still have failed even when the sync overall succeeded.
-        for (const name of calendarResult.failedFeeds || []) errors.push(`calendar "${name}"`);
+        for (const name of calendarResult.failedFeeds || []) errors.push(t('sync.calendarNamed', { name }));
       } else if (calendarResult.error === 'not-ical') {
-        if (!silent) setSyncNotification({ type: 'error', title: 'Calendar Sync', message: 'The URL did not return a calendar file. For CalDAV servers (Nextcloud, Baikal, etc.), append ?export to the URL (e.g. …/default/?export).' });
+        if (!silent) setSyncNotification({ type: 'error', title: t('settings.calendarSync'), message: t('sync.notIcalError') });
         setIsSyncing(false);
         return;
       } else if (calendarResult.error === 'calendar') {
-        errors.push('calendar');
+        errors.push(t('sync.calendarWord'));
       }
 
       if (taskResult.success) {
-        successes.push(`${taskResult.count} task${taskResult.count !== 1 ? 's' : ''}`);
+        successes.push(t('sync.tasksCount', { count: taskResult.count }));
       } else if (taskResult.error === 'task-calendar') {
-        errors.push('task calendar');
+        errors.push(t('sync.taskCalendarWord'));
       }
 
       const urlUpdated = calendarResult.urlUpdated || taskResult.urlUpdated;
+      const lang = i18n.resolvedLanguage || i18n.language;
       if (errors.length > 0 && successes.length === 0) {
-        setSyncNotification({ type: 'error', message: `Failed to sync with ${errors.join(' and ')}. Make sure the URL is correct and publicly accessible.` });
+        setSyncNotification({ type: 'error', message: t('sync.syncFailedWith', { items: localizedList(errors, lang) }) });
       } else if (errors.length > 0) {
-        setSyncNotification({ type: 'error', message: `Synced ${successes.join(' and ')}, but failed to sync ${errors.join(' and ')}` });
+        setSyncNotification({ type: 'error', message: t('sync.syncPartial', { successes: localizedList(successes, lang), errors: localizedList(errors, lang) }) });
       } else if (successes.length > 0) {
-        const urlNote = urlUpdated ? ' (?export appended to your calendar URL automatically)' : '';
-        setSyncNotification({ type: 'success', message: `Synced ${successes.join(' and ')}${urlNote}` });
+        const urlNote = urlUpdated ? t('sync.urlAutoExportNote') : '';
+        setSyncNotification({ type: 'success', message: `${t('sync.syncSuccess', { items: localizedList(successes, lang) })}${urlNote}` });
       }
     } finally {
       setIsSyncing(false);
@@ -8186,8 +8187,8 @@ const DayPlanner = () => {
     if (movedIds.size > 0) {
       setSyncNotification({
         type: 'success',
-        title: 'Tasks Scheduled',
-        message: `${movedIds.size} task${movedIds.size === 1 ? '' : 's'} placed on your timeline`
+        title: t('app.tasksScheduledTitle'),
+        message: t('app.tasksPlacedCount', { count: movedIds.size })
       });
     }
   };
@@ -8281,8 +8282,8 @@ const DayPlanner = () => {
     if (appliedCount > 0) {
       setSyncNotification({
         type: 'success',
-        title: 'Tasks Rescheduled',
-        message: `${appliedCount} task${appliedCount === 1 ? '' : 's'} moved to future slots`,
+        title: t('app.tasksRescheduledTitle'),
+        message: t('app.tasksMovedCount', { count: appliedCount }),
       });
     }
   };

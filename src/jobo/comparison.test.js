@@ -69,6 +69,15 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LONGER]);
   });
 
+  it('treats early and shorter execution as on-plan when nothing is late or longer', () => {
+    const result = compareExecutionToPlan(plan(), [record({ startTime: '08:50', endTime: '09:40' })]);
+    assert.equal(result.startTiming, RELATIVE_TIMING.EARLY);
+    assert.equal(result.finishTiming, RELATIVE_TIMING.EARLY);
+    assert.equal(result.durationComparison, DURATION_COMPARISON.SHORTER);
+    assert.equal(result.onPlan, true);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN]);
+  });
+
   it('keeps raw offsets stable while tolerance changes only classification', () => {
     const r = record({ startTime: '09:04', endTime: '10:04' });
     const exact = compareExecutionToPlan(plan(), [r]);
@@ -105,7 +114,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.durationComparison, DURATION_COMPARISON.SHORTER);
   });
 
-  it('lets matches-plan coexist with split sessions', () => {
+  it('lets on-plan coexist with split sessions', () => {
     const result = compareExecutionToPlan(plan(), [record({ startTime: '09:00', endTime: '09:30' }), record({ startTime: '09:30', endTime: '10:00' })]);
     assert.equal(result.onPlan, true);
     assert.equal(result.executionPattern, EXECUTION_PATTERN.SPLIT_SESSIONS);

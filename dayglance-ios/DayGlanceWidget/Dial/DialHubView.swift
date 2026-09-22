@@ -290,12 +290,10 @@ struct DialHubView: View {
     /// The duration the live rows count with. iOS 18: the system's offset
     /// text restricted to hours and minutes, re-rendered every minute and
     /// never showing seconds ("17 minutes", "1 hour, 5 minutes"). Earlier:
-    /// the relative style, which counts seconds under an hour. The iOS 18
-    /// text was blamed for a blank hub once; that hub was a stale timeline
-    /// from a provider that had stopped delivering (DayDialWidget's
-    /// header), so this is its first real run on the Home Screen. If the
-    /// time-left row is blank there while the gallery shows it, this is
-    /// the line to revert to `Text(end, style: .relative)`.
+    /// the relative style, which counts seconds under an hour. Confirmed on
+    /// a Home Screen (archived timeline entries), matching the gallery. It
+    /// was once blamed for a blank hub; that hub was a stale timeline from a
+    /// provider that had stopped delivering (DayDialWidget's header).
     static func liveDuration(to end: Date) -> Text {
         if #available(iOS 18.0, *) {
             return Text(.currentDate, format: SystemFormatStyle.DateOffset(to: end, allowedFields: [.hour, .minute],

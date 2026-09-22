@@ -504,12 +504,12 @@ curated fixture day, so it is not to be removed when the real widget changes.
   truncates. The concatenation never LEADS with the live Text: an empty
   prefix becomes a hair space (`DialHubView.spliceParts`, tested), after the
   open-state title ("%@ open") archived as nothing while the countdown
-  (duration in the middle) archived fine. History: the iOS 18 text was
-  blamed for a blank Home Screen hub and removed twice; that hub was a stale
-  timeline from a provider that had stopped delivering (next bullet), so
-  this is its first real Home Screen run. If the time-left row is blank on
-  the Home Screen while the gallery shows it, `DialHubView.liveDuration` is
-  the one line to revert to the relative style.
+  (duration in the middle) archived fine. **Confirmed on device** in Home
+  Screen timeline entries, matching the gallery: minutes only, stepping once
+  a minute. History: the iOS 18 text was blamed for a blank Home Screen hub
+  and removed twice; that hub was a stale timeline from a provider that had
+  stopped delivering (next bullet). Should it ever need to go,
+  `DialHubView.liveDuration` is the one line to revert to the relative style.
   Rows under the title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch
   from 211) with only the rows a state has, so the note still lands inside
   the ring when tag, until, left, runway and note are all present (last

@@ -22,9 +22,11 @@ its merged design or the upstream implementation has already changed. See the
 | `updateDoRecord(record, patch, updatedAt)` | Patches only interval fields, never captured identity/title/plan/source/creation/observation data. |
 | `tombstoneDoRecord(record, updatedAt)` | Returns a retained `deleted: true` version; repeat deletion is a no-op. |
 | `completeDoAttempt(records, input)` | Pure ensure-present by caller-supplied completion ID; otherwise appends one execution attempt. |
-| `doDurationMinutes(record)` | Civil-clock minutes, including explicit `endDate`; zero is allowed only for an unmeasured, unplanned completion. |
-| `classifyAgainstPlan(plan, records, options)` | Independent timing labels with recorded minutes and attempt count. |
-| `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, smaller recursively canonical JSON. |
+| `doDurationMinutes(record)` | Civil-clock minutes for one positive execution interval, including explicit `endDate`. |
+| `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated actual time. |
+| `classifyAgainstPlan(plan, records, options)` | Legacy vocabulary adapter over `compareExecutionToPlan()`; contains no separate business rules. |
+| `migrateLegacyDoRecord(record)` | Explicitly strips legacy Do `progress` and returns a separate `legacyCompletionStatus` for Plan migration. |
+| `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, canonical schema preference, then recursively canonical JSON. |
 
 A record has `id`, `taskId`, `date`, `startTime`, `endDate`, `endTime`, `title`,
 `planSnapshot`, `source`, `createdAt`, `updatedAt`, `observedAt`, and `deleted`.
@@ -40,14 +42,11 @@ is not focus-session integration. Plan completion is a separate dimension
 [jobo-core-theory.md](jobo-core-theory.md). It is not serialized on Do records.
 
 Dates must be real Gregorian `YYYY-MM-DD` values and times must be `HH:MM`.
-Use next-day `endDate` plus `00:00`, not `24:00`. Intervals must be positive,
-except that `source: 'completion'` with `planSnapshot: null` may have identical
-start and end coordinates. This zero is a sentinel for duration not recorded,
-not evidence that the work took no time. It contributes zero recorded minutes,
-but is a live attempt and must not be classified as Not Started. The caller
-supplies its coordinates; core does not infer an actual start or a default
-duration. Manual, focus and timed-plan records still require positive duration.
-No new record field is introduced. ISO timestamps require an explicit
+Use next-day `endDate` plus `00:00`, not `24:00`. Every Do interval must be
+strictly positive. Completion without a known actual interval may update native
+task state and/or Plan completion, but it does not create a zero-minute Do.
+Core does not infer an actual start or a default duration. No new Do record
+field is introduced. ISO timestamps require an explicit
 zone/offset. Inputs are not normalized into invented historical values.
 A local edit/deletion needs a supplied timestamp strictly newer than the
 previous version; a no-op keeps the original object and version. Clock skew
@@ -85,10 +84,13 @@ new-record construction still requires valid ISO timestamps with an explicit
 timezone/offset. The picker accepts a missing operand, requires matching IDs
 (string identity, like the controller), and returns an existing operand without
 changing timestamps or dropping fields.
-On the final tie it recursively sorts every object's keys, retains array order,
-and uses code-unit comparison rather than locale-dependent collation. In
-particular it does NOT use `JSON.stringify(row, Object.keys(row).sort())`, whose
-replacer whitelist can omit `planSnapshot.duration` and other nested-only keys.
+On an exact `updatedAt` + `observedAt` tie, a progress-free canonical row
+beats a legacy row that still carries `progress`. This makes explicit
+`migrateLegacyDoRecord()` migration converge rather than oscillate. Only after
+that schema preference does the picker recursively sort every object's keys,
+retain array order, and use code-unit comparison rather than locale-dependent
+collation. It does NOT use `JSON.stringify(row, Object.keys(row).sort())`,
+whose replacer whitelist can omit `planSnapshot.duration` and other nested-only keys.
 
 `completeDoAttempt` is a pure ensure-present operation, not a completion observer.
 Slice 4 supplies a NEW key for a later completion, including a new per-occurrence
@@ -103,6 +105,9 @@ existing task-completion path in slice 4; this pure module does not perform that
 mutation. The integration is pending, as described in the checkbox contract.
 
 ## Classification choices and limits
+
+`compareExecutionToPlan()` is the single timing rules engine.
+`classifyAgainstPlan()` is a thin legacy-label adapter over it.
 
 Pass one explicit plan anchor and a caller-selected array of distinct attempts:
 
@@ -125,12 +130,9 @@ not count: 09:00–09:20 plus 09:40–10:00 is 40 minutes, while 09:00–09:40 p
 09:20–10:00 is 60 minutes. First start and last end bound the schedule comparison;
 their difference is not the recorded work duration.
 
-Zero-duration placeholders supply no measured interval, so they are excluded
-from timing bounds. If every live attempt is such a placeholder, no Within Plan,
-Delayed or Overrun label is derived, even when another plan anchor is supplied.
-A known absent timed plan can still yield Unplanned. In a mixed set, only
-positive intervals determine timing; every live attempt contributes to the
-attempt count.
+Zero-duration placeholders are not Do records. Every live Do contributes a
+positive execution interval. A known absent timed plan can still yield Unplanned
+when a positive unplanned execution interval exists.
 
 Two or more live records still yield Interrupted independently, even when
 adjacent or overlapping. This is the agreed interaction/segmentation cue, not
@@ -139,10 +141,11 @@ yield 60 recorded minutes and Interrupted, not an automatic Overrun. Interval
 union applies only to the caller-selected attempts; it does not infer a global
 daily total or merge distinct record identities.
 
-Not Started is derived only when no live attempt exists and the CURRENT displayed
-plan has wholly elapsed. With no supplied `now`, it is not derived. Deleted rows
-are excluded from analysis but never removed from a collection. Duplicate IDs
-must be merged first, not silently double-counted.
+Not Started is derived only when no live attempt exists, the CURRENT displayed
+Plan has wholly elapsed, and the Plan has no explicit completion assessment.
+With no supplied `now`, it is not derived. Deleted rows are excluded from
+analysis but never removed from a collection. Duplicate IDs must be merged first,
+not silently double-counted.
 Here Not Started means that the user has not recorded an attempt; it is not
 live activity detection. A five-minute recorded attempt may remain Within Plan
 after the plan ends; passage of time alone does not make the historical interval
@@ -162,9 +165,11 @@ anchor and distinguish missing comparison history from a known absent timed
 plan; it must not encode unknown history as a persisted null snapshot. This
 clarification adds no field or new unknown state to the agreed record.
 
-The classifier does not return per-Do progress, choose a latest attempt from
-sync-array order, aggregate a completion percentage, or change native task
-completion. Do not compare a group of attempts with different snapshots to an
+Plan completion belongs to an identified Plan instance. A non-null
+`completionStatus` requires a stable Plan `id`; it is read from the Plan,
+not passed as a comparison option. The classifier does not return per-Do
+progress, choose a latest attempt from sync-array order, aggregate a completion
+percentage, or change native task completion. Do not compare a group of attempts with different snapshots to an
 implicitly selected last snapshot. Select a common anchor explicitly, or compare
 each attempt with its own snapshot.
 
@@ -184,12 +189,9 @@ anchors, independent labels, unknown plans, late duplicates, nested-key ties,
 picker commutativity/associativity/idempotence, and legacy timestamp ranks in
 independent UTC and Asia/Shanghai processes.
 
-For this behavioral revision, 135 core test cases passed locally using Node's
-test runner on a temporary copy whose only runner change was importing
-`describe`/`it` from `node:test` instead of `vitest`. This includes the existing
-separate UTC and Asia/Shanghai timestamp checks. The committed suite remains a
-Vitest suite. Native checkbox integration, full app tests/builds and the real
-Vitest runner were not exercised in this local check.
+Current validation is performed by the repository's real Vitest/ESLint/build
+workflow. Native checkbox integration and the slice-3 persistence wiring remain
+separate integration work.
 
 The earlier core baseline was separately audited against the real controller
 and store from a pinned #1762 revision, including save, hydration, remote apply,

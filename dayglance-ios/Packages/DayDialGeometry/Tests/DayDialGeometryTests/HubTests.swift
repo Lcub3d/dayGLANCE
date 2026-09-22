@@ -137,10 +137,53 @@ final class HubTests: XCTestCase {
         XCTAssertNil(DialHub.resolve(blocks: [task("a", 600, 700), task("b", 729, 800)], nowMin: 650).runwayMinutes)
         // Nothing follows: no runway line rather than "open until midnight".
         XCTAssertNil(DialHub.resolve(blocks: [task("a", 600, 700)], nowMin: 650).runwayMinutes)
-        // Sleep is not what follows: open time is waking time.
-        XCTAssertNil(DialHub.resolve(blocks: [task("a", 1200, 1260), task("night", 1350, 1440, kind: .sleep)], nowMin: 1230).runwayMinutes)
+        // Phase 5: the runway CAN end at sleep, and says so.
+        let evening = DialHub.resolve(blocks: [task("a", 1200, 1260), task("night", 1350, 1440, kind: .sleep)], nowMin: 1230)
+        XCTAssertEqual(evening.runwayMinutes, 90)
+        XCTAssertTrue(evening.runwayEndsAtSleep)
+        XCTAssertFalse(DialHub.resolve(blocks: sparse, nowMin: 680).runwayEndsAtSleep)
         // A block that overlaps the current one (starts before it ends) is not "after" it.
         XCTAssertEqual(DialHub.resolve(blocks: [task("a", 600, 700), task("b", 650, 690), task("c", 760, 800)], nowMin: 620).runwayMinutes, 60)
+    }
+
+    // MARK: Phase 5 — open time and sleep
+
+    private var sparse: [DialFaceBlock] {
+        [task("sleep", 0, 420, kind: .sleep), task("r", 420, 455, kind: .routine),
+         task("docs", 600, 750, title: "Write API documentation", tag: "work"),
+         task("gym", 1020, 1140, title: "Gym"), task("night", 1380, 1440, kind: .sleep)]
+    }
+
+    func testOpenTimeRunsToTheNextBlockAndNamesIt() {
+        let s = DialHub.resolve(blocks: sparse, nowMin: 780)
+        XCTAssertNil(s.current); XCTAssertNil(s.sleep)
+        XCTAssertEqual(s.open, DialHubOpen(minutesUntil: 240, endMin: 1020, nextTitle: "Gym", nextIsSleep: false))
+    }
+
+    func testOpenTimeCanEndAtSleep() {
+        let s = DialHub.resolve(blocks: sparse, nowMin: 1170)
+        XCTAssertEqual(s.open, DialHubOpen(minutesUntil: 210, endMin: 1380, nextTitle: nil, nextIsSleep: true))
+    }
+
+    func testOpenTimeWithNothingElseTodayRunsToMidnight() {
+        let s = DialHub.resolve(blocks: [task("a", 600, 700)], nowMin: 800)
+        XCTAssertEqual(s.open, DialHubOpen(minutesUntil: 640, endMin: nil, nextTitle: nil, nextIsSleep: false))
+    }
+
+    func testInsideSleepTheHubSaysSleepAndWhenItEnds() {
+        let morning = DialHub.resolve(blocks: sparse, nowMin: 300)
+        XCTAssertNil(morning.current); XCTAssertNil(morning.open)
+        XCTAssertEqual(morning.sleep, DialHubSleep(endMin: 420, minutesLeft: 120))
+        // An evening sleep that runs into tomorrow counts down to its true end.
+        let night = [task("a", 600, 700), task("night", 1380, 1440, kind: .sleep, endsNextDay: true, endMinTrue: 385)]
+        XCTAssertEqual(DialHub.resolve(blocks: night, nowMin: 1400).sleep, DialHubSleep(endMin: 1825, minutesLeft: 425))
+    }
+
+    func testANarratedBlockWinsOverSleepItOverlaps() {
+        // A late task inside the sleep window is still what the hub narrates.
+        let day = [task("night", 1380, 1440, kind: .sleep), task("call", 1390, 1420, title: "Call")]
+        let s = DialHub.resolve(blocks: day, nowMin: 1400)
+        XCTAssertEqual(s.current?.id, "call"); XCTAssertNil(s.sleep)
     }
 
     func testTheRunwayCountsFromTheNarratedBlocksEnd() {
@@ -149,5 +192,15 @@ final class HubTests: XCTestCase {
         let s = DialHub.resolve(blocks: day, nowMin: 610)
         XCTAssertEqual(s.current?.id, "inner")
         XCTAssertEqual(s.runwayMinutes, 70)
+    }
+
+    func testTheStackedRowsStayInsideTheRing() {
+        typealias H = DialSpec.Hub
+        XCTAssertEqual(H.rowBaseline(0), 227)
+        XCTAssertEqual(H.rowBaseline(4), 291)
+        // Tag, until, left, runway, note all present: the note ("Planned as of
+        // Mon 8:42 PM", ~95pt at 0.8 of 9pt) still has room on the last row.
+        XCTAssertGreaterThanOrEqual(H.width(atY: H.rowBaseline(4), inset: 6), 95)
+        XCTAssertLessThan(H.rowBaseline(4), DialSpec.cy + H.radius)
     }
 }

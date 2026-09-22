@@ -5,28 +5,38 @@ import AppIntents
 import DayDialGeometry
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Day Dial — preview: the face (Phase 2) and the hub (Phase 3) from FIXTURE
-// days, on the home screen. One widget; long-press → Edit Widget picks the
-// scenario:
+// Day Dial — preview: every state of the dial from FIXTURE days, on the home
+// screen. One widget; long-press → Edit Widget picks the scenario.
 //
-//   Dense · short title     the palette study's dense day at 11:20, current
-//                           block "Standup", lunch starts the minute it ends:
-//                           no runway line
-//   Dense · long title      the same day, a title long enough to shrink to
-//                           0.8× and then truncate with an ellipsis
-//   Sparse · runway         the study's sparse day: docs until 12:30, next
-//                           block at 17:00 → "then 4h 30m open"
-//   Dense · no runway       the study's dense day with its own title,
-//                           "Write API documentation"
-//   Projected day           the dense day on a projected tier: past blocks
-//                           take the past-event tone, routines that have
-//                           passed the done opacity; the hub is unchanged
+// Two kinds of scenario:
 //
-// The needle and the hub are fixed at 11:20 on Tuesday, July 7 (the study's
-// NOW), so the widget can be held against docs/day-dial-palette-study.html
-// and the hub against the spec render. The corner reads the image source
-// and cold render time, and whether the date row is really Lora: the
-// system serif is close enough to fool a glance.
+//   FACE scenarios (Phase 2/3) draw a DialFaceInput straight through
+//   DialCachedFaceView at a fixed 11:20 on Tuesday, July 7 — the palette
+//   study's NOW — so the face can be held against
+//   docs/day-dial-palette-study.html and the hub against the spec render:
+//     Dense · short title, Dense · long title, Sparse · runway,
+//     Dense · no runway.
+//
+//   STATE scenarios (Phase 5) build a whole WidgetSnapshot and render it
+//   through DayDialWidgetView — the SAME view, resolution and face cache the
+//   real widget uses — at a chosen instant, so what the preview shows is
+//   what a user sees:
+//     Open time             sparse day at 13:00: "4h open · until Gym at 17:00"
+//     Open until sleep      sparse day at 19:30: "3h 30m open · until sleep at 23:00"
+//     Nothing else today    a day whose last block has passed, no sleep
+//     Sleeping              dense day at 05:00: "Sleep · until 06:25"
+//     Projected day         the dense day from days[], "Planned as of …"
+//     Outdated              a payload three days old: dimmed face, label, needle
+//     Time zone changed     the payload's zone differs from the device's
+//     Southern moon         the moon glyph mirrored for a southern observer
+//     Placeholder           the gallery render
+//     No data               installed, never opened
+//     Screenshot day        TODAY, live: the App Store shot. Shoot between
+//                           10:00 and 12:30 for "Write API documentation"
+//                           with a live countdown and "then 1h 30m open".
+//
+// The corner reads the scenario, the face source and cold render time (face
+// scenarios), whether the date row is really Lora, and the rendering mode.
 //
 // HOW TO BUILD IT
 //   Registered only under DIAL_PREVIEW. Generate the project with the flag
@@ -41,7 +51,11 @@ import DayDialGeometry
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum DialPreviewScenario: String, AppEnum, CaseIterable {
-    case shortTitle, longTitle, sparse, dense, projected
+    // Face scenarios (fixed 11:20, DialFaceInput → DialCachedFaceView).
+    case shortTitle, longTitle, sparse, dense
+    // State scenarios (a WidgetSnapshot → DayDialWidgetView).
+    case openTime, openUntilSleep, nothingElse, sleeping, projected, outdated, zoneChanged, southernMoon,
+         placeholder, noData, screenshot
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Scenario"
     static var caseDisplayRepresentations: [DialPreviewScenario: DisplayRepresentation] = [
@@ -49,8 +63,25 @@ enum DialPreviewScenario: String, AppEnum, CaseIterable {
         .longTitle: "Dense · long title",
         .sparse: "Sparse · runway",
         .dense: "Dense · no runway",
+        .openTime: "Open time",
+        .openUntilSleep: "Open until sleep",
+        .nothingElse: "Nothing else today",
+        .sleeping: "Sleeping",
         .projected: "Projected day",
+        .outdated: "Outdated",
+        .zoneChanged: "Time zone changed",
+        .southernMoon: "Southern moon",
+        .placeholder: "Placeholder",
+        .noData: "No data",
+        .screenshot: "Screenshot day (shoot 10:00–12:30)",
     ]
+
+    var isFaceScenario: Bool {
+        switch self {
+        case .shortTitle, .longTitle, .sparse, .dense: return true
+        default: return false
+        }
+    }
 }
 
 struct DialPreviewIntent: WidgetConfigurationIntent {
@@ -64,48 +95,111 @@ struct DialPreviewIntent: WidgetConfigurationIntent {
 struct DialPreviewEntry: TimelineEntry {
     let date: Date
     let scenario: DialPreviewScenario
-    /// The cached face for this entry, resolved in the provider (as Phase 4's
-    /// timeline will), and how it was obtained. Nil → the view draws live.
-    let face: UIImage?
-    let outcome: DialFaceCache.Outcome
+    /// Face scenarios: how the provider's warm-up obtained each face
+    /// ("cold 31ms", "disk", "mem"), for the corner. The entry carries NO
+    /// image — the same rule as the real widget (DayDialWidget's header): a
+    /// 3× face is ~5 MB decoded, and an entry holding two of them while the
+    /// provider renders a third is how the extension runs out of its ~30 MB
+    /// and the widget sits on its placeholder. The view fetches the face from
+    /// the cache at render time, as DayDialWidgetView does.
+    var warm: String = ""
+    /// State scenarios: the payload the real view resolves, and the entry it
+    /// is rendered as. `date` is that entry's instant.
+    var snapshot: WidgetSnapshot? = nil
+    var isPlaceholder: Bool = false
 }
 
 struct DialPreviewProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> DialPreviewEntry {
-        DialPreviewEntry(date: DialPreviewFixture.date, scenario: .dense, face: nil, outcome: .failed)
+        DialPreviewEntry(date: DialPreviewFixture.date, scenario: .dense)
     }
 
     func snapshot(for configuration: DialPreviewIntent, in context: Context) async -> DialPreviewEntry {
-        DialPreviewEntry(date: DialPreviewFixture.date, scenario: configuration.scenario, face: nil, outcome: .failed)
+        entry(for: configuration.scenario, size: context.displaySize)
     }
 
     func timeline(for configuration: DialPreviewIntent, in context: Context) async -> Timeline<DialPreviewEntry> {
         let scenario = configuration.scenario
         let size = context.displaySize
-        let input = DialPreviewFixture.input(for: scenario)
-        let scale = await MainActor.run { UIScreen.main.scale }
-        let result = await MainActor.run {
-            DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale)
+        if scenario.isFaceScenario {
+            // Warm the cache for every rendering mode the widget may be shown
+            // in, one face at a time, keeping only the outcome; the view
+            // fetches the image it needs when it renders.
+            let input = DialPreviewFixture.input(for: scenario)
+            let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
+            let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
+            let warm = await MainActor.run { () -> String in
+                let scale = UIScreen.main.scale
+                return variants.map { mono in
+                    let outcome = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: mono).outcome
+                    return (mono ? "mono " : "") + outcome.summary.replacingOccurrences(of: "img ", with: "")
+                }.joined(separator: " / ")
+            }
+            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, warm: warm)
+            return Timeline(entries: [entry], policy: .never)
         }
-        let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, face: result.image, outcome: result.outcome)
-        return Timeline(entries: [entry], policy: .never)
+        let entry = entry(for: scenario, size: size)
+        // The screenshot day is live: keep the needle moving like the real
+        // widget. Every other state is a frozen instant.
+        let policy: TimelineReloadPolicy = scenario == .screenshot
+            ? .after(Date().addingTimeInterval(15 * 60)) : .never
+        return Timeline(entries: [entry], policy: policy)
+    }
+
+    private func entry(for scenario: DialPreviewScenario, size: CGSize) -> DialPreviewEntry {
+        if scenario.isFaceScenario {
+            return DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario)
+        }
+        let state = DialPreviewFixture.state(for: scenario)
+        return DialPreviewEntry(date: state.now, scenario: scenario, snapshot: state.snapshot, isPlaceholder: state.isPlaceholder)
     }
 }
 
 struct DialPreviewView: View {
     let entry: DialPreviewEntry
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        let input = DialPreviewFixture.input(for: entry.scenario)
         ZStack(alignment: .bottomLeading) {
-            DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: entry.face,
-                               hubDate: entry.date, use24Hour: true)
-            Text(verbatim: "preview · \(entry.scenario.rawValue) · fixture 11:20 · \(entry.outcome.summary) · \(DialHubTypography.loraIsInstalled ? "Lora ✓" : "Lora MISSING")")
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.5))
-                .padding(6)
+            if entry.scenario.isFaceScenario {
+                let input = DialPreviewFixture.input(for: entry.scenario)
+                let mono = renderingMode != .fullColor
+                GeometryReader { geo in
+                    // The same fetch the real widget makes in its body: memory,
+                    // then the App Group PNG the provider just warmed.
+                    let face = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: geo.size,
+                                                   scale: displayScale, mono: mono)
+                    DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: face.image,
+                                       hubDate: entry.date, use24Hour: true, mono: mono)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · warm \(entry.warm) · \(face.outcome.summary) · \(lora) · \(mode)")
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
+                }
+            } else {
+                DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
+                                  liveCountdown: entry.scenario == .screenshot)
+                corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
+            }
         }
         .containerBackground(Color(hex: DialSpec.backgroundHex), for: .widget)
+    }
+
+    private var lora: String { DialHubTypography.loraIsInstalled ? "Lora ✓" : "Lora MISSING" }
+
+    private var mode: String {
+        switch renderingMode {
+        case .accented: return "accented"
+        case .vibrant: return "vibrant"
+        default: return "fullColor"
+        }
+    }
+
+    private func corner(_ text: String) -> some View {
+        Text(verbatim: text)
+            .font(.system(size: 9, weight: .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.5))
+            .padding(6)
     }
 }
 
@@ -123,6 +217,8 @@ struct DialCachedFaceView: View {
     var hubDate: Date? = nil
     var use24Hour: Bool? = nil
     var countdownEnd: Date? = nil
+    /// The accented mode's face when `face` is nil (DialFaceView.mono).
+    var mono: Bool = false
 
     var body: some View {
         DialCanvas {
@@ -131,13 +227,14 @@ struct DialCachedFaceView: View {
                     Image(uiImage: face).resizable()
                         .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
                 } else {
-                    DialFaceView(input: input, nowMin: nowMin)
+                    DialFaceView(input: input, nowMin: nowMin, mono: mono)
                 }
                 if let hubDate {
                     DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin),
                                 use24Hour: use24Hour, countdownEnd: countdownEnd)
                 }
                 DialNeedleView(nowMin: nowMin)
+                    .widgetAccentable()
             }
         }
     }
@@ -182,10 +279,129 @@ enum DialPreviewFixture {
         switch scenario {
         case .shortTitle: return make(denseDay(currentTitle: "Standup"), projected: false)
         case .longTitle: return make(denseDay(currentTitle: "Write the API documentation for the new sync endpoints and review it"), projected: false)
-        case .dense: return make(denseDay(currentTitle: "Write API documentation"), projected: false)
-        case .projected: return make(denseDay(currentTitle: "Write API documentation"), projected: true)
         case .sparse: return make(sparseDay, projected: false)
+        default: return make(denseDay(currentTitle: "Write API documentation"), projected: false)
         }
+    }
+
+    // MARK: state scenarios — whole payloads through the real widget view
+
+    struct State {
+        var snapshot: WidgetSnapshot?
+        var now: Date
+        var isPlaceholder = false
+    }
+
+    /// July 7, 2026 at a clock minute, in the device's calendar.
+    static func fixtureInstant(minute: Int, dayOffset: Int = 0) -> Date {
+        var c = DateComponents()
+        c.year = 2026; c.month = 7; c.day = 7 + dayOffset; c.hour = minute / 60; c.minute = minute % 60
+        return Calendar.current.date(from: c) ?? Date()
+    }
+
+    static func isoDay(_ date: Date) -> String {
+        let c = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    }
+
+    static func state(for scenario: DialPreviewScenario) -> State {
+        let july7 = isoDay(fixtureInstant(minute: 0))
+        switch scenario {
+        case .openTime:
+            return State(snapshot: snapshot(date: july7, rows: sparseDay, capturedAt: fixtureInstant(minute: 7 * 60 + 5)),
+                         now: fixtureInstant(minute: 13 * 60))
+        case .openUntilSleep:
+            return State(snapshot: snapshot(date: july7, rows: sparseDay, capturedAt: fixtureInstant(minute: 7 * 60 + 5)),
+                         now: fixtureInstant(minute: 19 * 60 + 30))
+        case .nothingElse:
+            let rows = [Row(s: 0, e: 420, kind: .sleep), Row(s: 600, e: 750, kind: .task, color: "blue", title: "Write API documentation", tag: "work")]
+            return State(snapshot: snapshot(date: july7, rows: rows, capturedAt: fixtureInstant(minute: 7 * 60 + 5)),
+                         now: fixtureInstant(minute: 16 * 60))
+        case .sleeping:
+            return State(snapshot: snapshot(date: july7, rows: denseDay(currentTitle: "Write API documentation"), capturedAt: fixtureInstant(minute: 22 * 60, dayOffset: -1)),
+                         now: fixtureInstant(minute: 5 * 60))
+        case .projected:
+            // Pushed on Monday the 6th at 20:42 with Tuesday in days[]: the
+            // entry on Tuesday resolves to the projected tier.
+            let july6 = isoDay(fixtureInstant(minute: 0, dayOffset: -1))
+            var snap = snapshot(date: july6, rows: sparseDay, capturedAt: fixtureInstant(minute: 20 * 60 + 42, dayOffset: -1))
+            snap.days = [WidgetDay(date: july7, dateLabel: nil, nextTask: nil, upcomingTasks: nil, sky: fixtureSky(),
+                                   dial: DialSnapshot(date: july7, blocks: blocks(denseDay(currentTitle: "Write API documentation"))))]
+            return State(snapshot: snap, now: fixtureInstant(minute: 11 * 60 + 20))
+        case .outdated:
+            let july4 = isoDay(fixtureInstant(minute: 0, dayOffset: -3))
+            return State(snapshot: snapshot(date: july4, rows: denseDay(currentTitle: "Write API documentation"), capturedAt: fixtureInstant(minute: 20 * 60 + 42, dayOffset: -3)),
+                         now: fixtureInstant(minute: 11 * 60 + 20))
+        case .zoneChanged:
+            var snap = snapshot(date: july7, rows: denseDay(currentTitle: "Write API documentation"), capturedAt: fixtureInstant(minute: 7 * 60 + 5))
+            snap.timezone = otherZone(than: .current, at: fixtureInstant(minute: 11 * 60 + 20))
+            return State(snapshot: snap, now: fixtureInstant(minute: 11 * 60 + 20))
+        case .southernMoon:
+            var snap = snapshot(date: july7, rows: denseDay(currentTitle: "Write API documentation"), capturedAt: fixtureInstant(minute: 22 * 60, dayOffset: -1))
+            snap.sky = fixtureSky(southern: true, fraction: 0.3)
+            return State(snapshot: snap, now: fixtureInstant(minute: 2 * 60 + 30))
+        case .placeholder:
+            return State(snapshot: nil, now: fixtureInstant(minute: 11 * 60 + 20), isPlaceholder: true)
+        case .noData:
+            return State(snapshot: nil, now: fixtureInstant(minute: 11 * 60 + 20))
+        case .screenshot:
+            let now = Date()
+            return State(snapshot: snapshot(date: isoDay(now), rows: screenshotDay, capturedAt: now), now: now)
+        default:
+            return State(snapshot: nil, now: fixtureInstant(minute: 11 * 60 + 20), isPlaceholder: true)
+        }
+    }
+
+    /// The App Store day: a full ring, a current task whose title reads
+    /// well from 10:00 to 12:30, a real runway after it, evening blocks so the
+    /// ring is busy at any hour the shot is taken.
+    static let screenshotDay: [Row] = [
+        Row(s: 0, e: 400, kind: .sleep),
+        Row(s: 400, e: 430, kind: .routine, done: true, title: "Stretch"),
+        Row(s: 450, e: 510, kind: .task, color: "blue", done: true, title: "Email", tag: "admin"),
+        Row(s: 510, e: 540, kind: .event, color: "ics", done: true, title: "Standup", tag: "work"),
+        Row(s: 540, e: 600, kind: .task, color: "red", done: true, title: "Planning", tag: "work"),
+        Row(s: 600, e: 750, kind: .task, color: "blue", title: "Write API documentation", tag: "work"),
+        Row(s: 840, e: 900, kind: .event, color: "ics", title: "Design review", tag: "work"),
+        Row(s: 915, e: 1020, kind: .task, color: "purple", title: "Deep work", tag: "work"),
+        Row(s: 1050, e: 1110, kind: .task, color: "pink", title: "Gym", tag: "health"),
+        Row(s: 1140, e: 1200, kind: .task, color: "orange", title: "Dinner"),
+        Row(s: 1230, e: 1320, kind: .task, color: "indigo", title: "Reading"),
+        Row(s: 1320, e: 1350, kind: .routine, title: "Journal"),
+        Row(s: 1380, e: 1440, kind: .sleep),
+    ]
+
+    /// A zone whose offset differs from `zone` at `now`, so the mismatch is real.
+    static func otherZone(than zone: TimeZone, at now: Date) -> String {
+        for id in ["Asia/Tokyo", "America/Chicago", "Europe/Berlin"] {
+            if let z = TimeZone(identifier: id), z.secondsFromGMT(for: now) != zone.secondsFromGMT(for: now) { return id }
+        }
+        return "Pacific/Auckland"
+    }
+
+    static func blocks(_ rows: [Row]) -> [DialBlock] {
+        rows.enumerated().map { i, r in
+            DialBlock(type: r.kind.rawValue, id: "fixture-\(i)", title: r.title, tag: r.tag,
+                      startMin: Int(r.s), durationMin: Int(r.e - r.s), kind: nil, completed: r.done,
+                      colorHex: r.color.flatMap { raw[$0] }, lane: 0, laneCount: 1,
+                      endsNextDay: nil, endMinTrue: nil, startedPrevDay: nil)
+        }
+    }
+
+    /// The study's sky as the snapshot ships it (DialFaceInput.placeholder
+    /// draws the same one).
+    static func fixtureSky(southern: Bool = false, fraction: Double = 0.5) -> SkySnapshot {
+        SkySnapshot(sunriseMin: 5 * 60 + 37, sunsetMin: 20 * 60 + 31, polar: nil,
+                    hours: DialFaceInput.placeholderSkyHours.map { SkyHour(sun: $0.sun, moon: $0.moon) },
+                    moon: SkyMoon(fraction: fraction, waxing: true, glyphMin: 120), southern: southern)
+    }
+
+    /// A whole payload for one day, in this device's zone, 24-hour clock.
+    static func snapshot(date: String, rows: [Row], capturedAt: Date) -> WidgetSnapshot {
+        WidgetSnapshot(date: date, dateLabel: nil, use24Hour: true, nextTask: nil, upcomingTasks: nil,
+                       allGoals: nil, allProjects: nil, sky: fixtureSky(),
+                       dial: DialSnapshot(date: date, blocks: blocks(rows)), days: nil,
+                       updatedAt: capturedAt.timeIntervalSince1970 * 1000, timezone: TimeZone.current.identifier)
     }
 
     /// docs/day-dial-palette-study.html DAYS.dense, with its RAW hexes and
@@ -229,13 +445,8 @@ enum DialPreviewFixture {
                           completed: r.done, colorHex: r.color.flatMap { raw[$0] },
                           title: r.title, tag: r.tag)
         }
-        let sun: [Double] = [0, 0, 0, 0, 0, 0, 0.1852, 0.3867, 0.5712, 0.7303, 0.8571, 0.9459,
-                             0.9929, 0.9958, 0.9547, 0.8712, 0.7492, 0.594, 0.4125, 0.2127, 0.0035, 0, 0, 0]
-        let moon: [Double] = [0.433, 0.4924, 0.4924, 0.433, 0.3214, 0.171, 0, 0, 0, 0, 0, 0,
-                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.171, 0.3214]
-        let hours = zip(sun, moon).map { (sun: Optional($0.0), moon: Optional($0.1)) }
         return DialFaceInput(blocks: blocks,
-                             sky: DialSpec.skySegments(hours: hours),
+                             sky: DialSpec.skySegments(hours: DialFaceInput.placeholderSkyHours),
                              sunriseMin: 5 * 60 + 37, sunsetMin: 20 * 60 + 31,
                              moon: DialMoonGlyph(fraction: 0.5, waxing: true, minutes: 120),
                              projectedDay: projected)

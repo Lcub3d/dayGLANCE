@@ -36,6 +36,9 @@ import DayDialGeometry
 struct DayDialEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot?
+    /// The gallery and pre-data render (Phase 5): the placeholder face and a
+    /// hub with the weekday and date only. Never true for a real timeline.
+    var isPlaceholder: Bool = false
 }
 
 /// The minute of the day an entry renders, on the wall clock.
@@ -50,11 +53,14 @@ struct DayDialProvider: TimelineProvider {
     static let logger = Logger(subsystem: "com.dayglance.app", category: "daydial")
 
     func placeholder(in context: Context) -> DayDialEntry {
-        DayDialEntry(date: Date(), snapshot: nil)
+        DayDialEntry(date: Date(), snapshot: nil, isPlaceholder: true)
     }
 
+    /// The gallery preview: the real payload when there is one, else the
+    /// placeholder face (never the "open dayGLANCE" line in a gallery).
     func getSnapshot(in context: Context, completion: @escaping (DayDialEntry) -> Void) {
-        completion(DayDialEntry(date: Date(), snapshot: loadSnapshot()))
+        let snapshot = loadSnapshot()
+        completion(DayDialEntry(date: Date(), snapshot: snapshot, isPlaceholder: snapshot == nil))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<DayDialEntry>) -> Void) {
@@ -82,6 +88,12 @@ struct DayDialProvider: TimelineProvider {
         let payloadEnd = lastDay.flatMap { calendar.date(byAdding: .day, value: 1, to: $0) }
         let dates = DialTimeline.entryDates(now: now, days: days, payloadEnd: payloadEnd, calendar: calendar)
         let boundaries = days.reduce(0) { $0 + $1.boundaryMinutes.count }
+        // The rendering modes this widget may be shown in: full colour always;
+        // accented too on a tinted or clear Home Screen (iOS 18+), which needs
+        // the mono face (DialFaceCache's header). Warm each so the first
+        // tinted render is as warm as a full-colour one.
+        let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
+        let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
 
         Task { @MainActor in
             // Warm every face this timeline can show onto disk, one bucket at a
@@ -96,13 +108,15 @@ struct DayDialProvider: TimelineProvider {
                 let day = ResolvedWidgetDay.resolve(snapshot, at: date, calendar: calendar)
                 let input = DialFaceInput(day: day)
                 let nowMin = DayDialClock.minuteOfDay(date, calendar: calendar)
-                let key = DialFaceCache.key(input: input, nowMin: nowMin, size: size, scale: scale)
-                prefixes.insert(DialFaceCache.facePrefix(input: input, size: size, scale: scale))
-                guard !seen.contains(key) else { continue }
-                seen.insert(key)
-                if case let .rendered(ms, _) = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: scale).outcome {
-                    cold += 1
-                    coldMs += ms
+                for mono in variants {
+                    let key = DialFaceCache.key(input: input, nowMin: nowMin, size: size, scale: scale, mono: mono)
+                    prefixes.insert(DialFaceCache.facePrefix(input: input, size: size, scale: scale, mono: mono))
+                    guard !seen.contains(key) else { continue }
+                    seen.insert(key)
+                    if case let .rendered(ms, _) = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: scale, mono: mono).outcome {
+                        cold += 1
+                        coldMs += ms
+                    }
                 }
             }
             DialFaceCache.retain(prefixes: prefixes)
@@ -115,7 +129,8 @@ struct DayDialProvider: TimelineProvider {
             // app), and the face is drawing the unlit ring on purpose.
             let nowInput = DialFaceInput(day: ResolvedWidgetDay.resolve(snapshot, at: now, calendar: calendar))
             let sky = nowInput.sky.isEmpty ? "none" : "\(nowInput.sky.count)h rise=\(nowInput.sunriseMin.map { "\(Int($0))" } ?? "-") set=\(nowInput.sunsetMin.map { "\(Int($0))" } ?? "-") moon=\(nowInput.moon == nil ? "no" : "yes")"
-            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) sky=\(sky, privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
+            let zone = "\(snapshot?.timezone ?? "-")\(WidgetFreshness.zoneChanged(snapshotZone: snapshot?.timezone, at: now) ? " CHANGED" : "")"
+            Self.logger.notice("timeline entries=\(dates.count, privacy: .public) days=\(days.count, privacy: .public) boundaries=\(boundaries, privacy: .public) modes=\(variants.count, privacy: .public) faces=\(seen.count, privacy: .public) cold=\(cold, privacy: .public) coldMs=\(coldMs, format: .fixed(precision: 0), privacy: .public) cache=\(usage.files, privacy: .public) files/\(usage.bytes, privacy: .public) bytes builtMs=\(ms, format: .fixed(precision: 0), privacy: .public) sky=\(sky, privacy: .public) zone=\(zone, privacy: .public) first=\(first, privacy: .public) last=\(last, privacy: .public)")
 
             let entries = dates.map { DayDialEntry(date: $0, snapshot: snapshot) }
             completion(Timeline(entries: entries, policy: .atEnd))
@@ -125,36 +140,86 @@ struct DayDialProvider: TimelineProvider {
 
 struct DayDialWidgetView: View {
     let entry: DayDialEntry
+    /// The preview's fixed-time scenarios pass false: a live duration counts
+    /// from the real clock, which a fixture instant is not.
+    var liveCountdown: Bool = true
     @Environment(\.displayScale) private var displayScale
+    /// `.accented` on a tinted or clear Home Screen (iOS 18+): the face is
+    /// the mono PNG (DialFaceCache's header), and the hub and needle, drawn
+    /// live, are painted white by the system at their own opacities. The
+    /// needle and the teal rows are accentable: the two coloured things in
+    /// the full-colour design take the accent group's colour where the
+    /// platform gives it one (white on iOS, the theme's on other platforms).
+    @Environment(\.widgetRenderingMode) private var renderingMode
 
     var body: some View {
         let calendar = Calendar.current
         let day = ResolvedWidgetDay.resolve(entry.snapshot, at: entry.date, calendar: calendar)
-        let input = DialFaceInput(day: day)
+        // Phase 5 states. Placeholder and no-data draw the placeholder face
+        // (a plausible sky, no blocks); everything else draws the day.
+        let hasData = entry.snapshot != nil && !entry.isPlaceholder
+        let input = hasData ? DialFaceInput(day: day) : DialFaceInput.placeholder
         let nowMin = DayDialClock.minuteOfDay(entry.date, calendar: calendar)
-        let hub = DialHub.resolve(blocks: input.blocks, nowMin: nowMin)
-        let countdownEnd = hub.current.flatMap { endDate(minute: $0.endMin, of: entry.date, calendar: calendar) }
+        let hub = hasData ? DialHub.resolve(blocks: input.blocks, nowMin: nowMin)
+                          : DialHubState(current: nil, runwayMinutes: nil)
+        let zoneChanged = hasData && WidgetFreshness.zoneChanged(snapshotZone: entry.snapshot?.timezone, at: entry.date)
+        let status: DialHubStatus = entry.isPlaceholder ? .placeholder
+            : !hasData ? .setUp
+            : day.isStale ? .outdated(detail: day.freshness.detailLabel(use24Hour: entry.snapshot?.use24Hour))
+            : zoneChanged ? .zoneChanged
+            : .live
+        // A stale or mis-zoned payload dims the FACE only: the hub carries
+        // the label and the needle stays, because the time itself is right.
+        let dimmed = day.isStale || zoneChanged
+        // The end instants make the time-left and open-time rows live to the
+        // minute on iOS 18 (DialHubView's header); older systems and the
+        // preview's fixed instants draw the static rounded form.
+        let live = liveCountdown && status == .live
+        let countdownEnd = live ? hub.current.flatMap { endDate(minute: $0.endMin, of: entry.date, calendar: calendar) } : nil
+        let openEnd = live ? hub.open?.endMin.flatMap { endDate(minute: $0, of: entry.date, calendar: calendar) } : nil
+        let plannedAsOf = (status == .live && day.isProjected)
+            ? day.freshness.plannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour) : nil
+        let use24Hour = entry.snapshot?.use24Hour
+        let mono = renderingMode != .fullColor
+
         GeometryReader { geo in
-            ZStack(alignment: .bottom) {
-                DialCachedFaceView(input: input, nowMin: nowMin,
-                                   face: DialFaceCache.image(input: input, nowMin: nowMin, size: geo.size, scale: displayScale).image,
-                                   hubDate: entry.date, use24Hour: entry.snapshot?.use24Hour,
-                                   countdownEnd: day.isStale ? nil : countdownEnd)
-                    .staleDimmed(day.freshness)
-                if day.isStale {
-                    StaleBanner(freshness: day.freshness, use24Hour: entry.snapshot?.use24Hour)
-                        .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(Color(hex: DialSpec.backgroundHex).opacity(0.85), in: Capsule())
-                        .padding(.bottom, 6)
+            DialCanvas {
+                ZStack(alignment: .topLeading) {
+                    face(input: input, nowMin: nowMin, size: geo.size, mono: mono)
+                        .opacity(dimmed ? 0.45 : 1)
+                        .grayscale(dimmed ? 0.5 : 0)
+                    DialHubView(date: entry.date, state: hub, use24Hour: use24Hour,
+                                countdownEnd: countdownEnd, openEnd: openEnd,
+                                status: status, plannedAsOf: plannedAsOf)
+                    DialNeedleView(nowMin: nowMin)
+                        .widgetAccentable()
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .containerBackground(Color(hex: DialSpec.backgroundHex), for: .widget)
+        .widgetURL(Self.tapURL(day: day, entryDate: entry.date, calendar: calendar))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: DialHubView.summary(date: entry.date, state: hub, use24Hour: use24Hour,
+                                                               status: status, plannedAsOf: plannedAsOf)))
     }
 
+    /// The cached face, or a live draw when the cache has nothing. No
+    /// `widgetAccentedRenderingMode` on the image: the default (the primary
+    /// colour at the image's own alpha) is exactly what the mono PNG is for.
+    @ViewBuilder
+    private func face(input: DialFaceInput, nowMin: Double, size: CGSize, mono: Bool) -> some View {
+        if let image = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: displayScale, mono: mono).image {
+            Image(uiImage: image).resizable()
+                .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
+        } else {
+            DialFaceView(input: input, nowMin: nowMin, mono: mono)
+        }
+    }
+
+
     /// The block's true end as a Date on the entry's day (or the next, past
-    /// 1440), for the live countdown.
+    /// 1440), for the live rows.
     private func endDate(minute: Double, of date: Date, calendar: Calendar) -> Date? {
         var dayStart = calendar.startOfDay(for: date)
         var m = minute
@@ -164,6 +229,23 @@ struct DayDialWidgetView: View {
             m -= DialGeometry.dayMinutes
         }
         return DialTimeline.date(minute: m, of: dayStart, calendar: calendar)
+    }
+
+    /// A tap opens the app on the day the widget is showing, in the Day
+    /// Dial (App.jsx's `day` route: `date` selects the day, `view=dial`
+    /// opens the dial over it). With no payload, just the app.
+    static func tapURL(day: ResolvedWidgetDay, entryDate: Date, calendar: Calendar) -> URL? {
+        var parts = URLComponents()
+        parts.scheme = "dayglance"
+        parts.host = "day"
+        let shown = day.date ?? Self.isoDay(entryDate, calendar: calendar)
+        parts.queryItems = [URLQueryItem(name: "date", value: shown), URLQueryItem(name: "view", value: "dial")]
+        return parts.url
+    }
+
+    private static func isoDay(_ date: Date, calendar: Calendar) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 }
 

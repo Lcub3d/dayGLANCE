@@ -2,21 +2,17 @@
 // The caller owns identities, event/observation timestamps and task lookup.
 // See docs/jobo-ledger-persistence.md and docs/jobo-core.md.
 
-export const DO_PROGRESS = Object.freeze({
-  STARTED: 'started', PARTIAL: 'partial', MOSTLY: 'mostly', COMPLETED: 'completed',
-});
 export const DO_SOURCES = Object.freeze(['completion', 'manual', 'focus']);
 export const TIMING = Object.freeze({
   WITHIN_PLAN: 'withinPlan', DELAYED: 'delayed', OVERRUN: 'overrun',
   INTERRUPTED: 'interrupted', NOT_STARTED: 'notStarted', UNPLANNED: 'unplanned',
 });
-const progressValues = Object.values(DO_PROGRESS);
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const plain = value => value !== null && typeof value === 'object'
   && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
 const taskIdValid = id => id === null || nonempty(id) || (typeof id === 'number' && Number.isSafeInteger(id));
-const editable = new Set(['date', 'startTime', 'endDate', 'endTime', 'progress']);
+const editable = new Set(['date', 'startTime', 'endDate', 'endTime']);
 
 function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -90,7 +86,7 @@ export function validateDoRecord(record) {
   if (!own(record, 'taskId') || !taskIdValid(record.taskId)) errors.push('taskId must be an id or explicit null');
   if (!nonempty(record.title)) errors.push('title must be a nonempty string');
   if (!DO_SOURCES.includes(record.source)) errors.push('invalid source');
-  if (!progressValues.includes(record.progress)) errors.push('invalid progress');
+  if (own(record, 'progress')) errors.push('progress belongs to Plan completion, not Do record');
   if (typeof record.deleted !== 'boolean') errors.push('deleted must be boolean');
   for (const key of ['createdAt', 'updatedAt', 'observedAt']) {
     if (!validStamp(record[key])) errors.push(`${key} must be an ISO timestamp with an offset`);
@@ -122,7 +118,7 @@ function assertRecord(record) {
 /**
  * Construct the full record supplied by the caller. Only deleted defaults to
  * false. title/planSnapshot and opaque JSON extensions are defensively copied.
- * IDs, progress, event times and observation time must be explicit.
+ * IDs, event times and observation time must be explicit. Completion belongs to Plan.
  */
 export function createDoRecord(input) {
   if (!plain(input)) throw new TypeError('Record input must be a plain object');
@@ -138,7 +134,7 @@ function assertLater(record, updatedAt) {
 }
 
 /**
- * An explicit local interval/progress correction. Capture-once fields cannot be
+ * An explicit local interval correction. Capture-once fields cannot be
  * patched, even by accident through a spread live task. Never revives tombstones.
  * No-op edits preserve identity and timestamps. The caller supplies edit time.
  */
@@ -172,20 +168,8 @@ export function tombstoneDoRecord(record, updatedAt) {
 export function completeDoAttempt(records, input) {
   if (!Array.isArray(records) || !plain(input) || !nonempty(input.id)) throw new TypeError('Invalid attempt input');
   if (records.some(record => record.id === input.id)) return records;
-  const attempt = createDoRecord({ ...input, source: 'completion', progress: DO_PROGRESS.COMPLETED, deleted: false });
+  const attempt = createDoRecord({ ...input, source: 'completion', deleted: false });
   return [...records, attempt];
-}
-
-/** Un-completion preserves an existing non-completed assessment and its version. */
-export function reopenDoAttempt(records, previousId, updatedAt) {
-  if (!Array.isArray(records) || !nonempty(previousId)) throw new TypeError('Invalid previous attempt key');
-  const index = records.findIndex(record => record.id === previousId);
-  if (index < 0 || records[index].deleted) return records;
-  assertRecord(records[index]);
-  if (records[index].progress !== DO_PROGRESS.COMPLETED) return records;
-  const record = updateDoRecord(records[index], { progress: DO_PROGRESS.PARTIAL }, updatedAt);
-  if (record === records[index]) return records;
-  return records.map((item, i) => i === index ? record : item);
 }
 
 /** Civil minutes; an untimed completion placeholder contributes zero. */
@@ -257,7 +241,6 @@ export function classifyAgainstPlan(plan, records, { displayedPlan = plan, now, 
   if (attempts.length >= 2) timing.push(TIMING.INTERRUPTED);
   return {
     timing, comparable: anchor !== null, recordedMinutes, attemptCount: attempts.length,
-    progress: attempts.map(({ id, progress }) => ({ id, progress })),
   };
 }
 
@@ -522,7 +505,6 @@ export function compareExecutionToPlan(
       attemptCount: attempts.length,
       timedSessionCount: timedAttempts.length,
     },
-    progress: attempts.map(({ id, progress }) => ({ id, progress })),
   };
 
   if (!anchor || !timedAttempts.length) return result;

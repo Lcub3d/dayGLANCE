@@ -602,7 +602,8 @@ curated fixture day, so it is not to be removed when the real widget changes.
   (`DialHubView.summary`, tested).
 - **Screenshot day.** A `DIAL_PREVIEW` scenario built as a real payload for
   TODAY and rendered through `DayDialWidgetView` with the live countdown, so
-  the store shot is the shipping path. Shoot between 10:00 and 12:30: "Write
+  the store shot is the shipping path. It is the one scenario without the
+  corner readout. Shoot between 10:00 and 12:30: "Write
   API documentation", a live countdown, "then 1h 30m open".
 - **Preview scenarios** now exist for every state above (`DialPreviewWidget`
   header lists them); the four face scenarios stay for palette comparison.

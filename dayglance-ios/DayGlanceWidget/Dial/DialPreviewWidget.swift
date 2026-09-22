@@ -168,7 +168,12 @@ struct DialPreviewView: View {
             } else {
                 DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
                                   liveCountdown: entry.scenario == .screenshot)
-                corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
+                // The screenshot day is the store shot: no readout on it. Every
+                // other scenario keeps the corner, the only way to tell the
+                // face source, the date face and the rendering mode apart.
+                if entry.scenario != .screenshot {
+                    corner("preview · \(entry.scenario.rawValue) · fixture · \(lora) · \(mode)")
+                }
             }
         }
         .containerBackground(Color(hex: DialSpec.backgroundHex), for: .widget)

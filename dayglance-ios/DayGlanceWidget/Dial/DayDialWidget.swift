@@ -140,7 +140,7 @@ struct DayDialProvider: TimelineProvider {
 
 struct DayDialWidgetView: View {
     let entry: DayDialEntry
-    /// The preview's fixed-time scenarios pass false: a relative Text counts
+    /// The preview's fixed-time scenarios pass false: a live duration counts
     /// from the real clock, which a fixture instant is not.
     var liveCountdown: Bool = true
     @Environment(\.displayScale) private var displayScale
@@ -171,6 +171,9 @@ struct DayDialWidgetView: View {
         // A stale or mis-zoned payload dims the FACE only: the hub carries
         // the label and the needle stays, because the time itself is right.
         let dimmed = day.isStale || zoneChanged
+        // The end instants make the time-left and open-time rows live to the
+        // minute on iOS 18 (DialHubView's header); older systems and the
+        // preview's fixed instants draw the static rounded form.
         let live = liveCountdown && status == .live
         let countdownEnd = live ? hub.current.flatMap { endDate(minute: $0.endMin, of: entry.date, calendar: calendar) } : nil
         let openEnd = live ? hub.open?.endMin.flatMap { endDate(minute: $0, of: entry.date, calendar: calendar) } : nil
@@ -214,8 +217,9 @@ struct DayDialWidgetView: View {
         }
     }
 
+
     /// The block's true end as a Date on the entry's day (or the next, past
-    /// 1440), for the live countdown.
+    /// 1440), for the live rows.
     private func endDate(minute: Double, of date: Date, calendar: Calendar) -> Date? {
         var dayStart = calendar.startOfDay(for: date)
         var m = minute

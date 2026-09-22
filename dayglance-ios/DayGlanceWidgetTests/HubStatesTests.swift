@@ -52,7 +52,30 @@ final class HubStatesTests: XCTestCase {
         XCTAssertTrue(text.contains("…"), text)
         let font = UIFont.systemFont(ofSize: DialSpec.Hub.countdownFontSize)
         XCTAssertLessThanOrEqual(DialHubTypography.width(of: text, font: font),
-                                 DialSpec.Hub.width(atY: DialSpec.Hub.countdownY, inset: DialHubTypography.chordInset) + 0.5)
+                                 DialSpec.Hub.width(atY: DialSpec.Hub.rowBaseline(0), inset: DialHubTypography.chordInset) + 0.5)
+    }
+
+    // MARK: the current block: three rows, stacked
+
+    func testTheCountdownIsThreeRowsUnderTheTitle() {
+        let h = hub(at: 680)   // inside "Write API documentation", 10:00–12:30
+        let c = try! XCTUnwrap(h.state.current)
+        XCTAssertEqual(h.untilText(c), "until 12:30")
+        XCTAssertEqual(h.leftText(c), "1h 10m left")
+        XCTAssertFalse(h.leftRow(c).live, "no end instant: the static form")
+        let rows = h.rows()
+        XCTAssertNotNil(rows.title)
+        XCTAssertEqual(rows.stack.count, 3, "until, left, runway (the fixture block has no tag)")
+
+        // With a tag and the projected note the stack is five rows, the last
+        // still inside the ring.
+        let tagged = [block("sleep", 0, 420, kind: .sleep),
+                      DialFaceBlock(id: "docs", kind: .task, startMin: 600, endMin: 750, title: "Write API documentation", tag: "work"),
+                      block("gym", 1020, 1140, title: "Gym")]
+        let full = DialHubView(date: noon, state: DialHub.resolve(blocks: tagged, nowMin: 680), use24Hour: true,
+                               plannedAsOf: "Planned as of Mon 8:42 PM")
+        XCTAssertEqual(full.rows().stack.count, 5)
+        XCTAssertLessThan(DialSpec.Hub.rowBaseline(4), DialSpec.cy + DialSpec.Hub.radius)
     }
 
     // MARK: the clock preference

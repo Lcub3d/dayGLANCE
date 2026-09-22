@@ -193,4 +193,14 @@ final class HubTests: XCTestCase {
         XCTAssertEqual(s.current?.id, "inner")
         XCTAssertEqual(s.runwayMinutes, 70)
     }
+
+    func testTheStackedRowsStayInsideTheRing() {
+        typealias H = DialSpec.Hub
+        XCTAssertEqual(H.rowBaseline(0), 227)
+        XCTAssertEqual(H.rowBaseline(4), 291)
+        // Tag, until, left, runway, note all present: the note ("Planned as of
+        // Mon 8:42 PM", ~95pt at 0.8 of 9pt) still has room on the last row.
+        XCTAssertGreaterThanOrEqual(H.width(atY: H.rowBaseline(4), inset: 6), 95)
+        XCTAssertLessThan(H.rowBaseline(4), DialSpec.cy + H.radius)
+    }
 }

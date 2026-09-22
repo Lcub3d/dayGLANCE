@@ -140,6 +140,19 @@ public enum DialSpec {
         public static let noteFontSize: Double = 9
         public static let noteOpacity: Double = 0.40
 
+        /// Rows below the title STACK (Phase 5, from the first device run):
+        /// tag, "until 19:00", "17 minutes left", runway, note — each row a
+        /// state has sits at the next pitch under the title, so the end time
+        /// gets a line of its own and a state with fewer rows closes up under
+        /// the title instead of leaving the spec's fixed slots empty. With
+        /// every row present the last baseline is 291, where the chord is
+        /// ~110pt (98 usable): the note still fits at its minimum scale.
+        /// `tagY` / `countdownY` / `runwayY` / `noteY` above are the spec's
+        /// original two-line slots, kept as the reference this is measured
+        /// against.
+        public static let rowPitch: Double = 16
+        public static func rowBaseline(_ index: Int) -> Double { titleY + rowPitch * Double(index + 1) }
+
         /// The hub's boundary: the sky ring's inner edge.
         public static var radius: Double { DialSpec.skyRadius - DialSpec.skyWidth / 2 }
 

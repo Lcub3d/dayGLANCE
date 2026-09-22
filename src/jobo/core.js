@@ -96,16 +96,14 @@ export function validateDoRecord(record) {
   // observedAt is a device clock: do not assume it follows the source timestamp.
   try {
     const duration = civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
-    // An untimed completion may acknowledge work without inventing its duration.
-    // Its equal endpoints are a zero-minute placeholder, not a measured interval.
-    const untimedCompletion = record.source === 'completion' && record.planSnapshot === null;
-    if (duration < 0 || (duration === 0 && !untimedCompletion)) {
-      errors.push('interval must be positive, or zero for an untimed completion');
-    }
+    if (duration <= 0) errors.push('interval must be positive');
   } catch { errors.push('invalid interval date/time'); }
   if (!own(record, 'planSnapshot')) errors.push('planSnapshot must be supplied (or explicit null)');
   else if (record.planSnapshot !== null) {
     try { planBounds(record.planSnapshot); } catch { errors.push('invalid planSnapshot'); }
+    if (own(record.planSnapshot, 'completionStatus')) {
+      errors.push('planSnapshot must not capture Plan completion');
+    }
   }
   try { canonicalJson(record); } catch { errors.push('record must be acyclic JSON data'); }
   return { ok: errors.length === 0, errors };
@@ -172,7 +170,7 @@ export function completeDoAttempt(records, input) {
   return [...records, attempt];
 }
 
-/** Civil minutes; an untimed completion placeholder contributes zero. */
+/** Civil minutes of one positive execution interval. */
 export function doDurationMinutes(record) {
   assertRecord(record);
   return civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
@@ -194,53 +192,25 @@ function unionDurationMinutes(records) {
 }
 
 /**
- * Compare a caller-selected set of distinct attempts to ONE explicit anchor.
- * Use separately for Original Plan and for a record's planSnapshot. Never
- * silently select today's task or the last attempt's snapshot for the whole set.
- *
- * No records: only an elapsed CURRENT displayedPlan can be Not Started; no
- * record is fabricated. now is an explicit {date, time} civil coordinate.
- * A missing comparison anchor is unknown unless the caller knows it was unplanned.
- * A persisted planSnapshot === null means there was no timed plan: when comparing
- * that Final Plan, pass knownUnplanned: true. A missing Original Plan is different.
- * Progress stays per attempt; there is no aggregate/native completion inference.
+ * Legacy compatibility adapter. All timing decisions come from
+ * compareExecutionToPlan(); this wrapper only translates canonical labels into
+ * the prototype vocabulary.
  */
-export function classifyAgainstPlan(plan, records, { displayedPlan = plan, now, knownUnplanned = false } = {}) {
-  if (!Array.isArray(records)) throw new TypeError('Expected an attempt array');
-  if (typeof knownUnplanned !== 'boolean') throw new TypeError('knownUnplanned must be boolean');
-  if (plan != null && knownUnplanned) throw new TypeError('A timed plan cannot be known-unplanned');
-  const anchor = plan == null ? null : planBounds(plan);
-  const current = displayedPlan == null ? null : planBounds(displayedPlan);
-  const nowMinute = now === undefined ? null : civilMinute(now?.date, now?.time);
-  const ids = new Set();
-  const attempts = [];
-  for (const record of records) {
-    assertRecord(record);
-    if (ids.has(record.id)) throw new TypeError('Merge duplicate record ids before classification');
-    ids.add(record.id);
-    if (!record.deleted) attempts.push(record);
-  }
-  const timing = [];
-  const timedAttempts = attempts.filter(record => doDurationMinutes(record) > 0);
-  const recordedMinutes = unionDurationMinutes(timedAttempts);
-  if (!attempts.length) {
-    if (current && nowMinute !== null && nowMinute >= current.end) timing.push(TIMING.NOT_STARTED);
-  } else if (!anchor) {
-    if (knownUnplanned) timing.push(TIMING.UNPLANNED);
-  } else if (timedAttempts.length) {
-    let firstStart = Infinity;
-    let lastEnd = -Infinity;
-    for (const record of timedAttempts) {
-      firstStart = Math.min(firstStart, civilMinute(record.date, record.startTime));
-      lastEnd = Math.max(lastEnd, civilMinute(record.endDate, record.endTime));
-    }
-    if (firstStart > anchor.start || lastEnd > anchor.end) timing.push(TIMING.DELAYED);
-    if (recordedMinutes > plan.duration) timing.push(TIMING.OVERRUN);
-    if (!timing.length) timing.push(TIMING.WITHIN_PLAN);
-  }
-  if (attempts.length >= 2) timing.push(TIMING.INTERRUPTED);
+export function classifyAgainstPlan(plan, records, options = {}) {
+  const comparison = compareExecutionToPlan(plan, records, options);
+  const legacyMap = {
+    [TIMING_SUMMARY.WITHIN_PLAN]: TIMING.WITHIN_PLAN,
+    [TIMING_SUMMARY.LATE]: TIMING.DELAYED,
+    [TIMING_SUMMARY.LONGER]: TIMING.OVERRUN,
+    [TIMING_SUMMARY.SPLIT]: TIMING.INTERRUPTED,
+    [TIMING_SUMMARY.NOT_STARTED]: TIMING.NOT_STARTED,
+    [TIMING_SUMMARY.UNPLANNED]: TIMING.UNPLANNED,
+  };
   return {
-    timing, comparable: anchor !== null, recordedMinutes, attemptCount: attempts.length,
+    timing: summarizeTiming(comparison).map(label => legacyMap[label]),
+    comparable: comparison.comparable,
+    recordedMinutes: comparison.metrics.recordedMinutes,
+    attemptCount: comparison.metrics.attemptCount,
   };
 }
 
@@ -271,6 +241,9 @@ export function pickJoboRecord(a, b) {
   if (ua !== ub) return ua > ub ? a : b;
   const oa = versionTime(a.observedAt), ob = versionTime(b.observedAt);
   if (oa !== ob) return oa < ob ? a : b;
+  const schemaA = own(a, 'progress') ? 0 : 1;
+  const schemaB = own(b, 'progress') ? 0 : 1;
+  if (schemaA !== schemaB) return schemaA > schemaB ? a : b;
   return canonicalJson(a) <= canonicalJson(b) ? a : b;
 }
 
@@ -306,6 +279,36 @@ export const COMPLETION_STATUS = Object.freeze({
   MOSTLY: 'mostly',
   COMPLETED: 'completed',
 });
+
+const LEGACY_PROGRESS_TO_COMPLETION = Object.freeze({
+  started: COMPLETION_STATUS.STARTED,
+  partial: COMPLETION_STATUS.PARTLY,
+  partly: COMPLETION_STATUS.PARTLY,
+  mostly: COMPLETION_STATUS.MOSTLY,
+  completed: COMPLETION_STATUS.COMPLETED,
+  complete: COMPLETION_STATUS.COMPLETED,
+});
+
+/**
+ * Explicit boundary for prototype/#1744 rows that still contain Do progress.
+ * The returned record is canonical and progress-free; the caller decides which
+ * identified Plan, if any, receives legacyCompletionStatus.
+ */
+export function migrateLegacyDoRecord(record) {
+  if (!plain(record)) throw new TypeError('Legacy Do record must be a plain object');
+  const hasProgress = own(record, 'progress');
+  let legacyCompletionStatus = null;
+  if (hasProgress) {
+    legacyCompletionStatus = LEGACY_PROGRESS_TO_COMPLETION[record.progress];
+    if (!legacyCompletionStatus) throw new TypeError('Unknown legacy Do progress');
+  }
+  const migrated = { ...record };
+  delete migrated.progress;
+  return {
+    record: createDoRecord(migrated),
+    legacyCompletionStatus,
+  };
+}
 
 export const EXECUTION_PATTERN = Object.freeze({
   SINGLE_SESSION: 'single_session',
@@ -351,6 +354,43 @@ function completionStatusValue(value) {
     throw new TypeError('completionStatus must be started, partly, mostly, completed, or null');
   }
   return value;
+}
+
+function planIdentityValue(plan) {
+  if (plan == null || !own(plan, 'id')) return null;
+  const value = plan.id;
+  if (!(nonempty(value) || (typeof value === 'number' && Number.isSafeInteger(value)))) {
+    throw new TypeError('Plan id must be a nonempty string or safe integer');
+  }
+  return String(value);
+}
+
+function planState(plan) {
+  if (plan == null) return { id: null, completionStatus: null };
+  const id = planIdentityValue(plan);
+  const completionStatus = completionStatusValue(
+    own(plan, 'completionStatus') ? plan.completionStatus : null,
+  );
+  if (completionStatus !== null && id === null) {
+    throw new TypeError('A Plan completionStatus requires a stable Plan id');
+  }
+  return { id, completionStatus };
+}
+
+function resolvePlanState(plan, displayedPlan) {
+  const reference = planState(plan);
+  const displayed = planState(displayedPlan);
+  if (reference.id !== null && displayed.id !== null && reference.id !== displayed.id) {
+    throw new TypeError('plan and displayedPlan must identify the same Plan');
+  }
+  if (reference.completionStatus !== null && displayed.completionStatus !== null
+    && reference.completionStatus !== displayed.completionStatus) {
+    throw new TypeError('Plan completionStatus must agree across plan revisions');
+  }
+  return {
+    id: displayed.id ?? reference.id,
+    completionStatus: displayed.completionStatus ?? reference.completionStatus,
+  };
 }
 
 function comparisonPolicy(tolerance = {}) {
@@ -421,22 +461,23 @@ function comparisonPlanOverlap(bounds, anchor) {
 /**
  * Measure execution against one explicit plan reference without mutating history.
  *
- * recordedMinutes is the sum of per-attempt durations (task-attributed effort).
- * activeMinutes is the union of wall-clock coverage (overlaps counted once).
- * The difference is overlapMinutes. This keeps effort and unique clock time as
- * separate measurements rather than silently choosing one interpretation.
+ * recordedMinutes / activeMinutes are unique actual wall-clock coverage.
+ * attemptMinutes is the raw sum of attempt durations. Their difference is
+ * overlapMinutes. Duration comparison uses recordedMinutes, so overlapping
+ * attempts are never double-counted as actual time.
  */
-export function compareExecutionToPlan(
-  plan,
-  records,
-  {
+export function compareExecutionToPlan(plan, records, options = {}) {
+  if (!plain(options)) throw new TypeError('Comparison options must be a plain object');
+  if (own(options, 'completionStatus')) {
+    throw new TypeError('completionStatus belongs to Plan, not comparison options');
+  }
+  const {
     displayedPlan = plan,
     now,
     knownUnplanned = false,
     tolerance = {},
-    completionStatus = null,
-  } = {},
-) {
+  } = options;
+
   if (!Array.isArray(records)) throw new TypeError('Expected an attempt array');
   if (typeof knownUnplanned !== 'boolean') throw new TypeError('knownUnplanned must be boolean');
   if (plan != null && knownUnplanned) throw new TypeError('A timed plan cannot be known-unplanned');
@@ -445,7 +486,10 @@ export function compareExecutionToPlan(
   const current = displayedPlan == null ? null : planBounds(displayedPlan);
   const nowMinute = now === undefined ? null : civilMinute(now?.date, now?.time);
   const policy = comparisonPolicy(tolerance);
-  const planCompletionStatus = completionStatusValue(completionStatus);
+  const resolvedPlan = resolvePlanState(plan, displayedPlan);
+  if (knownUnplanned && resolvedPlan.completionStatus !== null) {
+    throw new TypeError('Unplanned execution cannot carry Plan completion');
+  }
 
   const ids = new Set();
   const attempts = [];
@@ -461,11 +505,11 @@ export function compareExecutionToPlan(
     ? PLAN_CONTEXT.PLANNED
     : knownUnplanned ? PLAN_CONTEXT.NO_PLAN : PLAN_CONTEXT.UNKNOWN;
 
-  const timedAttempts = attempts.filter(record => doDurationMinutes(record) > 0);
-  const bounds = timedAttempts.map(comparisonBounds);
-  const recordedMinutes = timedAttempts.reduce((sum, record) => sum + doDurationMinutes(record), 0);
-  const activeMinutes = unionDurationMinutes(timedAttempts);
-  const overlapMinutes = Math.max(0, recordedMinutes - activeMinutes);
+  const bounds = attempts.map(comparisonBounds);
+  const attemptMinutes = attempts.reduce((sum, record) => sum + doDurationMinutes(record), 0);
+  const activeMinutes = unionDurationMinutes(attempts);
+  const recordedMinutes = activeMinutes;
+  const overlapMinutes = Math.max(0, attemptMinutes - activeMinutes);
   const firstStart = bounds.length ? Math.min(...bounds.map(item => item.start)) : null;
   const lastEnd = bounds.length ? Math.max(...bounds.map(item => item.end)) : null;
   const elapsedMinutes = bounds.length ? lastEnd - firstStart : null;
@@ -476,11 +520,13 @@ export function compareExecutionToPlan(
     : attempts.length === 1 ? EXECUTION_PATTERN.SINGLE_SESSION : EXECUTION_PATTERN.SPLIT_SESSIONS;
 
   const notStarted = attempts.length === 0
+    && resolvedPlan.completionStatus === null
     && current !== null
     && nowMinute !== null
     && nowMinute >= current.end;
 
   const result = {
+    planId: resolvedPlan.id,
     planContext,
     comparable: false,
     notStarted,
@@ -489,7 +535,7 @@ export function compareExecutionToPlan(
     startTiming: null,
     finishTiming: null,
     durationComparison: null,
-    completionStatus: planCompletionStatus,
+    completionStatus: resolvedPlan.completionStatus,
     withinPlan: false,
     metrics: {
       startOffsetMinutes: null,
@@ -498,16 +544,17 @@ export function compareExecutionToPlan(
       durationRatio: null,
       planOverlapMinutes: null,
       recordedMinutes,
+      attemptMinutes,
       activeMinutes,
       elapsedMinutes,
       gapMinutes,
       overlapMinutes,
       attemptCount: attempts.length,
-      timedSessionCount: timedAttempts.length,
+      timedSessionCount: attempts.length,
     },
   };
 
-  if (!anchor || !timedAttempts.length) return result;
+  if (!anchor || !attempts.length) return result;
 
   const startOffsetMinutes = firstStart - anchor.start;
   const finishOffsetMinutes = lastEnd - anchor.end;
@@ -522,8 +569,6 @@ export function compareExecutionToPlan(
   result.startTiming = startTiming;
   result.finishTiming = finishTiming;
   result.durationComparison = durationComparison;
-  // Product-level within-plan is intentionally asymmetric: early/shorter still
-  // count as within-plan, while any lateness or excess estimated effort does not.
   result.withinPlan = startTiming !== RELATIVE_TIMING.LATE
     && finishTiming !== RELATIVE_TIMING.LATE
     && durationComparison !== DURATION_COMPARISON.LONGER;

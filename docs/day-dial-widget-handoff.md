@@ -496,8 +496,13 @@ curated fixture day, so it is not to be removed when the real widget changes.
   counts seconds ("17 min, 37 sec left"). A static form was exact only at
   each entry, so up to a quarter of an hour old between them. The row is now
   `Text(.currentDate, format: .offset(to:))` restricted to hours and minutes
-  (iOS 18+), spliced into the catalog phrase "%@ left": system-updated every
-  minute, never seconds, never past zero (the block's end is an entry).
+  (iOS 18+), inside the catalog phrase "%@ left": system-updated every
+  minute, never seconds, never past zero (the block's end is an entry). The
+  phrase is drawn as three separate Texts around the live one, **never as a
+  `+` concatenation**: concatenated, the iOS 18 text archived as nothing on
+  the Home Screen and every hub row after it went with it, while the gallery
+  (rendered once, not archived ahead) showed it fine. Phase 4's relative
+  style concatenated without trouble; the new text does not.
   Below iOS 18 the static "17m left" is drawn. And the end time has a row of
   its own: title, "until 19:00", "17 minutes left", runway. Rows under the
   title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch from 211) with
@@ -580,12 +585,18 @@ curated fixture day, so it is not to be removed when the real widget changes.
   API documentation", a live countdown, "then 1h 30m open".
 - **Preview scenarios** now exist for every state above (`DialPreviewWidget`
   header lists them); the four face scenarios stay for palette comparison.
-  The preview's entries carry no images (the real widget's rule): the
-  provider warms the cache and the view fetches the face at render time. An
-  entry holding two 3× faces while a third rendered put the extension over
-  its budget and left the preview on its redacted placeholder. `ios.yml` now
-  generates the CI project with `DIAL_PREVIEW`, so the preview compiles in
-  CI; release builds still never set the flag.
+  The preview's provider renders NOTHING and returns at once; the view
+  fetches the face from the cache when it renders (cold the first time,
+  ~28 ms). The face scenarios sat on their redacted placeholder on device
+  for as long as the provider pre-rendered the PNG with `await MainActor
+  .run { DialFaceCache.image(…) }` inside the async `timeline(for:in:)`:
+  that hop never came back, while the state scenarios (no hop) and the real
+  widget (which warms from an unstructured `Task { @MainActor in }` in the
+  closure-based `getTimeline` and calls `completion` from there) rendered.
+  The earlier "two faces in the entry" explanation in #1771 was wrong about
+  the cause, though entries still carry no images. `ios.yml` generates the
+  CI project with `DIAL_PREVIEW`, so the preview compiles in CI; release
+  builds still never set the flag.
   The corner prints the rendering mode (`fullColor` / `accented`), so a
   tinted or clear Home Screen is confirmed as the accented mode at a glance.
 - **Rendering modes (the second Phase 5 PR).** Why tinted was blank: on a

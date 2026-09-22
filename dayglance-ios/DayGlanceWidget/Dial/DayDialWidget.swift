@@ -207,14 +207,23 @@ struct DayDialWidgetView: View {
     /// The cached face, or a live draw when the cache has nothing. No
     /// `widgetAccentedRenderingMode` on the image: the default (the primary
     /// colour at the image's own alpha) is exactly what the mono PNG is for.
+    ///
+    /// `unredacted`: placeholder redaction turns an Image into a grey slab
+    /// the size of the widget, which for a face that IS the widget hides
+    /// the whole dial behind the redacted hub. The face carries no text
+    /// and no titles, only the day's shape, so it is drawn as is; the hub's
+    /// words redact as usual.
     @ViewBuilder
     private func face(input: DialFaceInput, nowMin: Double, size: CGSize, mono: Bool) -> some View {
-        if let image = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: displayScale, mono: mono).image {
-            Image(uiImage: image).resizable()
-                .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
-        } else {
-            DialFaceView(input: input, nowMin: nowMin, mono: mono)
+        Group {
+            if let image = DialFaceCache.image(input: input, nowMin: nowMin, size: size, scale: displayScale, mono: mono).image {
+                Image(uiImage: image).resizable()
+                    .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
+            } else {
+                DialFaceView(input: input, nowMin: nowMin, mono: mono)
+            }
         }
+        .unredacted()
     }
 
 

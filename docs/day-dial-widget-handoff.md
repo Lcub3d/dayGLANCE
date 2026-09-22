@@ -1,6 +1,7 @@
 # Day Dial — iOS `systemLarge` widget: handoff
 
-**Status:** phases 0–3 landed; timeline (4) next. iOS only for now.
+**Status:** phases 0–5 landed and walked on device (21 Sep 2026). iOS only.
+Android and Wear OS are decided, not deferred: §"Android, if it happens".
 **Companion files:** `docs/day-dial-widget-spec.html` (reference render, exact geometry),
 `docs/day-dial-palette-study.html` (block band treatment; variant C is what ships),
 `docs/day-dial-widget-feasibility.md` (prior investigation, PR #1665).
@@ -424,13 +425,15 @@ do not have.
 
 1. ~~Render budget across the timeline.~~ **Verified** (§6 "Result"): 96
    entries on schedule, 28 ms cold render, 13–18 MB footprint on an A16.
-2. **Open — for the Android port.** Low-opacity sky-ring segments at dawn
-   and dusk on OLED in daylight: opacity carries the signal alone now that
-   width is constant. No OLED iOS device is available to this project, so
-   the check moves to the Android port (§"Android, if it happens"), whose
-   test devices are OLED. If the faintest segments disappear there, raise the
-   floor and compress the range rather than widening, and mirror the change
-   in `DialSpec.skyOpacity` so both platforms agree.
+2. **Open — for the first Android surface.** Low-opacity sky-ring segments
+   at dawn and dusk on OLED in daylight: opacity carries the signal alone now
+   that width is constant. No OLED iOS device is available to this project,
+   so the check rides whichever Android surface is built first (§"Android,
+   if it happens": the Wear OS tile, most likely, whose screen is OLED and
+   is read outdoors more than any phone widget). If the faintest segments
+   disappear there, raise the floor and compress the range rather than
+   widening, and mirror the change in `DialSpec.skyOpacity` so every port
+   agrees.
 3. ~~Lora 500 at 28pt.~~ **Pass**: holds at 28pt on the phone; 600 not needed.
 4. ~~Dense-day legibility of the separator cut at 1.6pt.~~ **Pass.**
 5. ~~Sunrise/sunset glyph angles match real solar times.~~ **Pass** for the
@@ -663,7 +666,8 @@ curated fixture day, so it is not to be removed when the real widget changes.
   its 0.8 minimum scale), the 10.5pt hour labels at 8.4pt, the 11.5pt
   countdown at 9.2pt. Legible on a 2× iPad mini in a test render; if it is
   not on glass, raise `noteFontSize` before dropping the note's minimum scale.
-- **Deferred.** The Android port and Wear OS (§"Android, if it happens").
+- **Decided.** No Android home-screen dial; Wear OS tile if the dial earns a
+  second surface (§"Android, if it happens").
   The projected-day limitation stands: a day the app has not opened carries
   its shape, not its state (no routines, no completions; §"Phase 4b").
 - **Release notes.** *Day Dial widget (iOS): your whole day as a dial on the
@@ -735,12 +739,141 @@ radius-agnostic and the fixture evaluates them at both canvases, so no
 
 ### Android, if it happens
 
-Roughly phases 2–5 again on the bitmap + FileProvider path described in the
-feasibility doc, plus phase 1 repeated in Kotlin: ~10–13 further days. The
-phase 1 fixtures serve both ports, which is the main argument for exporting
-them properly rather than expediently.
+Decided 22 Sep 2026, the night before the iOS release, after the device walk
+in §8. Short form: **no Day Dial on the Android home screen; the Wear OS tile
+is the Android surface worth building.** The iOS release does not wait for
+either.
 
-Worth deciding after iOS ships, not before — the needle-drift problem on
-Android (`updatePeriodMillis` floors at 30 min; WorkManager's minimum periodic
-interval is 15 min with flex, and Doze defers it on an idle device) may change
-what is worth building there.
+#### Why not the home screen
+
+The dial's two live properties are the needle and the countdown, and an
+Android home-screen widget can carry neither honestly.
+
+- **There is no timeline.** WidgetKit takes 96 pre-rendered entries a day and
+  swaps them on schedule with the app asleep (§6, §9 Phase 4). A
+  `RemoteViews` widget redraws only when something wakes the provider:
+  `updatePeriodMillis` floors at 30 min, WorkManager's periodic minimum is
+  15 min with flex and Doze defers it further on an idle device, and an
+  `AlarmManager` alarm per block boundary is exact only with the
+  schedule-exact-alarm permission the app already treats as optional
+  (`MidnightRolloverReceiver`'s exact-or-inexact fallback). So a needle
+  drawn into the face bitmap sits still for up to 15 minutes, then jumps.
+- **Live text is a `Chronometer`, and only that.** `setChronometerCountDown`
+  ticks in the launcher without waking the app, but it renders `mm:ss` (or
+  `h:mm:ss`) and cannot be formatted, so "17m left" becomes `16:59` counting
+  down in seconds — the exact reading the user rejected on iOS and that the
+  iOS 18 minute-only text was built to avoid. Anything phrased is static and
+  goes stale with the needle.
+- **The face bitmap has a ceiling.** A square dial in a 4×4 cell at xxhdpi is
+  858×858 px, 2.8 MiB of ARGB against a ~1 MiB Binder transaction
+  (feasibility doc §7: 512×512 is the largest square that parcels inline).
+  The FileProvider URI path there avoids it but is new plumbing with
+  launcher-specific grant behaviour; the app's largest widget bitmap today
+  is the 80×80 `drawHabitRing`.
+
+Jetpack Glance does not change any of this: it compiles to the same
+`RemoteViews` and refreshes on the same `updateAll` / WorkManager cadence.
+The user's verdict on the resulting product ("those are bad trade-offs") is
+recorded as the decision.
+
+Three positions were on the table; the first is the recommendation.
+
+1. **No Android home-screen dial.** The list widgets already cover the
+   home-screen job on Android. Nothing in the iOS pipeline is specific to
+   this decision: the snapshot (`dial`, `sky`) is already pushed to both
+   platforms, so reversing it later costs nothing upstream.
+2. **A deliberately non-live "day shape" widget.** Face + block band as a
+   bitmap, the current block named with its end time ("until 12:30"), the
+   current block's segment emphasised, no needle, no countdown, refreshed
+   at block boundaries by alarm and at the 15-min worker tick. Honest, and
+   about 4–5 days (geometry port, face renderer, FileProvider path,
+   provider). Not chosen because a dial without a needle is a different
+   product from the iOS one and would ship under the same name.
+3. **Parity, with the trade-offs above.** 7–9 days (the feasibility doc's
+   ~12.5 was written before the geometry port, which is 2 days in Kotlin
+   against the exported vectors). Rejected: the needle would jump and the
+   countdown would either show seconds or go stale.
+
+Revisit only if the platform changes the update model — Android's
+home-screen widgets moving to Remote Compose, as Wear OS 7's are, would
+reopen it. Watch for that; do not re-open on library releases alone.
+
+#### Wear OS: feasible, and the better fit
+
+Verified against the ProtoLayout sources and the Wear OS docs on 22 Sep
+2026; each claim names what it rests on so the next person can re-check
+rather than trust.
+
+- **Tiles have a timeline.** A tile is a `Timeline` of `TimelineEntry`
+  values, each with a `TimeInterval` validity; the renderer switches entries
+  on the watch without calling the tile service. That is WidgetKit's model,
+  not `RemoteViews`', so the iOS entry planner (`DialTimeline`) ports as is:
+  one entry per block boundary carrying the face for that block and the hub
+  text, `setFreshnessIntervalMillis` for the next payload and
+  `TileService.getUpdater().requestUpdate` when the phone pushes new data.
+- **Live values without redraws.** From Tiles 1.2 (renderer schema 1.200)
+  properties bind to *dynamic expressions* evaluated on the watch, with the
+  platform clock updating every second
+  (`DynamicInstant.platformTimeWithSecondsPrecision()`). Both live
+  properties come back:
+  - the countdown as a `DynamicString` built from
+    `platformTime.durationUntil(end).toIntMinutes()` — minutes only, the
+    phrasing ours, no seconds;
+  - the needle as a `DegreesProp` with a dynamic value: on `Arc`'s anchor
+    angle (bindable since 1.200, so a rim marker works wherever dynamic data
+    does) or on the `Transformation` modifier's rotation (schema 1.400,
+    newer) to spin a radial needle image around the hub. Each dynamic prop
+    also carries the static value older renderers read, so a watch that
+    cannot bind shows the entry's baked needle and a static "Xm left",
+    refreshed at the next entry.
+  Wear OS caps the number of dynamic expressions per tile (the cap is
+  unpublished; over it, everything falls back to static). Budget two —
+  countdown and needle — and keep the face static. Read
+  `deviceConfiguration.rendererSchemaVersion` in `onTileRequest` and build
+  the static-only layout below 1.200.
+- **The face** is one inline PNG per entry (`InlineImageResource`) or,
+  cleaner, native `Arc` + `ArcLine` children per block and sky segment with
+  no bitmap at all; ticks and glyphs are the parts that want the image. The
+  round 1:1 canvas is the dial's natural shape for the first time.
+- **The hub** is the tile's text: weekday, task, "until", time left, runway
+  fit the round screen's chord at least as well as the 98pt widget hub.
+- **The countdown text is also a complication**, for anyone who wants it on
+  their watch face instead of in the carousel: a `SHORT_TEXT` source with
+  `TimeDifferenceComplicationText` counts down on the face with no updates
+  from us; `UPDATE_PERIOD_SECONDS` floors at 300 s and on-demand pushes are
+  limited to one per 5 min on average, both fine for block boundaries.
+
+What makes it real work rather than a port:
+
+- **The data has to reach the wrist.** dayGLANCE has no watch app. The tile
+  needs the same snapshot the phone widgets read (`dataStore.widgetSnapshot`,
+  `NativeBridge.kt:332`) shipped over the Wearable Data Layer from the
+  Android phone app, which means a `wear` module in `dayglance-android/`, a
+  `DataClient` push on every snapshot write, and the reload flag's dedupe
+  honoured on both ends. The Data Layer is Android-phone only: an
+  iPhone-paired watch would need the tile to sync on its own from the
+  GLANCEvault, a separate and larger piece. Scope the first cut to
+  Android-phone owners and say so.
+- **The platform is mid-transition.** Wear OS 7 introduces *Wear Widgets*
+  (Jetpack Glance + Remote Compose, 2×1 and 2×2 cards, libraries at
+  1.0.0-alpha as of this writing) and on partial-height devices (Galaxy
+  Watch on 7) shows the widget instead of the tile; tiles remain the surface
+  on Wear OS 3–6 and on full-height devices (Pixel Watch on 7). Google's
+  recommended path is a dual service: tile plus widget in one logical
+  `group`. The dial is a full-screen shape, so build the tile first and let
+  the 2×2 widget be a reduced view (block band + countdown) when the Remote
+  Compose libraries leave alpha. Whether Remote Compose exposes a
+  client-side clock for a live needle was **not** verified; check before
+  promising the widget more than the tile's static fallback.
+- **Estimate: 8–10 days** to a tile with both live properties, before device
+  time: Kotlin geometry port against the phase 1 vectors (2 d, and it serves
+  option 2 above if that is ever revisited), face rendering on the watch
+  (2 d), hub + dynamic expressions + timeline (1.5 d), Data Layer sync and
+  the `wear` module (2 d), CI and preview tooling (1 d), the §8 item 2 OLED
+  check and the size sweep across round and squircle screens (1 d). The
+  complication is half a day on top of the module. Nothing here is on the
+  iOS release's critical path.
+
+Worth deciding after the iOS release has been in users' hands, not before:
+a week of Home Screen use will say whether the dial earns a second surface
+at all.

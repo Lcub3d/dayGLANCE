@@ -99,8 +99,12 @@ export function validateDoRecord(record) {
     && Date.parse(record.updatedAt) < Date.parse(record.createdAt)) errors.push('updatedAt precedes createdAt');
   // observedAt is a device clock: do not assume it follows the source timestamp.
   try {
-    if (civilMinute(record.endDate, record.endTime) <= civilMinute(record.date, record.startTime)) {
-      errors.push('interval must have positive duration');
+    const duration = civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
+    // An untimed completion may acknowledge work without inventing its duration.
+    // Its equal endpoints are a zero-minute placeholder, not a measured interval.
+    const untimedCompletion = record.source === 'completion' && record.planSnapshot === null;
+    if (duration < 0 || (duration === 0 && !untimedCompletion)) {
+      errors.push('interval must be positive, or zero for an untimed completion');
     }
   } catch { errors.push('invalid interval date/time'); }
   if (!own(record, 'planSnapshot')) errors.push('planSnapshot must be supplied (or explicit null)');
@@ -172,20 +176,37 @@ export function completeDoAttempt(records, input) {
   return [...records, attempt];
 }
 
-/** Un-completion targets the PREVIOUS completion key. Missing/deleted is a no-op. */
+/** Un-completion preserves an existing non-completed assessment and its version. */
 export function reopenDoAttempt(records, previousId, updatedAt) {
   if (!Array.isArray(records) || !nonempty(previousId)) throw new TypeError('Invalid previous attempt key');
   const index = records.findIndex(record => record.id === previousId);
   if (index < 0 || records[index].deleted) return records;
+  assertRecord(records[index]);
+  if (records[index].progress !== DO_PROGRESS.COMPLETED) return records;
   const record = updateDoRecord(records[index], { progress: DO_PROGRESS.PARTIAL }, updatedAt);
   if (record === records[index]) return records;
   return records.map((item, i) => i === index ? record : item);
 }
 
-/** Civil interval duration; overlaps are intentionally summed by the classifier. */
+/** Civil minutes; an untimed completion placeholder contributes zero. */
 export function doDurationMinutes(record) {
   assertRecord(record);
   return civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
+}
+
+// Count covered civil minutes once. Gaps add nothing; adjacent, nested and
+// overlapping attempts remain separate records for the interaction history.
+function unionDurationMinutes(records) {
+  const intervals = records.map(record => [
+    civilMinute(record.date, record.startTime), civilMinute(record.endDate, record.endTime),
+  ]).sort(([startA, endA], [startB, endB]) => startA - startB || endA - endB);
+  let minutes = 0;
+  let coveredEnd = -Infinity;
+  for (const [start, end] of intervals) {
+    minutes += Math.max(0, end - Math.max(start, coveredEnd));
+    coveredEnd = Math.max(coveredEnd, end);
+  }
+  return minutes;
 }
 
 /**
@@ -216,15 +237,16 @@ export function classifyAgainstPlan(plan, records, { displayedPlan = plan, now, 
     if (!record.deleted) attempts.push(record);
   }
   const timing = [];
-  const recordedMinutes = attempts.reduce((total, record) => total + doDurationMinutes(record), 0);
+  const timedAttempts = attempts.filter(record => doDurationMinutes(record) > 0);
+  const recordedMinutes = unionDurationMinutes(timedAttempts);
   if (!attempts.length) {
     if (current && nowMinute !== null && nowMinute >= current.end) timing.push(TIMING.NOT_STARTED);
   } else if (!anchor) {
     if (knownUnplanned) timing.push(TIMING.UNPLANNED);
-  } else {
+  } else if (timedAttempts.length) {
     let firstStart = Infinity;
     let lastEnd = -Infinity;
-    for (const record of attempts) {
+    for (const record of timedAttempts) {
       firstStart = Math.min(firstStart, civilMinute(record.date, record.startTime));
       lastEnd = Math.max(lastEnd, civilMinute(record.endDate, record.endTime));
     }

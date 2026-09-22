@@ -69,6 +69,12 @@ describe('Do record contract', () => {
     assert.equal(r.planSnapshot, null);
     assert.equal(r.progress, 'started');
   });
+  it('keeps an unscheduled completion with unknown duration as a zero-minute record', () => {
+    const r = record({ planSnapshot: null, endTime: '14:30' });
+    assert.deepEqual(validateDoRecord(r), { ok: true, errors: [] });
+    assert.equal(doDurationMinutes(r), 0);
+    assert.equal(r.progress, DO_PROGRESS.COMPLETED);
+  });
   it('keeps numeric native task identities without rewriting them', () => {
     assert.equal(record({ taskId: 7 }).taskId, 7);
   });
@@ -98,7 +104,11 @@ describe('Do record contract', () => {
     ['bad day', { date: '2026-02-30' }], ['bad leap day', { date: '1900-02-29' }],
     ['zero year', { date: '0000-01-01' }], ['noncanonical date', { date: '2026-9-19' }],
     ['24:00 must use next endDate', { endTime: '24:00' }], ['un-padded clock', { startTime: '9:00' }],
-    ['zero interval', { endTime: '14:30' }], ['backwards interval', { endTime: '14:00' }],
+    ['zero interval with a timed plan', { endTime: '14:30' }],
+    ['zero manual interval without a plan', { source: 'manual', planSnapshot: null, endTime: '14:30' }],
+    ['zero focus interval without a plan', { source: 'focus', planSnapshot: null, endTime: '14:30' }],
+    ['backwards interval', { endTime: '14:00' }],
+    ['backwards unscheduled completion', { planSnapshot: null, endTime: '14:00' }],
     ['bad endDate', { endDate: '2026-09-18' }],
     ['missing snapshot', { planSnapshot: undefined }], ['bad snapshot duration', { planSnapshot: plan({ duration: 0 }) }],
     ['string snapshot duration', { planSnapshot: plan({ duration: '60' }) }],
@@ -160,6 +170,18 @@ describe('local corrections and tombstones', () => {
     const changed = updateDoRecord(r, { startTime: '23:50', endDate: '2026-09-20', endTime: '00:10' }, T2);
     assert.equal(doDurationMinutes(changed), 20);
   });
+  it('fills in actual time on a zero-minute completion without changing its captured history', () => {
+    const original = freeze(record({ planSnapshot: null, endTime: '14:30' }));
+    const changed = updateDoRecord(original, { startTime: '14:00' }, T2);
+    assert.equal(doDurationMinutes(changed), 30);
+    assert.equal(changed.planSnapshot, null);
+    assert.equal(changed.id, original.id);
+    assert.equal(changed.title, original.title);
+    assert.equal(changed.progress, DO_PROGRESS.COMPLETED);
+    assert.equal(changed.updatedAt, T2);
+    assert.equal(doDurationMinutes(original), 0);
+    assert.throws(() => updateDoRecord(original, { endTime: '14:00' }, T2), TypeError);
+  });
   it('never turns a deletion into removal or a subsequent edit into revival', () => {
     const r = record();
     const deleted = tombstoneDoRecord(r, T2);
@@ -206,6 +228,40 @@ describe('explicit attempt transitions (not a task detector)', () => {
     const records = [record({ progress: DO_PROGRESS.PARTIAL })];
     assert.equal(reopenDoAttempt(records, records[0].id, undefined), records);
   });
+  for (const progress of [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY]) {
+    it(`reopening preserves the user's ${progress} assessment and version`, () => {
+      const records = freeze([record({ progress, updatedAt: T2 })]);
+      for (const stamp of [undefined, T0, T2, '2026-09-20T00:00:00.000Z']) {
+        const reopened = reopenDoAttempt(records, records[0].id, stamp);
+        assert.equal(reopened, records);
+        assert.equal(reopened[0].progress, progress);
+        assert.equal(reopened[0].updatedAt, T2);
+      }
+    });
+  }
+  it('can reopen an unknown-duration completion without inventing time', () => {
+    const first = freeze(completeDoAttempt([], input({ planSnapshot: null, endTime: '14:30' })));
+    const reopened = reopenDoAttempt(first, first[0].id, T2);
+    assert.equal(reopened[0].progress, DO_PROGRESS.PARTIAL);
+    assert.equal(reopened[0].updatedAt, T2);
+    assert.equal(doDurationMinutes(reopened[0]), 0);
+    assert.equal(reopened[0].planSnapshot, null);
+    assert.equal(first[0].progress, DO_PROGRESS.COMPLETED);
+    assert.equal(reopenDoAttempt(reopened, first[0].id, T0), reopened);
+  });
+  it('keeps a re-completion as a second attempt without counting the same interval twice', () => {
+    const first = completeDoAttempt([], input({ endTime: '15:30' }));
+    const reopened = reopenDoAttempt(first, first[0].id, T1);
+    const both = completeDoAttempt(reopened, input({ id: 'second', endTime: '15:30', createdAt: T2, updatedAt: T2, observedAt: T2 }));
+    const result = classifyAgainstPlan(plan(), both);
+    assert.equal(result.attemptCount, 2);
+    assert.equal(result.recordedMinutes, 60);
+    assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
+    assert.deepEqual(result.progress, [
+      { id: first[0].id, progress: DO_PROGRESS.PARTIAL },
+      { id: 'second', progress: DO_PROGRESS.COMPLETED },
+    ]);
+  });
   it('creation does not mutate the supplied task-like input or collection', () => {
     const r = freeze(input({ progress: DO_PROGRESS.STARTED }));
     const items = freeze([]);
@@ -246,6 +302,16 @@ describe('civil intervals and independent timing/progress', () => {
     assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN]);
     assert.equal(result.progress[0].progress, progress);
   });
+  it('does not age a recorded partial execution into delayed or change its progress', () => {
+    const r = freeze(record({ startTime: '09:00', endTime: '09:05', progress: DO_PROGRESS.PARTIAL }));
+    const anchor = plan({ startTime: '09:00' });
+    const during = classifyAgainstPlan(anchor, [r], { now: now('09:05') });
+    const after = classifyAgainstPlan(anchor, [r], { now: now('12:00') });
+    assert.deepEqual(after, during);
+    assert.deepEqual(after.timing, [TIMING.WITHIN_PLAN]);
+    assert.equal(after.recordedMinutes, 5);
+    assert.deepEqual(after.progress, [{ id: r.id, progress: DO_PROGRESS.PARTIAL }]);
+  });
   it('treats exact plan boundaries as within plan, not delayed/overrun', () => {
     assert.deepEqual(classifyAgainstPlan(plan({ duration: 40 }), [record()]).timing, [TIMING.WITHIN_PLAN]);
   });
@@ -265,16 +331,50 @@ describe('civil intervals and independent timing/progress', () => {
     assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
     assert.deepEqual(result.progress, [{ id: 'a', progress: DO_PROGRESS.PARTIAL }, { id: 'b', progress: DO_PROGRESS.COMPLETED }]);
   });
-  it('sums recorded intervals, excluding gaps but not deduplicating overlaps', () => {
+  it('counts overlapping time once while excluding gaps', () => {
     const a = record({ id: 'a', endTime: '15:10' });
     const b = record({ id: 'b', endTime: '15:10' });
     const overlap = classifyAgainstPlan(plan(), [a, b]);
-    assert.equal(overlap.recordedMinutes, 80);
-    assert.deepEqual(overlap.timing, [TIMING.OVERRUN, TIMING.INTERRUPTED]);
+    assert.equal(overlap.recordedMinutes, 40);
+    assert.deepEqual(overlap.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
     const c = record({ id: 'c', startTime: '16:00', endTime: '16:10' });
     const gap = classifyAgainstPlan(plan(), [a, c]);
     assert.equal(gap.recordedMinutes, 50);
     assert.deepEqual(gap.timing, [TIMING.DELAYED, TIMING.INTERRUPTED]);
+  });
+  it('unions partial and nested overlaps independently of record order without mutation', () => {
+    const records = freeze([
+      record({ id: 'a', startTime: '09:00', endTime: '09:40' }),
+      record({ id: 'b', startTime: '09:20', endTime: '10:00' }),
+      record({ id: 'nested', startTime: '09:25', endTime: '09:30' }),
+    ]);
+    for (const ordered of [records, [...records].reverse(), [records[1], records[0], records[2]]]) {
+      const result = classifyAgainstPlan(plan({ startTime: '09:00' }), ordered);
+      assert.equal(result.recordedMinutes, 60);
+      assert.equal(result.attemptCount, 3);
+      assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
+      assert.deepEqual(result.progress.map(({ id }) => id), ordered.map(({ id }) => id));
+    }
+    assert.deepEqual(records.map(({ id }) => id), ['a', 'b', 'nested']);
+  });
+  it('counts only forty worked minutes when a one-hour span has a twenty-minute gap', () => {
+    const records = [
+      record({ id: 'a', startTime: '09:00', endTime: '09:20' }),
+      record({ id: 'b', startTime: '09:40', endTime: '10:00' }),
+    ];
+    const result = classifyAgainstPlan(plan({ startTime: '09:00' }), records);
+    assert.equal(result.recordedMinutes, 40);
+    assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
+  });
+  it('unions overlaps across midnight using dates as well as clock times', () => {
+    const records = [
+      record({ id: 'after-midnight', date: '2026-09-20', startTime: '00:00', endDate: '2026-09-20', endTime: '00:30' }),
+      record({ id: 'cross-midnight', startTime: '23:50', endDate: '2026-09-20', endTime: '00:10' }),
+    ];
+    const result = classifyAgainstPlan(plan({ startTime: '23:50', duration: 40 }), records);
+    assert.equal(result.recordedMinutes, 40);
+    assert.equal(result.attemptCount, 2);
+    assert.deepEqual(result.timing, [TIMING.WITHIN_PLAN, TIMING.INTERRUPTED]);
   });
   it('all three independent deviations may coexist', () => {
     const a = record({ id: 'a', startTime: '14:40', endTime: '15:20' });
@@ -325,6 +425,27 @@ describe('civil intervals and independent timing/progress', () => {
     assert.deepEqual(final.timing, [TIMING.UNPLANNED]);
     assert.equal(final.recordedMinutes, 40);
     assert.throws(() => classifyAgainstPlan(plan(), [r], { knownUnplanned: true }), TypeError);
+  });
+  it('counts a zero-minute completion as a live attempt, never as no execution record', () => {
+    const r = record({ planSnapshot: null, endTime: '14:30' });
+    const result = classifyAgainstPlan(null, [r], {
+      knownUnplanned: true, displayedPlan: plan(), now: now('17:00'),
+    });
+    assert.equal(result.recordedMinutes, 0);
+    assert.equal(result.attemptCount, 1);
+    assert.deepEqual(result.timing, [TIMING.UNPLANNED]);
+    assert.deepEqual(result.progress, [{ id: r.id, progress: DO_PROGRESS.COMPLETED }]);
+    const alternate = classifyAgainstPlan(plan({ startTime: '09:00' }), [r], { now: now('17:00') });
+    assert.deepEqual(alternate.timing, []); // Unknown work time proves no timing deviation or compliance.
+    assert.equal(alternate.recordedMinutes, 0);
+    assert.equal(alternate.attemptCount, 1);
+    const second = record({ id: 'second', planSnapshot: null, endTime: '14:30' });
+    assert.deepEqual(classifyAgainstPlan(null, [r, second], { knownUnplanned: true }).timing,
+      [TIMING.UNPLANNED, TIMING.INTERRUPTED]);
+    const gone = tombstoneDoRecord(r, T2);
+    const deleted = classifyAgainstPlan(null, [gone], { displayedPlan: plan(), now: now('17:00') });
+    assert.equal(deleted.attemptCount, 0);
+    assert.deepEqual(deleted.timing, [TIMING.NOT_STARTED]);
   });
   it('rejects bad anchors/current plans/now instead of inventing a budget', () => {
     assert.throws(() => classifyAgainstPlan({}, [record()]), TypeError);

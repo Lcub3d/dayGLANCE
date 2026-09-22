@@ -2,8 +2,9 @@
 # JOBO theory-driven comparison model (Slice 2 follow-up)
 
 This document is a fork-local refinement layered on the current Slice 2 core.
-It does not change the merged #1744 persistence contract and it does not wire UI,
-storage, sync or task completion.
+It proposes one explicit revision to the merged #1744 persistence contract:
+Do records no longer carry progress/completion. Completion belongs to Plan.
+It does not wire UI, storage, sync or task completion.
 
 The existing `classifyAgainstPlan()` API remains untouched for compatibility
 while this model is reviewed. New Slice 2 consumers should prefer
@@ -29,7 +30,7 @@ mutually-exclusive timing enum.
 3. **Allen interval algebra** — the execution span and plan have one of thirteen structural interval relations.
 4. **Scheduling / earliness-tardiness** — start and finish offsets are separate signed measurements.
 5. **Estimation** — duration difference and duration ratio are both retained.
-6. **Measurement theory** — time is ratio-scale data; progress is ordinal and must not be inferred from time spent.
+6. **Measurement theory** — time is ratio-scale data; Plan completion is ordinal and must not be inferred from time spent.
 7. **Preemptive scheduling** — several Do records may form split sessions, with recorded effort, unique active time, elapsed span, overlap and gaps kept separate.
 8. **Strong eventual consistency** remains the job of the existing `pickJoboRecord()` contract; this comparison layer never influences merge winner selection.
 
@@ -86,11 +87,13 @@ Plan has a separate completion dimension:
 - `mostly`
 - `completed`
 
-This is an ordinal assessment owned by the Plan. It is not derived from elapsed time, timing labels, or the progress value of any particular Do record.
+This is an ordinal assessment owned by the Plan. It is not derived from elapsed time, timing labels, or any Do record.
 
 `not_started` is deliberately **not** part of this four-level completion dimension. It remains a time-gated timing result: no live Do exists and the current displayed Plan has fully elapsed.
 
-For compatibility, persisted Do records still use the existing `started / partial / mostly / completed` vocabulary required by the current record contract. The Plan-level completion dimension uses `partly`; callers that migrate old prototype state may map Do `partial` to Plan `partly` explicitly, but Core does not perform that projection automatically.
+Do records intentionally contain no progress/completion field. Legacy prototype data that stored Do progress requires an explicit migration if it is ever imported into this model; Core does not preserve or reinterpret that field.
+
+The Plan-level completion dimension uses `partly` as its canonical value.
 
 The completion scale is ordinal only. No numeric percentage is inferred. A task planned for 60 minutes may be marked `completed` after 10 minutes without becoming “16.7% complete.”
 
@@ -169,3 +172,13 @@ The model also does not modify `pickJoboRecord`, persistence, sync, backup, rest
 ## Transition note
 
 `classifyAgainstPlan()` and the prototype `TIMING` constants are retained only as a temporary compatibility surface while downstream code is migrated. They are not canonical and should not be used for new persistence or analytics. Before Slice 2 is proposed upstream, either migrate the remaining consumers to `compareExecutionToPlan()` or keep the legacy wrapper explicitly documented as a UI adapter; do not maintain two independent business-rule engines long term.
+
+
+## Do record boundary
+
+A Do record is execution evidence only. Its core fields are identity, task link,
+actual interval, captured title/plan snapshot, source, version timestamps and
+tombstone state. A `progress` field is invalid.
+
+This separation prevents one execution segment from being mistaken for the
+completion state of the Plan that may own several Do attempts.

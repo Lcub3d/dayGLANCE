@@ -522,9 +522,11 @@ export function compareExecutionToPlan(
   result.startTiming = startTiming;
   result.finishTiming = finishTiming;
   result.durationComparison = durationComparison;
-  result.onPlan = startTiming === RELATIVE_TIMING.ON_TIME
-    && finishTiming === RELATIVE_TIMING.ON_TIME
-    && durationComparison === DURATION_COMPARISON.ON_ESTIMATE;
+  // Product-level on-plan is intentionally asymmetric: early/shorter still
+  // count as on-plan, while any lateness or excess estimated effort does not.
+  result.onPlan = startTiming !== RELATIVE_TIMING.LATE
+    && finishTiming !== RELATIVE_TIMING.LATE
+    && durationComparison !== DURATION_COMPARISON.LONGER;
   result.metrics.startOffsetMinutes = startOffsetMinutes;
   result.metrics.finishOffsetMinutes = finishOffsetMinutes;
   result.metrics.durationDifferenceMinutes = durationDifferenceMinutes;

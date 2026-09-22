@@ -2,7 +2,7 @@
 import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  DO_PROGRESS, createDoRecord,
+  createDoRecord,
   PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, COMPLETION_STATUS, EXECUTION_PATTERN,
   ALLEN_RELATION, TIMING_SUMMARY, compareExecutionToPlan, summarizeTiming,
 } from './core.js';
@@ -21,7 +21,6 @@ const record = (patch = {}) => createDoRecord({
   title: 'Test task',
   planSnapshot: plan(),
   source: 'manual',
-  progress: DO_PROGRESS.COMPLETED,
   createdAt: T0,
   updatedAt: T0,
   observedAt: T1,
@@ -137,12 +136,12 @@ describe('theory-driven JOBO comparison', () => {
     });
   });
 
-  it('does not derive plan completion from time or per-Do progress', () => {
+  it('does not derive Plan completion from time or Do records', () => {
     const result = compareExecutionToPlan(plan(), [
-      record({ endTime: '09:10', progress: DO_PROGRESS.COMPLETED }),
+      record({ endTime: '09:10' }),
     ]);
     assert.equal(result.completionStatus, null);
-    assert.equal(result.progress[0].progress, DO_PROGRESS.COMPLETED);
+    assert.equal(Object.hasOwn(result, 'progress'), false);
   });
 
   it('does not fold not-started into the completion dimension', () => {
@@ -163,18 +162,15 @@ describe('theory-driven JOBO comparison', () => {
     );
   });
 
-  it('keeps time independent of progress', () => {
-    const fastComplete = compareExecutionToPlan(plan(), [record({ endTime: '09:10', progress: DO_PROGRESS.COMPLETED })]);
+  it('keeps time independent of Plan completion', () => {
+    const fastComplete = compareExecutionToPlan(plan(), [record({ endTime: '09:10' })], {
+      completionStatus: COMPLETION_STATUS.COMPLETED,
+    });
     assert.equal(fastComplete.metrics.durationRatio, 1 / 6);
-    assert.equal(fastComplete.progress[0].progress, DO_PROGRESS.COMPLETED);
+    assert.equal(fastComplete.completionStatus, COMPLETION_STATUS.COMPLETED);
     assert.equal(Object.hasOwn(fastComplete, 'completionPercent'), false);
   });
 
-  it('preserves ordinal progress values without assigning numeric percentages', () => {
-    const result = compareExecutionToPlan(plan(), [record({ progress: DO_PROGRESS.STARTED }), record({ startTime: '09:20', endTime: '09:40', progress: DO_PROGRESS.PARTIAL }), record({ startTime: '09:40', endTime: '10:00', progress: DO_PROGRESS.MOSTLY })]);
-    assert.deepEqual(result.progress.map(item => item.progress), [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY]);
-    assert.equal(Object.hasOwn(result, 'completionPercent'), false);
-  });
 
   it('distinguishes known no-plan from unknown plan history', () => {
     const r = record({ planSnapshot: null, taskId: null });

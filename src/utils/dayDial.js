@@ -961,6 +961,7 @@ function sunUpPredicate(sun) {
  *   sunriseMin: number|null, sunsetMin: number|null, polar: 'day'|'night'|null,
  *   hours: Array<{sun: number, moon: number}>,   // 24, sampled at hh:30
  *   moon: {fraction: number, waxing: boolean, glyphMin: number|null},
+ *   southern: boolean,   // observer below the equator: mirror the moon's lit limb
  * }}
  */
 export function computeSkySnapshot(date, coords) {
@@ -998,6 +999,10 @@ export function computeSkySnapshot(date, coords) {
     // glyphMin from the same stretch logic the dial uses, so the widget's
     // moon glyph and the dial's sit at the same minute.
     moon: { fraction: round(fraction), waxing, glyphMin: computeMoonBand(date, coords, sun).glyphMin },
+    // The sign of the latitude and nothing more: the widget mirrors the moon
+    // glyph for a southern observer (as DayDial.jsx does) without ever being
+    // sent the coordinates.
+    southern: coords.lat < 0,
   };
 }
 

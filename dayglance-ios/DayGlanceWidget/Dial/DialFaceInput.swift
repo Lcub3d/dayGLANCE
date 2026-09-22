@@ -17,6 +17,9 @@ struct DialMoonGlyph: Equatable {
     var waxing: Bool
     /// Minutes past midnight where the in-app dial places the glyph.
     var minutes: Double
+    /// Southern hemisphere: the lit limb is on the other side (DayDial.jsx's
+    /// `southern`), from the sign of the latitude the snapshot sends.
+    var mirror: Bool = false
 }
 
 struct DialFaceInput: Equatable {
@@ -72,7 +75,8 @@ struct DialFaceInput: Equatable {
         if let sky, let hours = sky.hours, !hours.isEmpty {
             segments = DialSpec.skySegments(hours: hours.map { (sun: $0.sun, moon: $0.moon) })
             if let m = sky.moon, let glyphMin = m.glyphMin {
-                moon = DialMoonGlyph(fraction: m.fraction ?? 0, waxing: m.waxing ?? true, minutes: Double(glyphMin))
+                moon = DialMoonGlyph(fraction: m.fraction ?? 0, waxing: m.waxing ?? true, minutes: Double(glyphMin),
+                                     mirror: sky.southern ?? false)
             }
         }
         self.init(blocks: blocks, sky: segments,
@@ -93,9 +97,30 @@ struct DialFaceInput: Equatable {
             parts.append("s:\(s.hour)|\(s.body == .sun ? "sun" : "moon")|\(s.strength)")
         }
         parts.append("rise=\(sunriseMin.map { "\($0)" } ?? "-")|set=\(sunsetMin.map { "\($0)" } ?? "-")")
-        if let moon { parts.append("moon=\(moon.fraction)|\(moon.waxing ? 1 : 0)|\(moon.minutes)") }
+        if let moon { parts.append("moon=\(moon.fraction)|\(moon.waxing ? 1 : 0)|\(moon.minutes)|\(moon.mirror ? "s" : "n")") }
         return parts.joined(separator: "\n")
     }
+
+    // MARK: placeholder
+
+    /// The face the gallery and a never-opened install show (Phase 5): a
+    /// plausible sky ring and glyphs, ticks and labels, no block band. Not a
+    /// real day, so a fixed mid-latitude summer sky (the palette study's:
+    /// sunrise 05:37, sunset 20:31, a half moon up 21:30–06:30) rather than
+    /// the unlit ring, which would read as broken in a gallery. Keyed like
+    /// any other input, so it is rendered once and cached.
+    static let placeholderSkyHours: [(sun: Double?, moon: Double?)] = {
+        let sun: [Double] = [0, 0, 0, 0, 0, 0, 0.1852, 0.3867, 0.5712, 0.7303, 0.8571, 0.9459,
+                             0.9929, 0.9958, 0.9547, 0.8712, 0.7492, 0.594, 0.4125, 0.2127, 0.0035, 0, 0, 0]
+        let moon: [Double] = [0.433, 0.4924, 0.4924, 0.433, 0.3214, 0.171, 0, 0, 0, 0, 0, 0,
+                              0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.171, 0.3214]
+        return zip(sun, moon).map { (sun: Optional($0.0), moon: Optional($0.1)) }
+    }()
+
+    static let placeholder = DialFaceInput(blocks: [],
+                                           sky: DialSpec.skySegments(hours: placeholderSkyHours),
+                                           sunriseMin: 5 * 60 + 37, sunsetMin: 20 * 60 + 31,
+                                           moon: DialMoonGlyph(fraction: 0.5, waxing: true, minutes: 120))
 
     /// Short, stable hex digest of the seed. Hasher is randomly seeded per
     /// process, so it cannot name a file that must be found again next launch.

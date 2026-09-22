@@ -287,7 +287,7 @@ struct MoonGlyphView: View {
         typealias G = DialSpec.MoonGlyph
         let color = Color(hex: G.colorHex)
         let r = G.radius
-        let geometry = MoonPhase.geometry(r: r, fraction: moon.fraction, waxing: moon.waxing)
+        let geometry = MoonPhase.geometry(r: r, fraction: moon.fraction, waxing: moon.waxing, mirror: moon.mirror)
 
         // "M 0 -r A r r 0 0 s 0 r A rx r 0 0 t 0 -r Z". SVG sweep 1 is
         // clockwise on screen, which is `clockwise: false` here (see the

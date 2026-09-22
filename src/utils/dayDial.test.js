@@ -1302,6 +1302,14 @@ describe('computeSkySnapshot', () => {
     }
   });
 
+  it('flags a southern observer by the sign of the latitude, and sends nothing else about the place', () => {
+    const north = computeSkySnapshot(midsummer, { lat: 39.74, lon: -104.99 });
+    const south = computeSkySnapshot(midsummer, { lat: -33.87, lon: 151.21 });
+    expect(north.southern).toBe(false);
+    expect(south.southern).toBe(true);
+    expect(Object.keys(south)).not.toEqual(expect.arrayContaining(['lat', 'lon', 'coords']));
+  });
+
   it('carries the hairlines\' own rise/set solution', () => {
     const sky = computeSkySnapshot(midsummer, DENVER);
     const sun = getSunTimes(midsummer, DENVER.lat, DENVER.lon);

@@ -5047,7 +5047,8 @@
               "fraction": 0.04,
               "waxing": true,
               "glyphMin": 1164
-            }
+            },
+            "southern": false
           }
         },
         {
@@ -5163,7 +5164,8 @@
               "fraction": 0.49,
               "waxing": true,
               "glyphMin": 1244
-            }
+            },
+            "southern": false
           }
         },
         {
@@ -5279,7 +5281,8 @@
               "fraction": 0.002,
               "waxing": false,
               "glyphMin": null
-            }
+            },
+            "southern": false
           }
         },
         {
@@ -5395,7 +5398,8 @@
               "fraction": 0.925,
               "waxing": true,
               "glyphMin": 1326
-            }
+            },
+            "southern": false
           }
         },
         {
@@ -5511,7 +5515,8 @@
               "fraction": 0.925,
               "waxing": true,
               "glyphMin": 810
-            }
+            },
+            "southern": false
           }
         },
         {

@@ -225,6 +225,7 @@ targets:
       - path: DayGlanceWidget/ColorExtension.swift
       - path: DayGlanceWidget/Dial/DialFaceInput.swift
       - path: DayGlanceWidget/Dial/DialFaceView.swift
+      - path: DayGlanceWidget/Dial/DialHubView.swift
       - path: TestFixtures/widgetSnapshot.live.json
         buildPhase: resources
     dependencies:

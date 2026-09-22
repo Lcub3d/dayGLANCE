@@ -13,8 +13,10 @@ This branch does not yet wire a completion detector, task hook or checkbox UI.
   title, plan and occurrence identity before native completion can advance a
   recurring task. Reuse the same completion identity in the observer so it
   cannot record that same event twice.
-- A new completion appends one Do execution attempt. The Do record contains
-  execution facts only; it does not carry progress/completion.
+- A native completion may append a Do only when a positive actual/retrospective
+  execution interval is available. The Do record contains execution facts only;
+  it does not carry progress/completion. A completion event with no actual
+  interval updates native/Plan state but does not create a zero-minute Do.
 - Plan owns the independent completion assessment:
   `started / partly / mostly / completed`. Native task completion and Plan
   completion may differ; changing Plan completion must not rewrite a Do record.
@@ -36,13 +38,10 @@ completion after reopening uses a new attempt ID.
   09:20–10:00 is 60 minutes. First start/last end still govern delay comparison.
 - Two or more live attempts retain the Interrupted label, including adjacent or
   overlapping intervals. The label reflects the agreed interaction meaning.
-- An unplanned completion with unknown duration may use equal start/end
-  coordinates only when `source === 'completion'` and `planSnapshot === null`.
-  It contributes zero recorded minutes and counts as a recorded attempt. Do not
-  present that zero as measured time or classify it as Not Started. It provides
-  no timing bounds: only positive intervals can produce Within Plan, Delayed
-  or Overrun. A known absent timed plan can still produce Unplanned. No new
-  persisted field is required.
+- Every Do has a strictly positive execution interval. If completion is known
+  but duration is not, do not invent an interval and do not create a placeholder
+  Do. A positive unplanned Do may still use `planSnapshot: null` and be
+  classified as Unplanned.
 - With no recorded attempt, an elapsed current displayed plan may be Not
   Started even if the person is actually working. Once an attempt is recorded,
   judge timing from the execution record and completion from Plan state; do not
@@ -51,8 +50,9 @@ completion after reopening uses a new attempt ID.
 ## Integration acceptance checks
 
 Before calling the checkbox wired, verify that checking completes the native
-task and persists one Do; replay creates no duplicate; changing Plan completion
-to `mostly` does not mutate that Do; unchecking does not rewrite historical Do
-records; and a later check creates a new attempt. Verify native completion behavior,
+task; when a positive execution interval exists it persists one Do and replay
+creates no duplicate; when no interval exists it creates no fake Do; changing
+Plan completion to `mostly` does not mutate historical Do records; unchecking
+does not rewrite them; and a later recorded execution creates a new attempt. Verify native completion behavior,
 recurring-task snapshot capture and ledger failure handling through their
 existing paths. Pure-core tests alone do not establish these UI/storage effects.

@@ -38,8 +38,8 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.startTiming, RELATIVE_TIMING.ON_TIME);
     assert.equal(result.finishTiming, RELATIVE_TIMING.ON_TIME);
     assert.equal(result.durationComparison, DURATION_COMPARISON.ON_ESTIMATE);
-    assert.equal(result.onPlan, true);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN]);
+    assert.equal(result.withinPlan, true);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN]);
   });
 
   it('does not collapse late start, early finish and shorter duration into one status', () => {
@@ -69,13 +69,13 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LONGER]);
   });
 
-  it('treats early and shorter execution as on-plan when nothing is late or longer', () => {
+  it('treats early and shorter execution as within-plan when nothing is late or longer', () => {
     const result = compareExecutionToPlan(plan(), [record({ startTime: '08:50', endTime: '09:40' })]);
     assert.equal(result.startTiming, RELATIVE_TIMING.EARLY);
     assert.equal(result.finishTiming, RELATIVE_TIMING.EARLY);
     assert.equal(result.durationComparison, DURATION_COMPARISON.SHORTER);
-    assert.equal(result.onPlan, true);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN]);
+    assert.equal(result.withinPlan, true);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN]);
   });
 
   it('keeps raw offsets stable while tolerance changes only classification', () => {
@@ -86,7 +86,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(tolerant.metrics.startOffsetMinutes, 4);
     assert.equal(exact.startTiming, RELATIVE_TIMING.LATE);
     assert.equal(tolerant.startTiming, RELATIVE_TIMING.ON_TIME);
-    assert.equal(tolerant.onPlan, true);
+    assert.equal(tolerant.withinPlan, true);
   });
 
   it('rejects negative and nonnumeric tolerance instead of inventing policy', () => {
@@ -114,11 +114,11 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.durationComparison, DURATION_COMPARISON.SHORTER);
   });
 
-  it('lets on-plan coexist with split sessions', () => {
+  it('lets within-plan coexist with split sessions', () => {
     const result = compareExecutionToPlan(plan(), [record({ startTime: '09:00', endTime: '09:30' }), record({ startTime: '09:30', endTime: '10:00' })]);
-    assert.equal(result.onPlan, true);
+    assert.equal(result.withinPlan, true);
     assert.equal(result.executionPattern, EXECUTION_PATTERN.SPLIT_SESSIONS);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN, TIMING_SUMMARY.SPLIT]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
   });
 
   it('keeps time independent of progress', () => {

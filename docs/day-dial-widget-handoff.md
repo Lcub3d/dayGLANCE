@@ -496,8 +496,13 @@ curated fixture day, so it is not to be removed when the real widget changes.
   counts seconds ("17 min, 37 sec left"). A static form was exact only at
   each entry, so up to a quarter of an hour old between them. The row is now
   `Text(.currentDate, format: .offset(to:))` restricted to hours and minutes
-  (iOS 18+), spliced into the catalog phrase "%@ left": system-updated every
-  minute, never seconds, never past zero (the block's end is an entry).
+  (iOS 18+), inside the catalog phrase "%@ left": system-updated every
+  minute, never seconds, never past zero (the block's end is an entry). The
+  phrase is drawn as three separate Texts around the live one, **never as a
+  `+` concatenation**: concatenated, the iOS 18 text archived as nothing on
+  the Home Screen and every hub row after it went with it, while the gallery
+  (rendered once, not archived ahead) showed it fine. Phase 4's relative
+  style concatenated without trouble; the new text does not.
   Below iOS 18 the static "17m left" is drawn. And the end time has a row of
   its own: title, "until 19:00", "17 minutes left", runway. Rows under the
   title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch from 211) with

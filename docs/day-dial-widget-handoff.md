@@ -418,30 +418,40 @@ web geometry unchanged; sizing is Phase 2 design work, see §7).
 
 ## 8. Still to verify on device
 
+Walked on device on 21 Sep 2026 (iPhone, iOS 26; iPad mini). Everything
+below passed except item 2, which needs hardware this project's iOS devices
+do not have.
+
 1. ~~Render budget across the timeline.~~ **Verified** (§6 "Result"): 96
    entries on schedule, 28 ms cold render, 13–18 MB footprint on an A16.
-2. Low-opacity sky-ring segments at dawn and dusk on OLED in daylight — opacity
-   carries the signal alone now that width is constant. If the faintest segments
-   disappear, raise the floor and compress the range rather than widening.
-3. Lora 500 at 28pt — display serifs can go spindly when shrunk. May need 600.
-4. Dense-day legibility of the separator cut at 1.6pt.
-5. **Sunrise/sunset glyph angles match real solar times** for the device's
-   location — the spec fixture's 05:37 / 20:31 are placeholders. Compare the
-   drawn glyphs against `sky.sunriseMin` / `sunsetMin` in the snapshot and
-   against a reference almanac for the day; a mismatch is a `computeSkySnapshot`
-   or angle-mapping bug, not a design question.
-6. **Tinted.** Long-press the Home Screen → Edit → Customize → Tinted, pick a
-   colour. The Day Dial: white ring, band and glyphs on the tinted ground,
-   hub text and needle visible, separators showing as gaps between touching
-   blocks. The Dial Preview's corner reads `accented`. Up Next, Goal and
-   Project: text, bars and progress in white, nothing missing. Screenshot each.
-7. **Clear** (iOS 26): the same menu → Clear. Same expectations on the glass
-   background; the face's transparent ground is what lets the wallpaper show
-   through the dial. Screenshot.
-8. **Small iPhone.** On an SE or 8 (321×324) or a mini (329×345), or in the
-   simulator: the dial fills the widget's height with a few points of side
-   margin, the hour labels and the projected note stay legible, nothing is
-   clipped. The sweep's numbers are in "Phase 5 decisions" → Sizes.
+2. **Open — for the Android port.** Low-opacity sky-ring segments at dawn
+   and dusk on OLED in daylight: opacity carries the signal alone now that
+   width is constant. No OLED iOS device is available to this project, so
+   the check moves to the Android port (§"Android, if it happens"), whose
+   test devices are OLED. If the faintest segments disappear there, raise the
+   floor and compress the range rather than widening, and mirror the change
+   in `DialSpec.skyOpacity` so both platforms agree.
+3. ~~Lora 500 at 28pt.~~ **Pass**: holds at 28pt on the phone; 600 not needed.
+4. ~~Dense-day legibility of the separator cut at 1.6pt.~~ **Pass.**
+5. ~~Sunrise/sunset glyph angles match real solar times.~~ **Pass** for the
+   device's geocoded location against the day's actual times.
+6. ~~Tinted.~~ **Pass**: the mono face on the tinted ground, hub and needle
+   visible, separators as gaps; the three list widgets complete in white.
+7. ~~Clear (iOS 26).~~ **Pass**: the same over glass.
+8. ~~Small sizes.~~ **Pass on iPad mini** (306×306, the sweep's floor, factor
+   0.80): nothing clipped or misdrawn. Legible but small — at that size the
+   dial is a glance, not a read. The iPhone floor (321×324) was not on hand
+   and is covered by `SizeSweepTests`.
+
+**On a bigger dial for iPad.** WidgetKit's families are fixed and none is a
+larger square: `systemLarge` is the largest square-ish family (306–379pt on
+iPad, by model), and the only bigger one, `systemExtraLarge` (iPad only),
+is a 2:1 landscape rectangle of two rows by four columns. A bigger dial on
+iPad would therefore mean an extra-large widget with the dial centred and
+the leftover width used for something — the day's list, or the hub's rows
+beside the ring instead of inside it. Deferred with the Android port; the
+face scales from the same spec coordinates, so only the layout around it
+would be new.
 
 ---
 

@@ -6,9 +6,9 @@ It proposes one explicit revision to the merged #1744 persistence contract:
 Do records no longer carry progress/completion. Completion belongs to Plan.
 It does not wire UI, storage, sync or task completion.
 
-The existing `classifyAgainstPlan()` API remains untouched for compatibility
-while this model is reviewed. New Slice 2 consumers should prefer
-`compareExecutionToPlan()` exported directly from `src/jobo/core.js`.
+`classifyAgainstPlan()` remains only as a compatibility adapter. It delegates
+all timing decisions to `compareExecutionToPlan()`; there is one rules engine,
+not two. New Slice 2 consumers should use `compareExecutionToPlan()` directly.
 
 ## Why the old five labels are not canonical
 
@@ -60,16 +60,20 @@ Raw signed offsets are always retained. `on_time` depends on an explicit non-neg
 - `on_estimate`
 - `longer`
 
-Duration comparison uses the **sum of per-attempt recorded durations**. This is the effort attributed to the task. `activeMinutes` separately stores the union of actual wall-clock coverage so overlapping attempts are visible rather than silently double-counted as unique time.
+Duration comparison uses **overlap-deduplicated actual time**. Multiple Do
+intervals may overlap, but the same wall-clock minute is counted once when
+deciding `longer`.
 
 For example, 09:00–09:40 plus 09:20–10:00 gives:
 
-- `recordedMinutes = 80`
-- `activeMinutes = 60`
+- `attemptMinutes = 80` — raw sum of attempt durations
+- `recordedMinutes = 60` — canonical actual time
+- `activeMinutes = 60` — union of wall-clock coverage
 - `overlapMinutes = 20`
 - `elapsedMinutes = 60`
 
-This permits effort and unique clock coverage to answer different questions.
+The user-confirmed 40 + 30 with 10 minutes overlap therefore gives 60 actual
+minutes, not 70.
 
 ### Execution pattern
 
@@ -87,11 +91,22 @@ Plan has a separate completion dimension:
 - `mostly`
 - `completed`
 
-This is an ordinal assessment owned by the Plan. It is not derived from elapsed time, timing labels, or any Do record.
+This is an ordinal assessment owned by an identified Plan instance. A non-null
+`completionStatus` therefore requires a stable Plan `id`; it is not accepted
+as a free-standing comparison option. Plan revisions passed as `plan` and
+`displayedPlan` must identify the same Plan when both expose ids.
 
-`not_started` is deliberately **not** part of this four-level completion dimension. It remains a time-gated timing result: no live Do exists and the current displayed Plan has fully elapsed.
+`not_started` is deliberately **not** part of this four-level completion
+dimension. It remains time-gated: no live Do exists, the current displayed Plan
+has fully elapsed, and the Plan has no explicit completion assessment. This
+prevents contradictory `Completed + Not Started` output.
 
-Do records intentionally contain no progress/completion field. Legacy prototype data that stored Do progress requires an explicit migration if it is ever imported into this model; Core does not preserve or reinterpret that field.
+Do records intentionally contain no progress/completion field. Legacy
+prototype/#1744 rows use the explicit `migrateLegacyDoRecord()` boundary:
+the record is returned without `progress`, while a separate
+`legacyCompletionStatus` is returned for the caller to attach to the correct
+identified Plan if appropriate. On an exact merge tie, `pickJoboRecord()`
+prefers the progress-free canonical row so migration does not oscillate.
 
 The Plan-level completion dimension uses `partly` as its canonical value.
 
@@ -103,21 +118,24 @@ For a comparable planned execution:
 
 - `startOffsetMinutes = actual first start - planned start`
 - `finishOffsetMinutes = actual final finish - planned finish`
-- `durationDifferenceMinutes = sum(recorded attempt minutes) - planned duration`
-- `durationRatio = sum(recorded attempt minutes) / planned duration`
+- `durationDifferenceMinutes = recordedMinutes - planned duration`
+- `durationRatio = recordedMinutes / planned duration`
 - `planOverlapMinutes = unique active minutes inside the plan interval`
 
 For the execution itself, regardless of plan availability:
 
-- `recordedMinutes` — sum of positive attempt durations
-- `activeMinutes` — union of wall-clock intervals
-- `elapsedMinutes` — first timed start to last timed finish
+- `attemptMinutes` — raw sum of positive attempt durations
+- `recordedMinutes` — overlap-deduplicated actual time
+- `activeMinutes` — same union of wall-clock intervals as `recordedMinutes`
+- `elapsedMinutes` — first start to last finish
 - `gapMinutes = elapsedMinutes - activeMinutes`
-- `overlapMinutes = recordedMinutes - activeMinutes`
+- `overlapMinutes = attemptMinutes - activeMinutes`
 - `attemptCount`
 - `timedSessionCount`
 
-A zero-minute completion placeholder counts as an attempt but not as measured work time.
+Every Do must have a positive execution interval. A native/task completion with
+no actual interval may still update Plan/native completion state, but it does
+not create a zero-minute Do placeholder.
 
 ## Interval relation
 
@@ -146,7 +164,7 @@ Rules:
 - `late`: start is late **or** finish is late under the supplied tolerance policy.
 - `longer`: recorded effort is longer than the plan duration under the supplied duration tolerance.
 - `split`: two or more live Do attempts exist.
-- `not_started`: no live attempt exists and the current displayed plan has fully elapsed.
+- `not_started`: no live attempt exists, the current displayed Plan has fully elapsed, and no explicit Plan completion assessment exists.
 - `unplanned`: the caller explicitly knows there was no timed plan.
 - `unknown` remains a lower-level Plan Context state and intentionally emits no product summary label.
 
@@ -171,7 +189,9 @@ The model also does not modify `pickJoboRecord`, persistence, sync, backup, rest
 
 ## Transition note
 
-`classifyAgainstPlan()` and the prototype `TIMING` constants are retained only as a temporary compatibility surface while downstream code is migrated. They are not canonical and should not be used for new persistence or analytics. Before Slice 2 is proposed upstream, either migrate the remaining consumers to `compareExecutionToPlan()` or keep the legacy wrapper explicitly documented as a UI adapter; do not maintain two independent business-rule engines long term.
+`classifyAgainstPlan()` and the prototype `TIMING` constants are retained only
+as a temporary compatibility surface. The wrapper translates canonical labels
+from `compareExecutionToPlan()`; it contains no independent timing rules.
 
 
 ## Do record boundary

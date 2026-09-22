@@ -117,7 +117,7 @@ The thirteen values are:
 
 Canonical labels:
 
-- `on_plan`
+- `within_plan`
 - `late`
 - `longer`
 - `split`
@@ -126,7 +126,7 @@ Canonical labels:
 
 Rules:
 
-- `on_plan`: a comparable planned execution exists and it is neither late nor longer. Early starts, early finishes and shorter execution can still be on-plan because they do not represent lateness or excess estimated effort.
+- `within_plan`: a comparable planned execution exists and it is neither late nor longer. Early starts, early finishes and shorter execution can still be within-plan because they do not represent lateness or excess estimated effort.
 - `late`: start is late **or** finish is late under the supplied tolerance policy.
 - `longer`: recorded effort is longer than the plan duration under the supplied duration tolerance.
 - `split`: two or more live Do attempts exist.
@@ -140,7 +140,7 @@ Valid combinations include:
 - `late + split`
 - `longer + split`
 - `late + longer + split`
-- `on_plan + split`
+- `within_plan + split`
 
 Detailed dimensions such as early/late start, early/late finish, shorter/on-estimate/longer and Allen interval relation remain available for explanation, analytics and future UI drill-down. They are not canonical summary labels.
 

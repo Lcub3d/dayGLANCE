@@ -81,7 +81,7 @@ describe('DesktopHeader layout', () => {
     fixture.locale = locale;
     fixture.formatRange.mockReturnValue('28. September – 4. Oktober 2026');
     const button = titleButton(render());
-    expect(button).toContain('min-w-0 truncate');
+    expect(button).toContain('w-52 basis-52 shrink min-w-0 truncate');
     expect(button).not.toContain('min-w-[13rem]');
     expect(button).toContain('title="28. September – 4. Oktober 2026"');
     expect(button).toContain('>28. September – 4. Oktober 2026</button>');
@@ -127,6 +127,13 @@ describe('DesktopHeader layout', () => {
     expect(fixture.formatMonth).toHaveBeenCalledWith(date, { month: 'long', year: 'numeric' }, 'en');
   });
 
+  it('keeps navigation hit targets non-shrinking beside the flexible date label', () => {
+    const html = render();
+    expect(html.match(/<button[^>]*aria-label="common.back"[^>]*>/)?.[0]).toContain('flex-shrink-0');
+    expect(html.match(/<button[^>]*aria-label="common.next"[^>]*>/)?.[0]).toContain('flex-shrink-0');
+    expect(html.match(/<button[^>]*>common\.today<\/button>/)?.[0]).toContain('flex-shrink-0');
+  });
+
   it('compiles the layout with the project Tailwind version', async () => {
     const raw = readFileSync(new URL('./DesktopHeader.jsx', import.meta.url), 'utf8');
     const result = await postcss([tailwindcss({ content: [{ raw, extension: 'jsx' }], corePlugins: { preflight: false } })])
@@ -134,5 +141,19 @@ describe('DesktopHeader layout', () => {
     const grids = [];
     result.root.walkDecls('grid-template-columns', decl => grids.push(decl.value.replace(/\s/g, '')));
     expect(grids).toContain('minmax(max-content,1fr)minmax(0,auto)minmax(max-content,1fr)');
+    // Width stabilizes the auto grid track's intrinsic size; basis alone still
+    // contracts around short labels. Neither restores a rigid minimum width.
+    for (const [selector, property, expected] of [
+      ['.w-52', 'width', '13rem'],
+      ['.basis-52', 'flex-basis', '13rem'],
+      ['.shrink', 'flex-shrink', '1'],
+      ['.min-w-0', 'min-width', '0px'],
+    ]) {
+      const values = [];
+      result.root.walkRules(selector, rule => {
+        rule.walkDecls(property, declaration => values.push(declaration.value));
+      });
+      expect(values).toContain(expected);
+    }
   });
 });

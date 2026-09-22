@@ -152,7 +152,7 @@ const DesktopHeader = () => {
                 if (!showMonthView) setViewedMonth(new Date(selectedDate));
                 setShowMonthView(!showMonthView);
               }}
-              className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center min-w-0 truncate`}
+              className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center w-52 basis-52 shrink min-w-0 truncate`}
               title={dateLabel}
             >
               {dateLabel}

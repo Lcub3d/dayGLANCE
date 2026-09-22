@@ -38,8 +38,8 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.startTiming, RELATIVE_TIMING.ON_TIME);
     assert.equal(result.finishTiming, RELATIVE_TIMING.ON_TIME);
     assert.equal(result.durationComparison, DURATION_COMPARISON.ON_ESTIMATE);
-    assert.equal(result.matchesPlan, true);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.MATCHES_PLAN]);
+    assert.equal(result.onPlan, true);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN]);
   });
 
   it('does not collapse late start, early finish and shorter duration into one status', () => {
@@ -49,7 +49,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.metrics.finishOffsetMinutes, -10);
     assert.equal(result.metrics.durationDifferenceMinutes, -30);
     assert.equal(result.metrics.durationRatio, 0.5);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LATE_START, TIMING_SUMMARY.EARLY_FINISH, TIMING_SUMMARY.SHORTER]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LATE]);
   });
 
   it('separates late finish from longer duration', () => {
@@ -58,7 +58,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.finishTiming, RELATIVE_TIMING.LATE);
     assert.equal(result.durationComparison, DURATION_COMPARISON.ON_ESTIMATE);
     assert.equal(result.metrics.durationDifferenceMinutes, 0);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LATE_START, TIMING_SUMMARY.LATE_FINISH]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LATE]);
   });
 
   it('allows early start, on-time finish and longer duration to coexist', () => {
@@ -66,7 +66,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.startTiming, RELATIVE_TIMING.EARLY);
     assert.equal(result.finishTiming, RELATIVE_TIMING.ON_TIME);
     assert.equal(result.durationComparison, DURATION_COMPARISON.LONGER);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.EARLY_START, TIMING_SUMMARY.LONGER]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.LONGER]);
   });
 
   it('keeps raw offsets stable while tolerance changes only classification', () => {
@@ -77,7 +77,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(tolerant.metrics.startOffsetMinutes, 4);
     assert.equal(exact.startTiming, RELATIVE_TIMING.LATE);
     assert.equal(tolerant.startTiming, RELATIVE_TIMING.ON_TIME);
-    assert.equal(tolerant.matchesPlan, true);
+    assert.equal(tolerant.onPlan, true);
   });
 
   it('rejects negative and nonnumeric tolerance instead of inventing policy', () => {
@@ -107,9 +107,9 @@ describe('theory-driven JOBO comparison', () => {
 
   it('lets matches-plan coexist with split sessions', () => {
     const result = compareExecutionToPlan(plan(), [record({ startTime: '09:00', endTime: '09:30' }), record({ startTime: '09:30', endTime: '10:00' })]);
-    assert.equal(result.matchesPlan, true);
+    assert.equal(result.onPlan, true);
     assert.equal(result.executionPattern, EXECUTION_PATTERN.SPLIT_SESSIONS);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.MATCHES_PLAN, TIMING_SUMMARY.SPLIT_SESSIONS]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.ON_PLAN, TIMING_SUMMARY.SPLIT]);
   });
 
   it('keeps time independent of progress', () => {
@@ -131,8 +131,38 @@ describe('theory-driven JOBO comparison', () => {
     const unknown = compareExecutionToPlan(null, [r]);
     assert.equal(noPlan.planContext, PLAN_CONTEXT.NO_PLAN);
     assert.equal(unknown.planContext, PLAN_CONTEXT.UNKNOWN);
-    assert.deepEqual(summarizeTiming(noPlan), [TIMING_SUMMARY.NO_PLAN]);
-    assert.deepEqual(summarizeTiming(unknown), [TIMING_SUMMARY.PLAN_UNKNOWN]);
+    assert.deepEqual(summarizeTiming(noPlan), [TIMING_SUMMARY.UNPLANNED]);
+    assert.deepEqual(summarizeTiming(unknown), []);
+  });
+
+
+  it('supports the canonical late + longer + split combination', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ startTime: '09:20', endTime: '10:00' }),
+      record({ startTime: '10:10', endTime: '10:50' }),
+    ]);
+    assert.deepEqual(summarizeTiming(result), [
+      TIMING_SUMMARY.LATE,
+      TIMING_SUMMARY.LONGER,
+      TIMING_SUMMARY.SPLIT,
+    ]);
+  });
+
+  it('supports longer + split without late', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ startTime: '08:50', endTime: '09:40' }),
+      record({ startTime: '09:40', endTime: '10:00' }),
+    ]);
+    assert.deepEqual(summarizeTiming(result), [
+      TIMING_SUMMARY.LONGER,
+      TIMING_SUMMARY.SPLIT,
+    ]);
+  });
+
+  it('keeps unknown plan context out of the canonical product summary', () => {
+    const result = compareExecutionToPlan(null, [record()]);
+    assert.equal(result.planContext, PLAN_CONTEXT.UNKNOWN);
+    assert.deepEqual(summarizeTiming(result), []);
   });
 
   it('does not fabricate plan-comparison metrics for no-plan or unknown history', () => {
@@ -162,7 +192,7 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.metrics.timedSessionCount, 0);
     assert.equal(result.notStarted, false);
     assert.equal(result.comparable, false);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.NO_PLAN]);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.UNPLANNED]);
   });
 
   it('handles cross-midnight civil comparisons', () => {

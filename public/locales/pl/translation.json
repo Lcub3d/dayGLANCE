@@ -426,6 +426,8 @@
     "showWeatherInHeader": "Pokaż pogodę w nagłówku",
     "weatherZipLabel": "Kod pocztowy lub nazwa miasta",
     "weatherTempUnit": "Jednostka temperatury",
+    "location": "Lokalizacja",
+    "locationHelp": "Wschód i zachód słońca, księżyc oraz pogoda godzinowa na Tarczy dnia i jej widżecie na ekranie głównym są wyliczane dla tego miejsca.",
     "dailyContent": "Treści dnia",
     "showDailyContent": "Pokaż codzienne porady i cytaty w nagłówku",
     "goalsProjects": "Cele i projekty",

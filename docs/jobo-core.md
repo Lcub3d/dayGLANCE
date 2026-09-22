@@ -22,7 +22,7 @@ or the upstream implementation has already changed. See the
 | `updateDoRecord(record, patch, updatedAt)` | Patches only interval fields and/or progress, never captured identity/title/plan/source/creation/observation data. |
 | `tombstoneDoRecord(record, updatedAt)` | Returns a retained `deleted: true` version; repeat deletion is a no-op. |
 | `completeDoAttempt(records, input)` | Pure ensure-present by caller-supplied completion ID; otherwise appends a Completed attempt. |
-| `reopenDoAttempt(records, previousId, updatedAt)` | Changes a Completed attempt to Partially Completed; preserves Started, Partially Completed and Mostly Completed. Keeps interval and snapshot. Missing or deleted attempts are not recreated. |
+| `reopenDoAttempt(records, previousId, updatedAt)` | Changes a Completed attempt to Partly Completed; preserves Started, Partly Completed and Mostly Completed. Keeps interval and snapshot. Missing or deleted attempts are not recreated. |
 | `doDurationMinutes(record)` | Civil-clock minutes, including explicit `endDate`; zero is allowed only for an unmeasured, unplanned completion. |
 | `classifyAgainstPlan(plan, records, options)` | Independent timing labels and a per-attempt progress list, with recorded minutes and attempt count. |
 | `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, smaller recursively canonical JSON. |
@@ -147,7 +147,7 @@ are excluded from analysis but never removed from a collection. Duplicate IDs
 must be merged first, not silently double-counted.
 Here Not Started means that the user has not recorded an attempt; it is not
 live activity detection. A five-minute recorded attempt may remain Within Plan
-and Partially Completed after the plan ends: the passage of time alone does not
+and Partly Completed after the plan ends: the passage of time alone does not
 make the historical interval delayed. When comparing Original Plan after a
 reschedule, pass the current plan as `displayedPlan` for this no-attempt check.
 

@@ -317,6 +317,13 @@ export const DURATION_COMPARISON = Object.freeze({
   LONGER: 'longer',
 });
 
+export const COMPLETION_STATUS = Object.freeze({
+  STARTED: 'started',
+  PARTLY: 'partly',
+  MOSTLY: 'mostly',
+  COMPLETED: 'completed',
+});
+
 export const EXECUTION_PATTERN = Object.freeze({
   SINGLE_SESSION: 'single_session',
   SPLIT_SESSIONS: 'split_sessions',
@@ -351,6 +358,14 @@ function comparisonTolerance(value, name) {
   if (value === undefined) return 0;
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     throw new TypeError(`${name} tolerance must be a finite non-negative number`);
+  }
+  return value;
+}
+
+function completionStatusValue(value) {
+  if (value == null) return null;
+  if (!Object.values(COMPLETION_STATUS).includes(value)) {
+    throw new TypeError('completionStatus must be started, partly, mostly, completed, or null');
   }
   return value;
 }
@@ -412,7 +427,7 @@ function unionBoundsMinutes(bounds) {
   return minutes;
 }
 
-function compariswithinPlanOverlap(bounds, anchor) {
+function comparisonPlanOverlap(bounds, anchor) {
   const clipped = bounds.map(({ start, end }) => ({
     start: Math.max(start, anchor.start),
     end: Math.min(end, anchor.end),
@@ -436,6 +451,7 @@ export function compareExecutionToPlan(
     now,
     knownUnplanned = false,
     tolerance = {},
+    completionStatus = null,
   } = {},
 ) {
   if (!Array.isArray(records)) throw new TypeError('Expected an attempt array');
@@ -446,6 +462,7 @@ export function compareExecutionToPlan(
   const current = displayedPlan == null ? null : planBounds(displayedPlan);
   const nowMinute = now === undefined ? null : civilMinute(now?.date, now?.time);
   const policy = comparisonPolicy(tolerance);
+  const planCompletionStatus = completionStatusValue(completionStatus);
 
   const ids = new Set();
   const attempts = [];
@@ -489,6 +506,7 @@ export function compareExecutionToPlan(
     startTiming: null,
     finishTiming: null,
     durationComparison: null,
+    completionStatus: planCompletionStatus,
     withinPlan: false,
     metrics: {
       startOffsetMinutes: null,
@@ -531,7 +549,7 @@ export function compareExecutionToPlan(
   result.metrics.finishOffsetMinutes = finishOffsetMinutes;
   result.metrics.durationDifferenceMinutes = durationDifferenceMinutes;
   result.metrics.durationRatio = durationRatio;
-  result.metrics.planOverlapMinutes = compariswithinPlanOverlap(bounds, anchor);
+  result.metrics.planOverlapMinutes = comparisonPlanOverlap(bounds, anchor);
   return result;
 }
 

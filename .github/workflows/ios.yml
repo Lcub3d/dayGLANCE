@@ -71,10 +71,14 @@ jobs:
       # npm run ios = build:ios (vite → dayglance-ios/DayGlance/Resources/web)
       # then ios:generate (scripts/gen-ios-project.sh → DayGlance.xcodeproj).
       # BUILD_NUMBER is pinned so CI doesn't depend on the wall clock.
+      # DIAL_PREVIEW compiles the Day Dial preview widget into this CI build
+      # so its code is checked with everything else; a release build never
+      # sets the flag (project.yml), so it is not in what ships.
       - name: Build web assets and generate Xcode project
         run: npm run ios
         env:
           BUILD_NUMBER: '0.0'
+          DG_WIDGET_FLAGS: DIAL_PREVIEW
 
       # The project's Copy Web Assets phase only *errors* on a Release build; on
       # Debug it just warns. Without this check a green Debug build could still

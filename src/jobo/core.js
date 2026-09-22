@@ -339,17 +339,12 @@ export const ALLEN_RELATION = Object.freeze({
 });
 
 export const TIMING_SUMMARY = Object.freeze({
-  MATCHES_PLAN: 'matches_plan',
-  EARLY_START: 'early_start',
-  LATE_START: 'late_start',
-  EARLY_FINISH: 'early_finish',
-  LATE_FINISH: 'late_finish',
-  SHORTER: 'shorter',
+  ON_PLAN: 'on_plan',
+  LATE: 'late',
   LONGER: 'longer',
-  SPLIT_SESSIONS: 'split_sessions',
-  NO_PLAN: 'no_plan',
-  PLAN_UNKNOWN: 'plan_unknown',
+  SPLIT: 'split',
   NOT_STARTED: 'not_started',
+  UNPLANNED: 'unplanned',
 });
 
 function comparisonTolerance(value, name) {
@@ -494,7 +489,7 @@ export function compareExecutionToPlan(
     startTiming: null,
     finishTiming: null,
     durationComparison: null,
-    matchesPlan: false,
+    onPlan: false,
     metrics: {
       startOffsetMinutes: null,
       finishOffsetMinutes: null,
@@ -527,7 +522,7 @@ export function compareExecutionToPlan(
   result.startTiming = startTiming;
   result.finishTiming = finishTiming;
   result.durationComparison = durationComparison;
-  result.matchesPlan = startTiming === RELATIVE_TIMING.ON_TIME
+  result.onPlan = startTiming === RELATIVE_TIMING.ON_TIME
     && finishTiming === RELATIVE_TIMING.ON_TIME
     && durationComparison === DURATION_COMPARISON.ON_ESTIMATE;
   result.metrics.startOffsetMinutes = startOffsetMinutes;
@@ -546,26 +541,28 @@ export function summarizeTiming(comparison) {
   if (!plain(comparison) || !plain(comparison.metrics)) {
     throw new TypeError('Expected a comparison result');
   }
-  const labels = [];
-  if (comparison.notStarted) labels.push(TIMING_SUMMARY.NOT_STARTED);
-  if (comparison.planContext === PLAN_CONTEXT.NO_PLAN) labels.push(TIMING_SUMMARY.NO_PLAN);
-  else if (comparison.planContext === PLAN_CONTEXT.UNKNOWN && comparison.metrics.attemptCount > 0) {
-    labels.push(TIMING_SUMMARY.PLAN_UNKNOWN);
-  }
 
-  if (comparison.matchesPlan) {
-    labels.push(TIMING_SUMMARY.MATCHES_PLAN);
-  } else if (comparison.comparable) {
-    if (comparison.startTiming === RELATIVE_TIMING.EARLY) labels.push(TIMING_SUMMARY.EARLY_START);
-    else if (comparison.startTiming === RELATIVE_TIMING.LATE) labels.push(TIMING_SUMMARY.LATE_START);
-    if (comparison.finishTiming === RELATIVE_TIMING.EARLY) labels.push(TIMING_SUMMARY.EARLY_FINISH);
-    else if (comparison.finishTiming === RELATIVE_TIMING.LATE) labels.push(TIMING_SUMMARY.LATE_FINISH);
-    if (comparison.durationComparison === DURATION_COMPARISON.SHORTER) labels.push(TIMING_SUMMARY.SHORTER);
-    else if (comparison.durationComparison === DURATION_COMPARISON.LONGER) labels.push(TIMING_SUMMARY.LONGER);
+  // Canonical product summary is intentionally small and multi-label.
+  // Detailed start/finish/duration/Allen dimensions remain available above.
+  const labels = [];
+
+  if (comparison.notStarted) {
+    labels.push(TIMING_SUMMARY.NOT_STARTED);
+  } else if (comparison.planContext === PLAN_CONTEXT.NO_PLAN) {
+    labels.push(TIMING_SUMMARY.UNPLANNED);
+  } else if (comparison.comparable && comparison.metrics.attemptCount > 0) {
+    const late = comparison.startTiming === RELATIVE_TIMING.LATE
+      || comparison.finishTiming === RELATIVE_TIMING.LATE;
+    const longer = comparison.durationComparison === DURATION_COMPARISON.LONGER;
+
+    if (!late && !longer) labels.push(TIMING_SUMMARY.ON_PLAN);
+    if (late) labels.push(TIMING_SUMMARY.LATE);
+    if (longer) labels.push(TIMING_SUMMARY.LONGER);
   }
 
   if (comparison.executionPattern === EXECUTION_PATTERN.SPLIT_SESSIONS) {
-    labels.push(TIMING_SUMMARY.SPLIT_SESSIONS);
+    labels.push(TIMING_SUMMARY.SPLIT);
   }
+
   return labels;
 }

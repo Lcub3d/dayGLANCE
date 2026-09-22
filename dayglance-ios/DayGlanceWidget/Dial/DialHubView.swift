@@ -76,19 +76,14 @@ enum DialHubTypography {
 
 /// Clock text for a minute of the day, following the app's 24-hour
 /// preference the way the other widgets and WidgetFreshness do: the
-/// snapshot's `use24Hour` when it carries one, else the device's setting.
+/// snapshot's `use24Hour` when it carries one, else the device's setting
+/// (ClockPreference, which sets the locale's hour cycle, not just the field).
 enum DialHubClock {
     static func text(minutesOfDay: Double, use24Hour: Bool?, calendar: Calendar = .current, reference: Date = Date()) -> String {
         let total = Int(minutesOfDay.rounded()) % Int(DialGeometry.dayMinutes)
         let m = (total + Int(DialGeometry.dayMinutes)) % Int(DialGeometry.dayMinutes)
         let date = calendar.date(bySettingHour: m / 60, minute: m % 60, second: 0, of: reference) ?? reference
-        var style = Date.FormatStyle().minute()
-        switch use24Hour {
-        case .some(true): style = style.hour(.twoDigits(amPM: .omitted))
-        case .some(false): style = style.hour(.defaultDigits(amPM: .abbreviated))
-        case .none: style = style.hour()
-        }
-        return date.formatted(style)
+        return date.formatted(ClockPreference.hour(Date.FormatStyle().minute(), use24Hour: use24Hour))
     }
 
     /// "1h 10m", "45m", "2h" — hours and minutes in the locale's own narrow

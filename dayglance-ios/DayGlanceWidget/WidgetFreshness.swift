@@ -104,12 +104,8 @@ struct WidgetFreshness {
     private func detailParts(use24Hour: Bool?) -> [String] {
         var parts: [String] = []
         if let capturedAt {
-            var style = Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day().minute()
-            switch use24Hour {
-            case .some(true): style = style.hour(.twoDigits(amPM: .omitted))
-            case .some(false): style = style.hour(.defaultDigits(amPM: .abbreviated))
-            case .none: style = style.hour()
-            }
+            let style = ClockPreference.hour(Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day().minute(),
+                                             use24Hour: use24Hour)
             parts.append(String(localized: "as of \(capturedAt.formatted(style))"))
         } else if let snapshotDay {
             let style = Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day()
@@ -126,13 +122,33 @@ struct WidgetFreshness {
     /// changed since the push; this says when that was, and nothing more.
     func plannedAsOfLabel(use24Hour: Bool?) -> String {
         guard let capturedAt else { return String(localized: "Planned in advance") }
-        var style = Date.FormatStyle().weekday(.abbreviated).minute()
-        switch use24Hour {
-        case .some(true): style = style.hour(.twoDigits(amPM: .omitted))
-        case .some(false): style = style.hour(.defaultDigits(amPM: .abbreviated))
-        case .none: style = style.hour()
-        }
+        let style = ClockPreference.hour(Date.FormatStyle().weekday(.abbreviated).minute(), use24Hour: use24Hour)
         return String(localized: "Planned as of \(capturedAt.formatted(style))")
+    }
+}
+
+/// The clock a label follows: the snapshot's `use24Hour` when it carries one
+/// (the app's own setting), else the device's. The hour CYCLE is a property
+/// of the locale, not of the hour field: `.hour(.twoDigits(amPM: .omitted))`
+/// on a 12-hour locale only drops the AM/PM, so 17:00 printed as "05:00"
+/// (HubStatesTests caught it on the CI runner's en_US). The preference is
+/// therefore applied as a locale override, keeping the language and every
+/// other convention of the device's own locale.
+enum ClockPreference {
+    static func locale(use24Hour: Bool?, base: Locale = .current) -> Locale {
+        guard let use24Hour else { return base }
+        var components = Locale.Components(locale: base)
+        components.hourCycle = use24Hour ? .zeroToTwentyThree : .oneToTwelve
+        return Locale(components: components)
+    }
+
+    /// `style` with its hour field and its locale set for the preference.
+    static func hour(_ style: Date.FormatStyle, use24Hour: Bool?) -> Date.FormatStyle {
+        switch use24Hour {
+        case .some(true): return style.locale(locale(use24Hour: true)).hour(.twoDigits(amPM: .omitted))
+        case .some(false): return style.locale(locale(use24Hour: false)).hour(.defaultDigits(amPM: .abbreviated))
+        case .none: return style.hour()
+        }
     }
 }
 

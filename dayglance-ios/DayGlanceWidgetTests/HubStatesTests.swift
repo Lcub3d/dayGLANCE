@@ -55,6 +55,26 @@ final class HubStatesTests: XCTestCase {
                                  DialSpec.Hub.width(atY: DialSpec.Hub.countdownY, inset: DialHubTypography.chordInset) + 0.5)
     }
 
+    // MARK: the clock preference
+
+    func testTheClockFollowsTheSnapshotsPreferenceNotTheLocalesCycle() {
+        // en_US is a 12-hour locale; the snapshot's use24Hour must still give
+        // 17:00, and false must give the 12-hour form whatever the device.
+        XCTAssertEqual(DialHubClock.text(minutesOfDay: 1020, use24Hour: true, reference: noon), "17:00")
+        XCTAssertEqual(DialHubClock.text(minutesOfDay: 425, use24Hour: true, reference: noon), "07:05")
+        let twelve = DialHubClock.text(minutesOfDay: 1020, use24Hour: false, reference: noon)
+        XCTAssertTrue(twelve.hasPrefix("5:00"), twelve)
+        XCTAssertTrue(twelve.localizedCaseInsensitiveContains("PM"), twelve)
+
+        // The freshness labels share the rule (the "as of" clock).
+        var c = DateComponents(); c.year = 2026; c.month = 9; c.day = 17; c.hour = 20; c.minute = 42
+        let captured = Calendar.current.date(from: c)!
+        let fresh = WidgetFreshness(isStale: true, daysOld: 4, snapshotDay: captured, capturedAt: captured)
+        XCTAssertTrue(fresh.plannedAsOfLabel(use24Hour: true).hasSuffix("20:42"), fresh.plannedAsOfLabel(use24Hour: true))
+        XCTAssertTrue(fresh.plannedAsOfLabel(use24Hour: false).hasSuffix("PM"), fresh.plannedAsOfLabel(use24Hour: false))
+        XCTAssertTrue(fresh.detailLabel(use24Hour: true)?.contains("20:42") == true, fresh.detailLabel(use24Hour: true) ?? "nil")
+    }
+
     // MARK: sleep and runway
 
     func testSleepRowAndRunwayToSleep() {

@@ -13,22 +13,19 @@ import DayDialGeometry
 // cache key is untouched.
 //
 // THE COUNTDOWN is three rows: the title, "until 19:00", and the time left,
-// which is LIVE: `Text(end, style: .relative)` spliced into the SAME
-// localized phrase (the catalog string is formatted with a marker in the
-// duration's place and split around it, so the words stay translated and
-// the number is system-updated every second with no timeline entry). It
+// which is LIVE: a system-updated duration spliced into the SAME localized
+// phrase (the catalog string is formatted with a marker in the duration's
+// place and split around it, so the words stay translated and the number
+// updates with no timeline entry). On iOS 18 the duration is
+// `Text(.currentDate, format: .offset(to:))` restricted to hours and
+// minutes — every minute, never seconds ("17 minutes left"); earlier it is
+// `Text(end, style: .relative)`, which counts seconds under an hour. It
 // never counts past zero: the block's end is itself an entry (DialTimeline).
-// The relative style spells its units and counts seconds under an hour
-// ("17 min, 37 sec left"); that was weighed on device against the two
-// alternatives and chosen. A static form ("17m left") was exact only at
-// each entry, so up to a quarter of an hour old between them. The iOS 18
-// `Text(.currentDate, format: .offset(to:))`, restricted to hours and
-// minutes, renders in the widget GALLERY and archives as NOTHING in Home
-// Screen timeline entries — concatenated into the phrase or standing alone
-// in an HStack — taking every row after it in this ZStack with it: a blank
-// hub under the date. Do not try it again here. `countdownEnd` / `openEnd`
-// nil (the preview's fixed instants, App Store screenshots) draws the static
-// form.
+// The live form spells its units, so the row may shrink to 0.8 like the
+// title. A static form ("17m left") was exact only at each entry, so up to
+// a quarter of an hour old between them. `countdownEnd` / `openEnd` nil
+// (the preview's fixed instants, App Store screenshots) draws the static
+// form. See `liveDuration` for the history of the iOS 18 text.
 //
 // Rows are placed by BASELINE, as the spec's SVG text is (DialSpec.Hub):
 // the eyebrow, date and title at the spec's own y, the rows under the title
@@ -287,7 +284,24 @@ struct DialHubView: View {
     /// a phrase that begins with the duration gets a hair space ahead of it.
     static func live(phrase: String, end: Date) -> Text? {
         guard let parts = spliceParts(phrase) else { return nil }
-        return Text(verbatim: parts.prefix) + Text(end, style: .relative) + Text(verbatim: parts.suffix)
+        return Text(verbatim: parts.prefix) + liveDuration(to: end) + Text(verbatim: parts.suffix)
+    }
+
+    /// The duration the live rows count with. iOS 18: the system's offset
+    /// text restricted to hours and minutes, re-rendered every minute and
+    /// never showing seconds ("17 minutes", "1 hour, 5 minutes"). Earlier:
+    /// the relative style, which counts seconds under an hour. The iOS 18
+    /// text was blamed for a blank hub once; that hub was a stale timeline
+    /// from a provider that had stopped delivering (DayDialWidget's
+    /// header), so this is its first real run on the Home Screen. If the
+    /// time-left row is blank there while the gallery shows it, this is
+    /// the line to revert to `Text(end, style: .relative)`.
+    static func liveDuration(to end: Date) -> Text {
+        if #available(iOS 18.0, *) {
+            return Text(.currentDate, format: SystemFormatStyle.DateOffset(to: end, allowedFields: [.hour, .minute],
+                                                                            maxFieldCount: 2, sign: .never))
+        }
+        return Text(end, style: .relative)
     }
 
     /// The words either side of the marker; an empty prefix becomes a hair

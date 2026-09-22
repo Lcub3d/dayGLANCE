@@ -101,7 +101,7 @@ export function validateDoRecord(record) {
   if (!own(record, 'planSnapshot')) errors.push('planSnapshot must be supplied (or explicit null)');
   else if (record.planSnapshot !== null) {
     try { planBounds(record.planSnapshot); } catch { errors.push('invalid planSnapshot'); }
-    if (own(record.planSnapshot, 'completionStatus')) {
+    if (plain(record.planSnapshot) && own(record.planSnapshot, 'completionStatus')) {
       errors.push('planSnapshot must not capture Plan completion');
     }
   }

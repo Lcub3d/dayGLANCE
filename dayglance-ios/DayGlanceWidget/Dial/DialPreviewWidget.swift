@@ -156,7 +156,7 @@ struct DialPreviewView: View {
                 let mono = renderingMode != .fullColor
                 GeometryReader { geo in
                     // The same fetch the real widget makes in its body: memory,
-                    // then the App Group PNG the provider just warmed.
+                    // the App Group PNG, or a cold render the first time.
                     let face = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: geo.size,
                                                    scale: displayScale, mono: mono)
                     DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: face.image,

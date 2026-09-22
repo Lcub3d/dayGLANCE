@@ -223,12 +223,17 @@ struct DialCachedFaceView: View {
     var body: some View {
         DialCanvas {
             ZStack(alignment: .topLeading) {
-                if let face {
-                    Image(uiImage: face).resizable()
-                        .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
-                } else {
-                    DialFaceView(input: input, nowMin: nowMin, mono: mono)
+                // Unredacted for the same reason as DayDialWidgetView.face: a
+                // redacted placeholder would show the face as one grey slab.
+                Group {
+                    if let face {
+                        Image(uiImage: face).resizable()
+                            .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
+                    } else {
+                        DialFaceView(input: input, nowMin: nowMin, mono: mono)
+                    }
                 }
+                .unredacted()
                 if let hubDate {
                     DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin),
                                 use24Hour: use24Hour, countdownEnd: countdownEnd)

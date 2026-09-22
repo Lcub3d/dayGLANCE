@@ -77,9 +77,22 @@ This permits effort and unique clock coverage to answer different questions.
 
 `split_sessions` is deliberately neutral. It does not claim that a meeting, distraction or other external interruption caused the segmentation.
 
-### Progress
+### Completion
 
-The existing `started / partial / mostly / completed` vocabulary is retained. It is ordinal. No numeric completion percentage is inferred. A task planned for 60 minutes may be completed in 10 minutes without becoming “16.7% complete.”
+Plan has a separate completion dimension:
+
+- `started`
+- `partly`
+- `mostly`
+- `completed`
+
+This is an ordinal assessment owned by the Plan. It is not derived from elapsed time, timing labels, or the progress value of any particular Do record.
+
+`not_started` is deliberately **not** part of this four-level completion dimension. It remains a time-gated timing result: no live Do exists and the current displayed Plan has fully elapsed.
+
+For compatibility, persisted Do records still use the existing `started / partial / mostly / completed` vocabulary required by the current record contract. The Plan-level completion dimension uses `partly`; callers that migrate old prototype state may map Do `partial` to Plan `partly` explicitly, but Core does not perform that projection automatically.
+
+The completion scale is ordinal only. No numeric percentage is inferred. A task planned for 60 minutes may be marked `completed` after 10 minutes without becoming “16.7% complete.”
 
 ## Raw metrics
 

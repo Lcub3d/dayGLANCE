@@ -203,7 +203,7 @@ describe('explicit attempt identity (not a task detector)', () => {
       assert.equal(completeDoAttempt(both, { id: id1 }), both);
       assert.deepEqual(first[0].planSnapshot, both[0].planSnapshot);
     });
-  });
+  }
   it('a replay never refreshes snapshots or revives a deleted attempt', () => {
     const gone = tombstoneDoRecord(record(), T2);
     const records = freeze([gone]);

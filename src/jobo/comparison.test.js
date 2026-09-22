@@ -3,11 +3,9 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   DO_PROGRESS, createDoRecord,
-} from './core.js';
-import {
   PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, EXECUTION_PATTERN,
   ALLEN_RELATION, TIMING_SUMMARY, compareExecutionToPlan, summarizeTiming,
-} from './comparison.js';
+} from './core.js';
 
 const T0 = '2026-09-19T10:00:00.000Z';
 const T1 = '2026-09-19T10:00:01.000Z';

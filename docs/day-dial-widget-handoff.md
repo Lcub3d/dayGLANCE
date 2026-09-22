@@ -491,24 +491,25 @@ curated fixture day, so it is not to be removed when the real widget changes.
   `DialFaceCache` at render time, one decoded face kept in memory), the hub
   overlay and the needle. The face is re-rendered only when the cache key
   changes, i.e. at a block end (the bucket), a tier change or a new size.
-- **Countdown: three rows, live with seconds.** Title, "until 19:00",
-  "17 min, 37 sec left", runway. The time-left row (and the empty state's
-  "35 min open" title) is `Text(end, style: .relative)` spliced into the
-  catalog phrase — the phrase is formatted with a marker in the duration's
-  slot and split around it, so the words stay translated and the number is
-  system-updated with no timeline entry. It never counts past zero (the
-  block's end is an entry) and it spells its units, so the row shrinks to
-  0.8 before it truncates. The concatenation never LEADS with the live Text:
-  the open-state title ("%@ open") archived as nothing in Home Screen
-  entries while the countdown (duration in the middle) archived fine, so an
-  empty prefix becomes a hair space (`DialHubView.spliceParts`, tested).
-  Chosen over a static form ("17m left"), exact only at each entry and so up
-  to a quarter of an hour old between them. The iOS 18 `Text(.currentDate,
-  format: .offset(to:))` (minutes, no seconds) was tried in two forms and
-  NOT verified either way: the builds that carried it never delivered a
-  timeline (see "The provider must not warm the mono face" below), so what
-  the Home Screen showed was an older timeline. It remains untested on the
-  Home Screen, not disproven.
+- **Countdown: three rows, live to the minute.** Title, "until 19:00", the
+  time left, runway. The time-left row (and the empty state's open-time
+  title) is a system-updated duration spliced into the catalog phrase — the
+  phrase is formatted with a marker in the duration's slot and split around
+  it, so the words stay translated and the number updates with no timeline
+  entry. On iOS 18 the duration is `Text(.currentDate, format:
+  .offset(to:))` restricted to hours and minutes ("17 minutes left", every
+  minute, never seconds); before iOS 18 it is `Text(end, style: .relative)`,
+  which counts seconds under an hour. It never counts past zero (the block's
+  end is an entry) and spells its units, so the row shrinks to 0.8 before it
+  truncates. The concatenation never LEADS with the live Text: an empty
+  prefix becomes a hair space (`DialHubView.spliceParts`, tested), after the
+  open-state title ("%@ open") archived as nothing while the countdown
+  (duration in the middle) archived fine. History: the iOS 18 text was
+  blamed for a blank Home Screen hub and removed twice; that hub was a stale
+  timeline from a provider that had stopped delivering (next bullet), so
+  this is its first real Home Screen run. If the time-left row is blank on
+  the Home Screen while the gallery shows it, `DialHubView.liveDuration` is
+  the one line to revert to the relative style.
   Rows under the title **stack** at `DialSpec.Hub.rowBaseline` (16pt pitch
   from 211) with only the rows a state has, so the note still lands inside
   the ring when tag, until, left, runway and note are all present (last

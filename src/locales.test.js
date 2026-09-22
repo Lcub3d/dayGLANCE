@@ -204,19 +204,27 @@ describe('locale bundles', () => {
     // The point of allowing different plural keys: each language must actually
     // have the forms its own rules select, or i18next falls back to the base key
     // and a count like 3 renders with the wrong noun.
-    // Scoped to the languages whose rules go beyond English's one/other. The
-    // others' extra categories (es/fr/it/pt "many", de's ordinals) only cover
-    // millions or forms nobody writes, and predate this check.
-    it.each(['pl', 'uk'])('%s defines every plural category its rules use', (lng) => {
+    //
+    // Scoped by which categories the language's rules actually select for a
+    // count the app can produce (0-1000), not every category it theoretically
+    // has: es/fr/it/pt reserve "many" for millions, which no count here
+    // reaches, so it drops out on its own instead of needing a hardcoded list
+    // of exempt languages. That exemption previously left de/es/fr/it/pt-BR/
+    // pt-PT unguarded entirely.
+    it.each(TRANSLATED)('%s defines every plural category its rules use', (lng) => {
       const problems = [];
       const families = new Map();
       for (const key of keysOf('en')) {
         if (isPlural(key)) families.set(family(key), key.includes('_ordinal_') ? 'ordinal' : 'cardinal');
       }
       for (const [fam, type] of families) {
-        const categories = new Intl.PluralRules(lng, { type }).resolvedOptions().pluralCategories;
+        const rules = new Intl.PluralRules(lng, { type });
+        const categories = new Set();
+        for (let n = 0; n <= 1000; n++) categories.add(rules.select(n));
         for (const cat of categories) {
-          if (!keysOf(lng).has(`${fam}_${cat}`)) problems.push(`${fam}_${cat}`);
+          // i18next falls back to the un-suffixed key, so a bare key covers a
+          // form (task.deferredTimes, task.earlierMoves, settings.weekTimelineHidden).
+          if (!keysOf(lng).has(`${fam}_${cat}`) && !keysOf(lng).has(fam)) problems.push(`${fam}_${cat}`);
         }
       }
       expect(problems, `${lng} lacks plural forms its language selects`).toEqual([]);

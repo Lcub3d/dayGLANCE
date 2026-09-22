@@ -93,15 +93,32 @@ describe('theory-driven JOBO comparison', () => {
     assert.throws(() => compareExecutionToPlan(plan(), [record()], { tolerance: { durationMinutes: '5' } }), TypeError);
   });
 
-  it('keeps summed recorded effort separate from overlap-deduplicated active time', () => {
-    const result = compareExecutionToPlan(plan(), [record({ startTime: '09:00', endTime: '09:40' }), record({ startTime: '09:20', endTime: '10:00' })]);
-    assert.equal(result.metrics.recordedMinutes, 80);
+  it('uses overlap-deduplicated actual time for duration comparison', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ startTime: '09:00', endTime: '09:40' }),
+      record({ startTime: '09:20', endTime: '10:00' }),
+    ]);
+    assert.equal(result.metrics.attemptMinutes, 80);
+    assert.equal(result.metrics.recordedMinutes, 60);
     assert.equal(result.metrics.activeMinutes, 60);
     assert.equal(result.metrics.overlapMinutes, 20);
     assert.equal(result.metrics.elapsedMinutes, 60);
     assert.equal(result.metrics.gapMinutes, 0);
-    assert.equal(result.durationComparison, DURATION_COMPARISON.LONGER);
-    assert.equal(result.executionPattern, EXECUTION_PATTERN.SPLIT_SESSIONS);
+    assert.equal(result.durationComparison, DURATION_COMPARISON.ON_ESTIMATE);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
+  });
+
+  it('matches the 40 + 30 - 10 = 60 overlap rule', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ startTime: '09:00', endTime: '09:40' }),
+      record({ startTime: '09:30', endTime: '10:00' }),
+    ]);
+    assert.equal(result.metrics.attemptMinutes, 70);
+    assert.equal(result.metrics.recordedMinutes, 60);
+    assert.equal(result.metrics.activeMinutes, 60);
+    assert.equal(result.metrics.overlapMinutes, 10);
+    assert.equal(result.durationComparison, DURATION_COMPARISON.ON_ESTIMATE);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
   });
 
   it('excludes gaps from both recorded and active work while retaining elapsed span', () => {
@@ -120,9 +137,11 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
   });
 
-  it('exposes an independent plan-level completion dimension', () => {
+  it('reads completion from an identified Plan instance', () => {
     for (const value of Object.values(COMPLETION_STATUS)) {
-      const result = compareExecutionToPlan(plan(), [record()], { completionStatus: value });
+      const p = plan({ id: 'plan:t1:2026-09-19', completionStatus: value });
+      const result = compareExecutionToPlan(p, [record()]);
+      assert.equal(result.planId, 'plan:t1:2026-09-19');
       assert.equal(result.completionStatus, value);
     }
   });
@@ -151,21 +170,47 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.NOT_STARTED]);
   });
 
-  it('rejects unknown plan-level completion values', () => {
+  it('does not report Not Started when the Plan has an explicit completion assessment', () => {
+    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
+    const result = compareExecutionToPlan(p, [], { now: now('11:00') });
+    assert.equal(result.notStarted, false);
+    assert.equal(result.completionStatus, COMPLETION_STATUS.COMPLETED);
+    assert.deepEqual(summarizeTiming(result), []);
+  });
+
+  it('rejects invalid or unbound Plan completion values', () => {
     assert.throws(
-      () => compareExecutionToPlan(plan(), [record()], { completionStatus: 'partial' }),
+      () => compareExecutionToPlan(plan({ id: 'p1', completionStatus: 'partial' }), [record()]),
       TypeError,
     );
     assert.throws(
-      () => compareExecutionToPlan(plan(), [record()], { completionStatus: 'done' }),
+      () => compareExecutionToPlan(plan({ id: 'p1', completionStatus: 'done' }), [record()]),
+      TypeError,
+    );
+    assert.throws(
+      () => compareExecutionToPlan(plan({ completionStatus: COMPLETION_STATUS.MOSTLY }), [record()]),
+      TypeError,
+    );
+    assert.throws(
+      () => compareExecutionToPlan(plan(), [record()], { completionStatus: COMPLETION_STATUS.MOSTLY }),
+      TypeError,
+    );
+  });
+
+  it('requires displayed revisions to identify the same Plan when both ids are present', () => {
+    assert.throws(
+      () => compareExecutionToPlan(
+        plan({ id: 'p1' }),
+        [record()],
+        { displayedPlan: plan({ id: 'p2' }) },
+      ),
       TypeError,
     );
   });
 
   it('keeps time independent of Plan completion', () => {
-    const fastComplete = compareExecutionToPlan(plan(), [record({ endTime: '09:10' })], {
-      completionStatus: COMPLETION_STATUS.COMPLETED,
-    });
+    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
+    const fastComplete = compareExecutionToPlan(p, [record({ endTime: '09:10' })]);
     assert.equal(fastComplete.metrics.durationRatio, 1 / 6);
     assert.equal(fastComplete.completionStatus, COMPLETION_STATUS.COMPLETED);
     assert.equal(Object.hasOwn(fastComplete, 'completionPercent'), false);
@@ -232,14 +277,11 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(after), [TIMING_SUMMARY.NOT_STARTED]);
   });
 
-  it('does not mark a zero-minute untimed completion as not-started', () => {
-    const placeholder = record({ source: 'completion', planSnapshot: null, endTime: '09:00' });
-    const result = compareExecutionToPlan(null, [placeholder], { knownUnplanned: true, displayedPlan: plan(), now: now('12:00') });
-    assert.equal(result.metrics.attemptCount, 1);
-    assert.equal(result.metrics.timedSessionCount, 0);
-    assert.equal(result.notStarted, false);
-    assert.equal(result.comparable, false);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.UNPLANNED]);
+  it('rejects zero-minute placeholders because Do is execution evidence', () => {
+    assert.throws(
+      () => record({ source: 'completion', planSnapshot: null, endTime: '09:00' }),
+      TypeError,
+    );
   });
 
   it('handles cross-midnight civil comparisons', () => {

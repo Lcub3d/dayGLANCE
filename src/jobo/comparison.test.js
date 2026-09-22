@@ -3,7 +3,7 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   DO_PROGRESS, createDoRecord,
-  PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, EXECUTION_PATTERN,
+  PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, COMPLETION_STATUS, EXECUTION_PATTERN,
   ALLEN_RELATION, TIMING_SUMMARY, compareExecutionToPlan, summarizeTiming,
 } from './core.js';
 
@@ -119,6 +119,48 @@ describe('theory-driven JOBO comparison', () => {
     assert.equal(result.withinPlan, true);
     assert.equal(result.executionPattern, EXECUTION_PATTERN.SPLIT_SESSIONS);
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
+  });
+
+  it('exposes an independent plan-level completion dimension', () => {
+    for (const value of Object.values(COMPLETION_STATUS)) {
+      const result = compareExecutionToPlan(plan(), [record()], { completionStatus: value });
+      assert.equal(result.completionStatus, value);
+    }
+  });
+
+  it('uses started / partly / mostly / completed as the canonical completion vocabulary', () => {
+    assert.deepEqual(COMPLETION_STATUS, {
+      STARTED: 'started',
+      PARTLY: 'partly',
+      MOSTLY: 'mostly',
+      COMPLETED: 'completed',
+    });
+  });
+
+  it('does not derive plan completion from time or per-Do progress', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ endTime: '09:10', progress: DO_PROGRESS.COMPLETED }),
+    ]);
+    assert.equal(result.completionStatus, null);
+    assert.equal(result.progress[0].progress, DO_PROGRESS.COMPLETED);
+  });
+
+  it('does not fold not-started into the completion dimension', () => {
+    const result = compareExecutionToPlan(plan(), [], { now: now('11:00') });
+    assert.equal(result.notStarted, true);
+    assert.equal(result.completionStatus, null);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.NOT_STARTED]);
+  });
+
+  it('rejects unknown plan-level completion values', () => {
+    assert.throws(
+      () => compareExecutionToPlan(plan(), [record()], { completionStatus: 'partial' }),
+      TypeError,
+    );
+    assert.throws(
+      () => compareExecutionToPlan(plan(), [record()], { completionStatus: 'done' }),
+      TypeError,
+    );
   });
 
   it('keeps time independent of progress', () => {

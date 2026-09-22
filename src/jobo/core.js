@@ -195,7 +195,9 @@ export function doDurationMinutes(record) {
  *
  * No records: only an elapsed CURRENT displayedPlan can be Not Started; no
  * record is fabricated. now is an explicit {date, time} civil coordinate.
- * A null anchor is unknown unless the caller explicitly knows it was unplanned.
+ * A missing comparison anchor is unknown unless the caller knows it was unplanned.
+ * A persisted planSnapshot === null means there was no timed plan: when comparing
+ * that Final Plan, pass knownUnplanned: true. A missing Original Plan is different.
  * Progress stays per attempt; there is no aggregate/native completion inference.
  */
 export function classifyAgainstPlan(plan, records, { displayedPlan = plan, now, knownUnplanned = false } = {}) {
@@ -239,10 +241,14 @@ export function classifyAgainstPlan(plan, records, { displayedPlan = plan, now, 
 
 // Compatibility with #1762's opaque transport rows and timestamp-less legacy
 // fixtures: a missing/invalid timestamp has the same epoch-zero rank as its
-// stand-in. Construction/validation above is stricter for NEW full records.
+// stand-in. Accept explicit-offset ISO strings or numeric epoch milliseconds,
+// never host-local date strings or coercible objects. Preserve the original row;
+// this is a comparison rank, not history repair. NEW full records require ISO.
 function versionTime(value) {
-  const time = new Date(value ?? 0).getTime();
-  return Number.isNaN(time) ? 0 : time;
+  const time = typeof value === 'number' && Number.isFinite(value)
+    ? new Date(value).getTime()
+    : validStamp(value) ? Date.parse(value) : NaN;
+  return Number.isFinite(time) ? time : 0;
 }
 
 /**

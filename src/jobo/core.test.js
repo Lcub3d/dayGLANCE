@@ -1,5 +1,6 @@
 import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import {
   DO_PROGRESS, DO_SOURCES, TIMING, createDoRecord, validateDoRecord,
   updateDoRecord, tombstoneDoRecord, completeDoAttempt, reopenDoAttempt,
@@ -104,6 +105,7 @@ describe('Do record contract', () => {
     ['invalid snapshot date', { planSnapshot: plan({ date: '2026-02-30' }) }],
     ['NaN snapshot', { planSnapshot: plan({ duration: NaN }) }],
     ['timezone-less stamp', { createdAt: '2026-09-19T15:10:02' }],
+    ['numeric epoch stamp', { createdAt: Date.parse(T0) }],
     ['normalized-invalid stamp', { updatedAt: '2026-02-30T00:00:00.000Z' }],
     ['old version', { updatedAt: '2026-09-18T00:00:00.000Z' }],
     ['missing observer', { observedAt: null }], ['nonfinite extension', { extra: Infinity }],
@@ -308,13 +310,20 @@ describe('civil intervals and independent timing/progress', () => {
     assert.deepEqual(result.timing, []);
     assert.deepEqual(classifyAgainstPlan(plan(), []).timing, []); // no implicit now
   });
-  it('unknown plan history is not silently Unplanned', () => {
-    const r = record({ planSnapshot: null, taskId: null, source: 'manual' });
+  it('a missing Original Plan anchor is not silently Unplanned', () => {
+    const r = record(); // Captured Final Plan is known; Original Plan is unavailable.
     const unknown = classifyAgainstPlan(null, [r]);
     assert.equal(unknown.comparable, false);
     assert.deepEqual(unknown.timing, []);
     assert.equal(unknown.recordedMinutes, 40);
-    assert.deepEqual(classifyAgainstPlan(null, [r], { knownUnplanned: true }).timing, [TIMING.UNPLANNED]);
+    assert.deepEqual(classifyAgainstPlan(r.planSnapshot, [r]).timing, [TIMING.WITHIN_PLAN]);
+  });
+  it('an explicitly absent captured Final Plan is known Unplanned', () => {
+    const r = record({ planSnapshot: null, taskId: null, source: 'manual' });
+    const final = classifyAgainstPlan(r.planSnapshot, [r], { knownUnplanned: r.planSnapshot === null });
+    assert.equal(final.comparable, false);
+    assert.deepEqual(final.timing, [TIMING.UNPLANNED]);
+    assert.equal(final.recordedMinutes, 40);
     assert.throws(() => classifyAgainstPlan(plan(), [r], { knownUnplanned: true }), TypeError);
   });
   it('rejects bad anchors/current plans/now instead of inventing a budget', () => {
@@ -375,6 +384,21 @@ describe('pickJoboRecord: drop-in #1762 callback', () => {
     const b = record({ updatedAt: T0, observedAt: T1 });
     assert.equal(pickJoboRecord(a, b), a);
   });
+  for (const timezone of ['UTC', 'Asia/Shanghai']) {
+    it(`uses timezone-independent legacy timestamp ranks (${timezone})`, () => {
+      // A separate process gives each case a real host timezone without changing
+      // the Vitest worker's global TZ or relying on the developer's environment.
+      const script = `
+        import assert from 'node:assert/strict';
+        import { pickJoboRecord } from ${JSON.stringify(new URL('./core.js', import.meta.url).href)};
+        assert.equal(new Date('2026-09-19T15:10:02').getTimezoneOffset(), ${timezone === 'UTC' ? 0 : -480});
+        (${verifyLegacyTimestampRanks.toString()})(pickJoboRecord, assert);
+      `;
+      execFileSync(process.execPath, ['--input-type=module', '-e', script], {
+        env: { ...process.env, TZ: timezone }, encoding: 'utf8', timeout: 10000,
+      });
+    });
+  }
   it('does not resurrect a tombstone on late duplicate observation, at any age', () => {
     const a = record({ createdAt: '2000-01-01T00:00:00.000Z', updatedAt: '2000-01-01T00:00:00.000Z' });
     const dead = tombstoneDoRecord(a, '2000-01-02T00:00:00.000Z');
@@ -403,3 +427,47 @@ describe('pickJoboRecord: drop-in #1762 callback', () => {
     }
   });
 });
+
+// Runs entirely inside the timezone-specific child process above. Neighbours at
+// rank - 1 and rank + 1 establish the exact rank without a JSON tie-break hiding
+// an incorrectly parsed timestamp. Both operand orders must select the same row.
+function verifyLegacyTimestampRanks(pick, assert) {
+  const limit = 8640000000000000;
+  function assertRank(field, value, rank, label) {
+    const candidate = Object.freeze({ id: 'legacy', updatedAt: 100, observedAt: 100, [field]: value });
+    for (const neighbourRank of [rank - 1, rank + 1].filter(value => Math.abs(value) <= limit)) {
+      const neighbour = Object.freeze({ ...candidate, [field]: neighbourRank });
+      const candidateWins = field === 'updatedAt' ? rank > neighbourRank : rank < neighbourRank;
+      const expected = candidateWins ? candidate : neighbour;
+      assert.equal(pick(candidate, neighbour), expected, `${field}: ${label}; forward`);
+      assert.equal(pick(neighbour, candidate), expected, `${field}: ${label}; reversed`);
+      assert.equal(candidate[field], value, `${field}: original timestamp retained`);
+    }
+  }
+  const invalid = [
+    ['missing', undefined], ['null', null], ['empty', ''], ['invalid text', 'bad'],
+    ['offsetless seconds', '2026-09-19T15:10:02'],
+    ['offsetless milliseconds', '2026-09-19T15:10:02.000'],
+    ['numeric string', '12'], ['date only', '2026-09-19'],
+    ['invalid calendar day', '2026-02-30T00:00:00.000Z'],
+    ['invalid leap day', '1900-02-29T00:00:00+08:00'],
+    ['boolean true', true], ['boolean false', false],
+    ['object', Object.freeze({})], ['array', Object.freeze([2026])],
+    ['NaN', NaN], ['infinity', Infinity], ['negative infinity', -Infinity],
+    ['above Date range', limit + 1], ['below Date range', -limit - 1],
+  ];
+  const instant = Date.parse('2026-09-19T15:10:02.000Z');
+  const valid = [
+    ['UTC ISO', '2026-09-19T15:10:02.000Z', instant],
+    ['positive offset ISO', '2026-09-19T23:10:02+08:00', instant],
+    ['negative offset ISO', '2026-09-19T09:10:02-06:00', instant],
+    ['numeric epoch milliseconds', instant, instant], ['zero', 0, 0],
+    ['negative epoch milliseconds', -1000, -1000],
+    ['fractional milliseconds', 0.75, 0],
+    ['maximum Date epoch', limit, limit], ['minimum Date epoch', -limit, -limit],
+  ];
+  for (const field of ['updatedAt', 'observedAt']) {
+    for (const [label, value] of invalid) assertRank(field, value, 0, label);
+    for (const [label, value, rank] of valid) assertRank(field, value, rank, label);
+  }
+}

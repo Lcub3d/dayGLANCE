@@ -23,7 +23,9 @@ until the later slices are wired, so the feature-off experience is unchanged.
 A record has `id`, `taskId`, `date`, `startTime`, `endDate`, `endTime`, `title`,
 `planSnapshot`, `source`, `progress`, `createdAt`, `updatedAt`, `observedAt`, and
 `deleted`. `taskId` allows a native numeric/string ID or explicit `null`;
-`planSnapshot` allows a valid timed plan or explicit `null`. Orphan IDs survive.
+`planSnapshot` is a captured timed plan or explicit `null` when there was no
+timed plan at capture. Do not use `null` to fill unavailable historical data.
+Orphan IDs survive.
 JSON extension fields are copied and preserved by edits and by the picker.
 
 `DO_PROGRESS` defines the serialized vocabulary once: `started`, `partial`,
@@ -63,9 +65,16 @@ or modify #1762's controller, store or hook, and does not install a second write
 
 The picker intentionally accepts opaque/minimal transport rows, including
 legacy timestamp-less rows, rather than running full new-record validation.
-It keeps #1762's epoch-zero rank for missing/invalid timestamps. It accepts a
-missing operand, requires matching IDs (string identity, like the controller),
-and returns an existing operand without changing timestamps or dropping fields.
+For `updatedAt` and `observedAt`, the picker accepts valid ISO strings with an
+explicit timezone/offset, plus finite numeric epoch milliseconds within the
+JavaScript `Date` range (with its millisecond truncation). Missing, invalid or
+offsetless timestamps rank at epoch zero; numeric strings, booleans and objects
+are not coerced into dates. These ranks are independent of the device timezone.
+This compatibility rule neither repairs nor rewrites the original fields;
+new-record construction still requires valid ISO timestamps with an explicit
+timezone/offset. The picker accepts a missing operand, requires matching IDs
+(string identity, like the controller), and returns an existing operand without
+changing timestamps or dropping fields.
 On the final tie it recursively sorts every object's keys, retains array order,
 and uses code-unit comparison rather than locale-dependent collation. In
 particular it does NOT use `JSON.stringify(row, Object.keys(row).sort())`, whose
@@ -86,7 +95,9 @@ Pass one explicit plan anchor and a caller-selected array of distinct attempts:
 
 ```js
 classifyAgainstPlan(originalPlan, selectedAttempts);
-classifyAgainstPlan(attempt.planSnapshot, [attempt]);
+classifyAgainstPlan(attempt.planSnapshot, [attempt], {
+  knownUnplanned: attempt.planSnapshot === null,
+});
 classifyAgainstPlan(originalPlan, [], {
   displayedPlan: currentPlan,
   now: { date: '2026-09-19', time: '16:00' },
@@ -105,11 +116,18 @@ plan has wholly elapsed. With no supplied `now`, it is not derived. Deleted rows
 are excluded from analysis but never removed from a collection. Duplicate IDs
 must be merged first, not silently double-counted.
 
-`planSnapshot: null` alone is not evidence of unplanned work. With a missing anchor
-the result is `comparable: false`, with no Within Plan/Delayed/Overrun label.
-Only an explicit `knownUnplanned: true` option yields Unplanned. This conservative
-caller-side distinction adds no field to the agreed record. Persisting richer
-unknown-versus-known-absent evidence remains a later contract decision.
+Persisted `planSnapshot: null` means that the attempt had no timed plan at capture.
+When comparing that attempt with its captured Final Plan, pass
+`knownUnplanned: true` as in the example above to obtain Unplanned.
+
+The generic `classifyAgainstPlan(null, records)` call is different: its null
+argument means no comparison anchor was supplied. For example, Original Plan
+history may be unavailable even though an attempt has a valid Final Plan snapshot.
+Without explicit `knownUnplanned: true`, that result is `comparable: false` with
+no Within Plan/Delayed/Overrun or Unplanned label. The caller must select the
+anchor and distinguish missing comparison history from a known absent timed
+plan; it must not encode unknown history as a persisted null snapshot. This
+clarification adds no field or new unknown state to the agreed record.
 
 The classifier returns progress per attempt; it does not choose a latest attempt
 from sync-array order, aggregate a completion percentage, or change native task
@@ -130,7 +148,8 @@ invented here.
 The suite covers construction, immutable snapshots, edits/tombstones, ordinary
 and recurring reopen/re-complete, civil midnight/leap/year boundaries, both plan
 anchors, independent labels, unknown plans, late duplicates, nested-key ties,
-and picker commutativity/associativity/idempotence.
+picker commutativity/associativity/idempotence, and legacy timestamp ranks in
+independent UTC and Asia/Shanghai processes.
 
 The fork audit additionally overlays the exact core on pinned #1762 and injects
 it into the REAL controller/store for save, hydration, remote apply, reopen,

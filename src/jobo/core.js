@@ -339,7 +339,7 @@ export const ALLEN_RELATION = Object.freeze({
 });
 
 export const TIMING_SUMMARY = Object.freeze({
-  ON_PLAN: 'on_plan',
+  WITHIN_PLAN: 'within_plan',
   LATE: 'late',
   LONGER: 'longer',
   SPLIT: 'split',
@@ -412,7 +412,7 @@ function unionBoundsMinutes(bounds) {
   return minutes;
 }
 
-function comparisonPlanOverlap(bounds, anchor) {
+function compariswithinPlanOverlap(bounds, anchor) {
   const clipped = bounds.map(({ start, end }) => ({
     start: Math.max(start, anchor.start),
     end: Math.min(end, anchor.end),
@@ -489,7 +489,7 @@ export function compareExecutionToPlan(
     startTiming: null,
     finishTiming: null,
     durationComparison: null,
-    onPlan: false,
+    withinPlan: false,
     metrics: {
       startOffsetMinutes: null,
       finishOffsetMinutes: null,
@@ -522,16 +522,16 @@ export function compareExecutionToPlan(
   result.startTiming = startTiming;
   result.finishTiming = finishTiming;
   result.durationComparison = durationComparison;
-  // Product-level on-plan is intentionally asymmetric: early/shorter still
-  // count as on-plan, while any lateness or excess estimated effort does not.
-  result.onPlan = startTiming !== RELATIVE_TIMING.LATE
+  // Product-level within-plan is intentionally asymmetric: early/shorter still
+  // count as within-plan, while any lateness or excess estimated effort does not.
+  result.withinPlan = startTiming !== RELATIVE_TIMING.LATE
     && finishTiming !== RELATIVE_TIMING.LATE
     && durationComparison !== DURATION_COMPARISON.LONGER;
   result.metrics.startOffsetMinutes = startOffsetMinutes;
   result.metrics.finishOffsetMinutes = finishOffsetMinutes;
   result.metrics.durationDifferenceMinutes = durationDifferenceMinutes;
   result.metrics.durationRatio = durationRatio;
-  result.metrics.planOverlapMinutes = comparisonPlanOverlap(bounds, anchor);
+  result.metrics.planOverlapMinutes = compariswithinPlanOverlap(bounds, anchor);
   return result;
 }
 
@@ -557,7 +557,7 @@ export function summarizeTiming(comparison) {
       || comparison.finishTiming === RELATIVE_TIMING.LATE;
     const longer = comparison.durationComparison === DURATION_COMPARISON.LONGER;
 
-    if (!late && !longer) labels.push(TIMING_SUMMARY.ON_PLAN);
+    if (!late && !longer) labels.push(TIMING_SUMMARY.WITHIN_PLAN);
     if (late) labels.push(TIMING_SUMMARY.LATE);
     if (longer) labels.push(TIMING_SUMMARY.LONGER);
   }

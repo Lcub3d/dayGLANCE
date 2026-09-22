@@ -5,6 +5,7 @@ import {
   formatLocalizedDate,
   formatLocalizedDurationMinutes,
   localizedWeekdays,
+  speechRecognitionLocale,
 } from './localeFormatting.js';
 
 describe('Simplified Chinese locale formatting', () => {
@@ -42,5 +43,15 @@ describe('Simplified Chinese locale formatting', () => {
     expect(formatLocalizedDurationMinutes(90, 'fr')).toBe('1h 30min');
     expect(formatLocalizedDurationMinutes(90, 'zh-CN')).toBe('1小时30分钟');   // no separator at all stays that way
     expect(formatLocalizedDurationMinutes(45, 'de')).toBe('45 Min.');
+  });
+
+  // SpeechRecognition needs a regional tag ("uk-UA"), not the bare app
+  // language ("uk") or a script-qualified one ("uk-Cyrl-UA").
+  it.each([
+    ['de', 'de-DE'], ['es', 'es-ES'], ['fr', 'fr-FR'], ['it', 'it-IT'],
+    ['pl', 'pl-PL'], ['uk', 'uk-UA'], ['zh-CN', 'zh-CN'],
+    ['pt-BR', 'pt-BR'], ['pt-PT', 'pt-PT'], ['en', 'en-US'],
+  ])('gives %s a regional tag for speech recognition', (language, expected) => {
+    expect(speechRecognitionLocale(language)).toBe(expected);
   });
 });

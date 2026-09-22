@@ -36,6 +36,14 @@ export const formatLocalizedDurationMinutes = (minutes, language = activeLocale(
     .join('');
 };
 
+// A regional BCP-47 tag ("uk-UA") for APIs like SpeechRecognition that
+// don't reliably accept a bare language subtag. `maximize()` also adds a
+// script subtag ("uk-Cyrl-UA"), which those APIs don't expect, so drop it.
+export const speechRecognitionLocale = (language = activeLocale()) => {
+  const locale = new Intl.Locale(language).maximize();
+  return locale.region ? `${locale.language}-${locale.region}` : locale.language;
+};
+
 export const localizedWeekdays = (width = 'short', language = activeLocale()) => {
   const formatter = new Intl.DateTimeFormat(language, { weekday: width, timeZone: 'UTC' });
   const sunday = Date.UTC(2024, 0, 7);

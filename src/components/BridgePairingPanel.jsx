@@ -6,6 +6,7 @@ import { startBridgePairing, cancelBridgePairing } from '../utils/obsidianBridge
 import { getBridgePairingMeta } from '../utils/obsidianBridgeStream.js';
 import { getVaultConfig } from '../sync/vaultConfig.js';
 import { deriveBridgeStatus, describeAgo } from '../utils/bridgeStatus.js';
+import { activeLocale } from '../utils/localeFormatting.js';
 import { useTranslation } from 'react-i18next';
 
 // Bridge-plugin pairing (Obsidian build-out Phase 6, spec §3.2/§3.4): mints
@@ -130,7 +131,7 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
         <p className={`text-xs ${textSecondary}`}>
           {status.lastBeatMs === null
             ? t('settings.obsidianBridgeWaitingNeverSeen')
-            : t('settings.obsidianBridgeWaitingLastSeen', { when: describeAgo(status.lastBeatMs) })}
+            : t('settings.obsidianBridgeWaitingLastSeen', { when: describeAgo(status.lastBeatMs, Date.now(), activeLocale()) })}
         </p>
       )}
       {/* Stamping tri-state from the plugin's heartbeat (2026-08-31

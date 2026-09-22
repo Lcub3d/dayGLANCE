@@ -96,8 +96,11 @@ struct DialPreviewEntry: TimelineEntry {
     let date: Date
     let scenario: DialPreviewScenario
     /// Face scenarios: the cached face resolved in the provider, and how it
-    /// was obtained. Nil → the view draws live.
+    /// was obtained. Nil → the view draws live. `monoFace` is the accented
+    /// mode's (a tinted or clear Home Screen), warmed only when the context
+    /// says the widget may be shown that way.
     var face: UIImage? = nil
+    var monoFace: UIImage? = nil
     var outcome: DialFaceCache.Outcome = .failed
     /// State scenarios: the payload the real view resolves, and the entry it
     /// is rendered as. `date` is that entry's instant.
@@ -120,10 +123,17 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
         if scenario.isFaceScenario {
             let input = DialPreviewFixture.input(for: scenario)
             let scale = await MainActor.run { UIScreen.main.scale }
+            let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
             let result = await MainActor.run {
                 DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale)
             }
-            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, face: result.image, outcome: result.outcome)
+            var mono: UIImage? = nil
+            if modes.contains(where: { $0 != .fullColor }) {
+                mono = await MainActor.run {
+                    DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: true).image
+                }
+            }
+            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, face: result.image, monoFace: mono, outcome: result.outcome)
             return Timeline(entries: [entry], policy: .never)
         }
         let entry = entry(for: scenario, size: size)
@@ -151,8 +161,9 @@ struct DialPreviewView: View {
         ZStack(alignment: .bottomLeading) {
             if entry.scenario.isFaceScenario {
                 let input = DialPreviewFixture.input(for: entry.scenario)
-                DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: entry.face,
-                                   hubDate: entry.date, use24Hour: true)
+                let mono = renderingMode != .fullColor
+                DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: mono ? entry.monoFace : entry.face,
+                                   hubDate: entry.date, use24Hour: true, mono: mono)
                 corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · \(entry.outcome.summary) · \(lora) · \(mode)")
             } else {
                 DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
@@ -195,6 +206,8 @@ struct DialCachedFaceView: View {
     var hubDate: Date? = nil
     var use24Hour: Bool? = nil
     var countdownEnd: Date? = nil
+    /// The accented mode's face when `face` is nil (DialFaceView.mono).
+    var mono: Bool = false
 
     var body: some View {
         DialCanvas {
@@ -203,13 +216,14 @@ struct DialCachedFaceView: View {
                     Image(uiImage: face).resizable()
                         .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
                 } else {
-                    DialFaceView(input: input, nowMin: nowMin)
+                    DialFaceView(input: input, nowMin: nowMin, mono: mono)
                 }
                 if let hubDate {
                     DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin),
                                 use24Hour: use24Hour, countdownEnd: countdownEnd)
                 }
                 DialNeedleView(nowMin: nowMin)
+                    .widgetAccentable()
             }
         }
     }

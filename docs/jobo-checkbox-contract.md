@@ -13,13 +13,16 @@ This branch does not yet wire a completion detector, task hook or checkbox UI.
   title, plan and occurrence identity before native completion can advance a
   recurring task. Reuse the same completion identity in the observer so it
   cannot record that same event twice.
-- A native completion may append a Do only when a positive actual/retrospective
-  execution interval is available. The Do record contains execution facts only;
-  it does not carry progress/completion. A completion event with no actual
-  interval updates native/Plan state but does not create a zero-minute Do.
+- A native completion appends one execution record. If a positive actual or
+  retrospective interval is known, create Timed Do. If work is known to have
+  happened but duration was not measured, create Untimed Do with null interval
+  coordinates. Never encode "unknown duration" as a zero-minute interval.
+  Do carries execution facts only; progress/completion stays on Plan.
 - Plan owns the independent completion assessment:
-  `started / partly / mostly / completed`. Native task completion and Plan
-  completion may differ; changing Plan completion must not rewrite a Do record.
+  `started / partly / mostly / completed`. The order is ordinal, but
+  reassessment is not monotonic: any valid status may replace any other, or be
+  cleared. Native task completion and Plan completion may differ; changing Plan
+  completion must not rewrite a Do record.
 - Unchecking uses the existing native reopen path. It does not mutate the prior
   Do attempt. Any change from Plan `completed` to another completion assessment
   is a Plan-state decision, not a ledger-record transition.
@@ -38,21 +41,22 @@ completion after reopening uses a new attempt ID.
   09:20–10:00 is 60 minutes. First start/last end still govern delay comparison.
 - Two or more live attempts retain the Interrupted label, including adjacent or
   overlapping intervals. The label reflects the agreed interaction meaning.
-- Every Do has a strictly positive execution interval. If completion is known
-  but duration is not, do not invent an interval and do not create a placeholder
-  Do. A positive unplanned Do may still use `planSnapshot: null` and be
-  classified as Unplanned.
-- With no recorded attempt, an elapsed current displayed plan may be Not
-  Started even if the person is actually working. Once an attempt is recorded,
-  judge timing from the execution record and completion from Plan state; do not
-  reinterpret a past in-plan interval as delayed merely because current time advanced.
+- Timed Do has a strictly positive interval. Untimed Do explicitly means
+  execution happened but duration was not measured; it contributes no minutes
+  and supplies no timing bounds. A timed or untimed unplanned Do may still use
+  `planSnapshot: null` and be classified as Unplanned.
+- `not_started` is derived only when the current displayed Plan has fully
+  elapsed, there is no live Do of either kind, and Plan has no explicit
+  completion assessment. Untimed Do therefore suppresses Not Started without
+  fabricating timing metrics.
 
 ## Integration acceptance checks
 
 Before calling the checkbox wired, verify that checking completes the native
-task; when a positive execution interval exists it persists one Do and replay
-creates no duplicate; when no interval exists it creates no fake Do; changing
-Plan completion to `mostly` does not mutate historical Do records; unchecking
-does not rewrite them; and a later recorded execution creates a new attempt. Verify native completion behavior,
-recurring-task snapshot capture and ledger failure handling through their
-existing paths. Pure-core tests alone do not establish these UI/storage effects.
+task and persists exactly one Do: Timed when a real interval is known, Untimed
+when execution is known but duration is not. Replay creates no duplicate;
+changing Plan completion to `mostly` does not mutate historical Do records;
+unchecking does not rewrite them; and a later execution creates a new attempt.
+Verify native completion behavior, recurring-task snapshot capture and ledger
+failure handling through their existing paths. Pure-core tests alone do not
+establish these UI/storage effects.

@@ -2,7 +2,7 @@
 import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  createDoRecord,
+  createDoRecord, DO_TIMING,
   PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, COMPLETION_STATUS, EXECUTION_PATTERN,
   ALLEN_RELATION, TIMING_SUMMARY, compareExecutionToPlan, summarizeTiming,
 } from './core.js';
@@ -14,6 +14,7 @@ let sequence = 0;
 const record = (patch = {}) => createDoRecord({
   id: `do:test:${sequence += 1}`,
   taskId: 't1',
+  timing: DO_TIMING.TIMED,
   date: '2026-09-19',
   startTime: '09:00',
   endDate: '2026-09-19',
@@ -289,16 +290,59 @@ describe('theory-driven JOBO comparison', () => {
     const elapsedWithDo = compareExecutionToPlan(plan(), [record({ endTime: '09:10' })], elapsed);
     assert.equal(elapsedWithDo.notStarted, false);
 
+    const elapsedWithUntimedDo = compareExecutionToPlan(plan(), [record({
+      timing: DO_TIMING.UNTIMED,
+      startTime: null,
+      endDate: null,
+      endTime: null,
+    })], elapsed);
+    assert.equal(elapsedWithUntimedDo.notStarted, false);
+
     const completedPlan = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
     const elapsedNoDoWithCompletion = compareExecutionToPlan(completedPlan, [], elapsed);
     assert.equal(elapsedNoDoWithCompletion.notStarted, false);
   });
 
-  it('rejects zero-minute placeholders because Do is execution evidence', () => {
-    assert.throws(
-      () => record({ source: 'completion', planSnapshot: null, endTime: '09:00' }),
-      TypeError,
-    );
+  it('uses Untimed Do for execution with unknown duration instead of fake zero minutes', () => {
+    const untimed = record({
+      timing: DO_TIMING.UNTIMED,
+      source: 'completion',
+      startTime: null,
+      endDate: null,
+      endTime: null,
+    });
+    const result = compareExecutionToPlan(plan(), [untimed], { now: now('11:00') });
+    assert.equal(result.notStarted, false);
+    assert.equal(result.comparable, false);
+    assert.equal(result.metrics.attemptCount, 1);
+    assert.equal(result.metrics.timedSessionCount, 0);
+    assert.equal(result.metrics.untimedAttemptCount, 1);
+    assert.equal(result.metrics.recordedMinutes, null);
+    assert.equal(result.metrics.durationDifferenceMinutes, null);
+    assert.equal(result.startTiming, null);
+    assert.equal(result.finishTiming, null);
+    assert.equal(result.durationComparison, null);
+    assert.equal(result.intervalRelation, null);
+    assert.deepEqual(summarizeTiming(result), []);
+  });
+
+  it('keeps mixed Timed + Untimed execution non-comparable while retaining measured diagnostics', () => {
+    const result = compareExecutionToPlan(plan(), [
+      record({ startTime: '09:00', endTime: '09:30' }),
+      record({
+        timing: DO_TIMING.UNTIMED,
+        startTime: null,
+        endDate: null,
+        endTime: null,
+      }),
+    ]);
+    assert.equal(result.comparable, false);
+    assert.equal(result.metrics.attemptCount, 2);
+    assert.equal(result.metrics.timedSessionCount, 1);
+    assert.equal(result.metrics.untimedAttemptCount, 1);
+    assert.equal(result.metrics.recordedMinutes, 30);
+    assert.equal(result.durationComparison, null);
+    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.SPLIT]);
   });
 
   it('handles cross-midnight civil comparisons', () => {

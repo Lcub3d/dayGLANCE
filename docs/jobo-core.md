@@ -1,17 +1,20 @@
 # JOBO pure core (slice 2)
 
-Implements the record-facing part of #1726 while proposing one explicit revision
-to the merged [jobo-ledger-persistence.md](jobo-ledger-persistence.md) contract (#1744):
-Do records no longer carry progress. Completion belongs to Plan.
+Implements the record-facing part of #1726 while proposing one explicit Slice 2
+contract refinement relative to the merged
+[jobo-ledger-persistence.md](jobo-ledger-persistence.md) design (#1744):
+Do records would no longer carry progress, and completion would belong to Plan
+if this proposal is accepted. #1744 remains the current upstream persistence
+contract while that ownership question is under review.
+
 This module does not import React, storage, a task store or a sync engine.
 It does not obtain the current time or generate IDs. No app surface imports it
 until the later slices are wired, so the feature-off experience is unchanged.
 
-The interval and checkbox decisions below reflect the user's subsequent product
-decisions. Reopen no longer mutates a Do record because Do has no completion field.
-These are fork-local proposed updates to the earlier #1744 wording, not claims that
-its merged design or the upstream implementation has already changed. See the
-[slice 4/5 checkbox contract](jobo-checkbox-contract.md) for the integration handoff.
+The completion-ownership behavior described below is a fork-local proposal,
+not a claim that the merged persistence design or upstream implementation has
+already changed. Slice 4 completion detection and JOBO checkbox behavior remain
+outside this Slice 2 document.
 
 ## API
 
@@ -39,7 +42,7 @@ A record has `id`, `taskId`, `timing`, `date`, `startTime`, `endDate`,
 - Untimed Do means execution happened but duration was not measured; it keeps
   `date` and uses explicit `null` for `startTime`, `endDate`, and `endTime`.
 
-A `progress` field is invalid: completion belongs to Plan, not Do. `taskId`
+In this proposed ownership model, a `progress` field is invalid because completion would belong to Plan rather than Do. `taskId`
 allows a native numeric/string ID or explicit `null`; `planSnapshot` is a
 captured timed plan or explicit `null` when there was no timed plan at capture.
 Do not use `null` to fill unavailable historical data.
@@ -47,9 +50,10 @@ Orphan IDs survive.
 JSON extension fields are copied and preserved by edits and by the picker.
 
 `DO_SOURCES` contains `completion`, `manual`, `focus`; accepting `focus`
-is not focus-session integration. Plan completion is a separate dimension
-(`started / partly / mostly / completed`) described in
-[jobo-core-theory.md](jobo-core-theory.md). It is not serialized on Do records.
+is not focus-session integration. Under the proposed ownership refinement,
+Plan completion is a separate dimension (`started / partly / mostly / completed`)
+described in [jobo-core-theory.md](jobo-core-theory.md), and is not serialized
+on Do records.
 
 Dates must be real Gregorian `YYYY-MM-DD` values and measured times must be
 `HH:MM`. Use next-day `endDate` plus `00:00`, not `24:00`.
@@ -58,10 +62,11 @@ Do never uses zero minutes as a sentinel:
 - Timed Do must have a strictly positive interval.
 - Untimed Do explicitly stores unknown duration by null interval coordinates.
 
-Core does not infer an actual start or a default duration. Plan completion is a
-separate ordinal assessment (`started / partly / mostly / completed`) with
-canonical order exported by `COMPLETION_STATUS_ORDER`; reassessment is allowed
-in either direction through `setPlanCompletionStatus()`. ISO timestamps require an explicit
+Core does not infer an actual start or a default duration. Under the proposed
+ownership refinement, Plan completion is a separate ordinal assessment
+(`started / partly / mostly / completed`) with canonical order exported by
+`COMPLETION_STATUS_ORDER`; reassessment is allowed in either direction through
+`setPlanCompletionStatus()`. ISO timestamps require an explicit
 zone/offset. Inputs are not normalized into invented historical values.
 A local edit/deletion needs a supplied timestamp strictly newer than the
 previous version; a no-op keeps the original object and version. Clock skew
@@ -109,14 +114,14 @@ whose replacer whitelist can omit `planSnapshot.duration` and other nested-only 
 `completeDoAttempt` is a pure ensure-present operation, not a completion observer.
 Slice 4 supplies a NEW key for a later completion, including a new per-occurrence
 stamp for recurring work. A replay returns the existing collection unchanged, even
-when its row is edited/deleted. Reopening a native task does not mutate the prior Do;
-any Plan completion change is handled in Plan state, outside the Do record.
+when its row is edited/deleted. Under the proposed completion-ownership refinement,
+reopening a native task does not mutate the prior Do; any completion reassessment
+would live on Plan state. That ownership rule is not yet an upstream contract.
+
 The writer still owns checking this against current committed state; calling the
 constructor alone is not an atomic ensure-present guarantee. Native completion,
-remote-apply detection, legacy ID selection and retry orchestration remain outside
-core. JOBO's checkbox is now required to complete the native task through the
-existing task-completion path in slice 4; this pure module does not perform that
-mutation. The integration is pending, as described in the checkbox contract.
+remote-apply detection, legacy ID selection, retry orchestration, and JOBO checkbox
+behavior remain outside this Slice 2 core.
 
 ## Classification choices and limits
 
@@ -182,8 +187,9 @@ anchor and distinguish missing comparison history from a known absent timed
 plan; it must not encode unknown history as a persisted null snapshot. This
 clarification adds no field or new unknown state to the agreed record.
 
-Plan completion belongs to an identified Plan instance. A non-null
-`completionStatus` requires a stable Plan `id`; it is read from the Plan,
+Under the proposed completion-ownership refinement, Plan completion belongs to
+an identified Plan instance. A non-null `completionStatus` requires a stable
+Plan `id`; it is read from the Plan,
 not passed as a comparison option. `setPlanCompletionStatus()` is deliberately
 a reassessment function rather than a monotonic state machine: `completed` may
 be reassessed to `partly`, and any assessment may be cleared. The classifier
@@ -238,4 +244,4 @@ The earlier core baseline was separately audited against the real controller
 and store from a pinned #1762 revision, including save, hydration, remote apply,
 re-complete, two writers and readonly fallback. That historical audit
 does not establish integration coverage for these new behavioral rules. The
-updated checkbox contract lists the remaining integration acceptance checks.
+remaining native-completion and checkbox integration acceptance checks belong to later slices.

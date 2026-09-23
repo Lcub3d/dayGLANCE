@@ -37,3 +37,48 @@ jobs:
 
       - name: Build
         run: npm run build
+
+
+  android-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build Android web assets
+        run: npm run build:android
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install Android 36 SDK
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Android unit tests + debug build
+        working-directory: dayglance-android
+        run: |
+          chmod +x gradlew
+          ./gradlew testGithubDebugUnitTest assembleGithubDebug --no-daemon
+
+      - name: Upload Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dayglance-honor-health-debug
+          path: dayglance-android/app/build/outputs/apk/github/debug/*.apk
+          if-no-files-found: error

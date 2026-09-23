@@ -3,6 +3,10 @@
 // See docs/jobo-ledger-persistence.md and docs/jobo-core.md.
 
 export const DO_SOURCES = Object.freeze(['completion', 'manual', 'focus']);
+export const DO_TIMING = Object.freeze({
+  TIMED: 'timed',
+  UNTIMED: 'untimed',
+});
 export const TIMING = Object.freeze({
   WITHIN_PLAN: 'withinPlan', DELAYED: 'delayed', OVERRUN: 'overrun',
   INTERRUPTED: 'interrupted', NOT_STARTED: 'notStarted', UNPLANNED: 'unplanned',
@@ -12,7 +16,7 @@ const plain = value => value !== null && typeof value === 'object'
   && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
 const taskIdValid = id => id === null || nonempty(id) || (typeof id === 'number' && Number.isSafeInteger(id));
-const editable = new Set(['date', 'startTime', 'endDate', 'endTime']);
+const editable = new Set(['timing', 'date', 'startTime', 'endDate', 'endTime']);
 
 function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -94,10 +98,19 @@ export function validateDoRecord(record) {
   if (validStamp(record.createdAt) && validStamp(record.updatedAt)
     && Date.parse(record.updatedAt) < Date.parse(record.createdAt)) errors.push('updatedAt precedes createdAt');
   // observedAt is a device clock: do not assume it follows the source timestamp.
-  try {
-    const duration = civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
-    if (duration <= 0) errors.push('interval must be positive');
-  } catch { errors.push('invalid interval date/time'); }
+  if (!validDate(record.date)) errors.push('date must be a real Gregorian YYYY-MM-DD');
+  if (!Object.values(DO_TIMING).includes(record.timing)) {
+    errors.push('timing must be timed or untimed');
+  } else if (record.timing === DO_TIMING.TIMED) {
+    try {
+      const duration = civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
+      if (duration <= 0) errors.push('timed interval must be positive');
+    } catch { errors.push('invalid timed interval date/time'); }
+  } else {
+    if (record.startTime !== null || record.endDate !== null || record.endTime !== null) {
+      errors.push('untimed Do must use null startTime/endDate/endTime');
+    }
+  }
   if (!own(record, 'planSnapshot')) errors.push('planSnapshot must be supplied (or explicit null)');
   else if (record.planSnapshot !== null) {
     try { planBounds(record.planSnapshot); } catch { errors.push('invalid planSnapshot'); }
@@ -170,14 +183,15 @@ export function completeDoAttempt(records, input) {
   return [...records, attempt];
 }
 
-/** Civil minutes of one positive execution interval. */
+/** Civil minutes of one timed execution interval; null means deliberately untimed. */
 export function doDurationMinutes(record) {
   assertRecord(record);
+  if (record.timing === DO_TIMING.UNTIMED) return null;
   return civilMinute(record.endDate, record.endTime) - civilMinute(record.date, record.startTime);
 }
 
-// Count covered civil minutes once. Gaps add nothing; adjacent, nested and
-// overlapping attempts remain separate records for the interaction history.
+// Count covered civil minutes once for TIMED rows. Gaps add nothing; adjacent,
+ // nested and overlapping attempts remain separate records for history.
 function unionDurationMinutes(records) {
   const intervals = records.map(record => [
     civilMinute(record.date, record.startTime), civilMinute(record.endDate, record.endTime),
@@ -302,8 +316,28 @@ export function migrateLegacyDoRecord(record) {
     legacyCompletionStatus = LEGACY_PROGRESS_TO_COMPLETION[record.progress];
     if (!legacyCompletionStatus) throw new TypeError('Unknown legacy Do progress');
   }
+
   const migrated = { ...record };
   delete migrated.progress;
+
+  // Pre-discriminant rows are normalized here, before canonical merge.
+  if (!own(migrated, 'timing')) {
+    try {
+      const duration = civilMinute(migrated.endDate, migrated.endTime)
+        - civilMinute(migrated.date, migrated.startTime);
+      if (duration > 0) {
+        migrated.timing = DO_TIMING.TIMED;
+      } else if (duration === 0 && migrated.source === 'completion') {
+        migrated.timing = DO_TIMING.UNTIMED;
+        migrated.startTime = null;
+        migrated.endDate = null;
+        migrated.endTime = null;
+      }
+    } catch {
+      // createDoRecord below remains the strict validation boundary.
+    }
+  }
+
   return {
     record: createDoRecord(migrated),
     legacyCompletionStatus,
@@ -375,6 +409,24 @@ function planState(plan) {
     throw new TypeError('A Plan completionStatus requires a stable Plan id');
   }
   return { id, completionStatus };
+}
+
+/**
+ * Pure Plan-occurrence completion assessment. Completion is ordinal, but this
+ * is not a monotonic workflow: any valid assessment may be replaced by any
+ * other valid assessment, or cleared with null. Do records are never changed.
+ */
+export function setPlanCompletionStatus(plan, completionStatus) {
+  if (!plain(plan)) throw new TypeError('Plan must be a plain object');
+  planBounds(plan);
+  const id = planIdentityValue(plan);
+  if (id === null) throw new TypeError('Plan completion requires a stable Plan id');
+  const next = completionStatusValue(completionStatus);
+  const current = own(plan, 'completionStatus')
+    ? completionStatusValue(plan.completionStatus)
+    : null;
+  if (current === next && (own(plan, 'completionStatus') || next === null)) return plan;
+  return copy({ ...plan, completionStatus: next });
 }
 
 function resolvePlanState(plan, displayedPlan) {
@@ -469,10 +521,10 @@ function comparisonNotStarted({ attemptCount, completionStatus, currentPlanEnd, 
 /**
  * Measure execution against one explicit plan reference without mutating history.
  *
- * recordedMinutes / activeMinutes are unique actual wall-clock coverage.
- * attemptMinutes is the raw sum of attempt durations. Their difference is
- * overlapMinutes. Duration comparison uses recordedMinutes, so overlapping
- * attempts are never double-counted as actual time.
+ * recordedMinutes / activeMinutes are unique measured wall-clock coverage.
+ * Untimed Do proves execution without inventing minutes. If any live Do is
+ * untimed, the overall execution is not interval-comparable to Plan. Timed
+ * diagnostic metrics remain available for the measured subset.
  */
 export function compareExecutionToPlan(plan, records, options = {}) {
   if (!plain(options)) throw new TypeError('Comparison options must be a plain object');
@@ -513,11 +565,15 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     ? PLAN_CONTEXT.PLANNED
     : knownUnplanned ? PLAN_CONTEXT.NO_PLAN : PLAN_CONTEXT.UNKNOWN;
 
-  const bounds = attempts.map(comparisonBounds);
-  const attemptMinutes = attempts.reduce((sum, record) => sum + doDurationMinutes(record), 0);
-  const activeMinutes = unionDurationMinutes(attempts);
+  const timedAttempts = attempts.filter(record => record.timing === DO_TIMING.TIMED);
+  const untimedAttemptCount = attempts.length - timedAttempts.length;
+  const bounds = timedAttempts.map(comparisonBounds);
+  const attemptMinutes = timedAttempts.length
+    ? timedAttempts.reduce((sum, record) => sum + doDurationMinutes(record), 0)
+    : null;
+  const activeMinutes = timedAttempts.length ? unionDurationMinutes(timedAttempts) : null;
   const recordedMinutes = activeMinutes;
-  const overlapMinutes = Math.max(0, attemptMinutes - activeMinutes);
+  const overlapMinutes = timedAttempts.length ? Math.max(0, attemptMinutes - activeMinutes) : null;
   const firstStart = bounds.length ? Math.min(...bounds.map(item => item.start)) : null;
   const lastEnd = bounds.length ? Math.max(...bounds.map(item => item.end)) : null;
   const elapsedMinutes = bounds.length ? lastEnd - firstStart : null;
@@ -561,11 +617,15 @@ export function compareExecutionToPlan(plan, records, options = {}) {
       gapMinutes,
       overlapMinutes,
       attemptCount: attempts.length,
-      timedSessionCount: attempts.length,
+      timedSessionCount: timedAttempts.length,
+      untimedAttemptCount,
     },
   };
 
-  if (!anchor || !attempts.length) return result;
+  // Untimed execution proves activity, but cannot support interval/duration
+  // comparison. Mixed timed+untimed history is intentionally non-comparable as
+  // a whole because the unmeasured portion could change every time dimension.
+  if (!anchor || !attempts.length || untimedAttemptCount > 0) return result;
 
   const startOffsetMinutes = firstStart - anchor.start;
   const finishOffsetMinutes = lastEnd - anchor.end;

@@ -277,6 +277,23 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(after), [TIMING_SUMMARY.NOT_STARTED]);
   });
 
+  it('pins the not-started truth table', () => {
+    const elapsed = { now: now('11:00') };
+
+    const elapsedNoDoNoCompletion = compareExecutionToPlan(plan(), [], elapsed);
+    assert.equal(elapsedNoDoNoCompletion.notStarted, true);
+
+    const futureNoDoNoCompletion = compareExecutionToPlan(plan(), [], { now: now('09:30') });
+    assert.equal(futureNoDoNoCompletion.notStarted, false);
+
+    const elapsedWithDo = compareExecutionToPlan(plan(), [record({ endTime: '09:10' })], elapsed);
+    assert.equal(elapsedWithDo.notStarted, false);
+
+    const completedPlan = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
+    const elapsedNoDoWithCompletion = compareExecutionToPlan(completedPlan, [], elapsed);
+    assert.equal(elapsedNoDoWithCompletion.notStarted, false);
+  });
+
   it('rejects zero-minute placeholders because Do is execution evidence', () => {
     assert.throws(
       () => record({ source: 'completion', planSnapshot: null, endTime: '09:00' }),

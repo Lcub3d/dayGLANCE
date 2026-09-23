@@ -25,6 +25,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getGlanceHGInstances, isHGSessionReachable } from '../hooks/useHyperGlance.js';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from '../utils/formatDuration.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatLocalizedDate, formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
 
@@ -1067,9 +1068,7 @@ const MobileGlanceSection = () => {
         if (section.type === 'frame') {
           const borderColor = glanceBorderColorMap[section.frame.color] || (darkMode ? 'rgba(165,180,252,0.4)' : 'rgba(79,70,229,0.75)');
           const bgColor = glanceColorMap[section.frame.color] || (darkMode ? 'rgba(165,180,252,0.08)' : 'rgba(165,180,252,0.18)');
-          const availH = Math.floor(section.totalAvail / 60);
-          const availM = section.totalAvail % 60;
-          const availStr = availH > 0 ? `${availH}h${availM > 0 ? ` ${availM}m` : ''}` : `${availM}m`;
+          const availStr = formatDuration(section.totalAvail, t);
           const markerInThisFrame = nowMarkerSectionInfo && nowMarkerSectionInfo.inSection && nowMarkerSectionInfo.si === si;
           elements.push(
             <div

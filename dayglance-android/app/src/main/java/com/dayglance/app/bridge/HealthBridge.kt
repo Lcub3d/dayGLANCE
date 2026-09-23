@@ -9,10 +9,11 @@ import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
 /**
- * Health Connect bridge.
+ * Android health bridge.
  *
- * Reads step counts and sleep data from Android Health Connect via
- * [HealthRepository]. Methods are called on a WebView background thread, so
+ * Reads step counts and sleep data through [HealthRepository], whose provider
+ * manager owns device-local Health Connect/OEM selection. Methods are called
+ * on a WebView background thread, so
  * [runBlocking] is safe here — it never blocks the main thread.
  *
  * Permission flow: [requestPermission] delegates to [onRequestPermission], which

@@ -58,6 +58,12 @@ interface HealthProvider {
     fun isAvailable(): Boolean
 
     /**
+     * Cheap provider-specific diagnostics used only by the manual diagnostics
+     * panel. Normal reads never call this.
+     */
+    fun diagnostics(): Map<String, String> = emptyMap()
+
+    /**
      * Android runtime permissions, if this provider uses them. Vendor account
      * SDKs may return an empty set and own their authorization flow separately.
      */

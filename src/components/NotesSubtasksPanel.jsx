@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Loader, Sparkles, X, Check, Plus, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
-import { activeLocale, formatLocalizedDate, formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
+import { formatDuration } from '../utils/formatDuration.js';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -494,7 +495,7 @@ const NotesSubtasksPanel = ({
                     {subtask.title}
                     {subtask.duration && (
                       <span className="opacity-40 text-xs ml-1.5">
-                        · {formatLocalizedDurationMinutes(subtask.duration)}
+                        · {formatDuration(subtask.duration, t)}
                       </span>
                     )}
                   </span>

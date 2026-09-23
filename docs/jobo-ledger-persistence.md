@@ -47,10 +47,11 @@ smaller than a ledger and cost real data.
 
 ## The record
 
-The split agreed on #1744: **core owns the complete record shape, the
-snapshot semantics and the progress transitions; the hook and storage layer
-own coordinated durable writes; sync merges records without rebuilding them
-from today's task.**
+The revised split proposed by Slice 2: **core owns the complete Do record
+shape and snapshot semantics; Plan owns completion; the hook and storage layer
+own coordinated durable writes; sync merges Do records without rebuilding them
+from today's task.** This is an explicit revision to the merged #1744 record
+contract, which previously placed progress on Do.
 
 So `title` and `planSnapshot` are part of the core record, not something the
 hook adds. Core constructs and validates a record from ordinary inputs (the
@@ -64,17 +65,16 @@ storage layers depend on, and ask core to keep fixed:
   taskId: 't1',            // the task this attempt was against, or null for an
                            //   unlinked manual Do; may also be an id that no
                            //   longer resolves (see "Orphans")
-  date: '2026-09-19',      // the day the interval starts on
-  startTime: '14:30',
-  endDate: '2026-09-19',   // the day it ends on; equal to `date` except across
-                           //   midnight (explicit rather than inferred)
-  endTime: '15:10',
+  timing: 'timed',         // 'timed' | 'untimed'
+  date: '2026-09-19',      // execution day
+  startTime: '14:30',      // null for untimed
+  endDate: '2026-09-19',   // null for untimed; explicit across midnight
+  endTime: '15:10',        // null for untimed
   title: 'Draft the report',   // captured once; the record reads on its own
   planSnapshot: {          // the plan as observed when the record was made,
     date: '2026-09-19', startTime: '14:30', duration: 60,
   },                       //   or null when there was no timed plan
   source: 'completion',    // 'completion' | 'manual' | 'focus' | …; core's list
-  progress: 'completed',   // core's vocabulary, serialized once in core
   createdAt: '2026-09-19T15:10:02.000Z',
   updatedAt: '2026-09-19T15:10:02.000Z',   // the LWW key; see "Identity" for
                                            //   what the initial value anchors to
@@ -90,10 +90,13 @@ storage layers depend on, and ask core to keep fixed:
 passes through opaque, which is what lets core change its mind about
 classification without touching persistence.
 
-Two nullables, both from review. `taskId: null` is a manual Do with no task
-behind it. `planSnapshot: null` means there genuinely was no timed plan to
-copy. An unavailable historical snapshot is not the same as "unplanned", and
-the hook must never manufacture one from today's task to fill the gap.
+Two pre-existing nullables remain: `taskId: null` is a manual Do with no task
+behind it; `planSnapshot: null` means there genuinely was no timed plan to
+copy. In addition, Untimed Do uses explicit null interval coordinates
+(`startTime`, `endDate`, `endTime`) under `timing: 'untimed'`. Those
+nulls mean "execution happened, duration unmeasured", never zero minutes. An
+unavailable historical snapshot is not the same as "unplanned", and the hook
+must never manufacture one from today's task to fill the gap.
 
 **What the snapshot is, honestly.** A detector that runs on completion
 captures the plan as it stands at completion. It cannot prove what the plan
@@ -104,19 +107,30 @@ completion-time plan and the doc says so rather than promising history that
 was not captured. `originalPlan` on the task remains the Original Plan; the
 snapshot is the best available Final Plan, not a guaranteed one.
 
-**Progress.** Core keeps the prototype's vocabulary: Started, Partially
-completed, Mostly completed, Completed, with the serialized values defined
-once in core. "Not started" is the derived condition of a plan with no
-recorded attempt, not a record. The transition contract slice 4 builds on:
+Plan-change counting stays on the task/Plan side, not on Do. Slice 2 defines
+`planRevisionCount` plus `lastPlanRevisionAt` as write-time metadata for
+effective changes to `date / startTime / duration`. The default coalescing
+window is 5 minutes: edits separated by at most 5 minutes stay in one revision
+session; a larger gap opens another. Changing that threshold later affects only
+future writes and never recomputes existing counts. This metric is deliberately
+separate from `rescheduleCount` or any overdue-deferral counter.
 
-- Completing creates a Completed attempt.
-- Un-completing changes that attempt to Partially completed, keeping its
-  interval and snapshot.
-- Completing again in a later session appends a new attempt; the earlier one
-  is untouched.
+**Completion is not a Do field.** Plan owns the ordinal completion assessment:
+`started / partly / mostly / completed`. "Not started" is still derived from
+time when no Do exists, the current displayed Plan has wholly elapsed, and
+there is no explicit Plan completion assessment.
 
-That settles what the ledger records. It does not settle whether JOBO's own
-checkbox completes the task natively, which stays open on #1623.
+A native completion appends one Do. With a known positive actual/retrospective
+interval it is Timed; with known execution but unmeasured duration it is
+Untimed. Zero minutes is never used as an "unknown" sentinel. Un-completing
+does not mutate a historical Do record. A later execution is a new attempt
+under a new identity.
+
+Legacy prototype/#1744 rows that still contain `progress` cross an explicit
+`migrateLegacyDoRecord()` boundary **before merge**: Core returns a progress-free
+canonical Do plus a separate legacy completion value for the caller to attach to
+the correct identified Plan if appropriate. Once migrated, normal merge applies
+without any schema-specific tie-break.
 
 ## Where it lives, and the two homes rejected
 
@@ -243,10 +257,12 @@ importer all go through it.
 
 Both tiers pick between two copies of one record with **the same function**,
 `pickJoboRecord(a, b)`, exported by core and shared the way
-`mergeCompletedDates` is shared today. It is: newer `updatedAt` wins; on an
-exact tie, lower `observedAt` wins; on a tie there too, the smaller canonical
-JSON. Order-independent and idempotent, so either tier may apply it twice and
-in either order. Why a shared rule rather than each tier's own LWW: both
+`mergeCompletedDates` is shared today. It is: newer `updatedAt` wins; on an exact
+tie, lower `observedAt` wins; on a tie there too, the smaller canonical JSON
+wins. The rule is deliberately schema-agnostic. Legacy progress-bearing rows
+must be migrated before they enter canonical merge. The picker contains no
+migration policy. Order-independent and idempotent, so either tier may apply it
+twice and in either order. Why a shared rule rather than each tier's own LWW: both
 tiers today resolve an exact timestamp tie as "remote wins" (`>=` in
 `dbAdapter.js` and in the file-tier merge). For tasks that is harmless,
 because two devices almost never share a `lastModified`. For ledger records
@@ -323,8 +339,8 @@ creates has a **deterministic id**, and, from review, creation is
   predates the stamps, which never produces a transition anyway.
 - **Ensure-present.** Re-observing a completion whose record already exists
   is a no-op. It does not rewrite the record and does not bump `updatedAt`.
-  Otherwise a late detector, holding the right id, would overwrite a user's
-  progress correction or a tombstone.
+  Otherwise a late detector, holding the right id, would overwrite an interval
+  correction or a tombstone.
 - **The initial `updatedAt` is anchored to the source event**, not to when
   the detector happened to run. Any later user edit or tombstone, with a
   later `updatedAt`, then wins over any re-observation.
@@ -342,16 +358,11 @@ creates has a **deterministic id**, and, from review, creation is
   the pre-work plan; the snapshot paragraph under "The record" already says
   what is promised there. Pristine records tie; any user edit breaks the tie
   on `updatedAt` and the rule never runs.
-- **Un-completing targets the record by the previous key.** The detector is
-  a planner over prev and next snapshots, like `useCompletionLog`; on an
-  uncheck the task's `completedAt` is cleared in `next`, so the key is
-  computed from `prev`. For a recurring occurrence the same holds for the
-  stamp: the uncheck overwrites `completedDatesTimestamps[instanceDate]`
-  with the uncheck time, so `prev` is the only place the completion stamp
-  still exists. The record's progress drops to Partially completed and its
-  `updatedAt` bumps. A record is never deleted by an uncheck.
-- **A later completion is a new key.** Editing a record's interval or
-  progress never changes its id.
+- **Un-completing does not mutate Do history.** The native task follows its
+  normal reopen path. Any completion reassessment belongs to Plan state.
+  Historical Do intervals stay unchanged.
+- **A later recorded execution is a new key.** Editing a record's interval
+  never changes its id.
 - **Manual and focus records** get generated ids, created once before the
   write so that a retry reuses the same id rather than minting a second.
 
@@ -407,8 +418,8 @@ truth"; nothing here forecloses it.
 
 ## What is out of scope
 
-- The fields that express progress and classification, and their rules
-  (slice 2).
+- Plan completion persistence/integration and rendering. Slice 2 defines its
+  vocabulary and comparison contract; this ledger stores Do execution rows.
 - Creating records from completions (slice 4), which depends on the identity
   rules above and on the hook being the only writer.
 - Any rendering (slice 5), including the history popover learning about Do.
@@ -443,12 +454,11 @@ rather than unit-testing a module. The five from review are folded in.
    two candidates with the same id and `updatedAt` but different `title` and
    `planSnapshot`, merged in both orders through both transports; assert all
    four results are the same record, the one with the lower `observedAt`.
-5. **Complete, reopen, re-complete.** Assert the first attempt drops to
-   Partially completed and keeps its interval and snapshot; assert the
-   second completion is a new record under a new key. Run it for an ordinary
-   task and for the same recurring occurrence, where the second completion
-   carries a new stamp; and once more with a delayed duplicate observation
-   of the first completion arriving after the reopen, which must change
+5. **Complete, reopen, re-complete.** Assert reopening does not mutate the
+   first Do interval/snapshot/version; if later execution is recorded, assert
+   it is a new row under a new key. Run it for an ordinary task and for the
+   same recurring occurrence, where the later completion carries a new stamp.
+   A delayed duplicate observation of the first event must still change
    nothing.
 6. **Frozen title and plan.** Rename and reschedule the task after the
    record exists, then edit the record's interval; assert `title` and
@@ -464,9 +474,11 @@ rather than unit-testing a module. The five from review are folded in.
    payload without the key; a failed write is not acknowledged; a failed
    restore write does not reload; at no point is an empty ledger published
    in place of an unreadable one.
-10. **Unlinked and untimed.** A manual Do with `taskId: null` and
-    `planSnapshot: null` round-trips both tiers intact, and a cross-midnight
-    interval keeps its `endDate`.
+10. **Unlinked, unplanned and untimed.** A manual Do with `taskId: null` and
+    `planSnapshot: null` round-trips both tiers intact in both Timed and
+    Untimed forms; a cross-midnight Timed interval keeps its `endDate`, while
+    Untimed preserves explicit null interval coordinates. Zero-duration
+    sentinels are rejected/migrated before canonical persistence.
 11. **Restore then reload keeps the ledger.** Restore with a checked write;
     construct a fresh hook over the same store; assert the records are there.
 
@@ -496,15 +508,16 @@ read (9 fails); drop the checked restore write (11 fails).
 | `src/utils/resetAppData.js` | `'dayglance-jobo'` in `KNOWN_INDEXEDDB_NAMES` |
 | `CLAUDE.md` | a short section: the ledger is a collection; the hook is the only writer; the flag gates UI not data; never prune ledger tombstones |
 
-Nothing in `src/jobo/core.js` beyond its record constructor and the pick
-rule, and nothing in any component.
+Slice 3 consumes the record constructor and `pickJoboRecord`. The exact record
+contract must be updated to this progress-free shape before #1762 is merged;
+otherwise strict Core validation and the persistence design disagree.
 
 ## Resolved after review
 
-Both open questions from the first draft are settled in @Lcub3d's favour:
-`title` and `planSnapshot` are core's, captured once and preserved, and the
-progress vocabulary is the prototype's, serialized once in core. The other
-changes from review are the strict store, ensure-present creation with
+The fork-local Slice 2 refinement keeps `title` and `planSnapshot` in core,
+captured once and preserved, but revises #1744 by removing Do progress entirely.
+Plan owns completion; legacy progress-bearing rows require explicit migration.
+The other changes from review are the strict store, ensure-present creation with
 source-anchored timestamps, held applies during load, `endDate`, the two
 nullables, and keeping tombstones forever.
 

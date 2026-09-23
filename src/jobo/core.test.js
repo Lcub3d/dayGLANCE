@@ -2,9 +2,9 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
-  DO_SOURCES, DO_TIMING, TIMING, COMPLETION_STATUS, COMPLETION_STATUS_ORDER,
+  DO_SOURCES, DO_TIMING, DO_PROGRESS, TIMING,
   createDoRecord, validateDoRecord, updateDoRecord, tombstoneDoRecord,
-  completeDoAttempt, migrateLegacyDoRecord, setPlanCompletionStatus,
+  completeDoAttempt, reassessDoProgress, migrateLegacyDoRecord,
   comparePlanAnchors, doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
 } from './core.js';
 
@@ -17,6 +17,7 @@ const input = (patch = {}) => ({
   timing: DO_TIMING.TIMED,
   date: '2026-09-19', startTime: '14:30', endDate: '2026-09-19', endTime: '15:10',
   title: 'Draft the report', planSnapshot: plan(), source: 'completion',
+  progress: DO_PROGRESS.COMPLETED,
   createdAt: T0, updatedAt: T0, observedAt: T1,
   deleted: false, ...patch,
 });
@@ -45,7 +46,7 @@ describe('Do record contract', () => {
     const source = input();
     delete source.deleted;
     assert.equal(createDoRecord(source).deleted, false);
-    for (const key of ['id', 'taskId', 'timing', 'title', 'planSnapshot', 'source', 'createdAt', 'updatedAt', 'observedAt', 'endDate']) {
+    for (const key of ['id', 'taskId', 'timing', 'title', 'planSnapshot', 'source', 'progress', 'createdAt', 'updatedAt', 'observedAt', 'endDate']) {
       const missing = input();
       delete missing[key];
       assert.throws(() => createDoRecord(missing), TypeError, key);
@@ -66,10 +67,10 @@ describe('Do record contract', () => {
     assert.deepEqual(createDoRecord(source), source);
   });
   it('keeps explicit unlinked manual execution entries', () => {
-    const r = record({ taskId: null, planSnapshot: null, source: 'manual' });
+    const r = record({ taskId: null, planSnapshot: null, source: 'manual', progress: DO_PROGRESS.STARTED });
     assert.equal(r.taskId, null);
     assert.equal(r.planSnapshot, null);
-    assert.equal(ownKey(r, 'progress'), false);
+    assert.equal(r.progress, DO_PROGRESS.STARTED);
   });
   it('represents unmeasured execution explicitly as Untimed Do', () => {
     const r = record({
@@ -97,44 +98,48 @@ describe('Do record contract', () => {
   it('does not confuse observer clock skew with an invalid event version', () => {
     assert.equal(record({ observedAt: '2020-01-01T00:00:00.000Z' }).observedAt, '2020-01-01T00:00:00.000Z');
   });
-  it('rejects progress on a Do record because completion belongs to Plan', () => {
-    const candidate = input({ progress: 'started' });
-    assert.equal(validateDoRecord(candidate).ok, false);
-    assert.throws(() => createDoRecord(candidate), TypeError);
+  it('serializes the canonical per-attempt progress vocabulary', () => {
+    assert.deepEqual(DO_PROGRESS, {
+      STARTED: 'started',
+      PARTIAL: 'partial',
+      MOSTLY: 'mostly',
+      COMPLETED: 'completed',
+    });
+    for (const progress of Object.values(DO_PROGRESS)) {
+      assert.equal(record({ progress }).progress, progress);
+    }
   });
-  it('migrates legacy Do progress explicitly without retaining it on the record', () => {
-    const migrated = migrateLegacyDoRecord(input({ progress: 'partial' }));
-    assert.equal(migrated.legacyCompletionStatus, 'partly');
-    assert.equal(ownKey(migrated.record, 'progress'), false);
-    assert.equal(migrated.record.id, input().id);
-    assert.equal(migrated.record.updatedAt, T0);
-    assert.deepEqual(validateDoRecord(migrated.record), { ok: true, errors: [] });
-  });
-  it('maps legacy complete/completed spellings but rejects unknown legacy progress', () => {
-    assert.equal(migrateLegacyDoRecord(input({ progress: 'complete' })).legacyCompletionStatus, 'completed');
-    assert.equal(migrateLegacyDoRecord(input({ progress: 'completed' })).legacyCompletionStatus, 'completed');
+  it('migrates prototype progress values into the canonical Do record', () => {
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'started' })).progress, DO_PROGRESS.STARTED);
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'partial' })).progress, DO_PROGRESS.PARTIAL);
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'mostly' })).progress, DO_PROGRESS.MOSTLY);
+    assert.equal(migrateLegacyDoRecord(input({ progress: 'complete' })).progress, DO_PROGRESS.COMPLETED);
+    assert.throws(() => migrateLegacyDoRecord(input({ progress: 'completed' })), TypeError);
     assert.throws(() => migrateLegacyDoRecord(input({ progress: 'almost' })), TypeError);
   });
-  it('adds the timing discriminant at the legacy boundary before merge', () => {
+  it('adds the timing discriminant at the prototype import boundary', () => {
     const oldTimed = input({ progress: 'partial' });
     delete oldTimed.timing;
     const migratedTimed = migrateLegacyDoRecord(oldTimed);
-    assert.equal(migratedTimed.record.timing, DO_TIMING.TIMED);
+    assert.equal(migratedTimed.timing, DO_TIMING.TIMED);
+    assert.equal(migratedTimed.progress, DO_PROGRESS.PARTIAL);
 
-    const oldZeroCompletion = input({ progress: 'completed', endTime: '14:30' });
+    const oldZeroCompletion = input({ progress: 'complete', endTime: '14:30' });
     delete oldZeroCompletion.timing;
     const migratedUntimed = migrateLegacyDoRecord(oldZeroCompletion);
-    assert.equal(migratedUntimed.record.timing, DO_TIMING.UNTIMED);
-    assert.equal(migratedUntimed.record.startTime, null);
-    assert.equal(migratedUntimed.record.endDate, null);
-    assert.equal(migratedUntimed.record.endTime, null);
-    assert.equal(doDurationMinutes(migratedUntimed.record), null);
+    assert.equal(migratedUntimed.timing, DO_TIMING.UNTIMED);
+    assert.equal(migratedUntimed.progress, DO_PROGRESS.COMPLETED);
+    assert.equal(migratedUntimed.startTime, null);
+    assert.equal(migratedUntimed.endDate, null);
+    assert.equal(migratedUntimed.endTime, null);
+    assert.equal(doDurationMinutes(migratedUntimed), null);
   });
   for (const source of DO_SOURCES) it(`accepts the documented ${source} source`, () => assert.equal(record({ source }).source, source));
   const invalid = [
     ['empty id', { id: '' }], ['blank title', { title: '  ' }],
     ['missing task id', { taskId: undefined }], ['object task id', { taskId: {} }],
     ['unsafe numeric task id', { taskId: Number.MAX_SAFE_INTEGER + 1 }],
+    ['unknown progress', { progress: 'complete' }],
     ['unknown timing', { timing: 'clocked' }],
     ['untimed with a start', { timing: DO_TIMING.UNTIMED, startTime: '14:30', endDate: null, endTime: null }],
     ['untimed with an end date', { timing: DO_TIMING.UNTIMED, startTime: null, endDate: '2026-09-19', endTime: null }],
@@ -151,7 +156,6 @@ describe('Do record contract', () => {
     ['backwards unscheduled completion', { planSnapshot: null, endTime: '14:00' }],
     ['bad endDate', { endDate: '2026-09-18' }],
     ['missing snapshot', { planSnapshot: undefined }], ['bad snapshot duration', { planSnapshot: plan({ duration: 0 }) }],
-    ['snapshot must not capture Plan completion', { planSnapshot: plan({ completionStatus: 'mostly' }) }],
     ['string snapshot duration', { planSnapshot: plan({ duration: '60' }) }],
     ['invalid snapshot date', { planSnapshot: plan({ date: '2026-02-30' }) }],
     ['NaN snapshot', { planSnapshot: plan({ duration: NaN }) }],
@@ -224,45 +228,34 @@ describe('Original/Final Plan raw metrics', () => {
     assert.throws(() => comparePlanAnchors(plan(), { ...plan(), duration: 0 }), TypeError);
   });
 });
-describe('Plan completion assessment', () => {
-  it('publishes the canonical ordinal order without making updates monotonic', () => {
-    assert.deepEqual(COMPLETION_STATUS_ORDER, [
-      COMPLETION_STATUS.STARTED,
-      COMPLETION_STATUS.PARTLY,
-      COMPLETION_STATUS.MOSTLY,
-      COMPLETION_STATUS.COMPLETED,
-    ]);
+describe('Do progress reassessment', () => {
+  it('reassesses completed work to any of the other three progress values', () => {
+    const original = freeze(record());
+    for (const progress of [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY]) {
+      const changed = reassessDoProgress(original, progress, T2);
+      assert.equal(changed.progress, progress);
+      assert.equal(changed.updatedAt, T2);
+      for (const key of ['id', 'taskId', 'timing', 'date', 'startTime', 'endDate', 'endTime', 'title', 'planSnapshot', 'source', 'createdAt', 'observedAt']) {
+        assert.deepEqual(changed[key], original[key], key);
+      }
+    }
+    assert.equal(original.progress, DO_PROGRESS.COMPLETED);
   });
 
-  it('is a pure Plan-occurrence assessment, not a monotonic workflow', () => {
-    const original = freeze(plan({ id: 'plan:t1:2026-09-19' }));
-    const started = setPlanCompletionStatus(original, COMPLETION_STATUS.STARTED);
-    const mostly = setPlanCompletionStatus(started, COMPLETION_STATUS.MOSTLY);
-    const partly = setPlanCompletionStatus(mostly, COMPLETION_STATUS.PARTLY);
-    const completed = setPlanCompletionStatus(partly, COMPLETION_STATUS.COMPLETED);
-    const cleared = setPlanCompletionStatus(completed, null);
-
-    assert.equal(original.completionStatus, undefined);
-    assert.equal(started.completionStatus, COMPLETION_STATUS.STARTED);
-    assert.equal(mostly.completionStatus, COMPLETION_STATUS.MOSTLY);
-    assert.equal(partly.completionStatus, COMPLETION_STATUS.PARTLY);
-    assert.equal(completed.completionStatus, COMPLETION_STATUS.COMPLETED);
-    assert.equal(cleared.completionStatus, null);
-    assert.equal(completed.id, original.id);
-    assert.equal(completed.date, original.date);
-    assert.equal(completed.startTime, original.startTime);
-    assert.equal(completed.duration, original.duration);
+  it('does not use reassessment to create Completed', () => {
+    assert.throws(() => reassessDoProgress(record(), DO_PROGRESS.COMPLETED, T2), TypeError);
+    assert.throws(() => reassessDoProgress(record(), 'complete', T2), TypeError);
   });
 
-  it('requires a stable Plan id and rejects noncanonical assessments', () => {
-    assert.throws(() => setPlanCompletionStatus(plan(), COMPLETION_STATUS.STARTED), TypeError);
-    assert.throws(() => setPlanCompletionStatus(plan({ id: 'p1' }), 'partial'), TypeError);
-    assert.throws(() => setPlanCompletionStatus({}, COMPLETION_STATUS.STARTED), TypeError);
+  it('keeps a no-op reassessment referentially stable', () => {
+    const r = record({ progress: DO_PROGRESS.PARTIAL });
+    assert.equal(reassessDoProgress(r, DO_PROGRESS.PARTIAL, undefined), r);
   });
 
-  it('keeps a no-op assessment referentially stable', () => {
-    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.PARTLY });
-    assert.equal(setPlanCompletionStatus(p, COMPLETION_STATUS.PARTLY), p);
+  it('requires a newer version and never revives a tombstone', () => {
+    assert.throws(() => reassessDoProgress(record(), DO_PROGRESS.PARTIAL, T0), RangeError);
+    const deleted = tombstoneDoRecord(record(), T2);
+    assert.throws(() => reassessDoProgress(deleted, DO_PROGRESS.PARTIAL, '2026-09-19T17:10:02.000Z'), TypeError);
   });
 });
 
@@ -334,11 +327,15 @@ describe('explicit attempt identity (not a task detector)', () => {
       const firstInput = freeze(input({ id: id1 }));
       const first = freeze(completeDoAttempt([], firstInput));
       assert.equal(first.length, 1);
-      assert.equal(ownKey(first[0], 'progress'), false);
-      const both = completeDoAttempt(first, input({ id: id2, createdAt: T2, updatedAt: T2, observedAt: T2 }));
+      assert.equal(first[0].progress, DO_PROGRESS.COMPLETED);
+      const reassessed = reassessDoProgress(first[0], DO_PROGRESS.PARTIAL, T1);
+      assert.equal(reassessed.progress, DO_PROGRESS.PARTIAL);
+      assert.deepEqual(reassessed.planSnapshot, first[0].planSnapshot);
+      assert.equal(reassessed.startTime, first[0].startTime);
+      const both = completeDoAttempt([reassessed], input({ id: id2, createdAt: T2, updatedAt: T2, observedAt: T2 }));
       assert.equal(both.length, 2);
-      assert.equal(both[0], first[0]);
-      assert.equal(ownKey(both[1], 'progress'), false);
+      assert.equal(both[0].progress, DO_PROGRESS.PARTIAL);
+      assert.equal(both[1].progress, DO_PROGRESS.COMPLETED);
       assert.equal(completeDoAttempt(both, { id: id1 }), both);
       assert.deepEqual(first[0].planSnapshot, both[0].planSnapshot);
     });
@@ -360,7 +357,7 @@ describe('explicit attempt identity (not a task detector)', () => {
     const r = freeze(input());
     const items = freeze([]);
     const created = completeDoAttempt(items, r);
-    assert.equal(ownKey(created[0], 'progress'), false);
+    assert.equal(created[0].progress, DO_PROGRESS.COMPLETED);
     assert.equal(items.length, 0);
   });
   it('can ensure-present an Untimed completion attempt without inventing minutes', () => {
@@ -545,14 +542,13 @@ describe('pickJoboRecord: drop-in #1762 callback', () => {
     assert.equal(pickJoboRecord(a, b), a);
     assert.equal(pickJoboRecord(b, a), a);
   });
-  it('keeps migration outside the merge rule', () => {
-    const canonical = record();
+  it('keeps prototype migration outside the merge rule', () => {
+    const canonical = record({ progress: DO_PROGRESS.PARTIAL });
     const legacy = { ...canonical, progress: 'partial' };
     const migrated = migrateLegacyDoRecord(legacy);
-    assert.equal(migrated.legacyCompletionStatus, 'partly');
-    assert.deepEqual(migrated.record, canonical);
-    assert.deepEqual(pickJoboRecord(canonical, migrated.record), canonical);
-    assert.deepEqual(pickJoboRecord(migrated.record, canonical), canonical);
+    assert.deepEqual(migrated, canonical);
+    assert.deepEqual(pickJoboRecord(canonical, migrated), canonical);
+    assert.deepEqual(pickJoboRecord(migrated, canonical), canonical);
   });
   it('compares the nested snapshot on an exact timestamp tie', () => {
     const a = record({ planSnapshot: plan({ duration: 30 }) });

@@ -2,8 +2,8 @@
 import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  createDoRecord, DO_TIMING,
-  PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, COMPLETION_STATUS, EXECUTION_PATTERN,
+  createDoRecord, DO_TIMING, DO_PROGRESS,
+  PLAN_CONTEXT, RELATIVE_TIMING, DURATION_COMPARISON, EXECUTION_PATTERN,
   ALLEN_RELATION, TIMING_SUMMARY, compareExecutionToPlan, summarizeTiming,
 } from './core.js';
 
@@ -22,6 +22,7 @@ const record = (patch = {}) => createDoRecord({
   title: 'Test task',
   planSnapshot: plan(),
   source: 'manual',
+  progress: DO_PROGRESS.COMPLETED,
   createdAt: T0,
   updatedAt: T0,
   observedAt: T1,
@@ -31,6 +32,20 @@ const record = (patch = {}) => createDoRecord({
 const now = time => ({ date: '2026-09-19', time });
 
 describe('theory-driven JOBO comparison', () => {
+  it('uses camelCase serialized values for new multi-word labels', () => {
+    assert.equal(PLAN_CONTEXT.NO_PLAN, 'noPlan');
+    assert.equal(RELATIVE_TIMING.ON_TIME, 'onTime');
+    assert.equal(DURATION_COMPARISON.ON_ESTIMATE, 'onEstimate');
+    assert.equal(EXECUTION_PATTERN.SINGLE_SESSION, 'singleSession');
+    assert.equal(EXECUTION_PATTERN.SPLIT_SESSIONS, 'splitSessions');
+    assert.equal(TIMING_SUMMARY.WITHIN_PLAN, 'withinPlan');
+    assert.equal(TIMING_SUMMARY.NOT_STARTED, 'notStarted');
+    assert.equal(ALLEN_RELATION.STARTED_BY, 'startedBy');
+    assert.equal(ALLEN_RELATION.FINISHED_BY, 'finishedBy');
+    assert.equal(ALLEN_RELATION.OVERLAPPED_BY, 'overlappedBy');
+    assert.equal(ALLEN_RELATION.MET_BY, 'metBy');
+  });
+
   it('keeps exact plan match as independent neutral dimensions', () => {
     const result = compareExecutionToPlan(plan(), [record()]);
     assert.equal(result.planContext, PLAN_CONTEXT.PLANNED);
@@ -138,85 +153,14 @@ describe('theory-driven JOBO comparison', () => {
     assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.WITHIN_PLAN, TIMING_SUMMARY.SPLIT]);
   });
 
-  it('reads completion from an identified Plan instance', () => {
-    for (const value of Object.values(COMPLETION_STATUS)) {
-      const p = plan({ id: 'plan:t1:2026-09-19', completionStatus: value });
-      const result = compareExecutionToPlan(p, [record()]);
-      assert.equal(result.planId, 'plan:t1:2026-09-19');
-      assert.equal(result.completionStatus, value);
-    }
-  });
-
-  it('uses started / partly / mostly / completed as the canonical completion vocabulary', () => {
-    assert.deepEqual(COMPLETION_STATUS, {
-      STARTED: 'started',
-      PARTLY: 'partly',
-      MOSTLY: 'mostly',
-      COMPLETED: 'completed',
-    });
-  });
-
-  it('does not derive Plan completion from time or Do records', () => {
-    const result = compareExecutionToPlan(plan(), [
-      record({ endTime: '09:10' }),
-    ]);
-    assert.equal(result.completionStatus, null);
+  it('keeps progress on Do rather than folding it into timing comparison', () => {
+    const r = record({ progress: DO_PROGRESS.PARTIAL, endTime: '09:10' });
+    const result = compareExecutionToPlan(plan(), [r]);
+    assert.equal(r.progress, DO_PROGRESS.PARTIAL);
     assert.equal(Object.hasOwn(result, 'progress'), false);
+    assert.equal(Object.hasOwn(result, 'completionStatus'), false);
+    assert.equal(result.metrics.durationRatio, 1 / 6);
   });
-
-  it('does not fold not-started into the completion dimension', () => {
-    const result = compareExecutionToPlan(plan(), [], { now: now('11:00') });
-    assert.equal(result.notStarted, true);
-    assert.equal(result.completionStatus, null);
-    assert.deepEqual(summarizeTiming(result), [TIMING_SUMMARY.NOT_STARTED]);
-  });
-
-  it('does not report Not Started when the Plan has an explicit completion assessment', () => {
-    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
-    const result = compareExecutionToPlan(p, [], { now: now('11:00') });
-    assert.equal(result.notStarted, false);
-    assert.equal(result.completionStatus, COMPLETION_STATUS.COMPLETED);
-    assert.deepEqual(summarizeTiming(result), []);
-  });
-
-  it('rejects invalid or unbound Plan completion values', () => {
-    assert.throws(
-      () => compareExecutionToPlan(plan({ id: 'p1', completionStatus: 'partial' }), [record()]),
-      TypeError,
-    );
-    assert.throws(
-      () => compareExecutionToPlan(plan({ id: 'p1', completionStatus: 'done' }), [record()]),
-      TypeError,
-    );
-    assert.throws(
-      () => compareExecutionToPlan(plan({ completionStatus: COMPLETION_STATUS.MOSTLY }), [record()]),
-      TypeError,
-    );
-    assert.throws(
-      () => compareExecutionToPlan(plan(), [record()], { completionStatus: COMPLETION_STATUS.MOSTLY }),
-      TypeError,
-    );
-  });
-
-  it('requires displayed revisions to identify the same Plan when both ids are present', () => {
-    assert.throws(
-      () => compareExecutionToPlan(
-        plan({ id: 'p1' }),
-        [record()],
-        { displayedPlan: plan({ id: 'p2' }) },
-      ),
-      TypeError,
-    );
-  });
-
-  it('keeps time independent of Plan completion', () => {
-    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
-    const fastComplete = compareExecutionToPlan(p, [record({ endTime: '09:10' })]);
-    assert.equal(fastComplete.metrics.durationRatio, 1 / 6);
-    assert.equal(fastComplete.completionStatus, COMPLETION_STATUS.COMPLETED);
-    assert.equal(Object.hasOwn(fastComplete, 'completionPercent'), false);
-  });
-
 
   it('distinguishes known no-plan from unknown plan history', () => {
     const r = record({ planSnapshot: null, taskId: null });
@@ -298,9 +242,6 @@ describe('theory-driven JOBO comparison', () => {
     })], elapsed);
     assert.equal(elapsedWithUntimedDo.notStarted, false);
 
-    const completedPlan = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.COMPLETED });
-    const elapsedNoDoWithCompletion = compareExecutionToPlan(completedPlan, [], elapsed);
-    assert.equal(elapsedNoDoWithCompletion.notStarted, false);
   });
 
   it('uses Untimed Do for execution with unknown duration instead of fake zero minutes', () => {

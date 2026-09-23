@@ -7,6 +7,12 @@ export const DO_TIMING = Object.freeze({
   TIMED: 'timed',
   UNTIMED: 'untimed',
 });
+export const DO_PROGRESS = Object.freeze({
+  STARTED: 'started',
+  PARTIAL: 'partial',
+  MOSTLY: 'mostly',
+  COMPLETED: 'completed',
+});
 export const TIMING = Object.freeze({
   WITHIN_PLAN: 'withinPlan', DELAYED: 'delayed', OVERRUN: 'overrun',
   INTERRUPTED: 'interrupted', NOT_STARTED: 'notStarted', UNPLANNED: 'unplanned',
@@ -16,6 +22,7 @@ const plain = value => value !== null && typeof value === 'object'
   && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
 const taskIdValid = id => id === null || nonempty(id) || (typeof id === 'number' && Number.isSafeInteger(id));
+const progressValues = Object.values(DO_PROGRESS);
 const editable = new Set(['timing', 'date', 'startTime', 'endDate', 'endTime']);
 
 function validDate(value) {
@@ -90,7 +97,7 @@ export function validateDoRecord(record) {
   if (!own(record, 'taskId') || !taskIdValid(record.taskId)) errors.push('taskId must be an id or explicit null');
   if (!nonempty(record.title)) errors.push('title must be a nonempty string');
   if (!DO_SOURCES.includes(record.source)) errors.push('invalid source');
-  if (own(record, 'progress')) errors.push('progress belongs to Plan completion, not Do record');
+  if (!progressValues.includes(record.progress)) errors.push('invalid progress');
   if (typeof record.deleted !== 'boolean') errors.push('deleted must be boolean');
   for (const key of ['createdAt', 'updatedAt', 'observedAt']) {
     if (!validStamp(record[key])) errors.push(`${key} must be an ISO timestamp with an offset`);
@@ -114,9 +121,6 @@ export function validateDoRecord(record) {
   if (!own(record, 'planSnapshot')) errors.push('planSnapshot must be supplied (or explicit null)');
   else if (record.planSnapshot !== null) {
     try { planBounds(record.planSnapshot); } catch { errors.push('invalid planSnapshot'); }
-    if (plain(record.planSnapshot) && own(record.planSnapshot, 'completionStatus')) {
-      errors.push('planSnapshot must not capture Plan completion');
-    }
   }
   try { canonicalJson(record); } catch { errors.push('record must be acyclic JSON data'); }
   return { ok: errors.length === 0, errors };
@@ -129,7 +133,7 @@ function assertRecord(record) {
 /**
  * Construct the full record supplied by the caller. Only deleted defaults to
  * false. title/planSnapshot and opaque JSON extensions are defensively copied.
- * IDs, event times and observation time must be explicit. Completion belongs to Plan.
+ * IDs, progress, event times and observation time must be explicit.
  */
 export function createDoRecord(input) {
   if (!plain(input)) throw new TypeError('Record input must be a plain object');
@@ -179,8 +183,29 @@ export function tombstoneDoRecord(record, updatedAt) {
 export function completeDoAttempt(records, input) {
   if (!Array.isArray(records) || !plain(input) || !nonempty(input.id)) throw new TypeError('Invalid attempt input');
   if (records.some(record => record.id === input.id)) return records;
-  const attempt = createDoRecord({ ...input, source: 'completion', deleted: false });
+  const attempt = createDoRecord({
+    ...input,
+    source: 'completion',
+    progress: DO_PROGRESS.COMPLETED,
+    deleted: false,
+  });
   return [...records, attempt];
+}
+
+/**
+ * Reassess one existing Do attempt without changing its interval or captured
+ * history. Completed is created by completeDoAttempt; reassessment uses the
+ * other three progress values.
+ */
+export function reassessDoProgress(record, progress, updatedAt) {
+  assertRecord(record);
+  if (record.deleted) throw new TypeError('Cannot reassess a deleted Do record');
+  if (![DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY].includes(progress)) {
+    throw new TypeError('Progress reassessment must be started, partial, or mostly');
+  }
+  if (record.progress === progress) return record;
+  assertLater(record, updatedAt);
+  return createDoRecord({ ...record, progress, updatedAt });
 }
 
 /** Civil minutes of one timed execution interval; null means deliberately untimed. */
@@ -271,63 +296,41 @@ export function pickJoboRecord(a, b) {
  */
 export const PLAN_CONTEXT = Object.freeze({
   PLANNED: 'planned',
-  NO_PLAN: 'no_plan',
+  NO_PLAN: 'noPlan',
   UNKNOWN: 'unknown',
 });
 
 export const RELATIVE_TIMING = Object.freeze({
   EARLY: 'early',
-  ON_TIME: 'on_time',
+  ON_TIME: 'onTime',
   LATE: 'late',
 });
 
 export const DURATION_COMPARISON = Object.freeze({
   SHORTER: 'shorter',
-  ON_ESTIMATE: 'on_estimate',
+  ON_ESTIMATE: 'onEstimate',
   LONGER: 'longer',
 });
 
-export const COMPLETION_STATUS = Object.freeze({
-  STARTED: 'started',
-  PARTLY: 'partly',
-  MOSTLY: 'mostly',
-  COMPLETED: 'completed',
-});
-
-export const COMPLETION_STATUS_ORDER = Object.freeze([
-  COMPLETION_STATUS.STARTED,
-  COMPLETION_STATUS.PARTLY,
-  COMPLETION_STATUS.MOSTLY,
-  COMPLETION_STATUS.COMPLETED,
-]);
-
-const LEGACY_PROGRESS_TO_COMPLETION = Object.freeze({
-  started: COMPLETION_STATUS.STARTED,
-  partial: COMPLETION_STATUS.PARTLY,
-  partly: COMPLETION_STATUS.PARTLY,
-  mostly: COMPLETION_STATUS.MOSTLY,
-  completed: COMPLETION_STATUS.COMPLETED,
-  complete: COMPLETION_STATUS.COMPLETED,
+const LEGACY_PROGRESS_TO_PROGRESS = Object.freeze({
+  started: DO_PROGRESS.STARTED,
+  partial: DO_PROGRESS.PARTIAL,
+  mostly: DO_PROGRESS.MOSTLY,
+  complete: DO_PROGRESS.COMPLETED,
 });
 
 /**
- * Explicit boundary for prototype/#1744 rows that still contain Do progress.
- * The returned record is canonical and progress-free; the caller decides which
- * identified Plan, if any, receives legacyCompletionStatus.
+ * Prototype-import boundary. Current canonical Do rows do not pass through
+ * migration; the importer uses this for prototype progress and timing values.
  */
 export function migrateLegacyDoRecord(record) {
   if (!plain(record)) throw new TypeError('Legacy Do record must be a plain object');
-  const hasProgress = own(record, 'progress');
-  let legacyCompletionStatus = null;
-  if (hasProgress) {
-    legacyCompletionStatus = LEGACY_PROGRESS_TO_COMPLETION[record.progress];
-    if (!legacyCompletionStatus) throw new TypeError('Unknown legacy Do progress');
-  }
+  const progress = LEGACY_PROGRESS_TO_PROGRESS[record.progress];
+  if (!progress) throw new TypeError('Unknown legacy Do progress');
 
-  const migrated = { ...record };
-  delete migrated.progress;
+  const migrated = { ...record, progress };
 
-  // Pre-discriminant rows are normalized here, before canonical merge.
+  // Prototype rows predate the explicit Timed / Untimed discriminant.
   if (!own(migrated, 'timing')) {
     try {
       const duration = civilMinute(migrated.endDate, migrated.endTime)
@@ -345,15 +348,12 @@ export function migrateLegacyDoRecord(record) {
     }
   }
 
-  return {
-    record: createDoRecord(migrated),
-    legacyCompletionStatus,
-  };
+  return createDoRecord(migrated);
 }
 
 export const EXECUTION_PATTERN = Object.freeze({
-  SINGLE_SESSION: 'single_session',
-  SPLIT_SESSIONS: 'split_sessions',
+  SINGLE_SESSION: 'singleSession',
+  SPLIT_SESSIONS: 'splitSessions',
 });
 
 export const ALLEN_RELATION = Object.freeze({
@@ -364,20 +364,20 @@ export const ALLEN_RELATION = Object.freeze({
   DURING: 'during',
   FINISHES: 'finishes',
   EQUALS: 'equals',
-  STARTED_BY: 'started_by',
+  STARTED_BY: 'startedBy',
   CONTAINS: 'contains',
-  FINISHED_BY: 'finished_by',
-  OVERLAPPED_BY: 'overlapped_by',
-  MET_BY: 'met_by',
+  FINISHED_BY: 'finishedBy',
+  OVERLAPPED_BY: 'overlappedBy',
+  MET_BY: 'metBy',
   AFTER: 'after',
 });
 
 export const TIMING_SUMMARY = Object.freeze({
-  WITHIN_PLAN: 'within_plan',
+  WITHIN_PLAN: 'withinPlan',
   LATE: 'late',
   LONGER: 'longer',
   SPLIT: 'split',
-  NOT_STARTED: 'not_started',
+  NOT_STARTED: 'notStarted',
   UNPLANNED: 'unplanned',
 });
 
@@ -387,53 +387,6 @@ function comparisonTolerance(value, name) {
     throw new TypeError(`${name} tolerance must be a finite non-negative number`);
   }
   return value;
-}
-
-function completionStatusValue(value) {
-  if (value == null) return null;
-  if (!Object.values(COMPLETION_STATUS).includes(value)) {
-    throw new TypeError('completionStatus must be started, partly, mostly, completed, or null');
-  }
-  return value;
-}
-
-function planIdentityValue(plan) {
-  if (plan == null || !own(plan, 'id')) return null;
-  const value = plan.id;
-  if (!(nonempty(value) || (typeof value === 'number' && Number.isSafeInteger(value)))) {
-    throw new TypeError('Plan id must be a nonempty string or safe integer');
-  }
-  return String(value);
-}
-
-function planState(plan) {
-  if (plan == null) return { id: null, completionStatus: null };
-  const id = planIdentityValue(plan);
-  const completionStatus = completionStatusValue(
-    own(plan, 'completionStatus') ? plan.completionStatus : null,
-  );
-  if (completionStatus !== null && id === null) {
-    throw new TypeError('A Plan completionStatus requires a stable Plan id');
-  }
-  return { id, completionStatus };
-}
-
-/**
- * Pure Plan-occurrence completion assessment. Completion is ordinal, but this
- * is not a monotonic workflow: any valid assessment may be replaced by any
- * other valid assessment, or cleared with null. Do records are never changed.
- */
-export function setPlanCompletionStatus(plan, completionStatus) {
-  if (!plain(plan)) throw new TypeError('Plan must be a plain object');
-  planBounds(plan);
-  const id = planIdentityValue(plan);
-  if (id === null) throw new TypeError('Plan completion requires a stable Plan id');
-  const next = completionStatusValue(completionStatus);
-  const current = own(plan, 'completionStatus')
-    ? completionStatusValue(plan.completionStatus)
-    : null;
-  if (current === next && (own(plan, 'completionStatus') || next === null)) return plan;
-  return copy({ ...plan, completionStatus: next });
 }
 
 /**
@@ -451,22 +404,6 @@ export function comparePlanAnchors(originalPlan, finalPlan) {
     finishShiftMinutes: final.end - original.end,
     durationDifferenceMinutes: finalPlan.duration - originalPlan.duration,
     durationRatio: finalPlan.duration / originalPlan.duration,
-  };
-}
-
-function resolvePlanState(plan, displayedPlan) {
-  const reference = planState(plan);
-  const displayed = planState(displayedPlan);
-  if (reference.id !== null && displayed.id !== null && reference.id !== displayed.id) {
-    throw new TypeError('plan and displayedPlan must identify the same Plan');
-  }
-  if (reference.completionStatus !== null && displayed.completionStatus !== null
-    && reference.completionStatus !== displayed.completionStatus) {
-    throw new TypeError('Plan completionStatus must agree across plan revisions');
-  }
-  return {
-    id: displayed.id ?? reference.id,
-    completionStatus: displayed.completionStatus ?? reference.completionStatus,
   };
 }
 
@@ -535,9 +472,8 @@ function comparisonPlanOverlap(bounds, anchor) {
   return unionBoundsMinutes(clipped);
 }
 
-function comparisonNotStarted({ attemptCount, completionStatus, currentPlanEnd, nowMinute }) {
+function comparisonNotStarted({ attemptCount, currentPlanEnd, nowMinute }) {
   return attemptCount === 0
-    && completionStatus === null
     && currentPlanEnd !== null
     && nowMinute !== null
     && nowMinute >= currentPlanEnd;
@@ -553,9 +489,6 @@ function comparisonNotStarted({ attemptCount, completionStatus, currentPlanEnd, 
  */
 export function compareExecutionToPlan(plan, records, options = {}) {
   if (!plain(options)) throw new TypeError('Comparison options must be a plain object');
-  if (own(options, 'completionStatus')) {
-    throw new TypeError('completionStatus belongs to Plan, not comparison options');
-  }
   const {
     displayedPlan = plan,
     now,
@@ -571,10 +504,6 @@ export function compareExecutionToPlan(plan, records, options = {}) {
   const current = displayedPlan == null ? null : planBounds(displayedPlan);
   const nowMinute = now === undefined ? null : civilMinute(now?.date, now?.time);
   const policy = comparisonPolicy(tolerance);
-  const resolvedPlan = resolvePlanState(plan, displayedPlan);
-  if (knownUnplanned && resolvedPlan.completionStatus !== null) {
-    throw new TypeError('Unplanned execution cannot carry Plan completion');
-  }
 
   const ids = new Set();
   const attempts = [];
@@ -609,16 +538,14 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     : attempts.length === 1 ? EXECUTION_PATTERN.SINGLE_SESSION : EXECUTION_PATTERN.SPLIT_SESSIONS;
 
   // Canonical rule:
-  // not_started = Plan fully elapsed AND no live Do AND no explicit Plan completion.
+  // notStarted = Plan fully elapsed AND no live Do.
   const notStarted = comparisonNotStarted({
     attemptCount: attempts.length,
-    completionStatus: resolvedPlan.completionStatus,
     currentPlanEnd: current?.end ?? null,
     nowMinute,
   });
 
   const result = {
-    planId: resolvedPlan.id,
     planContext,
     comparable: false,
     notStarted,
@@ -627,7 +554,6 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     startTiming: null,
     finishTiming: null,
     durationComparison: null,
-    completionStatus: resolvedPlan.completionStatus,
     withinPlan: false,
     metrics: {
       startOffsetMinutes: null,

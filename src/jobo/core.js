@@ -7,7 +7,6 @@ export const DO_TIMING = Object.freeze({
   TIMED: 'timed',
   UNTIMED: 'untimed',
 });
-export const DEFAULT_PLAN_REVISION_COALESCE_MINUTES = 5;
 export const TIMING = Object.freeze({
   WITHIN_PLAN: 'withinPlan', DELAYED: 'delayed', OVERRUN: 'overrun',
   INTERRUPTED: 'interrupted', NOT_STARTED: 'notStarted', UNPLANNED: 'unplanned',
@@ -53,40 +52,6 @@ function planBounds(plan) {
     throw new TypeError('Invalid plan duration');
   }
   return { start, end };
-}
-
-function samePlanSchedule(a, b) {
-  return a.date === b.date
-    && a.startTime === b.startTime
-    && a.duration === b.duration;
-}
-
-function planRevisionCountValue(plan) {
-  if (!own(plan, 'planRevisionCount')) return 0;
-  const value = plan.planRevisionCount;
-  if (!Number.isSafeInteger(value) || value < 0) {
-    throw new TypeError('planRevisionCount must be a non-negative safe integer');
-  }
-  return value;
-}
-
-function lastPlanRevisionAtValue(plan) {
-  if (!own(plan, 'lastPlanRevisionAt') || plan.lastPlanRevisionAt == null) return null;
-  if (!validStamp(plan.lastPlanRevisionAt)) {
-    throw new TypeError('lastPlanRevisionAt must be an ISO timestamp with an offset or null');
-  }
-  return plan.lastPlanRevisionAt;
-}
-
-function planRevisionCoalesceMinutes(options) {
-  if (!plain(options)) throw new TypeError('Plan revision options must be a plain object');
-  const value = own(options, 'coalesceMinutes')
-    ? options.coalesceMinutes
-    : DEFAULT_PLAN_REVISION_COALESCE_MINUTES;
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new TypeError('coalesceMinutes must be a finite non-negative number');
-  }
-  return value;
 }
 
 /**
@@ -472,50 +437,21 @@ export function setPlanCompletionStatus(plan, completionStatus) {
 }
 
 /**
- * Count effective Plan schedule edits as coalesced revision sessions.
+ * Raw Original-Plan -> Final-Plan schedule deltas.
  *
- * The first schedule change opens revision 1. Later changes with an inactivity
- * gap <= coalesceMinutes stay in the same revision session; a gap greater than
- * the threshold opens another revision. lastPlanRevisionAt advances on every
- * effective schedule edit, so the window is sliding.
- *
- * The configured threshold is write-time policy only. Existing counts are never
- * recomputed if the setting changes later. This metric is independent from any
- * deferral/reschedule counter with different product semantics.
+ * Positive shifts mean the Final Plan moved later / became longer; negative
+ * values mean earlier / shorter. This function reports facts only: it does not
+ * infer why the plan changed or classify the change.
  */
-export function recordPlanRevision(previousPlan, nextPlan, changedAt, options = {}) {
-  if (!plain(previousPlan) || !plain(nextPlan)) {
-    throw new TypeError('Plan revisions require two plain Plan objects');
-  }
-  planBounds(previousPlan);
-  planBounds(nextPlan);
-  const coalesceMinutes = planRevisionCoalesceMinutes(options);
-
-  const count = planRevisionCountValue(previousPlan);
-  const lastRevisionAt = lastPlanRevisionAtValue(previousPlan);
-  if (lastRevisionAt !== null && count === 0) {
-    throw new TypeError('lastPlanRevisionAt requires a positive planRevisionCount');
-  }
-
-  if (!validStamp(changedAt)) {
-    throw new TypeError('changedAt must be an ISO timestamp with an offset');
-  }
-
-  if (samePlanSchedule(previousPlan, nextPlan)) return nextPlan;
-
-  const changedMs = Date.parse(changedAt);
-  const lastMs = lastRevisionAt === null ? null : Date.parse(lastRevisionAt);
-  if (lastMs !== null && changedMs < lastMs) {
-    throw new RangeError('changedAt must not precede lastPlanRevisionAt');
-  }
-
-  const sameSession = lastMs !== null
-    && (changedMs - lastMs) / 60000 <= coalesceMinutes;
-  return copy({
-    ...nextPlan,
-    planRevisionCount: count + (sameSession ? 0 : 1),
-    lastPlanRevisionAt: changedAt,
-  });
+export function comparePlanAnchors(originalPlan, finalPlan) {
+  const original = planBounds(originalPlan);
+  const final = planBounds(finalPlan);
+  return {
+    startShiftMinutes: final.start - original.start,
+    finishShiftMinutes: final.end - original.end,
+    durationDifferenceMinutes: finalPlan.duration - originalPlan.duration,
+    durationRatio: finalPlan.duration / originalPlan.duration,
+  };
 }
 
 function resolvePlanState(plan, displayedPlan) {

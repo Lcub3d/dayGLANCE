@@ -81,7 +81,6 @@ import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import LifePlanner from './components/lifeplanner/LifePlanner.jsx';
-import { PlanningChoicesController } from './components/lifeplanner/PlanningChoices.jsx';
 import usePlanningPreferences from './hooks/usePlanningPreferences.js';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
@@ -352,7 +351,7 @@ const DayPlanner = () => {
   // is folded into the hidden-views list below, so nothing that consumes that
   // list needs to know the flag exists. These device-local choices also feed
   // the optional planning chooser; native device-settings backup rules apply.
-  const { joboEnabled, setJoboEnabled, lifeplannerEnabled, setLifeplannerEnabled, error: planningPreferenceError } = usePlanningPreferences();
+  const { joboEnabled, setJoboEnabled, lifeplannerEnabled } = usePlanningPreferences();
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -1006,7 +1005,6 @@ const DayPlanner = () => {
     addProject, updateProject, deleteProject, moveProject,
   } = useGoalsProjects();
   const [showLifePlanner, setShowLifePlanner] = useState(false);
-  const [showPlanningChoices, setShowPlanningChoices] = useState(false);
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -3536,7 +3534,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard, showLifePlanner, showPlanningChoices,
+    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard, showLifePlanner,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -8939,8 +8937,7 @@ const DayPlanner = () => {
 
     // ── Goals & Projects ──────────────────────────────────────────────────────
     showLifePlanner, setShowLifePlanner,
-    lifeplannerEnabled, setLifeplannerEnabled, planningPreferenceError,
-    showPlanningChoices, setShowPlanningChoices,
+    lifeplannerEnabled,
     goals, setGoals,
     projects, setProjects,
     areas, setAreas,
@@ -10479,7 +10476,6 @@ const DayPlanner = () => {
       {/* Goals & Projects Dashboard */}
       <GoalDashboard />
       {showLifePlanner && <LifePlanner />}
-      <PlanningChoicesController />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

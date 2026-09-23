@@ -10,7 +10,6 @@ import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
-import { PlanningChoicesButton } from './lifeplanner/PlanningChoices.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import './desktopHeader.css';
@@ -81,7 +80,7 @@ const DesktopHeader = () => {
         {/* Left: Weather + Daily Content */}
         <div className="desktop-header-leading">
         <div className="desktop-header-leading-content">
-          <div className="desktop-header-weather-guide">
+          <div className="desktop-header-weather">
             {weather && weatherEnabled && (
               <div data-header-weather className={`flex items-center gap-2 px-3 py-1.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-100'} rounded-lg flex-shrink-0`}>
                 <div className="text-xl">{weather.icon}</div>
@@ -91,7 +90,6 @@ const DesktopHeader = () => {
                 </div>
               </div>
             )}
-            <PlanningChoicesButton />
           </div>
           {/* Forecasts yield to the real available space, never cover the date
               controls or the current weather, and reveal more on wider headers. */}

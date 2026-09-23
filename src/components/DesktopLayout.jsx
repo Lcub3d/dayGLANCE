@@ -11,7 +11,6 @@ import { renderTitle, renderTitleWithNoteLinks } from '../utils/textFormatting.j
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import DesktopHeader from './DesktopHeader.jsx';
-import { PlanningChoicesButton } from './lifeplanner/PlanningChoices.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import GlanceFabs from './GlanceFabs.jsx';
 import CalendarHeader from './CalendarHeader.jsx';
@@ -540,7 +539,6 @@ const DesktopLayout = () => {
               )}
           </div>
           <div className="flex items-center gap-2">
-            <PlanningChoicesButton />
             {!hasNativeCalendar() && <button
               onClick={() => {
                 if (isSyncing) return;

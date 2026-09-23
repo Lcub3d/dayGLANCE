@@ -1,7 +1,7 @@
 .desktop-header { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; }
 .desktop-header-leading { min-width: 0; container: header-leading / inline-size; }
 .desktop-header-leading-content { display: flex; align-items: center; gap: 16px; }
-.desktop-header-weather-guide { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.desktop-header-weather { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .desktop-header-forecast { display: none; }
 .desktop-header-forecast > :nth-child(n+4) { display: none; }
 .desktop-header-date { min-width: 0; display: flex; justify-content: center; }

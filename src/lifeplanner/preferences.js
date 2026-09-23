@@ -1,5 +1,5 @@
 // Device-local presentation choices, not tasks, projects, or journal records.
-// The existing Jobo key remains the single source for Settings and this chooser.
+// The existing Jobo key remains the single source for Settings.
 export const PLANNING_KEYS = Object.freeze({
   joboEnabled: 'day-planner-jobo-enabled',
   lifeplannerEnabled: 'day-planner-lifeplanner-enabled',

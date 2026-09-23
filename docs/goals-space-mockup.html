@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>dayGLANCE Goals &amp; Projects space</title>
-<script src="./support.js"></script>
+<meta name="description" content="Design mockup: Goals &amp; Projects as a first-class space. Not production code.">
 </head>
 <body>
 <x-dc>
@@ -334,7 +334,7 @@ button{font-family:inherit;cursor:pointer}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+<script type="text/plain" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
 class Component extends DCLogic {
   constructor(props) { super(props); this.state = { mode: 'goals', tab: 'goals', gsel: 0 }; }
   renderVals() {
@@ -423,6 +423,127 @@ class Component extends DCLogic {
     };
   }
 }
+</script>
+<script>
+// Minimal standalone runtime so this mockup opens in a browser with no build
+// step. It implements just enough of the design-canvas format: {{holes}},
+// <sc-if>, <sc-for>, onClick bindings and a DCLogic class with setState.
+(function () {
+  var root = document.querySelector('x-dc');
+  if (!root) return;
+
+  // <helmet> styles → <head>
+  var helmet = root.querySelector('helmet');
+  if (helmet) {
+    Array.prototype.forEach.call(helmet.querySelectorAll('style, link'), function (n) {
+      document.head.appendChild(n);
+    });
+    helmet.parentNode.removeChild(helmet);
+  }
+
+  var template = root.cloneNode(true);
+  var mount = document.createElement('div');
+  root.parentNode.replaceChild(mount, root);
+
+  function resolve(path, scope) {
+    path = String(path).trim();
+    if (path === 'true') return true;
+    if (path === 'false') return false;
+    return path.split('.').reduce(function (o, k) { return o == null ? undefined : o[k]; }, scope);
+  }
+  function wholeHole(str) {
+    var m = /^\s*\{\{\s*([^}]+?)\s*\}\}\s*$/.exec(str || '');
+    return m ? m[1] : null;
+  }
+  function interp(str, scope) {
+    return str.replace(/\{\{\s*([^}]+?)\s*\}\}/g, function (_, p) {
+      var v = resolve(p, scope);
+      return v == null ? '' : String(v);
+    });
+  }
+
+  function processNodes(nodes, scope, out) {
+    for (var i = 0; i < nodes.length; i++) processNode(nodes[i], scope, out);
+  }
+
+  function processNode(node, scope, out) {
+    if (node.nodeType === 3) {
+      var t = node.nodeValue;
+      out.appendChild(document.createTextNode(t.indexOf('{{') === -1 ? t : interp(t, scope)));
+      return;
+    }
+    if (node.nodeType !== 1) return;
+
+    var tag = node.tagName.toLowerCase();
+
+    if (tag === 'sc-if') {
+      if (resolve(wholeHole(node.getAttribute('value')) || '', scope)) {
+        processNodes(node.childNodes, scope, out);
+      }
+      return;
+    }
+
+    if (tag === 'sc-for') {
+      var list = resolve(wholeHole(node.getAttribute('list')) || '', scope) || [];
+      var as = node.getAttribute('as') || 'item';
+      for (var i = 0; i < list.length; i++) {
+        var inner = Object.create(scope);
+        inner[as] = list[i];
+        inner.$index = i;
+        processNodes(node.childNodes, inner, out);
+      }
+      return;
+    }
+
+    var el = node.cloneNode(false); // keeps the SVG namespace
+    var attrs = Array.prototype.slice.call(el.attributes);
+    for (var a = 0; a < attrs.length; a++) {
+      var name = attrs[a].name, value = attrs[a].value;
+      if (value.indexOf('{{') === -1) continue;
+      if (/^on[A-Z]/.test(name) || /^on[a-z]+$/.test(name)) {
+        var fn = resolve(wholeHole(value) || '', scope);
+        el.removeAttribute(name);
+        if (typeof fn === 'function') el.addEventListener(name.slice(2).toLowerCase(), fn);
+      } else {
+        el.setAttribute(name, interp(value, scope));
+      }
+    }
+    processNodes(node.childNodes, scope, el);
+    out.appendChild(el);
+  }
+
+  var instance = null;
+  function render() {
+    var vals = instance.renderVals ? instance.renderVals() : {};
+    var frag = document.createDocumentFragment();
+    processNodes(template.childNodes, vals, frag);
+    mount.textContent = '';
+    mount.appendChild(frag);
+  }
+
+  function DCLogic(props) { this.props = props || {}; this.state = {}; }
+  DCLogic.prototype.setState = function (patch) {
+    var next = typeof patch === 'function' ? patch(this.state) : patch;
+    for (var k in next) if (Object.prototype.hasOwnProperty.call(next, k)) this.state[k] = next[k];
+    render();
+  };
+  DCLogic.prototype.forceUpdate = function () { render(); };
+
+  var script = document.querySelector('script[data-dc-script]');
+  var props = {};
+  try {
+    var declared = JSON.parse(script.getAttribute('data-props') || '{}');
+    Object.keys(declared).forEach(function (k) {
+      if (k.charAt(0) !== '$' && declared[k] && 'default' in declared[k]) props[k] = declared[k]['default'];
+    });
+  } catch (e) {}
+
+  var Component = new Function('DCLogic', script.textContent + '\nreturn Component;')(DCLogic);
+  instance = new Component(props);
+  if (!instance.props) instance.props = props;
+  if (!instance.state) instance.state = {};
+  render();
+})();
 </script>
 </body>
 </html>

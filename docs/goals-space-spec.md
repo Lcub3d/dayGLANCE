@@ -141,9 +141,9 @@ What exists today, and what needs to change.
 
 ## Reading the mockup
 
-`goals-space-mockup.html` is exported from a design canvas. It is **not production code** and won't render on its own; it needs the canvas runtime (`support.js`).
+`goals-space-mockup.html` opens in any browser with no build step, and it is interactive: the space switcher, the Goals/Projects tabs and goal selection all work. It is **not production code** — it is plain markup with a ~120-line runtime at the bottom of the file that renders it. Don't copy anything from that runtime.
 
-- **The markup** inside `<x-dc>` is the layout, with exact inline styles: sizes, colours, spacing.
-- **The script at the bottom** holds the sample data and the interaction model: space, tab and selected goal.
+- **The markup** inside `<x-dc>` is the layout, with exact inline styles: sizes, colours, spacing. `{{holes}}`, `<sc-if>` and `<sc-for>` are the mockup's own templating, not a framework the app uses.
+- **The `data-dc-script` block** holds the sample data and the interaction model: space, tab and selected goal.
 - **Visual source of truth:** where the mockup and existing components differ, reuse the existing components (`GoalCard`, `ProjectCard`, the GLANCE/inbox tab styles). The mockup's cards were built to match them.
 - **Placeholders:** the goal named "[Third goal]" and the "[Area]" option are placeholders. The Ship Electron Apps goal shows the empty state only because its projects weren't known when the mockup was made.

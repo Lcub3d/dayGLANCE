@@ -4,6 +4,8 @@ import java.time.LocalDate
 
 enum class HealthMetric { STEPS, SLEEP }
 
+enum class HealthAuthorization { ANDROID_PERMISSION, PROVIDER }
+
 enum class HealthReadStatus {
     OK,
     NO_DATA,
@@ -31,6 +33,7 @@ data class SleepStage(
 interface HealthProvider {
     val id: String
     val metrics: Set<HealthMetric>
+    val authorization: HealthAuthorization
 
     fun isAvailable(): Boolean
 

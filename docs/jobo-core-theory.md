@@ -120,33 +120,41 @@ The Plan-level completion dimension uses `partly` as its canonical value.
 
 The completion scale is ordinal only. No numeric percentage is inferred. A task planned for 60 minutes may be marked `completed` after 10 minutes without becoming “16.7% complete.”
 
-### Plan revision sessions
+### Original Plan → Final Plan
 
-Plan revision counting measures planning instability separately from execution
-deviation and separately from any deferral/reschedule counter.
+The planning side has its own raw comparison, separate from Plan → Do.
 
-The write-time policy is:
+`comparePlanAnchors(originalPlan, finalPlan)` reports:
 
-- `DEFAULT_PLAN_REVISION_COALESCE_MINUTES = 5`
-- the first effective change to `date / startTime / duration` opens revision 1
-- another effective change within 5 minutes of the previous effective change
-  stays in the same revision session
-- exactly 5 minutes still coalesces; a gap greater than 5 minutes opens a new
-  revision
-- `lastPlanRevisionAt` advances on every effective schedule change, so the
-  coalescing window is sliding
-- completion/status-only edits do not count
+- `startShiftMinutes = final start - original start`
+- `finishShiftMinutes = final finish - original finish`
+- `durationDifferenceMinutes = final duration - original duration`
+- `durationRatio = final duration / original duration`
 
-The threshold is intentionally a current write rule, not a retrospective
-analytics rule. If the setting later changes to another value, already written
-`planRevisionCount` values are not recomputed; only future writes use the new
-threshold. Core therefore does not need an unbounded raw plan-edit log merely
-to recount history.
+These metrics describe how the plan itself changed as information accumulated.
+They do not infer interruption, procrastination, priority change, dependency
+change, or any other cause.
 
-`planRevisionCount` must not be treated as an alias for `rescheduleCount`
-or any overdue-deferral metric; those can carry different product semantics.
+Provisional Plans are not a JOBO-owned revision log. dayGLANCE already keeps
+their settled task-level representation:
+
+- `deferrals` — monotonic count of qualifying moves made after the task had
+  already come due
+- `planTrail` — bounded detail for those same qualifying moves, keeping the
+  recent stops
+
+Planning churn while a task is still in the future is intentionally excluded.
+Slice 2 neither adds a second revision count nor duplicates the task fields'
+persistence/merge rules.
 
 ## Raw metrics
+
+For Original Plan → Final Plan:
+
+- `startShiftMinutes`
+- `finishShiftMinutes`
+- `durationDifferenceMinutes`
+- `durationRatio`
 
 For a comparable planned execution:
 

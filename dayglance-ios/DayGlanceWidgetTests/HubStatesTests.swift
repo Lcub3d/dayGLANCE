@@ -62,10 +62,24 @@ final class HubStatesTests: XCTestCase {
         let c = try! XCTUnwrap(h.state.current)
         XCTAssertEqual(h.untilText(c), "until 12:30")
         XCTAssertEqual(h.leftText(c), "1h 10m left")
-        XCTAssertFalse(h.leftRow(c).live, "no end instant: the static form")
         let rows = h.rows()
         XCTAssertNotNil(rows.title)
         XCTAssertEqual(rows.stack.count, 3, "until, left, runway (the fixture block has no tag)")
+        XCTAssertEqual(rows.stack.map(\.text), ["until 12:30", "1h 10m left", "then 4h 30m open"])
+        XCTAssertNil(rows.stack[1].live, "no end instant: the static form")
+
+        // With an end instant the left row is live and its static words stay
+        // for VoiceOver; the phrase splits around the marker.
+        let live = DialHubView(date: noon, state: h.state, use24Hour: true, countdownEnd: noon.addingTimeInterval(70 * 60))
+        XCTAssertNotNil(live.rows().stack[1].live)
+        XCTAssertEqual(live.rows().stack[1].text, "1h 10m left")
+        XCTAssertNil(DialHubView.live(phrase: "no marker here", end: noon), "a phrase without the marker is not spliced")
+        // The archived concatenation never leads with the live Text.
+        let leading = try! XCTUnwrap(DialHubView.spliceParts("\(DialHubView.durationMarker) left"))
+        XCTAssertEqual(leading.prefix, "\u{200A}")
+        XCTAssertEqual(leading.suffix, " left")
+        let middle = try! XCTUnwrap(DialHubView.spliceParts("then \(DialHubView.durationMarker) open"))
+        XCTAssertEqual(middle.prefix, "then ")
 
         // With a tag and the projected note the stack is five rows, the last
         // still inside the ring.

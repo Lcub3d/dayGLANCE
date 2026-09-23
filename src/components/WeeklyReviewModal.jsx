@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, BarChart3, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Flag, Flame, FolderOpen, Loader, RefreshCw, Sparkles, Target, TrendingUp, Trophy, X, Zap } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
-import { dateToString, stripWikilinks } from '../utils/taskUtils.js';
+import { dateToString, formatDateRange, stripWikilinks } from '../utils/taskUtils.js';
 import { getOccurrencesInRange } from '../utils/recurrenceEngine.js';
 import { calculateProjectProgress, isProjectStalled } from '../utils/projectProgress.js';
 import { calculateGoalProgress } from '../utils/goalProgress.js';
@@ -20,7 +20,7 @@ const WeeklyReviewModal = () => {
     darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg,
     use24HourClock, formatTime, timeToMinutes,
   } = useDayPlannerCtx();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     showWeeklyReview, setShowWeeklyReview,
     weeklyAISummary, setWeeklyAISummary,
@@ -245,17 +245,14 @@ const WeeklyReviewModal = () => {
         const openDays = nextWeekDates.filter(ds => dayLoad[ds].totalMinutes < 60);
         const openDayNames = openDays.map(ds => formatLocalizedDate(new Date(ds + 'T12:00:00'), { weekday: 'short' }));
 
-        // Format date range
-        const formatRange = (start, end) => {
-          const s = new Date(start + 'T12:00:00');
-          const e = new Date(end + 'T12:00:00');
-          const sMonth = formatLocalizedDate(s, { month: 'short' });
-          const eMonth = formatLocalizedDate(e, { month: 'short' });
-          if (sMonth === eMonth) {
-            return `${sMonth} ${s.getDate()} \u2014 ${e.getDate()}, ${s.getFullYear()}`;
-          }
-          return `${sMonth} ${s.getDate()} \u2014 ${eMonth} ${e.getDate()}, ${e.getFullYear()}`;
-        };
+        // Locale-aware: the day/month order, separators and month names all differ
+        // by language, so this goes through the dateRange.* strings rather than
+        // assembling "Mon D — D, YYYY" by hand.
+        const formatRange = (start, end) => formatDateRange(
+          [new Date(start + 'T12:00:00'), new Date(end + 'T12:00:00')],
+          t,
+          i18n.resolvedLanguage || i18n.language,
+        );
 
         const formatMinutes = (min) => {
           const h = Math.floor(min / 60);

@@ -95,14 +95,10 @@ struct DialPreviewIntent: WidgetConfigurationIntent {
 struct DialPreviewEntry: TimelineEntry {
     let date: Date
     let scenario: DialPreviewScenario
-    /// Face scenarios: how the provider's warm-up obtained each face
-    /// ("cold 31ms", "disk", "mem"), for the corner. The entry carries NO
-    /// image — the same rule as the real widget (DayDialWidget's header): a
-    /// 3× face is ~5 MB decoded, and an entry holding two of them while the
-    /// provider renders a third is how the extension runs out of its ~30 MB
-    /// and the widget sits on its placeholder. The view fetches the face from
-    /// the cache at render time, as DayDialWidgetView does.
-    var warm: String = ""
+    /// Face scenarios carry nothing but the scenario: the view fetches the
+    /// face from the cache when it renders (a cold render the first time,
+    /// ~28 ms, then disk), exactly as DayDialWidgetView does. See the
+    /// provider for why nothing is pre-rendered here.
     /// State scenarios: the payload the real view resolves, and the entry it
     /// is rendered as. `date` is that entry's instant.
     var snapshot: WidgetSnapshot? = nil
@@ -118,29 +114,22 @@ struct DialPreviewProvider: AppIntentTimelineProvider {
         entry(for: configuration.scenario, size: context.displaySize)
     }
 
+    /// Returns at once, for every scenario. Earlier versions pre-rendered the
+    /// face scenarios' PNG here with `await MainActor.run { DialFaceCache
+    /// .image(…) }`, and on device that timeline never arrived: the widget
+    /// sat on its redacted placeholder while the state scenarios, which do
+    /// not hop, rendered. The real widget warms its faces from
+    /// `getTimeline(completion:)` in an unstructured `Task { @MainActor in }`
+    /// and calls `completion` from there, which works; a hop to the main
+    /// actor from inside the async `timeline(for:in:)` does not come back.
+    /// So this provider does no rendering at all, and the first render of a
+    /// face scenario is a cold one in the view, like the real widget's own
+    /// fallback path.
     func timeline(for configuration: DialPreviewIntent, in context: Context) async -> Timeline<DialPreviewEntry> {
         let scenario = configuration.scenario
-        let size = context.displaySize
-        if scenario.isFaceScenario {
-            // Warm the cache for every rendering mode the widget may be shown
-            // in, one face at a time, keeping only the outcome; the view
-            // fetches the image it needs when it renders.
-            let input = DialPreviewFixture.input(for: scenario)
-            let modes = context.environmentVariants.widgetRenderingMode ?? [.fullColor]
-            let variants: [Bool] = modes.contains { $0 != .fullColor } ? [false, true] : [false]
-            let warm = await MainActor.run { () -> String in
-                let scale = UIScreen.main.scale
-                return variants.map { mono in
-                    let outcome = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: size, scale: scale, mono: mono).outcome
-                    return (mono ? "mono " : "") + outcome.summary.replacingOccurrences(of: "img ", with: "")
-                }.joined(separator: " / ")
-            }
-            let entry = DialPreviewEntry(date: DialPreviewFixture.date, scenario: scenario, warm: warm)
-            return Timeline(entries: [entry], policy: .never)
-        }
-        let entry = entry(for: scenario, size: size)
-        // The screenshot day is live: keep the needle moving like the real
-        // widget. Every other state is a frozen instant.
+        let entry = entry(for: scenario, size: context.displaySize)
+        // The screenshot day follows the clock: keep the needle moving like
+        // the real widget. Every other state is a frozen instant.
         let policy: TimelineReloadPolicy = scenario == .screenshot
             ? .after(Date().addingTimeInterval(15 * 60)) : .never
         return Timeline(entries: [entry], policy: policy)
@@ -167,19 +156,24 @@ struct DialPreviewView: View {
                 let mono = renderingMode != .fullColor
                 GeometryReader { geo in
                     // The same fetch the real widget makes in its body: memory,
-                    // then the App Group PNG the provider just warmed.
+                    // the App Group PNG, or a cold render the first time.
                     let face = DialFaceCache.image(input: input, nowMin: DialPreviewFixture.nowMin, size: geo.size,
                                                    scale: displayScale, mono: mono)
                     DialCachedFaceView(input: input, nowMin: DialPreviewFixture.nowMin, face: face.image,
                                        hubDate: entry.date, use24Hour: true, mono: mono)
                         .frame(width: geo.size.width, height: geo.size.height)
-                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · warm \(entry.warm) · \(face.outcome.summary) · \(lora) · \(mode)")
+                    corner("preview · \(entry.scenario.rawValue) · fixture 11:20 · \(face.outcome.summary) · \(lora) · \(mode)")
                         .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
                 }
             } else {
                 DayDialWidgetView(entry: DayDialEntry(date: entry.date, snapshot: entry.snapshot, isPlaceholder: entry.isPlaceholder),
                                   liveCountdown: entry.scenario == .screenshot)
-                corner("preview · \(entry.scenario.rawValue) · \(entry.scenario == .screenshot ? "live" : "fixture") · \(lora) · \(mode)")
+                // The screenshot day is the store shot: no readout on it. Every
+                // other scenario keeps the corner, the only way to tell the
+                // face source, the date face and the rendering mode apart.
+                if entry.scenario != .screenshot {
+                    corner("preview · \(entry.scenario.rawValue) · fixture · \(lora) · \(mode)")
+                }
             }
         }
         .containerBackground(Color(hex: DialSpec.backgroundHex), for: .widget)
@@ -206,32 +200,32 @@ struct DialPreviewView: View {
 /// The cached face, the hub overlay and the needle for one entry, with a
 /// live-drawn face as fallback so the widget never shows a hole
 /// (placeholder, gallery, a failed render). What the Day Dial's timeline
-/// entries are built from (DayDialWidget). `hubDate` nil draws no hub;
-/// `countdownEnd` set makes the hub's countdown a live Text (see
-/// DialHubView), nil keeps it static, which the preview and screenshots
-/// want.
+/// entries are built from (DayDialWidget). `hubDate` nil draws no hub.
 struct DialCachedFaceView: View {
     let input: DialFaceInput
     let nowMin: Double
     let face: UIImage?
     var hubDate: Date? = nil
     var use24Hour: Bool? = nil
-    var countdownEnd: Date? = nil
     /// The accented mode's face when `face` is nil (DialFaceView.mono).
     var mono: Bool = false
 
     var body: some View {
         DialCanvas {
             ZStack(alignment: .topLeading) {
-                if let face {
-                    Image(uiImage: face).resizable()
-                        .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
-                } else {
-                    DialFaceView(input: input, nowMin: nowMin, mono: mono)
+                // Unredacted for the same reason as DayDialWidgetView.face: a
+                // redacted placeholder would show the face as one grey slab.
+                Group {
+                    if let face {
+                        Image(uiImage: face).resizable()
+                            .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
+                    } else {
+                        DialFaceView(input: input, nowMin: nowMin, mono: mono)
+                    }
                 }
+                .unredacted()
                 if let hubDate {
-                    DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin),
-                                use24Hour: use24Hour, countdownEnd: countdownEnd)
+                    DialHubView(date: hubDate, state: DialHub.resolve(blocks: input.blocks, nowMin: nowMin), use24Hour: use24Hour)
                 }
                 DialNeedleView(nowMin: nowMin)
                     .widgetAccentable()

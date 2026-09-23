@@ -17,6 +17,7 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="dayglance_crypto.xml" />
         <exclude domain="sharedpref" path="dayglance_shared.xml" />
+        <exclude domain="sharedpref" path="dayglance_honor_health.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="dayglance_crypto.xml" />

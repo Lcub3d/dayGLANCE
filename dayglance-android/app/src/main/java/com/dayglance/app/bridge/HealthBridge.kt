@@ -26,19 +26,22 @@ class HealthBridge(
     @JavascriptInterface
     fun getSteps(date: String): String {
         val localDate = parseDate(date)
-        val steps = runBlocking { repository.getSteps(localDate) }
+        val result = runBlocking { repository.getStepsDetailed(localDate) }
         return JSONObject()
-            .put("steps", steps)
+            .put("steps", result.value ?: 0)
             .put("goal", 10000)
+            .put("status", result.status.key)
+            .put("provider", result.providerId ?: JSONObject.NULL)
             .toString()
     }
 
     @JavascriptInterface
     fun getSleep(date: String): String {
         val localDate = parseDate(date)
-        val result = runBlocking { repository.getSleep(localDate) }
+        val read = runBlocking { repository.getSleepDetailed(localDate) }
+        val result = read.value
         val stagesArray = JSONArray()
-        result.stages.forEach { s ->
+        result?.stages?.forEach { s ->
             stagesArray.put(
                 JSONObject()
                     .put("stage", s.stage)
@@ -46,8 +49,10 @@ class HealthBridge(
             )
         }
         return JSONObject()
-            .put("durationMinutes", result.durationMinutes)
+            .put("durationMinutes", result?.durationMinutes ?: 0)
             .put("stages", stagesArray)
+            .put("status", read.status.key)
+            .put("provider", read.providerId ?: JSONObject.NULL)
             .toString()
     }
 
@@ -67,6 +72,31 @@ class HealthBridge(
     fun requestPermission(): String {
         onRequestPermission()
         return "pending"
+    }
+
+    @JavascriptInterface
+    fun getProviderStatus(): String {
+        val snapshot = repository.getProviderSnapshot()
+        val bindings = JSONObject()
+        snapshot.bindings.forEach { (metric, providerId) ->
+            bindings.put(metric, providerId ?: JSONObject.NULL)
+        }
+        val available = JSONArray()
+        snapshot.availableProviders.forEach { available.put(it) }
+
+        return JSONObject()
+            .put("schemaVersion", snapshot.schemaVersion)
+            .put("manufacturer", snapshot.manufacturer)
+            .put("model", snapshot.model)
+            .put("bindings", bindings)
+            .put("availableProviders", available)
+            .toString()
+    }
+
+    @JavascriptInterface
+    fun resetProviderSelection(): String {
+        repository.resetProviderSelection()
+        return "ok"
     }
 
     private fun parseDate(date: String): LocalDate = try {

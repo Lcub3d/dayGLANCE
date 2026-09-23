@@ -285,6 +285,6 @@ describe('DayDial keyboard/AT contract', () => {
     const i18n = await i18nFor('de');
     const html = render(i18n, { dayTasks: [task({ completed: true })] });
     expect(html).toContain(`aria-label="${i18n.t('dial.blockList')}"`);
-    expect(options(html)[0].label).toBe('Deep work, 09:00 – 10:00, 1h, erledigt');
+    expect(options(html)[0].label).toBe('Deep work, 09:00 – 10:00, 1 Std., erledigt');
   });
 });

@@ -47,7 +47,7 @@ import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
-import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes, localizedList } from './utils/localeFormatting.js';
+import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
@@ -203,7 +203,7 @@ import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
-import { formatDuration as formatTranslatedDuration } from './utils/formatDuration.js';
+import { formatDuration } from './utils/formatDuration.js';
 import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
@@ -273,7 +273,6 @@ const SPOTLIGHT_NATIVE_FUTURE_DAYS = 365;
 
 const DayPlanner = () => {
   const { t } = useTranslation();
-  const formatDuration = (minutes) => formatLocalizedDurationMinutes(minutes, i18n.resolvedLanguage || i18n.language);
   const { isPro, isLoading: subLoading, isAndroidApp, isIOSApp, isElectronApp, productId: subProductId, subscribe, restore, prices: subPrices, trialEligible, trialDays, billingEvent, clearBillingEvent, billingErrorMessage, consumeTestPurchase, canConsumeTestPurchase, isReviewerUnlocked, setReviewerUnlocked } = useSubscription();
   useEffect(() => { if (isReviewerUnlocked) console.info('[dayGLANCE] Reviewer unlock active'); }, [isReviewerUnlocked]);
   // Leave reviewer mode: clear the stored unlock and reload so the billing engine
@@ -7695,7 +7694,7 @@ const DayPlanner = () => {
     let glanceAheadData = null;
     if (showGlanceAhead) {
       const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-      const committedStr = committedMinutes > 0 ? formatTranslatedDuration(committedMinutes, t) : null;
+      const committedStr = committedMinutes > 0 ? formatDuration(committedMinutes, t) : null;
       glanceAheadData = {
         dayLabel,
         taskCount,
@@ -9174,7 +9173,7 @@ const DayPlanner = () => {
 
       {/* Focus Log Modal */}
       {focusLogModalDate && (() => {
-        const fmtMin = (min) => formatTranslatedDuration(min, t);
+        const fmtMin = (min) => formatDuration(min, t);
         const dayData = focusLog[focusLogModalDate] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
         const displayDate = formatLocalizedDate(new Date(focusLogModalDate + 'T12:00:00'), { weekday: 'long', month: 'short', day: 'numeric' });
 
@@ -9664,16 +9663,16 @@ const DayPlanner = () => {
                     <div className={`space-y-3 ${textSecondary}`}>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
                       </div>
                       {actualTodayFocusMinutes > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes)}</span>
+                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes, t)}</span>
                         </div>
                       )}
                     </div>
@@ -9793,17 +9792,17 @@ const DayPlanner = () => {
                   )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
                   </div>
                   {allTimeFocusMinutes > 0 && (
                     <>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes, t)}</span>
                       </div>
                     </>
                   )}

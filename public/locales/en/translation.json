@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "iCal Import",
+    "icalImportedCount_one": "Imported {{count}} event",
+    "icalImportedCount_other": "Imported {{count}} events",
+    "icalImportEmpty": "No events found in the file",
+    "icalRemovedCount_one": "Removed {{count}} file-imported event",
+    "icalRemovedCount_other": "Removed {{count}} file-imported events",
+    "enterTaskCalendarUrl": "Please enter a task calendar URL in sync settings",
+    "eventsCount_one": "{{count}} event",
+    "eventsCount_other": "{{count}} events",
+    "calendarNamed": "calendar \"{{name}}\"",
+    "notIcalError": "The URL did not return a calendar file. For CalDAV servers (Nextcloud, Baikal, etc.), append ?export to the URL (e.g. …/default/?export).",
+    "calendarWord": "calendar",
+    "tasksCount_one": "{{count}} task",
+    "tasksCount_other": "{{count}} tasks",
+    "taskCalendarWord": "task calendar",
+    "syncFailedWith": "Failed to sync: {{items}}. Make sure the URL is correct and publicly accessible.",
+    "syncPartial": "Synced: {{successes}} — failed: {{errors}}",
+    "syncSuccess": "Synced: {{items}}",
+    "urlAutoExportNote": " (?export appended to your calendar URL automatically)",
+    "binRestoredCount_one": "{{count}} task was restored from the recycle bin. Its lines still exist in your vault. See each task's notes.",
+    "binRestoredCount_other": "{{count}} tasks were restored from the recycle bin. Their lines still exist in your vault. See each task's notes.",
+    "binRestoredOneDaily": "Restored \"{{title}}\" from the recycle bin. Its line still exists in your daily note for {{date}}.",
+    "binRestoredOneVault": "Restored \"{{title}}\" from the recycle bin. Its line still exists in your Obsidian vault.",
     "errors": {
       "AUTH_FAILURE": "Authentication failed. Check your username and password in sync settings.",
       "CREDENTIAL_INVALID": "The sync server no longer accepts this device's sync access. Your changes are saved on this device. Ask whoever runs your sync server to restore access for this device.",
@@ -143,8 +166,10 @@
     "yearly": "yearly"
   },
   "common": {
+    "durationMinutes": "{{minutes}}m",
+    "durationHours": "{{hours}}h",
+    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
     "yesterday": "Yesterday",
-    "hoursShort": "{{count}}h",
     "blocked": "Blocked",
     "am": "AM",
     "pm": "PM",
@@ -1092,7 +1117,6 @@
     "elapsedDuration": "{{duration}} elapsed",
     "endSession": "End Session",
     "exitAndReturn": "Exit — I'll come back",
-    "hoursMinutesShort": "{{hours}}h {{minutes}}m",
     "longBreakEveryFourCycles": "Long break replaces break every 4 cycles.",
     "noProjectTasks": "No tasks — add them in the Goals dashboard.",
     "pause": "Pause",
@@ -1217,6 +1241,8 @@
     "nextStep": "Next, by current view"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} result",
+    "resultsCount_other": "{{count}} results",
     "placeholder": "Search tasks and notes...",
     "typeToSearch": "Type to search across all tasks and notes...",
     "noResults": "No results found",
@@ -1242,9 +1268,6 @@
     "total": "Local storage: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}}m",
-    "durationHours": "{{hours}}h",
-    "durationHoursMinutes": "{{hours}}h {{minutes}}m",
     "tasksDone": "Tasks done",
     "completion": "Completion",
     "timeSpent": "Time spent",
@@ -1559,6 +1582,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Tasks Scheduled",
+    "tasksPlacedCount_one": "{{count}} task placed on your timeline",
+    "tasksPlacedCount_other": "{{count}} tasks placed on your timeline",
+    "tasksRescheduledTitle": "Tasks Rescheduled",
+    "tasksMovedCount_one": "{{count}} task moved to future slots",
+    "tasksMovedCount_other": "{{count}} tasks moved to future slots",
     "closeDailySummary": "Close daily summary",
     "closeRecycleBin": "Close recycle bin",
     "closeTagFilter": "Close tag filter",
@@ -1802,6 +1831,8 @@
     "openInbox": "Open inbox"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} deadline",
+    "deadlineCount_other": "{{count}} deadlines",
     "viewMultiShort": "MULTI",
     "viewDayShort": "DAY",
     "viewWeekShort": "WEEK",

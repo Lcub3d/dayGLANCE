@@ -11,6 +11,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { HG_ICON_GROUPS, HG_COLORS, HG_DAYS } from '../../hooks/useHyperGlance.js';
 import { hexToRgba } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import DatePicker from '../DatePicker.jsx';
 import ClockTimePicker from '../ClockTimePicker.jsx';
 
@@ -229,7 +230,7 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                 className={`px-3 py-2 text-sm rounded-lg border ${borderClass} text-left ${darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'}`}
               >
                 {hgScheduledDate
-                  ? new Date(hgScheduledDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                  ? formatLocalizedDate(new Date(hgScheduledDate + 'T00:00:00'), { month: 'short', day: 'numeric', year: 'numeric' })
                   : t('goals.selectDate', 'Select date…')}
               </button>
               {showHgDatePicker && (

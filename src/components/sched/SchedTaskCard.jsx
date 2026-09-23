@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { taskColorToHex, hexToRgba } from '../../utils/colorUtils.js';
 import { isObsidianNoteOnlyTask, renderTitleWithoutTags, URL_REGEX } from '../../utils/textFormatting.jsx';
 import { dateToString, extractTags, extractWikilinks } from '../../utils/taskUtils.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
 
 /**
@@ -161,7 +162,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
           <span className={`text-xs ${textSecondary} flex items-center gap-1.5 min-w-0`} style={{ minHeight: '1rem' }}>
             {showOverdueDate && task.date && (
               <span className="flex-shrink-0 font-medium text-amber-500">
-                {new Date(task.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                {formatLocalizedDate(new Date(task.date + 'T00:00:00'), { month: 'short', day: 'numeric' })}
               </span>
             )}
             {inProgress && (

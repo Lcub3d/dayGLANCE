@@ -4,6 +4,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { dateToString } from '../../utils/taskUtils.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import { TASK_COLORS } from '../../utils/colorUtils.js';
 import { EMPTY_SCHED_FILTERS, toggleSchedFilter, groupProjectsForFilter } from '../../utils/schedAgenda.js';
 import useSchedAgendaState, { LOAD_MORE_DAYS } from './useSchedAgendaState.js';
@@ -69,7 +70,7 @@ const SchedDashboard = () => {
   const tomorrowStr = dateToString(new Date(Date.now() + 86400000));
 
   const dayLabel = (day) => {
-    const base = day.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    const base = formatLocalizedDate(day.date, { weekday: 'long', month: 'long', day: 'numeric' });
     if (day.dateStr === todayStr) return `${base} · ${t('common.today', 'Today')}`;
     if (day.dateStr === tomorrowStr) return `${base} · ${t('common.tomorrow', 'Tomorrow')}`;
     return base;

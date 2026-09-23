@@ -50,6 +50,7 @@ import { useTranslation } from 'react-i18next';
 import { buildLocalizedTaskHeading } from '../utils/dailyNoteTemplate.js';
 import LanguagePicker from './LanguagePicker.jsx';
 import { notBucketed } from '../utils/bucketList.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import CalendarList from './CalendarList.jsx';
 import { MOBILE_VIEW_MODES, enabledViews } from '../constants/views.js';
 import ViewToggles from './ViewToggles.jsx';
@@ -2041,9 +2042,9 @@ const MobileSettingsPanel = () => {
       { label: t('common.minutesShort', { count: 5 }), value: 300000 },
       { label: t('common.minutesShort', { count: 15 }), value: 900000 },
       { label: t('common.minutesShort', { count: 30 }), value: 1800000 },
-      { label: t('common.hoursShort', { count: 1, defaultValue: '{{count}} hr' }), value: 3600000 },
-      { label: t('common.hoursShort', { count: 6, defaultValue: '{{count}} hr' }), value: 21600000 },
-      { label: t('common.hoursShort', { count: 24, defaultValue: '{{count}} hr' }), value: 86400000 },
+      { label: formatDuration(60, t), value: 3600000 },
+      { label: formatDuration(360, t), value: 21600000 },
+      { label: formatDuration(1440, t), value: 86400000 },
     ];
 
     return (

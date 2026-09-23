@@ -149,8 +149,10 @@
     "yearly": "щороку"
   },
   "common": {
+    "durationMinutes": "{{minutes}} хв",
+    "durationHours": "{{hours}} г",
+    "durationHoursMinutes": "{{hours}} г {{minutes}} хв",
     "yesterday": "Учора",
-    "hoursShort": "{{count}} г",
     "blocked": "Заблоковано",
     "am": "AM",
     "pm": "PM",
@@ -1115,7 +1117,6 @@
     "elapsedDuration": "Минуло {{duration}}",
     "endSession": "Завершити сеанс",
     "exitAndReturn": "Вийти — я повернуся",
-    "hoursMinutesShort": "{{hours}} г {{minutes}} хв",
     "longBreakEveryFourCycles": "Довга перерва замінює перерву кожні 4 цикли.",
     "noProjectTasks": "Немає завдань — додайте їх на панелі цілей.",
     "pause": "Пауза",
@@ -1269,9 +1270,6 @@
     "total": "Локальне сховище: {{used}} / ~5 МБ ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} хв",
-    "durationHours": "{{hours}} г",
-    "durationHoursMinutes": "{{hours}} г {{minutes}} хв",
     "tasksDone": "Завдань виконано",
     "completion": "Завершення",
     "timeSpent": "Витрачений час",

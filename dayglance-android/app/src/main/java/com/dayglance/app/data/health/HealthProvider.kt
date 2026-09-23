@@ -38,6 +38,16 @@ data class HealthRead<T>(
     val message: String? = null,
 )
 
+data class ProviderDateDiagnostics(
+    val providerId: String,
+    val stepsRecordCount: Int? = null,
+    val stepsRawTotal: Long? = null,
+    val stepOrigins: Set<String> = emptySet(),
+    val sleepRecordCount: Int? = null,
+    val sleepOrigins: Set<String> = emptySet(),
+    val error: String? = null,
+)
+
 /**
  * Adapter contract for one Android health store.
  *
@@ -70,6 +80,9 @@ interface HealthProvider {
     fun requiredAndroidPermissions(metrics: Set<HealthMetric>): Set<String> = emptySet()
 
     suspend fun hasPermission(metric: HealthMetric): Boolean
+
+    suspend fun rawDiagnostics(date: LocalDate): ProviderDateDiagnostics =
+        ProviderDateDiagnostics(providerId = id)
 
     suspend fun readSteps(date: LocalDate): HealthRead<Int> =
         HealthRead(

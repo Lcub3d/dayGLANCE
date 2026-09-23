@@ -165,6 +165,12 @@ class NativeBridge(
     fun getSleep(date: String): String = health.getSleep(date)
 
     @JavascriptInterface
+    fun getHealthProviderStatus(): String = health.getProviderStatus()
+
+    @JavascriptInterface
+    fun resetHealthProviderSelection(): String = health.resetProviderSelection()
+
+    @JavascriptInterface
     fun checkHealthPermission(): String = health.checkPermission()
 
     @JavascriptInterface

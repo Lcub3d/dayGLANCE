@@ -397,11 +397,14 @@ describe('pickJoboRecord: drop-in #1762 callback', () => {
     assert.equal(pickJoboRecord(a, b), a);
     assert.equal(pickJoboRecord(b, a), a);
   });
-  it('prefers a migrated progress-free row on an exact version tie', () => {
+  it('keeps migration outside the merge rule', () => {
     const canonical = record();
     const legacy = { ...canonical, progress: 'partial' };
-    assert.equal(pickJoboRecord(canonical, legacy), canonical);
-    assert.equal(pickJoboRecord(legacy, canonical), canonical);
+    const migrated = migrateLegacyDoRecord(legacy);
+    assert.equal(migrated.legacyCompletionStatus, 'partly');
+    assert.deepEqual(migrated.record, canonical);
+    assert.deepEqual(pickJoboRecord(canonical, migrated.record), canonical);
+    assert.deepEqual(pickJoboRecord(migrated.record, canonical), canonical);
   });
   it('compares the nested snapshot on an exact timestamp tie', () => {
     const a = record({ planSnapshot: plan({ duration: 30 }) });

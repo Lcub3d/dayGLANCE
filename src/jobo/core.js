@@ -230,6 +230,9 @@ function versionTime(value) {
  * Drop-in pick for createLedger({ store, pick: pickJoboRecord }) and
  * useJoboLedger({ pickRecord: pickJoboRecord }). Return a whole original operand,
  * including opaque fields/tombstones, without mutation, restamping or pruning.
+ *
+ * This rule is deliberately schema-agnostic. Legacy-schema migration must happen
+ * before merge; the picker only resolves competing versions of one record.
  */
 export function pickJoboRecord(a, b) {
   if (a == null) return b;
@@ -241,9 +244,6 @@ export function pickJoboRecord(a, b) {
   if (ua !== ub) return ua > ub ? a : b;
   const oa = versionTime(a.observedAt), ob = versionTime(b.observedAt);
   if (oa !== ob) return oa < ob ? a : b;
-  const schemaA = own(a, 'progress') ? 0 : 1;
-  const schemaB = own(b, 'progress') ? 0 : 1;
-  if (schemaA !== schemaB) return schemaA > schemaB ? a : b;
   return canonicalJson(a) <= canonicalJson(b) ? a : b;
 }
 

@@ -3,7 +3,9 @@
 
 This document is a fork-local refinement layered on the current Slice 2 core.
 It proposes one explicit revision to the merged #1744 persistence contract:
-Do records no longer carry progress/completion. Completion belongs to Plan.
+Do records would no longer carry progress/completion, and completion would belong
+to Plan. This is a proposal only; #1744 remains the current upstream persistence
+contract unless and until that ownership change is explicitly accepted.
 It does not wire UI, storage, sync or task completion.
 
 `classifyAgainstPlan()` remains only as a compatibility adapter. It delegates
@@ -84,39 +86,41 @@ minutes, not 70.
 
 ### Completion
 
-Plan has a separate completion dimension:
+The proposed ownership refinement models Plan with a separate completion dimension:
 
 - `started`
 - `partly`
 - `mostly`
 - `completed`
 
-This is an ordinal assessment owned by an identified Plan instance. The
-canonical order is `started < partly < mostly < completed`, exported as
+Under this proposal, this is an ordinal assessment owned by an identified Plan
+instance. The canonical order is `started < partly < mostly < completed`, exported as
 `COMPLETION_STATUS_ORDER`. A non-null `completionStatus` therefore requires
 a stable Plan `id`; it is not accepted as a free-standing comparison option.
 Plan revisions passed as `plan` and `displayedPlan` must identify the same
 Plan when both expose ids.
 
-`setPlanCompletionStatus(plan, status)` is the pure Core assessment contract.
+`setPlanCompletionStatus(plan, status)` is the pure Core API used by this proposal.
 It is deliberately **re-assessable, not monotonic**: any valid status may replace
 any other valid status, and `null` clears the assessment. Changing completion
 never mutates Do history.
 
-`not_started` is deliberately **not** part of this four-level completion
-dimension. It remains time-gated: no live Do exists, the current displayed Plan
-has fully elapsed, and the Plan has no explicit completion assessment. This
+Under this proposal, `not_started` is deliberately **not** part of this four-level
+completion dimension. It remains time-gated: no live Do exists, the current
+displayed Plan has fully elapsed, and the Plan has no explicit completion
+assessment. This
 prevents contradictory `Completed + Not Started` output.
 
-Do records intentionally contain no progress/completion field. Legacy
-prototype/#1744 rows use the explicit `migrateLegacyDoRecord()` boundary:
+Under this proposed refinement, Do records intentionally contain no
+progress/completion field. Legacy prototype/#1744 rows use the explicit
+`migrateLegacyDoRecord()` boundary:
 the record is returned without `progress`, while a separate
 `legacyCompletionStatus` is returned for the caller to attach to the correct
 identified Plan if appropriate. Migration happens **before merge**. The merge
 rule stays schema-agnostic and does not know about `progress` or migration
 versions.
 
-The Plan-level completion dimension uses `partly` as its canonical value.
+The proposed Plan-level completion dimension uses `partly` as its canonical value.
 
 The completion scale is ordinal only. No numeric percentage is inferred. A task planned for 60 minutes may be marked `completed` after 10 minutes without becoming “16.7% complete.”
 

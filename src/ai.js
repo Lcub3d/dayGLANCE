@@ -1,6 +1,8 @@
 // Unified AI Service Layer — provider-agnostic client-side AI calls
 // All calls go directly from the browser to the user-configured provider endpoint.
 
+import { withLanguage, currentAiLanguage } from './utils/aiLanguage.js';
+
 const DEFAULT_CONFIG = {
   enabled: false,
   provider: 'openai',
@@ -121,13 +123,17 @@ async function withRetry(fn, maxRetries = 3) {
   throw lastError;
 }
 
-// Make a completion request to the configured provider (with automatic retry)
+// Make a completion request to the configured provider (with automatic retry).
+// Every prompt passes through here, so this is where the answer's language is
+// set: the system prompt gains a last paragraph naming the app's current
+// language (utils/aiLanguage.js, #1789). Callers never do this themselves.
 export async function aiComplete(systemPrompt, userMessage, config) {
   if (!config?.enabled || !config.apiKey && config.provider !== 'ollama') {
     throw new Error('AI is not configured');
   }
 
-  return withRetry(() => _aiComplete(systemPrompt, userMessage, config));
+  const localized = withLanguage(systemPrompt, currentAiLanguage());
+  return withRetry(() => _aiComplete(localized, userMessage, config));
 }
 
 async function _aiComplete(systemPrompt, userMessage, config) {

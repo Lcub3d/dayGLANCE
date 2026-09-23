@@ -168,6 +168,9 @@ class NativeBridge(
     fun getHealthProviderStatus(): String = health.getProviderStatus()
 
     @JavascriptInterface
+    fun getRawHealthDiagnostics(date: String): String = health.getRawDiagnostics(date)
+
+    @JavascriptInterface
     fun resetHealthProviderSelection(): String = health.resetProviderSelection()
 
     @JavascriptInterface

@@ -53,7 +53,7 @@ class HealthProviderManager(
     fun snapshot(): HealthProviderSnapshot {
         ensureLoaded()
         val bindings = HealthMetric.entries.associate { metric ->
-            metric.key to bindingIds[metric]
+            metric.key to bindingIds[metric]?.takeUnless { it == NO_PROVIDER_ID }
         }
         val available = providerById.values
             .filter { runCatching { it.isAvailable() }.getOrDefault(false) }
@@ -122,6 +122,7 @@ class HealthProviderManager(
             activeProviders[metric]?.let { return it }
 
             val savedId = bindingIds[metric]
+            if (savedId == NO_PROVIDER_ID) return null
             if (savedId != null) {
                 providerById[savedId]?.let { saved ->
                     activeProviders[metric] = saved
@@ -166,6 +167,11 @@ class HealthProviderManager(
             providers = providerById.values,
             excludedProviderId = excludedProviderId,
         ) ?: run {
+            // Persist a negative result as well. Otherwise a phone with no
+            // usable provider would probe the full catalog on every read and
+            // again after every process restart.
+            bindingIds[metric] = NO_PROVIDER_ID
+            activeProviders.remove(metric)
             persistLocked()
             return null
         }
@@ -192,7 +198,13 @@ class HealthProviderManager(
     }
 
     companion object {
+        /**
+         * Bump this when provider-catalog semantics change (for example when a
+         * new built-in OEM adapter ships) so previous negative selections are
+         * intentionally re-discovered once after the app update.
+         */
         const val SELECTION_SCHEMA_VERSION = 1
+        private const val NO_PROVIDER_ID = "__none__"
     }
 }
 

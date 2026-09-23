@@ -17,6 +17,7 @@ class HealthConnectProvider(context: Context) : HealthProvider {
 
     override val id = ID
     override val metrics = setOf(HealthMetric.STEPS, HealthMetric.SLEEP)
+    override val authorization = HealthAuthorization.ANDROID_PERMISSION
 
     private val client = if (
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE

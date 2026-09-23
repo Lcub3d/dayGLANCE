@@ -322,6 +322,23 @@ class SharedDataStore(context: Context) {
         get() = prefs.getInt(KEY_TRIAL_DAYS_ANNUAL, -1)
         set(value) = prefs.edit { putInt(KEY_TRIAL_DAYS_ANNUAL, value) }
 
+    // ── Device-local health provider selection ─────────────────────────────
+
+    /**
+     * Persisted per-device mapping of health metric -> provider id.
+     *
+     * Lives in dayglance_shared, which is excluded from Android cloud backup
+     * and device transfer. A new phone therefore performs its own discovery
+     * instead of inheriting the previous phone's HONOR/Health Connect/etc.
+     * binding.
+     */
+    var healthProviderSelectionJson: String?
+        get() = prefs.getString(KEY_HEALTH_PROVIDER_SELECTION, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_HEALTH_PROVIDER_SELECTION, value)
+            else remove(KEY_HEALTH_PROVIDER_SELECTION)
+        }
+
     // ── Step count cache ────────────────────────────────────────────────────
 
     /** Cached step count for today, updated by WidgetUpdateWorker. */
@@ -346,6 +363,7 @@ class SharedDataStore(context: Context) {
         private const val KEY_WIDGET_SNAPSHOT = "widget_snapshot"
         private const val KEY_WIDGET_SNAPSHOT_TS = "widget_snapshot_ts"
         private const val KEY_SCHEDULED_REMINDERS = "scheduled_reminders"
+        private const val KEY_HEALTH_PROVIDER_SELECTION = "health_provider_selection"
         private const val KEY_STEPS_CACHE = "steps_cache"
         private const val KEY_PENDING_COMPLETE = "pending_complete_task_id"
         private const val KEY_PENDING_SNOOZE = "pending_snooze_task_id"

@@ -7,6 +7,7 @@ import {
 import { renderTitle } from '../utils/textFormatting.jsx';
 import { dateToString, extractTags } from '../utils/taskUtils.js';
 import { HABIT_COLORS, HABIT_ICONS } from '../constants/habits.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -332,16 +333,16 @@ const MobileBottomSheets = () => {
             <div className={`space-y-3 ${textSecondary}`}>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor((actualTodayCompletedMinutes + inboxCompletedTodayMinutes) / 60), minutes: (actualTodayCompletedMinutes + inboxCompletedTodayMinutes) % 60 })}</span>
+                <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor(actualTodayPlannedMinutes / 60), minutes: actualTodayPlannedMinutes % 60 })}</span>
+                <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
               </div>
               {actualTodayFocusMinutes > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                  <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor(actualTodayFocusMinutes / 60), minutes: Math.round(actualTodayFocusMinutes % 60) })}</span>
+                  <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes, t)}</span>
                 </div>
               )}
             </div>
@@ -461,17 +462,17 @@ const MobileBottomSheets = () => {
               )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor((totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes) / 60), minutes: (totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes) % 60 })}</span>
+                <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor(totalScheduledMinutes / 60), minutes: totalScheduledMinutes % 60 })}</span>
+                <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
               </div>
               {allTimeFocusMinutes > 0 && (
                 <>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{t('focus.hoursMinutesShort', { hours: Math.floor(allTimeFocusMinutes / 60), minutes: Math.round(allTimeFocusMinutes % 60) })}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes, t)}</span>
                   </div>
                 </>
               )}

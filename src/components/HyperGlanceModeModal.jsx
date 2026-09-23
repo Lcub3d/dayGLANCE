@@ -7,6 +7,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import { hexToRgba } from '../utils/colorUtils.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { isNativeAndroid, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeShowFocusTimerNotification, nativeDismissFocusTimerNotification, nativeGetFocusPendingAction } from '../native.js';
 import { useTranslation } from 'react-i18next';
 
@@ -207,7 +208,7 @@ const HyperGlanceModeModal = () => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     return h > 0
-      ? t('focus.hoursMinutesShort', { hours: h, minutes: m, defaultValue: '{{hours}}h {{minutes}}m' })
+      ? formatDuration(h * 60 + m, t)
       : t('voice.minutesShort', { count: m });
   };
 

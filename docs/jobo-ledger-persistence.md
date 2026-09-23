@@ -65,11 +65,11 @@ storage layers depend on, and ask core to keep fixed:
   taskId: 't1',            // the task this attempt was against, or null for an
                            //   unlinked manual Do; may also be an id that no
                            //   longer resolves (see "Orphans")
-  date: '2026-09-19',      // the day the interval starts on
-  startTime: '14:30',
-  endDate: '2026-09-19',   // the day it ends on; equal to `date` except across
-                           //   midnight (explicit rather than inferred)
-  endTime: '15:10',
+  timing: 'timed',         // 'timed' | 'untimed'
+  date: '2026-09-19',      // execution day
+  startTime: '14:30',      // null for untimed
+  endDate: '2026-09-19',   // null for untimed; explicit across midnight
+  endTime: '15:10',        // null for untimed
   title: 'Draft the report',   // captured once; the record reads on its own
   planSnapshot: {          // the plan as observed when the record was made,
     date: '2026-09-19', startTime: '14:30', duration: 60,
@@ -90,10 +90,13 @@ storage layers depend on, and ask core to keep fixed:
 passes through opaque, which is what lets core change its mind about
 classification without touching persistence.
 
-Two nullables, both from review. `taskId: null` is a manual Do with no task
-behind it. `planSnapshot: null` means there genuinely was no timed plan to
-copy. An unavailable historical snapshot is not the same as "unplanned", and
-the hook must never manufacture one from today's task to fill the gap.
+Two pre-existing nullables remain: `taskId: null` is a manual Do with no task
+behind it; `planSnapshot: null` means there genuinely was no timed plan to
+copy. In addition, Untimed Do uses explicit null interval coordinates
+(`startTime`, `endDate`, `endTime`) under `timing: 'untimed'`. Those
+nulls mean "execution happened, duration unmeasured", never zero minutes. An
+unavailable historical snapshot is not the same as "unplanned", and the hook
+must never manufacture one from today's task to fill the gap.
 
 **What the snapshot is, honestly.** A detector that runs on completion
 captures the plan as it stands at completion. It cannot prove what the plan
@@ -109,10 +112,11 @@ snapshot is the best available Final Plan, not a guaranteed one.
 time when no Do exists, the current displayed Plan has wholly elapsed, and
 there is no explicit Plan completion assessment.
 
-A native completion with a known positive actual/retrospective interval may
-append a Do. A completion with no known interval does not invent a zero-minute
-Do. Un-completing does not mutate a historical Do record. A later recorded
-execution is a new attempt under a new identity.
+A native completion appends one Do. With a known positive actual/retrospective
+interval it is Timed; with known execution but unmeasured duration it is
+Untimed. Zero minutes is never used as an "unknown" sentinel. Un-completing
+does not mutate a historical Do record. A later execution is a new attempt
+under a new identity.
 
 Legacy prototype/#1744 rows that still contain `progress` cross an explicit
 `migrateLegacyDoRecord()` boundary **before merge**: Core returns a progress-free
@@ -462,10 +466,11 @@ rather than unit-testing a module. The five from review are folded in.
    payload without the key; a failed write is not acknowledged; a failed
    restore write does not reload; at no point is an empty ledger published
    in place of an unreadable one.
-10. **Unlinked and unplanned.** A positive-duration manual Do with
-    `taskId: null` and `planSnapshot: null` round-trips both tiers intact,
-    and a cross-midnight interval keeps its `endDate`. Zero-duration
-    placeholders are rejected before persistence.
+10. **Unlinked, unplanned and untimed.** A manual Do with `taskId: null` and
+    `planSnapshot: null` round-trips both tiers intact in both Timed and
+    Untimed forms; a cross-midnight Timed interval keeps its `endDate`, while
+    Untimed preserves explicit null interval coordinates. Zero-duration
+    sentinels are rejected/migrated before canonical persistence.
 11. **Restore then reload keeps the ledger.** Restore with a checked write;
     construct a fresh hook over the same store; assert the records are there.
 

@@ -105,8 +105,9 @@ Do records intentionally contain no progress/completion field. Legacy
 prototype/#1744 rows use the explicit `migrateLegacyDoRecord()` boundary:
 the record is returned without `progress`, while a separate
 `legacyCompletionStatus` is returned for the caller to attach to the correct
-identified Plan if appropriate. On an exact merge tie, `pickJoboRecord()`
-prefers the progress-free canonical row so migration does not oscillate.
+identified Plan if appropriate. Migration happens **before merge**. The merge
+rule stays schema-agnostic and does not know about `progress` or migration
+versions.
 
 The Plan-level completion dimension uses `partly` as its canonical value.
 

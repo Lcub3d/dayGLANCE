@@ -29,26 +29,16 @@ describe('task-input clock preference', () => {
 });
 
 describe('task-input duration suggestions', () => {
-  const suggest = async (lng, resources) => {
+  it.each([
+    ['uk', uk, ['15 хв', '1 г 45 хв', '2 г', '2 г 30 хв']],
+    ['en', en, ['15m', '1h 45m', '2h', '2h 30m']],
+  ])('renders the label and value through the translated duration ladder (%s)', async (lng, resources, values) => {
     const i18n = i18next.createInstance();
     await i18n.init({ lng, resources: { [lng]: { translation: resources } } });
     const { buildSuggestions } = useNewTaskInput({
       allTags: [], showAddTask: true, t: i18n.t.bind(i18n), language: lng, use24HourClock: true,
     });
-    return buildSuggestions('Task %1', 7).filter(item => item.type === 'duration');
-  };
-
-  it('renders the label and value through the translated duration ladder', async () => {
-    const ukDisplays = (await suggest('uk', uk)).map(item => item.display);
-    expect(ukDisplays).toEqual([
-      `${uk.common.duration}: 15 хв`,
-      `${uk.common.duration}: 1 г 45 хв`,
-      `${uk.common.duration}: 2 г`,
-      `${uk.common.duration}: 2 г 30 хв`,
-    ]);
-    const enDisplays = (await suggest('en', en)).map(item => item.display);
-    expect(enDisplays).toContain('Duration: 15m');
-    expect(enDisplays).toContain('Duration: 1h 45m');
-    expect(enDisplays).toContain('Duration: 2h');
+    const displays = buildSuggestions('Task %1', 7).filter(item => item.type === 'duration').map(item => item.display);
+    expect(displays).toEqual(values.map(v => `${resources.common.duration}: ${v}`));
   });
 });

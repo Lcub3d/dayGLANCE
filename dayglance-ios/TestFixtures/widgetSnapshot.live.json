@@ -242,7 +242,8 @@
       "fraction": 0.766,
       "waxing": true,
       "glyphMin": 1294
-    }
+    },
+    "southern": false
   },
   "dial": {
     "date": "2026-09-21",
@@ -598,7 +599,8 @@
           "fraction": 0.843,
           "waxing": true,
           "glyphMin": 1342
-        }
+        },
+        "southern": false
       },
       "dial": {
         "date": "2026-09-22",
@@ -951,7 +953,8 @@
           "fraction": 0.909,
           "waxing": true,
           "glyphMin": 1386
-        }
+        },
+        "southern": false
       },
       "dial": {
         "date": "2026-09-23",
@@ -1304,7 +1307,8 @@
           "fraction": 0.959,
           "waxing": true,
           "glyphMin": 1428
-        }
+        },
+        "southern": false
       },
       "dial": {
         "date": "2026-09-24",
@@ -1414,6 +1418,7 @@
       }
     }
   ],
+  "timezone": "America/Denver",
   "updatedAt": 1790013600000,
   "reloadWidgets": true
 }

@@ -8,7 +8,7 @@ import { languages, loaders, resolveLanguage } from './locales.js';
 // only checked the files existed would have passed throughout that bug — the
 // assertions below go through the same loaders i18n.js resolves at runtime.
 describe('locale bundles', () => {
-  const EXPECTED = ['de', 'en', 'es', 'fr', 'it', 'pt-BR', 'pt-PT', 'zh-CN'];
+  const EXPECTED = ['de', 'en', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk', 'zh-CN'];
   const TRANSLATED = EXPECTED.filter((l) => l !== 'en');
 
   const bundles = {};
@@ -26,7 +26,8 @@ describe('locale bundles', () => {
       return v && typeof v === 'object' && !Array.isArray(v) ? flatten(v, key) : [key];
     });
 
-  const keysOf = (lng) => new Set(flatten(bundles[lng]));
+  const keyCache = {};
+  const keysOf = (lng) => (keyCache[lng] ??= new Set(flatten(bundles[lng])));
 
   it('exposes every shipped language', () => {
     expect(languages).toEqual(EXPECTED);
@@ -154,17 +155,36 @@ describe('locale bundles', () => {
   // check rather than a ratchet: a key added to en without translations fails
   // here instead of silently rendering English.
   describe('coverage against en', () => {
+    // Plural keys differ by language on purpose: English has one/other, Polish and
+    // Ukrainian need one/few/many/other, and their ordinals use fewer categories
+    // than English's one/two/few/other. Comparing key-for-key would force those
+    // languages to carry forms they cannot use, or forbid the ones they must.
+    const PLURAL = /_(zero|one|two|few|many|other)$/;
+    const family = (key) => key.replace(PLURAL, '');
+    const enFamilies = () => new Set([...keysOf('en')].map(family));
+    const isPlural = (key) => PLURAL.test(key);
+
     it.each(TRANSLATED)('%s preserves every interpolation placeholder', (lng) => {
       const get = (bundle, key) => key.split('.').reduce((value, part) => value?.[part], bundle);
       const placeholders = (value) => [...(value || '').matchAll(/{{(.*?)}}/g)].map(match => match[1]).sort();
-      for (const key of keysOf('en')) {
-        expect(placeholders(get(bundles[lng], key)), `${lng}: ${key}`)
-          .toEqual(placeholders(get(bundles.en, key)));
+      // A form that exists for exactly one count may spell it out ("raz") instead
+      // of interpolating it, and `plural` is English's "s" suffix, which has no
+      // equivalent in a language whose noun changes by number.
+      const tolerated = (key) => (name) => name !== 'plural' && !(isPlural(key) && name === 'count');
+      const leaves = [...keysOf(lng)].filter((k) => keysOf('en').has(k) || keysOf('en').has(`${family(k)}_other`));
+      for (const key of leaves) {
+        const enKey = keysOf('en').has(key) ? key : `${family(key)}_other`;
+        const want = placeholders(get(bundles.en, enKey));
+        const got = placeholders(get(bundles[lng], key));
+        expect(got.filter(tolerated(key)), `${lng}: ${key}`).toEqual(want.filter(tolerated(key)));
+        // The tolerance is for dropping a placeholder, never for adding one.
+        expect(got.every((name) => want.includes(name)), `${lng}: ${key} invents a placeholder`).toBe(true);
       }
     });
 
     it.each(TRANSLATED)('%s covers every key in en', (lng) => {
-      const missing = [...keysOf('en')].filter((k) => !keysOf(lng).has(k));
+      const have = new Set([...keysOf(lng)].map(family));
+      const missing = [...keysOf('en')].filter((k) => (isPlural(k) ? !have.has(family(k)) : !keysOf(lng).has(k)));
       expect(
         missing,
         `${lng} is missing keys that en has — translate them:\n  ${missing.slice(0, 10).join('\n  ')}`,
@@ -175,15 +195,39 @@ describe('locale bundles', () => {
     // ordinals select `many` for 8 and 11, where English has only one/two/few/
     // other, so `ordinal_ordinal_many` is legitimate in it and absent from en.
     // Such a key is allowed when en carries the same family.
-    const PLURAL = /_(zero|one|two|few|many|other)$/;
-    const family = (key) => key.replace(PLURAL, '');
-
     it.each(TRANSLATED)('%s carries no keys that en does not', (lng) => {
-      const families = new Set([...keysOf('en')].map(family));
-      const extra = [...keysOf(lng)].filter(
-        (k) => !keysOf('en').has(k) && !(PLURAL.test(k) && families.has(family(k))),
-      );
+      const known = enFamilies();
+      const extra = [...keysOf(lng)].filter((k) => !keysOf('en').has(k) && !(isPlural(k) && known.has(family(k))));
       expect(extra, `${lng} has keys absent from en`).toEqual([]);
+    });
+
+    // The point of allowing different plural keys: each language must actually
+    // have the forms its own rules select, or i18next falls back to the base key
+    // and a count like 3 renders with the wrong noun.
+    //
+    // Scoped by which categories the language's rules actually select for a
+    // count the app can produce (0-1000), not every category it theoretically
+    // has: es/fr/it/pt reserve "many" for millions, which no count here
+    // reaches, so it drops out on its own instead of needing a hardcoded list
+    // of exempt languages. That exemption previously left de/es/fr/it/pt-BR/
+    // pt-PT unguarded entirely.
+    it.each(TRANSLATED)('%s defines every plural category its rules use', (lng) => {
+      const problems = [];
+      const families = new Map();
+      for (const key of keysOf('en')) {
+        if (isPlural(key)) families.set(family(key), key.includes('_ordinal_') ? 'ordinal' : 'cardinal');
+      }
+      for (const [fam, type] of families) {
+        const rules = new Intl.PluralRules(lng, { type });
+        const categories = new Set();
+        for (let n = 0; n <= 1000; n++) categories.add(rules.select(n));
+        for (const cat of categories) {
+          // i18next falls back to the un-suffixed key, so a bare key covers a
+          // form (task.deferredTimes, task.earlierMoves, settings.weekTimelineHidden).
+          if (!keysOf(lng).has(`${fam}_${cat}`) && !keysOf(lng).has(fam)) problems.push(`${fam}_${cat}`);
+        }
+      }
+      expect(problems, `${lng} lacks plural forms its language selects`).toEqual([]);
     });
   });
 

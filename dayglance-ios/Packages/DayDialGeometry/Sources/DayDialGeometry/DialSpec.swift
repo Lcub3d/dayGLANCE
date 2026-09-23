@@ -56,6 +56,12 @@ public enum DialSpec {
 
     // Glyphs sit upright at 104; the needle runs 126–159 with a 3.4pt dot.
     public static let glyphRadius: Double = 104
+    /// The square a glyph view is laid out in, centred on `glyphPoint`. The
+    /// sun glyph spans x ±7 and y −5.6…9.4 plus stroke, the moon r 3.6; 24
+    /// holds both. A glyph must have a real frame: ImageRenderer rasterises
+    /// nothing for a zero-sized view, which is how the first live build of
+    /// the widget drew the sky ring and not one glyph.
+    public static let glyphFrame: Double = 24
     public static let needleInnerRadius: Double = 126
     public static let needleOuterRadius: Double = 159
     public static let needleWidth: Double = 2.6
@@ -119,6 +125,33 @@ public enum DialSpec {
         public static let runwayOpacity: Double = 0.72
         public static let runwayColorHex = "#4ec9b0"
         public static let runwayMinimumMinutes: Double = 30
+
+        // Phase 5 states, in the same rows.
+        /// Open time takes the title row in the runway's teal: "35m open".
+        public static let openColorHex = runwayColorHex
+        /// "Sleep" in the title row, muted rather than teal.
+        public static let sleepOpacity: Double = 0.55
+        /// Outdated / time-zone-changed take the title row in a warning amber.
+        public static let statusColorHex = "#f0a848"
+        /// The freshness note ("Planned as of Mon 8:42 PM"): the lowest row,
+        /// smallest type, below the runway and inside the ring. At y = 281
+        /// the chord is ~132pt; the row may shrink to 0.8 before truncating.
+        public static let noteY: Double = 281
+        public static let noteFontSize: Double = 9
+        public static let noteOpacity: Double = 0.40
+
+        /// Rows below the title STACK (Phase 5, from the first device run):
+        /// tag, "until 19:00", "17 minutes left", runway, note — each row a
+        /// state has sits at the next pitch under the title, so the end time
+        /// gets a line of its own and a state with fewer rows closes up under
+        /// the title instead of leaving the spec's fixed slots empty. With
+        /// every row present the last baseline is 291, where the chord is
+        /// ~110pt (98 usable): the note still fits at its minimum scale.
+        /// `tagY` / `countdownY` / `runwayY` / `noteY` above are the spec's
+        /// original two-line slots, kept as the reference this is measured
+        /// against.
+        public static let rowPitch: Double = 16
+        public static func rowBaseline(_ index: Int) -> Double { titleY + rowPitch * Double(index + 1) }
 
         /// The hub's boundary: the sky ring's inner edge.
         public static var radius: Double { DialSpec.skyRadius - DialSpec.skyWidth / 2 }

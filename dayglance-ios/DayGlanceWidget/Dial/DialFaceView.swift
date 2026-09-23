@@ -63,10 +63,18 @@ struct DialFaceView: View {
     /// The entry's minute: decides past/future for the band (and nothing
     /// else on the face).
     let nowMin: Double
+    /// The accented rendering mode (a tinted or clear Home Screen, iOS 18+):
+    /// the system paints every view white at its own opacity and drops the
+    /// container background, so the face is drawn in white at the spec's
+    /// opacities on a TRANSPARENT ground, and the separators are cut out of
+    /// the band instead of painted over it in the background colour (which
+    /// would become white cuts). Rendered to its own PNG, keyed apart from
+    /// the full-colour face: see DialFaceCache's header.
+    var mono: Bool = false
 
     var body: some View {
         let styles = DialBand.styles(input.blocks, nowMin: nowMin, projectedDay: input.projectedDay)
-        ZStack(alignment: .topLeading) {
+        let layers = ZStack(alignment: .topLeading) {
             skyRing
             glyphs
             track
@@ -76,7 +84,14 @@ struct DialFaceView: View {
             labels
         }
         .frame(width: DialSpec.canvasWidth, height: DialSpec.canvasHeight)
+        // The cut-out separators must not punch through whatever is behind
+        // the face, so the mono face composites as one layer.
+        if mono { layers.compositingGroup() } else { layers }
     }
+
+    /// The colour a spec hex is drawn in: itself, or white for the mono face
+    /// (the opacity applied to it is the spec's either way).
+    private func paint(_ hex: String) -> Color { mono ? .white : Color(hex: hex) }
 
     // MARK: sky ring (handoff §4): one band, colour and opacity by strength, width constant
     //
@@ -94,7 +109,7 @@ struct DialFaceView: View {
         } else {
             ForEach(input.sky, id: \.hour) { seg in
                 Path.dialArc(r: DialSpec.skyRadius, startMin: seg.startMin, endMin: seg.endMin)
-                    .stroke(Color(hex: seg.body == .sun ? DialSpec.skySunColorHex : DialSpec.skyMoonColorHex).opacity(seg.opacity),
+                    .stroke(paint(seg.body == .sun ? DialSpec.skySunColorHex : DialSpec.skyMoonColorHex).opacity(seg.opacity),
                             style: StrokeStyle(lineWidth: DialSpec.skyWidth, lineCap: .butt))
             }
         }
@@ -104,13 +119,13 @@ struct DialFaceView: View {
 
     @ViewBuilder private var glyphs: some View {
         if let rise = input.sunriseMin {
-            SunGlyphView(rising: true).offset(DialSpec.glyphPoint(minutes: rise))
+            SunGlyphView(rising: true, mono: mono).placed(at: DialSpec.glyphPoint(minutes: rise))
         }
         if let set = input.sunsetMin {
-            SunGlyphView(rising: false).offset(DialSpec.glyphPoint(minutes: set))
+            SunGlyphView(rising: false, mono: mono).placed(at: DialSpec.glyphPoint(minutes: set))
         }
         if let moon = input.moon {
-            MoonGlyphView(moon: moon).offset(DialSpec.glyphPoint(minutes: moon.minutes))
+            MoonGlyphView(moon: moon, mono: mono).placed(at: DialSpec.glyphPoint(minutes: moon.minutes))
         }
     }
 
@@ -142,7 +157,7 @@ struct DialFaceView: View {
 
     private func blocks(_ styles: [DialBlockStyle]) -> some View {
         ForEach(Array(styles.enumerated()), id: \.offset) { _, s in
-            let color = Color(hex: s.colorHex)
+            let color = paint(s.colorHex)
             ZStack {
                 if s.fillOpacity > 0 {
                     Path.dialSector(rInner: s.rInner, rOuter: s.rOuter, startMin: s.startMin, endMin: s.endMin)
@@ -155,14 +170,30 @@ struct DialFaceView: View {
     }
 
     // MARK: separators: a background-colour cut where two blocks touch, drawn last (handoff §3)
+    //
+    // The mono face has no background to paint with, so the same line is
+    // drawn with `destinationOut`, which erases the band beneath it to
+    // transparent; the system's tint then shows the cut as the Home Screen
+    // behind it, exactly as the background colour does in full colour.
 
+    @ViewBuilder
     private func separators(_ styles: [DialBlockStyle]) -> some View {
+        let p = separatorPath(styles)
+        let style = StrokeStyle(lineWidth: DialSpec.separatorLineWidth, lineCap: .butt)
+        if mono {
+            p.stroke(Color.black, style: style).blendMode(.destinationOut)
+        } else {
+            p.stroke(Color(hex: DialSpec.backgroundHex), style: style)
+        }
+    }
+
+    private func separatorPath(_ styles: [DialBlockStyle]) -> Path {
         var p = Path()
         for m in DialSpec.separatorMinutes(styles: styles) {
             let line = DialSpec.separatorLine(minutes: m)
             p.addLine(line.inner, line.outer)
         }
-        return p.stroke(Color(hex: DialSpec.backgroundHex), style: StrokeStyle(lineWidth: DialSpec.separatorLineWidth, lineCap: .butt))
+        return p
     }
 
     // MARK: the six hour labels
@@ -217,20 +248,37 @@ struct DialCanvas<Content: View>: View {
 }
 
 // MARK: - Glyphs (DialSpec.SunGlyph / DialSpec.MoonGlyph, in glyph-local coordinates)
+//
+// Each glyph is drawn about its own origin, shifted to the centre of a real
+// DialSpec.glyphFrame square, and that square is centred on the dial point.
+// The first version gave the glyph views a zero-sized frame and offset them
+// to the point: on screen that draws, but ImageRenderer, which the face
+// cache renders through, rasterises nothing for a zero-sized view, so the
+// widget shipped a sky ring with no sunrise, sunset or moon. Pinned by
+// LiveSnapshotSkyTests, which samples the three glyph points.
 
 private extension View {
-    /// Places a glyph drawn about the origin at a point on the dial.
-    func offset(_ p: DialPoint) -> some View { offset(x: p.x, y: p.y) }
+    /// Lays a glyph out in its square and centres the square on `p`.
+    func placed(at p: DialPoint) -> some View {
+        frame(width: DialSpec.glyphFrame, height: DialSpec.glyphFrame)
+            .position(x: p.x, y: p.y)
+    }
+
+    /// Moves drawing done about the origin to the centre of the glyph square.
+    func centredInGlyphFrame() -> some View {
+        offset(x: DialSpec.glyphFrame / 2, y: DialSpec.glyphFrame / 2)
+    }
 }
 
 /// Half-disc on a horizon with three rays and a chevron: up above the disc
 /// for sunrise, down below the horizon for sunset.
 struct SunGlyphView: View {
     let rising: Bool
+    var mono: Bool = false
 
     var body: some View {
         typealias G = DialSpec.SunGlyph
-        let color = Color(hex: rising ? G.sunriseColorHex : G.sunsetColorHex)
+        let color = mono ? Color.white : Color(hex: rising ? G.sunriseColorHex : G.sunsetColorHex)
         let stroke = StrokeStyle(lineWidth: G.strokeWidth, lineCap: .round, lineJoin: .round)
 
         var strokes = Path()
@@ -257,21 +305,22 @@ struct SunGlyphView: View {
             disc.fill(color.opacity(G.discFillOpacity))
             horizon.stroke(color.opacity(G.horizonOpacity), style: stroke)
         }
-        .frame(width: 0, height: 0)   // the paths sit about the origin; the frame is a point
+        .centredInGlyphFrame()
     }
 }
 
 /// An outlined circle with the lit fraction filled (MoonPhase, the same
-/// shape the in-app dial draws). Northern-hemisphere orientation: the
-/// snapshot does not carry the observer's hemisphere.
+/// shape the in-app dial draws), mirrored for the southern hemisphere
+/// (`moon.mirror`, from the snapshot's `sky.southern`).
 struct MoonGlyphView: View {
     let moon: DialMoonGlyph
+    var mono: Bool = false
 
     var body: some View {
         typealias G = DialSpec.MoonGlyph
-        let color = Color(hex: G.colorHex)
+        let color = mono ? Color.white : Color(hex: G.colorHex)
         let r = G.radius
-        let geometry = MoonPhase.geometry(r: r, fraction: moon.fraction, waxing: moon.waxing)
+        let geometry = MoonPhase.geometry(r: r, fraction: moon.fraction, waxing: moon.waxing, mirror: moon.mirror)
 
         // "M 0 -r A r r 0 0 s 0 r A rx r 0 0 t 0 -r Z". SVG sweep 1 is
         // clockwise on screen, which is `clockwise: false` here (see the
@@ -292,6 +341,6 @@ struct MoonGlyphView: View {
                 .stroke(color.opacity(G.strokeOpacity), lineWidth: G.strokeWidth)
             lit.fill(color.opacity(G.fillOpacity))
         }
-        .frame(width: 0, height: 0)
+        .centredInGlyphFrame()
     }
 }

@@ -229,6 +229,7 @@ const MobileSettingsPanel = () => {
       {
         steps: readJson('getSteps', date),
         sleep: readJson('getSleep', date),
+        raw: readJson('getRawHealthDiagnostics', date),
       },
     ]));
 

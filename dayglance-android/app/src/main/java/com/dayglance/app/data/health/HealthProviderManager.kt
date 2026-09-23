@@ -50,6 +50,21 @@ class HealthProviderManager(
     suspend fun readSleep(date: LocalDate): HealthRead<SleepResult> =
         readWithOneFailover(HealthMetric.SLEEP) { it.readSleep(date) }
 
+    suspend fun rawDiagnostics(date: LocalDate): List<ProviderDateDiagnostics> {
+        val providers = HealthMetric.entries
+            .mapNotNull { providerFor(it) }
+            .distinctBy { it.id }
+
+        return providers.map { provider ->
+            runCatching { provider.rawDiagnostics(date) }.getOrElse { error ->
+                ProviderDateDiagnostics(
+                    providerId = provider.id,
+                    error = error.message ?: error::class.java.simpleName,
+                )
+            }
+        }
+    }
+
     fun snapshot(): HealthProviderSnapshot {
         ensureLoaded()
         val bindings = HealthMetric.entries.associate { metric ->

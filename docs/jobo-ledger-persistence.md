@@ -107,13 +107,17 @@ completion-time plan and the doc says so rather than promising history that
 was not captured. `originalPlan` on the task remains the Original Plan; the
 snapshot is the best available Final Plan, not a guaranteed one.
 
-Plan-change counting stays on the task/Plan side, not on Do. Slice 2 defines
-`planRevisionCount` plus `lastPlanRevisionAt` as write-time metadata for
-effective changes to `date / startTime / duration`. The default coalescing
-window is 5 minutes: edits separated by at most 5 minutes stay in one revision
-session; a larger gap opens another. Changing that threshold later affects only
-future writes and never recomputes existing counts. This metric is deliberately
-separate from `rescheduleCount` or any overdue-deferral counter.
+Provisional-plan history stays on the task, not on Do and not in Slice 2.
+The settled dayGLANCE fields are `deferrals`, the monotonic count, and
+`planTrail`, the bounded recent stops behind that count. They record the same
+qualifying event: a move made after the task had already come due. Planning
+moves while the task is still in the future are intentionally excluded. JOBO
+does not add a second revision counter or duplicate those task fields' merge
+rules.
+
+For analysis, Slice 2 only compares the durable anchors: Original Plan
+(`originalPlan` on the task) to Final Plan (`planSnapshot` on the Do) with
+raw start/finish/duration deltas, and each selected Plan anchor to Do separately.
 
 **Completion is not a Do field.** Plan owns the ordinal completion assessment:
 `started / partly / mostly / completed`. "Not started" is still derived from

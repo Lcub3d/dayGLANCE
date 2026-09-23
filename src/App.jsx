@@ -2303,7 +2303,7 @@ const DayPlanner = () => {
       onError: (msg, code) => { setVaultError(syncErrorText(t, msg, code)); if (msg) console.warn('[dayglance] vault sync error:', code || '', msg); },
       onRowsSkipped: (count) => {
         setVaultSkipped(count);
-        if (count > 0) setUndoToast({ message: `GLANCEvault: ${count} item${count === 1 ? '' : 's'} couldn't be read — see Cloud Sync settings`, actionable: false });
+        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), actionable: false });
       },
     });
     if (!engine) return;

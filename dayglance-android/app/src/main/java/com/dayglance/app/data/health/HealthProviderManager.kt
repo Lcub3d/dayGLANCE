@@ -88,7 +88,7 @@ class HealthProviderManager(
     }
 
     companion object {
-        const val SELECTION_VERSION = 1
+        const val SELECTION_VERSION = 2
         private const val NO_PROVIDER = "__none__"
     }
 }

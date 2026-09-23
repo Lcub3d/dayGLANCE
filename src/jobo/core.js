@@ -1,5 +1,5 @@
-// JOBO Slice 2 stable public facade.
-// Downstream slices import from this file; internal module layout is not API.
+// JOBO Slice 2 public facade.
+// core.js is the supported import surface; the internal module layout is private.
 
 export {
   DO_SOURCES,

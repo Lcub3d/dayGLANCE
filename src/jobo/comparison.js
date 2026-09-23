@@ -1,5 +1,5 @@
 // JOBO Plan/Do comparison, policy classification and compact summaries.
-// Interval mathematics lives in intervals.js; public consumers import through core.js.
+// Interval calculations are delegated to intervals.js; core.js remains the public facade.
 
 import { own, plain, nonempty, copy } from './internal/json.js';
 import {

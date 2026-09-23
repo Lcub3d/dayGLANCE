@@ -1,5 +1,5 @@
 // JOBO civil-time and interval mathematics.
-// This module owns interval facts only; it does not classify product meaning.
+// This module computes interval facts; policy classification belongs in comparison.js.
 
 import { plain } from './internal/json.js';
 

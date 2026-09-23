@@ -17,8 +17,7 @@ export const DO_TIMING = Object.freeze({
   UNTIMED: 'untimed',
 });
 
-// Shared completion vocabulary used by the current Slice 2 proposal.
-// Module placement does not settle persistence ownership.
+// Completion status vocabulary shared by migration and comparison.
 export const COMPLETION_STATUS = Object.freeze({
   STARTED: 'started',
   PARTLY: 'partly',

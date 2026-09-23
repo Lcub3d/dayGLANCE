@@ -74,9 +74,11 @@ export const isNativeApp = () => isNativeAndroid() || isNativeIOS();
  *
  * The bridge exposes (when implemented in the Android app):
  *
- *   Health Connect (Phase 2):
- *     getSteps(date: string): string       — JSON: { steps, goal }
- *     getSleep(date: string): string       — JSON with sleep stages/duration
+ *   Health data (Phase 2):
+ *     getSteps(date: string): string       — JSON: { steps, goal, status, provider }
+ *     getSleep(date: string): string       — JSON with sleep stages/duration/status/provider
+ *     getHealthProviderStatus(): string    — device-local provider bindings/availability
+ *     resetHealthProviderSelection(): string — force one-time re-discovery
  *
  *   Calendar (Phase 3):
  *     getEvents(date: string): string      — JSON array of calendar events
@@ -130,6 +132,26 @@ export const nativeGetSleep = async (date) => {
     return JSON.parse(bridge.getSleep(date));
   } catch {
     return null;
+  }
+};
+
+export const nativeGetHealthProviderStatus = () => {
+  const bridge = nativeBridge();
+  if (!bridge?.getHealthProviderStatus) return null;
+  try {
+    return JSON.parse(bridge.getHealthProviderStatus());
+  } catch {
+    return null;
+  }
+};
+
+export const nativeResetHealthProviderSelection = () => {
+  const bridge = nativeBridge();
+  if (!bridge?.resetHealthProviderSelection) return false;
+  try {
+    return bridge.resetHealthProviderSelection() === 'ok';
+  } catch {
+    return false;
   }
 };
 

@@ -39,9 +39,19 @@ export const formatLocalizedDurationMinutes = (minutes, language = activeLocale(
 // A regional BCP-47 tag ("uk-UA") for APIs like SpeechRecognition that
 // don't reliably accept a bare language subtag. `maximize()` also adds a
 // script subtag ("uk-Cyrl-UA"), which those APIs don't expect, so drop it.
-export const speechRecognitionLocale = (language = activeLocale()) => {
-  const locale = new Intl.Locale(language).maximize();
-  return locale.region ? `${locale.language}-${locale.region}` : locale.language;
+export const speechRecognitionLocale = (language = activeLocale(), reported = globalThis.navigator?.language) => {
+  const app = new Intl.Locale(language);
+  // A bare app tag ("en", "uk") expresses no regional preference, so the
+  // browser's own tag refines it where the two agree on the language. A tag
+  // that already names a region ("pt-BR", "zh-CN") is an explicit choice.
+  if (!app.region && reported) {
+    try {
+      const nav = new Intl.Locale(reported);
+      if (nav.language === app.language && nav.region) return `${nav.language}-${nav.region}`;
+    } catch { /* unparsable navigator tag: fall through */ }
+  }
+  const max = app.maximize();
+  return max.region ? `${max.language}-${max.region}` : max.language;
 };
 
 export const localizedWeekdays = (width = 'short', language = activeLocale()) => {

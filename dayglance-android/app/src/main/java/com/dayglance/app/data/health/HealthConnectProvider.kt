@@ -28,8 +28,10 @@ class HealthConnectProvider(context: Context) : HealthProvider {
     override val capabilities: Set<HealthMetric> =
         setOf(HealthMetric.STEPS, HealthMetric.SLEEP)
 
+    private val sdkStatus: Int = HealthConnectClient.getSdkStatus(context)
+
     private val client: HealthConnectClient? = if (
-        HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
+        sdkStatus == HealthConnectClient.SDK_AVAILABLE
     ) {
         HealthConnectClient.getOrCreate(context)
     } else {
@@ -37,6 +39,11 @@ class HealthConnectProvider(context: Context) : HealthProvider {
     }
 
     override fun isAvailable(): Boolean = client != null
+
+    override fun diagnostics(): Map<String, String> = mapOf(
+        "sdkStatus" to sdkStatus.toString(),
+        "sdkAvailable" to (sdkStatus == HealthConnectClient.SDK_AVAILABLE).toString(),
+    )
 
     override fun requiredAndroidPermissions(metrics: Set<HealthMetric>): Set<String> =
         buildSet {

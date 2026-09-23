@@ -120,6 +120,32 @@ The Plan-level completion dimension uses `partly` as its canonical value.
 
 The completion scale is ordinal only. No numeric percentage is inferred. A task planned for 60 minutes may be marked `completed` after 10 minutes without becoming “16.7% complete.”
 
+### Plan revision sessions
+
+Plan revision counting measures planning instability separately from execution
+deviation and separately from any deferral/reschedule counter.
+
+The write-time policy is:
+
+- `DEFAULT_PLAN_REVISION_COALESCE_MINUTES = 5`
+- the first effective change to `date / startTime / duration` opens revision 1
+- another effective change within 5 minutes of the previous effective change
+  stays in the same revision session
+- exactly 5 minutes still coalesces; a gap greater than 5 minutes opens a new
+  revision
+- `lastPlanRevisionAt` advances on every effective schedule change, so the
+  coalescing window is sliding
+- completion/status-only edits do not count
+
+The threshold is intentionally a current write rule, not a retrospective
+analytics rule. If the setting later changes to another value, already written
+`planRevisionCount` values are not recomputed; only future writes use the new
+threshold. Core therefore does not need an unbounded raw plan-edit log merely
+to recount history.
+
+`planRevisionCount` must not be treated as an alias for `rescheduleCount`
+or any overdue-deferral metric; those can carry different product semantics.
+
 ## Raw metrics
 
 For a comparable planned execution:

@@ -5,6 +5,7 @@ import com.dayglance.app.data.health.HealthMetric
 import com.dayglance.app.data.health.HealthProviderManager
 import com.dayglance.app.data.health.HealthProviderSnapshot
 import com.dayglance.app.data.health.HealthRead
+import com.dayglance.app.data.health.ProviderDateDiagnostics
 import com.dayglance.app.data.health.SleepResult
 import java.time.LocalDate
 
@@ -37,6 +38,9 @@ class HealthRepository(context: Context) {
 
     suspend fun getSleepDetailed(date: LocalDate): HealthRead<SleepResult> =
         manager.readSleep(date)
+
+    suspend fun getRawDiagnostics(date: LocalDate): List<ProviderDateDiagnostics> =
+        manager.rawDiagnostics(date)
 
     /**
      * Legacy compatibility for callers such as the widget worker.

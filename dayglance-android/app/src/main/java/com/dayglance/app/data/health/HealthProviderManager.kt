@@ -64,11 +64,7 @@ class HealthProviderManager(
     }
 
     private fun resolve(metric: HealthMetric, excludedId: String? = null): HealthProvider? {
-        val provider = providers.firstOrNull {
-            it.id != excludedId &&
-                metric in it.metrics &&
-                runCatching { it.isAvailable() }.getOrDefault(false)
-        }
+        val provider = selectHealthProvider(metric, providers, excludedId)
         setSavedProvider(metric, provider?.id ?: NO_PROVIDER)
         return provider
     }
@@ -89,4 +85,15 @@ class HealthProviderManager(
         const val SELECTION_VERSION = 1
         private const val NO_PROVIDER = "__none__"
     }
+}
+
+
+internal fun selectHealthProvider(
+    metric: HealthMetric,
+    providers: List<HealthProvider>,
+    excludedId: String? = null,
+): HealthProvider? = providers.firstOrNull {
+    it.id != excludedId &&
+        metric in it.metrics &&
+        runCatching { it.isAvailable() }.getOrDefault(false)
 }

@@ -24,7 +24,7 @@ its merged design or the upstream implementation has already changed. See the
 | `completeDoAttempt(records, input)` | Pure ensure-present by caller-supplied completion ID; otherwise appends one execution attempt. |
 | `doDurationMinutes(record)` | Civil-clock minutes for Timed Do; returns `null` for Untimed Do. |
 | `setPlanCompletionStatus(plan, completionStatus)` | Pure Plan-occurrence reassessment. Requires stable Plan `id`; any valid status may replace any other, and `null` clears it. |
-| `recordPlanRevision(previousPlan, nextPlan, changedAt, options)` | Counts effective schedule-edit sessions. The default coalescing window is `DEFAULT_PLAN_REVISION_COALESCE_MINUTES = 5`. |
+| `comparePlanAnchors(originalPlan, finalPlan)` | Returns raw Original → Final schedule deltas: start shift, finish shift, duration difference and duration ratio. |
 | `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated measured time. |
 | `classifyAgainstPlan(plan, records, options)` | Legacy vocabulary adapter over `compareExecutionToPlan()`; contains no separate business rules. |
 | `migrateLegacyDoRecord(record)` | Explicitly strips legacy Do `progress` and returns a separate `legacyCompletionStatus` for Plan migration. |
@@ -126,6 +126,7 @@ mutation. The integration is pending, as described in the checkbox contract.
 Pass one explicit plan anchor and a caller-selected array of distinct attempts:
 
 ```js
+const planChange = comparePlanAnchors(originalPlan, attempt.planSnapshot);
 classifyAgainstPlan(originalPlan, selectedAttempts);
 classifyAgainstPlan(attempt.planSnapshot, [attempt], {
   knownUnplanned: attempt.planSnapshot === null,
@@ -189,17 +190,29 @@ be reassessed to `partly`, and any assessment may be cleared. The classifier
 does not return per-Do progress, choose a latest attempt from sync-array order,
 aggregate a completion percentage, or change native task completion.
 
-Plan revision counting is separate again. `planRevisionCount` counts effective
-schedule-edit sessions over `date / startTime / duration`, not completion
-changes and not any deferral-specific counter. The first real schedule edit
-opens revision 1. Subsequent edits with an inactivity gap of at most
-`DEFAULT_PLAN_REVISION_COALESCE_MINUTES` (5 minutes by default) stay in the
-same revision session; a larger gap increments the count. `lastPlanRevisionAt`
-moves on every effective schedule edit, so the window is sliding. The threshold
-is a write-time setting only: changing it later affects future writes and never
-recomputes historical `planRevisionCount`. Do not compare a group of attempts with different snapshots to an
-implicitly selected last snapshot. Select a common anchor explicitly, or compare
-each attempt with its own snapshot.
+Original Plan and Final Plan are first-class analytical anchors. Use
+`comparePlanAnchors(originalPlan, finalPlan)` for the raw planning-change
+metrics:
+
+- `startShiftMinutes = final start - original start`
+- `finishShiftMinutes = final finish - original finish`
+- `durationDifferenceMinutes = final duration - original duration`
+- `durationRatio = final duration / original duration`
+
+Positive values mean the Final Plan moved later or became longer; negative
+values mean earlier or shorter. Core reports these facts only and does not infer
+why the plan changed.
+
+Provisional-plan history stays on the task under the already-settled dayGLANCE
+model: `deferrals` is the monotonic count, and `planTrail` keeps the bounded
+recent stops. Both record only qualifying moves made after the task had already
+come due; ordinary planning churn while the task is still in the future is not
+counted. Slice 2 does not add another revision counter, does not mutate these
+task fields, and does not duplicate their merge semantics inside JOBO.
+
+Do not compare a group of attempts with different snapshots to an implicitly
+selected last snapshot. Select a common anchor explicitly, or compare each
+attempt with its own snapshot.
 
 Intervals use CIVIL planner coordinates, independent of the machine's timezone.
 This is an explicit implementation choice for the contract's date/time fields,

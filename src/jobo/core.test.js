@@ -2,7 +2,7 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
-  DO_SOURCES, DO_TIMING, TIMING, COMPLETION_STATUS,
+  DO_SOURCES, DO_TIMING, TIMING, COMPLETION_STATUS, COMPLETION_STATUS_ORDER,
   createDoRecord, validateDoRecord, updateDoRecord, tombstoneDoRecord,
   completeDoAttempt, migrateLegacyDoRecord, setPlanCompletionStatus,
   doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
@@ -180,6 +180,15 @@ describe('Do record contract', () => {
 function ownKey(value, key) { return Object.prototype.hasOwnProperty.call(value, key); }
 
 describe('Plan completion assessment', () => {
+  it('publishes the canonical ordinal order without making updates monotonic', () => {
+    assert.deepEqual(COMPLETION_STATUS_ORDER, [
+      COMPLETION_STATUS.STARTED,
+      COMPLETION_STATUS.PARTLY,
+      COMPLETION_STATUS.MOSTLY,
+      COMPLETION_STATUS.COMPLETED,
+    ]);
+  });
+
   it('is a pure Plan-occurrence assessment, not a monotonic workflow', () => {
     const original = freeze(plan({ id: 'plan:t1:2026-09-19' }));
     const started = setPlanCompletionStatus(original, COMPLETION_STATUS.STARTED);

@@ -47,6 +47,46 @@ export function mergeRecordsById(current, incoming, pick = pickJoboRecord) {
   return [...byId.entries()].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([, r]) => r);
 }
 
+// Sorted-key JSON for content equality between two copies of one record. The
+// sync tiers need "did the merge change this side" as a fact about content,
+// not identity: the merge always builds a fresh array.
+function canonical(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;
+}
+
+function sameCollection(side, merged) {
+  if (!Array.isArray(side)) return false;
+  const byId = new Map(side.filter((r) => r && r.id != null).map((r) => [String(r.id), canonical(r)]));
+  if (byId.size !== merged.length) return false;
+  return merged.every((r) => byId.get(String(r.id)) === canonical(r));
+}
+
+/**
+ * The file-tier merge of two devices' collections, on the change-flag contract
+ * every other collection in mergeSyncData uses: `localChanged` when the merge
+ * differs from what this device holds (apply it), `remoteChanged` when it
+ * differs from what the remote holds (push it), neither when the copies are
+ * equal. A side that is `undefined` did not carry the collection (an older
+ * build, or a device whose ledger has not loaded): it is never treated as
+ * empty, and the side that has it is kept and marked as needing to reach the
+ * other. No sync horizon is applied here, ever: the ledger's tombstones are
+ * rows kept forever, and a horizon would drop exactly those (see
+ * docs/jobo-ledger-persistence.md, "Both sync tiers").
+ */
+export function mergeJoboCollections(local, remote, pick = pickJoboRecord) {
+  if (local === undefined && remote === undefined) {
+    return { merged: undefined, localChanged: false, remoteChanged: false };
+  }
+  const merged = mergeRecordsById(local, remote, pick);
+  return {
+    merged,
+    localChanged: !sameCollection(local, merged),
+    remoteChanged: !sameCollection(remote, merged),
+  };
+}
+
 /**
  * @param {object} deps
  * @param {ReturnType<import('./store.js').createJoboStore>} deps.store
@@ -119,12 +159,30 @@ export function createLedger({ store, pick = pickJoboRecord }) {
     return { ok: true, written: true };
   }
 
+  /**
+   * A restore from a backup: the collection is REPLACED by what the backup
+   * holds, as every other collection is on restore, through the checked
+   * write. The caller reloads only on ok, and must await this: the restore
+   * paths reload the page next, and a write still in flight at reload is
+   * exactly the loss the persistence design names.
+   */
+  async function restore(records) {
+    if (!Array.isArray(records)) return { ok: false, error: 'notAList' };
+    if (!(await store.writable())) return { ok: false, error: 'readOnly' };
+    const result = await store.write(mergeRecordsById([], records, pick));
+    if (!result.ok) { set({ error: result.error }); return result; }
+    held = [];
+    set({ records: result.value, loaded: true, writable: true, error: null });
+    return result;
+  }
+
   return {
     get: () => state,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     load,
     commit,
     applyRemote,
+    restore,
     /** How many applies are waiting on the load. Test seam. */
     heldCount: () => held.length,
   };

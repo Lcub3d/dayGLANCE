@@ -109,6 +109,7 @@ import useDailyContent from './hooks/useDailyContent.js';
 import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
+import useJoboLedger from './hooks/useJoboLedger.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -1013,6 +1014,27 @@ const DayPlanner = () => {
     addArea, updateArea, deleteArea, reorderAreas,
     addProject, updateProject, deleteProject, moveProject,
   } = useGoalsProjects();
+  // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
+  // writer. `joboRecords` is undefined until the ledger has loaded, and the
+  // sync payload omits the collection while it is: undefined means "this
+  // device has not loaded its ledger", [] would claim it is empty. The flag
+  // gates the interface, never the data: a device with JOBO off still loads,
+  // stores, pushes, pulls and merges records.
+  const {
+    joboRecords, joboLoaded, joboWritable, joboError,
+    recordJobo, applyRemoteJobo, restoreJobo,
+  } = useJoboLedger();
+  // The engine and the backup builders can run a beat after a render.
+  const joboRecordsRef = useRef(joboRecords);
+  joboRecordsRef.current = joboRecords;
+  // Restore paths await this before they reload: a ledger write still in
+  // flight at reload is lost. A failed write is said out loud rather than
+  // reloading as if the ledger had come back with the rest.
+  const restoreJoboOrWarn = async (records) => {
+    const result = await restoreJobo(records);
+    if (!result.ok) alert(t('backup.restoreFailed', { error: `JOBO ledger: ${result.error}` }));
+    return result;
+  };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -4747,6 +4769,7 @@ const DayPlanner = () => {
         goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4809,6 +4832,7 @@ const DayPlanner = () => {
       goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4904,6 +4928,7 @@ const DayPlanner = () => {
       // pull HWM would skip forever every vault row the backup lacks. Clear them
       // so the post-reload cycle full-pulls and LWW-merges (never blind-pushes).
       resetVaultSyncCursor();
+      if (Array.isArray(data.joboRecords)) await restoreJoboOrWarn(data.joboRecords);
       applyEngineData(data);
       window.location.reload();
     } catch (err) {
@@ -4922,6 +4947,7 @@ const DayPlanner = () => {
       // Full-state replacement → invalidate the vault sync cursors (see
       // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
       resetVaultSyncCursor();
+      if (Array.isArray(backup.data.joboRecords)) await restoreJoboOrWarn(backup.data.joboRecords);
       applyEngineData(backup.data);
       window.location.reload();
     } catch (err) {
@@ -5035,7 +5061,7 @@ const DayPlanner = () => {
     if (!backupFile) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const backup = JSON.parse(e.target.result);
 
@@ -5045,6 +5071,7 @@ const DayPlanner = () => {
         }
 
         applyBackupToLocalStorage(backup.data);
+        if (Array.isArray(backup.data.joboRecords)) await restoreJoboOrWarn(backup.data.joboRecords);
 
         // Full-state replacement → invalidate the vault sync cursors (see
         // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
@@ -5083,6 +5110,7 @@ const DayPlanner = () => {
         return;
       }
       applyBackupToLocalStorage(payload.data);
+      if (Array.isArray(payload.data.joboRecords)) await restoreJoboOrWarn(payload.data.joboRecords);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
       // to it. The handle is already persisted by openForRestore.
@@ -5800,6 +5828,9 @@ const DayPlanner = () => {
         deletedProjectIds: JSON.parse(localStorage.getItem('day-planner-deleted-project-ids') || '{}'),
         areas,
         deletedAreaIds: JSON.parse(localStorage.getItem('day-planner-deleted-area-ids') || '{}'),
+        // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
+        // treat an absent key as "does not carry it"; [] would mean empty.
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -6092,6 +6123,9 @@ const DayPlanner = () => {
       setAreas(data.areas);
     }
     if (data.deletedAreaIds) localStorage.setItem('day-planner-deleted-area-ids', JSON.stringify(data.deletedAreaIds));
+    // JOBO ledger rows go through the hook, the only writer: merged by id with
+    // incoming timestamps untouched, held until the ledger has loaded.
+    if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -8858,6 +8892,7 @@ const DayPlanner = () => {
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

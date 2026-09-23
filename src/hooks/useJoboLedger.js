@@ -38,6 +38,7 @@ export default function useJoboLedger({ pickRecord, store } = {}) {
     joboError: state.error,
     recordJobo: ledger.current.commit,
     applyRemoteJobo: ledger.current.applyRemote,
+    restoreJobo: ledger.current.restore,
     reloadJobo: ledger.current.load,
   };
 }

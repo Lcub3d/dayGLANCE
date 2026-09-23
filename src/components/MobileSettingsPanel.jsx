@@ -181,6 +181,53 @@ const MobileSettingsPanel = () => {
   // matching note in HabitModal.jsx and refreshHealthPerms in useHabits.js.
   const isIOS = typeof window !== 'undefined' && !!window.DayGlanceIOS;
 
+  // Manual Android health diagnostics. This intentionally bypasses the habit
+  // state so a device can expose the raw native/provider result even when the
+  // normal health habit has not been added yet.
+  const [healthDiagnostics, setHealthDiagnostics] = useState(null);
+  const [healthDiagnosticsLoading, setHealthDiagnosticsLoading] = useState(false);
+
+  const runHealthDiagnostics = async () => {
+    if (!isNativeAndroid() || !window.DayGlanceNative) return;
+    setHealthDiagnosticsLoading(true);
+
+    const bridge = window.DayGlanceNative;
+    const today = getTodayStr();
+    const readJson = (method, ...args) => {
+      try {
+        if (typeof bridge[method] !== 'function') return { error: `missing bridge method: ${method}` };
+        const raw = bridge[method](...args);
+        try { return JSON.parse(raw); } catch { return { raw }; }
+      } catch (error) {
+        return { error: error?.message || String(error) };
+      }
+    };
+    const readText = (method, ...args) => {
+      try {
+        if (typeof bridge[method] !== 'function') return 'missing';
+        return String(bridge[method](...args));
+      } catch (error) {
+        return `error: ${error?.message || String(error)}`;
+      }
+    };
+
+    const result = {
+      checkedAt: new Date().toISOString(),
+      today,
+      permissions: {
+        all: readText('checkHealthPermission'),
+        steps: readText('checkStepsPermission'),
+        sleep: readText('checkSleepPermission'),
+      },
+      steps: readJson('getSteps', today),
+      sleep: readJson('getSleep', today),
+      provider: readJson('getHealthProviderStatus'),
+    };
+
+    setHealthDiagnostics(result);
+    setHealthDiagnosticsLoading(false);
+  };
+
   const [intentForm, setIntentForm] = useState(() => {
     const raw = localStorage.getItem(INTENT_CONFIG_KEY);
     const saved = raw ? JSON.parse(raw) : {};
@@ -3004,6 +3051,50 @@ const MobileSettingsPanel = () => {
                   </div>
                 </div>
               )}
+              {isNativeAndroid() && window.DayGlanceNative && (
+                <div className={`mt-3 rounded-xl border ${borderClass} ${darkMode ? 'bg-gray-900/70' : 'bg-stone-50'} p-3`}>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div>
+                      <div className={`text-sm font-semibold ${textPrimary}`}>Health diagnostics</div>
+                      <div className={`text-xs ${textSecondary}`}>Raw Android provider / permission / data test</div>
+                    </div>
+                    <button
+                      onClick={runHealthDiagnostics}
+                      disabled={healthDiagnosticsLoading}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-500 text-white disabled:opacity-50"
+                    >
+                      {healthDiagnosticsLoading ? 'Testing…' : 'Run test'}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <button
+                      onClick={() => {
+                        try { window.DayGlanceNative.requestHealthPermission(); } catch (_) {}
+                      }}
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border ${borderClass} ${hoverBg}`}
+                    >
+                      Request permission
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try { window.DayGlanceNative.resetHealthProviderSelection(); } catch (_) {}
+                        await runHealthDiagnostics();
+                      }}
+                      className={`text-xs px-2.5 py-1.5 rounded-lg border ${borderClass} ${hoverBg}`}
+                    >
+                      Reset provider
+                    </button>
+                  </div>
+
+                  {healthDiagnostics && (
+                    <pre className={`text-[10px] leading-relaxed whitespace-pre-wrap break-all rounded-lg p-2 max-h-72 overflow-auto ${darkMode ? 'bg-black/30 text-gray-300' : 'bg-white text-stone-700'}`}>
+                      {JSON.stringify(healthDiagnostics, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              )}
+
               {habits.filter(h => h.archived).length > 0 && (
                 <div className="pt-2">
                   <h4 className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('common.archived')}</h4>

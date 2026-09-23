@@ -5,7 +5,6 @@ import com.dayglance.app.data.health.HealthMetric
 import com.dayglance.app.data.health.HealthProviderManager
 import com.dayglance.app.data.health.HealthReadStatus
 import com.dayglance.app.data.health.SleepResult
-import com.dayglance.app.data.health.SleepStage
 import java.time.LocalDate
 
 class HealthRepository(context: Context) {
@@ -38,8 +37,4 @@ class HealthRepository(context: Context) {
         }
     }
 
-    data class SleepResultCompat(
-        val durationMinutes: Int,
-        val stages: List<SleepStage>,
-    )
 }

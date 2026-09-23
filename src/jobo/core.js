@@ -458,6 +458,14 @@ function comparisonPlanOverlap(bounds, anchor) {
   return unionBoundsMinutes(clipped);
 }
 
+function comparisonNotStarted({ attemptCount, completionStatus, currentPlanEnd, nowMinute }) {
+  return attemptCount === 0
+    && completionStatus === null
+    && currentPlanEnd !== null
+    && nowMinute !== null
+    && nowMinute >= currentPlanEnd;
+}
+
 /**
  * Measure execution against one explicit plan reference without mutating history.
  *
@@ -519,11 +527,14 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     ? null
     : attempts.length === 1 ? EXECUTION_PATTERN.SINGLE_SESSION : EXECUTION_PATTERN.SPLIT_SESSIONS;
 
-  const notStarted = attempts.length === 0
-    && resolvedPlan.completionStatus === null
-    && current !== null
-    && nowMinute !== null
-    && nowMinute >= current.end;
+  // Canonical rule:
+  // not_started = Plan fully elapsed AND no live Do AND no explicit Plan completion.
+  const notStarted = comparisonNotStarted({
+    attemptCount: attempts.length,
+    completionStatus: resolvedPlan.completionStatus,
+    currentPlanEnd: current?.end ?? null,
+    nowMinute,
+  });
 
   const result = {
     planId: resolvedPlan.id,

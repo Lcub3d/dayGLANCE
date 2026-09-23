@@ -164,7 +164,7 @@ Rules:
 - `late`: start is late **or** finish is late under the supplied tolerance policy.
 - `longer`: recorded effort is longer than the plan duration under the supplied duration tolerance.
 - `split`: two or more live Do attempts exist.
-- `not_started`: no live attempt exists, the current displayed Plan has fully elapsed, and no explicit Plan completion assessment exists.
+- `not_started`: **Plan fully elapsed AND no live Do AND no explicit Plan completion assessment**. Missing Do alone is never enough; before the Plan ends there is no `not_started`, and an explicit Plan completion suppresses it.
 - `unplanned`: the caller explicitly knows there was no timed plan.
 - `unknown` remains a lower-level Plan Context state and intentionally emits no product summary label.
 

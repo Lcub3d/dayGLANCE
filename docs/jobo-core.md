@@ -24,6 +24,7 @@ its merged design or the upstream implementation has already changed. See the
 | `completeDoAttempt(records, input)` | Pure ensure-present by caller-supplied completion ID; otherwise appends one execution attempt. |
 | `doDurationMinutes(record)` | Civil-clock minutes for Timed Do; returns `null` for Untimed Do. |
 | `setPlanCompletionStatus(plan, completionStatus)` | Pure Plan-occurrence reassessment. Requires stable Plan `id`; any valid status may replace any other, and `null` clears it. |
+| `recordPlanRevision(previousPlan, nextPlan, changedAt, options)` | Counts effective schedule-edit sessions. The default coalescing window is `DEFAULT_PLAN_REVISION_COALESCE_MINUTES = 5`. |
 | `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated measured time. |
 | `classifyAgainstPlan(plan, records, options)` | Legacy vocabulary adapter over `compareExecutionToPlan()`; contains no separate business rules. |
 | `migrateLegacyDoRecord(record)` | Explicitly strips legacy Do `progress` and returns a separate `legacyCompletionStatus` for Plan migration. |
@@ -186,7 +187,17 @@ not passed as a comparison option. `setPlanCompletionStatus()` is deliberately
 a reassessment function rather than a monotonic state machine: `completed` may
 be reassessed to `partly`, and any assessment may be cleared. The classifier
 does not return per-Do progress, choose a latest attempt from sync-array order,
-aggregate a completion percentage, or change native task completion. Do not compare a group of attempts with different snapshots to an
+aggregate a completion percentage, or change native task completion.
+
+Plan revision counting is separate again. `planRevisionCount` counts effective
+schedule-edit sessions over `date / startTime / duration`, not completion
+changes and not any deferral-specific counter. The first real schedule edit
+opens revision 1. Subsequent edits with an inactivity gap of at most
+`DEFAULT_PLAN_REVISION_COALESCE_MINUTES` (5 minutes by default) stay in the
+same revision session; a larger gap increments the count. `lastPlanRevisionAt`
+moves on every effective schedule edit, so the window is sliding. The threshold
+is a write-time setting only: changing it later affects future writes and never
+recomputes historical `planRevisionCount`. Do not compare a group of attempts with different snapshots to an
 implicitly selected last snapshot. Select a common anchor explicitly, or compare
 each attempt with its own snapshot.
 

@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
  * Runs every 15 minutes. When the DayGlance app is open, it pushes a rich snapshot
  * (tasks, habits, routines, frames, steps) via [com.dayglance.app.bridge.NativeBridge.updateWidgetSnapshot].
  * When the app is closed, this worker keeps the widget fresh by:
- *   1. Fetching the latest step count from Health Connect
+ *   1. Fetching the latest step count from the device's persisted health provider
  *   2. Fetching today's calendar events from the Android Calendar Provider
  *   3. Patching those fields into the existing JS-written snapshot (preserving task data)
  *   4. Broadcasting a widget update so the widget re-renders
@@ -66,7 +66,11 @@ class WidgetUpdateWorker(
 
         if (decision != SnapshotPatchDecision.LEAVE_UNTOUCHED) {
             // 2. Fetch fresh native data
-            val steps = try { HealthRepository(context).getSteps(today) } catch (_: Throwable) { -1 }
+            val steps = try {
+                HealthRepository(context).getStepsDetailed(today).value ?: -1
+            } catch (_: Throwable) {
+                -1
+            }
             val calEvents = try { CalendarRepository(context).getEvents(today) } catch (_: Throwable) { emptyList() }
 
             // 3. Patch the existing same-day snapshot, or build a new minimal one.

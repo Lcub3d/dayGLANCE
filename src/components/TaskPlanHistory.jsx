@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { planHistory } from '../utils/originalPlan.js';
 import { intermediatePlans, hiddenStops } from '../utils/planTrail.js';
 import { formatShortDate } from '../utils/taskUtils.js';
-import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 
 // Reveals what a task was ORIGINALLY planned for, next to where it sits now.
@@ -53,7 +53,7 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
       {part(formatTime(startTime), emphasis.startTime)}
       {typeof duration === 'number' && (<>
         <span className="opacity-40">·</span>
-        {part(formatLocalizedDurationMinutes(duration), emphasis.duration)}
+        {part(formatDuration(duration, t), emphasis.duration)}
       </>)}
     </div>
   );

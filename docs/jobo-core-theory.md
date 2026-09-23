@@ -91,10 +91,17 @@ Plan has a separate completion dimension:
 - `mostly`
 - `completed`
 
-This is an ordinal assessment owned by an identified Plan instance. A non-null
-`completionStatus` therefore requires a stable Plan `id`; it is not accepted
-as a free-standing comparison option. Plan revisions passed as `plan` and
-`displayedPlan` must identify the same Plan when both expose ids.
+This is an ordinal assessment owned by an identified Plan instance. The
+canonical order is `started < partly < mostly < completed`, exported as
+`COMPLETION_STATUS_ORDER`. A non-null `completionStatus` therefore requires
+a stable Plan `id`; it is not accepted as a free-standing comparison option.
+Plan revisions passed as `plan` and `displayedPlan` must identify the same
+Plan when both expose ids.
+
+`setPlanCompletionStatus(plan, status)` is the pure Core assessment contract.
+It is deliberately **re-assessable, not monotonic**: any valid status may replace
+any other valid status, and `null` clears the assessment. Changing completion
+never mutates Do history.
 
 `not_started` is deliberately **not** part of this four-level completion
 dimension. It remains time-gated: no live Do exists, the current displayed Plan
@@ -125,18 +132,27 @@ For a comparable planned execution:
 
 For the execution itself, regardless of plan availability:
 
-- `attemptMinutes` — raw sum of positive attempt durations
-- `recordedMinutes` — overlap-deduplicated actual time
-- `activeMinutes` — same union of wall-clock intervals as `recordedMinutes`
-- `elapsedMinutes` — first start to last finish
+- `attemptMinutes` — raw sum of measured Timed-Do durations, or `null` when none are measured
+- `recordedMinutes` — overlap-deduplicated measured time, or `null` when none are measured
+- `activeMinutes` — same measured union as `recordedMinutes`
+- `elapsedMinutes` — first timed start to last timed finish
 - `gapMinutes = elapsedMinutes - activeMinutes`
 - `overlapMinutes = attemptMinutes - activeMinutes`
-- `attemptCount`
-- `timedSessionCount`
+- `attemptCount` — all live Do records
+- `timedSessionCount` — Timed Do records only
+- `untimedAttemptCount` — Untimed Do records only
 
-Every Do must have a positive execution interval. A native/task completion with
-no actual interval may still update Plan/native completion state, but it does
-not create a zero-minute Do placeholder.
+Do has an explicit timing discriminant:
+
+- `timed` — real positive execution interval; start/end are present
+- `untimed` — execution is known to have happened, but duration was not measured;
+  `startTime`, `endDate`, and `endTime` are explicit `null`
+
+Untimed never means zero minutes. It suppresses `not_started` because execution
+evidence exists, but it does not participate in start/finish timing, duration
+comparison, or Allen interval relation. If any live Do is Untimed, the overall
+Plan-vs-Do timing comparison is intentionally non-comparable; measured Timed-Do
+diagnostics remain available for the measured subset.
 
 ## Interval relation
 
@@ -164,8 +180,8 @@ Rules:
 - `within_plan`: a comparable planned execution exists and it is neither late nor longer. Early starts, early finishes and shorter execution can still be within-plan because they do not represent lateness or excess estimated effort.
 - `late`: start is late **or** finish is late under the supplied tolerance policy.
 - `longer`: recorded effort is longer than the plan duration under the supplied duration tolerance.
-- `split`: two or more live Do attempts exist.
-- `not_started`: **Plan fully elapsed AND no live Do AND no explicit Plan completion assessment**. Missing Do alone is never enough; before the Plan ends there is no `not_started`, and an explicit Plan completion suppresses it.
+- `split`: two or more live Do attempts exist, Timed or Untimed.
+- `not_started`: **Plan fully elapsed AND no live Do AND no explicit Plan completion assessment**. Missing Do alone is never enough; before the Plan ends there is no `not_started`, an Untimed Do suppresses it because execution evidence exists, and an explicit Plan completion suppresses it.
 - `unplanned`: the caller explicitly knows there was no timed plan.
 - `unknown` remains a lower-level Plan Context state and intentionally emits no product summary label.
 
@@ -198,8 +214,10 @@ from `compareExecutionToPlan()`; it contains no independent timing rules.
 ## Do record boundary
 
 A Do record is execution evidence only. Its core fields are identity, task link,
-actual interval, captured title/plan snapshot, source, version timestamps and
-tombstone state. A `progress` field is invalid.
+`timing: timed|untimed`, execution day, optional measured interval, captured
+title/plan snapshot, source, version timestamps and tombstone state. A
+`progress` field is invalid.
 
 This separation prevents one execution segment from being mistaken for the
-completion state of the Plan that may own several Do attempts.
+completion state of the Plan that may own several Do attempts, while still
+allowing short "done and done" work to leave history without inventing duration.

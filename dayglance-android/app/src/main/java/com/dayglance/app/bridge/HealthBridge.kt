@@ -58,6 +58,34 @@ class HealthBridge(
     }
 
     @JavascriptInterface
+    fun getRawDiagnostics(date: String): String {
+        val localDate = parseDate(date)
+        val results = runBlocking { repository.getRawDiagnostics(localDate) }
+        val providers = JSONArray()
+        results.forEach { result ->
+            val stepOrigins = JSONArray()
+            result.stepOrigins.sorted().forEach { stepOrigins.put(it) }
+            val sleepOrigins = JSONArray()
+            result.sleepOrigins.sorted().forEach { sleepOrigins.put(it) }
+
+            providers.put(
+                JSONObject()
+                    .put("provider", result.providerId)
+                    .put("stepsRecordCount", result.stepsRecordCount ?: JSONObject.NULL)
+                    .put("stepsRawTotal", result.stepsRawTotal ?: JSONObject.NULL)
+                    .put("stepOrigins", stepOrigins)
+                    .put("sleepRecordCount", result.sleepRecordCount ?: JSONObject.NULL)
+                    .put("sleepOrigins", sleepOrigins)
+                    .put("error", result.error ?: JSONObject.NULL)
+            )
+        }
+        return JSONObject()
+            .put("date", localDate.toString())
+            .put("providers", providers)
+            .toString()
+    }
+
+    @JavascriptInterface
     fun checkPermission(): String =
         if (runBlocking { repository.hasPermissions() }) "granted" else "denied"
 

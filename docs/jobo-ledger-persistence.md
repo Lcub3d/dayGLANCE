@@ -64,6 +64,7 @@ storage layers depend on, and ask core to keep fixed:
   taskId: 't1',            // the task this attempt was against, or null for an
                            //   unlinked manual Do; may also be an id that no
                            //   longer resolves (see "Orphans")
+  timing: 'timed',          // 'timed' | 'untimed'
   date: '2026-09-19',      // the day the interval starts on
   startTime: '14:30',
   endDate: '2026-09-19',   // the day it ends on; equal to `date` except across
@@ -90,10 +91,17 @@ storage layers depend on, and ask core to keep fixed:
 passes through opaque, which is what lets core change its mind about
 classification without touching persistence.
 
-Two nullables, both from review. `taskId: null` is a manual Do with no task
+Two record links remain nullable. `taskId: null` is a manual Do with no task
 behind it. `planSnapshot: null` means there genuinely was no timed plan to
 copy. An unavailable historical snapshot is not the same as "unplanned", and
 the hook must never manufacture one from today's task to fill the gap.
+
+Execution measurement is explicit. `timing: 'timed'` requires a positive
+interval. `timing: 'untimed'` means execution is known to have happened but
+duration was not measured; `startTime`, `endDate`, and `endTime` are then
+explicit `null`. Untimed never means zero minutes. It is still a real Do
+attempt and carries progress, but interval-based comparison does not invent
+coordinates for it.
 
 **What the snapshot is, honestly.** A detector that runs on completion
 captures the plan as it stands at completion. It cannot prove what the plan
@@ -104,10 +112,10 @@ completion-time plan and the doc says so rather than promising history that
 was not captured. `originalPlan` on the task remains the Original Plan; the
 snapshot is the best available Final Plan, not a guaranteed one.
 
-**Progress.** Core keeps the prototype's vocabulary: Started, Partially
-completed, Mostly completed, Completed, with the serialized values defined
-once in core. "Not started" is the derived condition of a plan with no
-recorded attempt, not a record. The transition contract slice 4 builds on:
+**Progress.** Core keeps the four per-attempt levels: Started, Partially
+completed, Mostly completed, Completed, serialized as `started`, `partial`,
+`mostly`, `completed`. "Not started" is the derived condition of an elapsed
+plan with no recorded attempt, not a record. The transition contract slice 4 builds on:
 
 - Completing creates a Completed attempt.
 - Un-completing changes that attempt to Partially completed, keeping its
@@ -464,9 +472,10 @@ rather than unit-testing a module. The five from review are folded in.
    payload without the key; a failed write is not acknowledged; a failed
    restore write does not reload; at no point is an empty ledger published
    in place of an unreadable one.
-10. **Unlinked and untimed.** A manual Do with `taskId: null` and
-    `planSnapshot: null` round-trips both tiers intact, and a cross-midnight
-    interval keeps its `endDate`.
+10. **Unlinked and untimed.** A manual Do with `taskId: null`,
+    `planSnapshot: null`, `timing: 'untimed'`, and null interval coordinates
+    round-trips both tiers intact without inventing duration. A Timed
+    cross-midnight interval keeps its explicit `endDate`.
 11. **Restore then reload keeps the ledger.** Restore with a checked write;
     construct a fresh hook over the same store; assert the records are there.
 

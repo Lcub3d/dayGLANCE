@@ -6,6 +6,7 @@ import {
   getDateCandidates, getTimeCandidates,
   completeShortcutText,
 } from '../utils/suggestionParser.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { parseQuickAdd, spanSignature } from '../utils/quickAddParser.js';
 
 // Deep-enough equality for NL-applied values (strings, numbers, small
@@ -131,11 +132,7 @@ export default function useNewTaskInput({ allTags, showAddTask, t, language, use
       const typed = durationInfo.partial;
       const matching = increments.filter(m => String(m).startsWith(typed));
       for (const mins of matching.slice(0, 4)) {
-        const hrs = Math.floor(mins / 60);
-        const rem = mins % 60;
-        const display = hrs > 0
-          ? `Duration: ${hrs}h${rem > 0 ? ` ${rem}m` : ''}`
-          : `Duration: ${mins}m`;
+        const display = `${t('common.duration')}: ${formatDuration(mins, t)}`;
         allSuggestions.push({
           type: 'duration',
           value: mins,

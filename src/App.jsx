@@ -203,6 +203,7 @@ import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
+import { formatDuration as formatTranslatedDuration } from './utils/formatDuration.js';
 import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
@@ -7694,9 +7695,7 @@ const DayPlanner = () => {
     let glanceAheadData = null;
     if (showGlanceAhead) {
       const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-      const committedH = Math.floor(committedMinutes / 60);
-      const committedM = committedMinutes % 60;
-      const committedStr = committedH > 0 ? `${committedH}h${committedM > 0 ? ` ${committedM}m` : ''}` : committedM > 0 ? `${committedM}m` : null;
+      const committedStr = committedMinutes > 0 ? formatTranslatedDuration(committedMinutes, t) : null;
       glanceAheadData = {
         dayLabel,
         taskCount,
@@ -9175,13 +9174,7 @@ const DayPlanner = () => {
 
       {/* Focus Log Modal */}
       {focusLogModalDate && (() => {
-        const fmtMin = (min) => {
-          const h = Math.floor(min / 60);
-          const m = min % 60;
-          if (h === 0) return `${m}m`;
-          if (m === 0) return `${h}h`;
-          return `${h}h ${m}m`;
-        };
+        const fmtMin = (min) => formatTranslatedDuration(min, t);
         const dayData = focusLog[focusLogModalDate] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
         const displayDate = formatLocalizedDate(new Date(focusLogModalDate + 'T12:00:00'), { weekday: 'long', month: 'short', day: 'numeric' });
 

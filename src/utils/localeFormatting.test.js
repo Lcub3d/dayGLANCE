@@ -4,6 +4,7 @@ import {
   defaultWeekStartDay,
   formatLocalizedDate,
   formatLocalizedDurationMinutes,
+  localizedList,
   localizedWeekdays,
   speechRecognitionLocale,
 } from './localeFormatting.js';
@@ -64,5 +65,18 @@ describe('Simplified Chinese locale formatting', () => {
     ['en', 'en', 'en-US'], ['en', 'not a tag!', 'en-US'], ['en', null, 'en-US'],
   ])('app %s with browser %s listens as %s', (language, reported, expected) => {
     expect(speechRecognitionLocale(language, reported)).toBe(expected);
+  });
+});
+
+describe('localizedList', () => {
+  it('passes a single item through unchanged', () => {
+    expect(localizedList(['3 events'], 'en')).toBe('3 events');
+  });
+
+  it('joins two items with the locale\'s own conjunction, not a hardcoded "and"', () => {
+    expect(localizedList(['3 events', '2 tasks'], 'en')).toBe('3 events and 2 tasks');
+    expect(localizedList(['3 Termine', '2 Aufgaben'], 'de')).toBe('3 Termine und 2 Aufgaben');
+    expect(localizedList(['calendrier', 'calendrier de tâches'], 'fr')).toBe('calendrier et calendrier de tâches');
+    expect(localizedList(['3 个事件', '2 个任务'], 'zh-CN')).toBe('3 个事件和2 个任务');
   });
 });

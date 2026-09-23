@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "Importação de iCal",
+    "icalImportedCount_one": "{{count}} evento importado",
+    "icalImportedCount_other": "{{count}} eventos importados",
+    "icalImportEmpty": "Não foram encontrados eventos no ficheiro",
+    "icalRemovedCount_one": "{{count}} evento importado do ficheiro removido",
+    "icalRemovedCount_other": "{{count}} eventos importados do ficheiro removidos",
+    "enterTaskCalendarUrl": "Introduza um URL de calendário de tarefas nas definições de sincronização",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventos",
+    "calendarNamed": "calendário \"{{name}}\"",
+    "notIcalError": "O URL não devolveu um ficheiro de calendário. Para servidores CalDAV (Nextcloud, Baikal, etc.), acrescente ?export ao URL (por exemplo, …/default/?export).",
+    "calendarWord": "calendário",
+    "tasksCount_one": "{{count}} tarefa",
+    "tasksCount_other": "{{count}} tarefas",
+    "taskCalendarWord": "calendário de tarefas",
+    "syncFailedWith": "Falha na sincronização: {{items}}. Certifique-se de que o URL está correto e é acessível publicamente.",
+    "syncPartial": "Sincronizado: {{successes}} — falhou: {{errors}}",
+    "syncSuccess": "Sincronizado: {{items}}",
+    "urlAutoExportNote": " (?export foi adicionado automaticamente ao URL do seu calendário)",
+    "binRestoredCount_one": "{{count}} tarefa foi restaurada do lixo. A linha dela ainda existe no seu vault Obsidian. Veja as notas de cada tarefa.",
+    "binRestoredCount_other": "{{count}} tarefas foram restauradas do lixo. As linhas delas ainda existem no seu vault Obsidian. Veja as notas de cada tarefa.",
+    "binRestoredOneDaily": "A tarefa \"{{title}}\" foi restaurada do lixo. A linha dela ainda existe na sua nota diária de {{date}}.",
+    "binRestoredOneVault": "A tarefa \"{{title}}\" foi restaurada do lixo. A linha dela ainda existe no seu vault Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticação falhou. Verifique o nome de utilizador e a palavra-passe nas definições de sincronização.",
       "FORBIDDEN": "Sincronização bloqueada (403). O seu servidor pode estar a bloquear o pedido.",
@@ -1218,6 +1241,8 @@
     "nextStep": "Seguinte, consoante a vista"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} resultado",
+    "resultsCount_other": "{{count}} resultados",
     "placeholder": "Pesquisar tarefas e notas…",
     "typeToSearch": "Escreva para pesquisar em todas as tarefas e notas…",
     "noResults": "Nenhum resultado encontrado",
@@ -1557,6 +1582,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Tarefas agendadas",
+    "tasksPlacedCount_one": "{{count}} tarefa colocada na sua agenda",
+    "tasksPlacedCount_other": "{{count}} tarefas colocadas na sua agenda",
+    "tasksRescheduledTitle": "Tarefas reagendadas",
+    "tasksMovedCount_one": "{{count}} tarefa movida para horários futuros",
+    "tasksMovedCount_other": "{{count}} tarefas movidas para horários futuros",
     "closeDailySummary": "Fechar resumo diário",
     "closeRecycleBin": "Fechar reciclagem",
     "closeTagFilter": "Fechar filtro de etiquetas",
@@ -1800,6 +1831,8 @@
     "openInbox": "Abrir caixa de entrada"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} prazo",
+    "deadlineCount_other": "{{count}} prazos",
     "viewMultiShort": "DIAS",
     "viewDayShort": "DIA",
     "viewWeekShort": "SEM.",

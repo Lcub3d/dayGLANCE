@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "Importazione iCal",
+    "icalImportedCount_one": "Importato {{count}} evento",
+    "icalImportedCount_other": "Importati {{count}} eventi",
+    "icalImportEmpty": "Nessun evento trovato nel file",
+    "icalRemovedCount_one": "Rimosso {{count}} evento importato dal file",
+    "icalRemovedCount_other": "Rimossi {{count}} eventi importati dal file",
+    "enterTaskCalendarUrl": "Inserisci un URL del calendario delle attività nelle impostazioni di sincronizzazione",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventi",
+    "calendarNamed": "calendario \"{{name}}\"",
+    "notIcalError": "L'URL non ha restituito un file di calendario. Per i server CalDAV (Nextcloud, Baikal, ecc.), aggiungi ?export all'URL (ad es. …/default/?export).",
+    "calendarWord": "calendario",
+    "tasksCount_one": "{{count}} attività",
+    "tasksCount_other": "{{count}} attività",
+    "taskCalendarWord": "calendario delle attività",
+    "syncFailedWith": "Sincronizzazione non riuscita: {{items}}. Assicurati che l'URL sia corretto e accessibile pubblicamente.",
+    "syncPartial": "Sincronizzato: {{successes}} — non riuscito: {{errors}}",
+    "syncSuccess": "Sincronizzato: {{items}}",
+    "urlAutoExportNote": " (?export aggiunto automaticamente all'URL del tuo calendario)",
+    "binRestoredCount_one": "{{count}} attività ripristinata dal cestino. La sua riga esiste ancora nel tuo vault Obsidian. Consulta le note di ciascuna attività.",
+    "binRestoredCount_other": "{{count}} attività ripristinate dal cestino. Le loro righe esistono ancora nel tuo vault Obsidian. Consulta le note di ciascuna attività.",
+    "binRestoredOneDaily": "L’attività «{{title}}» è stata ripristinata dal cestino. La sua riga esiste ancora nella tua nota del giorno del {{date}}.",
+    "binRestoredOneVault": "L’attività «{{title}}» è stata ripristinata dal cestino. La sua riga esiste ancora nel tuo vault Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticazione fallita. Controlla nome utente e password nelle impostazioni di sincronizzazione.",
       "FORBIDDEN": "Sincronizzazione bloccata (403). Il tuo server potrebbe bloccare la richiesta.",
@@ -1220,6 +1243,8 @@
     "nextStep": "Successivo, in base alla vista"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} risultato",
+    "resultsCount_other": "{{count}} risultati",
     "placeholder": "Cerca attività e note…",
     "typeToSearch": "Digita per cercare tra tutte le attività e le note…",
     "noResults": "Nessun risultato trovato",
@@ -1559,6 +1584,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Attività pianificate",
+    "tasksPlacedCount_one": "{{count}} attività inserita nella tua agenda",
+    "tasksPlacedCount_other": "{{count}} attività inserite nella tua agenda",
+    "tasksRescheduledTitle": "Attività riprogrammate",
+    "tasksMovedCount_one": "{{count}} attività spostata in slot futuri",
+    "tasksMovedCount_other": "{{count}} attività spostate in slot futuri",
     "closeDailySummary": "Chiudi riepilogo giornaliero",
     "closeRecycleBin": "Chiudi cestino",
     "closeTagFilter": "Chiudi filtro dei tag",
@@ -1802,6 +1833,8 @@
     "openInbox": "Apri posta in arrivo"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} scadenza",
+    "deadlineCount_other": "{{count}} scadenze",
     "viewMultiShort": "MULTI",
     "viewDayShort": "GIOR.",
     "viewWeekShort": "SETT.",

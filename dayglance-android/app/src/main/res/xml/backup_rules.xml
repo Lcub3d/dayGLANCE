@@ -13,4 +13,5 @@
 <full-backup-content>
     <exclude domain="sharedpref" path="dayglance_crypto.xml" />
     <exclude domain="sharedpref" path="dayglance_shared.xml" />
+    <exclude domain="sharedpref" path="dayglance_honor_health.xml" />
 </full-backup-content>

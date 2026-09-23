@@ -7,6 +7,12 @@ import {
 import { dateToString, localDateStr, stripWikilinks } from '../utils/taskUtils.js';
 import { getOccurrencesInRange } from '../utils/recurrenceEngine.js';
 import { notBucketed } from '../utils/bucketList.js';
+import i18next from 'i18next';
+import { currentAiLanguage } from '../utils/aiLanguage.js';
+import { readBriefingCache, writeBriefingCache, parseBriefingCache, isBriefingCurrent } from '../utils/briefingCache.js';
+
+const MORNING_KEY = 'day-planner-morning-glance';
+const EVENING_KEY = 'day-planner-evening-glance';
 
 /**
  * AI daily briefings — extracted from App.jsx (see "App.jsx — Ongoing
@@ -29,20 +35,19 @@ export default function useDailyBriefings({
   const generateMorningSummary = useCallback(async (force = false) => {
     if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.morningSummary) return;
     const todayStr = dateToString(new Date());
-    // Check cache (skip when force-regenerating via the refresh button)
-    try {
-      const cached = localStorage.getItem('day-planner-morning-glance');
-      if (cached && !force) {
-        const { date, text } = JSON.parse(cached);
-        if (date === todayStr) { setMorningGlanceText(text); return; }
-      }
-    } catch {}
+    const language = currentAiLanguage();
+    // Check cache (skip when force-regenerating via the refresh button). A
+    // briefing cached in another language is stale, not reusable (#1789).
+    if (!force) {
+      const cachedText = readBriefingCache(localStorage, MORNING_KEY, todayStr, language);
+      if (cachedText !== null) { setMorningGlanceText(cachedText); return; }
+    }
 
     setMorningGlanceLoading(true);
     setMorningGlanceError('');
     try {
       const todayDate = new Date();
-      const dayOfWeek = todayDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayOfWeek = todayDate.toLocaleDateString(language, { weekday: 'long' });
 
       // Gather today's scheduled tasks
       const scheduledToday = tasks.filter(t => t.date === todayStr && !t.imported && !t.isExample && isVisibleForUser(t));
@@ -90,7 +95,7 @@ export default function useDailyBriefings({
       const text = await aiComplete(morningSummarySystemPrompt(), morningSummaryUserPrompt(data), aiConfig);
       const cleaned = text.trim();
       setMorningGlanceText(cleaned);
-      localStorage.setItem('day-planner-morning-glance', JSON.stringify({ date: todayStr, text: cleaned }));
+      writeBriefingCache(localStorage, MORNING_KEY, todayStr, language, cleaned);
     } catch (err) {
       setMorningGlanceError(err.message);
     }
@@ -112,10 +117,9 @@ export default function useDailyBriefings({
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !aiConfig.enabled || !aiConfig.features.morningSummary) return;
       const todayStr = dateToString(new Date());
-      // Already have today's briefing cached?
+      // Already have today's briefing cached, in the language shown now?
       try {
-        const cached = localStorage.getItem('day-planner-morning-glance');
-        if (cached && JSON.parse(cached).date === todayStr) return;
+        if (isBriefingCurrent(parseBriefingCache(localStorage.getItem(MORNING_KEY)), todayStr, currentAiLanguage())) return;
       } catch {}
       // Dismissed today?
       if (localStorage.getItem('day-planner-mg-dismissed') === todayStr) return;
@@ -131,19 +135,17 @@ export default function useDailyBriefings({
   const generateEveningReflection = useCallback(async (force = false) => {
     if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.eveningReflection) return;
     const todayStr = dateToString(new Date());
-    try {
-      const cached = localStorage.getItem('day-planner-evening-glance');
-      if (cached && !force) {
-        const { date, text } = JSON.parse(cached);
-        if (date === todayStr) { setEveningGlanceText(text); return; }
-      }
-    } catch {}
+    const language = currentAiLanguage();
+    if (!force) {
+      const cachedText = readBriefingCache(localStorage, EVENING_KEY, todayStr, language);
+      if (cachedText !== null) { setEveningGlanceText(cachedText); return; }
+    }
 
     setEveningGlanceLoading(true);
     setEveningGlanceError('');
     try {
       const todayDate = new Date();
-      const dayOfWeek = todayDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayOfWeek = todayDate.toLocaleDateString(language, { weekday: 'long' });
       const tomorrow = new Date(todayDate);
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = dateToString(tomorrow);
@@ -175,7 +177,7 @@ export default function useDailyBriefings({
       const text = await aiComplete(eveningReflectionSystemPrompt(), eveningReflectionUserPrompt(data), aiConfig);
       const cleaned = text.trim();
       setEveningGlanceText(cleaned);
-      localStorage.setItem('day-planner-evening-glance', JSON.stringify({ date: todayStr, text: cleaned }));
+      writeBriefingCache(localStorage, EVENING_KEY, todayStr, language, cleaned);
     } catch (err) {
       setEveningGlanceError(err.message);
     }
@@ -197,8 +199,7 @@ export default function useDailyBriefings({
       if (document.visibilityState !== 'visible' || !aiConfig.enabled || !aiConfig.features.eveningReflection) return;
       const todayStr = dateToString(new Date());
       try {
-        const cached = localStorage.getItem('day-planner-evening-glance');
-        if (cached && JSON.parse(cached).date === todayStr) return;
+        if (isBriefingCurrent(parseBriefingCache(localStorage.getItem(EVENING_KEY)), todayStr, currentAiLanguage())) return;
       } catch {}
       if (localStorage.getItem('day-planner-eg-dismissed') === todayStr) return;
       setEveningGlanceDismissed(false);
@@ -207,6 +208,18 @@ export default function useDailyBriefings({
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [aiConfig.enabled, aiConfig.features.eveningReflection, setEveningGlanceDismissed, setEveningGlanceText]);
+
+  // A language switch makes the briefing on screen stale in the same way a new
+  // day does (#1789): clear the text so the click prompt returns, and the next
+  // generate finds the cache stale and asks again in the new language.
+  useEffect(() => {
+    const handleLanguageChanged = () => {
+      setMorningGlanceText(null);
+      setEveningGlanceText(null);
+    };
+    i18next.on?.('languageChanged', handleLanguageChanged);
+    return () => i18next.off?.('languageChanged', handleLanguageChanged);
+  }, [setMorningGlanceText, setEveningGlanceText]);
 
   return { generateMorningSummary, dismissMorningGlance, generateEveningReflection, dismissEveningGlance };
 }

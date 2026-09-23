@@ -3,10 +3,9 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   DO_SOURCES, DO_TIMING, TIMING, COMPLETION_STATUS, COMPLETION_STATUS_ORDER,
-  DEFAULT_PLAN_REVISION_COALESCE_MINUTES,
   createDoRecord, validateDoRecord, updateDoRecord, tombstoneDoRecord,
   completeDoAttempt, migrateLegacyDoRecord, setPlanCompletionStatus,
-  recordPlanRevision, doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
+  comparePlanAnchors, doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
 } from './core.js';
 
 const T0 = '2026-09-19T15:10:02.000Z';
@@ -180,116 +179,51 @@ describe('Do record contract', () => {
 });
 function ownKey(value, key) { return Object.prototype.hasOwnProperty.call(value, key); }
 
-describe('Plan revision counting', () => {
-  const stamp = time => `2026-09-19T${time}:00.000Z`;
-
-  it('defaults to a five-minute sliding coalescing window', () => {
-    assert.equal(DEFAULT_PLAN_REVISION_COALESCE_MINUTES, 5);
-
-    const original = plan({ id: 'p1' });
-    const first = recordPlanRevision(
-      original,
-      { ...original, startTime: '09:15' },
-      stamp('10:00'),
-    );
-    assert.equal(first.planRevisionCount, 1);
-    assert.equal(first.lastPlanRevisionAt, stamp('10:00'));
-
-    const second = recordPlanRevision(
-      first,
-      { ...first, startTime: '09:30' },
-      stamp('10:03'),
-    );
-    assert.equal(second.planRevisionCount, 1);
-    assert.equal(second.lastPlanRevisionAt, stamp('10:03'));
-
-    const exactBoundary = recordPlanRevision(
-      second,
-      { ...second, startTime: '09:45' },
-      stamp('10:08'),
-    );
-    assert.equal(exactBoundary.planRevisionCount, 1);
-
-    const outsideWindow = recordPlanRevision(
-      exactBoundary,
-      { ...exactBoundary, startTime: '10:00' },
-      '2026-09-19T10:13:01.000Z',
-    );
-    assert.equal(outsideWindow.planRevisionCount, 2);
-  });
-
-  it('uses the current write-time parameter without recounting history', () => {
-    const original = plan({ id: 'p1' });
-    const first = recordPlanRevision(
-      original,
-      { ...original, startTime: '09:15' },
-      stamp('10:00'),
-    );
-    const second = recordPlanRevision(
-      first,
-      { ...first, startTime: '09:30' },
-      stamp('10:06'),
-    );
-    assert.equal(second.planRevisionCount, 2);
-
-    const afterSettingChange = recordPlanRevision(
-      second,
-      { ...second, startTime: '09:45' },
-      stamp('10:12'),
-      { coalesceMinutes: 10 },
-    );
-    assert.equal(afterSettingChange.planRevisionCount, 2);
-    assert.equal(afterSettingChange.lastPlanRevisionAt, stamp('10:12'));
-  });
-
-  it('counts only schedule changes and leaves rescheduleCount semantics separate', () => {
-    const previous = plan({
-      id: 'p1',
-      planRevisionCount: 2,
-      lastPlanRevisionAt: stamp('10:00'),
-      rescheduleCount: 7,
+describe('Original/Final Plan raw metrics', () => {
+  it('reports zero shifts and ratio 1 for identical anchors', () => {
+    assert.deepEqual(comparePlanAnchors(plan(), plan()), {
+      startShiftMinutes: 0,
+      finishShiftMinutes: 0,
+      durationDifferenceMinutes: 0,
+      durationRatio: 1,
     });
-    const metadataOnly = { ...previous, completionStatus: COMPLETION_STATUS.STARTED };
-    assert.equal(recordPlanRevision(previous, metadataOnly, stamp('10:20')), metadataOnly);
-
-    const revised = recordPlanRevision(
-      previous,
-      { ...previous, duration: 90 },
-      stamp('10:20'),
-    );
-    assert.equal(revised.planRevisionCount, 3);
-    assert.equal(revised.rescheduleCount, 7);
   });
 
-  it('rejects invalid revision state, policy and backwards timestamps', () => {
-    const p = plan({ id: 'p1' });
-    assert.throws(
-      () => recordPlanRevision(p, { ...p, startTime: '09:15' }, 'bad'),
-      TypeError,
-    );
-    assert.throws(
-      () => recordPlanRevision(p, { ...p, startTime: '09:15' }, stamp('10:00'), { coalesceMinutes: -1 }),
-      TypeError,
-    );
-    assert.throws(
-      () => recordPlanRevision(
-        plan({ id: 'p1', planRevisionCount: 0, lastPlanRevisionAt: stamp('10:00') }),
-        plan({ id: 'p1', startTime: '09:15' }),
-        stamp('10:01'),
+  it('reports later/longer Final Plan deltas across a day boundary', () => {
+    assert.deepEqual(
+      comparePlanAnchors(
+        plan({ date: '2026-09-19', startTime: '23:30', duration: 30 }),
+        plan({ date: '2026-09-20', startTime: '00:30', duration: 60 }),
       ),
-      TypeError,
+      {
+        startShiftMinutes: 60,
+        finishShiftMinutes: 90,
+        durationDifferenceMinutes: 30,
+        durationRatio: 2,
+      },
     );
-    assert.throws(
-      () => recordPlanRevision(
-        plan({ id: 'p1', planRevisionCount: 1, lastPlanRevisionAt: stamp('10:10') }),
-        plan({ id: 'p1', startTime: '09:15' }),
-        stamp('10:09'),
+  });
+
+  it('reports earlier/shorter Final Plan deltas without classifying a cause', () => {
+    assert.deepEqual(
+      comparePlanAnchors(
+        plan({ startTime: '14:30', duration: 60 }),
+        plan({ startTime: '14:00', duration: 30 }),
       ),
-      RangeError,
+      {
+        startShiftMinutes: -30,
+        finishShiftMinutes: -60,
+        durationDifferenceMinutes: -30,
+        durationRatio: 0.5,
+      },
     );
+  });
+
+  it('rejects invalid Original or Final timed plans', () => {
+    assert.throws(() => comparePlanAnchors({}, plan()), TypeError);
+    assert.throws(() => comparePlanAnchors(plan(), { ...plan(), duration: 0 }), TypeError);
   });
 });
-
 describe('Plan completion assessment', () => {
   it('publishes the canonical ordinal order without making updates monotonic', () => {
     assert.deepEqual(COMPLETION_STATUS_ORDER, [

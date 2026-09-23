@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Leaf, MoonStar, Sparkles, Timer, Undo2, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { stripWikilinks } from '../utils/taskUtils.js';
-import { formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import DialComplications from './DialComplications.jsx';
 import {
   DIAL_COLORS,
@@ -569,7 +569,7 @@ function NowLine({ nowMin }) {
  */
 const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, daylight = null, moon = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onToggleTaskComplete = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true }) => {
   const { t, i18n } = useTranslation();
-  const formatMinutes = (minutes) => formatLocalizedDurationMinutes(minutes, i18n.resolvedLanguage || i18n.language);
+  const formatMinutes = (minutes) => formatDuration(minutes, t);
 
   const model = useMemo(
     () => computeDialModel(dayTasks, dayWindow, prevDayTasks),

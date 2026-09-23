@@ -15,25 +15,22 @@ export const defaultWeekStartDay = (language = activeLocale()) => {
 export const formatLocalizedDate = (date, options, language = activeLocale()) =>
   new Intl.DateTimeFormat(language, options).format(date);
 
-export const formatLocalizedDurationMinutes = (minutes, language = activeLocale()) => {
-  const total = Math.max(0, Math.round(Number(minutes) || 0));
-  const hours = Math.floor(total / 60);
-  const remainingMinutes = total % 60;
-  const formatUnit = (value, unit) => new Intl.NumberFormat(language, {
-    style: 'unit', unit, unitDisplay: 'narrow',
-  }).format(value);
-  const parts = [];
-  if (hours) parts.push(formatUnit(hours, 'hour'));
-  if (remainingMinutes || !hours) parts.push(formatUnit(remainingMinutes, 'minute'));
-  // Compact "1h 30m" shape in every locale. The narrow unit list gives each
-  // locale its own separator: a space in most, nothing in Chinese, but a
-  // comma in German and the word "e" in European Portuguese, which read as
-  // a list rather than one duration. Keep whitespace-only separators and
-  // reduce anything carrying punctuation or a word to a single space.
-  return new Intl.ListFormat(language, { style: 'narrow', type: 'unit' })
-    .formatToParts(parts)
-    .map((part) => (part.type === 'literal' && part.value.trim() ? ' ' : part.value))
-    .join('');
+// A regional BCP-47 tag ("uk-UA") for APIs like SpeechRecognition that
+// don't reliably accept a bare language subtag. `maximize()` also adds a
+// script subtag ("uk-Cyrl-UA"), which those APIs don't expect, so drop it.
+export const speechRecognitionLocale = (language = activeLocale(), reported = globalThis.navigator?.language) => {
+  const app = new Intl.Locale(language);
+  // A bare app tag ("en", "uk") expresses no regional preference, so the
+  // browser's own tag refines it where the two agree on the language. A tag
+  // that already names a region ("pt-BR", "zh-CN") is an explicit choice.
+  if (!app.region && reported) {
+    try {
+      const nav = new Intl.Locale(reported);
+      if (nav.language === app.language && nav.region) return `${nav.language}-${nav.region}`;
+    } catch { /* unparsable navigator tag: fall through */ }
+  }
+  const max = app.maximize();
+  return max.region ? `${max.language}-${max.region}` : max.language;
 };
 
 export const localizedWeekdays = (width = 'short', language = activeLocale()) => {
@@ -41,3 +38,8 @@ export const localizedWeekdays = (width = 'short', language = activeLocale()) =>
   const sunday = Date.UTC(2024, 0, 7);
   return Array.from({ length: 7 }, (_, day) => formatter.format(new Date(sunday + day * 86400000)));
 };
+
+// "a, b and c" in whatever conjunction the language uses — a locale-aware
+// substitute for `list.join(' and ')`.
+export const localizedList = (items, language = activeLocale()) =>
+  new Intl.ListFormat(language, { type: 'conjunction' }).format(items);

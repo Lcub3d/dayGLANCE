@@ -4,6 +4,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { dateToString } from '../../utils/taskUtils.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
 import { getProjectColor, taskColorToHex, hexToRgba } from '../../utils/colorUtils.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../../utils/longPressReorder.js';
@@ -145,7 +146,7 @@ const ProjectPlanner = ({ project, onClose }) => {
   const dayHeading = (dateStr) => {
     if (!dateStr) return t('common.completed', 'Completed');
     const d = new Date(dateStr + 'T00:00:00');
-    const base = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const base = formatLocalizedDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
     return dateStr === todayStr ? `${t('common.today', 'Today')} · ${base}` : base;
   };
 

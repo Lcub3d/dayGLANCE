@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "Importación de iCal",
+    "icalImportedCount_one": "Se importó {{count}} evento",
+    "icalImportedCount_other": "Se importaron {{count}} eventos",
+    "icalImportEmpty": "No se encontraron eventos en el archivo",
+    "icalRemovedCount_one": "Se eliminó {{count}} evento importado del archivo",
+    "icalRemovedCount_other": "Se eliminaron {{count}} eventos importados del archivo",
+    "enterTaskCalendarUrl": "Introduce una URL de calendario de tareas en los ajustes de sincronización",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventos",
+    "calendarNamed": "calendario \"{{name}}\"",
+    "notIcalError": "La URL no devolvió un archivo de calendario. En servidores CalDAV (Nextcloud, Baikal, etc.), añade ?export a la URL (por ejemplo, …/default/?export).",
+    "calendarWord": "calendario",
+    "tasksCount_one": "{{count}} tarea",
+    "tasksCount_other": "{{count}} tareas",
+    "taskCalendarWord": "calendario de tareas",
+    "syncFailedWith": "Error de sincronización: {{items}}. Asegúrate de que la URL sea correcta y de acceso público.",
+    "syncPartial": "Sincronizado: {{successes}} — no sincronizado: {{errors}}",
+    "syncSuccess": "Sincronizado: {{items}}",
+    "urlAutoExportNote": " (se añadió ?export automáticamente a la URL de tu calendario)",
+    "binRestoredCount_one": "Se restauró {{count}} tarea de la papelera. Su línea sigue existiendo en tu vault de Obsidian. Consulta las notas de cada tarea.",
+    "binRestoredCount_other": "Se restauraron {{count}} tareas de la papelera. Sus líneas siguen existiendo en tu vault de Obsidian. Consulta las notas de cada tarea.",
+    "binRestoredOneDaily": "Se restauró la tarea «{{title}}» de la papelera. Su línea sigue existiendo en tu nota diaria del {{date}}.",
+    "binRestoredOneVault": "Se restauró la tarea «{{title}}» de la papelera. Su línea sigue existiendo en tu vault de Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticación fallida. Comprueba tu usuario y contraseña en los ajustes de sincronización.",
       "FORBIDDEN": "Sincronización bloqueada (403). Puede que tu servidor esté bloqueando la solicitud.",
@@ -143,8 +166,10 @@
     "yearly": "anual"
   },
   "common": {
+    "durationMinutes": "{{minutes}} min",
+    "durationHours": "{{hours}} h",
+    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "yesterday": "Ayer",
-    "hoursShort": "{{count}} h",
     "blocked": "Bloqueado",
     "am": "a. m.",
     "pm": "p. m.",
@@ -1092,7 +1117,6 @@
     "elapsedDuration": "Tiempo transcurrido: {{duration}}",
     "endSession": "Finalizar sesión",
     "exitAndReturn": "Salir — volveré más tarde",
-    "hoursMinutesShort": "{{hours}} h {{minutes}} min",
     "longBreakEveryFourCycles": "Cada 4 ciclos, el descanso largo sustituye al descanso normal.",
     "noProjectTasks": "No hay tareas. Añádelas desde el panel Objetivos.",
     "pause": "Pausar",
@@ -1217,6 +1241,8 @@
     "nextStep": "Siguiente, según la vista"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} resultado",
+    "resultsCount_other": "{{count}} resultados",
     "placeholder": "Buscar tareas y notas…",
     "typeToSearch": "Escribe para buscar entre todas las tareas y notas…",
     "noResults": "No se encontraron resultados",
@@ -1242,9 +1268,6 @@
     "total": "Almacenamiento local: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} min",
-    "durationHours": "{{hours}} h",
-    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "tasksDone": "Tareas completadas",
     "completion": "Finalización",
     "timeSpent": "Tiempo empleado",
@@ -1559,6 +1582,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Tareas programadas",
+    "tasksPlacedCount_one": "{{count}} tarea colocada en tu agenda",
+    "tasksPlacedCount_other": "{{count}} tareas colocadas en tu agenda",
+    "tasksRescheduledTitle": "Tareas reprogramadas",
+    "tasksMovedCount_one": "{{count}} tarea movida a horarios futuros",
+    "tasksMovedCount_other": "{{count}} tareas movidas a horarios futuros",
     "closeDailySummary": "Cerrar resumen diario",
     "closeRecycleBin": "Cerrar papelera",
     "closeTagFilter": "Cerrar filtro de etiquetas",
@@ -1802,6 +1831,8 @@
     "openInbox": "Abrir bandeja de entrada"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} fecha límite",
+    "deadlineCount_other": "{{count}} fechas límite",
     "viewMultiShort": "DÍAS",
     "viewDayShort": "DÍA",
     "viewWeekShort": "SEM.",

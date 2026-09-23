@@ -18,8 +18,9 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getGlanceHGInstances, isHGSessionReachable } from '../hooks/useHyperGlance.js';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from '../utils/formatDuration.js';
 import { notBucketed } from '../utils/bucketList.js';
-import { formatLocalizedDate, formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import { formatLocalizedDate } from '../utils/localeFormatting.js';
 
 const GlanceSidebar = ({ variant = 'desktop' }) => {
   const {
@@ -954,7 +955,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
     }
 
     const renderNowMarker = (key) => {
-      const gapStr = formatLocalizedDurationMinutes(agendaNowMarker.gapMinutes, i18n.language);
+      const gapStr = formatDuration(agendaNowMarker.gapMinutes, t);
       return (
         <div key={key} className="flex gap-2.5 py-2">
           <div className="w-1.5 rounded-full flex-shrink-0 bg-red-500" />
@@ -1125,7 +1126,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
       )}
       {/* Now marker before first task (only when no frame sections handle positioning) */}
       {filteredAgenda.length > 0 && sections.length === 0 && !agendaNowMarker.insideTask && agendaNowMarker.insertAfterIndex < 0 && (() => {
-        const gapStr = formatLocalizedDurationMinutes(agendaNowMarker.gapMinutes, i18n.language);
+        const gapStr = formatDuration(agendaNowMarker.gapMinutes, t);
         return (
           <div key={`${keyPrefix}-now-marker`} className="flex gap-2.5 py-2.5">
             <div className="w-1.5 rounded-full flex-shrink-0 bg-red-500" />
@@ -1159,9 +1160,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
         if (section.type === 'frame') {
           const borderColor = glanceBorderColorMap[section.frame.color] || (darkMode ? 'rgba(165,180,252,0.4)' : 'rgba(79,70,229,0.75)');
           const bgColor = glanceColorMap[section.frame.color] || (darkMode ? 'rgba(165,180,252,0.08)' : 'rgba(165,180,252,0.18)');
-          const availH = Math.floor(section.totalAvail / 60);
-          const availM = section.totalAvail % 60;
-          const availStr = availH > 0 ? `${availH}h${availM > 0 ? ` ${availM}m` : ''}` : `${availM}m`;
+          const availStr = formatDuration(section.totalAvail, t);
           const markerInThisFrame = nowMarkerSectionInfo && nowMarkerSectionInfo.inSection && nowMarkerSectionInfo.si === si;
           elements.push(
             <div
@@ -1298,7 +1297,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
     const isEvening = currentTime.getHours() >= 19;
     if (!isDayDone && !isEvening) return null;
     const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-    const committedStr = committedMinutes > 0 ? formatLocalizedDurationMinutes(committedMinutes, i18n.language) : null;
+    const committedStr = committedMinutes > 0 ? formatDuration(committedMinutes, t) : null;
     // Device's next alarm clock (Android bridge; null everywhere else — iOS
     // has no API for Clock alarms, and desktop/tray have no bridge). Read per
     // render: this section re-renders every minute via currentTime, so the

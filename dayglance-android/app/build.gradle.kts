@@ -6,6 +6,20 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
 }
 
+fun buildConfigString(value: String): String = "\"$value\""
+
+val honorAppId =
+    providers.gradleProperty("HONOR_APP_ID")
+        .orElse(providers.environmentVariable("HONOR_APP_ID"))
+        .orElse("")
+        .get()
+
+val honorTokenExchangeUrl =
+    providers.gradleProperty("HONOR_TOKEN_EXCHANGE_URL")
+        .orElse(providers.environmentVariable("HONOR_TOKEN_EXCHANGE_URL"))
+        .orElse("https://dayglance.app/api/honor-token")
+        .get()
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val hasKeystore = keystorePropertiesFile.exists()
 val keystoreProperties: Properties? = if (hasKeystore) {
@@ -27,6 +41,8 @@ android {
         versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 185
         versionName = "5.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "HONOR_APP_ID", buildConfigString(honorAppId))
+        buildConfigField("String", "HONOR_TOKEN_EXCHANGE_URL", buildConfigString(honorTokenExchangeUrl))
     }
 
     signingConfigs {
@@ -137,8 +153,10 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
 
-    // Health Connect
+    // Health data
     implementation(libs.health.connect)
+    implementation(libs.honor.health)
+    implementation(libs.honor.id)
 
     // WorkManager — widget periodic updates
     implementation(libs.androidx.work.runtime.ktx)

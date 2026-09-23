@@ -3,6 +3,7 @@ import { ChevronDown, Eye, EyeOff, ListFilter, Plus } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { dateToString } from '../../utils/taskUtils.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import useSchedAgendaState, { LOAD_MORE_DAYS } from './useSchedAgendaState.js';
 import SchedTaskCard from './SchedTaskCard.jsx';
 import SchedFilterPopup from './SchedFilterPopup.jsx';
@@ -51,7 +52,7 @@ const SchedView = ({ dateRange, embedded = false } = {}) => {
   const tomorrowStr = dateToString(new Date(Date.now() + 86400000));
 
   const dayLabel = (day) => {
-    const base = day.date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const base = formatLocalizedDate(day.date, { weekday: 'long', month: 'short', day: 'numeric' });
     if (day.dateStr === todayStr) return `${t('common.today', 'Today')} · ${base}`;
     if (day.dateStr === tomorrowStr) return `${t('common.tomorrow', 'Tomorrow')} · ${base}`;
     return base;

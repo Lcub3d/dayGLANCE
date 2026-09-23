@@ -6,6 +6,7 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { monthStats } from '../../utils/monthStats.js';
 import { monthOf } from '../../utils/monthGrid.js';
 import { dateToString } from '../../utils/taskUtils.js';
+import { formatDuration } from '../../utils/formatDuration.js';
 
 /**
  * The month's headline numbers in the MONTH header row: a row of stat tiles
@@ -42,14 +43,7 @@ export default function MonthStats({ className = '', dense = false, compact = fa
 
   const lang = i18n.resolvedLanguage || i18n.language;
   const percentText = stats.percent === null ? '–' : new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 0 }).format(stats.percent / 100);
-  const duration = (min) => {
-    const m = Math.max(0, Math.round(min));
-    const h = Math.floor(m / 60);
-    const rem = m % 60;
-    if (h === 0) return t('weeklyReview.durationMinutes', { minutes: rem });
-    if (rem === 0) return t('weeklyReview.durationHours', { hours: h });
-    return t('weeklyReview.durationHoursMinutes', { hours: h, minutes: rem });
-  };
+  const duration = (min) => formatDuration(min, t);
   const ratio = t('app.completedRatio', { done: stats.completed, total: stats.scheduled });
   const incomplete = stats.incomplete > 0 ? t('app.incompleteCount', { count: stats.incomplete }) : null;
   const dataAttrs = {

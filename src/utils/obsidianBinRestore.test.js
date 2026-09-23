@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import i18next from 'i18next';
 import {
   binRestoreNoteLine,
   appendBinRestoreNote,
@@ -6,6 +7,15 @@ import {
   restoreBinnedVaultTasks,
 } from './obsidianBinRestore.js';
 import { reconcileCrossList } from '../sync/dbAdapter.js';
+import en from '../../public/locales/en/translation.json';
+import uk from '../../public/locales/uk/translation.json';
+
+// Same interpolation config as src/i18n.js, so quoted titles render as the app shows them.
+const i18n = i18next.createInstance();
+await i18n.init({ lng: 'en', fallbackLng: false, resources: { en: { translation: en }, uk: { translation: uk } }, interpolation: { escapeValue: false } });
+const t = i18n.t.bind(i18n);
+const tUk = i18n.getFixedT('uk');
+const binned = (n, dateStr = null) => Array.from({ length: n }, (_, i) => ({ id: `t${i}`, title: `Task ${i + 1}`, dateStr }));
 
 // §3.10 RULING 5 — the vault wins, un-bin visibly. A binned task whose line
 // the scan (or observation batch) still produces is restored from the bin,
@@ -195,13 +205,34 @@ describe('restoreBinnedVaultTasks', () => {
 });
 
 describe('the transient toast', () => {
-  it('single restore names the task (display tag stripped) and the note', () => {
-    expect(binRestoreNoticeText([{ id: 'x', title: 'Water the plants #obsidian', dateStr: '2026-08-29' }]))
-      .toBe('Restored "Water the plants" from the recycle bin. Its line still exists in your 2026-08-29 daily note.');
+  it('single restore names the task (display tag stripped) and the note, date localized', () => {
+    expect(binRestoreNoticeText([{ id: 'x', title: 'Water the plants #obsidian', dateStr: '2026-08-29' }], t, 'en'))
+      .toBe('Restored "Water the plants" from the recycle bin. Its line still exists in your daily note for August 29, 2026.');
+  });
+
+  it('single restore with no daily note names the vault', () => {
+    expect(binRestoreNoticeText(binned(1), t, 'en'))
+      .toBe('Restored "Task 1" from the recycle bin. Its line still exists in your Obsidian vault.');
   });
 
   it('multiple restores point at each task\'s notes', () => {
-    const text = binRestoreNoticeText([{ id: 'a', title: 'A', dateStr: null }, { id: 'b', title: 'B', dateStr: null }]);
-    expect(text).toBe('2 tasks were restored from the recycle bin. Their lines still exist in your vault. See each task\'s notes.');
+    expect(binRestoreNoticeText(binned(2), t, 'en'))
+      .toBe('2 tasks were restored from the recycle bin. Their lines still exist in your vault. See each task\'s notes.');
+    expect(binRestoreNoticeText(binned(5, '2026-08-29'), t, 'en'))
+      .toBe('5 tasks were restored from the recycle bin. Their lines still exist in your vault. See each task\'s notes.');
+  });
+
+  it('single and multiple restores are both localized, so neither stays English beside the other', () => {
+    expect(binRestoreNoticeText(binned(1, '2026-08-29'), tUk, 'uk'))
+      .toBe('Завдання «Task 1» відновлено з кошика. Його рядок і далі є у щоденній нотатці за 29 серпня 2026 р. у вашому сховищі Obsidian.');
+    expect(binRestoreNoticeText(binned(2), tUk, 'uk')).toMatch(/^Відновлено з кошика 2 завдання\./);
+  });
+
+  // Ukrainian's `one` plural category also covers 21, 31, …, so the count
+  // family's _one form is reachable at 21 and must not name a single task.
+  it('21 restores in Ukrainian use the count sentence, not one task\'s title', () => {
+    const text = binRestoreNoticeText(binned(21), tUk, 'uk');
+    expect(text).toBe('Відновлено з кошика 21 завдання. Їхні рядки і далі є у вашому сховищі. Дивіться нотатки кожного завдання.');
+    expect(text).not.toContain('Task 1');
   });
 });

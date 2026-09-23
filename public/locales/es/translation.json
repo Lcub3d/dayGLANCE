@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "Importación de iCal",
     "icalImportedCount_one": "Se importó {{count}} evento",
     "icalImportedCount_other": "Se importaron {{count}} eventos",
     "icalImportEmpty": "No se encontraron eventos en el archivo",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": " (se añadió ?export automáticamente a la URL de tu calendario)",
     "binRestoredCount_one": "Se restauró {{count}} tarea de la papelera. Su línea sigue existiendo en tu vault de Obsidian. Consulta las notas de cada tarea.",
     "binRestoredCount_other": "Se restauraron {{count}} tareas de la papelera. Sus líneas siguen existiendo en tu vault de Obsidian. Consulta las notas de cada tarea.",
+    "binRestoredOneDaily": "Se restauró la tarea «{{title}}» de la papelera. Su línea sigue existiendo en tu nota diaria del {{date}}.",
+    "binRestoredOneVault": "Se restauró la tarea «{{title}}» de la papelera. Su línea sigue existiendo en tu vault de Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticación fallida. Comprueba tu usuario y contraseña en los ajustes de sincronización.",
       "FORBIDDEN": "Sincronización bloqueada (403). Puede que tu servidor esté bloqueando la solicitud.",

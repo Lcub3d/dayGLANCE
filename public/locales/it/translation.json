@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "Importazione iCal",
     "icalImportedCount_one": "Importato {{count}} evento",
     "icalImportedCount_other": "Importati {{count}} eventi",
     "icalImportEmpty": "Nessun evento trovato nel file",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": " (?export aggiunto automaticamente all'URL del tuo calendario)",
     "binRestoredCount_one": "{{count}} attività ripristinata dal cestino. La sua riga esiste ancora nel tuo vault Obsidian. Consulta le note di ciascuna attività.",
     "binRestoredCount_other": "{{count}} attività ripristinate dal cestino. Le loro righe esistono ancora nel tuo vault Obsidian. Consulta le note di ciascuna attività.",
+    "binRestoredOneDaily": "L’attività «{{title}}» è stata ripristinata dal cestino. La sua riga esiste ancora nella tua nota del giorno del {{date}}.",
+    "binRestoredOneVault": "L’attività «{{title}}» è stata ripristinata dal cestino. La sua riga esiste ancora nel tuo vault Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticazione fallita. Controlla nome utente e password nelle impostazioni di sincronizzazione.",
       "FORBIDDEN": "Sincronizzazione bloccata (403). Il tuo server potrebbe bloccare la richiesta.",

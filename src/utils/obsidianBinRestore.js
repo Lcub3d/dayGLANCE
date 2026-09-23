@@ -43,6 +43,7 @@
 
 import { stripObsidianDisplayTag } from './obsidianTitleConflict.js';
 import { stripWikilinks } from './taskUtils.js';
+import { activeLocale, formatLocalizedDate } from './localeFormatting.js';
 
 // App-owned fields carried from the bin copy onto the restored task —
 // the same set the scan pipeline carries from a live existing task
@@ -76,12 +77,23 @@ export function appendBinRestoreNote(notes, dateStr) {
   return existing ? `${existing}\n${line}` : line;
 }
 
-/** The fire-and-forget toast text (neutral, never red, never latched). */
-export function binRestoreNoticeText(restored, t) {
+/**
+ * The fire-and-forget toast text (neutral, never red, never latched).
+ * Unlike binRestoreNoteLine this is display-only, so it is localized. The
+ * single-task case has its own keys rather than riding the count family's
+ * `_one` form: that form also covers 21, 31, … in Ukrainian, so it must
+ * never name one task's title.
+ */
+export function binRestoreNoticeText(restored, t, language = activeLocale()) {
   if (restored.length === 1) {
     const r = restored[0];
-    const where = r.dateStr ? `your ${r.dateStr} daily note` : 'your Obsidian vault';
-    return `Restored "${stripWikilinks(stripObsidianDisplayTag(r.title))}" from the recycle bin. Its line still exists in ${where}.`;
+    const title = stripWikilinks(stripObsidianDisplayTag(r.title));
+    const m = typeof r.dateStr === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(r.dateStr);
+    if (!m) return t('sync.binRestoredOneVault', { title });
+    // Local midnight, not new Date('YYYY-MM-DD') (UTC), which renders the
+    // previous day west of Greenwich.
+    const date = formatLocalizedDate(new Date(+m[1], +m[2] - 1, +m[3]), { dateStyle: 'long' }, language);
+    return t('sync.binRestoredOneDaily', { title, date });
   }
   return t('sync.binRestoredCount', { count: restored.length });
 }

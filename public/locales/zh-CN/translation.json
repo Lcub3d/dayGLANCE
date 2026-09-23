@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "iCal 导入",
     "icalImportedCount_one": "已导入 {{count}} 个事件",
     "icalImportedCount_other": "已导入 {{count}} 个事件",
     "icalImportEmpty": "文件中未找到任何事件",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": "（已自动在日历地址后附加 ?export）",
     "binRestoredCount_one": "已从回收站恢复 {{count}} 个任务。它们的行仍存在于你的 Obsidian 库中。请查看每个任务的备注。",
     "binRestoredCount_other": "已从回收站恢复 {{count}} 个任务。它们的行仍存在于你的 Obsidian 库中。请查看每个任务的备注。",
+    "binRestoredOneDaily": "已从回收站恢复“{{title}}”。它的行仍存在于你{{date}}的每日笔记中。",
+    "binRestoredOneVault": "已从回收站恢复“{{title}}”。它的行仍存在于你的 Obsidian 库中。",
     "errors": {
       "AUTH_FAILURE": "认证失败。在同步设置中检查您的用户名和密码。",
       "CREDENTIAL_INVALID": "同步服务器已不再接受此设备的访问凭据。你的更改仍保存在本机。请联系同步服务器管理员，为此设备恢复访问权限。",

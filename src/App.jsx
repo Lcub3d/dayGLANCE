@@ -4681,7 +4681,7 @@ const DayPlanner = () => {
       const count = importedTasks.length;
       setSyncNotification({
         type: count > 0 ? 'success' : 'info',
-        title: t('settings.importIcs'),
+        title: t('sync.icalImportTitle'),
         message: count > 0
           ? t('sync.icalImportedCount', { count })
           : t('sync.icalImportEmpty')
@@ -4708,7 +4708,7 @@ const DayPlanner = () => {
     setTasks(prev => prev.filter(t => !isFileEvent(t)));
     setSyncNotification({
       type: 'success',
-      title: t('settings.importIcs'),
+      title: t('sync.icalImportTitle'),
       message: t('sync.icalRemovedCount', { count: targets.length })
     });
   };

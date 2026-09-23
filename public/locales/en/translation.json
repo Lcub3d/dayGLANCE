@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "iCal Import",
     "icalImportedCount_one": "Imported {{count}} event",
     "icalImportedCount_other": "Imported {{count}} events",
     "icalImportEmpty": "No events found in the file",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": " (?export appended to your calendar URL automatically)",
     "binRestoredCount_one": "{{count}} task was restored from the recycle bin. Its lines still exist in your vault. See each task's notes.",
     "binRestoredCount_other": "{{count}} tasks were restored from the recycle bin. Their lines still exist in your vault. See each task's notes.",
+    "binRestoredOneDaily": "Restored \"{{title}}\" from the recycle bin. Its line still exists in your daily note for {{date}}.",
+    "binRestoredOneVault": "Restored \"{{title}}\" from the recycle bin. Its line still exists in your Obsidian vault.",
     "errors": {
       "AUTH_FAILURE": "Authentication failed. Check your username and password in sync settings.",
       "CREDENTIAL_INVALID": "The sync server no longer accepts this device's sync access. Your changes are saved on this device. Ask whoever runs your sync server to restore access for this device.",

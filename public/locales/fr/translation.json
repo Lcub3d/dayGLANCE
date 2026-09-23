@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "Import iCal",
     "icalImportedCount_one": "{{count}} événement importé",
     "icalImportedCount_other": "{{count}} événements importés",
     "icalImportEmpty": "Aucun événement trouvé dans le fichier",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": " (?export a été ajouté automatiquement à l’URL de votre calendrier)",
     "binRestoredCount_one": "{{count}} tâche restaurée depuis la corbeille. Sa ligne existe toujours dans votre coffre Obsidian. Consultez les notes de chaque tâche.",
     "binRestoredCount_other": "{{count}} tâches restaurées depuis la corbeille. Leurs lignes existent toujours dans votre coffre Obsidian. Consultez les notes de chaque tâche.",
+    "binRestoredOneDaily": "La tâche « {{title}} » a été restaurée depuis la corbeille. Sa ligne existe toujours dans votre note du jour du {{date}}.",
+    "binRestoredOneVault": "La tâche « {{title}} » a été restaurée depuis la corbeille. Sa ligne existe toujours dans votre coffre Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Échec de l'authentification. Vérifiez votre identifiant et votre mot de passe dans les paramètres de synchronisation.",
       "CREDENTIAL_INVALID": "Le serveur de synchronisation n'accepte plus l'accès de cet appareil. Vos modifications sont enregistrées sur cet appareil. Demandez à la personne qui gère votre serveur de synchronisation de rétablir l'accès pour cet appareil.",

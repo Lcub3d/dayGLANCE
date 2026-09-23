@@ -1,5 +1,6 @@
 {
   "sync": {
+    "icalImportTitle": "iCal-Import",
     "icalImportedCount_one": "{{count}} Termin importiert",
     "icalImportedCount_other": "{{count}} Termine importiert",
     "icalImportEmpty": "Keine Termine in der Datei gefunden",
@@ -20,6 +21,8 @@
     "urlAutoExportNote": " (?export wurde automatisch an deine Kalender-URL angehängt)",
     "binRestoredCount_one": "{{count}} Aufgabe wurde aus dem Papierkorb wiederhergestellt. Ihre Zeile ist weiterhin in deinem Obsidian-Tresor vorhanden. Sieh dir die Notizen der jeweiligen Aufgabe an.",
     "binRestoredCount_other": "{{count}} Aufgaben wurden aus dem Papierkorb wiederhergestellt. Ihre Zeilen sind weiterhin in deinem Obsidian-Tresor vorhanden. Sieh dir die Notizen der jeweiligen Aufgabe an.",
+    "binRestoredOneDaily": "„{{title}}“ wurde aus dem Papierkorb wiederhergestellt. Die Zeile ist weiterhin in deiner Tagesnotiz vom {{date}} vorhanden.",
+    "binRestoredOneVault": "„{{title}}“ wurde aus dem Papierkorb wiederhergestellt. Die Zeile ist weiterhin in deinem Obsidian-Tresor vorhanden.",
     "errors": {
       "AUTH_FAILURE": "Authentifizierung fehlgeschlagen. Überprüfen Sie Benutzernamen und Passwort in den Synchronisierungseinstellungen.",
       "FORBIDDEN": "Synchronisierung blockiert (403). Ihr Server blockiert möglicherweise die Anfrage.",

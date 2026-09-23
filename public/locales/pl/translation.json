@@ -145,8 +145,10 @@
     "yearly": "rocznie"
   },
   "common": {
+    "durationMinutes": "{{minutes}} min",
+    "durationHours": "{{hours}} godz.",
+    "durationHoursMinutes": "{{hours}} godz. {{minutes}} min",
     "yesterday": "Wczoraj",
-    "hoursShort": "{{count}} godz.",
     "blocked": "Zablokowane",
     "am": "AM",
     "pm": "PM",
@@ -1109,7 +1111,6 @@
     "elapsedDuration": "Minęło {{duration}}",
     "endSession": "Zakończ sesję",
     "exitAndReturn": "Wyjdź — wrócę później",
-    "hoursMinutesShort": "{{hours}} godz. {{minutes}} min",
     "longBreakEveryFourCycles": "Długa przerwa zastępuje przerwę co 4 cykle.",
     "noProjectTasks": "Brak zadań — dodaj je w panelu Cele.",
     "pause": "Wstrzymaj",
@@ -1263,9 +1264,6 @@
     "total": "Pamięć lokalna: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} min",
-    "durationHours": "{{hours}} godz.",
-    "durationHoursMinutes": "{{hours}} godz. {{minutes}} min",
     "tasksDone": "Wykonane zadania",
     "completion": "Wskaźnik ukończenia",
     "timeSpent": "Spędzony czas",

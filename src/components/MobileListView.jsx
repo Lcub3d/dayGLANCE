@@ -14,6 +14,7 @@ import TaskStarButton from './TaskStarButton.jsx';
 import { renderTitle, isLinkOnlyTask, getLinkUrl, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, stripWikilinksAndTags } from '../utils/taskUtils.js';
 import { taskColorToHex } from '../utils/colorUtils.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { triggerHaptic } from '../native.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -90,21 +91,13 @@ function gapHeight(gapMin) {
 
 function durLabel(min, t) {
   if (!min) return '';
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h && m) return t('focus.hoursMinutesShort', { hours: h, minutes: m });
-  if (h)      return t('common.hoursShort', { count: h, defaultValue: '{{count}}h' });
-  return t('common.minutesShort', { count: m });
+  return formatDuration(min, t);
 }
 
 // ─── Format countdown text ────────────────────────────────────────────────────
 
 function countdownText(diffMin, t) {
-  const h = Math.floor(diffMin / 60);
-  const m = diffMin % 60;
-  if (h && m) return t('focus.hoursMinutesShort', { hours: h, minutes: m });
-  if (h)      return t('common.hoursShort', { count: h, defaultValue: '{{count}}h' });
-  return t('common.minutesShort', { count: m });
+  return formatDuration(diffMin, t);
 }
 
 // ─── SpineMarker ─────────────────────────────────────────────────────────────

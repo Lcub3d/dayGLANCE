@@ -143,8 +143,10 @@
     "yearly": "anual"
   },
   "common": {
+    "durationMinutes": "{{minutes}} min",
+    "durationHours": "{{hours}} h",
+    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "yesterday": "Ontem",
-    "hoursShort": "{{count}} h",
     "blocked": "Bloqueado",
     "am": "AM",
     "pm": "PM",
@@ -1092,7 +1094,6 @@
     "elapsedDuration": "Tempo decorrido: {{duration}}",
     "endSession": "Terminar sessão",
     "exitAndReturn": "Sair — volto mais tarde",
-    "hoursMinutesShort": "{{hours}} h {{minutes}} min",
     "longBreakEveryFourCycles": "A pausa longa substitui a pausa normal a cada 4 ciclos.",
     "noProjectTasks": "Sem tarefas. Adicione-as no painel Objetivos.",
     "pause": "Pausar",
@@ -1242,9 +1243,6 @@
     "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} min",
-    "durationHours": "{{hours}} h",
-    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "tasksDone": "Tarefas concluídas",
     "completion": "Conclusão",
     "timeSpent": "Tempo despendido",

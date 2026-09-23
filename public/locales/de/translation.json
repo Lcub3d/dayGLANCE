@@ -143,8 +143,10 @@
     "yearly": "jährlich"
   },
   "common": {
+    "durationMinutes": "{{minutes}} Min.",
+    "durationHours": "{{hours}} Std.",
+    "durationHoursMinutes": "{{hours}} Std. {{minutes}} Min.",
     "yesterday": "Gestern",
-    "hoursShort": "{{count}} Std.",
     "blocked": "Blockiert",
     "am": "vorm.",
     "pm": "nachm.",
@@ -1092,7 +1094,6 @@
     "elapsedDuration": "Verstrichene Zeit: {{duration}}",
     "endSession": "Sitzung beenden",
     "exitAndReturn": "Verlassen — ich komme später wieder",
-    "hoursMinutesShort": "{{hours}} Std. {{minutes}} Min.",
     "longBreakEveryFourCycles": "Nach jeweils 4 Zyklen ersetzt eine lange Pause die normale Pause.",
     "noProjectTasks": "Keine Aufgaben — fügen Sie sie im Ziele-Dashboard hinzu.",
     "pause": "Pausieren",
@@ -1242,9 +1243,6 @@
     "total": "Lokaler Speicher: {{used}} / ca. 5 MB ({{percent}} %)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} Min.",
-    "durationHours": "{{hours}} Std.",
-    "durationHoursMinutes": "{{hours}} Std. {{minutes}} Min.",
     "tasksDone": "Erledigte Aufgaben",
     "completion": "Abschlussquote",
     "timeSpent": "Aufgewendete Zeit",

@@ -65,6 +65,12 @@ Direct OEM APIs are deliberately adapters rather than branches inside
 `HealthRepository`. Register a new implementation in
 `AndroidHealthProviderRegistry`.
 
+Vendor SDKs that require an account sign-in/consent activity also need an
+authorization delegate owned by the Android Activity. Keep that authorization
+flow outside the normal read path; successful authorization should update the
+provider's local credential state and then the persisted provider binding can be
+used directly on subsequent reads.
+
 The provider contract already supports partial capability sets, so a future device
 may use one provider for steps and another for sleep without changing the web data
 model.

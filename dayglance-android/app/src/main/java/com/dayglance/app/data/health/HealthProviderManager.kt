@@ -39,11 +39,19 @@ class HealthProviderManager(
     suspend fun readSleep(date: LocalDate): HealthRead<SleepResult> =
         read(HealthMetric.SLEEP) { it.readSleep(date) }
 
-    fun providerAuthorizationIds(): Set<String> =
-        HealthMetric.entries
-            .mapNotNull { providerFor(it) }
-            .filter { it.authorization == HealthAuthorization.PROVIDER }
-            .mapTo(linkedSetOf()) { it.id }
+    suspend fun providerAuthorizationIdsRequired(): Set<String> {
+        val ids = linkedSetOf<String>()
+        for (metric in HealthMetric.entries) {
+            val provider = providerFor(metric) ?: continue
+            if (
+                provider.authorization == HealthAuthorization.PROVIDER &&
+                !provider.hasPermission(metric)
+            ) {
+                ids += provider.id
+            }
+        }
+        return ids
+    }
 
     private suspend fun <T> read(
         metric: HealthMetric,

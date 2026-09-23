@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from '../utils/formatDuration.js';
 import * as Icons from 'lucide-react';
 import { Pencil, Zap } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -132,9 +133,7 @@ const HyperGlanceBar = ({ project, date, isCompleted, isOverdue, overrideTop, ov
 
     const formatElapsed = (seconds) => {
       if (!seconds) return null;
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+      return formatDuration(Math.floor(seconds / 60), t);
     };
 
     const statsCard = showStats && statsPos && ReactDOM.createPortal(

@@ -2,8 +2,9 @@ import { describe, it } from 'vitest';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
-  DO_SOURCES, TIMING, createDoRecord, validateDoRecord,
-  updateDoRecord, tombstoneDoRecord, completeDoAttempt, migrateLegacyDoRecord,
+  DO_SOURCES, DO_TIMING, TIMING, COMPLETION_STATUS,
+  createDoRecord, validateDoRecord, updateDoRecord, tombstoneDoRecord,
+  completeDoAttempt, migrateLegacyDoRecord, setPlanCompletionStatus,
   doDurationMinutes, classifyAgainstPlan, pickJoboRecord,
 } from './core.js';
 
@@ -13,6 +14,7 @@ const T2 = '2026-09-19T16:10:02.000Z';
 const plan = (patch = {}) => ({ date: '2026-09-19', startTime: '14:30', duration: 60, ...patch });
 const input = (patch = {}) => ({
   id: 'do:t1:2026-09-19T15:10:02.000Z', taskId: 't1',
+  timing: DO_TIMING.TIMED,
   date: '2026-09-19', startTime: '14:30', endDate: '2026-09-19', endTime: '15:10',
   title: 'Draft the report', planSnapshot: plan(), source: 'completion',
   createdAt: T0, updatedAt: T0, observedAt: T1,
@@ -43,7 +45,7 @@ describe('Do record contract', () => {
     const source = input();
     delete source.deleted;
     assert.equal(createDoRecord(source).deleted, false);
-    for (const key of ['id', 'taskId', 'title', 'planSnapshot', 'source', 'createdAt', 'updatedAt', 'observedAt', 'endDate']) {
+    for (const key of ['id', 'taskId', 'timing', 'title', 'planSnapshot', 'source', 'createdAt', 'updatedAt', 'observedAt', 'endDate']) {
       const missing = input();
       delete missing[key];
       assert.throws(() => createDoRecord(missing), TypeError, key);
@@ -69,10 +71,19 @@ describe('Do record contract', () => {
     assert.equal(r.planSnapshot, null);
     assert.equal(ownKey(r, 'progress'), false);
   });
-  it('rejects zero-minute completion placeholders because Do is execution evidence', () => {
-    const candidate = input({ planSnapshot: null, endTime: '14:30' });
-    assert.equal(validateDoRecord(candidate).ok, false);
-    assert.throws(() => createDoRecord(candidate), TypeError);
+  it('represents unmeasured execution explicitly as Untimed Do', () => {
+    const r = record({
+      timing: DO_TIMING.UNTIMED,
+      planSnapshot: null,
+      startTime: null,
+      endDate: null,
+      endTime: null,
+    });
+    assert.equal(r.timing, DO_TIMING.UNTIMED);
+    assert.equal(r.startTime, null);
+    assert.equal(r.endDate, null);
+    assert.equal(r.endTime, null);
+    assert.equal(doDurationMinutes(r), null);
   });
   it('keeps numeric native task identities without rewriting them', () => {
     assert.equal(record({ taskId: 7 }).taskId, 7);
@@ -104,11 +115,30 @@ describe('Do record contract', () => {
     assert.equal(migrateLegacyDoRecord(input({ progress: 'completed' })).legacyCompletionStatus, 'completed');
     assert.throws(() => migrateLegacyDoRecord(input({ progress: 'almost' })), TypeError);
   });
+  it('adds the timing discriminant at the legacy boundary before merge', () => {
+    const oldTimed = input({ progress: 'partial' });
+    delete oldTimed.timing;
+    const migratedTimed = migrateLegacyDoRecord(oldTimed);
+    assert.equal(migratedTimed.record.timing, DO_TIMING.TIMED);
+
+    const oldZeroCompletion = input({ progress: 'completed', endTime: '14:30' });
+    delete oldZeroCompletion.timing;
+    const migratedUntimed = migrateLegacyDoRecord(oldZeroCompletion);
+    assert.equal(migratedUntimed.record.timing, DO_TIMING.UNTIMED);
+    assert.equal(migratedUntimed.record.startTime, null);
+    assert.equal(migratedUntimed.record.endDate, null);
+    assert.equal(migratedUntimed.record.endTime, null);
+    assert.equal(doDurationMinutes(migratedUntimed.record), null);
+  });
   for (const source of DO_SOURCES) it(`accepts the documented ${source} source`, () => assert.equal(record({ source }).source, source));
   const invalid = [
     ['empty id', { id: '' }], ['blank title', { title: '  ' }],
     ['missing task id', { taskId: undefined }], ['object task id', { taskId: {} }],
     ['unsafe numeric task id', { taskId: Number.MAX_SAFE_INTEGER + 1 }],
+    ['unknown timing', { timing: 'clocked' }],
+    ['untimed with a start', { timing: DO_TIMING.UNTIMED, startTime: '14:30', endDate: null, endTime: null }],
+    ['untimed with an end date', { timing: DO_TIMING.UNTIMED, startTime: null, endDate: '2026-09-19', endTime: null }],
+    ['untimed with an end time', { timing: DO_TIMING.UNTIMED, startTime: null, endDate: null, endTime: '15:10' }],
     ['unknown source', { source: 'automatic-magic' }], ['nonboolean deletion', { deleted: 1 }],
     ['bad day', { date: '2026-02-30' }], ['bad leap day', { date: '1900-02-29' }],
     ['zero year', { date: '0000-01-01' }], ['noncanonical date', { date: '2026-9-19' }],
@@ -149,6 +179,39 @@ describe('Do record contract', () => {
 });
 function ownKey(value, key) { return Object.prototype.hasOwnProperty.call(value, key); }
 
+describe('Plan completion assessment', () => {
+  it('is a pure Plan-occurrence assessment, not a monotonic workflow', () => {
+    const original = freeze(plan({ id: 'plan:t1:2026-09-19' }));
+    const started = setPlanCompletionStatus(original, COMPLETION_STATUS.STARTED);
+    const mostly = setPlanCompletionStatus(started, COMPLETION_STATUS.MOSTLY);
+    const partly = setPlanCompletionStatus(mostly, COMPLETION_STATUS.PARTLY);
+    const completed = setPlanCompletionStatus(partly, COMPLETION_STATUS.COMPLETED);
+    const cleared = setPlanCompletionStatus(completed, null);
+
+    assert.equal(original.completionStatus, undefined);
+    assert.equal(started.completionStatus, COMPLETION_STATUS.STARTED);
+    assert.equal(mostly.completionStatus, COMPLETION_STATUS.MOSTLY);
+    assert.equal(partly.completionStatus, COMPLETION_STATUS.PARTLY);
+    assert.equal(completed.completionStatus, COMPLETION_STATUS.COMPLETED);
+    assert.equal(cleared.completionStatus, null);
+    assert.equal(completed.id, original.id);
+    assert.equal(completed.date, original.date);
+    assert.equal(completed.startTime, original.startTime);
+    assert.equal(completed.duration, original.duration);
+  });
+
+  it('requires a stable Plan id and rejects noncanonical assessments', () => {
+    assert.throws(() => setPlanCompletionStatus(plan(), COMPLETION_STATUS.STARTED), TypeError);
+    assert.throws(() => setPlanCompletionStatus(plan({ id: 'p1' }), 'partial'), TypeError);
+    assert.throws(() => setPlanCompletionStatus({}, COMPLETION_STATUS.STARTED), TypeError);
+  });
+
+  it('keeps a no-op assessment referentially stable', () => {
+    const p = plan({ id: 'p1', completionStatus: COMPLETION_STATUS.PARTLY });
+    assert.equal(setPlanCompletionStatus(p, COMPLETION_STATUS.PARTLY), p);
+  });
+});
+
 describe('local corrections and tombstones', () => {
   it('corrects intervals without refreshing captured history', () => {
     const original = freeze(record({ extra: { retained: true } }));
@@ -179,6 +242,26 @@ describe('local corrections and tombstones', () => {
     assert.throws(() => updateDoRecord(r, { endTime: '00:10' }, T2), TypeError);
     const changed = updateDoRecord(r, { startTime: '23:50', endDate: '2026-09-20', endTime: '00:10' }, T2);
     assert.equal(doDurationMinutes(changed), 20);
+  });
+  it('can correct between Timed and Untimed without using zero as unknown', () => {
+    const timed = record();
+    const untimed = updateDoRecord(timed, {
+      timing: DO_TIMING.UNTIMED,
+      startTime: null,
+      endDate: null,
+      endTime: null,
+    }, T2);
+    assert.equal(untimed.timing, DO_TIMING.UNTIMED);
+    assert.equal(doDurationMinutes(untimed), null);
+
+    const retimed = updateDoRecord(untimed, {
+      timing: DO_TIMING.TIMED,
+      startTime: '14:40',
+      endDate: '2026-09-19',
+      endTime: '15:00',
+    }, '2026-09-19T17:10:02.000Z');
+    assert.equal(retimed.timing, DO_TIMING.TIMED);
+    assert.equal(doDurationMinutes(retimed), 20);
   });
   it('never turns a deletion into removal or a subsequent edit into revival', () => {
     const r = record();
@@ -225,6 +308,17 @@ describe('explicit attempt identity (not a task detector)', () => {
     const created = completeDoAttempt(items, r);
     assert.equal(ownKey(created[0], 'progress'), false);
     assert.equal(items.length, 0);
+  });
+  it('can ensure-present an Untimed completion attempt without inventing minutes', () => {
+    const untimedInput = input({
+      timing: DO_TIMING.UNTIMED,
+      startTime: null,
+      endDate: null,
+      endTime: null,
+    });
+    const created = completeDoAttempt([], untimedInput);
+    assert.equal(created[0].timing, DO_TIMING.UNTIMED);
+    assert.equal(doDurationMinutes(created[0]), null);
   });
 });
 

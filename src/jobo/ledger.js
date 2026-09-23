@@ -18,8 +18,9 @@
 //   loading over it would drop it.
 // - EVERY MUTATION GOES THROUGH update(fn), AND STATE IS THE COMMITTED VALUE.
 //   A record in state that is not on disk is exactly what a crash loses.
-// - REMOTE APPLY PRESERVES INCOMING TIMESTAMPS. The merge is by id with the
-//   shared pick rule; nothing here restamps anything. The ledger has no field a
+// - REMOTE APPLY PRESERVES INCOMING TIMESTAMPS. The merge is by id with core's
+//   pickJoboRecord, the ONE rule both sync tiers use too (newer updatedAt, then
+//   lower observedAt, then canonical JSON); nothing here restamps anything. The ledger has no field a
 //   persist pass could re-derive, so it has no way to start the push churn the
 //   `archived` field once caused.
 // - A READ-ONLY DEVICE STILL LISTENS. Where the store cannot write (no
@@ -27,42 +28,16 @@
 //   reason, but records arriving by sync are merged into state so the device
 //   is not blind, only silent.
 
+import { pickJoboRecord } from './core.js';
+
 export const LEDGER_EMPTY = Object.freeze([]);
-
-const canonical = (record) => JSON.stringify(record, Object.keys(record).sort());
-const ts = (value) => { const t = new Date(value ?? 0).getTime(); return Number.isNaN(t) ? 0 : t; };
-
-/**
- * Choose between two copies of ONE record. Newer `updatedAt` wins; on an exact
- * tie the lower `observedAt` (the earlier observer is the one closest to the
- * event); on a tie there too, the smaller canonical JSON. Order-independent and
- * idempotent, so either sync tier may apply it twice and in either order.
- *
- * This is the rule docs/jobo-ledger-persistence.md names `pickJoboRecord` and
- * places in core, which slice 2 provides. Until then this stand-in is the
- * default, and the hook takes the core's function by injection so both sync
- * tiers and the hook use ONE rule. Each tier's own tie rule is "remote wins",
- * which is order-dependent: two devices holding pristine copies of the same
- * record would each keep the other's and never converge.
- */
-export function pickRecord(a, b) {
-  if (!a) return b;
-  if (!b) return a;
-  const ua = ts(a.updatedAt);
-  const ub = ts(b.updatedAt);
-  if (ua !== ub) return ua > ub ? a : b;
-  const oa = ts(a.observedAt);
-  const ob = ts(b.observedAt);
-  if (oa !== ob) return oa < ob ? a : b;
-  return canonical(a) <= canonical(b) ? a : b;
-}
 
 /**
  * Merge two collections by id, picking per record. Rows without an id are
  * dropped rather than rendered. Output is sorted by id so the result does not
  * depend on which side went first.
  */
-export function mergeRecordsById(current, incoming, pick = pickRecord) {
+export function mergeRecordsById(current, incoming, pick = pickJoboRecord) {
   const byId = new Map();
   for (const record of [...(current || []), ...(incoming || [])]) {
     if (!record || record.id == null) continue;
@@ -75,9 +50,9 @@ export function mergeRecordsById(current, incoming, pick = pickRecord) {
 /**
  * @param {object} deps
  * @param {ReturnType<import('./store.js').createJoboStore>} deps.store
- * @param {(a, b) => object} [deps.pick]  core's pickJoboRecord once it exists.
+ * @param {(a, b) => object} [deps.pick]  the merge rule; core's pickJoboRecord unless a test injects one.
  */
-export function createLedger({ store, pick = pickRecord }) {
+export function createLedger({ store, pick = pickJoboRecord }) {
   let state = { records: undefined, loaded: false, writable: undefined, error: null };
   let held = [];
   const listeners = new Set();

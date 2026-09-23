@@ -14,9 +14,10 @@ import { createLedger } from '../jobo/ledger.js';
 // must omit the collection while it is undefined: an unreadable ledger is not
 // an empty one. docs/jobo-ledger-persistence.md, "Lifecycle".
 //
-// `pickRecord` is core's pickJoboRecord once slice 2 lands; the same function
-// has to be the one both sync tiers use, or two devices holding pristine
-// copies of one record never converge.
+// The merge rule defaults to core's pickJoboRecord, the same function both
+// sync tiers use; if any of the three used a different one, two devices holding
+// pristine copies of one record would never converge. `pickRecord` and `store`
+// are injection points for tests.
 export default function useJoboLedger({ pickRecord, store } = {}) {
   const ledger = useRef(null);
   if (ledger.current === null) {

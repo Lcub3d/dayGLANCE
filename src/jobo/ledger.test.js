@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createLedger, mergeRecordsById, pickRecord } from './ledger.js';
+import { createLedger, mergeRecordsById } from './ledger.js';
+import { pickJoboRecord } from './core.js';
 
 const T1 = '2026-09-19T15:10:02.000Z';
 const T2 = '2026-09-19T16:00:00.000Z';
@@ -27,40 +28,15 @@ function fakeStore({ initial, readFails = false, writable = true, updateFails = 
   return store;
 }
 
-describe('pickRecord (stand-in for core pickJoboRecord)', () => {
-  it('newer updatedAt wins in either order', () => {
-    const older = rec('x', { updatedAt: T1, title: 'old' });
-    const newer = rec('x', { updatedAt: T2, title: 'new' });
-    expect(pickRecord(older, newer)).toBe(newer);
-    expect(pickRecord(newer, older)).toBe(newer);
-  });
-
-  // The convergence case from review: same id, same anchored updatedAt,
-  // different snapshots. Each tier's own "remote wins" would never settle.
-  it('on an exact tie the earlier observer wins, in either order', () => {
-    // The late observer saw the task after a reschedule, so its snapshot
-    // differs in a field that sorts BEFORE observedAt in canonical JSON.
-    // MUTATION: drop the observedAt comparison and the JSON fallback picks
-    // `late` here, because '2026-09-18' < '2026-09-19'.
+// The rule itself is core's and is tested in core.test.js. What the ledger owns
+// is that the merge applies it in both orders and reaches the same result.
+describe('the merge uses core pickJoboRecord', () => {
+  it('on an exact updatedAt tie the earlier observer wins, whichever side is local', () => {
     const early = rec('x', { observedAt: T1, date: '2026-09-19', title: 'as it was' });
     const late = rec('x', { observedAt: T2, date: '2026-09-18', title: 'after the reschedule' });
-    expect(pickRecord(early, late)).toBe(early);
-    expect(pickRecord(late, early)).toBe(early);
-  });
-
-  it('with everything tied, canonical JSON decides, and key order does not matter', () => {
-    const a = { id: 'x', updatedAt: T1, observedAt: T1, title: 'a' };
-    const b = { title: 'a', observedAt: T1, updatedAt: T1, id: 'x' };
-    expect(pickRecord(a, b)).toBe(a);
-    expect(pickRecord(b, a)).toBe(b); // equal content: whichever is first, same bytes
-    const c = { ...a, title: 'b' };
-    expect(pickRecord(a, c)).toBe(a);
-    expect(pickRecord(c, a)).toBe(a);
-  });
-
-  it('carries one side when the other is missing', () => {
-    expect(pickRecord(undefined, rec('x'))).toEqual(rec('x'));
-    expect(pickRecord(rec('x'), undefined)).toEqual(rec('x'));
+    expect(mergeRecordsById([early], [late])[0]).toBe(early);
+    expect(mergeRecordsById([late], [early])[0]).toBe(early);
+    expect(pickJoboRecord(early, late)).toBe(early);
   });
 });
 

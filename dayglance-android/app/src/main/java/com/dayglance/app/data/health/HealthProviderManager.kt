@@ -60,12 +60,18 @@ class HealthProviderManager(
             .map { it.id }
             .sorted()
 
+        val providerDiagnostics = providerById.values.associate { provider ->
+            provider.id to runCatching { provider.diagnostics() }.getOrDefault(emptyMap())
+        }
+
         return HealthProviderSnapshot(
             schemaVersion = SELECTION_SCHEMA_VERSION,
             manufacturer = manufacturer,
             model = model,
+            androidSdk = Build.VERSION.SDK_INT,
             bindings = bindings,
             availableProviders = available,
+            providerDiagnostics = providerDiagnostics,
         )
     }
 
@@ -212,8 +218,10 @@ data class HealthProviderSnapshot(
     val schemaVersion: Int,
     val manufacturer: String,
     val model: String,
+    val androidSdk: Int,
     val bindings: Map<String, String?>,
     val availableProviders: List<String>,
+    val providerDiagnostics: Map<String, Map<String, String>>,
 )
 
 /**

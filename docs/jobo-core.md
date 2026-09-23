@@ -22,17 +22,26 @@ its merged design or the upstream implementation has already changed. See the
 | `updateDoRecord(record, patch, updatedAt)` | Patches only interval fields, never captured identity/title/plan/source/creation/observation data. |
 | `tombstoneDoRecord(record, updatedAt)` | Returns a retained `deleted: true` version; repeat deletion is a no-op. |
 | `completeDoAttempt(records, input)` | Pure ensure-present by caller-supplied completion ID; otherwise appends one execution attempt. |
-| `doDurationMinutes(record)` | Civil-clock minutes for one positive execution interval, including explicit `endDate`. |
-| `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated actual time. |
+| `doDurationMinutes(record)` | Civil-clock minutes for Timed Do; returns `null` for Untimed Do. |
+| `setPlanCompletionStatus(plan, completionStatus)` | Pure Plan-occurrence reassessment. Requires stable Plan `id`; any valid status may replace any other, and `null` clears it. |
+| `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated measured time. |
 | `classifyAgainstPlan(plan, records, options)` | Legacy vocabulary adapter over `compareExecutionToPlan()`; contains no separate business rules. |
 | `migrateLegacyDoRecord(record)` | Explicitly strips legacy Do `progress` and returns a separate `legacyCompletionStatus` for Plan migration. |
 | `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, then recursively canonical JSON. Schema migration is outside the merge rule. |
 
-A record has `id`, `taskId`, `date`, `startTime`, `endDate`, `endTime`, `title`,
-`planSnapshot`, `source`, `createdAt`, `updatedAt`, `observedAt`, and `deleted`.
-A `progress` field is invalid: completion belongs to Plan, not Do. `taskId` allows a native numeric/string ID or explicit `null`;
-`planSnapshot` is a captured timed plan or explicit `null` when there was no
-timed plan at capture. Do not use `null` to fill unavailable historical data.
+A record has `id`, `taskId`, `timing`, `date`, `startTime`, `endDate`,
+`endTime`, `title`, `planSnapshot`, `source`, `createdAt`, `updatedAt`,
+`observedAt`, and `deleted`.
+
+`timing` is explicit: `timed` or `untimed`.
+- Timed Do requires a positive real interval.
+- Untimed Do means execution happened but duration was not measured; it keeps
+  `date` and uses explicit `null` for `startTime`, `endDate`, and `endTime`.
+
+A `progress` field is invalid: completion belongs to Plan, not Do. `taskId`
+allows a native numeric/string ID or explicit `null`; `planSnapshot` is a
+captured timed plan or explicit `null` when there was no timed plan at capture.
+Do not use `null` to fill unavailable historical data.
 Orphan IDs survive.
 JSON extension fields are copied and preserved by edits and by the picker.
 
@@ -41,12 +50,17 @@ is not focus-session integration. Plan completion is a separate dimension
 (`started / partly / mostly / completed`) described in
 [jobo-core-theory.md](jobo-core-theory.md). It is not serialized on Do records.
 
-Dates must be real Gregorian `YYYY-MM-DD` values and times must be `HH:MM`.
-Use next-day `endDate` plus `00:00`, not `24:00`. Every Do interval must be
-strictly positive. Completion without a known actual interval may update native
-task state and/or Plan completion, but it does not create a zero-minute Do.
-Core does not infer an actual start or a default duration. No new Do record
-field is introduced. ISO timestamps require an explicit
+Dates must be real Gregorian `YYYY-MM-DD` values and measured times must be
+`HH:MM`. Use next-day `endDate` plus `00:00`, not `24:00`.
+
+Do never uses zero minutes as a sentinel:
+- Timed Do must have a strictly positive interval.
+- Untimed Do explicitly stores unknown duration by null interval coordinates.
+
+Core does not infer an actual start or a default duration. Plan completion is a
+separate ordinal assessment (`started / partly / mostly / completed`) with
+canonical order exported by `COMPLETION_STATUS_ORDER`; reassessment is allowed
+in either direction through `setPlanCompletionStatus()`. ISO timestamps require an explicit
 zone/offset. Inputs are not normalized into invented historical values.
 A local edit/deletion needs a supplied timestamp strictly newer than the
 previous version; a no-op keeps the original object and version. Clock skew
@@ -129,9 +143,11 @@ not count: 09:00–09:20 plus 09:40–10:00 is 40 minutes, while 09:00–09:40 p
 09:20–10:00 is 60 minutes. First start and last end bound the schedule comparison;
 their difference is not the recorded work duration.
 
-Zero-duration placeholders are not Do records. Every live Do contributes a
-positive execution interval. A known absent timed plan can still yield Unplanned
-when a positive unplanned execution interval exists.
+Untimed Do is a real execution record, not a zero-duration placeholder. It
+suppresses Not Started because execution evidence exists, but contributes no
+measured minutes and supplies no interval bounds. If any live Do is Untimed, the
+overall Plan-vs-Do timing comparison is non-comparable; measured diagnostics for
+Timed Do remain available. A known absent timed plan can still yield Unplanned.
 
 Two or more live records still yield Interrupted independently, even when
 adjacent or overlapping. This is the agreed interaction/segmentation cue, not
@@ -166,9 +182,11 @@ clarification adds no field or new unknown state to the agreed record.
 
 Plan completion belongs to an identified Plan instance. A non-null
 `completionStatus` requires a stable Plan `id`; it is read from the Plan,
-not passed as a comparison option. The classifier does not return per-Do
-progress, choose a latest attempt from sync-array order, aggregate a completion
-percentage, or change native task completion. Do not compare a group of attempts with different snapshots to an
+not passed as a comparison option. `setPlanCompletionStatus()` is deliberately
+a reassessment function rather than a monotonic state machine: `completed` may
+be reassessed to `partly`, and any assessment may be cleared. The classifier
+does not return per-Do progress, choose a latest attempt from sync-array order,
+aggregate a completion percentage, or change native task completion. Do not compare a group of attempts with different snapshots to an
 implicitly selected last snapshot. Select a common anchor explicitly, or compare
 each attempt with its own snapshot.
 

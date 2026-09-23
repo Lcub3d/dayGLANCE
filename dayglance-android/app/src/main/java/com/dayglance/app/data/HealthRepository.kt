@@ -1,6 +1,9 @@
 package com.dayglance.app.data
 
 import android.content.Context
+import com.dayglance.app.BuildConfig
+import com.dayglance.app.data.health.HealthConnectProvider
+import com.dayglance.app.data.health.HonorHealthProvider
 import com.dayglance.app.data.health.HealthMetric
 import com.dayglance.app.data.health.HealthProviderManager
 import com.dayglance.app.data.health.HealthReadStatus
@@ -9,7 +12,17 @@ import java.time.LocalDate
 
 class HealthRepository(context: Context) {
 
-    private val providers = HealthProviderManager(context.applicationContext)
+    private val providers = HealthProviderManager(
+        context.applicationContext,
+        listOf(
+            HonorHealthProvider(
+                context.applicationContext,
+                BuildConfig.HONOR_APP_ID,
+                BuildConfig.HONOR_TOKEN_EXCHANGE_URL,
+            ),
+            HealthConnectProvider(context.applicationContext),
+        ),
+    )
 
     val requiredPermissions: Set<String>
         get() = providers.requiredPermissions

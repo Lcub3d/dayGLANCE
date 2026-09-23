@@ -26,7 +26,7 @@ its merged design or the upstream implementation has already changed. See the
 | `compareExecutionToPlan(plan, records, options)` | Canonical timing/completion comparison; duration uses overlap-deduplicated actual time. |
 | `classifyAgainstPlan(plan, records, options)` | Legacy vocabulary adapter over `compareExecutionToPlan()`; contains no separate business rules. |
 | `migrateLegacyDoRecord(record)` | Explicitly strips legacy Do `progress` and returns a separate `legacyCompletionStatus` for Plan migration. |
-| `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, canonical schema preference, then recursively canonical JSON. |
+| `pickJoboRecord(a, b)` | Returns one whole original operand: newer `updatedAt`, lower `observedAt`, then recursively canonical JSON. Schema migration is outside the merge rule. |
 
 A record has `id`, `taskId`, `date`, `startTime`, `endDate`, `endTime`, `title`,
 `planSnapshot`, `source`, `createdAt`, `updatedAt`, `observedAt`, and `deleted`.
@@ -84,11 +84,10 @@ new-record construction still requires valid ISO timestamps with an explicit
 timezone/offset. The picker accepts a missing operand, requires matching IDs
 (string identity, like the controller), and returns an existing operand without
 changing timestamps or dropping fields.
-On an exact `updatedAt` + `observedAt` tie, a progress-free canonical row
-beats a legacy row that still carries `progress`. This makes explicit
-`migrateLegacyDoRecord()` migration converge rather than oscillate. Only after
-that schema preference does the picker recursively sort every object's keys,
-retain array order, and use code-unit comparison rather than locale-dependent
+Legacy rows are normalized at the migration/import boundary before they enter
+canonical merge. `pickJoboRecord()` is deliberately schema-agnostic: after an
+exact `updatedAt` + `observedAt` tie it recursively sorts every object's keys,
+retains array order, and uses code-unit comparison rather than locale-dependent
 collation. It does NOT use `JSON.stringify(row, Object.keys(row).sort())`,
 whose replacer whitelist can omit `planSnapshot.duration` and other nested-only keys.
 

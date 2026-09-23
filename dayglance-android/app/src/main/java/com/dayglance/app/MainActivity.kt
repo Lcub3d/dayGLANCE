@@ -50,7 +50,14 @@ import com.dayglance.app.bridge.SpeechBridge
 import com.dayglance.app.sse.VaultSseClient
 import com.dayglance.app.data.HealthRepository
 import com.dayglance.app.data.SharedDataStore
+import com.dayglance.app.data.health.HonorHealthAuthController
+import com.dayglance.app.data.health.HonorHealthProvider
 import com.dayglance.app.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * Phase 1: WebView shell.
@@ -75,6 +82,8 @@ class MainActivity : AppCompatActivity() {
     // onStop; the renderer drives enable/disable via the NativeBridge callbacks.
     private lateinit var vaultSseClient: VaultSseClient
     private lateinit var healthRepository: HealthRepository
+    private lateinit var honorHealthAuth: HonorHealthAuthController
+    private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var dataStore: com.dayglance.app.data.SharedDataStore
     private lateinit var billingManager: BillingManager
     private lateinit var subscriptionBridge: SubscriptionBridge
@@ -148,13 +157,26 @@ class MainActivity : AppCompatActivity() {
         callback?.onReceiveValue(if (uri != null) arrayOf(uri) else emptyArray())
     }
 
-    // Registered in onCreate (before the activity starts) — safe to call from any thread
+    // Registered before onCreate so both authorization paths can be launched
+    // from the WebView bridge without coupling the web layer to a provider.
     private val requestHealthPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { _ ->
-        // Notify JS so the Continue/Add buttons update immediately without
-        // depending on visibilitychange (which is unreliable when webView.onPause
-        // is intentionally skipped).
+        notifyHealthPermissionResult()
+    }
+
+    private val requestHonorHealthAuthorization = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (!::honorHealthAuth.isInitialized) return@registerForActivityResult
+        activityScope.launch {
+            honorHealthAuth.handleAuthorizationResult(result.resultCode, result.data)
+            notifyHealthPermissionResult()
+        }
+    }
+
+    private fun notifyHealthPermissionResult() {
+        if (!::webView.isInitialized) return
         webView.evaluateJavascript(
             "window.__onHealthPermResult && window.__onHealthPermResult()", null
         )
@@ -233,6 +255,11 @@ class MainActivity : AppCompatActivity() {
         binding.root.addView(resumeOverlay)
 
         healthRepository = HealthRepository(this)
+        honorHealthAuth = HonorHealthAuthController(
+            this,
+            BuildConfig.HONOR_APP_ID,
+            BuildConfig.HONOR_TOKEN_EXCHANGE_URL,
+        )
         subscriptionBridge = SubscriptionBridge(billingManager, dataStore, webView)
         obsidianBridge = ObsidianBridge(this, webView)
 
@@ -253,9 +280,25 @@ class MainActivity : AppCompatActivity() {
             context = this,
             healthRepository = healthRepository,
             onRequestHealthPermission = {
-                // Launch must run on the main thread; JS interface callbacks run on a bg thread.
-                runOnUiThread {
-                    requestHealthPermissions.launch(healthRepository.requiredPermissions)
+                // JS-interface callbacks run off the main thread. Resolve the
+                // already-selected provider first, then launch only its auth flow.
+                activityScope.launch {
+                    val providerAuth = healthRepository.providerAuthorizationIdsRequired()
+                    if (HonorHealthProvider.ID in providerAuth) {
+                        val intent = honorHealthAuth.authorizationIntent()
+                        if (intent != null) {
+                            requestHonorHealthAuthorization.launch(intent)
+                        } else {
+                            notifyHealthPermissionResult()
+                        }
+                    } else {
+                        val permissions = healthRepository.requiredPermissions
+                        if (permissions.isNotEmpty()) {
+                            requestHealthPermissions.launch(permissions)
+                        } else {
+                            notifyHealthPermissionResult()
+                        }
+                    }
                 }
             },
             onAppReady = {
@@ -579,6 +622,7 @@ class MainActivity : AppCompatActivity() {
             unregisterReceiver(intentForwardReceiver)
             intentForwardReceiverRegistered = false
         }
+        activityScope.cancel()
         super.onDestroy()
     }
 

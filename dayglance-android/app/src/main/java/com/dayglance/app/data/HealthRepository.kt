@@ -23,6 +23,9 @@ class HealthRepository(context: Context) {
     suspend fun hasSleepPermission(): Boolean =
         providers.hasPermission(HealthMetric.SLEEP)
 
+    fun providerAuthorizationIds(): Set<String> =
+        providers.providerAuthorizationIds()
+
     suspend fun getSteps(date: LocalDate): Int {
         val result = providers.readSteps(date)
         return if (result.status == HealthReadStatus.OK) result.value ?: 0 else 0

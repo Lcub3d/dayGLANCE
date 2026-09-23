@@ -1,6 +1,7 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 import { dateToString, formatDeadlineDate } from '../utils/taskUtils.js';
+import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 
 const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
@@ -80,8 +81,6 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + delta, 1));
   };
 
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
   if (showCalendar) {
     const days = getDaysInMonth();
     const calWidth = 260;
@@ -106,7 +105,7 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
               <ChevronLeft size={16} className={textSecondary} />
             </button>
             <span className={`text-sm font-semibold ${textPrimary}`}>
-              {monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}
+              {formatLocalizedDate(viewDate, { month: 'short', year: 'numeric' })}
             </span>
             <button
               onClick={() => changeMonth(1)}

@@ -9,6 +9,7 @@ import { calculateGoalProgress } from '../utils/goalProgress.js';
 import { useTranslation } from 'react-i18next';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import { formatDuration } from '../utils/formatDuration.js';
 
 const WeeklyReviewModal = () => {
   const {
@@ -254,13 +255,7 @@ const WeeklyReviewModal = () => {
           i18n.resolvedLanguage || i18n.language,
         );
 
-        const formatMinutes = (min) => {
-          const h = Math.floor(min / 60);
-          const m = min % 60;
-          if (h === 0) return t('weeklyReview.durationMinutes', { minutes: m });
-          if (m === 0) return t('weeklyReview.durationHours', { hours: h });
-          return t('weeklyReview.durationHoursMinutes', { hours: h, minutes: m });
-        };
+        const formatMinutes = (min) => formatDuration(min, t);
 
         // Tag breakdown for AI summary
         const tagStats = {};

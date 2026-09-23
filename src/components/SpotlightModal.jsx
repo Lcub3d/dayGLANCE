@@ -151,7 +151,7 @@ const SpotlightModal = () => {
                 <span><kbd className={`px-1 py-0.5 rounded font-mono ${darkMode ? 'bg-gray-700' : 'bg-stone-200'}`}>↵</kbd> {t('spotlight.open')}</span>
               </div>
             ) : <div />}
-            <span>{spotlightResults.length} result{spotlightResults.length !== 1 ? 's' : ''}</span>
+            <span>{t('spotlight.resultsCount', { count: spotlightResults.length })}</span>
           </div>
         )}
       </div>

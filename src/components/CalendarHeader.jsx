@@ -419,7 +419,7 @@ const CalendarHeader = () => {
               className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors
                 ${darkMode ? 'bg-red-800/60 text-red-200 hover:bg-red-800' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
             >
-              {weekDeadlineTasks.length} deadline{weekDeadlineTasks.length > 1 ? 's' : ''}
+              {t('sched.deadlineCount', { count: weekDeadlineTasks.length })}
             </button>
           )}
           {routinesEnabled && isDateToday && todayRoutines.filter(r => r.isAllDay).map(routine => (

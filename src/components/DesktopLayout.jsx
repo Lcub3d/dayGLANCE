@@ -477,9 +477,15 @@ const DesktopLayout = () => {
 
   // Goals & Projects space (docs/goals-space-spec.md): the header switcher
   // swaps the sidebar + calendar for the goals sidebar + goals main area. The
-  // calendar block stays MOUNTED and is hidden with visibility rather than
-  // display:none, so its scroll position and calendarRef survive a round trip
-  // (display:none would reset scrollTop). The phone layout has its own tab.
+  // calendar block stays MOUNTED and is hidden rather than unmounted, so its
+  // scroll position and calendarRef survive a round trip (display:none would
+  // reset scrollTop). It is hidden with opacity + `inert`, NOT visibility:
+  // visibility is inherited and the time grid's task blocks set their own
+  // `visibility: visible` once measured (TimeGrid, DayView), so they showed
+  // through the space. Opacity composites the whole subtree and cannot be
+  // undone from inside it; `inert` takes the subtree out of focus, hit-testing
+  // and the accessibility tree (React 18 wants the attribute as a string).
+  // The phone layout has its own tab.
   const goalsSpace = desktopSpace === 'goals';
 
   return (
@@ -727,8 +733,9 @@ const DesktopLayout = () => {
         {/* Calendar space: kept mounted while the Goals space is up (see goalsSpace). */}
         <div
           data-calendar-space
-          className={goalsSpace ? 'absolute inset-0 flex invisible pointer-events-none' : 'flex flex-1 min-w-0 h-full'}
+          className={goalsSpace ? 'absolute inset-0 flex overflow-hidden opacity-0 pointer-events-none' : 'flex flex-1 min-w-0 h-full'}
           aria-hidden={goalsSpace || undefined}
+          inert={goalsSpace ? '' : undefined}
         >
 
           {/* Tablet static side panel */}

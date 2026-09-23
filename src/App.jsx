@@ -9476,8 +9476,10 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Tablet: Timeline FABs — + (new task), Frames */}
-      {isTablet && (
+      {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
+          calendar, so they stand down in the Goals & Projects space (`n` still
+          works there). */}
+      {isTablet && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -9505,8 +9507,9 @@ const DayPlanner = () => {
         </>
       )}
 
-      {/* Desktop: Timeline FABs — + (new task), Frames, mic (voice input) */}
-      {!isTablet && !isMobile && (
+      {/* Desktop: Timeline FABs — + (new task), Frames. Calendar-only, like
+          the tablet's above: hidden in the Goals & Projects space. */}
+      {!isTablet && !isMobile && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button

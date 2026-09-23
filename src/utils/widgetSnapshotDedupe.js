@@ -45,6 +45,12 @@
  *           entry on iOS renders it before any reload). Decides whether the
  *           push carries `reloadWidgets: true`.
  *
+ * `monthWindow` (widgetMonthWindow.js) is hot WHOLE, on purpose: a month grid
+ * shows all six weeks at once, so an edit on day 41 is on screen, and the iOS
+ * midnight entry renders the snapshot it was built with, so a stored-only
+ * change to the rollover tail would never reach the grid. It is not sliced;
+ * the `days` rule above is unchanged by it.
+ *
  * Both bridges store a `reloadWidgets: false` push without redrawing
  * (WidgetBridge.swift, NativeBridge.kt); the flag is absent-means-true so an
  * older native build keeps its old behaviour.
@@ -106,7 +112,9 @@ export function snapshotFingerprint(snapshot) {
 
 /**
  * Fingerprint of what a widget can currently be showing: the snapshot with
- * `days` cut to tomorrow. A change beyond that is stored, not redrawn.
+ * `days` cut to tomorrow and `monthWindow` whole. A change to `days` beyond
+ * tomorrow is stored, not redrawn; a change anywhere in the month window is
+ * redrawn.
  *
  * @param {object} snapshot
  * @returns {string}
@@ -114,6 +122,8 @@ export function snapshotFingerprint(snapshot) {
 export function hotSnapshotFingerprint(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return '';
   const stripped = stripStamps(snapshot);
+  // Only `days` is cut. Every other field — `monthWindow` included, all
+  // 49 days of it — stays whole, so any change to it owes a reload.
   if (Array.isArray(stripped.days)) {
     stripped.days = stripped.days.slice(0, HOT_PROJECTED_DAYS);
   }

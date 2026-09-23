@@ -49,6 +49,7 @@ class HealthProviderManagerTest {
         override val metrics: Set<HealthMetric>,
         private val available: Boolean = true,
     ) : HealthProvider {
+        override val authorization = HealthAuthorization.ANDROID_PERMISSION
         override fun isAvailable(): Boolean = available
         override suspend fun hasPermission(metric: HealthMetric): Boolean = true
         override suspend fun readSteps(date: LocalDate) =

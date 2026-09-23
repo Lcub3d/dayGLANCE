@@ -11,6 +11,8 @@ import { renderTitle, renderTitleWithNoteLinks } from '../utils/textFormatting.j
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import DesktopHeader from './DesktopHeader.jsx';
+import SpaceSwitcher, { GoalsSpaceTitle } from './SpaceSwitcher.jsx';
+import GoalDashboard from './goals/GoalDashboard.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import GlanceFabs from './GlanceFabs.jsx';
 import CalendarHeader from './CalendarHeader.jsx';
@@ -430,6 +432,7 @@ const DesktopLayout = () => {
     frameNudgeError, setFrameNudgeError,
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
     goals, projects,
+    desktopSpace,
     projectFilter, setProjectFilter,
     reminderSettings, setReminderSettings,
     showRemindersSettings, setShowRemindersSettings,
@@ -471,6 +474,13 @@ const DesktopLayout = () => {
     ? findRunningTask([...tasks, ...expandedRecurringTasks])
     : undefined;
   const titlebarPills = isElectronMac && !titlebarRunningTask;
+
+  // Goals & Projects space (docs/goals-space-spec.md): the header switcher
+  // swaps the sidebar + calendar for the goals sidebar + goals main area. The
+  // calendar block stays MOUNTED and is hidden with visibility rather than
+  // display:none, so its scroll position and calendarRef survive a round trip
+  // (display:none would reset scrollTop). The phone layout has its own tab.
+  const goalsSpace = desktopSpace === 'goals';
 
   return (
       <>
@@ -514,6 +524,8 @@ const DesktopLayout = () => {
       {isTablet && (
         <div className={`${cardBg} border-b ${borderClass} px-4 flex items-center justify-between relative`} style={{ height: '56px' }}>
           <div className="flex items-center gap-1">
+              <div className="mr-2"><SpaceSwitcher /></div>
+              {goalsSpace ? <GoalsSpaceTitle /> : (<>
                 <button onClick={() => changeDate(-1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('common.back')}>
                 <ChevronLeft size={20} className={textSecondary} />
               </button>
@@ -537,6 +549,7 @@ const DesktopLayout = () => {
                   {t('common.today')}
                 </button>
               )}
+              </>)}
           </div>
           <div className="flex items-center gap-2">
             {!hasNativeCalendar() && <button
@@ -660,7 +673,7 @@ const DesktopLayout = () => {
             </button>
           </div>
           {/* Tablet month view popup */}
-          {showMonthView && (
+          {showMonthView && !goalsSpace && (
             <div className={`month-view-container absolute left-4 top-full mt-1 ${cardBg} rounded-lg shadow-xl border ${borderClass} p-4 z-50 min-w-[300px]`}>
               <div className="flex items-center justify-between mb-3">
                 <button type="button" onClick={(e) => { e.stopPropagation(); changeViewedMonth(-1); }} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('common.back')}>
@@ -708,10 +721,15 @@ const DesktopLayout = () => {
         </div>
       )}
 
-      {/* Content area: side panel + calendar */}
-      <div className="flex" style={{ height: isTablet ? 'calc(100vh - 56px - env(safe-area-inset-top, 0px))' : `calc(100vh - ${80 + titlebarH}px - env(safe-area-inset-top, 0px))` }}>
+      {/* Content area: side panel + calendar, or the Goals & Projects space */}
+      <div className="flex relative" style={{ height: isTablet ? 'calc(100vh - 56px - env(safe-area-inset-top, 0px))' : `calc(100vh - ${80 + titlebarH}px - env(safe-area-inset-top, 0px))` }}>
 
-        <div className="contents">
+        {/* Calendar space: kept mounted while the Goals space is up (see goalsSpace). */}
+        <div
+          data-calendar-space
+          className={goalsSpace ? 'absolute inset-0 flex invisible pointer-events-none' : 'flex flex-1 min-w-0 h-full'}
+          aria-hidden={goalsSpace || undefined}
+        >
 
           {/* Tablet static side panel */}
           {isTablet && (
@@ -877,6 +895,12 @@ const DesktopLayout = () => {
             </div>
           </div>
         </div>
+
+        {/* Goals & Projects space: its own sidebar + main area, siblings in
+            this flex row exactly where the calendar's sit. Mounted only while
+            active, like the old modal was, so its Escape chain and drag
+            listeners exist only when the space is on screen. */}
+        {goalsSpace && <GoalDashboard desktop isActive />}
       </div>
 
       {/* Notes panel overlay for tablet LIST view */}

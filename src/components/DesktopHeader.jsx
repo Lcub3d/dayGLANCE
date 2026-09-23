@@ -10,6 +10,7 @@ import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
+import SpaceSwitcher, { GoalsSpaceTitle } from './SpaceSwitcher.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 
@@ -44,8 +45,12 @@ const DesktopHeader = () => {
     obsidianConfig, obsidianSyncStatus, obsidianSyncError, obsidianLastSynced,
     cloudSyncUpload, syncAll, performObsidianSync,
   } = useSyncCtx();
-  const { setShowRemindersSettings, activeReminders } = useFeaturesCtx();
+  const { setShowRemindersSettings, activeReminders, desktopSpace = 'calendar' } = useFeaturesCtx();
   const { t, i18n } = useTranslation();
+  // The header is the same in both spaces (height, left widgets, right icon
+  // cluster); only the centre swaps: date navigation in the Calendar space,
+  // the space's title and counts in the Goals & Projects space.
+  const goalsSpace = desktopSpace === 'goals';
 
   // Cloud-sync button: only meaningful once WebDAV and/or GLANCEvault is set up.
   // (Single-device or zero-config iCloud users get no button — Settings still has
@@ -86,8 +91,9 @@ const DesktopHeader = () => {
   return (
     <>
       <div className={`${cardBg} border-b ${borderClass} px-4 py-2 grid grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center gap-3 relative`} style={{ height: '80px' }}>
-        {/* Left: Weather + Daily Content */}
+        {/* Left: space switcher, then Weather + Daily Content */}
         <div className="flex items-center gap-4 min-w-0">
+          <SpaceSwitcher />
           {weather && weatherEnabled && (
             <>
               {/* Current weather */}
@@ -142,6 +148,9 @@ const DesktopHeader = () => {
 
         {/* Keep date navigation in flow: side content must reserve its own space. */}
         <div className="min-w-0">
+        {goalsSpace ? (
+          <GoalsSpaceTitle />
+        ) : (
         <div className="min-w-0">
           <div className="flex items-center gap-1 relative min-w-0">
             <button onClick={() => changeDate(-1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors flex-shrink-0`} aria-label={t('common.back')}>
@@ -214,6 +223,7 @@ const DesktopHeader = () => {
             )}
           </div>
         </div>
+        )}
         </div>
 
         {/* Right: Action buttons */}

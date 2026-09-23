@@ -79,7 +79,6 @@ import SettingsModal from './components/SettingsModal.jsx';
 import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
-import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
 import BackupMenuModal from './components/BackupMenuModal.jsx';
@@ -1007,6 +1006,7 @@ const DayPlanner = () => {
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
@@ -3545,7 +3545,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard,
+    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -8959,6 +8959,7 @@ const DayPlanner = () => {
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
     hgVisibleProjects,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
@@ -10487,9 +10488,6 @@ const DayPlanner = () => {
           </FormOverlay>
         );
       })()}
-
-      {/* Goals & Projects Dashboard */}
-      <GoalDashboard />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

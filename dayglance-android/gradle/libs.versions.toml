@@ -7,6 +7,8 @@ appcompat = "1.7.0"
 material = "1.12.0"
 constraintlayout = "2.1.4"
 healthConnect = "1.1.0" # stable — unblocked by the compileSdk 36 + AGP bump
+honorHealth = "1.1.0.300"
+honorId = "8.0.1.351"
 workManager = "2.9.0"
 room = "2.6.1"
 coroutines = "1.8.1"
@@ -26,8 +28,10 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 
-# Health Connect
+# Health
 health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
+honor-health = { group = "com.hihonor.mcs", name = "fitness-health", version.ref = "honorHealth" }
+honor-id = { group = "com.hihonor.mcs", name = "honorid-opensdk", version.ref = "honorId" }
 
 # WorkManager (widget periodic refresh)
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }

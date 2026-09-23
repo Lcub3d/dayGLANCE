@@ -1,6 +1,8 @@
 package com.dayglance.app.data.health
 
 import android.content.Context
+import android.os.Build
+import android.os.ext.SdkExtensions
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.SleepSessionRecord
@@ -40,16 +42,31 @@ class HealthConnectProvider(context: Context) : HealthProvider {
 
     override fun isAvailable(): Boolean = client != null
 
-    override fun diagnostics(): Map<String, String> = mapOf(
-        "sdkStatus" to sdkStatus.toString(),
-        "sdkStatusName" to when (sdkStatus) {
-            HealthConnectClient.SDK_AVAILABLE -> "available"
-            HealthConnectClient.SDK_UNAVAILABLE -> "unavailable"
-            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "provider_update_required"
-            else -> "unknown"
-        },
-        "sdkAvailable" to (sdkStatus == HealthConnectClient.SDK_AVAILABLE).toString(),
-    )
+    override fun diagnostics(): Map<String, String> {
+        val extension34 = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching {
+                SdkExtensions.getExtensionVersion(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+            }.getOrDefault(0)
+        } else {
+            0
+        }
+        val deviceStepTrackingAvailable =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                extension34 >= 20
+
+        return mapOf(
+            "sdkStatus" to sdkStatus.toString(),
+            "sdkStatusName" to when (sdkStatus) {
+                HealthConnectClient.SDK_AVAILABLE -> "available"
+                HealthConnectClient.SDK_UNAVAILABLE -> "unavailable"
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "provider_update_required"
+                else -> "unknown"
+            },
+            "sdkAvailable" to (sdkStatus == HealthConnectClient.SDK_AVAILABLE).toString(),
+            "extensionVersion34" to extension34.toString(),
+            "deviceStepTrackingAvailable" to deviceStepTrackingAvailable.toString(),
+        )
+    }
 
     override fun requiredAndroidPermissions(metrics: Set<HealthMetric>): Set<String> =
         buildSet {
@@ -72,6 +89,49 @@ class HealthConnectProvider(context: Context) : HealthProvider {
                 permission in c.permissionController.getGrantedPermissions()
             } catch (_: Exception) {
                 false
+            }
+        }
+
+    override suspend fun rawDiagnostics(date: LocalDate): ProviderDateDiagnostics =
+        withContext(Dispatchers.IO) {
+            val c = client ?: return@withContext ProviderDateDiagnostics(
+                providerId = id,
+                error = "provider_unavailable",
+            )
+
+            val zone = ZoneId.systemDefault()
+            val stepStart = date.atStartOfDay(zone).toInstant()
+            val stepEnd = date.plusDays(1).atStartOfDay(zone).toInstant()
+            val sleepStart = date.minusDays(1).atTime(12, 0).atZone(zone).toInstant()
+            val sleepEnd = date.atTime(12, 0).atZone(zone).toInstant()
+
+            try {
+                val stepRecords = c.readRecords(
+                    ReadRecordsRequest(
+                        StepsRecord::class,
+                        TimeRangeFilter.between(stepStart, stepEnd),
+                    )
+                ).records
+                val sleepRecords = c.readRecords(
+                    ReadRecordsRequest(
+                        SleepSessionRecord::class,
+                        TimeRangeFilter.between(sleepStart, sleepEnd),
+                    )
+                ).records
+
+                ProviderDateDiagnostics(
+                    providerId = id,
+                    stepsRecordCount = stepRecords.size,
+                    stepsRawTotal = stepRecords.sumOf { it.count },
+                    stepOrigins = stepRecords.map { it.metadata.dataOrigin.packageName }.toSet(),
+                    sleepRecordCount = sleepRecords.size,
+                    sleepOrigins = sleepRecords.map { it.metadata.dataOrigin.packageName }.toSet(),
+                )
+            } catch (e: Exception) {
+                ProviderDateDiagnostics(
+                    providerId = id,
+                    error = e.message ?: e::class.java.simpleName,
+                )
             }
         }
 

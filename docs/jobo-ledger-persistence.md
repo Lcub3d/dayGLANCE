@@ -115,9 +115,10 @@ Do. Un-completing does not mutate a historical Do record. A later recorded
 execution is a new attempt under a new identity.
 
 Legacy prototype/#1744 rows that still contain `progress` cross an explicit
-`migrateLegacyDoRecord()` boundary: Core returns a progress-free canonical Do
-plus a separate legacy completion value for the caller to attach to the correct
-identified Plan if appropriate.
+`migrateLegacyDoRecord()` boundary **before merge**: Core returns a progress-free
+canonical Do plus a separate legacy completion value for the caller to attach to
+the correct identified Plan if appropriate. Once migrated, normal merge applies
+without any schema-specific tie-break.
 
 ## Where it lives, and the two homes rejected
 
@@ -244,10 +245,12 @@ importer all go through it.
 
 Both tiers pick between two copies of one record with **the same function**,
 `pickJoboRecord(a, b)`, exported by core and shared the way
-`mergeCompletedDates` is shared today. It is: newer `updatedAt` wins; on an exact tie, lower `observedAt` wins;
-on a tie there too, a progress-free canonical row beats a legacy progress row;
-the final tie is the smaller canonical JSON. Order-independent and idempotent, so either tier may apply it twice and
-in either order. Why a shared rule rather than each tier's own LWW: both
+`mergeCompletedDates` is shared today. It is: newer `updatedAt` wins; on an exact
+tie, lower `observedAt` wins; on a tie there too, the smaller canonical JSON
+wins. The rule is deliberately schema-agnostic. Legacy progress-bearing rows
+must be migrated before they enter canonical merge. The picker contains no
+migration policy. Order-independent and idempotent, so either tier may apply it
+twice and in either order. Why a shared rule rather than each tier's own LWW: both
 tiers today resolve an exact timestamp tie as "remote wins" (`>=` in
 `dbAdapter.js` and in the file-tier merge). For tasks that is harmless,
 because two devices almost never share a `lastModified`. For ledger records

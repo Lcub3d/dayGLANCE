@@ -107,6 +107,14 @@ completion-time plan and the doc says so rather than promising history that
 was not captured. `originalPlan` on the task remains the Original Plan; the
 snapshot is the best available Final Plan, not a guaranteed one.
 
+Plan-change counting stays on the task/Plan side, not on Do. Slice 2 defines
+`planRevisionCount` plus `lastPlanRevisionAt` as write-time metadata for
+effective changes to `date / startTime / duration`. The default coalescing
+window is 5 minutes: edits separated by at most 5 minutes stay in one revision
+session; a larger gap opens another. Changing that threshold later affects only
+future writes and never recomputes existing counts. This metric is deliberately
+separate from `rescheduleCount` or any overdue-deferral counter.
+
 **Completion is not a Do field.** Plan owns the ordinal completion assessment:
 `started / partly / mostly / completed`. "Not started" is still derived from
 time when no Do exists, the current displayed Plan has wholly elapsed, and

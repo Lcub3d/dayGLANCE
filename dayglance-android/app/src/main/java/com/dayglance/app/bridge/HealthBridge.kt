@@ -85,12 +85,21 @@ class HealthBridge(
         val available = JSONArray()
         snapshot.availableProviders.forEach { available.put(it) }
 
+        val providerDiagnostics = JSONObject()
+        snapshot.providerDiagnostics.forEach { (providerId, values) ->
+            val providerJson = JSONObject()
+            values.forEach { (key, value) -> providerJson.put(key, value) }
+            providerDiagnostics.put(providerId, providerJson)
+        }
+
         return JSONObject()
             .put("schemaVersion", snapshot.schemaVersion)
             .put("manufacturer", snapshot.manufacturer)
             .put("model", snapshot.model)
+            .put("androidSdk", snapshot.androidSdk)
             .put("bindings", bindings)
             .put("availableProviders", available)
+            .put("providerDiagnostics", providerDiagnostics)
             .toString()
     }
 

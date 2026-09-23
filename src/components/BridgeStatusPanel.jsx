@@ -4,6 +4,7 @@ import { readVaultHeartbeatNative } from '../obsidian.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
 import { getBridgePairingMeta } from '../utils/obsidianBridgeStream.js';
 import { deriveBridgeStatus, describeAgo } from '../utils/bridgeStatus.js';
+import { activeLocale } from '../utils/localeFormatting.js';
 import { useTranslation } from 'react-i18next';
 
 // Read-only bridge status for NATIVE devices (Android + iOS) — the §6 mode
@@ -105,7 +106,7 @@ const BridgeStatusPanel = ({ darkMode, textPrimary, textSecondary, borderClass }
           <p className={`text-xs ${textSecondary}`}>
             {status.lastBeatMs === null
               ? t('settings.obsidianBridgeWaitingNeverSeen')
-              : t('settings.obsidianBridgeWaitingLastSeen', { when: describeAgo(status.lastBeatMs) })}
+              : t('settings.obsidianBridgeWaitingLastSeen', { when: describeAgo(status.lastBeatMs, Date.now(), activeLocale()) })}
           </p>
         </>
       )}

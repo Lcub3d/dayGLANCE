@@ -47,7 +47,7 @@ import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
-import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes } from './utils/localeFormatting.js';
+import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
@@ -202,6 +202,7 @@ import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from './utils/formatDuration.js';
 import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
@@ -271,7 +272,6 @@ const SPOTLIGHT_NATIVE_FUTURE_DAYS = 365;
 
 const DayPlanner = () => {
   const { t } = useTranslation();
-  const formatDuration = (minutes) => formatLocalizedDurationMinutes(minutes, i18n.resolvedLanguage || i18n.language);
   const { isPro, isLoading: subLoading, isAndroidApp, isIOSApp, isElectronApp, productId: subProductId, subscribe, restore, prices: subPrices, trialEligible, trialDays, billingEvent, clearBillingEvent, billingErrorMessage, consumeTestPurchase, canConsumeTestPurchase, isReviewerUnlocked, setReviewerUnlocked } = useSubscription();
   useEffect(() => { if (isReviewerUnlocked) console.info('[dayGLANCE] Reviewer unlock active'); }, [isReviewerUnlocked]);
   // Leave reviewer mode: clear the stored unlock and reload so the billing engine
@@ -2303,7 +2303,7 @@ const DayPlanner = () => {
       onError: (msg, code) => { setVaultError(syncErrorText(t, msg, code)); if (msg) console.warn('[dayglance] vault sync error:', code || '', msg); },
       onRowsSkipped: (count) => {
         setVaultSkipped(count);
-        if (count > 0) setUndoToast({ message: `GLANCEvault: ${count} item${count === 1 ? '' : 's'} couldn't be read — see Cloud Sync settings`, actionable: false });
+        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), actionable: false });
       },
     });
     if (!engine) return;
@@ -4681,10 +4681,10 @@ const DayPlanner = () => {
       const count = importedTasks.length;
       setSyncNotification({
         type: count > 0 ? 'success' : 'info',
-        title: 'iCal Import',
+        title: t('sync.icalImportTitle'),
         message: count > 0
-          ? `Imported ${count} event${count !== 1 ? 's' : ''}`
-          : 'No events found in the file'
+          ? t('sync.icalImportedCount', { count })
+          : t('sync.icalImportEmpty')
       });
     };
     reader.readAsText(pendingImportFile);
@@ -4708,8 +4708,8 @@ const DayPlanner = () => {
     setTasks(prev => prev.filter(t => !isFileEvent(t)));
     setSyncNotification({
       type: 'success',
-      title: 'iCal Import',
-      message: `Removed ${targets.length} file-imported event${targets.length !== 1 ? 's' : ''}`
+      title: t('sync.icalImportTitle'),
+      message: t('sync.icalRemovedCount', { count: targets.length })
     });
   };
 
@@ -5628,7 +5628,7 @@ const DayPlanner = () => {
   const syncAll = async ({ silent = false } = {}) => {
     const hasSyncTarget = hasNativeCalendar() ? !!taskCalendarUrl : !!(syncUrl || taskCalendarUrl || hasActiveIcsCalendars(icsCalendars));
     if (!hasSyncTarget) {
-      if (!silent) setSyncNotification({ type: 'info', message: 'Please enter a task calendar URL in sync settings' });
+      if (!silent) setSyncNotification({ type: 'info', message: t('sync.enterTaskCalendarUrl') });
       return;
     }
 
@@ -5657,31 +5657,32 @@ const DayPlanner = () => {
       const errors = [];
 
       if (calendarResult.success) {
-        successes.push(`${calendarResult.count} event${calendarResult.count !== 1 ? 's' : ''}`);
+        successes.push(t('sync.eventsCount', { count: calendarResult.count }));
         // Some feeds may still have failed even when the sync overall succeeded.
-        for (const name of calendarResult.failedFeeds || []) errors.push(`calendar "${name}"`);
+        for (const name of calendarResult.failedFeeds || []) errors.push(t('sync.calendarNamed', { name }));
       } else if (calendarResult.error === 'not-ical') {
-        if (!silent) setSyncNotification({ type: 'error', title: 'Calendar Sync', message: 'The URL did not return a calendar file. For CalDAV servers (Nextcloud, Baikal, etc.), append ?export to the URL (e.g. …/default/?export).' });
+        if (!silent) setSyncNotification({ type: 'error', title: t('settings.calendarSync'), message: t('sync.notIcalError') });
         setIsSyncing(false);
         return;
       } else if (calendarResult.error === 'calendar') {
-        errors.push('calendar');
+        errors.push(t('sync.calendarWord'));
       }
 
       if (taskResult.success) {
-        successes.push(`${taskResult.count} task${taskResult.count !== 1 ? 's' : ''}`);
+        successes.push(t('sync.tasksCount', { count: taskResult.count }));
       } else if (taskResult.error === 'task-calendar') {
-        errors.push('task calendar');
+        errors.push(t('sync.taskCalendarWord'));
       }
 
       const urlUpdated = calendarResult.urlUpdated || taskResult.urlUpdated;
+      const lang = i18n.resolvedLanguage || i18n.language;
       if (errors.length > 0 && successes.length === 0) {
-        setSyncNotification({ type: 'error', message: `Failed to sync with ${errors.join(' and ')}. Make sure the URL is correct and publicly accessible.` });
+        setSyncNotification({ type: 'error', message: t('sync.syncFailedWith', { items: localizedList(errors, lang) }) });
       } else if (errors.length > 0) {
-        setSyncNotification({ type: 'error', message: `Synced ${successes.join(' and ')}, but failed to sync ${errors.join(' and ')}` });
+        setSyncNotification({ type: 'error', message: t('sync.syncPartial', { successes: localizedList(successes, lang), errors: localizedList(errors, lang) }) });
       } else if (successes.length > 0) {
-        const urlNote = urlUpdated ? ' (?export appended to your calendar URL automatically)' : '';
-        setSyncNotification({ type: 'success', message: `Synced ${successes.join(' and ')}${urlNote}` });
+        const urlNote = urlUpdated ? t('sync.urlAutoExportNote') : '';
+        setSyncNotification({ type: 'success', message: `${t('sync.syncSuccess', { items: localizedList(successes, lang) })}${urlNote}` });
       }
     } finally {
       setIsSyncing(false);
@@ -7693,9 +7694,7 @@ const DayPlanner = () => {
     let glanceAheadData = null;
     if (showGlanceAhead) {
       const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-      const committedH = Math.floor(committedMinutes / 60);
-      const committedM = committedMinutes % 60;
-      const committedStr = committedH > 0 ? `${committedH}h${committedM > 0 ? ` ${committedM}m` : ''}` : committedM > 0 ? `${committedM}m` : null;
+      const committedStr = committedMinutes > 0 ? formatDuration(committedMinutes, t) : null;
       glanceAheadData = {
         dayLabel,
         taskCount,
@@ -8186,8 +8185,8 @@ const DayPlanner = () => {
     if (movedIds.size > 0) {
       setSyncNotification({
         type: 'success',
-        title: 'Tasks Scheduled',
-        message: `${movedIds.size} task${movedIds.size === 1 ? '' : 's'} placed on your timeline`
+        title: t('app.tasksScheduledTitle'),
+        message: t('app.tasksPlacedCount', { count: movedIds.size })
       });
     }
   };
@@ -8281,8 +8280,8 @@ const DayPlanner = () => {
     if (appliedCount > 0) {
       setSyncNotification({
         type: 'success',
-        title: 'Tasks Rescheduled',
-        message: `${appliedCount} task${appliedCount === 1 ? '' : 's'} moved to future slots`,
+        title: t('app.tasksRescheduledTitle'),
+        message: t('app.tasksMovedCount', { count: appliedCount }),
       });
     }
   };
@@ -9175,13 +9174,7 @@ const DayPlanner = () => {
 
       {/* Focus Log Modal */}
       {focusLogModalDate && (() => {
-        const fmtMin = (min) => {
-          const h = Math.floor(min / 60);
-          const m = min % 60;
-          if (h === 0) return `${m}m`;
-          if (m === 0) return `${h}h`;
-          return `${h}h ${m}m`;
-        };
+        const fmtMin = (min) => formatDuration(min, t);
         const dayData = focusLog[focusLogModalDate] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
         const displayDate = formatLocalizedDate(new Date(focusLogModalDate + 'T12:00:00'), { weekday: 'long', month: 'short', day: 'numeric' });
 
@@ -9674,16 +9667,16 @@ const DayPlanner = () => {
                     <div className={`space-y-3 ${textSecondary}`}>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
                       </div>
                       {actualTodayFocusMinutes > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes)}</span>
+                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes, t)}</span>
                         </div>
                       )}
                     </div>
@@ -9803,17 +9796,17 @@ const DayPlanner = () => {
                   )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
                   </div>
                   {allTimeFocusMinutes > 0 && (
                     <>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes, t)}</span>
                       </div>
                     </>
                   )}

@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
+import i18n from 'i18next';
 import {
   tryRestoreVaultAccess, getVaultAccess,
   syncObsidianVault, syncObsidianVaultNative,
@@ -487,7 +488,7 @@ export default function useObsidianSync({
         ? titleConflictNoticeText(titleConflicts[0].vaultTitle)
         : `${titleConflicts.length} title conflicts: Obsidian's edits won. Your dayGLANCE renames are saved in each task's notes.`);
     }
-    if (binRestores.length) notices.push(binRestoreNoticeText(binRestores));
+    if (binRestores.length) notices.push(binRestoreNoticeText(binRestores, i18n.t.bind(i18n)));
     if (notices.length && setObsidianSyncNotice) {
       setObsidianSyncNotice(notices.join(' '));
       setTimeout(() => setObsidianSyncNotice(null), 8000);

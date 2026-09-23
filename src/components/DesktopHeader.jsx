@@ -73,9 +73,19 @@ const DesktopHeader = () => {
   const mcp = useMcpStatus();
   const [mcpOpen, setMcpOpen] = useState(false);
 
+  const dateLabel = monthViewActive
+    ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, locale)
+    : effectiveViewMode === 'day'
+    ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, locale)
+    : effectiveViewMode === 'jobo'
+    ? formatDateRange([selectedDate], t, locale)
+    : effectiveViewMode === 'week' && weekViewDates.length > 0
+    ? formatDateRange(weekViewDates, t, locale)
+    : formatDateRange(visibleDates, t, locale);
+
   return (
     <>
-      <div className={`${cardBg} border-b ${borderClass} px-4 py-2 flex items-center justify-between relative`} style={{ height: '80px' }}>
+      <div className={`${cardBg} border-b ${borderClass} px-4 py-2 grid grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center gap-3 relative`} style={{ height: '80px' }}>
         {/* Left: Weather + Daily Content */}
         <div className="flex items-center gap-4 min-w-0">
           {weather && weatherEnabled && (
@@ -130,11 +140,11 @@ const DesktopHeader = () => {
           })()}
         </div>
 
-        {/* Center: Date Nav */}
-        <div className="absolute inset-0 flex items-center justify-center max-[950px]:pr-36 pointer-events-none">
-        <div className="pointer-events-auto">
-          <div className="flex items-center gap-1 relative">
-            <button onClick={() => changeDate(-1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors`} aria-label={t('common.back')}>
+        {/* Keep date navigation in flow: side content must reserve its own space. */}
+        <div className="min-w-0">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1 relative min-w-0">
+            <button onClick={() => changeDate(-1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors flex-shrink-0`} aria-label={t('common.back')}>
               <ChevronLeft size={20} className={textSecondary} />
             </button>
             <button
@@ -142,24 +152,17 @@ const DesktopHeader = () => {
                 if (!showMonthView) setViewedMonth(new Date(selectedDate));
                 setShowMonthView(!showMonthView);
               }}
-              className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center min-w-[13rem]`}
+              className={`month-view-toggle ${textPrimary} font-semibold text-base px-2 py-1 rounded-lg ${hoverBg} transition-colors cursor-pointer text-center w-52 basis-52 shrink min-w-0 truncate`}
+              title={dateLabel}
             >
-              {monthViewActive
-                ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, i18n.resolvedLanguage || i18n.language)
-                : effectiveViewMode === 'day'
-                ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, i18n.resolvedLanguage || i18n.language)
-                : effectiveViewMode === 'jobo'
-                ? formatDateRange([selectedDate], t, i18n.resolvedLanguage || i18n.language)
-                : effectiveViewMode === 'week' && weekViewDates.length > 0
-                ? formatDateRange(weekViewDates, t, i18n.resolvedLanguage || i18n.language)
-                : formatDateRange(visibleDates, t, i18n.resolvedLanguage || i18n.language)}
+              {dateLabel}
             </button>
-            <button onClick={() => changeDate(1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors`} aria-label={t('common.next')}>
+            <button onClick={() => changeDate(1)} className={`p-1.5 rounded-lg ${hoverBg} transition-colors flex-shrink-0`} aria-label={t('common.next')}>
               <ChevronRight size={20} className={textSecondary} />
             </button>
             <button
               onClick={goToToday}
-              className={`ml-1 px-3 py-1 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors${dateToString(selectedDate) === dateToString(new Date()) ? ' invisible' : ''}`}
+              className={`ml-1 px-3 py-1 flex-shrink-0 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors${dateToString(selectedDate) === dateToString(new Date()) ? ' invisible' : ''}`}
             >
               {t('common.today')}
             </button>
@@ -214,7 +217,7 @@ const DesktopHeader = () => {
         </div>
 
         {/* Right: Action buttons */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 justify-self-end">
           {!hasNativeCalendar() && <button
             onClick={() => {
               if (isSyncing) return;

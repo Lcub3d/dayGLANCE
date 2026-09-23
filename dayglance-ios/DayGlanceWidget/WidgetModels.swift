@@ -20,6 +20,11 @@ struct WidgetSnapshot: Codable {
     /// `ResolvedWidgetDay` (WidgetFreshness.swift); never read directly.
     var days: [WidgetDay]?
     var updatedAt: Double?
+    /// The IANA zone the snapshot's clock minutes were computed in (the
+    /// device's zone at push time). A device now in a zone with a different
+    /// offset draws every block at the wrong angle, so the dial labels that
+    /// state rather than re-projecting (WidgetFreshness.zoneChanged).
+    var timezone: String?
 }
 
 /// One projected day: the per-day fields only. The day-invariant blocks
@@ -53,6 +58,9 @@ struct SkySnapshot: Codable {
     /// applies its own opacity mapping. Moon is 0 while the sun is up.
     var hours: [SkyHour]?
     var moon: SkyMoon?
+    /// The observer is south of the equator: the moon glyph's lit limb is
+    /// mirrored (the sign of the latitude, never the coordinates).
+    var southern: Bool?
 }
 
 struct SkyHour: Codable {

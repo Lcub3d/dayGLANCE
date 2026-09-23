@@ -42,6 +42,12 @@ class HealthConnectProvider(context: Context) : HealthProvider {
 
     override fun diagnostics(): Map<String, String> = mapOf(
         "sdkStatus" to sdkStatus.toString(),
+        "sdkStatusName" to when (sdkStatus) {
+            HealthConnectClient.SDK_AVAILABLE -> "available"
+            HealthConnectClient.SDK_UNAVAILABLE -> "unavailable"
+            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "provider_update_required"
+            else -> "unknown"
+        },
         "sdkAvailable" to (sdkStatus == HealthConnectClient.SDK_AVAILABLE).toString(),
     )
 

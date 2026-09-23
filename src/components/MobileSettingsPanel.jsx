@@ -211,6 +211,27 @@ const MobileSettingsPanel = () => {
       }
     };
 
+    const toIsoDate = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    const now = new Date();
+    const dates = [0, 1, 2].map((daysBack) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - daysBack);
+      return toIsoDate(d);
+    });
+
+    const history = Object.fromEntries(dates.map((date) => [
+      date,
+      {
+        steps: readJson('getSteps', date),
+        sleep: readJson('getSleep', date),
+      },
+    ]));
+
     const result = {
       checkedAt: new Date().toISOString(),
       today,
@@ -219,8 +240,7 @@ const MobileSettingsPanel = () => {
         steps: readText('checkStepsPermission'),
         sleep: readText('checkSleepPermission'),
       },
-      steps: readJson('getSteps', today),
-      sleep: readJson('getSleep', today),
+      history,
       provider: readJson('getHealthProviderStatus'),
     };
 

@@ -1297,7 +1297,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
     const isEvening = currentTime.getHours() >= 19;
     if (!isDayDone && !isEvening) return null;
     const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-    const committedStr = committedMinutes > 0 ? formatLocalizedDurationMinutes(committedMinutes, i18n.language) : null;
+    const committedStr = committedMinutes > 0 ? formatDuration(committedMinutes, t) : null;
     // Device's next alarm clock (Android bridge; null everywhere else — iOS
     // has no API for Clock alarms, and desktop/tray have no bridge). Read per
     // render: this section re-renders every minute via currentTime, so the

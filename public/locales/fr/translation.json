@@ -2047,28 +2047,18 @@
     "title": "JOBO",
     "placeholder": "Prévu contre réalisé. Cette vue se construit par étapes ; la première est l'interrupteur qui l'affiche.",
     "view": {
-      "loading": "Chargement de JOBO…",
       "plan": "Plan",
-      "time": "Heure",
       "do": "Exécution",
       "storageError": "Le registre JOBO n’a pas pu être écrit. Les données déjà validées restent affichées.",
       "readOnly": "JOBO est en lecture seule sur cet appareil. La modification des Do est désactivée.",
       "invalidRecords": "{{count}} enregistrement(s) de registre invalide(s) sont ignorés dans cette vue.",
       "untimed": "Sans horaire",
-      "timeNotRecorded": "Temps non enregistré",
-      "editDo": "Modifier le Do",
-      "timing": "Mesure",
       "timed": "Chronométré",
-      "date": "Date",
-      "start": "Début",
-      "endDate": "Date de fin",
-      "end": "Fin",
       "progressLabel": "Progression",
       "completeInterval": "Saisissez un intervalle complet de début et de fin.",
       "editClock": "L’horloge de l’appareil n’est pas postérieure à la dernière mise à jour de cet enregistrement. Réessayez plus tard.",
       "completedByCompletion": "Terminé est créé par un événement d’achèvement. Un Do réévalué peut être Démarré, Partiel ou Presque.",
       "updateFailed": "Impossible d’enregistrer la modification du Do.",
-      "saving": "Enregistrement…",
       "emptyPlan": "Aucun Plan horaire pour ce jour.",
       "emptyDo": "Aucun Do enregistré pour ce jour.",
       "summary": {
@@ -2082,8 +2072,7 @@
       "progress": {
         "started": "Démarré",
         "partial": "Partiel",
-        "mostly": "Presque",
-        "completed": "Terminé"
+        "mostly": "Presque"
       }
     }
   },

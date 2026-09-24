@@ -79,7 +79,6 @@ import SettingsModal from './components/SettingsModal.jsx';
 import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
-import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
 import BackupMenuModal from './components/BackupMenuModal.jsx';
@@ -109,6 +108,7 @@ import useDailyContent from './hooks/useDailyContent.js';
 import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
+import useJoboLedger from './hooks/useJoboLedger.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -355,6 +355,14 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // behind the same Experimental switch pattern; the FAB lives in the Goals &
+  // Projects space.
+  const [aspireEnabled, setAspireEnabled] = useState(() => {
+    const saved = localStorage.getItem('day-planner-aspire-enabled');
+    return saved !== null ? JSON.parse(saved) === true : false;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -1007,12 +1015,43 @@ const DayPlanner = () => {
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,
     addProject, updateProject, deleteProject, moveProject,
   } = useGoalsProjects();
+  // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
+  // writer. `joboRecords` is undefined until the ledger has loaded, and the
+  // sync payload omits the collection while it is: undefined means "this
+  // device has not loaded its ledger", [] would claim it is empty. The flag
+  // gates the interface, never the data: a device with JOBO off still loads,
+  // stores, pushes, pulls and merges records.
+  const {
+    joboRecords, joboLoaded, joboWritable, joboError,
+    recordJobo, applyRemoteJobo, restoreJobo,
+  } = useJoboLedger();
+  // The engine and the backup builders can run a beat after a render.
+  const joboRecordsRef = useRef(joboRecords);
+  joboRecordsRef.current = joboRecords;
+  // A ledger write that fails is held and retried by the next apply, and the
+  // vault tier re-delivers the row until it lands; until slice 5 has a place
+  // to show it, the failure is at least not silent.
+  useEffect(() => {
+    if (joboError) console.warn('[jobo] ledger storage error:', joboError);
+  }, [joboError]);
+  // Every restore path writes the ledger FIRST, awaited, and aborts on failure:
+  // the checked IndexedDB write is the one step in a restore that can fail, so
+  // it runs before the localStorage replacement that cannot. A ledger left at
+  // the old point in time under a restored plan would silently disagree with
+  // it, and a write still in flight at reload is lost. The throw lands in each
+  // path's own catch, which alerts and leaves the app as it was.
+  const restoreJoboOrThrow = async (data) => {
+    if (!Array.isArray(data?.joboRecords)) return; // an older backup: the ledger is left as is
+    const result = await restoreJobo(data.joboRecords);
+    if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
+  };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -3485,6 +3524,10 @@ const DayPlanner = () => {
   const enterFocusModeRef = useRef(null);
   const startFocusTimerRef = useRef(null);
   const openRoutinesDashboardRef = useRef(null);
+  // Goals & Projects space keyboard hooks: GoalDashboard registers { moveSelection,
+  // setTab } here while the space is active so the global handler can drive its
+  // sidebar (Up/Down, ',' and '.') under the same modal guard as every shortcut.
+  const goalsSpaceKeysRef = useRef(null);
   // MONTH view registers its "open the sheet for this day" here while mounted,
   // so Enter in the keyboard shortcuts can open the selected day.
   const openMonthDaySheetRef = useRef(null);
@@ -3545,7 +3588,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard,
+    goalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -4747,6 +4790,7 @@ const DayPlanner = () => {
         goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4809,6 +4853,7 @@ const DayPlanner = () => {
       goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4896,6 +4941,7 @@ const DayPlanner = () => {
       const record = await autoBackupDB.getBackup(backupId);
       if (!record?.data?.data) throw new Error('Invalid backup record');
       const { data } = record.data;
+      await restoreJoboOrThrow(data);
       if (data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(data.aiConfig));
       if (data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
       // Restoring replaces the FULL local state, so the vault sync cursors no
@@ -4917,6 +4963,7 @@ const DayPlanner = () => {
       if (!provider) throw new Error('No provider configured');
       const backup = await provider.downloadBackup(autoBackupConfig.remote, filename);
       if (!backup?.data) throw new Error('Invalid backup file');
+      await restoreJoboOrThrow(backup.data);
       if (backup.data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(backup.data.aiConfig));
       if (backup.data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(backup.data.obsidianConfig));
       // Full-state replacement → invalidate the vault sync cursors (see
@@ -5035,7 +5082,7 @@ const DayPlanner = () => {
     if (!backupFile) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const backup = JSON.parse(e.target.result);
 
@@ -5044,6 +5091,7 @@ const DayPlanner = () => {
           throw new Error('Invalid backup file format');
         }
 
+        await restoreJoboOrThrow(backup.data);
         applyBackupToLocalStorage(backup.data);
 
         // Full-state replacement → invalidate the vault sync cursors (see
@@ -5082,6 +5130,7 @@ const DayPlanner = () => {
         alert(t('backup.folderBackupNotFound', { filename: LIVE_BACKUP_FILENAME }));
         return;
       }
+      await restoreJoboOrThrow(payload.data);
       applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
@@ -5800,6 +5849,9 @@ const DayPlanner = () => {
         deletedProjectIds: JSON.parse(localStorage.getItem('day-planner-deleted-project-ids') || '{}'),
         areas,
         deletedAreaIds: JSON.parse(localStorage.getItem('day-planner-deleted-area-ids') || '{}'),
+        // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
+        // treat an absent key as "does not carry it"; [] would mean empty.
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -6092,6 +6144,9 @@ const DayPlanner = () => {
       setAreas(data.areas);
     }
     if (data.deletedAreaIds) localStorage.setItem('day-planner-deleted-area-ids', JSON.stringify(data.deletedAreaIds));
+    // JOBO ledger rows go through the hook, the only writer: merged by id with
+    // incoming timestamps untouched, held until the ledger has loaded.
+    if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -8856,6 +8911,8 @@ const DayPlanner = () => {
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    aspireEnabled, setAspireEnabled,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,
@@ -8958,6 +9015,7 @@ const DayPlanner = () => {
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
     hgVisibleProjects,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace, goalsSpaceKeysRef,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
@@ -9468,8 +9526,10 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Tablet: Timeline FABs — + (new task), Frames */}
-      {isTablet && (
+      {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
+          calendar, so they stand down in the Goals & Projects space (`n` still
+          works there). */}
+      {isTablet && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -9497,8 +9557,9 @@ const DayPlanner = () => {
         </>
       )}
 
-      {/* Desktop: Timeline FABs — + (new task), Frames, mic (voice input) */}
-      {!isTablet && !isMobile && (
+      {/* Desktop: Timeline FABs — + (new task), Frames. Calendar-only, like
+          the tablet's above: hidden in the Goals & Projects space. */}
+      {!isTablet && !isMobile && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -10480,9 +10541,6 @@ const DayPlanner = () => {
           </FormOverlay>
         );
       })()}
-
-      {/* Goals & Projects Dashboard */}
-      <GoalDashboard />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

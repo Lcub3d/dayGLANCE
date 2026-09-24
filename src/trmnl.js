@@ -10,20 +10,13 @@
 import { getOccurrencesInRange } from './utils/recurrenceEngine.js';
 import { notBucketed } from './utils/bucketList.js';
 import { stripWikilinks } from './utils/taskUtils.js';
+import { formatDuration } from './utils/formatDuration.js';
+import { activeLocale } from './utils/localeFormatting.js';
+import { parseRetryAfter } from './utils/trmnlPushPolicy.js';
 
 // ---------------------------------------------------------------------------
 // Data helpers
 // ---------------------------------------------------------------------------
-
-/** Format minutes as "Xh Ym" or "Ym" */
-import { parseRetryAfter } from './utils/trmnlPushPolicy.js';
-
-const fmtDuration = (mins) => {
-  if (!mins || mins <= 0) return '0m';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${m}m`;
-};
 
 /** Format "HH:MM" 24-h string into display time */
 const fmtTime = (t, use24h) => {
@@ -36,7 +29,8 @@ const fmtTime = (t, use24h) => {
 };
 
 /** Priority label */
-const priorityLabel = (p) => ['', 'Low', 'Med', 'High'][p] || '';
+const PRIORITY_KEYS = ['', 'task.lowPriority', 'task.mediumPriority', 'task.highPriority'];
+const priorityLabel = (p, translate) => (PRIORITY_KEYS[p] ? translate(PRIORITY_KEYS[p]) : '');
 
 /** Convert "HH:MM" to total minutes since midnight */
 const toMinutes = (t) => {
@@ -64,6 +58,8 @@ const toMinutes = (t) => {
  * @param {Array}  opts.recurringTasks  - Recurring task templates
  * @param {Array}  opts.todayRoutines  - Today's routine chips
  * @param {boolean} opts.routinesEnabled - Whether routines feature is on
+ * @param {Function} opts.t            - i18next translator for the labels
+ * @param {string} [opts.language]     - Locale for the weekday and date
  * @returns {Object} merge_variables payload (kept under 2 KB for free-tier)
  */
 export function gatherTrmnlData({
@@ -78,6 +74,9 @@ export function gatherTrmnlData({
   dailyNotes = {},
   todayRoutines = [],
   routinesEnabled = false,
+  // Named `translate` here: this module already uses `t` for tasks.
+  t: translate,
+  language = activeLocale(),
 }) {
   const today = selectedDate || new Date().toISOString().slice(0, 10);
   const now = new Date();
@@ -117,10 +116,10 @@ export function gatherTrmnlData({
     const endMins = startMins >= 0 ? startMins + (t.duration || 0) : -1;
     return {
       time: fmtTime(t.startTime, use24HourClock),
-      dur: fmtDuration(t.duration),
+      dur: formatDuration(t.duration, translate),
       title: stripWikilinks(t.title).slice(0, 40),
       done: !!t.completed,
-      pri: priorityLabel(t.priority),
+      pri: priorityLabel(t.priority, translate),
       allDay: !!t.allDay,
       past: isEvent && !t.allDay && startMins >= 0 && endMins <= nowMins,
     };
@@ -186,15 +185,15 @@ export function gatherTrmnlData({
         .slice(0, 8)
         .map((r) => ({
           name: (r.name || '').slice(0, 30),
-          time: r.isAllDay ? 'All day' : fmtTime(r.startTime, use24HourClock),
-          dur: r.isAllDay ? '' : fmtDuration(r.duration),
+          time: r.isAllDay ? translate('task.allDay') : fmtTime(r.startTime, use24HourClock),
+          dur: r.isAllDay ? '' : formatDuration(r.duration, translate),
         }))
     : [];
 
   // Friendly date
   const dateObj = new Date(today + 'T12:00:00');
-  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-  const dateLabel = dateObj.toLocaleDateString('en-US', {
+  const dayName = dateObj.toLocaleDateString(language, { weekday: 'long' });
+  const dateLabel = dateObj.toLocaleDateString(language, {
     month: 'short',
     day: 'numeric',
   });
@@ -210,7 +209,7 @@ export function gatherTrmnlData({
     completed,
     overdue,
     pct: total > 0 ? Math.round((completed / total) * 100) : 0,
-    time_planned: fmtDuration(totalMinutes),
+    time_planned: formatDuration(totalMinutes, translate),
     upcoming,
     next_task: nextTask,
     inbox_count: inboxCount,

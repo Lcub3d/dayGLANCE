@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { pushToTrmnl } from './trmnl.js';
+import i18next from 'i18next';
+import { gatherTrmnlData, pushToTrmnl } from './trmnl.js';
+import en from '../public/locales/en/translation.json';
+import de from '../public/locales/de/translation.json';
+
+// Same interpolation config as src/i18n.js.
+const i18n = i18next.createInstance();
+await i18n.init({ lng: 'en', fallbackLng: false, resources: { en: { translation: en }, de: { translation: de } }, interpolation: { escapeValue: false } });
 
 const cfg = { webhookUrl: 'https://usetrmnl.com/api/custom_plugins/abc' };
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -26,5 +33,64 @@ describe('pushToTrmnl', () => {
     expect(url).toBe(cfg.webhookUrl);
     expect(JSON.parse(init.body)).toEqual({ merge_variables: { a: 1 } });
     expect(init.headers.Authorization).toBe('Bearer k');
+  });
+});
+
+describe('gatherTrmnlData', () => {
+  // gatherTrmnlData reads the clock to hide routines that have already ended.
+  afterEach(() => { vi.useRealTimers(); });
+
+  const day = (lng) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-24T08:00:00'));
+    return gatherTrmnlData({
+      tasks: [
+        { id: 'a', date: '2026-09-24', title: 'Plan', startTime: '09:00', duration: 90, priority: 1 },
+        { id: 'b', date: '2026-09-24', title: 'Review', startTime: '11:00', duration: 45, priority: 2 },
+        { id: 'c', date: '2026-09-24', title: 'Ship', startTime: '14:00', duration: 60, priority: 3 },
+      ],
+      selectedDate: '2026-09-24',
+      use24HourClock: true,
+      routinesEnabled: true,
+      todayRoutines: [
+        { name: 'Stretch', isAllDay: true },
+        { name: 'Walk', startTime: '18:00', duration: 30 },
+      ],
+      t: i18n.getFixedT(lng),
+      language: lng,
+    });
+  };
+
+  it('renders every label and the date in the requested language', () => {
+    const d = day('de');
+    expect(d.day_name).toBe('Donnerstag');
+    expect(d.date_label).toBe('24. Sept.');
+    expect(d.schedule.map((s) => s.pri)).toEqual(['Niedrig', 'Mittel', 'Hoch']);
+    expect(d.schedule.map((s) => s.dur)).toEqual(['1 Std. 30 Min.', '45 Min.', '1 Std.']);
+    expect(d.time_planned).toBe('3 Std. 15 Min.');
+    expect(d.routines).toEqual([
+      { name: 'Stretch', time: 'Ganztägig', dur: '' },
+      { name: 'Walk', time: '18:00', dur: '30 Min.' },
+    ]);
+  });
+
+  it('keeps the English durations the device has always shown', () => {
+    const d = day('en');
+    expect(d.day_name).toBe('Thursday');
+    expect(d.date_label).toBe('Sep 24');
+    expect(d.schedule.map((s) => s.dur)).toEqual(['1h 30m', '45m', '1h']);
+    expect(d.time_planned).toBe('3h 15m');
+  });
+
+  it('leaves the priority label empty when a task has none', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-24T08:00:00'));
+    const d = gatherTrmnlData({
+      tasks: [{ id: 'a', date: '2026-09-24', title: 'Plain', startTime: '09:00', duration: 30 }],
+      selectedDate: '2026-09-24',
+      t: i18n.getFixedT('de'),
+      language: 'de',
+    });
+    expect(d.schedule[0].pri).toBe('');
   });
 });

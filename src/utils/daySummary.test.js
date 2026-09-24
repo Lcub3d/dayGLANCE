@@ -1,23 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeDaySummary, formatMinutes } from './daySummary.js';
+import { computeDaySummary } from './daySummary.js';
 
 // Minimal timeline block; tags live in the title as #hashtags, exactly as the
 // timeline stores them.
 const block = (startTime, duration, title = 'Untitled', extra = {}) => ({
   startTime, duration, title, ...extra,
-});
-
-describe('formatMinutes', () => {
-  it('formats durations, not clock times', () => {
-    expect(formatMinutes(0)).toBe('0m');
-    expect(formatMinutes(45)).toBe('45m');
-    expect(formatMinutes(60)).toBe('1h');
-    expect(formatMinutes(135)).toBe('2h 15m');
-  });
-
-  it('never renders a negative duration', () => {
-    expect(formatMinutes(-30)).toBe('0m');
-  });
 });
 
 describe('computeDaySummary — scope rules', () => {

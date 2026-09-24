@@ -13,10 +13,10 @@ import { planHistory } from '../utils/originalPlan.js';
 // put. An icon on all of them that opens to say "nothing happened" would be
 // worse than no icon, so that is the case worth pinning.
 
-async function i18n() {
-  const bundle = await loaders.en();
+async function i18n(lng = 'en') {
+  const bundle = await loaders[lng]();
   const inst = i18next.createInstance();
-  await inst.init({ lng: 'en', fallbackLng: false, resources: { en: { translation: bundle } }, interpolation: { escapeValue: false } });
+  await inst.init({ lng, fallbackLng: false, resources: { [lng]: { translation: bundle } }, interpolation: { escapeValue: false } });
   return inst;
 }
 
@@ -64,8 +64,8 @@ describe('TaskPlanHistory', () => {
 // duration formatter from the wrong module; every test above still passed,
 // because none of them reached this code. The dev server caught it instead.
 describe('PlanHistoryPanel', () => {
-  const renderPanel = async (task) => renderToStaticMarkup(
-    <I18nextProvider i18n={await i18n()}>
+  const renderPanel = async (task, lng) => renderToStaticMarkup(
+    <I18nextProvider i18n={await i18n(lng)}>
       <PlanHistoryPanel history={planHistory(task)} task={task} formatTime={(v) => v} />
     </I18nextProvider>,
   );
@@ -82,6 +82,14 @@ describe('PlanHistoryPanel', () => {
     const html = await renderPanel({ id: 't1', ...PLANNED, duration: 15, originalPlan: PLANNED });
     expect(html).toContain('1h');   // the original 60
     expect(html).toContain('15m');  // the current
+  });
+
+  // Durations come from the `common.duration*` keys of the panel's own i18n
+  // instance, not from Intl's narrow units, which give Ukrainian a bare "х".
+  it('formats durations through the translated ladder', async () => {
+    const html = await renderPanel({ id: 't1', ...PLANNED, duration: 15, originalPlan: PLANNED }, 'uk');
+    expect(html).toContain('>1 г<');
+    expect(html).toContain('>15 хв<');
   });
 
   it('emphasises what changed and dims what did not', async () => {

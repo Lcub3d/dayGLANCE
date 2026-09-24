@@ -27,7 +27,7 @@ import { getGlanceHGInstances, isHGSessionReachable } from '../hooks/useHyperGla
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from '../utils/formatDuration.js';
 import { notBucketed } from '../utils/bucketList.js';
-import { formatLocalizedDate, formatLocalizedDurationMinutes } from '../utils/localeFormatting.js';
+import { formatLocalizedDate } from '../utils/localeFormatting.js';
 
 const MobileGlanceSection = () => {
   // §6.5 status surface for narrow viewports: the GLANCE tab's utility row is
@@ -870,7 +870,7 @@ const MobileGlanceSection = () => {
     }
 
     const renderMobileNowMarker = (key) => {
-      const gapStr = formatLocalizedDurationMinutes(agendaNowMarker.gapMinutes, i18n.language);
+      const gapStr = formatDuration(agendaNowMarker.gapMinutes, t);
       return (
         <div key={key} className="flex gap-2.5 py-2.5">
           <div className="w-1.5 rounded-full flex-shrink-0 bg-red-500" />
@@ -1034,7 +1034,7 @@ const MobileGlanceSection = () => {
     <div className="space-y-1.5">
       {/* Now marker before first task (only when no frame sections handle positioning) */}
       {filteredAgenda.length > 0 && sections.length === 0 && !agendaNowMarker.insideTask && agendaNowMarker.insertAfterIndex < 0 && (() => {
-        const gapStr = formatLocalizedDurationMinutes(agendaNowMarker.gapMinutes, i18n.language);
+        const gapStr = formatDuration(agendaNowMarker.gapMinutes, t);
         return (
           <div key="mobile-now-marker" className="flex gap-2.5 py-2.5">
             <div className="w-1.5 rounded-full flex-shrink-0 bg-red-500" />

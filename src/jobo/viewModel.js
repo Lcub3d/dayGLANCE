@@ -65,7 +65,8 @@ function recordGroupKey(record) {
 
 function taskLinkId(task) {
   if (!task) return null;
-  return task.recurringTemplateId != null ? String(task.recurringTemplateId) : String(task.id);
+  if (task.recurringTemplateId != null) return String(task.recurringTemplateId);
+  return task.id == null ? null : String(task.id);
 }
 
 function taskPlanGroupKey(task, plan) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
-import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask } from './utils/nativeCalendar.js';
+import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
 import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
@@ -43,6 +43,8 @@ import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
 import { resolveDayLink } from './utils/dayLink.js';
+import { widgetDayTasks } from './utils/widgetNativeEvents.js';
+import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -4163,11 +4165,10 @@ const DayPlanner = () => {
     // event list (or null). The mobile and Electron transports both produce this
     // shape so the merge below is identical across platforms.
     const applyEvents = (results) => {
-      // Tag each event with the date it was queried for so multi-day all-day events
-      // can be shown on every day they span, not just their start date.
-      const allEvents = results.flatMap((result, i) =>
-        Array.isArray(result) ? result.map(e => ({ ...e, _queryDate: dates[i] })) : []
-      );
+      // The event → task conversion is shared with the widget's own fetch
+      // (useWidgetNativeEvents): utils/nativeCalendar.js nativeResultsToTasks.
+      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
+      const { events: allEvents, tasks: fetchedWithOverrides } = nativeResultsToTasks(results, dates, { calendarFilter, overrides });
 
       // Discover calendars that appear in events but weren't returned by getCalendars()
       // (e.g. task-only calendars that some providers omit from the calendars list).
@@ -4197,39 +4198,6 @@ const DayPlanner = () => {
           });
         }
         return [...prev, ...newCals];
-      });
-
-      const filterSet = calendarFilter.length > 0 ? new Set(calendarFilter) : null;
-
-      // Deduplicate by task id: CalendarContract can return the same all-day event
-      // in adjacent day windows (especially in UTC+ timezones). Keep first occurrence.
-      // The id is per occurrence (event id + date, see nativeEventToTask), so the
-      // occurrences of a recurring event across this window all survive.
-      const seen = new Set();
-      const fetched = allEvents
-        .filter(e => !filterSet || filterSet.has(e.calendarId))
-        .map(e => nativeEventToTask(e))
-        .filter(t => {
-          if (seen.has(t.id)) return false;
-          seen.add(t.id);
-          return true;
-        });
-
-      // Apply any stored time overrides (from dragging all-day events to the timeline)
-      // so the scheduled position survives date navigation and native calendar re-fetches.
-      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
-      const fetchedWithOverrides = fetched.map(t => {
-        const override = t.nativeEventId && overrides[String(t.nativeEventId)];
-        if (!override) return t;
-        return {
-          ...t,
-          ...(override.date !== undefined ? { date: override.date } : {}),
-          ...(override.startTime !== undefined ? { startTime: override.startTime, isAllDay: false } : {}),
-          ...(override.duration !== undefined ? { duration: override.duration } : {}),
-          ...(override.title !== undefined ? { title: override.title } : {}),
-          ...(override.notes !== undefined ? { notes: override.notes } : {}),
-          ...(override.color !== undefined ? { color: override.color } : {}),
-        };
       });
 
       // Drop both prior _native events and any read-only subscription imports
@@ -7412,6 +7380,17 @@ const DayPlanner = () => {
   // at midnight; a foregrounded app then also reloads at 00:00:30
   // (utils/midnightRefresh.js).
   const widgetTodayKey = dateToString(currentTime);
+  // The widget's own device-calendar fetch over the whole month window, so the
+  // snapshot has device events for days nothing on screen has loaded
+  // (hooks/useWidgetNativeEvents.js); widgetTasksForDate swaps them in.
+  const widgetNative = useWidgetNativeEvents({
+    enabled: dataLoaded && (isNativeAndroid() || isNativeIOS()) && hasNativeCalendar(),
+    todayKey: widgetTodayKey, weekStartDay, calendarFilter, nativeCalendarKey,
+  });
+  const widgetTasksForDate = useCallback(
+    (date) => widgetDayTasks(dateToString(date), getTasksForDate(date, false), widgetNative),
+    [getTasksForDate, widgetNative],
+  );
   const projectedWidgetDays = useMemo(() => {
     if (!dataLoaded) return [];
     if (!isNativeAndroid() && !isNativeIOS()) return [];
@@ -7442,8 +7421,8 @@ const DayPlanner = () => {
         date,
         dateStr,
         dateLabel: formatLocalizedDate(date, { weekday: 'short', month: 'short', day: 'numeric' }),
-        dayTasks: getTasksForDate(date, false),
-        prevDayTasks: getTasksForDate(prev, false),
+        dayTasks: widgetTasksForDate(date),
+        prevDayTasks: widgetTasksForDate(prev),
         deadlineTasks: unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
         frames: getFrameInstancesForDate(date),
         frameAvailableMinutes: (frame) => computeAvailableSlots(frame, date).reduce((sum, slot) => sum + slot.minutes, 0),
@@ -7459,7 +7438,7 @@ const DayPlanner = () => {
     // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
+    dataLoaded, widgetTodayKey, widgetTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
     tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
@@ -7474,7 +7453,7 @@ const DayPlanner = () => {
     return buildWidgetMonthWindow({
       today: new Date(widgetTodayKey + 'T12:00:00'),
       weekStartDay,
-      tasksForDate: (date) => getTasksForDate(date, false),
+      tasksForDate: widgetTasksForDate,
       deadlinesForDate: (dateStr) => unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
       // Routines exist for today only; both halves of the date guard are the
       // ones buildRoutineBlocks (utils/mcpRoutines.js) explains.
@@ -7483,7 +7462,7 @@ const DayPlanner = () => {
         : [],
     });
   }, [
-    dataLoaded, widgetTodayKey, weekStartDay, getTasksForDate, unscheduledTasks, isVisibleForUser,
+    dataLoaded, widgetTodayKey, weekStartDay, widgetTasksForDate, unscheduledTasks, isVisibleForUser,
     routinesEnabled, routinesDate, todayRoutines,
   ]);
 

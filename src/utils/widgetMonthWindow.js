@@ -85,6 +85,18 @@ export function monthWindowDates(today, weekStartDay = 0, days = WIDGET_MONTH_PA
   return out;
 }
 
+/**
+ * Every day buildWidgetMonthWindow reads, as 'YYYY-MM-DD': the day before
+ * the window (its late blocks carry into the first cell) and the payload's
+ * days. The widget's device-calendar fetch (useWidgetNativeEvents) fetches
+ * exactly these, so the two cannot drift. The day-keyed projection (today …
+ * today+3, and the day before each) is inside it too.
+ */
+export function monthWindowFetchDates(today, weekStartDay = 0) {
+  const dates = monthWindowDates(today, weekStartDay);
+  return [dateToString(noonOf(dates[0], -1)), ...dates.map(dateToString)];
+}
+
 /** Raw [startMin, endMin, hex] spans for one day's items, unclipped. */
 function spansFor(dayTasks, routines) {
   const spans = [];

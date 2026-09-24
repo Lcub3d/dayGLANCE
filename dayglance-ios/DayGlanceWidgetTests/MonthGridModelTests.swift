@@ -360,6 +360,23 @@ final class MonthGridModelTests: XCTestCase {
         XCTAssertEqual(MonthGrid.tapURL(date: "2026-10-01")?.absoluteString, "dayglance://day?date=2026-10-01&view=month")
     }
 
+    // MARK: Labels
+
+    /// Dated, because the grid stays live up to 13 days past a push: a
+    /// weekday alone would name two Mondays.
+    func testThePlannedLabelCarriesTheDate() {
+        let captured = Self.at("2026-09-21", 18, 0)
+        let f = WidgetFreshness(isStale: false, daysOld: 0, snapshotDay: Self.at("2026-10-04", 0, 0), capturedAt: captured)
+        let label = f.monthPlannedAsOfLabel(use24Hour: false, locale: Self.locale, timeZone: calendar.timeZone)
+        XCTAssertTrue(label.contains("Mon"), label)
+        XCTAssertTrue(label.contains("Sep 21"), label)
+        XCTAssertTrue(label.contains("6:00"), label)
+        let h24 = f.monthPlannedAsOfLabel(use24Hour: true, locale: Self.locale, timeZone: calendar.timeZone)
+        XCTAssertTrue(h24.contains("18:00"), h24)
+        // The shared label the other widgets use is untouched: weekday only.
+        XCTAssertFalse(f.plannedAsOfLabel(use24Hour: false).contains("Sep"), f.plannedAsOfLabel(use24Hour: false))
+    }
+
     // MARK: Bars
 
     private func frame(_ s: Double, _ d: Double, track: CGFloat = 140) -> MonthBarFrame {

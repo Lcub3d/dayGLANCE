@@ -354,3 +354,22 @@ enum MonthGridTimeline {
         return calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
     }
 }
+
+// MARK: - Labels
+
+extension WidgetFreshness {
+    /// The month grid's "Planned as of …", WITH the date: "Planned as of Mon,
+    /// Sep 21 at 6:00 PM". The shared label (plannedAsOfLabel) names only the
+    /// weekday, which is unambiguous across the day-keyed projection's three
+    /// days but not across this grid's thirteen, where "Mon" can be either of
+    /// two Mondays. Same localized key, so every translation still applies;
+    /// the shared label is left as it is for the other widgets.
+    func monthPlannedAsOfLabel(use24Hour: Bool?, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
+        guard let capturedAt else { return String(localized: "Planned in advance") }
+        var style = ClockPreference.hour(Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day().minute(),
+                                         use24Hour: use24Hour)
+            .locale(ClockPreference.locale(use24Hour: use24Hour, base: locale))
+        style.timeZone = timeZone
+        return String(localized: "Planned as of \(capturedAt.formatted(style))")
+    }
+}

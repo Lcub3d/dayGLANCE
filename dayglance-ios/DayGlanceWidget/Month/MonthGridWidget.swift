@@ -139,7 +139,7 @@ struct MonthGridContent: View {
                 StaleBanner(freshness: state.freshness, use24Hour: entry.snapshot?.use24Hour)
                     .padding(.leading, MonthGridMetrics.cellInset)
             } else if state.isProjected {
-                Text(state.freshness.plannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour))
+                Text(state.freshness.monthPlannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour, locale: locale, timeZone: calendar.timeZone))
                     .font(.caption2)
                     .foregroundColor(MonthPalette.muted)
                     .lineLimit(1)

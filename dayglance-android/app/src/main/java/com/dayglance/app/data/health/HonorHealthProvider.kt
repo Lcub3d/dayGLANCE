@@ -16,7 +16,7 @@ import kotlin.coroutines.resume
 class HonorHealthProvider(
     context: Context,
     private val appId: String,
-    tokenExchangeUrl: String,
+    private val tokenExchangeUrl: String,
 ) : HealthProvider {
 
     override val id = ID

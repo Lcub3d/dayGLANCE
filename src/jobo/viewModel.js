@@ -38,12 +38,39 @@ function planSnapshotKey(snapshot) {
   return `${snapshot.date}|${snapshot.startTime}|${snapshot.duration}`;
 }
 
+function recurringInstanceDateFromRecord(record) {
+  if (record?.source !== 'completion' || record.taskId == null || typeof record.id !== 'string') return null;
+  const prefix = `do:${String(record.taskId)}:`;
+  if (!record.id.startsWith(prefix)) return null;
+  const rest = record.id.slice(prefix.length);
+  return /^\d{4}-\d{2}-\d{2}:/.test(rest) ? rest.slice(0, 10) : null;
+}
+
 function recordGroupKey(record) {
   // An unlinked Do has no task identity that can prove two rows are sessions
   // of the same execution. Keep each one independent rather than deriving
   // "split" across unrelated manual records.
   if (record.taskId == null) return `record::${record.id}`;
-  return `${String(record.taskId)}::${planSnapshotKey(record.planSnapshot)}`;
+
+  // A timed Final Plan is the strongest execution anchor. For null snapshots,
+  // recurring completions still need an occurrence boundary: every occurrence
+  // shares the template taskId, and all-day/untimed occurrences would otherwise
+  // collapse into one false "split" history across dates.
+  if (record.planSnapshot) {
+    return `${String(record.taskId)}::${planSnapshotKey(record.planSnapshot)}`;
+  }
+  const instanceDate = recurringInstanceDateFromRecord(record);
+  return `${String(record.taskId)}::${instanceDate ? `instance:${instanceDate}` : 'none'}`;
+}
+
+function taskLinkId(task) {
+  if (!task) return null;
+  return task.recurringTemplateId != null ? String(task.recurringTemplateId) : String(task.id);
+}
+
+function taskPlanGroupKey(task, plan) {
+  const taskId = taskLinkId(task);
+  return taskId == null ? null : `${taskId}::${planSnapshotKey(plan)}`;
 }
 
 function safeSummary(plan, records, options = {}) {
@@ -224,37 +251,63 @@ export function buildJoboDayModel({
     }))
     .sort((a, b) => String(a.record.title).localeCompare(String(b.record.title)));
 
-  const planned = (Array.isArray(tasks) ? tasks : [])
+  // Final Plan is capture-once history. Render a captured Plan from the record
+  // even when the live task was later renamed, rescheduled or deleted; otherwise
+  // the card position could disagree with the very snapshot used for its badges.
+  const capturedPlanKeys = new Set();
+  const capturedPlans = [];
+  for (const [key, group] of groups) {
+    const representative = group[0];
+    const plan = representative?.planSnapshot ?? null;
+    if (!plan || plan.date !== date) continue;
+
+    capturedPlanKeys.add(key);
+    const linkedTask = representative.taskId == null
+      ? null
+      : taskById.get(String(representative.taskId)) || null;
+    const task = linkedTask
+      ? { ...linkedTask, title: representative.title }
+      : {
+          id: representative.taskId,
+          title: representative.title,
+          color: 'bg-blue-500',
+          notes: '',
+        };
+    const startMinute = timeMinutes(plan.startTime);
+    capturedPlans.push({
+      id: `captured::${key}`,
+      task,
+      plan,
+      labels: summaryByGroup.get(key) || [],
+      startMinute,
+      endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
+    });
+  }
+
+  const currentPlans = (Array.isArray(tasks) ? tasks : [])
     .map((task) => ({ task, plan: planFromTask(task) }))
     .filter(({ plan }) => plan && plan.date === date)
+    // When a record already captured this exact Final Plan, the captured copy
+    // is the historical source of truth and also preserves the captured title.
+    .filter(({ task, plan }) => !capturedPlanKeys.has(taskPlanGroupKey(task, plan)))
     .map(({ task, plan }) => {
       const startMinute = timeMinutes(plan.startTime);
-      // A task id can survive more than one Plan (reopen/reschedule, and every
-      // recurring occurrence shares its template id). Only execution captured
-      // against a Final Plan on this planned day belongs in this comparison.
-      // A null snapshot proves execution but cannot honestly be attributed to
-      // this timed Plan.
-      const linked = validLiveRecords.filter((record) => (
-        recordBelongsToTask(record, task)
-        && record.planSnapshot?.date === plan.date
-      ));
+      const key = taskPlanGroupKey(task, plan);
+      const linked = key == null ? [] : (groups.get(key) || []);
 
       let labels = [];
-      if (linked.length === 0 && now) {
+      if (linked.length === 0 && now && invalidRecordCount === 0) {
+        // Core's internal key remains notStarted, but Slice 4 clarified the
+        // product meaning: this is only "no Do recorded", never proof that no
+        // execution happened. Invalid ledger rows also suppress that absence
+        // inference because the evidence set is not clean.
         labels = safeSummary(plan, [], { displayedPlan: plan, now });
       } else if (linked.length > 0) {
-        const snapshots = new Map();
-        for (const record of linked) {
-          if (record.planSnapshot) snapshots.set(planSnapshotKey(record.planSnapshot), record.planSnapshot);
-        }
-        if (snapshots.size === 1) {
-          const anchor = [...snapshots.values()][0];
-          labels = safeSummary(anchor, linked, { displayedPlan: plan });
-        }
+        labels = safeSummary(plan, linked, { displayedPlan: plan });
       }
 
       return {
-        id: String(task.id),
+        id: `current::${String(task.id)}::${planSnapshotKey(plan)}`,
         task,
         plan,
         labels,
@@ -262,6 +315,8 @@ export function buildJoboDayModel({
         endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
       };
     });
+
+  const planned = [...capturedPlans, ...currentPlans];
 
   return {
     plans: assignOverlapColumns(planned),

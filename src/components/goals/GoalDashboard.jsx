@@ -797,18 +797,39 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
 };
 
 // The space is wider than the old modal, so its cards are wider and fold their
-// task list later. Cards sit in a grid that fits as many columns as the width
-// allows (at least SPACE_CARD_MIN each) and shares the row between them, up to
-// SPACE_CARD_MAX, so there is no dead space at the right at any window width:
-// 3 across at ~1000px, 4 at ~1400px, each stretched to fill.
+// task list later. Cards ALWAYS span the available width: the column count is
+// measured (as many SPACE_CARD_MIN columns as fit; 3 across at ~1000px, 4 at
+// ~1400px) and the columns share the row equally. Only when there are fewer
+// cards than columns is the row capped, at SPACE_CARD_MAX per card, so one or
+// two cards do not stretch across the whole area.
+//
+// Measured in JS rather than `repeat(auto-fit, minmax(min, max))` because with
+// a fixed max the browser counts columns by the MAX (CSS Grid §7.2.3.2), which
+// gave two 420px columns and dead space at laptop widths.
 const SPACE_CARD_MIN = 300;
-const SPACE_CARD_MAX = 420;
+const SPACE_CARD_MAX = 560;
+const SPACE_CARD_GAP = 16;
 const SPACE_VISIBLE_TASKS = 6;
-const cardGridStyle = (justify = 'center') => ({
+const useGridColumns = (ref) => {
+  const [cols, setCols] = useState(3);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const update = () => setCols(Math.max(1, Math.floor((el.clientWidth + SPACE_CARD_GAP) / (SPACE_CARD_MIN + SPACE_CARD_GAP))));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return cols;
+};
+const cardGridStyle = (cols, count, justify = 'center') => ({
   display: 'grid',
-  gridTemplateColumns: `repeat(auto-fit, minmax(${SPACE_CARD_MIN}px, ${SPACE_CARD_MAX}px))`,
-  justifyContent: justify,
-  gap: '1rem',
+  gridTemplateColumns: `repeat(${Math.max(1, Math.min(cols, count))}, minmax(0, 1fr))`,
+  gap: `${SPACE_CARD_GAP}px`,
+  maxWidth: count < cols ? `${count * SPACE_CARD_MAX + (count - 1) * SPACE_CARD_GAP}px` : undefined,
+  marginLeft: justify === 'center' ? 'auto' : undefined,
+  marginRight: justify === 'center' ? 'auto' : undefined,
 });
 
 // ─── Project card group (one goal's projects, or the standalone projects) ────
@@ -822,7 +843,8 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
   const goalAttr = goalId ?? '';
   const activeProjs = projects.filter(p => p.status !== 'completed');
   const doneProjs = projects.filter(p => p.status === 'completed');
-  const gridStyle = cardGridStyle(justify);
+  const groupRef = useRef(null);
+  const cols = useGridColumns(groupRef);
 
   const wrapCard = (proj, compact) => (
     <div
@@ -864,6 +886,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
 
   return (
     <div
+      ref={groupRef}
       className="relative z-10"
       data-move-goal={goalAttr}
       onDragOver={e => { e.preventDefault(); }}
@@ -875,12 +898,12 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       }}
     >
       {activeProjs.length > 0 && (
-        <div style={gridStyle} className="mb-3" data-card-grid>
+        <div style={cardGridStyle(cols, activeProjs.length, justify)} className="mb-3" data-card-grid>
           {activeProjs.map(proj => wrapCard(proj, false))}
         </div>
       )}
       {doneProjs.length > 0 && (
-        <div style={gridStyle} data-card-grid>
+        <div style={cardGridStyle(cols, doneProjs.length, justify)} data-card-grid>
           {doneProjs.map(proj => wrapCard(proj, true))}
         </div>
       )}
@@ -1088,7 +1111,7 @@ const ProjectSidebarRow = ({ project, focused, onSelect }) => {
       data-project-row={project.id}
       aria-pressed={focused}
       onClick={onSelect}
-      className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border text-left transition-colors ${
+      className={`w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg border text-left transition-colors ${
         focused
           ? (darkMode ? 'bg-blue-900/30 border-blue-700/60' : 'bg-blue-50 border-blue-200')
           : `border-transparent ${hoverBg}`
@@ -1246,12 +1269,16 @@ const GoalSpaceSidebar = ({
           standaloneProjects.length === 0 ? (
             <p className={`text-xs ${textSecondary} opacity-60 text-center px-4 py-6`}>{t(projectQuery ? 'goals.noProjectsMatch' : 'goals.noStandaloneProjects')}</p>
           ) : (
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col">
               <p className={`px-2 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider ${textSecondary}`}>
                 {t('goals.standalone')}
               </p>
-              {standaloneProjects.map(p => (
-                <ProjectSidebarRow key={p.id} project={p} focused={p.id === focusedProjectId} onSelect={() => onProjectRowClick(p.id)} />
+              {/* hairline between rows for definition; the focused row keeps its rounded highlight */}
+              {standaloneProjects.map((p, i) => (
+                <React.Fragment key={p.id}>
+                  {i > 0 && <div data-row-divider className={`h-px mx-2 ${darkMode ? 'bg-gray-700/70' : 'bg-stone-200'}`} />}
+                  <ProjectSidebarRow project={p} focused={p.id === focusedProjectId} onSelect={() => onProjectRowClick(p.id)} />
+                </React.Fragment>
               ))}
             </div>
           )
@@ -2182,7 +2209,9 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
   );
 
   const listClass = isMobile ? 'flex flex-col gap-4' : '';
-  const listStyle = isMobile ? undefined : cardGridStyle('center');
+  const listRef = useRef(null);
+  const cols = useGridColumns(listRef);
+  const listStyle = (count) => (isMobile ? undefined : cardGridStyle(cols, count, 'center'));
 
   return (
     <div className={`mt-5 border-t ${borderClass} pt-4`}>
@@ -2213,18 +2242,19 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
 
       {/* Child projects — identical to List view (inline tasks), reorderable within the goal */}
       <div
+        ref={listRef}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); if (!dragId || beforeId) return; moveProject(dragId, goal.id); endDrag(); }}
       >
         {activeProjs.length > 0 && (
-          <div className={`${listClass} mb-3`} style={listStyle}>
+          <div className={`${listClass} mb-3`} style={listStyle(activeProjs.length)}>
             {activeProjs.map(proj => wrapCard(proj,
               <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} wide={!isMobile} visibleCount={isMobile ? 3 : SPACE_VISIBLE_TASKS} />
             ))}
           </div>
         )}
         {doneProjs.length > 0 && (
-          <div className={listClass} style={listStyle}>
+          <div className={listClass} style={listStyle(doneProjs.length)}>
             {doneProjs.map(proj => wrapCard(proj,
               <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} wide={!isMobile} />
             ))}

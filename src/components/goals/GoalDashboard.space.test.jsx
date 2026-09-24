@@ -167,8 +167,11 @@ describe('GoalDashboard desktop space', () => {
     // every goal row is a reassign drop target; the goal's group and its cards carry the move semantics too
     expect(render({ desktop: true, isActive: true })).toContain('data-move-goal="electron"');
     expect(main).toContain('data-move-goal="ios" data-move-before="asc"');
-    // cards sit in a grid that fits as many 300–420px columns as the width allows
-    expect(main).toContain('grid-template-columns:repeat(auto-fit, minmax(300px, 420px))');
+    // cards sit in a measured-column grid: one active + one done card here, each in
+    // its own one-column grid capped at one card's max width (no ResizeObserver on
+    // the server, so the default 3 columns apply and 1 < 3)
+    expect(main).toContain('grid-template-columns:repeat(1, minmax(0, 1fr))');
+    expect(main).toContain('max-width:560px');
     expect(main).not.toContain('w-[260px]');
     expect(main).not.toContain('w-[325px]');
   });
@@ -206,6 +209,8 @@ describe('GoalDashboard desktop space', () => {
     expect(row).toContain('<svg width="18"');
     expect(row).toContain('>0/2</span>');
     expect(row).toContain('Stalled');
+    // rows are separated by hairlines (none before the first)
+    expect(sidebar.match(/data-row-divider/g) ?? []).toHaveLength(0); // one open standalone project: no divider
     // the filter field sits where the area filter sits on the Goals tab
     expect(sidebar).toContain('data-project-filter');
     expect(sidebar).toContain('placeholder="Filter projects…"');

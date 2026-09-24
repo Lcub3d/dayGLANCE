@@ -82,6 +82,56 @@ describe('gatherTrmnlData', () => {
     expect(d.time_planned).toBe('3h 15m');
   });
 
+  // An all-day task carries `isAllDay`; `allDay` is the native calendar's name
+  // for the same thing. Reading the wrong one sent allDay false for every
+  // all-day row, and since an all-day task has no startTime the template fell
+  // through to an empty time followed by a duration.
+  it('flags an all-day task so the template does not render an empty time', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-24T08:00:00'));
+    const d = gatherTrmnlData({
+      tasks: [
+        { id: 'a', date: '2026-09-24', title: 'Conference', isAllDay: true, duration: 0 },
+        // An all-day row that also carries a startTime. A recurring template
+        // keeps its old startTime when it is made all-day, so the upcoming and
+        // overdue filters cannot lean on a missing time to exclude it.
+        { id: 'b', date: '2026-09-24', title: 'Summit', isAllDay: true, startTime: '16:00', duration: 0 },
+        { id: 'c', date: '2026-09-24', title: 'Standup', isAllDay: true, startTime: '07:00', duration: 0 },
+        { id: 'd', date: '2026-09-24', title: 'Ship', startTime: '14:00', duration: 60 },
+      ],
+      selectedDate: '2026-09-24',
+      use24HourClock: true,
+      t: i18n.getFixedT('en'),
+      language: 'en',
+    });
+    // Keyed by title: the schedule is sorted by startTime, and the all-day rows
+    // sit wherever their stale time puts them.
+    expect(Object.fromEntries(d.schedule.map((s2) => [s2.title, s2.allDay]))).toEqual({
+      Conference: true, Standup: true, Summit: true, Ship: false,
+    });
+    // An all-day row belongs to the day rather than to a moment, so it is
+    // neither upcoming nor overdue even when it carries a stale startTime.
+    expect(d.upcoming.map((u) => u.title)).toEqual(['Ship']);
+    expect(d.overdue).toBe(0);
+  });
+
+  it('translates AM and PM on a 12-hour clock', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-24T08:00:00'));
+    const at = (lng) => gatherTrmnlData({
+      tasks: [
+        { id: 'a', date: '2026-09-24', title: 'Morning', startTime: '09:00', duration: 30 },
+        { id: 'b', date: '2026-09-24', title: 'Afternoon', startTime: '14:00', duration: 30 },
+      ],
+      selectedDate: '2026-09-24',
+      use24HourClock: false,
+      t: i18n.getFixedT(lng),
+      language: lng,
+    }).schedule.map((s2) => s2.time);
+    expect(at('en')).toEqual(['9:00 AM', '2:00 PM']);
+    expect(at('de')).toEqual([`9:00 ${en.common.am === de.common.am ? 'AM' : de.common.am}`, `2:00 ${de.common.pm}`]);
+  });
+
   it('leaves the priority label empty when a task has none', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-09-24T08:00:00'));

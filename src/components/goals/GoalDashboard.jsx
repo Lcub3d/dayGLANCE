@@ -827,10 +827,32 @@ const cardGridStyle = (cols, count, justify = 'center') => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${Math.max(1, Math.min(cols, count))}, minmax(0, 1fr))`,
   gap: `${SPACE_CARD_GAP}px`,
+  alignItems: 'start',
   maxWidth: count < cols ? `${count * SPACE_CARD_MAX + (count - 1) * SPACE_CARD_GAP}px` : undefined,
   marginLeft: justify === 'center' ? 'auto' : undefined,
   marginRight: justify === 'center' ? 'auto' : undefined,
 });
+// Column stacking: cards are dealt into the columns in order (first card to
+// the first column, second to the second, … wrapping), and each column stacks
+// its cards with no vertical gaps. Cards keep their natural height, a short
+// card never leaves a hole under it, and the order is deterministic — it only
+// changes with the column count, never with card heights (unlike masonry).
+// Reading order still runs left-to-right along the top.
+const dealIntoColumns = (items, cols) => {
+  const n = Math.max(1, Math.min(cols, items.length));
+  const columns = Array.from({ length: n }, () => []);
+  items.forEach((item, i) => columns[i % n].push(item));
+  return columns;
+};
+const CardColumns = ({ items, cols, justify, renderItem, className = '' }) => (
+  <div style={cardGridStyle(cols, items.length, justify)} className={className} data-card-grid data-columns={Math.max(1, Math.min(cols, items.length))}>
+    {dealIntoColumns(items, cols).map((column, c) => (
+      <div key={c} className="flex flex-col min-w-0" style={{ gap: `${SPACE_CARD_GAP}px` }} data-card-column>
+        {column.map(renderItem)}
+      </div>
+    ))}
+  </div>
+);
 
 // ─── Project card group (one goal's projects, or the standalone projects) ────
 // Active cards first, completed ones compact below. Each slot is a within-group
@@ -898,14 +920,10 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       }}
     >
       {activeProjs.length > 0 && (
-        <div style={cardGridStyle(cols, activeProjs.length, justify)} className="mb-3" data-card-grid>
-          {activeProjs.map(proj => wrapCard(proj, false))}
-        </div>
+        <CardColumns items={activeProjs} cols={cols} justify={justify} className="mb-3" renderItem={proj => wrapCard(proj, false)} />
       )}
       {doneProjs.length > 0 && (
-        <div style={cardGridStyle(cols, doneProjs.length, justify)} data-card-grid>
-          {doneProjs.map(proj => wrapCard(proj, true))}
-        </div>
+        <CardColumns items={doneProjs} cols={cols} justify={justify} renderItem={proj => wrapCard(proj, true)} />
       )}
     </div>
   );
@@ -2208,10 +2226,9 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
     </div>
   );
 
-  const listClass = isMobile ? 'flex flex-col gap-4' : '';
+  const listClass = 'flex flex-col gap-4';
   const listRef = useRef(null);
   const cols = useGridColumns(listRef);
-  const listStyle = (count) => (isMobile ? undefined : cardGridStyle(cols, count, 'center'));
 
   return (
     <div className={`mt-5 border-t ${borderClass} pt-4`}>
@@ -2246,20 +2263,28 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); if (!dragId || beforeId) return; moveProject(dragId, goal.id); endDrag(); }}
       >
-        {activeProjs.length > 0 && (
-          <div className={`${listClass} mb-3`} style={listStyle(activeProjs.length)}>
-            {activeProjs.map(proj => wrapCard(proj,
-              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} wide={!isMobile} visibleCount={isMobile ? 3 : SPACE_VISIBLE_TASKS} />
-            ))}
-          </div>
-        )}
-        {doneProjs.length > 0 && (
-          <div className={listClass} style={listStyle(doneProjs.length)}>
-            {doneProjs.map(proj => wrapCard(proj,
-              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} wide={!isMobile} />
-            ))}
-          </div>
-        )}
+        {(() => {
+          const activeCard = proj => wrapCard(proj,
+            <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} wide={!isMobile} visibleCount={isMobile ? 3 : SPACE_VISIBLE_TASKS} />
+          );
+          const doneCard = proj => wrapCard(proj,
+            <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} wide={!isMobile} />
+          );
+          if (isMobile) {
+            return (
+              <>
+                {activeProjs.length > 0 && <div className={`${listClass} mb-3`}>{activeProjs.map(activeCard)}</div>}
+                {doneProjs.length > 0 && <div className={listClass}>{doneProjs.map(doneCard)}</div>}
+              </>
+            );
+          }
+          return (
+            <>
+              {activeProjs.length > 0 && <CardColumns items={activeProjs} cols={cols} justify="center" className="mb-3" renderItem={activeCard} />}
+              {doneProjs.length > 0 && <CardColumns items={doneProjs} cols={cols} justify="center" renderItem={doneCard} />}
+            </>
+          );
+        })()}
       </div>
     </div>
   );

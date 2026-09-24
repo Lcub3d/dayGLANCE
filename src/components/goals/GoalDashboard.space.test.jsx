@@ -172,6 +172,8 @@ describe('GoalDashboard desktop space', () => {
     // the server, so the default 3 columns apply and 1 < 3)
     expect(main).toContain('grid-template-columns:repeat(1, minmax(0, 1fr))');
     expect(main).toContain('max-width:560px');
+    // cards are dealt into stacked columns, in order
+    expect(main).toContain('data-card-column');
     expect(main).not.toContain('w-[260px]');
     expect(main).not.toContain('w-[325px]');
   });
@@ -218,6 +220,18 @@ describe('GoalDashboard desktop space', () => {
 
   it('keeps the sidebar tab across renders it was given, but starts on Goals by default', () => {
     expect(render({ desktop: true, isActive: true })).toContain(' Roadmap</button>');
+  });
+
+  it('deals cards into the columns in order and stacks each column', () => {
+    // five open standalone projects, default 3 columns (no ResizeObserver on the server)
+    const five = ['a', 'b', 'c', 'd', 'e'].map((id, i) => ({ id, title: id, status: 'active', sortOrder: i }));
+    const main = section(render({ desktop: true, isActive: true, initialSidebarTab: 'projects' }, { projects: five }), 'data-goals-main');
+    expect(main).toContain('data-columns="3"');
+    const columns = [...main.matchAll(/<div[^>]*data-card-column[^>]*>([\s\S]*?)<\/div><\/div><\/div>/g)];
+    expect(columns.length).toBeGreaterThanOrEqual(1);
+    const order = cards(main);
+    // column 1 holds a and d, column 2 b and e, column 3 c: DOM order is column-major
+    expect(order).toEqual(['a', 'd', 'b', 'e', 'c']);
   });
 
   it('lists the archived goals and projects under the main area', () => {

@@ -1,0 +1,125 @@
+import { describe, it, expect } from 'vitest';
+import {
+  assignOverlapColumns,
+  buildJoboDayModel,
+  timedSliceOnDate,
+} from './viewModel.js';
+
+const T0 = '2026-09-24T09:00:00.000Z';
+const rec = (over = {}) => ({
+  id: 'do:t1:a',
+  taskId: 't1',
+  title: 'Draft report',
+  source: 'manual',
+  progress: 'completed',
+  deleted: false,
+  createdAt: T0,
+  updatedAt: T0,
+  observedAt: T0,
+  timing: 'timed',
+  date: '2026-09-24',
+  startTime: '09:20',
+  endDate: '2026-09-24',
+  endTime: '09:50',
+  planSnapshot: { date: '2026-09-24', startTime: '09:00', duration: 60 },
+  ...over,
+});
+
+describe('timedSliceOnDate', () => {
+  it('clips a cross-midnight Do to the selected civil day', () => {
+    const record = rec({
+      date: '2026-09-23',
+      startTime: '23:30',
+      endDate: '2026-09-24',
+      endTime: '00:30',
+    });
+    expect(timedSliceOnDate(record, '2026-09-24')).toEqual({
+      startMinute: 0,
+      endMinute: 30,
+      durationMinutes: 30,
+      clippedStart: true,
+      clippedEnd: false,
+    });
+  });
+});
+
+describe('assignOverlapColumns', () => {
+  it('places overlapping cards in separate columns but reuses a column later', () => {
+    const out = assignOverlapColumns([
+      { id: 'a', startMinute: 60, endMinute: 120 },
+      { id: 'b', startMinute: 90, endMinute: 150 },
+      { id: 'c', startMinute: 150, endMinute: 180 },
+    ]);
+    expect(out.find((x) => x.id === 'a').columnCount).toBe(2);
+    expect(out.find((x) => x.id === 'b').columnCount).toBe(2);
+    expect(out.find((x) => x.id === 'c').columnCount).toBe(1);
+  });
+});
+
+describe('buildJoboDayModel', () => {
+  const task = {
+    id: 't1',
+    title: 'Draft report',
+    date: '2026-09-24',
+    startTime: '09:00',
+    duration: 60,
+    color: 'bg-blue-500',
+  };
+
+  it('keeps untimed completion evidence visible without inventing an interval', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [rec({
+        timing: 'untimed',
+        startTime: null,
+        endDate: null,
+        endTime: null,
+        source: 'completion',
+      })],
+    });
+    expect(model.timedRecords).toHaveLength(0);
+    expect(model.untimedRecords).toHaveLength(1);
+    expect(model.untimedRecords[0].record.id).toBe('do:t1:a');
+  });
+
+  it('derives late + longer + split from Slice 2 rather than persisting a view status', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [
+        rec(),
+        rec({
+          id: 'do:t1:b',
+          createdAt: '2026-09-24T10:10:00.000Z',
+          updatedAt: '2026-09-24T10:10:00.000Z',
+          observedAt: '2026-09-24T10:10:00.000Z',
+          startTime: '10:10',
+          endTime: '10:50',
+        }),
+      ],
+    });
+    expect(model.plans[0].labels).toEqual(['late', 'longer', 'split']);
+    expect(model.timedRecords[0].labels).toEqual(['late', 'longer', 'split']);
+  });
+
+  it('marks an elapsed Plan with no Do as not started when now is supplied', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [],
+      now: { date: '2026-09-24', time: '11:00' },
+    });
+    expect(model.plans[0].labels).toEqual(['notStarted']);
+  });
+
+  it('drops malformed rows from the view without treating the ledger as empty', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [{ id: 'broken' }],
+    });
+    expect(model.invalidRecordCount).toBe(1);
+    expect(model.timedRecords).toEqual([]);
+  });
+});

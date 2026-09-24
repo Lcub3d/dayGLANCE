@@ -162,9 +162,10 @@ describe('GoalDashboard desktop space', () => {
     // every goal row is a reassign drop target; the goal's group and its cards carry the move semantics too
     expect(render({ desktop: true, isActive: true })).toContain('data-move-goal="electron"');
     expect(main).toContain('data-move-goal="ios" data-move-before="asc"');
-    // the space's cards are 25% wider than the modal's 260px
-    expect(main).toContain('w-[325px]');
+    // cards sit in a grid that fits as many 300–420px columns as the width allows
+    expect(main).toContain('grid-template-columns:repeat(auto-fit, minmax(300px, 420px))');
     expect(main).not.toContain('w-[260px]');
+    expect(main).not.toContain('w-[325px]');
   });
 
   it('shows the empty state for a selected goal without projects', () => {
@@ -181,6 +182,30 @@ describe('GoalDashboard desktop space', () => {
     const roadmap = render({ desktop: true, isActive: true }, { goalsAreaFilter: 'dev', goalsViewMode: 'timeline' });
     expect(roadmap).toContain('data-goal-timeline="ios,electron"');
     expect(roadmap).not.toContain('data-goal-list-view');
+  });
+
+  it('on the Projects tab: Open | Completed with icons and count badges, rows with a ring, done/total and Stalled', () => {
+    const html = render({ desktop: true, isActive: true, initialSidebarTab: 'projects' });
+    const sidebar = html.slice(html.indexOf('data-goals-sidebar'), html.indexOf('data-goals-main'));
+    const main = section(html, 'data-goals-main');
+    // toolbar: no List/Roadmap; Open (active, white badge on blue) and Completed (blue badge)
+    expect(main).not.toContain(' Roadmap</button>');
+    expect(main).toContain('lucide-circle-dashed');
+    expect(main).toContain('lucide-circle-check-big');
+    expect(main).toMatch(/aria-pressed="true"[^>]*>[\s\S]*?Open<span class="[^"]*bg-white text-blue-600">1<\/span>/);
+    expect(main).toMatch(/aria-pressed="false"[^>]*>[\s\S]*?Completed<span class="[^"]*bg-blue-600 text-white">0<\/span>/);
+    // the open standalone project's card is in the grid; completed ones are not
+    expect(cards(main)).toEqual(['dg']);
+    // sidebar row: progress ring, "done/total", and Stalled (open tasks, nothing completed, no createdAt)
+    const row = sidebar.match(/<button[^>]*data-project-row="dg"[\s\S]*?<\/button>/)[0];
+    expect(row).toContain('<svg width="18"');
+    expect(row).toContain('>0/2</span>');
+    expect(row).toContain('Stalled');
+    expect(sidebar).toContain('Add Project');
+  });
+
+  it('keeps the sidebar tab across renders it was given, but starts on Goals by default', () => {
+    expect(render({ desktop: true, isActive: true })).toContain(' Roadmap</button>');
   });
 
   it('lists the archived goals and projects under the main area', () => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Bell, BookOpen, ChevronLeft, ChevronRight, Cloud,
   Eye, HelpCircle, Inbox, Moon,
@@ -487,6 +487,11 @@ const DesktopLayout = () => {
   // and the accessibility tree (React 18 wants the attribute as a string).
   // The phone layout has its own tab.
   const goalsSpace = desktopSpace === 'goals';
+  // The space stays mounted once visited (hidden with display:none, like the
+  // phone's Goals tab), so the selected goal, the sidebar tab and the
+  // Open/Completed choice survive a `g` round trip. A reload starts fresh.
+  const [goalsVisited, setGoalsVisited] = useState(false);
+  useEffect(() => { if (goalsSpace) setGoalsVisited(true); }, [goalsSpace]);
 
   return (
       <>
@@ -908,10 +913,14 @@ const DesktopLayout = () => {
         </div>
 
         {/* Goals & Projects space: its own sidebar + main area, siblings in
-            this flex row exactly where the calendar's sit. Mounted only while
-            active, like the old modal was, so its Escape chain and drag
-            listeners exist only when the space is on screen. */}
-        {goalsSpace && <GoalDashboard desktop isActive />}
+            this flex row exactly where the calendar's sit (display:contents
+            keeps them direct flex children). Its Escape chain, focus request
+            and keyboard hooks are gated on isActive. */}
+        {goalsVisited && (
+          <div data-goals-space className={goalsSpace ? 'contents' : 'hidden'}>
+            <GoalDashboard desktop isActive={goalsSpace} />
+          </div>
+        )}
       </div>
 
       {/* Notes panel overlay for tablet LIST view */}

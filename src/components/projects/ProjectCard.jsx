@@ -430,8 +430,11 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
       <div className="flex flex-col gap-2 p-3">
         {/* Header: title + badges + edit + delete */}
         <div className="flex items-start gap-2 dnd-no-select">
+          {/* The grip box is exactly one title line tall (text-sm × leading-tight)
+              with the icon centred in it, so it sits on the first line whether
+              the title wraps or not. */}
           {dragHandleProps && (
-            <div {...dragHandleProps} data-drag-handle className={`flex-shrink-0 mt-0.5 p-1.5 -m-1 cursor-grab active:cursor-grabbing ${textSecondary} opacity-30 hover:opacity-60 transition-opacity touch-none select-none`} title={t('sched.dragToReorder')}>
+            <div {...dragHandleProps} data-drag-handle className={`flex-shrink-0 h-[17.5px] px-1.5 -mx-1 flex items-center cursor-grab active:cursor-grabbing ${textSecondary} opacity-30 hover:opacity-60 transition-opacity touch-none select-none`} title={t('sched.dragToReorder')}>
               <GripVertical size={14} />
             </div>
           )}

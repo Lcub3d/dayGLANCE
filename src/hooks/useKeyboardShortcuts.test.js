@@ -49,6 +49,7 @@ function useMounted(overrides = {}) {
     aiConfig: null, setShowVoiceInput: vi.fn(),
     habitsEnabled: true, setHabitsEnabled: vi.fn(), setShowHabitModal: vi.fn(),
     goalsProjectsEnabled: true, setGoalsProjectsEnabled: vi.fn(), toggleDesktopSpace: vi.fn(),
+    goalsSpaceKeysRef: { current: null },
     gtdFrames: [], setShowRescheduleModal: vi.fn(), setRescheduleResults: vi.fn(), setRescheduleError: vi.fn(),
     setMobileActiveTab: vi.fn(), setMobileSettingsView: vi.fn(), setShowSettings: vi.fn(),
     changeDate: vi.fn(), setSelectedDate: vi.fn(),
@@ -127,6 +128,25 @@ describe('useKeyboardShortcuts — inside the Goals space', () => {
     expect(p.setTabletActiveTab).not.toHaveBeenCalled();
     press('f');
     expect(p.enterFocusModeRef.current).not.toHaveBeenCalled();
+  });
+
+  it('drives the space sidebar with the keys the calendar uses for dates and its panel', () => {
+    const keys = { moveSelection: vi.fn(), setTab: vi.fn() };
+    const p = useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: keys } });
+    expect(press('ArrowDown').preventDefault).toHaveBeenCalled();
+    press('ArrowUp');
+    expect(keys.moveSelection.mock.calls).toEqual([[1], [-1]]);
+    press(',');
+    press('.');
+    expect(keys.setTab.mock.calls).toEqual([['goals'], ['projects']]);
+    expect(p.changeDate).not.toHaveBeenCalled();
+    expect(p.setTabletActiveTab).not.toHaveBeenCalled();
+    // with nothing registered (space mounted but inactive) the keys simply stand down
+    const q = useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: null } });
+    press('ArrowDown');
+    press(',');
+    expect(q.changeDate).not.toHaveBeenCalled();
+    expect(q.setTabletActiveTab).not.toHaveBeenCalled();
   });
 
   it('keeps the calendar shortcuts working in the Calendar space', () => {

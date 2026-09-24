@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleCheckBig,
+  CircleDashed,
   ChevronLeft,
   ChevronRight,
   Edit2,
@@ -40,7 +41,8 @@ import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
-import { isProjectStalled } from '../../utils/projectProgress.js';
+import { isProjectStalled, calculateProjectProgress } from '../../utils/projectProgress.js';
+import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import GoalCard from './GoalCard.jsx';
 import GoalTimeline from './GoalTimeline.jsx';
 import useProjectDrag from './useProjectDrag.js';
@@ -793,23 +795,33 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
   );
 };
 
-// The space is wider than the old modal, so its cards are 25% wider (325px vs
-// 260px) and fold their task list later.
-const SPACE_CARD_W = 'w-[325px]';
+// The space is wider than the old modal, so its cards are wider and fold their
+// task list later. Cards sit in a grid that fits as many columns as the width
+// allows (at least SPACE_CARD_MIN each) and shares the row between them, up to
+// SPACE_CARD_MAX, so there is no dead space at the right at any window width:
+// 3 across at ~1000px, 4 at ~1400px, each stretched to fill.
+const SPACE_CARD_MIN = 300;
+const SPACE_CARD_MAX = 420;
 const SPACE_VISIBLE_TASKS = 6;
+const cardGridStyle = (justify = 'center') => ({
+  display: 'grid',
+  gridTemplateColumns: `repeat(auto-fit, minmax(${SPACE_CARD_MIN}px, ${SPACE_CARD_MAX}px))`,
+  justifyContent: justify,
+  gap: '1rem',
+});
 
 // ─── Project card group (one goal's projects, or the standalone projects) ────
 // Active cards first, completed ones compact below. Each slot is a within-group
 // reorder target (drop before this card); the group itself appends. The grip
 // on every card picks it up for both paths (useProjectDrag.dragHandleProps).
 
-const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProject, onMoveToClick, justify = 'center' }) => {
+const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProject, onMoveToClick, justify = 'center', focusedProjectId = null }) => {
   const { moveProject } = useFeaturesCtx();
   const { dragProjectId, dropInsertBeforeId, setDropInsertBeforeId, endDrag, dragHandleProps } = drag;
   const goalAttr = goalId ?? '';
   const activeProjs = projects.filter(p => p.status !== 'completed');
   const doneProjs = projects.filter(p => p.status === 'completed');
-  const rowClass = `flex flex-wrap gap-4 ${justify === 'center' ? 'justify-center' : 'justify-start'}`;
+  const gridStyle = cardGridStyle(justify);
 
   const wrapCard = (proj, compact) => (
     <div
@@ -817,8 +829,8 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       data-proj-id={proj.id}
       data-move-goal={goalAttr}
       data-move-before={proj.id}
-      className={`relative ${SPACE_CARD_W} transition-opacity ${dragProjectId === proj.id ? 'opacity-40' : ''} ${
-        dropInsertBeforeId === proj.id && dragProjectId && dragProjectId !== proj.id
+      className={`relative w-full transition-opacity ${dragProjectId === proj.id ? 'opacity-40' : ''} ${
+        (dropInsertBeforeId === proj.id && dragProjectId && dragProjectId !== proj.id) || focusedProjectId === proj.id
           ? 'ring-2 ring-blue-500 rounded-xl' : ''
       }`}
       onDragOver={e => {
@@ -862,12 +874,12 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       }}
     >
       {activeProjs.length > 0 && (
-        <div className={`${rowClass} mb-3`}>
+        <div style={gridStyle} className="mb-3" data-card-grid>
           {activeProjs.map(proj => wrapCard(proj, false))}
         </div>
       )}
       {doneProjs.length > 0 && (
-        <div className={rowClass}>
+        <div style={gridStyle} data-card-grid>
           {doneProjs.map(proj => wrapCard(proj, true))}
         </div>
       )}
@@ -1044,20 +1056,89 @@ const MoveToList = ({ project, goals, onMove }) => {
 // reached through their goal — with Add Project). Only goals have areas and
 // target dates, which is why the filter lives on the Goals tab alone.
 
+// ─── Project sidebar row (Projects tab) ──────────────────────────────────────
+// Deliberately not a copy of the goal row: a small progress RING in the
+// project colour (done/total tasks), the title, then a meta line with the
+// done/total count, a Stalled badge, and the next hyperGLANCE session. The
+// focused row (click, or Up/Down) is highlighted and its card scrolled into
+// view in the main area.
+
+const ProjectSidebarRow = ({ project, focused, onSelect }) => {
+  const { darkMode, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks, recurringTasks, currentTimeMinutes } = useDayPlannerCtx();
+  const { goals, isVisibleForUser } = useFeaturesCtx();
+  const { t } = useTranslation();
+  const hex = toHex(getProjectColor(project, project.goalId ? goals.find(g => g.id === project.goalId) : null));
+  const isCompleted = project.status === 'completed';
+  const allTasks = useMemo(() => [...tasks, ...unscheduledTasks].filter(isVisibleForUser), [tasks, unscheduledTasks, isVisibleForUser]);
+  const projectTasks = useMemo(() => allTasks.filter(tk => tk.projectId === project.id && !tk.archived), [allTasks, project.id]);
+  const done = projectTasks.filter(tk => tk.completed).length;
+  const total = projectTasks.length;
+  const progress = calculateProjectProgress(project.id, allTasks);
+  const stalled = !isCompleted && isProjectStalled(project.id, allTasks, project, recurringTasks);
+  const session = !isCompleted && project.hyperglance?.enabled ? getActiveHGInstance(project, currentTimeMinutes) : null;
+  const noteLink = noteLinkOf(project);
+  // 18px ring: r=7 → circumference ≈ 44
+  const C = 2 * Math.PI * 7;
+  const pct = isCompleted ? 1 : (progress ?? 0);
+
+  return (
+    <button
+      type="button"
+      data-project-row={project.id}
+      aria-pressed={focused}
+      onClick={onSelect}
+      className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg border text-left transition-colors ${
+        focused
+          ? (darkMode ? 'bg-blue-900/30 border-blue-700/60' : 'bg-blue-50 border-blue-200')
+          : `border-transparent ${hoverBg}`
+      }`}
+      style={{ opacity: isCompleted ? 0.55 : 1 }}
+    >
+      <svg width="18" height="18" viewBox="0 0 18 18" className="flex-shrink-0" aria-hidden="true">
+        <circle cx="9" cy="9" r="7" fill="none" strokeWidth="2.5" stroke={hex} strokeOpacity="0.2" />
+        {(pct > 0 || isCompleted) && (
+          <circle cx="9" cy="9" r="7" fill="none" strokeWidth="2.5" stroke={hex} strokeLinecap="round"
+            strokeDasharray={`${C * pct} ${C}`} transform="rotate(-90 9 9)" />
+        )}
+        {isCompleted && <path d="M5.5 9.2l2.3 2.3 4.7-4.8" fill="none" stroke={hex} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
+      </svg>
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className={`flex-1 min-w-0 truncate text-sm font-medium ${textPrimary}`}>{project.title}</span>
+          {noteLink && (
+            <span className={`flex-shrink-0 ${noteLink.missing ? 'text-amber-500' : `${textSecondary} opacity-50`}`} title={noteLink.name}>
+              {noteLink.missing ? <AlertTriangle size={11} /> : <BookOpen size={11} />}
+            </span>
+          )}
+        </span>
+        <span className={`flex items-center gap-2 text-[11px] ${textSecondary} min-w-0`}>
+          <span className="whitespace-nowrap">{done}/{total}</span>
+          {stalled && (
+            <span className="flex items-center gap-0.5 text-amber-500 whitespace-nowrap">
+              <AlertTriangle size={10} /> {t('goals.stalled')}
+            </span>
+          )}
+          {session && (
+            <span className={`flex items-center gap-0.5 whitespace-nowrap ${session.isOverdue ? 'text-orange-400' : ''}`} style={session.isOverdue ? {} : { color: project.hyperglance.color || '#4f46e5' }}>
+              <Zap size={10} /> {session.isOverdue ? t('common.overdue') : session.date === dateToString(new Date()) ? t('common.today') : session.date.slice(5)}
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
+};
+
 const GoalSpaceSidebar = ({
   tab, onTabChange,
   goals, goalCount, selectedGoalId, onSelectGoal,
-  standaloneProjects, standaloneCount, onProjectRowClick,
+  standaloneProjects, standaloneCount, focusedProjectId, onProjectRowClick,
   drag, onManageAreas, onNewGoal, onNewProject,
 }) => {
-  const { darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks } = useDayPlannerCtx();
-  const { moveProject, isVisibleForUser, goals: allGoals } = useFeaturesCtx();
+  const { darkMode, cardBg, borderClass, textSecondary } = useDayPlannerCtx();
+  const { moveProject } = useFeaturesCtx();
   const { t } = useTranslation();
   const { dragProjectId, dropZoneTarget, setDropZoneTarget, endDrag } = drag;
-
-  const taskCount = (projectId) =>
-    [...tasks, ...unscheduledTasks].filter(tk => tk.projectId === projectId && !tk.archived && isVisibleForUser(tk)).length;
-  const projectHex = (p) => toHex(getProjectColor(p, p.goalId ? allGoals.find(g => g.id === p.goalId) : null));
 
   const tabClass = (active) =>
     `flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors border-b-2 ${
@@ -1149,18 +1230,7 @@ const GoalSpaceSidebar = ({
                 {t('goals.standalone')}
               </p>
               {standaloneProjects.map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  data-project-row={p.id}
-                  onClick={() => onProjectRowClick(p.id)}
-                  className={`w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left ${hoverBg} transition-colors`}
-                  style={{ opacity: p.status === 'completed' ? 0.55 : 1 }}
-                >
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: projectHex(p) }} />
-                  <span className={`flex-1 min-w-0 truncate text-sm ${textPrimary}`}>{p.title}</span>
-                  <span className={`text-[11px] ${textSecondary}`}>{taskCount(p.id)}</span>
-                </button>
+                <ProjectSidebarRow key={p.id} project={p} focused={p.id === focusedProjectId} onSelect={() => onProjectRowClick(p.id)} />
               ))}
             </div>
           )
@@ -2091,7 +2161,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
     <div
       key={proj.id}
       data-detail-before={proj.id}
-      className={`relative ${isMobile ? 'w-full' : SPACE_CARD_W} transition-opacity ${dragId === proj.id ? 'opacity-40' : ''} ${
+      className={`relative w-full transition-opacity ${dragId === proj.id ? 'opacity-40' : ''} ${
         beforeId === proj.id && dragId && dragId !== proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''
       }`}
       onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== proj.id) setBeforeId(proj.id); }}
@@ -2101,7 +2171,8 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
     </div>
   );
 
-  const listClass = `flex ${isMobile ? 'flex-col' : 'flex-wrap justify-center'} gap-4`;
+  const listClass = isMobile ? 'flex flex-col gap-4' : '';
+  const listStyle = isMobile ? undefined : cardGridStyle('center');
 
   return (
     <div className={`mt-5 border-t ${borderClass} pt-4`}>
@@ -2136,14 +2207,14 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
         onDrop={e => { e.preventDefault(); if (!dragId || beforeId) return; moveProject(dragId, goal.id); endDrag(); }}
       >
         {activeProjs.length > 0 && (
-          <div className={`${listClass} mb-3`}>
+          <div className={`${listClass} mb-3`} style={listStyle}>
             {activeProjs.map(proj => wrapCard(proj,
               <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} wide={!isMobile} visibleCount={isMobile ? 3 : SPACE_VISIBLE_TASKS} />
             ))}
           </div>
         )}
         {doneProjs.length > 0 && (
-          <div className={listClass}>
+          <div className={listClass} style={listStyle}>
             {doneProjs.map(proj => wrapCard(proj,
               <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} wide={!isMobile} />
             ))}
@@ -2171,7 +2242,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
  * `isActive` says whether the screen is on screen: the Escape chain below and
  * the focus request (goalsDashboardFocusId) only act while it is.
  */
-const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, addGoalTrigger = 0, addProjectTrigger = 0, addAreaTrigger = 0 }) => {
+const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, initialSidebarTab = 'goals', addGoalTrigger = 0, addProjectTrigger = 0, addAreaTrigger = 0 }) => {
   const {
     tasks, setTasks,
     unscheduledTasks, setUnscheduledTasks,
@@ -2202,13 +2273,16 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
   const [selectedRoadmapGoalId, setSelectedRoadmapGoalId] = useState(null); // roadmap detail panel
   // Desktop space: which sidebar tab is up, which goal is selected, and the
   // project a "Move to…" picker is open for.
-  const [sidebarTab, setSidebarTab] = useState('goals');
+  const [sidebarTab, setSidebarTab] = useState(initialSidebarTab);
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [moveToProject, setMoveToProject] = useState(null);
   // Projects tab: Open | Completed, so finished standalone projects do not take
   // up the main area (the Goals tab keeps completed children compact under the
   // active ones, since they count toward the goal).
   const [projectsFilter, setProjectsFilter] = useState('open');
+  // Projects tab: the highlighted row (click, or Up/Down); its card is ringed
+  // and scrolled into view in the main area.
+  const [focusedProjectId, setFocusedProjectId] = useState(null);
 
   // If the saved filter points at an area that no longer exists (deleted on this
   // or another device), fall back to "All" so the dashboard isn't stuck empty.
@@ -2318,6 +2392,43 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
   const scrollProjectIntoView = (projectId) => {
     projectCardRefs.current[projectId]?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
   };
+  const focusProject = (projectId) => {
+    setFocusedProjectId(projectId);
+    scrollProjectIntoView(projectId);
+  };
+
+  // Sidebar keyboard hooks for the global shortcut handler (useKeyboardShortcuts):
+  // Up/Down move the selection on the current tab, ',' / '.' pick the tab.
+  // Registered only while the space is active so the calendar never sees them.
+  // The handlers close over the current render (tab, lists, selection), so they
+  // live in a ref refreshed every render; the registration effect only runs when
+  // the space's active state changes and calls through that ref.
+  const { goalsSpaceKeysRef } = useFeaturesCtx();
+  const keysImplRef = useRef(null);
+  keysImplRef.current = {
+      setTab: setSidebarTab,
+      moveSelection: (delta) => {
+        if (sidebarTab === 'goals') {
+          if (sortedGoals.length === 0) return;
+          const idx = sortedGoals.findIndex(g => g.id === selectedGoal?.id);
+          const next = sortedGoals[Math.min(sortedGoals.length - 1, Math.max(0, idx + delta))];
+          if (next) selectGoal(next.id);
+        } else {
+          if (shownStandalone.length === 0) return;
+          const idx = shownStandalone.findIndex(p => p.id === focusedProjectId);
+          const next = shownStandalone[idx === -1 ? (delta > 0 ? 0 : shownStandalone.length - 1) : Math.min(shownStandalone.length - 1, Math.max(0, idx + delta))];
+          if (next) focusProject(next.id);
+        }
+      },
+  };
+  useEffect(() => {
+    if (!desktop || !isActive || !goalsSpaceKeysRef) return undefined;
+    goalsSpaceKeysRef.current = {
+      setTab: (tab) => keysImplRef.current?.setTab(tab),
+      moveSelection: (delta) => keysImplRef.current?.moveSelection(delta),
+    };
+    return () => { goalsSpaceKeysRef.current = null; };
+  }, [desktop, isActive, goalsSpaceKeysRef]);
 
   const handleSaveGoal = (fields) => {
     const { trackInLifeGlance, createNote, ...goalFields } = fields;
@@ -2566,7 +2677,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
         onSelectGoal={selectGoal}
         standaloneProjects={shownStandalone}
         standaloneCount={openStandalone.length}
-        onProjectRowClick={scrollProjectIntoView}
+        focusedProjectId={focusedProjectId}
+        onProjectRowClick={focusProject}
         drag={drag}
         onManageAreas={() => setShowManageAreas(true)}
         onNewGoal={() => setGoalForm({ editing: null })}
@@ -2587,23 +2699,30 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
           ) : (
             <div role="group" aria-label={t('goals.projects')} className={`shrink-0 flex rounded-lg border ${borderClass} overflow-hidden`}>
               {[
-                { key: 'open', label: t('goals.openProjects'), count: openStandalone.length },
-                { key: 'completed', label: t('common.completed'), count: completedStandalone.length },
-              ].map(({ key, label, count }) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={projectsFilter === key}
-                  onClick={() => setProjectsFilter(key)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                    projectsFilter === key
-                      ? 'bg-blue-600 text-white'
-                      : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
-                  }`}
-                >
-                  {label} <span className={projectsFilter === key ? 'opacity-70' : 'opacity-60'}>{count}</span>
-                </button>
-              ))}
+                { key: 'open', label: t('goals.openProjects'), count: openStandalone.length, Icon: CircleDashed },
+                { key: 'completed', label: t('common.completed'), count: completedStandalone.length, Icon: CircleCheckBig },
+              ].map(({ key, label, count, Icon }) => {
+                const active = projectsFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setProjectsFilter(key)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-blue-600 text-white'
+                        : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
+                    }`}
+                  >
+                    <Icon size={13} /> {label}
+                    {/* count badge: white on the blue (active) button, blue on the plain one */}
+                    <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
+                      active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+                    }`}>{count}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
           <div className="flex-1" />
@@ -2637,6 +2756,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
                 onEditProject={onEditProject}
                 onMoveToClick={setMoveToProject}
                 justify="start"
+                focusedProjectId={focusedProjectId}
               />
             ) : projectsFilter === 'completed' ? emptyState(
               t('goals.noCompletedProjects'),

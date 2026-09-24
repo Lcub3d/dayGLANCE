@@ -3485,6 +3485,10 @@ const DayPlanner = () => {
   const enterFocusModeRef = useRef(null);
   const startFocusTimerRef = useRef(null);
   const openRoutinesDashboardRef = useRef(null);
+  // Goals & Projects space keyboard hooks: GoalDashboard registers { moveSelection,
+  // setTab } here while the space is active so the global handler can drive its
+  // sidebar (Up/Down, ',' and '.') under the same modal guard as every shortcut.
+  const goalsSpaceKeysRef = useRef(null);
   // MONTH view registers its "open the sheet for this day" here while mounted,
   // so Enter in the keyboard shortcuts can open the selected day.
   const openMonthDaySheetRef = useRef(null);
@@ -3545,7 +3549,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace,
+    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -8958,7 +8962,7 @@ const DayPlanner = () => {
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
     hgVisibleProjects,
-    desktopSpace, setDesktopSpace, toggleDesktopSpace,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace, goalsSpaceKeysRef,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,

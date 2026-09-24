@@ -75,6 +75,9 @@ export default function useKeyboardShortcuts({
   // goals & projects ('g') — on desktop the key TOGGLES the Goals space;
   // showGoalsDashboard (above) is true while that space is active
   goalsProjectsEnabled, setGoalsProjectsEnabled, toggleDesktopSpace,
+  // Goals & Projects space sidebar: { moveSelection(delta), setTab(tab) } while
+  // the space is active (registered by GoalDashboard), else null
+  goalsSpaceKeysRef,
   // reschedule ('e')
   gtdFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
   // settings ('s')
@@ -142,8 +145,24 @@ export default function useKeyboardShortcuts({
       // side panel, none of which is on screen. Enumerated rather than
       // blanket-blocked so a new app-level shortcut works in both spaces.
       const goalsSpaceActive = !isMobile && showGoalsDashboard;
-      if (goalsSpaceActive && isCalendarOnlyShortcut(e)) {
-        return;
+      if (goalsSpaceActive) {
+        // The keys the calendar uses for dates and its side panel drive the
+        // space's sidebar instead: Up/Down move the selection, ',' and '.'
+        // pick the Goals / Projects tab (as they pick GLANCE / inbox).
+        const keys = goalsSpaceKeysRef?.current;
+        if (keys && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            keys.moveSelection(e.key === 'ArrowUp' ? -1 : 1);
+            return;
+          }
+          if (e.key === ',' || e.key === '.') {
+            e.preventDefault();
+            keys.setTab(e.key === ',' ? 'goals' : 'projects');
+            return;
+          }
+        }
+        if (isCalendarOnlyShortcut(e)) return;
       }
       // The month view's day sheet is modal too: its own controller owns the
       // arrow keys (previous/next day) and Escape while it is open.

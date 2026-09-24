@@ -8,7 +8,7 @@
  *   - CRUD functions return the new/updated object so callers can chain
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 
 /**
@@ -21,39 +21,23 @@ export const spaceFromDashboardFlag = (prev, value) => {
   return next ? 'goals' : 'calendar';
 };
 
+/**
+ * The next desktop space for a requested value (or updater), given whether
+ * Goals & Projects is enabled: with the feature off the Goals space cannot be
+ * entered, so the request is ignored and the space stays where it is.
+ */
+export const resolveDesktopSpace = (prev, value, enabled) => {
+  const next = typeof value === 'function' ? value(prev) : value;
+  if (next === 'goals' && !enabled) return prev;
+  return next === 'goals' ? 'goals' : 'calendar';
+};
+
 const useGoalsProjects = () => {
   const [goals, setGoals] = useState([]);
   const [projects, setProjects] = useState([]);
   // Areas group goals into a category level above them (e.g. "Money/Finance",
   // "App Development"). Standalone projects are never associated with an area.
   const [areas, setAreas] = useState([]);
-  // Desktop space: the header switcher swaps the sidebar + main area between
-  // the Calendar space and the Goals & Projects space. Session only, never
-  // persisted: the app always launches in the Calendar space. The phone
-  // layout has its own tab (mobileActiveTab === 'goals') and ignores this.
-  const [desktopSpace, setDesktopSpace] = useState('calendar');
-  const toggleDesktopSpace = useCallback(() => {
-    setDesktopSpace(prev => (prev === 'goals' ? 'calendar' : 'goals'));
-  }, []);
-  // Legacy alias kept for the callers that "open the dashboard" (goal rings,
-  // the GLANCE pill, future hyperGLANCE sessions, ProjectCard's notes portal):
-  // every one of them now means "switch to the Goals space".
-  const showGoalsDashboard = desktopSpace === 'goals';
-  const setShowGoalsDashboard = useCallback((value) => {
-    setDesktopSpace(prev => spaceFromDashboardFlag(prev, value));
-  }, []);
-
-  // ── Dashboard UI prefs (device-local, not synced) ────────────────────────────
-  // Which area the dashboard is filtered to: 'all' | 'uncategorized' | areaId.
-  const [goalsAreaFilter, setGoalsAreaFilter] = useState(
-    () => localStorage.getItem('day-planner-goals-area-filter') || 'all'
-  );
-  // Dashboard layout: 'list' (cards) | 'timeline' (temporal chart).
-  const [goalsViewMode, setGoalsViewMode] = useState(
-    () => localStorage.getItem('day-planner-goals-view-mode') || 'list'
-  );
-  useEffect(() => { localStorage.setItem('day-planner-goals-area-filter', goalsAreaFilter); }, [goalsAreaFilter]);
-  useEffect(() => { localStorage.setItem('day-planner-goals-view-mode', goalsViewMode); }, [goalsViewMode]);
 
   const [goalsProjectsEnabled, setGoalsProjectsEnabled] = useState(() => {
     const stored = localStorage.getItem('day-planner-goals-projects-enabled');
@@ -66,6 +50,45 @@ const useGoalsProjects = () => {
     } catch (_) {}
     return false;
   });
+  const goalsProjectsEnabledRef = useRef(goalsProjectsEnabled);
+  goalsProjectsEnabledRef.current = goalsProjectsEnabled;
+
+  // Desktop space: the header switcher swaps the sidebar + main area between
+  // the Calendar space and the Goals & Projects space. Session only, never
+  // persisted: the app always launches in the Calendar space. The phone
+  // layout has its own tab (mobileActiveTab === 'goals') and ignores this.
+  // The feature switch gates the space: while Goals & Projects is off no
+  // caller can enter it (resolveDesktopSpace), and turning it off while in
+  // the space returns to the calendar.
+  const [desktopSpace, setDesktopSpaceRaw] = useState('calendar');
+  const setDesktopSpace = useCallback((value) => {
+    setDesktopSpaceRaw(prev => resolveDesktopSpace(prev, value, goalsProjectsEnabledRef.current));
+  }, []);
+  const toggleDesktopSpace = useCallback(() => {
+    setDesktopSpace(prev => (prev === 'goals' ? 'calendar' : 'goals'));
+  }, [setDesktopSpace]);
+  useEffect(() => {
+    if (!goalsProjectsEnabled) setDesktopSpaceRaw('calendar');
+  }, [goalsProjectsEnabled]);
+  // Legacy alias kept for the callers that "open the dashboard" (goal rings,
+  // the GLANCE pill, future hyperGLANCE sessions, ProjectCard's notes portal):
+  // every one of them now means "switch to the Goals space".
+  const showGoalsDashboard = desktopSpace === 'goals';
+  const setShowGoalsDashboard = useCallback((value) => {
+    setDesktopSpace(prev => spaceFromDashboardFlag(prev, value));
+  }, [setDesktopSpace]);
+
+  // ── Dashboard UI prefs (device-local, not synced) ────────────────────────────
+  // Which area the dashboard is filtered to: 'all' | 'uncategorized' | areaId.
+  const [goalsAreaFilter, setGoalsAreaFilter] = useState(
+    () => localStorage.getItem('day-planner-goals-area-filter') || 'all'
+  );
+  // Dashboard layout: 'list' (cards) | 'timeline' (temporal chart).
+  const [goalsViewMode, setGoalsViewMode] = useState(
+    () => localStorage.getItem('day-planner-goals-view-mode') || 'list'
+  );
+  useEffect(() => { localStorage.setItem('day-planner-goals-area-filter', goalsAreaFilter); }, [goalsAreaFilter]);
+  useEffect(() => { localStorage.setItem('day-planner-goals-view-mode', goalsViewMode); }, [goalsViewMode]);
 
   // ── Goal CRUD ────────────────────────────────────────────────────────────────
 

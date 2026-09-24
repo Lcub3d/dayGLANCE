@@ -74,7 +74,7 @@ export default function useKeyboardShortcuts({
   habitsEnabled, setHabitsEnabled, setShowHabitModal,
   // goals & projects ('g') — on desktop the key TOGGLES the Goals space;
   // showGoalsDashboard (above) is true while that space is active
-  goalsProjectsEnabled, setGoalsProjectsEnabled, toggleDesktopSpace,
+  goalsProjectsEnabled, toggleDesktopSpace,
   // Goals & Projects space sidebar: { moveSelection(delta), setTab(tab) } while
   // the space is active (registered by GoalDashboard), else null
   goalsSpaceKeysRef,
@@ -328,11 +328,11 @@ export default function useKeyboardShortcuts({
       }
 
       // 'g' toggles the Goals & Projects space on desktop (from either space,
-      // including while in Goals) and opens the Goals tab on the phone. Also
-      // auto-enables the feature on first use.
+      // including while in Goals) and opens the Goals tab on the phone. Inert
+      // while the feature is off in Settings: the switch is the only way in.
       if (e.key === 'g' && noModifiers) {
         e.preventDefault();
-        if (!goalsProjectsEnabled) setGoalsProjectsEnabled(true);
+        if (!goalsProjectsEnabled) return;
         if (isMobile) {
           setMobileActiveTab('goals');
         } else {

@@ -2049,28 +2049,18 @@
     "title": "JOBO",
     "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
     "view": {
-      "loading": "Caricamento JOBO…",
       "plan": "Piano",
-      "time": "Ora",
       "do": "Esecuzione",
       "storageError": "Non è stato possibile scrivere il registro JOBO. I dati già salvati restano visibili.",
       "readOnly": "JOBO è in sola lettura su questo dispositivo. Le modifiche ai Do sono disabilitate.",
       "invalidRecords": "In questa vista vengono ignorati {{count}} record del registro non validi.",
       "untimed": "Senza orario",
-      "timeNotRecorded": "Tempo non registrato",
-      "editDo": "Modifica Do",
-      "timing": "Temporizzazione",
       "timed": "Con orario",
-      "date": "Data",
-      "start": "Inizio",
-      "endDate": "Data di fine",
-      "end": "Fine",
       "progressLabel": "Avanzamento",
       "completeInterval": "Inserisci un intervallo completo di inizio e fine.",
       "editClock": "L’orologio del dispositivo non è successivo all’ultimo aggiornamento di questo record. Riprova più tardi.",
       "completedByCompletion": "Completato viene creato da un evento di completamento. Un Do rivalutato può essere Avviato, Parziale o Quasi.",
       "updateFailed": "Impossibile salvare la modifica del Do.",
-      "saving": "Salvataggio…",
       "emptyPlan": "Nessun Piano con orario per questo giorno.",
       "emptyDo": "Nessun Do registrato per questo giorno.",
       "summary": {
@@ -2084,8 +2074,7 @@
       "progress": {
         "started": "Avviato",
         "partial": "Parziale",
-        "mostly": "Quasi",
-        "completed": "Completato"
+        "mostly": "Quasi"
       }
     }
   },

@@ -3590,7 +3590,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
+    goalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,

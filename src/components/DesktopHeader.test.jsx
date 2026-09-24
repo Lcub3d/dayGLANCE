@@ -59,7 +59,7 @@ beforeEach(() => {
     cloudSyncConfig: { enabled: true }, obsidianConfig: { enabled: true },
     calSyncConfigured: true, cloudSyncStatus: 'success', obsidianSyncStatus: 'success',
   };
-  fixture.features = {};
+  fixture.features = { goalsProjectsEnabled: true };
 });
 
 describe('DesktopHeader spaces', () => {
@@ -72,8 +72,17 @@ describe('DesktopHeader spaces', () => {
     expect(html).not.toContain('data-goals-space-title');
   });
 
+  it('drops the switcher while Goals & Projects is off, leaving the rest of the header as it was', () => {
+    fixture.features = { goalsProjectsEnabled: false };
+    const html = render();
+    expect(html).not.toContain('data-space-switcher');
+    expect(titleButton(html)).toContain('Sep 22 – 24, 2026');
+    expect(html).toContain('28°C');
+    expect(html).toContain('height:80px');
+  });
+
   it('swaps only the centre for the space title in the Goals space, keeping the height and the icon cluster', () => {
-    fixture.features = { desktopSpace: 'goals', goals: [{ id: 'g' }], projects: [{ id: 'p' }, { id: 'q' }] };
+    fixture.features = { goalsProjectsEnabled: true, desktopSpace: 'goals', goals: [{ id: 'g' }], projects: [{ id: 'p' }, { id: 'q' }] };
     const html = render();
     expect(html).toContain('data-space-switcher');
     expect(html).toContain('data-goals-space-title');

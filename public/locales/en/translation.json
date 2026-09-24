@@ -2045,7 +2045,47 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it."
+    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
+    "view": {
+      "loading": "Loading JOBO…",
+      "plan": "Plan",
+      "time": "Time",
+      "do": "Do",
+      "storageError": "The JOBO ledger could not be written. Existing committed data is still shown.",
+      "readOnly": "JOBO is read-only on this device. Do edits are disabled.",
+      "invalidRecords": "Ignoring {{count}} invalid ledger record(s) in this view.",
+      "untimed": "Untimed",
+      "timeNotRecorded": "Time not recorded",
+      "editDo": "Edit Do",
+      "timing": "Timing",
+      "timed": "Timed",
+      "date": "Date",
+      "start": "Start",
+      "endDate": "End date",
+      "end": "End",
+      "progressLabel": "Progress",
+      "completeInterval": "Enter a complete start and end interval.",
+      "editClock": "The device clock is not later than this record's last update. Try again after the clock catches up.",
+      "completedByCompletion": "Completed is created by a completion event. A reassessed Do can be Started, Partial, or Mostly.",
+      "updateFailed": "Could not save the Do change.",
+      "saving": "Saving…",
+      "emptyPlan": "No timed Plan on this day.",
+      "emptyDo": "No Do recorded on this day.",
+      "summary": {
+        "withinPlan": "On plan",
+        "late": "Late",
+        "longer": "Longer",
+        "split": "Split",
+        "notStarted": "Not started",
+        "unplanned": "Unplanned"
+      },
+      "progress": {
+        "started": "Started",
+        "partial": "Partial",
+        "mostly": "Mostly",
+        "completed": "Completed"
+      }
+    }
   },
   "todoist": {
     "title": "Todoist Sync",

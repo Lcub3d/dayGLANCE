@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString, formatShortDate } from '../utils/taskUtils.js';
-import { computeDaySummary, formatMinutes } from '../utils/daySummary.js';
+import { computeDaySummary } from '../utils/daySummary.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { summaryPillClass, EFFORT_DOT, RESTORE_DOT } from './SummaryStrip.jsx';
 import DayWindowMenu from './DayWindowMenu.jsx';
 
@@ -61,7 +62,7 @@ export default function TitlebarSummaryStrip() {
 
   const pill = summaryPillClass(darkMode);
   const chipValue = (total, done, completable) =>
-    done > 0 ? `${formatMinutes(done)}/${formatMinutes(completable)}` : formatMinutes(total);
+    done > 0 ? `${formatDuration(done, t)}/${formatDuration(completable, t)}` : formatDuration(total, t);
 
   const openMenu = () => {
     // Anchor the popover under the pill, clamped so its 288px box stays
@@ -82,16 +83,16 @@ export default function TitlebarSummaryStrip() {
         style={{ WebkitAppRegion: 'no-drag' }}
         onClick={openMenu}
       >
-        <span className={`font-semibold ${textPrimary}`}>{formatMinutes(summary.unblockedMinutes)}</span>
+        <span className={`font-semibold ${textPrimary}`}>{formatDuration(summary.unblockedMinutes, t)}</span>
         <span className={textSecondary}>{t('strip.unblocked')}</span>
         <MoreHorizontal size={13} className={`-mr-1 flex-shrink-0 ${textSecondary}`} />
       </span>
       {summary.blockedMinutes > 0 && (
         <span className={pill}>
           <Zap size={12} className="flex-shrink-0" style={{ color: EFFORT_DOT }} />
-          <span className={textSecondary}>{formatMinutes(summary.effortMinutes)}</span>
+          <span className={textSecondary}>{formatDuration(summary.effortMinutes, t)}</span>
           <Leaf size={12} className="flex-shrink-0 ml-0.5" style={{ color: RESTORE_DOT }} />
-          <span className={textSecondary}>{formatMinutes(summary.restoreMinutes)}</span>
+          <span className={textSecondary}>{formatDuration(summary.restoreMinutes, t)}</span>
         </span>
       )}
       {summary.categories.map((c) => (

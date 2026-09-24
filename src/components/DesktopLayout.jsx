@@ -771,9 +771,12 @@ const DesktopLayout = () => {
 
               {/* Scrollable content */}
               <div className={`flex-1 overflow-y-auto ${darkMode ? 'dark-scrollbar' : ''}`}>
-                {/* Glance section — shown when glance tab active */}
+                {/* Glance section — shown when glance tab active. pb-44 clears
+                    the GlanceFabs columns floating over the foot of the panel
+                    (three 44px buttons, two 8px gaps, 24px offset = 172px), so
+                    the last item can scroll out from under them. */}
                 {tabletActiveTab === 'glance' && (
-                  <div className="p-4">
+                  <div className="p-4 pb-44">
                     <GlanceSidebar variant="tablet" />
                   </div>
                 )}
@@ -823,9 +826,10 @@ const DesktopLayout = () => {
             </div>
             {/* Scrollable content */}
             <div className={`flex-1 overflow-y-auto ${darkMode ? 'dark-scrollbar' : ''}`}>
-              {/* Glance section — shown when glance tab active */}
+              {/* Glance section — shown when glance tab active. pb-44: see the
+                  tablet panel above — room under the last item for GlanceFabs. */}
               {tabletActiveTab === 'glance' && (
-              <div className="p-4">
+              <div className="p-4 pb-44">
                 <GlanceSidebar variant="desktop" />
               </div>
               )}

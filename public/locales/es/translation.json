@@ -2045,7 +2045,47 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra."
+    "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
+    "view": {
+      "loading": "Cargando JOBO…",
+      "plan": "Plan",
+      "time": "Hora",
+      "do": "Ejecución",
+      "storageError": "No se pudo escribir el registro JOBO. Los datos ya confirmados siguen mostrándose.",
+      "readOnly": "JOBO es de solo lectura en este dispositivo. La edición de Do está desactivada.",
+      "invalidRecords": "Se ignoran {{count}} registros no válidos del ledger en esta vista.",
+      "untimed": "Sin tiempo",
+      "timeNotRecorded": "Tiempo no registrado",
+      "editDo": "Editar Do",
+      "timing": "Medición",
+      "timed": "Con tiempo",
+      "date": "Fecha",
+      "start": "Inicio",
+      "endDate": "Fecha final",
+      "end": "Fin",
+      "progressLabel": "Progreso",
+      "completeInterval": "Introduce un intervalo completo de inicio y fin.",
+      "editClock": "El reloj del dispositivo no es posterior a la última actualización de este registro. Inténtalo de nuevo más tarde.",
+      "completedByCompletion": "Completado se crea mediante un evento de finalización. Un Do reevaluado puede quedar en Iniciado, Parcial o Casi.",
+      "updateFailed": "No se pudo guardar el cambio de Do.",
+      "saving": "Guardando…",
+      "emptyPlan": "No hay ningún Plan con hora para este día.",
+      "emptyDo": "No hay ningún Do registrado para este día.",
+      "summary": {
+        "withinPlan": "Según el plan",
+        "late": "Tarde",
+        "longer": "Más largo",
+        "split": "Dividido",
+        "notStarted": "No iniciado",
+        "unplanned": "No planificado"
+      },
+      "progress": {
+        "started": "Iniciado",
+        "partial": "Parcial",
+        "mostly": "Casi",
+        "completed": "Completado"
+      }
+    }
   },
   "todoist": {
     "title": "Sincronización con Todoist",

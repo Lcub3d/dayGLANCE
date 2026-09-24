@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Clock, Pencil, X } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Clock, FileText, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -11,25 +11,27 @@ import {
   reassessDoProgress,
   updateDoRecord,
 } from '../jobo/core.js';
-import { buildJoboDayModel, DAY_MINUTES } from '../jobo/viewModel.js';
+import { buildJoboDayModel } from '../jobo/viewModel.js';
 import './jobo/JoboView.css';
 
-const HOUR_HEIGHT = 64;
+const DEFAULT_SCALE = 84;
+const MIN_SCALE = 52;
+const MAX_SCALE = 132;
 
 const SUMMARY_CLASS = {
-  withinPlan: 'jobo5-badge-ok',
-  late: 'jobo5-badge-warn',
-  longer: 'jobo5-badge-warn',
-  split: 'jobo5-badge-info',
-  notStarted: 'jobo5-badge-danger',
-  unplanned: 'jobo5-badge-unplanned',
+  withinPlan: 'jobo-s5-badge-ok',
+  late: 'jobo-s5-badge-warn',
+  longer: 'jobo-s5-badge-warn',
+  split: 'jobo-s5-badge-info',
+  notStarted: 'jobo-s5-badge-danger',
+  unplanned: 'jobo-s5-badge-unplanned',
 };
 
 const PROGRESS_CLASS = {
-  started: 'jobo5-progress-started',
-  partial: 'jobo5-progress-partial',
-  mostly: 'jobo5-progress-mostly',
-  completed: 'jobo5-progress-completed',
+  started: 'jobo-s5-progress-started',
+  partial: 'jobo-s5-progress-partial',
+  mostly: 'jobo-s5-progress-mostly',
+  completed: 'jobo-s5-progress-completed',
 };
 
 function two(value) {
@@ -40,21 +42,36 @@ function localTime(date) {
   return `${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-function cardStyle(item) {
+function clockFromMinute(value) {
+  const minute = ((Math.round(value) % 1440) + 1440) % 1440;
+  return `${two(Math.floor(minute / 60))}:${two(minute % 60)}`;
+}
+
+function linkKeyForTask(task) {
+  if (!task) return null;
+  if (task.recurringTemplateId != null) return String(task.recurringTemplateId);
+  return task.id == null ? null : String(task.id);
+}
+
+function linkKeyForRecord(record) {
+  return record?.taskId == null ? null : String(record.taskId);
+}
+
+function cardStyle(item, scale, startHour) {
   return {
-    top: `${(item.startMinute / 60) * HOUR_HEIGHT}px`,
-    height: `${Math.max(42, ((item.endMinute - item.startMinute) / 60) * HOUR_HEIGHT)}px`,
-    left: `calc(${item.leftPct}% + 4px)`,
-    width: `calc(${item.widthPct}% - 8px)`,
+    top: `${((item.startMinute - startHour * 60) / 60) * scale}px`,
+    height: `${Math.max(40, ((item.endMinute - item.startMinute) / 60) * scale - 2)}px`,
+    left: `calc(${item.leftPct}% + 3px)`,
+    width: `calc(${item.widthPct}% - 6px)`,
   };
 }
 
 function SummaryBadges({ labels, t }) {
   if (!labels?.length) return null;
   return (
-    <span className="jobo5-badges">
+    <span className="jobo-s5-badges">
       {labels.map((label) => (
-        <span key={label} className={`jobo5-badge ${SUMMARY_CLASS[label] || ''}`}>
+        <span key={label} className={`jobo-s5-badge ${SUMMARY_CLASS[label] || ''}`}>
           {t(`jobo.view.summary.${label}`)}
         </span>
       ))}
@@ -63,47 +80,59 @@ function SummaryBadges({ labels, t }) {
 }
 
 function ProgressBadge({ progress, t }) {
+  const label = progress === DO_PROGRESS.COMPLETED
+    ? t('common.completed')
+    : t(`jobo.view.progress.${progress}`);
   return (
-    <span className={`jobo5-progress ${PROGRESS_CLASS[progress] || ''}`}>
-      {progress === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${progress}`)}
+    <span className={`jobo-s5-progress ${PROGRESS_CLASS[progress] || ''}`}>
+      {label}
     </span>
   );
 }
 
-function PlanCard({ item, formatTime, t }) {
+function PlanCard({ item, scale, startHour, formatTime, t, onFocus }) {
   const { task, plan, labels } = item;
-  const color = task.color || 'bg-blue-500';
+  const linkKey = linkKeyForTask(task);
+  const end = clockFromMinute(item.endMinute);
   return (
     <article
-      className={`jobo5-card jobo5-plan-card ${color} text-white`}
-      style={cardStyle(item)}
-      data-jobo-plan={String(task.id)}
+      className={`jobo-s5-card jobo-s5-plan-card shadow-md text-white rounded-lg ${task.color || 'bg-blue-500'}`}
+      style={cardStyle(item, scale, startHour)}
+      data-jobo-plan-link={linkKey || ''}
+      onMouseEnter={() => linkKey && onFocus(linkKey)}
+      onMouseLeave={() => onFocus(null)}
     >
-      <div className="jobo5-card-title">{task.title}</div>
-      <div className="jobo5-card-meta">
-        <span>{formatTime(plan.startTime)}</span>
-        <span>·</span>
-        <span>{formatDuration(plan.duration, t)}</span>
+      <div className="jobo-s5-title-row">
+        <div className="jobo-s5-title" title={task.title}>{task.title}</div>
+        {String(task.notes || '').trim() && <FileText size={12} className="jobo-s5-note-icon" aria-hidden="true" />}
       </div>
-      <SummaryBadges labels={labels} t={t} />
+      <div className="jobo-s5-meta-row">
+        <span className="jobo-s5-time">{formatTime(plan.startTime)}–{formatTime(end)}</span>
+        <span className="jobo-s5-duration">{formatDuration(plan.duration, t)}</span>
+        <SummaryBadges labels={labels} t={t} />
+      </div>
     </article>
   );
 }
 
-function DoCard({ item, formatTime, t, writable, onEdit }) {
+function DoCard({ item, scale, startHour, formatTime, t, writable, onEdit, onFocus }) {
   const { record, task, labels } = item;
-  const color = task?.color || 'bg-slate-600';
+  const linkKey = linkKeyForRecord(record);
+  const isLinked = !!linkKey;
   return (
     <article
-      className={`jobo5-card jobo5-do-card ${color} text-white`}
-      style={cardStyle(item)}
-      data-jobo-do={record.id}
+      className={`jobo-s5-card jobo-s5-do-card shadow-md text-white rounded-lg ${task?.color || 'bg-purple-500'}`}
+      style={cardStyle(item, scale, startHour)}
+      data-jobo-do-link={linkKey || ''}
+      onMouseEnter={() => linkKey && onFocus(linkKey)}
+      onMouseLeave={() => onFocus(null)}
+      onDoubleClick={() => writable && onEdit(record)}
     >
-      <div className="jobo5-card-title-row">
-        <div className="jobo5-card-title">{record.title}</div>
+      <div className="jobo-s5-title-row">
+        <div className="jobo-s5-title" title={record.title}>{record.title}</div>
         <button
           type="button"
-          className="jobo5-edit-button"
+          className="jobo-s5-card-action"
           onClick={() => onEdit(record)}
           disabled={!writable}
           title={t('common.edit')}
@@ -112,49 +141,179 @@ function DoCard({ item, formatTime, t, writable, onEdit }) {
           <Pencil size={12} />
         </button>
       </div>
-      <div className="jobo5-card-meta">
-        <span>{formatTime(record.startTime)}</span>
-        <span>–</span>
-        <span>{formatTime(record.endTime)}</span>
-      </div>
-      <div className="jobo5-card-footer">
+      <div className="jobo-s5-meta-row">
+        <span className="jobo-s5-time">{formatTime(record.startTime)}–{formatTime(record.endTime)}</span>
         <ProgressBadge progress={record.progress} t={t} />
-        <SummaryBadges labels={labels} t={t} />
+        {!isLinked && <SummaryBadges labels={labels} t={t} />}
       </div>
     </article>
   );
 }
 
-function UntimedShelf({ records, t, writable, onEdit }) {
+function NotesColumn({ tasks, dailyText, date, cardBg, borderClass, textPrimary, textSecondary, t, onFocus }) {
+  const items = [];
+  const seen = new Set();
+  for (const task of tasks) {
+    const text = String(task?.notes || '').trim();
+    const linkKey = linkKeyForTask(task);
+    if (!text || !linkKey || seen.has(linkKey)) continue;
+    seen.add(linkKey);
+    items.push({ task, text, linkKey });
+  }
+
+  return (
+    <aside className={`jobo-s5-notes-column border-l ${borderClass}`} data-jobo-notes>
+      {!items.length && !String(dailyText || '').trim() && (
+        <div className={`jobo-s5-empty-notes ${textSecondary}`}>{t('common.empty')}</div>
+      )}
+      {items.map(({ task, text, linkKey }) => (
+        <section
+          key={linkKey}
+          className={`jobo-s5-note-tile shadow-md rounded-lg border ${borderClass} ${task.color || 'bg-blue-500'} text-white`}
+          data-jobo-note-link={linkKey}
+          onMouseEnter={() => onFocus(linkKey)}
+          onMouseLeave={() => onFocus(null)}
+        >
+          <div className="jobo-s5-note-title">
+            <FileText size={12} />
+            <b title={task.title}>{task.title}</b>
+          </div>
+          <div className="jobo-s5-note-text">{text}</div>
+        </section>
+      ))}
+      {String(dailyText || '').trim() && (
+        <section className={`jobo-s5-note-tile jobo-s5-daily-note rounded-lg border ${borderClass} ${cardBg} ${textPrimary}`}>
+          <div className="jobo-s5-note-title">
+            <FileText size={12} />
+            <b>{t('common.dailyNote')}</b>
+          </div>
+          <div className="jobo-s5-note-text">{dailyText}</div>
+          <div className={`jobo-s5-note-date ${textSecondary}`}>{date}</div>
+        </section>
+      )}
+    </aside>
+  );
+}
+
+function UntimedStrip({ records, t, writable, onEdit, onFocus }) {
   if (!records.length) return null;
   return (
-    <div className="jobo5-untimed-row">
-      <div className="jobo5-untimed-spacer" />
-      <div className="jobo5-untimed-label">
-        <Clock size={12} />
-        {t('jobo.view.untimed')}
+    <div className="jobo-s5-untimed-row">
+      <div />
+      <div className="jobo-s5-untimed-ruler">
+        <Clock size={11} />
       </div>
-      <div className="jobo5-untimed-list">
-        {records.map(({ record, task, labels }) => (
-          <button
-            key={record.id}
-            type="button"
-            className={`jobo5-untimed-card ${task?.color || 'bg-slate-600'} text-white`}
-            onClick={() => onEdit(record)}
-            disabled={!writable}
-          >
-            <span className="jobo5-untimed-title">{record.title}</span>
-            <ProgressBadge progress={record.progress} t={t} />
-            <SummaryBadges labels={labels} t={t} />
-            <span className="jobo5-untimed-hint">{t('task.noTime')}</span>
-          </button>
-        ))}
+      <div className="jobo-s5-untimed-cell">
+        <span className="jobo-s5-untimed-label">{t('jobo.view.untimed')}</span>
+        <div className="jobo-s5-untimed-list">
+          {records.map(({ record, task, labels }) => {
+            const linkKey = linkKeyForRecord(record);
+            return (
+              <button
+                key={record.id}
+                type="button"
+                className={`jobo-s5-untimed-card shadow-sm ${task?.color || 'bg-purple-500'} text-white`}
+                onClick={() => writable && onEdit(record)}
+                onMouseEnter={() => linkKey && onFocus(linkKey)}
+                onMouseLeave={() => onFocus(null)}
+                disabled={!writable}
+              >
+                <span className="jobo-s5-untimed-title">{record.title}</span>
+                <ProgressBadge progress={record.progress} t={t} />
+                {!linkKey && <SummaryBadges labels={labels} t={t} />}
+              </button>
+            );
+          })}
+        </div>
       </div>
+      <div className="jobo-s5-untimed-notes-spacer" />
     </div>
   );
 }
 
-function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
+function Connections({ rootRef, focusKey, dep }) {
+  const [paths, setPaths] = useState([]);
+
+  useLayoutEffect(() => {
+    let raf;
+    const update = () => {
+      const root = rootRef.current;
+      if (!root || !focusKey) {
+        setPaths([]);
+        return;
+      }
+
+      const rootBox = root.getBoundingClientRect();
+      const plan = [...root.querySelectorAll('[data-jobo-plan-link]')]
+        .find((el) => el.dataset.joboPlanLink === focusKey);
+      const dos = [...root.querySelectorAll('[data-jobo-do-link]')]
+        .filter((el) => el.dataset.joboDoLink === focusKey);
+      const note = [...root.querySelectorAll('[data-jobo-note-link]')]
+        .find((el) => el.dataset.joboNoteLink === focusKey);
+
+      const out = [];
+      const connect = (from, to, key, opacity = 0.62) => {
+        if (!from || !to) return;
+        const a = from.getBoundingClientRect();
+        const b = to.getBoundingClientRect();
+        const x1 = a.right - rootBox.left;
+        const y1 = a.top + Math.min(a.height / 2, 23) - rootBox.top;
+        const x2 = b.left - rootBox.left;
+        const y2 = b.top + Math.min(b.height / 2, 23) - rootBox.top;
+        const bend = Math.max(18, Math.min(42, (x2 - x1) / 3));
+        out.push({
+          key,
+          d: `M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}`,
+          color: getComputedStyle(from).backgroundColor,
+          opacity,
+        });
+      };
+
+      for (const item of dos) connect(plan, item, `pd:${item.dataset.joboDoLink}:${out.length}`);
+      if (note) {
+        if (dos.length) {
+          for (const item of dos) connect(item, note, `dn:${out.length}`, 0.45);
+        } else {
+          connect(plan, note, 'pn', 0.45);
+        }
+      }
+      setPaths(out);
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    schedule();
+
+    const observer = new ResizeObserver(schedule);
+    if (rootRef.current) observer.observe(rootRef.current);
+    window.addEventListener('resize', schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      window.removeEventListener('resize', schedule);
+    };
+  }, [rootRef, focusKey, dep]);
+
+  return (
+    <svg className="jobo-s5-connections" aria-hidden="true">
+      {paths.map((path) => (
+        <path
+          key={path.key}
+          d={path.d}
+          fill="none"
+          stroke={path.color}
+          strokeWidth="1.4"
+          opacity={path.opacity}
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode, cardBg, textPrimary, borderClass }) {
   const [draft, setDraft] = useState(() => ({
     timing: record.timing,
     date: record.date,
@@ -169,6 +328,14 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
   const progressOptions = record.progress === DO_PROGRESS.COMPLETED
     ? [DO_PROGRESS.COMPLETED, DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY]
     : [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY];
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const save = async () => {
     if (!writable) {
@@ -185,9 +352,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
     try {
       const nowMs = Date.now();
       const previousMs = Date.parse(record.updatedAt);
-      if (Number.isFinite(previousMs) && nowMs <= previousMs) {
-        throw new Error(t('jobo.view.editClock'));
-      }
+      if (Number.isFinite(previousMs) && nowMs <= previousMs) throw new Error(t('jobo.view.editClock'));
 
       const patch = draft.timing === DO_TIMING.TIMED
         ? {
@@ -208,14 +373,10 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
       const intervalChanged = Object.entries(patch).some(([key, value]) => record[key] !== value);
       let next = record;
       let stampMs = nowMs;
-      if (intervalChanged) {
-        next = updateDoRecord(next, patch, new Date(stampMs).toISOString());
-      }
+      if (intervalChanged) next = updateDoRecord(next, patch, new Date(stampMs).toISOString());
 
       if (draft.progress !== next.progress) {
-        if (draft.progress === DO_PROGRESS.COMPLETED) {
-          throw new Error(t('jobo.view.completedByCompletion'));
-        }
+        if (draft.progress === DO_PROGRESS.COMPLETED) throw new Error(t('jobo.view.completedByCompletion'));
         stampMs += intervalChanged ? 1 : 0;
         next = reassessDoProgress(next, draft.progress, new Date(stampMs).toISOString());
       }
@@ -233,91 +394,75 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
   };
 
   return (
-    <div className="jobo5-modal-mask" role="presentation" onMouseDown={(e) => {
-      if (e.target === e.currentTarget) onClose();
+    <div className="jobo-s5-modal-mask" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
     }}>
-      <section className={`jobo5-dialog ${darkMode ? 'jobo5-dialog-dark' : ''}`} role="dialog" aria-modal="true" aria-label={t('common.edit')}>
-        <div className="jobo5-dialog-head">
+      <section
+        className={`jobo-s5-dialog ${cardBg} ${textPrimary} border ${borderClass} ${darkMode ? 'jobo-s5-dialog-dark' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('common.edit')}
+      >
+        <div className="jobo-s5-dialog-head">
           <div>
-            <div className="jobo5-dialog-title">{record.title}</div>
-            <div className="jobo5-dialog-subtitle">{t('common.edit')}</div>
+            <div className="jobo-s5-dialog-title">{record.title}</div>
+            <div className="jobo-s5-dialog-subtitle">{t('common.edit')}</div>
           </div>
-          <button type="button" className="jobo5-close-button" onClick={onClose} aria-label={t('common.close')}>
-            <X size={16} />
+          <button type="button" className="jobo-s5-close-button" onClick={onClose} aria-label={t('common.close')}>
+            <X size={17} />
           </button>
         </div>
 
-        <label className="jobo5-field">
+        <label className="jobo-s5-field">
           <span>{t('task.time')}</span>
-          <select
-            value={draft.timing}
-            onChange={(e) => setDraft((prev) => ({ ...prev, timing: e.target.value }))}
-          >
+          <select value={draft.timing} onChange={(event) => setDraft((prev) => ({ ...prev, timing: event.target.value }))}>
             <option value={DO_TIMING.TIMED}>{t('jobo.view.timed')}</option>
             <option value={DO_TIMING.UNTIMED}>{t('jobo.view.untimed')}</option>
           </select>
         </label>
 
-        <div className="jobo5-edit-grid">
-          <label className="jobo5-field">
+        <div className="jobo-s5-edit-grid">
+          <label className="jobo-s5-field">
             <span>{t('common.date')}</span>
-            <input
-              type="date"
-              value={draft.date}
-              onChange={(e) => setDraft((prev) => ({ ...prev, date: e.target.value }))}
-            />
+            <input type="date" value={draft.date} onChange={(event) => setDraft((prev) => ({ ...prev, date: event.target.value }))} />
           </label>
           {draft.timing === DO_TIMING.TIMED && (
             <>
-              <label className="jobo5-field">
+              <label className="jobo-s5-field">
                 <span>{t('common.start')}</span>
-                <input
-                  type="time"
-                  value={draft.startTime}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, startTime: e.target.value }))}
-                />
+                <input type="time" value={draft.startTime} onChange={(event) => setDraft((prev) => ({ ...prev, startTime: event.target.value }))} />
               </label>
-              <label className="jobo5-field">
+              <label className="jobo-s5-field">
                 <span>{t('common.date')}</span>
-                <input
-                  type="date"
-                  value={draft.endDate}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, endDate: e.target.value }))}
-                />
+                <input type="date" value={draft.endDate} onChange={(event) => setDraft((prev) => ({ ...prev, endDate: event.target.value }))} />
               </label>
-              <label className="jobo5-field">
+              <label className="jobo-s5-field">
                 <span>{t('common.end')}</span>
-                <input
-                  type="time"
-                  value={draft.endTime}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, endTime: e.target.value }))}
-                />
+                <input type="time" value={draft.endTime} onChange={(event) => setDraft((prev) => ({ ...prev, endTime: event.target.value }))} />
               </label>
             </>
           )}
         </div>
 
-        <label className="jobo5-field">
+        <label className="jobo-s5-field">
           <span>{t('jobo.view.progressLabel')}</span>
-          <select
-            value={draft.progress}
-            onChange={(e) => setDraft((prev) => ({ ...prev, progress: e.target.value }))}
-          >
+          <select value={draft.progress} onChange={(event) => setDraft((prev) => ({ ...prev, progress: event.target.value }))}>
             {progressOptions.map((progress) => (
-              <option key={progress} value={progress}>{t(`jobo.view.progress.${progress}`)}</option>
+              <option key={progress} value={progress}>
+                {progress === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${progress}`)}
+              </option>
             ))}
           </select>
         </label>
 
         {record.progress !== DO_PROGRESS.COMPLETED && (
-          <p className="jobo5-dialog-note">{t('jobo.view.completedByCompletion')}</p>
+          <p className="jobo-s5-dialog-note">{t('jobo.view.completedByCompletion')}</p>
         )}
+        {error && <p className="jobo-s5-dialog-error">{error}</p>}
 
-        {error && <p className="jobo5-dialog-error">{error}</p>}
-
-        <div className="jobo5-dialog-actions">
+        <div className="jobo-s5-dialog-actions">
           <button type="button" onClick={onClose}>{t('common.cancel')}</button>
-          <button type="button" className="jobo5-save-button" onClick={save} disabled={saving || !writable}>
+          <button type="button" className="jobo-s5-save-button" onClick={save} disabled={saving || !writable}>
             {t('common.save')}
           </button>
         </div>
@@ -326,9 +471,10 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
   );
 }
 
-// Slice 5 is deliberately a view over the contracts already landed in slices
-// 2 and 3. It derives timing labels from core and writes every Do edit through
-// recordJobo; it owns no second ledger, task mutation or day-level Check state.
+// Slice 5 remains a view over the settled Slice 2/3 contracts. The visual
+// language intentionally follows the prototype: Plan | ruler | Do | Notes,
+// compact native-colour cards, independent notes tiles and hover connections.
+// Only the visuals are carried forward; the prototype's store/model are not.
 export default function JoboView() {
   const { t } = useTranslation();
   const {
@@ -339,7 +485,9 @@ export default function JoboView() {
     getTasksForDate,
     formatTime,
     currentTime,
+    dailyNotes,
     darkMode,
+    cardBg,
     borderClass,
     textPrimary,
     textSecondary,
@@ -353,8 +501,11 @@ export default function JoboView() {
   } = useFeaturesCtx();
 
   const [editingRecord, setEditingRecord] = useState(null);
+  const [scale, setScale] = useState(DEFAULT_SCALE);
+  const [focusKey, setFocusKey] = useState(null);
+  const rootRef = useRef(null);
   const scrollRef = useRef(null);
-  const lastAutoScrollDate = useRef(null);
+
   const date = dateToString(selectedDate);
   const clock = useMemo(() => (currentTime instanceof Date ? currentTime : new Date()), [currentTime]);
   const today = dateToString(clock);
@@ -364,8 +515,8 @@ export default function JoboView() {
     [getTasksForDate, selectedDate],
   );
   const lookupTasks = useMemo(
-    () => [...tasks, ...unscheduledTasks, ...(expandedRecurringTasks || [])],
-    [tasks, unscheduledTasks, expandedRecurringTasks],
+    () => [...tasks, ...unscheduledTasks, ...(expandedRecurringTasks || []), ...dayTasks],
+    [tasks, unscheduledTasks, expandedRecurringTasks, dayTasks],
   );
 
   const model = useMemo(() => buildJoboDayModel({
@@ -376,23 +527,35 @@ export default function JoboView() {
     now: date === today ? { date: today, time: localTime(clock) } : undefined,
   }), [date, dayTasks, lookupTasks, joboRecords, today, clock]);
 
-  const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, hour) => hour), []);
+  const timedStarts = [
+    ...model.plans.map((item) => item.startMinute),
+    ...model.timedRecords.map((item) => item.startMinute),
+  ].filter(Number.isFinite);
+  const earliest = timedStarts.length ? Math.min(...timedStarts) : 8 * 60;
+  const startHour = Math.max(0, Math.floor(Math.min(8 * 60, earliest) / 60));
+  const hourCount = 24 - startHour;
+  const height = hourCount * scale;
+  const hours = useMemo(
+    () => Array.from({ length: hourCount }, (_, index) => startHour + index),
+    [hourCount, startHour],
+  );
+
   const nowMinute = date === today ? clock.getHours() * 60 + clock.getMinutes() : null;
-  const nowTop = nowMinute == null ? null : (nowMinute / 60) * HOUR_HEIGHT;
+  const nowTop = nowMinute != null && nowMinute >= startHour * 60
+    ? ((nowMinute - startHour * 60) / 60) * scale
+    : null;
 
   useEffect(() => {
-    if (!joboLoaded || !scrollRef.current || lastAutoScrollDate.current === date) return;
-    const starts = [
-      ...model.plans.map((item) => item.startMinute),
-      ...model.timedRecords.map((item) => item.startMinute),
-    ];
-    const contentStart = starts.length ? Math.min(...starts) : 8 * 60;
-    const targetMinute = date === today && nowMinute != null
-      ? Math.min(contentStart, Math.max(0, nowMinute - 90))
-      : Math.max(0, contentStart - 60);
-    scrollRef.current.scrollTop = (targetMinute / 60) * HOUR_HEIGHT;
-    lastAutoScrollDate.current = date;
-  }, [date, today, nowMinute, joboLoaded, model.plans, model.timedRecords]);
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const onWheel = (event) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setScale((value) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, value + (event.deltaY < 0 ? 4 : -4))));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   if (!joboLoaded) {
     return (
@@ -403,21 +566,23 @@ export default function JoboView() {
   }
 
   return (
-    <div data-jobo-view className={`jobo5-root ${textPrimary}`}>
-      <div className={`jobo5-head border-b ${borderClass}`}>
-        <div className="jobo5-head-cell">
-          <strong>{t('jobo.view.plan')}</strong>
-          <span className={textSecondary}>{model.plans.length}</span>
-        </div>
-        <div className={`jobo5-head-ruler ${textSecondary}`}>{t('task.time')}</div>
-        <div className="jobo5-head-cell">
-          <strong>{t('jobo.view.do')}</strong>
-          <span className={textSecondary}>{model.timedRecords.length + model.untimedRecords.length}</span>
+    <div data-jobo-view className={`jobo-s5-root ${darkMode ? 'jobo-s5-dark' : ''} ${textPrimary}`}>
+      <div className={`jobo-s5-column-head border-b ${borderClass} ${cardBg}`}>
+        <div className="jobo-s5-head-cell"><b>{t('jobo.view.plan')}</b></div>
+        <div />
+        <div className="jobo-s5-head-cell"><b>{t('jobo.view.do')}</b></div>
+        <div className="jobo-s5-head-cell jobo-s5-head-notes">
+          <b>{t('task.notes')}</b>
+          <div className="jobo-s5-tools" aria-label={t('common.settings')}>
+            <button type="button" onClick={() => setScale((value) => Math.max(MIN_SCALE, value - 8))}>−</button>
+            <button type="button" onClick={() => setScale(DEFAULT_SCALE)}>{Math.round((scale / DEFAULT_SCALE) * 100)}%</button>
+            <button type="button" onClick={() => setScale((value) => Math.min(MAX_SCALE, value + 8))}>＋</button>
+          </div>
         </div>
       </div>
 
       {(joboError || !joboWritable || model.invalidRecordCount > 0) && (
-        <div className={`jobo5-notice border-b ${borderClass} ${textSecondary}`}>
+        <div className={`jobo-s5-notice border-b ${borderClass} ${textSecondary}`}>
           <AlertTriangle size={13} />
           {joboError
             ? t('jobo.view.storageError')
@@ -427,61 +592,98 @@ export default function JoboView() {
         </div>
       )}
 
-      <UntimedShelf
+      <UntimedStrip
         records={model.untimedRecords}
         t={t}
         writable={joboWritable}
         onEdit={setEditingRecord}
+        onFocus={setFocusKey}
       />
 
-      <div ref={scrollRef} className="jobo5-scroll">
-        <div
-          className={`jobo5-grid ${darkMode ? 'jobo5-dark' : ''}`}
-          style={{ height: `${(DAY_MINUTES / 60) * HOUR_HEIGHT}px` }}
-        >
-          <div className="jobo5-lane jobo5-plan-lane">
-            {hourLabels.map((hour) => (
-              <div key={hour} className={`jobo5-hour-line border-t ${borderClass}`} style={{ top: `${hour * HOUR_HEIGHT}px` }} />
+      <div ref={scrollRef} className={`jobo-s5-scroll ${darkMode ? 'dark-scrollbar' : ''}`}>
+        <div ref={rootRef} className="jobo-s5-day-grid" style={{ minHeight: `${height}px` }}>
+          <div className="jobo-s5-time-lane" data-jobo-lane="plan">
+            {hours.map((hour, index) => (
+              <div
+                key={hour}
+                className={`jobo-s5-hour border-b ${borderClass} ${index % 2 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`}
+                style={{ height: `${scale}px` }}
+              >
+                <div className={`jobo-s5-half border-b border-dashed ${borderClass}`} />
+              </div>
             ))}
             {model.plans.map((item) => (
-              <PlanCard key={item.id} item={item} formatTime={formatTime} t={t} />
+              <PlanCard
+                key={item.id}
+                item={item}
+                scale={scale}
+                startHour={startHour}
+                formatTime={formatTime}
+                t={t}
+                onFocus={setFocusKey}
+              />
             ))}
             {!model.plans.length && (
-              <div className={`jobo5-empty ${textSecondary}`}>{t('jobo.view.emptyPlan')}</div>
+              <div className={`jobo-s5-empty-lane ${textSecondary}`}>{t('jobo.view.emptyPlan')}</div>
             )}
           </div>
 
-          <div className={`jobo5-ruler border-x ${borderClass} ${textSecondary}`}>
-            {hourLabels.map((hour) => (
-              <div key={hour} className="jobo5-hour-label" style={{ top: `${hour * HOUR_HEIGHT}px` }}>
+          <div className={`jobo-s5-time-ruler border-l border-r ${borderClass} ${cardBg}`}>
+            {hours.map((hour) => (
+              <div
+                key={hour}
+                className={`jobo-s5-ruler-hour border-b ${borderClass} ${textSecondary}`}
+                style={{ height: `${scale}px` }}
+              >
                 {formatTime(`${two(hour)}:00`)}
               </div>
             ))}
           </div>
 
-          <div className="jobo5-lane jobo5-do-lane">
-            {hourLabels.map((hour) => (
-              <div key={hour} className={`jobo5-hour-line border-t ${borderClass}`} style={{ top: `${hour * HOUR_HEIGHT}px` }} />
+          <div className={`jobo-s5-time-lane jobo-s5-do-lane border-r ${borderClass}`} data-jobo-lane="do">
+            {hours.map((hour, index) => (
+              <div
+                key={hour}
+                className={`jobo-s5-hour border-b ${borderClass} ${index % 2 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`}
+                style={{ height: `${scale}px` }}
+              >
+                <div className={`jobo-s5-half border-b border-dashed ${borderClass}`} />
+              </div>
             ))}
             {model.timedRecords.map((item) => (
               <DoCard
                 key={item.id}
                 item={item}
+                scale={scale}
+                startHour={startHour}
                 formatTime={formatTime}
                 t={t}
                 writable={joboWritable}
                 onEdit={setEditingRecord}
+                onFocus={setFocusKey}
               />
             ))}
             {!model.timedRecords.length && !model.untimedRecords.length && (
-              <div className={`jobo5-empty ${textSecondary}`}>{t('jobo.view.emptyDo')}</div>
+              <div className={`jobo-s5-empty-lane ${textSecondary}`}>{t('jobo.view.emptyDo')}</div>
             )}
           </div>
 
+          <NotesColumn
+            tasks={dayTasks}
+            dailyText={dailyNotes?.[date]?.text || ''}
+            date={date}
+            cardBg={cardBg}
+            borderClass={borderClass}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+            t={t}
+            onFocus={setFocusKey}
+          />
+
+          <Connections rootRef={rootRef} focusKey={focusKey} dep={scale} />
+
           {nowTop != null && (
-            <div className="jobo5-now-line" style={{ top: `${nowTop}px` }} aria-hidden="true">
-              <span />
-            </div>
+            <div className="jobo-s5-now-line" data-jobo-now style={{ top: `${nowTop}px` }} aria-hidden="true" />
           )}
         </div>
       </div>
@@ -494,6 +696,9 @@ export default function JoboView() {
           onClose={() => setEditingRecord(null)}
           t={t}
           darkMode={darkMode}
+          cardBg={cardBg}
+          textPrimary={textPrimary}
+          borderClass={borderClass}
         />
       )}
     </div>

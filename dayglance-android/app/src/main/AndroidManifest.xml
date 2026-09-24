@@ -25,6 +25,9 @@
     <!-- Microphone — for voice-to-task input via WebView getUserMedia -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Native step recording on Android 10+ -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <!-- Health Connect — runtime permissions (required on Android 14+ where HC is built in) -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_SLEEP" />

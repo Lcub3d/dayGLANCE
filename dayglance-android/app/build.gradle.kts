@@ -140,6 +140,9 @@ dependencies {
     // Health Connect
     implementation(libs.health.connect)
 
+    // Recording API on mobile — local step fallback (no Google Fit OAuth)
+    implementation(libs.play.services.fitness)
+
     // WorkManager — widget periodic updates
     implementation(libs.androidx.work.runtime.ktx)
 

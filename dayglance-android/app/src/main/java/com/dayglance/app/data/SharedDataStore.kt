@@ -322,6 +322,40 @@ class SharedDataStore(context: Context) {
         get() = prefs.getInt(KEY_TRIAL_DAYS_ANNUAL, -1)
         set(value) = prefs.edit { putInt(KEY_TRIAL_DAYS_ANNUAL, value) }
 
+    // ── Native health provider selection ───────────────────────────────────
+
+    /** Device-local provider chosen for step reads. */
+    var healthStepsProviderId: String?
+        get() = prefs.getString(KEY_HEALTH_STEPS_PROVIDER, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_HEALTH_STEPS_PROVIDER, value)
+            else remove(KEY_HEALTH_STEPS_PROVIDER)
+        }
+
+    /** Device-local provider chosen for sleep reads. */
+    var healthSleepProviderId: String?
+        get() = prefs.getString(KEY_HEALTH_SLEEP_PROVIDER, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_HEALTH_SLEEP_PROVIDER, value)
+            else remove(KEY_HEALTH_SLEEP_PROVIDER)
+        }
+
+    /**
+     * Selection contract version. Bump only when provider ordering/discovery
+     * semantics change; each device then discovers once again.
+     */
+    var healthProviderSelectionVersion: Int
+        get() = prefs.getInt(KEY_HEALTH_PROVIDER_SELECTION_VERSION, 0)
+        set(value) = prefs.edit { putInt(KEY_HEALTH_PROVIDER_SELECTION_VERSION, value) }
+
+    /**
+     * Local Recording API subscription is durable across process death/reboots.
+     * This bit avoids an idempotent subscribe call on every read.
+     */
+    var localStepsRecordingSubscribed: Boolean
+        get() = prefs.getBoolean(KEY_LOCAL_STEPS_RECORDING_SUBSCRIBED, false)
+        set(value) = prefs.edit { putBoolean(KEY_LOCAL_STEPS_RECORDING_SUBSCRIBED, value) }
+
     // ── Step count cache ────────────────────────────────────────────────────
 
     /** Cached step count for today, updated by WidgetUpdateWorker. */
@@ -346,6 +380,10 @@ class SharedDataStore(context: Context) {
         private const val KEY_WIDGET_SNAPSHOT = "widget_snapshot"
         private const val KEY_WIDGET_SNAPSHOT_TS = "widget_snapshot_ts"
         private const val KEY_SCHEDULED_REMINDERS = "scheduled_reminders"
+        private const val KEY_HEALTH_STEPS_PROVIDER = "health_steps_provider"
+        private const val KEY_HEALTH_SLEEP_PROVIDER = "health_sleep_provider"
+        private const val KEY_HEALTH_PROVIDER_SELECTION_VERSION = "health_provider_selection_version"
+        private const val KEY_LOCAL_STEPS_RECORDING_SUBSCRIBED = "local_steps_recording_subscribed"
         private const val KEY_STEPS_CACHE = "steps_cache"
         private const val KEY_PENDING_COMPLETE = "pending_complete_task_id"
         private const val KEY_PENDING_SNOOZE = "pending_snooze_task_id"

@@ -148,13 +148,44 @@ class MainActivity : AppCompatActivity() {
         callback?.onReceiveValue(if (uri != null) arrayOf(uri) else emptyArray())
     }
 
-    // Registered in onCreate (before the activity starts) — safe to call from any thread
+    // Health Connect permissions and ordinary Android runtime permissions use
+    // different contracts. Run them as one user-visible flow, then notify JS once.
+    private val requestHealthRuntimePermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        notifyHealthPermissionResult()
+    }
+
+    // Registered in onCreate (before the activity starts) — safe to call from any thread.
     private val requestHealthPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
     ) { _ ->
-        // Notify JS so the Continue/Add buttons update immediately without
-        // depending on visibilitychange (which is unreliable when webView.onPause
-        // is intentionally skipped).
+        requestHealthRuntimePermissionsIfNeeded()
+    }
+
+    private fun launchHealthPermissionFlow() {
+        val healthConnectPermissions = healthRepository.requiredPermissions
+        if (healthConnectPermissions.isNotEmpty()) {
+            requestHealthPermissions.launch(healthConnectPermissions)
+        } else {
+            requestHealthRuntimePermissionsIfNeeded()
+        }
+    }
+
+    private fun requestHealthRuntimePermissionsIfNeeded() {
+        val missing = healthRepository.requiredRuntimePermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+            notifyHealthPermissionResult()
+        } else {
+            requestHealthRuntimePermissions.launch(missing.toTypedArray())
+        }
+    }
+
+    private fun notifyHealthPermissionResult() {
+        // Continue/Add buttons should update immediately; visibilitychange is
+        // unreliable because webView.onPause is intentionally skipped.
         webView.evaluateJavascript(
             "window.__onHealthPermResult && window.__onHealthPermResult()", null
         )
@@ -255,7 +286,7 @@ class MainActivity : AppCompatActivity() {
             onRequestHealthPermission = {
                 // Launch must run on the main thread; JS interface callbacks run on a bg thread.
                 runOnUiThread {
-                    requestHealthPermissions.launch(healthRepository.requiredPermissions)
+                    launchHealthPermissionFlow()
                 }
             },
             onAppReady = {

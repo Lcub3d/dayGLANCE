@@ -213,13 +213,66 @@ describe('createLedger lifecycle', () => {
     const ledger = createLedger({ store });
     await ledger.load();
     failing = true;
-    expect(await ledger.applyRemote([rec('lost?')])).toEqual({ ok: false, error: 'storageWrite' });
+    expect(await ledger.applyRemote([rec('lost?')])).toEqual({ ok: false, error: 'storageWrite', held: true });
     expect(ledger.get().records).toEqual([]);
     expect(ledger.heldCount()).toBe(1);
     failing = false;
     await ledger.applyRemote([rec('next')]);
     expect(store.peek().map((r) => r.id)).toEqual(['lost?', 'next']);
     expect(ledger.heldCount()).toBe(0);
+  });
+
+  // MUTATION: drop the hold in commit and the completion the detector handed
+  // over is gone after one transient failure.
+  it('a failed LOCAL commit is held too, and retries on its own with backoff until it lands', async () => {
+    const store = fakeStore({ initial: [] });
+    const original = store.update.bind(store);
+    let failing = true;
+    store.update = (fn) => (failing ? Promise.resolve({ ok: false, error: 'storageWrite' }) : original(fn));
+    const timers = [];
+    const schedule = vi.fn((fn, ms) => { timers.push({ fn, ms }); return timers.length; });
+    const ledger = createLedger({ store, retry: { baseMs: 100, maxMs: 1000, schedule, cancel: vi.fn() } });
+    await ledger.load();
+    expect(await ledger.commit([rec('mine')])).toEqual({ ok: false, error: 'storageWrite', held: true });
+    expect(ledger.get().records).toEqual([]);       // state is the committed value
+    expect(ledger.get().error).toBe('storageWrite');
+    expect(ledger.heldCount()).toBe(1);
+    expect(timers.map((t) => t.ms)).toEqual([100]);
+    await timers[0].fn();                            // first retry fails: backoff doubles
+    expect(timers.map((t) => t.ms)).toEqual([100, 200]);
+    expect(ledger.heldCount()).toBe(1);
+    failing = false;
+    await timers[1].fn();                            // second retry lands
+    expect(ledger.heldCount()).toBe(0);
+    expect(ledger.get().records.map((r) => r.id)).toEqual(['mine']);
+    expect(ledger.get().error).toBe(null);
+    expect(store.peek().map((r) => r.id)).toEqual(['mine']);
+    expect(timers).toHaveLength(2);                  // nothing left to retry
+  });
+
+  it('the backoff is capped and resets after a successful write; dispose cancels the pending retry', async () => {
+    const store = fakeStore({ initial: [] });
+    const original = store.update.bind(store);
+    let failing = true;
+    store.update = (fn) => (failing ? Promise.resolve({ ok: false, error: 'storageWrite' }) : original(fn));
+    const timers = [];
+    const cancel = vi.fn();
+    const ledger = createLedger({ store, retry: { baseMs: 100, maxMs: 250, schedule: (fn, ms) => { timers.push({ fn, ms }); return ms; }, cancel } });
+    await ledger.load();
+    await ledger.commit([rec('a')]);
+    await timers[0].fn();
+    await timers[1].fn();
+    await timers[2].fn();
+    expect(timers.map((t) => t.ms)).toEqual([100, 200, 250, 250]);
+    failing = false;
+    await ledger.applyRemote([rec('b')]);            // a write by another path drains the queue and resets
+    expect(ledger.heldCount()).toBe(0);
+    expect(timers).toHaveLength(4);                  // the pending timer is still armed
+    ledger.dispose();
+    expect(cancel).toHaveBeenCalledWith(250);
+    failing = true;
+    await ledger.commit([rec('c')]);
+    expect(timers[4].ms).toBe(100);                  // backoff reset by the successful write
   });
 
   it('the held queue merges by id, so a row re-delivered every cycle does not grow it', async () => {

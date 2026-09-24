@@ -130,11 +130,18 @@ final class MonthGridModelTests: XCTestCase {
     }
 
     func testDaysSurviveTheDSTChange() throws {
-        // Denver leaves DST on 1 Nov 2026; a grid across it is still 42 whole days.
+        // Denver leaves DST on 1 Nov 2026, the third week of this grid: still
+        // 42 whole, consecutive days, the change landing on its own date.
         let window = Self.window(from: "2026-10-18", weekStart: 0)
-        let days = try XCTUnwrap(MonthGrid.days(in: window, for: Self.at("2026-11-02"), calendar: calendar))
-        XCTAssertEqual(days.first?.date, "2026-11-01")
+        let days = try XCTUnwrap(MonthGrid.days(in: window, for: Self.at("2026-10-20"), calendar: calendar))
         XCTAssertEqual(days.count, 42)
+        XCTAssertEqual(days.first?.date, "2026-10-18")
+        XCTAssertEqual(days[14].date, "2026-11-01")
+        XCTAssertEqual(days.last?.date, "2026-11-28")
+        let parsed = days.compactMap { WidgetFreshness.parseDay($0.date, calendar: calendar) }
+        for (a, b) in zip(parsed, parsed.dropFirst()) {
+            XCTAssertEqual(calendar.dateComponents([.day], from: a, to: b).day, 1, "\(a) → \(b)")
+        }
     }
 
     // MARK: Tiers and rollover

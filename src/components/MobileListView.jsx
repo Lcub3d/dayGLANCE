@@ -1922,7 +1922,7 @@ const MobileListView = ({ hideInboxHandle = false }) => {
               textTransform: 'uppercase',
             }}
           >
-            <span className={textSecondary}>{t('task.inbox')}</span>
+            <span className={textSecondary}>{t('settings.inbox')}</span>
           </span>
         </button>,
         mobileDateHeaderRef.current
@@ -1955,7 +1955,7 @@ const MobileListView = ({ hideInboxHandle = false }) => {
           <div className={`flex items-center justify-between px-3 py-2 border-b ${borderClass} flex-shrink-0`}>
             <div className="flex items-center gap-1.5">
               <Inbox size={13} className={textSecondary} />
-              <span className={`text-xs font-semibold ${textSecondary}`}>{t('task.inbox')}</span>
+              <span className={`text-xs font-semibold ${textSecondary}`}>{t('settings.inbox')}</span>
             </div>
             <button
               onClick={() => { setInboxOpen(false); setInboxPinned(false); }}

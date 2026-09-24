@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "iCal 导入",
+    "icalImportedCount_one": "已导入 {{count}} 个事件",
+    "icalImportedCount_other": "已导入 {{count}} 个事件",
+    "icalImportEmpty": "文件中未找到任何事件",
+    "icalRemovedCount_one": "已移除 {{count}} 个从文件导入的事件",
+    "icalRemovedCount_other": "已移除 {{count}} 个从文件导入的事件",
+    "enterTaskCalendarUrl": "请在同步设置中输入任务日历地址",
+    "eventsCount_one": "{{count}} 个事件",
+    "eventsCount_other": "{{count}} 个事件",
+    "calendarNamed": "日历「{{name}}」",
+    "notIcalError": "该地址未返回日历文件。对于 CalDAV 服务器（Nextcloud、Baikal 等），请在地址后附加 ?export（例如 …/default/?export）。",
+    "calendarWord": "日历",
+    "tasksCount_one": "{{count}} 个任务",
+    "tasksCount_other": "{{count}} 个任务",
+    "taskCalendarWord": "任务日历",
+    "syncFailedWith": "同步失败：{{items}}。请确认地址正确且可公开访问。",
+    "syncPartial": "已同步：{{successes}} — 同步失败：{{errors}}",
+    "syncSuccess": "已同步：{{items}}",
+    "urlAutoExportNote": "（已自动在日历地址后附加 ?export）",
+    "binRestoredCount_one": "已从回收站恢复 {{count}} 个任务。它们的行仍存在于你的 Obsidian 库中。请查看每个任务的备注。",
+    "binRestoredCount_other": "已从回收站恢复 {{count}} 个任务。它们的行仍存在于你的 Obsidian 库中。请查看每个任务的备注。",
+    "binRestoredOneDaily": "已从回收站恢复“{{title}}”。它的行仍存在于你{{date}}的每日笔记中。",
+    "binRestoredOneVault": "已从回收站恢复“{{title}}”。它的行仍存在于你的 Obsidian 库中。",
     "errors": {
       "AUTH_FAILURE": "认证失败。在同步设置中检查您的用户名和密码。",
       "CREDENTIAL_INVALID": "同步服务器已不再接受此设备的访问凭据。你的更改仍保存在本机。请联系同步服务器管理员，为此设备恢复访问权限。",
@@ -143,12 +166,14 @@
     "yearly": "年度"
   },
   "common": {
+    "durationMinutes": "{{minutes}} 分钟",
+    "durationHours": "{{hours}} 小时",
+    "durationHoursMinutes": "{{hours}} 小时 {{minutes}} 分钟",
     "yesterday": "昨天",
     "am": "上午",
     "pm": "下午",
     "amShort": "上午",
     "pmShort": "下午",
-    "hoursShort": "{{count}} 小时",
     "blocked": "受阻",
     "cancel": "取消",
     "save": "保存",
@@ -1092,7 +1117,6 @@
     "elapsedDuration": "已进行 {{duration}}",
     "endSession": "结束会话",
     "exitAndReturn": "退出，稍后回来",
-    "hoursMinutesShort": "{{hours}} 小时 {{minutes}} 分钟",
     "longBreakEveryFourCycles": "每 4 个循环用一次长休息替代普通休息。",
     "noProjectTasks": "暂无任务，请在“目标”面板中添加任务。",
     "pause": "暂停",
@@ -1217,6 +1241,8 @@
     "nextStep": "下一个（按当前视图）"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} 个结果",
+    "resultsCount_other": "{{count}} 个结果",
     "placeholder": "搜索任务和笔记...",
     "typeToSearch": "键入以搜索所有任务和笔记...",
     "noResults": "没有找到结果",
@@ -1242,9 +1268,6 @@
     "total": "本地存储：{{used}} / 约 5 MB（{{percent}}%）"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} 分钟",
-    "durationHours": "{{hours}} 小时",
-    "durationHoursMinutes": "{{hours}} 小时 {{minutes}} 分钟",
     "tasksDone": "已完成任务",
     "completion": "完成率",
     "timeSpent": "投入时间",
@@ -1559,6 +1582,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "任务已排期",
+    "tasksPlacedCount_one": "已将 {{count}} 个任务安排到时间线上",
+    "tasksPlacedCount_other": "已将 {{count}} 个任务安排到时间线上",
+    "tasksRescheduledTitle": "任务已重新排期",
+    "tasksMovedCount_one": "已将 {{count}} 个任务移至未来时段",
+    "tasksMovedCount_other": "已将 {{count}} 个任务移至未来时段",
     "closeDailySummary": "关闭每日摘要",
     "closeRecycleBin": "关闭回收站",
     "closeTagFilter": "关闭标签筛选器",
@@ -1808,6 +1837,8 @@
     "openInbox": "打开收件箱"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} 个最后期限",
+    "deadlineCount_other": "{{count}} 个最后期限",
     "viewMultiShort": "多日",
     "viewDayShort": "单日",
     "viewWeekShort": "周",

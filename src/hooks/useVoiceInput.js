@@ -11,6 +11,7 @@ import { notBucketed } from '../utils/bucketList.js';
 import { parseTranscriptTasks } from '../utils/voiceQuickAdd.js';
 import { normalizeVoiceParseResult } from '../utils/voiceParseResult.js';
 import { voiceUsesAI, voiceTranscribesWithAI } from '../utils/voiceAI.js';
+import { speechRecognitionLocale } from '../utils/localeFormatting.js';
 
 /**
  * Voice input pipeline — extracted from App.jsx (see "App.jsx — Ongoing
@@ -180,7 +181,7 @@ export default function useVoiceInput({
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SR) {
         const recognition = new SR();
-        recognition.lang = navigator.language || 'en-US';
+        recognition.lang = speechRecognitionLocale();
         recognition.continuous = true;
         recognition.interimResults = true;
         let finalText = '';

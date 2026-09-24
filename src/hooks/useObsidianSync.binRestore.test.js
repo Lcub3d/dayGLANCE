@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import i18next from 'i18next';
+import en from '../../public/locales/en/translation.json';
+
+// The toast is translated through the global i18next instance, as in the app.
+await i18next.init({ lng: 'en', fallbackLng: false, resources: { en: { translation: en } }, interpolation: { escapeValue: false } });
 
 // BIN-VERSUS-VAULT wiring (§3.10 ruling 5): the sync cycle un-bins a task
 // whose line the vault still holds, in BOTH inbound modes — the direct scan
@@ -151,7 +156,7 @@ describe('bin-versus-vault through the DIRECT scan', () => {
     // Fresher than the delete stamp, so peers keep the restore.
     expect(Date.parse(t.lastModified)).toBeGreaterThan(Date.parse('2026-08-30T10:00:00.000Z'));
     expect(setObsidianSyncNotice).toHaveBeenCalledWith(
-      'Restored "Water the plants" from the recycle bin. Its line still exists in your 2026-08-29 daily note.',
+      'Restored "Water the plants" from the recycle bin. Its line still exists in your daily note for August 29, 2026.',
     );
   });
 

@@ -1,5 +1,28 @@
 {
   "sync": {
+    "icalImportTitle": "Importação de iCal",
+    "icalImportedCount_one": "{{count}} evento importado",
+    "icalImportedCount_other": "{{count}} eventos importados",
+    "icalImportEmpty": "Nenhum evento encontrado no arquivo",
+    "icalRemovedCount_one": "{{count}} evento importado do arquivo removido",
+    "icalRemovedCount_other": "{{count}} eventos importados do arquivo removidos",
+    "enterTaskCalendarUrl": "Insira uma URL de calendário de tarefas nas configurações de sincronização",
+    "eventsCount_one": "{{count}} evento",
+    "eventsCount_other": "{{count}} eventos",
+    "calendarNamed": "calendário \"{{name}}\"",
+    "notIcalError": "A URL não retornou um arquivo de calendário. Para servidores CalDAV (Nextcloud, Baikal etc.), adicione ?export à URL (por exemplo, …/default/?export).",
+    "calendarWord": "calendário",
+    "tasksCount_one": "{{count}} tarefa",
+    "tasksCount_other": "{{count}} tarefas",
+    "taskCalendarWord": "calendário de tarefas",
+    "syncFailedWith": "Falha na sincronização: {{items}}. Verifique se a URL está correta e acessível publicamente.",
+    "syncPartial": "Sincronizado: {{successes}} — falhou: {{errors}}",
+    "syncSuccess": "Sincronizado: {{items}}",
+    "urlAutoExportNote": " (?export foi adicionado automaticamente à URL do seu calendário)",
+    "binRestoredCount_one": "{{count}} tarefa foi restaurada da lixeira. A linha dela ainda existe no seu vault Obsidian. Veja as notas de cada tarefa.",
+    "binRestoredCount_other": "{{count}} tarefas foram restauradas da lixeira. As linhas delas ainda existem no seu vault Obsidian. Veja as notas de cada tarefa.",
+    "binRestoredOneDaily": "A tarefa \"{{title}}\" foi restaurada da lixeira. A linha dela ainda existe na sua nota diária de {{date}}.",
+    "binRestoredOneVault": "A tarefa \"{{title}}\" foi restaurada da lixeira. A linha dela ainda existe no seu vault Obsidian.",
     "errors": {
       "AUTH_FAILURE": "Autenticação falhou. Verifique o nome de usuário e a senha nas configurações de sincronização.",
       "FORBIDDEN": "Sincronização bloqueada (403). Seu servidor pode estar bloqueando a solicitação.",
@@ -143,8 +166,10 @@
     "yearly": "anual"
   },
   "common": {
+    "durationMinutes": "{{minutes}} min",
+    "durationHours": "{{hours}} h",
+    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "yesterday": "Ontem",
-    "hoursShort": "{{count}} h",
     "blocked": "Bloqueado",
     "am": "AM",
     "pm": "PM",
@@ -1092,7 +1117,6 @@
     "elapsedDuration": "Tempo decorrido: {{duration}}",
     "endSession": "Encerrar sessão",
     "exitAndReturn": "Sair — volto depois",
-    "hoursMinutesShort": "{{hours}} h {{minutes}} min",
     "longBreakEveryFourCycles": "A pausa longa substitui a pausa normal a cada 4 ciclos.",
     "noProjectTasks": "Nenhuma tarefa. Adicione-as no painel Metas.",
     "pause": "Pausar",
@@ -1217,6 +1241,8 @@
     "nextStep": "Próximo, conforme a visualização"
   },
   "spotlight": {
+    "resultsCount_one": "{{count}} resultado",
+    "resultsCount_other": "{{count}} resultados",
     "placeholder": "Pesquisar tarefas e notas…",
     "typeToSearch": "Escreva para pesquisar em todas as tarefas e notas…",
     "noResults": "Nenhum resultado encontrado",
@@ -1242,9 +1268,6 @@
     "total": "Armazenamento local: {{used}} / ~5 MB ({{percent}}%)"
   },
   "weeklyReview": {
-    "durationMinutes": "{{minutes}} min",
-    "durationHours": "{{hours}} h",
-    "durationHoursMinutes": "{{hours}} h {{minutes}} min",
     "tasksDone": "Tarefas concluídas",
     "completion": "Conclusão",
     "timeSpent": "Tempo gasto",
@@ -1559,6 +1582,12 @@
     }
   },
   "app": {
+    "tasksScheduledTitle": "Tarefas agendadas",
+    "tasksPlacedCount_one": "{{count}} tarefa colocada na sua agenda",
+    "tasksPlacedCount_other": "{{count}} tarefas colocadas na sua agenda",
+    "tasksRescheduledTitle": "Tarefas reagendadas",
+    "tasksMovedCount_one": "{{count}} tarefa movida para horários futuros",
+    "tasksMovedCount_other": "{{count}} tarefas movidas para horários futuros",
     "closeDailySummary": "Fechar resumo diário",
     "closeRecycleBin": "Fechar reciclagem",
     "closeTagFilter": "Fechar filtro de tags",
@@ -1808,6 +1837,8 @@
     "openInbox": "Abrir caixa de entrada"
   },
   "sched": {
+    "deadlineCount_one": "{{count}} prazo",
+    "deadlineCount_other": "{{count}} prazos",
     "viewMultiShort": "DIAS",
     "viewDayShort": "DIA",
     "viewWeekShort": "SEM.",

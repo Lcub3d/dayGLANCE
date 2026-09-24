@@ -122,7 +122,7 @@ import useCloudSync from './hooks/useCloudSync.js';
 import { createDayGlanceEngine } from './sync/adapter.js';
 import { createDbEngine, resetVaultSyncCursor } from './sync/dbEngine.js';
 import { deriveBlockEnergy } from './utils/energyAxis.js';
-import { computeDaySummary, formatMinutes } from './utils/daySummary.js';
+import { computeDaySummary } from './utils/daySummary.js';
 import { buildUpNextFact } from './utils/liveActivity.js';
 import { registerDbEngine } from './sync/dirtyTracker.js';
 import { isVaultEnabled } from './sync/vaultConfig.js';
@@ -3493,6 +3493,7 @@ const DayPlanner = () => {
         dailyNotes,
         todayRoutines,
         routinesEnabled,
+        t,
       });
       const fingerprint = trmnlContentFingerprint(mergeVars);
       const decision = trmnlPushDecision({
@@ -7850,7 +7851,7 @@ const DayPlanner = () => {
       // ── Day-summary projection (Live Activity / Dynamic Island) ────────
       // The strip's numbers for TODAY, precomputed here so the native side
       // never re-implements the math: the projection IS computeDaySummary.
-      // Raw minutes plus preformatted strings (formatMinutes keeps the
+      // Raw minutes plus preformatted strings (formatDuration keeps the
       // wording identical to the in-app strip); metadata only, no media
       // bytes. unblockedMinutes is null on an empty day with no declared
       // window — the native side should show nothing rather than "0m".
@@ -7867,10 +7868,10 @@ const DayPlanner = () => {
           restoreMinutes: sum.restoreMinutes,
           doneMinutes: sum.doneMinutes,
           completableMinutes: sum.completableMinutes,
-          unblocked: sum.unblockedMinutes === null ? null : formatMinutes(sum.unblockedMinutes),
-          effort: formatMinutes(sum.effortMinutes),
-          restore: formatMinutes(sum.restoreMinutes),
-          done: `${formatMinutes(sum.doneMinutes)}/${formatMinutes(sum.completableMinutes)}`,
+          unblocked: sum.unblockedMinutes === null ? null : formatDuration(sum.unblockedMinutes, t),
+          effort: formatDuration(sum.effortMinutes, t),
+          restore: formatDuration(sum.restoreMinutes, t),
+          done: `${formatDuration(sum.doneMinutes, t)}/${formatDuration(sum.completableMinutes, t)}`,
           // The island's schedule-fact pair, built from the same unified
           // current-or-next entry (task or HG session) the Android Up Next
           // notification uses. Labels stay factual when stale ("until 2:00

@@ -143,6 +143,17 @@ describe('buildJoboDayModel', () => {
     expect(model.plans[0].labels).toEqual(['notStarted']);
   });
 
+  it('does not infer no recorded execution from an invalid ledger row', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [{ id: 'broken', taskId: 't1' }],
+      now: { date: '2026-09-25', time: '08:00' },
+    });
+    expect(model.invalidRecordCount).toBe(1);
+    expect(model.plans[0].labels).toEqual([]);
+  });
+
   it('does not mix another Final Plan for the same task into this Plan', () => {
     const otherPlanAttempt = rec({
       id: 'do:t1:older-plan',
@@ -254,6 +265,72 @@ describe('buildJoboDayModel', () => {
     });
     expect(model.timedRecords[0].task.id).toBe(recurring.id);
     expect(model.plans[0].labels).toEqual(['late']);
+  });
+
+  it('renders the captured Final Plan even after the live task was rescheduled and renamed', () => {
+    const movedTask = {
+      ...task,
+      title: 'Draft report — renamed',
+      startTime: '13:00',
+    };
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [movedTask],
+      taskLookup: [movedTask],
+      records: [rec({ title: 'Draft report' })],
+    });
+    const captured = model.plans.find((item) => item.plan.startTime === '09:00');
+    const current = model.plans.find((item) => item.plan.startTime === '13:00');
+    expect(captured.task.title).toBe('Draft report');
+    expect(captured.labels).toEqual(['late']);
+    expect(current.task.title).toBe('Draft report — renamed');
+  });
+
+  it('keeps a captured Final Plan readable after the live task no longer resolves', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [],
+      taskLookup: [],
+      records: [rec({ title: 'Historical title' })],
+    });
+    expect(model.plans).toHaveLength(1);
+    expect(model.plans[0].task.title).toBe('Historical title');
+    expect(model.plans[0].plan).toEqual({ date: '2026-09-24', startTime: '09:00', duration: 60 });
+  });
+
+  it('does not derive split across different recurring untimed occurrences that share a template id', () => {
+    const first = rec({
+      id: 'do:r1:2026-09-24:2026-09-24T18:00:00.000Z',
+      taskId: 'r1',
+      source: 'completion',
+      timing: 'untimed',
+      date: '2026-09-24',
+      startTime: null,
+      endDate: null,
+      endTime: null,
+      planSnapshot: null,
+    });
+    const second = rec({
+      id: 'do:r1:2026-09-25:2026-09-25T18:00:00.000Z',
+      taskId: 'r1',
+      source: 'completion',
+      timing: 'untimed',
+      date: '2026-09-25',
+      startTime: null,
+      endDate: null,
+      endTime: null,
+      planSnapshot: null,
+      createdAt: '2026-09-25T18:00:00.000Z',
+      updatedAt: '2026-09-25T18:00:00.000Z',
+      observedAt: '2026-09-25T18:00:01.000Z',
+    });
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [],
+      records: [first, second],
+    });
+    expect(model.untimedRecords).toHaveLength(1);
+    expect(model.untimedRecords[0].labels).toEqual([]);
   });
 
   it('drops malformed rows from the view without treating the ledger as empty', () => {

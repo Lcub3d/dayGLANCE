@@ -93,7 +93,18 @@ feature-local namespace. Add new keys to `public/locales/*/translation.json`;
 - **Ledger tombstones are never pruned, and the file-tier merge gets no sync
   horizon.** The horizon drops old local-only rows, tombstones included.
 - **The flag gates the interface, never the data.** A device with JOBO off
-  still loads, stores, pushes, pulls and merges records.
+  still loads, stores, pushes, pulls and merges records. It creates none from
+  its own completions, and does not retro-create them on enable.
+- **The detector is a planner over task snapshots, and its keys come from the
+  source event.** `src/jobo/detector.js` keys a record on the task's own
+  completion stamp, never on the observing device's clock, so two devices
+  produce one id and `pickJoboRecord` picks one copy. Creation is
+  ensure-present; an uncheck targets the record by the previous key and drops
+  it to `partial`; a completion without a stamp makes no record. A recurring
+  completion captures the occurrence the user saw (that date's exception
+  over the template), and the Do `date` is the stamp's own prefix. The
+  detector is one-shot because a failed write, local or remote, is held in
+  the ledger and retried with backoff.
 
 # Adding a field to a task
 

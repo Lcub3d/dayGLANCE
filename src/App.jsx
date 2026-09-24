@@ -115,6 +115,7 @@ import useObsidian from './hooks/useObsidian.js';
 import useObsidianSync from './hooks/useObsidianSync.js';
 import useTodoistSync from './hooks/useTodoistSync.js';
 import useCompletionLog from './hooks/useCompletionLog.js';
+import useJoboDetector from './hooks/useJoboDetector.js';
 import useDailyBriefings from './hooks/useDailyBriefings.js';
 import useVoiceInput from './hooks/useVoiceInput.js';
 import useCloudSync from './hooks/useCloudSync.js';
@@ -3015,6 +3016,16 @@ const DayPlanner = () => {
     setObsidianSyncError, setObsidianSyncStatus,
     isRemoteApply,
     isVisibleForUser,
+  });
+  // JOBO completion detector (slice 4): the same completion transition writes
+  // a Do record through the ledger's only writer. Every completion path
+  // produces the same deterministic record, and a device with the flag off
+  // creates none (the flag gates the interface; the data still syncs).
+  useJoboDetector({
+    tasks, unscheduledTasks, recurringTasks,
+    joboRecords, joboLoaded, joboWritable, recordJobo,
+    isRemoteApply,
+    enabled: joboEnabled,
   });
   // Late-bind the SSE → Obsidian nudge (declared beside useVaultEventStream
   // above, which mounts before this hook can exist).

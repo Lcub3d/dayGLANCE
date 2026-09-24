@@ -13,9 +13,12 @@
 //   collection while it is undefined; `[]` means "this device's ledger is
 //   empty", which is a different claim, and an unreadable ledger must never
 //   make it.
-// - APPLIES DURING LOAD ARE HELD. A remote apply before `loaded` is queued and
-//   merged after hydration. Merging it into the stale initial state and then
-//   loading over it would drop it.
+// - APPLIES DURING LOAD ARE HELD, AND HELD IS RETRYABLE. A remote apply before
+//   `loaded` is queued and merged after hydration; merging it into the stale
+//   initial state and then loading over it would drop it. The queue is drained
+//   until it is stable, since an apply can land while the flush is in flight,
+//   and a batch whose write fails goes back on the queue rather than being
+//   published: the next apply or load retries it.
 // - EVERY MUTATION GOES THROUGH update(fn), AND STATE IS THE COMMITTED VALUE.
 //   A record in state that is not on disk is exactly what a crash loses.
 // - REMOTE APPLY PRESERVES INCOMING TIMESTAMPS. The merge is by id with core's
@@ -94,6 +97,9 @@ export function mergeJoboCollections(local, remote, pick = pickJoboRecord) {
  */
 export function createLedger({ store, pick = pickJoboRecord }) {
   let state = { records: undefined, loaded: false, writable: undefined, error: null };
+  // Remote records not yet on disk: applies that arrived before the load, and
+  // any batch whose write failed. Kept merged by id so a row re-delivered
+  // every cycle by a sync tier's own retry never grows the queue.
   let held = [];
   const listeners = new Set();
 
@@ -103,6 +109,23 @@ export function createLedger({ store, pick = pickJoboRecord }) {
   };
 
   const mergeInto = (incoming) => (current) => mergeRecordsById(current, incoming, pick);
+  const hold = (records) => { held = mergeRecordsById(held, records, pick); };
+
+  // Write everything held, draining until nothing arrives mid-flight. Returns
+  // the committed records, or the failure with the batch back on the queue.
+  async function flushHeld(records) {
+    while (held.length) {
+      const batch = held;
+      held = [];
+      const committed = await store.update(mergeInto(batch));
+      if (!committed.ok) {
+        hold(batch);
+        return { ok: false, error: committed.error, records };
+      }
+      records = committed.value;
+    }
+    return { ok: true, records };
+  }
 
   async function load() {
     const [result, writable] = await Promise.all([store.read(), store.writable()]);
@@ -113,18 +136,21 @@ export function createLedger({ store, pick = pickJoboRecord }) {
       return state;
     }
     let records = Array.isArray(result.value) ? result.value : [];
+    let error = null;
     if (held.length) {
-      const queued = held;
-      held = [];
-      const merged = mergeRecordsById(records, queued.flat(), pick);
       if (writable) {
-        const committed = await store.update(mergeInto(queued.flat()));
-        records = committed.ok ? committed.value : merged;
+        // State is the committed value: a flush that fails publishes what the
+        // read returned, not the merge that never reached disk, and the batch
+        // stays held for the next apply or load to retry.
+        const flushed = await flushHeld(records);
+        records = flushed.records;
+        error = flushed.ok ? null : flushed.error;
       } else {
-        records = merged;
+        records = mergeRecordsById(records, held, pick);
+        held = [];
       }
     }
-    set({ records, loaded: true, writable, error: null });
+    set({ records, loaded: true, writable, error });
     return state;
   }
 
@@ -148,14 +174,16 @@ export function createLedger({ store, pick = pickJoboRecord }) {
    * merged into state alone where it cannot.
    */
   async function applyRemote(records) {
-    if (!state.loaded) { held.push(records); return { ok: true, held: true }; }
+    if (!state.loaded) { hold(records); return { ok: true, held: true }; }
     if (!state.writable) {
       set({ records: mergeRecordsById(state.records, records, pick) });
       return { ok: true, written: false };
     }
-    const result = await store.update(mergeInto(records));
-    if (!result.ok) { set({ error: result.error }); return result; }
-    set({ records: result.value, error: null });
+    // Anything still held from a failed write rides along with this batch.
+    hold(records);
+    const flushed = await flushHeld(state.records);
+    if (!flushed.ok) { set({ error: flushed.error }); return { ok: false, error: flushed.error }; }
+    set({ records: flushed.records, error: null });
     return { ok: true, written: true };
   }
 
@@ -183,7 +211,7 @@ export function createLedger({ store, pick = pickJoboRecord }) {
     commit,
     applyRemote,
     restore,
-    /** How many applies are waiting on the load. Test seam. */
+    /** How many remote records are waiting to reach disk. Test seam. */
     heldCount: () => held.length,
   };
 }

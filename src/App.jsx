@@ -1027,13 +1027,22 @@ const DayPlanner = () => {
   // The engine and the backup builders can run a beat after a render.
   const joboRecordsRef = useRef(joboRecords);
   joboRecordsRef.current = joboRecords;
-  // Restore paths await this before they reload: a ledger write still in
-  // flight at reload is lost. A failed write is said out loud rather than
-  // reloading as if the ledger had come back with the rest.
-  const restoreJoboOrWarn = async (records) => {
-    const result = await restoreJobo(records);
-    if (!result.ok) alert(t('backup.restoreFailed', { error: `JOBO ledger: ${result.error}` }));
-    return result;
+  // A ledger write that fails is held and retried by the next apply, and the
+  // vault tier re-delivers the row until it lands; until slice 5 has a place
+  // to show it, the failure is at least not silent.
+  useEffect(() => {
+    if (joboError) console.warn('[jobo] ledger storage error:', joboError);
+  }, [joboError]);
+  // Every restore path writes the ledger FIRST, awaited, and aborts on failure:
+  // the checked IndexedDB write is the one step in a restore that can fail, so
+  // it runs before the localStorage replacement that cannot. A ledger left at
+  // the old point in time under a restored plan would silently disagree with
+  // it, and a write still in flight at reload is lost. The throw lands in each
+  // path's own catch, which alerts and leaves the app as it was.
+  const restoreJoboOrThrow = async (data) => {
+    if (!Array.isArray(data?.joboRecords)) return; // an older backup: the ledger is left as is
+    const result = await restoreJobo(data.joboRecords);
+    if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
   };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
@@ -4920,6 +4929,7 @@ const DayPlanner = () => {
       const record = await autoBackupDB.getBackup(backupId);
       if (!record?.data?.data) throw new Error('Invalid backup record');
       const { data } = record.data;
+      await restoreJoboOrThrow(data);
       if (data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(data.aiConfig));
       if (data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
       // Restoring replaces the FULL local state, so the vault sync cursors no
@@ -4928,7 +4938,6 @@ const DayPlanner = () => {
       // pull HWM would skip forever every vault row the backup lacks. Clear them
       // so the post-reload cycle full-pulls and LWW-merges (never blind-pushes).
       resetVaultSyncCursor();
-      if (Array.isArray(data.joboRecords)) await restoreJoboOrWarn(data.joboRecords);
       applyEngineData(data);
       window.location.reload();
     } catch (err) {
@@ -4942,12 +4951,12 @@ const DayPlanner = () => {
       if (!provider) throw new Error('No provider configured');
       const backup = await provider.downloadBackup(autoBackupConfig.remote, filename);
       if (!backup?.data) throw new Error('Invalid backup file');
+      await restoreJoboOrThrow(backup.data);
       if (backup.data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(backup.data.aiConfig));
       if (backup.data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(backup.data.obsidianConfig));
       // Full-state replacement → invalidate the vault sync cursors (see
       // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
       resetVaultSyncCursor();
-      if (Array.isArray(backup.data.joboRecords)) await restoreJoboOrWarn(backup.data.joboRecords);
       applyEngineData(backup.data);
       window.location.reload();
     } catch (err) {
@@ -5070,8 +5079,8 @@ const DayPlanner = () => {
           throw new Error('Invalid backup file format');
         }
 
+        await restoreJoboOrThrow(backup.data);
         applyBackupToLocalStorage(backup.data);
-        if (Array.isArray(backup.data.joboRecords)) await restoreJoboOrWarn(backup.data.joboRecords);
 
         // Full-state replacement → invalidate the vault sync cursors (see
         // restoreFromAutoBackup for the stale-snapshot/stale-HWM hazard).
@@ -5109,8 +5118,8 @@ const DayPlanner = () => {
         alert(t('backup.folderBackupNotFound', { filename: LIVE_BACKUP_FILENAME }));
         return;
       }
+      await restoreJoboOrThrow(payload.data);
       applyBackupToLocalStorage(payload.data);
-      if (Array.isArray(payload.data.joboRecords)) await restoreJoboOrWarn(payload.data.joboRecords);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
       // to it. The handle is already persisted by openForRestore.

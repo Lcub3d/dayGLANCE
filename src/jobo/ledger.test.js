@@ -162,6 +162,74 @@ describe('createLedger lifecycle', () => {
     expect(ledger.get().records[0].title).toBe('local');
   });
 
+  // MUTATION: publish the merged value when the flush fails, or clear `held`
+  // before the write lands, and one of these fails.
+  it('a failed flush of held applies publishes only what was read, keeps the batch, and retries it', async () => {
+    const store = fakeStore({ initial: [rec('on-disk')] });
+    const original = store.update.bind(store);
+    let failing = true;
+    store.update = (fn) => (failing ? Promise.resolve({ ok: false, error: 'storageWrite' }) : original(fn));
+    const ledger = createLedger({ store });
+    await ledger.applyRemote([rec('from-remote')]);
+    await ledger.load();
+    // Loaded, since the read succeeded, but state is the committed value.
+    expect(ledger.get().loaded).toBe(true);
+    expect(ledger.get().records.map((r) => r.id)).toEqual(['on-disk']);
+    expect(ledger.get().error).toBe('storageWrite');
+    expect(ledger.heldCount()).toBe(1);
+    // The store recovers; the next apply carries the held batch with it.
+    failing = false;
+    expect(await ledger.applyRemote([rec('later')])).toEqual({ ok: true, written: true });
+    expect(ledger.heldCount()).toBe(0);
+    expect(ledger.get().error).toBe(null);
+    expect(store.peek().map((r) => r.id)).toEqual(['from-remote', 'later', 'on-disk']);
+  });
+
+  // MUTATION: flush `held` once instead of until stable, and the second batch
+  // sits in the queue after loaded flips true.
+  it('an apply that lands while the held flush is in flight is written before the load completes', async () => {
+    const store = fakeStore({ initial: [] });
+    const ledger = createLedger({ store });
+    await ledger.applyRemote([rec('first')]);
+    const original = store.update.bind(store);
+    let second = null;
+    store.update = async (fn) => {
+      // Mid-flush: another apply arrives while the ledger is still not loaded.
+      if (!second) second = ledger.applyRemote([rec('second')]);
+      return original(fn);
+    };
+    await ledger.load();
+    expect(await second).toEqual({ ok: true, held: true });
+    expect(ledger.heldCount()).toBe(0);
+    expect(ledger.get().records.map((r) => r.id)).toEqual(['first', 'second']);
+    expect(store.peek().map((r) => r.id)).toEqual(['first', 'second']);
+  });
+
+  it('a loaded apply whose write fails is held and lands with the next one', async () => {
+    const store = fakeStore({ initial: [] });
+    const original = store.update.bind(store);
+    let failing = false;
+    store.update = (fn) => (failing ? Promise.resolve({ ok: false, error: 'storageWrite' }) : original(fn));
+    const ledger = createLedger({ store });
+    await ledger.load();
+    failing = true;
+    expect(await ledger.applyRemote([rec('lost?')])).toEqual({ ok: false, error: 'storageWrite' });
+    expect(ledger.get().records).toEqual([]);
+    expect(ledger.heldCount()).toBe(1);
+    failing = false;
+    await ledger.applyRemote([rec('next')]);
+    expect(store.peek().map((r) => r.id)).toEqual(['lost?', 'next']);
+    expect(ledger.heldCount()).toBe(0);
+  });
+
+  it('the held queue merges by id, so a row re-delivered every cycle does not grow it', async () => {
+    const ledger = createLedger({ store: fakeStore({ initial: [] }) });
+    await ledger.applyRemote([rec('same')]);
+    await ledger.applyRemote([rec('same')]);
+    await ledger.applyRemote([rec('same', { updatedAt: T2 })]);
+    expect(ledger.heldCount()).toBe(1);
+  });
+
   it('notifies subscribers with each state change', async () => {
     const ledger = createLedger({ store: fakeStore() });
     const seen = [];

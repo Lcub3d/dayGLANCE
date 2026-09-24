@@ -9,6 +9,7 @@
 import { dateToString } from './taskUtils.js';
 import { schedRollingWindow } from './schedAgenda.js';
 import { WIDGET_PROJECTION_DAYS } from './widgetDayProjection.js';
+import { monthWindowDates } from './widgetMonthWindow.js';
 
 /**
  * @param opts.visibleDates    Date[] the timeline is showing.
@@ -19,6 +20,10 @@ import { WIDGET_PROJECTION_DAYS } from './widgetDayProjection.js';
  * @param opts.today           Date (local) — anchored unconditionally.
  * @param opts.projectionDays  How far past today the widget projects; that
  *                             day is anchored unconditionally too.
+ * @param opts.weekStartDay    0 = Sunday, 1 = Monday. Anchors the widget
+ *                             month window (widgetMonthWindow.js): the start
+ *                             of today's week, and the last day of its
+ *                             payload (six weeks plus the rollover tail).
  * @returns {{rangeStart: string, rangeEnd: string}} inclusive 'YYYY-MM-DD'.
  */
 export function computeRecurringExpansionRange({
@@ -29,6 +34,7 @@ export function computeRecurringExpansionRange({
   schedDaysShown = 1,
   today,
   projectionDays = WIDGET_PROJECTION_DAYS,
+  weekStartDay = 0,
 }) {
   // The SCHED agenda window (mobile SchedView / desktop SchedDashboard)
   // reads days well beyond visibleDates/weekViewDates — on phones weekViewDates
@@ -49,6 +55,10 @@ export function computeRecurringExpansionRange({
   // built from tasksByDate whatever the user is looking at.
   const horizon = new Date(today);
   horizon.setDate(horizon.getDate() + projectionDays);
+  // And the widget month window's first and last day, for the same reason:
+  // a month grid with a weekly series missing from weeks 3–6 would look
+  // complete, just emptier.
+  const monthDates = monthWindowDates(today, weekStartDay);
 
   const allDateStrs = [
     ...visibleDates.map(d => dateToString(d)),
@@ -58,6 +68,8 @@ export function computeRecurringExpansionRange({
     schedWindow.to,
     dateToString(today),
     dateToString(horizon),
+    dateToString(monthDates[0]),
+    dateToString(monthDates[monthDates.length - 1]),
   ].sort();
   return { rangeStart: allDateStrs[0], rangeEnd: allDateStrs[allDateStrs.length - 1] };
 }

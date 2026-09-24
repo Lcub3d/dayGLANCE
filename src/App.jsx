@@ -40,6 +40,8 @@ import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
+import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
+import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -6515,6 +6517,7 @@ const DayPlanner = () => {
 
   // Expand recurring task templates into virtual task instances for visible dates.
   // In week view, expand over the full week range (which may extend beyond visibleDates).
+  const expansionDayKey = dateToString(currentTime);
   const expandedRecurringTasks = useMemo(() => {
     if (recurringTasks.length === 0) return [];
     // The range's anchors — the SCHED rolling window, TODAY, and TODAY + the
@@ -6522,46 +6525,13 @@ const DayPlanner = () => {
     // utils/recurringExpansionRange.js; the reasons live there.
     const today = getTodayStr();
     const { rangeStart, rangeEnd } = computeRecurringExpansionRange({
-      visibleDates, weekViewDates, monthViewRange, selectedDate, schedDaysShown, today: new Date(),
+      visibleDates, weekViewDates, monthViewRange, selectedDate, schedDaysShown, today: new Date(), weekStartDay,
     });
-    const instances = [];
-    for (const template of recurringTasks) {
-      const occurrences = getOccurrencesInRange(template, rangeStart, rangeEnd);
-      for (const dateStr of occurrences) {
-        const completed = (template.completedDates || []).includes(dateStr);
-        const exception = template.exceptions?.[dateStr];
-        // Don't show past uncompleted recurring instances (except all-day — those surface as overdue)
-        if (dateStr < today && !completed && !(exception?.isAllDay ?? template.isAllDay)) continue;
-        instances.push({
-          id: `recurring-${template.id}-${dateStr}`,
-          title: exception?.title ?? template.title,
-          startTime: exception?.startTime ?? template.startTime,
-          duration: exception?.duration ?? template.duration,
-          color: exception?.color ?? template.color,
-          completed,
-          isAllDay: exception?.isAllDay ?? template.isAllDay ?? false,
-          // Assignment is series-level by default (inherited from the template),
-          // but an instance can carry its own override when assigned "this only".
-          assignedUserSyncIds: exception?.assignedUserSyncIds ?? template.assignedUserSyncIds,
-          notes: template.notes || '',
-          subtasks: template.subtasks || [],
-          // Energy-axis override is series-level (see setTaskEnergy); the
-          // expansion is an explicit field list, so it must be carried here or
-          // instances silently fall back to auto-derivation.
-          energy: template.energy,
-          date: dateStr,
-          isRecurring: true,
-          recurringTemplateId: template.id,
-          recurrenceType: template.recurrence?.type,
-          // Project membership is series-level (stored on the template);
-          // instances inherit it so project-filtered views keep occurrences.
-          projectId: template.projectId,
-          ...(template.isExample ? { isExample: true } : {}),
-        });
-      }
-    }
-    return instances;
-  }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown]);
+    return expandRecurringTasks(recurringTasks, { rangeStart, rangeEnd, today });
+    // expansionDayKey re-anchors the range when the day rolls with the app
+    // open; the body reads the clock itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown, weekStartDay, expansionDayKey]);
   expandedRecurringTasksRef.current = expandedRecurringTasks;
 
   // Build today's non-overdue HG sessions for the reminder engine.
@@ -7479,6 +7449,30 @@ const DayPlanner = () => {
     tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
+  // ── Six-week month window for a month-grid widget ────────────────────────
+  // Bars only (utils/widgetMonthWindow.js): the week containing today plus
+  // five more, and a one-week rollover tail because nothing republishes it at
+  // midnight with the app in the background. Same day key as the projection,
+  // so a foregrounded app rolls it at midnight; not keyed on currentTime.
+  const widgetMonthWindow = useMemo(() => {
+    if (!dataLoaded) return null;
+    if (!isNativeAndroid() && !isNativeIOS()) return null;
+    return buildWidgetMonthWindow({
+      today: new Date(widgetTodayKey + 'T12:00:00'),
+      weekStartDay,
+      tasksForDate: (date) => getTasksForDate(date, false),
+      deadlinesForDate: (dateStr) => unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
+      // Routines exist for today only; both halves of the date guard are the
+      // ones buildRoutineBlocks (utils/mcpRoutines.js) explains.
+      routinesForDate: (dateStr) => (routinesEnabled && routinesDate === dateStr && widgetTodayKey === dateStr)
+        ? todayRoutines
+        : [],
+    });
+  }, [
+    dataLoaded, widgetTodayKey, weekStartDay, getTasksForDate, unscheduledTasks, isVisibleForUser,
+    routinesEnabled, routinesDate, todayRoutines,
+  ]);
+
   // ── Native Android widget snapshot sync ──────────────────────────────────
   // Pushes a rich snapshot of today's agenda to the native widget via NativeBridge.
   // Runs whenever tasks, habits, routines, or frames change so the widget is always
@@ -7931,6 +7925,11 @@ const DayPlanner = () => {
       // the pushed day above carries state (completions, habits, routines,
       // overdue); a projected day carries the shape of the day.
       days: projectedWidgetDays,
+      // ── Six weeks of bars, for a month grid ─────────────────────────────
+      // { from, weekStart, days: [{date, bars:[{s,d,c}], allDay, deadlines}] },
+      // 49 days (42 + a rollover week). Wholly hot in the dedupe: any change
+      // in it reloads (utils/widgetSnapshotDedupe.js).
+      monthWindow: widgetMonthWindow,
       // The zone every clock minute above was computed in. A widget on a
       // device that has since moved to a different UTC offset shows its own
       // "time zone changed" state instead of blocks at the wrong angles
@@ -8003,6 +8002,7 @@ const DayPlanner = () => {
     liveActivityEnabled,
     widgetSnapshotTick,
     projectedWidgetDays,
+    widgetMonthWindow,
     t,
   ]);
 

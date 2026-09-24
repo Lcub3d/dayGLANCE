@@ -127,9 +127,14 @@ These require app code changes and a new deployment.
 
 ### 3.1 Loosen truncation limits
 
-Current limits were set to hit TRMNL's free-tier 2 KB payload cap. TRMNL X is a paid device,
+Current limits were set against an assumed 2 KB free-tier cap. Measured against the live
+webhook on 2026-09-24, the real free-tier limit is 5 kB: a 6076-byte payload came back 422
+with "Large payload received (6076 bytes), should be less than 5kb. Subscribe to TRMNL+ for
+higher limit." So the ~4 KB target below was always inside the cap. `gatherTrmnlData` now
+trims the schedule to `TRMNL_PAYLOAD_BUDGET_BYTES` before returning, so loosening these
+limits costs rows on a very full day rather than a rejected push. TRMNL X is a paid device,
 but we can't know at push time which device a user has, so the approach is to loosen limits
-modestly, staying well under ~4 KB (which all tiers support comfortably).
+modestly.
 
 | Field | Current limit | Proposed |
 |---|---|---|

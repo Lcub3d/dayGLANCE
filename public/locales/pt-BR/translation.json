@@ -2047,28 +2047,18 @@
     "title": "JOBO",
     "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "view": {
-      "loading": "Carregando JOBO…",
       "plan": "Plano",
-      "time": "Hora",
       "do": "Execução",
       "storageError": "Não foi possível gravar o ledger do JOBO. Os dados já confirmados continuam visíveis.",
       "readOnly": "O JOBO está somente leitura neste dispositivo. A edição de Do está desativada.",
       "invalidRecords": "{{count}} registro(s) inválido(s) do ledger são ignorados nesta visualização.",
       "untimed": "Sem horário",
-      "timeNotRecorded": "Tempo não registrado",
-      "editDo": "Editar Do",
-      "timing": "Tempo",
       "timed": "Com horário",
-      "date": "Data",
-      "start": "Início",
-      "endDate": "Data final",
-      "end": "Fim",
       "progressLabel": "Progresso",
       "completeInterval": "Informe um intervalo completo de início e fim.",
       "editClock": "O relógio do dispositivo não está depois da última atualização deste registro. Tente novamente mais tarde.",
       "completedByCompletion": "Concluído é criado por um evento de conclusão. Um Do reavaliado pode ficar como Iniciado, Parcial ou Quase.",
       "updateFailed": "Não foi possível salvar a alteração do Do.",
-      "saving": "Salvando…",
       "emptyPlan": "Nenhum Plano com horário neste dia.",
       "emptyDo": "Nenhum Do registrado neste dia.",
       "summary": {
@@ -2082,8 +2072,7 @@
       "progress": {
         "started": "Iniciado",
         "partial": "Parcial",
-        "mostly": "Quase",
-        "completed": "Concluído"
+        "mostly": "Quase"
       }
     }
   },

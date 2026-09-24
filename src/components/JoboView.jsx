@@ -23,7 +23,7 @@ const SUMMARY_CLASS = {
   late: 'jobo-s5-badge-warn',
   longer: 'jobo-s5-badge-warn',
   split: 'jobo-s5-badge-info',
-  notStarted: 'jobo-s5-badge-danger',
+  notStarted: 'jobo-s5-badge-info',
   unplanned: 'jobo-s5-badge-unplanned',
 };
 
@@ -389,7 +389,10 @@ function EditDoDialog({ record, records, writable, recordJobo, onClose, t, darkM
 
       if (next !== currentRecord) {
         const result = await recordJobo([next]);
-        if (!result?.ok) throw new Error(result?.error || t('jobo.view.updateFailed'));
+        // Slice 4 hands failed durable writes to the ledger's retry queue.
+        // held:true means the edit is owned and will retry; only a refusal
+        // (read-only/not-loaded) means the view must treat the edit as rejected.
+        if (!result?.ok && !result?.held) throw new Error(result?.error || t('jobo.view.updateFailed'));
       }
       onClose();
     } catch (err) {

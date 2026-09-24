@@ -2045,7 +2045,47 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。"
+    "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
+    "view": {
+      "loading": "正在加载 JOBO…",
+      "plan": "计划",
+      "time": "时间",
+      "do": "执行",
+      "storageError": "JOBO 台账写入失败。已提交的数据仍会正常显示。",
+      "readOnly": "此设备上的 JOBO 目前为只读，无法编辑执行记录。",
+      "invalidRecords": "此视图已忽略 {{count}} 条无效台账记录。",
+      "untimed": "未计时",
+      "timeNotRecorded": "未记录时间",
+      "editDo": "编辑执行记录",
+      "timing": "计时方式",
+      "timed": "已计时",
+      "date": "日期",
+      "start": "开始",
+      "endDate": "结束日期",
+      "end": "结束",
+      "progressLabel": "进度",
+      "completeInterval": "请填写完整的开始和结束时间。",
+      "editClock": "设备时间没有晚于该记录的上次更新时间，请在时间追上后重试。",
+      "completedByCompletion": "“已完成”由任务完成事件创建；重新评估执行记录时只能设为“已开始 / 部分完成 / 大部分完成”。",
+      "updateFailed": "无法保存执行记录的修改。",
+      "saving": "正在保存…",
+      "emptyPlan": "当天没有带时间的计划。",
+      "emptyDo": "当天没有执行记录。",
+      "summary": {
+        "withinPlan": "按计划",
+        "late": "较晚",
+        "longer": "更久",
+        "split": "分段",
+        "notStarted": "未开始",
+        "unplanned": "计划外"
+      },
+      "progress": {
+        "started": "已开始",
+        "partial": "部分完成",
+        "mostly": "大部分完成",
+        "completed": "已完成"
+      }
+    }
   },
   "todoist": {
     "title": "Todoist 同步",

@@ -128,4 +128,31 @@ jobs:
             -scheme DayGlanceWidgetTests \
             -configuration Debug \
             -destination "platform=iOS Simulator,id=$UDID" \
+            -resultBundlePath "$RUNNER_TEMP/widget-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+        env:
+          # MonthGridSizeSweepTests also prints its screenshots to this log as
+          # base64 when set (xcodebuild strips the TEST_RUNNER_ prefix).
+          TEST_RUNNER_DG_MONTH_SHOTS: '1'
+
+      # The widget tests attach rendered screenshots (the month grid at the
+      # smallest and largest systemLarge sizes, crowded and stale states) to
+      # the result bundle; export them as a downloadable artifact, pass or fail.
+      - name: Export widget screenshots
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/widget-shots"
+          if [ -d "$RUNNER_TEMP/widget-tests.xcresult" ]; then
+            xcrun xcresulttool export attachments \
+              --path "$RUNNER_TEMP/widget-tests.xcresult" \
+              --output-path "$RUNNER_TEMP/widget-shots" || echo "::warning::could not export attachments"
+          fi
+          ls -la "$RUNNER_TEMP/widget-shots"
+
+      - name: Upload widget screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widget-screenshots
+          path: ${{ runner.temp }}/widget-shots
+          if-no-files-found: ignore

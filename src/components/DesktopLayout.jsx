@@ -764,7 +764,7 @@ const DesktopLayout = () => {
                   className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
                 >
                   <span className="flex items-center justify-center gap-1.5">
-                    <Inbox size={16} /> {t('task.inbox')}
+                    <Inbox size={16} /> {t('settings.inbox')}
                     {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
                       <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                         {filteredUnscheduledTasks.filter(t => !t.isExample).length}
@@ -820,7 +820,7 @@ const DesktopLayout = () => {
                 className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
               >
                 <span className="flex items-center justify-center gap-1.5">
-                    <Inbox size={16} /> {t('task.inbox')}
+                    <Inbox size={16} /> {t('settings.inbox')}
                   {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
                     <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                       {filteredUnscheduledTasks.filter(t => !t.isExample).length}

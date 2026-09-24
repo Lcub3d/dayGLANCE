@@ -229,17 +229,15 @@ export function buildJoboDayModel({
     .filter(({ plan }) => plan && plan.date === date)
     .map(({ task, plan }) => {
       const startMinute = timeMinutes(plan.startTime);
-      const linked = validLiveRecords.filter((record) => {
-        if (!recordBelongsToTask(record, task)) return false;
-        // Recurring templates reuse one task id across occurrences. The
-        // captured plan date identifies the occurrence even when execution
-        // itself happened on another day.
-        if (task.recurringTemplateId != null) {
-          return record.planSnapshot?.date === plan.date
-            || (record.planSnapshot === null && record.date === plan.date);
-        }
-        return true;
-      });
+      // A task id can survive more than one Plan (reopen/reschedule, and every
+      // recurring occurrence shares its template id). Only execution captured
+      // against a Final Plan on this planned day belongs in this comparison.
+      // A null snapshot proves execution but cannot honestly be attributed to
+      // this timed Plan.
+      const linked = validLiveRecords.filter((record) => (
+        recordBelongsToTask(record, task)
+        && record.planSnapshot?.date === plan.date
+      ));
 
       let labels = [];
       if (linked.length === 0 && now) {

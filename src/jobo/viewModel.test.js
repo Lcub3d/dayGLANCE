@@ -143,6 +143,27 @@ describe('buildJoboDayModel', () => {
     expect(model.plans[0].labels).toEqual(['notStarted']);
   });
 
+  it('does not mix another Final Plan for the same task into this Plan', () => {
+    const otherPlanAttempt = rec({
+      id: 'do:t1:older-plan',
+      createdAt: '2026-09-23T09:20:00.000Z',
+      updatedAt: '2026-09-23T09:20:00.000Z',
+      observedAt: '2026-09-23T09:20:00.000Z',
+      date: '2026-09-23',
+      startTime: '09:20',
+      endDate: '2026-09-23',
+      endTime: '09:50',
+      planSnapshot: { date: '2026-09-23', startTime: '09:00', duration: 60 },
+    });
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [otherPlanAttempt],
+      now: { date: '2026-09-24', time: '11:00' },
+    });
+    expect(model.plans[0].labels).toEqual(['notStarted']);
+  });
+
   it('uses later-day execution when comparing a selected-day Plan', () => {
     const model = buildJoboDayModel({
       date: '2026-09-24',

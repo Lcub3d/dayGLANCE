@@ -53,7 +53,7 @@ class HealthProviderManagerTest {
         override fun isAvailable(): Boolean = available
         override suspend fun hasPermission(metric: HealthMetric): Boolean = true
         override suspend fun readSteps(date: LocalDate) =
-            HealthRead(HealthReadStatus.NO_DATA)
+            HealthRead<Int>(HealthReadStatus.NO_DATA)
         override suspend fun readSleep(date: LocalDate) =
             HealthRead<SleepResult>(HealthReadStatus.NO_DATA)
     }

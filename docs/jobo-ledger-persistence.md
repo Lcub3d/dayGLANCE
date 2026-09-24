@@ -426,8 +426,13 @@ truth"; nothing here forecloses it.
 
 - The fields that express progress and classification, and their rules
   (slice 2).
-- Creating records from completions (slice 4), which depends on the identity
-  rules above and on the hook being the only writer.
+- Creating records from completions is slice 4, `src/jobo/detector.js` and
+  `useJoboDetector`: a planner over prev and next task snapshots in
+  `useCompletionLog`'s shape, applying the identity rules above and writing
+  through `recordJobo`. A completion-created record is `timing: 'untimed'`
+  (a checkbox says the work happened, not when it began) with the plan
+  captured as it stands; the interval can be corrected later under the same
+  id.
 - Any rendering (slice 5), including the history popover learning about Do.
 - Import of the prototype's JSON ledger. Worth doing, and small, once the
   record shape is final; not before.
@@ -495,6 +500,14 @@ rather than unit-testing a module. The five from review are folded in.
     snapshot-delete guard treats the vanish as a glitch, re-fetches the row
     by id, and it lands on disk, with the vault row and the other device
     untouched.
+13. **Completing a task writes a Do record, once, across two devices**
+    (slice 4). Through the real planner and ledger on each device and the
+    vault simulator: a completion on A is one record on both, and B observing
+    the same completion writes nothing new; two devices that each observe it
+    before the record arrives converge on the earlier observer on both tiers;
+    an uncheck drops the attempt to Partially completed everywhere and a
+    later completion is a second attempt; a device with the flag off creates
+    nothing and still forwards the record.
 
 Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
 remove the flag-independence (2 fails); pass the sync horizon to the

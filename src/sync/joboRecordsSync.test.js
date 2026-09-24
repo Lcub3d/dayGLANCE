@@ -21,6 +21,7 @@ import { createVault, createDevice, syncToConvergence } from './dbVaultSim.js';
 import { mergeSyncData } from '../mergeSync.js';
 import { createLedger, mergeJoboCollections } from '../jobo/ledger.js';
 import { createDoRecord, tombstoneDoRecord, pickJoboRecord } from '../jobo/core.js';
+import { snapshotJoboState, planJoboTransitions, buildJoboRecords } from '../jobo/detector.js';
 
 const T0 = '2026-09-19T15:10:02.000Z';
 const T1 = '2026-09-19T16:00:00.000Z';
@@ -347,5 +348,179 @@ describe('scenario 12: a ledger write that fails after a pull is re-delivered, n
     await settle();
     expect(vault.has(jid(record))).toBe(true);
     expect(a.get().records).toEqual([record]);
+  });
+});
+
+// 13. Completing a task writes a Do record, once, across two devices (slice 4).
+//
+// Each device runs the real planner and the real ledger, wired exactly as the
+// hook wires them, over the vault simulator. The path under test is the one
+// CLAUDE.md demands: the completion edge → the detector → recordJobo → state →
+// payload → vault row → the other device's state, and back.
+describe('scenario 13: the completion detector, end to end on two devices', () => {
+  const DONE_AT = '2026-09-19T15:10:02-05:00';
+  const t1 = { id: 't1', title: 'Draft the report', date: '2026-09-19', startTime: '14:30', duration: 60, completed: false, lastModified: '2026-09-19T14:00:00.000Z' };
+  const tid = makeEntityId('tasks', 't1');
+
+  // A device: task state, a loaded ledger, the detector's snapshot, and the
+  // sim's vault client. `render` is what one React render does: plan, build,
+  // commit, advance. `remote` is applyEngineData: task state replaced, ledger
+  // rows handed to the hook, and the detector HELD for that render.
+  async function device(name, tasks) {
+    const ledger = createLedger({ store: memStore([]) });
+    await ledger.load();
+    const sim = createDevice(name, { ...EMPTY, tasks });
+    const d = { name, tasks, ledger, sim, prev: null };
+    d.render = async ({ observedAt, isRemoteApply = false } = {}) => {
+      const next = snapshotJoboState(d.tasks, [], []);
+      const { edges, advanceTo } = planJoboTransitions(d.prev, next, {
+        tasks: d.tasks, isRemoteApply, loaded: ledger.get().loaded, writable: ledger.get().writable,
+      });
+      if (!edges) { if (advanceTo !== null) d.prev = advanceTo; return; }
+      const records = buildJoboRecords(edges, ledger.get().records, { observedAt });
+      if (records.length) expect((await ledger.commit(records)).ok).toBe(true);
+      d.prev = next;
+    };
+    d.records = () => ledger.get().records;
+    // buildSyncPayload → the sim's data; dirty what changed since the last
+    // push, as the engine's snapshot diff does (a row pushed again unchanged
+    // would overwrite a peer's winning copy at the vault).
+    const pushed = new Map();
+    d.push = (vault) => {
+      sim.data.tasks = JSON.parse(JSON.stringify(d.tasks));
+      sim.data.joboRecords = JSON.parse(JSON.stringify(d.records()));
+      const rows = [[tid, d.tasks.find((t) => t.id === 't1')], ...d.records().map((r) => [jid(r), r])];
+      for (const [entityId, value] of rows) {
+        const text = JSON.stringify(value);
+        if (pushed.get(entityId) !== text) { sim.markDirty(entityId); pushed.set(entityId, text); }
+      }
+      sim.push(vault);
+    };
+    // pull → applyEngineData: state from the mirror, rows to the hook, the
+    // detector held during the apply and run again on the next quiet render.
+    d.pull = async (vault, observedAt) => {
+      sim.pull(vault);
+      d.tasks = sim.data.tasks;
+      await ledger.applyRemote(sim.data.joboRecords || []);
+      await d.render({ observedAt, isRemoteApply: true });
+      await d.render({ observedAt });
+    };
+    return d;
+  }
+  const complete = (tasks, completedAt, lastModified) => tasks.map((t) => (t.id === 't1' ? { ...t, completed: true, completedAt, lastModified } : t));
+  const uncomplete = (tasks, lastModified) => tasks.map((t) => (t.id === 't1' ? { ...t, completed: false, completedAt: null, lastModified } : t));
+
+  it('a completion on A becomes one record on both devices; B observing the same completion writes nothing new', async () => {
+    const vault = createVault();
+    const a = await device('A', [t1]);
+    const b = await device('B', [t1]);
+    await a.render();
+    await b.render(); // first sight on both
+
+    a.tasks = complete(a.tasks, DONE_AT, '2026-09-19T20:10:02.000Z');
+    await a.render({ observedAt: '2026-09-19T20:10:03.000Z' });
+    expect(a.records()).toHaveLength(1);                       // A: state
+    const record = a.records()[0];
+    expect(record).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'completed', timing: 'untimed', updatedAt: DONE_AT });
+
+    a.push(vault);                                             // A: payload → vault
+    await b.pull(vault, '2026-09-19T20:10:30.000Z');           // B: apply → hook → state, then B's own detector sees the edge
+    expect(b.tasks[0].completed).toBe(true);
+    // MUTATION: replace ensure-present with a plain create and B writes a
+    // second copy under the same id with its own observedAt, which then
+    // loses to A's on the tie; equal here only by the merge, not by design.
+    expect(b.records()).toEqual([record]);                     // B: the other device's state
+    b.push(vault);
+    await a.pull(vault, '2026-09-19T20:11:00.000Z');
+    expect(a.records()).toEqual([record]);                     // nothing echoed back
+  });
+
+  it('two devices that each observe the completion before the record arrives converge on the earlier observer, on both tiers', async () => {
+    const vault = createVault();
+    const a = await device('A', [t1]);
+    const b = await device('B', [t1]);
+    await a.render();
+    await b.render();
+    // Both see the same completion (same stamp, from the completing device)
+    // but B sees it after a rename, and later.
+    a.tasks = complete(a.tasks, DONE_AT, '2026-09-19T20:10:02.000Z');
+    await a.render({ observedAt: '2026-09-19T20:10:03.000Z' });
+    b.tasks = complete(b.tasks.map((t) => ({ ...t, title: 'Draft the report, renamed' })), DONE_AT, '2026-09-19T20:10:02.000Z');
+    await b.render({ observedAt: '2026-09-19T20:10:30.000Z' });
+    expect(a.records()[0].id).toBe(b.records()[0].id);         // MUTATION: key on the observer's clock and these differ
+    expect(a.records()[0].title).not.toBe(b.records()[0].title);
+
+    a.push(vault); b.push(vault);
+    await a.pull(vault, '2026-09-19T20:11:00.000Z');
+    await b.pull(vault, '2026-09-19T20:11:00.000Z');
+    a.push(vault); b.push(vault);
+    await a.pull(vault, '2026-09-19T20:12:00.000Z');
+    await b.pull(vault, '2026-09-19T20:12:00.000Z');
+    expect(a.records()).toHaveLength(1);
+    expect(b.records()).toEqual(a.records());
+    expect(a.records()[0].title).toBe('Draft the report');     // the earlier observer
+
+    // The file tier picks the same copy in either order.
+    const early = { ...a.records()[0] };
+    const late = { ...early, title: 'Draft the report, renamed', observedAt: '2026-09-19T20:10:30.000Z' };
+    expect(mergeSyncData({ ...EMPTY, joboRecords: [early] }, { ...EMPTY, joboRecords: [late] }, 90).data.joboRecords).toEqual([early]);
+    expect(mergeSyncData({ ...EMPTY, joboRecords: [late] }, { ...EMPTY, joboRecords: [early] }, 90).data.joboRecords).toEqual([early]);
+  });
+
+  it('un-completing drops the attempt to partial everywhere; completing again is a second attempt', async () => {
+    const vault = createVault();
+    const a = await device('A', [t1]);
+    const b = await device('B', [t1]);
+    await a.render();
+    await b.render();
+    a.tasks = complete(a.tasks, DONE_AT, '2026-09-19T20:10:02.000Z');
+    await a.render({ observedAt: '2026-09-19T20:10:03.000Z' });
+    a.push(vault);
+    await b.pull(vault, '2026-09-19T20:10:30.000Z');
+    const first = a.records()[0];
+
+    // Uncheck on A. The live task has no stamp any more; the key is from prev.
+    a.tasks = uncomplete(a.tasks, '2026-09-19T21:00:00.000Z');
+    await a.render({ observedAt: '2026-09-19T21:00:00.500Z' });
+    expect(a.records()).toHaveLength(1);
+    expect(a.records()[0]).toMatchObject({ id: first.id, progress: 'partial', planSnapshot: first.planSnapshot });
+    a.push(vault);
+    await b.pull(vault, '2026-09-19T21:00:10.000Z');
+    expect(b.tasks[0].completed).toBe(false);
+    expect(b.records()[0].progress).toBe('partial');           // B: the reassessment, not a second uncheck
+    expect(b.records()).toHaveLength(1);
+
+    // Complete again on B, later: a new key, and the first attempt untouched.
+    const AGAIN = '2026-09-19T17:30:00-05:00';
+    b.tasks = complete(b.tasks, AGAIN, '2026-09-19T22:30:00.000Z');
+    await b.render({ observedAt: '2026-09-19T22:30:01.000Z' });
+    b.push(vault);
+    await a.pull(vault, '2026-09-19T22:31:00.000Z');
+    const ids = a.records().map((r) => r.id).sort();
+    expect(ids).toEqual([`do:t1:${DONE_AT}`, `do:t1:${AGAIN}`]);
+    expect(a.records().find((r) => r.id === first.id).progress).toBe('partial');
+    expect(a.records().find((r) => r.id === `do:t1:${AGAIN}`).progress).toBe('completed');
+    expect(b.records().map((r) => r.id).sort()).toEqual(ids);
+  });
+
+  it('a device with the flag off creates nothing from a completion it observes, and still forwards the record', async () => {
+    const vault = createVault();
+    const a = await device('A', [t1]);
+    const b = await device('B', [t1]);
+    await a.render();
+    await b.render();
+    a.tasks = complete(a.tasks, DONE_AT, '2026-09-19T20:10:02.000Z');
+    // A has the flag off: the edge is consumed, no record.
+    const next = snapshotJoboState(a.tasks, [], []);
+    const plan = planJoboTransitions(a.prev, next, { tasks: a.tasks, enabled: false });
+    expect(plan).toEqual({ edges: null, advanceTo: next });
+    a.prev = next;
+    expect(a.records()).toEqual([]);
+    a.push(vault);
+    await b.pull(vault, '2026-09-19T20:10:30.000Z');           // B has it on: B records A's completion
+    expect(b.records()).toHaveLength(1);
+    b.push(vault);
+    await a.pull(vault, '2026-09-19T20:11:00.000Z');
+    expect(a.records()).toHaveLength(1);                       // forwarded, not created
   });
 });

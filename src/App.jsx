@@ -10,7 +10,7 @@ import { emitBridgeIntent } from './utils/obsidianBridgeStream.js';
 import { isStreamPosture } from './utils/obsidianVaultPosture.js';
 import { loadAIConfig, saveAIConfig, aiComplete, aiJSON, testConnection, DEFAULT_CONFIG, PROVIDER_MODELS, PROVIDER_LABELS } from './ai.js';
 import { taskSuggestSystemPrompt, taskSuggestUserPrompt, frameNudgeSystemPrompt, frameNudgeUserPrompt, rescheduleSystemPrompt, rescheduleUserPrompt, aiSubtasksSystemPrompt, aiSubtasksUserPrompt, weeklySummarySystemPrompt, weeklySummaryUserPrompt, smartScheduleSystemPrompt, smartScheduleUserPrompt } from './ai-prompts.js';
-import { gatherTrmnlData, pushToTrmnl, TRMNL_MARKUP_FULL, TRMNL_MARKUP_HALF_HORIZONTAL, TRMNL_MARKUP_HALF_VERTICAL, TRMNL_MARKUP_QUADRANT } from './trmnl.js';
+import { gatherTrmnlData, pushToTrmnl } from './trmnl.js';
 import { trmnlContentFingerprint, trmnlPushDecision, trmnlBackoffAfterRateLimit, writeTrmnlPushState } from './utils/trmnlPushPolicy.js';
 import { checkForUpdate } from './versionCheck.js';
 import { getStorageUsage, formatBytes } from './utils/storage.js';
@@ -115,13 +115,14 @@ import useObsidian from './hooks/useObsidian.js';
 import useObsidianSync from './hooks/useObsidianSync.js';
 import useTodoistSync from './hooks/useTodoistSync.js';
 import useCompletionLog from './hooks/useCompletionLog.js';
+import useJoboDetector from './hooks/useJoboDetector.js';
 import useDailyBriefings from './hooks/useDailyBriefings.js';
 import useVoiceInput from './hooks/useVoiceInput.js';
 import useCloudSync from './hooks/useCloudSync.js';
 import { createDayGlanceEngine } from './sync/adapter.js';
 import { createDbEngine, resetVaultSyncCursor } from './sync/dbEngine.js';
 import { deriveBlockEnergy } from './utils/energyAxis.js';
-import { computeDaySummary, formatMinutes } from './utils/daySummary.js';
+import { computeDaySummary } from './utils/daySummary.js';
 import { buildUpNextFact } from './utils/liveActivity.js';
 import { registerDbEngine } from './sync/dirtyTracker.js';
 import { isVaultEnabled } from './sync/vaultConfig.js';
@@ -3016,6 +3017,16 @@ const DayPlanner = () => {
     isRemoteApply,
     isVisibleForUser,
   });
+  // JOBO completion detector (slice 4): the same completion transition writes
+  // a Do record through the ledger's only writer. Every completion path
+  // produces the same deterministic record, and a device with the flag off
+  // creates none (the flag gates the interface; the data still syncs).
+  useJoboDetector({
+    tasks, unscheduledTasks, recurringTasks,
+    joboRecords, joboLoaded, joboWritable, recordJobo,
+    isRemoteApply,
+    enabled: joboEnabled,
+  });
   // Late-bind the SSE → Obsidian nudge (declared beside useVaultEventStream
   // above, which mounts before this hook can exist).
   obsidianSseNudgeRef.current = nudgeObsidianObservations;
@@ -3482,6 +3493,7 @@ const DayPlanner = () => {
         dailyNotes,
         todayRoutines,
         routinesEnabled,
+        t,
       });
       const fingerprint = trmnlContentFingerprint(mergeVars);
       const decision = trmnlPushDecision({
@@ -7839,7 +7851,7 @@ const DayPlanner = () => {
       // ── Day-summary projection (Live Activity / Dynamic Island) ────────
       // The strip's numbers for TODAY, precomputed here so the native side
       // never re-implements the math: the projection IS computeDaySummary.
-      // Raw minutes plus preformatted strings (formatMinutes keeps the
+      // Raw minutes plus preformatted strings (formatDuration keeps the
       // wording identical to the in-app strip); metadata only, no media
       // bytes. unblockedMinutes is null on an empty day with no declared
       // window — the native side should show nothing rather than "0m".
@@ -7856,10 +7868,10 @@ const DayPlanner = () => {
           restoreMinutes: sum.restoreMinutes,
           doneMinutes: sum.doneMinutes,
           completableMinutes: sum.completableMinutes,
-          unblocked: sum.unblockedMinutes === null ? null : formatMinutes(sum.unblockedMinutes),
-          effort: formatMinutes(sum.effortMinutes),
-          restore: formatMinutes(sum.restoreMinutes),
-          done: `${formatMinutes(sum.doneMinutes)}/${formatMinutes(sum.completableMinutes)}`,
+          unblocked: sum.unblockedMinutes === null ? null : formatDuration(sum.unblockedMinutes, t),
+          effort: formatDuration(sum.effortMinutes, t),
+          restore: formatDuration(sum.restoreMinutes, t),
+          done: `${formatDuration(sum.doneMinutes, t)}/${formatDuration(sum.completableMinutes, t)}`,
           // The island's schedule-fact pair, built from the same unified
           // current-or-next entry (task or HG session) the Android Up Next
           // notification uses. Labels stay factual when stale ("until 2:00

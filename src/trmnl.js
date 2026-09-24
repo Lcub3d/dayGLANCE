@@ -10,33 +10,27 @@
 import { getOccurrencesInRange } from './utils/recurrenceEngine.js';
 import { notBucketed } from './utils/bucketList.js';
 import { stripWikilinks } from './utils/taskUtils.js';
+import { formatDuration } from './utils/formatDuration.js';
+import { activeLocale } from './utils/localeFormatting.js';
+import { parseRetryAfter } from './utils/trmnlPushPolicy.js';
 
 // ---------------------------------------------------------------------------
 // Data helpers
 // ---------------------------------------------------------------------------
 
-/** Format minutes as "Xh Ym" or "Ym" */
-import { parseRetryAfter } from './utils/trmnlPushPolicy.js';
-
-const fmtDuration = (mins) => {
-  if (!mins || mins <= 0) return '0m';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${m}m`;
-};
-
 /** Format "HH:MM" 24-h string into display time */
-const fmtTime = (t, use24h) => {
+const fmtTime = (t, use24h, translate) => {
   if (!t) return '';
   const [hh, mm] = t.split(':').map(Number);
   if (use24h) return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const ampm = translate(hh >= 12 ? 'common.pm' : 'common.am');
   const h12 = hh % 12 || 12;
   return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
 };
 
 /** Priority label */
-const priorityLabel = (p) => ['', 'Low', 'Med', 'High'][p] || '';
+const PRIORITY_KEYS = ['', 'task.lowPriority', 'task.mediumPriority', 'task.highPriority'];
+const priorityLabel = (p, translate) => (PRIORITY_KEYS[p] ? translate(PRIORITY_KEYS[p]) : '');
 
 /** Convert "HH:MM" to total minutes since midnight */
 const toMinutes = (t) => {
@@ -64,6 +58,8 @@ const toMinutes = (t) => {
  * @param {Array}  opts.recurringTasks  - Recurring task templates
  * @param {Array}  opts.todayRoutines  - Today's routine chips
  * @param {boolean} opts.routinesEnabled - Whether routines feature is on
+ * @param {Function} opts.t            - i18next translator for the labels
+ * @param {string} [opts.language]     - Locale for the weekday and date
  * @returns {Object} merge_variables payload (kept under 2 KB for free-tier)
  */
 export function gatherTrmnlData({
@@ -78,6 +74,9 @@ export function gatherTrmnlData({
   dailyNotes = {},
   todayRoutines = [],
   routinesEnabled = false,
+  // Named `translate` here: this module already uses `t` for tasks.
+  t: translate,
+  language = activeLocale(),
 }) {
   const today = selectedDate || new Date().toISOString().slice(0, 10);
   const now = new Date();
@@ -116,13 +115,17 @@ export function gatherTrmnlData({
     const startMins = toMinutes(t.startTime);
     const endMins = startMins >= 0 ? startMins + (t.duration || 0) : -1;
     return {
-      time: fmtTime(t.startTime, use24HourClock),
-      dur: fmtDuration(t.duration),
+      time: fmtTime(t.startTime, use24HourClock, translate),
+      dur: formatDuration(t.duration, translate),
       title: stripWikilinks(t.title).slice(0, 40),
       done: !!t.completed,
-      pri: priorityLabel(t.priority),
-      allDay: !!t.allDay,
-      past: isEvent && !t.allDay && startMins >= 0 && endMins <= nowMins,
+      pri: priorityLabel(t.priority, translate),
+      // Tasks carry `isAllDay`. `allDay` is the native calendar's name for it,
+      // converted at that boundary (nativeCalendar.js in, taskMutations.js out),
+      // so it is never set on a task here. Reading it left every all-day row
+      // with allDay false, so the template fell through to an empty time.
+      allDay: !!t.isAllDay,
+      past: isEvent && !t.isAllDay && startMins >= 0 && endMins <= nowMins,
     };
   });
 
@@ -131,16 +134,16 @@ export function gatherTrmnlData({
   const total = countable.length;
   const completed = countable.filter((t) => t.completed).length;
   const overdue = countable.filter(
-    (t) => !t.completed && t.startTime && t.startTime < currentTime && !t.allDay
+    (t) => !t.completed && t.startTime && t.startTime < currentTime && !t.isAllDay
   ).length;
   const totalMinutes = countable.reduce((s, t) => s + (t.duration || 0), 0);
 
   // Upcoming (next 3 uncompleted tasks from now)
   const upcoming = todayTasks
-    .filter((t) => !t.completed && t.startTime && t.startTime >= currentTime && !t.allDay)
+    .filter((t) => !t.completed && t.startTime && t.startTime >= currentTime && !t.isAllDay)
     .slice(0, 3)
     .map((t) => ({
-      time: fmtTime(t.startTime, use24HourClock),
+      time: fmtTime(t.startTime, use24HourClock, translate),
       title: stripWikilinks(t.title).slice(0, 32),
     }));
 
@@ -186,15 +189,15 @@ export function gatherTrmnlData({
         .slice(0, 8)
         .map((r) => ({
           name: (r.name || '').slice(0, 30),
-          time: r.isAllDay ? 'All day' : fmtTime(r.startTime, use24HourClock),
-          dur: r.isAllDay ? '' : fmtDuration(r.duration),
+          time: r.isAllDay ? translate('task.allDay') : fmtTime(r.startTime, use24HourClock, translate),
+          dur: r.isAllDay ? '' : formatDuration(r.duration, translate),
         }))
     : [];
 
   // Friendly date
   const dateObj = new Date(today + 'T12:00:00');
-  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-  const dateLabel = dateObj.toLocaleDateString('en-US', {
+  const dayName = dateObj.toLocaleDateString(language, { weekday: 'long' });
+  const dateLabel = dateObj.toLocaleDateString(language, {
     month: 'short',
     day: 'numeric',
   });
@@ -203,14 +206,14 @@ export function gatherTrmnlData({
     date: today,
     day_name: dayName,
     date_label: dateLabel,
-    current_time: fmtTime(currentTime, use24HourClock),
+    current_time: fmtTime(currentTime, use24HourClock, translate),
     weather: '',
     schedule,
     total,
     completed,
     overdue,
     pct: total > 0 ? Math.round((completed / total) * 100) : 0,
-    time_planned: fmtDuration(totalMinutes),
+    time_planned: formatDuration(totalMinutes, translate),
     upcoming,
     next_task: nextTask,
     inbox_count: inboxCount,
@@ -257,113 +260,3 @@ export async function pushToTrmnl({ webhookUrl, apiKey }, mergeVars) {
     return { success: false, error: err.message || 'Network error' };
   }
 }
-
-// ---------------------------------------------------------------------------
-// TRMNL markup templates
-// ---------------------------------------------------------------------------
-// These are pasted by the user into their TRMNL private-plugin Markup Editor.
-// They use Liquid {{ variable }} syntax and TRMNL Design System classes.
-// ---------------------------------------------------------------------------
-
-export const TRMNL_MARKUP_FULL = `<div class="layout layout--col">
-  <div class="columns" style="flex:1">
-    <div class="column" style="flex:2">
-      <div class="gap--small">
-        {% for t in schedule %}
-        <div class="item">
-          <div class="meta"><span class="index">{% if t.done %}✓{% else %}{{ forloop.index }}{% endif %}</span></div>
-          <div class="content">
-            <span class="title title--small"{% if t.done or t.past %} style="text-decoration:line-through;opacity:.5"{% endif %}>{{ t.title }}</span>
-            <span class="label"{% if t.done or t.past %} style="text-decoration:line-through;opacity:.5"{% endif %}>{% if t.allDay %}All day{% else %}{{ t.time }} · {{ t.dur }}{% endif %}{% if t.pri != blank %} · {{ t.pri }}{% endif %}</span>
-          </div>
-        </div>
-        {% endfor %}
-        {% if schedule.size == 0 %}
-        <span class="description">No tasks scheduled</span>
-        {% endif %}
-      </div>
-
-      {% if routines.size > 0 %}
-      <div class="gap--medium">
-        <span class="label label--gray">ROUTINES</span>
-        {% for r in routines %}
-        <div class="divider"></div>
-        <span class="description">{{ r.time }}{% if r.dur != blank %} · {{ r.dur }}{% endif %} {{ r.name }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-
-    <div class="column" style="flex:1;display:flex;flex-direction:column">
-      <span class="title title--small">{{ day_name }}, {{ date_label }}</span>
-
-      <span class="value">{{ pct }}%</span>
-      <span class="label">{{ completed }}/{{ total }} done</span>
-      {% if overdue > 0 %}<span class="label label--underline">{{ overdue }} overdue</span>{% endif %}
-      <span class="label label--gray">{{ time_planned }} planned</span>
-      {% if inbox_count > 0 %}<span class="label label--gray">{{ inbox_count }} tasks in inbox</span>{% endif %}
-
-      {% if next_task %}
-      <div class="gap--small">
-        <span class="label label--gray">UP NEXT</span>
-        <span class="title title--small">{{ next_task.title }}</span>
-        <span class="label">{{ next_task.time }}</span>
-      </div>
-      {% endif %}
-
-      {% if habits.size > 0 %}
-      <div class="gap--small">
-        <span class="label label--gray">HABITS</span>
-        {% for h in habits %}
-        <span class="description">{{ h.name }}: {{ h.count }}/{{ h.target }}</span>
-        {% endfor %}
-      </div>
-      {% endif %}
-
-      <div class="title_bar" style="margin-top:auto"><span class="title_bar__title"><strong>day<em>GLANCE</em></strong></span></div>
-    </div>
-  </div>
-</div>`;
-
-export const TRMNL_MARKUP_HALF_HORIZONTAL = `<div class="layout layout--col">
-  <div style="display:flex;justify-content:space-between;align-items:baseline">
-    <span class="title title--small">{{ day_name }}, {{ date_label }}</span>
-    <span class="label">&nbsp;&nbsp;|&nbsp;&nbsp;{{ completed }}/{{ total }} · {{ pct }}%</span>
-  </div>
-  <div class="divider"></div>
-  <div class="gap--small">
-    {% for t in schedule limit:4 %}
-    <div class="item">
-      <div class="meta"><span class="index">{% if t.done %}✓{% else %}{{ forloop.index }}{% endif %}</span></div>
-      <div class="content">
-        <span class="title title--small"{% if t.done or t.past %} style="text-decoration:line-through;opacity:.5"{% endif %}>{{ t.title }}</span>
-        <span class="label"{% if t.done or t.past %} style="text-decoration:line-through;opacity:.5"{% endif %}>{% if t.allDay %}All day{% else %}{{ t.time }}{% endif %}</span>
-      </div>
-    </div>
-    {% endfor %}
-    {% if schedule.size == 0 %}<span class="description">No tasks scheduled</span>{% endif %}
-  </div>
-  <div class="title_bar"><span class="title_bar__title"><strong>day<em>GLANCE</em></strong></span></div>
-</div>`;
-
-export const TRMNL_MARKUP_HALF_VERTICAL = `<div class="layout layout--col">
-  <span class="title title--small">{{ day_name }}</span>
-  <span class="label">{{ date_label }}</span>
-  <span class="value">{{ pct }}%</span>
-  <span class="label">{{ completed }}/{{ total }} done</span>
-  {% if overdue > 0 %}<span class="label label--underline">{{ overdue }} overdue</span>{% endif %}
-  {% if next_task %}
-  <div class="gap--small">
-    <span class="label label--gray">NEXT</span>
-    <span class="description">{{ next_task.time }} {{ next_task.title }}</span>
-  </div>
-  {% endif %}
-  <div class="title_bar"><span class="title_bar__title"><strong>day<em>GLANCE</em></strong></span></div>
-</div>`;
-
-export const TRMNL_MARKUP_QUADRANT = `<div class="layout layout--col layout--center">
-  <span class="value">{{ pct }}%</span>
-  <span class="label">{{ completed }}/{{ total }}</span>
-  {% if next_task %}<span class="description">{{ next_task.time }} {{ next_task.title }}</span>{% endif %}
-  <div class="title_bar"><span class="title_bar__title"><strong>day<em>GLANCE</em></strong></span></div>
-</div>`;

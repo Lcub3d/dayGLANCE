@@ -5,7 +5,8 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import DayWindowMenu from './DayWindowMenu.jsx';
 import { dateToString, formatShortDate } from '../utils/taskUtils.js';
-import { computeDaySummary, formatMinutes } from '../utils/daySummary.js';
+import { computeDaySummary } from '../utils/daySummary.js';
+import { formatDuration } from '../utils/formatDuration.js';
 import { HOUR_GUTTER_W } from '../constants/timeline.js';
 
 // Collapse choice is a per-window view preference, same class as
@@ -106,7 +107,7 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
 
   const unblockedLabel = (
     <span className="flex items-baseline gap-1">
-      <span className={`font-semibold ${textPrimary}`}>{formatMinutes(summary.unblockedMinutes ?? 0)}</span>
+      <span className={`font-semibold ${textPrimary}`}>{formatDuration(summary.unblockedMinutes ?? 0, t)}</span>
       <span className={textSecondary}>{t('strip.unblocked')}</span>
     </span>
   );
@@ -118,9 +119,9 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
   const energyCompact = summary.blockedMinutes > 0 && (
     <span className="flex items-center gap-1">
       <Zap size={12} className="flex-shrink-0" style={{ color: EFFORT_DOT }} />
-      <span className={textSecondary}>{formatMinutes(summary.effortMinutes)}</span>
+      <span className={textSecondary}>{formatDuration(summary.effortMinutes, t)}</span>
       <Leaf size={12} className="flex-shrink-0 ml-0.5" style={{ color: RESTORE_DOT }} />
-      <span className={textSecondary}>{formatMinutes(summary.restoreMinutes)}</span>
+      <span className={textSecondary}>{formatDuration(summary.restoreMinutes, t)}</span>
     </span>
   );
 
@@ -232,10 +233,10 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
           <span className={pill}>
             <Zap size={13} className="flex-shrink-0" style={{ color: EFFORT_DOT }} />
             <span className={textPrimary}>{t('strip.effort')}</span>
-            <span className={textSecondary}>{formatMinutes(summary.effortMinutes)}</span>
+            <span className={textSecondary}>{formatDuration(summary.effortMinutes, t)}</span>
             <Leaf size={13} className="flex-shrink-0 ml-0.5" style={{ color: RESTORE_DOT }} />
             <span className={textPrimary}>{t('strip.restore')}</span>
-            <span className={textSecondary}>{formatMinutes(summary.restoreMinutes)}</span>
+            <span className={textSecondary}>{formatDuration(summary.restoreMinutes, t)}</span>
           </span>
         );
 
@@ -247,7 +248,7 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
         // smaller denominator than its headline total — that is the honest
         // number, not a bug.
         const chipValue = (total, done, completable) =>
-          done > 0 ? `${formatMinutes(done)}/${formatMinutes(completable)}` : formatMinutes(total);
+          done > 0 ? `${formatDuration(done, t)}/${formatDuration(completable, t)}` : formatDuration(total, t);
 
         const tagChips = (
           <>

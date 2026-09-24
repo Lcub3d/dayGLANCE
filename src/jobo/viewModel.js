@@ -39,7 +39,11 @@ function planSnapshotKey(snapshot) {
 }
 
 function recordGroupKey(record) {
-  return `${record.taskId == null ? 'null' : String(record.taskId)}::${planSnapshotKey(record.planSnapshot)}`;
+  // An unlinked Do has no task identity that can prove two rows are sessions
+  // of the same execution. Keep each one independent rather than deriving
+  // "split" across unrelated manual records.
+  if (record.taskId == null) return `record::${record.id}`;
+  return `${String(record.taskId)}::${planSnapshotKey(record.planSnapshot)}`;
 }
 
 function safeSummary(plan, records, options = {}) {
@@ -48,6 +52,18 @@ function safeSummary(plan, records, options = {}) {
   } catch {
     return [];
   }
+}
+
+export function resolveEditableDoRecord(records, openedRecord) {
+  if (!Array.isArray(records) || !openedRecord?.id) return null;
+  const current = records.find((record) => record?.id === openedRecord.id);
+  if (!current || current.deleted) return null;
+  // A newer reassessment, interval correction or tombstone must win over a
+  // dialog that was opened earlier. Exact-timestamp tie resolution may swap
+  // pristine copies, so use the current winner as the edit base when the
+  // version timestamp itself has not advanced.
+  if (current.updatedAt !== openedRecord.updatedAt) return null;
+  return current;
 }
 
 export function planFromTask(task) {
@@ -165,8 +181,11 @@ export function buildJoboDayModel({
       : timedSliceOnDate(record, date) !== null
   ));
 
+  // Rendering is date-windowed, but comparison is not: an attempt can happen
+  // on a later day and still be evidence against this Plan. Group the complete
+  // live ledger here, then use visibleRecords only for drawing the selected day.
   const groups = new Map();
-  for (const record of visibleRecords) {
+  for (const record of validLiveRecords) {
     const key = recordGroupKey(record);
     const group = groups.get(key) || [];
     group.push(record);
@@ -210,7 +229,17 @@ export function buildJoboDayModel({
     .filter(({ plan }) => plan && plan.date === date)
     .map(({ task, plan }) => {
       const startMinute = timeMinutes(plan.startTime);
-      const linked = visibleRecords.filter((record) => recordBelongsToTask(record, task));
+      const linked = validLiveRecords.filter((record) => {
+        if (!recordBelongsToTask(record, task)) return false;
+        // Recurring templates reuse one task id across occurrences. The
+        // captured plan date identifies the occurrence even when execution
+        // itself happened on another day.
+        if (task.recurringTemplateId != null) {
+          return record.planSnapshot?.date === plan.date
+            || (record.planSnapshot === null && record.date === plan.date);
+        }
+        return true;
+      });
 
       let labels = [];
       if (linked.length === 0 && now) {

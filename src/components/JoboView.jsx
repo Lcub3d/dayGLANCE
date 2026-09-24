@@ -11,7 +11,7 @@ import {
   reassessDoProgress,
   updateDoRecord,
 } from '../jobo/core.js';
-import { buildJoboDayModel } from '../jobo/viewModel.js';
+import { buildJoboDayModel, resolveEditableDoRecord } from '../jobo/viewModel.js';
 import './jobo/JoboView.css';
 
 const DEFAULT_SCALE = 84;
@@ -313,7 +313,7 @@ function Connections({ rootRef, focusKey, dep }) {
   );
 }
 
-function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode, cardBg, textPrimary, borderClass }) {
+function EditDoDialog({ record, records, writable, recordJobo, onClose, t, darkMode, cardBg, textPrimary, borderClass }) {
   const [draft, setDraft] = useState(() => ({
     timing: record.timing,
     date: record.date,
@@ -350,9 +350,15 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode, card
     setSaving(true);
     setError('');
     try {
+      const currentRecord = resolveEditableDoRecord(records, record);
+      if (!currentRecord) throw new Error(t('jobo.view.updateFailed'));
+
+      const previousMs = Date.parse(currentRecord.updatedAt);
       const nowMs = Date.now();
-      const previousMs = Date.parse(record.updatedAt);
-      if (Number.isFinite(previousMs) && nowMs <= previousMs) throw new Error(t('jobo.view.editClock'));
+      // Match the ledger's monotonic-version rule: a skewed device clock must
+      // not make an otherwise valid edit impossible, and the new version still
+      // has to be strictly later than the current winner.
+      const baseStampMs = Number.isFinite(previousMs) ? Math.max(nowMs, previousMs + 1) : nowMs;
 
       const patch = draft.timing === DO_TIMING.TIMED
         ? {
@@ -370,9 +376,9 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode, card
             endTime: null,
           };
 
-      const intervalChanged = Object.entries(patch).some(([key, value]) => record[key] !== value);
-      let next = record;
-      let stampMs = nowMs;
+      const intervalChanged = Object.entries(patch).some(([key, value]) => currentRecord[key] !== value);
+      let next = currentRecord;
+      let stampMs = baseStampMs;
       if (intervalChanged) next = updateDoRecord(next, patch, new Date(stampMs).toISOString());
 
       if (draft.progress !== next.progress) {
@@ -381,7 +387,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode, card
         next = reassessDoProgress(next, draft.progress, new Date(stampMs).toISOString());
       }
 
-      if (next !== record) {
+      if (next !== currentRecord) {
         const result = await recordJobo([next]);
         if (!result?.ok) throw new Error(result?.error || t('jobo.view.updateFailed'));
       }
@@ -524,7 +530,10 @@ export default function JoboView() {
     tasks: dayTasks,
     taskLookup: lookupTasks,
     records: joboRecords || [],
-    now: date === today ? { date: today, time: localTime(clock) } : undefined,
+    // Always pass the real current civil time. Core decides whether the
+    // selected Plan is past, current or future; withholding now on past dates
+    // incorrectly suppresses derived notStarted.
+    now: { date: today, time: localTime(clock) },
   }), [date, dayTasks, lookupTasks, joboRecords, today, clock]);
 
   const timedStarts = [
@@ -560,7 +569,10 @@ export default function JoboView() {
   if (!joboLoaded) {
     return (
       <div data-jobo-view className="h-full flex items-center justify-center p-8">
-        <p className={`text-sm ${textSecondary}`}>{t('common.loading')}</p>
+        <p className={`text-sm ${textSecondary} flex items-center gap-2`}>
+          {joboError && <AlertTriangle size={14} />}
+          {joboError ? t('jobo.view.storageError') : t('common.loading')}
+        </p>
       </div>
     );
   }
@@ -691,6 +703,7 @@ export default function JoboView() {
       {editingRecord && (
         <EditDoDialog
           record={editingRecord}
+          records={joboRecords || []}
           writable={joboWritable}
           recordJobo={recordJobo}
           onClose={() => setEditingRecord(null)}

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   assignOverlapColumns,
   buildJoboDayModel,
+  resolveEditableDoRecord,
   timedSliceOnDate,
 } from './viewModel.js';
 
@@ -23,6 +24,25 @@ const rec = (over = {}) => ({
   endTime: '09:50',
   planSnapshot: { date: '2026-09-24', startTime: '09:00', duration: 60 },
   ...over,
+});
+
+describe('resolveEditableDoRecord', () => {
+  it('edits only the current live version and refuses stale or tombstoned dialogs', () => {
+    const opened = rec();
+    expect(resolveEditableDoRecord([opened], opened)).toBe(opened);
+
+    const newer = rec({ updatedAt: '2026-09-24T09:01:00.000Z', progress: 'mostly' });
+    expect(resolveEditableDoRecord([newer], opened)).toBeNull();
+
+    const tombstone = rec({ updatedAt: '2026-09-24T09:02:00.000Z', deleted: true });
+    expect(resolveEditableDoRecord([tombstone], opened)).toBeNull();
+  });
+
+  it('uses the current tie winner as the edit base when updatedAt has not advanced', () => {
+    const opened = rec({ title: 'earlier copy' });
+    const winner = rec({ title: 'winning copy', observedAt: '2026-09-24T08:59:59.000Z' });
+    expect(resolveEditableDoRecord([winner], opened)).toBe(winner);
+  });
 });
 
 describe('timedSliceOnDate', () => {
@@ -113,6 +133,79 @@ describe('buildJoboDayModel', () => {
     expect(model.plans[0].labels).toEqual(['notStarted']);
   });
 
+  it('also derives not started when reviewing a past day', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [],
+      now: { date: '2026-09-25', time: '08:00' },
+    });
+    expect(model.plans[0].labels).toEqual(['notStarted']);
+  });
+
+  it('uses later-day execution when comparing a selected-day Plan', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [rec({
+        date: '2026-09-25',
+        startTime: '09:20',
+        endDate: '2026-09-25',
+        endTime: '09:50',
+      })],
+      now: { date: '2026-09-25', time: '12:00' },
+    });
+    expect(model.timedRecords).toHaveLength(0);
+    expect(model.plans[0].labels).toEqual(['late']);
+  });
+
+  it('derives split from all attempts in the plan group, not only the visible day', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [task],
+      records: [
+        rec(),
+        rec({
+          id: 'do:t1:later',
+          createdAt: '2026-09-25T09:20:00.000Z',
+          updatedAt: '2026-09-25T09:20:00.000Z',
+          observedAt: '2026-09-25T09:20:00.000Z',
+          date: '2026-09-25',
+          startTime: '09:20',
+          endDate: '2026-09-25',
+          endTime: '09:50',
+        }),
+      ],
+    });
+    expect(model.timedRecords).toHaveLength(1);
+    expect(model.timedRecords[0].labels).toContain('split');
+    expect(model.plans[0].labels).toContain('split');
+  });
+
+  it('does not derive split across unrelated unlinked manual Do records', () => {
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [],
+      records: [
+        rec({ id: 'manual:a', taskId: null, planSnapshot: null, title: 'A' }),
+        rec({
+          id: 'manual:b',
+          taskId: null,
+          planSnapshot: null,
+          title: 'B',
+          startTime: '11:00',
+          endTime: '11:20',
+          createdAt: '2026-09-24T11:00:00.000Z',
+          updatedAt: '2026-09-24T11:00:00.000Z',
+          observedAt: '2026-09-24T11:00:00.000Z',
+        }),
+      ],
+    });
+    expect(model.timedRecords).toHaveLength(2);
+    for (const item of model.timedRecords) {
+      expect(item.labels).toEqual(['unplanned']);
+    }
+  });
 
   it('links Slice 4 recurring template ids to the visible recurring occurrence', () => {
     const recurring = {

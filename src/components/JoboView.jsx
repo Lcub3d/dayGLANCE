@@ -318,7 +318,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t }) {
         <div className="jobo5-dialog-actions">
           <button type="button" onClick={onClose}>{t('common.cancel')}</button>
           <button type="button" className="jobo5-save-button" onClick={save} disabled={saving || !writable}>
-            {saving ? t('common.saving') : t('common.save')}
+            {saving ? t('jobo.view.saving') : t('common.save')}
           </button>
         </div>
       </section>

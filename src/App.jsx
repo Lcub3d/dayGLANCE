@@ -10,7 +10,7 @@ import { emitBridgeIntent } from './utils/obsidianBridgeStream.js';
 import { isStreamPosture } from './utils/obsidianVaultPosture.js';
 import { loadAIConfig, saveAIConfig, aiComplete, aiJSON, testConnection, DEFAULT_CONFIG, PROVIDER_MODELS, PROVIDER_LABELS } from './ai.js';
 import { taskSuggestSystemPrompt, taskSuggestUserPrompt, frameNudgeSystemPrompt, frameNudgeUserPrompt, rescheduleSystemPrompt, rescheduleUserPrompt, aiSubtasksSystemPrompt, aiSubtasksUserPrompt, weeklySummarySystemPrompt, weeklySummaryUserPrompt, smartScheduleSystemPrompt, smartScheduleUserPrompt } from './ai-prompts.js';
-import { gatherTrmnlData, pushToTrmnl, TRMNL_MARKUP_FULL, TRMNL_MARKUP_HALF_HORIZONTAL, TRMNL_MARKUP_HALF_VERTICAL, TRMNL_MARKUP_QUADRANT } from './trmnl.js';
+import { gatherTrmnlData, pushToTrmnl } from './trmnl.js';
 import { trmnlContentFingerprint, trmnlPushDecision, trmnlBackoffAfterRateLimit, writeTrmnlPushState } from './utils/trmnlPushPolicy.js';
 import { checkForUpdate } from './versionCheck.js';
 import { getStorageUsage, formatBytes } from './utils/storage.js';

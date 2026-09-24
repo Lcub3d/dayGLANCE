@@ -92,7 +92,7 @@ struct MonthGridProvider: TimelineProvider {
         let snapshot = loadSnapshot()
         let window = MonthWindowStore.load()
         let now = Date()
-        let dates = MonthGridTimeline.entryDates(now: now, snapshot: snapshot)
+        let dates = MonthGridTimeline.entryDates(now: now, window: window)
         let entries = dates.map { MonthGridEntry(date: $0, snapshot: snapshot, window: window) }
         let policy: TimelineReloadPolicy = MonthGridTimeline.nextReload(after: dates, now: now).map { .after($0) } ?? .atEnd
         completion(Timeline(entries: entries, policy: policy))
@@ -255,7 +255,9 @@ struct MonthGridCellView: View {
                         .frame(width: MonthGridMetrics.pipSize, height: MonthGridMetrics.pipSize)
                 }
             }
-            Spacer(minLength: 1)
+            // 2pt at least between the pip and a `+N`: at 1pt they touched
+            // on the smallest cells when today's fill widened the label.
+            Spacer(minLength: 2)
             if cell.overflow > 0 {
                 Text(verbatim: "+\(cell.overflow)")
                     .font(.system(size: MonthGridMetrics.overflowFontSize))

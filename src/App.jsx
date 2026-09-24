@@ -42,6 +42,7 @@ import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projecti
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
+import { resolveDayLink } from './utils/dayLink.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -642,14 +643,27 @@ const DayPlanner = () => {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location?.search ?? '').has('dial'));
   const showDayDialRef = useRef(showDayDial);
-  // dayglance://day?date=YYYY-MM-DD&view=dial — the Day Dial widget's tap
-  // (widgetURL). Lands on the day the widget was showing and, with
-  // view=dial, opens the Day Dial itself over it; without it, the day view.
+  // dayglance://day?date=YYYY-MM-DD[&view=dial|month] — the widgets' taps.
+  // view=dial opens the Day Dial over the day (the Day Dial widget);
+  // view=month opens MONTH with the day selected (the month grid widget),
+  // or the default view when MONTH is off; no view, the day view. The rules
+  // are utils/dayLink.js. The native link handlers are registered once, so
+  // what the rules read comes through a ref refreshed every render — a link
+  // after a rotation or a settings change sees the layout and views as they
+  // are now, not as they were at launch.
+  const [monthSheetRequest, setMonthSheetRequest] = useState(null);
+  const dayLinkEnvRef = useRef(null);
+  dayLinkEnvRef.current = {
+    phoneLayout: isMobile || (isTablet && !isLandscape),
+    hiddenViews, defaultView, mobileDefaultView,
+  };
   const openDayFromLink = (url) => {
-    const d = url.searchParams.get('date');
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(new Date(d + 'T12:00:00'));
-    if (url.searchParams.get('view') === 'dial') setShowDayDial(true);
-    else setViewMode('day');
+    const r = resolveDayLink(url.searchParams, dayLinkEnvRef.current);
+    if (r.date) setSelectedDate(new Date(r.date + 'T12:00:00'));
+    if (r.dial) setShowDayDial(true);
+    if (r.desktopView) setViewMode(r.desktopView);
+    if (r.mobileView) setMobileViewMode(r.mobileView);
+    setMonthSheetRequest(r.monthSheet);
   };
   showDayDialRef.current = showDayDial;
   useAmbientScreensaver({ showDayDialRef, setShowDayDial });
@@ -8446,6 +8460,7 @@ const DayPlanner = () => {
     visibleDays, visibleDates,
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
     monthViewActive, openMonthDaySheetRef,
+    monthSheetRequest, setMonthSheetRequest,
     defaultView, setDefaultView,
     hiddenViews, setViewHidden,
     dayViewMode, setDayViewMode,

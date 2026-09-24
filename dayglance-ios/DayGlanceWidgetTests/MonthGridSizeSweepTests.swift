@@ -197,7 +197,12 @@ final class MonthGridSizeSweepTests: XCTestCase {
         oct1.date = "2026-10-01"
         oct1.days = []
         let crowdedToday = MonthGridEntry(date: MonthGridModelTests.at("2026-10-01", 10), snapshot: oct1, window: window)
-        let stale = MonthGridEntry(date: MonthGridModelTests.at("2026-09-26", 10), snapshot: snapshot, window: window)
+        // The last live day (13 days past a Monday push, the grid moved down a
+        // row) and the first stale one, under the coverage rule.
+        let lastLive = MonthGridEntry(date: MonthGridModelTests.at("2026-10-04", 10), snapshot: snapshot, window: window)
+        let stale = MonthGridEntry(date: MonthGridModelTests.at("2026-10-05", 10), snapshot: snapshot, window: window)
+        XCTAssertEqual(MonthGridState.resolve(snapshot: snapshot, window: window, at: lastLive.date, calendar: calendar)?.tier, .projected)
+        XCTAssertEqual(MonthGridState.resolve(snapshot: snapshot, window: window, at: stale.date, calendar: calendar)?.tier, .stale)
         XCTAssertEqual(MonthGridState.resolve(snapshot: oct1, window: window, at: crowdedToday.date, calendar: calendar)?.tier, .pushed)
 
         let shots: [(String, MonthGridEntry, CGFloat, CGFloat)] = [
@@ -206,7 +211,8 @@ final class MonthGridSizeSweepTests: XCTestCase {
             ("largest-iphone-pro-max-364x382", pushed, 364, 382),
             ("largest-ipad-pro-13-379x379", pushed, 379, 379),
             ("crowded-first-is-today-306x306", crowdedToday, 306, 306),
-            ("stale-338x354", stale, 338, 354),
+            ("last-live-oct-4-338x354", lastLive, 338, 354),
+            ("stale-oct-5-338x354", stale, 338, 354),
         ]
         let printBase64 = ProcessInfo.processInfo.environment["DG_MONTH_SHOTS"] == "1"
         for (name, entry, w, h) in shots {

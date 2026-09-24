@@ -130,6 +130,9 @@ jobs:
             -destination "platform=iOS Simulator,id=$UDID" \
             -resultBundlePath "$RUNNER_TEMP/widget-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+        env:
+          # TEMPORARY (review of #1801): print the month screenshots to this log.
+          TEST_RUNNER_DG_MONTH_SHOTS: '1'
 
       # The widget tests attach rendered screenshots (the month grid at the
       # smallest and largest systemLarge sizes, crowded and stale states) to

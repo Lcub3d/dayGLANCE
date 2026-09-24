@@ -129,24 +129,83 @@ final class MonthGridModelTests: XCTestCase {
         XCTAssertNil(MonthGrid.days(in: short, for: Self.at("2026-09-27"), calendar: calendar))
     }
 
-    func testDaysSurviveTheDSTChange() throws {
-        // Denver leaves DST on 1 Nov 2026, the third week of this grid: still
-        // 42 whole, consecutive days, the change landing on its own date.
+    // MARK: DST
+    //
+    // The model picks its 42 days by date string and slices by index, so a
+    // grid that merely CONTAINS a transition cannot go wrong (first test). The
+    // two places a transition can break it are the date arithmetic: the grid
+    // start (a subtraction of whole days from the entry's day) and the
+    // timeline's midnights (a walk forward one day at a time). Both are done
+    // in calendar days; each of the last two tests fails if either is ever
+    // done in seconds.
+
+    func testAGridContainingTheDSTChangeIsFortyTwoConsecutiveDays() throws {
+        // Denver leaves DST at 02:00 on Sunday 1 Nov 2026 (the day is 25h).
+        // Grid 18 Oct … 28 Nov: the change falls in its third week, index 14.
         let window = Self.window(from: "2026-10-18", weekStart: 0)
         let days = try XCTUnwrap(MonthGrid.days(in: window, for: Self.at("2026-10-20"), calendar: calendar))
         XCTAssertEqual(days.count, 42)
         XCTAssertEqual(days.first?.date, "2026-10-18")
         XCTAssertEqual(days[14].date, "2026-11-01")
         XCTAssertEqual(days.last?.date, "2026-11-28")
+        let tz = calendar.timeZone
+        let transition = try XCTUnwrap(tz.nextDaylightSavingTimeTransition(after: Self.at("2026-10-18")))
+        XCTAssertEqual(MonthGrid.isoDay(transition, calendar: calendar), "2026-11-01", "the transition is inside this grid")
         let parsed = days.compactMap { WidgetFreshness.parseDay($0.date, calendar: calendar) }
         for (a, b) in zip(parsed, parsed.dropFirst()) {
             XCTAssertEqual(calendar.dateComponents([.day], from: a, to: b).day, 1, "\(a) → \(b)")
         }
     }
 
+    /// The grid start across a transition. With Sunday or Monday weeks it can
+    /// never cross one in the US or the EU — both change early on a Sunday,
+    /// the first or last day of such a week — so this uses a zone that
+    /// changes midweek: Cairo springs forward at midnight into Friday 24 April
+    /// 2026 (00:00 → 01:00). Saturday 25 April's week starts Sunday 19 April;
+    /// subtracting 6 × 86 400 s from Saturday's midnight lands on 18 April at
+    /// 23:00, the day before.
+    func testTheGridStartIsCalendarDaysAcrossASpringForward() throws {
+        var cairo = Calendar(identifier: .gregorian)
+        cairo.timeZone = try XCTUnwrap(TimeZone(identifier: "Africa/Cairo"))
+        let sat = try XCTUnwrap(WidgetFreshness.parseDay("2026-04-25", calendar: cairo))
+        let transition = try XCTUnwrap(cairo.timeZone.nextDaylightSavingTimeTransition(after: sat.addingTimeInterval(-6 * 86_400)))
+        XCTAssertEqual(MonthGrid.isoDay(transition, calendar: cairo), "2026-04-24",
+                       "precondition: this device's tz data has Cairo's 2026 spring-forward inside the week")
+        XCTAssertEqual(MonthGrid.isoDay(MonthGrid.gridStart(for: sat, weekStart: 0, calendar: cairo), calendar: cairo), "2026-04-19")
+        // And the window lookup that depends on it.
+        let window = MonthWindowPayload(from: "2026-04-19", weekStart: 0, days: (0..<49).map { i in
+            MonthWindowDay(date: MonthGrid.isoDay(cairo.date(byAdding: .day, value: i, to: WidgetFreshness.parseDay("2026-04-19", calendar: cairo)!)!, calendar: cairo))
+        })
+        XCTAssertEqual(MonthGrid.days(in: window, for: sat, calendar: cairo)?.first?.date, "2026-04-19")
+    }
+
+    /// The timeline across Denver's fall-back: every entry is a local
+    /// midnight, including the one after the 25-hour day. Stepping 86 400 s
+    /// from 1 Nov 00:00 would land on 1 Nov 23:00 and move the grid an hour
+    /// early.
+    func testTimelineMidnightsSurviveTheFallBack() throws {
+        let window = Self.window(from: "2026-10-25", weekStart: 0)          // Sunday weeks
+        let now = Self.at("2026-10-31", 20)                                  // Saturday evening
+        let dates = MonthGridTimeline.entryDates(now: now, window: window, calendar: calendar)
+        let midnights = Array(dates.dropFirst())
+        XCTAssertEqual(midnights.first, Self.at("2026-11-01", 0, 0))
+        XCTAssertEqual(midnights.dropFirst().first, Self.at("2026-11-02", 0, 0))
+        XCTAssertEqual(midnights[1].timeIntervalSince(midnights[0]), 25 * 3600, "the transition is between these two entries")
+        for d in midnights {
+            let c = calendar.dateComponents([.hour, .minute], from: d)
+            XCTAssertEqual(c.hour, 0, "\(d)"); XCTAssertEqual(c.minute, 0, "\(d)")
+        }
+        // And the entry after the change draws the right day as today.
+        let state = try XCTUnwrap(resolve(Self.snapshot(date: "2026-10-31", days: []), window, at: midnights[1]))
+        XCTAssertEqual(state.cells.first(where: \.isToday)?.date, "2026-11-02")
+    }
+
     // MARK: Tiers and rollover
 
     func testTheFixtureAcrossItsDays() throws {
+        // Pushed Monday 21 Sep, Monday weeks: the window is 21 Sep … 8 Nov,
+        // so grids starting 21 Sep and 28 Sep are covered — live through
+        // Sunday 4 Oct, thirteen days past the push.
         let (snapshot, window) = try Self.fixture()
 
         let mon = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-21", 10)))
@@ -154,51 +213,75 @@ final class MonthGridModelTests: XCTestCase {
         XCTAssertEqual(mon.cells.count, 42)
         XCTAssertEqual(mon.cells.firstIndex(where: \.isToday), 0)
 
-        // The projected days move the today marker with no push.
-        for (day, index) in [("2026-09-22", 1), ("2026-09-23", 2), ("2026-09-24", 3)] {
-            let s = try XCTUnwrap(resolve(snapshot, window, at: Self.at(day, 0, 0)))
-            XCTAssertEqual(s.tier, .projected, day)
-            XCTAssertFalse(s.freshness.isStale, day)
-            XCTAssertEqual(s.cells.first?.date, "2026-09-21", day)
-            XCTAssertEqual(s.cells.firstIndex(where: \.isToday), index, day)
+        // Every later day of the push's week: the same grid, today moving.
+        for offset in 1...6 {
+            let day = calendar.date(byAdding: .day, value: offset, to: Self.at("2026-09-21", 0, 0))!
+            let s = try XCTUnwrap(resolve(snapshot, window, at: day))
+            XCTAssertEqual(s.tier, .projected, "\(day)")
+            XCTAssertFalse(s.freshness.isStale)
+            XCTAssertEqual(s.cells.first?.date, "2026-09-21")
+            XCTAssertEqual(s.cells.firstIndex(where: \.isToday), offset)
         }
+        // The next week: the grid moves down a row, the last row from the tail.
+        let nextMon = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-28", 0, 0)))
+        XCTAssertEqual(nextMon.tier, .projected)
+        XCTAssertEqual(nextMon.cells.first?.date, "2026-09-28")
+        XCTAssertEqual(nextMon.cells.last?.date, "2026-11-08")
+        // Past the dial's horizon (it goes Outdated on the 25th) and still live.
+        XCTAssertEqual(resolve(snapshot, window, at: Self.at("2026-09-25", 0, 0))?.tier, .projected)
+        let lastLive = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-10-04", 23, 59)))
+        XCTAssertEqual(lastLive.tier, .projected)
+        XCTAssertEqual(lastLive.cells.firstIndex(where: \.isToday), 6)
 
-        // Past the payload's horizon (the last projected day), Outdated — even
-        // though this window could still draw Friday's grid. The other widgets
-        // go Outdated on the same midnight; this one must not read as current.
-        let fri = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-25", 0, 0)))
-        XCTAssertEqual(fri.tier, .stale)
-        XCTAssertTrue(fri.freshness.isStale)
-        XCTAssertEqual(fri.cells.first?.date, "2026-09-21", "the push's own grid, dimmed")
-        XCTAssertNil(fri.cells.firstIndex(where: \.isToday), "no today marker on a stale grid")
+        // The first day whose grid the window cannot cover: stale, and the
+        // push's own grid, not a partial one.
+        let stale = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-10-05", 0, 0)))
+        XCTAssertEqual(stale.tier, .stale)
+        XCTAssertTrue(stale.freshness.isStale)
+        XCTAssertEqual(stale.freshness.daysOld, 14)
+        XCTAssertEqual(stale.cells.count, 42)
+        XCTAssertEqual(stale.cells.first?.date, "2026-09-21")
+        XCTAssertNil(stale.cells.firstIndex(where: \.isToday))
 
-        // Clock moved back before the push: stale, like the other widgets.
+        // Clock moved back before the window: stale too.
         XCTAssertEqual(resolve(snapshot, window, at: Self.at("2026-09-20"))?.tier, .stale)
     }
 
-    /// A push on a Saturday with Sunday weeks: the next midnight is a week
-    /// boundary, and the whole grid moves down a row from the tail.
-    func testAWeekBoundaryInsideTheHorizonRollsTheGrid() throws {
-        let window = Self.window(from: "2026-09-20", weekStart: 0)
-        let snapshot = Self.snapshot(date: "2026-09-26", days: ["2026-09-27", "2026-09-28", "2026-09-29"])
-
-        let sat = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-26", 21)))
-        XCTAssertEqual(sat.tier, .pushed)
-        XCTAssertEqual(sat.cells.first?.date, "2026-09-20")
-        XCTAssertEqual(sat.cells.firstIndex(where: \.isToday), 6)
-
-        let sun = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-27", 0, 0)))
-        XCTAssertEqual(sun.tier, .projected)
-        XCTAssertEqual(sun.cells.first?.date, "2026-09-27")
-        XCTAssertEqual(sun.cells.last?.date, "2026-11-07")
-        XCTAssertEqual(sun.cells.firstIndex(where: \.isToday), 0)
-        XCTAssertTrue(sun.cells[0].isWindowFirst)
-
-        let tue = try XCTUnwrap(resolve(snapshot, window, at: Self.at("2026-09-29", 23, 59)))
-        XCTAssertEqual(tue.tier, .projected)
-        XCTAssertEqual(tue.cells.firstIndex(where: \.isToday), 2)
-
-        XCTAssertEqual(resolve(snapshot, window, at: Self.at("2026-09-30", 0, 0))?.tier, .stale)
+    /// How long the grid stays live depends only on where in its week the
+    /// push landed: through the end of the NEXT week, so 13 days past a push
+    /// on the first day of the week down to 7 past one on the last. Every
+    /// weekday, both week starts.
+    func testTheGridLivesUntilTheEndOfTheWeekAfterThePush() throws {
+        for (weekStart, from) in [(0, "2026-09-20"), (1, "2026-09-21")] {
+            let window = Self.window(from: from, weekStart: weekStart)
+            let w0 = Self.at(from, 0, 0)
+            for k in 0...6 {
+                let pushDay = calendar.date(byAdding: .day, value: k, to: w0)!
+                let snapshot = Self.snapshot(date: MonthGrid.isoDay(pushDay, calendar: calendar), days: [])
+                var live = 0
+                var day = pushDay
+                while resolve(snapshot, window, at: day)?.tier != .stale, live < 60 {
+                    live += 1
+                    day = calendar.date(byAdding: .day, value: 1, to: day)!
+                }
+                let label = "weekStart \(weekStart), push on day \(k) of the week"
+                // Across the week boundary the grid moves down a row, its last
+                // row from the rollover tail.
+                let nextWeek = calendar.date(byAdding: .day, value: 7, to: w0)!
+                let rolled = try XCTUnwrap(resolve(snapshot, window, at: nextWeek), label)
+                XCTAssertEqual(rolled.cells.first?.date, MonthGrid.isoDay(nextWeek, calendar: calendar), label)
+                XCTAssertEqual(rolled.cells.last?.date, window.days.last?.date, label)
+                XCTAssertEqual(rolled.cells.firstIndex(where: \.isToday), 0, label)
+                XCTAssertEqual(live - 1, 13 - k, "\(label): days live past the push")
+                XCTAssertEqual(MonthGrid.isoDay(day, calendar: calendar),
+                               MonthGrid.isoDay(calendar.date(byAdding: .day, value: 14, to: w0)!, calendar: calendar),
+                               "\(label): stale from the Monday/Sunday two weeks on")
+                // The timeline reaches exactly that far: every live midnight, then the flip.
+                let dates = MonthGridTimeline.entryDates(now: pushDay.addingTimeInterval(3600), window: window, calendar: calendar)
+                XCTAssertEqual(dates.count, 1 + (13 - k) + 1, label)
+                XCTAssertEqual(dates.last, day, "\(label): the last entry is the Outdated flip")
+            }
+        }
     }
 
     func testNoWindowMeansNothingToDraw() throws {
@@ -207,21 +290,22 @@ final class MonthGridModelTests: XCTestCase {
         XCTAssertNil(resolve(snapshot, MonthWindowPayload(from: nil, weekStart: 0, days: []), at: Self.at("2026-09-21")))
     }
 
-    func testTimelineEntriesAreThePayloadsMidnights() throws {
-        let (snapshot, _) = try Self.fixture()
+    func testTimelineEntriesAreTheLiveMidnights() throws {
+        let (_, window) = try Self.fixture()
         let now = Self.at("2026-09-21", 10, 7)
-        let dates = MonthGridTimeline.entryDates(now: now, snapshot: snapshot, calendar: calendar)
+        let dates = MonthGridTimeline.entryDates(now: now, window: window, calendar: calendar)
         XCTAssertEqual(dates.first, now)
-        XCTAssertEqual(Array(dates.dropFirst()), ["2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"].map { Self.at($0, 0, 0) },
-                       "each projected day's midnight, then the Outdated flip")
+        let expected = (1...14).map { calendar.date(byAdding: .day, value: $0, to: Self.at("2026-09-21", 0, 0))! }
+        XCTAssertEqual(Array(dates.dropFirst()), expected, "22 Sep … 4 Oct, then 5 Oct: the Outdated flip")
         XCTAssertNil(MonthGridTimeline.nextReload(after: dates, now: now, calendar: calendar), ".atEnd while there are midnights ahead")
 
         // Already past the flip: one entry, and a reload at the next midnight
         // rather than .atEnd, which would ask again immediately.
-        let late = Self.at("2026-09-27", 15)
-        let stale = MonthGridTimeline.entryDates(now: late, snapshot: snapshot, calendar: calendar)
+        let late = Self.at("2026-10-06", 15)
+        let stale = MonthGridTimeline.entryDates(now: late, window: window, calendar: calendar)
         XCTAssertEqual(stale, [late])
-        XCTAssertEqual(MonthGridTimeline.nextReload(after: stale, now: late, calendar: calendar), Self.at("2026-09-28", 0, 0))
+        XCTAssertEqual(MonthGridTimeline.nextReload(after: stale, now: late, calendar: calendar), Self.at("2026-10-07", 0, 0))
+        XCTAssertEqual(MonthGridTimeline.entryDates(now: late, window: nil, calendar: calendar), [late])
     }
 
     // MARK: Cells
@@ -272,8 +356,8 @@ final class MonthGridModelTests: XCTestCase {
         XCTAssertEqual(cell.label, "Sep 20")
     }
 
-    func testTapURLOpensTheDayWithoutForcingAView() {
-        XCTAssertEqual(MonthGrid.tapURL(date: "2026-10-01")?.absoluteString, "dayglance://day?date=2026-10-01")
+    func testTapURLOpensTheDayInMonth() {
+        XCTAssertEqual(MonthGrid.tapURL(date: "2026-10-01")?.absoluteString, "dayglance://day?date=2026-10-01&view=month")
     }
 
     // MARK: Bars

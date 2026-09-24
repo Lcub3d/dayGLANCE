@@ -18,11 +18,12 @@
 // nothing — the grid is unchanged and only the "today" cell moves, which the
 // widget knows from its own clock. Crossing a week boundary moves the whole
 // grid down a row, and the new bottom row is seven days past a 42-day window.
-// So the payload carries a ROLLOVER TAIL of one week: for any local day up to
-// WIDGET_PROJECTION_DAYS after the push (the same horizon the day-keyed
-// `days` covers before the widgets go stale), the six-week grid of that day is
-// inside `days`. resolveMonthWindow() is the reference for how a widget picks
-// its 42.
+// So the payload carries a ROLLOVER TAIL of one week, which covers the grid of
+// every day through the end of the week AFTER the push's: 13 days past a push
+// on the first day of the week, 7 past one on the last. The iOS month widget
+// renders for exactly that long — coverage, not the day-keyed `days` horizon,
+// decides when it goes stale (MonthGridModel.swift). resolveMonthWindow() is
+// the reference for how a widget picks its 42.
 //
 // ── A bar ──────────────────────────────────────────────────────────────────
 // {s, d, c}: start minutes from local midnight, duration in minutes, resolved

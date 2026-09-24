@@ -25,13 +25,19 @@ import CoreGraphics
 // from "now". So an entry past a week boundary draws the next six weeks from
 // the tail with no push.
 //
-// TIERS follow ResolvedWidgetDay's, with the same horizon, so this widget
-// never reads as current on a day the Up Next and dial widgets call Outdated:
+// STALENESS is coverage, not age. The grid is live on any day whose whole
+// six-week grid the stored window covers, and stale from the first day it
+// does not. That is deliberately NOT the Up Next and dial widgets' horizon
+// (the last projected day, push + 3): those show one day and have nothing
+// past it, while this window carries 49 days precisely so the grid outlives
+// a push. With `from` the start of the push's week, a day's grid is covered
+// while its week starts no later than from + 7: live through the end of the
+// week AFTER the push's — from + 13 — which is 13 days past a push on the
+// first day of the week and 7 past one on the last.
 //   pushed     the entry's day is the day the snapshot was built
-//   projected  a later day the payload still projects (`days`, today+1…+3),
-//              and whose grid the window covers: "Planned as of …"
-//   stale      anything else: the PUSH's own grid, dimmed, labelled, no
-//              today marker — never a partial grid
+//   projected  any other covered day: "Planned as of …"
+//   stale      not covered: the PUSH's own grid, dimmed, labelled, no today
+//              marker — never a partial grid
 //   unknown    the snapshot did not say what day it is: drawn as pushed
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -160,13 +166,15 @@ enum MonthGrid {
         return (0..<7).map { symbols[(ws + $0) % 7] }
     }
 
-    /// Where a tap on a cell goes: the app's `day` route with the date only.
-    /// No `view` parameter, so the dial is not forced open.
+    /// Where a tap on a cell goes: the app's `day` route with `view=month`,
+    /// which opens MONTH with the day selected — its sheet on a phone, the
+    /// docked panel on a wide screen — or the default view when MONTH is off
+    /// (src/utils/dayLink.js).
     static func tapURL(date: String) -> URL? {
         var parts = URLComponents()
         parts.scheme = "dayglance"
         parts.host = "day"
-        parts.queryItems = [URLQueryItem(name: "date", value: date)]
+        parts.queryItems = [URLQueryItem(name: "date", value: date), URLQueryItem(name: "view", value: "month")]
         return parts.url
     }
 }
@@ -287,30 +295,16 @@ struct MonthGridState {
             return Array(window.days.prefix(MonthGrid.cellCount))
         }
 
-        guard let snapshotDay = pushed.snapshotDay else {
-            let days = MonthGrid.days(in: window, for: entryDay, calendar: calendar) ?? pushGrid()
-            return state(.unknown, pushed, days, today: entryDay)
-        }
-        if !pushed.isStale, let days = MonthGrid.days(in: window, for: entryDay, calendar: calendar) {
-            return state(.pushed, pushed, days, today: entryDay)
-        }
-        if entryDay > snapshotDay, entryDay <= horizon(snapshot, calendar: calendar) ?? snapshotDay,
-           let days = MonthGrid.days(in: window, for: entryDay, calendar: calendar) {
+        // Live for as long as the stored window covers the entry's whole
+        // grid — nothing else ages it. Never a partial grid.
+        if let days = MonthGrid.days(in: window, for: entryDay, calendar: calendar) {
+            guard let snapshotDay = pushed.snapshotDay else { return state(.unknown, pushed, days, today: entryDay) }
+            if entryDay == snapshotDay { return state(.pushed, pushed, days, today: entryDay) }
             let fresh = WidgetFreshness(isStale: false, daysOld: 0, snapshotDay: entryDay, capturedAt: pushed.capturedAt)
             return state(.projected, fresh, days, today: entryDay)
         }
-        let stale = pushed.isStale ? pushed
-            : WidgetFreshness(isStale: true, daysOld: pushed.daysOld, snapshotDay: pushed.snapshotDay, capturedAt: pushed.capturedAt)
+        let stale = WidgetFreshness(isStale: true, daysOld: pushed.daysOld, snapshotDay: pushed.snapshotDay, capturedAt: pushed.capturedAt)
         return state(.stale, stale, pushGrid(), today: nil)
-    }
-
-    /// The last day the payload renders as current: the pushed day or the
-    /// last projected day, whichever is later. The other widgets go Outdated
-    /// the midnight after it, and so does this one.
-    static func horizon(_ snapshot: WidgetSnapshot?, calendar: Calendar) -> Date? {
-        guard let snapshot else { return nil }
-        let dates = [snapshot.date] + (snapshot.days ?? []).map(\.date)
-        return dates.compactMap { WidgetFreshness.parseDay($0, calendar: calendar) }.max()
     }
 
     /// The gallery / pre-data grid: this week's six weeks, dates only.
@@ -332,17 +326,24 @@ struct MonthGridState {
 // MARK: - Timeline
 
 enum MonthGridTimeline {
-    /// Now, plus every local midnight up to and including the one after the
-    /// payload's horizon — the dial's rule without its 15-minute needle grid,
-    /// which a month grid does not need. Each midnight entry moves the today
-    /// marker (and, across a week boundary, the whole grid) with no push; the
-    /// last one is the Outdated flip.
-    static func entryDates(now: Date, snapshot: WidgetSnapshot?, calendar: Calendar = .current) -> [Date] {
-        guard let last = MonthGridState.horizon(snapshot, calendar: calendar),
-              let end = calendar.date(byAdding: .day, value: 1, to: last),
-              end > now else { return [now] }
-        let midnights = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: end).day ?? 0
-        return WidgetTimelineDates.rolloverDates(from: now, midnights: midnights, calendar: calendar)
+    /// Now, plus every local midnight while the stored window still covers
+    /// that day's grid, plus the first midnight it does not — the Outdated
+    /// flip. The dial's rule (entries at payload midnights) without its
+    /// 15-minute needle grid, which a month grid does not need. Each entry
+    /// moves the today marker and, across a week boundary, the whole grid,
+    /// with no push. Bounded by the window's length.
+    static func entryDates(now: Date, window: MonthWindowPayload?, calendar: Calendar = .current) -> [Date] {
+        var dates = [now]
+        guard let window else { return dates }
+        var day = calendar.startOfDay(for: now)
+        guard MonthGrid.days(in: window, for: day, calendar: calendar) != nil else { return dates }
+        for _ in 0..<window.days.count {
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+            dates.append(next)
+            if MonthGrid.days(in: window, for: next, calendar: calendar) == nil { break }
+        }
+        return dates
     }
 
     /// When the timeline after `dates` should be asked for again: at its end

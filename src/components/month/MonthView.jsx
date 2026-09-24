@@ -6,6 +6,7 @@ import SchedView from '../sched/SchedView.jsx';
 import DayHeaderCell from '../DayHeader.jsx';
 import { tagKind } from '../../utils/monthCellLayout.js';
 import { monthGridDates, monthOf, monthPanelWidth } from '../../utils/monthGrid.js';
+import { consumeMonthSheetRequest } from '../../utils/dayLink.js';
 import { MONTH_CELL_LAYOUT } from '../../constants/monthView.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
@@ -79,7 +80,7 @@ export const MONTH_PANEL_WIDTH = Object.freeze({ min: 380, max: 640, share: 1 / 
  * @param {number} [props.height]  and tests; the app measures instead
  */
 export default function MonthView({ width, height } = {}) {
-  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef, canShowViewCycler, borderClass, cardBg } = useDayPlannerCtx();
+  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef, monthSheetRequest, setMonthSheetRequest, canShowViewCycler, borderClass, cardBg } = useDayPlannerCtx();
   const itemsForDate = useMonthItemsForDate();
   const selectedStr = dateToString(selectedDate);
   const { year, month } = monthOf(selectedStr);
@@ -129,6 +130,15 @@ export default function MonthView({ width, height } = {}) {
     if (!docked) setSheetDate(dateStr);
     goToDate(dateStr);
   };
+
+  // A month grid widget tap (utils/dayLink.js): App selects the day and asks
+  // for its sheet; the first render that sees the request uses it up. Docked,
+  // the panel already shows the selected day, so there is nothing to open.
+  useEffect(() => {
+    const { open, clear } = consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked });
+    if (open) setSheetDate(open);
+    if (clear) setMonthSheetRequest?.(null);
+  }, [monthSheetRequest, selectedStr, docked, setMonthSheetRequest]);
 
   // Enter (useKeyboardShortcuts): the sheet for the selected day, or, when
   // the panel is docked, focus into it (its first control, else the panel).

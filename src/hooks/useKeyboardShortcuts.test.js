@@ -48,7 +48,7 @@ function useMounted(overrides = {}) {
     isMobile: false, tabletActiveTab: 'glance', setTabletActiveTab: vi.fn(),
     aiConfig: null, setShowVoiceInput: vi.fn(),
     habitsEnabled: true, setHabitsEnabled: vi.fn(), setShowHabitModal: vi.fn(),
-    goalsProjectsEnabled: true, setGoalsProjectsEnabled: vi.fn(), toggleDesktopSpace: vi.fn(),
+    goalsProjectsEnabled: true, toggleDesktopSpace: vi.fn(),
     goalsSpaceKeysRef: { current: null },
     gtdFrames: [], setShowRescheduleModal: vi.fn(), setRescheduleResults: vi.fn(), setRescheduleError: vi.fn(),
     setMobileActiveTab: vi.fn(), setMobileSettingsView: vi.fn(), setShowSettings: vi.fn(),
@@ -72,7 +72,6 @@ describe('useKeyboardShortcuts — the g key', () => {
     const e = press('g');
     expect(p.toggleDesktopSpace).toHaveBeenCalledTimes(1);
     expect(e.preventDefault).toHaveBeenCalled();
-    expect(p.setGoalsProjectsEnabled).not.toHaveBeenCalled();
   });
 
   it('toggles back while IN the Goals space (D2), which the old modal guard blocked', () => {
@@ -81,11 +80,14 @@ describe('useKeyboardShortcuts — the g key', () => {
     expect(p.toggleDesktopSpace).toHaveBeenCalledTimes(1);
   });
 
-  it('still auto-enables the feature on first use', () => {
+  it('does nothing while Goals & Projects is off in Settings', () => {
     const p = useMounted({ goalsProjectsEnabled: false });
     press('g');
-    expect(p.setGoalsProjectsEnabled).toHaveBeenCalledWith(true);
-    expect(p.toggleDesktopSpace).toHaveBeenCalledTimes(1);
+    expect(p.toggleDesktopSpace).not.toHaveBeenCalled();
+    expect(p.setMobileActiveTab).not.toHaveBeenCalled();
+    const m = useMounted({ goalsProjectsEnabled: false, isMobile: true });
+    press('g');
+    expect(m.setMobileActiveTab).not.toHaveBeenCalled();
   });
 
   it('opens the phone Goals tab rather than touching the desktop space', () => {

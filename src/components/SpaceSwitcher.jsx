@@ -13,7 +13,8 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
  * same in both spaces; only what sits below changes.
  *
  * `g` toggles the same state (useKeyboardShortcuts), so the tooltips say so.
- * Choosing Goals also enables the feature on first use, like `g` does.
+ * While Goals & Projects is off in Settings the switcher is not rendered at
+ * all: the feature switch is the only way in.
  *
  * In Electron the header may sit inside a window drag region, so the control
  * opts out (WebkitAppRegion no-drag) or its buttons would drag the window.
@@ -22,14 +23,13 @@ export default function SpaceSwitcher() {
   const { darkMode, textSecondary } = useDayPlannerCtx();
   const {
     desktopSpace = 'calendar', setDesktopSpace,
-    goalsProjectsEnabled, setGoalsProjectsEnabled,
+    goalsProjectsEnabled,
   } = useFeaturesCtx() || {};
   const { t } = useTranslation();
 
-  const pick = (space) => {
-    if (space === 'goals' && !goalsProjectsEnabled) setGoalsProjectsEnabled?.(true);
-    setDesktopSpace?.(space);
-  };
+  if (!goalsProjectsEnabled) return null;
+
+  const pick = (space) => setDesktopSpace?.(space);
 
   const spaces = [
     { key: 'calendar', Icon: Calendar, label: t('goals.spaceCalendar') },

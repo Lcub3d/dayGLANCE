@@ -42,9 +42,16 @@ describe('SpaceSwitcher', () => {
   });
 
   it('launches in the Calendar space when nothing has set a space yet (D3)', () => {
-    fixture.features = {};
+    fixture.features = { goalsProjectsEnabled: true };
     const [calendar] = buttons(renderToStaticMarkup(<SpaceSwitcher />));
     expect(calendar).toContain('aria-pressed="true"');
+  });
+
+  it('is not rendered at all while Goals & Projects is off in Settings', () => {
+    fixture.features = { desktopSpace: 'calendar', setDesktopSpace: vi.fn(), goalsProjectsEnabled: false };
+    expect(renderToStaticMarkup(<SpaceSwitcher />)).toBe('');
+    fixture.features = {};
+    expect(renderToStaticMarkup(<SpaceSwitcher />)).toBe('');
   });
 });
 

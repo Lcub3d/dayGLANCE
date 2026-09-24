@@ -52,10 +52,16 @@ class HonorHealthProvider(
                         continuation.resume(HealthRead(HealthReadStatus.NO_DATA))
                         return@addOnSuccessListener
                     }
-                    val steps = rows.sumOf {
-                        it.getInteger(StepStatisticField.FIELD_STEP_NAME) ?: 0
+                    // SAMPLE_STEPS_STATISTIC is already HONOR's cumulative
+                    // total for the requested day. Do not sum statistic rows again.
+                    val steps = rows.firstNotNullOfOrNull {
+                        it.getInteger(StepStatisticField.FIELD_STEP_NAME)
                     }
-                    continuation.resume(HealthRead(HealthReadStatus.OK, steps))
+                    if (steps == null) {
+                        continuation.resume(HealthRead(HealthReadStatus.NO_DATA))
+                    } else {
+                        continuation.resume(HealthRead(HealthReadStatus.OK, steps))
+                    }
                 }
                 .addOnFailureListener {
                     if (continuation.isActive) {

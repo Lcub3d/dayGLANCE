@@ -11,13 +11,37 @@
 import { useState, useCallback, useEffect } from 'react';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 
+/**
+ * The legacy `setShowGoalsDashboard(value)` maps onto the desktop space: true
+ * (or an updater returning true) means the Goals & Projects space, false the
+ * Calendar space. Pure, so the mapping is testable without rendering.
+ */
+export const spaceFromDashboardFlag = (prev, value) => {
+  const next = typeof value === 'function' ? value(prev === 'goals') : value;
+  return next ? 'goals' : 'calendar';
+};
+
 const useGoalsProjects = () => {
   const [goals, setGoals] = useState([]);
   const [projects, setProjects] = useState([]);
   // Areas group goals into a category level above them (e.g. "Money/Finance",
   // "App Development"). Standalone projects are never associated with an area.
   const [areas, setAreas] = useState([]);
-  const [showGoalsDashboard, setShowGoalsDashboard] = useState(false);
+  // Desktop space: the header switcher swaps the sidebar + main area between
+  // the Calendar space and the Goals & Projects space. Session only, never
+  // persisted: the app always launches in the Calendar space. The phone
+  // layout has its own tab (mobileActiveTab === 'goals') and ignores this.
+  const [desktopSpace, setDesktopSpace] = useState('calendar');
+  const toggleDesktopSpace = useCallback(() => {
+    setDesktopSpace(prev => (prev === 'goals' ? 'calendar' : 'goals'));
+  }, []);
+  // Legacy alias kept for the callers that "open the dashboard" (goal rings,
+  // the GLANCE pill, future hyperGLANCE sessions, ProjectCard's notes portal):
+  // every one of them now means "switch to the Goals space".
+  const showGoalsDashboard = desktopSpace === 'goals';
+  const setShowGoalsDashboard = useCallback((value) => {
+    setDesktopSpace(prev => spaceFromDashboardFlag(prev, value));
+  }, []);
 
   // ── Dashboard UI prefs (device-local, not synced) ────────────────────────────
   // Which area the dashboard is filtered to: 'all' | 'uncategorized' | areaId.
@@ -213,6 +237,7 @@ const useGoalsProjects = () => {
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,

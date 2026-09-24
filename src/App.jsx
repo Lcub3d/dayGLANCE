@@ -81,7 +81,6 @@ import SettingsModal from './components/SettingsModal.jsx';
 import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
-import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
 import BackupMenuModal from './components/BackupMenuModal.jsx';
@@ -358,6 +357,14 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // behind the same Experimental switch pattern; the FAB lives in the Goals &
+  // Projects space.
+  const [aspireEnabled, setAspireEnabled] = useState(() => {
+    const saved = localStorage.getItem('day-planner-aspire-enabled');
+    return saved !== null ? JSON.parse(saved) === true : false;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -1010,6 +1017,7 @@ const DayPlanner = () => {
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
@@ -3518,6 +3526,10 @@ const DayPlanner = () => {
   const enterFocusModeRef = useRef(null);
   const startFocusTimerRef = useRef(null);
   const openRoutinesDashboardRef = useRef(null);
+  // Goals & Projects space keyboard hooks: GoalDashboard registers { moveSelection,
+  // setTab } here while the space is active so the global handler can drive its
+  // sidebar (Up/Down, ',' and '.') under the same modal guard as every shortcut.
+  const goalsSpaceKeysRef = useRef(null);
   // MONTH view registers its "open the sheet for this day" here while mounted,
   // so Enter in the keyboard shortcuts can open the selected day.
   const openMonthDaySheetRef = useRef(null);
@@ -3578,7 +3590,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard,
+    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -8899,6 +8911,7 @@ const DayPlanner = () => {
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    aspireEnabled, setAspireEnabled,
     joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
@@ -9002,6 +9015,7 @@ const DayPlanner = () => {
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
     hgVisibleProjects,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace, goalsSpaceKeysRef,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
@@ -9512,8 +9526,10 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Tablet: Timeline FABs — + (new task), Frames */}
-      {isTablet && (
+      {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
+          calendar, so they stand down in the Goals & Projects space (`n` still
+          works there). */}
+      {isTablet && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -9541,8 +9557,9 @@ const DayPlanner = () => {
         </>
       )}
 
-      {/* Desktop: Timeline FABs — + (new task), Frames, mic (voice input) */}
-      {!isTablet && !isMobile && (
+      {/* Desktop: Timeline FABs — + (new task), Frames. Calendar-only, like
+          the tablet's above: hidden in the Goals & Projects space. */}
+      {!isTablet && !isMobile && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -10524,9 +10541,6 @@ const DayPlanner = () => {
           </FormOverlay>
         );
       })()}
-
-      {/* Goals & Projects Dashboard */}
-      <GoalDashboard />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

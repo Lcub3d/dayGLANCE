@@ -17,8 +17,11 @@
 //   `loaded` is queued and merged after hydration; merging it into the stale
 //   initial state and then loading over it would drop it. The queue is drained
 //   until it is stable, since an apply can land while the flush is in flight,
-//   and a batch whose write fails goes back on the queue rather than being
-//   published: the next apply or load retries it.
+//   and a batch whose write fails, local or remote, goes back on the queue
+//   rather than being published: the ledger retries it with backoff, and the
+//   next apply or load carries it too. A completion the detector handed over
+//   is therefore never lost to a transient storage failure, and the detector
+//   can stay one-shot.
 // - EVERY MUTATION GOES THROUGH update(fn), AND STATE IS THE COMMITTED VALUE.
 //   A record in state that is not on disk is exactly what a crash loses.
 // - REMOTE APPLY PRESERVES INCOMING TIMESTAMPS. The merge is by id with core's
@@ -90,17 +93,27 @@ export function mergeJoboCollections(local, remote, pick = pickJoboRecord) {
   };
 }
 
+const defaultSchedule = (fn, ms) => {
+  const handle = setTimeout(fn, ms);
+  handle?.unref?.(); // never keep a Node process alive for a retry
+  return handle;
+};
+
 /**
  * @param {object} deps
  * @param {ReturnType<import('./store.js').createJoboStore>} deps.store
  * @param {(a, b) => object} [deps.pick]  the merge rule; core's pickJoboRecord unless a test injects one.
+ * @param {object} [deps.retry]  backoff for a failed write: { baseMs, maxMs, schedule, cancel }.
  */
-export function createLedger({ store, pick = pickJoboRecord }) {
+export function createLedger({ store, pick = pickJoboRecord, retry = {} }) {
+  const { baseMs = 2000, maxMs = 60000, schedule = defaultSchedule, cancel = clearTimeout } = retry;
   let state = { records: undefined, loaded: false, writable: undefined, error: null };
-  // Remote records not yet on disk: applies that arrived before the load, and
-  // any batch whose write failed. Kept merged by id so a row re-delivered
-  // every cycle by a sync tier's own retry never grows the queue.
+  // Records not yet on disk: applies that arrived before the load, and any
+  // batch whose write failed. Kept merged by id so a row re-delivered every
+  // cycle by a sync tier's own retry never grows the queue.
   let held = [];
+  let retryHandle = null;
+  let attempts = 0;
   const listeners = new Set();
 
   const set = (patch) => {
@@ -110,6 +123,23 @@ export function createLedger({ store, pick = pickJoboRecord }) {
 
   const mergeInto = (incoming) => (current) => mergeRecordsById(current, incoming, pick);
   const hold = (records) => { held = mergeRecordsById(held, records, pick); };
+
+  // A failed write is retried on its own, with backoff, until the queue
+  // drains; a write that lands by any other path resets the backoff.
+  const scheduleRetry = () => {
+    if (retryHandle !== null || !held.length) return;
+    const delay = Math.min(maxMs, baseMs * 2 ** attempts);
+    attempts += 1;
+    retryHandle = schedule(() => { retryHandle = null; return retryHeld(); }, delay);
+  };
+  async function retryHeld() {
+    if (!state.loaded || !state.writable || !held.length) return { ok: true, records: state.records };
+    const flushed = await flushHeld(state.records);
+    if (!flushed.ok) { set({ error: flushed.error }); scheduleRetry(); return flushed; }
+    attempts = 0;
+    set({ records: flushed.records, error: null });
+    return flushed;
+  }
 
   // Write everything held, draining until nothing arrives mid-flight. Returns
   // the committed records, or the failure with the batch back on the queue.
@@ -145,27 +175,33 @@ export function createLedger({ store, pick = pickJoboRecord }) {
         const flushed = await flushHeld(records);
         records = flushed.records;
         error = flushed.ok ? null : flushed.error;
+        if (flushed.ok) attempts = 0;
       } else {
         records = mergeRecordsById(records, held, pick);
         held = [];
       }
     }
     set({ records, loaded: true, writable, error });
+    if (error) scheduleRetry();
     return state;
   }
 
   /**
    * A local mutation: records core constructed, with their own timestamps.
    * Merged by id, never a replace, so a record another tab appended survives.
-   * Refuses when not loaded (nothing to merge into) or read-only.
+   * Refuses when not loaded (nothing to merge into) or read-only. A write
+   * that fails is held and retried, and says so: the caller's edge is
+   * consumed safely because the ledger now owns the record.
    */
   async function commit(records) {
     if (!state.loaded) return { ok: false, error: 'notLoaded' };
     if (!state.writable) return { ok: false, error: 'readOnly' };
-    const result = await store.update(mergeInto(records));
-    if (!result.ok) { set({ error: result.error }); return result; }
-    set({ records: result.value, error: null });
-    return result;
+    hold(records);
+    const flushed = await flushHeld(state.records);
+    if (!flushed.ok) { set({ error: flushed.error }); scheduleRetry(); return { ok: false, error: flushed.error, held: true }; }
+    attempts = 0;
+    set({ records: flushed.records, error: null });
+    return { ok: true, value: flushed.records };
   }
 
   /**
@@ -182,7 +218,8 @@ export function createLedger({ store, pick = pickJoboRecord }) {
     // Anything still held from a failed write rides along with this batch.
     hold(records);
     const flushed = await flushHeld(state.records);
-    if (!flushed.ok) { set({ error: flushed.error }); return { ok: false, error: flushed.error }; }
+    if (!flushed.ok) { set({ error: flushed.error }); scheduleRetry(); return { ok: false, error: flushed.error, held: true }; }
+    attempts = 0;
     set({ records: flushed.records, error: null });
     return { ok: true, written: true };
   }
@@ -211,7 +248,11 @@ export function createLedger({ store, pick = pickJoboRecord }) {
     commit,
     applyRemote,
     restore,
-    /** How many remote records are waiting to reach disk. Test seam. */
+    /** Retry whatever is held now, ahead of the backoff. */
+    retryHeld,
+    /** Stop the retry timer; the held queue stays for a later load. */
+    dispose() { if (retryHandle !== null) { cancel(retryHandle); retryHandle = null; } },
+    /** How many records are waiting to reach disk. Test seam. */
     heldCount: () => held.length,
   };
 }

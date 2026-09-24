@@ -127,16 +127,21 @@ describe('useJoboDetector', () => {
     expect(recordJobo.mock.calls[1][0][0].id).toBe(`do:t2:${DONE_AT}`);
   });
 
-  it('a refused write is reported and the snapshot still advances (one-shot)', async () => {
+  it('a write the ledger holds for retry is handed over once and not warned about; a refused one is warned about', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    recordJobo = vi.fn(async () => ({ ok: false, error: 'storageWrite' }));
+    recordJobo = vi.fn(async () => ({ ok: false, error: 'storageWrite', held: true }));
     useRenderedHook(props([task()]));
     useRenderedHook(props([done(task())]));
     await flush();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('refused'), 'storageWrite');
+    expect(warn).not.toHaveBeenCalled();
     useRenderedHook(props([done(task())]));
     await flush();
-    expect(recordJobo).toHaveBeenCalledTimes(1);
+    expect(recordJobo).toHaveBeenCalledTimes(1);          // one-shot: the ledger owns it now
+    recordJobo = vi.fn(async () => ({ ok: false, error: 'readOnly' }));
+    useRenderedHook(props([done(task()), task({ id: 't2' })]));
+    useRenderedHook(props([done(task()), done(task({ id: 't2' }))]));
+    await flush();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('refused'), 'readOnly');
     warn.mockRestore();
   });
 });

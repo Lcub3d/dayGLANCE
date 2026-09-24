@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   snapshotJoboState, findJoboEdges, planJoboTransitions, buildJoboRecords,
-  civilDateOf, planSnapshotOf, completionKey, recurringKey,
+  civilDateOf, planSnapshotOf, resolveOccurrence, completionKey, recurringKey,
 } from './detector.js';
 import { createDoRecord, tombstoneDoRecord, reassessDoProgress, DO_PROGRESS } from './core.js';
 
@@ -105,14 +105,35 @@ describe('edges', () => {
 });
 
 describe('civilDateOf', () => {
-  it('reads the completing device\'s date from an offset stamp, whatever this device\'s zone', () => {
+  // MUTATION: derive the date through new Date() on this device and two
+  // observers in different zones disagree on one record's date.
+  it('is the stamp\'s own prefix, source-deterministic, whatever this device\'s zone', () => {
     expect(civilDateOf('2026-09-19T23:50:00-05:00')).toBe('2026-09-19'); // 04:50Z next day
     expect(civilDateOf('2026-09-20T00:10:00+09:00')).toBe('2026-09-20'); // 15:10Z previous day
+    expect(civilDateOf('2026-09-19T20:10:02.000Z')).toBe('2026-09-19');  // the UTC date, on every observer
+    expect(civilDateOf('nope')).toBe(null);
   });
-  it('falls back to the local date of a zoneless or Z stamp', () => {
-    const d = new Date('2026-09-19T20:10:02.000Z');
-    const pad = (n) => String(n).padStart(2, '0');
-    expect(civilDateOf('2026-09-19T20:10:02.000Z')).toBe(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+});
+
+describe('recurring occurrences', () => {
+  it('captures the occurrence the user saw: that date\'s exception over the template', () => {
+    const r = template({ exceptions: { '2026-09-18': { title: 'Gym (moved)', startTime: '18:00' } } });
+    expect(resolveOccurrence(r, '2026-09-18')).toEqual({ title: 'Gym (moved)', startTime: '18:00', duration: 45, isAllDay: false });
+    expect(resolveOccurrence(r, '2026-09-19')).toEqual({ title: 'Gym', startTime: '07:00', duration: 45, isAllDay: false });
+  });
+  // MUTATION: capture from the raw template and a one-off reschedule is
+  // permanently recorded as the Final Plan the user never saw.
+  it('a completion of a rescheduled occurrence captures the rescheduled plan and title, capture-once', () => {
+    const before = [template({ exceptions: { '2026-09-18': { title: 'Gym (moved)', startTime: '18:00', duration: 30 } } })];
+    const after = [{ ...before[0], completedDates: ['2026-09-18'], completedDatesTimestamps: { '2026-09-18': DONE_Z } }];
+    const [c] = findJoboEdges(snap([], [], before), snap([], [], after), { recurringTasks: after }).completions;
+    expect(c.title).toBe('Gym (moved)');
+    expect(c.planSnapshot).toEqual({ date: '2026-09-18', startTime: '18:00', duration: 30 });
+  });
+  it('an all-day occurrence, or an all-day task, captures planSnapshot null rather than a block at midnight', () => {
+    const r = template({ isAllDay: true, startTime: null });
+    expect(planSnapshotOf(resolveOccurrence(r, '2026-09-18'), '2026-09-18')).toBe(null);
+    expect(planSnapshotOf(task({ isAllDay: true, startTime: '00:00' }))).toBe(null);
   });
 });
 

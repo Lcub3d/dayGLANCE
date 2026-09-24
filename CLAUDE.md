@@ -100,7 +100,11 @@ feature-local namespace. Add new keys to `public/locales/*/translation.json`;
   completion stamp, never on the observing device's clock, so two devices
   produce one id and `pickJoboRecord` picks one copy. Creation is
   ensure-present; an uncheck targets the record by the previous key and drops
-  it to `partial`; a completion without a stamp makes no record.
+  it to `partial`; a completion without a stamp makes no record. A recurring
+  completion captures the occurrence the user saw (that date's exception
+  over the template), and the Do `date` is the stamp's own prefix. The
+  detector is one-shot because a failed write, local or remote, is held in
+  the ledger and retried with backoff.
 
 # Adding a field to a task
 

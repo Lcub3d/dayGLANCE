@@ -37,9 +37,7 @@ import { completeDoAttempt, reassessDoProgress, DO_PROGRESS, DO_TIMING } from '.
 const isStamp = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-// A stamp that carries its offset names the completing device's civil date in
-// its first ten characters, which every observer reads the same way.
-const OFFSET_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?[+-]\d{2}:\d{2}$/;
+const STAMP_DATE_RE = /^(\d{4}-\d{2}-\d{2})T/;
 
 /** Deterministic ids. Exported so the view and importers can name a record. */
 export const completionKey = (taskId, completedAt) => `do:${taskId}:${completedAt}`;
@@ -69,20 +67,45 @@ export function snapshotJoboState(tasks, unscheduledTasks, recurringTasks) {
   return { items, recurring };
 }
 
-/** The civil date a completion stamp names, as every observer would read it. */
-export function civilDateOf(stamp, now = new Date()) {
-  if (OFFSET_RE.test(stamp)) return stamp.slice(0, 10);
-  const d = isStamp(stamp) ? new Date(stamp) : now;
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/**
+ * The civil date a completion stamp names: its own YYYY-MM-DD prefix, and
+ * nothing the observer infers. A stamp with an offset (completionTimestamp)
+ * names the completing device's local date; a Z stamp names the UTC date.
+ * Reading the prefix keeps two observers in different zones on one date for
+ * one record, which the observedAt tie-break would otherwise have to settle.
+ */
+export function civilDateOf(stamp) {
+  const m = STAMP_DATE_RE.exec(String(stamp ?? ''));
+  return m && DATE_RE.test(m[1]) ? m[1] : null;
 }
 
-/** The plan as it stands, or null when there is no timed plan to copy. */
+/**
+ * The plan as it stands, or null when there is no timed plan to copy. An
+ * all-day plan has no interval to compare against, so it captures as null
+ * rather than as a block at 00:00.
+ */
 export function planSnapshotOf(task, date = task?.date) {
-  if (!task || !DATE_RE.test(date || '') || !TIME_RE.test(task.startTime || '')) return null;
+  if (!task || task.isAllDay === true) return null;
+  if (!DATE_RE.test(date || '') || !TIME_RE.test(task.startTime || '')) return null;
   const duration = task.duration;
   if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) return null;
   return { date, startTime: task.startTime, duration };
+}
+
+/**
+ * The occurrence the user saw on one date: the template with that date's
+ * exception applied, on the fallback the instance expansion uses everywhere
+ * else (useTaskDerived, App). A one-off reschedule or rename must be what
+ * the capture-once title and planSnapshot preserve.
+ */
+export function resolveOccurrence(template, date) {
+  const exception = template?.exceptions?.[date] || {};
+  return {
+    title: exception.title ?? template?.title,
+    startTime: exception.startTime ?? template?.startTime,
+    duration: exception.duration ?? template?.duration,
+    isAllDay: exception.isAllDay ?? template?.isAllDay ?? false,
+  };
 }
 
 const titleOf = (task) => String(task?.title ?? '').trim() || 'Untitled';
@@ -104,9 +127,11 @@ export function findJoboEdges(prev, next, { tasks, unscheduledTasks, recurringTa
     if (was === undefined) continue; // first sight
     if (was === false && is !== false) {
       if (typeof is !== 'string') continue; // completed with no stamp: no source event to key on
+      const date = civilDateOf(is);
+      if (!date) continue; // a stamp with no calendar date in it cannot place the Do
       completions.push({
         id: completionKey(id, is), taskId: t.id, title: titleOf(t),
-        date: civilDateOf(is), planSnapshot: planSnapshotOf(t), completedAt: is,
+        date, planSnapshot: planSnapshotOf(t), completedAt: is,
       });
     } else if (was !== false && is === false) {
       if (typeof was !== 'string') continue; // the completion we saw had no stamp; nothing to target
@@ -121,9 +146,10 @@ export function findJoboEdges(prev, next, { tasks, unscheduledTasks, recurringTa
     const nextDates = next.recurring[id] || {};
     for (const [date, stamp] of Object.entries(nextDates)) {
       if (date in prevDates) continue;
+      const occurrence = resolveOccurrence(r, date);
       completions.push({
-        id: recurringKey(id, date, stamp), taskId: r.id, title: titleOf(r),
-        date, planSnapshot: planSnapshotOf(r, date), completedAt: stamp,
+        id: recurringKey(id, date, stamp), taskId: r.id, title: titleOf(occurrence),
+        date, planSnapshot: planSnapshotOf(occurrence, date), completedAt: stamp,
       });
     }
     for (const [date, stamp] of Object.entries(prevDates)) {

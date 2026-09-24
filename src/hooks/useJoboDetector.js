@@ -9,10 +9,10 @@ import { isTrayMode } from '../utils/trayMode.js';
 // useCompletionLog.
 //
 // One-shot, like the completion log: the snapshot advances after the write
-// attempt whatever its outcome, so a transition is attempted exactly once
-// here. A failed local write is reported by the ledger (joboError) and, when
-// another device observes the same completion through sync, produced there
-// under the same id.
+// attempt, so a transition is handed over exactly once. That is safe because
+// the ledger owns the record from then on: a write that fails is held there
+// and retried with backoff (ledger.js), and a device that observes the same
+// completion through sync produces the same id.
 export default function useJoboDetector({
   tasks, unscheduledTasks, recurringTasks,
   joboRecords, joboLoaded, joboWritable, recordJobo,
@@ -47,7 +47,9 @@ export default function useJoboDetector({
     Promise.resolve()
       .then(() => recordJobo(records))
       .then((result) => {
-        if (result && result.ok === false) console.warn('[jobo] ledger write refused:', result.error);
+        // Held means the ledger has it and will retry; refused means it does
+        // not (not loaded, read-only), which the gate should have prevented.
+        if (result && result.ok === false && !result.held) console.warn('[jobo] ledger write refused:', result.error);
       })
       .catch((err) => { console.error('[jobo] ledger write failed:', err); })
       .finally(() => {

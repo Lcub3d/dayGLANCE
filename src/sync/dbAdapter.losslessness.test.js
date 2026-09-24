@@ -158,6 +158,10 @@ function buildFixture() {
       { id: 6002, name: 'Work', color: 'bg-blue-500', order: 10, updatedAt: ts(810) },
     ],
     deletedAreaIds: { 6099: ts(940) },
+    joboRecords: [
+      { id: 'do:1001:2026-06-18T15:10:02.000Z', taskId: 1001, timing: 'timed', date: '2026-06-18', startTime: '14:30', endDate: '2026-06-18', endTime: '15:10', title: 'Draft the report', planSnapshot: { date: '2026-06-18', startTime: '14:30', duration: 60 }, source: 'completion', progress: 'completed', createdAt: ts(300), updatedAt: ts(300), observedAt: ts(299), deleted: false },
+      { id: 'do:manual:abc', taskId: null, timing: 'untimed', date: '2026-06-17', startTime: null, endDate: null, endTime: null, title: 'Walked the dog', planSnapshot: null, source: 'manual', progress: 'completed', createdAt: ts(400), updatedAt: ts(350), observedAt: ts(400), deleted: true },
+    ],
     goalsProjectsEnabled: true,
     goalsProjectsEnabledUpdatedAt: ts(5000),
     obsidianConfig: { taskHeading: '## Tasks', dailyNoteTemplate: 'tpl', newNotesFolder: 'Notes' },
@@ -231,7 +235,11 @@ describe('dbAdapter losslessness gate', () => {
       // are too, so each series' completedDates UNION across devices instead of a
       // completion being clobbered by a concurrent series edit. Other per-item
       // collections and per-date dailyNotes stay on entity-grain LWW.
-      expect(isInsertOnly(r.entity)).toBe(r.kind === 'singleton' || r.kind === 'recurringTasks');
+      // joboRecords are insert-only so every pulled copy runs through core's
+      // pickJoboRecord (docs/jobo-ledger-persistence.md): two devices holding
+      // pristine copies of one record tie on updatedAt, and the engine's own
+      // "remote wins" tie would leave each keeping the other's, never converging.
+      expect(isInsertOnly(r.entity)).toBe(r.kind === 'singleton' || r.kind === 'recurringTasks' || r.kind === 'joboRecords');
     }
   });
 

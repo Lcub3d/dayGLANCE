@@ -16,6 +16,7 @@ import { mergeRetiredTaskIds, pruneRetiredTaskIds, applyRetirementsToTaskLists }
 import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from './utils/obsidianDeletions.js';
 import { containObsidianGhostRows } from './utils/obsidianGhostRows.js';
 import { mergeDayWindowMaps, dayWindowMapsEqual, migrateDayWindows } from './sync/dayWindowSync.js';
+import { mergeJoboCollections } from './jobo/ledger.js';
 
 export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) =>
   mergeArrayById(local, remote, deletedIds, syncHorizon, { timestampField: 'lastModified' });
@@ -448,6 +449,22 @@ export const mergeSyncData = (local, remote, retentionDays) => {
     result.data.deletedAreaIds = pruneTombstoneMap(allDeletedAreaIds, tsCutoff);
     if (areasMerge.localChanged) result.localChanged = true;
     if (areasMerge.remoteChanged) result.remoteChanged = true;
+  }
+  // JOBO ledger (docs/jobo-ledger-persistence.md): a dayGLANCE-only
+  // collection the upstream merge drops, re-merged here by id with core's
+  // pickJoboRecord. No tombstone map (deletions are rows) and NO sync
+  // horizon: the horizon drops old local-only rows, which for the ledger are
+  // real records and the tombstones that keep stale copies out, and a merge
+  // against a payload from a build that predates the collection would
+  // otherwise drop every row older than the window. A side without the key
+  // did not carry the collection and is never read as empty.
+  {
+    const jobo = mergeJoboCollections(local?.joboRecords, remote?.joboRecords);
+    if (jobo.merged !== undefined) {
+      result.data.joboRecords = jobo.merged;
+      if (jobo.localChanged) result.localChanged = true;
+      if (jobo.remoteChanged) result.remoteChanged = true;
+    }
   }
   // Keep device-local settings on this device's own value rather than the
   // last-writer-wins result. Feature toggles only when multi-user is on, so a

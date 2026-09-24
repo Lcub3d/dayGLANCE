@@ -24,13 +24,16 @@
 // does stringify, so keep values JSON-safe.
 
 const STORE = 'kv';
+/** The one object store every database opened here has. Shared with stores that
+ * need their own transaction shape over the same connection (src/jobo/store.js). */
+export const IDB_STORE_NAME = STORE;
 
 // One connection per database name, opened lazily. `null` means "IndexedDB is
 // not usable here", cached so a blocked environment is not re-probed on every
 // read during a sync cycle.
 const connections = new Map();
 
-function openDatabase(dbName) {
+export function openDatabase(dbName) {
   if (connections.has(dbName)) return connections.get(dbName);
   const promise = new Promise((resolve) => {
     let request;

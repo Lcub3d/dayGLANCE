@@ -236,9 +236,15 @@ importer all go through it.
   tiers already distinguish an absent bundle from an empty one for other
   data, and the vault tier treats absent as "does not carry it", never as a
   delete.
-- **Applies during load are held.** A remote apply that arrives before
-  `loaded` is queued and merged after hydration. Merging it into the stale
-  initial state and then loading over it would drop it.
+- **Applies during load are held, and held is retryable.** A remote apply
+  that arrives before `loaded` is queued and merged after hydration. Merging
+  it into the stale initial state and then loading over it would drop it.
+  The queue is drained until it is stable, since an apply can land while the
+  flush is in flight, and a batch whose write fails goes back on the queue
+  rather than being published: state shows only what the read returned, the
+  error is reported, and the next apply or load retries the batch. The queue
+  is merged by id, so a row the vault tier re-delivers every cycle does not
+  grow it.
 - **Every mutation** goes through `update(fn)` and the hook refreshes state
   from the committed value, not from what it intended to write. A record in
   state that is not on disk is exactly what a crash loses.
@@ -397,7 +403,10 @@ and belongs in every backup the app makes, folder and file alike.
 
 **Restore.** Every restore path (`restoreFromBackupFolder`, restore from file,
 the cloud restore at `applyEngineData`'s call sites) writes the collection
-through the checked write **and reloads only on `ok: true`.**
+through the checked write **first, awaited, and aborts the restore on
+failure.** The ledger write is the one step in a restore that can fail, so it
+runs before the localStorage replacement that cannot; a restored plan over a
+ledger left at the old point in time would silently disagree with it.
 `resetVaultSyncCursor` notes that the snapshot's IndexedDB delete is not
 awaited because it races the unload and the snapshot was keyed to make the
 race harmless. The ledger has no such key; a restore that reloads before the
@@ -478,6 +487,14 @@ rather than unit-testing a module. The five from review are folded in.
     cross-midnight interval keeps its explicit `endDate`.
 11. **Restore then reload keeps the ledger.** Restore with a checked write;
     construct a fresh hook over the same store; assert the records are there.
+12. **A failed write after a pull is re-delivered.** Through the real engine:
+    the pull cursor advances at end of pull and `applyEngineData` does not
+    await the ledger write, so a row can be consumed before it is durable.
+    Fail the write; assert the row is absent from state, the error reported,
+    and the cursor past it. Recover the store; assert the next cycle's
+    snapshot-delete guard treats the vanish as a glitch, re-fetches the row
+    by id, and it lands on disk, with the vault row and the other device
+    untouched.
 
 Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
 remove the flag-independence (2 fails); pass the sync horizon to the

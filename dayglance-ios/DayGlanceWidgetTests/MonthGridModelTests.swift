@@ -86,7 +86,8 @@ final class MonthGridModelTests: XCTestCase {
     }
 
     func testFractionalMinutesAndMissingListsStillDecode() throws {
-        let json = #"{"monthWindow":{"weekStart":0,"days":[{"date":"2026-09-20","bars":[{"s":540.5,"d":22.5,"c":"#fff000"}]}]}}"#
+        // ##-delimited: the hex's `"#` would close a #-delimited raw string.
+        let json = ##"{"monthWindow":{"weekStart":0,"days":[{"date":"2026-09-20","bars":[{"s":540.5,"d":22.5,"c":"#fff000"}]}]}}"##
         let window = try XCTUnwrap(MonthWindowStore.decode(json.data(using: .utf8)!))
         XCTAssertEqual(window.days[0].bars, [MonthWindowBar(s: 540.5, d: 22.5, c: "#fff000")])
         XCTAssertEqual(window.days[0].allDay, [])

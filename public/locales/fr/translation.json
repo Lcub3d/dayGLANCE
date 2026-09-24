@@ -1710,6 +1710,8 @@
     "spaceToggleHint": "G bascule",
     "noProjectsLinked": "Aucun projet lié à cet objectif pour l'instant",
     "openProjects": "En cours",
+    "filterProjects": "Filtrer les projets…",
+    "noProjectsMatch": "Aucun projet ne correspond",
     "noCompletedProjects": "Aucun projet terminé",
     "noStandaloneProjects": "Aucun projet autonome",
     "standaloneProjects": "Projets autonomes",

@@ -131,8 +131,15 @@ describe('useKeyboardShortcuts — inside the Goals space', () => {
   });
 
   it('drives the space sidebar with the keys the calendar uses for dates and its panel', () => {
-    const keys = { moveSelection: vi.fn(), setTab: vi.fn() };
+    const keys = { moveSelection: vi.fn(), setTab: vi.fn(), newItem: vi.fn(), focusFilter: vi.fn() };
     const p = useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: keys } });
+    // 'n' makes a goal or project there, not a scheduled task; '/' focuses the project filter
+    press('n');
+    expect(keys.newItem).toHaveBeenCalledTimes(1);
+    expect(p.setShowAddTask).not.toHaveBeenCalled();
+    press('/');
+    expect(keys.focusFilter).toHaveBeenCalledTimes(1);
+    expect(p.setShowMobileTagFilter).not.toHaveBeenCalled();
     expect(press('ArrowDown').preventDefault).toHaveBeenCalled();
     press('ArrowUp');
     expect(keys.moveSelection.mock.calls).toEqual([[1], [-1]]);
@@ -145,8 +152,11 @@ describe('useKeyboardShortcuts — inside the Goals space', () => {
     const q = useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: null } });
     press('ArrowDown');
     press(',');
+    press('n');
     expect(q.changeDate).not.toHaveBeenCalled();
     expect(q.setTabletActiveTab).not.toHaveBeenCalled();
+    // …except 'n', which then falls through to the app-level new task
+    expect(q.setShowAddTask).toHaveBeenCalledWith(true);
   });
 
   it('keeps the calendar shortcuts working in the Calendar space', () => {

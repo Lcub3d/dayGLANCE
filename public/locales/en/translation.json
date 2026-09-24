@@ -1710,6 +1710,8 @@
     "spaceToggleHint": "G toggles",
     "noProjectsLinked": "No projects linked to this goal yet",
     "openProjects": "Open",
+    "filterProjects": "Filter projects…",
+    "noProjectsMatch": "No projects match",
     "noCompletedProjects": "No completed projects",
     "noStandaloneProjects": "No standalone projects",
     "standaloneProjects": "Standalone Projects",

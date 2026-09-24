@@ -116,17 +116,17 @@ describe('GoalDashboard desktop space', () => {
     expect(sidebar).toContain('<select');
     expect(sidebar).toContain('All areas');
     expect(sidebar).toContain('aria-label="Manage Areas"');
-    expect(sidebar).toContain('Add Goal');
-    expect(sidebar).not.toContain('Add Project');
+    expect(sidebar).not.toContain('data-project-filter');
   });
 
-  it('puts only List/Roadmap in the main toolbar; creating lives in the sidebar pills, the card and Manage Areas', () => {
+  it('puts only List/Roadmap in the main toolbar; creating lives in the FAB, the card and Manage Areas', () => {
     const main = section(render({ desktop: true, isActive: true }), 'data-goals-main');
-    expect(main).toContain(' List</button>');
-    expect(main).toContain(' Roadmap</button>');
-    expect(main).not.toContain('Add Area');
-    expect(main).not.toContain('Add Goal');
-    expect(main).not.toContain('Add Project');
+    const toolbar = main.slice(0, main.indexOf('overflow-y-auto'));
+    expect(toolbar).toContain(' List</button>');
+    expect(toolbar).toContain(' Roadmap</button>');
+    expect(toolbar).not.toContain('Add Area');
+    expect(toolbar).not.toContain('Add Goal');
+    expect(toolbar).not.toContain('Add Project');
     expect(main).toContain('overflow-y-auto');
     // the divider matches the calendar area's (border-x) and the toolbar row is
     // 46px plus its border like the sidebar tab row, so the lines meet
@@ -134,13 +134,18 @@ describe('GoalDashboard desktop space', () => {
     expect(main).toContain('height:var(--header-row-h);box-sizing:content-box');
   });
 
-  it('floats Add Goal as a pill column over the sidebar list, with room under the last row', () => {
+  it('stacks the FABs bottom-right over the main scroll area, contextual to the tab, above the Archived footer', () => {
     const html = render({ desktop: true, isActive: true });
-    const sidebar = html.slice(html.indexOf('data-goals-sidebar'), html.indexOf('data-goals-main'));
-    const fabs = sidebar.slice(sidebar.indexOf('data-goals-fabs'));
-    expect(fabs).toContain('absolute bottom-6 left-4');
-    expect(fabs).toContain('Add Goal');
-    expect(sidebar).toContain('pb-20');
+    const main = section(html, 'data-goals-main');
+    const fabs = main.slice(main.indexOf('data-goals-fabs'));
+    expect(fabs).toContain('absolute bottom-6 right-6');
+    expect(fabs).toContain('flex-col');
+    expect(fabs).toContain('aria-label="Add Goal"');
+    expect(main.indexOf('data-goals-fabs')).toBeLessThan(main.indexOf('data-archived-section'));
+    expect(main).toContain('pb-28');
+    const projects = section(render({ desktop: true, isActive: true, initialSidebarTab: 'projects' }), 'data-goals-fabs');
+    expect(projects).toContain('aria-label="Add Project"');
+    expect(html).not.toContain('bottom-6 left-4');
   });
 
   it('anchors the Archived section under the scroll area, expanding upward', () => {
@@ -201,7 +206,9 @@ describe('GoalDashboard desktop space', () => {
     expect(row).toContain('<svg width="18"');
     expect(row).toContain('>0/2</span>');
     expect(row).toContain('Stalled');
-    expect(sidebar).toContain('Add Project');
+    // the filter field sits where the area filter sits on the Goals tab
+    expect(sidebar).toContain('data-project-filter');
+    expect(sidebar).toContain('placeholder="Filter projects…"');
   });
 
   it('keeps the sidebar tab across renders it was given, but starts on Goals by default', () => {

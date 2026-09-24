@@ -1712,6 +1712,8 @@
     "spaceToggleHint": "G alterna",
     "noProjectsLinked": "Nessun progetto collegato a questo obiettivo",
     "openProjects": "Aperti",
+    "filterProjects": "Filtra progetti…",
+    "noProjectsMatch": "Nessun progetto corrisponde",
     "noCompletedProjects": "Nessun progetto completato",
     "noStandaloneProjects": "Nessun progetto indipendente",
     "standaloneProjects": "Progetti indipendenti",

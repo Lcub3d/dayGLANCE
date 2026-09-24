@@ -25,6 +25,7 @@ import {
   LogIn,
   Plus,
   RotateCcw,
+  Search,
   Trash2,
   X,
   Zap,
@@ -1133,7 +1134,8 @@ const GoalSpaceSidebar = ({
   tab, onTabChange,
   goals, goalCount, selectedGoalId, onSelectGoal,
   standaloneProjects, standaloneCount, focusedProjectId, onProjectRowClick,
-  drag, onManageAreas, onNewGoal, onNewProject,
+  projectQuery, onProjectQueryChange, filterInputRef,
+  drag, onManageAreas,
 }) => {
   const { darkMode, cardBg, borderClass, textSecondary } = useDayPlannerCtx();
   const { moveProject } = useFeaturesCtx();
@@ -1145,12 +1147,6 @@ const GoalSpaceSidebar = ({
       active ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`
     }`;
   const countClass = `text-[11px] font-normal ${textSecondary}`;
-  // Action pills — the GLANCE panel's labelled FABs (GlanceFabs): a column
-  // floating bottom-left over the list, so more can be stacked later. The
-  // list carries bottom padding so its last row can scroll clear of them.
-  const pillClass = `pointer-events-auto h-9 px-3 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-medium transition-colors ${
-    darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'
-  }`;
 
   return (
     <div
@@ -1181,13 +1177,38 @@ const GoalSpaceSidebar = ({
         </button>
       </div>
 
-      {tab === 'goals' && (
+      {tab === 'goals' ? (
         <div className="px-3 pt-3 flex-shrink-0">
           <AreaFilter onManageAreas={onManageAreas} iconOnly />
         </div>
+      ) : (
+        /* Project filter — the GLANCE panel's search field look. '/' focuses
+           it; Escape clears it (GoalDashboard's Escape chain). */
+        <div className="px-3 pt-3 flex-shrink-0">
+          <label className={`flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'}`}>
+            <Search size={15} className="flex-shrink-0" />
+            <input
+              ref={filterInputRef}
+              type="search"
+              value={projectQuery}
+              onChange={e => onProjectQueryChange(e.target.value)}
+              placeholder={t('goals.filterProjects')}
+              aria-label={t('goals.filterProjects')}
+              data-project-filter
+              className={`flex-1 min-w-0 bg-transparent text-sm outline-none ${darkMode ? 'text-gray-100 placeholder-gray-500' : 'text-stone-900 placeholder-stone-400'}`}
+            />
+            {projectQuery ? (
+              <button type="button" onClick={() => { onProjectQueryChange(''); filterInputRef.current?.focus(); }} className="flex-shrink-0 p-0.5 rounded hover:opacity-70" aria-label={t('common.clear')}>
+                <X size={13} />
+              </button>
+            ) : (
+              <span className={`text-xs ${textSecondary}`}>/</span>
+            )}
+          </label>
+        </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto px-2 pt-2 pb-20 ${darkMode ? 'dark-scrollbar' : ''}`}>
+      <div className={`flex-1 overflow-y-auto px-2 py-2 ${darkMode ? 'dark-scrollbar' : ''}`}>
         {tab === 'goals' ? (
           goals.length === 0 ? (
             <p className={`text-xs ${textSecondary} opacity-60 text-center px-4 py-6`}>{t('goals.noGoalsYet')}</p>
@@ -1223,7 +1244,7 @@ const GoalSpaceSidebar = ({
           )
         ) : (
           standaloneProjects.length === 0 ? (
-            <p className={`text-xs ${textSecondary} opacity-60 text-center px-4 py-6`}>{t('goals.noStandaloneProjects')}</p>
+            <p className={`text-xs ${textSecondary} opacity-60 text-center px-4 py-6`}>{t(projectQuery ? 'goals.noProjectsMatch' : 'goals.noStandaloneProjects')}</p>
           ) : (
             <div className="flex flex-col gap-0.5">
               <p className={`px-2 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider ${textSecondary}`}>
@@ -1237,17 +1258,6 @@ const GoalSpaceSidebar = ({
         )}
       </div>
 
-      <div data-goals-fabs className="absolute bottom-6 left-4 z-10 flex flex-col items-start gap-2 pointer-events-none">
-        {tab === 'goals' ? (
-          <button type="button" onClick={onNewGoal} className={`${pillClass} text-blue-500`}>
-            <Flag size={15} /> <span className="whitespace-nowrap">{t('common.addGoal')}</span>
-          </button>
-        ) : (
-          <button type="button" onClick={onNewProject} className={`${pillClass} text-emerald-500`}>
-            <Layers size={15} /> <span className="whitespace-nowrap">{t('common.addProject')}</span>
-          </button>
-        )}
-      </div>
     </div>
   );
 };
@@ -2283,6 +2293,9 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // Projects tab: the highlighted row (click, or Up/Down); its card is ringed
   // and scrolled into view in the main area.
   const [focusedProjectId, setFocusedProjectId] = useState(null);
+  // Projects tab filter field: title match, applied after Open | Completed.
+  const [projectQuery, setProjectQuery] = useState('');
+  const filterInputRef = useRef(null);
 
   // If the saved filter points at an area that no longer exists (deleted on this
   // or another device), fall back to "All" so the dashboard isn't stuck empty.
@@ -2357,7 +2370,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const standaloneProjects = useMemo(() => sortByOrder(activeProjects.filter(p => !p.goalId)), [activeProjects]);
   const openStandalone = useMemo(() => standaloneProjects.filter(p => p.status !== 'completed'), [standaloneProjects]);
   const completedStandalone = useMemo(() => standaloneProjects.filter(p => p.status === 'completed'), [standaloneProjects]);
-  const shownStandalone = projectsFilter === 'completed' ? completedStandalone : openStandalone;
+  const shownStandalone = useMemo(() => {
+    const byStatus = projectsFilter === 'completed' ? completedStandalone : openStandalone;
+    const q = projectQuery.trim().toLowerCase();
+    return q ? byStatus.filter(p => (p.title || '').toLowerCase().includes(q)) : byStatus;
+  }, [projectsFilter, completedStandalone, openStandalone, projectQuery]);
   const selectedGoal = useMemo(
     () => sortedGoals.find(g => g.id === selectedGoalId) || sortedGoals[findDefaultActiveIdx(sortedGoals)] || null,
     [sortedGoals, selectedGoalId]
@@ -2407,6 +2424,16 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const keysImplRef = useRef(null);
   keysImplRef.current = {
       setTab: setSidebarTab,
+      // 'n': a new goal on the Goals tab, a new standalone project on Projects
+      newItem: () => {
+        if (sidebarTab === 'goals') setGoalForm({ editing: null });
+        else setProjectForm({ editing: null, defaultGoalId: null });
+      },
+      // '/': the project filter (switching to the Projects tab if needed)
+      focusFilter: () => {
+        setSidebarTab('projects');
+        requestAnimationFrame(() => filterInputRef.current?.focus());
+      },
       moveSelection: (delta) => {
         if (sidebarTab === 'goals') {
           if (sortedGoals.length === 0) return;
@@ -2425,6 +2452,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     if (!desktop || !isActive || !goalsSpaceKeysRef) return undefined;
     goalsSpaceKeysRef.current = {
       setTab: (tab) => keysImplRef.current?.setTab(tab),
+      newItem: () => keysImplRef.current?.newItem(),
+      focusFilter: () => keysImplRef.current?.focusFilter(),
       moveSelection: (delta) => keysImplRef.current?.moveSelection(delta),
     };
     return () => { goalsSpaceKeysRef.current = null; };
@@ -2523,7 +2552,12 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       // sits above everything and closes itself — leave ESC to it.
       if (document.querySelector('.sched-notes-panel')) return;
       let close = null;
-      if (expandedNotesTaskId) close = () => setExpandedNotesTaskId(null);
+      // The project filter field: Escape clears it and gives focus back.
+      const filterEl = filterInputRef.current;
+      if (filterEl && document.activeElement === filterEl) {
+        close = () => { setProjectQuery(''); filterEl.blur(); };
+      }
+      else if (expandedNotesTaskId) close = () => setExpandedNotesTaskId(null);
       else if (showAddTask) {
         // Close task edit modal without leaving the space
         close = () => { setShowAddTask(false); setShowNewTaskDeadlinePicker(false); };
@@ -2679,10 +2713,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         standaloneCount={openStandalone.length}
         focusedProjectId={focusedProjectId}
         onProjectRowClick={focusProject}
+        projectQuery={projectQuery}
+        onProjectQueryChange={setProjectQuery}
+        filterInputRef={filterInputRef}
         drag={drag}
         onManageAreas={() => setShowManageAreas(true)}
-        onNewGoal={() => setGoalForm({ editing: null })}
-        onNewProject={() => onNewProject(null)}
       />
 
       {/* border-x like the calendar area, so the divider between the sidebar and
@@ -2729,9 +2764,13 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         </div>
 
         {/* The main area scrolls on its own; the sidebar, header and the
-            Archived footer stay put. */}
+            Archived footer stay put. The FAB column floats over the scroll
+            area's bottom-right corner (above the Archived footer), the way the
+            calendar's + / Frames FABs float over the timeline; the content has
+            bottom padding so the last row can scroll clear of it. */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
         <div className={`flex-1 overflow-y-auto overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}`}>
-          <div className="p-6">
+          <div className="p-6 pb-28">
             {goalsTab ? (
               goalsViewMode === 'timeline' ? roadmap
               : selectedGoal ? (
@@ -2758,6 +2797,10 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
                 justify="start"
                 focusedProjectId={focusedProjectId}
               />
+            ) : projectQuery.trim() ? emptyState(
+              t('goals.noProjectsMatch'),
+              null,
+              null
             ) : projectsFilter === 'completed' ? emptyState(
               t('goals.noCompletedProjects'),
               null,
@@ -2770,6 +2813,20 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
               </button>
             )}
           </div>
+        </div>
+        {/* FABs — stacked bottom-right like the timeline's; the + is contextual
+            to the tab (Add Goal / Add Project, also `n`). Add more above it. */}
+        <div data-goals-fabs className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-2 pointer-events-none">
+          <button
+            type="button"
+            onClick={() => (goalsTab ? setGoalForm({ editing: null }) : onNewProject(null))}
+            className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-colors"
+            title={`${goalsTab ? t('common.addGoal') : t('common.addProject')} (N)`}
+            aria-label={goalsTab ? t('common.addGoal') : t('common.addProject')}
+          >
+            <Plus size={28} />
+          </button>
+        </div>
         </div>
         <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} grid anchored />
       </div>

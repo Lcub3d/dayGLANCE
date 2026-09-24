@@ -1785,6 +1785,8 @@
     "spaceToggleHint": "G перемикає",
     "noProjectsLinked": "До цієї цілі ще не прив’язано проєктів",
     "openProjects": "Відкриті",
+    "filterProjects": "Фільтрувати проєкти…",
+    "noProjectsMatch": "Немає відповідних проєктів",
     "noCompletedProjects": "Немає завершених проєктів",
     "noStandaloneProjects": "Немає окремих проєктів",
     "standaloneProjects": "Окремі проєкти",

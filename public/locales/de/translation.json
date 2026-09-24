@@ -1710,6 +1710,8 @@
     "spaceToggleHint": "G wechselt",
     "noProjectsLinked": "Diesem Ziel sind noch keine Projekte zugeordnet",
     "openProjects": "Offen",
+    "filterProjects": "Projekte filtern…",
+    "noProjectsMatch": "Keine passenden Projekte",
     "noCompletedProjects": "Keine abgeschlossenen Projekte",
     "noStandaloneProjects": "Keine eigenständigen Projekte",
     "standaloneProjects": "Eigenständige Projekte",

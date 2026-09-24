@@ -148,9 +148,22 @@ export default function useKeyboardShortcuts({
       if (goalsSpaceActive) {
         // The keys the calendar uses for dates and its side panel drive the
         // space's sidebar instead: Up/Down move the selection, ',' and '.'
-        // pick the Goals / Projects tab (as they pick GLANCE / inbox).
+        // pick the Goals / Projects tab (as they pick GLANCE / inbox), '/'
+        // focuses the project filter (as it opens the tag filter), and 'n'
+        // makes a new goal or project — whatever the current tab shows —
+        // rather than a scheduled task the space has no timeline for.
         const keys = goalsSpaceKeysRef?.current;
         if (keys && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (e.key === 'n') {
+            e.preventDefault();
+            keys.newItem();
+            return;
+          }
+          if (e.key === '/') {
+            e.preventDefault();
+            keys.focusFilter();
+            return;
+          }
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();
             keys.moveSelection(e.key === 'ArrowUp' ? -1 : 1);

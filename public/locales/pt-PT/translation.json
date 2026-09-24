@@ -2047,28 +2047,18 @@
     "title": "JOBO",
     "placeholder": "Planeado versus realizado. Esta vista está a ser construída por partes; a primeira é o interruptor que a mostra.",
     "view": {
-      "loading": "A carregar o JOBO…",
       "plan": "Plano",
-      "time": "Hora",
       "do": "Execução",
       "storageError": "Não foi possível gravar o registo JOBO. Os dados já confirmados continuam visíveis.",
       "readOnly": "O JOBO está apenas de leitura neste dispositivo. A edição de Do está desativada.",
       "invalidRecords": "São ignorados {{count}} registo(s) inválido(s) do ledger nesta vista.",
       "untimed": "Sem horário",
-      "timeNotRecorded": "Tempo não registado",
-      "editDo": "Editar Do",
-      "timing": "Tempo",
       "timed": "Com horário",
-      "date": "Data",
-      "start": "Início",
-      "endDate": "Data final",
-      "end": "Fim",
       "progressLabel": "Progresso",
       "completeInterval": "Introduza um intervalo completo de início e fim.",
       "editClock": "O relógio do dispositivo não é posterior à última atualização deste registo. Tente novamente mais tarde.",
       "completedByCompletion": "Concluído é criado por um evento de conclusão. Um Do reavaliado pode ficar como Iniciado, Parcial ou Quase.",
       "updateFailed": "Não foi possível guardar a alteração do Do.",
-      "saving": "A guardar…",
       "emptyPlan": "Nenhum Plano com horário neste dia.",
       "emptyDo": "Nenhum Do registado neste dia.",
       "summary": {
@@ -2082,8 +2072,7 @@
       "progress": {
         "started": "Iniciado",
         "partial": "Parcial",
-        "mostly": "Quase",
-        "completed": "Concluído"
+        "mostly": "Quase"
       }
     }
   },

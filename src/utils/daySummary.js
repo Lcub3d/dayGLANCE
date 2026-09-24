@@ -53,15 +53,6 @@ function mergedCoverage(intervals) {
   return total;
 }
 
-/** "2h 15m" / "45m" / "3h" / "0m" — durations, not clock times. */
-export function formatMinutes(min) {
-  const m = Math.max(0, Math.round(min));
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
-}
-
 /**
  * @param dayTasks     Tasks for one date (user blocks + recurring instances +
  *                     native calendar events — the tasksByDate shape).

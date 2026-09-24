@@ -7,13 +7,13 @@ import tailwindcss from 'tailwindcss';
 import DesktopHeader from './DesktopHeader.jsx';
 
 const fixture = vi.hoisted(() => ({
-  planner: {}, sync: {}, native: false, locale: 'en',
+  planner: {}, sync: {}, features: {}, native: false, locale: 'en',
   formatRange: vi.fn(), formatMonth: vi.fn(),
 }));
 vi.mock('../context/DayPlannerContext.jsx', () => ({ useDayPlannerCtx: () => fixture.planner }));
 vi.mock('../context/SyncContext.jsx', () => ({ useSyncCtx: () => fixture.sync }));
 vi.mock('../context/FeaturesContext.jsx', () => ({
-  useFeaturesCtx: () => ({ activeReminders: [{}], setShowRemindersSettings: vi.fn() }),
+  useFeaturesCtx: () => ({ activeReminders: [{}], setShowRemindersSettings: vi.fn(), ...fixture.features }),
 }));
 vi.mock('../utils/nativeCalendar.js', () => ({ hasNativeCalendar: () => fixture.native }));
 vi.mock('react-i18next', () => ({
@@ -59,6 +59,32 @@ beforeEach(() => {
     cloudSyncConfig: { enabled: true }, obsidianConfig: { enabled: true },
     calSyncConfigured: true, cloudSyncStatus: 'success', obsidianSyncStatus: 'success',
   };
+  fixture.features = {};
+});
+
+describe('DesktopHeader spaces', () => {
+  it('puts the space switcher at the far left and keeps the date navigation in the Calendar space', () => {
+    const html = render();
+    const leftCell = html.match(/<div class="flex items-center gap-4 min-w-0">[\s\S]*?<\/div>/)[0];
+    expect(leftCell).toContain('data-space-switcher');
+    expect(html.indexOf('data-space-switcher')).toBeLessThan(html.indexOf('28°C'));
+    expect(titleButton(html)).toContain('Sep 22 – 24, 2026');
+    expect(html).not.toContain('data-goals-space-title');
+  });
+
+  it('swaps only the centre for the space title in the Goals space, keeping the height and the icon cluster', () => {
+    fixture.features = { desktopSpace: 'goals', goals: [{ id: 'g' }], projects: [{ id: 'p' }, { id: 'q' }] };
+    const html = render();
+    expect(html).toContain('data-space-switcher');
+    expect(html).toContain('data-goals-space-title');
+    expect(html).toContain('goals.dashboardTitle');
+    expect(titleButton(html)).toBeUndefined();
+    expect(html).not.toContain('aria-label="common.back"');
+    expect(html).toContain('height:80px');
+    expect(html).toContain('settings.viewCalendarDay');
+    expect(html).toContain('settings.cloudSync');
+    expect(html).toContain('justify-self-end');
+  });
 });
 
 describe('DesktopHeader layout', () => {

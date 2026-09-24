@@ -2132,7 +2132,47 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje."
+    "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
+    "view": {
+      "loading": "Ładowanie JOBO…",
+      "plan": "Plan",
+      "time": "Czas",
+      "do": "Wykonanie",
+      "storageError": "Nie udało się zapisać rejestru JOBO. Wcześniej zatwierdzone dane są nadal wyświetlane.",
+      "readOnly": "JOBO jest na tym urządzeniu tylko do odczytu. Edycja wpisów Do jest wyłączona.",
+      "invalidRecords": "W tym widoku pomijanych jest {{count}} nieprawidłowych wpisów rejestru.",
+      "untimed": "Bez czasu",
+      "timeNotRecorded": "Czas nie został zapisany",
+      "editDo": "Edytuj Do",
+      "timing": "Pomiar czasu",
+      "timed": "Z czasem",
+      "date": "Data",
+      "start": "Początek",
+      "endDate": "Data końcowa",
+      "end": "Koniec",
+      "progressLabel": "Postęp",
+      "completeInterval": "Wprowadź pełny przedział początku i końca.",
+      "editClock": "Zegar urządzenia nie jest późniejszy niż ostatnia aktualizacja tego wpisu. Spróbuj ponownie później.",
+      "completedByCompletion": "Stan Ukończone powstaje przez zdarzenie ukończenia. Ponowna ocena Do może mieć stan Rozpoczęte, Częściowe lub Prawie.",
+      "updateFailed": "Nie udało się zapisać zmiany Do.",
+      "saving": "Zapisywanie…",
+      "emptyPlan": "Brak czasowego Planu na ten dzień.",
+      "emptyDo": "Brak zapisanego Do na ten dzień.",
+      "summary": {
+        "withinPlan": "Zgodnie z planem",
+        "late": "Późno",
+        "longer": "Dłużej",
+        "split": "Podzielone",
+        "notStarted": "Nie rozpoczęto",
+        "unplanned": "Nieplanowane"
+      },
+      "progress": {
+        "started": "Rozpoczęte",
+        "partial": "Częściowe",
+        "mostly": "Prawie",
+        "completed": "Ukończone"
+      }
+    }
   },
   "todoist": {
     "title": "Synchronizacja Todoist",

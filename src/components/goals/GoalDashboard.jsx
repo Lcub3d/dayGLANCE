@@ -793,6 +793,11 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
   );
 };
 
+// The space is wider than the old modal, so its cards are 25% wider (325px vs
+// 260px) and fold their task list later.
+const SPACE_CARD_W = 'w-[325px]';
+const SPACE_VISIBLE_TASKS = 6;
+
 // ─── Project card group (one goal's projects, or the standalone projects) ────
 // Active cards first, completed ones compact below. Each slot is a within-group
 // reorder target (drop before this card); the group itself appends. The grip
@@ -812,7 +817,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       data-proj-id={proj.id}
       data-move-goal={goalAttr}
       data-move-before={proj.id}
-      className={`relative w-[260px] transition-opacity ${dragProjectId === proj.id ? 'opacity-40' : ''} ${
+      className={`relative ${SPACE_CARD_W} transition-opacity ${dragProjectId === proj.id ? 'opacity-40' : ''} ${
         dropInsertBeforeId === proj.id && dragProjectId && dragProjectId !== proj.id
           ? 'ring-2 ring-blue-500 rounded-xl' : ''
       }`}
@@ -838,6 +843,8 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
         onMoveToClick={onMoveToClick}
         compact={compact}
         dragHandleProps={dragHandleProps(proj.id)}
+        wide
+        visibleCount={SPACE_VISIBLE_TASKS}
       />
     </div>
   );
@@ -1040,7 +1047,7 @@ const MoveToList = ({ project, goals, onMove }) => {
 const GoalSpaceSidebar = ({
   tab, onTabChange,
   goals, goalCount, selectedGoalId, onSelectGoal,
-  standaloneProjects, onProjectRowClick,
+  standaloneProjects, standaloneCount, onProjectRowClick,
   drag, onManageAreas, onNewGoal, onNewProject,
 }) => {
   const { darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks } = useDayPlannerCtx();
@@ -1057,8 +1064,10 @@ const GoalSpaceSidebar = ({
       active ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`
     }`;
   const countClass = `text-[11px] font-normal ${textSecondary}`;
-  // Footer pill — the GLANCE panel's labelled-pill look (GlanceFabs).
-  const pillClass = `h-9 px-3 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-medium transition-colors ${
+  // Action pills — the GLANCE panel's labelled FABs (GlanceFabs): a column
+  // floating bottom-left over the list, so more can be stacked later. The
+  // list carries bottom padding so its last row can scroll clear of them.
+  const pillClass = `pointer-events-auto h-9 px-3 rounded-full shadow-lg flex items-center gap-1.5 text-xs font-medium transition-colors ${
     darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'
   }`;
 
@@ -1087,7 +1096,7 @@ const GoalSpaceSidebar = ({
           style={{ height: 'var(--header-row-h)' }}
           className={tabClass(tab === 'projects')}
         >
-          <Layers size={16} /> {t('goals.projects')} <span className={countClass}>{standaloneProjects.length}</span>
+          <Layers size={16} /> {t('goals.projects')} <span className={countClass}>{standaloneCount}</span>
         </button>
       </div>
 
@@ -1097,7 +1106,7 @@ const GoalSpaceSidebar = ({
         </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto px-2 py-2 ${darkMode ? 'dark-scrollbar' : ''}`}>
+      <div className={`flex-1 overflow-y-auto px-2 pt-2 pb-20 ${darkMode ? 'dark-scrollbar' : ''}`}>
         {tab === 'goals' ? (
           goals.length === 0 ? (
             <p className={`text-xs ${textSecondary} opacity-60 text-center px-4 py-6`}>{t('goals.noGoalsYet')}</p>
@@ -1158,14 +1167,14 @@ const GoalSpaceSidebar = ({
         )}
       </div>
 
-      <div className="p-4 flex-shrink-0">
+      <div data-goals-fabs className="absolute bottom-6 left-4 z-10 flex flex-col items-start gap-2 pointer-events-none">
         {tab === 'goals' ? (
           <button type="button" onClick={onNewGoal} className={`${pillClass} text-blue-500`}>
-            <Flag size={15} /> {t('common.addGoal')}
+            <Flag size={15} /> <span className="whitespace-nowrap">{t('common.addGoal')}</span>
           </button>
         ) : (
           <button type="button" onClick={onNewProject} className={`${pillClass} text-emerald-500`}>
-            <Layers size={15} /> {t('common.addProject')}
+            <Layers size={15} /> <span className="whitespace-nowrap">{t('common.addProject')}</span>
           </button>
         )}
       </div>
@@ -1754,7 +1763,9 @@ const GoalControls = ({ onManageAreas }) => (
 
 // ─── Archived goals & projects (collapsible footer) ───────────────────────────
 
-const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false }) => {
+// `anchored`: pinned at the bottom of its column, expanding UPWARD (the lists
+// render above the toggle, capped and scrollable) — the desktop space.
+const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchored = false }) => {
   const { darkMode, borderClass, textSecondary, hoverBg } = useDayPlannerCtx();
   const { updateGoal, updateProject } = useFeaturesCtx();
   const { t } = useTranslation();
@@ -1765,18 +1776,22 @@ const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false }) => {
   const restoreClass = `flex-shrink-0 flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${
     darkMode ? 'text-blue-400 hover:bg-blue-900/30' : 'text-blue-600 hover:bg-blue-50'
   }`;
+  const toggle = (
+    <button
+      onClick={() => setShowArchived(v => !v)}
+      aria-expanded={showArchived}
+      className={`flex items-center gap-2 text-xs ${textSecondary} ${hoverBg} px-3 py-2 transition-colors w-full`}
+    >
+      <Archive size={13} className="flex-shrink-0" />
+      <span className="font-medium">{t('goals.archivedCount', { count: archivedCount })}</span>
+      <ChevronDown size={13} className={`ml-auto flex-shrink-0 transition-transform duration-200 ${showArchived === !anchored ? 'rotate-180' : ''}`} />
+    </button>
+  );
   return (
-    <div className={`border-t ${borderClass} flex-shrink-0`}>
-      <button
-        onClick={() => setShowArchived(v => !v)}
-        className={`flex items-center gap-2 text-xs ${textSecondary} ${hoverBg} px-3 py-2 transition-colors w-full`}
-      >
-        <Archive size={13} className="flex-shrink-0" />
-        <span className="font-medium">{t('goals.archivedCount', { count: archivedCount })}</span>
-        <ChevronDown size={13} className={`ml-auto flex-shrink-0 transition-transform duration-200 ${showArchived ? 'rotate-180' : ''}`} />
-      </button>
+    <div data-archived-section className={`border-t ${borderClass} flex-shrink-0 ${anchored ? 'flex flex-col-reverse' : ''}`}>
+      {toggle}
       {showArchived && (
-        <div className="flex gap-4 mt-2">
+        <div className={`flex gap-4 ${anchored ? `px-3 pt-3 pb-1 max-h-[40vh] overflow-y-auto border-b ${borderClass}` : 'mt-2'}`}>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-medium ${textSecondary} opacity-60 uppercase tracking-wider mb-1.5 px-2`}>{t('goals.goals')}</p>
             {archivedGoals.length === 0 ? (
@@ -2076,7 +2091,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
     <div
       key={proj.id}
       data-detail-before={proj.id}
-      className={`relative ${isMobile ? 'w-full' : 'w-[260px]'} transition-opacity ${dragId === proj.id ? 'opacity-40' : ''} ${
+      className={`relative ${isMobile ? 'w-full' : SPACE_CARD_W} transition-opacity ${dragId === proj.id ? 'opacity-40' : ''} ${
         beforeId === proj.id && dragId && dragId !== proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''
       }`}
       onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== proj.id) setBeforeId(proj.id); }}
@@ -2123,14 +2138,14 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
         {activeProjs.length > 0 && (
           <div className={`${listClass} mb-3`}>
             {activeProjs.map(proj => wrapCard(proj,
-              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} />
+              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} dragHandleProps={dragHandle(proj)} wide={!isMobile} visibleCount={isMobile ? 3 : SPACE_VISIBLE_TASKS} />
             ))}
           </div>
         )}
         {doneProjs.length > 0 && (
           <div className={listClass}>
             {doneProjs.map(proj => wrapCard(proj,
-              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} />
+              <ProjectCard project={proj} onEditClick={() => onEditProject(proj)} compact dragHandleProps={dragHandle(proj)} wide={!isMobile} />
             ))}
           </div>
         )}
@@ -2190,6 +2205,10 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
   const [sidebarTab, setSidebarTab] = useState('goals');
   const [selectedGoalId, setSelectedGoalId] = useState(null);
   const [moveToProject, setMoveToProject] = useState(null);
+  // Projects tab: Open | Completed, so finished standalone projects do not take
+  // up the main area (the Goals tab keeps completed children compact under the
+  // active ones, since they count toward the goal).
+  const [projectsFilter, setProjectsFilter] = useState('open');
 
   // If the saved filter points at an area that no longer exists (deleted on this
   // or another device), fall back to "All" so the dashboard isn't stuck empty.
@@ -2262,6 +2281,9 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
   const sortedGoals = useMemo(() => sortGoalsForCarousel(filteredGoals), [filteredGoals]);
   const sortedAllGoals = useMemo(() => sortGoalsForCarousel(activeGoals), [activeGoals]);
   const standaloneProjects = useMemo(() => sortByOrder(activeProjects.filter(p => !p.goalId)), [activeProjects]);
+  const openStandalone = useMemo(() => standaloneProjects.filter(p => p.status !== 'completed'), [standaloneProjects]);
+  const completedStandalone = useMemo(() => standaloneProjects.filter(p => p.status === 'completed'), [standaloneProjects]);
+  const shownStandalone = projectsFilter === 'completed' ? completedStandalone : openStandalone;
   const selectedGoal = useMemo(
     () => sortedGoals.find(g => g.id === selectedGoalId) || sortedGoals[findDefaultActiveIdx(sortedGoals)] || null,
     [sortedGoals, selectedGoalId]
@@ -2521,7 +2543,6 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
   }
 
   // ── Desktop mode: the Goals & Projects space (sidebar + main area) ────────
-  const toolbarBtn = 'flex items-center gap-1.5 text-sm font-medium px-2 py-1 rounded-lg transition-colors';
   const goalsTab = sidebarTab === 'goals';
   const emptyState = (title, hint, cta) => (
     <div className="relative z-10 flex flex-col items-center justify-center py-16 gap-3">
@@ -2543,7 +2564,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
         goalCount={activeGoals.length}
         selectedGoalId={selectedGoal?.id ?? null}
         onSelectGoal={selectGoal}
-        standaloneProjects={standaloneProjects}
+        standaloneProjects={shownStandalone}
+        standaloneCount={openStandalone.length}
         onProjectRowClick={scrollProjectIntoView}
         drag={drag}
         onManageAreas={() => setShowManageAreas(true)}
@@ -2551,27 +2573,44 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
         onNewProject={() => onNewProject(null)}
       />
 
-      <div data-goals-main className={`flex-1 min-w-0 flex flex-col min-h-0 ${cardBg}`}>
-        {/* Toolbar: List | Roadmap (Goals tab only) — Add Area / Add Goal (Goals tab only) / Add Project */}
-        <div className={`flex items-center gap-3 px-5 border-b ${borderClass} flex-shrink-0`} style={{ height: 'var(--header-row-h)' }}>
-          {goalsTab && <ViewToggle />}
-          <div className="flex-1" />
-          {goalsTab && (
-            <>
-              <button type="button" onClick={() => setAreaForm({ editing: null })} className={`${toolbarBtn} text-violet-500 hover:text-violet-600`}>
-                <FolderOpen size={15} /> {t('common.addArea')}
-              </button>
-              <button type="button" onClick={() => setGoalForm({ editing: null })} className={`${toolbarBtn} text-blue-500 hover:text-blue-600`}>
-                <Flag size={15} /> {t('common.addGoal')}
-              </button>
-            </>
+      {/* border-x like the calendar area, so the divider between the sidebar and
+          the main area is the same 2px it is in the Calendar space. */}
+      <div data-goals-main className={`flex-1 min-w-0 flex flex-col min-h-0 ${cardBg} border-x ${borderClass}`}>
+        {/* Toolbar: List | Roadmap on the Goals tab, Open | Completed on the
+            Projects tab. Creating things lives in the sidebar pills (Add Goal /
+            Add Project), the goal card ("+ Add") and Manage Areas ("Add area").
+            content-box height: the row is 46px PLUS its border, exactly like
+            the sidebar's tab row, so the two bottom lines meet. */}
+        <div className={`flex items-center gap-3 px-5 border-b ${borderClass} flex-shrink-0`} style={{ height: 'var(--header-row-h)', boxSizing: 'content-box' }}>
+          {goalsTab ? (
+            <ViewToggle />
+          ) : (
+            <div role="group" aria-label={t('goals.projects')} className={`shrink-0 flex rounded-lg border ${borderClass} overflow-hidden`}>
+              {[
+                { key: 'open', label: t('goals.openProjects'), count: openStandalone.length },
+                { key: 'completed', label: t('common.completed'), count: completedStandalone.length },
+              ].map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={projectsFilter === key}
+                  onClick={() => setProjectsFilter(key)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    projectsFilter === key
+                      ? 'bg-blue-600 text-white'
+                      : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
+                  }`}
+                >
+                  {label} <span className={projectsFilter === key ? 'opacity-70' : 'opacity-60'}>{count}</span>
+                </button>
+              ))}
+            </div>
           )}
-          <button type="button" onClick={() => onNewProject(goalsTab ? selectedGoal?.id ?? null : null)} className={`${toolbarBtn} text-emerald-500 hover:text-emerald-600`}>
-            <Layers size={15} /> {t('common.addProject')}
-          </button>
+          <div className="flex-1" />
         </div>
 
-        {/* The main area scrolls on its own; the sidebar and header stay put. */}
+        {/* The main area scrolls on its own; the sidebar, header and the
+            Archived footer stay put. */}
         <div className={`flex-1 overflow-y-auto overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}`}>
           <div className="p-6">
             {goalsTab ? (
@@ -2589,9 +2628,9 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
                   onMoveToClick={setMoveToProject}
                 />
               ) : emptyState(t('goals.noGoalsYet'), t('goals.emptyHint'))
-            ) : standaloneProjects.length > 0 ? (
+            ) : shownStandalone.length > 0 ? (
               <ProjectCardGroup
-                projects={standaloneProjects}
+                projects={shownStandalone}
                 goalId={null}
                 drag={drag}
                 projectCardRefs={projectCardRefs}
@@ -2599,6 +2638,10 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
                 onMoveToClick={setMoveToProject}
                 justify="start"
               />
+            ) : projectsFilter === 'completed' ? emptyState(
+              t('goals.noCompletedProjects'),
+              null,
+              null
             ) : emptyState(
               t('goals.noStandaloneProjects'),
               null,
@@ -2607,8 +2650,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, ad
               </button>
             )}
           </div>
-          <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} grid />
         </div>
+        <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} grid anchored />
       </div>
 
       {formOverlays}

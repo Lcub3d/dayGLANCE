@@ -1709,6 +1709,8 @@
     "spaceSwitcher": "Space",
     "spaceToggleHint": "G toggles",
     "noProjectsLinked": "No projects linked to this goal yet",
+    "openProjects": "Open",
+    "noCompletedProjects": "No completed projects",
     "noStandaloneProjects": "No standalone projects",
     "standaloneProjects": "Standalone Projects",
     "standalone": "Standalone",

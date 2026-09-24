@@ -1709,6 +1709,8 @@
     "spaceSwitcher": "空间",
     "spaceToggleHint": "按 G 切换",
     "noProjectsLinked": "此目标尚未关联任何项目",
+    "openProjects": "进行中",
+    "noCompletedProjects": "没有已完成的项目",
     "noStandaloneProjects": "没有独立项目",
     "standaloneProjects": "独立项目",
     "standalone": "独立",

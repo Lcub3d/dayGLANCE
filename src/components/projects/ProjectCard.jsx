@@ -57,7 +57,11 @@ const IS_LONG_PRESS_ROW = isLongPressRowDevice();
  *   project      — the project object
  *   onEditClick  — called to open the project edit form
  */
-const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps, onMoveToClick }, ref) => {
+// Props beyond the basics:
+//   wide         — fill the wrapper's width instead of capping at 260px (the
+//                  Goals & Projects space, whose cards are 25% wider)
+//   visibleCount — tasks shown before the "N more" fold (default 3)
+const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps, onMoveToClick, wide = false, visibleCount = 3 }, ref) => {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage || i18n.language;
   const {
@@ -180,7 +184,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
     ...projectScheduled.filter(t => t.completed),
     ...projectUnscheduled.filter(t => t.completed),
   ];
-  const VISIBLE_COUNT = 3;
+  const VISIBLE_COUNT = visibleCount;
   const displayableTasks = detailsHidden
     ? allProjectDisplayTasks.filter(t => !t.completed)
     : allProjectDisplayTasks;
@@ -334,7 +338,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
           ref={ref}
           className={`flex flex-col rounded-xl border overflow-hidden ${
             darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-stone-200'
-          } ${isMobile ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
+          } ${isMobile || wide ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
           style={{ borderLeft: `3px solid ${projectHex}88` }}
         >
           {/* Row 1: title + edit/delete */}
@@ -418,7 +422,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
       ref={ref}
       className={`flex flex-col rounded-xl border overflow-hidden ${
         darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-stone-200'
-      } ${isMobile ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
+      } ${isMobile || wide ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
     >
       {/* Project color bar */}
       <div className="h-1.5 flex-shrink-0" style={{ background: projectHex + 'bb' }} />

@@ -33,7 +33,7 @@ Nothing else is touched: no sync config, no settings, no habits or routines.
 | Home | none: only in the filter and Manage Areas |
 | No Defined Area | Learn piano (no projects, linked with lifeGLANCE) |
 
-Standalone projects (Projects tab): dayGLANCE (9 tasks, one archived, "N more"
+Standalone projects (Projects tab, Open / Completed): dayGLANCE (9 tasks, one archived, "N more"
 fold, Obsidian note badge), lastGLANCE, GitHub config (no tasks), Dead Money
 (`detailsHidden`, missing Obsidian note), Employment search (priorities and
 deadlines), Garage clear-out (completed), Retired: Etsy shop (archived).

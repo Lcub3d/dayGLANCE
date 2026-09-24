@@ -1778,6 +1778,8 @@
     "spaceSwitcher": "Przestrzeń",
     "spaceToggleHint": "G przełącza",
     "noProjectsLinked": "Do tego celu nie przypisano jeszcze projektów",
+    "openProjects": "Otwarte",
+    "noCompletedProjects": "Brak ukończonych projektów",
     "noStandaloneProjects": "Brak samodzielnych projektów",
     "standaloneProjects": "Samodzielne projekty",
     "standalone": "Samodzielny",

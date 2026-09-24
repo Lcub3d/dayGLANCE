@@ -1784,6 +1784,8 @@
     "spaceSwitcher": "Простір",
     "spaceToggleHint": "G перемикає",
     "noProjectsLinked": "До цієї цілі ще не прив’язано проєктів",
+    "openProjects": "Відкриті",
+    "noCompletedProjects": "Немає завершених проєктів",
     "noStandaloneProjects": "Немає окремих проєктів",
     "standaloneProjects": "Окремі проєкти",
     "standalone": "Окремий",

@@ -108,10 +108,10 @@ describe('goals-space test fixture', () => {
     expect(row(vaultHtml, half.id)).not.toContain('lucide-triangle-alert');
   });
 
-  it('lists exactly the standalone, non-archived projects on the Projects tab count', async () => {
+  it('counts the OPEN standalone projects on the Projects tab', async () => {
     const html = await render(data);
-    const standalone = data.projects.filter(p => !p.goalId && p.status !== 'archived');
-    expect(standalone).toHaveLength(6);
-    expect(html).toContain(`Projects <span class="text-[11px] font-normal text-stone-500">${standalone.length}</span>`);
+    const open = data.projects.filter(p => !p.goalId && p.status === 'active');
+    expect(open).toHaveLength(5);
+    expect(html).toContain(`Projects <span class="text-[11px] font-normal text-stone-500">${open.length}</span>`);
   });
 });

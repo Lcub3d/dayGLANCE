@@ -1,12 +1,13 @@
 import React from 'react';
-import { Calendar, Target } from 'lucide-react';
+import { Calendar, GitBranch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 
 /**
  * The desktop/tablet space switcher: a two-button segmented control at the far
- * left of the header row that swaps the sidebar and the main area between the
+ * left of the header row (calendar icon / the GitBranch icon the app already
+ * uses for Goals & Projects — not Target, which is focus mode elsewhere) that swaps the sidebar and the main area between the
  * Calendar space and the Goals & Projects space (like Mail/Calendar in
  * Outlook). The header row itself, its height and its icon cluster are the
  * same in both spaces; only what sits below changes.
@@ -32,7 +33,7 @@ export default function SpaceSwitcher() {
 
   const spaces = [
     { key: 'calendar', Icon: Calendar, label: t('goals.spaceCalendar') },
-    { key: 'goals', Icon: Target, label: t('goals.dashboardTitle') },
+    { key: 'goals', Icon: GitBranch, label: t('goals.dashboardTitle') },
   ];
 
   return (

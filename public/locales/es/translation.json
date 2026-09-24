@@ -1709,6 +1709,8 @@
     "spaceSwitcher": "Espacio",
     "spaceToggleHint": "G alterna",
     "noProjectsLinked": "Aún no hay proyectos vinculados a este objetivo",
+    "openProjects": "Abiertos",
+    "noCompletedProjects": "No hay proyectos completados",
     "noStandaloneProjects": "No hay proyectos independientes",
     "standaloneProjects": "Proyectos independientes",
     "standalone": "Independiente",

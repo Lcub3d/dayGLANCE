@@ -105,6 +105,7 @@ describe('GoalDashboard desktop space', () => {
     expect(sidebar).toContain('App Development');
     expect(sidebar).toContain('Goals <span');
     expect(sidebar).toContain('>3</span>');
+    // the Projects tab counts OPEN standalone projects
     expect(sidebar).toContain('Projects <span');
     expect(sidebar).toContain('>1</span>');
   });
@@ -119,14 +120,35 @@ describe('GoalDashboard desktop space', () => {
     expect(sidebar).not.toContain('Add Project');
   });
 
-  it('puts List/Roadmap and Add Area / Add Goal / Add Project in the main toolbar (D9, D10)', () => {
+  it('puts only List/Roadmap in the main toolbar; creating lives in the sidebar pills, the card and Manage Areas', () => {
     const main = section(render({ desktop: true, isActive: true }), 'data-goals-main');
     expect(main).toContain(' List</button>');
     expect(main).toContain(' Roadmap</button>');
-    expect(main).toContain('Add Area');
-    expect(main).toContain('Add Goal');
-    expect(main).toContain('Add Project');
+    expect(main).not.toContain('Add Area');
+    expect(main).not.toContain('Add Goal');
+    expect(main).not.toContain('Add Project');
     expect(main).toContain('overflow-y-auto');
+    // the divider matches the calendar area's (border-x) and the toolbar row is
+    // 46px plus its border like the sidebar tab row, so the lines meet
+    expect(main).toContain('border-x border-stone-200');
+    expect(main).toContain('height:var(--header-row-h);box-sizing:content-box');
+  });
+
+  it('floats Add Goal as a pill column over the sidebar list, with room under the last row', () => {
+    const html = render({ desktop: true, isActive: true });
+    const sidebar = html.slice(html.indexOf('data-goals-sidebar'), html.indexOf('data-goals-main'));
+    const fabs = sidebar.slice(sidebar.indexOf('data-goals-fabs'));
+    expect(fabs).toContain('absolute bottom-6 left-4');
+    expect(fabs).toContain('Add Goal');
+    expect(sidebar).toContain('pb-20');
+  });
+
+  it('anchors the Archived section under the scroll area, expanding upward', () => {
+    const main = section(render({ desktop: true, isActive: true }), 'data-goals-main');
+    const archived = main.slice(main.indexOf('data-archived-section'));
+    expect(archived).toContain('flex flex-col-reverse');
+    expect(main.indexOf('overflow-y-auto')).toBeLessThan(main.indexOf('data-archived-section'));
+    expect(archived).toContain('aria-expanded="false"');
   });
 
   it('shows the selected goal card and only ITS project cards, with Move to… wired', () => {
@@ -140,6 +162,9 @@ describe('GoalDashboard desktop space', () => {
     // every goal row is a reassign drop target; the goal's group and its cards carry the move semantics too
     expect(render({ desktop: true, isActive: true })).toContain('data-move-goal="electron"');
     expect(main).toContain('data-move-goal="ios" data-move-before="asc"');
+    // the space's cards are 25% wider than the modal's 260px
+    expect(main).toContain('w-[325px]');
+    expect(main).not.toContain('w-[260px]');
   });
 
   it('shows the empty state for a selected goal without projects', () => {

@@ -129,11 +129,24 @@ export function buildJoboDayModel({
   now,
 }) {
   const sourceTasks = Array.isArray(taskLookup) ? taskLookup : [];
-  const taskById = new Map(
-    sourceTasks
-      .filter((task) => task?.id != null)
-      .map((task) => [String(task.id), task]),
-  );
+  const taskById = new Map();
+  for (const task of sourceTasks) {
+    if (task?.id != null) taskById.set(String(task.id), task);
+    // Slice 4 keeps the recurring template id in Do.taskId, while the visible
+    // planner occurrence has a composite recurring-* id. Alias the template
+    // only to the occurrence for this civil day so its title/color and Plan
+    // remain connected without changing either upstream identity.
+    if (task?.recurringTemplateId != null && task.date === date) {
+      taskById.set(String(task.recurringTemplateId), task);
+    }
+  }
+
+  const recordBelongsToTask = (record, task) => {
+    if (record.taskId == null || task?.id == null) return false;
+    const recordId = String(record.taskId);
+    return recordId === String(task.id)
+      || (task.recurringTemplateId != null && recordId === String(task.recurringTemplateId));
+  };
 
   const validLiveRecords = [];
   let invalidRecordCount = 0;
@@ -197,8 +210,7 @@ export function buildJoboDayModel({
     .filter(({ plan }) => plan && plan.date === date)
     .map(({ task, plan }) => {
       const startMinute = timeMinutes(plan.startTime);
-      const linked = visibleRecords.filter((record) =>
-        record.taskId != null && task.id != null && String(record.taskId) === String(task.id));
+      const linked = visibleRecords.filter((record) => recordBelongsToTask(record, task));
 
       let labels = [];
       if (linked.length === 0 && now) {

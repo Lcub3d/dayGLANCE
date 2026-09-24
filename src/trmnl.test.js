@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import i18next from 'i18next';
-import { gatherTrmnlData, pushToTrmnl } from './trmnl.js';
+import { gatherTrmnlData, pushToTrmnl, fitTrmnlPayload, payloadBytes, TRMNL_PAYLOAD_BUDGET_BYTES } from './trmnl.js';
 import en from '../public/locales/en/translation.json';
 import de from '../public/locales/de/translation.json';
 
@@ -24,6 +24,22 @@ describe('pushToTrmnl', () => {
     expect(r).toMatchObject({ success: false, rateLimited: true, retryAfterSeconds: null });
   });
 
+  it('passes on what TRMNL said rather than a bare status code', async () => {
+    const body = JSON.stringify({ message: '[PluginSetting ID: 1] Large payload received (6076 bytes), should be less than 5kb. Subscribe to TRMNL+ for higher limit.' });
+    vi.stubGlobal('fetch', vi.fn(async () => ({ status: 422, ok: false, headers: { get: () => null }, text: async () => body })));
+    const r = await pushToTrmnl(cfg, { a: 1 });
+    expect(r.success).toBe(false);
+    expect(r.payloadTooLarge).toBe(true);
+    expect(r.error).toContain('should be less than 5kb');
+  });
+
+  it('falls back to the status code when there is no message to pass on', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ status: 500, ok: false, headers: { get: () => null }, text: async () => '' })));
+    const r = await pushToTrmnl(cfg, { a: 1 });
+    expect(r).toMatchObject({ success: false, error: 'HTTP 500' });
+    expect(r.payloadTooLarge).toBeUndefined();
+  });
+
   it('posts the merge variables and reports success', async () => {
     const fetchMock = vi.fn(async () => ({ status: 200, ok: true, headers: { get: () => null } }));
     vi.stubGlobal('fetch', fetchMock);
@@ -33,6 +49,54 @@ describe('pushToTrmnl', () => {
     expect(url).toBe(cfg.webhookUrl);
     expect(JSON.parse(init.body)).toEqual({ merge_variables: { a: 1 } });
     expect(init.headers.Authorization).toBe('Bearer k');
+  });
+});
+
+describe('fitTrmnlPayload', () => {
+  // TRMNL answers an oversized payload with a 422, so the schedule is trimmed
+  // before the push rather than after a rejection.
+  const rows = (specs) => specs.map(([title, done, past], i) => ({
+    time: `${String(6 + i).padStart(2, '0')}:00`, dur: '45 хв',
+    title: `${title} завдання з доволі довгою назвою ${i}`,
+    done, pri: 'Середній', allDay: false, past,
+  }));
+  const payload = (schedule) => ({
+    date: '2026-09-24', day_name: 'Четвер', date_label: '24 вер.', current_time: '08:00',
+    weather: '', schedule, total: schedule.length, completed: 0, overdue: 0, pct: 0,
+    time_planned: '8 г', upcoming: [], next_task: null, inbox_count: 3,
+    habits: [], routines: [], note: '',
+  });
+
+  it('leaves a payload that already fits exactly as it was', () => {
+    const p = payload(rows([['a', false, false], ['b', false, false]]));
+    expect(fitTrmnlPayload(p)).toBe(p);
+  });
+
+  it('spends completed rows first, then past, and keeps the next thing due', () => {
+    // Enough rows to force a trim, mixed so the order of sacrifice is visible.
+    const specs = [];
+    for (let i = 0; i < 30; i += 1) specs.push([`t${i}`, i % 3 === 0, i % 3 === 1]);
+    const out = fitTrmnlPayload(payload(rows(specs)), 1200);
+    const kinds = out.schedule.map((r) => (r.done ? 'done' : r.past ? 'past' : 'due'));
+    expect(kinds.every((k) => k === 'due')).toBe(true);
+    // What survives stays in order, and the earliest due row is still there.
+    expect(out.schedule[0].title).toMatch(/t2 /);
+    expect(payloadBytes(out)).toBeLessThanOrEqual(1200);
+  });
+
+  it('drops the furthest ahead before the soonest when only due rows are left', () => {
+    const specs = Array.from({ length: 20 }, (_, i) => [`t${i}`, false, false]);
+    const out = fitTrmnlPayload(payload(rows(specs)), 1200);
+    expect(out.schedule[0].title).toMatch(/t0 /);
+    expect(out.schedule.at(-1).title).not.toMatch(/t19 /);
+  });
+
+  it('never reports fewer tasks than the day holds, only draws fewer', () => {
+    const specs = Array.from({ length: 30 }, (_, i) => [`t${i}`, false, false]);
+    const p = payload(rows(specs));
+    const out = fitTrmnlPayload(p, 1200);
+    expect(out.total).toBe(30);
+    expect(out.schedule.length).toBeLessThan(30);
   });
 });
 
@@ -130,6 +194,33 @@ describe('gatherTrmnlData', () => {
     }).schedule.map((s2) => s2.time);
     expect(at('en')).toEqual(['9:00 AM', '2:00 PM']);
     expect(at('de')).toEqual([`9:00 ${en.common.am === de.common.am ? 'AM' : de.common.am}`, `2:00 ${de.common.pm}`]);
+  });
+
+  // The locale decides where the cliff is: the same day is 5050 bytes at 28
+  // tasks in Ukrainian and needs 39 to get there in English. A fixed row cap
+  // would be wrong in one language or the other, so the budget is in bytes.
+  it('keeps a heavy day inside the budget, in the language that costs most', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-24T08:00:00'));
+    const d = gatherTrmnlData({
+      tasks: Array.from({ length: 40 }, (_, i) => ({
+        id: `t${i}`, date: '2026-09-24', title: `Завдання ${i} з доволі довгою назвою`,
+        startTime: `${String(6 + (i % 18)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`,
+        duration: 45, priority: (i % 3) + 1,
+      })),
+      selectedDate: '2026-09-24',
+      routinesEnabled: true,
+      todayRoutines: Array.from({ length: 8 }, (_, i) => ({ name: `Розпорядок ${i}`, startTime: '23:00', duration: 30 })),
+      habits: Array.from({ length: 5 }, (_, i) => ({ id: `h${i}`, name: `Звичка ${i}`, target: 3 })),
+      dailyNotes: { '2026-09-24': { text: 'Нотатка '.repeat(12) } },
+      t: i18n.getFixedT('uk'),
+      language: 'uk',
+    });
+    const size = payloadBytes(d);
+    expect(size, `payload is ${size} bytes`).toBeLessThanOrEqual(TRMNL_PAYLOAD_BUDGET_BYTES);
+    // Trimmed for the display, honest about the day.
+    expect(d.total).toBe(40);
+    expect(d.schedule.length).toBeLessThan(40);
   });
 
   it('leaves the priority label empty when a task has none', () => {

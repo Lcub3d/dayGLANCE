@@ -459,6 +459,8 @@
     "experimentalHint": "仍在构建中、分阶段推出的功能。默认关闭；不开启则一切照旧。",
     "enableJobo": "JOBO 视图",
     "enableJoboHint": "计划与实际对照。第六个视图（按键 6），用于记录实际完成情况与计划的差异。",
+    "enableAspire": "Aspire",
+    "enableAspireHint": "人生规划：人生愿望清单、五年愿景和座右铭。目前为占位页面，从“目标与项目”空间打开。",
     "inbox": "收件箱",
     "inboxAutoArchive": "自动存档已完成的收件箱任务",
     "inboxArchiveNever": "绝不",
@@ -2035,6 +2037,11 @@
     "title": "iCloud 同步",
     "onHint": "已开启。此设备会自动与其他 Apple 设备同步。",
     "offHint": "此设备已关闭。iCloud 副本和其他设备不会受到影响。"
+  },
+  "aspire": {
+    "title": "Aspire",
+    "placeholder": "你的人生愿望清单、五年愿景和座右铭将在这里呈现。",
+    "comingSoon": "即将推出"
   },
   "jobo": {
     "title": "JOBO",

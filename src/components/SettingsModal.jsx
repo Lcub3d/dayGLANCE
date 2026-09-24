@@ -120,6 +120,7 @@ const SettingsModal = () => {
   const {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    aspireEnabled, setAspireEnabled,
     routinesEnabled, setRoutinesEnabled,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     aiConfig, setAiConfig, aiSuppressed,
@@ -866,6 +867,21 @@ const SettingsModal = () => {
                         <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
                       </label>
                       <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHint')}</p>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={aspireEnabled}
+                            onChange={(e) => setAspireEnabled(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aspireEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableAspire')}</span>
+                      </label>
+                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableAspireHint')}</p>
                     </div>
 
                     <hr className={borderClass} />

@@ -354,6 +354,14 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // behind the same Experimental switch pattern; the FAB lives in the Goals &
+  // Projects space.
+  const [aspireEnabled, setAspireEnabled] = useState(() => {
+    const saved = localStorage.getItem('day-planner-aspire-enabled');
+    return saved !== null ? JSON.parse(saved) === true : false;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -8860,6 +8868,7 @@ const DayPlanner = () => {
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    aspireEnabled, setAspireEnabled,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

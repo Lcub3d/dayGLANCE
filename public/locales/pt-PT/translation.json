@@ -453,6 +453,8 @@
     "experimentalHint": "Funcionalidades ainda em construção, a chegar por partes. Desativadas por omissão; nada muda a menos que ative uma.",
     "enableJobo": "Vista JOBO",
     "enableJoboHint": "Planeado versus realizado. Uma sexta vista, na tecla 6, que registará o que foi feito face ao planeado.",
+    "enableAspire": "Aspire",
+    "enableAspireHint": "Planeamento de vida: uma lista de desejos, uma visão a cinco anos e lemas. Por agora um espaço reservado, aberto a partir do espaço Objetivos e projetos.",
     "inbox": "Caixa de entrada",
     "inboxAutoArchive": "Arquivar automaticamente tarefas concluídas da caixa de entrada",
     "inboxArchiveNever": "Nunca",
@@ -2035,6 +2037,11 @@
     "title": "Sincronização com o iCloud",
     "onHint": "Ativada. Este dispositivo sincroniza automaticamente com os seus outros dispositivos Apple.",
     "offHint": "Desativada neste dispositivo. A cópia no iCloud e os seus outros dispositivos não são afetados."
+  },
+  "aspire": {
+    "title": "Aspire",
+    "placeholder": "A sua lista de desejos, a sua visão a cinco anos e os seus lemas ficarão aqui.",
+    "comingSoon": "Brevemente"
   },
   "jobo": {
     "title": "JOBO",

@@ -222,6 +222,15 @@ describe('GoalDashboard desktop space', () => {
     expect(render({ desktop: true, isActive: true })).toContain(' Roadmap</button>');
   });
 
+  it('stacks the Aspire FAB above + only when the experimental switch is on', () => {
+    const off = section(render({ desktop: true, isActive: true }), 'data-goals-fabs');
+    expect(off).not.toContain('data-aspire-fab');
+    const on = section(render({ desktop: true, isActive: true }, { aspireEnabled: true }), 'data-goals-fabs');
+    expect(on).toContain('aria-label="Aspire"');
+    expect(on.indexOf('data-aspire-fab')).toBeLessThan(on.indexOf('aria-label="Add Goal"'));
+    expect(on).not.toContain('data-aspire-modal');
+  });
+
   it('deals cards into the columns in order and stacks each column', () => {
     // five open standalone projects, default 3 columns (no ResizeObserver on the server)
     const five = ['a', 'b', 'c', 'd', 'e'].map((id, i) => ({ id, title: id, status: 'active', sortOrder: i }));

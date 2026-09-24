@@ -453,6 +453,8 @@
     "experimentalHint": "Fonctions encore en construction, livrées par étapes. Désactivées par défaut ; rien ne change tant que vous n'en activez pas une.",
     "enableJobo": "Vue JOBO",
     "enableJoboHint": "Prévu contre réalisé. Une sixième vue, sur la touche 6, qui enregistrera ce qui a été fait par rapport à ce qui était prévu.",
+    "enableAspire": "Aspire",
+    "enableAspireHint": "Planification de vie : une liste de souhaits, une vision à cinq ans et des devises. Un simple espace réservé pour l'instant, ouvert depuis l'espace Objectifs et projets.",
     "inbox": "Boîte de réception",
     "inboxAutoArchive": "Archivage automatique des tâches terminées",
     "inboxArchiveNever": "Jamais",
@@ -2035,6 +2037,11 @@
     "title": "Synchronisation iCloud",
     "onHint": "Activée. Cet appareil se synchronise automatiquement avec vos autres appareils Apple.",
     "offHint": "Désactivée sur cet appareil. La copie iCloud et vos autres appareils ne sont pas affectés."
+  },
+  "aspire": {
+    "title": "Aspire",
+    "placeholder": "Votre liste de souhaits, votre vision à cinq ans et vos devises vivront ici.",
+    "comingSoon": "Bientôt"
   },
   "jobo": {
     "title": "JOBO",

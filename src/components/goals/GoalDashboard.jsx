@@ -26,6 +26,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Sunrise,
   Trash2,
   X,
   Zap,
@@ -51,6 +52,7 @@ import { useTranslation } from 'react-i18next';
 import GoalProgress from './GoalProgress.jsx';
 import ProjectCard from '../projects/ProjectCard.jsx';
 import ConfirmDialog from '../ConfirmDialog.jsx';
+import AspireModal from '../AspireModal.jsx';
 import UserAssignmentPicker from '../UserAssignmentPicker.jsx';
 import { emitGoalCreate } from '../../intents/emitGoalCreate.js';
 import { INTENT_CONFIG_KEY } from '../../intents/useIntentPoller.js';
@@ -2325,6 +2327,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     addProject, updateProject, moveProject,
     plannerProjectId, setPlannerProjectId,
     isVisibleForUser,
+    aspireEnabled = false,
   } = useFeaturesCtx();
   // Workspace creation (companion §4.3, rulings D and E): the plugin creates and links the note.
   const { createProjectNote } = useSyncCtx();
@@ -2351,6 +2354,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // Projects tab filter field: title match, applied after Open | Completed.
   const [projectQuery, setProjectQuery] = useState('');
   const filterInputRef = useRef(null);
+  // Aspire (experimental): the placeholder modal opened from the FAB stack.
+  const [showAspire, setShowAspire] = useState(false);
 
   // If the saved filter points at an area that no longer exists (deleted on this
   // or another device), fall back to "All" so the dashboard isn't stuck empty.
@@ -2625,6 +2630,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       else if (areaForm) close = () => setAreaForm(null);
       else if (showManageAreas) close = () => setShowManageAreas(false);
       else if (moveToProject) close = () => setMoveToProject(null);
+      else if (showAspire) close = () => setShowAspire(false);
       if (!close) return;
       e.stopImmediatePropagation(); // prevent all other keydown listeners
       e.preventDefault();
@@ -2632,7 +2638,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     };
     document.addEventListener('keydown', handler, true); // capture phase
     return () => document.removeEventListener('keydown', handler, true);
-  }, [isActive, goalForm, projectForm, areaForm, showManageAreas, moveToProject, showAddTask, expandedNotesTaskId,
+  }, [isActive, goalForm, projectForm, areaForm, showManageAreas, moveToProject, showAspire, showAddTask, expandedNotesTaskId,
       plannerProjectId, setPlannerProjectId,
       setShowAddTask, setShowNewTaskDeadlinePicker, setExpandedNotesTaskId]);
 
@@ -2872,6 +2878,20 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         {/* FABs — stacked bottom-right like the timeline's; the + is contextual
             to the tab (Add Goal / Add Project, also `n`). Add more above it. */}
         <div data-goals-fabs className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-2 pointer-events-none">
+          {aspireEnabled && (
+            <button
+              type="button"
+              onClick={() => setShowAspire(true)}
+              className={`pointer-events-auto w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+                darkMode ? 'bg-gray-700 text-amber-300 hover:bg-gray-600' : 'bg-stone-200 text-amber-500 hover:bg-stone-300'
+              }`}
+              title={t('aspire.title')}
+              aria-label={t('aspire.title')}
+              data-aspire-fab
+            >
+              <Sunrise size={24} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => (goalsTab ? setGoalForm({ editing: null }) : onNewProject(null))}
@@ -2887,6 +2907,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       </div>
 
       {formOverlays}
+
+      {showAspire && <AspireModal onClose={() => setShowAspire(false)} />}
 
       {/* "Move to…" picker (desktop presentation of the phone's bottom sheet) */}
       {moveToProject && (

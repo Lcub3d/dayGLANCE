@@ -456,6 +456,8 @@
     "experimentalHint": "Features still being built, landing in slices. Off by default; nothing changes unless you turn one on.",
     "enableJobo": "JOBO view",
     "enableJoboHint": "Plan versus actual. A sixth view, on key 6, that will record what was done against what was planned.",
+    "enableAspire": "Aspire",
+    "enableAspireHint": "Life planning: a life wish list, a five-year vision and mottos. A placeholder for now, opened from the Goals & Projects space.",
     "inbox": "Inbox",
     "inboxAutoArchive": "Auto-archive completed Inbox tasks",
     "inboxArchiveNever": "Never",
@@ -2035,6 +2037,11 @@
     "title": "iCloud sync",
     "onHint": "On. This device syncs with your other Apple devices automatically.",
     "offHint": "Off on this device. The iCloud copy and your other devices are unaffected."
+  },
+  "aspire": {
+    "title": "Aspire",
+    "placeholder": "Your life wish list, five-year vision and mottos will live here.",
+    "comingSoon": "Coming soon"
   },
   "jobo": {
     "title": "JOBO",

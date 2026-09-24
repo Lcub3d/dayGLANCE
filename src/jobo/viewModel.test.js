@@ -113,6 +113,35 @@ describe('buildJoboDayModel', () => {
     expect(model.plans[0].labels).toEqual(['notStarted']);
   });
 
+
+  it('links Slice 4 recurring template ids to the visible recurring occurrence', () => {
+    const recurring = {
+      id: 'recurring-r1-2026-09-24',
+      recurringTemplateId: 'r1',
+      title: 'Weekly review',
+      date: '2026-09-24',
+      startTime: '15:00',
+      duration: 45,
+      color: 'bg-green-500',
+    };
+    const record = rec({
+      id: 'do:r1:2026-09-24:x',
+      taskId: 'r1',
+      title: 'Weekly review',
+      startTime: '15:10',
+      endTime: '15:40',
+      planSnapshot: { date: '2026-09-24', startTime: '15:00', duration: 45 },
+    });
+    const model = buildJoboDayModel({
+      date: '2026-09-24',
+      tasks: [recurring],
+      taskLookup: [recurring],
+      records: [record],
+    });
+    expect(model.timedRecords[0].task.id).toBe(recurring.id);
+    expect(model.plans[0].labels).toEqual(['late']);
+  });
+
   it('drops malformed rows from the view without treating the ledger as empty', () => {
     const model = buildJoboDayModel({
       date: '2026-09-24',

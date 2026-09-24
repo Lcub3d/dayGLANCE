@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Clock, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -154,7 +154,7 @@ function UntimedShelf({ records, t, writable, onEdit }) {
   );
 }
 
-function EditDoDialog({ record, writable, recordJobo, onClose, t }) {
+function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
   const [draft, setDraft] = useState(() => ({
     timing: record.timing,
     date: record.date,
@@ -236,7 +236,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t }) {
     <div className="jobo5-modal-mask" role="presentation" onMouseDown={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}>
-      <section className="jobo5-dialog" role="dialog" aria-modal="true" aria-label={t('jobo.view.editDo')}>
+      <section className={`jobo5-dialog ${darkMode ? 'jobo5-dialog-dark' : ''}`} role="dialog" aria-modal="true" aria-label={t('jobo.view.editDo')}>
         <div className="jobo5-dialog-head">
           <div>
             <div className="jobo5-dialog-title">{record.title}</div>
@@ -353,6 +353,8 @@ export default function JoboView() {
   } = useFeaturesCtx();
 
   const [editingRecord, setEditingRecord] = useState(null);
+  const scrollRef = useRef(null);
+  const lastAutoScrollDate = useRef(null);
   const date = dateToString(selectedDate);
   const clock = currentTime instanceof Date ? currentTime : new Date();
   const today = dateToString(clock);
@@ -377,6 +379,20 @@ export default function JoboView() {
   const hourLabels = useMemo(() => Array.from({ length: 24 }, (_, hour) => hour), []);
   const nowMinute = date === today ? clock.getHours() * 60 + clock.getMinutes() : null;
   const nowTop = nowMinute == null ? null : (nowMinute / 60) * HOUR_HEIGHT;
+
+  useEffect(() => {
+    if (!joboLoaded || !scrollRef.current || lastAutoScrollDate.current === date) return;
+    const starts = [
+      ...model.plans.map((item) => item.startMinute),
+      ...model.timedRecords.map((item) => item.startMinute),
+    ];
+    const contentStart = starts.length ? Math.min(...starts) : 8 * 60;
+    const targetMinute = date === today && nowMinute != null
+      ? Math.min(contentStart, Math.max(0, nowMinute - 90))
+      : Math.max(0, contentStart - 60);
+    scrollRef.current.scrollTop = (targetMinute / 60) * HOUR_HEIGHT;
+    lastAutoScrollDate.current = date;
+  }, [date, today, nowMinute, joboLoaded, model.plans, model.timedRecords]);
 
   if (!joboLoaded) {
     return (
@@ -418,7 +434,7 @@ export default function JoboView() {
         onEdit={setEditingRecord}
       />
 
-      <div className="jobo5-scroll">
+      <div ref={scrollRef} className="jobo5-scroll">
         <div
           className={`jobo5-grid ${darkMode ? 'jobo5-dark' : ''}`}
           style={{ height: `${(DAY_MINUTES / 60) * HOUR_HEIGHT}px` }}
@@ -477,6 +493,7 @@ export default function JoboView() {
           recordJobo={recordJobo}
           onClose={() => setEditingRecord(null)}
           t={t}
+          darkMode={darkMode}
         />
       )}
     </div>

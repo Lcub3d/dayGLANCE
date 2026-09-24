@@ -25,8 +25,8 @@ import {
   LogIn,
   Plus,
   RotateCcw,
+  Compass,
   Search,
-  Sunrise,
   Trash2,
   X,
   Zap,
@@ -2889,7 +2889,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
               aria-label={t('aspire.title')}
               data-aspire-fab
             >
-              <Sunrise size={24} />
+              <Compass size={24} />
             </button>
           )}
           <button

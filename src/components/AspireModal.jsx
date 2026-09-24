@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sunrise, X } from 'lucide-react';
+import { Compass, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 
@@ -25,7 +25,7 @@ export default function AspireModal({ onClose }) {
           <X size={16} className={textSecondary} />
         </button>
         <div className={`w-14 h-14 rounded-full flex items-center justify-center ${darkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-500'}`}>
-          <Sunrise size={28} />
+          <Compass size={28} />
         </div>
         <h2 id="aspire-title" className={`text-lg font-semibold ${textPrimary}`}>{t('aspire.title')}</h2>
         <p className={`text-sm ${textSecondary} leading-relaxed`}>{t('aspire.placeholder')}</p>

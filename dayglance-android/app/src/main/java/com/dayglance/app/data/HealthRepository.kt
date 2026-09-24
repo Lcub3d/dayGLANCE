@@ -1,120 +1,102 @@
 package com.dayglance.app.data
 
 import android.content.Context
-import androidx.health.connect.client.HealthConnectClient
-import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.SleepSessionRecord
-import androidx.health.connect.client.records.StepsRecord
-import androidx.health.connect.client.request.AggregateRequest
-import androidx.health.connect.client.request.ReadRecordsRequest
-import androidx.health.connect.client.time.TimeRangeFilter
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.dayglance.app.data.health.AndroidHealthProviders
+import com.dayglance.app.data.health.HealthMetric
+import com.dayglance.app.data.health.HealthProvider
+import com.dayglance.app.data.health.HealthProviderResolver
+import com.dayglance.app.data.health.HealthRead
+import com.dayglance.app.data.health.HealthReadStatus
+import com.dayglance.app.data.health.SleepResult
 import java.time.LocalDate
-import java.time.ZoneId
 
+/**
+ * Stable Android health facade used by the WebView bridge and widgets.
+ *
+ * Concrete stores live behind HealthProvider. Provider resolution happens once
+ * per metric and is persisted in SharedDataStore; normal reads return directly
+ * to the saved provider instead of re-probing the device.
+ */
 class HealthRepository(context: Context) {
 
-    private val client: HealthConnectClient? = if (
-        HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
-    ) {
-        HealthConnectClient.getOrCreate(context)
-    } else {
-        null
-    }
-
-    val requiredPermissions: Set<String> = setOf(
-        HealthPermission.getReadPermission(StepsRecord::class),
-        HealthPermission.getReadPermission(SleepSessionRecord::class),
+    private val appContext = context.applicationContext
+    private val resolver = HealthProviderResolver(
+        dataStore = SharedDataStore(appContext),
+        providers = AndroidHealthProviders.create(appContext),
     )
 
-    suspend fun hasPermissions(): Boolean = withContext(Dispatchers.IO) {
-        val c = client ?: return@withContext false
-        try {
-            c.permissionController.getGrantedPermissions().containsAll(requiredPermissions)
-        } catch (e: Exception) {
-            false
-        }
-    }
+    /**
+     * Runtime permissions required by the providers selected for dayGLANCE's
+     * current native health metrics. Vendor account authorization is deliberately
+     * not modelled as an Android runtime permission.
+     */
+    val requiredPermissions: Set<String>
+        get() {
+            val byProvider = HealthMetric.entries
+                .mapNotNull { metric -> resolver.providerFor(metric)?.let { it to metric } }
+                .groupBy({ it.first }, { it.second })
 
-    suspend fun hasStepsPermission(): Boolean = withContext(Dispatchers.IO) {
-        val c = client ?: return@withContext false
-        try {
-            HealthPermission.getReadPermission(StepsRecord::class) in
-                c.permissionController.getGrantedPermissions()
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    suspend fun hasSleepPermission(): Boolean = withContext(Dispatchers.IO) {
-        val c = client ?: return@withContext false
-        try {
-            HealthPermission.getReadPermission(SleepSessionRecord::class) in
-                c.permissionController.getGrantedPermissions()
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    suspend fun getSteps(date: LocalDate): Int = withContext(Dispatchers.IO) {
-        val c = client ?: return@withContext 0
-        val zone = ZoneId.systemDefault()
-        val start = date.atStartOfDay(zone).toInstant()
-        val end = date.plusDays(1).atStartOfDay(zone).toInstant()
-        try {
-            // Use aggregate() rather than readRecords().sumOf{} to avoid double-counting
-            // when multiple sources (e.g. Samsung Health + wearable) each write their own
-            // StepsRecord entries for the same time window.
-            val response = c.aggregate(
-                AggregateRequest(
-                    metrics = setOf(StepsRecord.COUNT_TOTAL),
-                    timeRangeFilter = TimeRangeFilter.between(start, end),
-                )
-            )
-            response[StepsRecord.COUNT_TOTAL]?.toInt() ?: 0
-        } catch (e: Exception) {
-            0
-        }
-    }
-
-    suspend fun getSleep(date: LocalDate): SleepResult = withContext(Dispatchers.IO) {
-        val c = client ?: return@withContext SleepResult(0, emptyList())
-        val zone = ZoneId.systemDefault()
-        // Capture the night leading into `date` (noon prev day → noon that day)
-        val start = date.minusDays(1).atTime(12, 0).atZone(zone).toInstant()
-        val end = date.atTime(12, 0).atZone(zone).toInstant()
-        try {
-            val records = c.readRecords(
-                ReadRecordsRequest(SleepSessionRecord::class, TimeRangeFilter.between(start, end))
-            ).records
-            val totalMinutes = records.sumOf { session ->
-                (session.endTime.epochSecond - session.startTime.epochSecond) / 60
-            }.toInt()
-            val stages = records.flatMap { session ->
-                session.stages.map { stage ->
-                    SleepStage(
-                        stage = stageName(stage.stage),
-                        durationMinutes = ((stage.endTime.epochSecond - stage.startTime.epochSecond) / 60).toInt()
-                    )
-                }
+            return byProvider.entries.flatMapTo(mutableSetOf()) { (provider, metrics) ->
+                provider.requiredAndroidPermissions(metrics.toSet())
             }
-            SleepResult(totalMinutes, stages)
-        } catch (e: Exception) {
-            SleepResult(0, emptyList())
+        }
+
+    suspend fun hasPermissions(): Boolean =
+        hasStepsPermission() && hasSleepPermission()
+
+    suspend fun hasStepsPermission(): Boolean =
+        hasPermission(HealthMetric.STEPS)
+
+    suspend fun hasSleepPermission(): Boolean =
+        hasPermission(HealthMetric.SLEEP)
+
+    suspend fun getStepsDetailed(date: LocalDate): HealthRead<Int> =
+        readWithFailover(HealthMetric.STEPS) { it.readSteps(date) }
+
+    suspend fun getSleepDetailed(date: LocalDate): HealthRead<SleepResult> =
+        readWithFailover(HealthMetric.SLEEP) { it.readSleep(date) }
+
+    // Legacy callers such as WidgetUpdateWorker still expect a scalar. The
+    // bridge uses the detailed methods so "no data" is no longer serialized as
+    // a successful zero into the web habit log.
+    suspend fun getSteps(date: LocalDate): Int =
+        getStepsDetailed(date).value ?: 0
+
+    suspend fun getSleep(date: LocalDate): SleepResult =
+        getSleepDetailed(date).value ?: SleepResult(0, emptyList())
+
+    private suspend fun hasPermission(metric: HealthMetric): Boolean {
+        val provider = resolver.providerFor(metric) ?: return false
+        return runCatching { provider.hasPermission(metric) }.getOrDefault(false)
+    }
+
+    private suspend fun <T> readWithFailover(
+        metric: HealthMetric,
+        read: suspend (HealthProvider) -> HealthRead<T>,
+    ): HealthRead<T> {
+        val provider = resolver.providerFor(metric)
+            ?: return HealthRead(status = HealthReadStatus.UNAVAILABLE)
+
+        val first = runCatching { read(provider) }.getOrElse {
+            HealthRead(
+                status = HealthReadStatus.ERROR,
+                providerId = provider.id,
+            )
+        }
+        if (first.status != HealthReadStatus.UNAVAILABLE) return first
+
+        // A selected provider became unavailable. Forget only that metric and
+        // try the next concrete adapter once; future reads then use the new
+        // persisted choice directly.
+        resolver.invalidate(metric, provider.id)
+        val replacement = resolver.providerFor(metric, excludingId = provider.id)
+            ?: return first
+
+        return runCatching { read(replacement) }.getOrElse {
+            HealthRead(
+                status = HealthReadStatus.ERROR,
+                providerId = replacement.id,
+            )
         }
     }
-
-    private fun stageName(stage: Int): String = when (stage) {
-        SleepSessionRecord.STAGE_TYPE_AWAKE       -> "awake"
-        SleepSessionRecord.STAGE_TYPE_SLEEPING    -> "sleeping"
-        SleepSessionRecord.STAGE_TYPE_OUT_OF_BED  -> "out_of_bed"
-        SleepSessionRecord.STAGE_TYPE_LIGHT       -> "light"
-        SleepSessionRecord.STAGE_TYPE_DEEP        -> "deep"
-        SleepSessionRecord.STAGE_TYPE_REM         -> "rem"
-        else                                      -> "unknown"
-    }
-
-    data class SleepResult(val durationMinutes: Int, val stages: List<SleepStage>)
-    data class SleepStage(val stage: String, val durationMinutes: Int)
 }

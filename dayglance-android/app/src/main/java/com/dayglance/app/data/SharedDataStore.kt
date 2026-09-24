@@ -322,6 +322,30 @@ class SharedDataStore(context: Context) {
         get() = prefs.getInt(KEY_TRIAL_DAYS_ANNUAL, -1)
         set(value) = prefs.edit { putInt(KEY_TRIAL_DAYS_ANNUAL, value) }
 
+    // ── Native health provider selection ───────────────────────────────────
+
+    /**
+     * Provider choices are device-local. dayglance_shared.xml is excluded from
+     * backup/transfer, so a provider selected on one phone never leaks to another.
+     */
+    var healthStepsProviderId: String?
+        get() = prefs.getString(KEY_HEALTH_STEPS_PROVIDER, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_HEALTH_STEPS_PROVIDER, value)
+            else remove(KEY_HEALTH_STEPS_PROVIDER)
+        }
+
+    var healthSleepProviderId: String?
+        get() = prefs.getString(KEY_HEALTH_SLEEP_PROVIDER, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_HEALTH_SLEEP_PROVIDER, value)
+            else remove(KEY_HEALTH_SLEEP_PROVIDER)
+        }
+
+    var healthProviderSelectionVersion: Int
+        get() = prefs.getInt(KEY_HEALTH_PROVIDER_SELECTION_VERSION, 0)
+        set(value) = prefs.edit { putInt(KEY_HEALTH_PROVIDER_SELECTION_VERSION, value) }
+
     // ── Step count cache ────────────────────────────────────────────────────
 
     /** Cached step count for today, updated by WidgetUpdateWorker. */
@@ -346,6 +370,9 @@ class SharedDataStore(context: Context) {
         private const val KEY_WIDGET_SNAPSHOT = "widget_snapshot"
         private const val KEY_WIDGET_SNAPSHOT_TS = "widget_snapshot_ts"
         private const val KEY_SCHEDULED_REMINDERS = "scheduled_reminders"
+        private const val KEY_HEALTH_STEPS_PROVIDER = "health_steps_provider"
+        private const val KEY_HEALTH_SLEEP_PROVIDER = "health_sleep_provider"
+        private const val KEY_HEALTH_PROVIDER_SELECTION_VERSION = "health_provider_selection_version"
         private const val KEY_STEPS_CACHE = "steps_cache"
         private const val KEY_PENDING_COMPLETE = "pending_complete_task_id"
         private const val KEY_PENDING_SNOOZE = "pending_snooze_task_id"

@@ -189,9 +189,10 @@ const useHabits = ({ playUISound, hrOwnerRef }) => {
   const syncHealthConnectHabitsRef = useRef(null);
 
   // Pull native health data into habits that belong to this platform.
-  // iOS reads from HealthKit (source:'healthKit'); Android reads from
-  // HealthConnect (source:'healthConnect'). Habits synced from the other
-  // platform carry the opposite source tag and are intentionally skipped,
+  // iOS reads from HealthKit (source:'healthKit'). Android keeps the existing
+  // source:'healthConnect' tag as its sync identity even though the native
+  // repository may resolve a different health provider underneath it. Habits
+  // synced from the other platform carry the opposite source tag and are intentionally skipped,
   // preventing cross-platform overwriting of health counts.
   // Backfills the last 7 days so historical rings are accurate on first setup.
   const syncHealthConnectHabits = () => {
@@ -216,9 +217,14 @@ const useHabits = ({ playUISound, hrOwnerRef }) => {
           let count = 0;
           if (habit.unit === 'steps') {
             const result = JSON.parse(window.DayGlanceNative.getSteps(dateStr));
+            // Newer Android shells distinguish "no data" / unavailable from a
+            // real zero. Older Android and iOS payloads omit status, so they
+            // keep the legacy behavior.
+            if (result.status && result.status !== 'ok') continue;
             count = result.steps ?? 0;
           } else if (habit.unit === 'min' || habit.unit === 'minutes') {
             const result = JSON.parse(window.DayGlanceNative.getSleep(dateStr));
+            if (result.status && result.status !== 'ok') continue;
             count = result.durationMinutes ?? 0;
           }
           if (!updates[dateStr]) updates[dateStr] = {};

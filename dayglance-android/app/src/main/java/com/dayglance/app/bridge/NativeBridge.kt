@@ -156,7 +156,7 @@ class NativeBridge(
         }
     }
 
-    // ── Health Connect ──────────────────────────────────────────────────────
+    // ── Native health ───────────────────────────────────────────────────────
 
     @JavascriptInterface
     fun getSteps(date: String): String = health.getSteps(date)

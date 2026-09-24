@@ -2045,7 +2045,47 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt."
+    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
+    "view": {
+      "loading": "JOBO wird geladen…",
+      "plan": "Plan",
+      "time": "Zeit",
+      "do": "Ausführung",
+      "storageError": "Das JOBO-Ledger konnte nicht geschrieben werden. Bereits gespeicherte Daten werden weiterhin angezeigt.",
+      "readOnly": "JOBO ist auf diesem Gerät schreibgeschützt. Änderungen an Do-Einträgen sind deaktiviert.",
+      "invalidRecords": "{{count}} ungültige Ledger-Einträge werden in dieser Ansicht ignoriert.",
+      "untimed": "Ohne Zeit",
+      "timeNotRecorded": "Zeit nicht erfasst",
+      "editDo": "Do bearbeiten",
+      "timing": "Zeitangabe",
+      "timed": "Mit Zeit",
+      "date": "Datum",
+      "start": "Start",
+      "endDate": "Enddatum",
+      "end": "Ende",
+      "progressLabel": "Fortschritt",
+      "completeInterval": "Bitte vollständige Start- und Endzeit eingeben.",
+      "editClock": "Die Geräteuhr liegt nicht nach der letzten Aktualisierung dieses Eintrags. Bitte später erneut versuchen.",
+      "completedByCompletion": "„Abgeschlossen“ entsteht durch ein Abschlussereignis. Eine Neubewertung kann Gestartet, Teilweise oder Größtenteils sein.",
+      "updateFailed": "Die Do-Änderung konnte nicht gespeichert werden.",
+      "saving": "Speichern…",
+      "emptyPlan": "Kein zeitlich geplanter Plan an diesem Tag.",
+      "emptyDo": "An diesem Tag wurde kein Do erfasst.",
+      "summary": {
+        "withinPlan": "Im Plan",
+        "late": "Spät",
+        "longer": "Länger",
+        "split": "Geteilt",
+        "notStarted": "Nicht begonnen",
+        "unplanned": "Ungeplant"
+      },
+      "progress": {
+        "started": "Gestartet",
+        "partial": "Teilweise",
+        "mostly": "Größtenteils",
+        "completed": "Abgeschlossen"
+      }
+    }
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",

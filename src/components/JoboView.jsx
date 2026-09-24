@@ -356,7 +356,7 @@ export default function JoboView() {
   const scrollRef = useRef(null);
   const lastAutoScrollDate = useRef(null);
   const date = dateToString(selectedDate);
-  const clock = currentTime instanceof Date ? currentTime : new Date();
+  const clock = useMemo(() => (currentTime instanceof Date ? currentTime : new Date()), [currentTime]);
   const today = dateToString(clock);
 
   const dayTasks = useMemo(

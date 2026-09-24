@@ -38,7 +38,14 @@ smaller than a ledger and cost real data.
    `joboEnabled` off still loads, stores, pushes, pulls and merges records.
    It only declines to show them, and does not create records from its own
    completions. Otherwise the first sync from a device with the flag off
-   would push a payload without the collection.
+   would push a payload without the collection. **This makes the ledger
+   evidence, not proof, and that is intentional.** A completion made on a
+   device with the flag off, and never observed as a transition by an
+   enabled writable device, leaves no Do. So the absence of a Do is the
+   absence of evidence, never evidence that nothing was done; the derived
+   "not started" reads as "no Do recorded", and the task's own `completed`
+   flag stays the authoritative completion state. The view must not infer
+   more from an empty ledger than that.
 4. **Records reach React state, not only storage.** `buildSyncPayload` reads
    state; `applyEngineData` writes state. `originalPlan` shipped once written
    to localStorage and never to state, and could not survive a single sync
@@ -240,11 +247,14 @@ importer all go through it.
   that arrives before `loaded` is queued and merged after hydration. Merging
   it into the stale initial state and then loading over it would drop it.
   The queue is drained until it is stable, since an apply can land while the
-  flush is in flight, and a batch whose write fails goes back on the queue
-  rather than being published: state shows only what the read returned, the
-  error is reported, and the next apply or load retries the batch. The queue
-  is merged by id, so a row the vault tier re-delivers every cycle does not
-  grow it.
+  flush is in flight, and a batch whose write fails, local commit or remote
+  apply alike, goes back on the queue rather than being published: state
+  shows only what the read returned, the error is reported, the ledger
+  retries on its own with backoff (2s doubling to 60s), and the next apply
+  or load carries the batch too. The queue is merged by id, so a row the
+  vault tier re-delivers every cycle does not grow it. This is what lets the
+  detector stay one-shot: once it has handed a record over, the ledger owns
+  it, and a transient storage failure cannot consume the completion edge.
 - **Every mutation** goes through `update(fn)` and the hook refreshes state
   from the committed value, not from what it intended to write. A record in
   state that is not on disk is exactly what a crash loses.
@@ -426,8 +436,20 @@ truth"; nothing here forecloses it.
 
 - The fields that express progress and classification, and their rules
   (slice 2).
-- Creating records from completions (slice 4), which depends on the identity
-  rules above and on the hook being the only writer.
+- Creating records from completions is slice 4, `src/jobo/detector.js` and
+  `useJoboDetector`: a planner over prev and next task snapshots in
+  `useCompletionLog`'s shape, applying the identity rules above and writing
+  through `recordJobo`. A completion-created record is `timing: 'untimed'`
+  (a checkbox says the work happened, not when it began) with the plan
+  captured as it stands; the interval can be corrected later under the same
+  id. Its `date` is the completion stamp's own `YYYY-MM-DD` prefix, so two
+  observers in different zones agree on it; a stamp with an offset names the
+  completing device's local date, a Z stamp the UTC date. A recurring
+  occurrence captures the occurrence the user saw, that date's exception
+  applied over the template on the same fallback the instance expansion
+  uses, so a one-off rename or reschedule is the Final Plan preserved. An
+  all-day plan captures `planSnapshot: null`, since a block at midnight is
+  not an interval to compare against.
 - Any rendering (slice 5), including the history popover learning about Do.
 - Import of the prototype's JSON ledger. Worth doing, and small, once the
   record shape is final; not before.
@@ -495,6 +517,14 @@ rather than unit-testing a module. The five from review are folded in.
     snapshot-delete guard treats the vanish as a glitch, re-fetches the row
     by id, and it lands on disk, with the vault row and the other device
     untouched.
+13. **Completing a task writes a Do record, once, across two devices**
+    (slice 4). Through the real planner and ledger on each device and the
+    vault simulator: a completion on A is one record on both, and B observing
+    the same completion writes nothing new; two devices that each observe it
+    before the record arrives converge on the earlier observer on both tiers;
+    an uncheck drops the attempt to Partially completed everywhere and a
+    later completion is a second attempt; a device with the flag off creates
+    nothing and still forwards the record.
 
 Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
 remove the flag-independence (2 fails); pass the sync horizon to the

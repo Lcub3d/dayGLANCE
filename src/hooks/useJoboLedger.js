@@ -28,7 +28,7 @@ export default function useJoboLedger({ pickRecord, store } = {}) {
   useEffect(() => {
     const unsubscribe = ledger.current.subscribe(setState);
     ledger.current.load();
-    return unsubscribe;
+    return () => { unsubscribe(); ledger.current.dispose(); };
   }, []);
 
   return {

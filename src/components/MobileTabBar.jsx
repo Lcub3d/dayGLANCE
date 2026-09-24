@@ -96,7 +96,7 @@ const MobileTabBar = () => {
               </span>
             )}
           </div>
-          {showLabels && <span className="text-[10px] font-medium">{t('task.inbox')}</span>}
+          {showLabels && <span className="text-[10px] font-medium">{t('settings.inbox')}</span>}
         </button>
         {goalsProjectsEnabled && (
         <button

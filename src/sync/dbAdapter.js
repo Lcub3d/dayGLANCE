@@ -32,6 +32,7 @@ import { mergePlanTrail, sameTrail } from '../utils/planTrail.js';
 import { TOMBSTONE_BUNDLE_KEYS, tombstoneCutoff, pruneCompletedTaskUids } from './tombstoneRetention.js';
 import { mergeRetiredTaskIds } from '../utils/retiredTaskIds.js';
 import { mergeDayWindowMaps } from './dayWindowSync.js';
+import { pickJoboRecord } from '../jobo/core.js';
 
 // ── Collection kinds: each array element is one row, keyed by a stable id, with
 // entity-grain last-writer-wins on tsField (the same grain the file-tier merge
@@ -48,6 +49,11 @@ export const COLLECTION_KINDS = {
   areas:            { idField: 'id',     tsField: 'updatedAt'    },
   gtdFrames:        { idField: 'id',     tsField: 'lastModified' },
   users:            { idField: 'syncId', tsField: 'updatedAt'    }, // falls back to id
+  // The JOBO ledger (docs/jobo-ledger-persistence.md): one row per Do
+  // attempt, tombstones as rows that are never pruned, insert-only so every
+  // pulled copy runs through core's pickJoboRecord (applyRemoteJobo) rather
+  // than the engine's remote-wins tie, which two devices would never agree on.
+  joboRecords:      { idField: 'id',     tsField: 'updatedAt'    },
 };
 
 // The five task-shaped kinds. A task keeps its `id` while moving between these
@@ -129,7 +135,7 @@ export function entityKind(entity) {
 // Other collections and per-date dailyNotes use normal entity-grain LWW.
 export function isInsertOnly(entity) {
   const k = entityKind(entity);
-  return k === SINGLETON_KIND || k === 'recurringTasks';
+  return k === SINGLETON_KIND || k === 'recurringTasks' || k === 'joboRecords';
 }
 
 export function getEntityLastModified(entity) {
@@ -293,6 +299,38 @@ function applyRemoteRecurring(data, remote) {
   return deepEqual(merged, remote) ? [] : [makeEntityId('recurringTasks', id)];
 }
 
+// Insert-only merge for one JOBO ledger row. Two copies of one record are
+// resolved by core's pickJoboRecord, the ONE rule the file tier and the hook
+// use too: newer updatedAt, then lower observedAt, then canonical JSON. That
+// last step is what the engine's own tie rule lacks: "remote wins" depends on
+// which side is remote, so two devices holding pristine copies of the same
+// record (same id, same source-anchored updatedAt, different snapshot) would
+// each keep the other's and never converge. Returns the row's entityId to
+// re-push when the local copy won, so the vault converges to it (the same
+// superset re-push the bundles use). A pulled copy identical to ours is a
+// no-op, never a re-push.
+function applyRemoteJobo(data, remote) {
+  if (!Array.isArray(data.joboRecords)) data.joboRecords = [];
+  if (!remote || remote.id == null) return [];
+  const id = String(remote.id);
+  const idx = data.joboRecords.findIndex((x) => x != null && String(x.id) === id);
+  if (idx < 0) {
+    data.joboRecords.push(remote);
+    return [];
+  }
+  const local = data.joboRecords[idx];
+  let winner;
+  try {
+    winner = pickJoboRecord(local, remote);
+  } catch {
+    // A row core will not judge (not plain JSON): fall back to the timestamp,
+    // remote winning ties, rather than fail the whole cycle over one row.
+    winner = ts(remote.updatedAt) >= ts(local.updatedAt) ? remote : local;
+  }
+  data.joboRecords[idx] = winner;
+  return deepEqual(winner, remote) ? [] : [makeEntityId('joboRecords', id)];
+}
+
 function upsertCollection(data, kind, value) {
   const cfg = COLLECTION_KINDS[kind];
   if (!Array.isArray(data[kind])) data[kind] = [];
@@ -364,6 +402,9 @@ export function applyRemoteEntity(data, entity) {
   if (kind === 'recurringTasks') {
     return applyRemoteRecurring(data, entity.value);
   }
+  if (kind === 'joboRecords') {
+    return applyRemoteJobo(data, entity.value);
+  }
   if (COLLECTION_KINDS[kind]) {
     return upsertCollection(data, kind, entity.value);
   }
@@ -385,6 +426,12 @@ export function applyRemoteEntity(data, entity) {
 
 export function applyRemoteDelete(data, entityId) {
   const [kind, id] = splitEntityId(entityId);
+  // A ledger row is never removed: its deletion is a `deleted: true` version
+  // of the row, which merges like any edit. A row-level delete can only come
+  // from a device whose ledger vanished from its payload, and the snapshot
+  // guard already refuses to propagate that; refusing it here too keeps the
+  // history on a device that receives one anyway.
+  if (kind === 'joboRecords') return;
   if (COLLECTION_KINDS[kind]) {
     const cfg = COLLECTION_KINDS[kind];
     data[kind] = (data[kind] || []).filter((x) => x == null || String(x[cfg.idField] ?? x.id) !== id);

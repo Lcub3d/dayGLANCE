@@ -19,11 +19,11 @@ import { parseRetryAfter } from './utils/trmnlPushPolicy.js';
 // ---------------------------------------------------------------------------
 
 /** Format "HH:MM" 24-h string into display time */
-const fmtTime = (t, use24h) => {
+const fmtTime = (t, use24h, translate) => {
   if (!t) return '';
   const [hh, mm] = t.split(':').map(Number);
   if (use24h) return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const ampm = translate(hh >= 12 ? 'common.pm' : 'common.am');
   const h12 = hh % 12 || 12;
   return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
 };
@@ -115,13 +115,17 @@ export function gatherTrmnlData({
     const startMins = toMinutes(t.startTime);
     const endMins = startMins >= 0 ? startMins + (t.duration || 0) : -1;
     return {
-      time: fmtTime(t.startTime, use24HourClock),
+      time: fmtTime(t.startTime, use24HourClock, translate),
       dur: formatDuration(t.duration, translate),
       title: stripWikilinks(t.title).slice(0, 40),
       done: !!t.completed,
       pri: priorityLabel(t.priority, translate),
-      allDay: !!t.allDay,
-      past: isEvent && !t.allDay && startMins >= 0 && endMins <= nowMins,
+      // Tasks carry `isAllDay`. `allDay` is the native calendar's name for it,
+      // converted at that boundary (nativeCalendar.js in, taskMutations.js out),
+      // so it is never set on a task here. Reading it left every all-day row
+      // with allDay false, so the template fell through to an empty time.
+      allDay: !!t.isAllDay,
+      past: isEvent && !t.isAllDay && startMins >= 0 && endMins <= nowMins,
     };
   });
 
@@ -130,16 +134,16 @@ export function gatherTrmnlData({
   const total = countable.length;
   const completed = countable.filter((t) => t.completed).length;
   const overdue = countable.filter(
-    (t) => !t.completed && t.startTime && t.startTime < currentTime && !t.allDay
+    (t) => !t.completed && t.startTime && t.startTime < currentTime && !t.isAllDay
   ).length;
   const totalMinutes = countable.reduce((s, t) => s + (t.duration || 0), 0);
 
   // Upcoming (next 3 uncompleted tasks from now)
   const upcoming = todayTasks
-    .filter((t) => !t.completed && t.startTime && t.startTime >= currentTime && !t.allDay)
+    .filter((t) => !t.completed && t.startTime && t.startTime >= currentTime && !t.isAllDay)
     .slice(0, 3)
     .map((t) => ({
-      time: fmtTime(t.startTime, use24HourClock),
+      time: fmtTime(t.startTime, use24HourClock, translate),
       title: stripWikilinks(t.title).slice(0, 32),
     }));
 
@@ -185,7 +189,7 @@ export function gatherTrmnlData({
         .slice(0, 8)
         .map((r) => ({
           name: (r.name || '').slice(0, 30),
-          time: r.isAllDay ? translate('task.allDay') : fmtTime(r.startTime, use24HourClock),
+          time: r.isAllDay ? translate('task.allDay') : fmtTime(r.startTime, use24HourClock, translate),
           dur: r.isAllDay ? '' : formatDuration(r.duration, translate),
         }))
     : [];
@@ -202,7 +206,7 @@ export function gatherTrmnlData({
     date: today,
     day_name: dayName,
     date_label: dateLabel,
-    current_time: fmtTime(currentTime, use24HourClock),
+    current_time: fmtTime(currentTime, use24HourClock, translate),
     weather: '',
     schedule,
     total,

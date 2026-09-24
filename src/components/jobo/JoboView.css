@@ -1,0 +1,473 @@
+.jobo5-root {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.jobo5-head,
+.jobo5-untimed-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 54px minmax(240px, 1fr);
+  min-width: 620px;
+}
+
+.jobo5-head {
+  min-height: 38px;
+  flex: none;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: .01em;
+}
+
+.jobo5-head-cell {
+  min-width: 0;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.jobo5-head-ruler {
+  text-align: center;
+  font-size: 10px;
+}
+
+.jobo5-notice {
+  min-height: 30px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.jobo5-untimed-row {
+  flex: none;
+  align-items: stretch;
+  border-bottom: 1px solid rgb(127 127 127 / .16);
+}
+
+.jobo5-untimed-spacer {
+  min-height: 0;
+}
+
+.jobo5-untimed-label {
+  padding: 7px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 9px;
+  opacity: .7;
+}
+
+.jobo5-untimed-list {
+  min-width: 0;
+  padding: 6px 8px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.jobo5-untimed-card {
+  flex: 0 0 190px;
+  min-width: 0;
+  border-radius: 7px;
+  padding: 6px 7px;
+  text-align: left;
+  box-shadow: 0 1px 4px rgb(0 0 0 / .16);
+  transition: filter .12s ease;
+}
+
+.jobo5-untimed-card:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+.jobo5-untimed-card:disabled {
+  cursor: default;
+}
+
+.jobo5-untimed-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.jobo5-untimed-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  opacity: .72;
+}
+
+.jobo5-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.jobo5-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 54px minmax(240px, 1fr);
+  min-width: 620px;
+  position: relative;
+}
+
+.jobo5-lane,
+.jobo5-ruler {
+  position: relative;
+  min-width: 0;
+}
+
+.jobo5-hour-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  opacity: .58;
+  pointer-events: none;
+}
+
+.jobo5-hour-line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 32px;
+  border-top: 1px dashed currentColor;
+  opacity: .07;
+}
+
+.jobo5-ruler {
+  font-variant-numeric: tabular-nums;
+}
+
+.jobo5-hour-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 16px;
+  transform: translateY(-7px);
+  text-align: center;
+  font-size: 9px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.jobo5-card {
+  position: absolute;
+  box-sizing: border-box;
+  min-height: 42px;
+  overflow: hidden;
+  border-radius: 7px;
+  padding: 5px 7px;
+  box-shadow: 0 2px 7px rgb(0 0 0 / .18);
+  z-index: 3;
+}
+
+.jobo5-plan-card {
+  opacity: .92;
+}
+
+.jobo5-do-card {
+  outline: 1px solid rgb(255 255 255 / .18);
+}
+
+.jobo5-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.jobo5-card-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+}
+
+.jobo5-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: .86;
+}
+
+.jobo5-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.jobo5-edit-button {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  opacity: .72;
+}
+
+.jobo5-edit-button:not(:disabled):hover {
+  background: rgb(255 255 255 / .16);
+  opacity: 1;
+}
+
+.jobo5-edit-button:disabled {
+  opacity: .3;
+}
+
+.jobo5-badges {
+  display: inline-flex;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.jobo5-badge,
+.jobo5-progress {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9px;
+  line-height: 15px;
+  white-space: nowrap;
+  color: #1f2937;
+  background: rgb(255 255 255 / .78);
+}
+
+.jobo5-badge-ok {
+  background: #d8f3e2;
+}
+
+.jobo5-badge-warn {
+  background: #f7e7bf;
+}
+
+.jobo5-badge-info {
+  background: #dbeafe;
+}
+
+.jobo5-badge-danger {
+  background: #fee2e2;
+}
+
+.jobo5-badge-unplanned {
+  background: #ede9fe;
+}
+
+.jobo5-progress-started {
+  background: #ffedd5;
+}
+
+.jobo5-progress-partial {
+  background: #fef3c7;
+}
+
+.jobo5-progress-mostly {
+  background: #ecfccb;
+}
+
+.jobo5-progress-completed {
+  background: #dcfce7;
+}
+
+.jobo5-empty {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  text-align: center;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.jobo5-now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border-top: 1.5px solid #ef4444;
+  pointer-events: none;
+}
+
+.jobo5-now-line span {
+  position: absolute;
+  left: calc(50% - 29px);
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.jobo5-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(0 0 0 / .38);
+  backdrop-filter: blur(2px);
+}
+
+.jobo5-dialog {
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 12px;
+  color: inherit;
+  background: rgb(250 250 249 / .98);
+  box-shadow: 0 18px 55px rgb(0 0 0 / .28);
+}
+
+.jobo5-dark .jobo5-dialog {
+  background: rgb(31 41 55 / .98);
+}
+
+.jobo5-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.jobo5-dialog-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.jobo5-dialog-subtitle {
+  margin-top: 2px;
+  font-size: 10px;
+  opacity: .58;
+}
+
+.jobo5-close-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.jobo5-close-button:hover {
+  background: rgb(127 127 127 / .12);
+}
+
+.jobo5-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 11px;
+}
+
+.jobo5-field > span {
+  opacity: .72;
+}
+
+.jobo5-field input,
+.jobo5-field select {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 7px;
+  border: 1px solid rgb(127 127 127 / .3);
+  border-radius: 7px;
+  background: rgb(127 127 127 / .06);
+  color: inherit;
+}
+
+.jobo5-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+}
+
+.jobo5-dialog-note {
+  margin-top: -2px;
+  margin-bottom: 10px;
+  font-size: 10px;
+  opacity: .62;
+}
+
+.jobo5-dialog-error {
+  margin: 8px 0;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 10px;
+}
+
+.jobo5-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.jobo5-dialog-actions button {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid rgb(127 127 127 / .28);
+  border-radius: 7px;
+}
+
+.jobo5-save-button {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb !important;
+}
+
+.jobo5-dialog-actions button:disabled {
+  opacity: .45;
+}
+
+@media (max-width: 900px) {
+  .jobo5-head,
+  .jobo5-grid,
+  .jobo5-untimed-row {
+    grid-template-columns: minmax(220px, 1fr) 48px minmax(220px, 1fr);
+    min-width: 560px;
+  }
+
+  .jobo5-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}

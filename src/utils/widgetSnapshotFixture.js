@@ -16,6 +16,7 @@
 // matches what this builds.
 
 import { buildProjectedDay, projectionDates, dateToString } from './widgetDayProjection.js';
+import { buildWidgetMonthWindow } from './widgetMonthWindow.js';
 
 export const LIVE_SNAPSHOT_TIMEZONE = 'America/Denver';
 export const LIVE_SNAPSHOT_PATH = 'dayglance-ios/TestFixtures/widgetSnapshot.live.json';
@@ -42,6 +43,51 @@ export function liveFixtureTasks(dateStr) {
   ];
 }
 
+/** Monday weeks in the fixture, so the Swift side cannot assume Sunday. */
+export const LIVE_SNAPSHOT_WEEK_START = 1;
+/** The crowded first of the month: seven blocks, an all-day item, a deadline. */
+export const LIVE_MONTH_CROWDED_DAY = '2026-10-01';
+
+const MONTH_PALETTE = ['bg-blue-500', 'bg-rose-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-indigo-500'];
+const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+
+/**
+ * Six weeks with a real month's texture, for the month grid widget: busy
+ * weekdays (some past the four-bar cap), light weekends, an early block and
+ * a late one that runs past midnight (both outside the 7–21 window the widget
+ * clamps to), all-day items and deadlines on scattered days, and a crowded
+ * first of the month. Deterministic: derived from the date alone.
+ */
+export function liveMonthTasks(dateStr) {
+  if (dateStr === LIVE_MONTH_CROWDED_DAY) {
+    return [510, 600, 690, 810, 960, 1080, 1170].map((s, i) => task(dateStr, {
+      id: `${dateStr}-c${i}`, startTime: hhmm(s), duration: [30, 60, 45, 90, 30, 60, 30][i],
+      color: MONTH_PALETTE[i % MONTH_PALETTE.length],
+    })).concat(task(dateStr, { id: `${dateStr}-rent`, isAllDay: true, startTime: '', duration: 0, color: 'bg-red-500' }));
+  }
+  const date = new Date(`${dateStr}T12:00:00`);
+  const dom = date.getDate();
+  const dow = date.getDay();
+  const weekend = dow === 0 || dow === 6;
+  const count = weekend ? dom % 2 : 2 + (dom * 7) % 4 + (dom % 5 === 0 ? 2 : 0);
+  const out = [];
+  let cursor = 480 + (dom * 13) % 90;
+  for (let k = 0; k < count && cursor < 1260; k++) {
+    const duration = [15, 30, 45, 60, 90, 120][(dom + k * 3) % 6];
+    out.push(task(dateStr, { id: `${dateStr}-m${k}`, startTime: hhmm(cursor), duration, color: MONTH_PALETTE[(dom + k) % MONTH_PALETTE.length] }));
+    cursor += duration + 30 + ((dom * (k + 1)) % 5) * 20;
+  }
+  if (dom % 9 === 0) out.push(task(dateStr, { id: `${dateStr}-early`, startTime: '06:00', duration: 45, color: 'bg-emerald-500' }));
+  if (dom % 11 === 0) out.push(task(dateStr, { id: `${dateStr}-late`, startTime: '22:30', duration: 120, color: 'bg-indigo-500' }));
+  if (dom % 6 === 0) out.push(task(dateStr, { id: `${dateStr}-allday`, isAllDay: true, startTime: '', duration: 0, color: 'bg-amber-500' }));
+  return out;
+}
+
+const liveMonthDeadlines = (dateStr) => {
+  const dom = Number(dateStr.slice(8));
+  return (dateStr === LIVE_MONTH_CROWDED_DAY || dom % 8 === 3) ? [{ color: 'bg-red-500' }] : [];
+};
+
 export function buildLiveWidgetSnapshot() {
   const today = LIVE_SNAPSHOT_TODAY();
   const day = (date) => {
@@ -66,6 +112,17 @@ export function buildLiveWidgetSnapshot() {
     allGoals: [],
     allProjects: [],
     days: projectionDates(today).map(day),
+    // The month grid's six weeks (+ rollover tail), from the same producer
+    // App.jsx uses. A placed routine on the pushed day only, as in the app.
+    monthWindow: buildWidgetMonthWindow({
+      today,
+      weekStartDay: LIVE_SNAPSHOT_WEEK_START,
+      tasksForDate: (date) => liveMonthTasks(dateToString(date)),
+      deadlinesForDate: liveMonthDeadlines,
+      routinesForDate: (dateStr) => (dateStr === dateToString(today)
+        ? [{ id: 'stretch', name: 'Stretch', startTime: '07:30', duration: 15 }]
+        : []),
+    }),
     timezone: LIVE_SNAPSHOT_TIMEZONE,
     updatedAt: Date.UTC(2026, 8, 21, 18, 0, 0),
     reloadWidgets: true,

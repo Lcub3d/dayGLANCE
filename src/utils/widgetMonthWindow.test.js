@@ -258,6 +258,20 @@ describe('rollover', () => {
     }
   });
 
+  it('covers every grid through the end of the week after the push: 13 − (weekday offset) days', () => {
+    for (const weekStartDay of [0, 1]) {
+      for (let k = 0; k < 7; k++) {
+        const w0 = monthWindowStart(WED, weekStartDay);
+        const pushDay = plus(w0, k);
+        const stored = pipeline({ today: pushDay, weekStartDay });
+        let live = 0;
+        while (resolveMonthWindow(stored, str(plus(pushDay, live)))) live++;
+        expect(live - 1, `ws${weekStartDay}, push on day ${k} of the week`).toBe(13 - k);
+        expect(str(plus(pushDay, live))).toBe(str(plus(w0, 14)));
+      }
+    }
+  });
+
   it('crossing a week boundary moves the grid down a row, served from the tail', () => {
     const stored = pipeline({ today: d(2026, 9, 26), weekStartDay: 0, tasks }); // Saturday
     expect(resolveMonthWindow(stored, '2026-09-26')[0].date).toBe('2026-09-20');

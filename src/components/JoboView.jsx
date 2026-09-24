@@ -65,7 +65,7 @@ function SummaryBadges({ labels, t }) {
 function ProgressBadge({ progress, t }) {
   return (
     <span className={`jobo5-progress ${PROGRESS_CLASS[progress] || ''}`}>
-      {t(`jobo.view.progress.${progress}`)}
+      {progress === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${progress}`)}
     </span>
   );
 }
@@ -106,8 +106,8 @@ function DoCard({ item, formatTime, t, writable, onEdit }) {
           className="jobo5-edit-button"
           onClick={() => onEdit(record)}
           disabled={!writable}
-          title={t('jobo.view.editDo')}
-          aria-label={t('jobo.view.editDo')}
+          title={t('common.edit')}
+          aria-label={t('common.edit')}
         >
           <Pencil size={12} />
         </button>
@@ -146,7 +146,7 @@ function UntimedShelf({ records, t, writable, onEdit }) {
             <span className="jobo5-untimed-title">{record.title}</span>
             <ProgressBadge progress={record.progress} t={t} />
             <SummaryBadges labels={labels} t={t} />
-            <span className="jobo5-untimed-hint">{t('jobo.view.timeNotRecorded')}</span>
+            <span className="jobo5-untimed-hint">{t('task.noTime')}</span>
           </button>
         ))}
       </div>
@@ -236,11 +236,11 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
     <div className="jobo5-modal-mask" role="presentation" onMouseDown={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}>
-      <section className={`jobo5-dialog ${darkMode ? 'jobo5-dialog-dark' : ''}`} role="dialog" aria-modal="true" aria-label={t('jobo.view.editDo')}>
+      <section className={`jobo5-dialog ${darkMode ? 'jobo5-dialog-dark' : ''}`} role="dialog" aria-modal="true" aria-label={t('common.edit')}>
         <div className="jobo5-dialog-head">
           <div>
             <div className="jobo5-dialog-title">{record.title}</div>
-            <div className="jobo5-dialog-subtitle">{t('jobo.view.editDo')}</div>
+            <div className="jobo5-dialog-subtitle">{t('common.edit')}</div>
           </div>
           <button type="button" className="jobo5-close-button" onClick={onClose} aria-label={t('common.close')}>
             <X size={16} />
@@ -248,7 +248,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
         </div>
 
         <label className="jobo5-field">
-          <span>{t('jobo.view.timing')}</span>
+          <span>{t('task.time')}</span>
           <select
             value={draft.timing}
             onChange={(e) => setDraft((prev) => ({ ...prev, timing: e.target.value }))}
@@ -260,7 +260,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
 
         <div className="jobo5-edit-grid">
           <label className="jobo5-field">
-            <span>{t('jobo.view.date')}</span>
+            <span>{t('common.date')}</span>
             <input
               type="date"
               value={draft.date}
@@ -270,7 +270,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
           {draft.timing === DO_TIMING.TIMED && (
             <>
               <label className="jobo5-field">
-                <span>{t('jobo.view.start')}</span>
+                <span>{t('common.start')}</span>
                 <input
                   type="time"
                   value={draft.startTime}
@@ -278,7 +278,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
                 />
               </label>
               <label className="jobo5-field">
-                <span>{t('jobo.view.endDate')}</span>
+                <span>{t('common.date')}</span>
                 <input
                   type="date"
                   value={draft.endDate}
@@ -286,7 +286,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
                 />
               </label>
               <label className="jobo5-field">
-                <span>{t('jobo.view.end')}</span>
+                <span>{t('common.end')}</span>
                 <input
                   type="time"
                   value={draft.endTime}
@@ -318,7 +318,7 @@ function EditDoDialog({ record, writable, recordJobo, onClose, t, darkMode }) {
         <div className="jobo5-dialog-actions">
           <button type="button" onClick={onClose}>{t('common.cancel')}</button>
           <button type="button" className="jobo5-save-button" onClick={save} disabled={saving || !writable}>
-            {saving ? t('jobo.view.saving') : t('common.save')}
+            {t('common.save')}
           </button>
         </div>
       </section>
@@ -397,7 +397,7 @@ export default function JoboView() {
   if (!joboLoaded) {
     return (
       <div data-jobo-view className="h-full flex items-center justify-center p-8">
-        <p className={`text-sm ${textSecondary}`}>{t('jobo.view.loading')}</p>
+        <p className={`text-sm ${textSecondary}`}>{t('common.loading')}</p>
       </div>
     );
   }
@@ -409,7 +409,7 @@ export default function JoboView() {
           <strong>{t('jobo.view.plan')}</strong>
           <span className={textSecondary}>{model.plans.length}</span>
         </div>
-        <div className={`jobo5-head-ruler ${textSecondary}`}>{t('jobo.view.time')}</div>
+        <div className={`jobo5-head-ruler ${textSecondary}`}>{t('task.time')}</div>
         <div className="jobo5-head-cell">
           <strong>{t('jobo.view.do')}</strong>
           <span className={textSecondary}>{model.timedRecords.length + model.untimedRecords.length}</span>

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   buildWidgetMonthWindow, buildMonthDay, monthWindowStart, monthWindowDates, resolveMonthWindow,
   WIDGET_MONTH_WINDOW_DAYS, WIDGET_MONTH_PAYLOAD_DAYS, WIDGET_ROUTINE_HEX,
+  WIDGET_AGENDA_MAX_ROWS, WIDGET_AGENDA_MAX_TITLE,
 } from './widgetMonthWindow.js';
 import { WIDGET_PROJECTION_DAYS, WIDGET_SNAPSHOT_CAP_BYTES, WIDGET_SNAPSHOT_WARN_BYTES, guardSnapshotSize } from './widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './recurringExpansionRange.js';
@@ -95,10 +96,13 @@ describe('what a day carries', () => {
   const DAY = '2026-09-24';
   const build = (over = {}) => buildMonthDay({ dateStr: DAY, ...over });
 
-  it('bars are {s, d, c} only — no titles, ids, tags, notes or projects', () => {
+  it('bars are {s, d, c} only; the agenda adds a cleaned title — never ids, tags, notes or projects', () => {
     const day = build({ dayTasks: [task({ date: DAY })] });
-    expect(day).toEqual({ date: DAY, bars: [{ s: 540, d: 60, c: '#3b82f6' }], allDay: [], deadlines: [] });
-    expect(JSON.stringify(day)).not.toMatch(/Secret|private|tag|p1/);
+    expect(day).toEqual({
+      date: DAY, bars: [{ s: 540, d: 60, c: '#3b82f6' }], allDay: [], deadlines: [],
+      agenda: [{ t: 'Secret title', s: 540, d: 60, c: '#3b82f6' }], agendaMore: 0,
+    });
+    expect(JSON.stringify(day)).not.toMatch(/private|#tag|p1|"id"/);
   });
 
   it('bars are in start order and colors are resolved hex, native calendar color first', () => {
@@ -156,6 +160,54 @@ describe('what a day carries', () => {
     const withBars = w.days.filter(x => x.bars.length);
     expect(withBars.map(x => x.date)).toEqual([str(WED)]);
     expect(withBars[0].bars).toEqual([{ s: 420, d: 15, c: WIDGET_ROUTINE_HEX }]);
+  });
+});
+
+describe('the agenda (the extra-large widget\'s list)', () => {
+  const DAY = '2026-09-24';
+  const build = (over = {}) => buildMonthDay({ dateStr: DAY, ...over });
+
+  it('orders all-day, deadlines, then timed rows and routines by start, each with its kind', () => {
+    const day = build({
+      dayTasks: [
+        task({ title: 'Late', startTime: '15:00', duration: 30, color: 'bg-rose-500' }),
+        task({ title: 'Birthday', isAllDay: true, startTime: '', duration: 0, color: 'bg-amber-500' }),
+        task({ title: 'Early [[Spec]] #deep', startTime: '08:00', duration: 45 }),
+      ],
+      deadlineTasks: [{ title: 'Invoice', color: 'bg-red-500' }],
+      routines: [{ id: 'r', name: 'Stretch', startTime: '07:00', duration: 15, completed: true }],
+    });
+    expect(day.agenda).toEqual([
+      { t: 'Birthday', c: '#f59e0b', k: 'a' },
+      { t: 'Invoice', c: '#ef4444', k: 'l' },
+      { t: 'Stretch', s: 420, d: 15, c: WIDGET_ROUTINE_HEX, k: 'r', x: 1 },
+      { t: 'Early', s: 480, d: 45, c: '#3b82f6' }, // wikilinks and #tags stripped, as every widget row is
+      { t: 'Late', s: 900, d: 30, c: '#f43f5e' },
+    ]);
+    expect(day.agendaMore).toBe(0);
+  });
+
+  it('keeps completed items, flagged — not dropped', () => {
+    const day = build({ dayTasks: [task({ completed: true }), task({ isAllDay: true, completed: true, startTime: '' })] });
+    expect(day.agenda.map(r => r.x)).toEqual([1, 1]);
+  });
+
+  it('caps at 12 rows and counts the rest; cuts titles to 48 characters', () => {
+    const long = 'Quarterly planning — draft goals for the next two quarters and circulate';
+    const dayTasks = Array.from({ length: 15 }, (_, i) => task({ title: i === 0 ? long : `Item ${i}`, startTime: `${String(6 + i).padStart(2, '0')}:00`, duration: 30 }));
+    const day = build({ dayTasks });
+    expect(day.agenda).toHaveLength(WIDGET_AGENDA_MAX_ROWS);
+    expect(day.agendaMore).toBe(3);
+    expect(day.agenda[0].t).toHaveLength(WIDGET_AGENDA_MAX_TITLE);
+    expect(day.agenda[0].t.endsWith('…')).toBe(true);
+  });
+
+  it('routines appear only where the caller supplies them — today', () => {
+    const w = buildWidgetMonthWindow({
+      today: WED,
+      routinesForDate: (ds) => (ds === str(WED) ? [{ id: 'r', name: 'Stretch', startTime: '07:00', duration: 15 }] : []),
+    });
+    expect(w.days.filter(d => d.agenda.some(r => r.k === 'r')).map(d => d.date)).toEqual([str(WED)]);
   });
 });
 
@@ -371,10 +423,10 @@ describe('size against the 400 KB App Group cap', () => {
     const windowBytes = bytes(monthWindow);
     const snapshot = { ...buildLiveWidgetSnapshot(), monthWindow };
     const total = bytes(snapshot);
-    // Measured 2026-09-23: window 15,738 B (49 days, 402 bars, ~320 B/day;
-    // 13,473 B for the 42 grid days alone) on a 15,751 B live snapshot,
-    // 31,504 B together — under 8% of the cap.
-    expect(windowBytes).toBeLessThan(20_000);
+    // Bars measured 2026-09-23 at 15.7 KB for this month; the agenda's
+    // titles (capped at 12 rows and 48 characters a day) roughly double it.
+    // Still a small fraction of the cap; the total is asserted below.
+    expect(windowBytes).toBeLessThan(45_000);
     expect(total).toBeLessThan(WIDGET_SNAPSHOT_WARN_BYTES);
     expect(guardSnapshotSize(snapshot, { log: { warn: () => {}, error: () => {} } }).dropped).toBe(false);
   });

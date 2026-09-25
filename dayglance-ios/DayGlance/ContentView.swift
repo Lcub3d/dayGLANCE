@@ -58,7 +58,7 @@ struct ContentView: View {
             // which can be skipped under the scene-based lifecycle.
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
                 if let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String {
-                    AppDelegate.pendingDeepLink = "dayglance://task?id=\(id)"
+                    AppDelegate.pendingDeepLink = AppDelegate.taskLink(id)
                     AppDelegate.notifyWebViewToDrainPendingActions()
                 }
             }

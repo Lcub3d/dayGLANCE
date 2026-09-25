@@ -58,6 +58,8 @@ import UserAssignmentPicker from '../UserAssignmentPicker.jsx';
 import { emitGoalCreate } from '../../intents/emitGoalCreate.js';
 import { INTENT_CONFIG_KEY } from '../../intents/useIntentPoller.js';
 import { enabledIntentTargets } from '../../intents/emitTargets.js';
+import { sortProjectsByOrder } from '../../utils/projectOrder.js';
+import { projectFocusTarget } from '../../utils/goalsLink.js';
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
@@ -68,14 +70,9 @@ const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : use
 /** Returns the hex value for a Tailwind bg-* class, falling back to blue. */
 const toHex = (bgClass) => TAILWIND_TO_HEX[bgClass] || '#3b82f6';
 
-/** Sort projects within a group by sortOrder, preserving array order for items without it. */
-const sortByOrder = (projs) =>
-  [...projs].sort((a, b) => {
-    if (a.sortOrder !== undefined && b.sortOrder !== undefined) return a.sortOrder - b.sortOrder;
-    if (a.sortOrder !== undefined) return -1;
-    if (b.sortOrder !== undefined) return 1;
-    return 0;
-  });
+/** Sort projects within a group by sortOrder, preserving array order for items
+ *  without it. Shared with the Goal widget's payload (utils/projectOrder.js). */
+const sortByOrder = sortProjectsByOrder;
 
 /** Returns a light background for a Tailwind bg-* class. */
 const toLightBg = (bgClass, dark) => {
@@ -938,7 +935,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
 // ResizeObserver on the container re-measures when cards grow (tasks expand)
 // and the layout effect when the selected goal changes.
 
-const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs, onEditGoal, onEditProject, onNewProject, onMoveToClick }) => {
+const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs, onEditGoal, onEditProject, onNewProject, onMoveToClick, focusedProjectId = null }) => {
   const { textSecondary, borderClass } = useDayPlannerCtx();
   const { t } = useTranslation();
   const containerRef = useRef(null);
@@ -1031,6 +1028,7 @@ const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs,
           projectCardRefs={projectCardRefs}
           onEditProject={onEditProject}
           onMoveToClick={onMoveToClick}
+          focusedProjectId={focusedProjectId}
         />
       ) : (
         <div className={`relative z-10 w-[420px] max-w-full mx-auto rounded-xl border border-dashed ${borderClass} px-6 py-8 flex flex-col items-center gap-2`}>
@@ -1323,10 +1321,16 @@ const MobileDashboard = ({
   isActive = false,
 }) => {
   const { darkMode, textPrimary, textSecondary, hoverBg, cardBg, borderClass, tasks: scheduledTasks, unscheduledTasks, recurringTasks, currentTimeMinutes } = useDayPlannerCtx();
-  const { updateGoal, moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, isVisibleForUser } = useFeaturesCtx();
+  const {
+    updateGoal, moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, isVisibleForUser,
+    goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
+  } = useFeaturesCtx();
   const { t } = useTranslation();
 
   const scrollRef = useRef(null);
+  // The project a link brought into view (the Project widget's tap): ringed
+  // for a moment so the eye finds it on the page.
+  const [flashProjectId, setFlashProjectId] = useState(null);
   const swipeRef = useRef(null); // { startX, startY, locked }
   const pageRef = useRef(0);    // mirror of `page` for use inside event handlers
 
@@ -1362,6 +1366,32 @@ const MobileDashboard = ({
     }
     setGoalsDashboardFocusId(null);
   }, [goalsDashboardFocusId, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Project focus request (utils/goalsLink.js): its goal's page, or the
+  // standalone page, then its card scrolled into view once the page has
+  // slid in. A project with no card here is dropped (the tab still opens).
+  // The timers live in a ref, not the effect's cleanup: clearing the request
+  // re-runs this effect, and a cleanup would cancel them at once.
+  const flashTimersRef = useRef([]);
+  useEffect(() => () => flashTimersRef.current.forEach(clearTimeout), []);
+  useEffect(() => {
+    if (!goalsDashboardFocusProjectId || !isActive) return;
+    const target = projectFocusTarget(goalsDashboardFocusProjectId, { projects: activeProjects, goals: sortedGoals });
+    setGoalsDashboardFocusProjectId(null);
+    if (!target) return;
+    const idx = target.goalId ? sortedGoals.findIndex(g => g.id === target.goalId) : sortedGoals.length;
+    setPage(idx);
+    requestAnimationFrame(() => goToPage(idx));
+    const id = target.project.id;
+    setFlashProjectId(id);
+    const scroll = setTimeout(() => {
+      const card = scrollRef.current?.querySelector(`[data-mobile-proj-id="${CSS.escape(id)}"]`);
+      card?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }, 350);
+    const clear = setTimeout(() => setFlashProjectId(cur => (cur === id ? null : cur)), 2400);
+    flashTimersRef.current.forEach(clearTimeout);
+    flashTimersRef.current = [scroll, clear];
+  }, [goalsDashboardFocusProjectId, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to the main goal on mount (instant, no animation)
   useLayoutEffect(() => {
@@ -1670,7 +1700,7 @@ const MobileDashboard = ({
                           key={proj.id}
                           data-mobile-proj-id={proj.id}
                           className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
-                            touchOverId === proj.id && touchDragId && touchDragId !== proj.id
+                            (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
                               ? 'ring-2 ring-blue-500 rounded-xl' : ''
                           }`}
                         >
@@ -1688,7 +1718,7 @@ const MobileDashboard = ({
                         </div>
                       ))}
                       {doneProjs.map(proj => (
-                        <div key={proj.id} data-mobile-proj-id={proj.id}>
+                        <div key={proj.id} data-mobile-proj-id={proj.id} className={flashProjectId === proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''}>
                           <ProjectCard
                             project={proj}
     
@@ -1743,7 +1773,7 @@ const MobileDashboard = ({
                       key={proj.id}
                       data-mobile-proj-id={proj.id}
                       className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
-                        touchOverId === proj.id && touchDragId && touchDragId !== proj.id
+                        (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
                           ? 'ring-2 ring-blue-500 rounded-xl' : ''
                       }`}
                     >
@@ -1761,7 +1791,7 @@ const MobileDashboard = ({
                     </div>
                   ))}
                   {doneStandalone.map(proj => (
-                    <div key={proj.id} data-mobile-proj-id={proj.id}>
+                    <div key={proj.id} data-mobile-proj-id={proj.id} className={flashProjectId === proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''}>
                       <ProjectCard
                         project={proj}
 
@@ -2326,6 +2356,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     goals, projects, setProjects,
     areas = [], goalsAreaFilter, setGoalsAreaFilter, goalsViewMode,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
+    goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
     addGoal, updateGoal, deleteGoal,
     addProject, updateProject, moveProject,
     plannerProjectId, setPlannerProjectId,
@@ -2448,6 +2479,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   );
   const selectGoal = (id) => {
     setSelectedGoalId(id);
+    // A project ringed by a link belongs to the goal it was on.
+    if (sidebarTab === 'goals') setFocusedProjectId(null);
     // In Roadmap the sidebar does not switch the view; it opens that goal's
     // detail panel under the chart instead.
     if (goalsViewMode === 'timeline') setSelectedRoadmapGoalId(id);
@@ -2476,6 +2509,32 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     setFocusedProjectId(projectId);
     scrollProjectIntoView(projectId);
   };
+
+  // Project focus request (utils/goalsLink.js, the Project widget's tap):
+  // select where the project lives — its goal on the Goals tab (widening the
+  // area filter, and in Roadmap opening that goal's panel), or the Projects
+  // tab with the Open/Completed list it is on and no text filter — then ring
+  // its card and scroll to it once that list has rendered. The phone's
+  // carousel consumes the same request itself (MobileDashboard).
+  useEffect(() => {
+    if (!desktop || !isActive || !goalsDashboardFocusProjectId) return;
+    const target = projectFocusTarget(goalsDashboardFocusProjectId, { projects: activeProjects, goals: activeGoals });
+    setGoalsDashboardFocusProjectId(null);
+    if (!target) return;
+    const { project, goalId } = target;
+    if (goalId) {
+      setSidebarTab('goals');
+      setSelectedGoalId(goalId);
+      if (goalsViewMode === 'timeline') setSelectedRoadmapGoalId(goalId);
+      if (!filteredGoals.some(g => g.id === goalId)) setGoalsAreaFilter('all');
+    } else {
+      setSidebarTab('projects');
+      setProjectsFilter(project.status === 'completed' ? 'completed' : 'open');
+      setProjectQuery('');
+    }
+    setFocusedProjectId(project.id);
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollProjectIntoView(project.id)));
+  }, [goalsDashboardFocusProjectId, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sidebar keyboard hooks for the global shortcut handler (useKeyboardShortcuts):
   // Up/Down move the selection on the current tab, ',' / '.' pick the tab.
@@ -2848,6 +2907,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
                   onEditProject={onEditProject}
                   onNewProject={onNewProject}
                   onMoveToClick={setMoveToProject}
+                  focusedProjectId={focusedProjectId}
                 />
               ) : emptyState(t('goals.noGoalsYet'), t('goals.emptyHint'))
             ) : shownStandalone.length > 0 ? (

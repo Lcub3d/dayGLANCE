@@ -22,7 +22,7 @@ import { dateToString, extractWikilinks, completionTimestamp } from '../../utils
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
-import { sortByProjectOrder, applyProjectReorder } from '../../utils/projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks } from '../../utils/projectOrder.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../../utils/longPressReorder.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
@@ -179,12 +179,8 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
   // empty project, but reads as wrong above a list of recurring series, so it
   // goes only in that case.
   const countIsMisleading = totalCount === 0 && projectRecurring.length > 0;
-  const allProjectDisplayTasks = [
-    ...projectScheduled.filter(t => !t.completed),
-    ...projectUnscheduled.filter(t => !t.completed),
-    ...projectScheduled.filter(t => t.completed),
-    ...projectUnscheduled.filter(t => t.completed),
-  ];
+  // The same order the Project widget lists (utils/projectOrder.js).
+  const allProjectDisplayTasks = orderProjectTasks(projectScheduled, projectUnscheduled);
   const VISIBLE_COUNT = visibleCount;
   const displayableTasks = detailsHidden
     ? allProjectDisplayTasks.filter(t => !t.completed)

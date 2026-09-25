@@ -111,6 +111,8 @@ struct GoalWidgetView: View {
         }
         .padding()
         .containerBackground(.background, for: .widget)
+        // The goal on screen, in Goals & Projects (WidgetLink).
+        .widgetURL(WidgetLink.goal(selectedGoal?.id))
     }
 
     private var header: some View {

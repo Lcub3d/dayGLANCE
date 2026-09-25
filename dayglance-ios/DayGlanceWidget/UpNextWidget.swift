@@ -37,11 +37,17 @@ struct UpNextWidgetView: View {
     private var freshness: WidgetFreshness { day.freshness }
 
     var body: some View {
-        if let task = day.nextTask {
-            taskView(task: task)
-        } else {
-            emptyView
+        Group {
+            if let task = day.nextTask {
+                taskView(task: task)
+            } else {
+                emptyView
+            }
         }
+        // Outside the Done/Focus links: today's calendar, wherever the app
+        // was (a plain open would leave it on another day or in the Goals
+        // space). The up-next task is always today's (WidgetLink).
+        .widgetURL(WidgetLink.today)
     }
 
     @ViewBuilder
@@ -148,9 +154,8 @@ struct UpNextWidgetView: View {
                             .padding(.top, 3)
                     } else {
                         HStack(spacing: 8) {
-                            if let id = task.id?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                               let doneURL = URL(string: "dayglance://completeTask?id=\(id)") {
-                                Link(destination: doneURL) {
+                            if let id = task.id, !id.isEmpty {
+                                Link(destination: WidgetLink.completeTask(id)) {
                                     actionLabel(String(localized: "Done"), systemImage: "checkmark.circle")
                                 }
                             }

@@ -116,6 +116,8 @@ struct ProjectWidgetView: View {
         }
         .padding()
         .containerBackground(.background, for: .widget)
+        // The project on screen, its card in view (WidgetLink).
+        .widgetURL(WidgetLink.project(selectedProject?.id))
     }
 
     private var header: some View {
@@ -172,7 +174,10 @@ struct ProjectWidgetView: View {
                             .lineLimit(1)
                     }
                 }
-                let overflow = tasks.count - visible.count
+                // Against the project's total: the payload carries only the
+                // first few tasks (widgetGoalsProjects.js), so its length
+                // would hide how many more there are.
+                let overflow = max(proj.totalTasks ?? tasks.count, tasks.count) - visible.count
                 if overflow > 0 {
                     Text("+\(overflow) more")
                         .font(.caption2)

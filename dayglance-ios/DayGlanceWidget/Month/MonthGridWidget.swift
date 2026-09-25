@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Month grid — systemLarge. Six weeks of days as a 7 × 6 grid, each cell a
@@ -14,17 +15,31 @@ import SwiftUI
 // with a 28pt track (MonthGridSizeSweepTests).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The mockup's palette. Dark only, like the Day Dial: the widget draws its own
-/// ground rather than following the Home Screen's appearance.
+/// The mockup's palette, following the Home Screen's appearance: the dark
+/// side is the mockup's own, the light side the light half of the same
+/// GitHub-style palette (the Android month widgets use the same pairs,
+/// widget_month_colors.xml). Each colour resolves against the SwiftUI
+/// environment's colour scheme, so the widget redraws in the other theme by
+/// itself and a test can render either by setting \.colorScheme.
 enum MonthPalette {
-    static let background = Color(hex: "#161b22")
-    static let date = Color(hex: "#8b949e")
-    static let dateEmphasis = Color(hex: "#c9d1d9")
-    static let muted = Color(hex: "#6e7681")
-    static let hairline = Color(hex: "#30363d")
-    static let todayFill = Color(hex: "#1f6feb")
-    /// The app's brand orange (tailwind `brand`, the Share Extension's `brand`).
+    static let background = Color(light: "#ffffff", dark: "#161b22")
+    static let date = Color(light: "#57606a", dark: "#8b949e")
+    static let dateEmphasis = Color(light: "#1f2328", dark: "#c9d1d9")
+    static let muted = Color(light: "#6e7781", dark: "#6e7681")
+    static let hairline = Color(light: "#d0d7de", dark: "#30363d")
+    static let todayFill = Color(light: "#0969da", dark: "#1f6feb")
+    /// The app's brand orange (tailwind `brand`, the Share Extension's `brand`):
+    /// the same on either ground.
     static let pip = Color(hex: "#fe8b00")
+}
+
+extension Color {
+    /// A colour with a light and a dark value, resolved against the
+    /// environment's colour scheme (a dynamic UIColor).
+    init(light: String, dark: String) {
+        let l = UIColor(Color(hex: light)), d = UIColor(Color(hex: dark))
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? d : l })
+    }
 }
 
 /// The mockup's measurements, and the cell geometry they leave at a size.

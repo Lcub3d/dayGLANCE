@@ -156,11 +156,12 @@ final class MonthDaySelectionTests: XCTestCase {
     ]
 
     @MainActor
-    private func render(_ entry: MonthGridEntry, w: CGFloat, h: CGFloat, scale: CGFloat) throws -> CGImage {
+    private func render(_ entry: MonthGridEntry, w: CGFloat, h: CGFloat, scale: CGFloat,
+                        scheme: ColorScheme = .dark) throws -> CGImage {
         let view = MonthGridExtraLargeContent(entry: entry, calendar: calendar, locale: locale)
             .frame(width: w, height: h)
             .background(MonthPalette.background)
-            .environment(\.colorScheme, .dark)
+            .environment(\.colorScheme, scheme)
         let renderer = ImageRenderer(content: view)
         renderer.scale = scale
         return try XCTUnwrap(renderer.cgImage)
@@ -215,20 +216,25 @@ final class MonthDaySelectionTests: XCTestCase {
             fullDayWindow.days[i].agenda = rows
             fullDayWindow.days[i].agendaMore = 3
         }
-        let entries: [(String, MonthGridEntry)] = [
-            ("today", MonthGridEntry(date: now, snapshot: snapshot, window: window)),
+        let entries: [(String, MonthGridEntry, ColorScheme)] = [
+            ("today", MonthGridEntry(date: now, snapshot: snapshot, window: window), .dark),
             ("paged-ahead-oct-1", MonthGridEntry(date: now, snapshot: snapshot, window: window,
-                selection: MonthDaySelection(date: "2026-10-01", setOn: "2026-09-21"))),
+                selection: MonthDaySelection(date: "2026-10-01", setOn: "2026-09-21")), .dark),
             ("edge-last-cell-nov-1", MonthGridEntry(date: now, snapshot: snapshot, window: window,
-                selection: MonthDaySelection(date: "2026-11-01", setOn: "2026-09-21"))),
-            ("stale-oct-5", MonthGridEntry(date: MonthGridModelTests.at("2026-10-05", 10), snapshot: snapshot, window: window)),
+                selection: MonthDaySelection(date: "2026-11-01", setOn: "2026-09-21")), .dark),
+            ("stale-oct-5", MonthGridEntry(date: MonthGridModelTests.at("2026-10-05", 10), snapshot: snapshot, window: window), .dark),
             ("full-day-12-rows-and-more", MonthGridEntry(date: now, snapshot: snapshot, window: fullDayWindow,
-                selection: MonthDaySelection(date: "2026-09-24", setOn: "2026-09-21"))),
+                selection: MonthDaySelection(date: "2026-09-24", setOn: "2026-09-21")), .dark),
+            ("light-today", MonthGridEntry(date: now, snapshot: snapshot, window: window), .light),
+            ("light-paged-ahead-oct-1", MonthGridEntry(date: now, snapshot: snapshot, window: window,
+                selection: MonthDaySelection(date: "2026-10-01", setOn: "2026-09-21")), .light),
+            ("light-full-day-12-rows-and-more", MonthGridEntry(date: now, snapshot: snapshot, window: fullDayWindow,
+                selection: MonthDaySelection(date: "2026-09-24", setOn: "2026-09-21")), .light),
         ]
         let printBase64 = ProcessInfo.processInfo.environment["DG_MONTH_SHOTS"] == "1"
-        for (name, entry) in entries {
+        for (name, entry, scheme) in entries {
             for size in [Self.extraLargeSizes.first!, Self.extraLargeSizes.last!] {
-                let image = try render(entry, w: size.w, h: size.h, scale: 2)
+                let image = try render(entry, w: size.w, h: size.h, scale: 2, scheme: scheme)
                 let png = try XCTUnwrap(UIImage(cgImage: image).pngData())
                 let label = "xl-\(name)-\(Int(size.w))x\(Int(size.h))"
                 let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")

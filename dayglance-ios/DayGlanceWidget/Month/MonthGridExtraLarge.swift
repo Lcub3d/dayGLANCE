@@ -40,7 +40,6 @@ struct MonthGridExtraLargeContent: View {
                     .padding(.vertical, MonthGridMetrics.padding)
                 MonthDayPanel(state: state, selected: selected, today: entryDay, use24Hour: entry.snapshot?.use24Hour ?? false,
                               interactive: !entry.isPlaceholder, calendar: calendar, locale: locale)
-                    .environment(\.colorScheme, .dark)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }

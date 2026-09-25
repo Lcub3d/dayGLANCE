@@ -47,11 +47,12 @@ final class MonthGridSizeSweepTests: XCTestCase {
     }
 
     @MainActor
-    private func render(_ entry: MonthGridEntry, w: CGFloat, h: CGFloat, scale: CGFloat = MonthGridSizeSweepTests.renderScale) throws -> CGImage {
+    private func render(_ entry: MonthGridEntry, w: CGFloat, h: CGFloat, scale: CGFloat = MonthGridSizeSweepTests.renderScale,
+                        scheme: ColorScheme = .dark) throws -> CGImage {
         let view = MonthGridContent(entry: entry, calendar: calendar, locale: locale)
             .frame(width: w, height: h)
             .background(MonthPalette.background)
-            .environment(\.colorScheme, .dark)
+            .environment(\.colorScheme, scheme)
         let renderer = ImageRenderer(content: view)
         renderer.scale = scale
         return try XCTUnwrap(renderer.cgImage, "no image at \(w)×\(h)")
@@ -136,6 +137,26 @@ final class MonthGridSizeSweepTests: XCTestCase {
         }
     }
 
+    /// Light mode: the palette follows the system appearance. The ground and
+    /// today's fill take their light values, while a bar keeps the item's own
+    /// colour and the late bar still clamps with light ground above it.
+    @MainActor
+    func testTheGridFollowsLightMode() throws {
+        let entry = sweepEntry()
+        let days = try XCTUnwrap(entry.window?.days)
+        for size in SizeSweepTests.sizes {
+            let widget = CGSize(width: size.w, height: size.h)
+            let image = try render(entry, w: size.w, h: size.h, scheme: .light)
+            assertColour(image, barCentre(cell: Self.longCell, bar: days[Self.longCell].bars[0], size: widget), Self.red,
+                         "\(size.devices) light: a bar keeps its colour")
+            let late = barCentre(cell: Self.lateCell, bar: days[Self.lateCell].bars[0], size: widget)
+            assertColour(image, CGPoint(x: late.x, y: late.y - 3), "#ffffff", "\(size.devices) light: the ground")
+            let t = MonthGridMetrics.cellOrigin(index: Self.todayCell, widget: widget)
+            assertColour(image, CGPoint(x: t.x + 2.5, y: t.y + MonthGridMetrics.headerHeight / 2), "#0969da",
+                         "\(size.devices) light: today's fill")
+        }
+    }
+
     /// Whether any pixel within a point of (x, y) differs from the ground.
     private func edgeDrawn(_ image: CGImage, x: CGFloat, y: CGFloat) -> Bool {
         let ground = Self.components("#161b22")
@@ -205,18 +226,21 @@ final class MonthGridSizeSweepTests: XCTestCase {
         XCTAssertEqual(MonthGridState.resolve(snapshot: snapshot, window: window, at: stale.date, calendar: calendar)?.tier, .stale)
         XCTAssertEqual(MonthGridState.resolve(snapshot: oct1, window: window, at: crowdedToday.date, calendar: calendar)?.tier, .pushed)
 
-        let shots: [(String, MonthGridEntry, CGFloat, CGFloat)] = [
-            ("smallest-ipad-mini-306x306", pushed, 306, 306),
-            ("smallest-iphone-se-321x324", pushed, 321, 324),
-            ("largest-iphone-pro-max-364x382", pushed, 364, 382),
-            ("largest-ipad-pro-13-379x379", pushed, 379, 379),
-            ("crowded-first-is-today-306x306", crowdedToday, 306, 306),
-            ("last-live-oct-4-338x354", lastLive, 338, 354),
-            ("stale-oct-5-338x354", stale, 338, 354),
+        let shots: [(String, MonthGridEntry, CGFloat, CGFloat, ColorScheme)] = [
+            ("smallest-ipad-mini-306x306", pushed, 306, 306, .dark),
+            ("smallest-iphone-se-321x324", pushed, 321, 324, .dark),
+            ("largest-iphone-pro-max-364x382", pushed, 364, 382, .dark),
+            ("largest-ipad-pro-13-379x379", pushed, 379, 379, .dark),
+            ("crowded-first-is-today-306x306", crowdedToday, 306, 306, .dark),
+            ("last-live-oct-4-338x354", lastLive, 338, 354, .dark),
+            ("stale-oct-5-338x354", stale, 338, 354, .dark),
+            ("light-iphone-pro-max-364x382", pushed, 364, 382, .light),
+            ("light-crowded-first-is-today-306x306", crowdedToday, 306, 306, .light),
+            ("light-stale-oct-5-338x354", stale, 338, 354, .light),
         ]
         let printBase64 = ProcessInfo.processInfo.environment["DG_MONTH_SHOTS"] == "1"
-        for (name, entry, w, h) in shots {
-            let image = try render(entry, w: w, h: h, scale: 3)
+        for (name, entry, w, h, scheme) in shots {
+            let image = try render(entry, w: w, h: h, scale: 3, scheme: scheme)
             let png = try XCTUnwrap(UIImage(cgImage: image).pngData())
             let attachment = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
             attachment.name = "month-\(name).png"

@@ -262,3 +262,21 @@ internal fun formatPlannedLabel(context: Context, freshness: WidgetFreshness, us
     val stamp = SimpleDateFormat(pattern, locale).format(Date(freshness.capturedAtMs))
     return context.getString(R.string.widget_planned_as_of, stamp)
 }
+
+/**
+ * The month grid's "Planned as of …", WITH the date: "Planned as of Mon, Sep
+ * 21, 6:00 PM". [formatPlannedLabel] names only the weekday, which is
+ * unambiguous across the day-keyed projection's three days but not across the
+ * grid's thirteen, where "Mon" can be either of two Mondays. Same string
+ * resource, so every translation still applies; the shared label is left as
+ * it is for the other widgets. The stamp is the stale banner's, so the two
+ * lines the grid can show read alike.
+ */
+internal fun formatMonthPlannedLabel(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): String {
+    if (freshness.capturedAtMs <= 0L) return context.getString(R.string.widget_planned_in_advance)
+    val locale = context.resources.configuration.locales.let { if (it.isEmpty) Locale.getDefault() else it[0] }
+    val skeleton = if (use24Hour) "EEEMMMdHm" else "EEEMMMdhm"
+    val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
+    val stamp = SimpleDateFormat(pattern, locale).format(Date(freshness.capturedAtMs))
+    return context.getString(R.string.widget_planned_as_of, stamp)
+}

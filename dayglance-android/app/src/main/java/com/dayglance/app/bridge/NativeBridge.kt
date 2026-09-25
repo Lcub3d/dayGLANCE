@@ -352,6 +352,8 @@ class NativeBridge(
             com.dayglance.app.widget.UpNextWidget.requestUpdate(context)
             com.dayglance.app.widget.GoalWidget.requestUpdate(context)
             com.dayglance.app.widget.ProjectWidget.requestUpdate(context)
+            com.dayglance.app.widget.MonthGridWidget.requestUpdate(context)
+            com.dayglance.app.widget.MonthAgendaWidget.requestUpdate(context)
             // Kick off the native alarm chain so the Up Next notification keeps
             // updating even when the WebView is suspended in the background.
             com.dayglance.app.notifications.UpNextNotificationUpdater.schedule(context)
@@ -581,6 +583,23 @@ class NativeBridge(
         dataStore.pendingCompleteTaskId = null
         val escaped = completeId.replace("\\", "\\\\").replace("\"", "\\\"")
         return """{"action":"complete","taskId":"$escaped"}"""
+    }
+
+    /**
+     * Returns the `dayglance://…` URL the app was opened with and clears it, or
+     * "null" when none is pending. The URL comes back as a JSON string literal
+     * (quoted), the shape the iOS bridge's getPendingDeepLink returns, so the
+     * one drain in App.jsx serves both platforms.
+     */
+    @JavascriptInterface
+    fun getPendingDeepLink(): String {
+        val link = dataStore.pendingDeepLink ?: return "null"
+        dataStore.pendingDeepLink = null
+        // The raw URL in quotes, exactly as iOS returns it — NOT JSONObject.quote:
+        // Android's org.json escapes "/" as "\/", which turned the link into
+        // `dayglance:\/\/day…` in the web layer and every tap was dropped. A
+        // URL carries no quote or backslash (they are percent-encoded).
+        return "\"$link\""
     }
 
     /**

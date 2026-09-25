@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Month + agenda widget: the agenda header's "Today" button. The pill is
+     22dp tall, inset inside the button's 44dp touch height, so the target
+     is generous while the chip stays small. Section-pill colours. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetTop="11dp"
+    android:insetBottom="11dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/widget_section_bg" />
+        <corners android:radius="11dp" />
+    </shape>
+</inset>

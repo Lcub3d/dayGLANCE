@@ -32,6 +32,56 @@ const fmtTime = (t, use24h, translate) => {
 const PRIORITY_KEYS = ['', 'task.lowPriority', 'task.mediumPriority', 'task.highPriority'];
 const priorityLabel = (p, translate) => (PRIORITY_KEYS[p] ? translate(PRIORITY_KEYS[p]) : '');
 
+/**
+ * TRMNL rejects an oversized payload with a 422 rather than truncating it, so
+ * the schedule is trimmed to fit before it is sent.
+ *
+ * Measured against the real webhook: 6076 bytes came back
+ * "Large payload received (6076 bytes), should be less than 5kb". TRMNL counts
+ * the merge_variables object, not the request body around it, which is what
+ * `payloadBytes` measures. The budget sits below 5 kB either way it is read,
+ * decimal or binary, and leaves room for a locale whose strings are longer
+ * than the ones measured here.
+ *
+ * A byte budget rather than a row cap on purpose: the same day is 5050 bytes
+ * at 28 tasks in Ukrainian and needs 39 to reach that in English, so any fixed
+ * count is either wasteful in one language or broken in another.
+ */
+export const TRMNL_PAYLOAD_BUDGET_BYTES = 4600;
+
+export const payloadBytes = (payload) => new TextEncoder().encode(JSON.stringify(payload)).length;
+
+/**
+ * Drop schedule rows until the payload fits, least useful first: completed,
+ * then past, then the furthest ahead. What survives keeps its order.
+ *
+ * `total`, `completed` and `overdue` are counted from the whole day and are
+ * deliberately left alone, so the device still reports the day honestly even
+ * when it cannot draw every row.
+ */
+export function fitTrmnlPayload(payload, budget = TRMNL_PAYLOAD_BUDGET_BYTES) {
+  if (payloadBytes(payload) <= budget) return payload;
+
+  const rows = [...(payload.schedule || [])];
+  // Indices in the order they may be sacrificed. Completed and past rows are
+  // spent oldest-first; what is left goes from the end, so the next thing due
+  // is the last to be dropped.
+  const order = [
+    ...rows.map((r, i) => (r.done ? i : -1)).filter((i) => i >= 0),
+    ...rows.map((r, i) => (!r.done && r.past ? i : -1)).filter((i) => i >= 0),
+    ...rows.map((r, i) => (!r.done && !r.past ? i : -1)).filter((i) => i >= 0).reverse(),
+  ];
+
+  const dropped = new Set();
+  let out = payload;
+  for (const i of order) {
+    dropped.add(i);
+    out = { ...payload, schedule: rows.filter((_r, j) => !dropped.has(j)) };
+    if (payloadBytes(out) <= budget) return out;
+  }
+  return out;
+}
+
 /** Convert "HH:MM" to total minutes since midnight */
 const toMinutes = (t) => {
   if (!t) return -1;
@@ -60,7 +110,7 @@ const toMinutes = (t) => {
  * @param {boolean} opts.routinesEnabled - Whether routines feature is on
  * @param {Function} opts.t            - i18next translator for the labels
  * @param {string} [opts.language]     - Locale for the weekday and date
- * @returns {Object} merge_variables payload (kept under 2 KB for free-tier)
+ * @returns {Object} merge_variables payload, trimmed to TRMNL_PAYLOAD_BUDGET_BYTES
  */
 export function gatherTrmnlData({
   tasks = [],
@@ -202,7 +252,7 @@ export function gatherTrmnlData({
     day: 'numeric',
   });
 
-  return {
+  return fitTrmnlPayload({
     date: today,
     day_name: dayName,
     date_label: dateLabel,
@@ -220,7 +270,7 @@ export function gatherTrmnlData({
     habits: habitItems,
     routines: routineItems,
     note: noteSnippet,
-  };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +304,20 @@ export async function pushToTrmnl({ webhookUrl, apiKey }, mergeVars) {
       const retryAfterSeconds = parseRetryAfter(res.headers?.get?.('Retry-After'));
       return { success: false, error: 'Rate limited — try again later', rateLimited: true, retryAfterSeconds };
     }
-    if (!res.ok) return { success: false, error: `HTTP ${res.status}` };
+    // TRMNL explains a rejection in the body, and its payload-too-large message
+    // names the limit and the tier that lifts it. `HTTP 422` tells a user
+    // nothing; the server's own sentence tells them what to do.
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      let message = '';
+      try { message = JSON.parse(detail)?.message || ''; } catch { message = ''; }
+      const tooLarge = res.status === 422 && /payload/i.test(message);
+      return {
+        success: false,
+        error: message ? `${message}` : `HTTP ${res.status}`,
+        ...(tooLarge ? { payloadTooLarge: true } : {}),
+      };
+    }
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message || 'Network error' };

@@ -81,6 +81,17 @@ android {
         buildConfig = true
     }
 
+    sourceSets {
+        // The widget snapshot fixture the JS producers write (npm run
+        // ios:vectors) and the iOS widget tests read. Served to the JVM unit
+        // tests from its one home rather than copied, so the Kotlin and Swift
+        // month grid tests see the same bytes and the JS drift test
+        // (widgetSnapshotFixture.test.js) guards both.
+        getByName("test") {
+            resources.srcDir("../../dayglance-ios/TestFixtures")
+        }
+    }
+
     flavorDimensions += "distribution"
     productFlavors {
         create("play") {
@@ -175,6 +186,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

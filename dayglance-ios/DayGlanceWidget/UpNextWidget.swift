@@ -187,20 +187,9 @@ struct UpNextWidgetView: View {
                 // next upcoming tasks (title + time only — no action buttons).
                 Divider().padding(.vertical, 3)
                 ForEach(upcoming.prefix(family == .systemLarge ? 4 : 2), id: \.id) { up in
-                    HStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color(hex: up.colorHex ?? "#3b82f6"))
-                            .frame(width: 3, height: 14)
-                        Text(up.title ?? "")
-                            .font(.caption2)
-                            .lineLimit(1)
-                        Spacer()
-                        if let time = timeLabel(startTime: up.startTime, duration: up.duration) {
-                            Text(time)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    // Shared with the Month widget's agenda (WidgetAgendaRow.swift).
+                    WidgetAgendaRow(colorHex: up.colorHex, title: up.title ?? "",
+                                    time: timeLabel(startTime: up.startTime, duration: up.duration))
                 }
             }
         }
@@ -236,29 +225,10 @@ struct UpNextWidgetView: View {
     }
 
     // Start time plus duration, e.g. "9:00AM · 30m". Falls back to just the
-    // start time when no duration is set.
+    // start time when no duration is set. Shared with the Month widget's
+    // agenda (WidgetTimeLabel, WidgetAgendaRow.swift).
     private func timeLabel(startTime: String?, duration: Int?) -> String? {
-        guard let time = formattedTime(startTime) else { return nil }
-        if let d = duration, d > 0 { return "\(time) · \(formattedDuration(d))" }
-        return time
-    }
-
-    private func formattedDuration(_ minutes: Int) -> String {
-        if minutes < 60 { return "\(minutes)m" }
-        let h = minutes / 60, m = minutes % 60
-        return m == 0 ? "\(h)h" : "\(h)h\(m)m"
-    }
-
-    private func formattedTime(_ startTime: String?) -> String? {
-        guard let st = startTime, !st.isEmpty else { return nil }
-        let use24 = entry.snapshot?.use24Hour ?? false
-        let parts = st.split(separator: ":").compactMap { Int($0) }
-        guard parts.count >= 2 else { return st }
-        let h = parts[0], m = parts[1]
-        if use24 { return String(format: "%02d:%02d", h, m) }
-        let period = h < 12 ? "AM" : "PM"
-        let h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h)
-        return m == 0 ? "\(h12)\(period)" : "\(h12):\(String(format: "%02d", m))\(period)"
+        WidgetTimeLabel.label(startTime: startTime, duration: duration, use24Hour: entry.snapshot?.use24Hour ?? false)
     }
 }
 

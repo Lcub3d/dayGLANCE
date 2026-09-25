@@ -223,10 +223,16 @@ targets:
       - path: DayGlanceWidget/WidgetModels.swift
       - path: DayGlanceWidget/WidgetFreshness.swift
       - path: DayGlanceWidget/ColorExtension.swift
+      - path: DayGlanceWidget/WidgetAgendaRow.swift
       - path: DayGlanceWidget/Dial/DialFaceInput.swift
       - path: DayGlanceWidget/Dial/DialFaceView.swift
       - path: DayGlanceWidget/Dial/DialFaceCache.swift
       - path: DayGlanceWidget/Dial/DialHubView.swift
+      - path: DayGlanceWidget/Month/MonthGridModel.swift
+      - path: DayGlanceWidget/Month/MonthGridWidget.swift
+      - path: DayGlanceWidget/Month/MonthGridExtraLarge.swift
+      - path: DayGlanceWidget/Month/MonthDaySelection.swift
+      - path: DayGlanceWidget/Month/MonthWidgetIntents.swift
       - path: TestFixtures/widgetSnapshot.live.json
         buildPhase: resources
     dependencies:

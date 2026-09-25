@@ -31,9 +31,17 @@ import java.time.format.DateTimeFormatter
  *   TYPE_FRAME_HEADER  — GTD Frame block header (name, times, available minutes)
  *   TYPE_ROUTINE       — routine row with optional start time
  *   TYPE_EMPTY         — "All caught up!" placeholder
+ *
+ * TWO WIDGETS. The Today widget ([DayGlanceWidget], no [monthAgendaWidgetId])
+ * and the month + agenda widget's list ([MonthAgendaWidget], its instance id),
+ * which shares every row type and style here. For that widget the selected
+ * day decides the rows (MonthAgendaContent.sourceFor): today is this list as
+ * the Today widget builds it, without habits; any other day is that day's
+ * rows from the snapshot's monthWindow, completed ones included.
  */
 class DayGlanceWidgetListFactory(
     private val context: Context,
+    private val monthAgendaWidgetId: Int? = null,
 ) : RemoteViewsService.RemoteViewsFactory {
 
     // ── Item type constants ───────────────────────────────────────────────────
@@ -52,6 +60,8 @@ class DayGlanceWidgetListFactory(
         private val TWELVE_HR = DateTimeFormatter.ofPattern("h:mm a")
         private val TWELVE_HR_SHORT = DateTimeFormatter.ofPattern("h:mm")
         private val TWENTY_FOUR_HR = DateTimeFormatter.ofPattern("H:mm")
+        /** A done row's alpha, month + agenda widget (the stale list's is 0.45). */
+        private const val COMPLETED_ROW_ALPHA = 0.55f
     }
 
     // ── Agenda item data classes ──────────────────────────────────────────────
@@ -66,7 +76,11 @@ class DayGlanceWidgetListFactory(
             val timeStr: String,
             val indent: Boolean = false,
             val projectName: String = "",
+            /** Month + agenda widget only: a done item on another day. */
+            val completed: Boolean = false,
         ) : AgendaItem(TYPE_TASK)
+        /** A plain line in the section style ("+3 more", "Nothing scheduled"). */
+        class Note(val text: String) : AgendaItem(TYPE_SECTION)
         class FrameHeader(
             val name: String,
             val colorHex: String,
@@ -121,6 +135,10 @@ class DayGlanceWidgetListFactory(
 
     override fun onDataSetChanged() {
         items.clear()
+        if (monthAgendaWidgetId != null) {
+            try { loadMonthAgenda(monthAgendaWidgetId) } catch (_: Throwable) { items.clear(); items += AgendaItem.Empty }
+            return
+        }
         val dataStore = SharedDataStore(context)
         val snapshotJson = dataStore.widgetSnapshot ?: return
         try {
@@ -149,11 +167,53 @@ class DayGlanceWidgetListFactory(
 
     // ── Snapshot parsing → AgendaItem list ──────────────────────────────────
 
-    private fun buildItems(snapshot: JSONObject) {
+    /**
+     * The month + agenda widget's list for its selected day: the same
+     * selection the grid rings (MonthDaySelection.resolve over the same
+     * resolved grid), then the content rule (MonthAgendaContent).
+     */
+    private fun loadMonthAgenda(appWidgetId: Int) {
+        val dataStore = SharedDataStore(context)
+        val snapshotJson = dataStore.widgetSnapshot
+        val snapshot = snapshotJson?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val today = LocalDate.now()
+        val render = loadMonthGrid(context, today)
+        val cells = (render.state ?: MonthGridState.placeholder(today, render.placeholderWeekStart, render.monthDayLabel)).cells
+        val todayStr = MonthGrid.isoDay(today)
+        val selected = MonthDaySelection.resolve(MonthAgendaSelectionStore.load(context, appWidgetId), cells, todayStr)
+        when (MonthAgendaContent.sourceFor(selected, todayStr, gridIsStale = render.state?.isStale == true)) {
+            MonthAgendaSource.TODAY_WIDGET -> {
+                // Exactly the Today widget's list, habits left out.
+                if (snapshot == null) { items += AgendaItem.Empty; return }
+                val resolved = resolveWidgetDay(snapshot, dataStore, today)
+                snapshotIsToday = !resolved.isStale
+                buildItems(resolved.fields ?: return, includeHabits = MonthAgendaContent.INCLUDES_HABITS)
+            }
+            MonthAgendaSource.WINDOW_ROWS -> {
+                use24Hour = widgetUses24HourClock(context, snapshot)
+                snapshotIsToday = false
+                val cell = cells.firstOrNull { it.date == selected }
+                val lines = MonthAgendaContent.windowLines(cell?.agenda.orEmpty(), cell?.agendaMore ?: 0, use24Hour)
+                for (line in lines) items += when (line) {
+                    is MonthAgendaLine.Section -> AgendaItem.Section(line.key)
+                    is MonthAgendaLine.Item -> AgendaItem.Task(
+                        title = line.title, colorHex = line.colorHex, badge = line.badge,
+                        timeStr = line.time, completed = line.completed,
+                    )
+                    is MonthAgendaLine.More -> AgendaItem.Note(
+                        context.resources.getQuantityString(R.plurals.widget_more_items, line.count, line.count),
+                    )
+                    MonthAgendaLine.Nothing -> AgendaItem.Note(context.getString(R.string.widget_nothing_scheduled))
+                }
+            }
+        }
+    }
+
+    private fun buildItems(snapshot: JSONObject, includeHabits: Boolean = true) {
         use24Hour = widgetUses24HourClock(context, snapshot)
 
-        // 1. Habits
-        val habitsArray = snapshot.optJSONArray("habits")
+        // 1. Habits (the month + agenda widget leaves them out)
+        val habitsArray = if (includeHabits) snapshot.optJSONArray("habits") else null
         if (habitsArray != null && habitsArray.length() > 0) {
             val habits = (0 until minOf(habitsArray.length(), 5)).mapNotNull { i ->
                 val h = habitsArray.optJSONObject(i) ?: return@mapNotNull null
@@ -454,6 +514,7 @@ class DayGlanceWidgetListFactory(
         is AgendaItem.GlanceAhead -> buildGlanceAheadView(item)
         is AgendaItem.Goal -> buildGoalView(item)
         is AgendaItem.HyperGLANCE -> buildHyperGLANCEView(item)
+        is AgendaItem.Note -> buildNoteView(item)
         AgendaItem.Empty -> buildEmptyView()
     }
 
@@ -565,7 +626,15 @@ class DayGlanceWidgetListFactory(
 
     private fun buildTaskView(item: AgendaItem.Task): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_item_task)
-        rv.setTextViewText(R.id.tv_task_title, item.title)
+        // A done item (month + agenda widget, another day): struck through,
+        // badged DONE — the Project widget's word for it — and dimmed. Alpha
+        // is set on every row, so a recycled row never keeps a dimmed state.
+        rv.setTextViewText(R.id.tv_task_title, if (item.completed) {
+            android.text.SpannableString(item.title).apply {
+                setSpan(android.text.style.StrikethroughSpan(), 0, length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        } else item.title)
+        rv.setFloat(R.id.task_item_root, "setAlpha", if (item.completed) COMPLETED_ROW_ALPHA else 1f)
         val color = safeParseColor(item.colorHex, "#3b82f6")
 
         // Show the tall bar (44dp) for 3-line rows that include a project chip,
@@ -591,10 +660,11 @@ class DayGlanceWidgetListFactory(
         }
 
         // Badge
-        if (item.badge.isNotEmpty()) {
-            rv.setTextViewText(R.id.tv_task_badge, localizedBadge(item.badge))
+        val badge = if (item.completed) "DONE" else item.badge
+        if (badge.isNotEmpty()) {
+            rv.setTextViewText(R.id.tv_task_badge, localizedBadge(badge))
             rv.setViewVisibility(R.id.tv_task_badge, View.VISIBLE)
-            val badgeColor = when (item.badge) {
+            val badgeColor = when (badge) {
                 "OVERDUE" -> colorRes(R.color.widget_overdue_text)
                 "DUE TODAY" -> colorRes(R.color.widget_deadline_text)
                 "IN PROGRESS" -> colorRes(R.color.widget_in_progress_text)
@@ -706,6 +776,15 @@ class DayGlanceWidgetListFactory(
         return rv
     }
 
+    private fun buildNoteView(item: AgendaItem.Note): RemoteViews {
+        val rv = RemoteViews(context.packageName, R.layout.widget_item_section)
+        rv.setTextViewText(R.id.tv_section_label, item.text)
+        rv.setTextColor(R.id.tv_section_label, colorRes(R.color.widget_section_text))
+        rv.boostTextSizeForOneUi(R.id.tv_section_label, 11f)
+        rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
+        return rv
+    }
+
     private fun buildEmptyView(): RemoteViews {
         // Reuse the section layout to show an "all caught up" message — or, on a
         // stale snapshot, no claim at all: "all caught up" is about today, and
@@ -812,6 +891,9 @@ class DayGlanceWidgetListFactory(
         "OVERDUE" -> context.getString(R.string.badge_overdue)
         "DUE TODAY" -> context.getString(R.string.badge_due_today)
         "IN PROGRESS" -> context.getString(R.string.badge_in_progress)
+        "ALL DAY" -> context.getString(R.string.section_all_day)
+        "DUE" -> context.getString(R.string.badge_due)
+        "DONE" -> context.getString(R.string.badge_done)
         else -> badge
     }
 

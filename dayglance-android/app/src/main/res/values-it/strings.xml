@@ -4,6 +4,7 @@
     <string name="widget_upnext_description">Vista dettagliata della tua prossima attività programmata</string>
     <string name="widget_goal_description">Scheda di avanzamento di un obiettivo fissato e dei suoi progetti</string>
     <string name="widget_project_description">Scheda di avanzamento di un progetto fissato e delle sue attività</string>
+    <string name="widget_month_description">Sei settimane del tuo programma a colpo d\'occhio</string>
     <string name="shortcut_voice_short">Input vocale</string>
     <string name="shortcut_voice_long">Aggiungi attività con la voce</string>
     <string name="shortcut_add_task_short">Attività programmata</string>
@@ -157,4 +158,20 @@
     <string name="widget_open_to_refresh">Apri dayGLANCE per aggiornare</string>
     <string name="widget_planned_as_of">Pianificato al %1$s</string>
     <string name="widget_planned_in_advance">Pianificato in anticipo</string>
+    <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
+    <plurals name="widget_month_scheduled">
+        <item quantity="one">%1$d programmata</item>
+        <item quantity="other">%1$d programmate</item>
+    </plurals>
+    <string name="widget_month_all_day_or_due">Tutto il giorno o in scadenza</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Sei settimane a colpo d\'occhio, con l\'agenda di qualsiasi giorno</string>
+    <string name="badge_due">SCADE</string>
+    <string name="widget_nothing_scheduled">Niente in programma</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d altro</item>
+        <item quantity="other">+%d altri</item>
+    </plurals>
+    <string name="widget_previous_day">Giorno precedente</string>
+    <string name="widget_next_day">Giorno successivo</string>
 </resources>

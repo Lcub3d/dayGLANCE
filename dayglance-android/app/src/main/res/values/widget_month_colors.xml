@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The month grid widget's palette, light: the light side of the same
+  GitHub-style palette the dark mockup uses (res/values-night holds the dark
+  side, which is the original). The launcher's theme picks one; see the
+  night file for how the cells follow it.
+-->
+<resources>
+    <color name="month_widget_background">#FFffffff</color>
+    <color name="month_widget_date">#FF57606a</color>
+    <color name="month_widget_date_emphasis">#FF1f2328</color>
+    <color name="month_widget_muted">#FF6e7781</color>
+    <color name="month_widget_hairline">#FFd0d7de</color>
+    <color name="month_widget_today_fill">#FF0969da</color>
+    <!-- The app's brand orange: the same on either ground. -->
+    <color name="month_widget_pip">#FFfe8b00</color>
+    <color name="month_widget_pip_deadline">#FFcf222e</color>
+    <!-- The stale banner: iOS's system orange in light mode. -->
+    <color name="month_widget_stale">#FFc26e00</color>
+</resources>

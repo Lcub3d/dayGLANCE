@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeRecurringExpansionRange } from './recurringExpansionRange.js';
 import { WIDGET_PROJECTION_DAYS } from './widgetDayProjection.js';
+import { WIDGET_MONTH_PAYLOAD_DAYS } from './widgetMonthWindow.js';
 
 // Local noon, so day arithmetic never crosses a DST boundary by accident.
 const d = (y, m, day) => new Date(y, m - 1, day, 12);
@@ -40,7 +41,10 @@ describe('computeRecurringExpansionRange', () => {
       today: TODAY,
     });
     expect(r.rangeStart).toBe('2026-09-09');
-    expect(r.rangeEnd).toBe('2026-09-21');
+    // today + N is inside; the end itself is the widget month window's last
+    // payload day (Sun 13 Sep + 48), which reaches further.
+    expect('2026-09-21' <= r.rangeEnd).toBe(true);
+    expect(r.rangeEnd).toBe('2026-10-31');
   });
 
   // (c) symmetric: parked far ahead, the range still reaches back to today
@@ -50,8 +54,9 @@ describe('computeRecurringExpansionRange', () => {
     const r = computeRecurringExpansionRange({
       visibleDates: [nextMonth], selectedDate: nextMonth, schedDaysShown: 1, today: TODAY,
     });
-    expect(r.rangeStart).toBe('2026-09-18');
-    expect(r.rangeEnd).toBe('2026-10-18');
+    // Back to the start of today's week (Sunday), for the month window.
+    expect(r.rangeStart).toBe('2026-09-13');
+    expect(r.rangeEnd).toBe('2026-10-31');
   });
 
   it('keeps the SCHED rolling window and month range as before', () => {
@@ -63,11 +68,38 @@ describe('computeRecurringExpansionRange', () => {
       today: TODAY,
     });
     expect(r.rangeStart).toBe('2026-08-31');
-    expect(r.rangeEnd).toBe('2026-10-04');
+    // The month range is still covered; the month window runs past it.
+    expect('2026-10-04' <= r.rangeEnd).toBe(true);
+    expect(r.rangeEnd).toBe('2026-10-31');
   });
 
   it('honours a different projection horizon', () => {
-    const r = computeRecurringExpansionRange({ selectedDate: TODAY, schedDaysShown: 1, today: TODAY, projectionDays: 7 });
-    expect(r.rangeEnd).toBe('2026-09-25');
+    // Past the month window's end, so the horizon is what sets rangeEnd.
+    const r = computeRecurringExpansionRange({ selectedDate: TODAY, schedDaysShown: 1, today: TODAY, projectionDays: 60 });
+    expect(r.rangeEnd).toBe('2026-11-17');
+  });
+
+  // The widget month window: the week containing today (by weekStartDay)
+  // through the last payload day, whatever the user is looking at.
+  describe('widget month window anchor', () => {
+    it.each([
+      [0, '2026-09-13'], // Sunday weeks: Fri 18 Sep → Sun 13 Sep
+      [1, '2026-09-14'], // Monday weeks: → Mon 14 Sep
+    ])('weekStartDay %i covers %s … +%s', (weekStartDay, start) => {
+      const r = computeRecurringExpansionRange({
+        visibleDates: [TODAY], selectedDate: TODAY, schedDaysShown: 1, today: TODAY, weekStartDay,
+      });
+      const [y, m, dd] = start.split('-').map(Number);
+      const end = plus(d(y, m, dd), WIDGET_MONTH_PAYLOAD_DAYS - 1).toISOString().slice(0, 10);
+      expect(r.rangeStart).toBe(start);
+      expect(r.rangeEnd).toBe(end);
+    });
+
+    it('holds when the user is parked on last month', () => {
+      const r = computeRecurringExpansionRange({
+        visibleDates: [plus(TODAY, -40)], selectedDate: plus(TODAY, -40), schedDaysShown: 1, today: TODAY, weekStartDay: 1,
+      });
+      expect(r.rangeEnd).toBe('2026-11-01'); // Mon 14 Sep + 48
+    });
   });
 });

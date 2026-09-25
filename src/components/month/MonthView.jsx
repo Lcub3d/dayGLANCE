@@ -6,6 +6,7 @@ import SchedView from '../sched/SchedView.jsx';
 import DayHeaderCell from '../DayHeader.jsx';
 import { tagKind } from '../../utils/monthCellLayout.js';
 import { monthGridDates, monthOf, monthPanelWidth } from '../../utils/monthGrid.js';
+import { consumeMonthSheetRequest } from '../../utils/dayLink.js';
 import { MONTH_CELL_LAYOUT } from '../../constants/monthView.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
@@ -79,14 +80,29 @@ export const MONTH_PANEL_WIDTH = Object.freeze({ min: 380, max: 640, share: 1 / 
  * @param {number} [props.height]  and tests; the app measures instead
  */
 export default function MonthView({ width, height } = {}) {
-  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef, canShowViewCycler, borderClass, cardBg } = useDayPlannerCtx();
+  const { selectedDate, goToDate, weekStartDay, setMonthViewRange, openMonthDaySheetRef, monthSheetRequest, setMonthSheetRequest, canShowViewCycler, borderClass, cardBg } = useDayPlannerCtx();
   const itemsForDate = useMonthItemsForDate();
   const selectedStr = dateToString(selectedDate);
   const { year, month } = monthOf(selectedStr);
-  const [sheetDate, setSheetDate] = useState(null);
   // The docked panel takes the sheet's place at the width DAY needs; the two
   // are never on screen together.
   const docked = !!canShowViewCycler;
+  // A month grid widget tap (utils/dayLink.js): App selects the day and asks
+  // for its sheet. The sheet opens in the SAME render that shows MONTH, not
+  // an effect after it: on a warm open the Obsidian resume sync's synchronous
+  // bridge work queues between the first paint and the passive effects, so
+  // an effect-opened sheet came up only once the sync had finished. Seeded
+  // here on mount, and adjusted during render for a request that arrives
+  // while MONTH is already up (React's "adjust state on a prop change").
+  // Docked, the panel already shows the selected day: nothing to open.
+  const [sheetDate, setSheetDate] = useState(() =>
+    consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked }).open);
+  const [seenSheetRequest, setSeenSheetRequest] = useState(monthSheetRequest);
+  if (monthSheetRequest !== seenSheetRequest) {
+    setSeenSheetRequest(monthSheetRequest);
+    const { open } = consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked });
+    if (open) setSheetDate(open);
+  }
   const panelRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -129,6 +145,12 @@ export default function MonthView({ width, height } = {}) {
     if (!docked) setSheetDate(dateStr);
     goToDate(dateStr);
   };
+
+  // The request is used up once seen (opened above, or dropped): clearing it
+  // is App's state, so it waits for the effect. Nothing on screen waits on it.
+  useEffect(() => {
+    if (consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked }).clear) setMonthSheetRequest?.(null);
+  }, [monthSheetRequest, selectedStr, docked, setMonthSheetRequest]);
 
   // Enter (useKeyboardShortcuts): the sheet for the selected day, or, when
   // the panel is docked, focus into it (its first control, else the panel).

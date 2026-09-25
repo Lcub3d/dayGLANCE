@@ -5,6 +5,7 @@
     <string name="widget_upnext_description">详细显示下一个计划任务</string>
     <string name="widget_goal_description">显示固定目标及其项目进度</string>
     <string name="widget_project_description">显示固定项目及其任务进度</string>
+    <string name="widget_month_description">一览六周日程</string>
     <string name="shortcut_voice_short">语音输入</string>
     <string name="shortcut_voice_long">通过语音添加任务</string>
     <string name="shortcut_add_task_short">计划任务</string>
@@ -158,4 +159,20 @@
     <string name="widget_open_to_refresh">打开 dayGLANCE 以刷新</string>
     <string name="widget_planned_as_of">计划截至 %1$s</string>
     <string name="widget_planned_in_advance">提前计划</string>
+    <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
+    <plurals name="widget_month_scheduled">
+        <item quantity="one">%1$d 项计划</item>
+        <item quantity="other">%1$d 项计划</item>
+    </plurals>
+    <string name="widget_month_all_day_or_due">全天或到期</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">一览六周，附任意一天的日程</string>
+    <string name="badge_due">到期</string>
+    <string name="widget_nothing_scheduled">无安排</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">还有 %d 项</item>
+        <item quantity="other">还有 %d 项</item>
+    </plurals>
+    <string name="widget_previous_day">前一天</string>
+    <string name="widget_next_day">后一天</string>
 </resources>

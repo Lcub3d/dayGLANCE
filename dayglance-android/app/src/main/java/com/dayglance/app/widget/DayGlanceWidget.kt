@@ -8,7 +8,6 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.WorkManager
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -127,23 +126,15 @@ class DayGlanceWidget : AppWidgetProvider() {
             views.setRemoteAdapter(R.id.lv_agenda, serviceIntent)
             views.setEmptyView(R.id.lv_agenda, android.R.id.empty)
 
-            // Pending intent template — list items fire fill-in intents against this
-            val listItemLaunchIntent = Intent(context, MainActivity::class.java)
-            val listItemPi = android.app.PendingIntent.getActivity(
-                context, 1, listItemLaunchIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
-            )
-            views.setPendingIntentTemplate(R.id.lv_agenda, listItemPi)
+            // Pending intent template — list items fire fill-in intents against
+            // this. The rows' fill-ins are empty, so every row opens today.
+            views.setPendingIntentTemplate(R.id.lv_agenda, WidgetLinks.pendingIntent(context, 1, WidgetLinks.TODAY))
         } catch (_: Throwable) { /* ListView stays empty — header still renders */ }
 
         // ── Tap-to-open ───────────────────────────────────────────────────
         try {
-            val launchIntent = Intent(context, MainActivity::class.java)
-            val pi = android.app.PendingIntent.getActivity(
-                context, 0, launchIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
-            )
-            views.setOnClickPendingIntent(R.id.widget_root, pi)
+            // Today's calendar, wherever the app was (WidgetLinks).
+            views.setOnClickPendingIntent(R.id.widget_root, WidgetLinks.pendingIntent(context, 0, WidgetLinks.TODAY))
         } catch (_: Throwable) { }
 
         // ── Refresh button ────────────────────────────────────────────────

@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -93,13 +92,11 @@ class UpNextWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.tv_upnext_empty_sub, context.getString(R.string.widget_open_to_refresh))
         }
 
-        // Tap root to open app
-        val launchIntent = Intent(context, MainActivity::class.java)
-        val launchPi = PendingIntent.getActivity(
-            context, REQUEST_CODE_LAUNCH, launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        // Tap: today's calendar, where the up-next task is (WidgetLinks).
+        views.setOnClickPendingIntent(
+            R.id.upnext_root,
+            WidgetLinks.pendingIntent(context, REQUEST_CODE_LAUNCH, WidgetLinks.TODAY),
         )
-        views.setOnClickPendingIntent(R.id.upnext_root, launchPi)
 
         // Refresh button
         val refreshIntent = Intent(ACTION_REFRESH).apply {

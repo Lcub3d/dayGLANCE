@@ -57,3 +57,38 @@ export function applyProjectReorder(unscheduledTasks, orderedIds, now = new Date
   slots.forEach((slot, k) => { if (k < members.length) out[slot] = members[k]; });
   return out;
 }
+
+/**
+ * A project's tasks in the order the project card lists them: open scheduled
+ * (by date), open unscheduled (sortByProjectOrder), then the completed ones
+ * in the same two groups. The card and the Project widget's payload both use
+ * this, so the widget lists the tasks exactly as the app does.
+ *
+ * @param {object[]} scheduled    The project's scheduled tasks (already filtered).
+ * @param {object[]} unscheduled  The project's unscheduled tasks (already filtered).
+ */
+export function orderProjectTasks(scheduled, unscheduled) {
+  const sched = [...(Array.isArray(scheduled) ? scheduled : [])]
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const inbox = sortByProjectOrder(unscheduled);
+  return [
+    ...sched.filter((t) => !t.completed),
+    ...inbox.filter((t) => !t.completed),
+    ...sched.filter((t) => t.completed),
+    ...inbox.filter((t) => t.completed),
+  ];
+}
+
+/**
+ * Projects within a group (a goal's children, the standalone list) in the
+ * order the Goals & Projects space draws them: by `sortOrder`, projects
+ * without one after, in array order.
+ */
+export function sortProjectsByOrder(projects) {
+  return [...(Array.isArray(projects) ? projects : [])].sort((a, b) => {
+    if (a.sortOrder !== undefined && b.sortOrder !== undefined) return a.sortOrder - b.sortOrder;
+    if (a.sortOrder !== undefined) return -1;
+    if (b.sortOrder !== undefined) return 1;
+    return 0;
+  });
+}

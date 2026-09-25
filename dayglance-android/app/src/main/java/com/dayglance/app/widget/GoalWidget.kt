@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -81,13 +80,6 @@ class GoalWidget : AppWidgetProvider() {
             views.setFloat(R.id.layout_goal_empty, "setAlpha", STALE_CONTENT_ALPHA)
         }
 
-        // Tap root to open app
-        val launchPi = PendingIntent.getActivity(
-            context, appWidgetId + LAUNCH_OFFSET,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        views.setOnClickPendingIntent(R.id.goal_widget_root, launchPi)
 
         // Refresh button
         val refreshPi = PendingIntent.getBroadcast(
@@ -100,6 +92,12 @@ class GoalWidget : AppWidgetProvider() {
         // Load the selected goal ID for this widget instance
         val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
         val selectedGoalId = prefs.getString(prefKey(appWidgetId), null)
+
+        // Tap: this goal in Goals & Projects (WidgetLinks); unconfigured, the space.
+        views.setOnClickPendingIntent(
+            R.id.goal_widget_root,
+            WidgetLinks.pendingIntent(context, appWidgetId + LAUNCH_OFFSET, WidgetLinks.goal(selectedGoalId)),
+        )
 
         if (selectedGoalId == null) {
             showEmpty(views, context.getString(R.string.widget_reconfigure))

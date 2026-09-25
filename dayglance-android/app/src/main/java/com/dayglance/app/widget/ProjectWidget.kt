@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -78,13 +77,6 @@ class ProjectWidget : AppWidgetProvider() {
             views.setFloat(R.id.layout_project_empty, "setAlpha", STALE_CONTENT_ALPHA)
         }
 
-        // Tap root to open app
-        val launchPi = PendingIntent.getActivity(
-            context, appWidgetId + LAUNCH_OFFSET,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        views.setOnClickPendingIntent(R.id.project_widget_root, launchPi)
 
         // Refresh button
         val refreshPi = PendingIntent.getBroadcast(
@@ -97,6 +89,12 @@ class ProjectWidget : AppWidgetProvider() {
         // Load the selected project ID
         val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
         val selectedProjectId = prefs.getString(prefKey(appWidgetId), null)
+
+        // Tap: this project in Goals & Projects, its card in view (WidgetLinks).
+        views.setOnClickPendingIntent(
+            R.id.project_widget_root,
+            WidgetLinks.pendingIntent(context, appWidgetId + LAUNCH_OFFSET, WidgetLinks.project(selectedProjectId)),
+        )
 
         if (selectedProjectId == null) {
             showEmpty(views, context.getString(R.string.widget_reconfigure))

@@ -117,3 +117,26 @@ describe('MonthView', () => {
     expect(render(i18n, new Date(2026, 8, 16, 12), 0, { canShowViewCycler: true }, { width: 1800, height: 1400 })).toMatch(/data-month-panel=[^>]*width:600px/);
   });
 });
+
+describe('MonthView — a month grid widget link', () => {
+  // Static rendering runs no effects, so these pin that the linked day's
+  // sheet is in the FIRST render. An effect-opened sheet came up only after
+  // the Obsidian resume sync had freed the JS thread on a warm open.
+  it("opens the linked day's sheet in the first render", async () => {
+    const html = render(await i18nFor('en'), new Date(2026, 9, 1, 12), 0,
+      { monthSheetRequest: '2026-10-01', setMonthSheetRequest: vi.fn() });
+    expect(html).toContain('data-month-day-sheet="2026-10-01"');
+  });
+
+  it('opens nothing docked: the panel already shows the selected day', async () => {
+    const html = render(await i18nFor('en'), new Date(2026, 9, 1, 12), 0,
+      { monthSheetRequest: '2026-10-01', setMonthSheetRequest: vi.fn(), canShowViewCycler: true });
+    expect(html).not.toContain('data-month-day-sheet');
+  });
+
+  it('opens nothing for a request that is not the selected day', async () => {
+    const html = render(await i18nFor('en'), new Date(2026, 9, 1, 12), 0,
+      { monthSheetRequest: '2026-10-02', setMonthSheetRequest: vi.fn() });
+    expect(html).not.toContain('data-month-day-sheet');
+  });
+});

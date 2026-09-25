@@ -7690,8 +7690,12 @@ const DayPlanner = () => {
     } : null;
 
     // The tasks after the "Up Next" one — used to fill the widget when the
-    // primary task has no subtasks/notes. Cap at 4 (the Large widget's max).
-    const upcomingTaskItems = sortedUpcoming.slice(1, 5).map(t => ({
+    // primary task has no subtasks/notes, and to promote Up Next by the clock
+    // while the app sits in the background (the widgets draw at most 4 of
+    // them). Uncapped, like a projected day's (utils/widgetDayProjection.js):
+    // a capped list runs out, and a promotion past its end would claim the
+    // day is clear.
+    const upcomingTaskItems = sortedUpcoming.slice(1).map(t => ({
       id: t.id,
       title: stripWikilinksAndTags(t.title),
       colorHex: taskColorToHex(t.color, t.nativeCalendarColor),

@@ -73,7 +73,7 @@ class UpNextWidget : AppWidgetProvider() {
             // Soft tier: it IS today's Up Next, planned in advance. Secondary
             // line, nothing dimmed, countdown live, buttons as usual.
             views.setTextViewText(R.id.tv_upnext_stale, formatPlannedLabel(context, freshness, use24Hour))
-            views.setTextColor(R.id.tv_upnext_stale, context.getColor(R.color.widget_text_secondary))
+            views.setThemedTextColor(context, R.id.tv_upnext_stale, R.color.widget_text_secondary)
             views.setViewVisibility(R.id.tv_upnext_stale, View.VISIBLE)
         }
 
@@ -111,7 +111,12 @@ class UpNextWidget : AppWidgetProvider() {
         // Show task or empty state. A projected day shipped its first task and
         // the whole rest of its list; promote by the clock, because a day built
         // yesterday evening cannot know it is 15:10 now.
-        val nextTask = if (resolved.isProjected && resolved.fields != null) {
+        // The pushed day too: the app can sit in the background for hours
+        // (its timers stop), and the pushed nextTask then stays up after it
+        // ends. While it has not ended the promotion returns that same object,
+        // notes and subtasks included.
+        val promotes = resolved.isProjected || resolved.tier == WidgetDayTier.PUSHED
+        val nextTask = if (promotes && resolved.fields != null) {
             val now = LocalTime.now()
             promoteProjectedUpNext(resolved.fields, now.hour * 60 + now.minute).first
         } else {
@@ -138,7 +143,7 @@ class UpNextWidget : AppWidgetProvider() {
         } catch (_: Throwable) { }
 
         // Title
-        views.setTextViewText(R.id.tv_upnext_title, task.optString("title", "Untitled"))
+        views.setTextViewText(R.id.tv_upnext_title, task.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) })
 
         // Time range + time-until countdown
         val startTime = task.optString("startTime", "")
@@ -241,7 +246,9 @@ class UpNextWidget : AppWidgetProvider() {
             val fmtShort = if (use24Hour) DateTimeFormatter.ofPattern("H:mm") else DateTimeFormatter.ofPattern("h:mm")
 
             val timeRangeStr = if (duration > 0) {
-                val end = LocalTime.of(endMin / 60, endMin % 60)
+                // A block past midnight wraps (LocalTime.of threw, and the
+                // catch dropped the range for a raw start time).
+                val end = LocalTime.of(endMin / 60 % 24, endMin % 60)
                 "${start.format(fmt)} – ${end.format(fmtShort)}"
             } else {
                 start.format(fmt)

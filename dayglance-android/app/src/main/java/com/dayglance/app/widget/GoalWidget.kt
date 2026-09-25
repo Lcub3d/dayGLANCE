@@ -71,7 +71,7 @@ class GoalWidget : AppWidgetProvider() {
         // progress numbers are facts about the goal as last seen and stay.
         if (resolved.isProjected) {
             views.setTextViewText(R.id.tv_goal_widget_stale, formatPlannedLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
-            views.setTextColor(R.id.tv_goal_widget_stale, context.getColor(R.color.widget_text_secondary))
+            views.setThemedTextColor(context, R.id.tv_goal_widget_stale, R.color.widget_text_secondary)
             views.setViewVisibility(R.id.tv_goal_widget_stale, View.VISIBLE)
         } else if (freshness.isStale) {
             views.setTextViewText(R.id.tv_goal_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
@@ -290,7 +290,7 @@ class GoalWidget : AppWidgetProvider() {
             val pTotal = p.optInt("totalTasks", 0)
             val pDone  = p.optInt("completedTasks", 0)
             views.setTextViewText(row.statsId, if (pTotal > 0) "$pDone/$pTotal" else "")
-            views.setTextColor(row.statsId, context.getColor(R.color.widget_text_secondary))
+            views.setThemedTextColor(context, row.statsId, R.color.widget_text_secondary)
             views.setInt(row.progressId, "setProgress", p.optInt("progressPct", 0))
         }
     }

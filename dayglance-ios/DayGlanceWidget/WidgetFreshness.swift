@@ -199,29 +199,45 @@ struct ResolvedWidgetDay {
                               sky: snapshot.sky, dial: snapshot.dial)
         }
         if pushed.snapshotDay == nil { return fromPushed(.unknown, pushed) }
-        if !pushed.isStale { return fromPushed(.pushed, pushed) }
+        let nowMin = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        if !pushed.isStale {
+            // The pushed day promotes by the clock too: the app can sit in the
+            // background for hours (its timers stop), and the pushed nextTask
+            // would stay up after it ended. Until it ends it is kept as pushed,
+            // notes and subtasks included.
+            let (next, rest) = promote(snapshot.nextTask, snapshot.upcomingTasks ?? [], nowMin: nowMin)
+            return ResolvedWidgetDay(tier: .pushed, freshness: pushed, capturedAt: pushed.capturedAt,
+                                     date: snapshot.date, dateLabel: snapshot.dateLabel,
+                                     nextTask: next, upcomingTasks: rest,
+                                     sky: snapshot.sky, dial: snapshot.dial)
+        }
 
         let entryDay = calendar.startOfDay(for: now)
         if let day = snapshot.days?.first(where: { WidgetFreshness.parseDay($0.date, calendar: calendar) == entryDay }) {
-            // Promote Up Next by the entry's clock: the first task whose end
-            // is still ahead. A zero-length task counts until its start.
-            var all: [UpcomingTaskData] = []
-            if let first = day.nextTask { all.append(UpcomingTaskData(promoting: first)) }
-            all.append(contentsOf: day.upcomingTasks ?? [])
-            let nowMin = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
-            let remaining = all.drop(while: { row in
-                guard let start = minutes(row.startTime) else { return false }
-                let dur = row.duration ?? 0
-                return dur > 0 ? start + dur <= nowMin : start < nowMin
-            })
-            let next: NextTaskData? = remaining.first.map { NextTaskData(promoted: $0) }
+            let (next, rest) = promote(day.nextTask, day.upcomingTasks ?? [], nowMin: nowMin)
             let fresh = WidgetFreshness(isStale: false, daysOld: 0, snapshotDay: entryDay, capturedAt: pushed.capturedAt)
             return ResolvedWidgetDay(tier: .projected, freshness: fresh, capturedAt: pushed.capturedAt,
                                      date: day.date, dateLabel: day.dateLabel,
-                                     nextTask: next, upcomingTasks: Array(remaining.dropFirst()),
+                                     nextTask: next, upcomingTasks: rest,
                                      sky: day.sky, dial: day.dial)
         }
         return fromPushed(.stale, pushed)
+    }
+
+    /// Up Next by the clock: the first task whose end is still ahead (a
+    /// zero-length task counts until its start) and the ones after it. The
+    /// first task, while it has not ended, is returned as given (notes and
+    /// subtasks); a promoted row carries only what the upcoming rows do.
+    static func promote(_ first: NextTaskData?, _ upcoming: [UpcomingTaskData], nowMin: Int)
+        -> (NextTaskData?, [UpcomingTaskData]) {
+        let ended = { (start: String?, duration: Int?) -> Bool in
+            guard let s = minutes(start) else { return false }
+            let dur = duration ?? 0
+            return dur > 0 ? s + dur <= nowMin : s < nowMin
+        }
+        if let first, !ended(first.startTime, first.duration) { return (first, upcoming) }
+        let remaining = upcoming.drop(while: { ended($0.startTime, $0.duration) })
+        return (remaining.first.map { NextTaskData(promoted: $0) }, Array(remaining.dropFirst()))
     }
 
     /// Whole days from the entry's day to a 'yyyy-MM-dd' target — the due
@@ -237,13 +253,6 @@ struct ResolvedWidgetDay {
         let parts = hhmm.split(separator: ":").compactMap { Int($0) }
         guard parts.count >= 2 else { return nil }
         return parts[0] * 60 + parts[1]
-    }
-}
-
-private extension UpcomingTaskData {
-    init(promoting t: NextTaskData) {
-        self.init(id: t.id, title: t.title, colorHex: t.colorHex, startTime: t.startTime, duration: t.duration,
-                  tags: t.tags, projectName: t.projectName)
     }
 }
 

@@ -59,10 +59,15 @@ class DayGlanceWidget : AppWidgetProvider() {
         try { WidgetUpdateWorker.scheduleImmediate(context) } catch (_: Throwable) { }
     }
 
+    // The periodic worker is shared by every widget (and backstops the Up
+    // Next notification and reminder alarms), so the last Today widget going
+    // away cancels it only when no other dayGLANCE widget is still placed.
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         try {
-            WorkManager.getInstance(context).cancelUniqueWork(WidgetUpdateWorker.WORK_NAME)
+            if (!anyWidgetPlaced(context)) {
+                WorkManager.getInstance(context).cancelUniqueWork(WidgetUpdateWorker.WORK_NAME)
+            }
         } catch (_: Throwable) { }
     }
 
@@ -94,7 +99,7 @@ class DayGlanceWidget : AppWidgetProvider() {
                 // The "updated" time would describe a different day's content.
                 views.setTextViewText(R.id.tv_updated, "")
                 views.setTextViewText(R.id.tv_stale, formatPlannedLabel(context, freshness, use24Hour))
-                views.setTextColor(R.id.tv_stale, context.getColor(R.color.widget_text_secondary))
+                views.setThemedTextColor(context, R.id.tv_stale, R.color.widget_text_secondary)
                 views.setViewVisibility(R.id.tv_stale, View.VISIBLE)
             } else if (freshness.isStale) {
                 // A bare "8:42 PM" next to yesterday's content reads as tonight.
@@ -198,4 +203,14 @@ class DayGlanceWidget : AppWidgetProvider() {
             } catch (_: Throwable) { }
         }
     }
+}
+
+/** Whether any dayGLANCE widget is still on a home screen. The shared
+ *  periodic worker is cancelled only when none is. */
+internal fun anyWidgetPlaced(context: Context): Boolean {
+    val manager = AppWidgetManager.getInstance(context)
+    return listOf(
+        DayGlanceWidget::class.java, UpNextWidget::class.java, GoalWidget::class.java,
+        ProjectWidget::class.java, MonthGridWidget::class.java, MonthAgendaWidget::class.java,
+    ).any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
 }

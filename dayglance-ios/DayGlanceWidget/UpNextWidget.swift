@@ -161,7 +161,7 @@ struct UpNextWidgetView: View {
                             }
                             if let focusURL = URL(string: "dayglance://startFocus") {
                                 Link(destination: focusURL) {
-                                    actionLabel("Focus", systemImage: "play.circle")
+                                    actionLabel(String(localized: "Focus"), systemImage: "play.circle")
                                 }
                             }
                         }
@@ -175,7 +175,9 @@ struct UpNextWidgetView: View {
             .fixedSize(horizontal: false, vertical: true)
             if let subtasks = task.subtasks, !subtasks.isEmpty {
                 Divider().padding(.vertical, 3)
-                ForEach(subtasks.prefix(family == .systemLarge ? 7 : 4), id: \.title) { sub in
+                // By position: two subtasks can share a title (or both be
+                // empty), and duplicate ids make SwiftUI drop or misdraw rows.
+                ForEach(Array(subtasks.prefix(family == .systemLarge ? 7 : 4).enumerated()), id: \.offset) { _, sub in
                     HStack(spacing: 6) {
                         Image(systemName: sub.completed ? "checkmark.circle.fill" : "circle")
                             .font(.caption2)
@@ -191,7 +193,7 @@ struct UpNextWidgetView: View {
                 // The primary task is simple, so fill the leftover space with the
                 // next upcoming tasks (title + time only — no action buttons).
                 Divider().padding(.vertical, 3)
-                ForEach(upcoming.prefix(family == .systemLarge ? 4 : 2), id: \.id) { up in
+                ForEach(Array(upcoming.prefix(family == .systemLarge ? 4 : 2).enumerated()), id: \.offset) { _, up in
                     // Shared with the Month widget's agenda (WidgetAgendaRow.swift).
                     WidgetAgendaRow(colorHex: up.colorHex, title: up.title ?? "",
                                     time: timeLabel(startTime: up.startTime, duration: up.duration))

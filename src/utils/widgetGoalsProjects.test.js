@@ -30,7 +30,7 @@ describe('buildWidgetGoalsProjects: the Project widget', () => {
     const [p] = allProjects;
     expect(p.tasks.map((t) => t.id)).toEqual(['s-sep', 's-oct', 'u-a', 'u-b', 's-done']);
     expect(p.tasks.map((t) => t.title)).toEqual(['Draft', 'Ship', 'Logo', 'Copy', 'Kickoff']);
-    expect(p).toMatchObject({ totalTasks: 5, completedTasks: 1, progressPct: 20, goalTitle: 'Launch', goalColorHex: '#10b981' });
+    expect(p).toMatchObject({ totalTasks: 5, completedTasks: 1, progressPct: 20, goalTitle: 'Launch', goalColorHex: '#10b981', colorHex: '#10b981' });
   });
 
   it('carries up to the limit, while the totals count every task', () => {
@@ -39,6 +39,21 @@ describe('buildWidgetGoalsProjects: the Project widget', () => {
     expect(p.tasks).toHaveLength(WIDGET_PROJECT_TASK_LIMIT);
     expect(p.totalTasks).toBe(20);
     expect(p.goalId).toBe('');
+  });
+
+  it('gives every project a colour: its own, else its goal\'s, else the fallback', () => {
+    const { allProjects } = build({
+      projects: [
+        { id: 'own', title: 'Own', goalId: 'g1', status: 'active', color: 'bg-red-500' },
+        { id: 'goal', title: 'Goal', goalId: 'g1', status: 'active' },
+        { id: 'alone', title: 'Alone', status: 'active' },
+      ],
+    });
+    expect(allProjects.map((p) => [p.id, p.colorHex, p.goalColorHex])).toEqual([
+      ['own', '#ef4444', '#10b981'],
+      ['goal', '#10b981', '#10b981'],
+      ['alone', '#3b82f6', ''],
+    ]);
   });
 
   it('leaves archived projects out', () => {

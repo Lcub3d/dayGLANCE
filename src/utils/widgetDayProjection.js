@@ -260,12 +260,19 @@ export function buildProjectedDay({
  */
 const SHEDDABLE_FIELDS = ['monthWindow', 'days'];
 
+/**
+ * JSON.stringify replacer for the widget snapshot: every `id` goes out as a
+ * string. The iOS models decode ids as String?, and one numeric id anywhere
+ * (an imported or legacy row) fails the WHOLE decode, blanking every widget.
+ */
+export const stringIds = (key, value) => (key === 'id' && typeof value === 'number' ? String(value) : value);
+
 export function guardSnapshotSize(snapshot, {
   cap = WIDGET_SNAPSHOT_CAP_BYTES, warn = WIDGET_SNAPSHOT_WARN_BYTES, log = console,
 } = {}) {
   // TextEncoder exists in every WebView this runs in and in Node ≥ 11 (tests).
   const byteLength = (s) => new TextEncoder().encode(s).length;
-  let json = JSON.stringify(snapshot);
+  let json = JSON.stringify(snapshot, stringIds);
   let bytes = byteLength(json);
   const droppedFields = [];
   if (bytes > cap) {
@@ -278,7 +285,7 @@ export function guardSnapshotSize(snapshot, {
       current = rest;
       droppedFields.push(field);
       log.error(`[widget] snapshot is ${bytes} B, over the ${cap} B cap: dropping \`${field}\` for this push. Something grew — see widgetDayProjection.js.`);
-      json = JSON.stringify(current);
+      json = JSON.stringify(current, stringIds);
       bytes = byteLength(json);
     }
   } else if (bytes > warn) {

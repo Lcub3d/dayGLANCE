@@ -83,6 +83,32 @@ final class MonthDaySelectionTests: XCTestCase {
         XCTAssertFalse(SelectMonthDayIntent.openAppWhenRun, "the arrows must not launch the app")
     }
 
+    // MARK: Today
+
+    /// The same rule as the Android month + agenda widget: only when paged
+    /// away from today, and only when today is on the grid to go back to.
+    func testTodayShowsOnlyWhenPagedAwayAndTodayIsOnTheGrid() {
+        let c = cells()
+        XCTAssertFalse(MonthDaySelection.showsToday(selected: "2026-09-23", cells: c, today: "2026-09-23"), "already on today")
+        XCTAssertTrue(MonthDaySelection.showsToday(selected: "2026-10-14", cells: c, today: "2026-09-23"))
+        XCTAssertFalse(MonthDaySelection.showsToday(selected: "2026-09-20", cells: c, today: "2026-12-01"),
+                       "a stale grid without today has nowhere to go")
+    }
+
+    /// Clearing is going back to today: the next read resolves to the entry's
+    /// own day, whatever day that is — never a date baked into the button.
+    func testShowTodayClearsTheSelection() async throws {
+        let defaults = UserDefaults(suiteName: kAppGroupSuite)
+        let saved = defaults?.data(forKey: MonthDaySelection.defaultsKey)
+        defer { defaults?.set(saved, forKey: MonthDaySelection.defaultsKey) }
+
+        MonthDaySelection(date: "2026-10-14", setOn: MonthGrid.isoDay(Date(), calendar: .current)).save(defaults)
+        _ = try await ShowTodayIntent().perform()
+        XCTAssertNil(MonthDaySelection.load(defaults))
+        XCTAssertEqual(MonthDaySelection.resolve(MonthDaySelection.load(defaults), cells: cells(), entryDay: "2026-09-23"), "2026-09-23")
+        XCTAssertFalse(ShowTodayIntent.openAppWhenRun, "Today must not launch the app")
+    }
+
     // MARK: Agenda data
 
     /// The live fixture's agenda, decoded through the widget's own decoder:
@@ -162,9 +188,9 @@ final class MonthDaySelectionTests: XCTestCase {
         }
     }
 
-    /// Screenshots for review: today, a paged-ahead day, the grid's last day
-    /// (next arrow disabled), and the stale state — at the smallest and
-    /// largest extra-large sizes.
+    /// Screenshots for review: today, a paged-ahead day (with the Today
+    /// pill), the grid's last day (next arrow disabled), and the stale state
+    /// — at the smallest and largest extra-large sizes.
     @MainActor
     func testScreenshots() throws {
         let data = try MonthGridModelTests.fixtureData()

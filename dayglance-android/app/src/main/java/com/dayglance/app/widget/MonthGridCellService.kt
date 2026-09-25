@@ -45,6 +45,14 @@ class MonthGridCellService : RemoteViewsService() {
     }
 }
 
+/**
+ * The most a cell's two bitmaps may weigh together before the factory sends
+ * one instead: well under the ~1 MB Binder transaction limit, leaving room
+ * for the rest of the RemoteViews. A phone's cells (~50dp at 3–3.5×) are
+ * ~100–200 KB each; a tablet's large placements approach this.
+ */
+private const val MAX_TWO_THEME_BYTES = 700_000L
+
 internal class MonthGridCellFactory(
     private val context: Context,
     data: Uri?,
@@ -53,17 +61,18 @@ internal class MonthGridCellFactory(
     private val widthDp = data?.getQueryParameter("w")?.toIntOrNull() ?: MonthGridMetrics.MIN_WIDGET_WIDTH.toInt()
     private val heightDp = data?.getQueryParameter("h")?.toIntOrNull() ?: MonthGridMetrics.MIN_WIDGET_HEIGHT.toInt()
     private val noteShown = data?.getQueryParameter("note") == "1"
-    private val isAgenda = data?.getQueryParameter("kind") == MonthGridCellService.KIND_AGENDA
+    private val kind = data?.getQueryParameter("kind") ?: MonthGridCellService.KIND_GRID
+    private val isAgenda = kind == MonthGridCellService.KIND_AGENDA
     private val appWidgetId = data?.pathSegments?.firstOrNull()?.toIntOrNull()
 
     private val metrics = MonthGridMetrics(
         widthDp.toDouble(), heightDp.toDouble(),
         if (noteShown) MonthGridMetrics.NOTE_HEIGHT else 0.0,
     )
-    private val painter = MonthGridCellPainter(
-        context,
-        if (isAgenda) MonthCellPalette.systemWidget(context) else MonthCellPalette.monthWidget(context),
-    )
+    // One painter per theme: every cell is drawn light and night, and the
+    // cell layout's night variant picks which one the launcher shows.
+    private val lightPainter = MonthGridCellPainter(context, MonthCellPalette.forKind(context, kind, night = false))
+    private val nightPainter = MonthGridCellPainter(context, MonthCellPalette.forKind(context, kind, night = true))
 
     private var cells: List<MonthGridCell> = emptyList()
     /** False for the placeholder grid: its cells open the app, not a day. */
@@ -99,25 +108,43 @@ internal class MonthGridCellFactory(
 
     override fun getLoadingView(): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_month_cell).apply {
-            setImageViewBitmap(R.id.iv_month_cell, painter.blank(metrics))
+            val blank = lightPainter.blank(metrics)
+            setImageViewBitmap(R.id.iv_month_cell, blank)
+            setImageViewBitmap(R.id.iv_month_cell_night, blank)
         }
 
     override fun getViewAt(position: Int): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_month_cell)
         val cell = cells.getOrNull(position)
         if (cell == null) {
-            rv.setImageViewBitmap(R.id.iv_month_cell, painter.blank(metrics))
-            rv.setOnClickFillInIntent(R.id.iv_month_cell, Intent())
+            val blank = lightPainter.blank(metrics)
+            rv.setImageViewBitmap(R.id.iv_month_cell, blank)
+            rv.setImageViewBitmap(R.id.iv_month_cell_night, blank)
+            rv.setOnClickFillInIntent(R.id.month_cell_root, Intent())
             return rv
         }
-        rv.setImageViewBitmap(R.id.iv_month_cell, painter.draw(cell, metrics, selected = cell.date == selected))
-        rv.setContentDescription(R.id.iv_month_cell, describe(cell))
+        val isSelected = cell.date == selected
+        val light = lightPainter.draw(cell, metrics, selected = isSelected)
+        val night = nightPainter.draw(cell, metrics, selected = isSelected)
+        if (light.byteCount.toLong() + night.byteCount > MAX_TWO_THEME_BYTES) {
+            // Too big to send both in one transaction (large cells on a dense
+            // screen): the current theme's bitmap in both slots, which the
+            // RemoteViews bitmap cache sends once. A theme switch then shows
+            // at the next redraw instead of at once.
+            val current = if (MonthCellPalette.isNight(context)) night else light
+            rv.setImageViewBitmap(R.id.iv_month_cell, current)
+            rv.setImageViewBitmap(R.id.iv_month_cell_night, current)
+        } else {
+            rv.setImageViewBitmap(R.id.iv_month_cell, light)
+            rv.setImageViewBitmap(R.id.iv_month_cell_night, night)
+        }
+        rv.setContentDescription(R.id.month_cell_root, describe(cell))
         // The day's link rides the fill-in: MonthGridWidget's template is an
         // ACTION_VIEW to MainActivity with no data, so this data completes it
         // and the app opens MONTH on the day (utils/dayLink.js).
         val fillIn = Intent()
         if (links) fillIn.data = Uri.parse(cell.url)
-        rv.setOnClickFillInIntent(R.id.iv_month_cell, fillIn)
+        rv.setOnClickFillInIntent(R.id.month_cell_root, fillIn)
         return rv
     }
 

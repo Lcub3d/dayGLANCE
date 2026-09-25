@@ -130,7 +130,7 @@ class MonthGridWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_month)
         bindMonthGridPane(
             context, views, appWidgetId, widthDp.toDouble(), heightDp.toDouble(), render,
-            MonthCellPalette.monthWidget(context), MonthGridCellService.KIND_GRID,
+            MonthGridCellService.KIND_GRID,
         )
 
         // The padding and the header open the app.
@@ -211,6 +211,12 @@ internal fun loadMonthGrid(context: Context, today: LocalDate = LocalDate.now())
  * [paneWidthDp] × [paneHeightDp] is the pane's size, which the cells are
  * drawn for (MonthGridMetrics); [kind] tells the cell factory which widget
  * it serves (palette and selection ring). Returns the resolved state.
+ *
+ * THEMES. Everything in the layout XML follows the launcher's light/dark
+ * theme by itself (values / values-night). The note line's colour is set
+ * here, so on Android 12+ it is set as a light/night pair (setColorInt) and
+ * follows too; below 12 it takes this process's theme. The cells carry a
+ * bitmap per theme (MonthGridCellFactory).
  */
 internal fun bindMonthGridPane(
     context: Context,
@@ -219,7 +225,6 @@ internal fun bindMonthGridPane(
     paneWidthDp: Double,
     paneHeightDp: Double,
     render: MonthGridRender,
-    palette: MonthCellPalette,
     kind: String,
 ): MonthGridState? {
     val state = render.state
@@ -239,7 +244,14 @@ internal fun bindMonthGridPane(
             setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         } else note
         views.setTextViewText(R.id.tv_month_note, text)
-        views.setTextColor(R.id.tv_month_note, if (stale) palette.staleNote else palette.plannedNote)
+        val light = MonthCellPalette.forKind(context, kind, night = false)
+        val night = MonthCellPalette.forKind(context, kind, night = true)
+        fun noteColor(p: MonthCellPalette) = if (stale) p.staleNote else p.plannedNote
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            views.setColorInt(R.id.tv_month_note, "setTextColor", noteColor(light), noteColor(night))
+        } else {
+            views.setTextColor(R.id.tv_month_note, noteColor(if (MonthCellPalette.isNight(context)) night else light))
+        }
         views.setViewVisibility(R.id.tv_month_note, View.VISIBLE)
     } else {
         views.setViewVisibility(R.id.tv_month_note, View.GONE)

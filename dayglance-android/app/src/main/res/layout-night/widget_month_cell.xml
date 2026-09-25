@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:scaleType="fitXY"
         android:importantForAccessibility="no"
-        android:visibility="visible" />
+        android:visibility="gone" />
 
     <ImageView
         android:id="@+id/iv_month_cell_night"
@@ -34,5 +34,5 @@
         android:layout_height="wrap_content"
         android:scaleType="fitXY"
         android:importantForAccessibility="no"
-        android:visibility="gone" />
+        android:visibility="visible" />
 </FrameLayout>

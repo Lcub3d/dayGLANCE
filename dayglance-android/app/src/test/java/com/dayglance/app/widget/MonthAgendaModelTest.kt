@@ -106,6 +106,13 @@ class MonthAgendaModelTest {
         assertEquals(c.last().date, at)
     }
 
+    @Test fun `Today shows only when paged away and today is on the grid`() {
+        assertFalse(MonthDaySelection.showsToday("2026-09-21", cells(), "2026-09-21"))
+        assertTrue(MonthDaySelection.showsToday("2026-10-01", cells(), "2026-09-21"))
+        // A stale grid without today: nowhere to return to.
+        assertFalse(MonthDaySelection.showsToday("2026-09-21", staleCells("2026-11-09"), "2026-11-09"))
+    }
+
     @Test fun `a day off the grid has no arrows`() {
         assertEquals(null to null, MonthDaySelection.neighbours("2026-12-25", cells()))
         assertEquals(null to null, MonthDaySelection.neighbours(null, cells()))

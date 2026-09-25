@@ -130,6 +130,10 @@ jobs:
             -destination "platform=iOS Simulator,id=$UDID" \
             -resultBundlePath "$RUNNER_TEMP/widget-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+        env:
+          # TEMPORARY (review of the XL Today pill): print the screenshots to
+          # this log. Removed before merge.
+          TEST_RUNNER_DG_MONTH_SHOTS: '1'
 
       # The widget tests attach rendered screenshots (the month grid at the
       # smallest and largest systemLarge sizes, crowded and stale states) to

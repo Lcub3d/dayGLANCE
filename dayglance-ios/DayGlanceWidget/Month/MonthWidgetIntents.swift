@@ -36,7 +36,7 @@ struct SelectMonthDayIntent: AppIntent {
         let process = ProcessInfo.processInfo.processName
         MonthDaySelection(date: date, setOn: today, handledAt: Date(), handledBy: process).save()
         Self.logger.notice("select day=\(date, privacy: .public) setOn=\(today, privacy: .public) process=\(process, privacy: .public)")
-        WidgetCenter.shared.reloadTimelines(ofKind: MonthGridWidget.kindIdentifier)
+        WidgetCenter.shared.reloadTimelines(ofKind: MonthGrid.widgetKind)
         return .result()
     }
 }

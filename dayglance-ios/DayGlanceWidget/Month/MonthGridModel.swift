@@ -112,6 +112,11 @@ enum MonthWindowStore {
 // MARK: - Constants
 
 enum MonthGrid {
+    /// The widget's kind, here rather than on MonthGridWidget: a Widget is
+    /// main-actor isolated, and SelectMonthDayIntent.perform() — which runs
+    /// off the main actor — reloads by this name (a Swift 6 error otherwise).
+    static let widgetKind = "MonthGridWidget"
+
     static let columns = 7
     static let rows = 6
     static let cellCount = columns * rows

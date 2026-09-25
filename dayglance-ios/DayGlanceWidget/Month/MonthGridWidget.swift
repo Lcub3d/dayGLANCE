@@ -334,8 +334,7 @@ struct MonthGridCellView: View {
 }
 
 struct MonthGridWidget: Widget {
-    static let kindIdentifier = "MonthGridWidget"
-    let kind = MonthGridWidget.kindIdentifier
+    let kind = MonthGrid.widgetKind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: MonthGridProvider()) { entry in

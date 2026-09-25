@@ -60,6 +60,16 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- dayglance:// deep links — the widgets' taps (the month grid's
+                 cells: dayglance://day?date=YYYY-MM-DD&view=month) and the same
+                 URLs the iOS app opens. Stored as SharedDataStore.pendingDeepLink
+                 and drained by the web layer via NativeBridge.getPendingDeepLink. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dayglance" />
+            </intent-filter>
             <!-- Launcher shortcut: long-press app icon → "Voice Input" -->
             <intent-filter>
                 <action android:name="com.dayglance.app.ACTION_VOICE_INPUT" />
@@ -234,6 +244,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Home screen widget: Month grid (six weeks, per-cell bitmaps) -->
+        <receiver
+            android:name=".widget.MonthGridWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_month_info" />
+        </receiver>
+
         <!--
           RemoteViewsService that backs the scrollable ListView inside the widget.
           Must be exported=true so the launcher process can bind to it, but the
@@ -241,6 +263,14 @@
         -->
         <service
             android:name=".widget.DayGlanceWidgetListService"
+            android:exported="true"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!-- RemoteViewsService behind the month grid's GridView: one bitmap per
+             cell (see widget/MonthGridCellService.kt). Same export/permission
+             gating as the list service above. -->
+        <service
+            android:name=".widget.MonthGridCellService"
             android:exported="true"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 

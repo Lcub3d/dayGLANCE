@@ -2437,6 +2437,34 @@ const DayPlanner = () => {
     }
   }, [dataLoaded]);
 
+  // dayglance:// links, both platforms: iOS stores one in the App Group
+  // (AppDelegate.pendingDeepLink), Android in SharedPreferences
+  // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
+  // Reassigned every render, so a caller always gets current handlers.
+  const drainPendingDeepLinkRef = useRef(null);
+  drainPendingDeepLinkRef.current = () => {
+    if (!window.DayGlanceNative?.getPendingDeepLink) return;
+    const rawLink = window.DayGlanceNative.getPendingDeepLink();
+    if (rawLink && rawLink !== 'null') {
+      const link = rawLink.replace(/^"|"$/g, '');
+      try {
+        const url = new URL(link);
+        const action = url.pathname.replace(/^\/+/, '') || url.hostname;
+        const taskId = url.searchParams.get('id');
+        if (action === 'task' && taskId) setSpotlightTaskId(taskId);
+        else if (action === 'completeTask' && taskId) toggleComplete(taskId);
+        else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
+        else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
+        else if (action === 'startFocus') setShowFocusMode(true);
+        else if (action === 'voiceInput') {
+          voiceAutoStartRef.current = true;
+          setShowVoiceInput(true);
+        }
+        else if (action === 'day') openDayFromLink(url);
+      } catch (_) {}
+    }
+  };
+
   // Drain pending quick-action shortcut when data finishes loading. This covers
   // the case where the app was killed when the user tapped a home screen shortcut or
   // Spotlight result — dayglanceForeground fires before dataLoaded is true so the
@@ -2456,27 +2484,15 @@ const DayPlanner = () => {
         }
       }
     }
-    if (window.DayGlanceNative?.getPendingDeepLink) {
-      const rawLink = window.DayGlanceNative.getPendingDeepLink();
-      if (rawLink && rawLink !== 'null') {
-        const link = rawLink.replace(/^"|"$/g, '');
-        try {
-          const url = new URL(link);
-          const action = url.pathname.replace(/^\/+/, '') || url.hostname;
-          const taskId = url.searchParams.get('id');
-          if (action === 'task' && taskId) setSpotlightTaskId(taskId);
-          else if (action === 'completeTask' && taskId) toggleComplete(taskId);
-          else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
-          else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
-          else if (action === 'startFocus') setShowFocusMode(true);
-          else if (action === 'voiceInput') {
-            voiceAutoStartRef.current = true;
-            setShowVoiceInput(true);
-          }
-          else if (action === 'day') openDayFromLink(url);
-        } catch (_) {}
-      }
-    }
+    drainPendingDeepLinkRef.current();
+    // Android's WebView is never paused, so visibilitychange does not fire on
+    // a warm open; MainActivity.onNewIntent calls this hook instead (the
+    // month grid widget's cell taps). It goes through the ref, so a tap hours
+    // after load runs the current render's handlers rather than the ones this
+    // effect captured (toggleComplete closes over the task list). iOS drains
+    // on dayglanceForeground above.
+    const checkPendingDeepLink = () => drainPendingDeepLinkRef.current();
+    if (isNativeAndroid()) window.__dayglanceCheckPendingDeepLink = checkPendingDeepLink;
     // iOS Control Center controls (cold launch): drain the App Group pending action.
     const widgetAction = nativeGetWidgetPendingAction();
     if (widgetAction?.action) {
@@ -2492,6 +2508,7 @@ const DayPlanner = () => {
     }
     // Drains pending native actions once after load (keyed on dataLoaded). The
     // setters/voiceAutoStartRef are stable; toggleComplete is read at drain time.
+    return () => { if (window.__dayglanceCheckPendingDeepLink === checkPendingDeepLink) delete window.__dayglanceCheckPendingDeepLink; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded]);
 

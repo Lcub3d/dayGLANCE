@@ -6,7 +6,7 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
-import { isProjectStalled } from '../../utils/projectProgress.js';
+import { hasStalledChild } from '../../utils/stalledBadge.js';
 import GoalProgress from './GoalProgress.jsx';
 
 /**
@@ -32,7 +32,7 @@ import GoalProgress from './GoalProgress.jsx';
 const GoalCard = forwardRef(
   ({ goal, projects, onEdit, onNewProject, compactEmpty = false }, ref) => {
     const {
-      tasks, unscheduledTasks, recurringTasks,
+      tasks, unscheduledTasks, recurringTasks, currentTimeMinutes,
       darkMode,
       borderClass, textPrimary, textSecondary, hoverBg,
     } = useDayPlannerCtx();
@@ -66,7 +66,7 @@ const GoalCard = forwardRef(
     // Caution: goal is overdue or has at least one stalled child project
     // Per-goal opt-out: hideStalled suppresses the stalled contribution to the
     // caution indicator (overdue-based caution is unaffected).
-    const hasStalledProject = !goal.hideStalled && projects.some(p => isProjectStalled(p.id, allTasks, p, recurringTasks));
+    const hasStalledProject = hasStalledChild(goal, projects, allTasks, recurringTasks, currentTimeMinutes);
     const showCaution = isOverdue || hasStalledProject;
     // All non-archived projects complete → offer one-click completion
     const nonArchivedProjects = projects.filter(p => p.status !== 'archived');

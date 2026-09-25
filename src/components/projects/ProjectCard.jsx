@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { calculateProjectProgress, isProjectStalled } from '../../utils/projectProgress.js';
+import { calculateProjectProgress } from '../../utils/projectProgress.js';
+import { isProjectFlaggedStalled } from '../../utils/stalledBadge.js';
 import { TAILWIND_TO_HEX, hexToRgba, getProjectColor } from '../../utils/colorUtils.js';
 import ProjectProgress from './ProjectProgress.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
@@ -148,9 +149,9 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
   const completedCount = projectTasks.filter(t => t.completed).length;
   const totalCount = projectTasks.length;
   const progress = calculateProjectProgress(project.id, allTasks);
-  const hasHGSession = !!getActiveHGInstance(project, currentTimeMinutes);
-  // Per-goal opt-out: a goal with hideStalled suppresses the badge on its projects.
-  const stalled = !!project.goalId && !parentGoal?.hideStalled && !hasHGSession && isProjectStalled(project.id, allTasks, project, recurringTasks);
+  // One gate for every surface (utils/stalledBadge.js): goal-linked only, the
+  // goal's opt-out, no active hyperGLANCE session.
+  const stalled = isProjectFlaggedStalled(project, parentGoal, allTasks, recurringTasks, currentTimeMinutes);
 
   // All project tasks: unscheduled (by projectOrder, utils/projectOrder.js,
   // then array order) then scheduled (by date), completed last

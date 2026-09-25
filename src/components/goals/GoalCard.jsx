@@ -6,7 +6,7 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
-import { isProjectStalled } from '../../utils/projectProgress.js';
+import { hasStalledChild } from '../../utils/stalledBadge.js';
 import GoalProgress from './GoalProgress.jsx';
 
 /**
@@ -24,11 +24,15 @@ import GoalProgress from './GoalProgress.jsx';
  *   isCollapsed      — whether child projects are hidden
  *   onToggleCollapse — called when the collapse chevron is clicked
  *   onEdit           — called when the edit button is clicked
+ *   onNewProject     — called from the "+ Add" / "Add Project" affordance
+ *   compactEmpty     — with no projects, keep the count row ("0 projects + Add")
+ *                      instead of the folder empty state; the desktop space
+ *                      shows its own empty state under the card
  */
 const GoalCard = forwardRef(
-  ({ goal, projects, onEdit, onNewProject }, ref) => {
+  ({ goal, projects, onEdit, onNewProject, compactEmpty = false }, ref) => {
     const {
-      tasks, unscheduledTasks, recurringTasks,
+      tasks, unscheduledTasks, recurringTasks, currentTimeMinutes,
       darkMode,
       borderClass, textPrimary, textSecondary, hoverBg,
     } = useDayPlannerCtx();
@@ -62,7 +66,7 @@ const GoalCard = forwardRef(
     // Caution: goal is overdue or has at least one stalled child project
     // Per-goal opt-out: hideStalled suppresses the stalled contribution to the
     // caution indicator (overdue-based caution is unaffected).
-    const hasStalledProject = !goal.hideStalled && projects.some(p => isProjectStalled(p.id, allTasks, p, recurringTasks));
+    const hasStalledProject = hasStalledChild(goal, projects, allTasks, recurringTasks, currentTimeMinutes);
     const showCaution = isOverdue || hasStalledProject;
     // All non-archived projects complete → offer one-click completion
     const nonArchivedProjects = projects.filter(p => p.status !== 'archived');
@@ -162,7 +166,7 @@ const GoalCard = forwardRef(
           <GoalProgress progress={progress} color={goalColor} />
 
           {/* Project count + percentage, or empty state */}
-          {projects.length === 0 ? (
+          {projects.length === 0 && !compactEmpty ? (
             <div className="flex flex-col items-center gap-1.5 py-2">
               <FolderOpen size={18} className={`${textSecondary} opacity-50`} />
               <span className={`text-xs ${textSecondary} opacity-60`}>{t('goals.noProjectsYet')}</span>

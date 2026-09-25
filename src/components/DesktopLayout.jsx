@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Bell, BookOpen, ChevronLeft, ChevronRight, Cloud,
   Eye, HelpCircle, Inbox, Moon,
@@ -11,6 +11,8 @@ import { renderTitle, renderTitleWithNoteLinks } from '../utils/textFormatting.j
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import DesktopHeader from './DesktopHeader.jsx';
+import SpaceSwitcher, { GoalsSpaceTitle } from './SpaceSwitcher.jsx';
+import GoalDashboard from './goals/GoalDashboard.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import GlanceFabs from './GlanceFabs.jsx';
 import CalendarHeader from './CalendarHeader.jsx';
@@ -430,6 +432,7 @@ const DesktopLayout = () => {
     frameNudgeError, setFrameNudgeError,
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
     goals, projects,
+    desktopSpace,
     projectFilter, setProjectFilter,
     reminderSettings, setReminderSettings,
     showRemindersSettings, setShowRemindersSettings,
@@ -471,6 +474,24 @@ const DesktopLayout = () => {
     ? findRunningTask([...tasks, ...expandedRecurringTasks])
     : undefined;
   const titlebarPills = isElectronMac && !titlebarRunningTask;
+
+  // Goals & Projects space (docs/goals-space-spec.md): the header switcher
+  // swaps the sidebar + calendar for the goals sidebar + goals main area. The
+  // calendar block stays MOUNTED and is hidden rather than unmounted, so its
+  // scroll position and calendarRef survive a round trip (display:none would
+  // reset scrollTop). It is hidden with opacity + `inert`, NOT visibility:
+  // visibility is inherited and the time grid's task blocks set their own
+  // `visibility: visible` once measured (TimeGrid, DayView), so they showed
+  // through the space. Opacity composites the whole subtree and cannot be
+  // undone from inside it; `inert` takes the subtree out of focus, hit-testing
+  // and the accessibility tree (React 18 wants the attribute as a string).
+  // The phone layout has its own tab.
+  const goalsSpace = desktopSpace === 'goals';
+  // The space stays mounted once visited (hidden with display:none, like the
+  // phone's Goals tab), so the selected goal, the sidebar tab and the
+  // Open/Completed choice survive a `g` round trip. A reload starts fresh.
+  const [goalsVisited, setGoalsVisited] = useState(false);
+  useEffect(() => { if (goalsSpace) setGoalsVisited(true); }, [goalsSpace]);
 
   return (
       <>
@@ -514,6 +535,8 @@ const DesktopLayout = () => {
       {isTablet && (
         <div className={`${cardBg} border-b ${borderClass} px-4 flex items-center justify-between relative`} style={{ height: '56px' }}>
           <div className="flex items-center gap-1">
+              <div className="mr-2"><SpaceSwitcher /></div>
+              {goalsSpace ? <GoalsSpaceTitle /> : (<>
                 <button onClick={() => changeDate(-1)} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('common.back')}>
                 <ChevronLeft size={20} className={textSecondary} />
               </button>
@@ -537,6 +560,7 @@ const DesktopLayout = () => {
                   {t('common.today')}
                 </button>
               )}
+              </>)}
           </div>
           <div className="flex items-center gap-2">
             {!hasNativeCalendar() && <button
@@ -660,7 +684,7 @@ const DesktopLayout = () => {
             </button>
           </div>
           {/* Tablet month view popup */}
-          {showMonthView && (
+          {showMonthView && !goalsSpace && (
             <div className={`month-view-container absolute left-4 top-full mt-1 ${cardBg} rounded-lg shadow-xl border ${borderClass} p-4 z-50 min-w-[300px]`}>
               <div className="flex items-center justify-between mb-3">
                 <button type="button" onClick={(e) => { e.stopPropagation(); changeViewedMonth(-1); }} className={`p-2 rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`} aria-label={t('common.back')}>
@@ -708,10 +732,16 @@ const DesktopLayout = () => {
         </div>
       )}
 
-      {/* Content area: side panel + calendar */}
-      <div className="flex" style={{ height: isTablet ? 'calc(100vh - 56px - env(safe-area-inset-top, 0px))' : `calc(100vh - ${80 + titlebarH}px - env(safe-area-inset-top, 0px))` }}>
+      {/* Content area: side panel + calendar, or the Goals & Projects space */}
+      <div className="flex relative" style={{ height: isTablet ? 'calc(100vh - 56px - env(safe-area-inset-top, 0px))' : `calc(100vh - ${80 + titlebarH}px - env(safe-area-inset-top, 0px))` }}>
 
-        <div className="contents">
+        {/* Calendar space: kept mounted while the Goals space is up (see goalsSpace). */}
+        <div
+          data-calendar-space
+          className={goalsSpace ? 'absolute inset-0 flex overflow-hidden opacity-0 pointer-events-none' : 'flex flex-1 min-w-0 h-full'}
+          aria-hidden={goalsSpace || undefined}
+          inert={goalsSpace ? '' : undefined}
+        >
 
           {/* Tablet static side panel */}
           {isTablet && (
@@ -734,7 +764,7 @@ const DesktopLayout = () => {
                   className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
                 >
                   <span className="flex items-center justify-center gap-1.5">
-                    <Inbox size={16} /> {t('task.inbox')}
+                    <Inbox size={16} /> {t('settings.inbox')}
                     {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
                       <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                         {filteredUnscheduledTasks.filter(t => !t.isExample).length}
@@ -746,9 +776,12 @@ const DesktopLayout = () => {
 
               {/* Scrollable content */}
               <div className={`flex-1 overflow-y-auto ${darkMode ? 'dark-scrollbar' : ''}`}>
-                {/* Glance section — shown when glance tab active */}
+                {/* Glance section — shown when glance tab active. pb-44 clears
+                    the GlanceFabs columns floating over the foot of the panel
+                    (three 44px buttons, two 8px gaps, 24px offset = 172px), so
+                    the last item can scroll out from under them. */}
                 {tabletActiveTab === 'glance' && (
-                  <div className="p-4">
+                  <div className="p-4 pb-44">
                     <GlanceSidebar variant="tablet" />
                   </div>
                 )}
@@ -787,7 +820,7 @@ const DesktopLayout = () => {
                 className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
               >
                 <span className="flex items-center justify-center gap-1.5">
-                    <Inbox size={16} /> {t('task.inbox')}
+                    <Inbox size={16} /> {t('settings.inbox')}
                   {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
                     <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                       {filteredUnscheduledTasks.filter(t => !t.isExample).length}
@@ -798,9 +831,10 @@ const DesktopLayout = () => {
             </div>
             {/* Scrollable content */}
             <div className={`flex-1 overflow-y-auto ${darkMode ? 'dark-scrollbar' : ''}`}>
-              {/* Glance section — shown when glance tab active */}
+              {/* Glance section — shown when glance tab active. pb-44: see the
+                  tablet panel above — room under the last item for GlanceFabs. */}
               {tabletActiveTab === 'glance' && (
-              <div className="p-4">
+              <div className="p-4 pb-44">
                 <GlanceSidebar variant="desktop" />
               </div>
               )}
@@ -877,6 +911,16 @@ const DesktopLayout = () => {
             </div>
           </div>
         </div>
+
+        {/* Goals & Projects space: its own sidebar + main area, siblings in
+            this flex row exactly where the calendar's sit (display:contents
+            keeps them direct flex children). Its Escape chain, focus request
+            and keyboard hooks are gated on isActive. */}
+        {goalsVisited && (
+          <div data-goals-space className={goalsSpace ? 'contents' : 'hidden'}>
+            <GoalDashboard desktop isActive={goalsSpace} />
+          </div>
+        )}
       </div>
 
       {/* Notes panel overlay for tablet LIST view */}

@@ -11,7 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { calculateProjectProgress, isProjectStalled } from '../../utils/projectProgress.js';
+import { calculateProjectProgress } from '../../utils/projectProgress.js';
+import { isProjectFlaggedStalled } from '../../utils/stalledBadge.js';
 import { TAILWIND_TO_HEX, hexToRgba, getProjectColor } from '../../utils/colorUtils.js';
 import ProjectProgress from './ProjectProgress.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
@@ -57,7 +58,11 @@ const IS_LONG_PRESS_ROW = isLongPressRowDevice();
  *   project      — the project object
  *   onEditClick  — called to open the project edit form
  */
-const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps, onMoveToClick }, ref) => {
+// Props beyond the basics:
+//   wide         — fill the wrapper's width instead of capping at 260px (the
+//                  Goals & Projects space, whose cards are 25% wider)
+//   visibleCount — tasks shown before the "N more" fold (default 3)
+const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps, onMoveToClick, wide = false, visibleCount = 3 }, ref) => {
   const { t, i18n } = useTranslation();
   const locale = i18n.resolvedLanguage || i18n.language;
   const {
@@ -144,9 +149,9 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
   const completedCount = projectTasks.filter(t => t.completed).length;
   const totalCount = projectTasks.length;
   const progress = calculateProjectProgress(project.id, allTasks);
-  const hasHGSession = !!getActiveHGInstance(project, currentTimeMinutes);
-  // Per-goal opt-out: a goal with hideStalled suppresses the badge on its projects.
-  const stalled = !!project.goalId && !parentGoal?.hideStalled && !hasHGSession && isProjectStalled(project.id, allTasks, project, recurringTasks);
+  // One gate for every surface (utils/stalledBadge.js): goal-linked only, the
+  // goal's opt-out, no active hyperGLANCE session.
+  const stalled = isProjectFlaggedStalled(project, parentGoal, allTasks, recurringTasks, currentTimeMinutes);
 
   // All project tasks: unscheduled (by projectOrder, utils/projectOrder.js,
   // then array order) then scheduled (by date), completed last
@@ -180,7 +185,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
     ...projectScheduled.filter(t => t.completed),
     ...projectUnscheduled.filter(t => t.completed),
   ];
-  const VISIBLE_COUNT = 3;
+  const VISIBLE_COUNT = visibleCount;
   const displayableTasks = detailsHidden
     ? allProjectDisplayTasks.filter(t => !t.completed)
     : allProjectDisplayTasks;
@@ -334,7 +339,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
           ref={ref}
           className={`flex flex-col rounded-xl border overflow-hidden ${
             darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-stone-200'
-          } ${isMobile ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
+          } ${isMobile || wide ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
           style={{ borderLeft: `3px solid ${projectHex}88` }}
         >
           {/* Row 1: title + edit/delete */}
@@ -418,7 +423,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
       ref={ref}
       className={`flex flex-col rounded-xl border overflow-hidden ${
         darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-stone-200'
-      } ${isMobile ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
+      } ${isMobile || wide ? 'w-full' : 'min-w-[180px] max-w-[260px] w-full'}`}
     >
       {/* Project color bar */}
       <div className="h-1.5 flex-shrink-0" style={{ background: projectHex + 'bb' }} />
@@ -426,8 +431,11 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
       <div className="flex flex-col gap-2 p-3">
         {/* Header: title + badges + edit + delete */}
         <div className="flex items-start gap-2 dnd-no-select">
+          {/* The grip centres on the whole title block (self-center in an
+              items-start row): on the line for one-line titles, between the
+              lines for two-line ones. */}
           {dragHandleProps && (
-            <div {...dragHandleProps} data-drag-handle className={`flex-shrink-0 mt-0.5 p-1.5 -m-1 cursor-grab active:cursor-grabbing ${textSecondary} opacity-30 hover:opacity-60 transition-opacity touch-none select-none`} title={t('sched.dragToReorder')}>
+            <div {...dragHandleProps} data-drag-handle className={`flex-shrink-0 self-center px-1.5 py-1 -mx-1 -my-1 flex items-center cursor-grab active:cursor-grabbing ${textSecondary} opacity-30 hover:opacity-60 transition-opacity touch-none select-none`} title={t('sched.dragToReorder')}>
               <GripVertical size={14} />
             </div>
           )}

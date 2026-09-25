@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One cell of the month grid: two bitmaps drawn by MonthGridCellPainter at
+  the cell's exact dp size, one per theme (light and night palettes). This
+  layout shows the LIGHT one; layout-night/widget_month_cell.xml is the same
+  with the visibilities swapped. The launcher inflates the variant for its
+  own theme, so a light/dark switch shows the other bitmap at once, with no
+  redraw. When two bitmaps would crowd the Binder limit, both slots get the
+  current theme's (MonthGridCellFactory), as before this existed.
+
+  The row height is the bitmap's own (wrap_content, no adjustViewBounds): if
+  the launcher's column comes out a few dp wider than the size it reported,
+  fitXY stretches the cell sideways rather than growing the row, so six rows
+  still fit the grid's height without scrolling (MonthGridMetrics.cellHeight
+  is floored for the same reason).
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/month_cell_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:importantForAccessibility="yes">
+
+    <ImageView
+        android:id="@+id/iv_month_cell"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scaleType="fitXY"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/iv_month_cell_night"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scaleType="fitXY"
+        android:importantForAccessibility="no"
+        android:visibility="visible" />
+</FrameLayout>

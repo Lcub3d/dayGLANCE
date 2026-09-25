@@ -130,7 +130,7 @@ describe.each(['zh-CN', 'en'])('%s GLANCE detail labels', (language) => {
         agendaNowMarker: { insideTask: false, insertAfterIndex: -1, nowTimeStr: '08:00', gapMinutes: 90 },
       });
       expect(html).toContain(language === 'zh-CN'
-        ? '08:00，还有 1小时30分钟 空闲时间'
+        ? '08:00，还有 1 小时 30 分钟 空闲时间'
         : '08:00, 1h 30m of free time');
       expect(html).not.toContain('glance.freeTimeMessage');
     });
@@ -144,7 +144,7 @@ describe.each(['zh-CN', 'en'])('%s GLANCE detail labels', (language) => {
         },
       });
       const expected = language === 'zh-CN'
-        ? [`${count} 项任务`, `${count} 个日历事件`, `${count} 项即将截止`, '已安排 1小时30分钟']
+        ? [`${count} 项任务`, `${count} 个日历事件`, `${count} 项即将截止`, '已安排 1 小时 30 分钟']
         : [`${count} task${count === 1 ? '' : 's'}`, `${count} event${count === 1 ? '' : 's'}`,
           `${count} deadline${count === 1 ? '' : 's'}`, '1h 30m committed'];
       for (const text of expected) expect(html).toContain(`${text}</span>`);

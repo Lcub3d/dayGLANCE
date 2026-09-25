@@ -8,6 +8,7 @@ struct DayGlanceWidgetBundle: WidgetBundle {
         GoalWidget()
         ProjectWidget()
         DayDialWidget()
+        MonthGridWidget()
         DaySummaryLiveActivity()
         // Day Dial preview — the face and hub from fixture days, scenario
         // chosen per instance in Edit Widget; also how App Store screenshots

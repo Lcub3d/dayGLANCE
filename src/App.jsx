@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
-import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask } from './utils/nativeCalendar.js';
+import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
 import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
@@ -10,7 +10,7 @@ import { emitBridgeIntent } from './utils/obsidianBridgeStream.js';
 import { isStreamPosture } from './utils/obsidianVaultPosture.js';
 import { loadAIConfig, saveAIConfig, aiComplete, aiJSON, testConnection, DEFAULT_CONFIG, PROVIDER_MODELS, PROVIDER_LABELS } from './ai.js';
 import { taskSuggestSystemPrompt, taskSuggestUserPrompt, frameNudgeSystemPrompt, frameNudgeUserPrompt, rescheduleSystemPrompt, rescheduleUserPrompt, aiSubtasksSystemPrompt, aiSubtasksUserPrompt, weeklySummarySystemPrompt, weeklySummaryUserPrompt, smartScheduleSystemPrompt, smartScheduleUserPrompt } from './ai-prompts.js';
-import { gatherTrmnlData, pushToTrmnl, TRMNL_MARKUP_FULL, TRMNL_MARKUP_HALF_HORIZONTAL, TRMNL_MARKUP_HALF_VERTICAL, TRMNL_MARKUP_QUADRANT } from './trmnl.js';
+import { gatherTrmnlData, pushToTrmnl } from './trmnl.js';
 import { trmnlContentFingerprint, trmnlPushDecision, trmnlBackoffAfterRateLimit, writeTrmnlPushState } from './utils/trmnlPushPolicy.js';
 import { checkForUpdate } from './versionCheck.js';
 import { getStorageUsage, formatBytes } from './utils/storage.js';
@@ -40,6 +40,11 @@ import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
+import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
+import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
+import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
+import { widgetDayTasks } from './utils/widgetNativeEvents.js';
+import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -47,7 +52,7 @@ import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
-import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, formatLocalizedDurationMinutes, localizedList } from './utils/localeFormatting.js';
+import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
@@ -79,7 +84,6 @@ import SettingsModal from './components/SettingsModal.jsx';
 import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
-import GoalDashboard from './components/goals/GoalDashboard.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
 import BackupMenuModal from './components/BackupMenuModal.jsx';
@@ -109,19 +113,21 @@ import useDailyContent from './hooks/useDailyContent.js';
 import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
+import useJoboLedger from './hooks/useJoboLedger.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
 import useObsidianSync from './hooks/useObsidianSync.js';
 import useTodoistSync from './hooks/useTodoistSync.js';
 import useCompletionLog from './hooks/useCompletionLog.js';
+import useJoboDetector from './hooks/useJoboDetector.js';
 import useDailyBriefings from './hooks/useDailyBriefings.js';
 import useVoiceInput from './hooks/useVoiceInput.js';
 import useCloudSync from './hooks/useCloudSync.js';
 import { createDayGlanceEngine } from './sync/adapter.js';
 import { createDbEngine, resetVaultSyncCursor } from './sync/dbEngine.js';
 import { deriveBlockEnergy } from './utils/energyAxis.js';
-import { computeDaySummary, formatMinutes } from './utils/daySummary.js';
+import { computeDaySummary } from './utils/daySummary.js';
 import { buildUpNextFact } from './utils/liveActivity.js';
 import { registerDbEngine } from './sync/dirtyTracker.js';
 import { isVaultEnabled } from './sync/vaultConfig.js';
@@ -203,6 +209,7 @@ import SubscriptionWall from './components/SubscriptionWall.jsx';
 import ReviewerBanner from './components/ReviewerBanner.jsx';
 import { useSubscription } from './hooks/useSubscription.js';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from './utils/formatDuration.js';
 import { syncErrorText } from './sync/syncErrors.js';
 import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
@@ -272,7 +279,6 @@ const SPOTLIGHT_NATIVE_FUTURE_DAYS = 365;
 
 const DayPlanner = () => {
   const { t } = useTranslation();
-  const formatDuration = (minutes) => formatLocalizedDurationMinutes(minutes, i18n.resolvedLanguage || i18n.language);
   const { isPro, isLoading: subLoading, isAndroidApp, isIOSApp, isElectronApp, productId: subProductId, subscribe, restore, prices: subPrices, trialEligible, trialDays, billingEvent, clearBillingEvent, billingErrorMessage, consumeTestPurchase, canConsumeTestPurchase, isReviewerUnlocked, setReviewerUnlocked } = useSubscription();
   useEffect(() => { if (isReviewerUnlocked) console.info('[dayGLANCE] Reviewer unlock active'); }, [isReviewerUnlocked]);
   // Leave reviewer mode: clear the stored unlock and reload so the billing engine
@@ -355,6 +361,14 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
+  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // behind the same Experimental switch pattern; the FAB lives in the Goals &
+  // Projects space.
+  const [aspireEnabled, setAspireEnabled] = useState(() => {
+    const saved = localStorage.getItem('day-planner-aspire-enabled');
+    return saved !== null ? JSON.parse(saved) === true : false;
+  });
+  useEffect(() => { localStorage.setItem('day-planner-aspire-enabled', JSON.stringify(aspireEnabled)); }, [aspireEnabled]);
   const [storedHiddenViews, setHiddenViews] = useState(() => {
     const saved = localStorage.getItem('day-planner-hidden-views');
     try { return normalizeHiddenViews(saved ? JSON.parse(saved) : null); } catch { return normalizeHiddenViews(null); }
@@ -631,14 +645,31 @@ const DayPlanner = () => {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location?.search ?? '').has('dial'));
   const showDayDialRef = useRef(showDayDial);
-  // dayglance://day?date=YYYY-MM-DD&view=dial — the Day Dial widget's tap
-  // (widgetURL). Lands on the day the widget was showing and, with
-  // view=dial, opens the Day Dial itself over it; without it, the day view.
+  // dayglance://day?date=YYYY-MM-DD[&view=dial|month] — the widgets' taps.
+  // view=dial opens the Day Dial over the day (the Day Dial widget);
+  // view=month opens MONTH with the day selected (the month grid widget),
+  // or the default view when MONTH is off; no view, the day view. The rules
+  // are utils/dayLink.js. The native link handlers are registered once, so
+  // what the rules read comes through a ref refreshed every render — a link
+  // after a rotation or a settings change sees the layout and views as they
+  // are now, not as they were at launch.
+  const [monthSheetRequest, setMonthSheetRequest] = useState(null);
+  const dayLinkEnvRef = useRef(null);
+  dayLinkEnvRef.current = {
+    phoneLayout: isMobile || (isTablet && !isLandscape),
+    phone: isMobile,
+    hiddenViews, defaultView, mobileDefaultView,
+  };
   const openDayFromLink = (url) => {
-    const d = url.searchParams.get('date');
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(new Date(d + 'T12:00:00'));
-    if (url.searchParams.get('view') === 'dial') setShowDayDial(true);
-    else setViewMode('day');
+    const r = resolveDayLink(url.searchParams, dayLinkEnvRef.current);
+    if (r.date) setSelectedDate(new Date(r.date + 'T12:00:00'));
+    if (r.dial) setShowDayDial(true);
+    if (r.desktopView) setViewMode(r.desktopView);
+    if (r.mobileView) setMobileViewMode(r.mobileView);
+    // The plain setters, not MobileTabBar's handler: that one calls
+    // goToToday() and would replace the linked date (utils/dayLink.js).
+    if (r.mobileTab) { setMobileActiveTab(r.mobileTab); setMobileSettingsView('main'); }
+    setMonthSheetRequest(r.monthSheet);
   };
   showDayDialRef.current = showDayDial;
   useAmbientScreensaver({ showDayDialRef, setShowDayDial });
@@ -1007,12 +1038,43 @@ const DayPlanner = () => {
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,
     addProject, updateProject, deleteProject, moveProject,
   } = useGoalsProjects();
+  // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
+  // writer. `joboRecords` is undefined until the ledger has loaded, and the
+  // sync payload omits the collection while it is: undefined means "this
+  // device has not loaded its ledger", [] would claim it is empty. The flag
+  // gates the interface, never the data: a device with JOBO off still loads,
+  // stores, pushes, pulls and merges records.
+  const {
+    joboRecords, joboLoaded, joboWritable, joboError,
+    recordJobo, applyRemoteJobo, restoreJobo,
+  } = useJoboLedger();
+  // The engine and the backup builders can run a beat after a render.
+  const joboRecordsRef = useRef(joboRecords);
+  joboRecordsRef.current = joboRecords;
+  // A ledger write that fails is held and retried by the next apply, and the
+  // vault tier re-delivers the row until it lands; until slice 5 has a place
+  // to show it, the failure is at least not silent.
+  useEffect(() => {
+    if (joboError) console.warn('[jobo] ledger storage error:', joboError);
+  }, [joboError]);
+  // Every restore path writes the ledger FIRST, awaited, and aborts on failure:
+  // the checked IndexedDB write is the one step in a restore that can fail, so
+  // it runs before the localStorage replacement that cannot. A ledger left at
+  // the old point in time under a restored plan would silently disagree with
+  // it, and a write still in flight at reload is lost. The throw lands in each
+  // path's own catch, which alerts and leaves the app as it was.
+  const restoreJoboOrThrow = async (data) => {
+    if (!Array.isArray(data?.joboRecords)) return; // an older backup: the ledger is left as is
+    const result = await restoreJobo(data.joboRecords);
+    if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
+  };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -2069,9 +2131,8 @@ const DayPlanner = () => {
       // polling immediately would always return null.
       setTimeout(() => {
         if (window.DayGlanceNative?.getPendingDeepLink) {
-          const rawLink = window.DayGlanceNative.getPendingDeepLink();
-          if (rawLink && rawLink !== 'null') {
-            const link = rawLink.replace(/^"|"$/g, '');
+          const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+          if (link) {
             try {
               const url = new URL(link);
               const action = url.pathname.replace(/^\/+/, '') || url.hostname;
@@ -2375,6 +2436,33 @@ const DayPlanner = () => {
     }
   }, [dataLoaded]);
 
+  // dayglance:// links, both platforms: iOS stores one in the App Group
+  // (AppDelegate.pendingDeepLink), Android in SharedPreferences
+  // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
+  // Reassigned every render, so a caller always gets current handlers.
+  const drainPendingDeepLinkRef = useRef(null);
+  drainPendingDeepLinkRef.current = () => {
+    if (!window.DayGlanceNative?.getPendingDeepLink) return;
+    const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+    if (link) {
+      try {
+        const url = new URL(link);
+        const action = url.pathname.replace(/^\/+/, '') || url.hostname;
+        const taskId = url.searchParams.get('id');
+        if (action === 'task' && taskId) setSpotlightTaskId(taskId);
+        else if (action === 'completeTask' && taskId) toggleComplete(taskId);
+        else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
+        else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
+        else if (action === 'startFocus') setShowFocusMode(true);
+        else if (action === 'voiceInput') {
+          voiceAutoStartRef.current = true;
+          setShowVoiceInput(true);
+        }
+        else if (action === 'day') openDayFromLink(url);
+      } catch (_) {}
+    }
+  };
+
   // Drain pending quick-action shortcut when data finishes loading. This covers
   // the case where the app was killed when the user tapped a home screen shortcut or
   // Spotlight result — dayglanceForeground fires before dataLoaded is true so the
@@ -2394,27 +2482,15 @@ const DayPlanner = () => {
         }
       }
     }
-    if (window.DayGlanceNative?.getPendingDeepLink) {
-      const rawLink = window.DayGlanceNative.getPendingDeepLink();
-      if (rawLink && rawLink !== 'null') {
-        const link = rawLink.replace(/^"|"$/g, '');
-        try {
-          const url = new URL(link);
-          const action = url.pathname.replace(/^\/+/, '') || url.hostname;
-          const taskId = url.searchParams.get('id');
-          if (action === 'task' && taskId) setSpotlightTaskId(taskId);
-          else if (action === 'completeTask' && taskId) toggleComplete(taskId);
-          else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
-          else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
-          else if (action === 'startFocus') setShowFocusMode(true);
-          else if (action === 'voiceInput') {
-            voiceAutoStartRef.current = true;
-            setShowVoiceInput(true);
-          }
-          else if (action === 'day') openDayFromLink(url);
-        } catch (_) {}
-      }
-    }
+    drainPendingDeepLinkRef.current();
+    // Android's WebView is never paused, so visibilitychange does not fire on
+    // a warm open; MainActivity.onNewIntent calls this hook instead (the
+    // month grid widget's cell taps). It goes through the ref, so a tap hours
+    // after load runs the current render's handlers rather than the ones this
+    // effect captured (toggleComplete closes over the task list). iOS drains
+    // on dayglanceForeground above.
+    const checkPendingDeepLink = () => drainPendingDeepLinkRef.current();
+    if (isNativeAndroid()) window.__dayglanceCheckPendingDeepLink = checkPendingDeepLink;
     // iOS Control Center controls (cold launch): drain the App Group pending action.
     const widgetAction = nativeGetWidgetPendingAction();
     if (widgetAction?.action) {
@@ -2430,6 +2506,7 @@ const DayPlanner = () => {
     }
     // Drains pending native actions once after load (keyed on dataLoaded). The
     // setters/voiceAutoStartRef are stable; toggleComplete is read at drain time.
+    return () => { if (window.__dayglanceCheckPendingDeepLink === checkPendingDeepLink) delete window.__dayglanceCheckPendingDeepLink; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded]);
 
@@ -2977,6 +3054,16 @@ const DayPlanner = () => {
     isRemoteApply,
     isVisibleForUser,
   });
+  // JOBO completion detector (slice 4): the same completion transition writes
+  // a Do record through the ledger's only writer. Every completion path
+  // produces the same deterministic record, and a device with the flag off
+  // creates none (the flag gates the interface; the data still syncs).
+  useJoboDetector({
+    tasks, unscheduledTasks, recurringTasks,
+    joboRecords, joboLoaded, joboWritable, recordJobo,
+    isRemoteApply,
+    enabled: joboEnabled,
+  });
   // Late-bind the SSE → Obsidian nudge (declared beside useVaultEventStream
   // above, which mounts before this hook can exist).
   obsidianSseNudgeRef.current = nudgeObsidianObservations;
@@ -3443,6 +3530,7 @@ const DayPlanner = () => {
         dailyNotes,
         todayRoutines,
         routinesEnabled,
+        t,
       });
       const fingerprint = trmnlContentFingerprint(mergeVars);
       const decision = trmnlPushDecision({
@@ -3485,6 +3573,10 @@ const DayPlanner = () => {
   const enterFocusModeRef = useRef(null);
   const startFocusTimerRef = useRef(null);
   const openRoutinesDashboardRef = useRef(null);
+  // Goals & Projects space keyboard hooks: GoalDashboard registers { moveSelection,
+  // setTab } here while the space is active so the global handler can drive its
+  // sidebar (Up/Down, ',' and '.') under the same modal guard as every shortcut.
+  const goalsSpaceKeysRef = useRef(null);
   // MONTH view registers its "open the sheet for this day" here while mounted,
   // so Enter in the keyboard shortcuts can open the selected day.
   const openMonthDaySheetRef = useRef(null);
@@ -3545,7 +3637,7 @@ const DayPlanner = () => {
     aiConfig, setShowVoiceInput,
     showBucketList, setShowBucketList,
     habitsEnabled, setHabitsEnabled, setShowHabitModal,
-    goalsProjectsEnabled, setGoalsProjectsEnabled, showGoalsDashboard, setShowGoalsDashboard,
+    goalsProjectsEnabled, showGoalsDashboard, toggleDesktopSpace, goalsSpaceKeysRef,
     gtdFrames: myFrames, setShowRescheduleModal, setRescheduleResults, setRescheduleError,
     setMobileActiveTab, setMobileSettingsView, setShowSettings,
     changeDate, setSelectedDate,
@@ -4092,11 +4184,10 @@ const DayPlanner = () => {
     // event list (or null). The mobile and Electron transports both produce this
     // shape so the merge below is identical across platforms.
     const applyEvents = (results) => {
-      // Tag each event with the date it was queried for so multi-day all-day events
-      // can be shown on every day they span, not just their start date.
-      const allEvents = results.flatMap((result, i) =>
-        Array.isArray(result) ? result.map(e => ({ ...e, _queryDate: dates[i] })) : []
-      );
+      // The event → task conversion is shared with the widget's own fetch
+      // (useWidgetNativeEvents): utils/nativeCalendar.js nativeResultsToTasks.
+      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
+      const { events: allEvents, tasks: fetchedWithOverrides } = nativeResultsToTasks(results, dates, { calendarFilter, overrides });
 
       // Discover calendars that appear in events but weren't returned by getCalendars()
       // (e.g. task-only calendars that some providers omit from the calendars list).
@@ -4126,39 +4217,6 @@ const DayPlanner = () => {
           });
         }
         return [...prev, ...newCals];
-      });
-
-      const filterSet = calendarFilter.length > 0 ? new Set(calendarFilter) : null;
-
-      // Deduplicate by task id: CalendarContract can return the same all-day event
-      // in adjacent day windows (especially in UTC+ timezones). Keep first occurrence.
-      // The id is per occurrence (event id + date, see nativeEventToTask), so the
-      // occurrences of a recurring event across this window all survive.
-      const seen = new Set();
-      const fetched = allEvents
-        .filter(e => !filterSet || filterSet.has(e.calendarId))
-        .map(e => nativeEventToTask(e))
-        .filter(t => {
-          if (seen.has(t.id)) return false;
-          seen.add(t.id);
-          return true;
-        });
-
-      // Apply any stored time overrides (from dragging all-day events to the timeline)
-      // so the scheduled position survives date navigation and native calendar re-fetches.
-      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
-      const fetchedWithOverrides = fetched.map(t => {
-        const override = t.nativeEventId && overrides[String(t.nativeEventId)];
-        if (!override) return t;
-        return {
-          ...t,
-          ...(override.date !== undefined ? { date: override.date } : {}),
-          ...(override.startTime !== undefined ? { startTime: override.startTime, isAllDay: false } : {}),
-          ...(override.duration !== undefined ? { duration: override.duration } : {}),
-          ...(override.title !== undefined ? { title: override.title } : {}),
-          ...(override.notes !== undefined ? { notes: override.notes } : {}),
-          ...(override.color !== undefined ? { color: override.color } : {}),
-        };
       });
 
       // Drop both prior _native events and any read-only subscription imports
@@ -4747,6 +4805,7 @@ const DayPlanner = () => {
         goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4809,6 +4868,7 @@ const DayPlanner = () => {
       goals: JSON.parse(localStorage.getItem('day-planner-goals') || '[]'),
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4896,6 +4956,7 @@ const DayPlanner = () => {
       const record = await autoBackupDB.getBackup(backupId);
       if (!record?.data?.data) throw new Error('Invalid backup record');
       const { data } = record.data;
+      await restoreJoboOrThrow(data);
       if (data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(data.aiConfig));
       if (data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
       // Restoring replaces the FULL local state, so the vault sync cursors no
@@ -4917,6 +4978,7 @@ const DayPlanner = () => {
       if (!provider) throw new Error('No provider configured');
       const backup = await provider.downloadBackup(autoBackupConfig.remote, filename);
       if (!backup?.data) throw new Error('Invalid backup file');
+      await restoreJoboOrThrow(backup.data);
       if (backup.data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(backup.data.aiConfig));
       if (backup.data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(backup.data.obsidianConfig));
       // Full-state replacement → invalidate the vault sync cursors (see
@@ -5035,7 +5097,7 @@ const DayPlanner = () => {
     if (!backupFile) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const backup = JSON.parse(e.target.result);
 
@@ -5044,6 +5106,7 @@ const DayPlanner = () => {
           throw new Error('Invalid backup file format');
         }
 
+        await restoreJoboOrThrow(backup.data);
         applyBackupToLocalStorage(backup.data);
 
         // Full-state replacement → invalidate the vault sync cursors (see
@@ -5082,6 +5145,7 @@ const DayPlanner = () => {
         alert(t('backup.folderBackupNotFound', { filename: LIVE_BACKUP_FILENAME }));
         return;
       }
+      await restoreJoboOrThrow(payload.data);
       applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
       // config said — the user just restored from this folder, so keep writing
@@ -5800,6 +5864,9 @@ const DayPlanner = () => {
         deletedProjectIds: JSON.parse(localStorage.getItem('day-planner-deleted-project-ids') || '{}'),
         areas,
         deletedAreaIds: JSON.parse(localStorage.getItem('day-planner-deleted-area-ids') || '{}'),
+        // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
+        // treat an absent key as "does not carry it"; [] would mean empty.
+        ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -6092,6 +6159,9 @@ const DayPlanner = () => {
       setAreas(data.areas);
     }
     if (data.deletedAreaIds) localStorage.setItem('day-planner-deleted-area-ids', JSON.stringify(data.deletedAreaIds));
+    // JOBO ledger rows go through the hook, the only writer: merged by id with
+    // incoming timestamps untouched, held until the ledger has loaded.
+    if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -6448,6 +6518,7 @@ const DayPlanner = () => {
 
   // Expand recurring task templates into virtual task instances for visible dates.
   // In week view, expand over the full week range (which may extend beyond visibleDates).
+  const expansionDayKey = dateToString(currentTime);
   const expandedRecurringTasks = useMemo(() => {
     if (recurringTasks.length === 0) return [];
     // The range's anchors — the SCHED rolling window, TODAY, and TODAY + the
@@ -6455,46 +6526,13 @@ const DayPlanner = () => {
     // utils/recurringExpansionRange.js; the reasons live there.
     const today = getTodayStr();
     const { rangeStart, rangeEnd } = computeRecurringExpansionRange({
-      visibleDates, weekViewDates, monthViewRange, selectedDate, schedDaysShown, today: new Date(),
+      visibleDates, weekViewDates, monthViewRange, selectedDate, schedDaysShown, today: new Date(), weekStartDay,
     });
-    const instances = [];
-    for (const template of recurringTasks) {
-      const occurrences = getOccurrencesInRange(template, rangeStart, rangeEnd);
-      for (const dateStr of occurrences) {
-        const completed = (template.completedDates || []).includes(dateStr);
-        const exception = template.exceptions?.[dateStr];
-        // Don't show past uncompleted recurring instances (except all-day — those surface as overdue)
-        if (dateStr < today && !completed && !(exception?.isAllDay ?? template.isAllDay)) continue;
-        instances.push({
-          id: `recurring-${template.id}-${dateStr}`,
-          title: exception?.title ?? template.title,
-          startTime: exception?.startTime ?? template.startTime,
-          duration: exception?.duration ?? template.duration,
-          color: exception?.color ?? template.color,
-          completed,
-          isAllDay: exception?.isAllDay ?? template.isAllDay ?? false,
-          // Assignment is series-level by default (inherited from the template),
-          // but an instance can carry its own override when assigned "this only".
-          assignedUserSyncIds: exception?.assignedUserSyncIds ?? template.assignedUserSyncIds,
-          notes: template.notes || '',
-          subtasks: template.subtasks || [],
-          // Energy-axis override is series-level (see setTaskEnergy); the
-          // expansion is an explicit field list, so it must be carried here or
-          // instances silently fall back to auto-derivation.
-          energy: template.energy,
-          date: dateStr,
-          isRecurring: true,
-          recurringTemplateId: template.id,
-          recurrenceType: template.recurrence?.type,
-          // Project membership is series-level (stored on the template);
-          // instances inherit it so project-filtered views keep occurrences.
-          projectId: template.projectId,
-          ...(template.isExample ? { isExample: true } : {}),
-        });
-      }
-    }
-    return instances;
-  }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown]);
+    return expandRecurringTasks(recurringTasks, { rangeStart, rangeEnd, today });
+    // expansionDayKey re-anchors the range when the day rolls with the app
+    // open; the body reads the clock itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown, weekStartDay, expansionDayKey]);
   expandedRecurringTasksRef.current = expandedRecurringTasks;
 
   // Build today's non-overdue HG sessions for the reminder engine.
@@ -7361,6 +7399,17 @@ const DayPlanner = () => {
   // at midnight; a foregrounded app then also reloads at 00:00:30
   // (utils/midnightRefresh.js).
   const widgetTodayKey = dateToString(currentTime);
+  // The widget's own device-calendar fetch over the whole month window, so the
+  // snapshot has device events for days nothing on screen has loaded
+  // (hooks/useWidgetNativeEvents.js); widgetTasksForDate swaps them in.
+  const widgetNative = useWidgetNativeEvents({
+    enabled: dataLoaded && (isNativeAndroid() || isNativeIOS()) && hasNativeCalendar(),
+    todayKey: widgetTodayKey, weekStartDay, calendarFilter, nativeCalendarKey,
+  });
+  const widgetTasksForDate = useCallback(
+    (date) => widgetDayTasks(dateToString(date), getTasksForDate(date, false), widgetNative),
+    [getTasksForDate, widgetNative],
+  );
   const projectedWidgetDays = useMemo(() => {
     if (!dataLoaded) return [];
     if (!isNativeAndroid() && !isNativeIOS()) return [];
@@ -7391,8 +7440,8 @@ const DayPlanner = () => {
         date,
         dateStr,
         dateLabel: formatLocalizedDate(date, { weekday: 'short', month: 'short', day: 'numeric' }),
-        dayTasks: getTasksForDate(date, false),
-        prevDayTasks: getTasksForDate(prev, false),
+        dayTasks: widgetTasksForDate(date),
+        prevDayTasks: widgetTasksForDate(prev),
         deadlineTasks: unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
         frames: getFrameInstancesForDate(date),
         frameAvailableMinutes: (frame) => computeAvailableSlots(frame, date).reduce((sum, slot) => sum + slot.minutes, 0),
@@ -7408,8 +7457,34 @@ const DayPlanner = () => {
     // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
+    dataLoaded, widgetTodayKey, widgetTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
     tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
+  ]);
+
+  // ── Six-week month window for a month-grid widget ────────────────────────
+  // Bars only (utils/widgetMonthWindow.js): the week containing today plus
+  // five more, and a one-week rollover tail because nothing republishes it at
+  // midnight with the app in the background. Same day key as the projection,
+  // so a foregrounded app rolls it at midnight; not keyed on currentTime.
+  const widgetMonthWindow = useMemo(() => {
+    if (!dataLoaded) return null;
+    if (!isNativeAndroid() && !isNativeIOS()) return null;
+    return buildWidgetMonthWindow({
+      today: new Date(widgetTodayKey + 'T12:00:00'),
+      weekStartDay,
+      tasksForDate: widgetTasksForDate,
+      deadlinesForDate: (dateStr) => unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
+      // Routines exist for today only; both halves of the date guard are the
+      // ones buildRoutineBlocks (utils/mcpRoutines.js) explains.
+      // Completion rides along for the extra-large widget's agenda, which
+      // draws a done routine the way SCHED draws a done task.
+      routinesForDate: (dateStr) => (routinesEnabled && routinesDate === dateStr && widgetTodayKey === dateStr)
+        ? todayRoutines.map(r => ({ ...r, completed: !!routineCompletions?.[r.id] }))
+        : [],
+    });
+  }, [
+    dataLoaded, widgetTodayKey, weekStartDay, widgetTasksForDate, unscheduledTasks, isVisibleForUser,
+    routinesEnabled, routinesDate, todayRoutines, routineCompletions,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────
@@ -7694,9 +7769,7 @@ const DayPlanner = () => {
     let glanceAheadData = null;
     if (showGlanceAhead) {
       const { dayLabel, taskCount, eventCount, deadlineCount, firstStartTime, committedMinutes, isEmpty } = glanceAhead;
-      const committedH = Math.floor(committedMinutes / 60);
-      const committedM = committedMinutes % 60;
-      const committedStr = committedH > 0 ? `${committedH}h${committedM > 0 ? ` ${committedM}m` : ''}` : committedM > 0 ? `${committedM}m` : null;
+      const committedStr = committedMinutes > 0 ? formatDuration(committedMinutes, t) : null;
       glanceAheadData = {
         dayLabel,
         taskCount,
@@ -7786,7 +7859,7 @@ const DayPlanner = () => {
       // ── Day-summary projection (Live Activity / Dynamic Island) ────────
       // The strip's numbers for TODAY, precomputed here so the native side
       // never re-implements the math: the projection IS computeDaySummary.
-      // Raw minutes plus preformatted strings (formatMinutes keeps the
+      // Raw minutes plus preformatted strings (formatDuration keeps the
       // wording identical to the in-app strip); metadata only, no media
       // bytes. unblockedMinutes is null on an empty day with no declared
       // window — the native side should show nothing rather than "0m".
@@ -7803,10 +7876,10 @@ const DayPlanner = () => {
           restoreMinutes: sum.restoreMinutes,
           doneMinutes: sum.doneMinutes,
           completableMinutes: sum.completableMinutes,
-          unblocked: sum.unblockedMinutes === null ? null : formatMinutes(sum.unblockedMinutes),
-          effort: formatMinutes(sum.effortMinutes),
-          restore: formatMinutes(sum.restoreMinutes),
-          done: `${formatMinutes(sum.doneMinutes)}/${formatMinutes(sum.completableMinutes)}`,
+          unblocked: sum.unblockedMinutes === null ? null : formatDuration(sum.unblockedMinutes, t),
+          effort: formatDuration(sum.effortMinutes, t),
+          restore: formatDuration(sum.restoreMinutes, t),
+          done: `${formatDuration(sum.doneMinutes, t)}/${formatDuration(sum.completableMinutes, t)}`,
           // The island's schedule-fact pair, built from the same unified
           // current-or-next entry (task or HG session) the Android Up Next
           // notification uses. Labels stay factual when stale ("until 2:00
@@ -7866,6 +7939,11 @@ const DayPlanner = () => {
       // the pushed day above carries state (completions, habits, routines,
       // overdue); a projected day carries the shape of the day.
       days: projectedWidgetDays,
+      // ── Six weeks of bars, for a month grid ─────────────────────────────
+      // { from, weekStart, days: [{date, bars:[{s,d,c}], allDay, deadlines}] },
+      // 49 days (42 + a rollover week). Wholly hot in the dedupe: any change
+      // in it reloads (utils/widgetSnapshotDedupe.js).
+      monthWindow: widgetMonthWindow,
       // The zone every clock minute above was computed in. A widget on a
       // device that has since moved to a different UTC offset shows its own
       // "time zone changed" state instead of blocks at the wrong angles
@@ -7938,6 +8016,7 @@ const DayPlanner = () => {
     liveActivityEnabled,
     widgetSnapshotTick,
     projectedWidgetDays,
+    widgetMonthWindow,
     t,
   ]);
 
@@ -8381,6 +8460,7 @@ const DayPlanner = () => {
     visibleDays, visibleDates,
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
     monthViewActive, openMonthDaySheetRef,
+    monthSheetRequest, setMonthSheetRequest,
     defaultView, setDefaultView,
     hiddenViews, setViewHidden,
     dayViewMode, setDayViewMode,
@@ -8858,6 +8938,8 @@ const DayPlanner = () => {
     habitLogs, setHabitLogs,
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
+    aspireEnabled, setAspireEnabled,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,
@@ -8960,6 +9042,7 @@ const DayPlanner = () => {
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
     hgVisibleProjects,
+    desktopSpace, setDesktopSpace, toggleDesktopSpace, goalsSpaceKeysRef,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
@@ -9175,13 +9258,7 @@ const DayPlanner = () => {
 
       {/* Focus Log Modal */}
       {focusLogModalDate && (() => {
-        const fmtMin = (min) => {
-          const h = Math.floor(min / 60);
-          const m = min % 60;
-          if (h === 0) return `${m}m`;
-          if (m === 0) return `${h}h`;
-          return `${h}h ${m}m`;
-        };
+        const fmtMin = (min) => formatDuration(min, t);
         const dayData = focusLog[focusLogModalDate] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
         const displayDate = formatLocalizedDate(new Date(focusLogModalDate + 'T12:00:00'), { weekday: 'long', month: 'short', day: 'numeric' });
 
@@ -9476,8 +9553,10 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Tablet: Timeline FABs — + (new task), Frames */}
-      {isTablet && (
+      {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
+          calendar, so they stand down in the Goals & Projects space (`n` still
+          works there). */}
+      {isTablet && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -9505,8 +9584,9 @@ const DayPlanner = () => {
         </>
       )}
 
-      {/* Desktop: Timeline FABs — + (new task), Frames, mic (voice input) */}
-      {!isTablet && !isMobile && (
+      {/* Desktop: Timeline FABs — + (new task), Frames. Calendar-only, like
+          the tablet's above: hidden in the Goals & Projects space. */}
+      {!isTablet && !isMobile && desktopSpace !== 'goals' && (
         <>
           {/* GTD Frames FAB */}
           <button
@@ -9671,16 +9751,16 @@ const DayPlanner = () => {
                     <div className={`space-y-3 ${textSecondary}`}>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
                       </div>
                       {actualTodayFocusMinutes > 0 && (
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes)}</span>
+                          <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayFocusMinutes, t)}</span>
                         </div>
                       )}
                     </div>
@@ -9800,17 +9880,17 @@ const DayPlanner = () => {
                   )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-orange-400" /> {t('app.timeSpent')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
-                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes)}</span>
+                    <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
                   </div>
                   {allTimeFocusMinutes > 0 && (
                     <>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2"><Target size={14} className="text-purple-400" /> {t('app.focusTime')}</div>
-                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes)}</span>
+                        <span className={`font-medium ${textPrimary}`}>{formatDuration(allTimeFocusMinutes, t)}</span>
                       </div>
                     </>
                   )}
@@ -10488,9 +10568,6 @@ const DayPlanner = () => {
           </FormOverlay>
         );
       })()}
-
-      {/* Goals & Projects Dashboard */}
-      <GoalDashboard />
 
       {/* Weekly Review Modal */}
       <WeeklyReviewModal />

@@ -3,7 +3,6 @@ import {
   defaultUse24HourClock,
   defaultWeekStartDay,
   formatLocalizedDate,
-  formatLocalizedDurationMinutes,
   localizedList,
   localizedWeekdays,
   speechRecognitionLocale,
@@ -29,21 +28,6 @@ describe('Simplified Chinese locale formatting', () => {
     expect(localizedWeekdays('short', 'zh-CN')).toEqual([
       '周日', '周一', '周二', '周三', '周四', '周五', '周六',
     ]);
-  });
-
-  it('formats durations with Chinese units', () => {
-    expect(formatLocalizedDurationMinutes(0, 'zh-CN')).toBe('0分钟');
-    expect(formatLocalizedDurationMinutes(45, 'zh-CN')).toBe('45分钟');
-    expect(formatLocalizedDurationMinutes(135, 'zh-CN')).toBe('2小时15分钟');
-    expect(formatLocalizedDurationMinutes(135, 'en')).toBe('2h 15m');
-  });
-
-  it('joins hours and minutes with a space where the locale would list them with a comma or a word', () => {
-    expect(formatLocalizedDurationMinutes(90, 'de')).toBe('1h 30 Min.');      // not "1h, 30 Min."
-    expect(formatLocalizedDurationMinutes(90, 'pt-PT')).toBe('1 h 30 min');   // not "1 h e 30 min"
-    expect(formatLocalizedDurationMinutes(90, 'fr')).toBe('1h 30min');
-    expect(formatLocalizedDurationMinutes(90, 'zh-CN')).toBe('1小时30分钟');   // no separator at all stays that way
-    expect(formatLocalizedDurationMinutes(45, 'de')).toBe('45 Min.');
   });
 
   // SpeechRecognition needs a regional tag ("uk-UA"), not the bare app

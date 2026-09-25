@@ -38,7 +38,14 @@ smaller than a ledger and cost real data.
    `joboEnabled` off still loads, stores, pushes, pulls and merges records.
    It only declines to show them, and does not create records from its own
    completions. Otherwise the first sync from a device with the flag off
-   would push a payload without the collection.
+   would push a payload without the collection. **This makes the ledger
+   evidence, not proof, and that is intentional.** A completion made on a
+   device with the flag off, and never observed as a transition by an
+   enabled writable device, leaves no Do. So the absence of a Do is the
+   absence of evidence, never evidence that nothing was done; the derived
+   "not started" reads as "no Do recorded", and the task's own `completed`
+   flag stays the authoritative completion state. The view must not infer
+   more from an empty ledger than that.
 4. **Records reach React state, not only storage.** `buildSyncPayload` reads
    state; `applyEngineData` writes state. `originalPlan` shipped once written
    to localStorage and never to state, and could not survive a single sync
@@ -64,6 +71,7 @@ storage layers depend on, and ask core to keep fixed:
   taskId: 't1',            // the task this attempt was against, or null for an
                            //   unlinked manual Do; may also be an id that no
                            //   longer resolves (see "Orphans")
+  timing: 'timed',          // 'timed' | 'untimed'
   date: '2026-09-19',      // the day the interval starts on
   startTime: '14:30',
   endDate: '2026-09-19',   // the day it ends on; equal to `date` except across
@@ -90,10 +98,17 @@ storage layers depend on, and ask core to keep fixed:
 passes through opaque, which is what lets core change its mind about
 classification without touching persistence.
 
-Two nullables, both from review. `taskId: null` is a manual Do with no task
+Two record links remain nullable. `taskId: null` is a manual Do with no task
 behind it. `planSnapshot: null` means there genuinely was no timed plan to
 copy. An unavailable historical snapshot is not the same as "unplanned", and
 the hook must never manufacture one from today's task to fill the gap.
+
+Execution measurement is explicit. `timing: 'timed'` requires a positive
+interval. `timing: 'untimed'` means execution is known to have happened but
+duration was not measured; `startTime`, `endDate`, and `endTime` are then
+explicit `null`. Untimed never means zero minutes. It is still a real Do
+attempt and carries progress, but interval-based comparison does not invent
+coordinates for it.
 
 **What the snapshot is, honestly.** A detector that runs on completion
 captures the plan as it stands at completion. It cannot prove what the plan
@@ -104,10 +119,10 @@ completion-time plan and the doc says so rather than promising history that
 was not captured. `originalPlan` on the task remains the Original Plan; the
 snapshot is the best available Final Plan, not a guaranteed one.
 
-**Progress.** Core keeps the prototype's vocabulary: Started, Partially
-completed, Mostly completed, Completed, with the serialized values defined
-once in core. "Not started" is the derived condition of a plan with no
-recorded attempt, not a record. The transition contract slice 4 builds on:
+**Progress.** Core keeps the four per-attempt levels: Started, Partially
+completed, Mostly completed, Completed, serialized as `started`, `partial`,
+`mostly`, `completed`. "Not started" is the derived condition of an elapsed
+plan with no recorded attempt, not a record. The transition contract slice 4 builds on:
 
 - Completing creates a Completed attempt.
 - Un-completing changes that attempt to Partially completed, keeping its
@@ -228,9 +243,18 @@ importer all go through it.
   tiers already distinguish an absent bundle from an empty one for other
   data, and the vault tier treats absent as "does not carry it", never as a
   delete.
-- **Applies during load are held.** A remote apply that arrives before
-  `loaded` is queued and merged after hydration. Merging it into the stale
-  initial state and then loading over it would drop it.
+- **Applies during load are held, and held is retryable.** A remote apply
+  that arrives before `loaded` is queued and merged after hydration. Merging
+  it into the stale initial state and then loading over it would drop it.
+  The queue is drained until it is stable, since an apply can land while the
+  flush is in flight, and a batch whose write fails, local commit or remote
+  apply alike, goes back on the queue rather than being published: state
+  shows only what the read returned, the error is reported, the ledger
+  retries on its own with backoff (2s doubling to 60s), and the next apply
+  or load carries the batch too. The queue is merged by id, so a row the
+  vault tier re-delivers every cycle does not grow it. This is what lets the
+  detector stay one-shot: once it has handed a record over, the ledger owns
+  it, and a transient storage failure cannot consume the completion edge.
 - **Every mutation** goes through `update(fn)` and the hook refreshes state
   from the committed value, not from what it intended to write. A record in
   state that is not on disk is exactly what a crash loses.
@@ -389,7 +413,10 @@ and belongs in every backup the app makes, folder and file alike.
 
 **Restore.** Every restore path (`restoreFromBackupFolder`, restore from file,
 the cloud restore at `applyEngineData`'s call sites) writes the collection
-through the checked write **and reloads only on `ok: true`.**
+through the checked write **first, awaited, and aborts the restore on
+failure.** The ledger write is the one step in a restore that can fail, so it
+runs before the localStorage replacement that cannot; a restored plan over a
+ledger left at the old point in time would silently disagree with it.
 `resetVaultSyncCursor` notes that the snapshot's IndexedDB delete is not
 awaited because it races the unload and the snapshot was keyed to make the
 race harmless. The ledger has no such key; a restore that reloads before the
@@ -409,8 +436,20 @@ truth"; nothing here forecloses it.
 
 - The fields that express progress and classification, and their rules
   (slice 2).
-- Creating records from completions (slice 4), which depends on the identity
-  rules above and on the hook being the only writer.
+- Creating records from completions is slice 4, `src/jobo/detector.js` and
+  `useJoboDetector`: a planner over prev and next task snapshots in
+  `useCompletionLog`'s shape, applying the identity rules above and writing
+  through `recordJobo`. A completion-created record is `timing: 'untimed'`
+  (a checkbox says the work happened, not when it began) with the plan
+  captured as it stands; the interval can be corrected later under the same
+  id. Its `date` is the completion stamp's own `YYYY-MM-DD` prefix, so two
+  observers in different zones agree on it; a stamp with an offset names the
+  completing device's local date, a Z stamp the UTC date. A recurring
+  occurrence captures the occurrence the user saw, that date's exception
+  applied over the template on the same fallback the instance expansion
+  uses, so a one-off rename or reschedule is the Final Plan preserved. An
+  all-day plan captures `planSnapshot: null`, since a block at midnight is
+  not an interval to compare against.
 - Any rendering (slice 5), including the history popover learning about Do.
 - Import of the prototype's JSON ledger. Worth doing, and small, once the
   record shape is final; not before.
@@ -464,11 +503,28 @@ rather than unit-testing a module. The five from review are folded in.
    payload without the key; a failed write is not acknowledged; a failed
    restore write does not reload; at no point is an empty ledger published
    in place of an unreadable one.
-10. **Unlinked and untimed.** A manual Do with `taskId: null` and
-    `planSnapshot: null` round-trips both tiers intact, and a cross-midnight
-    interval keeps its `endDate`.
+10. **Unlinked and untimed.** A manual Do with `taskId: null`,
+    `planSnapshot: null`, `timing: 'untimed'`, and null interval coordinates
+    round-trips both tiers intact without inventing duration. A Timed
+    cross-midnight interval keeps its explicit `endDate`.
 11. **Restore then reload keeps the ledger.** Restore with a checked write;
     construct a fresh hook over the same store; assert the records are there.
+12. **A failed write after a pull is re-delivered.** Through the real engine:
+    the pull cursor advances at end of pull and `applyEngineData` does not
+    await the ledger write, so a row can be consumed before it is durable.
+    Fail the write; assert the row is absent from state, the error reported,
+    and the cursor past it. Recover the store; assert the next cycle's
+    snapshot-delete guard treats the vanish as a glitch, re-fetches the row
+    by id, and it lands on disk, with the vault row and the other device
+    untouched.
+13. **Completing a task writes a Do record, once, across two devices**
+    (slice 4). Through the real planner and ledger on each device and the
+    vault simulator: a completion on A is one record on both, and B observing
+    the same completion writes nothing new; two devices that each observe it
+    before the record arrives converge on the earlier observer on both tiers;
+    an uncheck drops the attempt to Partially completed everywhere and a
+    later completion is a second attempt; a device with the flag off creates
+    nothing and still forwards the record.
 
 Mutation checks: remove the `COLLECTION_KINDS` entry (1 fails at apply);
 remove the flag-independence (2 fails); pass the sync horizon to the

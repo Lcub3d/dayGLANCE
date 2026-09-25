@@ -48,6 +48,12 @@ class MidnightRolloverReceiver : BroadcastReceiver() {
         runCatching { UpNextWidget.requestUpdate(context) }
         runCatching { GoalWidget.requestUpdate(context) }
         runCatching { ProjectWidget.requestUpdate(context) }
+        runCatching { MonthGridWidget.requestUpdate(context) }
+        // The month + agenda widget's paged-to day resets to today at 00:00
+        // (MonthDaySelection.resolve also reads yesterday's pick as today, so
+        // a late or missed alarm still resets on the next render).
+        runCatching { MonthAgendaSelectionStore.clearAll(context) }
+        runCatching { MonthAgendaWidget.requestUpdate(context) }
     }
 
     companion object {

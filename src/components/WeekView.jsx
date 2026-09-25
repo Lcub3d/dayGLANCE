@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDuration } from '../utils/formatDuration.js';
 import { weekWindow, compactHourLabel, clippedCounts, gutterEdge } from '../utils/weekWindow.js';
 import { HOUR_GUTTER_W } from '../constants/timeline.js';
 import * as Icons from 'lucide-react';
@@ -80,12 +81,8 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
 
 const WEEK_GUTTER_W = HOUR_GUTTER_W; // the shared hour-label column (constants/timeline.js)
 
-const fmtDur = (min) => {
-  const h = Math.floor(min / 60), m = min % 60;
-  return min < 60 ? `${min}m` : m ? `${h}h${m}m` : `${h}h`;
-};
-
 const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour, onTaskClick, activePopoverTaskId, isToday }) => {
+  const { t } = useTranslation();
   const {
     darkMode, borderClass, cardBg,
     getTasksForDate, getTaskCalendarStyle,
@@ -431,7 +428,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
                 }}>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium inline-flex items-center min-w-0 max-w-full overflow-hidden ${darkMode ? 'bg-teal-700 text-teal-100' : 'bg-teal-600 text-white'} ${routineCompletions[r.id] ? 'line-through opacity-75' : ''}`}>
                   <span className="truncate min-w-0">{r.name}</span>
-                  <span className="shrink-0 ml-1 opacity-75">· {fmtDur(r.duration)}</span>
+                  <span className="shrink-0 ml-1 opacity-75">· {formatDuration(r.duration, t)}</span>
                 </span>
               </div>
             );
@@ -492,7 +489,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
                 className={`rounded-full px-3 py-1 text-xs font-medium inline-flex items-center min-w-0 max-w-full overflow-hidden ${darkMode ? 'bg-teal-700 text-teal-100' : 'bg-teal-600 text-white'} ${routineCompletions[routine.id] ? 'line-through opacity-75' : ''}`}
               >
                 <span className="truncate min-w-0">{routine.name}</span>
-                <span className="shrink-0 ml-1 opacity-75">· {fmtDur(routine.duration)}</span>
+                <span className="shrink-0 ml-1 opacity-75">· {formatDuration(routine.duration, t)}</span>
               </div>
             ))}
           </div>

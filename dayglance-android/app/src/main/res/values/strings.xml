@@ -5,6 +5,7 @@
     <string name="widget_upnext_description">Detailed view of your next scheduled task</string>
     <string name="widget_goal_description">Progress card for a pinned goal and its projects</string>
     <string name="widget_project_description">Progress card for a pinned project and its tasks</string>
+    <string name="widget_month_description">Six weeks of your schedule at a glance</string>
     <string name="shortcut_voice_short">Voice Input</string>
     <string name="shortcut_voice_long">Add tasks by voice</string>
     <string name="shortcut_add_task_short">Scheduled Task</string>
@@ -171,4 +172,20 @@ Open dayGLANCE to sync your data, then try adding the widget again.</string>
     <string name="widget_open_to_refresh">Open dayGLANCE to refresh</string>
     <string name="widget_planned_as_of">Planned as of %1$s</string>
     <string name="widget_planned_in_advance">Planned in advance</string>
+    <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
+    <plurals name="widget_month_scheduled">
+        <item quantity="one">%1$d scheduled</item>
+        <item quantity="other">%1$d scheduled</item>
+    </plurals>
+    <string name="widget_month_all_day_or_due">All-day or due</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Six weeks at a glance, with any day\'s agenda</string>
+    <string name="badge_due">DUE</string>
+    <string name="widget_nothing_scheduled">Nothing scheduled</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d more</item>
+        <item quantity="other">+%d more</item>
+    </plurals>
+    <string name="widget_previous_day">Previous day</string>
+    <string name="widget_next_day">Next day</string>
 </resources>

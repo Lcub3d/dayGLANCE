@@ -252,10 +252,14 @@ export function buildProjectedDay({
 
 /**
  * Sanity guard on the wire size. Returns the JSON to send: the full payload,
- * or — past the cap — the payload without `days`, so today still reaches the
- * widgets while the projection is dropped loudly rather than the whole push
- * being refused on the native side.
+ * or — past the cap — the payload with its optional blocks shed one at a time
+ * until it fits, so today still reaches the widgets while the extras are
+ * dropped loudly rather than the whole push being refused on the native side.
+ * Shed order: `monthWindow` first (the month grid, widgetMonthWindow.js),
+ * then `days` — the existing widgets' projection outranks the newer field.
  */
+const SHEDDABLE_FIELDS = ['monthWindow', 'days'];
+
 export function guardSnapshotSize(snapshot, {
   cap = WIDGET_SNAPSHOT_CAP_BYTES, warn = WIDGET_SNAPSHOT_WARN_BYTES, log = console,
 } = {}) {
@@ -263,16 +267,24 @@ export function guardSnapshotSize(snapshot, {
   const byteLength = (s) => new TextEncoder().encode(s).length;
   let json = JSON.stringify(snapshot);
   let bytes = byteLength(json);
-  if (bytes > cap && snapshot.days) {
-    // eslint-disable-next-line no-unused-vars
-    const { days, ...withoutDays } = snapshot;
-    log.error(`[widget] snapshot is ${bytes} B, over the ${cap} B cap: dropping the ${days.length} projected days for this push. Something grew — see widgetDayProjection.js.`);
-    json = JSON.stringify(withoutDays);
-    bytes = byteLength(json);
+  const droppedFields = [];
+  if (bytes > cap) {
+    let current = snapshot;
+    for (const field of SHEDDABLE_FIELDS) {
+      if (bytes <= cap) break;
+      if (current[field] == null) continue;
+      // eslint-disable-next-line no-unused-vars
+      const { [field]: _gone, ...rest } = current;
+      current = rest;
+      droppedFields.push(field);
+      log.error(`[widget] snapshot is ${bytes} B, over the ${cap} B cap: dropping \`${field}\` for this push. Something grew — see widgetDayProjection.js.`);
+      json = JSON.stringify(current);
+      bytes = byteLength(json);
+    }
   } else if (bytes > warn) {
     log.warn(`[widget] snapshot is ${bytes} B, past the ${warn} B warning line (cap ${cap} B). Something grew — see widgetDayProjection.js.`);
   }
-  return { json, bytes, dropped: !json.includes('"days"') && !!snapshot.days };
+  return { json, bytes, dropped: droppedFields.length > 0, droppedFields };
 }
 
 /** 'YYYY-MM-DD' for a local Date; re-exported so callers need one import. */

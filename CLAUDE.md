@@ -75,6 +75,37 @@ Strings live in the normal locale bundles under the `todoist` prefix, not in a
 feature-local namespace. Add new keys to `public/locales/*/translation.json`;
 `locales.test.js` enforces coverage across every language.
 
+# JOBO ledger
+
+`src/jobo/` holds the plan-versus-actual ledger (#1726). The design is
+`docs/jobo-ledger-persistence.md`; the rules that are load-bearing:
+
+- **The ledger is a collection, not a task field and not a cache.** Each Do
+  record is its own row with its own `updatedAt`. The task gains no field.
+- **`useJoboLedger` is the only writer.** Detectors, manual entry, importers and
+  both sync tiers go through it; nothing else touches `dayglance-jobo`.
+- **Not loaded is not empty.** `joboRecords` is `undefined` until a strict read
+  succeeds, and the sync payload omits the key while it is. An unreadable
+  ledger is never published as `[]`.
+- **Both tiers pick with one rule.** Copies of one record converge by the
+  shared pick (newer `updatedAt`, then lower `observedAt`); each tier's own
+  "remote wins" tie is order-dependent and would never converge.
+- **Ledger tombstones are never pruned, and the file-tier merge gets no sync
+  horizon.** The horizon drops old local-only rows, tombstones included.
+- **The flag gates the interface, never the data.** A device with JOBO off
+  still loads, stores, pushes, pulls and merges records. It creates none from
+  its own completions, and does not retro-create them on enable.
+- **The detector is a planner over task snapshots, and its keys come from the
+  source event.** `src/jobo/detector.js` keys a record on the task's own
+  completion stamp, never on the observing device's clock, so two devices
+  produce one id and `pickJoboRecord` picks one copy. Creation is
+  ensure-present; an uncheck targets the record by the previous key and drops
+  it to `partial`; a completion without a stamp makes no record. A recurring
+  completion captures the occurrence the user saw (that date's exception
+  over the template), and the Do `date` is the stamp's own prefix. The
+  detector is one-shot because a failed write, local or remote, is held in
+  the ledger and retried with backoff.
+
 # Adding a field to a task
 
 Task rows cross four subsystems, and a new field has to be declared to each one

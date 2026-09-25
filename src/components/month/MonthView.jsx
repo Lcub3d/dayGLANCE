@@ -84,10 +84,25 @@ export default function MonthView({ width, height } = {}) {
   const itemsForDate = useMonthItemsForDate();
   const selectedStr = dateToString(selectedDate);
   const { year, month } = monthOf(selectedStr);
-  const [sheetDate, setSheetDate] = useState(null);
   // The docked panel takes the sheet's place at the width DAY needs; the two
   // are never on screen together.
   const docked = !!canShowViewCycler;
+  // A month grid widget tap (utils/dayLink.js): App selects the day and asks
+  // for its sheet. The sheet opens in the SAME render that shows MONTH, not
+  // an effect after it: on a warm open the Obsidian resume sync's synchronous
+  // bridge work queues between the first paint and the passive effects, so
+  // an effect-opened sheet came up only once the sync had finished. Seeded
+  // here on mount, and adjusted during render for a request that arrives
+  // while MONTH is already up (React's "adjust state on a prop change").
+  // Docked, the panel already shows the selected day: nothing to open.
+  const [sheetDate, setSheetDate] = useState(() =>
+    consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked }).open);
+  const [seenSheetRequest, setSeenSheetRequest] = useState(monthSheetRequest);
+  if (monthSheetRequest !== seenSheetRequest) {
+    setSeenSheetRequest(monthSheetRequest);
+    const { open } = consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked });
+    if (open) setSheetDate(open);
+  }
   const panelRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -131,13 +146,10 @@ export default function MonthView({ width, height } = {}) {
     goToDate(dateStr);
   };
 
-  // A month grid widget tap (utils/dayLink.js): App selects the day and asks
-  // for its sheet; the first render that sees the request uses it up. Docked,
-  // the panel already shows the selected day, so there is nothing to open.
+  // The request is used up once seen (opened above, or dropped): clearing it
+  // is App's state, so it waits for the effect. Nothing on screen waits on it.
   useEffect(() => {
-    const { open, clear } = consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked });
-    if (open) setSheetDate(open);
-    if (clear) setMonthSheetRequest?.(null);
+    if (consumeMonthSheetRequest(monthSheetRequest, { selectedStr, docked }).clear) setMonthSheetRequest?.(null);
   }, [monthSheetRequest, selectedStr, docked, setMonthSheetRequest]);
 
   // Enter (useKeyboardShortcuts): the sheet for the selected day, or, when

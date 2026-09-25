@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Month grid: 4 × 4 launcher cells at least (250dp = 70 × 4 − 30). Below that
+  six rows do not fit — see MonthGridMetrics in MonthGridModel.kt for the
+  arithmetic. Resizable both ways; the cells are redrawn at the new size
+  (MonthGridWidget.onAppWidgetOptionsChanged).
+
+  The picker preview is a static image, not the live layout the other widgets
+  use: this layout's cells come from a collection the picker never fills, so
+  it previewed as an empty grid. widget_month_preview.png is the widget drawn
+  offline from the real MonthGridModel and the test fixture, at 320 × 340 dp,
+  with MonthGridCellPainter's geometry and palette. Redraw it if the look
+  changes.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="250dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:maxResizeWidth="720dp"
+    android:maxResizeHeight="720dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_month"
+    android:previewImage="@drawable/widget_month_preview"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_month_description" />

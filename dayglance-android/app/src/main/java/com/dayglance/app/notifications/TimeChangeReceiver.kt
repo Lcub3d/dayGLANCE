@@ -44,6 +44,8 @@ class TimeChangeReceiver : BroadcastReceiver() {
                 runCatching { com.dayglance.app.widget.UpNextWidget.requestUpdate(context) }
                 runCatching { com.dayglance.app.widget.GoalWidget.requestUpdate(context) }
                 runCatching { com.dayglance.app.widget.ProjectWidget.requestUpdate(context) }
+                runCatching { com.dayglance.app.widget.MonthGridWidget.requestUpdate(context) }
+                runCatching { com.dayglance.app.widget.MonthAgendaWidget.requestUpdate(context) }
             }
         }
     }

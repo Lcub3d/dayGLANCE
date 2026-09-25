@@ -18,11 +18,12 @@
 // nothing — the grid is unchanged and only the "today" cell moves, which the
 // widget knows from its own clock. Crossing a week boundary moves the whole
 // grid down a row, and the new bottom row is seven days past a 42-day window.
-// So the payload carries a ROLLOVER TAIL of one week: for any local day up to
-// WIDGET_PROJECTION_DAYS after the push (the same horizon the day-keyed
-// `days` covers before the widgets go stale), the six-week grid of that day is
-// inside `days`. resolveMonthWindow() is the reference for how a widget picks
-// its 42.
+// So the payload carries a ROLLOVER TAIL of one week, which covers the grid of
+// every day through the end of the week AFTER the push's: 13 days past a push
+// on the first day of the week, 7 past one on the last. The iOS month widget
+// renders for exactly that long — coverage, not the day-keyed `days` horizon,
+// decides when it goes stale (MonthGridModel.swift). resolveMonthWindow() is
+// the reference for how a widget picks its 42.
 //
 // ── A bar ──────────────────────────────────────────────────────────────────
 // {s, d, c}: start minutes from local midnight, duration in minutes, resolved
@@ -44,7 +45,7 @@
 // No titles, notes, ids, tags or projects: this is for drawing bars, not an
 // agenda. Anything that needs words reads `days`.
 
-import { dateToString } from './taskUtils.js';
+import { dateToString, stripWikilinksAndTags } from './taskUtils.js';
 import { taskColorToHex } from './colorUtils.js';
 
 /** Six grid rows of seven days. */
@@ -53,6 +54,10 @@ export const WIDGET_MONTH_WINDOW_DAYS = 42;
 export const WIDGET_MONTH_ROLLOVER_TAIL_DAYS = 7;
 /** Days actually carried in `monthWindow.days`. */
 export const WIDGET_MONTH_PAYLOAD_DAYS = WIDGET_MONTH_WINDOW_DAYS + WIDGET_MONTH_ROLLOVER_TAIL_DAYS;
+/** Agenda rows a day carries (the extra-large widget's list); the rest are counted. */
+export const WIDGET_AGENDA_MAX_ROWS = 12;
+/** Agenda titles are cut to this many characters, ellipsis included. */
+export const WIDGET_AGENDA_MAX_TITLE = 48;
 /** The dial's routine colour (DayDial.jsx ROUTINE_COLOR, teal-300). */
 export const WIDGET_ROUTINE_HEX = '#5eead4';
 
@@ -84,6 +89,18 @@ export function monthWindowDates(today, weekStartDay = 0, days = WIDGET_MONTH_PA
   return out;
 }
 
+/**
+ * Every day buildWidgetMonthWindow reads, as 'YYYY-MM-DD': the day before
+ * the window (its late blocks carry into the first cell) and the payload's
+ * days. The widget's device-calendar fetch (useWidgetNativeEvents) fetches
+ * exactly these, so the two cannot drift. The day-keyed projection (today …
+ * today+3, and the day before each) is inside it too.
+ */
+export function monthWindowFetchDates(today, weekStartDay = 0) {
+  const dates = monthWindowDates(today, weekStartDay);
+  return [dateToString(noonOf(dates[0], -1)), ...dates.map(dateToString)];
+}
+
 /** Raw [startMin, endMin, hex] spans for one day's items, unclipped. */
 function spansFor(dayTasks, routines) {
   const spans = [];
@@ -104,6 +121,45 @@ function spansFor(dayTasks, routines) {
   return spans;
 }
 
+const agendaTitle = (title) => {
+  const clean = stripWikilinksAndTags(title || '').trim();
+  return clean.length > WIDGET_AGENDA_MAX_TITLE ? `${clean.slice(0, WIDGET_AGENDA_MAX_TITLE - 1).trimEnd()}…` : clean;
+};
+
+/**
+ * The day's agenda for the extra-large widget: what the bars are, with words.
+ * One row per item — { t: title, c: hex } plus, by kind:
+ *   timed task / event   s, d (start and duration in minutes)
+ *   routine              s, d, k: 'r'  (today only, as the caller supplies)
+ *   all-day item         k: 'a'
+ *   deadline             k: 'l'
+ * and x: 1 when completed — completed items stay in the list, drawn the way
+ * SCHED draws them, not dropped. Order: all-day, deadlines, then the timed
+ * rows by start. At most WIDGET_AGENDA_MAX_ROWS; `more` counts the rest.
+ */
+function buildAgenda(dayTasks, deadlineTasks, routines) {
+  const rows = [];
+  const live = (dayTasks || []).filter(t => t && !t.isExample);
+  for (const t of live.filter(t => t.isAllDay)) {
+    rows.push({ t: agendaTitle(t.title), c: taskColorToHex(t.color, t.nativeCalendarColor), k: 'a', ...(t.completed ? { x: 1 } : {}) });
+  }
+  for (const t of (deadlineTasks || []).filter(t => t && !t.isExample && !t.completed)) {
+    rows.push({ t: agendaTitle(t.title), c: taskColorToHex(t.color, t.nativeCalendarColor), k: 'l' });
+  }
+  const timed = [];
+  for (const t of live.filter(t => !t.isAllDay && t.startTime)) {
+    timed.push({ t: agendaTitle(t.title), s: timeToMinutes(t.startTime), d: Number(t.duration) || 0,
+      c: taskColorToHex(t.color, t.nativeCalendarColor), ...(t.completed ? { x: 1 } : {}) });
+  }
+  for (const r of (routines || []).filter(r => r && !r.isAllDay && r.startTime)) {
+    timed.push({ t: agendaTitle(r.name), s: timeToMinutes(r.startTime), d: Number(r.duration) || 0,
+      c: WIDGET_ROUTINE_HEX, k: 'r', ...(r.completed ? { x: 1 } : {}) });
+  }
+  timed.sort((a, b) => a.s - b.s || b.d - a.d);
+  rows.push(...timed);
+  return { agenda: rows.slice(0, WIDGET_AGENDA_MAX_ROWS), more: Math.max(0, rows.length - WIDGET_AGENDA_MAX_ROWS) };
+}
+
 /**
  * One day's summary. Pure.
  *
@@ -115,7 +171,8 @@ function spansFor(dayTasks, routines) {
  *                           today only (the caller applies the date guard).
  * @param opts.prevRoutines  Routines of the day before (yesterday's are gone
  *                           by construction, so normally empty).
- * @returns {{date, bars: Array<{s, d, c}>, allDay: string[], deadlines: string[]}}
+ * @returns {{date, bars: Array<{s, d, c}>, allDay: string[], deadlines: string[],
+ *            agenda: Array<{t, c, s?, d?, k?, x?}>, agendaMore: number}}
  */
 export function buildMonthDay({
   dateStr, dayTasks = [], prevDayTasks = [], deadlineTasks = [], routines = [], prevRoutines = [],
@@ -138,7 +195,8 @@ export function buildMonthDay({
     .filter(t => t && !t.isExample && !t.completed)
     .map(t => taskColorToHex(t.color, t.nativeCalendarColor));
 
-  return { date: dateStr, bars, allDay, deadlines };
+  const { agenda, more } = buildAgenda(dayTasks, deadlineTasks, routines);
+  return { date: dateStr, bars, allDay, deadlines, agenda, agendaMore: more };
 }
 
 /**

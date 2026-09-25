@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Month + agenda widget, stacked and tall (440dp and up): the grid on top, the agenda below, half each (MonthAgendaWidget.kt; the arrangement
+  and its thresholds are MonthAgendaLayout in MonthAgendaModel.kt). The
+  weights here are the shares that model sizes the grid's cells for: change
+  one, change both. Its siblings (widget_month_agenda_side.xml,
+  widget_month_agenda_stacked.xml) have the same view ids, so one build() fills either.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/month_agenda_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- ── The grid pane: the month grid widget's, via bindMonthGridPane.
+             11dp padding, a 16dp note line, a 14dp weekday row: the numbers
+             MonthGridMetrics subtracts to size the cells. ─────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:padding="11dp">
+
+            <TextView
+                android:id="@+id/tv_month_note"
+                android:layout_width="match_parent"
+                android:layout_height="16dp"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:paddingBottom="2dp"
+                android:gravity="start|center_vertical"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="10sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="14dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_month_wd_0"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_1"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_2"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_3"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_4"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_5"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+                <TextView
+                    android:id="@+id/tv_month_wd_6"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:paddingStart="3dp"
+                    android:gravity="start|top"
+                    android:singleLine="true"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/widget_text_secondary"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <GridView
+                android:id="@+id/gv_month"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:numColumns="7"
+                android:stretchMode="columnWidth"
+                android:horizontalSpacing="0dp"
+                android:verticalSpacing="0dp"
+                android:listSelector="@android:color/transparent"
+                android:cacheColorHint="@android:color/transparent"
+                android:scrollbars="none"
+                android:overScrollMode="never" />
+        </LinearLayout>
+
+        <!-- Hairline between the panes (MonthAgendaLayout.DIVIDER). -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@color/widget_divider"
+            android:text="" />
+
+        <!-- ── The agenda pane: the Today widget's header and list styles. ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="4dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="8dp">
+
+            <!-- Header: the day, "Today" when paged away, and the arrows. The
+                 arrows' 18dp glyphs sit where they always did; their touch
+                 targets are 48 × 44dp, the extra taken from the pane's end and
+                 top padding (4dp and 2dp here, not 12 and 8), so the header
+                 grows by only 6dp. -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tv_agenda_date"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/widget_today"
+                    android:textColor="@color/widget_text_primary"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/tv_agenda_today"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="4dp"
+                    android:gravity="center"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:background="@drawable/widget_today_pill"
+                    android:text="@string/widget_today"
+                    android:textColor="@color/widget_brand"
+                    android:textStyle="bold"
+                    android:textSize="11sp"
+                    android:singleLine="true"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/iv_agenda_prev"
+                    android:layout_width="48dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_widget_chevron_left"
+                    android:paddingStart="15dp"
+                    android:paddingEnd="15dp"
+                    android:paddingTop="13dp"
+                    android:paddingBottom="13dp"
+                    android:contentDescription="@string/widget_previous_day" />
+
+                <ImageView
+                    android:id="@+id/iv_agenda_next"
+                    android:layout_width="48dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_widget_chevron_right"
+                    android:paddingStart="15dp"
+                    android:paddingEnd="15dp"
+                    android:paddingTop="13dp"
+                    android:paddingBottom="13dp"
+                    android:contentDescription="@string/widget_next_day" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/widget_divider"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="4dp"
+                android:text="" />
+
+            <!-- 8dp end margin: with the pane's 4dp, the list keeps its 12dp. -->
+            <ListView
+                android:id="@+id/lv_month_agenda"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:scrollbars="none"
+                android:clipToPadding="false" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
 import { mergeTaskArrays, mergeSyncData } from './mergeSync.js';
-import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask } from './utils/nativeCalendar.js';
+import { hasNativeCalendar, electronGetCalendars, electronGetEventsByDate, electronRequestCalendarAccess, nativeEventToTask, nativeResultsToTasks } from './utils/nativeCalendar.js';
 import { isNativeAndroid, isNativeApp, isNativeIOS, nativeShareFile, nativeShowTaskNotification, nativeGetPendingAction, nativeSyncReminders, nativeGetEvents, nativeUpdateEvent, nativeGetCalendars, nativeHttpRequest, nativeWriteDailyNote, nativeClearVault, nativeEnterFocusMode, nativeExitFocusMode, nativeIsDndPermissionGranted, nativeRequestDndPermission, nativeGetWidgetPendingAction, triggerHaptic } from './native.js';
 import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHash, buildNewObsidianTaskMeta, dailyNoteFilename } from './obsidian.js';
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
@@ -42,6 +42,9 @@ import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projecti
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
+import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
+import { widgetDayTasks } from './utils/widgetNativeEvents.js';
+import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
@@ -642,14 +645,31 @@ const DayPlanner = () => {
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location?.search ?? '').has('dial'));
   const showDayDialRef = useRef(showDayDial);
-  // dayglance://day?date=YYYY-MM-DD&view=dial — the Day Dial widget's tap
-  // (widgetURL). Lands on the day the widget was showing and, with
-  // view=dial, opens the Day Dial itself over it; without it, the day view.
+  // dayglance://day?date=YYYY-MM-DD[&view=dial|month] — the widgets' taps.
+  // view=dial opens the Day Dial over the day (the Day Dial widget);
+  // view=month opens MONTH with the day selected (the month grid widget),
+  // or the default view when MONTH is off; no view, the day view. The rules
+  // are utils/dayLink.js. The native link handlers are registered once, so
+  // what the rules read comes through a ref refreshed every render — a link
+  // after a rotation or a settings change sees the layout and views as they
+  // are now, not as they were at launch.
+  const [monthSheetRequest, setMonthSheetRequest] = useState(null);
+  const dayLinkEnvRef = useRef(null);
+  dayLinkEnvRef.current = {
+    phoneLayout: isMobile || (isTablet && !isLandscape),
+    phone: isMobile,
+    hiddenViews, defaultView, mobileDefaultView,
+  };
   const openDayFromLink = (url) => {
-    const d = url.searchParams.get('date');
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setSelectedDate(new Date(d + 'T12:00:00'));
-    if (url.searchParams.get('view') === 'dial') setShowDayDial(true);
-    else setViewMode('day');
+    const r = resolveDayLink(url.searchParams, dayLinkEnvRef.current);
+    if (r.date) setSelectedDate(new Date(r.date + 'T12:00:00'));
+    if (r.dial) setShowDayDial(true);
+    if (r.desktopView) setViewMode(r.desktopView);
+    if (r.mobileView) setMobileViewMode(r.mobileView);
+    // The plain setters, not MobileTabBar's handler: that one calls
+    // goToToday() and would replace the linked date (utils/dayLink.js).
+    if (r.mobileTab) { setMobileActiveTab(r.mobileTab); setMobileSettingsView('main'); }
+    setMonthSheetRequest(r.monthSheet);
   };
   showDayDialRef.current = showDayDial;
   useAmbientScreensaver({ showDayDialRef, setShowDayDial });
@@ -2111,9 +2131,8 @@ const DayPlanner = () => {
       // polling immediately would always return null.
       setTimeout(() => {
         if (window.DayGlanceNative?.getPendingDeepLink) {
-          const rawLink = window.DayGlanceNative.getPendingDeepLink();
-          if (rawLink && rawLink !== 'null') {
-            const link = rawLink.replace(/^"|"$/g, '');
+          const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+          if (link) {
             try {
               const url = new URL(link);
               const action = url.pathname.replace(/^\/+/, '') || url.hostname;
@@ -2417,6 +2436,33 @@ const DayPlanner = () => {
     }
   }, [dataLoaded]);
 
+  // dayglance:// links, both platforms: iOS stores one in the App Group
+  // (AppDelegate.pendingDeepLink), Android in SharedPreferences
+  // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
+  // Reassigned every render, so a caller always gets current handlers.
+  const drainPendingDeepLinkRef = useRef(null);
+  drainPendingDeepLinkRef.current = () => {
+    if (!window.DayGlanceNative?.getPendingDeepLink) return;
+    const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+    if (link) {
+      try {
+        const url = new URL(link);
+        const action = url.pathname.replace(/^\/+/, '') || url.hostname;
+        const taskId = url.searchParams.get('id');
+        if (action === 'task' && taskId) setSpotlightTaskId(taskId);
+        else if (action === 'completeTask' && taskId) toggleComplete(taskId);
+        else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
+        else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
+        else if (action === 'startFocus') setShowFocusMode(true);
+        else if (action === 'voiceInput') {
+          voiceAutoStartRef.current = true;
+          setShowVoiceInput(true);
+        }
+        else if (action === 'day') openDayFromLink(url);
+      } catch (_) {}
+    }
+  };
+
   // Drain pending quick-action shortcut when data finishes loading. This covers
   // the case where the app was killed when the user tapped a home screen shortcut or
   // Spotlight result — dayglanceForeground fires before dataLoaded is true so the
@@ -2436,27 +2482,15 @@ const DayPlanner = () => {
         }
       }
     }
-    if (window.DayGlanceNative?.getPendingDeepLink) {
-      const rawLink = window.DayGlanceNative.getPendingDeepLink();
-      if (rawLink && rawLink !== 'null') {
-        const link = rawLink.replace(/^"|"$/g, '');
-        try {
-          const url = new URL(link);
-          const action = url.pathname.replace(/^\/+/, '') || url.hostname;
-          const taskId = url.searchParams.get('id');
-          if (action === 'task' && taskId) setSpotlightTaskId(taskId);
-          else if (action === 'completeTask' && taskId) toggleComplete(taskId);
-          else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
-          else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
-          else if (action === 'startFocus') setShowFocusMode(true);
-          else if (action === 'voiceInput') {
-            voiceAutoStartRef.current = true;
-            setShowVoiceInput(true);
-          }
-          else if (action === 'day') openDayFromLink(url);
-        } catch (_) {}
-      }
-    }
+    drainPendingDeepLinkRef.current();
+    // Android's WebView is never paused, so visibilitychange does not fire on
+    // a warm open; MainActivity.onNewIntent calls this hook instead (the
+    // month grid widget's cell taps). It goes through the ref, so a tap hours
+    // after load runs the current render's handlers rather than the ones this
+    // effect captured (toggleComplete closes over the task list). iOS drains
+    // on dayglanceForeground above.
+    const checkPendingDeepLink = () => drainPendingDeepLinkRef.current();
+    if (isNativeAndroid()) window.__dayglanceCheckPendingDeepLink = checkPendingDeepLink;
     // iOS Control Center controls (cold launch): drain the App Group pending action.
     const widgetAction = nativeGetWidgetPendingAction();
     if (widgetAction?.action) {
@@ -2472,6 +2506,7 @@ const DayPlanner = () => {
     }
     // Drains pending native actions once after load (keyed on dataLoaded). The
     // setters/voiceAutoStartRef are stable; toggleComplete is read at drain time.
+    return () => { if (window.__dayglanceCheckPendingDeepLink === checkPendingDeepLink) delete window.__dayglanceCheckPendingDeepLink; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded]);
 
@@ -4149,11 +4184,10 @@ const DayPlanner = () => {
     // event list (or null). The mobile and Electron transports both produce this
     // shape so the merge below is identical across platforms.
     const applyEvents = (results) => {
-      // Tag each event with the date it was queried for so multi-day all-day events
-      // can be shown on every day they span, not just their start date.
-      const allEvents = results.flatMap((result, i) =>
-        Array.isArray(result) ? result.map(e => ({ ...e, _queryDate: dates[i] })) : []
-      );
+      // The event → task conversion is shared with the widget's own fetch
+      // (useWidgetNativeEvents): utils/nativeCalendar.js nativeResultsToTasks.
+      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
+      const { events: allEvents, tasks: fetchedWithOverrides } = nativeResultsToTasks(results, dates, { calendarFilter, overrides });
 
       // Discover calendars that appear in events but weren't returned by getCalendars()
       // (e.g. task-only calendars that some providers omit from the calendars list).
@@ -4183,39 +4217,6 @@ const DayPlanner = () => {
           });
         }
         return [...prev, ...newCals];
-      });
-
-      const filterSet = calendarFilter.length > 0 ? new Set(calendarFilter) : null;
-
-      // Deduplicate by task id: CalendarContract can return the same all-day event
-      // in adjacent day windows (especially in UTC+ timezones). Keep first occurrence.
-      // The id is per occurrence (event id + date, see nativeEventToTask), so the
-      // occurrences of a recurring event across this window all survive.
-      const seen = new Set();
-      const fetched = allEvents
-        .filter(e => !filterSet || filterSet.has(e.calendarId))
-        .map(e => nativeEventToTask(e))
-        .filter(t => {
-          if (seen.has(t.id)) return false;
-          seen.add(t.id);
-          return true;
-        });
-
-      // Apply any stored time overrides (from dragging all-day events to the timeline)
-      // so the scheduled position survives date navigation and native calendar re-fetches.
-      const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
-      const fetchedWithOverrides = fetched.map(t => {
-        const override = t.nativeEventId && overrides[String(t.nativeEventId)];
-        if (!override) return t;
-        return {
-          ...t,
-          ...(override.date !== undefined ? { date: override.date } : {}),
-          ...(override.startTime !== undefined ? { startTime: override.startTime, isAllDay: false } : {}),
-          ...(override.duration !== undefined ? { duration: override.duration } : {}),
-          ...(override.title !== undefined ? { title: override.title } : {}),
-          ...(override.notes !== undefined ? { notes: override.notes } : {}),
-          ...(override.color !== undefined ? { color: override.color } : {}),
-        };
       });
 
       // Drop both prior _native events and any read-only subscription imports
@@ -7398,6 +7399,17 @@ const DayPlanner = () => {
   // at midnight; a foregrounded app then also reloads at 00:00:30
   // (utils/midnightRefresh.js).
   const widgetTodayKey = dateToString(currentTime);
+  // The widget's own device-calendar fetch over the whole month window, so the
+  // snapshot has device events for days nothing on screen has loaded
+  // (hooks/useWidgetNativeEvents.js); widgetTasksForDate swaps them in.
+  const widgetNative = useWidgetNativeEvents({
+    enabled: dataLoaded && (isNativeAndroid() || isNativeIOS()) && hasNativeCalendar(),
+    todayKey: widgetTodayKey, weekStartDay, calendarFilter, nativeCalendarKey,
+  });
+  const widgetTasksForDate = useCallback(
+    (date) => widgetDayTasks(dateToString(date), getTasksForDate(date, false), widgetNative),
+    [getTasksForDate, widgetNative],
+  );
   const projectedWidgetDays = useMemo(() => {
     if (!dataLoaded) return [];
     if (!isNativeAndroid() && !isNativeIOS()) return [];
@@ -7428,8 +7440,8 @@ const DayPlanner = () => {
         date,
         dateStr,
         dateLabel: formatLocalizedDate(date, { weekday: 'short', month: 'short', day: 'numeric' }),
-        dayTasks: getTasksForDate(date, false),
-        prevDayTasks: getTasksForDate(prev, false),
+        dayTasks: widgetTasksForDate(date),
+        prevDayTasks: widgetTasksForDate(prev),
         deadlineTasks: unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
         frames: getFrameInstancesForDate(date),
         frameAvailableMinutes: (frame) => computeAvailableSlots(frame, date).reduce((sum, slot) => sum + slot.minutes, 0),
@@ -7445,7 +7457,7 @@ const DayPlanner = () => {
     // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    dataLoaded, widgetTodayKey, getTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
+    dataLoaded, widgetTodayKey, widgetTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
     tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
@@ -7460,17 +7472,19 @@ const DayPlanner = () => {
     return buildWidgetMonthWindow({
       today: new Date(widgetTodayKey + 'T12:00:00'),
       weekStartDay,
-      tasksForDate: (date) => getTasksForDate(date, false),
+      tasksForDate: widgetTasksForDate,
       deadlinesForDate: (dateStr) => unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
       // Routines exist for today only; both halves of the date guard are the
       // ones buildRoutineBlocks (utils/mcpRoutines.js) explains.
+      // Completion rides along for the extra-large widget's agenda, which
+      // draws a done routine the way SCHED draws a done task.
       routinesForDate: (dateStr) => (routinesEnabled && routinesDate === dateStr && widgetTodayKey === dateStr)
-        ? todayRoutines
+        ? todayRoutines.map(r => ({ ...r, completed: !!routineCompletions?.[r.id] }))
         : [],
     });
   }, [
-    dataLoaded, widgetTodayKey, weekStartDay, getTasksForDate, unscheduledTasks, isVisibleForUser,
-    routinesEnabled, routinesDate, todayRoutines,
+    dataLoaded, widgetTodayKey, weekStartDay, widgetTasksForDate, unscheduledTasks, isVisibleForUser,
+    routinesEnabled, routinesDate, todayRoutines, routineCompletions,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────
@@ -8446,6 +8460,7 @@ const DayPlanner = () => {
     visibleDays, visibleDates,
     viewMode, setViewMode, canShowViewCycler, schedOnlyCycler, effectiveViewMode,
     monthViewActive, openMonthDaySheetRef,
+    monthSheetRequest, setMonthSheetRequest,
     defaultView, setDefaultView,
     hiddenViews, setViewHidden,
     dayViewMode, setDayViewMode,

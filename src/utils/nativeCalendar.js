@@ -172,3 +172,50 @@ export const nativeEventToTask = (event) => {
     _native:              true,
   };
 };
+
+/**
+ * A per-day fetch → `_native` tasks: the one conversion both device-calendar
+ * consumers use (App.jsx's view fetch and the widget's own fetch,
+ * useWidgetNativeEvents), so an event cannot become one task in the app and
+ * a different one on the home screen.
+ *
+ * @param results   Per-day arrays aligned to `dates` (null for a failed day).
+ * @param dates     'YYYY-MM-DD' each result was fetched for.
+ * @param opts.calendarFilter  Calendar ids to keep; empty keeps every calendar.
+ * @param opts.overrides       'day-planner-native-time-overrides' contents:
+ *                             user edits (a dragged time, a new title) that
+ *                             outlive a re-fetch.
+ * @returns {{ events: object[], tasks: object[] }} the tagged raw events (for
+ *   calendar discovery) and the tasks, deduplicated by occurrence id — the
+ *   provider can return the same all-day event in adjacent day windows.
+ */
+export function nativeResultsToTasks(results, dates, { calendarFilter = [], overrides = {} } = {}) {
+  // Tag each event with the date it was queried for so multi-day all-day
+  // events can be shown on every day they span, not just their start date.
+  const events = results.flatMap((result, i) =>
+    Array.isArray(result) ? result.map(e => ({ ...e, _queryDate: dates[i] })) : []);
+  const filterSet = calendarFilter.length > 0 ? new Set(calendarFilter) : null;
+  const seen = new Set();
+  const tasks = events
+    .filter(e => !filterSet || filterSet.has(e.calendarId))
+    .map(e => nativeEventToTask(e))
+    .filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    })
+    .map(t => {
+      const override = t.nativeEventId && overrides[String(t.nativeEventId)];
+      if (!override) return t;
+      return {
+        ...t,
+        ...(override.date !== undefined ? { date: override.date } : {}),
+        ...(override.startTime !== undefined ? { startTime: override.startTime, isAllDay: false } : {}),
+        ...(override.duration !== undefined ? { duration: override.duration } : {}),
+        ...(override.title !== undefined ? { title: override.title } : {}),
+        ...(override.notes !== undefined ? { notes: override.notes } : {}),
+        ...(override.color !== undefined ? { color: override.color } : {}),
+      };
+    });
+  return { events, tasks };
+}

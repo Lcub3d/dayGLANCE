@@ -56,6 +56,14 @@ data class MonthDaySelection(
          * arrows page across exactly the 42 days the grid shows, and a null
          * side is drawn disabled.
          */
+        /**
+         * Whether the header offers "Today": only when the agenda is on
+         * another day AND today is on the grid to return to. A stale grid
+         * that no longer contains today has nowhere to go, so no button.
+         */
+        fun showsToday(selected: String?, cells: List<MonthGridCell>, today: String): Boolean =
+            selected != today && cells.any { it.date == today }
+
         fun neighbours(date: String?, cells: List<MonthGridCell>): Pair<String?, String?> {
             val i = cells.indexOfFirst { it.date == date }
             if (i < 0) return null to null

@@ -35,8 +35,9 @@ import kotlin.math.floor
  * landscape layouts are each chosen from their own size, and a resize
  * ([onAppWidgetOptionsChanged]) redraws.
  *
- * THE ARROWS are the only in-widget interaction: PendingIntent broadcasts to
- * this provider ([ACTION_SELECT_DAY]) that store the target day
+ * THE ARROWS (and "Today", shown when paged away) are the only in-widget
+ * interaction: PendingIntent broadcasts to this provider ([ACTION_SELECT_DAY],
+ * [ACTION_SELECT_TODAY]) that store the target day
  * ([MonthAgendaSelectionStore]) and redraw — header, arrows, the grid's ring
  * and the list — without launching the app. They page across the 42 visible
  * days and disable at both ends. Grid cells stay deep links (`view=month`),
@@ -79,6 +80,18 @@ class MonthAgendaWidget : AppWidgetProvider() {
     // onDisabled: do NOT cancel the worker — the other widgets may still need it.
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_SELECT_TODAY) {
+            // Clearing the selection IS "today": it resolves to the day it is
+            // when read, so a tap just after midnight cannot land on yesterday.
+            val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+            if (id != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                runCatching {
+                    MonthAgendaSelectionStore.clear(context, id)
+                    updateWidget(context, AppWidgetManager.getInstance(context), id)
+                }
+            }
+            return
+        }
         if (intent.action == ACTION_SELECT_DAY) {
             val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             val date = intent.getStringExtra(EXTRA_DATE)
@@ -156,6 +169,7 @@ class MonthAgendaWidget : AppWidgetProvider() {
         // ── The agenda header: the day, and the arrows ────────────────────
         val selectedDay = frame.selected?.let { WidgetFreshnessRules.parseDay(it) } ?: LocalDate.now()
         views.setTextViewText(R.id.tv_agenda_date, formatWidgetDate(context, selectedDay))
+        bindToday(context, views, appWidgetId, MonthDaySelection.showsToday(frame.selected, frame.cells, MonthGrid.isoDay(LocalDate.now())))
         val (previous, next) = MonthDaySelection.neighbours(frame.selected, frame.cells)
         bindArrow(context, views, appWidgetId, R.id.iv_agenda_prev, previous, frame.selected, DIRECTION_PREVIOUS)
         bindArrow(context, views, appWidgetId, R.id.iv_agenda_next, next, frame.selected, DIRECTION_NEXT)
@@ -185,6 +199,22 @@ class MonthAgendaWidget : AppWidgetProvider() {
             ),
         )
         return views
+    }
+
+    /** "Today": shown when paged away from today (MonthDaySelection.showsToday). */
+    private fun bindToday(context: Context, views: RemoteViews, appWidgetId: Int, shown: Boolean) {
+        views.setViewVisibility(R.id.tv_agenda_today, if (shown) android.view.View.VISIBLE else android.view.View.GONE)
+        if (!shown) return
+        val intent = Intent(context, MonthAgendaWidget::class.java).apply {
+            action = ACTION_SELECT_TODAY
+            data = Uri.Builder().scheme(MonthGridCellService.SCHEME).authority("month-agenda")
+                .appendPath(appWidgetId.toString()).appendPath("today").build()
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        }
+        views.setOnClickPendingIntent(
+            R.id.tv_agenda_today,
+            PendingIntent.getBroadcast(context, REQUEST_ARROW, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
+        )
     }
 
     /**
@@ -223,6 +253,7 @@ class MonthAgendaWidget : AppWidgetProvider() {
 
     companion object {
         const val ACTION_SELECT_DAY = "com.dayglance.app.widget.MONTH_AGENDA_SELECT_DAY"
+        const val ACTION_SELECT_TODAY = "com.dayglance.app.widget.MONTH_AGENDA_SELECT_TODAY"
         const val EXTRA_DATE = "date"
         private const val DIRECTION_PREVIOUS = "previous"
         private const val DIRECTION_NEXT = "next"

@@ -594,7 +594,11 @@ class NativeBridge(
     fun getPendingDeepLink(): String {
         val link = dataStore.pendingDeepLink ?: return "null"
         dataStore.pendingDeepLink = null
-        return org.json.JSONObject.quote(link)
+        // The raw URL in quotes, exactly as iOS returns it — NOT JSONObject.quote:
+        // Android's org.json escapes "/" as "\/", which turned the link into
+        // `dayglance:\/\/day…` in the web layer and every tap was dropped. A
+        // URL carries no quote or backslash (they are percent-encoded).
+        return "\"$link\""
     }
 
     /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveDayLink, consumeMonthSheetRequest } from './dayLink.js';
+import { resolveDayLink, consumeMonthSheetRequest, decodeBridgeLink } from './dayLink.js';
 
 const link = (query) => new URL(`dayglance://day?${query}`).searchParams;
 const env = (over = {}) => ({
@@ -109,5 +109,31 @@ describe('consumeMonthSheetRequest', () => {
   it('no request, nothing to do', () => {
     expect(consumeMonthSheetRequest(null, { selectedStr: '2026-10-01', docked: false }))
       .toEqual({ open: null, clear: false });
+  });
+});
+
+describe('decodeBridgeLink', () => {
+  const url = 'dayglance://day?date=2026-10-01&view=month';
+
+  it('decodes the link as the Android bridge escaped it', () => {
+    // Exactly what org.json's JSONObject.quote produced on a device: every "/"
+    // escaped. Stripping the quotes alone left `dayglance:\/\/day…`, which
+    // is not a day link, so every widget tap and adb link was dropped.
+    expect(decodeBridgeLink('"dayglance:\\/\\/day?date=2026-10-01&view=month"')).toBe(url);
+    const parsed = new URL(decodeBridgeLink('"dayglance:\\/\\/day?date=2026-10-01&view=month"'));
+    expect(parsed.pathname.replace(/^\/+/, '') || parsed.hostname).toBe('day');
+    expect(parsed.searchParams.get('view')).toBe('month');
+  });
+
+  it('decodes the raw quoted URL both bridges now return', () => {
+    expect(decodeBridgeLink(`"${url}"`)).toBe(url);
+  });
+
+  it('falls back to stripping the quotes when the string is not valid JSON', () => {
+    expect(decodeBridgeLink('"dayglance://task?id=a\\q"')).toBe('dayglance://task?id=a\\q');
+  });
+
+  it('is null when nothing is pending', () => {
+    for (const raw of ['null', '', null, undefined, '""']) expect(decodeBridgeLink(raw)).toBeNull();
   });
 });

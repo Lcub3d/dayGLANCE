@@ -42,7 +42,7 @@ import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projecti
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
-import { resolveDayLink } from './utils/dayLink.js';
+import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
 import { widgetDayTasks } from './utils/widgetNativeEvents.js';
 import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
@@ -2131,9 +2131,8 @@ const DayPlanner = () => {
       // polling immediately would always return null.
       setTimeout(() => {
         if (window.DayGlanceNative?.getPendingDeepLink) {
-          const rawLink = window.DayGlanceNative.getPendingDeepLink();
-          if (rawLink && rawLink !== 'null') {
-            const link = rawLink.replace(/^"|"$/g, '');
+          const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+          if (link) {
             try {
               const url = new URL(link);
               const action = url.pathname.replace(/^\/+/, '') || url.hostname;
@@ -2444,9 +2443,8 @@ const DayPlanner = () => {
   const drainPendingDeepLinkRef = useRef(null);
   drainPendingDeepLinkRef.current = () => {
     if (!window.DayGlanceNative?.getPendingDeepLink) return;
-    const rawLink = window.DayGlanceNative.getPendingDeepLink();
-    if (rawLink && rawLink !== 'null') {
-      const link = rawLink.replace(/^"|"$/g, '');
+    const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
+    if (link) {
       try {
         const url = new URL(link);
         const action = url.pathname.replace(/^\/+/, '') || url.hostname;

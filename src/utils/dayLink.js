@@ -14,6 +14,26 @@
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * The link string a native bridge's getPendingDeepLink returned, or null when
+ * none is pending. Both bridges return a quoted string ("null" for none), but
+ * the quoting differs: iOS wraps the raw URL, while a JSON encoder may escape
+ * characters inside it (Android's org.json writes "/" as "\/"). Decoding it as
+ * JSON handles both, so an escaped link can never reach new URL() and be
+ * dropped as unrecognised; stripping the quotes is the fallback for a raw URL
+ * that is not valid JSON.
+ */
+export function decodeBridgeLink(raw) {
+  if (typeof raw !== 'string' || raw === '' || raw === 'null') return null;
+  if (raw.startsWith('"')) {
+    try {
+      const value = JSON.parse(raw);
+      return typeof value === 'string' && value ? value : null;
+    } catch { /* not valid JSON: fall through to stripping the quotes */ }
+  }
+  return raw.replace(/^"|"$/g, '') || null;
+}
+
+/**
  * @param {URLSearchParams} params   The link's query.
  * @param {object} env
  * @param {boolean} env.phoneLayout  The phone toggle drives the view (a phone,

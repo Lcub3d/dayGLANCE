@@ -1,6 +1,7 @@
 package com.dayglance.app.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -29,9 +30,10 @@ import kotlin.math.roundToInt
  * density here, so the bitmap draws 1:1 in an ImageView whose width the
  * GridView sets to the same cell width (widget_month_cell.xml).
  *
- * The colours come from a [MonthCellPalette]: the month grid widget's own,
- * dark only like iOS (widget_month_colors.xml), or the other Android widgets'
- * light/dark tokens for the month + agenda widget. Same strokes either way.
+ * The colours come from a [MonthCellPalette]: the month grid widget's own
+ * (widget_month_colors.xml) or the other Android widgets' tokens for the
+ * month + agenda widget, each in a light and a night version. The factory
+ * draws every cell twice, once per theme. Same strokes either way.
  */
 internal class MonthGridCellPainter(
     private val context: Context,
@@ -211,10 +213,11 @@ internal class MonthGridCellPainter(
 }
 
 /**
- * The grid's colours. [monthWidget] is the month grid widget's dark palette,
- * unchanged; [systemWidget] is the Today widget's tokens (widget_colors.xml,
- * with night variants), so the month + agenda widget's grid sits on the same
- * ground as its agenda. The pips are data colours and stay the same in both.
+ * The grid's colours. [monthWidget] is the month grid widget's palette
+ * (widget_month_colors.xml, light and night); [systemWidget] is the Today
+ * widget's tokens (widget_colors.xml, light and night), so the month + agenda
+ * widget's grid sits on the same ground as its agenda. [forKind] reads either
+ * theme regardless of the process's own.
  */
 internal data class MonthCellPalette(
     val date: Int,
@@ -230,6 +233,29 @@ internal data class MonthCellPalette(
     val plannedNote: Int,
 ) {
     companion object {
+        /**
+         * The palette for a widget [kind] (MonthGridCellService.KIND_GRID /
+         * KIND_AGENDA) in the LIGHT or NIGHT theme, whatever theme this
+         * process is in: the colours come from a configuration context with
+         * the night bit forced, so both sides of each values/values-night
+         * pair can be read. Each cell is drawn once per theme with these.
+         */
+        fun forKind(context: Context, kind: String, night: Boolean): MonthCellPalette {
+            val themed = themedContext(context, night)
+            return if (kind == MonthGridCellService.KIND_AGENDA) systemWidget(themed) else monthWidget(themed)
+        }
+
+        /** Whether this process currently resolves resources as night. */
+        fun isNight(context: Context): Boolean =
+            (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        private fun themedContext(context: Context, night: Boolean): Context {
+            val config = Configuration(context.resources.configuration)
+            config.uiMode = (config.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                (if (night) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
+            return context.createConfigurationContext(config)
+        }
+
         fun monthWidget(context: Context) = MonthCellPalette(
             date = context.getColor(R.color.month_widget_date),
             emphasis = context.getColor(R.color.month_widget_date_emphasis),

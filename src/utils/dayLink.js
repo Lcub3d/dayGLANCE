@@ -19,20 +19,32 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  * @param {boolean} env.phoneLayout  The phone toggle drives the view (a phone,
  *                                   or a tablet in portrait); else the desktop
  *                                   cycler does. monthViewActive's split.
+ * @param {boolean} [env.phone]      A phone, where the timeline sits behind a
+ *                                   tab (MobileLayout) and is UNMOUNTED on the
+ *                                   others. A tablet's timeline is always on
+ *                                   screen, so this is false there.
  * @param {{desktop: string[], mobile: string[]}} env.hiddenViews  What is off.
  * @param {string} env.defaultView        The desktop cycler's default.
  * @param {string} env.mobileDefaultView  The phone toggle's default.
  * @returns {{ date: string|null, dial: boolean, desktopView: string|null,
- *             mobileView: string|null, monthSheet: string|null }}
+ *             mobileView: string|null, mobileTab: string|null, monthSheet: string|null }}
  *   `date` to select (null: leave the selection), `dial` to open, the view to
- *   set on each switcher (null: leave it), and the day whose MONTH sheet or
- *   panel should come up (null: none).
+ *   set on each switcher (null: leave it), the phone tab to bring forward
+ *   (null: leave it), and the day whose MONTH sheet or panel should come up
+ *   (null: none).
+ *
+ * THE PHONE TAB. Setting the view is the whole job on a tablet; on a phone
+ * the view lives on the timeline tab and nothing shows until that tab is
+ * forward. The caller must switch it with the plain setter, NOT the tab
+ * button's handler: that one calls goToToday() on the way in, which would
+ * replace the linked date with today before MonthView mounts, and the sheet
+ * request would then find a different day selected and be dropped.
  */
-export function resolveDayLink(params, { phoneLayout, hiddenViews, defaultView, mobileDefaultView }) {
+export function resolveDayLink(params, { phoneLayout, phone = false, hiddenViews, defaultView, mobileDefaultView }) {
   const raw = params.get('date');
   const date = raw && DATE_RE.test(raw) ? raw : null;
   const view = params.get('view');
-  const result = { date, dial: false, desktopView: null, mobileView: null, monthSheet: null };
+  const result = { date, dial: false, desktopView: null, mobileView: null, mobileTab: null, monthSheet: null };
 
   if (view === 'dial') return { ...result, dial: true };
 
@@ -43,6 +55,9 @@ export function resolveDayLink(params, { phoneLayout, hiddenViews, defaultView, 
     return {
       ...result,
       [phoneLayout ? 'mobileView' : 'desktopView']: target,
+      // Both branches: the MONTH-off fallback's default view is on the
+      // timeline tab too.
+      mobileTab: phone ? 'timeline' : null,
       monthSheet: monthOn ? date : null,
     };
   }

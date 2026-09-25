@@ -6,9 +6,14 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
 import android.text.format.DateFormat
+import android.text.style.StyleSpan
+import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
 import com.dayglance.app.MainActivity
@@ -19,6 +24,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
 import java.util.Locale
+import kotlin.math.floor
 
 /**
  * Month grid home-screen widget: six weeks of days as a 7 × 6 grid, each cell
@@ -34,11 +40,15 @@ import java.util.Locale
  * ordinary RemoteViews.
  *
  * SIZE. The cell size depends on the placement, so this is the first widget
- * here to read [AppWidgetManager.getAppWidgetOptions]: portrait is drawn at
- * min width × max height and landscape at max width × min height, as two
- * RemoteViews whose adapter intents carry their size ([MonthWidgetSizes]),
- * and a resize ([onAppWidgetOptionsChanged]) redraws. The provider's minimum
- * is 4 × 4 launcher cells (widget_month_info.xml; why: MonthGridMetrics).
+ * here to read [AppWidgetManager.getAppWidgetOptions]. On Android 12+ the host
+ * lists the exact sizes the widget can be shown at (OPTION_APPWIDGET_SIZES:
+ * portrait, landscape, a foldable's inner and outer screen), and each gets
+ * its own RemoteViews in a size map, so the launcher shows the one drawn for
+ * the space it actually has. Below 12, or when a host lists none, portrait is
+ * drawn at min width × max height and landscape at max width × min height
+ * ([MonthWidgetSizes]). Each layout's adapter intent carries its size, and a
+ * resize ([onAppWidgetOptionsChanged]) redraws. The provider's minimum is
+ * 4 × 4 launcher cells (widget_month_info.xml; why: MonthGridMetrics).
  *
  * ROLLOVER. No timeline: [MidnightRolloverReceiver] re-renders every widget
  * at 00:00, [WidgetUpdateWorker] every 15 minutes as a backstop, and each
@@ -90,15 +100,35 @@ class MonthGridWidget : AppWidgetProvider() {
             maxHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0),
         )
         val render = loadMonthGrid(context)
-        val portrait = build(context, appWidgetId, sizes.portraitWidth, sizes.portraitHeight, render)
-        val landscape = build(context, appWidgetId, sizes.landscapeWidth, sizes.landscapeHeight, render)
-        appWidgetManager.updateAppWidget(appWidgetId, RemoteViews(landscape, portrait))
+        val views = exactSizeViews(context, appWidgetId, options, render) ?: RemoteViews(
+            build(context, appWidgetId, sizes.landscapeWidth, sizes.landscapeHeight, render),
+            build(context, appWidgetId, sizes.portraitWidth, sizes.portraitHeight, render),
+        )
+        appWidgetManager.updateAppWidget(appWidgetId, views)
         // The factory re-reads the store on this; a size change already
         // replaced the adapter intent, and this covers a same-size push.
         try {
             @Suppress("DEPRECATION")
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.gv_month)
         } catch (_: Throwable) { }
+    }
+
+    /**
+     * Android 12+: one layout per size the host says it can show, drawn at
+     * that size (whole dp, rounded down, so a cell never comes out taller
+     * than the space it has). Null below 12 or when the host lists no sizes.
+     */
+    private fun exactSizeViews(context: Context, appWidgetId: Int, options: Bundle, render: MonthGridRender): RemoteViews? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+        val sizes = try {
+            @Suppress("DEPRECATION")
+            options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+        } catch (_: Throwable) { null }
+        val usable = sizes.orEmpty().filter { it.width > 0f && it.height > 0f }.distinct().take(MAX_SIZED_LAYOUTS)
+        if (usable.isEmpty()) return null
+        return RemoteViews(usable.associateWith { size ->
+            build(context, appWidgetId, floor(size.width).toInt(), floor(size.height).toInt(), render)
+        })
     }
 
     private fun build(context: Context, appWidgetId: Int, widthDp: Int, heightDp: Int, render: MonthGridRender): RemoteViews {
@@ -113,7 +143,16 @@ class MonthGridWidget : AppWidgetProvider() {
             else -> null
         }
         if (note != null) {
-            views.setTextViewText(R.id.tv_month_note, note)
+            // As on iOS: the stale banner in bold warning orange (StaleBanner),
+            // the "Planned as of" caption muted.
+            val stale = state?.isStale == true
+            val text = if (stale) SpannableString(note).apply {
+                setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            } else note
+            views.setTextViewText(R.id.tv_month_note, text)
+            views.setTextColor(R.id.tv_month_note, context.getColor(
+                if (stale) R.color.month_widget_stale else R.color.month_widget_muted,
+            ))
             views.setViewVisibility(R.id.tv_month_note, View.VISIBLE)
         } else {
             views.setViewVisibility(R.id.tv_month_note, View.GONE)
@@ -159,6 +198,8 @@ class MonthGridWidget : AppWidgetProvider() {
     companion object {
         private const val REQUEST_CELL_TEMPLATE = 4310
         private const val REQUEST_OPEN_APP = 4311
+        /** RemoteViews(Map) takes at most 16 sizes. */
+        private const val MAX_SIZED_LAYOUTS = 16
 
         private val WEEKDAY_IDS = intArrayOf(
             R.id.tv_month_wd_0, R.id.tv_month_wd_1, R.id.tv_month_wd_2, R.id.tv_month_wd_3,

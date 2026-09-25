@@ -196,8 +196,12 @@ class MainActivity : AppCompatActivity() {
             "app.dayglance.QUERY" -> storeIntentAction(intent, store)
             // A dayglance:// link on a cold start (a month grid cell while the
             // app was killed): stored here, drained by App.jsx once its data
-            // has loaded — no poke, the WebView hasn't loaded yet.
-            Intent.ACTION_VIEW    -> storeDeepLink(intent, store)
+            // has loaded — no poke, the WebView hasn't loaded yet. Not when
+            // the activity is being restored or relaunched from Recents: that
+            // intent is the original tap's, and replaying it would jump back
+            // to a day the user has long since left.
+            Intent.ACTION_VIEW    -> if (savedInstanceState == null &&
+                (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0) storeDeepLink(intent, store)
         }
 
         billingManager = BillingManager(this, dataStore)

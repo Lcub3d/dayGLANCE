@@ -17,4 +17,6 @@
     <color name="month_widget_pip">#FFfe8b00</color>
     <!-- The deadline pip where the cell is wide enough for two. -->
     <color name="month_widget_pip_deadline">#FFf85149</color>
+    <!-- The stale banner: iOS's system orange in dark mode (StaleBanner). -->
+    <color name="month_widget_stale">#FFff9f0a</color>
 </resources>

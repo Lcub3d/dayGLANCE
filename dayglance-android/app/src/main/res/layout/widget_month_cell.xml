@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   One cell of the month grid: a bitmap drawn by MonthGridCellPainter at the
-  cell's exact dp size for this display's density. adjustViewBounds keeps the
-  bitmap's aspect at the column width the GridView assigns, so six rows fill
-  the grid's height without scrolling (MonthGridMetrics.cellHeight is floored
-  for the same reason).
+  cell's exact dp size for this display's density. The row height is the
+  bitmap's own (wrap_content, no adjustViewBounds): if the launcher's column
+  comes out a few dp wider than the size it reported, fitXY stretches the
+  cell sideways rather than growing the row, so six rows still fit the grid's
+  height without scrolling (MonthGridMetrics.cellHeight is floored for the
+  same reason).
 -->
 <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/iv_month_cell"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:adjustViewBounds="true"
     android:scaleType="fitXY"
     android:importantForAccessibility="yes" />

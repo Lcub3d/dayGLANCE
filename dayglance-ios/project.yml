@@ -229,6 +229,9 @@ targets:
       - path: DayGlanceWidget/Dial/DialHubView.swift
       - path: DayGlanceWidget/Month/MonthGridModel.swift
       - path: DayGlanceWidget/Month/MonthGridWidget.swift
+      - path: DayGlanceWidget/Month/MonthGridExtraLarge.swift
+      - path: DayGlanceWidget/Month/MonthDaySelection.swift
+      - path: DayGlanceWidget/Month/MonthWidgetIntents.swift
       - path: TestFixtures/widgetSnapshot.live.json
         buildPhase: resources
     dependencies:

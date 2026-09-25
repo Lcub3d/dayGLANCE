@@ -75,6 +75,9 @@ struct MonthGridEntry: TimelineEntry {
     let snapshot: WidgetSnapshot?
     let window: MonthWindowPayload?
     var isPlaceholder: Bool = false
+    /// The extra-large widget's selected day, as last written by its arrows
+    /// (MonthDaySelection). Read per timeline; resolved per entry.
+    var selection: MonthDaySelection? = nil
 }
 
 struct MonthGridProvider: TimelineProvider {
@@ -85,7 +88,8 @@ struct MonthGridProvider: TimelineProvider {
     func getSnapshot(in context: Context, completion: @escaping (MonthGridEntry) -> Void) {
         let snapshot = loadSnapshot()
         let window = MonthWindowStore.load()
-        completion(MonthGridEntry(date: Date(), snapshot: snapshot, window: window, isPlaceholder: window == nil))
+        completion(MonthGridEntry(date: Date(), snapshot: snapshot, window: window, isPlaceholder: window == nil,
+                                  selection: MonthDaySelection.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<MonthGridEntry>) -> Void) {
@@ -93,7 +97,8 @@ struct MonthGridProvider: TimelineProvider {
         let window = MonthWindowStore.load()
         let now = Date()
         let dates = MonthGridTimeline.entryDates(now: now, window: window)
-        let entries = dates.map { MonthGridEntry(date: $0, snapshot: snapshot, window: window) }
+        let selection = MonthDaySelection.load()
+        let entries = dates.map { MonthGridEntry(date: $0, snapshot: snapshot, window: window, selection: selection) }
         let policy: TimelineReloadPolicy = MonthGridTimeline.nextReload(after: dates, now: now).map { .after($0) } ?? .atEnd
         completion(Timeline(entries: entries, policy: policy))
     }
@@ -103,10 +108,17 @@ struct MonthGridProvider: TimelineProvider {
 
 struct MonthGridWidgetView: View {
     let entry: MonthGridEntry
+    @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        MonthGridContent(entry: entry)
-            .containerBackground(MonthPalette.background, for: .widget)
+        Group {
+            if family == .systemExtraLarge {
+                MonthGridExtraLargeContent(entry: entry)
+            } else {
+                MonthGridContent(entry: entry)
+            }
+        }
+        .containerBackground(MonthPalette.background, for: .widget)
     }
 }
 
@@ -116,6 +128,9 @@ struct MonthGridContent: View {
     let entry: MonthGridEntry
     var calendar: Calendar = .current
     var locale: Locale = .current
+    /// The extra-large widget's selected day, ringed on the grid. Nil — no
+    /// ring — for systemLarge.
+    var selectedDate: String? = nil
 
     var body: some View {
         if entry.isPlaceholder {
@@ -148,7 +163,8 @@ struct MonthGridContent: View {
             }
             MonthWeekdayRow(initials: MonthGrid.weekdayInitials(weekStart: state.weekStart, calendar: calendar))
             GeometryReader { geo in
-                MonthGridBody(cells: state.cells, metrics: MonthGridMetrics(gridSize: geo.size), links: links)
+                MonthGridBody(cells: state.cells, metrics: MonthGridMetrics(gridSize: geo.size), links: links,
+                              selectedDate: selectedDate)
             }
             .staleDimmed(state.freshness)
         }
@@ -180,6 +196,7 @@ struct MonthGridBody: View {
     let cells: [MonthGridCell]
     let metrics: MonthGridMetrics
     let links: Bool
+    var selectedDate: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -200,7 +217,7 @@ struct MonthGridBody: View {
 
     @ViewBuilder
     private func cell(_ cell: MonthGridCell) -> some View {
-        let view = MonthGridCellView(cell: cell, metrics: metrics)
+        let view = MonthGridCellView(cell: cell, metrics: metrics, isSelected: cell.date == selectedDate)
         if links, let url = cell.url {
             Link(destination: url) { view }
         } else {
@@ -212,12 +229,19 @@ struct MonthGridBody: View {
 struct MonthGridCellView: View {
     let cell: MonthGridCell
     let metrics: MonthGridMetrics
+    /// The extra-large widget's agenda day: a 1pt ring in today's blue, over
+    /// the first-of-month hairline when both apply. Never set on systemLarge.
+    var isSelected: Bool = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             if cell.isFirstOfMonth {
                 RoundedRectangle(cornerRadius: MonthGridMetrics.boxRadius)
                     .strokeBorder(MonthPalette.hairline, lineWidth: 0.5)
+            }
+            if isSelected {
+                RoundedRectangle(cornerRadius: MonthGridMetrics.boxRadius)
+                    .strokeBorder(MonthPalette.todayFill, lineWidth: 1)
             }
             track
                 .padding(.top, MonthGridMetrics.trackTop)
@@ -310,7 +334,8 @@ struct MonthGridCellView: View {
 }
 
 struct MonthGridWidget: Widget {
-    let kind = "MonthGridWidget"
+    static let kindIdentifier = "MonthGridWidget"
+    let kind = MonthGridWidget.kindIdentifier
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: MonthGridProvider()) { entry in
@@ -318,7 +343,7 @@ struct MonthGridWidget: Widget {
         }
         .configurationDisplayName("Month")
         .description("Six weeks of your schedule at a glance.")
-        .supportedFamilies([.systemLarge])
+        .supportedFamilies([.systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }

@@ -162,8 +162,7 @@ class MonthAgendaWidget : AppWidgetProvider() {
         // ── The grid pane: shared with the month grid widget ──────────────
         val (paneW, paneH) = MonthAgendaLayout.gridPane(widthDp, heightDp)
         val state = bindMonthGridPane(
-            context, views, appWidgetId, paneW, paneH, frame.render,
-            MonthCellPalette.systemWidget(context), MonthGridCellService.KIND_AGENDA,
+            context, views, appWidgetId, paneW, paneH, frame.render, MonthGridCellService.KIND_AGENDA,
         )
 
         // ── The agenda header: the day, and the arrows ────────────────────

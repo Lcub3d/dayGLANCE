@@ -243,13 +243,12 @@ class UpNextWidget : AppWidgetProvider() {
 
             val start = LocalTime.of(parts[0], parts.getOrNull(1) ?: 0)
             val fmt = if (use24Hour) DateTimeFormatter.ofPattern("H:mm") else DateTimeFormatter.ofPattern("h:mm a")
-            val fmtShort = if (use24Hour) DateTimeFormatter.ofPattern("H:mm") else DateTimeFormatter.ofPattern("h:mm")
 
             val timeRangeStr = if (duration > 0) {
                 // A block past midnight wraps (LocalTime.of threw, and the
                 // catch dropped the range for a raw start time).
                 val end = LocalTime.of(endMin / 60 % 24, endMin % 60)
-                "${start.format(fmt)} – ${end.format(fmtShort)}"
+                WidgetTimeRange.format(start, end, use24Hour)
             } else {
                 start.format(fmt)
             }

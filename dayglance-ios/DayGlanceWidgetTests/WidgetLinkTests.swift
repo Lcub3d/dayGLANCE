@@ -35,6 +35,11 @@ final class WidgetLinkTests: XCTestCase {
         }
     }
 
+    func testFocusCarriesTheTask() {
+        XCTAssertEqual(WidgetLink.startFocus("t 1").absoluteString, "dayglance://startFocus?id=t%201")
+        XCTAssertEqual(WidgetLink.startFocus(nil).absoluteString, "dayglance://startFocus")
+    }
+
     func testTheHostIsTheAction() {
         XCTAssertEqual(WidgetLink.completeTask("t").host, "completeTask")
         XCTAssertEqual(WidgetLink.goal("g").host, "goal")

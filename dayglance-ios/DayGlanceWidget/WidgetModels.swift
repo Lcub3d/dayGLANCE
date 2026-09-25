@@ -221,6 +221,10 @@ enum WidgetLink {
     /// Up Next's Done: complete that task.
     static func completeTask(_ id: String) -> URL { link("completeTask", id) }
 
+    /// Up Next's Focus: a focus session on that task (without an id, on the
+    /// block the app derives from the clock).
+    static func startFocus(_ id: String?) -> URL { link("startFocus", id) }
+
     /// RFC 3986 unreserved characters only. `.urlQueryAllowed` keeps '+',
     /// '&' and '=', which URLSearchParams on the web side reads as a space
     /// and as separators, so an id containing them (an ICS UID can) would

@@ -24,14 +24,19 @@ struct ProjectEntity: AppEntity {
 /// Supplies the project list (from the latest snapshot) to the widget editor and
 /// resolves a previously-selected project by id.
 struct ProjectEntityQuery: EntityQuery {
+    // Resolving a saved choice looks at every project in the snapshot, so a
+    // widget pinned to a project that has since been completed keeps it.
     func entities(for identifiers: [String]) async throws -> [ProjectEntity] {
-        allEntities().filter { identifiers.contains($0.id) }
+        allEntities(includeCompleted: true).filter { identifiers.contains($0.id) }
     }
-    func suggestedEntities() async throws -> [ProjectEntity] { allEntities() }
+    // The picker offers the open ones only: the snapshot lists the projects
+    // the app shows (widgetGoalsProjects.js), and a completed project is
+    // reopened in the app before it is pinned again.
+    func suggestedEntities() async throws -> [ProjectEntity] { allEntities(includeCompleted: false) }
 
-    private func allEntities() -> [ProjectEntity] {
+    private func allEntities(includeCompleted: Bool) -> [ProjectEntity] {
         (loadSnapshot()?.allProjects ?? []).compactMap { p in
-            guard let id = p.id else { return nil }
+            guard let id = p.id, includeCompleted || p.status != "completed" else { return nil }
             return ProjectEntity(id: id, title: p.title ?? String(localized: "Untitled"), goalTitle: p.goalTitle)
         }
     }

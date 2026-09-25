@@ -188,8 +188,12 @@ class ProjectWidget : AppWidgetProvider() {
             if (task != null) {
                 val completed = task.optBoolean("completed", false)
                 views.setViewVisibility(rowId, View.VISIBLE)
+                val title = task.optString("title", "")
                 views.setTextViewText(checkId, if (completed) "✓" else "○")
-                views.setTextViewText(titleId, task.optString("title", ""))
+                // The glyph is read literally otherwise ("check mark", "white circle").
+                views.setContentDescription(checkId, context.getString(
+                    if (completed) R.string.a11y_item_done else R.string.a11y_item_not_done, title))
+                views.setTextViewText(titleId, title)
             } else {
                 views.setViewVisibility(rowId, View.GONE)
             }

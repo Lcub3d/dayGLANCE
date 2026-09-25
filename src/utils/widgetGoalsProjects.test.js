@@ -60,6 +60,22 @@ describe('buildWidgetGoalsProjects: the Project widget', () => {
     const { allProjects } = build({ projects: [{ id: 'p1', title: 'A', status: 'archived' }] });
     expect(allProjects).toEqual([]);
   });
+
+  it('lists only the projects the app shows: none under an archived, deleted or hidden goal', () => {
+    const { allProjects } = build({
+      goals: [goal, { id: 'g-old', title: 'Old', status: 'archived' }, { id: 'g-done', title: 'Done', status: 'completed' }],
+      projects: [
+        { id: 'under-active', goalId: 'g1', status: 'active' },
+        { id: 'under-completed-goal', goalId: 'g-done', status: 'active' },
+        { id: 'standalone', status: 'completed' },
+        { id: 'under-archived', goalId: 'g-old', status: 'active' },
+        { id: 'under-deleted', goalId: 'g-gone', status: 'active' },
+      ],
+    });
+    // A completed project stays in the payload (a widget already pinned to
+    // it shows it as done); the pickers hide completed ones themselves.
+    expect(allProjects.map((p) => p.id)).toEqual(['under-active', 'under-completed-goal', 'standalone']);
+  });
 });
 
 describe('buildWidgetGoalsProjects: the Goal widget', () => {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The month grid's palette: the reference mockup's, dark only, like the iOS
+  MonthPalette (MonthGridWidget.swift) and the Day Dial — the widget draws
+  its own ground rather than following the launcher's appearance, so there
+  is no values-night variant on purpose. The layout and MonthGridCellPainter
+  both read these.
+-->
+<resources>
+    <color name="month_widget_background">#FF161b22</color>
+    <color name="month_widget_date">#FF8b949e</color>
+    <color name="month_widget_date_emphasis">#FFc9d1d9</color>
+    <color name="month_widget_muted">#FF6e7681</color>
+    <color name="month_widget_hairline">#FF30363d</color>
+    <color name="month_widget_today_fill">#FF1f6feb</color>
+    <!-- The app's brand orange: the one combined pip, and the all-day pip. -->
+    <color name="month_widget_pip">#FFfe8b00</color>
+    <!-- The deadline pip where the cell is wide enough for two. -->
+    <color name="month_widget_pip_deadline">#FFf85149</color>
+</resources>

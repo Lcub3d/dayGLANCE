@@ -4,6 +4,7 @@
     <string name="widget_upnext_description">Vista detallada de tu próxima tarea programada</string>
     <string name="widget_goal_description">Tarjeta de progreso de un objetivo fijado y sus proyectos</string>
     <string name="widget_project_description">Tarjeta de progreso de un proyecto fijado y sus tareas</string>
+    <string name="widget_month_description">Seis semanas de tu agenda de un vistazo</string>
     <string name="shortcut_voice_short">Entrada de voz</string>
     <string name="shortcut_voice_long">Añadir tareas por voz</string>
     <string name="shortcut_add_task_short">Tarea programada</string>
@@ -157,4 +158,10 @@
     <string name="widget_open_to_refresh">Abre dayGLANCE para actualizar</string>
     <string name="widget_planned_as_of">Planificado a %1$s</string>
     <string name="widget_planned_in_advance">Planificado con antelación</string>
+    <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
+    <plurals name="widget_month_scheduled">
+        <item quantity="one">%1$d programada</item>
+        <item quantity="other">%1$d programadas</item>
+    </plurals>
+    <string name="widget_month_all_day_or_due">Todo el día o con vencimiento</string>
 </resources>

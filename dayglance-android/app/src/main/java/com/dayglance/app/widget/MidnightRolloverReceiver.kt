@@ -48,6 +48,7 @@ class MidnightRolloverReceiver : BroadcastReceiver() {
         runCatching { UpNextWidget.requestUpdate(context) }
         runCatching { GoalWidget.requestUpdate(context) }
         runCatching { ProjectWidget.requestUpdate(context) }
+        runCatching { MonthGridWidget.requestUpdate(context) }
     }
 
     companion object {

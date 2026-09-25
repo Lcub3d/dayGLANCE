@@ -194,6 +194,10 @@ class MainActivity : AppCompatActivity() {
             "app.dayglance.COMPLETE",
             "app.dayglance.OPEN",
             "app.dayglance.QUERY" -> storeIntentAction(intent, store)
+            // A dayglance:// link on a cold start (a month grid cell while the
+            // app was killed): stored here, drained by App.jsx once its data
+            // has loaded — no poke, the WebView hasn't loaded yet.
+            Intent.ACTION_VIEW    -> storeDeepLink(intent, store)
         }
 
         billingManager = BillingManager(this, dataStore)
@@ -725,10 +729,45 @@ class MainActivity : AppCompatActivity() {
             "app.dayglance.COMPLETE",
             "app.dayglance.OPEN",
             "app.dayglance.QUERY" -> storeIntentAction(intent, store)
+            Intent.ACTION_VIEW -> {
+                // A dayglance:// link while the app is alive: visibilitychange
+                // never fires in this WebView (it is never paused), so the
+                // drain has to be poked, like the intent bridge's.
+                if (!storeDeepLink(intent, store)) return
+                forwardPendingDeepLinkToJs()
+                return
+            }
             else -> return
         }
         // The WebView is already loaded; trigger the JS check immediately.
         forwardPendingIntentToJs()
+    }
+
+    /**
+     * Stores a `dayglance://…` VIEW intent's URL for the web layer
+     * (SharedDataStore.pendingDeepLink → NativeBridge.getPendingDeepLink →
+     * App.jsx). Any other scheme is not ours and is ignored. Returns whether
+     * a link was stored.
+     */
+    private fun storeDeepLink(intent: Intent, store: SharedDataStore): Boolean {
+        val data = intent.data ?: return false
+        if (!data.scheme.equals(DEEP_LINK_SCHEME, ignoreCase = true)) return false
+        store.pendingDeepLink = data.toString().take(2048)
+        return true
+    }
+
+    /**
+     * Pokes the WebView to drain the pending deep link. App.jsx exposes the
+     * hook once its data has loaded; before that the link waits in the store
+     * for the load-time drain, so nothing is lost either way.
+     */
+    private fun forwardPendingDeepLinkToJs() {
+        webView.post {
+            webView.evaluateJavascript(
+                "(function(){ if (window.__dayglanceCheckPendingDeepLink) window.__dayglanceCheckPendingDeepLink(); })();",
+                null
+            )
+        }
     }
 
     /**
@@ -807,6 +846,8 @@ class MainActivity : AppCompatActivity() {
         const val ACTION_ADD_TASK       = "com.dayglance.app.ACTION_ADD_TASK"
         const val ACTION_ADD_INBOX_TASK = "com.dayglance.app.ACTION_ADD_INBOX_TASK"
         const val ACTION_INTENT_RECEIVED = "com.dayglance.app.INTENT_RECEIVED"
+        /** The app's URL scheme: dayglance://day?date=…&view=month (the month grid's taps). */
+        const val DEEP_LINK_SCHEME = "dayglance"
 
         /**
          * The notification "Mark Complete" button, delivered straight to this

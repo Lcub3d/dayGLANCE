@@ -182,6 +182,24 @@ class SharedDataStore(context: Context) {
             else remove(KEY_PENDING_INTENT_JSON)
         }
 
+    // ── Deep links ──────────────────────────────────────────────────────────
+
+    /**
+     * A `dayglance://…` URL the app was opened with (a month grid cell's tap,
+     * or any VIEW intent on the scheme) that the web layer has not consumed
+     * yet. Written by MainActivity (cold start in onCreate, warm in
+     * onNewIntent); read and cleared by NativeBridge.getPendingDeepLink(),
+     * which App.jsx drains once its data has loaded and on every poke. One
+     * slot: a newer link replaces an unconsumed older one, which is what a
+     * second tap means.
+     */
+    var pendingDeepLink: String?
+        get() = prefs.getString(KEY_PENDING_DEEP_LINK, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_PENDING_DEEP_LINK, value)
+            else remove(KEY_PENDING_DEEP_LINK)
+        }
+
     // ── Automation intents (Tasker) opt-in gate ─────────────────────────────
 
     /**
@@ -355,6 +373,7 @@ class SharedDataStore(context: Context) {
         private const val KEY_PENDING_SHARE = "pending_share_text"
         private const val KEY_PENDING_FOCUS_ACTION = "pending_focus_action"
         private const val KEY_PENDING_INTENT_JSON = "pending_intent_json"
+        private const val KEY_PENDING_DEEP_LINK = "pending_deep_link"
         private const val KEY_AUTOMATION_INTENTS_ENABLED = "automation_intents_enabled"
         private const val KEY_APP_DARK_MODE = "app_dark_mode"
         private const val KEY_LAST_UP_NEXT_BODY = "last_up_next_body"

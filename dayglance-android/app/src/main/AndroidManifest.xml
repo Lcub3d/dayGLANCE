@@ -266,6 +266,29 @@
             android:exported="true"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
+        <!-- Home screen widget: Month + agenda (the month grid beside or above
+             one day's agenda, paged with arrows; widget/MonthAgendaWidget.kt).
+             Exported for the host's APPWIDGET_UPDATE like every widget; the
+             arrows are explicit broadcasts to it, and all a stray one can do
+             is change the selected day. -->
+        <receiver
+            android:name=".widget.MonthAgendaWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_month_agenda_info" />
+        </receiver>
+
+        <!-- RemoteViewsService behind the month + agenda widget's list: the
+             Today widget's factory in its month agenda mode. -->
+        <service
+            android:name=".widget.MonthAgendaListService"
+            android:exported="true"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <!-- RemoteViewsService behind the month grid's GridView: one bitmap per
              cell (see widget/MonthGridCellService.kt). Same export/permission
              gating as the list service above. -->

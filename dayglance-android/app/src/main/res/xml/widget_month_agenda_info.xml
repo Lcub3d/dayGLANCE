@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Month + agenda: 4 × 5 launcher cells at least (250 × 320dp). That is the
+  stacked arrangement's minimum: six grid rows over an agenda with its header
+  and two to three rows. 4 × 6 would read better but does not fit a five-row
+  phone home screen. Side by side needs 460dp of width and a width at least
+  1.25 × the height (MonthAgendaLayout in MonthAgendaModel.kt), so it appears
+  on tablets and in landscape. Resizable both ways; each size is drawn for
+  its own arrangement (MonthAgendaWidget).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="320dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="320dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="5"
+    android:maxResizeWidth="900dp"
+    android:maxResizeHeight="900dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_month_agenda_stacked"
+    android:previewImage="@drawable/widget_month_agenda_preview"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_month_agenda_description" />

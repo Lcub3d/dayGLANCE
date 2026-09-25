@@ -16,8 +16,11 @@ import java.time.format.FormatStyle
  * whole grid.
  *
  * The size the cells are drawn at is in the adapter intent's data URI
- * (`dayglance-widget://month/<id>?w=<dp>&h=<dp>&note=<0|1>`), written by
- * [MonthGridWidget] from the host's AppWidgetOptions. The URI, not extras,
+ * (`dayglance-widget://month/<id>?w=<dp>&h=<dp>&note=<0|1>&kind=<grid|agenda>`),
+ * written by [bindMonthGridPane] from the host's AppWidgetOptions. `kind`
+ * says which widget the cells are for: the month grid widget (its dark
+ * palette) or the month + agenda widget (the other widgets' light/dark
+ * palette, and a ring on the selected day, MonthAgendaSelectionStore). The URI, not extras,
  * because the host keys factories by intent identity (action, data, type,
  * class, categories — never extras): a portrait and a landscape layout of the
  * same widget need two factories, and a resize needs a fresh one.
@@ -29,12 +32,15 @@ class MonthGridCellService : RemoteViewsService() {
     companion object {
         const val SCHEME = "dayglance-widget"
         const val HOST = "month"
+        const val KIND_GRID = "grid"
+        const val KIND_AGENDA = "agenda"
 
-        fun adapterUri(appWidgetId: Int, widthDp: Int, heightDp: Int, noteShown: Boolean): Uri =
+        fun adapterUri(appWidgetId: Int, widthDp: Int, heightDp: Int, noteShown: Boolean, kind: String = KIND_GRID): Uri =
             Uri.Builder().scheme(SCHEME).authority(HOST).appendPath(appWidgetId.toString())
                 .appendQueryParameter("w", widthDp.toString())
                 .appendQueryParameter("h", heightDp.toString())
                 .appendQueryParameter("note", if (noteShown) "1" else "0")
+                .appendQueryParameter("kind", kind)
                 .build()
     }
 }
@@ -47,16 +53,23 @@ internal class MonthGridCellFactory(
     private val widthDp = data?.getQueryParameter("w")?.toIntOrNull() ?: MonthGridMetrics.MIN_WIDGET_WIDTH.toInt()
     private val heightDp = data?.getQueryParameter("h")?.toIntOrNull() ?: MonthGridMetrics.MIN_WIDGET_HEIGHT.toInt()
     private val noteShown = data?.getQueryParameter("note") == "1"
+    private val isAgenda = data?.getQueryParameter("kind") == MonthGridCellService.KIND_AGENDA
+    private val appWidgetId = data?.pathSegments?.firstOrNull()?.toIntOrNull()
 
     private val metrics = MonthGridMetrics(
         widthDp.toDouble(), heightDp.toDouble(),
         if (noteShown) MonthGridMetrics.NOTE_HEIGHT else 0.0,
     )
-    private val painter = MonthGridCellPainter(context)
+    private val painter = MonthGridCellPainter(
+        context,
+        if (isAgenda) MonthCellPalette.systemWidget(context) else MonthCellPalette.monthWidget(context),
+    )
 
     private var cells: List<MonthGridCell> = emptyList()
     /** False for the placeholder grid: its cells open the app, not a day. */
     private var links = false
+    /** The month + agenda widget's selected day, ringed; null for the grid widget. */
+    private var selected: String? = null
 
     override fun onCreate() { /* loading is done in onDataSetChanged */ }
 
@@ -66,6 +79,11 @@ internal class MonthGridCellFactory(
             val state = render.state ?: MonthGridState.placeholder(LocalDate.now(), render.placeholderWeekStart, render.monthDayLabel)
             cells = state.cells
             links = render.state != null
+            selected = if (isAgenda && appWidgetId != null) {
+                MonthDaySelection.resolve(
+                    MonthAgendaSelectionStore.load(context, appWidgetId), cells, MonthGrid.isoDay(LocalDate.now()),
+                )
+            } else null
         } catch (_: Throwable) {
             cells = emptyList()
             links = false
@@ -92,7 +110,7 @@ internal class MonthGridCellFactory(
             rv.setOnClickFillInIntent(R.id.iv_month_cell, Intent())
             return rv
         }
-        rv.setImageViewBitmap(R.id.iv_month_cell, painter.draw(cell, metrics))
+        rv.setImageViewBitmap(R.id.iv_month_cell, painter.draw(cell, metrics, selected = cell.date == selected))
         rv.setContentDescription(R.id.iv_month_cell, describe(cell))
         // The day's link rides the fill-in: MonthGridWidget's template is an
         // ACTION_VIEW to MainActivity with no data, so this data completes it

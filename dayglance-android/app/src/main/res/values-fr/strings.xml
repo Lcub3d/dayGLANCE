@@ -164,4 +164,14 @@
         <item quantity="other">%1$d planifiées</item>
     </plurals>
     <string name="widget_month_all_day_or_due">Journée entière ou échéance</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Six semaines en un coup d\'œil, avec l\'agenda de n\'importe quel jour</string>
+    <string name="badge_due">ÉCHÉANCE</string>
+    <string name="widget_nothing_scheduled">Rien de prévu</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d autre</item>
+        <item quantity="other">+%d autres</item>
+    </plurals>
+    <string name="widget_previous_day">Jour précédent</string>
+    <string name="widget_next_day">Jour suivant</string>
 </resources>

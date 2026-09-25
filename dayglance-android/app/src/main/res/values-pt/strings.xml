@@ -164,4 +164,14 @@
         <item quantity="other">%1$d agendadas</item>
     </plurals>
     <string name="widget_month_all_day_or_due">Dia inteiro ou com prazo</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Seis semanas num relance, com a agenda de qualquer dia</string>
+    <string name="badge_due">VENCE</string>
+    <string name="widget_nothing_scheduled">Nada agendado</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d mais</item>
+        <item quantity="other">+%d mais</item>
+    </plurals>
+    <string name="widget_previous_day">Dia anterior</string>
+    <string name="widget_next_day">Dia seguinte</string>
 </resources>

@@ -194,7 +194,7 @@ describe('GoalDashboard desktop space', () => {
     expect(roadmap).not.toContain('data-goal-list-view');
   });
 
-  it('on the Projects tab: Open | Completed with icons and count badges, rows with a ring, done/total and Stalled', () => {
+  it('on the Projects tab: Open | Completed with icons and count badges, rows with a ring and done/total, never Stalled', () => {
     const html = render({ desktop: true, isActive: true, initialSidebarTab: 'projects' });
     const sidebar = html.slice(html.indexOf('data-goals-sidebar'), html.indexOf('data-goals-main'));
     const main = section(html, 'data-goals-main');
@@ -206,11 +206,14 @@ describe('GoalDashboard desktop space', () => {
     expect(main).toMatch(/aria-pressed="false"[^>]*>[\s\S]*?Completed<span class="[^"]*bg-blue-600 text-white">0<\/span>/);
     // the open standalone project's card is in the grid; completed ones are not
     expect(cards(main)).toEqual(['dg']);
-    // sidebar row: progress ring, "done/total", and Stalled (open tasks, nothing completed, no createdAt)
+    // sidebar row: progress ring and "done/total". The row uses the card's gate, so a
+    // STANDALONE project is never flagged Stalled even though the raw rule would say so
+    // (open tasks, nothing completed) — exactly as its card shows nothing.
     const row = sidebar.match(/<button[^>]*data-project-row="dg"[\s\S]*?<\/button>/)[0];
     expect(row).toContain('<svg width="18"');
     expect(row).toContain('>0/2</span>');
-    expect(row).toContain('Stalled');
+    expect(row).not.toContain('Stalled');
+    expect(main).not.toContain('Stalled');
     // rows are separated by hairlines (none before the first)
     expect(sidebar.match(/data-row-divider/g) ?? []).toHaveLength(0); // one open standalone project: no divider
     // the filter field sits where the area filter sits on the Goals tab

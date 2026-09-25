@@ -43,7 +43,8 @@ import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
-import { isProjectStalled, calculateProjectProgress } from '../../utils/projectProgress.js';
+import { calculateProjectProgress } from '../../utils/projectProgress.js';
+import { hasStalledChild, isProjectFlaggedStalled } from '../../utils/stalledBadge.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import GoalCard from './GoalCard.jsx';
 import GoalTimeline from './GoalTimeline.jsx';
@@ -710,7 +711,7 @@ export const FormOverlay = ({ children, onClose, mobile, cardBg }) => {
 // path resolves via elementFromPoint (useProjectDrag).
 
 const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDragLeave, onDrop }) => {
-  const { darkMode, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks, recurringTasks } = useDayPlannerCtx();
+  const { darkMode, textPrimary, textSecondary, hoverBg, tasks, unscheduledTasks, recurringTasks, currentTimeMinutes } = useDayPlannerCtx();
   const { projects, areas = [], isVisibleForUser } = useFeaturesCtx();
   const { t } = useTranslation();
   const today = new Date();
@@ -738,8 +739,8 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
   const allTasks = useMemo(() => [...tasks, ...unscheduledTasks].filter(isVisibleForUser), [tasks, unscheduledTasks, isVisibleForUser]);
   const childProjects = useMemo(() => projects.filter(p => p.goalId === goal.id && p.status !== 'archived'), [projects, goal.id]);
   const hasStalledProject = useMemo(
-    () => !goal.hideStalled && childProjects.some(p => isProjectStalled(p.id, allTasks, p, recurringTasks)),
-    [childProjects, allTasks, recurringTasks, goal.hideStalled]
+    () => hasStalledChild(goal, childProjects, allTasks, recurringTasks, currentTimeMinutes),
+    [goal, childProjects, allTasks, recurringTasks, currentTimeMinutes]
   );
   const showCaution = !isCompleted && (isOverdue || hasStalledProject);
   const goalProgress = useMemo(() => calculateGoalProgress(goal.id, childProjects, allTasks), [goal.id, childProjects, allTasks]);
@@ -1118,7 +1119,9 @@ const ProjectSidebarRow = ({ project, focused, onSelect }) => {
   const done = projectTasks.filter(tk => tk.completed).length;
   const total = projectTasks.length;
   const progress = calculateProjectProgress(project.id, allTasks);
-  const stalled = !isCompleted && isProjectStalled(project.id, allTasks, project, recurringTasks);
+  // The card's gate, so the row never flags what the card does not (standalone
+  // projects are never flagged; see utils/stalledBadge.js).
+  const stalled = isProjectFlaggedStalled(project, project.goalId ? goals.find(g => g.id === project.goalId) : null, allTasks, recurringTasks, currentTimeMinutes);
   const session = !isCompleted && project.hyperglance?.enabled ? getActiveHGInstance(project, currentTimeMinutes) : null;
   const noteLink = noteLinkOf(project);
   // 18px ring: r=7 → circumference ≈ 44
@@ -1319,7 +1322,7 @@ const MobileDashboard = ({
   onNewProject,
   isActive = false,
 }) => {
-  const { darkMode, textPrimary, textSecondary, hoverBg, cardBg, borderClass, tasks: scheduledTasks, unscheduledTasks, recurringTasks } = useDayPlannerCtx();
+  const { darkMode, textPrimary, textSecondary, hoverBg, cardBg, borderClass, tasks: scheduledTasks, unscheduledTasks, recurringTasks, currentTimeMinutes } = useDayPlannerCtx();
   const { updateGoal, moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, isVisibleForUser } = useFeaturesCtx();
   const { t } = useTranslation();
 
@@ -1547,7 +1550,7 @@ const MobileDashboard = ({
                   const nonArchivedProjects = activeProjects.filter(p => p.goalId === goal.id);
                   const isCompleted = goal.status === 'completed';
                   const allProjectsDone = nonArchivedProjects.length > 0 && goalProgress >= 1;
-                  const hasStalledProject = !goal.hideStalled && nonArchivedProjects.some(p => isProjectStalled(p.id, allTasks, p, recurringTasks));
+                  const hasStalledProject = hasStalledChild(goal, nonArchivedProjects, allTasks, recurringTasks, currentTimeMinutes);
                   let daysLabel = null, daysUrgent = false, isOverdue = false;
                   if (goal.targetDate) {
                     const today = new Date(); today.setHours(0, 0, 0, 0);

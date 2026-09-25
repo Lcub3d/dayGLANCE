@@ -65,15 +65,23 @@ struct MonthWindowDay: Decodable, Equatable {
     /// One hex per all-day item / deadline. Only presence is drawn here.
     var allDay: [String]
     var deadlines: [String]
+    /// The extra-large widget's list: at most 12 rows, titles cut to 48
+    /// characters (buildAgenda in the JS module). Empty from an older push.
+    var agenda: [MonthAgendaRow]
+    /// Rows beyond the 12 carried.
+    var agendaMore: Int
 
-    init(date: String, bars: [MonthWindowBar] = [], allDay: [String] = [], deadlines: [String] = []) {
+    init(date: String, bars: [MonthWindowBar] = [], allDay: [String] = [], deadlines: [String] = [],
+         agenda: [MonthAgendaRow] = [], agendaMore: Int = 0) {
         self.date = date
         self.bars = bars
         self.allDay = allDay
         self.deadlines = deadlines
+        self.agenda = agenda
+        self.agendaMore = agendaMore
     }
 
-    private enum CodingKeys: String, CodingKey { case date, bars, allDay, deadlines }
+    private enum CodingKeys: String, CodingKey { case date, bars, allDay, deadlines, agenda, agendaMore }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -81,7 +89,28 @@ struct MonthWindowDay: Decodable, Equatable {
         bars = (try? c.decodeIfPresent([MonthWindowBar].self, forKey: .bars)) ?? []
         allDay = (try? c.decodeIfPresent([String].self, forKey: .allDay)) ?? []
         deadlines = (try? c.decodeIfPresent([String].self, forKey: .deadlines)) ?? []
+        agenda = (try? c.decodeIfPresent([MonthAgendaRow].self, forKey: .agenda)) ?? []
+        agendaMore = (try? c.decodeIfPresent(Int.self, forKey: .agendaMore)) ?? 0
     }
+}
+
+/// One agenda row. Every field but the title is optional, so an unexpected
+/// shape costs a row's detail, not the day.
+struct MonthAgendaRow: Decodable, Equatable {
+    /// Title, already cleaned of wikilinks and #tags and cut to 48 characters.
+    var t: String
+    /// Resolved hex colour.
+    var c: String?
+    /// Start and duration in minutes — timed rows and routines only.
+    var s: Double?
+    var d: Double?
+    /// Kind: nil a timed task or event, "r" a routine (today only),
+    /// "a" an all-day item, "l" a deadline.
+    var k: String?
+    /// 1 when completed.
+    var x: Int?
+
+    var isCompleted: Bool { x == 1 }
 }
 
 struct MonthWindowBar: Decodable, Equatable {
@@ -112,6 +141,11 @@ enum MonthWindowStore {
 // MARK: - Constants
 
 enum MonthGrid {
+    /// The widget's kind, here rather than on MonthGridWidget: a Widget is
+    /// main-actor isolated, and SelectMonthDayIntent.perform() — which runs
+    /// off the main actor — reloads by this name (a Swift 6 error otherwise).
+    static let widgetKind = "MonthGridWidget"
+
     static let columns = 7
     static let rows = 6
     static let cellCount = columns * rows
@@ -227,6 +261,9 @@ struct MonthGridCell: Equatable {
     let overflow: Int
     /// Every bar the day has, for the accessibility count.
     let totalBars: Int
+    /// The day's agenda rows and how many more there are (extra-large only).
+    var agenda: [MonthAgendaRow] = []
+    var agendaMore: Int = 0
 
     /// Bold weight: the first of a month and the grid's first day.
     var isBold: Bool { isFirstOfMonth || isWindowFirst }
@@ -254,7 +291,9 @@ struct MonthGridCell: Equatable {
             hasPip: !day.allDay.isEmpty || !day.deadlines.isEmpty,
             bars: shown,
             overflow: max(0, day.bars.count - MonthGrid.barCap),
-            totalBars: day.bars.count
+            totalBars: day.bars.count,
+            agenda: day.agenda,
+            agendaMore: day.agendaMore
         )
     }
 }

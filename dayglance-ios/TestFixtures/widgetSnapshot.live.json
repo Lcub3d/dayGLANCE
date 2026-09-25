@@ -1457,7 +1457,49 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Stretch",
+            "s": 450,
+            "d": 15,
+            "c": "#5eead4",
+            "k": "r",
+            "x": 1
+          },
+          {
+            "t": "Pick up kids",
+            "s": 483,
+            "d": 60,
+            "c": "#f59e0b",
+            "x": 1
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 593,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 678,
+            "d": 60,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 828,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Groceries",
+            "s": 953,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-22",
@@ -1489,7 +1531,40 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Design review: onboarding flow",
+            "s": 496,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 656,
+            "d": 30,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Team retro",
+            "s": 796,
+            "d": 90,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 936,
+            "d": 30,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Untitled",
+            "s": 1350,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-23",
@@ -1516,7 +1591,28 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 509,
+            "d": 120,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Standup",
+            "s": 719,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 814,
+            "d": 120,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-24",
@@ -1535,7 +1631,27 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 522,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Review PRs",
+            "s": 647,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-25",
@@ -1577,13 +1693,61 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Dentist",
+            "s": 535,
+            "d": 30,
+            "c": "#f43f5e",
+            "x": 1
+          },
+          {
+            "t": "Gym",
+            "s": 595,
+            "d": 90,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 715,
+            "d": 30,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 775,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 895,
+            "d": 30,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 955,
+            "d": 90,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Groceries",
+            "s": 1075,
+            "d": 30,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-26",
         "bars": [],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-27",
@@ -1602,7 +1766,27 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Untitled",
+            "s": 360,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Groceries",
+            "s": 561,
+            "d": 60,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-28",
@@ -1619,7 +1803,22 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Standup",
+            "s": 484,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 664,
+            "d": 30,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-29",
@@ -1651,7 +1850,41 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Review PRs",
+            "s": 497,
+            "d": 120,
+            "c": "#6366f1",
+            "x": 1
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 727,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Dentist",
+            "s": 862,
+            "d": 120,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Gym",
+            "s": 1052,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 1147,
+            "d": 120,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-09-30",
@@ -1690,7 +1923,51 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "Gym",
+            "s": 510,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 555,
+            "d": 60,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 645,
+            "d": 15,
+            "c": "#10b981"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 690,
+            "d": 60,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 780,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 825,
+            "d": 60,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-01",
@@ -1736,7 +2013,62 @@
         ],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Rent due",
+            "c": "#ef4444",
+            "k": "a"
+          },
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Standup",
+            "s": 510,
+            "d": 30,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 600,
+            "d": 60,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 690,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Review PRs",
+            "s": 810,
+            "d": 90,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 960,
+            "d": 30,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Dentist",
+            "s": 1080,
+            "d": 60,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Gym",
+            "s": 1170,
+            "d": 30,
+            "c": "#3b82f6"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-02",
@@ -1763,7 +2095,34 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Gym",
+            "s": 506,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 621,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 851,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 946,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-03",
@@ -1777,13 +2136,29 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 519,
+            "d": 60,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-04",
         "bars": [],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-05",
@@ -1825,7 +2200,53 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Deep work: payments migration",
+            "s": 545,
+            "d": 120,
+            "c": "#6366f1",
+            "x": 1
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 695,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Review PRs",
+            "s": 770,
+            "d": 120,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 920,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Dentist",
+            "s": 995,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Gym",
+            "s": 1145,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 1220,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-06",
@@ -1854,7 +2275,39 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 558,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Dentist",
+            "s": 623,
+            "d": 60,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Gym",
+            "s": 753,
+            "d": 15,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 858,
+            "d": 60,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-07",
@@ -1876,7 +2329,28 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Pick up kids",
+            "s": 481,
+            "d": 30,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 581,
+            "d": 90,
+            "c": "#10b981"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 781,
+            "d": 30,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-08",
@@ -1893,7 +2367,22 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Design review: onboarding flow",
+            "s": 494,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Groceries",
+            "s": 629,
+            "d": 120,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-09",
@@ -1930,13 +2419,55 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Untitled",
+            "s": 360,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 507,
+            "d": 60,
+            "c": "#f59e0b",
+            "x": 1
+          },
+          {
+            "t": "Standup",
+            "s": 677,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 782,
+            "d": 60,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 912,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Review PRs",
+            "s": 977,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-10",
         "bars": [],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-11",
@@ -1955,7 +2486,27 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Dentist",
+            "s": 533,
+            "d": 120,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Untitled",
+            "s": 1350,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-12",
@@ -1979,7 +2530,27 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 546,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 631,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-13",
@@ -2011,7 +2582,41 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Groceries",
+            "s": 559,
+            "d": 30,
+            "c": "#f43f5e",
+            "x": 1
+          },
+          {
+            "t": "Team retro",
+            "s": 679,
+            "d": 90,
+            "c": "#10b981"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 819,
+            "d": 30,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Standup",
+            "s": 959,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 1119,
+            "d": 30,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-14",
@@ -2038,7 +2643,34 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Standup",
+            "s": 482,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 637,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 847,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Review PRs",
+            "s": 962,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-15",
@@ -2070,7 +2702,40 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Review PRs",
+            "s": 495,
+            "d": 60,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 585,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Dentist",
+            "s": 630,
+            "d": 60,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Gym",
+            "s": 720,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 765,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-16",
@@ -2087,7 +2752,22 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Gym",
+            "s": 508,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 648,
+            "d": 30,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-17",
@@ -2099,7 +2779,17 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Write weekly update",
+            "s": 521,
+            "d": 120,
+            "c": "#6366f1",
+            "x": 1
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-18",
@@ -2113,7 +2803,21 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "Untitled",
+            "s": 360,
+            "d": 45,
+            "c": "#10b981"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-19",
@@ -2137,7 +2841,33 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 547,
+            "d": 30,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 687,
+            "d": 90,
+            "c": "#10b981"
+          },
+          {
+            "t": "Review PRs",
+            "s": 867,
+            "d": 30,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-20",
@@ -2164,7 +2894,34 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "1:1 with Sam",
+            "s": 560,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Dentist",
+            "s": 635,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Gym",
+            "s": 785,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 860,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-21",
@@ -2196,7 +2953,41 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Pick up kids",
+            "s": 483,
+            "d": 60,
+            "c": "#f59e0b",
+            "x": 1
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 593,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 678,
+            "d": 60,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 828,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Groceries",
+            "s": 953,
+            "d": 60,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-22",
@@ -2228,7 +3019,40 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Design review: onboarding flow",
+            "s": 496,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 656,
+            "d": 30,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Team retro",
+            "s": 796,
+            "d": 90,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 936,
+            "d": 30,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Untitled",
+            "s": 1350,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-23",
@@ -2255,7 +3079,28 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 509,
+            "d": 120,
+            "c": "#6366f1"
+          },
+          {
+            "t": "Standup",
+            "s": 719,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 814,
+            "d": 120,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-24",
@@ -2263,7 +3108,15 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-25",
@@ -2275,7 +3128,17 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Dentist",
+            "s": 535,
+            "d": 30,
+            "c": "#f43f5e",
+            "x": 1
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-26",
@@ -2302,7 +3165,34 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 548,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 643,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 833,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 968,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-27",
@@ -2331,7 +3221,39 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Untitled",
+            "s": 360,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Groceries",
+            "s": 561,
+            "d": 60,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Team retro",
+            "s": 691,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 816,
+            "d": 60,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-28",
@@ -2348,7 +3270,22 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Standup",
+            "s": 484,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Deep work: payments migration",
+            "s": 664,
+            "d": 30,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-29",
@@ -2380,7 +3317,41 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Review PRs",
+            "s": 497,
+            "d": 120,
+            "c": "#6366f1",
+            "x": 1
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 727,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Dentist",
+            "s": 862,
+            "d": 120,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Gym",
+            "s": 1052,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 1147,
+            "d": 120,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-30",
@@ -2419,7 +3390,51 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "Gym",
+            "s": 510,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 555,
+            "d": 60,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 645,
+            "d": 15,
+            "c": "#10b981"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 690,
+            "d": 60,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 780,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 825,
+            "d": 60,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-10-31",
@@ -2431,7 +3446,16 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Write weekly update",
+            "s": 523,
+            "d": 30,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-01",
@@ -2443,7 +3467,17 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Review PRs",
+            "s": 493,
+            "d": 30,
+            "c": "#f43f5e",
+            "x": 1
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-02",
@@ -2470,7 +3504,34 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Gym",
+            "s": 506,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 621,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Quarterly planning — draft goals for the next t…",
+            "s": 851,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 946,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-03",
@@ -2494,7 +3555,33 @@
         "allDay": [],
         "deadlines": [
           "#ef4444"
-        ]
+        ],
+        "agenda": [
+          {
+            "t": "Submit expense report",
+            "c": "#ef4444",
+            "k": "l"
+          },
+          {
+            "t": "Write weekly update",
+            "s": 519,
+            "d": 60,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Design review: onboarding flow",
+            "s": 669,
+            "d": 15,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Groceries",
+            "s": 734,
+            "d": 60,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-04",
@@ -2511,7 +3598,22 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Team retro",
+            "s": 532,
+            "d": 90,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Customer call — Acme renewal",
+            "s": 732,
+            "d": 30,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-05",
@@ -2553,7 +3655,53 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Deep work: payments migration",
+            "s": 545,
+            "d": 120,
+            "c": "#6366f1",
+            "x": 1
+          },
+          {
+            "t": "Lunch with Priya",
+            "s": 695,
+            "d": 45,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Review PRs",
+            "s": 770,
+            "d": 120,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 920,
+            "d": 45,
+            "c": "#10b981"
+          },
+          {
+            "t": "Dentist",
+            "s": 995,
+            "d": 120,
+            "c": "#f59e0b"
+          },
+          {
+            "t": "Gym",
+            "s": 1145,
+            "d": 45,
+            "c": "#a855f7"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 1220,
+            "d": 120,
+            "c": "#6366f1"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-06",
@@ -2582,7 +3730,39 @@
         "allDay": [
           "#f59e0b"
         ],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Maria’s birthday",
+            "c": "#f59e0b",
+            "k": "a"
+          },
+          {
+            "t": "1:1 with Sam",
+            "s": 558,
+            "d": 15,
+            "c": "#3b82f6"
+          },
+          {
+            "t": "Dentist",
+            "s": 623,
+            "d": 60,
+            "c": "#f43f5e"
+          },
+          {
+            "t": "Gym",
+            "s": 753,
+            "d": 15,
+            "c": "#10b981"
+          },
+          {
+            "t": "Pick up kids",
+            "s": 858,
+            "d": 60,
+            "c": "#f59e0b"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-07",
@@ -2594,13 +3774,24 @@
           }
         ],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [
+          {
+            "t": "Pick up kids",
+            "s": 481,
+            "d": 30,
+            "c": "#f43f5e"
+          }
+        ],
+        "agendaMore": 0
       },
       {
         "date": "2026-11-08",
         "bars": [],
         "allDay": [],
-        "deadlines": []
+        "deadlines": [],
+        "agenda": [],
+        "agendaMore": 0
       }
     ]
   },

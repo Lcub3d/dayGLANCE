@@ -7461,13 +7461,15 @@ const DayPlanner = () => {
       deadlinesForDate: (dateStr) => unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
       // Routines exist for today only; both halves of the date guard are the
       // ones buildRoutineBlocks (utils/mcpRoutines.js) explains.
+      // Completion rides along for the extra-large widget's agenda, which
+      // draws a done routine the way SCHED draws a done task.
       routinesForDate: (dateStr) => (routinesEnabled && routinesDate === dateStr && widgetTodayKey === dateStr)
-        ? todayRoutines
+        ? todayRoutines.map(r => ({ ...r, completed: !!routineCompletions?.[r.id] }))
         : [],
     });
   }, [
     dataLoaded, widgetTodayKey, weekStartDay, widgetTasksForDate, unscheduledTasks, isVisibleForUser,
-    routinesEnabled, routinesDate, todayRoutines,
+    routinesEnabled, routinesDate, todayRoutines, routineCompletions,
   ]);
 
   // ── Native Android widget snapshot sync ──────────────────────────────────

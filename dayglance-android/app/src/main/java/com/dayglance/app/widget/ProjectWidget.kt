@@ -68,7 +68,7 @@ class ProjectWidget : AppWidgetProvider() {
         // no present-tense claim beyond "as of when", and the banner supplies that.
         if (resolved.isProjected) {
             views.setTextViewText(R.id.tv_project_widget_stale, formatPlannedLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
-            views.setTextColor(R.id.tv_project_widget_stale, context.getColor(R.color.widget_text_secondary))
+            views.setThemedTextColor(context, R.id.tv_project_widget_stale, R.color.widget_text_secondary)
             views.setViewVisibility(R.id.tv_project_widget_stale, View.VISIBLE)
         } else if (freshness.isStale) {
             views.setTextViewText(R.id.tv_project_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
@@ -140,7 +140,8 @@ class ProjectWidget : AppWidgetProvider() {
         }
 
         // Color bar (goal color if linked, brand color if standalone)
-        val colorHex = goalColorHex.ifEmpty { "#3b82f6" }
+        // The project's own colour as the app draws it, else its goal's.
+        val colorHex = project.optString("colorHex", "").ifEmpty { goalColorHex }.ifEmpty { "#3b82f6" }
         try { views.setInt(R.id.project_widget_color_bar, "setBackgroundColor", Color.parseColor(colorHex)) }
         catch (_: Throwable) { }
 

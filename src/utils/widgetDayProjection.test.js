@@ -199,3 +199,19 @@ describe('guardSnapshotSize', () => {
     expect(WIDGET_SNAPSHOT_WARN_BYTES).toBeLessThan(WIDGET_SNAPSHOT_CAP_BYTES);
   });
 });
+
+describe('guardSnapshotSize: ids', () => {
+  it('sends every id as a string, however deep, and leaves other numbers alone', () => {
+    const { json } = guardSnapshotSize({
+      nextTask: { id: 42, duration: 30 },
+      allProjects: [{ id: 7, tasks: [{ id: 8, title: 'x' }], progressPct: 50 }],
+      habits: [{ id: 'h1' }],
+    });
+    const out = JSON.parse(json);
+    expect(out.nextTask).toEqual({ id: '42', duration: 30 });
+    expect(out.allProjects[0].id).toBe('7');
+    expect(out.allProjects[0].tasks[0].id).toBe('8');
+    expect(out.allProjects[0].progressPct).toBe(50);
+    expect(out.habits[0].id).toBe('h1');
+  });
+});

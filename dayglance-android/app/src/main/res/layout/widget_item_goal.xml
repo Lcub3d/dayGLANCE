@@ -62,7 +62,7 @@
                 android:id="@+id/tv_goal_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="DUE TODAY"
+                android:text="@string/badge_due_today"
                 android:textColor="@color/widget_text_secondary"
                 android:textSize="11sp"
                 android:textStyle="bold"

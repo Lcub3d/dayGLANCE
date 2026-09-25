@@ -146,7 +146,7 @@ class DayGlanceWidgetListFactory(
             // when today is one of the payload's days, or the stale root.
             val resolved = resolveWidgetDay(JSONObject(snapshotJson), dataStore, LocalDate.now())
             snapshotIsToday = !resolved.isStale
-            buildItems(resolved.fields ?: return)
+            buildItems(resolved.fields ?: return, clockRoot = resolved.root)
         } catch (_: Throwable) {
             items += AgendaItem.Empty
         }
@@ -187,7 +187,7 @@ class DayGlanceWidgetListFactory(
                 if (snapshot == null) { items += AgendaItem.Empty; return }
                 val resolved = resolveWidgetDay(snapshot, dataStore, today)
                 snapshotIsToday = !resolved.isStale
-                buildItems(resolved.fields ?: return, includeHabits = MonthAgendaContent.INCLUDES_HABITS)
+                buildItems(resolved.fields ?: return, includeHabits = MonthAgendaContent.INCLUDES_HABITS, clockRoot = resolved.root)
             }
             MonthAgendaSource.WINDOW_ROWS -> {
                 use24Hour = widgetUses24HourClock(context, snapshot)
@@ -209,8 +209,14 @@ class DayGlanceWidgetListFactory(
         }
     }
 
-    private fun buildItems(snapshot: JSONObject, includeHabits: Boolean = true) {
-        use24Hour = widgetUses24HourClock(context, snapshot)
+    /**
+     * [clockRoot] is the snapshot's top level, where the app's 12/24-hour
+     * setting lives: a planned-ahead day's [snapshot] is its `days[]` entry,
+     * which does not carry `use24Hour`, and reading it there fell back to the
+     * device's setting while the header used the app's.
+     */
+    private fun buildItems(snapshot: JSONObject, includeHabits: Boolean = true, clockRoot: JSONObject? = snapshot) {
+        use24Hour = widgetUses24HourClock(context, clockRoot ?: snapshot)
 
         // 1. Habits (the month + agenda widget leaves them out)
         val habitsArray = if (includeHabits) snapshot.optJSONArray("habits") else null
@@ -234,7 +240,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until goalsArray.length()) {
                 val g = goalsArray.optJSONObject(i) ?: continue
                 items += AgendaItem.Goal(
-                    title = g.optString("title", "Untitled"),
+                    title = g.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     progressPct = g.optInt("progressPct", 0).coerceIn(0, 100),
                     totalTasks = g.optInt("totalTasks", 0),
                     completedTasks = g.optInt("completedTasks", 0),
@@ -249,7 +255,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until hyperGlanceArray.length()) {
                 val hg = hyperGlanceArray.optJSONObject(i) ?: continue
                 items += AgendaItem.HyperGLANCE(
-                    title = hg.optString("title", "Untitled"),
+                    title = hg.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     colorHex = hg.optString("colorHex", "#4f46e5"),
                     startTime = hg.optString("startTime", ""),
                     duration = hg.optInt("duration", 60),
@@ -265,7 +271,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until overdueArray.length()) {
                 val t = overdueArray.optJSONObject(i) ?: continue
                 items += AgendaItem.Task(
-                    title = t.optString("title", "Untitled"),
+                    title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     colorHex = t.optString("colorHex", "#ef4444"),
                     badge = "",
                     timeStr = "",
@@ -281,7 +287,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until allDayArray.length()) {
                 val t = allDayArray.optJSONObject(i) ?: continue
                 items += AgendaItem.Task(
-                    title = t.optString("title", "Untitled"),
+                    title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     colorHex = t.optString("colorHex", "#3b82f6"),
                     badge = "ALL DAY",
                     timeStr = "",
@@ -296,7 +302,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until deadlineArray.length()) {
                 val t = deadlineArray.optJSONObject(i) ?: continue
                 items += AgendaItem.Task(
-                    title = t.optString("title", "Untitled"),
+                    title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     colorHex = t.optString("colorHex", "#f97316"),
                     badge = "DUE TODAY",
                     timeStr = "",
@@ -326,7 +332,7 @@ class DayGlanceWidgetListFactory(
             for (i in 0 until overdueTodayArray.length()) {
                 val t = overdueTodayArray.optJSONObject(i) ?: continue
                 items += AgendaItem.Task(
-                    title = t.optString("title", "Untitled"),
+                    title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                     colorHex = t.optString("colorHex", "#ef4444"),
                     badge = "OVERDUE",
                     timeStr = buildTimeStr(t),
@@ -354,7 +360,7 @@ class DayGlanceWidgetListFactory(
                             for (j in 0 until frameTasks.length()) {
                                 val t = frameTasks.optJSONObject(j) ?: continue
                                 items += AgendaItem.Task(
-                                    title = t.optString("title", "Untitled"),
+                                    title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                                     colorHex = t.optString("colorHex", "#3b82f6"),
                                     badge = if (isInProgress(t)) "IN PROGRESS" else "",
                                     timeStr = buildTimeStr(t),
@@ -369,7 +375,7 @@ class DayGlanceWidgetListFactory(
                         for (j in 0 until tasks.length()) {
                             val t = tasks.optJSONObject(j) ?: continue
                             items += AgendaItem.Task(
-                                title = t.optString("title", "Untitled"),
+                                title = t.optString("title", "").ifEmpty { context.getString(R.string.widget_untitled) },
                                 colorHex = t.optString("colorHex", "#3b82f6"),
                                 badge = if (isInProgress(t)) "IN PROGRESS" else "",
                                 timeStr = buildTimeStr(t),
@@ -616,9 +622,8 @@ class DayGlanceWidgetListFactory(
     private fun buildSectionView(item: AgendaItem.Section): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_item_section)
         rv.setTextViewText(R.id.tv_section_label, localizedSection(item.label))
-        val labelColor = if (item.isOverdue) colorRes(R.color.widget_overdue_text)
-                         else colorRes(R.color.widget_section_text)
-        rv.setTextColor(R.id.tv_section_label, labelColor)
+        val labelColor = if (item.isOverdue) R.color.widget_overdue_text else R.color.widget_section_text
+        rv.setThemedTextColor(context, R.id.tv_section_label, labelColor)
         rv.boostTextSizeForOneUi(R.id.tv_section_label, 11f)
         rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
         return rv
@@ -654,7 +659,7 @@ class DayGlanceWidgetListFactory(
         val startPad = if (item.indent) dpToPx(14) else 0
         rv.setViewPadding(R.id.task_item_root, startPad, dpToPx(4), 0, dpToPx(4))
         if (item.indent) {
-            rv.setInt(R.id.task_item_root, "setBackgroundColor", colorRes(R.color.widget_frame_bg))
+            rv.setThemedBackgroundColor(context, R.id.task_item_root, R.color.widget_frame_bg)
         } else {
             rv.setInt(R.id.task_item_root, "setBackgroundColor", android.graphics.Color.TRANSPARENT)
         }
@@ -665,12 +670,12 @@ class DayGlanceWidgetListFactory(
             rv.setTextViewText(R.id.tv_task_badge, localizedBadge(badge))
             rv.setViewVisibility(R.id.tv_task_badge, View.VISIBLE)
             val badgeColor = when (badge) {
-                "OVERDUE" -> colorRes(R.color.widget_overdue_text)
-                "DUE TODAY" -> colorRes(R.color.widget_deadline_text)
-                "IN PROGRESS" -> colorRes(R.color.widget_in_progress_text)
-                else -> colorRes(R.color.widget_text_secondary)
+                "OVERDUE" -> R.color.widget_overdue_text
+                "DUE TODAY" -> R.color.widget_deadline_text
+                "IN PROGRESS" -> R.color.widget_in_progress_text
+                else -> R.color.widget_text_secondary
             }
-            rv.setTextColor(R.id.tv_task_badge, badgeColor)
+            rv.setThemedTextColor(context, R.id.tv_task_badge, badgeColor)
         } else {
             rv.setViewVisibility(R.id.tv_task_badge, View.GONE)
         }
@@ -779,7 +784,7 @@ class DayGlanceWidgetListFactory(
     private fun buildNoteView(item: AgendaItem.Note): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_item_section)
         rv.setTextViewText(R.id.tv_section_label, item.text)
-        rv.setTextColor(R.id.tv_section_label, colorRes(R.color.widget_section_text))
+        rv.setThemedTextColor(context, R.id.tv_section_label, R.color.widget_section_text)
         rv.boostTextSizeForOneUi(R.id.tv_section_label, 11f)
         rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
         return rv
@@ -896,9 +901,6 @@ class DayGlanceWidgetListFactory(
         "DONE" -> context.getString(R.string.badge_done)
         else -> badge
     }
-
-    private fun colorRes(resId: Int): Int =
-        context.resources.getColor(resId, context.theme)
 
     private fun safeParseColor(hex: String, fallback: String): Int = try {
         Color.parseColor(if (hex.startsWith("#")) hex else "#$hex")

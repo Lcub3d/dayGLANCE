@@ -78,14 +78,19 @@ struct ProjectWidgetView: View {
     var entry: ProjectEntry
     @Environment(\.widgetFamily) var family
 
-    // The configured project, falling back to the first active (non-completed,
-    // non-archived) project when nothing is selected or the selection is gone.
+    // The configured project; the first active (non-completed, non-archived)
+    // one only when nothing is selected. A selection no longer in the
+    // snapshot (archived or deleted) says so rather than showing an
+    // unrelated project under the same configuration.
     private var selectedProject: ProjectData? {
         let projects = entry.snapshot?.allProjects ?? []
-        if let id = entry.selectedProjectId, let match = projects.first(where: { $0.id == id }) {
-            return match
+        guard let id = entry.selectedProjectId else {
+            return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
         }
-        return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
+        return projects.first(where: { $0.id == id })
+    }
+    private var configuredProjectIsGone: Bool {
+        entry.selectedProjectId != nil && selectedProject == nil && !(entry.snapshot?.allProjects ?? []).isEmpty
     }
 
     // Against the entry's date, not the clock (see ResolvedWidgetDay).
@@ -105,6 +110,11 @@ struct ProjectWidgetView: View {
             Group {
                 if let proj = selectedProject {
                     projectView(proj: proj)
+                } else if configuredProjectIsGone {
+                    Text("This project may have been archived or deleted. Edit the widget to choose another.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
                 } else {
                     Text("No active projects")
                         .font(.caption)
@@ -136,7 +146,10 @@ struct ProjectWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(hex: proj.goalColorHex ?? "#3b82f6"))
+                    // The project's colour, else its goal's; an empty string
+                    // (a standalone project's goal colour) is missing, not
+                    // Color(hex: "")'s white.
+                    .fill(Color(hex: [proj.colorHex, proj.goalColorHex].compactMap { $0 }.first { !$0.isEmpty } ?? "#3b82f6"))
                     .frame(width: 3, height: 36)
                 VStack(alignment: .leading, spacing: 2) {
                     if let goalTitle = proj.goalTitle, !goalTitle.isEmpty {

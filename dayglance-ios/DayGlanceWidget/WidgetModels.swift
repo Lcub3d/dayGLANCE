@@ -136,6 +136,8 @@ struct ProjectData: Codable {
     var goalId: String?
     var goalTitle: String?
     var goalColorHex: String?
+    /// The project's own colour as the app draws it (absent from older pushes).
+    var colorHex: String?
     var progressPct: Int?
     var totalTasks: Int?
     var completedTasks: Int?

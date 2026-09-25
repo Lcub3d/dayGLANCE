@@ -10,7 +10,7 @@
 //   - a project's tasks as its card lists them (orderProjectTasks): open
 //     scheduled by date, open inbox by the drag order, then the completed.
 
-import { TAILWIND_TO_HEX } from './colorUtils.js';
+import { TAILWIND_TO_HEX, getProjectColor } from './colorUtils.js';
 import { calculateGoalProgress } from './goalProgress.js';
 import { stripWikilinksAndTags } from './taskUtils.js';
 import { orderProjectTasks, sortProjectsByOrder } from './projectOrder.js';
@@ -90,6 +90,9 @@ export function buildWidgetGoalsProjects({ goals = [], allGoals = goals, project
         goalId: p.goalId || '',
         goalTitle: parentGoal?.title || '',
         goalColorHex: parentGoal ? (TAILWIND_TO_HEX[parentGoal.color] || DEFAULT_HEX) : '',
+        // The project's own colour as the app draws it (its colour, else its
+        // goal's, else the fallback): a standalone project has no goal colour.
+        colorHex: TAILWIND_TO_HEX[getProjectColor(p, parentGoal)] || DEFAULT_HEX,
         progressPct: pct(done, ordered.length),
         totalTasks: ordered.length,
         completedTasks: done,

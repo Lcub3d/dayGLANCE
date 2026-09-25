@@ -11,9 +11,9 @@ import os
 //
 // iOS 18.4 tightened what an intent running in the widget process may touch
 // when the app is not alive (the comment in WidgetIntents.swift). This intent
-// touches only the App Group defaults. Whether that is enough on 18.4+ is
-// exactly what the first on-device test checks: the selection record carries
-// the process that ran it (MonthDaySelection.handledBy), shown in the panel.
+// touches only the App Group defaults, and that is enough: verified on an
+// iPad on iOS 18.4+ with the app force-quit, the tap runs in the widget
+// extension (the log line below names the process) and never launches the app.
 
 @available(iOS 17.0, *)
 struct SelectMonthDayIntent: AppIntent {
@@ -34,7 +34,7 @@ struct SelectMonthDayIntent: AppIntent {
     func perform() async throws -> some IntentResult {
         let today = MonthGrid.isoDay(Date(), calendar: .current)
         let process = ProcessInfo.processInfo.processName
-        MonthDaySelection(date: date, setOn: today, handledAt: Date(), handledBy: process).save()
+        MonthDaySelection(date: date, setOn: today).save()
         Self.logger.notice("select day=\(date, privacy: .public) setOn=\(today, privacy: .public) process=\(process, privacy: .public)")
         WidgetCenter.shared.reloadTimelines(ofKind: MonthGrid.widgetKind)
         return .result()

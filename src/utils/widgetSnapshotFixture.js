@@ -48,6 +48,9 @@ export const LIVE_SNAPSHOT_WEEK_START = 1;
 /** The crowded first of the month: seven blocks, an all-day item, a deadline. */
 export const LIVE_MONTH_CROWDED_DAY = '2026-10-01';
 
+const MONTH_TITLES = ['Standup', 'Deep work: payments migration #deep', 'Lunch with Priya', 'Review PRs', '1:1 with Sam',
+  'Dentist', 'Gym', 'Pick up kids', 'Quarterly planning — draft goals for the next two quarters and circulate', 'Write weekly update',
+  'Design review: onboarding flow', 'Groceries', 'Team retro', 'Customer call — Acme renewal'];
 const MONTH_PALETTE = ['bg-blue-500', 'bg-rose-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-indigo-500'];
 const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
@@ -62,8 +65,8 @@ export function liveMonthTasks(dateStr) {
   if (dateStr === LIVE_MONTH_CROWDED_DAY) {
     return [510, 600, 690, 810, 960, 1080, 1170].map((s, i) => task(dateStr, {
       id: `${dateStr}-c${i}`, startTime: hhmm(s), duration: [30, 60, 45, 90, 30, 60, 30][i],
-      color: MONTH_PALETTE[i % MONTH_PALETTE.length],
-    })).concat(task(dateStr, { id: `${dateStr}-rent`, isAllDay: true, startTime: '', duration: 0, color: 'bg-red-500' }));
+      color: MONTH_PALETTE[i % MONTH_PALETTE.length], title: MONTH_TITLES[i % MONTH_TITLES.length],
+    })).concat(task(dateStr, { id: `${dateStr}-rent`, title: 'Rent due', isAllDay: true, startTime: '', duration: 0, color: 'bg-red-500' }));
   }
   const date = new Date(`${dateStr}T12:00:00`);
   const dom = date.getDate();
@@ -74,18 +77,23 @@ export function liveMonthTasks(dateStr) {
   let cursor = 480 + (dom * 13) % 90;
   for (let k = 0; k < count && cursor < 1260; k++) {
     const duration = [15, 30, 45, 60, 90, 120][(dom + k * 3) % 6];
-    out.push(task(dateStr, { id: `${dateStr}-m${k}`, startTime: hhmm(cursor), duration, color: MONTH_PALETTE[(dom + k) % MONTH_PALETTE.length] }));
+    out.push(task(dateStr, {
+      id: `${dateStr}-m${k}`, title: MONTH_TITLES[(dom * 3 + k) % MONTH_TITLES.length],
+      startTime: hhmm(cursor), duration, color: MONTH_PALETTE[(dom + k) % MONTH_PALETTE.length],
+      // A done block on some days (today among them), for the agenda's completed style.
+      completed: k === 0 && dom % 4 === 1,
+    }));
     cursor += duration + 30 + ((dom * (k + 1)) % 5) * 20;
   }
   if (dom % 9 === 0) out.push(task(dateStr, { id: `${dateStr}-early`, startTime: '06:00', duration: 45, color: 'bg-emerald-500' }));
   if (dom % 11 === 0) out.push(task(dateStr, { id: `${dateStr}-late`, startTime: '22:30', duration: 120, color: 'bg-indigo-500' }));
-  if (dom % 6 === 0) out.push(task(dateStr, { id: `${dateStr}-allday`, isAllDay: true, startTime: '', duration: 0, color: 'bg-amber-500' }));
+  if (dom % 6 === 0) out.push(task(dateStr, { id: `${dateStr}-allday`, title: 'Maria’s birthday', isAllDay: true, startTime: '', duration: 0, color: 'bg-amber-500' }));
   return out;
 }
 
 const liveMonthDeadlines = (dateStr) => {
   const dom = Number(dateStr.slice(8));
-  return (dateStr === LIVE_MONTH_CROWDED_DAY || dom % 8 === 3) ? [{ color: 'bg-red-500' }] : [];
+  return (dateStr === LIVE_MONTH_CROWDED_DAY || dom % 8 === 3) ? [{ title: 'Submit expense report', color: 'bg-red-500' }] : [];
 };
 
 export function buildLiveWidgetSnapshot() {
@@ -120,7 +128,7 @@ export function buildLiveWidgetSnapshot() {
       tasksForDate: (date) => liveMonthTasks(dateToString(date)),
       deadlinesForDate: liveMonthDeadlines,
       routinesForDate: (dateStr) => (dateStr === dateToString(today)
-        ? [{ id: 'stretch', name: 'Stretch', startTime: '07:30', duration: 15 }]
+        ? [{ id: 'stretch', name: 'Stretch', startTime: '07:30', duration: 15, completed: true }]
         : []),
     }),
     timezone: LIVE_SNAPSHOT_TIMEZONE,

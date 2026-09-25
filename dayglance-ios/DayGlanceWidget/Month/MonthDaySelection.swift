@@ -17,11 +17,6 @@ struct MonthDaySelection: Codable, Equatable {
     var date: String
     /// The local day the selection was made, 'yyyy-MM-dd'.
     var setOn: String
-    /// SPIKE DIAGNOSTIC (removed with the agenda build): when the intent ran
-    /// and in which process — "DayGlanceWidgetExtension" means it ran in the
-    /// widget without launching the app.
-    var handledAt: Date?
-    var handledBy: String?
 
     static let defaultsKey = "monthWidgetSelection"
 
@@ -37,7 +32,8 @@ struct MonthDaySelection: Codable, Equatable {
 
     /// The day the agenda shows for an entry: the stored selection if it was
     /// made on the entry's day and is on the grid; else today if today is on
-    /// the grid; else the grid's first day (a stale grid, which has no today).
+    /// the grid; else the grid's first day (a stale grid that no longer
+    /// contains today — the push's own grid can still contain it).
     static func resolve(_ stored: MonthDaySelection?, cells: [MonthGridCell], entryDay: String) -> String? {
         let onGrid = Set(cells.map(\.date))
         if let stored, stored.setOn == entryDay, onGrid.contains(stored.date) { return stored.date }

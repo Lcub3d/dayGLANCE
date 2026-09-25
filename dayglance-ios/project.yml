@@ -223,6 +223,7 @@ targets:
       - path: DayGlanceWidget/WidgetModels.swift
       - path: DayGlanceWidget/WidgetFreshness.swift
       - path: DayGlanceWidget/ColorExtension.swift
+      - path: DayGlanceWidget/WidgetAgendaRow.swift
       - path: DayGlanceWidget/Dial/DialFaceInput.swift
       - path: DayGlanceWidget/Dial/DialFaceView.swift
       - path: DayGlanceWidget/Dial/DialFaceCache.swift

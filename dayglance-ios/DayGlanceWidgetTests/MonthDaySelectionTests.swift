@@ -3,10 +3,9 @@ import SwiftUI
 import UIKit
 import AppIntents
 
-// The extra-large month widget's selected day and its arrows. What CI cannot
-// check — that the intent runs inside the widget process on a device with the
-// app not running — is what the on-device spike checks (MonthDaySelection's
-// handledBy, shown in the panel).
+// The extra-large month widget's selected day, its arrows and its agenda.
+// What CI cannot check — that the intent runs inside the widget process with
+// the app not running — was verified on an iPad (iOS 18.4+).
 
 final class MonthDaySelectionTests: XCTestCase {
 
@@ -81,8 +80,41 @@ final class MonthDaySelectionTests: XCTestCase {
         let s = try XCTUnwrap(MonthDaySelection.load(defaults))
         XCTAssertEqual(s.date, "2026-10-14")
         XCTAssertEqual(s.setOn, MonthGrid.isoDay(Date(), calendar: .current))
-        XCTAssertNotNil(s.handledAt)
         XCTAssertFalse(SelectMonthDayIntent.openAppWhenRun, "the arrows must not launch the app")
+    }
+
+    // MARK: Agenda data
+
+    /// The live fixture's agenda, decoded through the widget's own decoder:
+    /// today leads with its done routine and a done task (kept, flagged), a
+    /// long title arrives cut, and the crowded 1 October lists its all-day
+    /// item and deadline before its timed rows.
+    func testTheFixturesAgendaDecodes() throws {
+        let (_, window) = try MonthGridModelTests.fixture()
+        let today = try XCTUnwrap(window.days.first { $0.date == "2026-09-21" })
+        XCTAssertEqual(today.agenda.first?.t, "Stretch")
+        XCTAssertEqual(today.agenda.first?.k, "r")
+        XCTAssertTrue(today.agenda[0].isCompleted)
+        XCTAssertTrue(today.agenda[1].isCompleted)
+        XCTAssertTrue(today.agenda.contains { $0.t.count == 48 && $0.t.hasSuffix("…") })
+        let oct1 = try XCTUnwrap(window.days.first { $0.date == "2026-10-01" })
+        XCTAssertEqual(oct1.agenda.prefix(2).map(\.k), ["a", "l"])
+        XCTAssertEqual(oct1.agenda.count, 9)
+        XCTAssertEqual(oct1.agendaMore, 0)
+        // Routines on today only.
+        XCTAssertEqual(window.days.filter { $0.agenda.contains { $0.k == "r" } }.map(\.date), ["2026-09-21"])
+    }
+
+    func testAnOlderPushWithoutAnAgendaStillDecodes() throws {
+        let json = #"{"monthWindow":{"weekStart":0,"days":[{"date":"2026-09-20","bars":[]}]}}"#
+        let day = try XCTUnwrap(MonthWindowStore.decode(json.data(using: .utf8)!)?.days.first)
+        XCTAssertEqual(day.agenda, [])
+        XCTAssertEqual(day.agendaMore, 0)
+    }
+
+    func testAgendaTimesUseUpNextsFormat() {
+        XCTAssertEqual(WidgetTimeLabel.label(startTime: WidgetTimeLabel.hhmm(570), duration: 15, use24Hour: false), "9:30AM · 15m")
+        XCTAssertEqual(WidgetTimeLabel.label(startTime: WidgetTimeLabel.hhmm(1080), duration: 90, use24Hour: true), "18:00 · 1h30m")
     }
 
     // MARK: Rendering
@@ -139,14 +171,33 @@ final class MonthDaySelectionTests: XCTestCase {
         let snapshot = try XCTUnwrap(decodeSnapshot(data))
         let window = try XCTUnwrap(MonthWindowStore.decode(data))
         let now = MonthGridModelTests.at("2026-09-21", 10)
-        let tapped = MonthGridModelTests.at("2026-09-21", 9, 58)
+        // The payload's cap, on one day: twelve rows (one of each kind, some
+        // done) and "+3 more" — the fit check at the smallest height.
+        var fullDayWindow = window
+        if let i = fullDayWindow.days.firstIndex(where: { $0.date == "2026-09-24" }) {
+            var rows: [MonthAgendaRow] = [
+                MonthAgendaRow(t: "Maria’s birthday", c: "#f59e0b", k: "a"),
+                MonthAgendaRow(t: "Submit expense report", c: "#ef4444", k: "l"),
+            ]
+            for h in 0..<10 {
+                rows.append(MonthAgendaRow(t: ["Standup", "Deep work: payments migration", "Lunch with Priya", "Review PRs",
+                                               "1:1 with Sam", "Quarterly planning — draft goals for the next t…", "Gym",
+                                               "Pick up kids", "Groceries", "Read"][h],
+                                           c: ["#3b82f6", "#f43f5e", "#10b981", "#a855f7"][h % 4],
+                                           s: Double(420 + h * 75), d: 45, x: h < 3 ? 1 : nil))
+            }
+            fullDayWindow.days[i].agenda = rows
+            fullDayWindow.days[i].agendaMore = 3
+        }
         let entries: [(String, MonthGridEntry)] = [
             ("today", MonthGridEntry(date: now, snapshot: snapshot, window: window)),
             ("paged-ahead-oct-1", MonthGridEntry(date: now, snapshot: snapshot, window: window,
-                selection: MonthDaySelection(date: "2026-10-01", setOn: "2026-09-21", handledAt: tapped, handledBy: "DayGlanceWidgetExtension"))),
+                selection: MonthDaySelection(date: "2026-10-01", setOn: "2026-09-21"))),
             ("edge-last-cell-nov-1", MonthGridEntry(date: now, snapshot: snapshot, window: window,
-                selection: MonthDaySelection(date: "2026-11-01", setOn: "2026-09-21", handledAt: tapped, handledBy: "DayGlanceWidgetExtension"))),
+                selection: MonthDaySelection(date: "2026-11-01", setOn: "2026-09-21"))),
             ("stale-oct-5", MonthGridEntry(date: MonthGridModelTests.at("2026-10-05", 10), snapshot: snapshot, window: window)),
+            ("full-day-12-rows-and-more", MonthGridEntry(date: now, snapshot: snapshot, window: fullDayWindow,
+                selection: MonthDaySelection(date: "2026-09-24", setOn: "2026-09-21"))),
         ]
         let printBase64 = ProcessInfo.processInfo.environment["DG_MONTH_SHOTS"] == "1"
         for (name, entry) in entries {

@@ -8,10 +8,14 @@ import AppIntents
 // half is one day, chosen with two arrow buttons (SelectMonthDayIntent). Grid
 // cells stay deep links; the arrows are the only in-widget interaction.
 //
-// THIS BUILD IS THE INTENT SPIKE: the right half shows the selected date, the
-// arrows, the day's item count from the grid's own data, and a diagnostic
-// line saying which process ran the last arrow tap. The agenda rows replace
-// the count and the diagnostic in the next step.
+// The right half lists the selected day from the payload's per-day agenda
+// (buildAgenda in src/utils/widgetMonthWindow.js: at most 12 rows, titles
+// cut to 48 characters, "+N more" past that), in Up Next's row style
+// (WidgetAgendaRow). Completed items stay, drawn as SCHED draws them.
+// Routines appear on today only, because only today's are in the payload.
+//
+// The arrow intent was verified on device (iPad, iOS 18.4+, app not running):
+// it runs in the widget extension without launching the app.
 // ─────────────────────────────────────────────────────────────────────────────
 
 struct MonthGridExtraLargeContent: View {
@@ -34,8 +38,9 @@ struct MonthGridExtraLargeContent: View {
                     .fill(MonthPalette.hairline)
                     .frame(width: 0.5)
                     .padding(.vertical, MonthGridMetrics.padding)
-                MonthDayPanel(state: state, selected: selected, selection: entry.selection,
+                MonthDayPanel(state: state, selected: selected, use24Hour: entry.snapshot?.use24Hour ?? false,
                               interactive: !entry.isPlaceholder, calendar: calendar, locale: locale)
+                    .environment(\.colorScheme, .dark)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
@@ -45,10 +50,14 @@ struct MonthGridExtraLargeContent: View {
 struct MonthDayPanel: View {
     let state: MonthGridState?
     let selected: String?
-    let selection: MonthDaySelection?
+    var use24Hour: Bool = false
     let interactive: Bool
     var calendar: Calendar = .current
     var locale: Locale = .current
+
+    /// Rows the panel lays out: the payload's cap. At the smallest size
+    /// (634 × 306) twelve rows, the header and "+N more" fit in the height.
+    static let rowSpacing: CGFloat = 4
 
     private var cell: MonthGridCell? { state?.cells.first { $0.date == selected } }
 
@@ -56,21 +65,40 @@ struct MonthDayPanel: View {
         VStack(alignment: .leading, spacing: 8) {
             header
             if let cell {
-                Text(String(localized: "\(cell.totalBars) scheduled"))
-                    .font(.system(size: 12))
-                    .foregroundColor(MonthPalette.date)
-                if cell.hasPip {
-                    Text(String(localized: "All-day or due"))
-                        .font(.system(size: 12))
-                        .foregroundColor(MonthPalette.pip)
+                if cell.agenda.isEmpty {
+                    Text(String(localized: "Nothing scheduled"))
+                        .font(.caption2)
+                        .foregroundColor(MonthPalette.muted)
+                } else {
+                    VStack(alignment: .leading, spacing: Self.rowSpacing) {
+                        ForEach(Array(cell.agenda.enumerated()), id: \.offset) { _, row in
+                            WidgetAgendaRow(colorHex: row.c, title: row.t, time: timeText(row), completed: row.isCompleted)
+                        }
+                        if cell.agendaMore > 0 {
+                            Text(String(localized: "+\(cell.agendaMore) more"))
+                                .font(.caption2)
+                                .foregroundColor(MonthPalette.muted)
+                        }
+                    }
                 }
             }
             Spacer(minLength: 0)
-            diagnostic
         }
         .padding(MonthGridMetrics.padding)
         .padding(.leading, 4)
         .staleDimmed(state?.freshness ?? .unknown)
+    }
+
+    /// "All day", "Due", or Up Next's "9:30AM · 15m".
+    private func timeText(_ row: MonthAgendaRow) -> String? {
+        switch row.k {
+        case "a": return String(localized: "All day")
+        case "l": return String(localized: "Due")
+        default:
+            guard let s = row.s else { return nil }
+            return WidgetTimeLabel.label(startTime: WidgetTimeLabel.hhmm(s), duration: row.d.map { Int($0.rounded()) },
+                                         use24Hour: use24Hour)
+        }
     }
 
     private var header: some View {
@@ -114,18 +142,5 @@ struct MonthDayPanel: View {
         style.calendar = calendar
         style.timeZone = calendar.timeZone
         return day.formatted(style.locale(locale))
-    }
-
-    /// SPIKE DIAGNOSTIC — removed with the agenda build. The process name
-    /// proves where the last arrow tap ran: the widget extension means no app
-    /// launch was involved.
-    @ViewBuilder
-    private var diagnostic: some View {
-        if let at = selection?.handledAt {
-            Text(verbatim: "Last arrow: \(selection?.handledBy ?? "?") at \(at.formatted(date: .omitted, time: .standard))")
-                .font(.system(size: 9))
-                .foregroundColor(MonthPalette.muted)
-                .lineLimit(2)
-        }
     }
 }

@@ -657,6 +657,7 @@ const DayPlanner = () => {
   const dayLinkEnvRef = useRef(null);
   dayLinkEnvRef.current = {
     phoneLayout: isMobile || (isTablet && !isLandscape),
+    phone: isMobile,
     hiddenViews, defaultView, mobileDefaultView,
   };
   const openDayFromLink = (url) => {
@@ -665,6 +666,9 @@ const DayPlanner = () => {
     if (r.dial) setShowDayDial(true);
     if (r.desktopView) setViewMode(r.desktopView);
     if (r.mobileView) setMobileViewMode(r.mobileView);
+    // The plain setters, not MobileTabBar's handler: that one calls
+    // goToToday() and would replace the linked date (utils/dayLink.js).
+    if (r.mobileTab) { setMobileActiveTab(r.mobileTab); setMobileSettingsView('main'); }
     setMonthSheetRequest(r.monthSheet);
   };
   showDayDialRef.current = showDayDial;

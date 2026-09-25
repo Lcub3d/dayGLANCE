@@ -164,4 +164,14 @@
         <item quantity="other">%1$d geplant</item>
     </plurals>
     <string name="widget_month_all_day_or_due">Ganztägig oder fällig</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Sechs Wochen auf einen Blick, mit der Agenda eines Tages</string>
+    <string name="badge_due">FÄLLIG</string>
+    <string name="widget_nothing_scheduled">Nichts geplant</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d weiterer</item>
+        <item quantity="other">+%d weitere</item>
+    </plurals>
+    <string name="widget_previous_day">Vorheriger Tag</string>
+    <string name="widget_next_day">Nächster Tag</string>
 </resources>

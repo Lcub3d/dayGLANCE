@@ -73,7 +73,35 @@ data class MonthWindowDay(
     /** One hex per all-day item / deadline. Only presence is drawn here. */
     val allDay: List<String> = emptyList(),
     val deadlines: List<String> = emptyList(),
+    /** The day's list for the month agenda widget: at most 12 rows, titles
+     *  cut to 48 characters (buildAgenda in the JS module). Empty from an
+     *  older push. */
+    val agenda: List<MonthAgendaRow> = emptyList(),
+    /** Rows beyond the 12 carried. */
+    val agendaMore: Int = 0,
 )
+
+/**
+ * One agenda row, as the iOS XL widget reads it (MonthAgendaRow in
+ * MonthGridModel.swift). Every field but the title is optional, so an
+ * unexpected shape costs a row's detail, not the day.
+ */
+data class MonthAgendaRow(
+    /** Title, already cleaned of wikilinks and #tags and cut to 48 characters. */
+    val t: String,
+    /** Resolved hex colour. */
+    val c: String? = null,
+    /** Start and duration in minutes — timed rows and routines only. */
+    val s: Double? = null,
+    val d: Double? = null,
+    /** Kind: null a timed task or event, "r" a routine (today only), "a" an
+     *  all-day item, "l" a deadline. */
+    val k: String? = null,
+    /** 1 when completed. */
+    val x: Int? = null,
+) {
+    val isCompleted: Boolean get() = x == 1
+}
 
 data class MonthWindowPayload(
     /** First day of the push's week, 'yyyy-MM-dd'. */
@@ -108,6 +136,8 @@ object MonthWindowStore {
                 bars = decodeBars(day.optJSONArray("bars")),
                 allDay = decodeStrings(day.optJSONArray("allDay")),
                 deadlines = decodeStrings(day.optJSONArray("deadlines")),
+                agenda = decodeAgenda(day.optJSONArray("agenda")),
+                agendaMore = day.optInt("agendaMore", 0).coerceAtLeast(0),
             )
         }
         val weekStart = if (window.has("weekStart") && !window.isNull("weekStart")) window.optInt("weekStart") else null
@@ -128,6 +158,26 @@ object MonthWindowStore {
             bars += MonthWindowBar(s, d, c)
         }
         return bars
+    }
+
+    /** A row without a title is skipped; a bad optional field is dropped. */
+    private fun decodeAgenda(array: JSONArray?): List<MonthAgendaRow> {
+        if (array == null) return emptyList()
+        val rows = ArrayList<MonthAgendaRow>(array.length())
+        for (i in 0 until array.length()) {
+            val row = array.optJSONObject(i) ?: continue
+            val t = row.opt("t") as? String ?: continue
+            fun num(key: String): Double? = (row.opt(key) as? Number)?.toDouble()?.takeIf { !it.isNaN() }
+            rows += MonthAgendaRow(
+                t = t,
+                c = row.opt("c") as? String,
+                s = num("s"),
+                d = num("d"),
+                k = row.opt("k") as? String,
+                x = (row.opt("x") as? Number)?.toInt(),
+            )
+        }
+        return rows
     }
 
     private fun decodeStrings(array: JSONArray?): List<String> {
@@ -252,6 +302,9 @@ data class MonthGridCell(
     val overflow: Int,
     /** Every bar the day has, for the content description. */
     val totalBars: Int,
+    /** The day's agenda rows and how many more there are (month agenda widget). */
+    val agenda: List<MonthAgendaRow> = emptyList(),
+    val agendaMore: Int = 0,
 ) {
     /** Anything in `allDay` or `deadlines`: the iOS rule, one pip whatever the
      *  count or kind. The label rule below reads this, never the split. */
@@ -282,6 +335,8 @@ data class MonthGridCell(
                 bars = shown,
                 overflow = max(0, day.bars.size - MonthGrid.BAR_CAP),
                 totalBars = day.bars.size,
+                agenda = day.agenda,
+                agendaMore = day.agendaMore,
             )
         }
     }
@@ -470,10 +525,18 @@ data class MonthWidgetSizes(
     val landscapeHeight: Int,
 ) {
     companion object {
-        fun fromOptions(minWidth: Int, maxWidth: Int, minHeight: Int, maxHeight: Int): MonthWidgetSizes {
+        fun fromOptions(
+            minWidth: Int,
+            maxWidth: Int,
+            minHeight: Int,
+            maxHeight: Int,
+            /** The provider's minimum, for a host that reports nothing. */
+            fallbackWidth: Double = MonthGridMetrics.MIN_WIDGET_WIDTH,
+            fallbackHeight: Double = MonthGridMetrics.MIN_WIDGET_HEIGHT,
+        ): MonthWidgetSizes {
             fun or(value: Int, fallback: Double): Int = if (value > 0) value else fallback.toInt()
-            val w = MonthGridMetrics.MIN_WIDGET_WIDTH
-            val h = MonthGridMetrics.MIN_WIDGET_HEIGHT
+            val w = fallbackWidth
+            val h = fallbackHeight
             return MonthWidgetSizes(
                 portraitWidth = or(minWidth, w), portraitHeight = or(maxHeight, h),
                 landscapeWidth = or(maxWidth, w), landscapeHeight = or(minHeight, h),

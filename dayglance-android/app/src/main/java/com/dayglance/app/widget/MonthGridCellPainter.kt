@@ -29,19 +29,25 @@ import kotlin.math.roundToInt
  * density here, so the bitmap draws 1:1 in an ImageView whose width the
  * GridView sets to the same cell width (widget_month_cell.xml).
  *
- * The palette is the mockup's, dark only like iOS (widget_month_colors.xml).
+ * The colours come from a [MonthCellPalette]: the month grid widget's own,
+ * dark only like iOS (widget_month_colors.xml), or the other Android widgets'
+ * light/dark tokens for the month + agenda widget. Same strokes either way.
  */
-internal class MonthGridCellPainter(private val context: Context) {
+internal class MonthGridCellPainter(
+    private val context: Context,
+    palette: MonthCellPalette = MonthCellPalette.monthWidget(context),
+) {
 
     private val density: Float = context.resources.displayMetrics.density
 
-    private val dateColor = context.getColor(R.color.month_widget_date)
-    private val emphasisColor = context.getColor(R.color.month_widget_date_emphasis)
-    private val mutedColor = context.getColor(R.color.month_widget_muted)
-    private val hairlineColor = context.getColor(R.color.month_widget_hairline)
-    private val todayFillColor = context.getColor(R.color.month_widget_today_fill)
-    private val pipColor = context.getColor(R.color.month_widget_pip)
-    private val deadlinePipColor = context.getColor(R.color.month_widget_pip_deadline)
+    private val dateColor = palette.date
+    private val emphasisColor = palette.emphasis
+    private val mutedColor = palette.muted
+    private val hairlineColor = palette.hairline
+    private val todayFillColor = palette.todayFill
+    private val selectedColor = palette.selected
+    private val pipColor = palette.pip
+    private val deadlinePipColor = palette.deadlinePip
 
     private val regular: Typeface = Typeface.DEFAULT
     /** iOS's `.medium` weight; bold where the API has no weights. */
@@ -61,7 +67,9 @@ internal class MonthGridCellPainter(private val context: Context) {
         return Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     }
 
-    fun draw(cell: MonthGridCell, metrics: MonthGridMetrics): Bitmap {
+    /** [selected]: the month + agenda widget's selected day, ringed (the iOS
+     *  extra-large widget's 1pt ring, here never thinner than a pixel). */
+    fun draw(cell: MonthGridCell, metrics: MonthGridMetrics, selected: Boolean = false): Bitmap {
         val bitmap = createBitmap(metrics)
         val canvas = Canvas(bitmap)
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -77,6 +85,18 @@ internal class MonthGridCellPainter(private val context: Context) {
             canvas.drawRoundRect(
                 RectF(half, half, bitmap.width - half, bitmap.height - half),
                 px(MonthGridMetrics.BOX_RADIUS), px(MonthGridMetrics.BOX_RADIUS), box,
+            )
+        }
+
+        if (selected) {
+            val stroke = max(1f, px(1.0))
+            val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE; strokeWidth = stroke; color = selectedColor
+            }
+            val half = stroke / 2
+            canvas.drawRoundRect(
+                RectF(half, half, bitmap.width - half, bitmap.height - half),
+                px(MonthGridMetrics.BOX_RADIUS), px(MonthGridMetrics.BOX_RADIUS), ring,
             )
         }
 
@@ -188,4 +208,53 @@ internal class MonthGridCellPainter(private val context: Context) {
 
     private fun safeColor(hex: String): Int =
         try { Color.parseColor(hex) } catch (_: Throwable) { dateColor }
+}
+
+/**
+ * The grid's colours. [monthWidget] is the month grid widget's dark palette,
+ * unchanged; [systemWidget] is the Today widget's tokens (widget_colors.xml,
+ * with night variants), so the month + agenda widget's grid sits on the same
+ * ground as its agenda. The pips are data colours and stay the same in both.
+ */
+internal data class MonthCellPalette(
+    val date: Int,
+    val emphasis: Int,
+    val muted: Int,
+    val hairline: Int,
+    val todayFill: Int,
+    val selected: Int,
+    val pip: Int,
+    val deadlinePip: Int,
+    /** The note line: the stale banner and the "Planned as of" caption. */
+    val staleNote: Int,
+    val plannedNote: Int,
+) {
+    companion object {
+        fun monthWidget(context: Context) = MonthCellPalette(
+            date = context.getColor(R.color.month_widget_date),
+            emphasis = context.getColor(R.color.month_widget_date_emphasis),
+            muted = context.getColor(R.color.month_widget_muted),
+            hairline = context.getColor(R.color.month_widget_hairline),
+            todayFill = context.getColor(R.color.month_widget_today_fill),
+            selected = context.getColor(R.color.month_widget_today_fill),
+            pip = context.getColor(R.color.month_widget_pip),
+            deadlinePip = context.getColor(R.color.month_widget_pip_deadline),
+            staleNote = context.getColor(R.color.month_widget_stale),
+            plannedNote = context.getColor(R.color.month_widget_muted),
+        )
+
+        fun systemWidget(context: Context) = MonthCellPalette(
+            date = context.getColor(R.color.widget_text_secondary),
+            emphasis = context.getColor(R.color.widget_text_primary),
+            muted = context.getColor(R.color.widget_text_secondary),
+            hairline = context.getColor(R.color.widget_divider),
+            todayFill = context.getColor(R.color.month_widget_today_fill),
+            selected = context.getColor(R.color.widget_brand),
+            pip = context.getColor(R.color.month_widget_pip),
+            deadlinePip = context.getColor(R.color.month_widget_pip_deadline),
+            // The Today widget's own banner colours (DayGlanceWidget.kt).
+            staleNote = context.getColor(R.color.widget_deadline_text),
+            plannedNote = context.getColor(R.color.widget_text_secondary),
+        )
+    }
 }

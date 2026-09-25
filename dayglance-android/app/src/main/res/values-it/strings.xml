@@ -164,4 +164,14 @@
         <item quantity="other">%1$d programmate</item>
     </plurals>
     <string name="widget_month_all_day_or_due">Tutto il giorno o in scadenza</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Sei settimane a colpo d\'occhio, con l\'agenda di qualsiasi giorno</string>
+    <string name="badge_due">SCADE</string>
+    <string name="widget_nothing_scheduled">Niente in programma</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d altro</item>
+        <item quantity="other">+%d altri</item>
+    </plurals>
+    <string name="widget_previous_day">Giorno precedente</string>
+    <string name="widget_next_day">Giorno successivo</string>
 </resources>

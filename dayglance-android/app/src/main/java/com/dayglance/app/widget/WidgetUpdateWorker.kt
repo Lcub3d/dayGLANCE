@@ -110,6 +110,9 @@ class WidgetUpdateWorker(
         try {
             MonthGridWidget.requestUpdate(context)
         } catch (_: Throwable) { }
+        try {
+            MonthAgendaWidget.requestUpdate(context)
+        } catch (_: Throwable) { }
         // Backstop: refresh the Up Next notification from native data every 15 minutes.
         // This re-arms the alarm chain in case it was cleared by a system restart or
         // aggressive battery optimisation.

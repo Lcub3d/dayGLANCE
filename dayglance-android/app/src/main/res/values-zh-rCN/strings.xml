@@ -165,4 +165,14 @@
         <item quantity="other">%1$d 项计划</item>
     </plurals>
     <string name="widget_month_all_day_or_due">全天或到期</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">一览六周，附任意一天的日程</string>
+    <string name="badge_due">到期</string>
+    <string name="widget_nothing_scheduled">无安排</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">还有 %d 项</item>
+        <item quantity="other">还有 %d 项</item>
+    </plurals>
+    <string name="widget_previous_day">前一天</string>
+    <string name="widget_next_day">后一天</string>
 </resources>

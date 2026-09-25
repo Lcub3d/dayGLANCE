@@ -119,12 +119,7 @@ class MonthGridWidget : AppWidgetProvider() {
      * than the space it has). Null below 12 or when the host lists no sizes.
      */
     private fun exactSizeViews(context: Context, appWidgetId: Int, options: Bundle, render: MonthGridRender): RemoteViews? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
-        val sizes = try {
-            @Suppress("DEPRECATION")
-            options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
-        } catch (_: Throwable) { null }
-        val usable = sizes.orEmpty().filter { it.width > 0f && it.height > 0f }.distinct().take(MAX_SIZED_LAYOUTS)
+        val usable = exactWidgetSizes(options)
         if (usable.isEmpty()) return null
         return RemoteViews(usable.associateWith { size ->
             build(context, appWidgetId, floor(size.width).toInt(), floor(size.height).toInt(), render)
@@ -133,53 +128,9 @@ class MonthGridWidget : AppWidgetProvider() {
 
     private fun build(context: Context, appWidgetId: Int, widthDp: Int, heightDp: Int, render: MonthGridRender): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_month)
-        val state = render.state
-
-        // ── The note line: banner, caption, or nothing ────────────────────
-        val note: String? = when {
-            state == null -> context.getString(R.string.widget_open_to_refresh)
-            state.isStale -> formatStaleLabel(context, state.freshness, render.use24Hour)
-            state.isProjected -> formatMonthPlannedLabel(context, state.freshness, render.use24Hour)
-            else -> null
-        }
-        if (note != null) {
-            // As on iOS: the stale banner in bold warning orange (StaleBanner),
-            // the "Planned as of" caption muted.
-            val stale = state?.isStale == true
-            val text = if (stale) SpannableString(note).apply {
-                setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            } else note
-            views.setTextViewText(R.id.tv_month_note, text)
-            views.setTextColor(R.id.tv_month_note, context.getColor(
-                if (stale) R.color.month_widget_stale else R.color.month_widget_muted,
-            ))
-            views.setViewVisibility(R.id.tv_month_note, View.VISIBLE)
-        } else {
-            views.setViewVisibility(R.id.tv_month_note, View.GONE)
-        }
-        // A stale grid reads as inactive before any text is parsed.
-        views.setFloat(R.id.gv_month, "setAlpha", if (state?.isStale == true) STALE_CONTENT_ALPHA else 1f)
-
-        // ── Day-of-week row ───────────────────────────────────────────────
-        val weekStart = state?.weekStart ?: render.placeholderWeekStart
-        val initials = MonthGrid.weekdayInitials(weekStart, render.locale)
-        WEEKDAY_IDS.forEachIndexed { i, id -> views.setTextViewText(id, initials.getOrElse(i) { "" }) }
-
-        // ── The cells ─────────────────────────────────────────────────────
-        val adapterIntent = Intent(context, MonthGridCellService::class.java).apply {
-            data = MonthGridCellService.adapterUri(appWidgetId, widthDp, heightDp, noteShown = note != null)
-        }
-        @Suppress("DEPRECATION")
-        views.setRemoteAdapter(R.id.gv_month, adapterIntent)
-
-        // The tap template: ACTION_VIEW to MainActivity with NO data, so each
-        // cell's fill-in supplies the day's URL. Mutable, because a fill-in is
-        // a mutation (Android 12 rejects it on an immutable PendingIntent).
-        val template = Intent(context, MainActivity::class.java).apply { action = Intent.ACTION_VIEW }
-        val mutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-        views.setPendingIntentTemplate(
-            R.id.gv_month,
-            PendingIntent.getActivity(context, REQUEST_CELL_TEMPLATE, template, PendingIntent.FLAG_UPDATE_CURRENT or mutable),
+        bindMonthGridPane(
+            context, views, appWidgetId, widthDp.toDouble(), heightDp.toDouble(), render,
+            MonthCellPalette.monthWidget(context), MonthGridCellService.KIND_GRID,
         )
 
         // The padding and the header open the app.
@@ -196,15 +147,7 @@ class MonthGridWidget : AppWidgetProvider() {
     }
 
     companion object {
-        private const val REQUEST_CELL_TEMPLATE = 4310
         private const val REQUEST_OPEN_APP = 4311
-        /** RemoteViews(Map) takes at most 16 sizes. */
-        private const val MAX_SIZED_LAYOUTS = 16
-
-        private val WEEKDAY_IDS = intArrayOf(
-            R.id.tv_month_wd_0, R.id.tv_month_wd_1, R.id.tv_month_wd_2, R.id.tv_month_wd_3,
-            R.id.tv_month_wd_4, R.id.tv_month_wd_5, R.id.tv_month_wd_6,
-        )
 
         /** Re-renders every placed month grid from the stored snapshot. */
         fun requestUpdate(context: Context) {
@@ -258,6 +201,98 @@ internal fun loadMonthGrid(context: Context, today: LocalDate = LocalDate.now())
         monthDayLabel = label,
     )
 }
+
+/**
+ * Fills a month grid pane — the note line (stale banner or "Planned as of"),
+ * the day-of-week row, the dimming and the cell collection with its deep-link
+ * template — in any layout that carries the grid's views (tv_month_note,
+ * tv_month_wd_0…6, gv_month). The month grid widget's whole layout is one
+ * such pane; the month + agenda widget has one beside or above its agenda.
+ * [paneWidthDp] × [paneHeightDp] is the pane's size, which the cells are
+ * drawn for (MonthGridMetrics); [kind] tells the cell factory which widget
+ * it serves (palette and selection ring). Returns the resolved state.
+ */
+internal fun bindMonthGridPane(
+    context: Context,
+    views: RemoteViews,
+    appWidgetId: Int,
+    paneWidthDp: Double,
+    paneHeightDp: Double,
+    render: MonthGridRender,
+    palette: MonthCellPalette,
+    kind: String,
+): MonthGridState? {
+    val state = render.state
+
+    // ── The note line: banner, caption, or nothing ────────────────────────
+    val note: String? = when {
+        state == null -> context.getString(R.string.widget_open_to_refresh)
+        state.isStale -> formatStaleLabel(context, state.freshness, render.use24Hour)
+        state.isProjected -> formatMonthPlannedLabel(context, state.freshness, render.use24Hour)
+        else -> null
+    }
+    if (note != null) {
+        // As on iOS: the stale banner bold in the warning colour (StaleBanner),
+        // the "Planned as of" caption muted.
+        val stale = state?.isStale == true
+        val text = if (stale) SpannableString(note).apply {
+            setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        } else note
+        views.setTextViewText(R.id.tv_month_note, text)
+        views.setTextColor(R.id.tv_month_note, if (stale) palette.staleNote else palette.plannedNote)
+        views.setViewVisibility(R.id.tv_month_note, View.VISIBLE)
+    } else {
+        views.setViewVisibility(R.id.tv_month_note, View.GONE)
+    }
+    // A stale grid reads as inactive before any text is parsed.
+    views.setFloat(R.id.gv_month, "setAlpha", if (state?.isStale == true) STALE_CONTENT_ALPHA else 1f)
+
+    // ── Day-of-week row ───────────────────────────────────────────────────
+    val weekStart = state?.weekStart ?: render.placeholderWeekStart
+    val initials = MonthGrid.weekdayInitials(weekStart, render.locale)
+    MONTH_WEEKDAY_IDS.forEachIndexed { i, id -> views.setTextViewText(id, initials.getOrElse(i) { "" }) }
+
+    // ── The cells ─────────────────────────────────────────────────────────
+    val adapterIntent = Intent(context, MonthGridCellService::class.java).apply {
+        data = MonthGridCellService.adapterUri(
+            appWidgetId, paneWidthDp.toInt(), paneHeightDp.toInt(), noteShown = note != null, kind = kind,
+        )
+    }
+    @Suppress("DEPRECATION")
+    views.setRemoteAdapter(R.id.gv_month, adapterIntent)
+
+    // The tap template: ACTION_VIEW to MainActivity with NO data, so each
+    // cell's fill-in supplies the day's URL. Mutable, because a fill-in is
+    // a mutation (Android 12 rejects it on an immutable PendingIntent).
+    val template = Intent(context, MainActivity::class.java).apply { action = Intent.ACTION_VIEW }
+    val mutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+    views.setPendingIntentTemplate(
+        R.id.gv_month,
+        PendingIntent.getActivity(context, REQUEST_MONTH_CELL_TEMPLATE, template, PendingIntent.FLAG_UPDATE_CURRENT or mutable),
+    )
+    return state
+}
+
+/**
+ * The exact sizes the host lists for a widget instance (Android 12+,
+ * OPTION_APPWIDGET_SIZES), at most 16 (RemoteViews(Map)'s limit), or empty
+ * below 12 or when the host lists none.
+ */
+internal fun exactWidgetSizes(options: Bundle): List<SizeF> {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return emptyList()
+    val sizes = try {
+        @Suppress("DEPRECATION")
+        options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+    } catch (_: Throwable) { null }
+    return sizes.orEmpty().filter { it.width > 0f && it.height > 0f }.distinct().take(16)
+}
+
+private const val REQUEST_MONTH_CELL_TEMPLATE = 4310
+
+internal val MONTH_WEEKDAY_IDS = intArrayOf(
+    R.id.tv_month_wd_0, R.id.tv_month_wd_1, R.id.tv_month_wd_2, R.id.tv_month_wd_3,
+    R.id.tv_month_wd_4, R.id.tv_month_wd_5, R.id.tv_month_wd_6,
+)
 
 internal fun widgetLocale(context: Context): Locale {
     val locales = context.resources.configuration.locales

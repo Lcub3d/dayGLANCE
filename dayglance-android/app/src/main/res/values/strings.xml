@@ -178,4 +178,14 @@ Open dayGLANCE to sync your data, then try adding the widget again.</string>
         <item quantity="other">%1$d scheduled</item>
     </plurals>
     <string name="widget_month_all_day_or_due">All-day or due</string>
+    <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
+    <string name="widget_month_agenda_description">Six weeks at a glance, with any day\'s agenda</string>
+    <string name="badge_due">DUE</string>
+    <string name="widget_nothing_scheduled">Nothing scheduled</string>
+    <plurals name="widget_more_items">
+        <item quantity="one">+%d more</item>
+        <item quantity="other">+%d more</item>
+    </plurals>
+    <string name="widget_previous_day">Previous day</string>
+    <string name="widget_next_day">Next day</string>
 </resources>

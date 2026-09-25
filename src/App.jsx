@@ -2151,7 +2151,7 @@ const DayPlanner = () => {
             const action = rawAction.replace(/^"|"$/g, '');
             if (action === 'com.dayglance.newScheduledTask') openNewTaskFormRef.current?.();
             else if (action === 'com.dayglance.newInboxTask') openNewInboxTaskRef.current?.();
-            else if (action === 'com.dayglance.startFocus') setShowFocusMode(true);
+            else if (action === 'com.dayglance.startFocus') enterFocusModeRef.current?.();
             else if (action === 'com.dayglance.voiceInput') {
               voiceAutoStartRef.current = true;
               setShowVoiceInput(true);
@@ -2169,7 +2169,7 @@ const DayPlanner = () => {
             voiceAutoStartRef.current = true;
             setShowVoiceInput(true);
           }
-          else if (wa === 'startFocus') setShowFocusMode(true);
+          else if (wa === 'startFocus') enterFocusModeRef.current?.();
           else if (wa === 'completeTask' && widgetAction.taskId) completeFromWidgetRef.current?.(widgetAction.taskId);
         }
       }, 200);
@@ -2452,7 +2452,10 @@ const DayPlanner = () => {
         else if (action === 'completeTask' && taskId) completeFromWidgetRef.current(taskId);
         else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
-        else if (action === 'startFocus') setShowFocusMode(true);
+        // Through enterFocusMode, never the bare flag: it starts a fresh
+        // session and derives the block's tasks. Setting showFocusMode alone
+        // reopened the last session's leftovers (often an empty task list).
+        else if (action === 'startFocus') enterFocusModeRef.current?.(taskId || undefined);
         else if (action === 'voiceInput') {
           voiceAutoStartRef.current = true;
           setShowVoiceInput(true);
@@ -2498,7 +2501,7 @@ const DayPlanner = () => {
         const action = rawAction.replace(/^"|"$/g, '');
         if (action === 'com.dayglance.newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'com.dayglance.newInboxTask') openNewInboxTaskRef.current?.();
-        else if (action === 'com.dayglance.startFocus') setShowFocusMode(true);
+        else if (action === 'com.dayglance.startFocus') enterFocusModeRef.current?.();
         else if (action === 'com.dayglance.voiceInput') {
           voiceAutoStartRef.current = true;
           setShowVoiceInput(true);
@@ -2524,7 +2527,7 @@ const DayPlanner = () => {
         voiceAutoStartRef.current = true;
         setShowVoiceInput(true);
       }
-      else if (wa === 'startFocus') setShowFocusMode(true);
+      else if (wa === 'startFocus') enterFocusModeRef.current?.();
       else if (wa === 'completeTask' && widgetAction.taskId) completeFromWidgetRef.current(widgetAction.taskId);
     }
     // Drains pending native actions once after load (keyed on dataLoaded). The
@@ -2544,6 +2547,15 @@ const DayPlanner = () => {
       if (isMobile || isTablet) setMobileActiveTab('timeline');
     } else if (unscheduledTasks.find(t => t.id === spotlightTaskId)) {
       if (isMobile || isTablet) setMobileActiveTab('inbox');
+    } else {
+      // Not a stored task: a recurring occurrence (its id is the expansion's,
+      // not a row's) or one deleted since. The Today widget's rows are today's,
+      // so today's calendar is where the tap meant to go.
+      setDesktopSpace('calendar');
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      setSelectedDate(today);
+      if (isMobile || isTablet) setMobileActiveTab('timeline');
     }
     setSpotlightTaskId(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4367,7 +4379,12 @@ const DayPlanner = () => {
   // open-and-close case.
   const FOCUS_SPANS_PER_DAY = 60;
 
-  const enterFocusMode = () => {
+  // `taskId` (optional): the task a request named — the Up Next widget's
+  // Focus button (dayglance://startFocus?id=). It joins the session when the
+  // block derived from NOW does not already hold it, and is the session on its
+  // own when there is no block. Only a string counts: this is also a click
+  // handler, and an event is not a task.
+  const enterFocusMode = (taskId) => {
     setShowFocusMode(true);
     setFocusShowSettings(true);
     setFocusShowStats(false);
@@ -4378,7 +4395,12 @@ const DayPlanner = () => {
     setFocusCompletedTasks(new Set());
     setFocusTimerRunning(false);
     setFocusTaskMinutes({});
-    setFocusBlockTasks(computeFocusBlockTasks());
+    let block = computeFocusBlockTasks();
+    if (typeof taskId === 'string' && taskId && !block.some(t => t.id === taskId)) {
+      const named = getTasksForDate(new Date()).find(t => t.id === taskId && !t.completed);
+      if (named) block = [named, ...block];
+    }
+    setFocusBlockTasks(block);
     setFocusWorkMinutes(25);
     setFocusBreakMinutes(5);
     setFocusLongBreakMinutes(15);

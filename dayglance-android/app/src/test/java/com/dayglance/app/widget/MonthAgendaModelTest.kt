@@ -238,6 +238,16 @@ class MonthAgendaModelTest {
         assertEquals("9:01 AM", MonthAgendaContent.timeLine(540.6, 0.0, false, Locale.US))
     }
 
+    @Test fun `a 12-hour range marks both ends when it crosses noon or midnight`() {
+        // Not "11:00 – 12:30 PM", which reads as a 13-hour block.
+        assertEquals("11:00 AM – 12:30 PM", MonthAgendaContent.timeLine(660.0, 90.0, false, Locale.US))
+        assertEquals("11:00 PM – 1:00 AM", MonthAgendaContent.timeLine(1380.0, 120.0, false, Locale.US))
+        // One marker when both ends share it, either half of the day.
+        assertEquals("1:00 – 2:00 PM", WidgetTimeRange.format(java.time.LocalTime.of(13, 0), java.time.LocalTime.of(14, 0), false, Locale.US))
+        assertEquals("11:00 – 11:30 AM", WidgetTimeRange.format(java.time.LocalTime.of(11, 0), java.time.LocalTime.of(11, 30), false, Locale.US))
+        assertEquals("11:00 – 12:30", WidgetTimeRange.format(java.time.LocalTime.of(11, 0), java.time.LocalTime.of(12, 30), true, Locale.US))
+    }
+
     @Test fun `the agenda rows decode from the live payload`() {
         val (_, window) = fixture()
         val oct1 = window.days.first { it.date == "2026-10-01" }

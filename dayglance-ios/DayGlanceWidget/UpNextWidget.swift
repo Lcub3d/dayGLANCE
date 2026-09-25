@@ -159,10 +159,8 @@ struct UpNextWidgetView: View {
                                     actionLabel(String(localized: "Done"), systemImage: "checkmark.circle")
                                 }
                             }
-                            if let focusURL = URL(string: "dayglance://startFocus") {
-                                Link(destination: focusURL) {
-                                    actionLabel(String(localized: "Focus"), systemImage: "play.circle")
-                                }
+                            Link(destination: WidgetLink.startFocus(task.id)) {
+                                actionLabel(String(localized: "Focus"), systemImage: "play.circle")
                             }
                         }
                         .padding(.top, 1)

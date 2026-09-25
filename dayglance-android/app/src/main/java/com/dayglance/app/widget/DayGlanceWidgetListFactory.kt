@@ -1,7 +1,6 @@
 package com.dayglance.app.widget
 
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -78,6 +77,8 @@ class DayGlanceWidgetListFactory(
             val projectName: String = "",
             /** Month + agenda widget only: a done item on another day. */
             val completed: Boolean = false,
+            /** Where a tap goes (WidgetLinks.task); empty = the row default. */
+            val link: String = "",
         ) : AgendaItem(TYPE_TASK)
         /** A plain line in the section style ("+3 more", "Nothing scheduled"). */
         class Note(val text: String) : AgendaItem(TYPE_SECTION)
@@ -102,6 +103,7 @@ class DayGlanceWidgetListFactory(
             val progressPct: Int,
             val totalTasks: Int,
             val completedTasks: Int,
+            val link: String = "",
         ) : AgendaItem(TYPE_GOAL)
         class HyperGLANCE(
             val title: String,
@@ -109,6 +111,7 @@ class DayGlanceWidgetListFactory(
             val startTime: String,
             val duration: Int,
             val isOverdue: Boolean,
+            val link: String = "",
         ) : AgendaItem(TYPE_HYPERGLANCE)
     }
 
@@ -135,12 +138,16 @@ class DayGlanceWidgetListFactory(
 
     override fun onDataSetChanged() {
         items.clear()
+        rowLink = WidgetLinks.TODAY
         if (monthAgendaWidgetId != null) {
             try { loadMonthAgenda(monthAgendaWidgetId) } catch (_: Throwable) { items.clear(); items += AgendaItem.Empty }
             return
         }
         val dataStore = SharedDataStore(context)
-        val snapshotJson = dataStore.widgetSnapshot ?: return
+        // Nothing pushed yet (the app has never run since the widget was
+        // placed): say what to do, rather than an empty list.
+        val snapshotJson = dataStore.widgetSnapshot
+            ?: run { items += AgendaItem.Note(context.getString(R.string.widget_open_to_set_up)); return }
         try {
             // The day to draw: today's pushed fields, a projected day's fields
             // when today is one of the payload's days, or the stale root.
@@ -192,6 +199,9 @@ class DayGlanceWidgetListFactory(
             MonthAgendaSource.WINDOW_ROWS -> {
                 use24Hour = widgetUses24HourClock(context, snapshot)
                 snapshotIsToday = false
+                // Another day's rows open that day in MONTH, as its grid
+                // cell does (the rows carry no task ids).
+                if (selected != null) rowLink = MonthGrid.tapUrl(selected)
                 val cell = cells.firstOrNull { it.date == selected }
                 val lines = MonthAgendaContent.windowLines(cell?.agenda.orEmpty(), cell?.agendaMore ?: 0, use24Hour)
                 for (line in lines) items += when (line) {
@@ -244,6 +254,7 @@ class DayGlanceWidgetListFactory(
                     progressPct = g.optInt("progressPct", 0).coerceIn(0, 100),
                     totalTasks = g.optInt("totalTasks", 0),
                     completedTasks = g.optInt("completedTasks", 0),
+                    link = WidgetLinks.goal(g.optString("id", "").ifEmpty { null }),
                 )
             }
         }
@@ -260,6 +271,7 @@ class DayGlanceWidgetListFactory(
                     startTime = hg.optString("startTime", ""),
                     duration = hg.optInt("duration", 60),
                     isOverdue = hg.optBoolean("isOverdue", false),
+                    link = WidgetLinks.project(hg.optString("id", "").ifEmpty { null }),
                 )
             }
         }
@@ -276,6 +288,7 @@ class DayGlanceWidgetListFactory(
                     badge = "",
                     timeStr = "",
                     projectName = t.optString("projectName", ""),
+                    link = taskLink(t),
                 )
             }
         }
@@ -292,6 +305,7 @@ class DayGlanceWidgetListFactory(
                     badge = "ALL DAY",
                     timeStr = "",
                     projectName = t.optString("projectName", ""),
+                    link = taskLink(t),
                 )
             }
         }
@@ -307,6 +321,7 @@ class DayGlanceWidgetListFactory(
                     badge = "DUE TODAY",
                     timeStr = "",
                     projectName = t.optString("projectName", ""),
+                    link = taskLink(t),
                 )
             }
         }
@@ -337,6 +352,7 @@ class DayGlanceWidgetListFactory(
                     badge = "OVERDUE",
                     timeStr = buildTimeStr(t),
                     projectName = t.optString("projectName", ""),
+                    link = taskLink(t),
                 )
             }
         }
@@ -366,6 +382,7 @@ class DayGlanceWidgetListFactory(
                                     timeStr = buildTimeStr(t),
                                     indent = true,
                                     projectName = t.optString("projectName", ""),
+                                    link = taskLink(t),
                                 )
                             }
                         }
@@ -381,6 +398,7 @@ class DayGlanceWidgetListFactory(
                                 timeStr = buildTimeStr(t),
                                 indent = false,
                                 projectName = t.optString("projectName", ""),
+                                link = taskLink(t),
                             )
                         }
                     }
@@ -502,7 +520,7 @@ class DayGlanceWidgetListFactory(
                 (0 until tagsArr.length()).joinToString(" ") { "#${tagsArr.optString(it)}" }
             else ""
             val timeRange = if (duration > 0)
-                "${s.format(if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR_SHORT)} – ${e.format(if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR)}"
+                WidgetTimeRange.format(s, e, use24Hour)
             else
                 s.format(if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR)
             if (tags.isNotEmpty()) "$timeRange  $tags" else timeRange
@@ -510,6 +528,21 @@ class DayGlanceWidgetListFactory(
     }
 
     // ── View building ────────────────────────────────────────────────────────
+
+    // ── Row taps ──────────────────────────────────────────────────────────────
+    // The list's template is a VIEW intent with no data (DayGlanceWidget,
+    // MonthAgendaWidget); each row's fill-in supplies the dayglance:// link
+    // (WidgetLinks). A task row opens that task, a goal row the goal, a
+    // hyperGLANCE row its project; every other row the list's default: today,
+    // or on another day of the month + agenda widget, that day in MONTH.
+
+    private var rowLink: String = WidgetLinks.TODAY
+
+    private fun rowFillIn(link: String = ""): android.content.Intent =
+        android.content.Intent().apply { data = android.net.Uri.parse(link.ifEmpty { rowLink }) }
+
+    private fun taskLink(t: JSONObject): String =
+        t.optString("id", "").takeIf { it.isNotEmpty() }?.let { WidgetLinks.task(it) } ?: ""
 
     private fun buildView(item: AgendaItem): RemoteViews = when (item) {
         is AgendaItem.Habits -> buildHabitsView(item)
@@ -526,7 +559,6 @@ class DayGlanceWidgetListFactory(
 
     private fun buildHabitsView(item: AgendaItem.Habits): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_item_habits)
-        val isDark = isDarkMode()
 
         val slotIds = listOf(
             Triple(R.id.habit_slot_1, R.id.habit_ring_1, R.id.habit_name_1),
@@ -543,12 +575,16 @@ class DayGlanceWidgetListFactory(
                 rv.setViewVisibility(slotId, View.GONE)
             } else {
                 rv.setViewVisibility(slotId, View.VISIBLE)
-                val ringBitmap = drawHabitRing(habit, isDark)
+                val ringBitmap = drawHabitRing(habit)
                 rv.setImageViewBitmap(ringId, ringBitmap)
                 rv.setTextViewText(nameId, habit.name)
+                // The ring is an image: say what it shows.
+                rv.setContentDescription(slotId,
+                    if (habit.isComplete) context.getString(R.string.a11y_item_done, habit.name)
+                    else context.getString(R.string.a11y_habit_progress, habit.name, (habit.progress * 100).toInt().coerceIn(0, 100)))
             }
         }
-        rv.setOnClickFillInIntent(R.id.habits_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.habits_item_root, rowFillIn())
         return rv
     }
 
@@ -580,7 +616,7 @@ class DayGlanceWidgetListFactory(
         rv.boostTextSizeForOneUi(R.id.tv_goal_title, 13f)
         rv.boostTextSizeForOneUi(R.id.tv_goal_badge, 11f)
         rv.boostTextSizeForOneUi(R.id.tv_goal_stats, 11f)
-        rv.setOnClickFillInIntent(R.id.goal_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.goal_item_root, rowFillIn(item.link))
         return rv
     }
 
@@ -598,9 +634,7 @@ class DayGlanceWidgetListFactory(
                 val endMin = startMin + item.duration
                 val s = LocalTime.of(parts[0], parts.getOrNull(1) ?: 0)
                 val e = LocalTime.of(endMin / 60 % 24, endMin % 60)
-                val fmt = if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR
-                val fmtShort = if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR_SHORT
-                rv.setTextViewText(R.id.tv_hg_time, "${s.format(fmtShort)} – ${e.format(fmt)}")
+                rv.setTextViewText(R.id.tv_hg_time, WidgetTimeRange.format(s, e, use24Hour))
                 rv.setViewVisibility(R.id.tv_hg_time, View.VISIBLE)
             } catch (_: Throwable) {
                 rv.setViewVisibility(R.id.tv_hg_time, View.GONE)
@@ -615,7 +649,7 @@ class DayGlanceWidgetListFactory(
         rv.boostTextSizeForOneUi(R.id.tv_hg_title, 13f)
         rv.boostTextSizeForOneUi(R.id.tv_hg_time, 11f)
         rv.boostTextSizeForOneUi(R.id.tv_hg_badge, 11f)
-        rv.setOnClickFillInIntent(R.id.hg_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.hg_item_root, rowFillIn(item.link))
         return rv
     }
 
@@ -625,7 +659,7 @@ class DayGlanceWidgetListFactory(
         val labelColor = if (item.isOverdue) R.color.widget_overdue_text else R.color.widget_section_text
         rv.setThemedTextColor(context, R.id.tv_section_label, labelColor)
         rv.boostTextSizeForOneUi(R.id.tv_section_label, 11f)
-        rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.section_item_root, rowFillIn())
         return rv
     }
 
@@ -700,7 +734,7 @@ class DayGlanceWidgetListFactory(
         rv.boostTextSizeForOneUi(R.id.tv_task_badge, 11f)
         rv.boostTextSizeForOneUi(R.id.tv_task_project, 10f)
         rv.boostTextSizeForOneUi(R.id.tv_task_time, 12f)
-        rv.setOnClickFillInIntent(R.id.task_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.task_item_root, rowFillIn(item.link))
         return rv
     }
 
@@ -725,7 +759,7 @@ class DayGlanceWidgetListFactory(
         rv.boostTextSizeForOneUi(R.id.tv_frame_name, 12f)
         rv.boostTextSizeForOneUi(R.id.tv_frame_times, 11f)
         rv.boostTextSizeForOneUi(R.id.tv_frame_avail, 11f)
-        rv.setOnClickFillInIntent(R.id.frame_header_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.frame_header_item_root, rowFillIn())
         return rv
     }
 
@@ -733,7 +767,7 @@ class DayGlanceWidgetListFactory(
         val rv = RemoteViews(context.packageName, R.layout.widget_item_routine)
         rv.setTextViewText(R.id.tv_routine_name, item.names.joinToString("  ·  "))
         rv.boostTextSizeForOneUi(R.id.tv_routine_name, 12f)
-        rv.setOnClickFillInIntent(R.id.routine_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.routine_item_root, rowFillIn())
         return rv
     }
 
@@ -777,7 +811,7 @@ class DayGlanceWidgetListFactory(
         rv.boostTextSizeForOneUi(R.id.tv_glanceahead_start, 13f)
         rv.boostTextSizeForOneUi(R.id.tv_glanceahead_counts, 13f)
         rv.boostTextSizeForOneUi(R.id.tv_glanceahead_committed, 11f)
-        rv.setOnClickFillInIntent(R.id.glanceahead_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.glanceahead_item_root, rowFillIn())
         return rv
     }
 
@@ -786,7 +820,7 @@ class DayGlanceWidgetListFactory(
         rv.setTextViewText(R.id.tv_section_label, item.text)
         rv.setThemedTextColor(context, R.id.tv_section_label, R.color.widget_section_text)
         rv.boostTextSizeForOneUi(R.id.tv_section_label, 11f)
-        rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.section_item_root, rowFillIn())
         return rv
     }
 
@@ -797,7 +831,7 @@ class DayGlanceWidgetListFactory(
         val rv = RemoteViews(context.packageName, R.layout.widget_item_section)
         val label = if (snapshotIsToday) R.string.widget_all_caught_up else R.string.widget_outdated
         rv.setTextViewText(R.id.tv_section_label, context.getString(label))
-        rv.setOnClickFillInIntent(R.id.section_item_root, android.content.Intent())
+        rv.setOnClickFillInIntent(R.id.section_item_root, rowFillIn())
         return rv
     }
 
@@ -809,10 +843,15 @@ class DayGlanceWidgetListFactory(
      * RemoteViews cannot host custom views, so we bake the ring into a [Bitmap]
      * and set it on the slot's [android.widget.ImageView] via setImageViewBitmap.
      *
+     * The bitmap carries no theme: it is baked when the list is built and would
+     * keep the old theme after a light/dark switch (until the next redraw). So
+     * the track is a translucent neutral grey that reads on either ground, and
+     * the completed check is drawn in the ring's colour (the ring's middle is
+     * transparent, and a white check vanished on a light widget).
+     *
      * @param habit  the habit data (progress 0.0–1.0, ring colour hex, completion)
-     * @param isDark whether the widget is in dark mode (affects the track colour)
      */
-    private fun drawHabitRing(habit: HabitData, isDark: Boolean): Bitmap {
+    private fun drawHabitRing(habit: HabitData): Bitmap {
         val size = 80 // pixels — scaled to 36dp in the layout via scaleType=fitCenter
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -826,7 +865,7 @@ class DayGlanceWidgetListFactory(
         // Track (background ring)
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = stroke
-        paint.color = if (isDark) Color.parseColor("#374151") else Color.parseColor("#e5e7eb")
+        paint.color = Color.argb(90, 128, 128, 128)
         canvas.drawCircle(cx, cy, r, paint)
 
         // Progress arc
@@ -842,8 +881,7 @@ class DayGlanceWidgetListFactory(
 
         // Check mark in centre for completed habits
         if (habit.isComplete) {
-            paint.style = Paint.Style.FILL
-            paint.color = Color.WHITE
+            paint.color = ringColor
             paint.strokeWidth = stroke * 0.7f
             paint.style = Paint.Style.STROKE
             paint.strokeCap = Paint.Cap.ROUND
@@ -875,10 +913,6 @@ class DayGlanceWidgetListFactory(
     private fun RemoteViews.boostTextSizeForOneUi(viewId: Int, baseSp: Float) {
         if (isOneUiLauncher) setTextViewTextSize(viewId, TypedValue.COMPLEX_UNIT_SP, baseSp + 2f)
     }
-
-    private fun isDarkMode(): Boolean =
-        (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
 
     // The agenda model carries the English constants ("OVERDUE", …) because
     // logic — the badge color switch, isOverdue flags — keys on them. Only the
@@ -932,9 +966,7 @@ class DayGlanceWidgetListFactory(
         return try {
             val s = parseHhMm(start)
             val e = parseHhMm(end)
-            val fmt = if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR
-            val fmtShort = if (use24Hour) TWENTY_FOUR_HR else TWELVE_HR_SHORT
-            "${s.format(fmtShort)} – ${e.format(fmt)}"
+            WidgetTimeRange.format(s, e, use24Hour)
         } catch (_: Throwable) { "$start – $end" }
     }
 

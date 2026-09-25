@@ -188,6 +188,12 @@ struct GoalWidgetView: View {
                         }
                     }
                 }
+                // Projects past the rows the family has room for.
+                if projects.count > projectLimit {
+                    Text("+\(projects.count - projectLimit) more")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
         }
     }

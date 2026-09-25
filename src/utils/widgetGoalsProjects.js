@@ -76,8 +76,14 @@ export function buildWidgetGoalsProjects({ goals = [], allGoals = goals, project
       };
     });
 
+  // Only the projects the app shows (the Goals & Projects space draws a
+  // project under its goal, or in the standalone list): not archived, and
+  // either standalone or under a goal that exists, is visible and is not
+  // archived. A project whose goal was archived or deleted has no card in the
+  // app, and was still offered in the widget pickers.
+  const shownGoalIds = new Set(goals.filter((g) => g.status !== 'archived').map((g) => g.id));
   const projectData = projects
-    .filter((p) => p.status !== 'archived')
+    .filter((p) => p.status !== 'archived' && (!p.goalId || shownGoalIds.has(p.goalId)))
     .map((p) => {
       const isMine = (t) => t.projectId === p.id && live(t);
       const ordered = orderProjectTasks(scheduled.filter(isMine), unscheduled.filter(isMine));

@@ -3,22 +3,22 @@ import Foundation
 
 // Siri and Shortcuts surface for dayGLANCE.
 //
-// The app had App Intents already — CompleteTaskIntent and StartFocusIntent for
-// interactive widget buttons, and three control intents for Control Center — but
-// all of them live in the DayGlanceWidget extension target. The Shortcuts app
+// The app had App Intents already — three control intents for Control Center
+// (the widget buttons now open dayglance:// links instead) — but all of them
+// live in the DayGlanceWidget extension target. The Shortcuts app
 // reads the *app's* Metadata.appintents, and the app target had no App Intents
 // code at all, so dayGLANCE showed nothing in Shortcuts and had no Siri phrases.
 // (The build log said as much on every build: "Metadata extraction skipped. No
 // AppIntents.framework dependency found" for the DayGlance target.)
 //
-// So this is a fourth entry point onto machinery that already exists, not new
-// plumbing. Home Screen Quick Actions, Control Center controls, and interactive
-// widget buttons all write the same pending action to the App Group, which
+// So this is another entry point onto machinery that already exists, not new
+// plumbing. Home Screen Quick Actions and Control Center controls both write
+// the same pending action to the App Group, which
 // WidgetBridge.getPendingAction() hands to the web layer on resume (App.jsx,
 // `wa === 'newInboxTask'` and friends). These intents do exactly the same thing.
 //
-// Names are suffixed "ShortcutIntent" to stay distinct from the extension's
-// StartFocusIntent. They compile into separate modules so there is no build
+// Names are suffixed "ShortcutIntent" to stay distinct from any intent in the
+// extension. They compile into separate modules so there is no build
 // conflict, but two App Intents with the same type name inside one app bundle is
 // a needless ambiguity for the system to resolve.
 //

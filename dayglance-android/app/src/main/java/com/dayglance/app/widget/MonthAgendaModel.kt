@@ -240,7 +240,6 @@ object MonthAgendaContent {
      */
     fun timeLine(startMinutes: Double, durationMinutes: Double, use24Hour: Boolean, locale: Locale = Locale.getDefault()): String {
         val twelve = DateTimeFormatter.ofPattern("h:mm a", locale)
-        val twelveShort = DateTimeFormatter.ofPattern("h:mm", locale)
         val twentyFour = DateTimeFormatter.ofPattern("H:mm", locale)
         val start = startMinutes.roundToInt().coerceIn(0, 24 * 60 - 1)
         val duration = durationMinutes.roundToInt().coerceAtLeast(0)
@@ -248,6 +247,26 @@ object MonthAgendaContent {
         if (duration <= 0) return s.format(if (use24Hour) twentyFour else twelve)
         val end = (start + duration) % (24 * 60)
         val e = LocalTime.of(end / 60, end % 60)
-        return "${s.format(if (use24Hour) twentyFour else twelveShort)} – ${e.format(if (use24Hour) twentyFour else twelve)}"
+        return WidgetTimeRange.format(s, e, use24Hour, locale)
+    }
+}
+
+/**
+ * Every widget time range ("9:00 – 10:30 AM"): the list rows, frames,
+ * hyperGLANCE sessions and Up Next. In 12-hour time the marker is written once
+ * when both ends share it, and on both ends when they do not — "11:00 AM –
+ * 12:30 PM", not "11:00 – 12:30 PM", which reads as a 13-hour block. A block
+ * past midnight differs too: "11:00 PM – 1:00 AM".
+ */
+object WidgetTimeRange {
+    fun format(start: LocalTime, end: LocalTime, use24Hour: Boolean, locale: Locale = Locale.getDefault()): String {
+        if (use24Hour) {
+            val f = DateTimeFormatter.ofPattern("H:mm", locale)
+            return "${start.format(f)} – ${end.format(f)}"
+        }
+        val full = DateTimeFormatter.ofPattern("h:mm a", locale)
+        val short = DateTimeFormatter.ofPattern("h:mm", locale)
+        val sameHalf = (start.hour < 12) == (end.hour < 12)
+        return "${start.format(if (sameHalf) short else full)} – ${end.format(full)}"
     }
 }

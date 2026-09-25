@@ -156,6 +156,10 @@
         <item quantity="other">%1$d giorni fa</item>
     </plurals>
     <string name="widget_open_to_refresh">Apri dayGLANCE per aggiornare</string>
+    <string name="widget_open_to_set_up">Apri dayGLANCE per configurare</string>
+    <string name="a11y_item_done">%1$s, fatto</string>
+    <string name="a11y_item_not_done">%1$s, da fare</string>
+    <string name="a11y_habit_progress">%1$s, %2$d%% completato</string>
     <string name="widget_planned_as_of">Pianificato al %1$s</string>
     <string name="widget_planned_in_advance">Pianificato in anticipo</string>
     <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->

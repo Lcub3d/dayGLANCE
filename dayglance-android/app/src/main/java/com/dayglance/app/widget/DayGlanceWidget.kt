@@ -132,8 +132,9 @@ class DayGlanceWidget : AppWidgetProvider() {
             views.setEmptyView(R.id.lv_agenda, android.R.id.empty)
 
             // Pending intent template — list items fire fill-in intents against
-            // this. The rows' fill-ins are empty, so every row opens today.
-            views.setPendingIntentTemplate(R.id.lv_agenda, WidgetLinks.pendingIntent(context, 1, WidgetLinks.TODAY))
+            // this. No data here: each row's fill-in supplies its own link (a
+            // fill-in's data applies only where the template has none).
+            views.setPendingIntentTemplate(R.id.lv_agenda, WidgetLinks.rowTemplate(context, 1))
         } catch (_: Throwable) { /* ListView stays empty — header still renders */ }
 
         // ── Tap-to-open ───────────────────────────────────────────────────
@@ -214,3 +215,12 @@ internal fun anyWidgetPlaced(context: Context): Boolean {
         ProjectWidget::class.java, MonthGridWidget::class.java, MonthAgendaWidget::class.java,
     ).any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
 }
+
+/** Whether [appWidgetId] is one of this app's widgets of [provider]. The
+ *  configure activities are exported (the launcher starts them), so they
+ *  check the id before storing a choice for it. */
+internal fun widgetBelongsTo(context: Context, appWidgetId: Int, provider: Class<*>): Boolean =
+    runCatching {
+        AppWidgetManager.getInstance(context).getAppWidgetInfo(appWidgetId)?.provider ==
+            ComponentName(context, provider)
+    }.getOrDefault(false)

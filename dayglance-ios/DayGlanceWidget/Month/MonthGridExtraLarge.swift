@@ -38,7 +38,7 @@ struct MonthGridExtraLargeContent: View {
                     .fill(MonthPalette.hairline)
                     .frame(width: 0.5)
                     .padding(.vertical, MonthGridMetrics.padding)
-                MonthDayPanel(state: state, selected: selected, use24Hour: entry.snapshot?.use24Hour ?? false,
+                MonthDayPanel(state: state, selected: selected, today: entryDay, use24Hour: entry.snapshot?.use24Hour ?? false,
                               interactive: !entry.isPlaceholder, calendar: calendar, locale: locale)
                     .environment(\.colorScheme, .dark)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -50,6 +50,8 @@ struct MonthGridExtraLargeContent: View {
 struct MonthDayPanel: View {
     let state: MonthGridState?
     let selected: String?
+    /// The entry's day, 'yyyy-MM-dd': where "Today" goes.
+    var today: String? = nil
     var use24Hour: Bool = false
     let interactive: Bool
     var calendar: Calendar = .current
@@ -110,9 +112,43 @@ struct MonthDayPanel: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 4)
+            if interactive, let today, let state,
+               MonthDaySelection.showsToday(selected: selected, cells: state.cells, today: today) {
+                todayPill
+            }
             arrow(to: neighbours?.previous, systemImage: "chevron.left", label: String(localized: "Previous day"))
             arrow(to: neighbours?.next, systemImage: "chevron.right", label: String(localized: "Next day"))
         }
+        // The wider hit areas would pull the last glyph 7pt in from the edge;
+        // this puts it back where it was.
+        .padding(.trailing, -(Self.hitSize - Self.headerRowHeight) / 2)
+    }
+
+    /// Tap targets: Apple's 44pt minimum, around the same 14pt glyphs. The
+    /// vertical overflow (44 − 30) is taken back with negative padding, so
+    /// the header's layout height — and with it the agenda's room for its
+    /// twelve rows at 634 × 306 — is unchanged; only the hit area grows.
+    static let hitSize: CGFloat = 44
+    static let headerRowHeight: CGFloat = 30
+
+    /// "Today", when paged away from it (MonthDaySelection.showsToday):
+    /// ShowTodayIntent clears the selection. A small pill in today's blue,
+    /// the grid's today marker, inside a 44pt-tall hit area.
+    private var todayPill: some View {
+        Button(intent: ShowTodayIntent()) {
+            Text(String(localized: "Today"))
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .frame(height: 20)
+                .background(Capsule().fill(MonthPalette.todayFill))
+                .frame(height: Self.hitSize)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, -(Self.hitSize - Self.headerRowHeight) / 2)
+        .accessibilityLabel(Text(String(localized: "Today")))
     }
 
     /// A Button(intent:) when there is a day to go to; a dimmed chevron at
@@ -121,8 +157,9 @@ struct MonthDayPanel: View {
     private func arrow(to target: String?, systemImage: String, label: String) -> some View {
         let glyph = Image(systemName: systemImage)
             .font(.system(size: 14, weight: .semibold))
-            .frame(width: 30, height: 30)
+            .frame(width: Self.hitSize, height: Self.hitSize)
             .contentShape(Rectangle())
+            .padding(.vertical, -(Self.hitSize - Self.headerRowHeight) / 2)
         if interactive, let target {
             Button(intent: SelectMonthDayIntent(date: target)) {
                 glyph.foregroundColor(MonthPalette.dateEmphasis)

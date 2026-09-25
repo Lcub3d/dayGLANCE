@@ -40,3 +40,24 @@ struct SelectMonthDayIntent: AppIntent {
         return .result()
     }
 }
+
+/// The header's "Today" pill: clears the stored selection, which resolves to
+/// today (MonthDaySelection.resolve) — the day it is when the widget reads it,
+/// so a tap just after midnight cannot land on yesterday the way a date baked
+/// into the button could. Runs in the widget extension like the arrows and
+/// never opens the app.
+@available(iOS 17.0, *)
+struct ShowTodayIntent: AppIntent {
+    static let title: LocalizedStringResource = "Show Today"
+    static var isDiscoverable: Bool = false
+    static var openAppWhenRun: Bool = false
+
+    init() {}
+
+    func perform() async throws -> some IntentResult {
+        MonthDaySelection.clear()
+        SelectMonthDayIntent.logger.notice("select today process=\(ProcessInfo.processInfo.processName, privacy: .public)")
+        WidgetCenter.shared.reloadTimelines(ofKind: MonthGrid.widgetKind)
+        return .result()
+    }
+}

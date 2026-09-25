@@ -30,6 +30,12 @@ struct MonthDaySelection: Codable, Equatable {
         defaults?.set(data, forKey: Self.defaultsKey)
     }
 
+    /// No stored selection reads as today (`resolve`), so clearing IS going
+    /// back to today — and to the day it is when read, never a stale date.
+    static func clear(_ defaults: UserDefaults? = UserDefaults(suiteName: kAppGroupSuite)) {
+        defaults?.removeObject(forKey: defaultsKey)
+    }
+
     /// The day the agenda shows for an entry: the stored selection if it was
     /// made on the entry's day and is on the grid; else today if today is on
     /// the grid; else the grid's first day (a stale grid that no longer
@@ -39,6 +45,14 @@ struct MonthDaySelection: Codable, Equatable {
         if let stored, stored.setOn == entryDay, onGrid.contains(stored.date) { return stored.date }
         if onGrid.contains(entryDay) { return entryDay }
         return cells.first?.date
+    }
+
+    /// Whether the header offers "Today": only when the agenda is on another
+    /// day AND today is on the grid to go back to. A stale grid that no longer
+    /// contains today has nowhere to return to, so no button. The Android
+    /// month + agenda widget uses the same rule (MonthAgendaModel.kt).
+    static func showsToday(selected: String?, cells: [MonthGridCell], today: String) -> Bool {
+        selected != today && cells.contains { $0.date == today }
     }
 
     /// The days the arrows move to, or nil at either end of the grid: the

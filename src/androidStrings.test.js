@@ -63,6 +63,16 @@ describe('Android string resources', () => {
     expect(bad, `${loc} unescaped apostrophes fail the resource compile`).toEqual([]);
   });
 
+  // A Map keeps the last of two same-named entries, so the checks above
+  // cannot see a duplicate; aapt refuses it ("Found item String/x more than
+  // one time"), which broke a release build once (day_dial_sleep).
+  it.each(['values', ...locales])('%s declares each string once', (dir) => {
+    const xml = readFileSync(join(RES, dir, 'strings.xml'), 'utf8');
+    const names = [...xml.matchAll(/<(?:string|plurals|string-array)\s+name="([^"]+)"/g)].map((m) => m[1]);
+    const dupes = names.filter((n, i) => names.indexOf(n) !== i);
+    expect(dupes, `${dir} declares these more than once`).toEqual([]);
+  });
+
   it('layout files reference only strings that exist', () => {
     const layouts = join(RES, 'layout');
     const missing = [];

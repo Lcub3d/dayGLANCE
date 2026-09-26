@@ -268,7 +268,7 @@
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
                             android:singleLine="true"
-                            android:text="@string/day_dial_sleep"
+                            android:text="@string/day_dial_legend_sleep"
                             android:textColor="#73ffffff"
                             android:textSize="11sp" />
                         <TextView

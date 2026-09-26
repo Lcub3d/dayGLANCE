@@ -44,6 +44,7 @@
             android:paddingEnd="12dp"
             android:visibility="gone">
             <ImageView
+                android:id="@+id/iv_day_dial_allday_icon"
                 android:layout_width="15dp"
                 android:layout_height="15dp"
                 android:src="@drawable/ic_day_dial_calendar_days"
@@ -54,6 +55,7 @@
                 android:layout_marginStart="10dp"
                 android:orientation="vertical">
                 <TextView
+                    android:id="@+id/tv_day_dial_allday_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/day_dial_all_day"
@@ -83,7 +85,6 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:maxWidth="96dp"
                                 android:ellipsize="end"
                                 android:fontFamily="sans-serif-medium"
                                 android:singleLine="true"
@@ -109,7 +110,6 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:maxWidth="96dp"
                                 android:ellipsize="end"
                                 android:fontFamily="sans-serif-medium"
                                 android:singleLine="true"
@@ -135,7 +135,6 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
-                                android:maxWidth="96dp"
                                 android:ellipsize="end"
                                 android:fontFamily="sans-serif-medium"
                                 android:singleLine="true"
@@ -170,6 +169,7 @@
             android:paddingBottom="8dp"
             android:visibility="gone">
             <LinearLayout
+                android:id="@+id/ll_day_dial_legend_row1"
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:orientation="horizontal">
@@ -182,6 +182,7 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
                     <ImageView
+                        android:id="@+id/iv_day_dial_legend_effort_icon"
                         android:layout_width="14dp"
                         android:layout_height="14dp"
                         android:src="@drawable/ic_day_dial_zap"
@@ -192,6 +193,7 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_day_dial_legend_effort_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
@@ -218,6 +220,7 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
                     <ImageView
+                        android:id="@+id/iv_day_dial_legend_restore_icon"
                         android:layout_width="14dp"
                         android:layout_height="14dp"
                         android:src="@drawable/ic_day_dial_leaf"
@@ -228,6 +231,7 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_day_dial_legend_restore_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
@@ -254,6 +258,7 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
                     <ImageView
+                        android:id="@+id/iv_day_dial_legend_sleep_icon"
                         android:layout_width="14dp"
                         android:layout_height="14dp"
                         android:src="@drawable/ic_day_dial_moon_star"
@@ -264,6 +269,7 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_day_dial_legend_sleep_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
@@ -296,6 +302,7 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
                     <ImageView
+                        android:id="@+id/iv_day_dial_legend_unblocked_icon"
                         android:layout_width="14dp"
                         android:layout_height="14dp"
                         android:src="@drawable/ic_day_dial_circle_dashed"
@@ -306,6 +313,7 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_day_dial_legend_unblocked_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:ellipsize="end"
@@ -332,6 +340,7 @@
                     android:orientation="horizontal"
                     android:visibility="gone">
                     <ImageView
+                        android:id="@+id/iv_day_dial_legend_routines_icon"
                         android:layout_width="14dp"
                         android:layout_height="14dp"
                         android:src="@drawable/ic_day_dial_sparkles"
@@ -342,6 +351,7 @@
                         android:layout_marginStart="8dp"
                         android:orientation="vertical">
                         <TextView
+                            android:id="@+id/tv_day_dial_legend_routines_label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:ellipsize="end"

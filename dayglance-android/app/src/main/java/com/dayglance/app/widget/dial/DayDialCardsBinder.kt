@@ -1,6 +1,9 @@
 package com.dayglance.app.widget.dial
 
+import android.content.res.Resources
 import android.graphics.Color
+import android.os.Build
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import com.dayglance.app.R
@@ -44,8 +47,9 @@ internal object DayDialCardsBinder {
         DialPlacement.WIDE -> DialArrangement.MAX_WIDE_ROWS
     }
 
-    fun bind(views: RemoteViews, arrangement: DialArrangement, cards: DialCards, copy: DialHubCopy) {
+    fun bind(views: RemoteViews, arrangement: DialArrangement, cards: DialCards, copy: DialHubCopy, resources: Resources) {
         if (arrangement.placement == DialPlacement.DIAL) return
+        size(views, arrangement, resources)
 
         val slots = if (arrangement.showAllDay) arrangement.allDayChips else 0
         val (shown, hidden) = DialArrangement.overflow(cards.allDay.size, slots)
@@ -60,6 +64,12 @@ internal object DayDialCardsBinder {
             views.setTextViewText(chip.title, item.title)
             views.setTextColor(chip.title, if (item.completed) TEXT_DONE else TEXT_ON)
             views.setInt(chip.dot, "setColorFilter", runCatching { Color.parseColor(DialPalette.mute(item.colorHex)) }.getOrDefault(Color.WHITE))
+            // Tall: the shown chips share the row (one title alone gets nearly
+            // all of it). Wide: each row is the column's width already.
+            if (arrangement.placement == DialPlacement.TALL) {
+                val maxDp = DialArrangement.tallTitleMaxDp(arrangement.dialWidthDp, arrangement.scale, shown, hidden)
+                views.setInt(chip.title, "setMaxWidth", px(maxDp, resources))
+            }
         }
         if (hidden > 0) {
             views.setViewVisibility(R.id.tv_day_dial_allday_more, View.VISIBLE)
@@ -81,6 +91,54 @@ internal object DayDialCardsBinder {
             if (item != null) views.setTextViewText(ids.second, legendValue(item, copy))
         }
     }
+
+    private val LEGEND_ICONS = listOf(R.id.iv_day_dial_legend_effort_icon, R.id.iv_day_dial_legend_restore_icon,
+        R.id.iv_day_dial_legend_sleep_icon, R.id.iv_day_dial_legend_unblocked_icon, R.id.iv_day_dial_legend_routines_icon)
+    private val LEGEND_LABELS = listOf(R.id.tv_day_dial_legend_effort_label, R.id.tv_day_dial_legend_restore_label,
+        R.id.tv_day_dial_legend_sleep_label, R.id.tv_day_dial_legend_unblocked_label, R.id.tv_day_dial_legend_routines_label)
+
+    /**
+     * Draws the cards up by the arrangement's scale: type, icons, the card
+     * and row heights and paddings, and the wide column. Android 12+ only
+     * (setViewLayoutWidth/Height); DialArrangement.choose keeps the scale at 1
+     * below that, where the layouts' own dp stand. Base sizes are the layouts'.
+     */
+    private fun size(views: RemoteViews, arrangement: DialArrangement, resources: Resources) {
+        val s = arrangement.scale.toFloat()
+        if (s == 1f || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        val dp = TypedValue.COMPLEX_UNIT_DIP
+        fun text(id: Int, sp: Float) = views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp * s)
+        fun square(id: Int, d: Float) { views.setViewLayoutWidth(id, d * s, dp); views.setViewLayoutHeight(id, d * s, dp) }
+        fun pad(id: Int, l: Double, t: Double, r: Double, b: Double) =
+            views.setViewPadding(id, px(l * s, resources), px(t * s, resources), px(r * s, resources), px(b * s, resources))
+        val tall = arrangement.placement == DialPlacement.TALL
+
+        text(R.id.tv_day_dial_allday_label, 12f)
+        text(R.id.tv_day_dial_allday_more, 13f)
+        square(R.id.iv_day_dial_allday_icon, 15f)
+        for (chip in CHIPS.take(chipsIn(arrangement.placement))) {
+            text(chip.title, 13f)
+            square(chip.dot, 6f)
+        }
+        LEGEND_LABELS.forEach { text(it, 11f) }
+        LEGEND.values.forEach { text(it.second, 13f) }
+        LEGEND_ICONS.forEach { square(it, if (tall) 14f else 15f) }
+
+        if (tall) {
+            views.setViewLayoutHeight(R.id.ll_day_dial_allday, (DialArrangement.TALL_CARD_DP * s).toFloat(), dp)
+            pad(R.id.ll_day_dial_allday, 16.0, 0.0, 12.0, 0.0)
+            views.setViewLayoutHeight(R.id.ll_day_dial_legend_row1, (DialArrangement.TALL_LEGEND_ROW_DP * s).toFloat(), dp)
+            views.setViewLayoutHeight(R.id.ll_day_dial_legend_row2, (DialArrangement.TALL_LEGEND_ROW_DP * s).toFloat(), dp)
+            pad(R.id.ll_day_dial_legend, 16.0, 8.0, 8.0, 8.0)
+        } else {
+            views.setViewLayoutWidth(R.id.ll_day_dial_column, ((DialArrangement.WIDE_COLUMN_DP - 6) * s).toFloat(), dp)
+            pad(R.id.ll_day_dial_allday, 12.0, 12.0, 12.0, 12.0)
+            pad(R.id.ll_day_dial_legend, 14.0, 10.0, 10.0, 10.0)
+            for ((row, _) in LEGEND.values) views.setViewLayoutHeight(row, (DialArrangement.WIDE_LEGEND_ROW_DP * s).toFloat(), dp)
+        }
+    }
+
+    private fun px(dp: Double, resources: Resources): Int = (dp * resources.displayMetrics.density).toInt()
 
     /** "3h 20m", or "2/3" for routines, as the in-app legend reads. */
     fun legendValue(item: DialLegendItem, copy: DialHubCopy): String =

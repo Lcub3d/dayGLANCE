@@ -80,7 +80,9 @@ enum class DialPlacement { DIAL, TALL, WIDE }
  * (widget_day_dial_tall.xml, widget_day_dial_wide.xml).
  */
 data class DialArrangement(val placement: DialPlacement, val dialWidthDp: Double, val dialHeightDp: Double,
-                           val showAllDay: Boolean, val allDayChips: Int, val showLegend: Boolean = placement != DialPlacement.DIAL) {
+                           val showAllDay: Boolean, val allDayChips: Int, val showLegend: Boolean = placement != DialPlacement.DIAL,
+                           /** How much the cards are drawn up from their phone size (DayDialCardsBinder). */
+                           val scale: Double = 1.0) {
     companion object {
         /** The All Day card's height in the tall layout, and the gap above each card. */
         const val TALL_CARD_DP = 56.0
@@ -102,38 +104,65 @@ data class DialArrangement(val placement: DialPlacement, val dialWidthDp: Double
         const val MAX_TALL_CHIPS = 3
         const val MAX_WIDE_ROWS = 5
 
+        /**
+         * The card metrics above are a phone's. A tablet placement has the
+         * room for more, and at phone size the cards read as an afterthought
+         * under a dial twice as wide (#1830's device test): they scale with
+         * the placement, from 1 at a 300dp phone width to 1.6 on a tablet
+         * (tall), or with the height, to 1.5 (wide). Only where the widget
+         * can resize its views (Android 12+, setViewLayoutHeight and
+         * friends); below that the layouts' own dp stand and the scale is 1.
+         */
+        const val REFERENCE_DP = 300.0
+        const val MAX_TALL_SCALE = 1.6
+        const val MAX_WIDE_SCALE = 1.5
+
         private val ASPECT = DialSpec.CANVAS_HEIGHT / DialSpec.CANVAS_WIDTH
 
-        fun choose(widthDp: Double, heightDp: Double, cards: DialCards): DialArrangement {
+        fun choose(widthDp: Double, heightDp: Double, cards: DialCards, resizable: Boolean = true): DialArrangement {
             val dialOnly = DialArrangement(DialPlacement.DIAL, widthDp, heightDp, false, 0)
             if (cards.isEmpty || widthDp <= 0 || heightDp <= 0) return dialOnly
             val hasLegend = cards.legend.isNotEmpty()
             val hasAllDay = cards.allDay.isNotEmpty()
+            val tallCap = if (resizable) (widthDp / REFERENCE_DP).coerceIn(1.0, MAX_TALL_SCALE) else 1.0
+            val wideCap = if (resizable) (heightDp / REFERENCE_DP).coerceIn(1.0, MAX_WIDE_SCALE) else 1.0
 
-            // Below: the height a width-limited face leaves over.
+            // Below: the height a width-limited face leaves over. Each card
+            // set is tried at the largest scale up to the cap that still
+            // fits, so drawing up never costs a card that fits at phone size.
             val spareBelow = heightDp - widthDp * ASPECT
-            val legendH = if (hasLegend) tallLegendDp(cards) + CARD_GAP_DP else 0.0
-            val bothH = legendH + if (hasAllDay) TALL_CARD_DP + CARD_GAP_DP else 0.0
+            val allDayBase = TALL_CARD_DP + CARD_GAP_DP
+            val legendBase = if (hasLegend) tallLegendDp(cards) + CARD_GAP_DP else 0.0
+            val bothBase = legendBase + if (hasAllDay) allDayBase else 0.0
+            fun fit(base: Double) = if (base <= 0) tallCap else min(tallCap, spareBelow / base)
             // Beside: the width a height-limited face leaves over.
             val spareBeside = widthDp - heightDp / ASPECT
+            val ws = if (cards.legend.isEmpty()) wideCap else min(wideCap, heightDp / wideLegendH(cards))
+            val column = WIDE_COLUMN_DP * ws
 
             return when {
-                spareBeside >= WIDE_COLUMN_DP && spareBeside >= spareBelow && heightDp >= wideLegendH(cards) -> {
-                    val room = heightDp - wideLegendH(cards) - (if (hasLegend) CARD_GAP_DP else 0.0)
+                ws >= 1.0 && spareBeside >= column && spareBeside >= spareBelow && heightDp >= wideLegendH(cards) * ws -> {
+                    val room = heightDp - (wideLegendH(cards) + if (hasLegend) CARD_GAP_DP else 0.0) * ws
                     val rows = if (!hasAllDay) 0
-                               else floor((room - WIDE_CARD_CHROME_DP) / WIDE_ROW_DP).toInt().coerceIn(0, MAX_WIDE_ROWS)
-                    DialArrangement(DialPlacement.WIDE, widthDp - WIDE_COLUMN_DP, heightDp, rows > 0, rows)
+                               else floor((room - WIDE_CARD_CHROME_DP * ws) / (WIDE_ROW_DP * ws)).toInt().coerceIn(0, MAX_WIDE_ROWS)
+                    DialArrangement(DialPlacement.WIDE, widthDp - column, heightDp, rows > 0, rows, scale = ws)
                 }
-                hasAllDay && spareBelow >= bothH ->
-                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - bothH, true, tallChips(widthDp))
+                hasAllDay && fit(bothBase) >= 1.0 -> {
+                    val ts = fit(bothBase)
+                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - bothBase * ts, true, tallChips(widthDp, ts), scale = ts)
+                }
                 // Room for one card: the All Day one, when the day has any. It
                 // is the day's context and only there when it matters; the
                 // legend is there every day.
-                hasAllDay && spareBelow >= TALL_CARD_DP + CARD_GAP_DP ->
-                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - TALL_CARD_DP - CARD_GAP_DP, true, tallChips(widthDp),
-                        showLegend = false)
-                hasLegend && spareBelow >= legendH ->
-                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - legendH, false, 0)
+                hasAllDay && fit(allDayBase) >= 1.0 -> {
+                    val ts = fit(allDayBase)
+                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - allDayBase * ts, true, tallChips(widthDp, ts),
+                        showLegend = false, scale = ts)
+                }
+                hasLegend && fit(legendBase) >= 1.0 -> {
+                    val ts = fit(legendBase)
+                    DialArrangement(DialPlacement.TALL, widthDp, heightDp - legendBase * ts, false, 0, scale = ts)
+                }
                 else -> dialOnly
             }
         }
@@ -150,8 +179,20 @@ data class DialArrangement(val placement: DialPlacement, val dialWidthDp: Double
         private fun wideLegendH(cards: DialCards): Double =
             if (cards.legend.isEmpty()) 0.0 else cards.legend.size * WIDE_LEGEND_ROW_DP + WIDE_CARD_CHROME_DP / 2
 
-        private fun tallChips(widthDp: Double): Int =
-            floor((widthDp - TALL_ALLDAY_CHROME_DP) / TALL_CHIP_DP).toInt().coerceIn(1, MAX_TALL_CHIPS)
+        private fun tallChips(widthDp: Double, scale: Double): Int =
+            floor((widthDp - TALL_ALLDAY_CHROME_DP * scale) / (TALL_CHIP_DP * scale)).toInt().coerceIn(1, MAX_TALL_CHIPS)
+
+        /**
+         * The widest a tall chip's title may be, in dp, so the chips shown
+         * share the row instead of each stopping at a fixed cap: one title
+         * alone gets nearly the whole card. [hidden] reserves the "+N".
+         */
+        fun tallTitleMaxDp(widthDp: Double, scale: Double, shown: Int, hidden: Int): Double {
+            if (shown <= 0) return 0.0
+            val inner = widthDp - TALL_ALLDAY_CHROME_DP * scale - (if (hidden > 0) 32.0 * scale else 0.0)
+            // Each chip also spends its dot, the gap after it and its trailing margin.
+            return max(24.0 * scale, inner / shown - 24.0 * scale)
+        }
 
         /** How many of [count] items fit in [slots], and how many are left for "+N". */
         fun overflow(count: Int, slots: Int): Pair<Int, Int> {

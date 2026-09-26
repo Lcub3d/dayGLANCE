@@ -206,7 +206,8 @@ internal object DayDialRenderer {
                 val options = runCatching { manager.getAppWidgetOptions(id) }.getOrDefault(Bundle())
                 val (wDp, hDp) = placementSizeDp(context, options)
                 // Inside the root's 4dp padding.
-                val arrangement = DialArrangement.choose(wDp - 8.0, hDp - 8.0, frame.cards)
+                val arrangement = DialArrangement.choose(wDp - 8.0, hDp - 8.0, frame.cards,
+                    resizable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 val scale = faceScale(context, arrangement)
                 val key = DialFaceInput.digest("${frame.faceKey}\n$arrangement\nscale=$scale\nsalt=$salt")
                 if (prefs.getString(keyPref(id), null) == key) {
@@ -250,7 +251,7 @@ internal object DayDialRenderer {
             views.setViewVisibility(viewId, if (slot == frame.rows.liveSlot) View.VISIBLE else View.GONE)
         }
         bindLive(views, frame, scale)
-        DayDialCardsBinder.bind(views, arrangement, frame.cards, frame.copy)
+        DayDialCardsBinder.bind(views, arrangement, frame.cards, frame.copy, context.resources)
         views.setContentDescription(R.id.day_dial_root, frame.summary)
         views.setOnClickPendingIntent(R.id.day_dial_root, WidgetLinks.pendingIntent(context, REQUEST_OPEN, frame.tapUrl))
         manager.updateAppWidget(id, views)

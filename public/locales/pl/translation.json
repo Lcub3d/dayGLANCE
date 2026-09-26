@@ -1541,7 +1541,10 @@
     "slotTopLeft": "Lewy górny",
     "slotTopRight": "Prawy górny",
     "slotBottomLeft": "Lewy dolny",
-    "slotBottomRight": "Prawy dolny"
+    "slotBottomRight": "Prawy dolny",
+    "layerAlarm": "Następny alarm",
+    "alarmFrom": "jutrzejszy od",
+    "alarmAlways": "cały dzień"
   },
   "intentLog": {
     "clearLog": "Wyczyść dziennik",

@@ -16,6 +16,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.RemoteViews
 import com.dayglance.app.R
+import com.dayglance.app.alarm.ClockAlarm
 import com.dayglance.app.data.SharedDataStore
 import com.dayglance.app.widget.MidnightRolloverReceiver
 import com.dayglance.app.widget.WidgetDayTier
@@ -101,6 +102,11 @@ class DayDialWidget : AppWidgetProvider() {
             // draw; the first tick after the screen comes on catches up.
             val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
             if (power?.isInteractive == false) return
+            val manager = AppWidgetManager.getInstance(context)
+            DayDialRenderer.render(context, manager, ids(context, manager))
+            return
+        }
+        if (intent.action == AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED) {
             val manager = AppWidgetManager.getInstance(context)
             DayDialRenderer.render(context, manager, ids(context, manager))
             return
@@ -244,7 +250,8 @@ internal object DayDialRenderer {
                      arrangement: DialArrangement, scale: Float) {
         val views = RemoteViews(context.packageName, layoutFor(arrangement))
         views.setImageViewBitmap(R.id.iv_day_dial_face,
-            frame.painter.drawFace(scale, frame.input, frame.nowMin, frame.header, frame.rows, frame.dimmed))
+            frame.painter.drawFace(scale, frame.input, frame.nowMin, frame.header, frame.rows, frame.dimmed,
+                frame.alarm, frame.alarm?.let { frame.copy.clock(it.alarmMinute) }))
         views.setInt(R.id.iv_day_dial_needle, "setImageLevel", frame.needleLevel)
         for ((slot, viewId) in LIVE_SLOT_VIEWS) {
             views.setViewVisibility(viewId, if (slot == frame.rows.liveSlot) View.VISIBLE else View.GONE)
@@ -327,6 +334,8 @@ internal class DayDialFrame(
     val painter: DialFacePainter,
     val cards: DialCards,
     val copy: DialHubCopy,
+    /** The next clock-app alarm's mark (DialAlarm), or null. */
+    val alarm: DialAlarmMark? = null,
 ) {
     /** 0 at midnight, 10000 a full turn (day_dial_needle.xml). */
     val needleLevel: Int get() = DialNeedle.level(nowMin)
@@ -340,6 +349,7 @@ internal class DayDialFrame(
             "live=${rows.liveSlot}",
             "dim=$dimmed",
             cards.key,
+            "alarm=${alarm?.mode}|${alarm?.minute}|${alarm?.alarmMinute}",
         ).joinToString("\n")
 
     companion object {
@@ -387,8 +397,15 @@ internal class DayDialFrame(
 
             val summary = listOfNotNull(header.eyebrow + ", " + header.date,
                 rows.title?.text, *rows.stack.map { it.text }.toTypedArray()).joinToString(". ")
+            // The alarm is this device's, read here each minute (a cheap system
+            // read, clock apps only), and shown whatever the snapshot's state.
+            val prefs = DialAlarmPrefs.from(root)
+            val alarm = if (!prefs.on) null else runCatching {
+                DialAlarm.mark(now.toInstant().toEpochMilli(), ClockAlarm.nextTriggerMillis(context), prefs.fromMin, now.zone)
+            }.getOrNull()
+
             return DayDialFrame(input, nowMin, header, rows, status == DialHubStatus.OUTDATED || status == DialHubStatus.ZONE_CHANGED,
-                tap, summary, painter, cards, copy)
+                tap, summary, painter, cards, copy, alarm)
         }
     }
 }

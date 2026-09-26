@@ -48,7 +48,7 @@ class DialFacePainter(private val fonts: DialFonts) {
      * outside the drawing (the widget's own background shows through).
      */
     fun drawFace(scale: Float, input: DialFaceInput, nowMin: Double, header: DialHubHeader,
-                 rows: DialHubRows, dimmed: Boolean): Bitmap {
+                 rows: DialHubRows, dimmed: Boolean, alarm: DialAlarmMark? = null, alarmTime: String? = null): Bitmap {
         val bmp = Bitmap.createBitmap(px(DialSpec.CANVAS_WIDTH, scale), px(DialSpec.CANVAS_HEIGHT, scale), Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         c.scale(scale, scale)
@@ -70,9 +70,11 @@ class DialFacePainter(private val fonts: DialFonts) {
         val styles = DialBand.styles(input.blocks, nowMin, input.projectedDay)
         drawBlocks(c, styles)
         drawSeparators(c, styles)
-        drawLabels(c)
+        drawLabels(c, alarm)
         c.restore()
 
+        // The alarm is the device's own fact, not the snapshot's: never dimmed.
+        alarm?.let { drawAlarm(c, it, alarmTime ?: "") }
         drawHub(c, header, rows)
         return bmp
     }
@@ -208,14 +210,71 @@ class DialFacePainter(private val fonts: DialFonts) {
         }
     }
 
-    private fun drawLabels(c: Canvas) {
-        val p = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, white(DialSpec.LABEL_OPACITY)).apply {
-            letterSpacing = (DialSpec.LABEL_TRACKING / DialSpec.LABEL_FONT_SIZE).toFloat()
-        }
+    private fun labelPaint() = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, white(DialSpec.LABEL_OPACITY)).apply {
+        letterSpacing = (DialSpec.LABEL_TRACKING / DialSpec.LABEL_FONT_SIZE).toFloat()
+    }
+
+    private fun drawLabels(c: Canvas, alarm: DialAlarmMark?) {
+        val p = labelPaint()
         for (label in DialSpec.hourLabels) {
+            if (DialAlarm.labelYields(label.minutes, alarm)) continue
             val pt = DialSpec.labelPoint(label)
             c.drawText(label.text, pt.x.toFloat(), centredBaseline(pt.y, p), p)
         }
+    }
+
+    // ── Alarm mark (DialAlarm; the in-app dial's AlarmMark) ─────────────────
+
+    private fun drawAlarm(c: Canvas, mark: DialAlarmMark, time: String) {
+        val color = color(DialAlarm.COLOR_HEX, 0.8)
+        val (a, b) = DialSpec.point(DialAlarm.LINE_INNER_RADIUS, mark.minute) to DialSpec.point(DialAlarm.LINE_OUTER_RADIUS, mark.minute)
+        c.drawLine(a.x.toFloat(), a.y.toFloat(), b.x.toFloat(), b.y.toFloat(), stroke(1.2, Paint.Cap.ROUND).apply { this.color = color })
+        if (mark.mode == DialAlarmMode.TODAY) {
+            val g = DialSpec.point(DialAlarm.GLYPH_RADIUS, mark.minute)
+            drawAlarmClock(c, g.x, g.y, color)
+            return
+        }
+        // Tomorrow: icon, time and arrow in a row beside the "00" label.
+        val label = DialSpec.hourLabels.first { it.minutes == 0 }
+        val at = DialSpec.labelPoint(label)
+        val lp = labelPaint()
+        var x = at.x + lp.measureText(label.text) / 2 + 5
+        val y = at.y
+        drawAlarmClock(c, x + 4.8, y, color)
+        x += 11.5
+        val tp = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, color).apply { textAlign = Paint.Align.LEFT }
+        c.drawText(time, x.toFloat(), centredBaseline(y, tp), tp)
+        x += tp.measureText(time) + 4
+        drawArrow(c, x + 4.8, y, color)
+    }
+
+    /** Lucide "alarm-clock" on its 24 grid, drawn 0.4× about (cx, cy). */
+    private fun drawAlarmClock(c: Canvas, cx: Double, cy: Double, color: Int) {
+        glyph(c, cx, cy, color) { p ->
+            c.drawCircle(12f, 13f, 8f, p)
+            c.drawPath(Path().apply { moveTo(12f, 9f); lineTo(12f, 13f); lineTo(14f, 15f) }, p)
+            c.drawLine(5f, 3f, 2f, 6f, p)
+            c.drawLine(22f, 6f, 19f, 3f, p)
+            c.drawLine(6.38f, 18.7f, 4f, 21f, p)
+            c.drawLine(17.64f, 18.67f, 20f, 21f, p)
+        }
+    }
+
+    /** Lucide "arrow-right" (= tomorrow), the same scale. */
+    private fun drawArrow(c: Canvas, cx: Double, cy: Double, color: Int) {
+        glyph(c, cx, cy, color) { p ->
+            c.drawLine(5f, 12f, 19f, 12f, p)
+            c.drawPath(Path().apply { moveTo(12f, 5f); lineTo(19f, 12f); lineTo(12f, 19f) }, p)
+        }
+    }
+
+    private fun glyph(c: Canvas, cx: Double, cy: Double, color: Int, draw: (Paint) -> Unit) {
+        val k = 0.4f
+        c.save()
+        c.translate(cx.toFloat() - 12 * k, cy.toFloat() - 12 * k)
+        c.scale(k, k)
+        draw(stroke(2.4, Paint.Cap.ROUND).apply { strokeJoin = Paint.Join.ROUND; this.color = color })
+        c.restore()
     }
 
     // ── Hub ──────────────────────────────────────────────────────────────────

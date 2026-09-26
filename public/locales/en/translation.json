@@ -1488,7 +1488,10 @@
     "slotTopLeft": "Top left",
     "slotTopRight": "Top right",
     "slotBottomLeft": "Bottom left",
-    "slotBottomRight": "Bottom right"
+    "slotBottomRight": "Bottom right",
+    "layerAlarm": "Next alarm",
+    "alarmFrom": "tomorrow's from",
+    "alarmAlways": "all day"
   },
   "intentLog": {
     "clearLog": "Clear log",

@@ -1776,7 +1776,8 @@
     "addTaskPlaceholder": "Aggiungi attività…",
     "showFilters": "Mostra filtri",
     "hideFilters": "Nascondi filtri",
-    "filtersActive": "Filtri attivi"
+    "filtersActive": "Filtri attivi",
+    "filterButton": "Filtra"
   },
   "colors": {
     "gray": "Grigio",

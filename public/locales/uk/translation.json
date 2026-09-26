@@ -1855,7 +1855,8 @@
     "addTaskPlaceholder": "Додати завдання…",
     "showFilters": "Показати фільтри",
     "hideFilters": "Сховати фільтри",
-    "filtersActive": "Фільтри активні"
+    "filtersActive": "Фільтри активні",
+    "filterButton": "Фільтр"
   },
   "colors": {
     "gray": "Сірий",

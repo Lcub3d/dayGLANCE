@@ -1774,7 +1774,8 @@
     "addTaskPlaceholder": "Add task…",
     "showFilters": "Show filters",
     "hideFilters": "Hide filters",
-    "filtersActive": "Filters active"
+    "filtersActive": "Filters active",
+    "filterButton": "Filter"
   },
   "colors": {
     "gray": "Gray",

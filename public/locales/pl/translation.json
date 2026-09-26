@@ -1849,7 +1849,8 @@
     "addTaskPlaceholder": "Dodaj zadanie…",
     "showFilters": "Pokaż filtry",
     "hideFilters": "Ukryj filtry",
-    "filtersActive": "Filtry aktywne"
+    "filtersActive": "Filtry aktywne",
+    "filterButton": "Filtruj"
   },
   "colors": {
     "gray": "Szary",

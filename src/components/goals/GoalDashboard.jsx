@@ -1343,11 +1343,14 @@ export const ProjectsStatusToggle = ({ value, onChange, openCount, completedCoun
 // A text input, not type="search": the browser draws its own clear button in
 // a search input, which sat next to this one's X as a second, brighter one.
 // enterKeyHint keeps the phone keyboard's Search key.
-export const ProjectFilterField = ({ value, onChange, inputRef, keyHint = false, onBlur }) => {
+//
+// `dense`: the height of the Open | Completed toggle beside it (the phone's
+// Projects row), so opening the filter does not make the row jump.
+export const ProjectFilterField = ({ value, onChange, inputRef, keyHint = false, onBlur, dense = false }) => {
   const { darkMode, textSecondary } = useDayPlannerCtx();
   const { t } = useTranslation();
   return (
-    <label className={`flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'}`}>
+    <label className={`flex items-center gap-2 px-3 ${dense ? 'h-8' : 'py-2'} rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'}`}>
       <Search size={15} className="flex-shrink-0" />
       <input
         ref={inputRef}
@@ -1847,8 +1850,8 @@ const MobileDashboard = ({
       ) : (
         <>
           {/* Projects tab: Open | Completed and the filter on ONE row. The
-              filter is a search button until it is tapped (or holds text),
-              then a field in the rest of the row, the toggle dropping its
+              filter is a field-shaped "Filter" button in the rest of the row
+              until it is tapped (or holds text), then the field itself, the toggle dropping its
               icons to make room. Where a language's labels still leave it
               less than 7rem it wraps to its own line instead. */}
           {!controlsCollapsed && (
@@ -1867,18 +1870,26 @@ const MobileDashboard = ({
                     onChange={onProjectQueryChange}
                     inputRef={filterInputRef}
                     onBlur={() => { if (!projectQuery) setFilterOpen(false); }}
+                    dense
                   />
                 </div>
               ) : (
+                // The field's own look and height, holding the rest of the row,
+                // so it reads as the filter it opens into. Where a language's
+                // toggle leaves little room the word truncates, down to the
+                // icon alone; it never wraps.
                 <button
                   type="button"
                   data-open-filter
                   onClick={() => setFilterOpen(true)}
                   aria-label={t('goals.filterProjects')}
                   title={t('goals.filterProjects')}
-                  className={`ml-auto flex-shrink-0 w-9 h-[30px] flex items-center justify-center rounded-lg border ${borderClass} ${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} transition-colors`}
+                  className={`flex-1 min-w-[2.25rem] h-8 flex items-center gap-2 px-3 rounded-lg text-left transition-colors ${
+                    darkMode ? 'bg-white/10 text-gray-500 hover:bg-white/15' : 'bg-black/5 text-stone-400 hover:bg-black/10'
+                  }`}
                 >
-                  <Search size={15} />
+                  <Search size={15} className={`flex-shrink-0 ${darkMode ? 'text-gray-400' : ''}`} />
+                  <span className="min-w-0 truncate text-sm">{t('goals.filterButton')}</span>
                 </button>
               )}
             </div>
@@ -1949,7 +1960,7 @@ export const AreaFilter = ({ onManageAreas, iconOnly = false }) => {
         value={goalsAreaFilter}
         onChange={e => setGoalsAreaFilter(e.target.value)}
         aria-label={t('goals.area')}
-        className={`min-w-0 shrink ${iconOnly ? 'flex-1' : ''} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`${iconOnly ? 'min-w-0 shrink flex-1' : 'flex-1 min-w-[9rem]'} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
         }`}
       >
@@ -1974,7 +1985,8 @@ export const AreaFilter = ({ onManageAreas, iconOnly = false }) => {
   );
 };
 
-export const ViewToggle = ({ className = '' }) => {
+// `compact` drops the icons (the words stay): the phone's area row.
+export const ViewToggle = ({ className = '', compact = false }) => {
   const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
   const { goalsViewMode, setGoalsViewMode } = useFeaturesCtx();
   const { t } = useTranslation();
@@ -1989,23 +2001,28 @@ export const ViewToggle = ({ className = '' }) => {
           type="button"
           aria-pressed={goalsViewMode === key}
           onClick={() => setGoalsViewMode(key)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
             goalsViewMode === key
               ? 'bg-blue-600 text-white'
               : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
           }`}
         >
-          <Icon size={13} /> {label}
+          {!compact && <Icon size={13} />} {label}
         </button>
       ))}
     </div>
   );
 };
 
+// The phone's row: the area select (never below 9rem, so its label is not
+// cut mid-word), Manage Areas, and List | Roadmap in words only. Where a
+// language's labels leave the select less than that, List | Roadmap wraps
+// onto its own line (French, Spanish, Ukrainian at 360px; German at 320px)
+// rather than squeezing the select. The chevron hides the row either way.
 const GoalControls = ({ onManageAreas }) => (
-  <div className="flex items-center gap-2 mb-4">
+  <div data-goal-controls className="flex flex-wrap items-center gap-2 mb-4">
     <AreaFilter onManageAreas={onManageAreas} />
-    <ViewToggle className="ml-auto" />
+    <ViewToggle compact />
   </div>
 );
 

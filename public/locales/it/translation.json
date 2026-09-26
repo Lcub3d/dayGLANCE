@@ -1773,7 +1773,10 @@
     "templateTaskNote": "Nota",
     "templateTaskNoteHint": "(riportata in ogni sessione)",
     "optionalNote": "Nota facoltativa…",
-    "addTaskPlaceholder": "Aggiungi attività…"
+    "addTaskPlaceholder": "Aggiungi attività…",
+    "showFilters": "Mostra filtri",
+    "hideFilters": "Nascondi filtri",
+    "filtersActive": "Filtri attivi"
   },
   "colors": {
     "gray": "Grigio",

@@ -1771,7 +1771,10 @@
     "templateTaskNote": "Note",
     "templateTaskNoteHint": "(carried into each session)",
     "optionalNote": "Optional note…",
-    "addTaskPlaceholder": "Add task…"
+    "addTaskPlaceholder": "Add task…",
+    "showFilters": "Show filters",
+    "hideFilters": "Hide filters",
+    "filtersActive": "Filters active"
   },
   "colors": {
     "gray": "Gray",

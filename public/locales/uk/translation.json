@@ -1852,7 +1852,10 @@
     "templateTaskNote": "Нотатка",
     "templateTaskNoteHint": "(переноситься в кожен сеанс)",
     "optionalNote": "Необов’язкова нотатка…",
-    "addTaskPlaceholder": "Додати завдання…"
+    "addTaskPlaceholder": "Додати завдання…",
+    "showFilters": "Показати фільтри",
+    "hideFilters": "Сховати фільтри",
+    "filtersActive": "Фільтри активні"
   },
   "colors": {
     "gray": "Сірий",

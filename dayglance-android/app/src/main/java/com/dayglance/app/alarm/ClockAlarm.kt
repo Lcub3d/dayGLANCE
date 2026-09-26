@@ -2,8 +2,6 @@ package com.dayglance.app.alarm
 
 import android.app.AlarmManager
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The next alarm the user set in a CLOCK app — the "when am I waking up?"
@@ -87,17 +85,4 @@ object ClockAlarm {
     /** Epoch millis of the next clock-app alarm, or null (none, or another app's). */
     fun nextTriggerMillis(context: Context): Long? =
         read(context).let { if (it.accepted) it.triggerTime else null }
-
-    /** TEMPORARY diagnostic (GLANCEahead readout): the reading as JSON. */
-    fun debugJson(context: Context): String {
-        val r = read(context)
-        return JSONObject()
-            .put("triggerTime", r.triggerTime ?: JSONObject.NULL)
-            .put("hasShowIntent", r.hasShowIntent)
-            .put("creatorPackage", r.creatorPackage ?: JSONObject.NULL)
-            .put("creatorUid", r.creatorUid ?: JSONObject.NULL)
-            .put("uidPackages", JSONArray(r.uidPackages))
-            .put("accepted", r.accepted)
-            .toString()
-    }
 }

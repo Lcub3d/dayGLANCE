@@ -1,0 +1,95 @@
+name: JOBO reviewed Slice 5
+on:
+  push:
+    branches: [review/jobo-slice5-20260927]
+    paths: [.github/workflows/jobo-review-check.yml]
+permissions:
+  contents: write
+concurrency:
+  group: jobo-reviewed-slice5
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Assemble pinned and hash-verified candidate
+        run: |
+          set -euo pipefail
+          cp -R .github/review /tmp/jobo-tools
+          mkdir -p /tmp/jobo-results
+          git fetch https://github.com/krelltunez/dayGLANCE.git 49b0a4b42c87a0be62970723c8bc869954bb4cd2
+          python /tmp/jobo-tools/assemble.py 2>&1 | tee /tmp/jobo-results/assembly.log
+          git diff --cached --check
+      - name: Install exact lockfile dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Tests, lint and build
+        run: |
+          set -euo pipefail
+          TZ=UTC npm test > /tmp/jobo-results/full-tests.log 2>&1
+          tail -n 10 /tmp/jobo-results/full-tests.log
+          npm run lint > /tmp/jobo-results/lint.log 2>&1
+          npm run build > /tmp/jobo-results/build.log 2>&1
+          TZ=Asia/Shanghai npx vitest run src/jobo src/hooks/useJoboViewWriter.test.js src/components/jobo > /tmp/jobo-results/shanghai-tests.log 2>&1
+          TZ=America/New_York npx vitest run src/jobo src/hooks/useJoboViewWriter.test.js src/components/jobo > /tmp/jobo-results/new-york-tests.log 2>&1
+          node scripts/repro-jobo-upstream.mjs > /tmp/jobo-results/upstream-observations.json
+      - name: Install isolated browser harness
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Browser acceptance on synthetic data
+        env:
+          REVIEW_OUTPUT: /tmp/jobo-results
+        run: |
+          set -euo pipefail
+          npx vite --host 127.0.0.1 --port 5199 --strictPort > /tmp/jobo-results/vite.log 2>&1 &
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:5199/ >/dev/null && break; sleep 1; done
+          python /tmp/jobo-tools/browser.py 2>&1 | tee /tmp/jobo-results/browser.log
+      - name: Publish to fork branches only after all checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          UP=49b0a4b42c87a0be62970723c8bc869954bb4cd2
+          OLD=f99f462064eb66a956de286f455ce146b2beecec
+          EXPECTED_MAIN=014f6ea13a8f7114429d08a340667bf87b0e520d
+          git fetch origin feat/jobo-view main
+          test "$(git rev-parse origin/feat/jobo-view)" = "$OLD" || { echo 'PR18 moved; refusing to overwrite concurrent work'; exit 1; }
+          test -z "$(git ls-remote --heads origin contrib/jobo-slice5)" || { echo 'Contribution branch exists; refusing replacement'; exit 1; }
+          git config user.name 'Lcub3d'
+          git config user.email '46134215+Lcub3d@users.noreply.github.com'
+          TREE=$(git write-tree)
+          CLEAN=$(printf '%s\n' 'feat(jobo): add reviewed Plan / Do view and daily comparison strip' '' 'Refs #1726 (Slice 5). Preserve the settled Slice 2-4 implementations.' | git commit-tree "$TREE" -p "$UP")
+          mkdir -p .github/workflows
+          git show "$OLD:.github/workflows/sync-upstream.yml" > .github/workflows/sync-upstream.yml
+          git add .github/workflows/sync-upstream.yml
+          FORK_TREE=$(git write-tree)
+          FORK=$(printf '%s\n' 'fix(jobo): review Slice 5 boundaries and add daily comparisons' '' 'Remove experimental completion coupling and lower-layer overrides; keep upstream Slice 2-4 unchanged.' | git commit-tree "$FORK_TREE" -p "$OLD" -p "$UP")
+          AUTH="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$AUTH" push --atomic origin "$CLEAN:refs/heads/contrib/jobo-slice5" "$FORK:refs/heads/feat/jobo-view"
+          printf 'contribution %s\npr18 %s\nupstream %s\n' "$CLEAN" "$FORK" "$UP" > /tmp/jobo-results/published.txt
+          # Keep fork main upstream-only; never merge feature work into main.
+          if test "$(git rev-parse origin/main)" = "$EXPECTED_MAIN"; then
+            git checkout -f --detach origin/main
+            git merge --no-edit "$UP"
+            git -c http.https://github.com/.extraheader="$AUTH" push origin HEAD:refs/heads/main
+            printf 'fork-main %s\n' "$(git rev-parse HEAD)" >> /tmp/jobo-results/published.txt
+          fi
+          unset AUTH GH_TOKEN
+          cat /tmp/jobo-results/published.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jobo-review-results-${{ github.run_number }}
+          path: /tmp/jobo-results/
+          retention-days: 7

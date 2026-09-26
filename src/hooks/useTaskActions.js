@@ -5,6 +5,7 @@ import { stripSpans } from '../utils/quickAddParser.js';
 import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
+import { doCompletionLink } from '../jobo/completionBridge.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -130,6 +131,70 @@ export default function useTaskActions({
   };
 
   // ── Task creation ────────────────────────────────────────────────────────
+
+  // JOBO's direct Plan creation path.  The modal-oriented addTask below reads
+  // `newTask` and intentionally rejects an empty title; this explicit handler
+  // receives a complete ordinary scheduled task from the JOBO adapter, keeps
+  // the same native conflict/undo/audio behavior, and returns the exact task
+  // synchronously so the view can begin inline title editing.
+  const createTimelineTask = ({
+    id = crypto.randomUUID(),
+    title = '',
+    date: requestedDate,
+    startTime: requestedStartTime,
+    duration = 30,
+    color,
+    notes = '',
+    subtasks = [],
+    projectId,
+    assignedUserSyncIds,
+    priority,
+  } = {}) => {
+    const taskDate = requestedDate || dateToString(selectedDate);
+    const startTime = requestedStartTime || getNextQuarterHour();
+    if (typeof title !== 'string') throw new TypeError('title must be a string');
+    if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+      throw new TypeError('duration must be a positive number');
+    }
+
+    const { conflicted, adjustedStartTime, conflictingEvent } = typeof getAdjustedTimeForImportedConflicts === 'function'
+      ? getAdjustedTimeForImportedConflicts(id, startTime, duration, taskDate)
+      : { conflicted: false, adjustedStartTime: startTime, conflictingEvent: null };
+    const task = {
+      id,
+      title,
+      duration,
+      color: color || colors[0].class,
+      completed: false,
+      isAllDay: false,
+      notes: typeof notes === 'string' ? notes : '',
+      subtasks: Array.isArray(subtasks)
+        ? subtasks.map((subtask) => ({ ...subtask, id: crypto.randomUUID(), completed: false }))
+        : [],
+      date: taskDate,
+      startTime: adjustedStartTime,
+      lastModified: new Date().toISOString(),
+      ...(projectId !== undefined && projectId !== null && projectId !== '' ? { projectId } : {}),
+      ...(Array.isArray(assignedUserSyncIds) && assignedUserSyncIds.length
+        ? { assignedUserSyncIds: [...assignedUserSyncIds] } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+    };
+
+    pushUndo();
+    setTasks(prev => [...prev, task]);
+    if (conflicted && conflictingEvent) {
+      setSyncNotification({
+        type: 'info',
+        title: 'Task Rescheduled',
+        message: `Task moved to ${adjustedStartTime} to avoid conflict with "${conflictingEvent.title}"`,
+      });
+    }
+    if (onboardingProgress && !onboardingProgress.hasAddedScheduledTask && typeof setOnboardingProgress === 'function') {
+      setOnboardingProgress(prev => ({ ...prev, hasAddedScheduledTask: true }));
+    }
+    if (typeof playUISound === 'function') playUISound('pop');
+    return task;
+  };
 
   const addTask = (toInbox = false) => {
     if (newTask.title.trim()) {
@@ -437,24 +502,51 @@ export default function useTaskActions({
 
   // ── Task completion ──────────────────────────────────────────────────────
 
-  const toggleComplete = (id, fromInbox = false) => {
-    pushUndo();
+  const toggleComplete = (id, fromInbox = false, jobo = null) => {
+    const recurringIdentity = typeof id === 'string' && id.startsWith('recurring-') ? parseRecurringId(id) : null;
+    const currentTask = recurringIdentity
+      ? recurringTasks.find(task => task.id === recurringIdentity.templateId)
+      : (fromInbox ? unscheduledTasks : tasks).find(task => task.id === id);
+    if (!currentTask) return null;
+    const before = recurringIdentity ? (currentTask.completedDates || []).includes(recurringIdentity.dateStr) : !!currentTask.completed;
+    const desired = jobo ? jobo.completed : !before;
+    const previousStamp = recurringIdentity ? currentTask.completedDatesTimestamps?.[recurringIdentity.dateStr] || null : currentTask.completedAt || null;
+    if (desired === before) return { id, fromInbox, completed: before, stamp: previousStamp,
+      ...(!recurringIdentity ? { transitionId: currentTask.transitionId ?? null } : {}) };
+    if (!jobo) pushUndo();
+    let stamp = recurringIdentity ? new Date().toISOString() : completionTimestamp();
+    // Native stamps have second precision. Never reuse a Do-owned event key
+    // on a quick reopen/complete, which would suppress a genuine new event.
+    while (desired && Object.keys(doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, stamp, 'probe')).some(key => currentTask.joboCompletionLinks?.[key])) {
+      const next = new Date(Date.parse(stamp) + (recurringIdentity ? 1 : 1000));
+      stamp = recurringIdentity ? next.toISOString() : completionTimestamp(next);
+    }
+    const links = jobo && desired ? doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, stamp, jobo.recordId) : {};
+    const originPatch = (task) => {
+      if (desired) return jobo ? { joboCompletionLinks: { ...task.joboCompletionLinks, ...links } } : {};
+      if (!previousStamp) return {};
+      const eventKey = Object.keys(doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, previousStamp, 'probe'))[0];
+      const unchecks = { ...task.joboUncompletionLinks };
+      if (jobo) unchecks[eventKey] = jobo.recordId;
+      else delete unchecks[eventKey];
+      return Object.keys(unchecks).length || task.joboUncompletionLinks ? { joboUncompletionLinks: unchecks } : {};
+    };
     playUISound('tick');
     triggerHaptic('medium');
     if (typeof id === 'string' && id.startsWith('recurring-')) {
       const { templateId, dateStr } = parseRecurringId(id);
       setRecurringTasks(prev => prev.map(t => {
         if (t.id !== templateId) return t;
-        const completed = (t.completedDates || []).includes(dateStr);
         return {
           ...t,
-          completedDates: completed
+          completedDates: desired === false
             ? (t.completedDates || []).filter(d => d !== dateStr)
             : [...(t.completedDates || []), dateStr],
           // Stamp the toggled occurrence so sync resolves this complete/un-complete
           // by last-writer-wins per date instead of letting a concurrent series
           // edit clobber it (completedDates is unioned across devices on merge).
-          completedDatesTimestamps: { ...(t.completedDatesTimestamps || {}), [dateStr]: new Date().toISOString() },
+          completedDatesTimestamps: { ...(t.completedDatesTimestamps || {}), [dateStr]: stamp },
+          ...originPatch(t),
           lastModified: new Date().toISOString()
         };
       }));
@@ -465,25 +557,28 @@ export default function useTaskActions({
       if (!wasCompleted) {
         setUndoToast({ message: 'Task completed', actionable: true });
       }
-      return;
+      return { id, fromInbox, completed: desired, stamp };
     }
 
     const taskToToggle = fromInbox
       ? unscheduledTasks.find(t => t.id === id)
       : tasks.find(t => t.id === id);
+    // The mutation result and its stored task must identify the same event.
+    // Allocate outside the updater so React retries cannot generate a new id.
+    const transitionId = crypto.randomUUID();
     if (!onboardingProgress.hasCompletedTask && taskToToggle && !taskToToggle.completed) {
       setOnboardingProgress(prev => ({ ...prev, hasCompletedTask: true }));
     }
 
     if (fromInbox) {
       setUnscheduledTasks(prev => prev.map(task =>
-        task.id === id ? { ...task, completed: !task.completed, completedAt: !task.completed ? completionTimestamp() : null, transitionId: crypto.randomUUID() } : task
+        task.id === id ? { ...task, completed: desired, completedAt: desired ? stamp : null, transitionId, ...originPatch(task) } : task
       ));
     } else {
       const task = tasks.find(t => t.id === id);
       if (task?.isTaskCalendar && task?.icalUid) {
         const completionKey = task.icalUid + '::' + task.date;
-        const newCompleted = !task.completed;
+        const newCompleted = desired;
         setCompletedTaskUids(prev => {
           const newSet = new Set(prev);
           if (task.completed) {
@@ -505,13 +600,16 @@ export default function useTaskActions({
       // .test.js): the Obsidian completion marker regenerates from this
       // stored value, so the app must record what it intends to write.
       setTasks(prev => prev.map(task =>
-        task.id === id ? { ...task, completed: !task.completed, completedAt: !task.completed ? completionTimestamp() : null, transitionId: crypto.randomUUID() } : task
+        task.id === id ? { ...task, completed: desired, completedAt: desired ? stamp : null, transitionId, ...originPatch(task) } : task
       ));
     }
     if (taskToToggle && !taskToToggle.completed) {
       setUndoToast({ message: 'Task completed', actionable: true });
     }
+    return { id, fromInbox, completed: desired, stamp: desired ? stamp : null, transitionId };
   };
+
+  const setJoboTaskCompletion = (state, completed, recordId) => toggleComplete(state.id, state.fromInbox, { completed, recordId });
 
   // ── Task move ────────────────────────────────────────────────────────────
 
@@ -899,6 +997,7 @@ export default function useTaskActions({
     clearDeadline,
     // Create
     addTask,
+    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,
@@ -911,6 +1010,7 @@ export default function useTaskActions({
     updateRecurrenceEndCondition,
     // Complete
     toggleComplete,
+    setJoboTaskCompletion,
     // Move
     postponeTask,
     moveToInbox,

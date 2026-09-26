@@ -106,6 +106,7 @@ import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
+import useJoboViewWriter from './hooks/useJoboViewWriter.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -1293,7 +1294,7 @@ const DayPlanner = () => {
     trmnlSyncInProgressRef,
     performTrmnlSyncRef,
   } = useTrmnlSync();
-  const { undoToast, setUndoToast, pushUndo, performUndo, performRedo } = useUndo({
+  const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
     playUISound,
@@ -4425,7 +4426,16 @@ const DayPlanner = () => {
         // with the end left unwrapped past 1440 when a session crosses
         // midnight (the log is keyed by the date the session STARTED).
         const startMin = focusSessionStart.getHours() * 60 + focusSessionStart.getMinutes();
-        const span = { start: startMin, end: startMin + sessionMinutes };
+        // Only explicit participants can attribute this session to a JOBO Do.
+        // Retain full recurring instance IDs; the session's day is not the
+        // task's occurrence day. Older aggregate spans remain unattributed.
+        const taskMinutes = Object.fromEntries(Object.entries(minutesCopy)
+          .filter(([, minutes]) => Number.isFinite(minutes) && minutes > 0));
+        const span = {
+          id: crypto.randomUUID(), start: startMin, end: startMin + sessionMinutes,
+          startedAt: focusSessionStart.toISOString(), endedAt: new Date().toISOString(),
+          taskIds: Object.keys(taskMinutes), taskMinutes,
+        };
         setFocusLog(prev => {
           const existing = prev[sessionDateStr] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
           const updated = {
@@ -6992,6 +7002,7 @@ const DayPlanner = () => {
     postponeDeadlineTask,
     clearDeadline,
     addTask,
+    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,
@@ -7002,6 +7013,7 @@ const DayPlanner = () => {
     updateRecurrencePattern,
     updateRecurrenceEndCondition,
     toggleComplete,
+    setJoboTaskCompletion,
     postponeTask,
     moveToInbox,
     addSubtask,
@@ -7116,6 +7128,12 @@ const DayPlanner = () => {
           });
         }
       : null,
+  });
+  const recordJoboFromView = useJoboViewWriter({
+    records: joboRecords, pendingIds: joboPendingIds, recordJobo, pushUndoAction,
+    tasks, unscheduledTasks, recurringTasks, setJoboTaskCompletion,
+    // Let a partial-side-effect notice follow the generic undo success toast.
+    onNotice: message => window.setTimeout(() => setUndoToast({ message, actionable: false }), 0),
   });
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.
@@ -8710,7 +8728,7 @@ const DayPlanner = () => {
     scrollToCurrentHour, scrollToHour,
 
     // ── Functions – task CRUD ─────────────────────────────────────────────────
-    addTask, toggleComplete,
+    addTask, createTimelineTask, toggleComplete,
     archiveInboxTask, restoreArchivedInboxTask,
     deleteRecurringInstance, updateRecurrencePattern,
     updateRecurrenceEndCondition, updateRecurringTemplate,
@@ -8943,7 +8961,7 @@ const DayPlanner = () => {
     aspireEnabled, setAspireEnabled,
     joboRecords, joboLoaded, joboWritable, joboError,
     joboPendingIds, joboPendingCount,
-    joboLoadState, joboWriteState, recordJobo, reloadJobo,
+    joboLoadState, joboWriteState, recordJobo, recordJoboFromView, reloadJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

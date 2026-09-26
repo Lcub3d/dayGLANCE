@@ -19,7 +19,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 
-const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }) => {
+const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, renderExtraActions, renderNotesAction, timeMetadata, suppressNotesPanel = false, onToggleComplete, completionDisabled = false }) => {
   const { t } = useTranslation();
   const {
     isTablet,
@@ -58,7 +58,9 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
   const isMicroHeight = height <= 40;
   const isRecurringTask = typeof task.id === 'string' && task.id.startsWith('recurring-');
 
-  const NotesButton = ({ inMenu = false }) => (
+  // Render helpers keep button nodes stable when a parent updates hover/focus.
+  // Defining components inside this render remounts them between down and click.
+  const renderNotesButton = (inMenu = false) => renderNotesAction ? renderNotesAction(inMenu) : (
     <button
       onMouseDown={() => {
         if (isLinkOnlyTask(task)) {
@@ -92,11 +94,11 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
     </button>
   );
 
-  const ActionButtons = ({ inMenu = false }) => {
+  const renderActionButtons = (inMenu = false) => {
     if (isRecurringTask) {
       return (
         <>
-          <NotesButton inMenu={inMenu} />
+          {renderNotesButton(inMenu)}
           {task.recurrenceType !== 'daily' && (
           <button
             onClick={() => postponeTask(task.id)}
@@ -127,12 +129,13 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
             {inMenu && <span className="text-xs">{t('common.delete')}</span>}
           </button>
           )}
+          {renderExtraActions?.(inMenu)}
         </>
       );
     }
     return (
       <>
-        <NotesButton inMenu={inMenu} />
+        {renderNotesButton(inMenu)}
         <button
           onClick={() => postponeTask(task.id)}
           className={`hover:bg-white/20 rounded p-1 transition-colors ${inMenu ? 'flex items-center gap-2 w-full' : ''}`}
@@ -161,6 +164,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
           {inMenu && <span className="text-xs">{t('common.toInbox')}</span>}
         </button>
         )}
+        {renderExtraActions?.(inMenu)}
       </>
     );
   };
@@ -178,8 +182,8 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
               >
                 {stripWikilinks(task.title)}
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {task.notes && (
+              <div className="flex items-center gap-1 flex-shrink-0" data-task-action-buttons>
+                {renderNotesAction ? renderNotesAction(false) : task.notes && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -195,6 +199,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                   <Clock size={10} />
                   {formatTime(task.startTime)} • {t('common.minutesShort', { count: task.duration, defaultValue: '{{count}} min' })}
                 </div>
+                {renderExtraActions?.(false)}
               </div>
             </div>
             {!isMicroHeight && (task.calendarName || task.location) && (
@@ -211,21 +216,22 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
             {!isImported && (
               <button
                 onClick={() => setExpandedTaskMenu(expandedTaskMenu === task.id ? null : task.id)}
-                className="task-menu-container absolute top-0.5 right-0.5 hover:bg-white/20 rounded p-0.5 transition-colors z-10"
+                className="task-menu-container absolute top-0.5 right-0.5 hover:bg-white/20 rounded p-0.5 transition-colors z-10" data-task-action-menu
               >
                 <MoreHorizontal size={14} />
                 {expandedTaskMenu === task.id && (
                   <div className="task-menu-container absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg p-1 z-30 shadow-xl border border-stone-300 dark:border-gray-700 min-w-[100px] text-gray-800 dark:text-white">
-                    <ActionButtons inMenu={true} />
+                    {renderActionButtons(true)}
                   </div>
                 )}
               </button>
             )}
-            <div className="pr-6">
+            <div className="pr-6" data-task-narrow-content>
               <div className="flex items-center gap-1">
                 {(!isImported || task.isTaskCalendar) && (
                   <button
-                    onClick={() => toggleComplete(task.id)}
+                    onClick={() => onToggleComplete ? onToggleComplete() : toggleComplete(task.id)}
+                    disabled={completionDisabled}
                     className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
                   >
                     {task.completed && <Check size={10} strokeWidth={3} />}
@@ -319,7 +325,8 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 {(!isImported || task.isTaskCalendar) && (
                   <button
-                    onClick={() => toggleComplete(task.id)}
+                    onClick={() => onToggleComplete ? onToggleComplete() : toggleComplete(task.id)}
+                    disabled={completionDisabled}
                     className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
                   >
                     {task.completed && <Check size={10} strokeWidth={3} />}
@@ -404,8 +411,8 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                 </div>
               </div>
               {!isImported && (
-                <div className="flex items-center gap-0.5 flex-shrink-0">
-                  <ActionButtons />
+                <div className="flex items-center gap-0.5 flex-shrink-0" data-task-action-buttons data-task-controls-only>
+                  {renderActionButtons()}
                 </div>
               )}
             </div>
@@ -413,13 +420,14 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
               <div className="text-xs opacity-90 whitespace-nowrap flex items-center gap-1 mt-0.5">
                 <Clock size={10} />
                 {formatTime(task.startTime)} • {t('common.minutesShort', { count: task.duration, defaultValue: '{{count}} min' })}
+                {timeMetadata}
               </div>
             )}
           </>
         )}
       </div>
       {/* Notes panel - floating below task (or above if task ends after 22:00) */}
-      {expandedNotesTaskId === task.id && !isImported && (() => {
+      {!suppressNotesPanel && expandedNotesTaskId === task.id && !isImported && (() => {
         const startMin = timeToMinutes(task.startTime || '0:00');
         const endMin = startMin + (task.duration || 0);
         const showAbove = flipNotesPanel !== undefined ? flipNotesPanel : endMin >= 22 * 60;
@@ -452,7 +460,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
         );
       })()}
       {/* Editable notes panel for imported calendar events */}
-      {expandedNotesTaskId === task.id && isImported && (() => {
+      {!suppressNotesPanel && expandedNotesTaskId === task.id && isImported && (() => {
         const startMin = timeToMinutes(task.startTime || '0:00');
         const endMin = startMin + (task.duration || 0);
         const showAbove = flipNotesPanel !== undefined ? flipNotesPanel : endMin >= 22 * 60;

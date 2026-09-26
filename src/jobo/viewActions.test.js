@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   completeDoAttempt,
+  createDoRecord,
   DO_PROGRESS,
 } from './core.js';
 import {
@@ -10,6 +11,7 @@ import {
 } from './detector.js';
 import {
   commitDoEdit,
+  copyDoRecord,
   createManualDo,
   doIntervalAt,
   moveDoInterval,
@@ -164,6 +166,69 @@ describe('createManualDo', () => {
       id: 'manual:bad', title: 'Bad', date: '2026-09-26', startMinute: 60,
       progress: DO_PROGRESS.COMPLETED, now: NOW,
     })).toThrow();
+  });
+});
+
+describe('copyDoRecord', () => {
+  const source = createManualDo({
+    id: 'completion:original', title: 'Ship report',
+    task: { id: 'task-1', title: 'Live title' },
+    planSnapshot: { date: '2026-09-26', startTime: '09:00', duration: 60 },
+    date: '2026-09-26', startMinute: 600, duration: 45, now: NOW,
+  });
+
+  it('creates a new manual attempt with the original link and snapshot', () => {
+    const copied = copyDoRecord({
+      records: [source], record: source, id: 'manual:copy',
+      date: '2026-09-27', startMinute: 11 * 60, duration: 50, now: NOW + 1000,
+    });
+    expect(copied.id).toBe('manual:copy');
+    expect(copied.id).not.toBe(source.id);
+    expect(copied.source).toBe('manual');
+    expect(copied.progress).toBe(DO_PROGRESS.STARTED);
+    expect(copied.taskId).toBe(source.taskId);
+    expect(copied.planSnapshot).toEqual(source.planSnapshot);
+    expect(copied.date).toBe('2026-09-27');
+    expect(copied.startTime).toBe('11:00');
+    expect(copied.endTime).toBe('11:50');
+    expect(copied).not.toHaveProperty('eventId');
+  });
+
+  it('downgrades a completed source and never copies completion identity fields', () => {
+    const completed = { ...source, source: 'completion', progress: DO_PROGRESS.COMPLETED, eventId: 'completion-event' };
+    const copied = copyDoRecord({
+      records: [completed], record: completed, id: 'manual:from-completion',
+      patch: doIntervalAt('2026-09-26', 12 * 60, 30), now: NOW + 2000,
+    });
+    expect(copied.source).toBe('manual');
+    expect(copied.progress).toBe(DO_PROGRESS.STARTED);
+    expect(copied.id).toBe('manual:from-completion');
+    expect(copied).not.toHaveProperty('eventId');
+    expect(copied.taskId).toBe(source.taskId);
+    expect(copied.planSnapshot).toEqual(source.planSnapshot);
+  });
+
+  it('returns null for a stale opened record and does not build a duplicate', () => {
+    const newer = { ...source, updatedAt: '2026-09-26T10:00:00.001Z' };
+    expect(copyDoRecord({
+      records: [newer], record: source, id: 'manual:stale',
+      date: '2026-09-27', startMinute: 600, now: NOW + 1000,
+    })).toBeNull();
+  });
+
+  it('requires a target interval when copying an untimed record', () => {
+    const untimed = createDoRecord({
+      id: 'manual:untimed', taskId: null, title: 'Unplanned', source: 'manual',
+      progress: DO_PROGRESS.STARTED, timing: 'untimed', date: '2026-09-26',
+      startTime: null, endDate: null, endTime: null, planSnapshot: null,
+      createdAt: '2026-09-26T10:00:00.000Z', updatedAt: '2026-09-26T10:00:00.000Z',
+      observedAt: '2026-09-26T10:00:00.000Z',
+    });
+    expect(() => copyDoRecord({ records: [untimed], record: untimed, id: 'manual:untimed-copy', now: NOW })).toThrow();
+    expect(copyDoRecord({
+      records: [untimed], record: untimed, id: 'manual:timed-copy',
+      date: '2026-09-26', startMinute: 13 * 60, duration: 25, now: NOW + 1,
+    }).timing).toBe('timed');
   });
 });
 

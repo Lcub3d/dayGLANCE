@@ -307,6 +307,91 @@ export function createManualDo({
 }
 
 /**
+ * Build a fresh manual Do from the currently opened record.
+ *
+ * A copy is a new attempt, even when the source was a completion attempt.  It
+ * therefore gets a new identity, starts at `started`, and is written with the
+ * manual source.  The captured task link and plan snapshot are deliberately
+ * copied so the new attempt remains attached to the same Plan.  The caller
+ * supplies the target interval and clock; this helper never reads React state
+ * or writes the ledger.
+ *
+ * `records` and `record` are required together for the same stale-row guard
+ * used by edits.  `patch` may be a complete/partial timed interval patch, or
+ * callers may pass `date`, `startMinute`, and `duration` directly.  A timed
+ * source with no target patch keeps its interval.  Untimed records need an
+ * explicit target interval because they do not carry a start time to copy.
+ */
+export function copyDoRecord({
+  records,
+  record,
+  id,
+  patch,
+  date,
+  startMinute,
+  duration,
+  now,
+} = {}) {
+  const current = resolveEditableDoRecord(records, record);
+  if (!current) return null;
+
+  let interval;
+  if (patch !== undefined) {
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+      throw new TypeError('patch must be an object');
+    }
+    for (const key of Object.keys(patch)) {
+      if (!EDITABLE_FIELDS.has(key)) throw new TypeError(`Cannot copy captured field: ${key}`);
+    }
+    const merged = { ...current, ...patch };
+    // A copy is always a timed manual attempt.  Do not silently turn an
+    // untimed patch into an invalid createManualDo call.
+    if (merged.timing !== DO_TIMING.TIMED) {
+      throw new TypeError('A copied Do requires a timed target interval');
+    }
+    // createDoRecord's validation (via doDurationMinutes) is the canonical
+    // interval check.  It also handles intervals crossing midnight.
+    const copiedDuration = doDurationMinutes(merged);
+    const [hours, minutes] = merged.startTime.split(':').map(Number);
+    interval = {
+      date: merged.date,
+      startMinute: hours * 60 + minutes,
+      duration: copiedDuration,
+    };
+  } else if (date !== undefined || startMinute !== undefined || duration !== undefined) {
+    if (date === undefined || startMinute === undefined) {
+      throw new TypeError('date and startMinute are required for a copied interval');
+    }
+    interval = { date, startMinute, duration: duration === undefined ? 30 : duration };
+  } else {
+    if (current.timing !== DO_TIMING.TIMED) {
+      throw new TypeError('An untimed Do requires a target interval to copy');
+    }
+    const [hours, minutes] = current.startTime.split(':').map(Number);
+    interval = {
+      date: current.date,
+      startMinute: hours * 60 + minutes,
+      duration: doDurationMinutes(current),
+    };
+  }
+
+  const task = current.taskId === null
+    ? null
+    : { id: current.taskId, title: current.title };
+  return createManualDo({
+    id: id ?? `manual:${crypto.randomUUID()}`,
+    title: current.title,
+    task,
+    planSnapshot: current.planSnapshot,
+    ...interval,
+    // Every copy starts as a new, active manual attempt.  In particular, a
+    // completion source must never manufacture another completion event.
+    progress: DO_PROGRESS.STARTED,
+    now,
+  });
+}
+
+/**
  * Prepare an interval/progress edit against the current ledger version.
  * `null` means the dialog/gesture was stale or the row was deleted.  A
  * successful no-op returns the current object without changing its version.

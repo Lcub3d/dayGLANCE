@@ -10,6 +10,102 @@ function liveTask(item) {
   return item.currentTask;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const NATIVE_CREATE_HANDLER = 'createTimelineTask';
+const COPY_FIELDS = Object.freeze([
+  'title', 'notes', 'subtasks', 'color', 'projectId', 'assignedUserSyncIds', 'priority',
+]);
+
+function randomId() {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') throw new TypeError('A native task identity handler is required');
+  return globalThis.crypto.randomUUID();
+}
+
+function normalizePlanInput({ date, startTime, duration = 30, title = '' } = {}) {
+  if (typeof date !== 'string' || !DATE_RE.test(date)) throw new TypeError('date must be YYYY-MM-DD');
+  if (typeof startTime !== 'string' || !TIME_RE.test(startTime)) throw new TypeError('startTime must be HH:mm');
+  if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+    throw new TypeError('duration must be a positive number');
+  }
+  if (typeof title !== 'string') throw new TypeError('title must be a string');
+  return { date, startTime, duration, title };
+}
+
+function findHandler(ctx, name) {
+  if (!ctx) return null;
+  return typeof ctx[name] === 'function' ? ctx[name].bind(ctx) : null;
+}
+
+function normalizeCreatedResult(result) {
+  if (!result || typeof result !== 'object' || Array.isArray(result) || !result.id) return false;
+  return { task: result, id: result.id };
+}
+
+function invokeCreate(ctx, requestedTask) {
+  const handler = findHandler(ctx, NATIVE_CREATE_HANDLER);
+  if (!handler) return false;
+  const result = handler(requestedTask);
+  return normalizeCreatedResult(result);
+}
+
+function ordinaryPlanCopy(source, target) {
+  const copy = {
+    id: randomId(),
+    title: source.title ?? '',
+    date: target.date,
+    startTime: target.startTime,
+    duration: target.duration,
+    isAllDay: false,
+    completed: false,
+  };
+  for (const key of COPY_FIELDS) {
+    if (source[key] !== undefined) {
+      copy[key] = key === 'subtasks'
+        ? source[key].map(value => ({ ...value, id: randomId(), completed: false }))
+        : Array.isArray(source[key]) ? [...source[key]] : source[key];
+    }
+  }
+  return copy;
+}
+
+/**
+ * Create a scheduled Plan through an explicit native task handler.
+ *
+ * The context's `createTimelineTask` handler receives a complete task draft
+ * and remains the sole writer.  The old `addTask()` API intentionally is not
+ * called here: it only accepts a boolean inbox flag and would otherwise read
+ * stale modal state.
+ * The synchronous handler returns the complete task object.  This adapter
+ * normalizes that object to `{ task, id }` for the view and treats any missing
+ * object/id as a failed create.
+ */
+export function createQuickPlan(ctx, { date, startTime, duration = 30, title = '' } = {}) {
+  const input = normalizePlanInput({ date, startTime, duration, title });
+  return invokeCreate(ctx, {
+    id: randomId(),
+    ...input,
+    isAllDay: false,
+    completed: false,
+    notes: '',
+    subtasks: [],
+  });
+}
+
+/** Copy a live Plan into a new ordinary scheduled task through main. */
+export function copyPlan(ctx, item, { date, startTime, duration } = {}) {
+  const source = liveTask(item);
+  if (!source) return false;
+  const input = normalizePlanInput({
+    date: date ?? source.date,
+    startTime: startTime ?? source.startTime,
+    duration: duration ?? source.duration,
+    title: source.title ?? '',
+  });
+  const copy = ordinaryPlanCopy(source, input);
+  return invokeCreate(ctx, copy);
+}
+
 /** Return the native actions permitted for a live Plan row. */
 export function planCapabilities(item) {
   const task = liveTask(item);
@@ -71,6 +167,16 @@ export function startPlanDrag(ctx, item, event) {
   return true;
 }
 
+/** Start resizing a live native Plan through main's task resize handler. */
+export function startPlanResize(ctx, item, event, scale = 80, { touch = false } = {}) {
+  const task = liveTask(item);
+  if (!task || !planCapabilities(item).editable) return false;
+  const handler = touch ? ctx?.handleTouchResizeStart : ctx?.handleResizeStart;
+  if (typeof handler !== 'function') return false;
+  handler(task, event, scale);
+  return true;
+}
+
 /** Forward an explicit calendar drop target to main's drag/drop handler. */
 export function dropPlan(ctx, event, selectedDate, time) {
   if (typeof ctx?.handleDropOnCalendar !== 'function') return false;
@@ -94,10 +200,13 @@ export function writeDailyNotes(ctx, date, text) {
 
 export default {
   planCapabilities,
+  createQuickPlan,
+  copyPlan,
   openNewPlan,
   editPlan,
   togglePlanCompletion,
   startPlanDrag,
+  startPlanResize,
   dropPlan,
   writePlanNotes,
   writeDailyNotes,

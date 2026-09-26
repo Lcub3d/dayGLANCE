@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
-import { createManualDo, doIntervalAt, prepareDoEdit, prepareDoDelete, commitDoEdit } from '../../jobo/viewActions.js';
+import { doIntervalAt, prepareDoDelete, commitDoEdit } from '../../jobo/viewActions.js';
+import { createViewDo as createManualDo, prepareViewDoEdit as prepareDoEdit } from '../../jobo/viewProgress.js';
 
-const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY];
+const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY, DO_PROGRESS.COMPLETED];
 const minute = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 
 export default function DoEditor({ record, initial, records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, borderClass }) {
   const [id] = useState(() => record?.id || `manual:${crypto.randomUUID()}`);
   const [draft, setDraft] = useState(() => ({
     title: record?.title || initial?.title || '',
-    progress: record?.progress || DO_PROGRESS.STARTED,
+    progress: record?.progress || DO_PROGRESS.COMPLETED,
     ...(record ? {
       timing: record.timing, date: record.date, startTime: record.startTime || '09:00',
       endDate: record.endDate || record.date, endTime: record.endTime || '09:30',
@@ -77,7 +78,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
       event.preventDefault(); target?.focus();
     }
   };
-  const progressOptions = record?.progress === DO_PROGRESS.COMPLETED ? [DO_PROGRESS.COMPLETED, ...PROGRESS] : PROGRESS;
+  const progressOptions = PROGRESS;
 
   return <div className="jobo-s5-modal-mask" onMouseDown={(event) => {
     if (event.target === event.currentTarget && !saving) onClose();
@@ -113,7 +114,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
             {progressOptions.map((value) => <option key={value} value={value}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
           </select>
         </label>
-        <p className="jobo-s5-dialog-note">{t('jobo.view.completedByCompletion')}</p>
+        <p className="jobo-s5-dialog-note">{t('jobo.view.doCompletionLinkHint', { defaultValue: 'Completed checks the linked Plan; other progress values reopen it.' })}</p>
         </fieldset>
         {waiting && <p className="jobo-s5-dialog-note" role="status">{t('jobo.view.pendingSave')}</p>}
         {error && <p className="jobo-s5-dialog-error" role="alert">{error}</p>}

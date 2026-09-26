@@ -76,6 +76,9 @@
 }
 
 .jobo-s5-scroll {
+  /* Keep the board's sticky headings and raised cards below date-header popovers. */
+  position: relative;
+  z-index: 0;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -86,6 +89,8 @@
 
 .jobo-s5-day-grid {
   position: relative;
+  /* The now line clears every task, while the sticky column header stays above the grid. */
+  z-index: 0;
   min-width: 760px;
 }
 
@@ -301,6 +306,11 @@
   gap: 8px;
   align-self: start;
   z-index: 3;
+  position: sticky;
+  top: 36px;
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+  scrollbar-width: thin;
 }
 
 .jobo-s5-empty-notes {
@@ -314,13 +324,25 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  min-height: 88px;
-  max-height: 190px;
+  min-height: 80px;
+  max-height: 1000px;
   overflow: hidden;
+  border: 1px solid rgb(127 127 127 / .2);
+}
+
+/* Error controls must have room above the bottom resize handle. These
+   minimums are temporary: once the warning clears the user's inline height
+   is used again. */
+.jobo-s5-note-tile[data-jobo-note-state="error"] {
+  min-height: 150px;
+}
+
+.jobo-s5-note-tile[data-jobo-note-state="conflict"] {
+  min-height: 260px;
 }
 
 .jobo-s5-note-title {
-  min-height: 25px;
+  min-height: 24px;
   flex: none;
   padding: 5px 7px 4px;
   display: flex;
@@ -330,11 +352,16 @@
 }
 
 .jobo-s5-note-title b {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
+}
+
+.jobo-s5-note-title button {
+  flex: none;
 }
 
 .jobo-s5-note-text {
@@ -349,12 +376,179 @@
   line-height: 1.55;
 }
 
+.jobo-s5-note-tile textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 36px;
+  max-height: none;
+  margin: 0;
+  padding: 5px 8px 12px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  resize: none;
+  overflow: auto;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.65;
+  scrollbar-width: thin;
+}
+
+.jobo-s5-note-tile textarea:focus {
+  background: rgb(255 255 255 / .08);
+}
+
+.jobo-s5-note-hide {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 4px;
+  opacity: .8;
+}
+
+.jobo-s5-note-hide:hover,
+.jobo-s5-note-hide:focus-visible {
+  background: rgb(255 255 255 / .2);
+  opacity: 1;
+}
+
+.jobo-s5-note-status {
+  flex: none;
+  margin: 0;
+  padding: 0 8px 5px;
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.jobo-s5-note-latest {
+  flex: none;
+  margin: 5px 7px 0;
+  padding: 5px 6px;
+  border: 1px solid rgb(245 158 11 / .55);
+  border-radius: 4px;
+  background: rgb(245 158 11 / .12);
+  color: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.jobo-s5-note-latest-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.jobo-s5-note-latest-text {
+  max-height: 72px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  opacity: .85;
+}
+
+.jobo-s5-note-latest button,
+.jobo-s5-note-retry {
+  margin-top: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  background: rgb(255 255 255 / .18);
+}
+
+.jobo-s5-note-latest button:hover,
+.jobo-s5-note-retry:hover {
+  background: rgb(255 255 255 / .3);
+}
+
+.jobo-s5-note-retry {
+  align-self: flex-start;
+  flex: none;
+  margin: 0 8px 5px;
+}
+
+.jobo-s5-note-tile[data-jobo-note-requested="true"] {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+  animation: jobo-s5-note-requested 800ms ease-out;
+}
+
+@keyframes jobo-s5-note-requested {
+  from { outline-color: #f59e0b; }
+  to { outline-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jobo-s5-note-tile[data-jobo-note-requested="true"] {
+    animation: none;
+  }
+}
+
+.jobo-s5-note-resizer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+  background: rgb(0 0 0 / .03);
+}
+
+.jobo-s5-note-resizer span {
+  width: 30px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: .32;
+}
+
+.jobo-s5-note-resizer:hover,
+.jobo-s5-note-resizer:focus-visible {
+  background: rgb(255 255 255 / .12);
+}
+
+.jobo-s5-note-resizer:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
 .jobo-s5-daily-note {
-  min-height: 120px;
+  background: #fff;
+  color: #1f2937;
+  min-height: 150px;
 }
 
 .jobo-s5-daily-note .jobo-s5-note-title {
   border-bottom-color: rgb(127 127 127 / .15);
+}
+
+.jobo-s5-dark .jobo-s5-daily-note {
+  background: #1f2937;
+  color: #f8fafc;
+}
+
+.jobo-s5-show-daily {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px;
+  border: 1px dashed rgb(127 127 127 / .4);
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.jobo-s5-show-daily:hover {
+  background: rgb(127 127 127 / .12);
 }
 
 .jobo-s5-note-date {
@@ -650,9 +844,10 @@
 .jobo-s5-captured-label { position: absolute; right: 5px; bottom: 2px; font-size: 9px; opacity: .9; }
 .jobo-s5-historical .jobo-s5-meta-row { padding-right: 72px; }
 .jobo-s5-progress { max-width: 130px; min-height: 18px; padding: 0 3px; }
-.jobo-s5-resize { position: absolute; left: 0; right: 0; height: 6px; cursor: ns-resize; touch-action: none; z-index: 5; border-radius: 4px; }
+.jobo-s5-resize { position: absolute; left: 0; right: 0; height: 6px; cursor: ns-resize; touch-action: none; user-select: none; z-index: 5; border-radius: 4px; }
 .jobo-s5-resize-start { top: -2px; }
-.jobo-s5-resize-end { bottom: -2px; }
+.jobo-s5-resize-end { bottom: -4px; left: 33.333%; right: 33.333%; height: 12px; display: flex; align-items: center; justify-content: center; }
+.jobo-s5-resize-end::after { content: ''; width: 48px; max-width: 100%; height: 4px; border-radius: 999px; background: white; pointer-events: none; }
 .jobo-s5-resize:hover, .jobo-s5-resize:focus-visible { background: rgb(255 255 255 / .4); }
 .jobo-s5-resize:disabled { display: none; }
 .jobo-s5-drop-hint { position: absolute; pointer-events: none; z-index: 25; border-top: 2px solid #2563eb; color: #1d4ed8; font-size: 12px; font-weight: 600; }
@@ -662,12 +857,7 @@
 .jobo-s5-untimed-card { min-height: 36px; height: auto; }
 .jobo-s5-untimed-card > button { display: inline-flex; align-items: center; gap: 5px; text-align: left; }
 .jobo-s5-untimed-list { flex-wrap: wrap; }
-.jobo-s5-notes-column { display: flex; }
-.jobo-s5-note-title b { flex: 1; }
-.jobo-s5-note-tile { max-height: 280px; border: 1px solid rgb(127 127 127 / .2); }
-.jobo-s5-note-tile textarea { width: calc(100% - 12px); min-height: 90px; max-height: 180px; resize: vertical; margin: 6px; padding: 5px; border-radius: 4px; border: 1px solid currentColor; background: rgb(0 0 0 / .12); color: inherit; font-size: 12px; }
-.jobo-s5-note-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 0 8px 8px; font-size: 12px; }
-.jobo-s5-note-actions button { min-height: 28px; }
+.jobo-s5-notes-column[hidden], .jobo-s5-note-tile[hidden] { display: none; }
 .jobo-s5-dialog-actions button { display: inline-flex; align-items: center; gap: 5px; }
 .jobo-s5-dialog-actions .jobo-s5-delete-button { color: #b91c1c; margin-right: auto; }
 .jobo-s5-root button:disabled { opacity: .45; cursor: default; }
@@ -686,37 +876,100 @@
 .jobo-s5-dark .jobo-s5-selected { outline-color: #93c5fd; }
 .jobo-s5-native-plan { padding: 0; }
 .jobo-s5-plan-content { position: relative; min-width: 0; }
+.jobo-s5-creating { user-select: none; }
+.jobo-s5-create-preview { pointer-events: none; z-index: 35; }
+.jobo-s5-dragging .jobo-s5-card { outline: none; }
+.jobo-s5-draft-card { z-index: 5; }
+.jobo-s5-draft-title { width: 100%; min-width: 0; border: 0; outline: 0; background: rgb(255 255 255 / .14); color: inherit; border-radius: 3px; padding: 0 3px; font-size: 14px; font-weight: 600; }
+.jobo-s5-draft-title::placeholder { color: rgb(255 255 255 / .85); }
+.jobo-s5-draft-title:focus { background: rgb(255 255 255 / .24); }
+.jobo-s5-do-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.jobo-s5-do-actions .jobo-s5-do-notes { width: 26px; gap: 0; }
+.jobo-s5-do-actions button:disabled { opacity: .4; cursor: default; }
+.jobo-s5-do-timing-button { display: block; max-width: 100%; padding: 0; border: 0; text-align: left; border-radius: 3px; }
+.jobo-s5-do-timing-button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+/* Scope hover controls to JOBO; the shared native card keeps its other views. */
+.jobo-s5-root .jobo-s5-hover-actions,
+.jobo-s5-plan-card [data-task-action-buttons] > button,
+.jobo-s5-plan-card [data-task-action-menu],
+.jobo-s5-plan-card .jobo-s5-plan-inspect {
+  opacity: 0;
+  pointer-events: none;
+}
+.jobo-s5-card:hover .jobo-s5-hover-actions,
+.jobo-s5-card:focus-within .jobo-s5-hover-actions,
+.jobo-s5-untimed-card:hover .jobo-s5-hover-actions,
+.jobo-s5-untimed-card:focus-within .jobo-s5-hover-actions,
+.jobo-s5-note-tile:hover .jobo-s5-hover-actions,
+.jobo-s5-note-tile:focus-within .jobo-s5-hover-actions,
+.jobo-s5-plan-card:is(:hover,:focus-within,.jobo-s5-expanded-card) [data-task-action-buttons] > button,
+.jobo-s5-plan-card:is(:hover,:focus-within,.jobo-s5-expanded-card) [data-task-action-menu],
+.jobo-s5-plan-card:is(:hover,:focus-within) .jobo-s5-plan-inspect {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (hover: none), (pointer: coarse) {
+  .jobo-s5-root .jobo-s5-hover-actions,
+  .jobo-s5-plan-card [data-task-action-buttons] > button,
+  .jobo-s5-plan-card [data-task-action-menu],
+  .jobo-s5-plan-card .jobo-s5-plan-inspect { opacity: 1; pointer-events: auto; }
+}
+/* Hidden controls give their space back to the title. Keyboard focus reveals
+   them before interaction; touch devices keep the controls and their space. */
+@media (hover: hover) and (pointer: fine) {
+  .jobo-s5-do-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,
+  .jobo-s5-untimed-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,
+  .jobo-s5-note-tile:not(:hover):not(:focus-within) [data-jobo-note-actions],
+  .jobo-s5-plan-card:not(:hover):not(:focus-within):not(.jobo-s5-expanded-card) [data-task-controls-only] {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    gap: 0;
+  }
+  .jobo-s5-plan-card:not(:hover):not(:focus-within):not(.jobo-s5-expanded-card) [data-task-narrow-content] {
+    padding-right: 0;
+  }
+  .jobo-s5-plan-card:not(:hover):not(:focus-within) .jobo-s5-plan-content {
+    padding-right: 0 !important;
+  }
+}
 .jobo-s5-plan-shell { padding: 7px 8px; overflow: hidden; height: 100%; }
 .jobo-s5-plan-shell .jobo-s5-title { font-size: 14px; }
 .jobo-s5-native-plan .jobo-s5-plan-inspect { position: absolute; left: 6px; right: 5px; bottom: 3px; height: 22px; display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
 .jobo-s5-native-plan .jobo-s5-plan-inspect.is-compact { left: auto; top: 6px; bottom: auto; }
 .jobo-s5-plan-inspect .jobo-s5-card-action { width: 22px; height: 22px; opacity: 1; }
-.jobo-s5-execution-summary { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; overflow: hidden; font-size: 11px; text-align: left; height: 22px; border-radius: 3px; }
-.jobo-s5-execution-summary:hover { background: rgb(255 255 255 / .15); }
-.jobo-s5-latest { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; max-width: 100%; overflow: hidden; flex-shrink: 0; }
+.jobo-s5-plan-status { position: absolute; left: 8px; right: 8px; overflow: hidden; }
+.jobo-s5-inline-status { flex: 1; min-width: 0; height: 16px; margin-left: 3px; display: flex; align-items: center; }
+.jobo-s5-inline-status .jobo-s5-status-badges { width: 100%; }
+.jobo-s5-inline-status .jobo-s5-status-badge { height: 18px; padding-block: 0; }
+.jobo-s5-inline-status .jobo-s5-progress-badge { max-width: 55%; }
+.jobo-s5-status-badges { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.jobo-s5-status-badges.can-wrap { flex-wrap: wrap; }
+.jobo-s5-status-badge { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; height: 22px; padding: 2px 5px; border: 1px solid rgb(255 255 255 / .3); border-radius: 4px; background: rgb(0 0 0 / .18); color: white; font-size: 11px; line-height: 16px; text-align: left; }
+.jobo-s5-status-badge > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobo-s5-status-badge > svg, .jobo-s5-status-badge > small { flex-shrink: 0; }
+.jobo-s5-status-badge > small { font-size: 10px; opacity: .85; }
+.jobo-s5-progress-badge { flex: 0 1 auto; }
+.jobo-s5-time-badge { flex: 0 1 auto; }
+.jobo-s5-time-badge.is-attention { background: #fef3c7; color: #78350f; border-color: #fde68a; }
+.jobo-s5-time-badge.is-muted { background: rgb(255 255 255 / .92); color: #334155; }
+.jobo-s5-status-badge:hover { filter: brightness(1.08); }
+.jobo-s5-status-badge:focus-visible { outline: 2px solid white; outline-offset: -2px; }
+.jobo-s5-notes-toggle { gap: 2px; }
+.jobo-s5-note-arrow { flex-shrink: 0; }
 .jobo-s5-timing-summary { display: inline-flex; gap: 4px; align-items: center; min-width: 0; font-size: 12px; }
 .jobo-s5-timing-summary svg { flex-shrink: 0; }
-.jobo-s5-execution-summary .jobo-s5-timing-summary > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jobo-s5-expanded-card, .jobo-s5-card:focus-within { z-index: 45; }
 .jobo-s5-title { font-size: 14px; }
 .jobo-s5-meta-row { font-size: 12px; gap: 6px; }
 .jobo-s5-do-card .jobo-s5-meta-row > span { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
 .jobo-s5-untimed-title { font-size: 12px; max-width: 170px; }
-.jobo-s5-now-line { z-index: 3; }
+.jobo-s5-now-line { z-index: 80; }
 .jobo-s5-notice { font-size: 12px; }
-.jobo-s5-note-tile.is-collapsed { min-height: 32px; max-height: none; height: auto; border-color: transparent; }
-.jobo-s5-note-tile.is-collapsed .jobo-s5-note-title { border: 0; }
-.jobo-s5-note-tile.is-open { min-height: 120px; max-height: 1000px; resize: vertical; }
 .jobo-s5-note-title { min-height: 32px; }
 .jobo-s5-note-title b { font-size: 12px; }
 .jobo-s5-note-source-date { display: block; font-size: 11px; font-weight: 400; }
-.jobo-s5-notes-column { position: sticky; top: 36px; max-height: calc(100vh - 180px); overflow: auto; scrollbar-width: thin; }
 .jobo-s5-note-text { font-size: 12px; }
-.jobo-s5-note-tile form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.jobo-s5-note-tile textarea { flex: 1; min-height: 36px; max-height: none; resize: none; }
-.jobo-s5-note-tile form p { padding: 0 8px; font-size: 12px; }
-.jobo-s5-note-size { display: flex; justify-content: flex-end; gap: 5px; padding: 0 12px 3px; }
-.jobo-s5-note-size button { padding: 2px; }
 .jobo-s5-details { position: fixed; z-index: 650; width: min(460px, calc(100vw - 24px)); max-height: min(660px, calc(100vh - 24px)); overflow: auto; padding: 16px; border-radius: 10px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); font-size: 12px; line-height: 1.6; }
 .jobo-s5-details .jobo-s5-dialog-head { margin-bottom: 8px; }
 .jobo-s5-detail-plan { margin-bottom: 8px; }

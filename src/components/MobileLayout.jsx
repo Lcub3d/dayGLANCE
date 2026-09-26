@@ -478,9 +478,6 @@ const MobileLayout = () => {
     inboxTagFilter.length > 0 ||
     inboxProjectFilter.length > 0;
 
-  const [addGoalTrigger, setAddGoalTrigger] = useState(0);
-  const [addProjectTrigger, setAddProjectTrigger] = useState(0);
-  const [addAreaTrigger, setAddAreaTrigger] = useState(0);
   const [dailyStatsHabitsCollapsed, setDailyStatsHabitsCollapsed] = useState(true);
   const [dailyStatsAllTimeCollapsed, setDailyStatsAllTimeCollapsed] = useState(true);
 
@@ -650,33 +647,12 @@ const MobileLayout = () => {
 
             {mobileActiveTab === 'goals' && (
               <div className={`${cardBg} border-b ${borderClass} sticky top-0 z-30`}>
-                <div className="px-4 pt-3 pb-1">
+                {/* Title only: creating things is the tab's FAB (GoalDashboard),
+                    as in the desktop space; Add Area lives in Manage Areas. */}
+                <div className="px-4 py-3">
                   <h2 className={`font-bold text-lg ${textPrimary} flex items-center gap-2`}>
-                    <GitBranch size={20} className="text-blue-500" /> Goals &amp; Projects
+                    <GitBranch size={20} className="text-blue-500" /> {t('goals.dashboardTitle')}
                   </h2>
-                </div>
-                <div className="flex items-center gap-1 px-4 py-2">
-                  <button
-                    onClick={() => setAddAreaTrigger(v => v + 1)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-violet-600 text-white rounded-lg active:bg-violet-700 transition-colors"
-                  >
-                    <FolderOpen size={14} strokeWidth={2.5} />
-                    <span className="text-xs font-medium">{t('common.addArea')}</span>
-                  </button>
-                  <button
-                    onClick={() => setAddGoalTrigger(v => v + 1)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"
-                  >
-                    <Flag size={14} strokeWidth={2.5} />
-                    <span className="text-xs font-medium">{t('common.addGoal')}</span>
-                  </button>
-                  <button
-                    onClick={() => setAddProjectTrigger(v => v + 1)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg active:bg-emerald-700 transition-colors"
-                  >
-                    <Layers size={14} strokeWidth={2.5} />
-                    <span className="text-xs font-medium">{t('common.addProject')}</span>
-                  </button>
                 </div>
               </div>
             )}
@@ -1130,7 +1106,7 @@ const MobileLayout = () => {
 
             {/* GoalDashboard stays mounted to avoid expensive remount on every tab switch */}
             <div className={`flex flex-col flex-1 min-h-0 overflow-hidden ${mobileActiveTab === 'goals' ? '' : 'hidden'}`}>
-              <GoalDashboard embedded isActive={mobileActiveTab === 'goals'} addGoalTrigger={addGoalTrigger} addProjectTrigger={addProjectTrigger} addAreaTrigger={addAreaTrigger} />
+              <GoalDashboard embedded isActive={mobileActiveTab === 'goals'} />
             </div>
 
 

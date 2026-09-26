@@ -42,6 +42,14 @@ for item in ops['files']:
  assert digest(after) == item['after'], ('after',str(p),digest(after),item['after'])
  p.parent.mkdir(parents=True, exist_ok=True)
  p.write_bytes(after)
+# Browser run 36269379943 exposed hover width changes moving an Untimed
+# chip's Edit button away from the pointer. Reserve that chip's hit area.
+p = Path('src/components/jobo/JoboView.css')
+assert digest(p.read_bytes()) == '5eed16b557d140c360cfce66d12b5d0055957fcef5c305e8b6e6389cce3745d2'
+c = p.read_text().replace('  .jobo-s5-untimed-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,\n', '')
+c += '\n/* Untimed chips keep a stable hit area as controls appear. A hover-driven\n   width change moves adjacent chips under the pointer and can make Edit\n   impossible to click. Timed cards have fixed timeline geometry. */\n.jobo-s5-untimed-card { flex: 0 0 260px; width: 260px; max-width: 100%; min-width: 0; }\n.jobo-s5-untimed-title { flex: 1; min-width: 0; }\n'
+p.write_text(c)
+assert digest(p.read_bytes()) == '50b2b1ce0b94497e137fd076d03c4117e441f8cfe14414fe454cd81578789a3d'
 subprocess.run(['git','add','-A'],check=True)
 settled = ['src/jobo/core.js','src/jobo/core.test.js','src/jobo/comparison.test.js','src/jobo/store.js','src/jobo/ledger.js','src/jobo/ledger.test.js','src/jobo/detector.js','src/jobo/detector.test.js','src/hooks/useJoboDetector.js','src/hooks/useJoboDetector.test.js','src/hooks/useJoboLedger.js','src/hooks/useUndo.js','src/utils/taskMutations.js','src/sync','src/mergeSync.js','package.json','package-lock.json','dayglance-android','dayglance-ios']
 assert not git('diff','--cached','--name-only',UP,'--',*settled), 'Settled or unrelated source changed'

@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -203,12 +204,15 @@ internal object DayDialRenderer {
         for (id in ids) {
             try {
                 val options = runCatching { manager.getAppWidgetOptions(id) }.getOrDefault(Bundle())
-                val scale = faceScale(context, options)
-                val key = DialFaceInput.digest("${frame.faceKey}\nscale=$scale\nsalt=$salt")
+                val (wDp, hDp) = placementSizeDp(context, options)
+                // Inside the root's 4dp padding.
+                val arrangement = DialArrangement.choose(wDp - 8.0, hDp - 8.0, frame.cards)
+                val scale = faceScale(context, arrangement)
+                val key = DialFaceInput.digest("${frame.faceKey}\n$arrangement\nscale=$scale\nsalt=$salt")
                 if (prefs.getString(keyPref(id), null) == key) {
-                    partial(context, manager, id, frame, scale)
+                    partial(context, manager, id, frame, arrangement, scale)
                 } else {
-                    full(context, manager, id, frame, scale)
+                    full(context, manager, id, frame, arrangement, scale)
                     prefs.edit().putString(keyPref(id), key).apply()
                 }
             } catch (_: Throwable) {
@@ -230,8 +234,15 @@ internal object DayDialRenderer {
 
     private fun keyPref(id: Int) = "face_$id"
 
-    private fun full(context: Context, manager: AppWidgetManager, id: Int, frame: DayDialFrame, scale: Float) {
-        val views = RemoteViews(context.packageName, R.layout.widget_day_dial)
+    private fun layoutFor(arrangement: DialArrangement) = when (arrangement.placement) {
+        DialPlacement.DIAL -> R.layout.widget_day_dial
+        DialPlacement.TALL -> R.layout.widget_day_dial_tall
+        DialPlacement.WIDE -> R.layout.widget_day_dial_wide
+    }
+
+    private fun full(context: Context, manager: AppWidgetManager, id: Int, frame: DayDialFrame,
+                     arrangement: DialArrangement, scale: Float) {
+        val views = RemoteViews(context.packageName, layoutFor(arrangement))
         views.setImageViewBitmap(R.id.iv_day_dial_face,
             frame.painter.drawFace(scale, frame.input, frame.nowMin, frame.header, frame.rows, frame.dimmed))
         views.setInt(R.id.iv_day_dial_needle, "setImageLevel", frame.needleLevel)
@@ -239,13 +250,15 @@ internal object DayDialRenderer {
             views.setViewVisibility(viewId, if (slot == frame.rows.liveSlot) View.VISIBLE else View.GONE)
         }
         bindLive(views, frame, scale)
+        DayDialCardsBinder.bind(views, arrangement, frame.cards, frame.copy)
         views.setContentDescription(R.id.day_dial_root, frame.summary)
         views.setOnClickPendingIntent(R.id.day_dial_root, WidgetLinks.pendingIntent(context, REQUEST_OPEN, frame.tapUrl))
         manager.updateAppWidget(id, views)
     }
 
-    private fun partial(context: Context, manager: AppWidgetManager, id: Int, frame: DayDialFrame, scale: Float) {
-        val views = RemoteViews(context.packageName, R.layout.widget_day_dial)
+    private fun partial(context: Context, manager: AppWidgetManager, id: Int, frame: DayDialFrame,
+                        arrangement: DialArrangement, scale: Float) {
+        val views = RemoteViews(context.packageName, layoutFor(arrangement))
         views.setInt(R.id.iv_day_dial_needle, "setImageLevel", frame.needleLevel)
         bindLive(views, frame, scale)
         views.setContentDescription(R.id.day_dial_root, frame.summary)
@@ -260,22 +273,36 @@ internal object DayDialRenderer {
     }
 
     /**
-     * Pixels per spec point for the largest size the host lists (portrait and
-     * landscape differ; the smaller is shown by scaling the face down). At a
+     * The widget's size in dp as the host shows it NOW: the portrait size in
+     * portrait, the landscape one in landscape (a phone widget has both, and
+     * the arrangement differs: cards below in portrait, beside in landscape).
+     * A rotation is picked up by the next minute's tick, whose key includes
+     * the arrangement. Android 12+ lists the exact sizes; below that the
+     * options' min/max pairs are portrait (min width × max height) and
+     * landscape (max width × min height), as the other widgets read them.
+     */
+    private fun placementSizeDp(context: Context, options: Bundle): Pair<Double, Double> {
+        val landscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val sizes = exactWidgetSizes(options)
+        if (sizes.isNotEmpty()) {
+            val s = if (landscape) sizes.maxByOrNull { it.width / it.height }!! else sizes.maxByOrNull { it.height / it.width }!!
+            return s.width.toDouble() to s.height.toDouble()
+        }
+        val minW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0)
+        val maxW = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
+        val minH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
+        val maxH = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+        val (w, h) = if (landscape) maxW to minH else minW to maxH
+        return (if (w > 0) w.toDouble() else 300.0) to (if (h > 0) h.toDouble() else 315.0)
+    }
+
+    /**
+     * Pixels per spec point for the box the arrangement leaves the dial. At a
      * full tablet screen that is ~9 MB, which the spike delivered cleanly.
      */
-    private fun faceScale(context: Context, options: Bundle): Float {
-        val sizes = exactWidgetSizes(options)
-        val (w, h) = if (sizes.isNotEmpty()) {
-            val s = sizes.maxByOrNull { it.width * it.height }!!
-            s.width to s.height
-        } else {
-            val w = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
-            val h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
-            (if (w > 0) w.toFloat() else 300f) to (if (h > 0) h.toFloat() else 315f)
-        }
+    private fun faceScale(context: Context, arrangement: DialArrangement): Float {
         val density = context.resources.displayMetrics.density
-        val scale = min(w / DialSpec.CANVAS_WIDTH.toFloat(), h / DialSpec.CANVAS_HEIGHT.toFloat()) * density
+        val scale = min(arrangement.dialWidthDp / DialSpec.CANVAS_WIDTH, arrangement.dialHeightDp / DialSpec.CANVAS_HEIGHT).toFloat() * density
         // Rounded so a size report jittering by a pixel does not redraw the face.
         return max(0.5f, (scale * 8).toInt() / 8f)
     }
@@ -298,6 +325,8 @@ internal class DayDialFrame(
     val tapUrl: String,
     val summary: String,
     val painter: DialFacePainter,
+    val cards: DialCards,
+    val copy: DialHubCopy,
 ) {
     /** 0 at midnight, 10000 a full turn (day_dial_needle.xml). */
     val needleLevel: Int get() = DialNeedle.level(nowMin)
@@ -310,6 +339,7 @@ internal class DayDialFrame(
             rows.staticKey,
             "live=${rows.liveSlot}",
             "dim=$dimmed",
+            cards.key,
         ).joinToString("\n")
 
     companion object {
@@ -352,10 +382,13 @@ internal class DayDialFrame(
             }?.takeIf { it.isNotEmpty() } ?: today.toString()
             val tap = "dayglance://day?date=$shown&view=dial"
 
+            // The cards describe a live day; an outdated or mis-zoned one gets none.
+            val cards = if (status == DialHubStatus.LIVE) DialCards.from(day.fields, input.blocks) else DialCards.NONE
+
             val summary = listOfNotNull(header.eyebrow + ", " + header.date,
                 rows.title?.text, *rows.stack.map { it.text }.toTypedArray()).joinToString(". ")
             return DayDialFrame(input, nowMin, header, rows, status == DialHubStatus.OUTDATED || status == DialHubStatus.ZONE_CHANGED,
-                tap, summary, painter)
+                tap, summary, painter, cards, copy)
         }
     }
 }

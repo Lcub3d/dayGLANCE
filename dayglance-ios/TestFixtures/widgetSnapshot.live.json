@@ -349,7 +349,14 @@
         "startMin": 1350,
         "durationMin": 90
       }
-    ]
+    ],
+    "allDay": [],
+    "totals": {
+      "effortMinutes": 200,
+      "restoreMinutes": 170,
+      "sleepMinutes": 480,
+      "unblockedMinutes": 590
+    }
   },
   "use24Hour": false,
   "allGoals": [],
@@ -706,7 +713,14 @@
             "startMin": 1350,
             "durationMin": 90
           }
-        ]
+        ],
+        "allDay": [],
+        "totals": {
+          "effortMinutes": 200,
+          "restoreMinutes": 170,
+          "sleepMinutes": 480,
+          "unblockedMinutes": 590
+        }
       }
     },
     {
@@ -1060,7 +1074,14 @@
             "startMin": 1350,
             "durationMin": 90
           }
-        ]
+        ],
+        "allDay": [],
+        "totals": {
+          "effortMinutes": 200,
+          "restoreMinutes": 170,
+          "sleepMinutes": 480,
+          "unblockedMinutes": 590
+        }
       }
     },
     {
@@ -1414,7 +1435,14 @@
             "startMin": 1350,
             "durationMin": 90
           }
-        ]
+        ],
+        "allDay": [],
+        "totals": {
+          "effortMinutes": 200,
+          "restoreMinutes": 170,
+          "sleepMinutes": 480,
+          "unblockedMinutes": 590
+        }
       }
     }
   ],

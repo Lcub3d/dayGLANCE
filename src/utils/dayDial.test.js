@@ -1452,6 +1452,18 @@ describe('projectDialSnapshot', () => {
     ]);
   });
 
+  it('carries the all-day items and the legend totals the Android cards draw', () => {
+    const { allDay, totals } = snap();
+    expect(allDay).toEqual([{ id: '5', title: 'Holiday', completed: false, colorHex: expect.stringMatching(/^#[0-9a-f]{6}$/i) }]);
+    // 07:00–22:30: 420 + 90 minutes of sleep; totals from computeDaySummary.
+    expect(totals.sleepMinutes).toBe(510);
+    expect(totals.effortMinutes + totals.restoreMinutes).toBeGreaterThan(0);
+    for (const v of Object.values(totals)) expect(v === null || Number.isInteger(v)).toBe(true);
+    const bare = projectDialSnapshot({ date: 'd', dayTasks: [] });
+    expect(bare.allDay).toEqual([]);
+    expect(bare.totals).toEqual({ effortMinutes: 0, restoreMinutes: 0, sleepMinutes: null, unblockedMinutes: null });
+  });
+
   it('classifies energy the way the dial does', () => {
     const { blocks } = snap();
     expect(blocks.find((b) => b.id === '2').kind).toBe('restore');

@@ -1038,7 +1038,9 @@ export function computeSkySnapshot(date, coords) {
  *   id?, title?, tag?, kind?: 'effort'|'restore', completed?: boolean, colorHex?,
  *   lane?: number, laneCount?: number,
  *   endsNextDay?: true, endMinTrue?: number, startedPrevDay?: true,
- * }>}}
+ * }>, allDay: Array<{id, title, completed: boolean, colorHex}>,
+ *   totals: {effortMinutes: number, restoreMinutes: number,
+ *            sleepMinutes: number|null, unblockedMinutes: number|null}}}
  */
 export function projectDialSnapshot({
   date, dayTasks, prevDayTasks = null, dayWindow = null, routines = null, routineCompletions = null,
@@ -1097,7 +1099,26 @@ export function projectDialSnapshot({
     })),
   ].sort((a, b) => a.startMin - b.startMin || a.durationMin - b.durationMin);
 
-  return { date, blocks };
+  // The two cards the Android dial draws beside the ring when its placement
+  // has room (the in-app dial's All Day pill and legend): the day's all-day
+  // items, incomplete first, and the legend's totals. Computed here, by the
+  // model the in-app dial reads, so no platform re-derives them. Routines are
+  // counted off `blocks`; focus has no widget readout.
+  const allDay = model.allDay.map((a) => ({
+    id: idStr(a.id),
+    title: cleanTitle(a.title),
+    completed: a.completed,
+    colorHex: a.colorHex,
+  }));
+  const wholeOrNull = (n) => (n == null ? null : minute(n));
+  const totals = {
+    effortMinutes: minute(model.effortMinutes),
+    restoreMinutes: minute(model.restoreMinutes),
+    sleepMinutes: wholeOrNull(model.sleepMinutes),
+    unblockedMinutes: wholeOrNull(model.unblockedMinutes),
+  };
+
+  return { date, blocks, allDay, totals };
 }
 
 /**

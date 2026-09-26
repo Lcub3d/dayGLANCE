@@ -768,6 +768,14 @@ radius-agnostic and the fixture evaluates them at both canvases, so no
 > stands for a watch surface. §8 item 2 (the faintest sky segments on OLED
 > in daylight) now rides this widget. What follows is the original decision,
 > kept for its reasoning.
+>
+> **Cards (Android only).** A placement taller or wider than the face shows
+> the in-app dial's All Day pill and legend beside it (`DialArrangement`
+> decides; the dial is never smaller for them). Their data rides the `dial`
+> field as `allDay` and `totals`, from the same `computeDialModel` the
+> in-app legend reads, for the pushed day and every projected one. iOS
+> ignores both keys; an iPad `systemExtraLarge` dial (§8, "On a bigger dial
+> for iPad") could use them unchanged.
 
 Decided 22 Sep 2026, the night before the iOS release, after the device walk
 in §8. Short form: **no Day Dial on the Android home screen; the Wear OS tile

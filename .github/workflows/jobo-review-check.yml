@@ -1,4 +1,5 @@
 name: JOBO reviewed Slice 5
+# Revision 2: stable Untimed hit areas verified with real pointer clicks.
 on:
   push:
     branches: [review/jobo-slice5-20260927]

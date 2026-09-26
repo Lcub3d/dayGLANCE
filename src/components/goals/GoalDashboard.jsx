@@ -67,6 +67,9 @@ import { projectFocusTarget } from '../../utils/goalsLink.js';
 // where useLayoutEffect only warns.
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
+// Phone Goals tab: whether the chevron has hidden the controls (localStorage).
+const PHONE_CONTROLS_KEY = 'dayglance-goals-phone-controls-collapsed';
+
 /** Returns the hex value for a Tailwind bg-* class, falling back to blue. */
 const toHex = (bgClass) => TAILWIND_TO_HEX[bgClass] || '#3b82f6';
 
@@ -1226,29 +1229,10 @@ const GoalSpaceSidebar = ({
           <AreaFilter onManageAreas={onManageAreas} iconOnly />
         </div>
       ) : (
-        /* Project filter — the GLANCE panel's search field look. '/' focuses
-           it; Escape clears it (GoalDashboard's Escape chain). */
+        /* Project filter: '/' focuses it; Escape clears it (GoalDashboard's
+           Escape chain). */
         <div className="px-3 pt-3 flex-shrink-0">
-          <label className={`flex items-center gap-2 px-3 py-2 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'}`}>
-            <Search size={15} className="flex-shrink-0" />
-            <input
-              ref={filterInputRef}
-              type="search"
-              value={projectQuery}
-              onChange={e => onProjectQueryChange(e.target.value)}
-              placeholder={t('goals.filterProjects')}
-              aria-label={t('goals.filterProjects')}
-              data-project-filter
-              className={`flex-1 min-w-0 bg-transparent text-sm outline-none ${darkMode ? 'text-gray-100 placeholder-gray-500' : 'text-stone-900 placeholder-stone-400'}`}
-            />
-            {projectQuery ? (
-              <button type="button" onClick={() => { onProjectQueryChange(''); filterInputRef.current?.focus(); }} className="flex-shrink-0 p-0.5 rounded hover:opacity-70" aria-label={t('common.clear')}>
-                <X size={13} />
-              </button>
-            ) : (
-              <span className={`text-xs ${textSecondary}`}>/</span>
-            )}
-          </label>
+          <ProjectFilterField value={projectQuery} onChange={onProjectQueryChange} inputRef={filterInputRef} keyHint />
         </div>
       )}
 
@@ -1312,22 +1296,179 @@ const GoalSpaceSidebar = ({
 
 // ─── Mobile carousel layout (phone Goals tab) ─────────────────────────────────
 
+// ─── Shared toolbar pieces (desktop toolbar/sidebar and the phone tab) ────────
+
+// Open | Completed for the standalone projects, with counts: the desktop
+// toolbar's control, and the phone's Projects tab's.
+// `compact` drops the icons (the words and counts stay): the phone's Projects
+// row, while the filter field shares it.
+export const ProjectsStatusToggle = ({ value, onChange, openCount, completedCount, className = '', compact = false }) => {
+  const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  return (
+    <div role="group" aria-label={t('goals.projects')} className={`shrink-0 flex rounded-lg border ${borderClass} overflow-hidden ${className}`}>
+      {[
+        { key: 'open', label: t('goals.openProjects'), count: openCount, Icon: CircleDashed },
+        { key: 'completed', label: t('common.completed'), count: completedCount, Icon: CircleCheckBig },
+      ].map(({ key, label, count, Icon }) => {
+        const active = value === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(key)}
+            className={`flex items-center gap-1.5 ${compact ? 'px-2' : 'px-2.5'} py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+              active
+                ? 'bg-blue-600 text-white'
+                : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
+            }`}
+          >
+            {!compact && <Icon size={13} />} {label}
+            {/* count badge: white on the blue (active) button, blue on the plain one */}
+            <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
+              active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+            }`}>{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// The project filter: the GLANCE panel's search field look. On desktop '/'
+// focuses it and Escape clears it (GoalDashboard's Escape chain), and the
+// field says so; the phone has no keys, so no hint.
+//
+// A text input, not type="search": the browser draws its own clear button in
+// a search input, which sat next to this one's X as a second, brighter one.
+// enterKeyHint keeps the phone keyboard's Search key.
+//
+// `dense`: the height of the Open | Completed toggle beside it (the phone's
+// Projects row), so opening the filter does not make the row jump.
+export const ProjectFilterField = ({ value, onChange, inputRef, keyHint = false, onBlur, dense = false }) => {
+  const { darkMode, textSecondary } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  return (
+    <label className={`flex items-center gap-2 px-3 ${dense ? 'h-8' : 'py-2'} rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'}`}>
+      <Search size={15} className="flex-shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        enterKeyHint="search"
+        autoComplete="off"
+        spellCheck={false}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={t('goals.filterProjects')}
+        aria-label={t('goals.filterProjects')}
+        data-project-filter
+        className={`flex-1 min-w-0 bg-transparent text-sm outline-none ${darkMode ? 'text-gray-100 placeholder-gray-500' : 'text-stone-900 placeholder-stone-400'}`}
+      />
+      {value ? (
+        <button type="button" onClick={() => { onChange(''); inputRef?.current?.focus(); }} className="flex-shrink-0 p-0.5 rounded hover:opacity-70" aria-label={t('common.clear')}>
+          <X size={13} />
+        </button>
+      ) : keyHint ? (
+        <span className={`text-xs ${textSecondary}`}>/</span>
+      ) : null}
+    </label>
+  );
+};
+
+// ─── Phone: Goals | Projects ──────────────────────────────────────────────────
+// The desktop sidebar's tab row as a segmented control, with its counts: every
+// active goal, and the OPEN standalone projects (the sidebar counts the same).
+//
+// The chevron beside it hides the controls under it (the area / view row and
+// the goal chips, or Open | Completed and the filter) to give the cards the
+// room. A dot on it says a hidden control is narrowing what is shown.
+export const MobileGoalsTabs = ({ tab, onTabChange, goalCount, openCount, controlsCollapsed = false, onToggleControls, filtersActive = false }) => {
+  const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  const tabClass = (active) =>
+    `flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-medium transition-colors ${
+      active ? 'bg-blue-600 text-white' : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
+    }`;
+  const badgeClass = (active) =>
+    `min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
+      active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+    }`;
+  const toggleLabel = controlsCollapsed ? t('goals.showFilters') : t('goals.hideFilters');
+  return (
+    <div className="flex items-stretch gap-2">
+      <div data-goals-tabs role="tablist" aria-label={t('goals.dashboardTitle')} className={`flex-1 min-w-0 flex rounded-lg border ${borderClass} overflow-hidden`}>
+        <button type="button" role="tab" aria-selected={tab === 'goals'} onClick={() => onTabChange('goals')} className={tabClass(tab === 'goals')}>
+          <Flag size={13} className="flex-shrink-0" /> <span className="truncate">{t('goals.goals')}</span> <span className={badgeClass(tab === 'goals')}>{goalCount}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'projects'} onClick={() => onTabChange('projects')} className={tabClass(tab === 'projects')}>
+          <Layers size={13} className="flex-shrink-0" /> <span className="truncate">{t('goals.projects')}</span> <span className={badgeClass(tab === 'projects')}>{openCount}</span>
+        </button>
+      </div>
+      {onToggleControls && (
+        <button
+          type="button"
+          data-controls-toggle
+          aria-expanded={!controlsCollapsed}
+          aria-label={filtersActive && controlsCollapsed ? `${toggleLabel} · ${t('goals.filtersActive')}` : toggleLabel}
+          title={toggleLabel}
+          onClick={onToggleControls}
+          className={`relative flex-shrink-0 w-9 flex items-center justify-center rounded-lg border ${borderClass} ${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} transition-colors`}
+        >
+          <ChevronDown size={16} className={`transition-transform duration-200 ${controlsCollapsed ? '' : 'rotate-180'}`} />
+          {filtersActive && controlsCollapsed && (
+            <span data-filters-active className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500" />
+          )}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ─── Phone: the Goals tab's body ─────────────────────────────────────────────
+//
+// The phone has no sidebar, so the desktop space's shape is folded into one
+// column: under the Goals | Projects control (MobileGoalsTabs, the sidebar's
+// tab row), on Goals a chip strip of the goals (the sidebar's list — each chip
+// a colour swatch and the title, the selected one highlighted) over a swipeable
+// carousel with one page per goal, and on Projects the Open | Completed toggle,
+// the filter field and the standalone cards. The goal page draws the REAL
+// GoalCard, full width, so the phone can never show a different goal than the
+// desktop does (the stalled-badge mismatch came from a second copy).
+//
+// Creation lives in the FAB stack GoalDashboard floats over this (Add Goal /
+// Add Project by tab, Aspire above when enabled), like the desktop space.
+
 const MobileDashboard = ({
-  activeGoals,
+  tab,
+  onTabChange,
+  goals,            // the area-filtered goals, carousel order
+  allGoals,         // every active goal, for a focus request the filter hides
   activeProjects,
+  standaloneProjects,   // after Open | Completed and the filter field
+  openCount,
+  completedCount,
+  projectsFilter,
+  onProjectsFilterChange,
+  projectQuery,
+  onProjectQueryChange,
   onEditGoal,
   onEditProject,
   onNewProject,
   isActive = false,
+  controlsCollapsed = false,
 }) => {
-  const { darkMode, textPrimary, textSecondary, hoverBg, cardBg, borderClass, tasks: scheduledTasks, unscheduledTasks, recurringTasks, currentTimeMinutes } = useDayPlannerCtx();
+  const { darkMode, textPrimary, textSecondary, hoverBg, cardBg, borderClass } = useDayPlannerCtx();
   const {
-    updateGoal, moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, isVisibleForUser,
+    moveProject, goalsDashboardFocusId, setGoalsDashboardFocusId, setGoalsAreaFilter,
     goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
   } = useFeaturesCtx();
   const { t } = useTranslation();
 
   const scrollRef = useRef(null);
+  const chipsRef = useRef(null);
+  const projectsRef = useRef(null);
   // The project a link brought into view (the Project widget's tap): ringed
   // for a moment so the eye finds it on the page.
   const [flashProjectId, setFlashProjectId] = useState(null);
@@ -1342,72 +1483,147 @@ const MobileDashboard = ({
   // ── "Move to…" sheet state ──────────────────────────────────────────────────
   const [moveToProject, setMoveToProject] = useState(null);
 
-  // Same sort order as desktop: completed/overdue → left, active/upcoming → right
-  const sortedGoals = useMemo(() => sortGoalsForCarousel(activeGoals), [activeGoals]);
-  const defaultPageIdx = useMemo(() => findDefaultActiveIdx(sortedGoals), [sortedGoals]);
-  const [page, setPage] = useState(defaultPageIdx);
+  // ── Projects filter: a button until tapped, then a field (focused) ──────────
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterInputRef = useRef(null);
+  useEffect(() => { if (filterOpen) filterInputRef.current?.focus(); }, [filterOpen]);
 
-  const standaloneProjects = useMemo(() => sortByOrder(activeProjects.filter(p => !p.goalId)), [activeProjects]);
-  const pages = [
-    ...sortedGoals.map(g => ({ type: 'goal', goal: g })),
-    { type: 'standalone' },
-  ];
-  const totalPages = pages.length;
+  // The selection is a goal id, like the desktop space's, not a page index:
+  // the list arrives after the first render (the data loads) and changes
+  // under the carousel (the area filter, an edit), and an index would then
+  // point at a different goal. Until a swipe, a chip or a link picks one, it
+  // is the default the sidebar uses: the first active goal.
+  const [selectedId, setSelectedId] = useState(null);
+  const page = useMemo(() => {
+    const i = selectedId ? goals.findIndex(g => g.id === selectedId) : -1;
+    return i >= 0 ? i : findDefaultActiveIdx(goals);
+  }, [goals, selectedId]);
+  const setPage = (i) => { const g = goals[i]; if (g) setSelectedId(g.id); };
+  const totalPages = goals.length;
   const totalPagesRef = useRef(totalPages);
   useEffect(() => { totalPagesRef.current = totalPages; }, [totalPages]);
   useEffect(() => { pageRef.current = page; }, [page]);
 
+  // A swipe or a chip picks its goal the moment it is committed: the chip
+  // lights up first and the pages then slide to it. While that slide runs,
+  // the page under the fold is the OLD goal for the first half, so the scroll
+  // must not steer the selection (onScroll) and the selection must not snap
+  // the scroll (the sync below) until it arrives. The timer is the backstop
+  // for a slide that is interrupted and never lands exactly.
+  const slideTargetRef = useRef(null);
+  const slideTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(slideTimerRef.current), []);
+  const goToPage = (idx) => {
+    const el = scrollRef.current;
+    const goal = goals[idx];
+    if (!el || !goal) return;
+    setSelectedId(goal.id);
+    slideTargetRef.current = idx;
+    clearTimeout(slideTimerRef.current);
+    slideTimerRef.current = setTimeout(() => { slideTargetRef.current = null; }, 900);
+    el.scrollTo?.({ left: idx * el.clientWidth, behavior: 'smooth' });
+  };
+  const onCarouselScroll = (e) => {
+    const el = e.target;
+    if (!el.clientWidth) return;
+    const target = slideTargetRef.current;
+    if (target !== null) {
+      if (Math.abs(el.scrollLeft - target * el.clientWidth) < 2) slideTargetRef.current = null;
+      return;
+    }
+    const p = Math.round(el.scrollLeft / el.clientWidth);
+    if (p !== page) setPage(p);
+  };
+
+  // The selected chip follows the page, AFTER the highlight has painted (an
+  // effect, not a layout effect): the new chip lights up, then the strip
+  // glides just far enough to show it. Instant when the strip comes into view
+  // (the tab forward, the chevron reopened), where there is nothing to watch. The strip scrolls itself rather than
+  // scrollIntoView, which would also scroll the page's other ancestors.
+  const wasShownRef = useRef(false);
+  useEffect(() => {
+    const shown = isActive && !controlsCollapsed;
+    const justShown = shown && !wasShownRef.current;
+    wasShownRef.current = shown;
+    const strip = chipsRef.current;
+    if (!shown || !strip || !strip.clientWidth) return;
+    const chip = strip.querySelector(`[data-goal-chip="${CSS.escape(goals[page]?.id ?? '')}"]`);
+    if (!chip) return;
+    const pad = 12;
+    const left = chip.offsetLeft - pad;
+    const right = chip.offsetLeft + chip.offsetWidth + pad - strip.clientWidth;
+    const to = left < strip.scrollLeft ? left : right > strip.scrollLeft ? right : null;
+    if (to === null) return;
+    strip.scrollTo?.({ left: Math.max(0, to), behavior: justShown ? 'auto' : 'smooth' });
+  }, [isActive, page, goals, controlsCollapsed]);
+
+  // Goal focus request (a goal ring on the GLANCE tab, the Goal widget's
+  // tap): its page. A goal the area filter hides widens the filter first and
+  // waits for the list to include it; a goal that is gone drops the request.
   useEffect(() => {
     if (!goalsDashboardFocusId || !isActive) return;
-    const idx = sortedGoals.findIndex(g => g.id === goalsDashboardFocusId);
-    if (idx !== -1) {
-      setPage(idx);
-      requestAnimationFrame(() => goToPage(idx));
+    const idx = goals.findIndex(g => g.id === goalsDashboardFocusId);
+    if (idx === -1) {
+      if (allGoals.some(g => g.id === goalsDashboardFocusId)) { setGoalsAreaFilter('all'); return; }
+      setGoalsDashboardFocusId(null);
+      return;
     }
+    onTabChange('goals');
+    setSelectedId(goals[idx].id);
     setGoalsDashboardFocusId(null);
-  }, [goalsDashboardFocusId, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [goalsDashboardFocusId, isActive, goals]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Project focus request (utils/goalsLink.js): its goal's page, or the
-  // standalone page, then its card scrolled into view once the page has
-  // slid in. A project with no card here is dropped (the tab still opens).
-  // The timers live in a ref, not the effect's cleanup: clearing the request
-  // re-runs this effect, and a cleanup would cancel them at once.
+  // Projects tab on the Open/Completed list it is on with no text filter,
+  // then its card scrolled into view once the page or list has rendered. A
+  // project with no card here is dropped (the tab still opens). The timers
+  // live in a ref, not the effect's cleanup: clearing the request re-runs
+  // this effect, and a cleanup would cancel them at once.
   const flashTimersRef = useRef([]);
   useEffect(() => () => flashTimersRef.current.forEach(clearTimeout), []);
   useEffect(() => {
     if (!goalsDashboardFocusProjectId || !isActive) return;
-    const target = projectFocusTarget(goalsDashboardFocusProjectId, { projects: activeProjects, goals: sortedGoals });
+    const target = projectFocusTarget(goalsDashboardFocusProjectId, { projects: activeProjects, goals: allGoals });
+    if (!target) { setGoalsDashboardFocusProjectId(null); return; }
+    const { project, goalId } = target;
+    if (goalId) {
+      const idx = goals.findIndex(g => g.id === goalId);
+      if (idx === -1) { setGoalsAreaFilter('all'); return; }
+      onTabChange('goals');
+      setSelectedId(goalId);
+    } else {
+      onTabChange('projects');
+      onProjectsFilterChange(project.status === 'completed' ? 'completed' : 'open');
+      onProjectQueryChange('');
+    }
     setGoalsDashboardFocusProjectId(null);
-    if (!target) return;
-    const idx = target.goalId ? sortedGoals.findIndex(g => g.id === target.goalId) : sortedGoals.length;
-    setPage(idx);
-    requestAnimationFrame(() => goToPage(idx));
-    const id = target.project.id;
+    const id = project.id;
     setFlashProjectId(id);
     const scroll = setTimeout(() => {
-      const card = scrollRef.current?.querySelector(`[data-mobile-proj-id="${CSS.escape(id)}"]`);
+      const root = goalId ? scrollRef.current : projectsRef.current;
+      const card = root?.querySelector(`[data-mobile-proj-id="${CSS.escape(id)}"]`);
       card?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     }, 350);
     const clear = setTimeout(() => setFlashProjectId(cur => (cur === id ? null : cur)), 2400);
     flashTimersRef.current.forEach(clearTimeout);
     flashTimersRef.current = [scroll, clear];
-  }, [goalsDashboardFocusProjectId, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [goalsDashboardFocusProjectId, isActive, goals]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to the main goal on mount (instant, no animation)
+  // Keep the carousel on the selected page (instant, no animation) whenever
+  // the two disagree: when it mounts (first load, back from the Projects tab,
+  // back from Roadmap), when the Goals tab comes forward (the dashboard stays
+  // mounted, display:none, behind the other tabs, where it measures 0 wide),
+  // when the data or the filter moves the selected goal, and when a link
+  // selects one. A swipe or a chip scrolls first and the selection follows
+  // the scroll (onScroll), so they never fight.
+  const carouselMounted = tab === 'goals' && goals.length > 0;
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!el || defaultPageIdx === 0) return;
-    requestAnimationFrame(() => {
-      el.scrollLeft = defaultPageIdx * el.clientWidth;
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const goToPage = (idx) => {
-    scrollRef.current?.scrollTo({
-      left: idx * scrollRef.current.clientWidth,
-      behavior: 'smooth',
-    });
-  };
+    if (!isActive || !carouselMounted || !el || !el.clientWidth) return;
+    if (slideTargetRef.current === page) return;   // a slide is on its way there
+    if (Math.round(el.scrollLeft / el.clientWidth) === page) return;
+    el.scrollLeft = page * el.clientWidth;
+  }, [isActive, carouselMounted, page, goals]);
 
   // ── Touch drag handlers (within-page project reorder) ────────────────────────
   const handleGripTouchStart = useCallback((e, projId, goalId) => {
@@ -1452,8 +1668,9 @@ const MobileDashboard = ({
   // registering a passive:false listener on a display:none element (at first
   // mount while another tab is shown) causes the WebView to not route touch
   // events to the element later when it becomes visible.
+  const carouselShown = isActive && carouselMounted;
   useEffect(() => {
-    if (!isActive) return;
+    if (!carouselShown) return;
     const el = scrollRef.current;
     if (!el) return;
 
@@ -1494,324 +1711,206 @@ const MobileDashboard = ({
       el.removeEventListener('touchmove',  onMove);
       el.removeEventListener('touchend',   onEnd);
     };
-  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [carouselShown]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Empty state — no goals and no standalone projects
-  if (sortedGoals.length === 0 && standaloneProjects.length === 0) {
-    return (
-      <div className="flex flex-col flex-1 items-center justify-center gap-3 px-6">
-        <div className={`w-14 h-14 rounded-full flex items-center justify-center ${darkMode ? 'bg-gray-700' : 'bg-stone-100'}`}>
-          <GitBranch size={28} className={textSecondary} />
-        </div>
-        <p className={`text-sm font-medium ${textPrimary}`}>{t('goals.noGoalsYet')}</p>
-        <p className={`text-xs ${textSecondary} text-center`}>
-          {t('goals.emptyHint')}
-        </p>
+  // A project card on either tab: the same wrapper (reorder ring, link flash).
+  const projectCard = (proj, goalId, compact = false) => (
+    <div
+      key={proj.id}
+      data-mobile-proj-id={proj.id}
+      className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
+        (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
+          ? 'ring-2 ring-blue-500 rounded-xl' : ''
+      }`}
+    >
+      <ProjectCard
+        project={proj}
+        onEditClick={() => onEditProject?.(proj)}
+        onMoveToClick={() => setMoveToProject(proj)}
+        compact={compact}
+        dragHandleProps={{
+          onTouchStart: (e) => handleGripTouchStart(e, proj.id, goalId),
+          onTouchMove: handleGripTouchMove,
+          onTouchEnd: (e) => handleGripTouchEnd(e, goalId),
+        }}
+      />
+    </div>
+  );
+
+  const emptyState = (title, hint, cta) => (
+    <div className="flex flex-col flex-1 items-center justify-center gap-3 px-6 py-10">
+      <div className={`w-14 h-14 rounded-full flex items-center justify-center ${darkMode ? 'bg-gray-700' : 'bg-stone-100'}`}>
+        <GitBranch size={28} className={textSecondary} />
       </div>
-    );
-  }
+      <p className={`text-sm font-medium ${textPrimary}`}>{title}</p>
+      {hint && <p className={`text-xs ${textSecondary} text-center`}>{hint}</p>}
+      {cta}
+    </div>
+  );
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Dot indicators + page navigation — at top */}
-      <div className="flex items-center justify-center gap-3 py-3 flex-shrink-0">
-        <button
-          onClick={() => goToPage(Math.max(0, page - 1))}
-          disabled={page === 0}
-          className={`p-1 rounded-full ${hoverBg} disabled:opacity-30 transition-colors`}
-        >
-          <ChevronLeft size={16} className={textSecondary} />
-        </button>
-
-        <div className="flex items-center gap-1.5">
-          {pages.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goToPage(i)}
-              className={`rounded-full transition-all ${
-                i === page
-                  ? 'w-4 h-2.5 bg-blue-500'
-                  : `w-2.5 h-2.5 ${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
-              }`}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
-          disabled={page === totalPages - 1}
-          className={`p-1 rounded-full ${hoverBg} disabled:opacity-30 transition-colors`}
-        >
-          <ChevronRight size={16} className={textSecondary} />
-        </button>
-      </div>
-
-      {/* Carousel */}
-      <div
-        ref={scrollRef}
-        className="goal-carousel flex-1 min-h-0 flex overflow-x-auto overflow-y-hidden"
-        style={{
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
-        onScroll={e => {
-          const p = Math.round(e.target.scrollLeft / e.target.clientWidth);
-          if (p !== page) setPage(p);
-        }}
-      >
-        {pages.map((pg) => {
-          if (pg.type === 'goal') {
-            const goal = pg.goal;
-            const goalColor = goal.color || 'bg-blue-500';
-            const goalHex = toHex(goalColor);
-            const children = activeProjects.filter(p => p.goalId === goal.id);
-            return (
-              <div
-                key={goal.id}
-                className="flex-shrink-0 w-full h-full overflow-y-auto overflow-x-hidden px-4 pb-4"
-                style={{ scrollSnapAlign: 'start' }}
-              >
-                {/* Goal header card */}
-                {(() => {
-                  const allTasks = [...scheduledTasks, ...unscheduledTasks].filter(isVisibleForUser);
-                  const goalProgress = calculateGoalProgress(goal.id, activeProjects, allTasks);
-                  const nonArchivedProjects = activeProjects.filter(p => p.goalId === goal.id);
-                  const isCompleted = goal.status === 'completed';
-                  const allProjectsDone = nonArchivedProjects.length > 0 && goalProgress >= 1;
-                  const hasStalledProject = hasStalledChild(goal, nonArchivedProjects, allTasks, recurringTasks, currentTimeMinutes);
-                  let daysLabel = null, daysUrgent = false, isOverdue = false;
-                  if (goal.targetDate) {
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const diff = Math.ceil((new Date(goal.targetDate + 'T00:00:00') - today) / 86400000);
-                    daysLabel = diff === 0
-                      ? t('goals.dueToday')
-                      : diff < 0
-                        ? t('goals.daysOverdue', { count: Math.abs(diff) })
-                        : t('goals.daysLeft', { count: diff });
-                    daysUrgent = diff <= 7;
-                    isOverdue = diff < 0;
-                  }
-                  const showCaution = isOverdue || hasStalledProject;
-                  return (
-                    <div
-                      className="rounded-xl p-4 mb-4 mt-2"
-                      style={{ opacity: isCompleted ? 0.45 : 1, background: toLightBg(goalColor, darkMode), borderLeft: `4px solid ${goalHex}` }}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-col gap-1 flex-1 min-w-0">
-                          <span
-                            className="text-base font-bold leading-tight"
-                            style={{ color: goalHex }}
-                          >
-                            {goal.title}
-                          </span>
-                          {goal.description && (
-                            <p className={`text-xs ${textSecondary} leading-snug`}>
-                              {goal.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {!isCompleted && allProjectsDone && (
-                            <button
-                              onClick={() => updateGoal(goal.id, { status: 'completed' })}
-                              className="text-emerald-500 hover:text-emerald-400 transition-colors"
-                              aria-label={t('goals.markGoalComplete')}
-                            >
-                              <CircleCheckBig size={16} />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => onEditGoal(goal)}
-                            className={`p-1 rounded-lg ${hoverBg} ${textSecondary} transition-colors`}
-                            aria-label={t('goals.editGoal')}
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      {/* Completed label OR date/caution row */}
-                      {isCompleted ? (
-                        <p className="text-xs mt-2 font-medium text-emerald-500">{t('common.completed')}</p>
-                      ) : (daysLabel || showCaution) ? (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          {daysLabel && (
-                            <p className={`text-xs font-medium ${daysUrgent ? 'text-amber-500' : textSecondary}`}>
-                              {daysLabel}
-                            </p>
-                          )}
-                          {showCaution && !allProjectsDone && (
-                            <AlertTriangle size={12} className="text-amber-500 ml-auto flex-shrink-0" />
-                          )}
-                        </div>
-                      ) : null}
-                      {/* Progress bar */}
-                      {!isCompleted && (
-                        <div className="mt-3">
-                          <GoalProgress progress={goalProgress} color={goalColor} />
-                        </div>
-                      )}
-                      {/* Project count + completion % */}
-                      {!isCompleted && nonArchivedProjects.length > 0 && (
-                        <div className="flex items-center justify-between mt-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs ${textSecondary}`}>
-                              {t('goals.projectCount', { count: nonArchivedProjects.length })}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => onNewProject(goal.id)}
-                              className={`flex items-center gap-0.5 text-xs ${textSecondary} opacity-60 hover:opacity-100 transition-opacity`}
-                            >
-                              <Plus size={10} /> {t('common.add')}
-                            </button>
-                          </div>
-                          <span className={`text-xs font-medium ${goalProgress >= 1 ? 'text-green-500' : textSecondary}`}>
-                            {Math.round(goalProgress * 100)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Child project cards */}
-                {children.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 py-8">
-                    <FolderOpen size={24} className={textSecondary} />
-                    <p className={`text-sm ${textSecondary}`}>{t('goals.noProjectsYet')}</p>
-                    <button
-                      onClick={() => onNewProject(goal.id)}
-                      className="flex items-center gap-1.5 text-sm text-emerald-500 hover:text-emerald-600"
-                    >
-                      <Layers size={14} /> {t('common.addProject')}
-                    </button>
-                  </div>
-                ) : (() => {
-                  const sorted = sortByOrder(children);
-                  const activeProjs = sorted.filter(p => p.status !== 'completed');
-                  const doneProjs = sorted.filter(p => p.status === 'completed');
-                  return (
-                    <div className="flex flex-col gap-3">
-                      {activeProjs.map(proj => (
-                        <div
-                          key={proj.id}
-                          data-mobile-proj-id={proj.id}
-                          className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
-                            (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
-                              ? 'ring-2 ring-blue-500 rounded-xl' : ''
-                          }`}
-                        >
-                          <ProjectCard
-                            project={proj}
-    
-                            onEditClick={() => onEditProject?.(proj)}
-                            onMoveToClick={() => setMoveToProject(proj)}
-                            dragHandleProps={{
-                              onTouchStart: (e) => handleGripTouchStart(e, proj.id, goal.id),
-                              onTouchMove: handleGripTouchMove,
-                              onTouchEnd: (e) => handleGripTouchEnd(e, goal.id),
-                            }}
-                          />
-                        </div>
-                      ))}
-                      {doneProjs.map(proj => (
-                        <div key={proj.id} data-mobile-proj-id={proj.id} className={flashProjectId === proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''}>
-                          <ProjectCard
-                            project={proj}
-    
-                            onEditClick={() => onEditProject?.(proj)}
-                            onMoveToClick={() => setMoveToProject(proj)}
-                            compact
-                            dragHandleProps={{
-                              onTouchStart: (e) => handleGripTouchStart(e, proj.id, goal.id),
-                              onTouchMove: handleGripTouchMove,
-                              onTouchEnd: (e) => handleGripTouchEnd(e, goal.id),
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          }
-
-          // Standalone page
-          const activeStandalone = standaloneProjects.filter(p => p.status !== 'completed');
-          const doneStandalone = standaloneProjects.filter(p => p.status === 'completed');
-          return (
+      {tab === 'goals' ? (
+        goals.length === 0 ? (
+          emptyState(t('goals.noGoalsYet'), t('goals.emptyHint'))
+        ) : (
+          <>
+            {/* The goal chips: the sidebar's list, laid on its side. Hidden
+                with the other controls (the chevron); swiping still works. */}
+            {!controlsCollapsed && (
             <div
-              key="standalone"
-              className="flex-shrink-0 w-full h-full overflow-y-auto overflow-x-hidden px-4 pb-4"
-              style={{ scrollSnapAlign: 'start' }}
+              ref={chipsRef}
+              data-goal-chips
+              className="relative flex gap-1.5 px-3 pb-3 overflow-x-auto flex-shrink-0"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <div className="mt-2 mb-4">
-                <span className={`text-xs font-semibold uppercase tracking-wider ${textSecondary}`}>
-                  {t('goals.standaloneProjects')}
-                </span>
-              </div>
-
-              {standaloneProjects.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8">
-                  <FolderOpen size={24} className={textSecondary} />
-                  <p className={`text-sm ${textSecondary}`}>{t('goals.noStandaloneProjects')}</p>
+              {goals.map((g, i) => {
+                const active = i === page;
+                const done = g.status === 'completed';
+                return (
                   <button
-                    onClick={() => onNewProject(null)}
-                    className="flex items-center gap-1.5 text-sm text-emerald-500 hover:text-emerald-600"
+                    key={g.id}
+                    type="button"
+                    data-goal-chip={g.id}
+                    aria-pressed={active}
+                    onClick={() => goToPage(i)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full border text-xs font-medium transition-colors max-w-[11rem] ${
+                      active
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : `${borderClass} ${textSecondary} ${hoverBg}`
+                    }`}
+                    style={{ opacity: done && !active ? 0.55 : 1 }}
                   >
-                    <Layers size={14} /> {t('goals.addStandaloneProject')}
+                    <span className="w-1.5 h-3.5 rounded-sm flex-shrink-0" style={{ background: toHex(g.color || 'bg-blue-500') }} />
+                    <span className="truncate">{g.title}</span>
                   </button>
+                );
+              })}
+            </div>
+            )}
+
+            {/* Carousel: one page per goal */}
+            <div
+              ref={scrollRef}
+              className="goal-carousel flex-1 min-h-0 flex overflow-x-auto overflow-y-hidden"
+              style={{
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+              onScroll={onCarouselScroll}
+            >
+              {goals.map((goal) => {
+                const children = sortByOrder(activeProjects.filter(p => p.goalId === goal.id));
+                const activeProjs = children.filter(p => p.status !== 'completed');
+                const doneProjs = children.filter(p => p.status === 'completed');
+                return (
+                  <div
+                    key={goal.id}
+                    data-goal-page={goal.id}
+                    className="flex-shrink-0 w-full h-full overflow-y-auto overflow-x-hidden px-4 pb-24"
+                    style={{ scrollSnapAlign: 'start' }}
+                  >
+                    {/* The goal's card: the desktop's, full width */}
+                    <div className="mt-1 mb-4">
+                      <GoalCard
+                        goal={goal}
+                        projects={children}
+                        onEdit={() => onEditGoal(goal)}
+                        onNewProject={() => onNewProject(goal.id)}
+                        compactEmpty
+                      />
+                    </div>
+
+                    {/* Child project cards */}
+                    {children.length === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-8">
+                        <FolderOpen size={24} className={textSecondary} />
+                        <p className={`text-sm ${textSecondary}`}>{t('goals.noProjectsYet')}</p>
+                        <button
+                          onClick={() => onNewProject(goal.id)}
+                          className="flex items-center gap-1.5 text-sm text-emerald-500 hover:text-emerald-600"
+                        >
+                          <Layers size={14} /> {t('common.addProject')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {activeProjs.map(proj => projectCard(proj, goal.id))}
+                        {doneProjs.map(proj => projectCard(proj, goal.id, true))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )
+      ) : (
+        <>
+          {/* Projects tab: Open | Completed and the filter on ONE row. The
+              filter is a field-shaped "Filter" button in the rest of the row
+              until it is tapped (or holds text), then the field itself, the toggle dropping its
+              icons to make room. Where a language's labels still leave it
+              less than 7rem it wraps to its own line instead. */}
+          {!controlsCollapsed && (
+            <div data-projects-controls className="flex flex-wrap items-center gap-2 px-3 pb-3 flex-shrink-0">
+              <ProjectsStatusToggle
+                value={projectsFilter}
+                onChange={onProjectsFilterChange}
+                openCount={openCount}
+                completedCount={completedCount}
+                compact={filterOpen || !!projectQuery}
+              />
+              {filterOpen || projectQuery ? (
+                <div className="flex-1 min-w-[7rem]">
+                  <ProjectFilterField
+                    value={projectQuery}
+                    onChange={onProjectQueryChange}
+                    inputRef={filterInputRef}
+                    onBlur={() => { if (!projectQuery) setFilterOpen(false); }}
+                    dense
+                  />
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
-                  {activeStandalone.map(proj => (
-                    <div
-                      key={proj.id}
-                      data-mobile-proj-id={proj.id}
-                      className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
-                        (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
-                          ? 'ring-2 ring-blue-500 rounded-xl' : ''
-                      }`}
-                    >
-                      <ProjectCard
-                        project={proj}
-
-                        onEditClick={() => onEditProject?.(proj)}
-                        onMoveToClick={() => setMoveToProject(proj)}
-                        dragHandleProps={{
-                          onTouchStart: (e) => handleGripTouchStart(e, proj.id, null),
-                          onTouchMove: handleGripTouchMove,
-                          onTouchEnd: (e) => handleGripTouchEnd(e, null),
-                        }}
-                      />
-                    </div>
-                  ))}
-                  {doneStandalone.map(proj => (
-                    <div key={proj.id} data-mobile-proj-id={proj.id} className={flashProjectId === proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''}>
-                      <ProjectCard
-                        project={proj}
-
-                        onEditClick={() => onEditProject?.(proj)}
-                        onMoveToClick={() => setMoveToProject(proj)}
-                        compact
-                        dragHandleProps={{
-                          onTouchStart: (e) => handleGripTouchStart(e, proj.id, null),
-                          onTouchMove: handleGripTouchMove,
-                          onTouchEnd: (e) => handleGripTouchEnd(e, null),
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
+                // The field's own look and height, holding the rest of the row,
+                // so it reads as the filter it opens into. Where a language's
+                // toggle leaves little room the word truncates, down to the
+                // icon alone; it never wraps.
+                <button
+                  type="button"
+                  data-open-filter
+                  onClick={() => setFilterOpen(true)}
+                  aria-label={t('goals.filterProjects')}
+                  title={t('goals.filterProjects')}
+                  className={`flex-1 min-w-[2.25rem] h-8 flex items-center gap-2 px-3 rounded-lg text-left transition-colors ${
+                    darkMode ? 'bg-white/10 text-gray-500 hover:bg-white/15' : 'bg-black/5 text-stone-400 hover:bg-black/10'
+                  }`}
+                >
+                  <Search size={15} className={`flex-shrink-0 ${darkMode ? 'text-gray-400' : ''}`} />
+                  <span className="min-w-0 truncate text-sm">{t('goals.filterButton')}</span>
+                </button>
               )}
             </div>
-          );
-        })}
-      </div>
+          )}
+          <div ref={projectsRef} data-standalone-list className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-24">
+            {standaloneProjects.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {standaloneProjects.map(proj => projectCard(proj, null, proj.status === 'completed'))}
+              </div>
+            ) : projectQuery.trim() ? emptyState(t('goals.noProjectsMatch'), null, null)
+              : projectsFilter === 'completed' ? emptyState(t('goals.noCompletedProjects'), null, null)
+              : emptyState(
+                t('goals.noStandaloneProjects'),
+                null,
+                <button type="button" onClick={() => onNewProject(null)} className="flex items-center gap-1.5 text-sm text-emerald-500 hover:text-emerald-600 transition-colors">
+                  <Layers size={14} /> {t('goals.addStandaloneProject')}
+                </button>
+              )}
+          </div>
+        </>
+      )}
 
       {/* "Move to…" bottom sheet */}
       {moveToProject && (
@@ -1834,7 +1933,7 @@ const MobileDashboard = ({
             </div>
             <MoveToList
               project={moveToProject}
-              goals={sortedGoals}
+              goals={goals}
               onMove={(goalId) => { moveProject(moveToProject.id, goalId); setMoveToProject(null); }}
             />
           </div>
@@ -1861,7 +1960,7 @@ export const AreaFilter = ({ onManageAreas, iconOnly = false }) => {
         value={goalsAreaFilter}
         onChange={e => setGoalsAreaFilter(e.target.value)}
         aria-label={t('goals.area')}
-        className={`min-w-0 shrink ${iconOnly ? 'flex-1' : ''} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`${iconOnly ? 'min-w-0 shrink flex-1' : 'flex-1 min-w-[9rem]'} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
         }`}
       >
@@ -1886,7 +1985,8 @@ export const AreaFilter = ({ onManageAreas, iconOnly = false }) => {
   );
 };
 
-export const ViewToggle = ({ className = '' }) => {
+// `compact` drops the icons (the words stay): the phone's area row.
+export const ViewToggle = ({ className = '', compact = false }) => {
   const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
   const { goalsViewMode, setGoalsViewMode } = useFeaturesCtx();
   const { t } = useTranslation();
@@ -1901,23 +2001,28 @@ export const ViewToggle = ({ className = '' }) => {
           type="button"
           aria-pressed={goalsViewMode === key}
           onClick={() => setGoalsViewMode(key)}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
             goalsViewMode === key
               ? 'bg-blue-600 text-white'
               : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
           }`}
         >
-          <Icon size={13} /> {label}
+          {!compact && <Icon size={13} />} {label}
         </button>
       ))}
     </div>
   );
 };
 
+// The phone's row: the area select (never below 9rem, so its label is not
+// cut mid-word), Manage Areas, and List | Roadmap in words only. Where a
+// language's labels leave the select less than that, List | Roadmap wraps
+// onto its own line (French, Spanish, Ukrainian at 360px; German at 320px)
+// rather than squeezing the select. The chevron hides the row either way.
 const GoalControls = ({ onManageAreas }) => (
-  <div className="flex items-center gap-2 mb-4">
+  <div data-goal-controls className="flex flex-wrap items-center gap-2 mb-4">
     <AreaFilter onManageAreas={onManageAreas} />
-    <ViewToggle className="ml-auto" />
+    <ViewToggle compact />
   </div>
 );
 
@@ -1925,7 +2030,9 @@ const GoalControls = ({ onManageAreas }) => (
 
 // `anchored`: pinned at the bottom of its column, expanding UPWARD (the lists
 // render above the toggle, capped and scrollable) — the desktop space.
-const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchored = false }) => {
+// `stacked`: goals above projects instead of side by side — the phone, where
+// two columns of titles with Restore buttons are too narrow to read.
+const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchored = false, stacked = false }) => {
   const { darkMode, borderClass, textSecondary, hoverBg } = useDayPlannerCtx();
   const { updateGoal, updateProject } = useFeaturesCtx();
   const { t } = useTranslation();
@@ -1951,7 +2058,7 @@ const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchor
     <div data-archived-section className={`border-t ${borderClass} flex-shrink-0 ${anchored ? 'flex flex-col-reverse' : ''}`}>
       {toggle}
       {showArchived && (
-        <div className={`flex gap-4 ${anchored ? `px-3 pt-3 pb-1 max-h-[40vh] overflow-y-auto border-b ${borderClass}` : 'mt-2'}`}>
+        <div className={`flex ${stacked ? 'flex-col gap-3 px-3 pb-3 max-h-[40vh] overflow-y-auto' : 'gap-4'} ${anchored ? `px-3 pt-3 pb-1 max-h-[40vh] overflow-y-auto border-b ${borderClass}` : 'mt-2'}`}>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-medium ${textSecondary} opacity-60 uppercase tracking-wider mb-1.5 px-2`}>{t('goals.goals')}</p>
             {archivedGoals.length === 0 ? (
@@ -1970,7 +2077,7 @@ const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchor
               </div>
             )}
           </div>
-          <div className={`w-px self-stretch ${darkMode ? 'bg-gray-700' : 'bg-stone-200'}`} />
+          <div className={`${stacked ? 'h-px' : 'w-px self-stretch'} ${darkMode ? 'bg-gray-700' : 'bg-stone-200'}`} />
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-medium ${textSecondary} opacity-60 uppercase tracking-wider mb-1.5 px-2`}>{t('goals.projects')}</p>
             {archivedProjects.length === 0 ? (
@@ -2328,9 +2435,12 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
 /**
  * GoalDashboard — the Goals & Projects feature's screen, in one of two modes:
  *
- *   embedded — the phone's Goals tab (MobileLayout): MobileDashboard carousel
- *              and the mobile (bottom-sheet) forms; Add buttons come from the
- *              tab header as trigger props.
+ *   embedded — the phone's Goals tab (MobileLayout): the desktop space folded
+ *              into one column (MobileDashboard: Goals | Projects, goal chips
+ *              over a carousel of full-width GoalCards, the standalone list
+ *              with Open | Completed and a filter), the same FAB stack as the
+ *              space (Aspire, then Add Goal / Add Project by tab), and the
+ *              mobile (bottom-sheet) forms.
  *   desktop  — the Goals & Projects SPACE on desktop and tablet
  *              (DesktopLayout, docs/goals-space-spec.md): a sidebar and a main
  *              area rendered as siblings in the layout's flex row, exactly
@@ -2342,7 +2452,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
  * `isActive` says whether the screen is on screen: the Escape chain below and
  * the focus request (goalsDashboardFocusId) only act while it is.
  */
-const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, initialSidebarTab = 'goals', addGoalTrigger = 0, addProjectTrigger = 0, addAreaTrigger = 0 }) => {
+const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, initialSidebarTab = 'goals' }) => {
   const {
     tasks, setTasks,
     unscheduledTasks, setUnscheduledTasks,
@@ -2390,6 +2500,17 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const filterInputRef = useRef(null);
   // Aspire (experimental): the placeholder modal opened from the FAB stack.
   const [showAspire, setShowAspire] = useState(false);
+  // Phone: the controls under Goals | Projects hidden by its chevron. A
+  // per-device preference; storage can be missing or throw (private mode,
+  // tests), and then it simply starts expanded.
+  const [controlsCollapsed, setControlsCollapsed] = useState(() => {
+    try { return localStorage.getItem(PHONE_CONTROLS_KEY) === '1'; } catch { return false; }
+  });
+  const toggleControls = () => setControlsCollapsed(v => {
+    const next = !v;
+    try { localStorage.setItem(PHONE_CONTROLS_KEY, next ? '1' : '0'); } catch { /* keep it for this session */ }
+    return next;
+  });
 
   // If the saved filter points at an area that no longer exists (deleted on this
   // or another device), fall back to "All" so the dashboard isn't stuck empty.
@@ -2412,11 +2533,6 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     } catch { cfg = null; }
     return enabledIntentTargets(cfg).length > 0;
   }, []);
-
-  // Trigger props from header buttons (mobile embedded mode)
-  useEffect(() => { if (addGoalTrigger > 0) setGoalForm({ editing: null }); }, [addGoalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (addProjectTrigger > 0) setProjectForm({ editing: null, defaultGoalId: null }); }, [addProjectTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (addAreaTrigger > 0) setAreaForm({ editing: null }); }, [addAreaTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refs for SVG line calculation (desktop only)
   const goalCardRefs = useRef({});
@@ -2780,38 +2896,102 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     </>
   );
 
+  // The FAB stack both layouts float over their content: Aspire (when on)
+  // above a contextual + — Add Goal on the Goals tab, Add Project on Projects.
+  const goalsTab = sidebarTab === 'goals';
+  const fabStack = (className) => (
+    <div data-goals-fabs className={`${className} z-10 flex flex-col items-center gap-2 pointer-events-none`}>
+      {aspireEnabled && (
+        <button
+          type="button"
+          onClick={() => setShowAspire(true)}
+          className={`pointer-events-auto w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+            darkMode ? 'bg-gray-700 text-amber-300 hover:bg-gray-600' : 'bg-stone-200 text-amber-500 hover:bg-stone-300'
+          }`}
+          title={t('aspire.title')}
+          aria-label={t('aspire.title')}
+          data-aspire-fab
+        >
+          <Compass size={24} />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => (goalsTab ? setGoalForm({ editing: null }) : onNewProject(null))}
+        className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center transition-colors"
+        title={desktop ? `${goalsTab ? t('common.addGoal') : t('common.addProject')} (N)` : undefined}
+        aria-label={goalsTab ? t('common.addGoal') : t('common.addProject')}
+      >
+        <Plus size={28} />
+      </button>
+    </div>
+  );
+
   // ── Embedded mode: renders as inline tab content (mobile Goals tab) ──────
   if (embedded) {
     return (
       <>
-        {/* Body */}
+        {/* Body. The FABs float over the content's bottom-right corner, above
+            the Archived footer (so an expanded archive never slides under
+            them), like the space's; the pages pad their bottoms so the last
+            card scrolls clear of them. */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="px-3 pt-3 flex-shrink-0">
-            <GoalControls onManageAreas={() => setShowManageAreas(true)} />
+          <div className="relative flex-1 flex flex-col min-h-0">
+          <div className="px-3 pt-3 pb-3 flex-shrink-0">
+            <MobileGoalsTabs
+              tab={sidebarTab}
+              onTabChange={setSidebarTab}
+              goalCount={activeGoals.length}
+              openCount={openStandalone.length}
+              controlsCollapsed={controlsCollapsed}
+              onToggleControls={toggleControls}
+              filtersActive={goalsTab
+                ? !!goalsAreaFilter && goalsAreaFilter !== 'all'
+                : projectsFilter === 'completed' || !!projectQuery.trim()}
+            />
           </div>
-          {goalsViewMode === 'timeline' ? (
-            <div className="flex-1 overflow-y-auto px-3 pb-3">
+          {/* Area filter, Manage Areas and List | Roadmap: goals only (D8, D9) */}
+          {goalsTab && !controlsCollapsed && (
+            <div className="px-3 flex-shrink-0">
+              <GoalControls onManageAreas={() => setShowManageAreas(true)} />
+            </div>
+          )}
+          {goalsTab && goalsViewMode === 'timeline' ? (
+            <div className="flex-1 overflow-y-auto px-3 pb-24">
               {roadmap}
             </div>
           ) : (
             <MobileDashboard
-              activeGoals={filteredGoals}
+              tab={sidebarTab}
+              onTabChange={setSidebarTab}
+              goals={sortedGoals}
+              allGoals={sortedAllGoals}
               activeProjects={activeProjects}
+              standaloneProjects={shownStandalone}
+              openCount={openStandalone.length}
+              completedCount={completedStandalone.length}
+              projectsFilter={projectsFilter}
+              onProjectsFilterChange={setProjectsFilter}
+              projectQuery={projectQuery}
+              onProjectQueryChange={setProjectQuery}
               onEditGoal={onEditGoal}
               onEditProject={onEditProject}
               onNewProject={onNewProject}
               isActive={isActive}
+              controlsCollapsed={controlsCollapsed}
             />
           )}
-          <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} />
+          {fabStack('absolute bottom-4 right-4')}
+          </div>
+          <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} stacked />
         </div>
         {formOverlays}
+        {showAspire && <AspireModal onClose={() => setShowAspire(false)} />}
       </>
     );
   }
 
   // ── Desktop mode: the Goals & Projects space (sidebar + main area) ────────
-  const goalsTab = sidebarTab === 'goals';
   const emptyState = (title, hint, cta) => (
     <div className="relative z-10 flex flex-col items-center justify-center py-16 gap-3">
       <div className={`w-14 h-14 rounded-full flex items-center justify-center ${darkMode ? 'bg-gray-700' : 'bg-stone-100'}`}>
@@ -2855,33 +3035,12 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
           {goalsTab ? (
             <ViewToggle />
           ) : (
-            <div role="group" aria-label={t('goals.projects')} className={`shrink-0 flex rounded-lg border ${borderClass} overflow-hidden`}>
-              {[
-                { key: 'open', label: t('goals.openProjects'), count: openStandalone.length, Icon: CircleDashed },
-                { key: 'completed', label: t('common.completed'), count: completedStandalone.length, Icon: CircleCheckBig },
-              ].map(({ key, label, count, Icon }) => {
-                const active = projectsFilter === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setProjectsFilter(key)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-600 text-white'
-                        : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
-                    }`}
-                  >
-                    <Icon size={13} /> {label}
-                    {/* count badge: white on the blue (active) button, blue on the plain one */}
-                    <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
-                      active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
-                    }`}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ProjectsStatusToggle
+              value={projectsFilter}
+              onChange={setProjectsFilter}
+              openCount={openStandalone.length}
+              completedCount={completedStandalone.length}
+            />
           )}
           <div className="flex-1" />
         </div>
@@ -2940,31 +3099,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         </div>
         {/* FABs — stacked bottom-right like the timeline's; the + is contextual
             to the tab (Add Goal / Add Project, also `n`). Add more above it. */}
-        <div data-goals-fabs className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-2 pointer-events-none">
-          {aspireEnabled && (
-            <button
-              type="button"
-              onClick={() => setShowAspire(true)}
-              className={`pointer-events-auto w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
-                darkMode ? 'bg-gray-700 text-amber-300 hover:bg-gray-600' : 'bg-stone-200 text-amber-500 hover:bg-stone-300'
-              }`}
-              title={t('aspire.title')}
-              aria-label={t('aspire.title')}
-              data-aspire-fab
-            >
-              <Compass size={24} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => (goalsTab ? setGoalForm({ editing: null }) : onNewProject(null))}
-            className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-colors"
-            title={`${goalsTab ? t('common.addGoal') : t('common.addProject')} (N)`}
-            aria-label={goalsTab ? t('common.addGoal') : t('common.addProject')}
-          >
-            <Plus size={28} />
-          </button>
-        </div>
+        {fabStack('absolute bottom-6 right-6')}
         </div>
         <ArchivedSection archivedGoals={archivedGoals} archivedProjects={archivedProjects} grid anchored />
       </div>

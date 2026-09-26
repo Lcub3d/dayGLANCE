@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Day Dial's ground, the spec's #0b0b0e in light and dark alike (the
+     dial is a dark face on every platform, as on iOS). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#0b0b0e" />
+    <corners android:radius="16dp" />
+</shape>

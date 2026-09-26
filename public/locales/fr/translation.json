@@ -1771,7 +1771,11 @@
     "templateTaskNote": "Note",
     "templateTaskNoteHint": "(reprise à chaque session)",
     "optionalNote": "Note facultative…",
-    "addTaskPlaceholder": "Ajouter une tâche…"
+    "addTaskPlaceholder": "Ajouter une tâche…",
+    "showFilters": "Afficher les filtres",
+    "hideFilters": "Masquer les filtres",
+    "filtersActive": "Filtres actifs",
+    "filterButton": "Filtrer"
   },
   "colors": {
     "gray": "Gris",

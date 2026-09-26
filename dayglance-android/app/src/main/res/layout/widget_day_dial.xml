@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Day Dial (DayDialWidget). Three layers in one box that is exactly the face's
+  364:382 box at whatever size the host gives:
+
+    - the face, a bitmap with the ring and the hub's static rows. The box is
+      the face ImageView's own size (wrap_content + adjustViewBounds keeps its
+      aspect inside the space), and every other layer is match_parent in it;
+    - the needle, a <rotate> drawable turned by setImageLevel (a partial
+      update: one int, the face untouched). Its intrinsic size is tiny on
+      purpose, so it never widens the box; fitXY stretches it to the box;
+    - the live row ("17m left", "35m open"), a strip bitmap in one of three
+      slots. The slots are weights in canvas points (weightSum 382 down, 364
+      across) and must equal DialLiveSlot.rect: DialLiveSlotLayoutTest reads
+      this file and checks.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/day_dial_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_day_dial_background"
+    android:padding="4dp">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center">
+
+        <ImageView
+            android:id="@+id/iv_day_dial_face"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:importantForAccessibility="no" />
+
+        <ImageView
+            android:id="@+id/iv_day_dial_needle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:src="@drawable/day_dial_needle"
+            android:importantForAccessibility="no" />
+
+        <!-- Slot TITLE: baseline 211, 15pt. left 74, top 194, 216 × 23. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:weightSum="382">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="194" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="23"
+                android:orientation="horizontal"
+                android:weightSum="364">
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="74" />
+                <ImageView
+                    android:id="@+id/iv_day_dial_live_title"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="216"
+                    android:scaleType="fitXY"
+                    android:visibility="gone"
+                    android:importantForAccessibility="no" />
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="74" />
+            </LinearLayout>
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="165" />
+        </LinearLayout>
+
+        <!-- Slot ROW1: baseline 243, 11.5pt. left 85, top 230, 194 × 18. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:weightSum="382">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="230" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="18"
+                android:orientation="horizontal"
+                android:weightSum="364">
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="85" />
+                <ImageView
+                    android:id="@+id/iv_day_dial_live_row1"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="194"
+                    android:scaleType="fitXY"
+                    android:visibility="gone"
+                    android:importantForAccessibility="no" />
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="85" />
+            </LinearLayout>
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="134" />
+        </LinearLayout>
+
+        <!-- Slot ROW2: baseline 259, 11.5pt. left 95, top 246, 174 × 18. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:weightSum="382">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="246" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="18"
+                android:orientation="horizontal"
+                android:weightSum="364">
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="95" />
+                <ImageView
+                    android:id="@+id/iv_day_dial_live_row2"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="174"
+                    android:scaleType="fitXY"
+                    android:visibility="gone"
+                    android:importantForAccessibility="no" />
+                <FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="95" />
+            </LinearLayout>
+            <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="118" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

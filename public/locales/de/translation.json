@@ -1771,7 +1771,11 @@
     "templateTaskNote": "Notiz",
     "templateTaskNoteHint": "(wird in jede Sitzung übernommen)",
     "optionalNote": "Optionale Notiz…",
-    "addTaskPlaceholder": "Aufgabe hinzufügen…"
+    "addTaskPlaceholder": "Aufgabe hinzufügen…",
+    "showFilters": "Filter einblenden",
+    "hideFilters": "Filter ausblenden",
+    "filtersActive": "Filter aktiv",
+    "filterButton": "Filtern"
   },
   "colors": {
     "gray": "Grau",

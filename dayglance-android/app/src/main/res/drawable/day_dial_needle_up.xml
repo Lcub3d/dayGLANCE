@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The needle at midnight on the 364×382 canvas (DialSpec: centre 182,189; the
+  needle runs radius 126–159 at 2.6pt, a 3.4pt dot on its outer end, #f5a623).
+  The intrinsic size is a tenth of the canvas on purpose: the needle layer is
+  match_parent inside a wrap_content box that must take the FACE's size
+  (widget_day_dial.xml), and a vector's intrinsic size would widen it. The
+  ImageView stretches it to the box (fitXY), and a vector renders at the size
+  it is drawn, so it stays sharp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36.4dp"
+    android:height="38.2dp"
+    android:viewportWidth="364"
+    android:viewportHeight="382">
+    <path
+        android:pathData="M182,63 L182,30"
+        android:strokeColor="#f5a623"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M178.6,30 a3.4,3.4 0 1,0 6.8,0 a3.4,3.4 0 1,0 -6.8,0 Z"
+        android:fillColor="#f5a623" />
+</vector>

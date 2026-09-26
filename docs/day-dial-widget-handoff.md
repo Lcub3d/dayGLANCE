@@ -666,8 +666,9 @@ curated fixture day, so it is not to be removed when the real widget changes.
   its 0.8 minimum scale), the 10.5pt hour labels at 8.4pt, the 11.5pt
   countdown at 9.2pt. Legible on a 2× iPad mini in a test render; if it is
   not on glass, raise `noteFontSize` before dropping the note's minimum scale.
-- **Decided.** No Android home-screen dial; Wear OS tile if the dial earns a
-  second surface (§"Android, if it happens").
+- **Decided, then reversed (26 Sep).** No Android home-screen dial; Wear OS
+  tile if the dial earns a second surface. Reversed after the device spike:
+  the Android widget is built at parity (§"Android, if it happens").
   The projected-day limitation stands: a day the app has not opened carries
   its shape, not its state (no routines, no completions; §"Phase 4b").
 - **Release notes.** *Day Dial widget (iOS): your whole day as a dial on the
@@ -738,6 +739,35 @@ radius-agnostic and the fixture evaluates them at both canvases, so no
 - **`dialSelection`** (keyboard walk): web accessibility UI, no widget analogue.
 
 ### Android, if it happens
+
+> **Reopened and built, 26 Sep 2026.** A throwaway device spike (#1818)
+> tested the three objections below on a phone and a tablet, and each one
+> had an answer the 22 Sep analysis missed:
+>
+> - **The needle** is not in the face. It is a `<rotate>` drawable over it,
+>   turned by `ImageView.setImageLevel`, which `RemoteViews` can call in a
+>   *partial* update: one int per tick, the face untouched. On device it
+>   landed on the drawn minute.
+> - **The tick** is a non-wakeup `AlarmManager` alarm at each minute
+>   boundary. It fires while the screen is on and waits while the device
+>   sleeps, catching up on wake, so a needle nobody can see costs nothing:
+>   a night of ticks did not register in Battery usage. Without the exact
+>   alarm grant the window widens to ~10 minutes; with it (the tablet's
+>   case) the needle moves every minute.
+> - **The face bitmap** reaches the launcher by ashmem, not inline in the
+>   transaction: a ~9 MB full-screen tablet face delivered cleanly.
+> - **The countdown** is not a `Chronometer`. The one row that changes by
+>   the minute ("17m left", "35m open") is drawn by the same painter into a
+>   small strip bitmap placed in a fixed slot of the layout; every other
+>   hub row is baked into the face, which is redrawn only when its key
+>   changes (a block boundary, the day, a push, a resize).
+>
+> So the Android widget is parity after all: `dayglance-android/.../widget/dial/`
+> ports DialSpec, the palette, the hub and the face input against the same
+> vectors and fixture, and draws the same face. The Wear OS analysis below
+> stands for a watch surface. §8 item 2 (the faintest sky segments on OLED
+> in daylight) now rides this widget. What follows is the original decision,
+> kept for its reasoning.
 
 Decided 22 Sep 2026, the night before the iOS release, after the device walk
 in §8. Short form: **no Day Dial on the Android home screen; the Wear OS tile

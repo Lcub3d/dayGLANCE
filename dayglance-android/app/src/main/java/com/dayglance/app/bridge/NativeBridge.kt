@@ -353,6 +353,7 @@ class NativeBridge(
             com.dayglance.app.widget.ProjectWidget.requestUpdate(context)
             com.dayglance.app.widget.MonthGridWidget.requestUpdate(context)
             com.dayglance.app.widget.MonthAgendaWidget.requestUpdate(context)
+            com.dayglance.app.widget.dial.DayDialWidget.requestUpdate(context)
             // Kick off the native alarm chain so the Up Next notification keeps
             // updating even when the WebView is suspended in the background.
             com.dayglance.app.notifications.UpNextNotificationUpdater.schedule(context)

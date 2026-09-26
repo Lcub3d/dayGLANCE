@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lucide "circle-dashed", the in-app Day Dial legend's icon (DayDial.jsx), in its colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="15dp"
+    android:height="15dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M10.1 2.182a10 10 0 0 1 3.8 0"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M13.9 21.818a10 10 0 0 1-3.8 0"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M17.609 3.721a10 10 0 0 1 2.69 2.7"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M2.182 13.9a10 10 0 0 1 0-3.8"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M20.279 17.609a10 10 0 0 1-2.7 2.69"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M21.818 10.1a10 10 0 0 1 0 3.8"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M3.721 6.391a10 10 0 0 1 2.7-2.69"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M6.391 20.279a10 10 0 0 1-2.69-2.7"
+        android:strokeColor="#9ca3af"
+        android:strokeWidth="1.75"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

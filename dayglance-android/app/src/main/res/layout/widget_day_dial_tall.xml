@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Day Dial with its cards BELOW: a placement taller than the face
+  (DialArrangement.TALL). The All Day card and the legend take the height a
+  width-limited face leaves over, 56dp each with a 6dp gap
+  (DialArrangement.TALL_CARD_DP / CARD_GAP_DP), so the dial is never smaller
+  for having them.
+  Every view id here is also in the other placement's layout where both have
+  it; DayDialCardsBinder touches only the ids its placement's layout carries
+  (an action on a missing view fails the whole widget).
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/day_dial_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_day_dial_background"
+    android:padding="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+            <include
+                layout="@layout/widget_day_dial_box"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center" />
+        </FrameLayout>
+
+        <!-- All Day: icon, then the label over a row of chips (DayDial.jsx allDayPill). -->
+        <LinearLayout
+            android:id="@+id/ll_day_dial_allday"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/day_dial_card_background"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp"
+            android:visibility="gone">
+            <ImageView
+                android:layout_width="15dp"
+                android:layout_height="15dp"
+                android:src="@drawable/ic_day_dial_calendar_days"
+                android:importantForAccessibility="no" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/day_dial_all_day"
+                    android:textColor="#73ffffff"
+                    android:textSize="12sp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+                        <LinearLayout
+                            android:id="@+id/ll_day_dial_allday_chip_1"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+                            <ImageView
+                                android:id="@+id/iv_day_dial_allday_dot_1"
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:src="@drawable/day_dial_dot"
+                                android:importantForAccessibility="no" />
+                            <TextView
+                                android:id="@+id/tv_day_dial_allday_title_1"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:maxWidth="96dp"
+                                android:ellipsize="end"
+                                android:fontFamily="sans-serif-medium"
+                                android:singleLine="true"
+                                android:textColor="#e6ffffff"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                        <LinearLayout
+                            android:id="@+id/ll_day_dial_allday_chip_2"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+                            <ImageView
+                                android:id="@+id/iv_day_dial_allday_dot_2"
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:src="@drawable/day_dial_dot"
+                                android:importantForAccessibility="no" />
+                            <TextView
+                                android:id="@+id/tv_day_dial_allday_title_2"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:maxWidth="96dp"
+                                android:ellipsize="end"
+                                android:fontFamily="sans-serif-medium"
+                                android:singleLine="true"
+                                android:textColor="#e6ffffff"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                        <LinearLayout
+                            android:id="@+id/ll_day_dial_allday_chip_3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="12dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+                            <ImageView
+                                android:id="@+id/iv_day_dial_allday_dot_3"
+                                android:layout_width="6dp"
+                                android:layout_height="6dp"
+                                android:src="@drawable/day_dial_dot"
+                                android:importantForAccessibility="no" />
+                            <TextView
+                                android:id="@+id/tv_day_dial_allday_title_3"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:maxWidth="96dp"
+                                android:ellipsize="end"
+                                android:fontFamily="sans-serif-medium"
+                                android:singleLine="true"
+                                android:textColor="#e6ffffff"
+                                android:textSize="13sp" />
+                        </LinearLayout>
+                    <TextView
+                        android:id="@+id/tv_day_dial_allday_more"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#73ffffff"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- The legend: the day's totals as a grid, three to a row, the way
+             the in-app dial's compact legend stacks (DayDial.jsx legendPill).
+             The second row shows only when unblocked or routines are there
+             (DialArrangement.tallLegendDp). -->
+        <LinearLayout
+            android:id="@+id/ll_day_dial_legend"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/day_dial_card_background"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal">
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_effort"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_day_dial_zap"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_effort"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_effort_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_restore"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_day_dial_leaf"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_restore"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_restore_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_sleep"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_day_dial_moon_star"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_sleep"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_sleep_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/ll_day_dial_legend_row2"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal">
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_unblocked"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_day_dial_circle_dashed"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_unblocked"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_unblocked_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_routines"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_day_dial_sparkles"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_routines"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_routines_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+                </LinearLayout>
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

@@ -8491,7 +8491,14 @@
                 "endsNextDay": true,
                 "endMinTrue": 60
               }
-            ]
+            ],
+            "allDay": [],
+            "totals": {
+              "effortMinutes": 840,
+              "restoreMinutes": 210,
+              "sleepMinutes": 475,
+              "unblockedMinutes": 65
+            }
           }
         },
         {
@@ -8502,7 +8509,14 @@
           },
           "expected": {
             "date": "2026-09-16",
-            "blocks": []
+            "blocks": [],
+            "allDay": [],
+            "totals": {
+              "effortMinutes": 0,
+              "restoreMinutes": 0,
+              "sleepMinutes": null,
+              "unblockedMinutes": null
+            }
           }
         }
       ]

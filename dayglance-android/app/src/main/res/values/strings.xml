@@ -208,4 +208,11 @@ Open dayGLANCE to sync your data, then try adding the widget again.</string>
     <string name="day_dial_zone_changed">Time zone changed</string>
     <string name="day_dial_open_to_refresh">Open dayGLANCE to refresh</string>
     <string name="day_dial_open_to_set_up">Open dayGLANCE to set up</string>
+    <string name="day_dial_all_day">All Day</string>
+    <string name="day_dial_effort">Effort</string>
+    <string name="day_dial_restore">Restore</string>
+    <string name="day_dial_sleep">Sleep</string>
+    <string name="day_dial_unblocked">Unblocked</string>
+    <string name="day_dial_routines">Routines</string>
+    <string name="day_dial_more" translatable="false">+%1$d</string>
 </resources>

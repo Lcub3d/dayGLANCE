@@ -1061,7 +1061,7 @@ const DayPlanner = () => {
   // stores, pushes, pulls and merges records.
   const {
     joboRecords, joboLoaded, joboWritable, joboError,
-    recordJobo, applyRemoteJobo, restoreJobo,
+    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
   const joboRecordsRef = useRef(joboRecords);
@@ -3097,7 +3097,7 @@ const DayPlanner = () => {
   // creates none (the flag gates the interface; the data still syncs).
   useJoboDetector({
     tasks, unscheduledTasks, recurringTasks,
-    joboRecords, joboLoaded, joboWritable, recordJobo,
+    readJoboWorkingSet, joboLoaded, joboWritable, recordJobo,
     isRemoteApply,
     enabled: joboEnabled,
   });

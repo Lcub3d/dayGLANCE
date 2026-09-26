@@ -104,7 +104,10 @@ feature-local namespace. Add new keys to `public/locales/*/translation.json`;
   completion captures the occurrence the user saw (that date's exception
   over the template), and the Do `date` is the stamp's own prefix. The
   detector is one-shot because a failed write, local or remote, is held in
-  the ledger and retried with backoff.
+  the ledger and retried with backoff, and it builds against the ledger's
+  `workingSet()` (committed plus held), never `joboRecords`, so an uncheck of
+  a completion still held for retry is not lost (#1826). The working set is
+  never published as state.
 
 # Adding a field to a task
 

@@ -13,9 +13,16 @@ import { isTrayMode } from '../utils/trayMode.js';
 // the ledger owns the record from then on: a write that fails is held there
 // and retried with backoff (ledger.js), and a device that observes the same
 // completion through sync produces the same id.
+//
+// Records are built against the ledger's WORKING SET, read at effect time,
+// not the committed `joboRecords`: a completion still held for retry is
+// otherwise invisible, and an uncheck that follows it finds nothing to
+// reassess, so the retry later persists `completed` for a reopened task
+// (#1826). Reading the ledger directly also means no render lag between one
+// write and the next edge.
 export default function useJoboDetector({
   tasks, unscheduledTasks, recurringTasks,
-  joboRecords, joboLoaded, joboWritable, recordJobo,
+  readJoboWorkingSet, joboLoaded, joboWritable, recordJobo,
   isRemoteApply,
   enabled,
 }) {
@@ -38,7 +45,7 @@ export default function useJoboDetector({
       if (advanceTo !== null) prevRef.current = advanceTo;
       return;
     }
-    const records = buildJoboRecords(edges, joboRecords, { observedAt: new Date().toISOString() });
+    const records = buildJoboRecords(edges, readJoboWorkingSet?.(), { observedAt: new Date().toISOString() });
     if (!records.length) {
       prevRef.current = nextSnap; // every edge was already present, or unusable
       return;

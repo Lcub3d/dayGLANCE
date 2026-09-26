@@ -248,6 +248,19 @@ export function createLedger({ store, pick = pickJoboRecord, retry = {} }) {
     commit,
     applyRemote,
     restore,
+    /**
+     * Committed records with anything still held merged over them by the
+     * shared pick; undefined until loaded. What the detector builds against,
+     * so a change to a record the ledger has accepted but not yet made durable
+     * (a held completion, then an uncheck) targets that record instead of
+     * finding nothing (#1826). NOT state: sync, backup and the view read the
+     * committed records only, and a held row is never published as if it
+     * were on disk.
+     */
+    workingSet: () => {
+      if (state.records === undefined) return undefined;
+      return held.length ? mergeRecordsById(state.records, held, pick) : state.records;
+    },
     /** Retry whatever is held now, ahead of the backoff. */
     retryHeld,
     /** Stop the retry timer; the held queue stays for a later load. */

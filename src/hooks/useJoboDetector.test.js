@@ -21,6 +21,7 @@ vi.mock('react', () => ({
 vi.mock('../utils/trayMode.js', () => ({ isTrayMode: false }));
 
 const { default: useJoboDetector } = await import('./useJoboDetector.js');
+const { createLedger } = await import('../jobo/ledger.js');
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const DONE_AT = '2026-09-19T15:10:02-05:00';
@@ -37,7 +38,7 @@ function useRenderedHook(props) {
 let recordJobo;
 const props = (tasks, over = {}) => ({
   tasks, unscheduledTasks: [], recurringTasks: [],
-  joboRecords: [], joboLoaded: true, joboWritable: true, recordJobo,
+  readJoboWorkingSet: () => [], joboLoaded: true, joboWritable: true, recordJobo,
   isRemoteApply: () => false, enabled: true,
   ...over,
 });
@@ -81,8 +82,8 @@ describe('useJoboDetector', () => {
   });
 
   it('the ledger not yet loaded holds the edge; loaded writes it', async () => {
-    useRenderedHook(props([task()], { joboLoaded: false, joboRecords: undefined }));
-    useRenderedHook(props([done(task())], { joboLoaded: false, joboRecords: undefined }));
+    useRenderedHook(props([task()], { joboLoaded: false, readJoboWorkingSet: () => undefined }));
+    useRenderedHook(props([done(task())], { joboLoaded: false, readJoboWorkingSet: () => undefined }));
     await flush();
     expect(recordJobo).not.toHaveBeenCalled();
     useRenderedHook(props([done(task())]));
@@ -101,8 +102,8 @@ describe('useJoboDetector', () => {
 
   it('ensure-present at the hook: a record already in joboRecords is not written again', async () => {
     const existing = { id: `do:t1:${DONE_AT}`, progress: 'mostly' };
-    useRenderedHook(props([task()], { joboRecords: [existing] }));
-    useRenderedHook(props([done(task())], { joboRecords: [existing] }));
+    useRenderedHook(props([task()], { readJoboWorkingSet: () => [existing] }));
+    useRenderedHook(props([done(task())], { readJoboWorkingSet: () => [existing] }));
     await flush();
     expect(recordJobo).not.toHaveBeenCalled();
   });
@@ -125,6 +126,46 @@ describe('useJoboDetector', () => {
     await flush();
     expect(recordJobo).toHaveBeenCalledTimes(2);
     expect(recordJobo.mock.calls[1][0][0].id).toBe(`do:t2:${DONE_AT}`);
+  });
+
+  // #1826, through the real hook and the real ledger. MUTATION: build
+  // against committed joboRecords (or return them from workingSet) and the
+  // retry persists `completed` for a task that was reopened.
+  it('reopening a task whose completion is still held for retry lands as partial once storage recovers', async () => {
+    let disk = [];
+    let failing = true;
+    const retries = [];
+    const store = {
+      async writable() { return true; },
+      async read() { return { ok: true, value: disk }; },
+      async update(fn) { if (failing) return { ok: false, error: 'storageWrite' }; disk = fn(disk); return { ok: true, value: disk }; },
+      async write(v) { disk = v; return { ok: true, value: disk }; },
+    };
+    const ledger = createLedger({ store, retry: { schedule: (fn) => { retries.push(fn); return retries.length; }, cancel: () => {} } });
+    await ledger.load();
+    const wired = (tasks) => props(tasks, {
+      recordJobo: ledger.commit,
+      readJoboWorkingSet: ledger.workingSet,
+      joboLoaded: ledger.get().loaded,
+      joboWritable: ledger.get().writable,
+    });
+    useRenderedHook(wired([task()]));
+    useRenderedHook(wired([done(task())]));               // completion: the write fails, the ledger holds it
+    await flush();
+    expect(ledger.get().records).toEqual([]);             // committed-only, as the report asks
+    expect(ledger.heldCount()).toBe(1);
+    useRenderedHook(wired([{ ...task(), completed: false, completedAt: null }])); // reopened before the retry
+    await flush();
+    const pending = ledger.workingSet();
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'partial' });
+    failing = false;
+    await retries[retries.length - 1]();
+    expect(disk).toHaveLength(1);
+    expect(disk[0]).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'partial', title: 'Draft' });
+    expect(disk[0].planSnapshot).toEqual({ date: '2026-09-19', startTime: '14:30', duration: 60 });
+    expect(ledger.heldCount()).toBe(0);
+    ledger.dispose();
   });
 
   it('a write the ledger holds for retry is handed over once and not warned about; a refused one is warned about', async () => {

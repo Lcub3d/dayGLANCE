@@ -50,6 +50,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import InboxFilterPopover from './InboxFilterPopover.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
+import InboxFilterButtons from './InboxFilterButtons.jsx';
 import { useTranslation } from 'react-i18next';
 import { notBucketed } from '../utils/bucketList.js';
 import useGlanceFabs from '../hooks/useGlanceFabs.js';
@@ -802,56 +803,14 @@ const MobileLayout = () => {
 
             {mobileActiveTab === 'inbox' && (
               <div className="relative flex-1 min-h-0 flex flex-col">
-              {/* Filters under the header, the Goals tab's controls row: the
-                  filter popover and the priority cycler, as bordered 32px
-                  buttons. */}
-              <div data-inbox-controls className="flex items-center gap-2 px-3 pt-3 flex-shrink-0">
-                <button
-                  ref={inboxFilterBtnRef}
-                  onClick={() => { setShowInboxFilter(v => !v); playUISound('click'); }}
-                  className={`relative h-8 flex items-center gap-1.5 px-2.5 rounded-lg border ${borderClass} text-xs font-medium ${
-                    inboxFilterActive ? (darkMode ? 'text-blue-400' : 'text-blue-600') : textSecondary
-                  } ${hoverBg} transition-colors`}
-                  aria-label={t('common.filterInbox')}
-                  title={t('common.filterInbox')}
-                >
-                  <Filter size={14} />
-                  <span>{t('goals.filterButton')}</span>
-                  {inboxFilterActive && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />}
-                </button>
-                <button
-                  onClick={() => { setInboxPriorityFilter(prev => (prev + 1) % 4); playUISound('click'); }}
-                  className={`h-8 flex items-center gap-0.5 px-2.5 rounded-lg border ${borderClass} ${hoverBg} transition-colors`}
-                  aria-label={inboxPriorityFilter === 0
-                    ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
-                    : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
-                  title={inboxPriorityFilter === 0
-                    ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
-                    : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
-                >
-                  {[0, 1, 2].map(i => (
-                    <span
-                      key={i}
-                      className={`w-2.5 h-1 rounded-full ${
-                        inboxPriorityFilter === 0
-                          ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
-                          : i < inboxPriorityFilter
-                            ? 'bg-blue-500'
-                            : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
-                      }`}
-                    />
-                  ))}
-                  {/* The level in words, so the dashes read at a glance; one
-                      tap still cycles it (All, Low+, Medium+, High). */}
-                  <span data-priority-label className={`ml-1.5 text-xs font-medium ${inboxPriorityFilter === 0 ? textSecondary : (darkMode ? 'text-blue-400' : 'text-blue-600')}`}>
-                    {[
-                      t('inbox.priorityAll'),
-                      `${t('task.lowPriority')}+`,
-                      `${t('task.mediumPriority')}+`,
-                      t('task.highPriority'),
-                    ][inboxPriorityFilter] ?? t('inbox.priorityAll')}
-                  </span>
-                </button>
+              {/* Filters under the header, the Goals tab's controls row
+                  (InboxFilterButtons, shared with the tablet and desktop). */}
+              <div data-inbox-controls className="px-3 pt-3 flex-shrink-0">
+                <InboxFilterButtons
+                  filterActive={inboxFilterActive}
+                  onToggleFilter={() => setShowInboxFilter(v => !v)}
+                  filterButtonRef={inboxFilterBtnRef}
+                />
               </div>
               {/* pb clears the FAB stack (one or two 56px buttons) so the
                   last task can scroll out from under it. */}

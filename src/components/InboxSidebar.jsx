@@ -11,6 +11,7 @@ import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import DeadlinePickerPopover from './DeadlinePickerPopover.jsx';
 import InboxFilterPopover from './InboxFilterPopover.jsx';
+import InboxFilterButtons from './InboxFilterButtons.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -96,11 +97,14 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
     onDrop={handleDropOnInbox}
     className={`transition-colors ${dragOverInbox ? (darkMode ? 'bg-green-900/20 rounded-lg ring-2 ring-inset ring-green-400' : 'bg-green-50 rounded-lg ring-2 ring-inset ring-green-500') : ''}`}
   >
-    <div className="flex items-center justify-between mb-3">
+    {/* Actions left, filters right (InboxFilterButtons, shared with the
+        phone and tablet). Where Smart Schedule's button leaves no room, the
+        filters wrap onto their own line rather than squeezing. */}
+    <div data-inbox-header className="flex flex-wrap items-center justify-between gap-2 mb-3">
       <div className="flex items-center gap-2">
         <button
           onClick={openNewInboxTask}
-          className="px-2.5 flex items-center justify-center gap-1 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           title={t('task.newInbox')}
         >
           <Plus size={14} strokeWidth={3} />
@@ -109,7 +113,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
         {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
           <button
             onClick={() => { setShowFramesModal(true); setFramesModalTab('schedule'); setEditingFrame(null); }}
-            className="px-2.5 flex items-center justify-center gap-1 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             title={t('inbox.aiSmartSchedule', { defaultValue: 'AI Smart Schedule' })}
           >
             <BrainCircuit size={14} />
@@ -117,41 +121,13 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
           </button>
         )}
       </div>
-      <div className="flex items-center gap-0.5">
-        {unscheduledTasks.filter(t => notBucketed(t) && !t.deadline).length > 0 && (
-          <>
-            <button
-              ref={node => { if (node) inboxFilterBtnRef.current = node; }}
-              onClick={() => { setShowInboxFilter(v => !v); playUISound('click'); }}
-              className={`relative ${hoverBg} rounded px-1.5 py-1.5 transition-colors`}
-              title={t('common.filterInbox')}
-            >
-              <Filter size={14} className={inboxFilterActive ? (darkMode ? 'text-blue-400' : 'text-blue-500') : (darkMode ? 'text-gray-400' : 'text-stone-500')} />
-              {inboxFilterActive && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500" />}
-            </button>
-            <button
-              onClick={() => { setInboxPriorityFilter(prev => (prev + 1) % 4); playUISound('click'); }}
-              className={`flex gap-0.5 ${hoverBg} rounded pl-1 pr-2 py-1.5 transition-colors`}
-              title={inboxPriorityFilter === 0
-                ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
-                : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
-            >
-              {[0, 1, 2].map(i => (
-                <span
-                  key={i}
-                  className={`w-2.5 h-1 rounded-full ${
-                    inboxPriorityFilter === 0
-                      ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
-                      : i < inboxPriorityFilter
-                        ? 'bg-blue-500'
-                        : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
-                  }`}
-                />
-              ))}
-            </button>
-          </>
-        )}
-      </div>
+      {unscheduledTasks.filter(t => notBucketed(t) && !t.deadline).length > 0 && (
+        <InboxFilterButtons
+          filterActive={inboxFilterActive}
+          onToggleFilter={() => setShowInboxFilter(v => !v)}
+          filterButtonRef={inboxFilterBtnRef}
+        />
+      )}
     </div>
 
     <div className="space-y-2">
@@ -416,8 +392,8 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
   return (
     <>
 <div className="p-4" data-inbox-container>
-  {/* Inbox header with priority filter */}
-  <div className="flex items-center justify-between mb-4">
+  {/* Inbox header: actions left, filters right (InboxFilterButtons) */}
+  <div data-inbox-header className="flex flex-wrap items-center justify-between gap-2 mb-4">
     <div className="flex items-center gap-2">
       <button
         onClick={openNewInboxTask}
@@ -436,37 +412,11 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
         </button>
       )}
     </div>
-    <div className="flex items-center gap-2">
-      <button
-        ref={node => { inboxFilterBtnRef.current = node; }}
-        onClick={() => { inboxFilterBtnRef.current = document.activeElement; setShowInboxFilter(v => !v); playUISound('click'); }}
-        className={`relative ${hoverBg} rounded px-2 py-1.5 transition-colors`}
-        title={t('common.filterInbox')}
-      >
-        <Filter size={14} className={inboxFilterActive ? (darkMode ? 'text-blue-400' : 'text-blue-500') : (darkMode ? 'text-gray-400' : 'text-stone-500')} />
-        {inboxFilterActive && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500" />}
-      </button>
-      <button
-        onClick={() => { setInboxPriorityFilter(prev => (prev + 1) % 4); playUISound('click'); }}
-        className={`flex gap-0.5 ${hoverBg} rounded px-2 py-1.5 transition-colors`}
-        title={inboxPriorityFilter === 0
-          ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
-          : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
-      >
-        {[0, 1, 2].map(i => (
-          <span
-            key={i}
-            className={`w-2.5 h-1 rounded-full ${
-              inboxPriorityFilter === 0
-                ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
-                : i < inboxPriorityFilter
-                  ? 'bg-blue-500'
-                  : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
-            }`}
-          />
-        ))}
-      </button>
-    </div>
+    <InboxFilterButtons
+      filterActive={inboxFilterActive}
+      onToggleFilter={() => setShowInboxFilter(v => !v)}
+      filterButtonRef={inboxFilterBtnRef}
+    />
   </div>
   <div className="space-y-2">
     {filteredUnscheduledTasks.filter(t => !t.isExample).length === 0 ? (

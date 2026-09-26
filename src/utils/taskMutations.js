@@ -25,6 +25,7 @@
 import { parseRoutineBlockId, routineBlockId } from './mcpRoutines.js';
 import { findRoutineConflict, minutesToTime } from './dayOccupancy.js';
 import { completionTimestamp } from './taskUtils.js';
+import { getProjectColor } from './colorUtils.js';
 
 export const WRITE_ERROR_CODES = Object.freeze({
   NOT_FOUND: 'not_found',
@@ -150,6 +151,13 @@ export function parseRecurringInstanceId(id) {
  * so it is a not_found error, not a silent write. Stored as the UI stores
  * it: assignedUserSyncIds array.
  *
+ * PROJECT INHERITANCE: a create with projectId copies the project's effective
+ * color (getProjectColor: its own, else its goal's) and, when no assignee is
+ * named, its assigned users — the copy-at-creation rule every UI create path
+ * follows (ProjectCard/ProjectPlanner quick-add, the new-task modals). An
+ * explicit assigneeSyncId wins over the project's users. An unknown projectId
+ * inherits nothing and falls back to the default color.
+ *
  * Idempotent per the handleIntent.js:347-389 precedent (the one create-shaped
  * mutation-level dedup in the codebase): the caller derives `taskId`
  * deterministically from its idempotency key, so a replayed create finds the
@@ -192,11 +200,17 @@ export function applyCreateTask(state, {
     };
   }
 
+  const project = projectId ? (state.projects ?? []).find((p) => p.id === projectId) : undefined;
+  const parentGoal = project?.goalId ? (state.goals ?? []).find((g) => g.id === project.goalId) : undefined;
+  if (!assignedUserSyncIds && project?.assignedUserSyncIds?.length) {
+    assignedUserSyncIds = [...project.assignedUserSyncIds];
+  }
+
   const base = {
     id: taskId,
     title: trimmed,
     duration: typeof durationMinutes === 'number' ? durationMinutes : 30,
-    color: 'bg-blue-500',
+    color: project ? getProjectColor(project, parentGoal) : 'bg-blue-500',
     completed: false,
     isAllDay: false,
     notes: typeof notes === 'string' ? notes : '',

@@ -54,6 +54,55 @@ describe('applyCreateTask', () => {
     expect(r.task.projectId).toBe('p1');
   });
 
+  describe('project inheritance (copy-at-creation, as the UI create paths do)', () => {
+    const withProjects = {
+      ...state,
+      users: [{ id: 'u-a', syncId: 'sa' }, { id: 'u-b', syncId: 'sb' }],
+      goals: [{ id: 'g1', color: 'bg-green-500' }],
+      projects: [
+        { id: 'p-own', color: 'bg-purple-500', assignedUserSyncIds: ['sa'] },
+        { id: 'p-goal', goalId: 'g1' },
+        { id: 'p-bare' },
+      ],
+    };
+
+    it("stamps the project's own color and assigned users", () => {
+      const r = applyCreateTask(withProjects, { taskId: 'pi1', title: 'T', projectId: 'p-own', nowIso: NOW });
+      expect(r.task.color).toBe('bg-purple-500');
+      expect(r.task.assignedUserSyncIds).toEqual(['sa']);
+    });
+
+    it("falls back to the parent goal's color, then the default", () => {
+      expect(applyCreateTask(withProjects, { taskId: 'pi2', title: 'T', projectId: 'p-goal', nowIso: NOW }).task.color)
+        .toBe('bg-green-500');
+      const bare = applyCreateTask(withProjects, { taskId: 'pi3', title: 'T', projectId: 'p-bare', nowIso: NOW }).task;
+      expect(bare.color).toBe('bg-blue-500');
+      expect(bare).not.toHaveProperty('assignedUserSyncIds');
+    });
+
+    it("an explicit assignee wins over the project's users", () => {
+      const r = applyCreateTask(withProjects, {
+        taskId: 'pi4', title: 'T', projectId: 'p-own', assigneeSyncId: 'sb', nowIso: NOW,
+      });
+      expect(r.task.assignedUserSyncIds).toEqual(['sb']);
+      expect(r.task.color).toBe('bg-purple-500');
+    });
+
+    it('scheduled creates inherit too', () => {
+      const r = applyCreateTask(withProjects, {
+        taskId: 'pi5', title: 'T', projectId: 'p-own', nowIso: NOW,
+        schedule: { date: '2026-08-12', startTime: '10:00', durationMinutes: 30 },
+      });
+      expect(r.scheduled).toBe(true);
+      expect(r.task).toMatchObject({ color: 'bg-purple-500', assignedUserSyncIds: ['sa'] });
+    });
+
+    it('does not alias the project assignee array', () => {
+      const r = applyCreateTask(withProjects, { taskId: 'pi6', title: 'T', projectId: 'p-own', nowIso: NOW });
+      expect(r.task.assignedUserSyncIds).not.toBe(withProjects.projects[0].assignedUserSyncIds);
+    });
+  });
+
   it('replay (deterministic id already present) returns the existing task unchanged — the handleIntent precedent', () => {
     const r = applyCreateTask(state, { taskId: 'u1', title: 'Different title', nowIso: NOW });
     expect(r.ok).toBe(true);

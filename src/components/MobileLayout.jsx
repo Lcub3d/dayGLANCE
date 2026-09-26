@@ -470,6 +470,11 @@ const MobileLayout = () => {
   } = useFeaturesCtx();
 
   const [showInboxFilter, setShowInboxFilter] = useState(false);
+  // The Inbox's Smart Schedule FAB: AI scheduling on, a frame to schedule
+  // into, and an open inbox task to place (the desktop header's same test).
+  const inboxSmartScheduleAvailable = !!(aiConfig?.enabled && aiConfig.features?.smartScheduling
+    && myFrames.filter(f => f.enabled).length > 0
+    && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0);
   const inboxFilterBtnRef = useRef(null);
   const inboxFilterActive =
     hideCompletedInbox ||
@@ -586,61 +591,12 @@ const MobileLayout = () => {
             )}
             {mobileActiveTab === 'inbox' && (
               <div className={`${cardBg} border-b ${borderClass} sticky top-0 z-30`} data-inbox-container>
-                <div className="px-4 pt-3 pb-1">
+                {/* Title only, like the Goals tab: New Task and Schedule are the
+                    tab's FABs, and the filters sit under this header. */}
+                <div className="px-4 py-3">
                   <h2 className={`font-bold text-lg ${textPrimary} flex items-center gap-2`}>
                     <Inbox size={20} /> {t('settings.inbox')}
                   </h2>
-                </div>
-                <div className="flex items-center justify-between px-4 py-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={openNewInboxTask}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"
-                       title={t('task.newInbox')}
-                    >
-                      <Plus size={14} strokeWidth={3} />
-                      <span className="text-xs font-medium">{t('common.newTask')}</span>
-                    </button>
-                    {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
-                      <button
-                        onClick={() => { setMobileActiveTab('settings'); setMobileSettingsView('frames'); setFramesModalTab('schedule'); setEditingFrame(null); }}
-                        className="flex items-center justify-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"
-                         title={t('shortcuts.smartSchedule')}
-                      >
-                        <BrainCircuit size={14} />
-                         <span className="text-xs font-medium">{t('common.schedule')}</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      ref={inboxFilterBtnRef}
-                      onClick={() => { setShowInboxFilter(v => !v); playUISound('click'); }}
-                      className={`relative ${hoverBg} rounded px-1.5 py-1.5 transition-colors`}
-                       title={t('common.filterInbox')}
-                    >
-                      <Filter size={14} className={inboxFilterActive ? (darkMode ? 'text-blue-400' : 'text-blue-500') : (darkMode ? 'text-gray-400' : 'text-stone-500')} />
-                      {inboxFilterActive && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                    </button>
-                    <button
-                      onClick={() => { setInboxPriorityFilter(prev => (prev + 1) % 4); playUISound('click'); }}
-                      className={`flex gap-0.5 ${hoverBg} rounded px-2 py-1.5 transition-colors`}
-                      title={inboxPriorityFilter === 0 ? 'Showing all priorities' : `Showing priority ${inboxPriorityFilter}+`}
-                    >
-                      {[0, 1, 2].map(i => (
-                        <span
-                          key={i}
-                          className={`w-2.5 h-1 rounded-full ${
-                            inboxPriorityFilter === 0
-                              ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
-                              : i < inboxPriorityFilter
-                                ? 'bg-blue-500'
-                                : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
-                          }`}
-                        />
-                      ))}
-                    </button>
-                  </div>
                 </div>
               </div>
             )}
@@ -845,7 +801,51 @@ const MobileLayout = () => {
             )}
 
             {mobileActiveTab === 'inbox' && (
-              <div className={`px-4 py-4 mobile-tab-fade-in flex-1 min-h-0 overflow-y-auto`}>
+              <div className="relative flex-1 min-h-0 flex flex-col">
+              {/* Filters under the header, the Goals tab's controls row: the
+                  filter popover and the priority cycler, as bordered 32px
+                  buttons. */}
+              <div data-inbox-controls className="flex items-center gap-2 px-3 pt-3 flex-shrink-0">
+                <button
+                  ref={inboxFilterBtnRef}
+                  onClick={() => { setShowInboxFilter(v => !v); playUISound('click'); }}
+                  className={`relative h-8 flex items-center gap-1.5 px-2.5 rounded-lg border ${borderClass} text-xs font-medium ${
+                    inboxFilterActive ? (darkMode ? 'text-blue-400' : 'text-blue-600') : textSecondary
+                  } ${hoverBg} transition-colors`}
+                  aria-label={t('common.filterInbox')}
+                  title={t('common.filterInbox')}
+                >
+                  <Filter size={14} />
+                  <span>{t('goals.filterButton')}</span>
+                  {inboxFilterActive && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />}
+                </button>
+                <button
+                  onClick={() => { setInboxPriorityFilter(prev => (prev + 1) % 4); playUISound('click'); }}
+                  className={`h-8 flex items-center gap-0.5 px-2.5 rounded-lg border ${borderClass} ${hoverBg} transition-colors`}
+                  aria-label={inboxPriorityFilter === 0
+                    ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
+                    : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
+                  title={inboxPriorityFilter === 0
+                    ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
+                    : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' })}
+                >
+                  {[0, 1, 2].map(i => (
+                    <span
+                      key={i}
+                      className={`w-2.5 h-1 rounded-full ${
+                        inboxPriorityFilter === 0
+                          ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
+                          : i < inboxPriorityFilter
+                            ? 'bg-blue-500'
+                            : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
+                      }`}
+                    />
+                  ))}
+                </button>
+              </div>
+              {/* pb clears the FAB stack (one or two 56px buttons) so the
+                  last task can scroll out from under it. */}
+              <div data-inbox-list className={`px-4 pt-3 ${inboxSmartScheduleAvailable ? 'pb-40' : 'pb-24'} mobile-tab-fade-in flex-1 min-h-0 overflow-y-auto`}>
                 <div className="space-y-2">
                   {filteredUnscheduledTasks.filter(t => !t.isExample).length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 px-6">
@@ -1098,6 +1098,34 @@ const MobileLayout = () => {
                     </div>
                   );
                 })()}
+              </div>
+              {/* FABs, the GLANCE tab's stack: New Task (the blue +) at the
+                  bottom, Smart Schedule above it when AI scheduling can run.
+                  Absolute in this column, not fixed, so they sit above the
+                  Archived bar instead of over it. */}
+              <div data-inbox-fabs className="absolute bottom-4 right-4 z-40 flex flex-col items-center gap-2 pointer-events-none">
+                {inboxSmartScheduleAvailable && (
+                  <button
+                    onClick={() => { setMobileActiveTab('settings'); setMobileSettingsView('frames'); setFramesModalTab('schedule'); setEditingFrame(null); }}
+                    className={`pointer-events-auto w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+                      darkMode ? 'bg-gray-700 text-blue-300 hover:bg-gray-600' : 'bg-stone-200 text-blue-600 hover:bg-stone-300'
+                    }`}
+                    aria-label={t('shortcuts.smartSchedule')}
+                    title={t('shortcuts.smartSchedule')}
+                    data-schedule-fab
+                  >
+                    <BrainCircuit size={24} />
+                  </button>
+                )}
+                <button
+                  onClick={openNewInboxTask}
+                  className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center transition-colors"
+                  aria-label={t('task.newInbox')}
+                  title={t('task.newInbox')}
+                >
+                  <Plus size={28} />
+                </button>
+              </div>
               </div>
             )}
 

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, ChevronDown, ChevronUp, GitBranch, NotebookPen, Trash2 } from 'lucide-react';
+import { BarChart3, BookOpen, ChevronDown, ChevronUp, NotebookPen, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
@@ -9,7 +9,7 @@ import { glanceFabStagger, glanceFabVisibilityClass } from '../utils/glanceFabs.
 /**
  * Every GLANCE panel action button on desktop and tablet, and the one handle
  * that collapses them — the same two-column arrangement the phone has in
- * MobileLayout: labelled pills bottom-left (daily note, Goals & Projects),
+ * MobileLayout: a labelled pill bottom-left (daily note),
  * circular FABs bottom-right (weekly review, daily stats ring, recycle bin),
  * with the handle at the foot of the right-hand column.
  *
@@ -36,7 +36,6 @@ export default function GlanceFabs() {
   } = useDayPlannerCtx();
   const { obsidianConfig, setShowMobileRecycleBin } = useSyncCtx();
   const {
-    goalsProjectsEnabled, setShowGoalsDashboard,
     setShowWeeklyReview, showWeeklyReviewReminder, setShowWeeklyReviewReminder,
     weeklyReviewDismissedRef, lastWeeklyReviewFiredRef,
   } = useFeaturesCtx();
@@ -67,14 +66,9 @@ export default function GlanceFabs() {
       title: "Today's daily note",
       onClick: () => setDailyNotesModalDate(getTodayStr()),
     },
-    goalsProjectsEnabled && {
-      key: 'goals',
-      icon: <GitBranch size={15} />,
-      label: t('settings.goalsProjects'),
-      title: 'Goals & Projects',
-      onClick: () => setShowGoalsDashboard(true),
-    },
-  ].filter(Boolean);
+    // No Goals & Projects pill: that is a space of its own now, reached from
+    // the header's switcher (or `g`), not an action on this panel.
+  ];
 
   const donePct = actualTodayNonImportedTasks.length > 0
     ? Math.round(((actualTodayCompletedTasks.length + inboxCompletedTodayCount) / actualTodayNonImportedTasks.length) * 100)

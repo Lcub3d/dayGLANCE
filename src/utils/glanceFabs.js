@@ -47,8 +47,7 @@ const STAGGER_STEP_MS = 50;
  * @param collapsed The state being animated INTO.
  * @param index     Position in the column, 0 = nearest the handle.
  * @param count     How many buttons the column has right now — it varies: the
- *                  recycle-bin button exists only when the bin is non-empty,
- *                  and Goals & Projects only when the feature is on.
+ *                  recycle-bin button exists only when the bin is non-empty.
  * @returns delay in ms
  */
 export const glanceFabStagger = (collapsed, index, count) => {

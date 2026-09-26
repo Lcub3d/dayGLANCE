@@ -1,0 +1,326 @@
+/*
+ * Timing metadata is deliberately a small, opaque-enough text chip.  JOBO
+ * cards carry arbitrary task colours, so red/green status text needs its own
+ * quiet surface to remain legible in both light and dark task cards.
+ */
+.jobo-time-meta {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  height: 14px;
+  max-height: 14px;
+  padding: 0 3px;
+  border: 1px solid rgb(255 255 255 / 0.48);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.9);
+  color: #334155;
+  box-shadow: 0 1px 1px rgb(15 23 42 / 0.12);
+  font-size: 11px;
+  line-height: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.jobo-time-meta-neutral {
+  background: rgb(255 255 255 / 0.9);
+  color: #334155;
+}
+
+.jobo-time-meta-part {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobo-time-meta-part.is-late {
+  padding-inline: 2px;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.jobo-time-meta-part.is-early {
+  padding-inline: 2px;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.jobo-time-meta-part.is-neutral {
+  color: #334155;
+}
+
+.jobo-time-meta-duration {
+  flex: 1 1 auto;
+  padding-left: 3px;
+  border-left: 1px solid rgb(71 85 105 / 0.22);
+}
+
+.jobo-time-meta-duration.is-late,
+.jobo-time-meta-duration.is-early {
+  padding-left: 4px;
+  border-left-color: transparent;
+}
+
+.jobo-time-meta-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 9rem;
+  align-items: center;
+  overflow: hidden;
+  padding-inline: 3px;
+  border-radius: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobo-time-meta-status.is-ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.jobo-time-meta-status.is-attention {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.jobo-time-meta-status.is-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.jobo-time-meta-status.is-muted {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.jobo-time-meta-separator {
+  color: #64748b;
+}
+
+/* Priority ruler overlay. The 46px parent is split into two 23px strips. */
+.jobo-priority-timeline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.jobo-priority-half,
+.jobo-priority-segments {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  pointer-events: none;
+}
+
+.jobo-priority-half {
+  background: repeating-linear-gradient(
+    135deg,
+    rgb(148 163 184 / 0.12) 0,
+    rgb(148 163 184 / 0.12) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+.jobo-priority-half-plan,
+.jobo-priority-segments-plan {
+  left: 0;
+}
+
+.jobo-priority-half-do,
+.jobo-priority-segments-do {
+  left: 50%;
+}
+
+.jobo-priority-half-do {
+  border-left: 1px solid rgb(100 116 139 / 0.2);
+}
+
+.jobo-priority-segment {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--jobo-priority-color);
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.13);
+  opacity: 0.78;
+}
+
+.jobo-priority-segment-gap {
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* Keep the hour text above the decorative layer; pointer-events on the layer
+ * remain disabled so the existing time-ruler drag separator keeps working. */
+.jobo-s5-time-ruler > .jobo-s5-ruler-hour {
+  position: relative;
+  z-index: 1;
+}
+
+.jobo-s5-dark .jobo-time-meta,
+.jobo-s5-dark .jobo-time-meta-neutral {
+  border-color: rgb(255 255 255 / 0.42);
+  background: rgb(248 250 252 / 0.92);
+  color: #1e293b;
+}
+
+.jobo-s5-dark .jobo-time-meta-part.is-neutral,
+.jobo-s5-dark .jobo-time-meta-separator {
+  color: #1e293b;
+}
+
+.jobo-s5-dark .jobo-time-meta-status.is-ok {
+  background: #14532d;
+  color: #dcfce7;
+}
+
+.jobo-s5-dark .jobo-time-meta-status.is-attention {
+  background: #7f1d1d;
+  color: #fee2e2;
+}
+
+.jobo-s5-dark .jobo-time-meta-status.is-info {
+  background: #1e3a8a;
+  color: #dbeafe;
+}
+
+.jobo-s5-dark .jobo-time-meta-status.is-muted {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+/* Card-local width is the useful breakpoint for a timeline column. */
+.jobo-s5-do-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 280px) {
+  .jobo-time-meta-duration {
+    display: none;
+  }
+
+  .jobo-time-meta-status {
+    max-width: 7rem;
+  }
+}
+
+@container (max-width: 180px) {
+  .jobo-time-meta {
+    gap: 2px;
+    font-size: 10px;
+  }
+
+  .jobo-time-meta-status {
+    max-width: 5rem;
+    padding-inline: 2px;
+  }
+}
+
+/* Progress control lives in the title row and follows the same card width. */
+.jobo-s5-do-progress {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+  align-items: center;
+  max-width: 100%;
+}
+
+.jobo-s5-do-progress-trigger {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 19px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  padding: 0 5px;
+  border: 1px solid rgb(255 255 255 / 0.38);
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.12);
+  color: inherit;
+  font-size: 10px;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.jobo-s5-do-progress:hover .jobo-s5-do-progress-trigger {
+  background: rgb(255 255 255 / 0.24);
+}
+
+.jobo-s5-do-progress:focus-within .jobo-s5-do-progress-trigger {
+  z-index: 1;
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.jobo-s5-do-progress-narrow {
+  display: none;
+}
+
+.jobo-s5-do-progress-select {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  cursor: pointer;
+  opacity: 0;
+  color: #334155;
+  background: #ffffff;
+}
+
+.jobo-s5-do-progress-select option {
+  color: #334155;
+  background: #ffffff;
+}
+
+.jobo-s5-dark .jobo-s5-do-progress-select {
+  color: #e2e8f0;
+  background: #1e293b;
+}
+
+.jobo-s5-dark .jobo-s5-do-progress-select option {
+  color: #e2e8f0;
+  background: #1e293b;
+}
+
+@container (max-width: 280px) {
+  .jobo-s5-do-progress-wide {
+    display: none;
+  }
+
+  .jobo-s5-do-progress-narrow {
+    display: inline;
+  }
+
+  .jobo-s5-do-progress-trigger {
+    width: 22px;
+    padding-inline: 0;
+  }
+}

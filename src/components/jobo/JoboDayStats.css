@@ -1,0 +1,22 @@
+/* Same flat label/value/divider rhythm as MONTH, scoped to JOBO's date row. */
+.jobo-day-header { display: flex; align-items: stretch; flex: 1; min-width: 0; width: 100%; }
+.jobo-day-stats { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.jobo-day-tile { display: flex; flex: 1; min-width: 112px; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 10px; text-align: left; background: transparent; }
+.jobo-day-tile:hover { background: rgb(127 127 127 / .08); }
+.jobo-day-tile:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.jobo-day-percent { display: flex; align-items: center; gap: 6px; }
+.jobo-day-track { height: 3px; width: 48px; background: rgb(127 127 127 / .2); border-radius: 4px; overflow: hidden; }
+.jobo-day-track > span { display: block; height: 100%; background: #f59e0b; }
+.jobo-day-header > .jobo-s5-tools { flex: none; margin-left: 6px; }
+.jobo-day-details { width: min(740px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px; border-radius: 10px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); font-size: 13px; line-height: 1.6; }
+.jobo-day-details h2 { font-size: 16px; font-weight: 600; }
+.jobo-day-details h3 { margin-top: 16px; font-weight: 600; }
+.jobo-day-details summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+.jobo-day-details :is(button, summary):focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-day-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; margin: 12px 0; }
+.jobo-day-facts > div { display: flex; justify-content: space-between; gap: 10px; }
+.jobo-day-facts dd { font-variant-numeric: tabular-nums; font-weight: 600; }
+.jobo-day-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-variant-numeric: tabular-nums; }
+.jobo-day-table th, .jobo-day-table td { text-align: right; padding: 6px; border-bottom: 1px solid rgb(127 127 127 / .2); }
+.jobo-day-table th:first-child { text-align: left; font-weight: 500; max-width: 300px; overflow-wrap: anywhere; }
+@media (max-width: 1100px) { .jobo-day-tile { min-width: 104px; padding-inline: 7px; } }

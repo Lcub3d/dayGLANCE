@@ -131,6 +131,70 @@ export default function useTaskActions({
 
   // ── Task creation ────────────────────────────────────────────────────────
 
+  // JOBO's direct Plan creation path.  The modal-oriented addTask below reads
+  // `newTask` and intentionally rejects an empty title; this explicit handler
+  // receives a complete ordinary scheduled task from the JOBO adapter, keeps
+  // the same native conflict/undo/audio behavior, and returns the exact task
+  // synchronously so the view can begin inline title editing.
+  const createTimelineTask = ({
+    id = crypto.randomUUID(),
+    title = '',
+    date: requestedDate,
+    startTime: requestedStartTime,
+    duration = 30,
+    color,
+    notes = '',
+    subtasks = [],
+    projectId,
+    assignedUserSyncIds,
+    priority,
+  } = {}) => {
+    const taskDate = requestedDate || dateToString(selectedDate);
+    const startTime = requestedStartTime || getNextQuarterHour();
+    if (typeof title !== 'string') throw new TypeError('title must be a string');
+    if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
+      throw new TypeError('duration must be a positive number');
+    }
+
+    const { conflicted, adjustedStartTime, conflictingEvent } = typeof getAdjustedTimeForImportedConflicts === 'function'
+      ? getAdjustedTimeForImportedConflicts(id, startTime, duration, taskDate)
+      : { conflicted: false, adjustedStartTime: startTime, conflictingEvent: null };
+    const task = {
+      id,
+      title,
+      duration,
+      color: color || colors[0].class,
+      completed: false,
+      isAllDay: false,
+      notes: typeof notes === 'string' ? notes : '',
+      subtasks: Array.isArray(subtasks)
+        ? subtasks.map((subtask) => ({ ...subtask, id: crypto.randomUUID(), completed: false }))
+        : [],
+      date: taskDate,
+      startTime: adjustedStartTime,
+      lastModified: new Date().toISOString(),
+      ...(projectId !== undefined && projectId !== null && projectId !== '' ? { projectId } : {}),
+      ...(Array.isArray(assignedUserSyncIds) && assignedUserSyncIds.length
+        ? { assignedUserSyncIds: [...assignedUserSyncIds] } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+    };
+
+    pushUndo();
+    setTasks(prev => [...prev, task]);
+    if (conflicted && conflictingEvent) {
+      setSyncNotification({
+        type: 'info',
+        title: 'Task Rescheduled',
+        message: `Task moved to ${adjustedStartTime} to avoid conflict with "${conflictingEvent.title}"`,
+      });
+    }
+    if (onboardingProgress && !onboardingProgress.hasAddedScheduledTask && typeof setOnboardingProgress === 'function') {
+      setOnboardingProgress(prev => ({ ...prev, hasAddedScheduledTask: true }));
+    }
+    if (typeof playUISound === 'function') playUISound('pop');
+    return task;
+  };
+
   const addTask = (toInbox = false) => {
     if (newTask.title.trim()) {
       pushUndo();
@@ -899,6 +963,7 @@ export default function useTaskActions({
     clearDeadline,
     // Create
     addTask,
+    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,

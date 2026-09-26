@@ -28,7 +28,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 
-const CalendarHeader = () => {
+const CalendarHeader = ({ joboControlsRef } = {}) => {
   const {
     isTablet, isLandscape,
     visibleDates,
@@ -279,17 +279,13 @@ const CalendarHeader = () => {
   })}
     </>
   ) : effectiveViewMode === 'jobo' ? (
-    /* JOBO: one day, the selected one, at its natural width with room either
-       side, and nothing to its right. The empty stretch is not unfinished: it
-       is where JOBO's own controls will go, and the header should not fill it
-       with a second day that the view does not show. Same shape as MONTH's
-       single-day cell above. */
+    /* JOBO: the selected day and its view controls share one header row. */
     <>
     <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
       {isTablet && !isLandscape ? <MobileViewToggle /> : ((canShowViewCycler || schedOnlyCycler) && <ViewCycler />)}
     </div>
     <DayHeaderCell date={selectedDate} className="flex-none px-6" />
-    <div className="flex-1" />
+    <div ref={joboControlsRef} data-jobo-header-controls className="flex-1 min-w-0 flex items-center justify-end px-2" />
     </>
   ) : (() => {
     // Day mode: build date groups from dayViewColumns — start at x=0 so column

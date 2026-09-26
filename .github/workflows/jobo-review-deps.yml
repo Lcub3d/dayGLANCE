@@ -1,0 +1,29 @@
+name: JOBO review dependencies
+on:
+  push:
+    branches: [review/jobo-slice5-20260927]
+    paths: [.github/workflows/jobo-review-deps.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exactly the repository lockfile
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Archive dependencies without executing package install scripts
+        run: tar -czf /tmp/jobo-review-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobo-review-dependencies
+          path: /tmp/jobo-review-dependencies.tar.gz
+          retention-days: 1

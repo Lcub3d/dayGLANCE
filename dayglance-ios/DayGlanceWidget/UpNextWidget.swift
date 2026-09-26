@@ -37,11 +37,17 @@ struct UpNextWidgetView: View {
     private var freshness: WidgetFreshness { day.freshness }
 
     var body: some View {
-        if let task = day.nextTask {
-            taskView(task: task)
-        } else {
-            emptyView
+        Group {
+            if let task = day.nextTask {
+                taskView(task: task)
+            } else {
+                emptyView
+            }
         }
+        // Outside the Done/Focus links: today's calendar, wherever the app
+        // was (a plain open would leave it on another day or in the Goals
+        // space). The up-next task is always today's (WidgetLink).
+        .widgetURL(WidgetLink.today)
     }
 
     @ViewBuilder
@@ -148,16 +154,13 @@ struct UpNextWidgetView: View {
                             .padding(.top, 3)
                     } else {
                         HStack(spacing: 8) {
-                            if let id = task.id?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                               let doneURL = URL(string: "dayglance://completeTask?id=\(id)") {
-                                Link(destination: doneURL) {
+                            if let id = task.id, !id.isEmpty {
+                                Link(destination: WidgetLink.completeTask(id)) {
                                     actionLabel(String(localized: "Done"), systemImage: "checkmark.circle")
                                 }
                             }
-                            if let focusURL = URL(string: "dayglance://startFocus") {
-                                Link(destination: focusURL) {
-                                    actionLabel("Focus", systemImage: "play.circle")
-                                }
+                            Link(destination: WidgetLink.startFocus(task.id)) {
+                                actionLabel(String(localized: "Focus"), systemImage: "play.circle")
                             }
                         }
                         .padding(.top, 1)
@@ -170,7 +173,9 @@ struct UpNextWidgetView: View {
             .fixedSize(horizontal: false, vertical: true)
             if let subtasks = task.subtasks, !subtasks.isEmpty {
                 Divider().padding(.vertical, 3)
-                ForEach(subtasks.prefix(family == .systemLarge ? 7 : 4), id: \.title) { sub in
+                // By position: two subtasks can share a title (or both be
+                // empty), and duplicate ids make SwiftUI drop or misdraw rows.
+                ForEach(Array(subtasks.prefix(family == .systemLarge ? 7 : 4).enumerated()), id: \.offset) { _, sub in
                     HStack(spacing: 6) {
                         Image(systemName: sub.completed ? "checkmark.circle.fill" : "circle")
                             .font(.caption2)
@@ -186,7 +191,7 @@ struct UpNextWidgetView: View {
                 // The primary task is simple, so fill the leftover space with the
                 // next upcoming tasks (title + time only — no action buttons).
                 Divider().padding(.vertical, 3)
-                ForEach(upcoming.prefix(family == .systemLarge ? 4 : 2), id: \.id) { up in
+                ForEach(Array(upcoming.prefix(family == .systemLarge ? 4 : 2).enumerated()), id: \.offset) { _, up in
                     // Shared with the Month widget's agenda (WidgetAgendaRow.swift).
                     WidgetAgendaRow(colorHex: up.colorHex, title: up.title ?? "",
                                     time: timeLabel(startTime: up.startTime, duration: up.duration))

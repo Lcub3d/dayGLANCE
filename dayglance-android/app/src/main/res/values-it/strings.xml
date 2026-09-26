@@ -156,6 +156,10 @@
         <item quantity="other">%1$d giorni fa</item>
     </plurals>
     <string name="widget_open_to_refresh">Apri dayGLANCE per aggiornare</string>
+    <string name="widget_open_to_set_up">Apri dayGLANCE per configurare</string>
+    <string name="a11y_item_done">%1$s, fatto</string>
+    <string name="a11y_item_not_done">%1$s, da fare</string>
+    <string name="a11y_habit_progress">%1$s, %2$d%% completato</string>
     <string name="widget_planned_as_of">Pianificato al %1$s</string>
     <string name="widget_planned_in_advance">Pianificato in anticipo</string>
     <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
@@ -174,4 +178,20 @@
     </plurals>
     <string name="widget_previous_day">Giorno precedente</string>
     <string name="widget_next_day">Giorno successivo</string>
+
+    <!-- Day Dial widget (widget/dial/). The hub's phrases match the iOS widget's catalog. -->
+    <string name="widget_day_dial_label">Quadrante del giorno</string>
+    <string name="widget_day_dial_description">La tua giornata come un quadrante</string>
+    <string name="day_dial_until">fino alle %1$s</string>
+    <string name="day_dial_left">restano %1$s</string>
+    <string name="day_dial_open">%1$s senza impegni</string>
+    <string name="day_dial_until_sleep_at">fino al sonno alle %1$s</string>
+    <string name="day_dial_until_at">fino a %1$s alle %2$s</string>
+    <string name="day_dial_nothing_else_today">Nient\'altro oggi</string>
+    <string name="day_dial_then_open">poi %1$s senza impegni</string>
+    <string name="day_dial_then_until_sleep">poi %1$s fino al sonno</string>
+    <string name="day_dial_sleep">Sonno</string>
+    <string name="day_dial_zone_changed">Fuso orario cambiato</string>
+    <string name="day_dial_open_to_refresh">Apri dayGLANCE per aggiornare</string>
+    <string name="day_dial_open_to_set_up">Apri dayGLANCE per configurare</string>
 </resources>

@@ -32,6 +32,17 @@
     <!-- Health Connect — queries block for devices running Health Connect as a standalone app -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- The clock apps whose alarms GLANCEahead shows (alarm/ClockAlarm.kt).
+             Package visibility (Android 11+): without these the system will
+             not name the app that created the next alarm, and every alarm
+             read as "not a clock app's". Keep in sync with CLOCK_PACKAGES. -->
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.sec.android.app.clockpackage" />
+        <package android:name="com.android.deskclock" />
+        <package android:name="com.oneplus.deskclock" />
+        <package android:name="com.coloros.alarmclock" />
+        <package android:name="com.huawei.deskclock" />
+        <package android:name="com.hihonor.deskclock" />
     </queries>
 
     <application
@@ -243,6 +254,21 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <!-- Home screen widget: Day Dial (the day as a 24-hour dial; widget/dial/).
+             Its own minute tick is a broadcast to this receiver
+             (DayDialTicker), explicit by component. -->
+        <receiver
+            android:name=".widget.dial.DayDialWidget"
+            android:exported="true"
+            android:label="@string/widget_day_dial_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_day_dial_info" />
+        </receiver>
 
         <!-- Home screen widget: Month grid (six weeks, per-cell bitmaps) -->
         <receiver

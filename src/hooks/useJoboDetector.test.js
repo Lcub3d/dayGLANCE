@@ -107,34 +107,6 @@ describe('useJoboDetector', () => {
     expect(recordJobo).not.toHaveBeenCalled();
   });
 
-  it('uses the ledger mutation projection for reopen and creates a new id on re-complete', async () => {
-    let mutationRecords = [];
-    const getJoboMutationRecords = () => mutationRecords;
-    const DONE_AGAIN = '2026-09-20T15:10:02-05:00';
-    recordJobo = vi.fn(async (records) => {
-      mutationRecords = records;
-      return { ok: false, error: 'storageWrite', held: true };
-    });
-    const withGetter = (tasks) => props(tasks, { getJoboMutationRecords });
-
-    useRenderedHook(withGetter([task()]));
-    useRenderedHook(withGetter([done(task())]));
-    await flush();
-    expect(recordJobo).toHaveBeenCalledTimes(1);
-    const firstId = mutationRecords[0].id;
-
-    useRenderedHook(withGetter([task()]));
-    await flush();
-    expect(recordJobo).toHaveBeenCalledTimes(2);
-    expect(recordJobo.mock.calls[1][0][0]).toMatchObject({ id: firstId, progress: 'partial' });
-    mutationRecords = recordJobo.mock.calls[1][0];
-
-    useRenderedHook(withGetter([{ ...task({ completedAt: DONE_AGAIN }), completed: true }]));
-    await flush();
-    expect(recordJobo).toHaveBeenCalledTimes(3);
-    expect(recordJobo.mock.calls[2][0][0].id).not.toBe(firstId);
-  });
-
   it('a transition during the in-flight window is caught after the write', async () => {
     let release;
     recordJobo = vi.fn(() => new Promise((r) => { release = r; }));

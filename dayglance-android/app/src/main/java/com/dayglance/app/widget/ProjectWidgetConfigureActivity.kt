@@ -21,9 +21,12 @@ import org.json.JSONObject
 /**
  * Configuration activity for [ProjectWidget].
  *
- * Reads all active projects from the widget snapshot (including goal context) and
- * presents them in a scrollable list grouped by goal. The user taps a project to
- * pin it; the choice is stored in SharedPreferences keyed by widget instance ID.
+ * Reads the projects from the widget snapshot (the app sends only those it
+ * shows: widgetGoalsProjects.js) and presents the open ones in a scrollable
+ * list grouped by goal. Completed projects are not offered: a finished project
+ * is reopened in the app before it is pinned again (a widget already pinned to
+ * one keeps showing it, as done). The user taps a project to pin it; the choice
+ * is stored in SharedPreferences keyed by widget instance ID.
  *
  * If no snapshot is available the user is prompted to open dayGLANCE first.
  */
@@ -41,6 +44,9 @@ class ProjectWidgetConfigureActivity : AppCompatActivity() {
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) { finish(); return }
+        // The activity is exported (the launcher starts it), so any app could
+        // launch it with an arbitrary id: act only on one of our Project widgets.
+        if (!widgetBelongsTo(this, appWidgetId, ProjectWidget::class.java)) { finish(); return }
 
         val snapshot = SharedDataStore(this).widgetSnapshot?.let {
             runCatching { JSONObject(it) }.getOrNull()
@@ -72,7 +78,28 @@ class ProjectWidgetConfigureActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(16))
         })
 
-        if (allProjects == null || allProjects.length() == 0) {
+        // Group by goal for display. Collect goal-linked projects first, then standalone.
+        data class ProjectEntry(val id: String, val title: String, val goalId: String, val goalTitle: String,
+            val colorHex: String, val pct: Int, val done: Int, val total: Int)
+
+        val entries = mutableListOf<ProjectEntry>()
+        for (i in 0 until (allProjects?.length() ?: 0)) {
+            val p = allProjects?.optJSONObject(i) ?: continue
+            if (p.optString("status", "") == "completed") continue
+            entries += ProjectEntry(
+                id        = p.optString("id", ""),
+                title     = p.optString("title", "").ifEmpty { getString(R.string.widget_untitled) },
+                goalId    = p.optString("goalId", ""),
+                goalTitle = p.optString("goalTitle", ""),
+                // The project's own colour as the app draws it, else its goal's.
+                colorHex  = p.optString("colorHex", "").ifEmpty { p.optString("goalColorHex", "") },
+                pct       = p.optInt("progressPct", 0),
+                done      = p.optInt("completedTasks", 0),
+                total     = p.optInt("totalTasks", 0),
+            )
+        }
+
+        if (entries.isEmpty()) {
             root.addView(TextView(this).apply {
                 text = getString(R.string.config_no_projects)
                 textSize = 14f
@@ -81,37 +108,22 @@ class ProjectWidgetConfigureActivity : AppCompatActivity() {
             return ScrollView(this).apply { addView(root) }
         }
 
-        // Group by goal for display. Collect goal-linked projects first, then standalone.
-        data class ProjectEntry(val id: String, val title: String, val goalTitle: String,
-            val goalColorHex: String, val pct: Int, val done: Int, val total: Int)
-
-        val entries = mutableListOf<ProjectEntry>()
-        for (i in 0 until allProjects.length()) {
-            val p = allProjects.optJSONObject(i) ?: continue
-            entries += ProjectEntry(
-                id           = p.optString("id", ""),
-                title        = p.optString("title", getString(R.string.widget_untitled)),
-                goalTitle    = p.optString("goalTitle", ""),
-                goalColorHex = p.optString("goalColorHex", ""),
-                pct          = p.optInt("progressPct", 0),
-                done         = p.optInt("completedTasks", 0),
-                total        = p.optInt("totalTasks", 0),
-            )
-        }
-
-        // Sort: goal-linked first (alphabetical by goal title), then standalone
+        // Sort: goal-linked first (alphabetical by goal title), then standalone.
+        // Grouped by the goal's ID, not its title: two goals with the same
+        // name are two sections.
         val sorted = entries.sortedWith(compareBy(
-            { it.goalTitle.isEmpty() },  // goal-linked first
-            { it.goalTitle },
-            { it.title },
+            { it.goalId.isEmpty() },  // goal-linked first
+            { it.goalTitle.lowercase() },
+            { it.goalId },
+            { it.title.lowercase() },
         ))
 
-        var lastGoalTitle = "\u0000" // sentinel
+        var lastGoalId: String? = null
         for (entry in sorted) {
             // Goal section header
             val sectionLabel = entry.goalTitle.ifEmpty { getString(R.string.config_standalone) }
-            if (sectionLabel != lastGoalTitle) {
-                lastGoalTitle = sectionLabel
+            if (entry.goalId != lastGoalId) {
+                lastGoalId = entry.goalId
                 root.addView(TextView(this).apply {
                     text = sectionLabel.uppercase()
                     textSize = 11f
@@ -120,7 +132,7 @@ class ProjectWidgetConfigureActivity : AppCompatActivity() {
                     setPadding(0, dp(12), 0, dp(4))
                 })
             }
-            root.addView(buildProjectRow(entry.id, entry.title, entry.goalColorHex,
+            root.addView(buildProjectRow(entry.id, entry.title, entry.colorHex,
                 entry.pct, entry.done, entry.total))
         }
 

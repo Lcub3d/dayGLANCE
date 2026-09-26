@@ -179,14 +179,10 @@ class MonthAgendaWidget : AppWidgetProvider() {
         }
         @Suppress("DEPRECATION")
         views.setRemoteAdapter(R.id.lv_month_agenda, listIntent)
-        // Rows open the app, as the Today widget's rows do.
-        views.setPendingIntentTemplate(
-            R.id.lv_month_agenda,
-            PendingIntent.getActivity(
-                context, REQUEST_OPEN_APP, Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
+        // Rows open their item, as the Today widget's do: each row's fill-in
+        // carries its link (DayGlanceWidgetListFactory.rowFillIn). Its own
+        // request code: the template differs from the root's plain launch.
+        views.setPendingIntentTemplate(R.id.lv_month_agenda, WidgetLinks.rowTemplate(context, REQUEST_ROW_TEMPLATE))
         views.setFloat(R.id.lv_month_agenda, "setAlpha", if (state?.isStale == true) STALE_CONTENT_ALPHA else 1f)
 
         // The padding and the headers open the app.
@@ -258,6 +254,7 @@ class MonthAgendaWidget : AppWidgetProvider() {
         private const val DIRECTION_NEXT = "next"
         private const val REQUEST_OPEN_APP = 4321
         private const val REQUEST_ARROW = 4322
+        private const val REQUEST_ROW_TEMPLATE = 4323
         private const val DISABLED_ARROW_ALPHA = 0.3f
 
         /** Re-renders every placed month + agenda widget from the stored snapshot. */

@@ -30,6 +30,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     static var pendingShortcutAction: String? = nil
     static var pendingDeepLink: String? = nil
 
+    /// A Spotlight result's link. The id is percent-encoded to RFC 3986
+    /// unreserved characters: the web side reads it with URLSearchParams,
+    /// which takes '+' as a space and '&' as a separator, and a task id built
+    /// from an ICS UID can contain either.
+    static func taskLink(_ id: String) -> String {
+        let unreserved = CharacterSet(charactersIn:
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        return "dayglance://task?id=\(id.addingPercentEncoding(withAllowedCharacters: unreserved) ?? "")"
+    }
+
     private static let bgLog = Logger(subsystem: "com.dayglance.app", category: "background")
 
     func application(
@@ -168,7 +178,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         if userActivity.activityType == CSSearchableItemActionType,
            let id = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String {
-            AppDelegate.pendingDeepLink = "dayglance://task?id=\(id)"
+            AppDelegate.pendingDeepLink = AppDelegate.taskLink(id)
             AppDelegate.notifyWebViewToDrainPendingActions()
         }
         return true

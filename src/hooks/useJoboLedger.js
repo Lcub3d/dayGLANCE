@@ -36,14 +36,6 @@ export default function useJoboLedger({ pickRecord, store } = {}) {
     joboLoaded: state.loaded,
     joboWritable: state.writable,
     joboError: state.error,
-    // A mutation can be accepted before its storage write resolves. The
-    // detector reads this projection to avoid creating a duplicate completion;
-    // it is intentionally not the sync/backup collection.
-    getJoboMutationRecords: ledger.current.getMutationRecords,
-    joboPendingIds: state.pendingIds,
-    joboPendingCount: state.pendingCount,
-    joboLoadState: state.loadState,
-    joboWriteState: state.writeState,
     recordJobo: ledger.current.commit,
     applyRemoteJobo: ledger.current.applyRemote,
     restoreJobo: ledger.current.restore,

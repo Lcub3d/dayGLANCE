@@ -19,7 +19,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 
-const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, renderExtraActions, renderNotesAction, timeMetadata, suppressNotesPanel = false, onToggleComplete, completionDisabled = false }) => {
+const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, renderExtraActions, renderNotesAction, suppressNotesPanel = false }) => {
   const { t } = useTranslation();
   const {
     isTablet,
@@ -230,8 +230,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
               <div className="flex items-center gap-1">
                 {(!isImported || task.isTaskCalendar) && (
                   <button
-                    onClick={() => onToggleComplete ? onToggleComplete() : toggleComplete(task.id)}
-                    disabled={completionDisabled}
+                    onClick={() => toggleComplete(task.id)}
                     className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
                   >
                     {task.completed && <Check size={10} strokeWidth={3} />}
@@ -325,8 +324,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 {(!isImported || task.isTaskCalendar) && (
                   <button
-                    onClick={() => onToggleComplete ? onToggleComplete() : toggleComplete(task.id)}
-                    disabled={completionDisabled}
+                    onClick={() => toggleComplete(task.id)}
                     className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
                   >
                     {task.completed && <Check size={10} strokeWidth={3} />}
@@ -420,7 +418,6 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
               <div className="text-xs opacity-90 whitespace-nowrap flex items-center gap-1 mt-0.5">
                 <Clock size={10} />
                 {formatTime(task.startTime)} • {t('common.minutesShort', { count: task.duration, defaultValue: '{{count}} min' })}
-                {timeMetadata}
               </div>
             )}
           </>

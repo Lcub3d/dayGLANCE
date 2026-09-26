@@ -48,17 +48,11 @@ function minuteValue(value, allowOverflow = false) {
 }
 
 function timestampParts(value) {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.test(value)) return null;
   const stamp = new Date(value);
-  if (Number.isNaN(stamp.getTime())) return null;
-  const year = stamp.getFullYear();
-  const month = String(stamp.getMonth() + 1).padStart(2, '0');
-  const day = String(stamp.getDate()).padStart(2, '0');
-  return {
-    stamp,
-    minute: stamp.getHours() * 60 + stamp.getMinutes(),
-    date: `${year}-${month}-${day}`,
-  };
+  const date = dateValue(value.slice(0, 10));
+  if (!date || !Number.isFinite(stamp.getTime())) return null;
+  return { stamp, minute: Number(value.slice(11, 13)) * 60 + Number(value.slice(14, 16)), date };
 }
 
 function timestampMinute(value) {
@@ -70,11 +64,10 @@ function timestampEndMinute(startedAt, endedAt, startMinute, endMinute) {
   const end = timestampParts(endedAt);
   if (!end) return null;
   const start = timestampParts(startedAt);
-  if (!start || startMinute == null || end.minute > startMinute) return end.minute;
-  const elapsedMs = end.stamp.getTime() - start.stamp.getTime();
-  if (!(elapsedMs > 0)) return end.minute;
-  const dayCount = Math.max(1, Math.ceil(elapsedMs / (24 * 60 * 60 * 1000)));
-  return end.minute + dayCount * 1440;
+  if (!start || startMinute == null) return end.minute;
+  if (end.stamp.getTime() <= start.stamp.getTime()) return null;
+  const days = (Date.parse(`${end.date}T00:00:00Z`) - Date.parse(`${start.date}T00:00:00Z`)) / 86400000;
+  return days * 1440 + end.minute;
 }
 
 function explicitSession(raw, fallbackDate = null) {

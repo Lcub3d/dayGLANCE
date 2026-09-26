@@ -23,8 +23,8 @@ describe('ExecutionAxes', () => {
     const rows = timingRows(comparison, t);
     expect(rows.map((row) => row.key)).toEqual(['start', 'finish', 'duration']);
     expect(metricRows(comparison, { measured: comparison.metrics }, t).map((row) => row.key)).toEqual([
-      'recordedMinutes', 'activeMinutes', 'elapsedMinutes', 'gapMinutes', 'overlapMinutes',
-    ].filter((key) => comparison.metrics[key] > 0));
+      'recordedMinutes', 'elapsedMinutes', 'gapMinutes', 'overlapMinutes',
+    ].filter((key) => comparison.metrics[key] >= 0));
     const html = renderToStaticMarkup(<ExecutionAxes comparison={comparison} comparisonMeta={{ measured: comparison.metrics }} latestAttempt={current} records={[current]} t={t} />);
     expect(html).toContain('data-jobo-execution-axis="timing"');
     expect(html).toContain('data-jobo-timing-row="start"');

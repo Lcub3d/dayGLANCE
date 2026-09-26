@@ -33,7 +33,7 @@ const SUMMARY_FALLBACKS = Object.freeze({
 });
 
 function timingSummary(record) {
-  if (!record) return { comparison: null, labels: [] };
+  if (!record || record.timingBasis === 'planDuration') return { comparison: null, labels: [] };
   const plan = record.planSnapshot || null;
   try {
     // A Do owns one captured plan. Keep this comparison deliberately scoped to
@@ -75,7 +75,7 @@ export default function DoTimeMeta({ item, ctx, t, className = '' }) {
     if (!record.timing) return null;
     const text = translate(t, 'jobo.view.untimed', 'Untimed');
     return <span className={`jobo-time-meta jobo-time-meta-neutral ${className}`.trim()}
-      data-jobo-time-meta="true" data-plan-state="unplanned" data-start-state="neutral"
+      data-jobo-time-meta="true" data-plan-state={record.planSnapshot ? 'planned' : record.planSnapshot === null ? 'unplanned' : 'unknown'} data-start-state="neutral"
       data-finish-state="neutral" data-duration-state="neutral" aria-label={text}>{text}</span>;
   }
 
@@ -95,9 +95,11 @@ export default function DoTimeMeta({ item, ctx, t, className = '' }) {
   const ariaLabel = [rangeLabel, durationText, ...summaryLabels].filter(Boolean).join(', ');
   const startAccessible = comparisonText(t, 'timeStart', states.comparison, states.comparison?.startTiming, 'startOffsetMinutes', formatClock(ctx, record.startTime));
   const finishAccessible = comparisonText(t, 'timeFinish', states.comparison, states.comparison?.finishTiming, 'finishOffsetMinutes', formatClock(ctx, record.endTime));
-  const durationAccessible = durationText
+  const durationAccessibleBase = durationText
     ? comparisonText(t, 'timeDuration', states.comparison, states.comparison?.durationComparison, 'durationDifferenceMinutes', durationText)
     : null;
+
+  const durationAccessible = [durationAccessibleBase, item?.durationMinutes != null && (item.clippedStart || item.clippedEnd) ? t('jobo.daily.dayPortion', { minutes: item.durationMinutes }) : null, record.timingBasis === 'planDuration' ? t('jobo.daily.inferredHint') : null].filter(Boolean).join(' · ');
 
   return <span className={`jobo-time-meta ${className}`.trim()}
     data-jobo-time-meta="true" data-plan-state={states.planState} aria-label={ariaLabel}>

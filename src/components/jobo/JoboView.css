@@ -918,7 +918,6 @@
    them before interaction; touch devices keep the controls and their space. */
 @media (hover: hover) and (pointer: fine) {
   .jobo-s5-do-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,
-  .jobo-s5-untimed-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,
   .jobo-s5-note-tile:not(:hover):not(:focus-within) [data-jobo-note-actions],
   .jobo-s5-plan-card:not(:hover):not(:focus-within):not(.jobo-s5-expanded-card) [data-task-controls-only] {
     width: 0;
@@ -992,3 +991,12 @@
 .jobo-s5-dialog-error { font-size: 12px; }
 .jobo-s5-dialog fieldset { min-width: 0; }
 .jobo-s5-dialog fieldset:disabled { opacity: .7; }
+
+/* The thin edge is duration-exact even when the interaction label has a minimum height. */
+.jobo-s5-exact-interval { position: absolute; top: 0; left: -3px; width: 3px; background: currentColor; border-radius: 2px; pointer-events: none; opacity: .7; }
+
+/* Untimed chips keep a stable hit area as controls appear. A hover-driven
+   width change moves adjacent chips under the pointer and can make Edit
+   impossible to click. Timed cards have fixed timeline geometry. */
+.jobo-s5-untimed-card { flex: 0 0 260px; width: 260px; max-width: 100%; min-width: 0; }
+.jobo-s5-untimed-title { flex: 1; min-width: 0; }

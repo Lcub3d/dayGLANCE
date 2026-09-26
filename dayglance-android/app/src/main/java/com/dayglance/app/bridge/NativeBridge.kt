@@ -1,6 +1,5 @@
 package com.dayglance.app.bridge
 
-import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
@@ -12,6 +11,7 @@ import android.util.Base64
 import android.webkit.JavascriptInterface
 import androidx.core.content.FileProvider
 import com.dayglance.app.R
+import com.dayglance.app.alarm.ClockAlarm
 import com.dayglance.app.data.HealthRepository
 import com.dayglance.app.data.SharedDataStore
 import com.dayglance.app.settings.SettingsActivity
@@ -220,15 +220,14 @@ class NativeBridge(
     // ── Next alarm (GLANCEahead) ────────────────────────────────────────────
 
     /**
-     * Epoch millis of the device's next alarm clock, or -1 when none is set.
-     * AlarmManager.getNextAlarmClock() needs no permission — it only exposes
-     * what the status bar alarm icon already shows. GLANCEahead uses this for
-     * its "when am I waking up?" line.
+     * Epoch millis of the next alarm set in a CLOCK app, or -1 when there is
+     * none. AlarmManager.getNextAlarmClock() needs no permission, but it
+     * returns any app's alarm clock — a calendar's event alarm too — so the
+     * alarm counts only when a clock app created it (ClockAlarm). GLANCEahead
+     * uses this for its "when am I waking up?" line.
      */
     @JavascriptInterface
-    fun getNextAlarm(): Long =
-        (context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager)
-            ?.nextAlarmClock?.triggerTime ?: -1L
+    fun getNextAlarm(): Long = ClockAlarm.nextTriggerMillis(context) ?: -1L
 
     // ── Notifications ───────────────────────────────────────────────────────
 
@@ -354,6 +353,7 @@ class NativeBridge(
             com.dayglance.app.widget.ProjectWidget.requestUpdate(context)
             com.dayglance.app.widget.MonthGridWidget.requestUpdate(context)
             com.dayglance.app.widget.MonthAgendaWidget.requestUpdate(context)
+            com.dayglance.app.widget.dial.DayDialWidget.requestUpdate(context)
             // Kick off the native alarm chain so the Up Next notification keeps
             // updating even when the WebView is suspended in the background.
             com.dayglance.app.notifications.UpNextNotificationUpdater.schedule(context)

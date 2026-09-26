@@ -202,7 +202,7 @@ export function buildPriorityTimeline({ plans = [], timedRecords = [] } = {}) {
  * for Plan cards but would colour an individual Do with another attempt's data.
  */
 export function compareAttemptToPlan(record) {
-  if (!record || record.timing !== DO_TIMING.TIMED || !record.planSnapshot) return null;
+  if (!record || record.timing !== DO_TIMING.TIMED || !record.planSnapshot || record.timingBasis === 'planDuration') return null;
   try {
     return compareExecutionToPlan(record.planSnapshot, [record]);
   } catch {
@@ -222,7 +222,7 @@ export function attemptComparisonStates(record) {
   const comparison = compareAttemptToPlan(record);
   return {
     comparison,
-    planState: comparison ? 'planned' : 'unplanned',
+    planState: record?.planSnapshot ? 'planned' : record?.planSnapshot === null ? 'unplanned' : 'unknown',
     startState: comparisonState(comparison?.startTiming),
     finishState: comparisonState(comparison?.finishTiming),
     durationState: comparisonState(comparison?.durationComparison),

@@ -219,6 +219,11 @@ describe('GoalDashboard desktop space', () => {
     // the filter field sits where the area filter sits on the Goals tab
     expect(sidebar).toContain('data-project-filter');
     expect(sidebar).toContain('placeholder="Filter projects…"');
+    // a text input: a search input adds the browser's own clear button beside ours
+    const input = sidebar.match(/<input[^>]*data-project-filter[^>]*>/)[0];
+    expect(input).toContain('type="text"');
+    expect(input).toContain('enterKeyHint="search"');
+    expect(sidebar).toContain('>/</span>');
   });
 
   it('keeps the sidebar tab across renders it was given, but starts on Goals by default', () => {
@@ -253,11 +258,157 @@ describe('GoalDashboard desktop space', () => {
 });
 
 describe('GoalDashboard embedded (phone) mode', () => {
-  it('is unchanged: the carousel, no sidebar, no toolbar', () => {
-    const html = render({ embedded: true, isActive: true });
-    expect(html).toContain('goal-carousel');
+  const phone = (props = {}, feat = {}) => render({ embedded: true, isActive: true, ...props }, feat);
+  const chips = (html) => [...html.matchAll(/<button[^>]*data-goal-chip="([^"]+)"[^>]*>/g)].map((m) => ({ id: m[1], active: m[0].includes('aria-pressed="true"') }));
+
+  it('has no sidebar or toolbar: the space is folded into one column', () => {
+    const html = phone();
     expect(html).not.toContain('data-goals-sidebar');
     expect(html).not.toContain('data-goals-main');
+  });
+
+  it('opens with Goals | Projects on top, counting every active goal and the OPEN standalone projects', () => {
+    const tabs = section(phone(), 'data-goals-tabs');
+    // Goals is the selected tab (the tablist's own label also says "Projects")
+    expect(tabs).toMatch(/aria-selected="true"[^>]*>(?:<svg[\s\S]*?<\/svg>)? <span[^>]*>Goals<\/span>/);
+    expect(tabs).toMatch(/aria-selected="false"[^>]*>(?:<svg[\s\S]*?<\/svg>)? <span[^>]*>Projects<\/span>/);
+    expect(tabs).toMatch(/Goals<\/span> <span[^>]*>3<\/span>/);
+    expect(tabs).toMatch(/Projects<\/span> <span[^>]*>1<\/span>/);
+    // the tabs come before the goals-only controls
+    const html = phone();
+    expect(html.indexOf('data-goals-tabs')).toBeLessThan(html.indexOf('aria-label="Area"'));
+  });
+
+  it('lists the goals as chips in carousel order, the first active one selected, over one page per goal', () => {
+    const html = phone();
+    expect(chips(html)).toEqual([
+      { id: 'done', active: false },
+      { id: 'ios', active: true },
+      { id: 'electron', active: false },
+    ]);
+    expect(html).toContain('goal-carousel');
+    const pages = [...html.matchAll(/data-goal-page="([^"]+)"/g)].map((m) => m[1]);
+    expect(pages).toEqual(['done', 'ios', 'electron']);
+    // no dots and arrows any more, and no standalone page at the end of the swipe
+    expect(html).not.toContain('w-4 h-2.5 bg-blue-500');
+    expect(html).not.toContain('Standalone projects');
+  });
+
+  it('draws the real GoalCard full width on each page, with the area badge the old card left out', () => {
+    const page = section(phone(), 'data-goal-page="ios"');
+    const ios = page.slice(0, page.indexOf('data-goal-page="electron"'));
+    expect(ios).toContain('rounded-xl overflow-hidden border-2 w-full');
+    expect(ios).toContain('App Development');
+    // then its projects: active first, completed compact under them
+    expect(cards(ios)).toEqual(['asc', 'billing']);
+    expect(ios).toContain('data-project-card="billing" data-compact="1"');
+  });
+
+  it('shows the standalone projects on the Projects tab, with Open | Completed and a search button on one row', () => {
+    const html = phone({ initialSidebarTab: 'projects' });
+    const list = section(html, 'data-standalone-list');
+    expect(cards(list)).toEqual(['dg']);
+    const row = section(html, 'data-projects-controls');
+    const controls = row.slice(0, row.indexOf('data-standalone-list'));
+    // the words stay; the filter is a button until tapped, beside the toggle
+    expect(controls).toContain(' Open');
+    expect(controls).toContain(' Completed');
+    expect(controls).toContain('data-open-filter');
+    expect(controls).toContain('aria-label="Filter projects…"');
+    // the closed filter fills the rest of the row, labelled, at the toggle's height
+    const button = controls.match(/<button[^>]*data-open-filter[^>]*>[\s\S]*?<\/button>/)[0];
+    expect(button).toContain('flex-1');
+    expect(button).toContain('h-8');
+    expect(button).toContain('>Filter</span>');
+    expect(controls).not.toContain('data-project-filter');
+    // it wraps rather than squeezing where a language's labels are long
+    expect(controls).toMatch(/data-projects-controls[^>]*flex-wrap/);
+    expect(html).not.toContain('aria-label="Area"');
+    expect(html).not.toContain('goal-carousel');
+  });
+
+  it('keeps the area select readable: List | Roadmap in words only, wrapping below it when the row is short', () => {
+    const row = section(phone(), 'data-goal-controls');
+    const controls = row.slice(0, row.indexOf('data-goal-chips'));
+    expect(controls).toMatch(/data-goal-controls[^>]*flex-wrap/);
+    expect(controls.match(/<select[^>]*>/)[0]).toContain('min-w-[9rem]');
+    // words, no icons, on the phone's view toggle
+    const toggle = controls.slice(controls.indexOf('role="group"'));
+    expect(toggle).toContain(' List</button>');
+    expect(toggle).toContain(' Roadmap</button>');
+    expect(toggle.slice(0, toggle.indexOf('</div>'))).not.toContain('<svg');
+    // the desktop toolbar's toggle keeps its icons
+    const main = section(render({ desktop: true, isActive: true }), 'data-goals-main');
+    const desktopToggle = main.slice(main.indexOf('role="group"'));
+    expect(desktopToggle.slice(0, desktopToggle.indexOf('</div>'))).toContain('<svg');
+  });
+
+  describe('the controls chevron', () => {
+    const withStorage = (value, fn) => {
+      const saved = globalThis.localStorage;
+      const store = { 'dayglance-goals-phone-controls-collapsed': value };
+      globalThis.localStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } };
+      try { return fn(); } finally { globalThis.localStorage = saved; }
+    };
+    const toggle = (html) => html.match(/<button[^>]*data-controls-toggle[^>]*>/)[0];
+
+    it('sits in the Goals | Projects row, expanded by default, and starts expanded without storage', () => {
+      const html = phone();
+      const t = toggle(html);
+      expect(t).toContain('aria-expanded="true"');
+      expect(t).toContain('aria-label="Hide filters"');
+      expect(html).toContain('data-goal-chips');
+      expect(html).toContain('aria-label="Area"');
+    });
+
+    it('hides the area and view row and the chips on Goals, but keeps the carousel', () => {
+      const html = withStorage('1', () => phone());
+      expect(toggle(html)).toContain('aria-expanded="false"');
+      expect(toggle(html)).toContain('aria-label="Show filters"');
+      expect(html).not.toContain('data-goal-chips');
+      expect(html).not.toContain('aria-label="Area"');
+      expect(html).toContain('goal-carousel');
+    });
+
+    it('hides Open | Completed and the filter on Projects, and keeps the list', () => {
+      const html = withStorage('1', () => phone({ initialSidebarTab: 'projects' }));
+      expect(html).not.toContain('data-projects-controls');
+      expect(cards(section(html, 'data-standalone-list'))).toEqual(['dg']);
+    });
+
+    it('marks itself only when a hidden control is narrowing the list', () => {
+      expect(withStorage('1', () => phone())).not.toContain('data-filters-active');
+      const narrowed = withStorage('1', () => phone({}, { goalsAreaFilter: 'dev' }));
+      expect(narrowed).toContain('data-filters-active');
+      expect(toggle(narrowed)).toContain('aria-label="Show filters · Filters active"');
+      // shown controls speak for themselves: no dot while expanded
+      expect(phone({}, { goalsAreaFilter: 'dev' })).not.toContain('data-filters-active');
+    });
+  });
+
+  it('floats one contextual + over the content, above the Archived footer, with Aspire above it when on', () => {
+    const goals = section(phone(), 'data-goals-fabs');
+    expect(goals).toContain('absolute bottom-4 right-4');
+    expect(goals).toContain('aria-label="Add Goal"');
+    expect(goals).not.toContain('data-aspire-fab');
+    const html = phone();
+    expect(html.indexOf('data-goals-fabs')).toBeLessThan(html.indexOf('data-archived-section'));
+    expect(section(phone({ initialSidebarTab: 'projects' }), 'data-goals-fabs')).toContain('aria-label="Add Project"');
+    const on = section(phone({}, { aspireEnabled: true }), 'data-goals-fabs');
+    expect(on.indexOf('data-aspire-fab')).toBeLessThan(on.indexOf('aria-label="Add Goal"'));
+  });
+
+  it('keeps the roadmap under the tabs, and only on the Goals tab', () => {
+    const html = phone({}, { goalsViewMode: 'timeline' });
+    expect(html.indexOf('data-goals-tabs')).toBeLessThan(html.indexOf('data-goal-timeline'));
+    expect(html).not.toContain('goal-carousel');
+    const projects = phone({ initialSidebarTab: 'projects' }, { goalsViewMode: 'timeline' });
+    expect(projects).not.toContain('data-goal-timeline');
+    expect(projects).toContain('data-standalone-list');
+  });
+
+  it('stacks the archive lists instead of two columns', () => {
+    expect(phone()).toContain('Archived (2)');
   });
 
   it('renders nothing outside either mode', () => {

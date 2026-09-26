@@ -471,27 +471,14 @@ describe('buildJoboDayModel', () => {
     expect(current.historical).toBe(false);
   });
 
-  it('keeps the real live task for native reopen when the captured Plan still matches', () => {
-    const liveTask = Object.freeze({
-      ...task,
-      title: 'Current task title',
-      completed: true,
-      completedAt: T0,
-    });
-    const model = buildJoboDayModel({
-      date: '2026-09-24',
-      tasks: [liveTask],
-      records: [rec({ title: 'Captured task title', source: 'completion' })],
-    });
-    expect(model.plans).toHaveLength(1);
-    const captured = model.plans[0];
-    expect(captured.task.title).toBe('Captured task title');
-    expect(captured.currentTask).toBe(liveTask);
-    expect(captured.currentTask.title).toBe('Current task title');
-    expect(captured.currentTask.completedAt).toBe(T0);
-    expect(captured.historical).toBe(false);
-    expect(captured.groupKey).toBe(model.timedRecords[0].groupKey);
-    expect(model.timedRecords[0].task).toBe(liveTask);
+  it('separates a renamed current task from its immutable captured title even at the same time', () => {
+    const renamed = { ...task, title: 'New title', completed: true };
+    const model = buildJoboDayModel({ date: task.date, tasks: [renamed], records: [rec({ title: 'Captured task title', source: 'completion' })] });
+    const historical = model.plans.find(item => item.historical);
+    const current = model.plans.find(item => !item.historical);
+    expect(historical.task.title).toBe('Captured task title');
+    expect(historical.currentTask).toBeNull();
+    expect(current.currentTask).toBe(renamed);
   });
 
   it('keeps a captured Final Plan readable after the live task no longer resolves', () => {

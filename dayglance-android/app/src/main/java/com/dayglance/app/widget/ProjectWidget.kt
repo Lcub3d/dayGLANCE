@@ -9,7 +9,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -69,7 +68,7 @@ class ProjectWidget : AppWidgetProvider() {
         // no present-tense claim beyond "as of when", and the banner supplies that.
         if (resolved.isProjected) {
             views.setTextViewText(R.id.tv_project_widget_stale, formatPlannedLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
-            views.setTextColor(R.id.tv_project_widget_stale, context.getColor(R.color.widget_text_secondary))
+            views.setThemedTextColor(context, R.id.tv_project_widget_stale, R.color.widget_text_secondary)
             views.setViewVisibility(R.id.tv_project_widget_stale, View.VISIBLE)
         } else if (freshness.isStale) {
             views.setTextViewText(R.id.tv_project_widget_stale, formatStaleLabel(context, freshness, widgetUses24HourClock(context, snapshot)))
@@ -78,13 +77,6 @@ class ProjectWidget : AppWidgetProvider() {
             views.setFloat(R.id.layout_project_empty, "setAlpha", STALE_CONTENT_ALPHA)
         }
 
-        // Tap root to open app
-        val launchPi = PendingIntent.getActivity(
-            context, appWidgetId + LAUNCH_OFFSET,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        views.setOnClickPendingIntent(R.id.project_widget_root, launchPi)
 
         // Refresh button
         val refreshPi = PendingIntent.getBroadcast(
@@ -97,6 +89,12 @@ class ProjectWidget : AppWidgetProvider() {
         // Load the selected project ID
         val prefs = context.getSharedPreferences(WIDGET_PREFS, Context.MODE_PRIVATE)
         val selectedProjectId = prefs.getString(prefKey(appWidgetId), null)
+
+        // Tap: this project in Goals & Projects, its card in view (WidgetLinks).
+        views.setOnClickPendingIntent(
+            R.id.project_widget_root,
+            WidgetLinks.pendingIntent(context, appWidgetId + LAUNCH_OFFSET, WidgetLinks.project(selectedProjectId)),
+        )
 
         if (selectedProjectId == null) {
             showEmpty(views, context.getString(R.string.widget_reconfigure))
@@ -142,7 +140,8 @@ class ProjectWidget : AppWidgetProvider() {
         }
 
         // Color bar (goal color if linked, brand color if standalone)
-        val colorHex = goalColorHex.ifEmpty { "#3b82f6" }
+        // The project's own colour as the app draws it, else its goal's.
+        val colorHex = project.optString("colorHex", "").ifEmpty { goalColorHex }.ifEmpty { "#3b82f6" }
         try { views.setInt(R.id.project_widget_color_bar, "setBackgroundColor", Color.parseColor(colorHex)) }
         catch (_: Throwable) { }
 
@@ -189,8 +188,12 @@ class ProjectWidget : AppWidgetProvider() {
             if (task != null) {
                 val completed = task.optBoolean("completed", false)
                 views.setViewVisibility(rowId, View.VISIBLE)
+                val title = task.optString("title", "")
                 views.setTextViewText(checkId, if (completed) "✓" else "○")
-                views.setTextViewText(titleId, task.optString("title", ""))
+                // The glyph is read literally otherwise ("check mark", "white circle").
+                views.setContentDescription(checkId, context.getString(
+                    if (completed) R.string.a11y_item_done else R.string.a11y_item_not_done, title))
+                views.setTextViewText(titleId, title)
             } else {
                 views.setViewVisibility(rowId, View.GONE)
             }

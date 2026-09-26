@@ -59,7 +59,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     private func captureUserActivity(_ activity: NSUserActivity) {
         guard activity.activityType == CSSearchableItemActionType,
               let id = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String else { return }
-        AppDelegate.pendingDeepLink = "dayglance://task?id=\(id)"
+        AppDelegate.pendingDeepLink = AppDelegate.taskLink(id)
     }
 
     private func captureURL(_ url: URL) {

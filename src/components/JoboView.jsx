@@ -1,21 +1,21 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, ClipboardCheck, Clock, FileText, GripVertical, History, Minus, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Clock, FileText, GripVertical, History, Minus, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { renderTitleWithoutTags } from '../utils/textFormatting.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import { formatDuration } from '../utils/formatDuration.js';
-import { DO_TIMING } from '../jobo/core.js';
+import { DO_TIMING, validateDoRecord } from '../jobo/core.js';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { resolveDropTarget, resizeDoInterval, prepareDoDelete, commitDoEdit } from '../jobo/viewActions.js';
-import { createViewDo as createManualDo, copyViewDo as copyDoRecord, prepareViewDoEdit as prepareDoEdit } from '../jobo/viewProgress.js';
+import { createManualDo, copyDoRecord, prepareDoEdit } from '../jobo/viewActions.js';
+import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
+import JoboDayStats from './jobo/JoboDayStats.jsx';
 import { openNewPlan, createQuickPlan, copyPlan, startPlanDrag, dropPlan } from '../jobo/nativePlanAdapter.js';
 import { CREATION_HOLD_MS, creationGestureMode, creationInterval } from '../jobo/creationGesture.js';
 import { prepareDoNotesEdit } from '../jobo/doNotes.js';
-import { getProblemNoteKeys } from '../jobo/checkReview.js';
-import { preparePlanCompletion } from '../jobo/planCompletion.js';
 import PlanCard from './jobo/PlanCard.jsx';
 import NotesColumn from './jobo/NotesColumn.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
@@ -64,6 +64,7 @@ function DoCard({ item, scale, startHour, ctx, t, focusLog, writable, onFocus, o
     onClick={() => onSelect(focusFor(item))}
     onKeyDown={(event) => { if (event.target === event.currentTarget && ['Enter', ' '].includes(event.key)) { event.preventDefault(); event.stopPropagation(); onDetails(item, event.currentTarget); } }}
     onDoubleClick={(event) => { if (!event.target.closest('button,select,input')) { if (writable) onEdit({ record }); else onDetails(item, event.currentTarget); } }}>
+    <span className="jobo-s5-exact-interval" aria-hidden="true" style={{ height: `${(item.endMinute - item.startMinute) / 60 * scale}px` }} />
     <button type="button" className="jobo-s5-resize jobo-s5-resize-start" disabled={!writable || item.clippedStart}
       aria-label={`${t('jobo.view.resizeStart')}: ${record.title}`} onPointerDown={(event) => onResize(event, item, 'start')}
       onKeyDown={(event) => { if (['ArrowUp', 'ArrowDown'].includes(event.key)) { event.preventDefault(); onResize(event, item, 'start', event.key === 'ArrowUp' ? -5 : 5); } }} />
@@ -136,8 +137,8 @@ function Connections({ rootRef, focus, dep }) {
 export default function JoboView({ headerControlsTarget }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, joboPendingIds = [], reloadJobo, recordJoboFromView, recordJobo: ledgerWriter, getFrameInstancesForDate, focusLog } = useFeaturesCtx();
-  const recordJobo = recordJoboFromView || ledgerWriter;
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo: ledgerWriter, getFrameInstancesForDate, focusLog } = useFeaturesCtx();
+  const { write: recordJobo, pendingIds: joboPendingIds, conflict } = useJoboViewWriter({ records: joboRecords, recordJobo: ledgerWriter });
   const { selectedDate, tasks, unscheduledTasks, recurringTasks, expandedRecurringTasks, getTasksForDate, currentTime, darkMode, cardBg, borderClass, textPrimary, textSecondary } = ctx;
   const [editor, setEditor] = useState(null);
   const [scale, setScale] = useState(DEFAULT_SCALE);
@@ -150,8 +151,6 @@ export default function JoboView({ headerControlsTarget }) {
   const [details, setDetails] = useState(null);
   const [notesRequest, setNotesRequest] = useState(null);
   const [noteVisibility, setNoteVisibility] = useState({});
-  const [checkEnabled, setCheckEnabled] = useState(false);
-  const [checkDismissed, setCheckDismissed] = useState({});
   const [showHistory, setShowHistory] = useState(false);
   const [preview, setPreview] = useState(null);
   const [gestureStartHour, setGestureStartHour] = useState(null);
@@ -159,7 +158,6 @@ export default function JoboView({ headerControlsTarget }) {
   const [creation, setCreation] = useState(null);
   const [draftDos, setDraftDos] = useState([]);
   const [pendingPlanEdit, setPendingPlanEdit] = useState(null);
-  const [pendingPlanCompletions, setPendingPlanCompletions] = useState({});
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const rootRef = useRef(null);
@@ -176,29 +174,28 @@ export default function JoboView({ headerControlsTarget }) {
   const clock = currentTime instanceof Date ? currentTime : new Date();
   const today = dateToString(clock);
   const nowTime = `${two(clock.getHours())}:${two(clock.getMinutes())}`;
-  const dayTasks = useMemo(() => getTasksForDate(selectedDate).filter((task) => !task.isAllDay && task.startTime), [getTasksForDate, selectedDate]);
+  const dayTasks = useMemo(() => getTasksForDate(selectedDate, false).filter((task) => !task.isAllDay && task.startTime), [getTasksForDate, selectedDate]);
   const lookupTasks = useMemo(() => [...tasks, ...unscheduledTasks, ...(expandedRecurringTasks || []), ...dayTasks], [tasks, unscheduledTasks, expandedRecurringTasks, dayTasks]);
   const displayRecords = useMemo(() => preview ? (joboRecords || []).map((r) => r.id === preview.id ? preview : r) : joboRecords, [joboRecords, preview]);
-  const model = useMemo(() => buildJoboDayModel({ date, tasks: dayTasks, taskLookup: lookupTasks, recurringTasks, records: displayRecords || [], scale, now: { date: today, time: nowTime } }), [date, dayTasks, lookupTasks, recurringTasks, displayRecords, today, nowTime, scale]);
+  const model = useMemo(() => buildJoboDayModel({ date, tasks: dayTasks, taskLookup: lookupTasks, recurringTasks, records: displayRecords || [], scale, isVisibleForUser: ctx.isVisibleForUser, now: { date: today, time: nowTime } }), [date, dayTasks, lookupTasks, recurringTasks, displayRecords, today, nowTime, scale, ctx.isVisibleForUser]);
   const collapsibleHistory = model.plans.filter(item => item.historical && model.plans.some(current => !current.historical && current.noteKey && current.noteKey === item.noteKey));
-  const visiblePlans = assignOverlapColumns(model.plans.filter(item => showHistory || !collapsibleHistory.includes(item)), { scale });
+  const visiblePlans = assignOverlapColumns(model.plans.filter(item => showHistory || (focus || selection)?.group === item.groupKey || !collapsibleHistory.includes(item)), { scale });
   const timedDos = model.timedRecords.map(withDoNote);
   const untimedDos = model.untimedRecords.map(withDoNote);
   const doItems = assignOverlapColumns([...timedDos, ...draftDos.filter(draft => draft.date === date && !(joboRecords || []).some(record => record.id === draft.id)).map(draft => ({ ...draft, draft }))], { scale });
   const independentDoMap = new Map([...timedDos, ...untimedDos].filter(item => item.record.taskId === null).map(item => [item.id, item]));
   for (const record of joboRecords || []) {
-    if (record.taskId === null && noteVisibility[`do:${record.id}`] && !independentDoMap.has(record.id)) {
+    if (validateDoRecord(record).ok && record.taskId === null && noteVisibility[`do:${record.id}`] && !independentDoMap.has(record.id)) {
       independentDoMap.set(record.id, withDoNote({ id: record.id, record }));
     }
   }
   const independentDos = [...independentDoMap.values()];
   const isDoNoteVisible = item => noteVisibility[item.noteKey] ?? !!item.record.notes;
   const noteTasks = [...dayTasks, ...model.plans.map(item => item.sourceTask || item.currentTask || (item.noteKey ? item.task : null)), ...model.timedRecords.map(item => item.task), ...model.untimedRecords.map(item => item.task)].filter(Boolean);
-  const checkNoteKeys = getProblemNoteKeys(model);
   const isTaskNoteVisible = (task) => {
     if (!task) return false;
     const key = String(task.id);
-    return (noteVisibility[key] ?? !!task.notes) || (checkEnabled && checkNoteKeys.has(key) && !checkDismissed[`${date}:${key}`]);
+    return noteVisibility[key] ?? !!task.notes;
   };
   const noteTaskFor = (item) => noteTasks.find(task => String(task.id) === item.noteKey);
   const activeFocus = dragging ? null : focus || selection;
@@ -222,12 +219,7 @@ export default function JoboView({ headerControlsTarget }) {
   const hideTaskNote = task => {
     const key = String(task.id);
     setNoteVisibility(previous => ({ ...previous, [key]: false }));
-    setCheckDismissed(previous => ({ ...previous, [`${date}:${key}`]: true }));
     setNotesRequest(null);
-  };
-  const toggleCheck = () => {
-    if (!checkEnabled) { setCheckDismissed({}); setShowNotes(true); }
-    setCheckEnabled(value => !value);
   };
   const focusNote = (next) => {
     setFocus(next);
@@ -240,14 +232,13 @@ export default function JoboView({ headerControlsTarget }) {
   const togglePlanNotes = (item) => {
     if (!item.noteKey) return;
     ctx.setExpandedTaskMenu(null);
-    if (!showNotes) {
+    if (!showNotes && item.currentTask) {
       ctx.setExpandedNotesTaskId(previous => previous === item.currentTask.id ? null : item.currentTask.id);
       return;
     }
     const visible = !isTaskNoteVisible(noteTaskFor(item));
     ctx.setExpandedNotesTaskId(null);
     setNoteVisibility(previous => ({ ...previous, [item.noteKey]: visible }));
-    if (!visible) setCheckDismissed(previous => ({ ...previous, [`${date}:${item.noteKey}`]: true }));
     setSelection(focusFor(item));
     setNotesRequest(visible ? { key: item.noteKey, token: Date.now() } : null);
   };
@@ -259,10 +250,10 @@ export default function JoboView({ headerControlsTarget }) {
   const liveDetails = details && (model.plans.find(item => item.id === details.item.id)
     || [...timedDos, ...untimedDos].find(item => item.id === details.item.id));
 
-  const runWrite = async (build, options) => {
+  const runWrite = async (build) => {
     if (!joboWritable || !joboLoaded || busyRef.current) return;
     busyRef.current = true; setPending(true); setError('');
-    try { const next = build(); if (!next) { setError(t('jobo.view.recordChanged')); return null; } if (joboPendingIds.includes(next.id)) return null; const result = await commitDoEdit(options ? records => recordJobo(records, options) : recordJobo, next); return { record: next, result }; }
+    try { const next = build(); if (!next) { setError(t('jobo.view.recordChanged')); return null; } if (joboPendingIds.includes(next.id)) return null; const result = await commitDoEdit(recordJobo, next); return { record: next, result }; }
     catch (err) { setError(t(err.code === 'readOnly' ? 'jobo.view.readOnly' : err.code === 'notLoaded' ? 'jobo.view.loadError' : 'jobo.view.updateFailed')); }
     finally { busyRef.current = false; setPending(false); }
   };
@@ -270,16 +261,6 @@ export default function JoboView({ headerControlsTarget }) {
   const changeProgress = (item, progress) => {
     if (item.record.progress === progress) return;
     return runWrite(() => prepareDoEdit({ records: recordsRef.current, record: item.record, patch: {}, progress, now: Date.now() }));
-  };
-  const completePlan = async item => {
-    const task = item.currentTask;
-    if (!task || item.historical || !writable || pendingPlanCompletions[String(task.id)] && joboPendingIds.includes(pendingPlanCompletions[String(task.id)])) return;
-    if (task.completed) { ctx.toggleComplete(task.id); return; }
-    const accepted = await runWrite(() => preparePlanCompletion({
-      records: recordsRef.current, pendingIds: joboPendingIds, tasks, unscheduledTasks, recurringTasks,
-      task, now: Date.now(), id: `manual:${crypto.randomUUID()}`,
-    }), { completePlan: true });
-    if (accepted) setPendingPlanCompletions(previous => ({ ...previous, [String(task.id)]: accepted.record.id }));
   };
   const saveDoNote = async (record, text) => {
     const reject = (code) => { const failure = new Error(code); failure.code = code; throw failure; };
@@ -359,7 +340,8 @@ export default function JoboView({ headerControlsTarget }) {
     };
     const move = (next) => {
       const delta = snap((next.clientY - y + scrollRef.current.scrollTop - scroll) / scale * 60);
-      patch = resizeDoInterval(record, edge, delta); setPreview({ ...record, ...patch });
+      try { patch = resizeDoInterval(record, edge, delta); setPreview({ ...record, ...patch }); }
+      catch { patch = null; setError(t('jobo.view.completeInterval')); cleanup(); }
     };
     const up = () => { cleanup(); if (patch) runWrite(() => prepareDoEdit({ records: recordsRef.current, record, patch, now: Date.now() })); };
     const cancel = () => cleanup();
@@ -512,7 +494,11 @@ export default function JoboView({ headerControlsTarget }) {
   }, [joboLoaded]);
   useEffect(() => { gestureCleanup.current?.(); setEditor(null); setDetails(null); setFocus(null); setSelection(null); setNotesRequest(null); setNoteVisibility({}); setShowHistory(false); setDragging(false); setPendingPlanEdit(null); dragRef.current = null; }, [date]);
 
-  if (!joboLoaded) return <div data-jobo-view className={`h-full flex flex-col gap-3 items-center justify-center p-8 ${textSecondary}`} role="status">{joboError ? t('jobo.view.loadError') : t('common.loading')}{joboError && <button type="button" onClick={() => reloadJobo?.()}>{t('jobo.view.retryLoad')}</button>}</div>;
+  const dailyStats = <JoboDayStats date={date} tasks={dayTasks} records={joboRecords} loaded={joboLoaded}
+    taskLookup={lookupTasks} recurringTasks={recurringTasks} isVisibleForUser={ctx.isVisibleForUser}
+    pendingCount={joboPendingIds.length} ctx={ctx} />;
+  if (!joboLoaded) return <>{headerControlsTarget ? createPortal(dailyStats, headerControlsTarget) : dailyStats}<div data-jobo-view className={`h-full flex flex-col gap-3 items-center justify-center p-8 ${textSecondary}`} role="status">{joboError ? t('jobo.view.loadError') : t('common.loading')}{joboError && <button type="button" onClick={() => reloadJobo?.()}>{t('jobo.view.retryLoad')}</button>}</div></>;
+
   const rows = () => hours.map((hour, index) => <div key={hour} className={`jobo-s5-hour border-b ${borderClass} ${index % 2 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`} style={{ height: `${scale}px` }}><div className={`jobo-s5-half border-b border-dashed ${borderClass}`} /></div>);
   const creationPreview = (lane) => creation?.lane === lane && <div className={`jobo-s5-card jobo-s5-create-preview text-white rounded-lg shadow-md ${lane === 'plan' ? 'bg-blue-500' : 'bg-purple-500'}`}
     style={cardStyle({ ...creation, leftPct: 0, widthPct: 100 }, scale, startHour)} aria-hidden="true">
@@ -529,6 +515,9 @@ export default function JoboView({ headerControlsTarget }) {
   return <div data-jobo-view onKeyDown={(event) => {
     if ((event.ctrlKey || event.metaKey) && !event.altKey && ['z', 'y'].includes(event.key.toLowerCase())) {
       if (event.target.closest('input,textarea,[contenteditable="true"]')) event.stopPropagation();
+      else if (event.target.closest('.jobo-s5-do-card,.jobo-s5-untimed-card,.jobo-s5-draft-card')) {
+        event.preventDefault(); event.stopPropagation(); setError(t('jobo.daily.doUndoUnavailable'));
+      }
       return;
     }
     if (event.key === 'Escape' && gestureCleanup.current) {
@@ -540,9 +529,10 @@ export default function JoboView({ headerControlsTarget }) {
     if (event.target.closest('button,input,textarea,select,[data-jobo-card],[role="dialog"],[role="separator"]')) event.stopPropagation();
   }} style={{ '--jobo-plan-fr': `${2 * planRatio}fr`, '--jobo-do-fr': `${2 * (1 - planRatio)}fr` }}
     className={`jobo-s5-root ${darkMode ? 'jobo-s5-dark' : ''} ${!showNotes ? 'jobo-s5-hide-notes' : ''} ${resizingColumns ? 'jobo-s5-resizing-columns' : ''} ${creation ? 'jobo-s5-creating' : ''} ${dragging ? 'jobo-s5-dragging' : ''} ${textPrimary}`}>
-    {headerControlsTarget ? createPortal(controls, headerControlsTarget) : controls}
-    {(error || joboError || !joboWritable || model.invalidRecordCount > 0) && <div className={`jobo-s5-notice border-b ${borderClass}`} role="status"><AlertTriangle size={14} />
-      <span>{error || (joboError ? t('jobo.view.storageError') : !joboWritable ? t('jobo.view.readOnly') : t('jobo.view.invalidRecords', { count: model.invalidRecordCount }))}</span>
+    {headerControlsTarget ? createPortal(<div className="jobo-day-header">{dailyStats}{controls}</div>, headerControlsTarget) : <div className="jobo-day-header">{dailyStats}{controls}</div>}
+    {joboPendingIds.length > 0 && <div className={`jobo-s5-notice border-b ${borderClass}`} role="status">{t('jobo.daily.pending', { count: joboPendingIds.length })}</div>}
+    {(error || conflict || joboError || !joboWritable || model.invalidRecordCount > 0) && <div className={`jobo-s5-notice border-b ${borderClass}`} role="status"><AlertTriangle size={14} />
+      <span>{error || (conflict ? t('jobo.view.recordChanged') : '') || (joboError ? t('jobo.view.storageError') : !joboWritable ? t('jobo.view.readOnly') : t('jobo.view.invalidRecords', { count: model.invalidRecordCount }))}</span>
       {error && <button type="button" onClick={() => setError('')} aria-label={t('common.close')}><X size={14} /></button>}
     </div>}
     <div ref={scrollRef} className={`jobo-s5-scroll ${darkMode ? 'dark-scrollbar' : ''}`}>
@@ -551,7 +541,7 @@ export default function JoboView({ headerControlsTarget }) {
           <div className="jobo-s5-head-cell"><b>{t('jobo.view.plan')}</b><div className="jobo-s5-head-actions">{collapsibleHistory.length > 0 && <button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(value => !value)}><History size={13} />{t('jobo.view.historyCount', { count: collapsibleHistory.length })}</button>}<button type="button" onClick={() => openNewPlan(ctx, date, clockFromMinute(defaultMinute))} aria-label={t('jobo.view.addPlan')}><Plus size={17} /></button></div></div>
           <div className="jobo-s5-axis-handle" tabIndex={-1} {...columnResizeProps} title={t('jobo.view.resizeColumns')}><GripVertical size={14} aria-hidden="true" /></div>
           <div className="jobo-s5-head-cell"><b>{t('jobo.view.do')}</b><button type="button" onClick={() => openDo()} disabled={!writable} aria-label={t('jobo.view.addDo')}><Plus size={17} /></button></div>
-          <div className="jobo-s5-head-cell jobo-s5-head-notes"><b>{t('task.notes')}</b><div className="jobo-s5-head-actions"><button type="button" data-jobo-check aria-pressed={checkEnabled} onClick={toggleCheck} title={t('jobo.view.checkHint')}><ClipboardCheck size={13} />{t('jobo.view.check')}{checkNoteKeys.size > 0 && <span>({checkNoteKeys.size})</span>}</button></div></div>
+          <div className="jobo-s5-head-cell jobo-s5-head-notes"><b>{t('task.notes')}</b></div>
         </div>
         {model.untimedRecords.length > 0 && <div className={`jobo-s5-untimed-row ${cardBg} border-b ${borderClass}`}><div /><div className="jobo-s5-untimed-ruler"><Clock size={13} /></div><div className="jobo-s5-untimed-cell">
           <span className="jobo-s5-untimed-label">{t('jobo.view.untimed')}</span><div className="jobo-s5-untimed-list">
@@ -569,7 +559,7 @@ export default function JoboView({ headerControlsTarget }) {
           </div></div><div className="jobo-s5-untimed-notes-spacer" /></div>}
         <div ref={rootRef} className="jobo-s5-day-grid" style={{ minHeight: `${height}px` }}>
           <div className="jobo-s5-time-lane" data-jobo-lane="plan" onPointerDown={(e) => beginCreation(e, 'plan')} onDragOver={(e) => dragOver(e, 'plan')} onDrop={(e) => drop(e, 'plan')}>
-            {rows()}<JoboTimeFrames date={date} startHour={startHour} scale={scale} height={height} lane="plan" />{visiblePlans.map((item) => <PlanCard key={item.id} {...{ item, scale, startHour, ctx, t }} selected={activeFocus?.group === item.groupKey} onSelect={setSelection} onDetails={openDetails} onNotes={openNotes} onToggleNotes={togglePlanNotes} onComplete={completePlan} completionDisabled={!writable || joboPendingIds.includes(pendingPlanCompletions[String(item.currentTask?.id)])} notesColumnOpen={showNotes} noteVisible={isTaskNoteVisible(noteTaskFor(item))} onFocus={setFocus} onDragStart={beginDrag} onDragEnd={endDrag} />)}
+            {rows()}<JoboTimeFrames date={date} startHour={startHour} scale={scale} height={height} lane="plan" />{visiblePlans.map((item) => <PlanCard key={item.id} {...{ item, scale, startHour, ctx, t }} selected={activeFocus?.group === item.groupKey} onSelect={setSelection} onDetails={openDetails} onNotes={openNotes} onToggleNotes={togglePlanNotes}  notesColumnOpen={showNotes} noteVisible={isTaskNoteVisible(noteTaskFor(item))} onFocus={setFocus} onDragStart={beginDrag} onDragEnd={endDrag} />)}
             {!model.plans.length && <div className={`jobo-s5-empty-lane ${textSecondary}`}>{t('jobo.view.emptyPlan')}</div>}
             {creationPreview('plan')}
           </div>
@@ -590,7 +580,7 @@ export default function JoboView({ headerControlsTarget }) {
             onShowTaskNote={showTaskNote} onHideTaskNote={hideTaskNote} />
           {nowMinute != null && nowMinute >= startHour * 60 && <div className="jobo-s5-now-line" style={{ top: `${(nowMinute - startHour * 60) / 60 * scale}px` }} aria-hidden="true" />}
         </div>
-        <Connections rootRef={boardRef} focus={activeFocus} dep={`${scale}:${showNotes}:${planRatio}:${showHistory}:${checkEnabled}:${JSON.stringify(checkDismissed)}:${JSON.stringify(noteVisibility)}:${JSON.stringify(displayRecords)}`} />
+        <Connections rootRef={boardRef} focus={activeFocus} dep={`${scale}:${showNotes}:${planRatio}:${showHistory}:${JSON.stringify(noteVisibility)}:${JSON.stringify(displayRecords)}`} />
       </div>
     </div>
     {liveDetails && !editor && <ExecutionDetails item={liveDetails} anchor={details.anchor} onClose={closeDetails} onEdit={setEditor} onNotes={openNotes} ctx={ctx} t={t} writable={writable} pendingIds={joboPendingIds} />}

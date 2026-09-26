@@ -1,8 +1,6 @@
 import { useEffect, useRef, useReducer } from 'react';
 import { snapshotJoboState, planJoboTransitions, buildJoboRecords } from '../jobo/detector.js';
 import { isTrayMode } from '../utils/trayMode.js';
-import { routeDoCompletionEdges } from '../jobo/completionBridge.js';
-import { latestDoForTask } from '../jobo/completionPolicy.js';
 
 // JOBO completion detector (slice 4). Watches task state for completion
 // transitions and writes Do records through recordJobo, the ledger's only
@@ -17,7 +15,7 @@ import { latestDoForTask } from '../jobo/completionPolicy.js';
 // completion through sync produces the same id.
 export default function useJoboDetector({
   tasks, unscheduledTasks, recurringTasks,
-  joboRecords, getJoboMutationRecords, joboLoaded, joboWritable, recordJobo,
+  joboRecords, joboLoaded, joboWritable, recordJobo,
   isRemoteApply,
   enabled,
 }) {
@@ -40,14 +38,7 @@ export default function useJoboDetector({
       if (advanceTo !== null) prevRef.current = advanceTo;
       return;
     }
-    // `joboRecords` is the committed state used for sync and backup. A
-    // completion handed to the ledger may be held while its write is in
-    // flight; the mutation projection includes that accepted row so a
-    // rerender cannot create a duplicate completion record.
-    const visibleRecords = getJoboMutationRecords?.() ?? joboRecords;
-    const state = { tasks, unscheduledTasks, recurringTasks, records: visibleRecords };
-    const routedEdges = routeDoCompletionEdges(edges, state, id => latestDoForTask(state, visibleRecords.find(row => row.id === id))?.id || id);
-    const records = buildJoboRecords(routedEdges, visibleRecords, { observedAt: new Date().toISOString() });
+    const records = buildJoboRecords(edges, joboRecords, { observedAt: new Date().toISOString() });
     if (!records.length) {
       prevRef.current = nextSnap; // every edge was already present, or unusable
       return;

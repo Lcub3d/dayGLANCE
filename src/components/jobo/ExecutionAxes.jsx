@@ -38,7 +38,6 @@ export function metricRows(comparison, comparisonMeta, t) {
     : comparison?.metrics || comparisonMeta?.measured || {};
   const definitions = [
     ['recordedMinutes', 'jobo.view.recordedMinutes', 'Recorded: {{minutes}} min'],
-    ['activeMinutes', 'jobo.view.activeMinutes', 'Active: {{minutes}} min'],
     ['elapsedMinutes', 'jobo.view.elapsedMinutes', 'Elapsed: {{minutes}} min'],
     ['gapMinutes', 'jobo.view.gapMinutes', 'Gaps: {{minutes}} min'],
     ['overlapMinutes', 'jobo.view.overlapMinutes', 'Overlap: {{minutes}} min'],
@@ -49,7 +48,7 @@ export function metricRows(comparison, comparisonMeta, t) {
       minutes: source[key],
       text: translate(t, translationKey, defaultValue, { minutes: source[key] }),
     }))
-    .filter((row) => Number.isFinite(row.minutes) && row.minutes > 0);
+    .filter((row) => Number.isFinite(row.minutes) && row.minutes >= 0);
 }
 
 export function summaryRows(labels, comparison, t) {
@@ -83,6 +82,7 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
   const canonical = summaryRows(labels, comparison, t);
   const detailTiming = timing.filter((row) => row.key !== 'incomplete');
   const metrics = metricRows(comparison, comparisonMeta, t);
+  const hasEstimated = comparisonMeta?.hasEstimatedAttempts;
   const hasUntimed = comparison?.metrics?.untimedAttemptCount > 0 || comparisonMeta?.hasUntimedAttempts;
   const progressLabel = latestAttempt
     ? latestAttempt.progress === 'completed'
@@ -102,10 +102,12 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
           <dd>{row.text}</dd>
         </div>)}
       </dl>}
+      {hasEstimated && <p>{t('jobo.daily.inferredHint')}</p>}
+      {(hasEstimated || hasUntimed) && metrics.length > 0 && <p>{t('jobo.daily.measuredOnly')}</p>}
       {metrics.length > 0 && <dl className="jobo-s5-execution-metrics">
         {metrics.map((row) => <div key={row.key}><dt>{row.key === 'recordedMinutes' ? t('jobo.view.recordedLabel', { defaultValue: 'Recorded' }) : row.key === 'activeMinutes' ? t('jobo.view.activeLabel', { defaultValue: 'Active' }) : row.key === 'elapsedMinutes' ? t('jobo.view.elapsedLabel', { defaultValue: 'Elapsed' }) : row.key === 'gapMinutes' ? t('jobo.view.gapLabel', { defaultValue: 'Gaps' }) : t('jobo.view.overlapLabel', { defaultValue: 'Overlap' })}</dt><dd>{row.text}</dd></div>)}
       </dl>}
-      {!canonical.length && !detailTiming.length && !metrics.length && !hasUntimed && <p className="jobo-s5-execution-empty">{t('jobo.view.noAttemptsShort')}</p>}
+      {!canonical.length && !detailTiming.length && !metrics.length && !hasUntimed && !hasEstimated && <p className="jobo-s5-execution-empty">{t('jobo.view.noAttemptsShort')}</p>}
     </section>
     <section className="jobo-s5-execution-axis" data-jobo-execution-axis="completion" aria-labelledby="jobo-progress-axis-title">
       <h3 id="jobo-progress-axis-title"><Check size={14} aria-hidden="true" />{translate(t, 'jobo.view.completionAxis', 'Completion')}</h3>

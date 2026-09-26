@@ -5,7 +5,6 @@ import { stripSpans } from '../utils/quickAddParser.js';
 import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
-import { doCompletionLink } from '../jobo/completionBridge.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -502,51 +501,24 @@ export default function useTaskActions({
 
   // ── Task completion ──────────────────────────────────────────────────────
 
-  const toggleComplete = (id, fromInbox = false, jobo = null) => {
-    const recurringIdentity = typeof id === 'string' && id.startsWith('recurring-') ? parseRecurringId(id) : null;
-    const currentTask = recurringIdentity
-      ? recurringTasks.find(task => task.id === recurringIdentity.templateId)
-      : (fromInbox ? unscheduledTasks : tasks).find(task => task.id === id);
-    if (!currentTask) return null;
-    const before = recurringIdentity ? (currentTask.completedDates || []).includes(recurringIdentity.dateStr) : !!currentTask.completed;
-    const desired = jobo ? jobo.completed : !before;
-    const previousStamp = recurringIdentity ? currentTask.completedDatesTimestamps?.[recurringIdentity.dateStr] || null : currentTask.completedAt || null;
-    if (desired === before) return { id, fromInbox, completed: before, stamp: previousStamp,
-      ...(!recurringIdentity ? { transitionId: currentTask.transitionId ?? null } : {}) };
-    if (!jobo) pushUndo();
-    let stamp = recurringIdentity ? new Date().toISOString() : completionTimestamp();
-    // Native stamps have second precision. Never reuse a Do-owned event key
-    // on a quick reopen/complete, which would suppress a genuine new event.
-    while (desired && Object.keys(doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, stamp, 'probe')).some(key => currentTask.joboCompletionLinks?.[key])) {
-      const next = new Date(Date.parse(stamp) + (recurringIdentity ? 1 : 1000));
-      stamp = recurringIdentity ? next.toISOString() : completionTimestamp(next);
-    }
-    const links = jobo && desired ? doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, stamp, jobo.recordId) : {};
-    const originPatch = (task) => {
-      if (desired) return jobo ? { joboCompletionLinks: { ...task.joboCompletionLinks, ...links } } : {};
-      if (!previousStamp) return {};
-      const eventKey = Object.keys(doCompletionLink(recurringIdentity?.templateId ?? id, recurringIdentity?.dateStr, previousStamp, 'probe'))[0];
-      const unchecks = { ...task.joboUncompletionLinks };
-      if (jobo) unchecks[eventKey] = jobo.recordId;
-      else delete unchecks[eventKey];
-      return Object.keys(unchecks).length || task.joboUncompletionLinks ? { joboUncompletionLinks: unchecks } : {};
-    };
+  const toggleComplete = (id, fromInbox = false) => {
+    pushUndo();
     playUISound('tick');
     triggerHaptic('medium');
     if (typeof id === 'string' && id.startsWith('recurring-')) {
       const { templateId, dateStr } = parseRecurringId(id);
       setRecurringTasks(prev => prev.map(t => {
         if (t.id !== templateId) return t;
+        const completed = (t.completedDates || []).includes(dateStr);
         return {
           ...t,
-          completedDates: desired === false
+          completedDates: completed
             ? (t.completedDates || []).filter(d => d !== dateStr)
             : [...(t.completedDates || []), dateStr],
           // Stamp the toggled occurrence so sync resolves this complete/un-complete
           // by last-writer-wins per date instead of letting a concurrent series
           // edit clobber it (completedDates is unioned across devices on merge).
-          completedDatesTimestamps: { ...(t.completedDatesTimestamps || {}), [dateStr]: stamp },
-          ...originPatch(t),
+          completedDatesTimestamps: { ...(t.completedDatesTimestamps || {}), [dateStr]: new Date().toISOString() },
           lastModified: new Date().toISOString()
         };
       }));
@@ -557,28 +529,25 @@ export default function useTaskActions({
       if (!wasCompleted) {
         setUndoToast({ message: 'Task completed', actionable: true });
       }
-      return { id, fromInbox, completed: desired, stamp };
+      return;
     }
 
     const taskToToggle = fromInbox
       ? unscheduledTasks.find(t => t.id === id)
       : tasks.find(t => t.id === id);
-    // The mutation result and its stored task must identify the same event.
-    // Allocate outside the updater so React retries cannot generate a new id.
-    const transitionId = crypto.randomUUID();
     if (!onboardingProgress.hasCompletedTask && taskToToggle && !taskToToggle.completed) {
       setOnboardingProgress(prev => ({ ...prev, hasCompletedTask: true }));
     }
 
     if (fromInbox) {
       setUnscheduledTasks(prev => prev.map(task =>
-        task.id === id ? { ...task, completed: desired, completedAt: desired ? stamp : null, transitionId, ...originPatch(task) } : task
+        task.id === id ? { ...task, completed: !task.completed, completedAt: !task.completed ? completionTimestamp() : null, transitionId: crypto.randomUUID() } : task
       ));
     } else {
       const task = tasks.find(t => t.id === id);
       if (task?.isTaskCalendar && task?.icalUid) {
         const completionKey = task.icalUid + '::' + task.date;
-        const newCompleted = desired;
+        const newCompleted = !task.completed;
         setCompletedTaskUids(prev => {
           const newSet = new Set(prev);
           if (task.completed) {
@@ -600,16 +569,13 @@ export default function useTaskActions({
       // .test.js): the Obsidian completion marker regenerates from this
       // stored value, so the app must record what it intends to write.
       setTasks(prev => prev.map(task =>
-        task.id === id ? { ...task, completed: desired, completedAt: desired ? stamp : null, transitionId, ...originPatch(task) } : task
+        task.id === id ? { ...task, completed: !task.completed, completedAt: !task.completed ? completionTimestamp() : null, transitionId: crypto.randomUUID() } : task
       ));
     }
     if (taskToToggle && !taskToToggle.completed) {
       setUndoToast({ message: 'Task completed', actionable: true });
     }
-    return { id, fromInbox, completed: desired, stamp: desired ? stamp : null, transitionId };
   };
-
-  const setJoboTaskCompletion = (state, completed, recordId) => toggleComplete(state.id, state.fromInbox, { completed, recordId });
 
   // ── Task move ────────────────────────────────────────────────────────────
 
@@ -1010,7 +976,6 @@ export default function useTaskActions({
     updateRecurrenceEndCondition,
     // Complete
     toggleComplete,
-    setJoboTaskCompletion,
     // Move
     postponeTask,
     moveToInbox,

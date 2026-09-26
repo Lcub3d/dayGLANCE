@@ -26,7 +26,7 @@ export default function DraftDoCard({ draft, style, ctx, t, onCommit, onCancel, 
   return <article className="jobo-s5-card jobo-s5-draft-card bg-purple-500 text-white rounded-lg" style={style} data-jobo-card={draft.id} data-jobo-draft title={!title.trim() ? t('jobo.view.linkBlankDoHint') : undefined}
     onDragOver={(event) => { event.stopPropagation(); if (linkable) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; } }} onDrop={linkPlan}>
     <div className="jobo-s5-title-row">
-      <span title={t('common.completed')} aria-label={t('common.completed')}>√</span>
+      <span title={t('jobo.view.progress.started')} aria-label={t('jobo.view.progress.started')}>○</span>
       <input autoFocus={!draft.accepted} className="jobo-s5-draft-title" aria-label={t('jobo.view.draftDoTitle')}
         placeholder={t('jobo.view.draftDoTitle')} value={title} disabled={draft.accepted || saving}
         onChange={event => setTitle(event.target.value)} onBlur={submit}

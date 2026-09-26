@@ -5,8 +5,10 @@ import {
   compareExecutionToPlan,
   summarizeTiming,
   validateDoRecord,
+  pickJoboRecord,
 } from './core.js';
 import { resolveOccurrence } from './detector.js';
+import { validCivilDate } from './viewDates.js';
 
 const DAY_MINUTES = 24 * 60;
 const PROGRESS_ORDER = Object.freeze([
@@ -16,10 +18,8 @@ const PROGRESS_ORDER = Object.freeze([
   DO_PROGRESS.COMPLETED,
 ]);
 
-function validDate(value) {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-    && Number.isFinite(Date.parse(`${value}T00:00:00.000Z`));
-}
+const validDate = validCivilDate;
+const compareId = (a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
 
 function timeMinutes(value) {
   const match = /^(\d{2}):(\d{2})$/.exec(value || '');
@@ -62,7 +62,7 @@ export function sortJoboAttempts(records) {
     .filter((record) => record && !record.deleted)
     .slice()
     .sort((a, b) => createdAtMillis(b) - createdAtMillis(a)
-      || String(b.id ?? '').localeCompare(String(a.id ?? '')));
+      || compareId(b.id ?? '', a.id ?? ''));
 }
 
 export function latestJoboAttempt(records) {
@@ -132,13 +132,15 @@ function safeComparison(plan, records, options = {}) {
  */
 function comparisonMetadata(plan, records, options = {}) {
   const attempts = sortJoboAttempts(records);
-  const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED);
-  const comparison = safeComparison(plan, attempts, options);
+  const hasEstimatedAttempts = attempts.some(record => record.timingBasis === 'planDuration');
+  const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED && record.timingBasis !== 'planDuration');
+  const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, options);
   const measuredComparison = safeComparison(plan, measuredAttempts, options);
   return {
     comparable: comparison?.comparable === true,
     comparison,
     measuredComparison,
+    hasEstimatedAttempts,
     hasUntimedAttempts: attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
     attempts,
     measuredAttempts,
@@ -293,7 +295,7 @@ export function assignOverlapColumns(items, options = {}) {
   const sorted = [...items].sort((a, b) =>
     a.startMinute - b.startMinute
     || a.endMinute - b.endMinute
-    || String(a.id).localeCompare(String(b.id)));
+    || compareId(a.id, b.id));
 
   const out = [];
   let cluster = [];
@@ -328,6 +330,24 @@ export function assignOverlapColumns(items, options = {}) {
   return out;
 }
 
+export function projectJoboRecords(records) {
+  const winners = new Map();
+  const unusable = new Set();
+  let invalidRecordCount = Array.isArray(records) ? 0 : 1;
+  for (const record of Array.isArray(records) ? records : []) {
+    if (typeof record?.id !== 'string' || !record.id.trim()) { invalidRecordCount += 1; continue; }
+    if (unusable.has(record.id)) continue;
+    try { winners.set(record.id, pickJoboRecord(winners.get(record.id), record)); }
+    catch { winners.delete(record.id); unusable.add(record.id); invalidRecordCount += 1; }
+  }
+  const liveRecords = [];
+  for (const record of winners.values()) {
+    if (!validateDoRecord(record).ok) { invalidRecordCount += 1; continue; }
+    if (!record.deleted) liveRecords.push(record);
+  }
+  return { liveRecords, invalidRecordCount };
+}
+
 export function buildJoboDayModel({
   date,
   tasks = [],
@@ -336,33 +356,36 @@ export function buildJoboDayModel({
   records = [],
   now,
   scale,
+  isVisibleForUser,
 }) {
   const lookupTasks = Array.isArray(taskLookup) ? taskLookup : [];
-  const occurrenceDates = new Set([date]);
-  for (const record of Array.isArray(records) ? records : []) {
+  const { liveRecords, invalidRecordCount } = projectJoboRecords(records);
+  // Resolve only the historical dates actually referenced by each template.
+  // Expanding every template across every ledger date grows quadratically.
+  const datesByTask = new Map();
+  for (const record of liveRecords) {
     const occurrenceDate = occurrenceDateForRecord(record);
-    if (occurrenceDate) occurrenceDates.add(occurrenceDate);
+    if (!occurrenceDate || record.taskId == null) continue;
+    const id = String(record.taskId);
+    if (!datesByTask.has(id)) datesByTask.set(id, new Set());
+    datesByTask.get(id).add(occurrenceDate);
   }
   const expandedFromTemplates = (Array.isArray(recurringTasks) ? recurringTasks : [])
-    .flatMap((template) => [...occurrenceDates]
-      .map((occurrenceDate) => expandRecurringOccurrence(template, occurrenceDate))
-      .filter(Boolean));
+    .flatMap(template => [...(datesByTask.get(String(template.id)) || [])]
+      .map(occurrenceDate => expandRecurringOccurrence(template, occurrenceDate)).filter(Boolean));
   // Existing expanded objects carry live exception/completion fields. Template
   // expansion fills only dates outside the current scheduler window; lookup
   // objects therefore win deterministicly when both represent the same day.
   const sourceTasks = [...expandedFromTemplates, ...lookupTasks];
   const resolveRecordTask = buildTaskResolver(sourceTasks);
 
-  const validLiveRecords = [];
-  let invalidRecordCount = 0;
-  for (const record of Array.isArray(records) ? records : []) {
-    const validation = validateDoRecord(record);
-    if (!validation.ok) {
-      invalidRecordCount += 1;
-      continue;
-    }
-    if (!record.deleted) validLiveRecords.push(record);
-  }
+  const visibleTask = task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task);
+  const validLiveRecords = liveRecords.filter(record => {
+    const source = resolveRecordTask(record);
+    // Resolved household assignments are respected in both lanes. Orphaned
+    // history remains independent of a task still existing, as the contract requires.
+    return !source || visibleTask(source);
+  });
 
   const visibleRecords = validLiveRecords.filter((record) => (
     record.timing === DO_TIMING.UNTIMED
@@ -449,11 +472,10 @@ export function buildJoboDayModel({
   const capturedPlanKeys = new Set();
   const capturedPlans = [];
   for (const [key, group] of groups) {
-    const representative = group[0];
+    const representative = sortJoboAttempts(group).at(-1);
     const plan = representative?.planSnapshot ?? null;
     if (!plan || plan.date !== date) continue;
 
-    capturedPlanKeys.add(key);
     const linkedTask = resolveRecordTask(representative);
     const task = linkedTask
       ? { ...linkedTask, title: representative.title }
@@ -467,7 +489,9 @@ export function buildJoboDayModel({
     const livePlan = planFromTask(linkedTask);
     const currentTask = !linkedTask?.isJoboSyntheticOccurrence
       && livePlan && planSnapshotKey(livePlan) === planSnapshotKey(plan)
+      && linkedTask.title === representative.title
       ? linkedTask : null;
+    if (currentTask) capturedPlanKeys.add(key);
     const metadata = metadataByGroup.get(key);
     const attempts = attemptsByGroup.get(key) || [];
     capturedPlans.push({
@@ -493,7 +517,7 @@ export function buildJoboDayModel({
 
   const currentPlans = (Array.isArray(tasks) ? tasks : [])
     .map((task) => ({ task, plan: planFromTask(task) }))
-    .filter(({ plan }) => plan && plan.date === date)
+    .filter(({ task, plan }) => task?.id != null && plan && plan.date === date && visibleTask(task))
     // When a record already captured this exact Final Plan, the captured copy
     // is the historical source of truth and also preserves the captured title.
     .filter(({ task, plan }) => !capturedPlanKeys.has(taskPlanGroupKey(task, plan)))

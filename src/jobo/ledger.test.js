@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createLedger, mergeRecordsById } from './ledger.js';
 import { pickJoboRecord } from './core.js';
-import { buildJoboRecords } from './detector.js';
 
 const T1 = '2026-09-19T15:10:02.000Z';
 const T2 = '2026-09-19T16:00:00.000Z';
@@ -69,7 +68,6 @@ describe('createLedger lifecycle', () => {
   it('starts unloaded with records undefined, and loads absent as empty', async () => {
     const ledger = createLedger({ store: fakeStore() });
     expect(ledger.get()).toMatchObject({ records: undefined, loaded: false });
-    expect(ledger.getMutationRecords()).toBeUndefined();
     await ledger.load();
     expect(ledger.get()).toMatchObject({ records: [], loaded: true, writable: true, error: null });
   });
@@ -83,22 +81,6 @@ describe('createLedger lifecycle', () => {
     expect(ledger.get().loaded).toBe(false);
     expect(ledger.get().error).toBe('storageRead');
     expect(await ledger.commit([rec('1')])).toEqual({ ok: false, error: 'notLoaded' });
-  });
-
-  it('hides the mutation projection after a reload fails, even when old state remains in memory', async () => {
-    const store = fakeStore({ initial: [rec('on-disk')] });
-    let readFails = false;
-    store.read = async () => readFails
-      ? { ok: false, error: 'storageRead' }
-      : { ok: true, value: store.peek() };
-    const ledger = createLedger({ store });
-    await ledger.load();
-    expect(ledger.getMutationRecords()).toEqual([rec('on-disk')]);
-    readFails = true;
-    await ledger.load();
-    expect(ledger.get().loaded).toBe(false);
-    expect(ledger.get().records).toEqual([rec('on-disk')]);
-    expect(ledger.getMutationRecords()).toBeUndefined();
   });
 
   // MUTATION: merge the apply into state immediately instead of holding it,
@@ -299,231 +281,6 @@ describe('createLedger lifecycle', () => {
     await ledger.applyRemote([rec('same')]);
     await ledger.applyRemote([rec('same', { updatedAt: T2 })]);
     expect(ledger.heldCount()).toBe(1);
-  });
-
-  it('keeps an accepted completion visible while the write is held, so reopen is not lost', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let failing = true;
-    store.update = async (fn) => failing
-      ? { ok: false, error: 'storageWrite' }
-      : originalUpdate(fn);
-    const timers = [];
-    const ledger = createLedger({ store, retry: { schedule: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, cancel: vi.fn() } });
-    await ledger.load();
-
-    const completion = {
-      id: 'do:t1:completion', updatedAt: T1, observedAt: T1,
-      title: 'Draft', progress: 'completed', timing: 'untimed', source: 'completion',
-      taskId: 't1', date: '2026-09-19', startTime: null, endDate: null, endTime: null,
-      planSnapshot: null, createdAt: T1, deleted: false,
-    };
-    expect(await ledger.commit([completion])).toMatchObject({ ok: false, held: true });
-    expect(ledger.get().records).toEqual([]); // pending is never published as state/sync
-    expect(ledger.getMutationRecords()).toEqual([completion]);
-    expect(ledger.get().pendingIds).toEqual(['do:t1:completion']);
-    expect(ledger.get().pendingCount).toBe(1);
-
-    const reopened = buildJoboRecords({
-      completions: [],
-      uncompletions: [{ id: completion.id, uncheckedAt: T2 }],
-    }, ledger.getMutationRecords(), { observedAt: T2 });
-    expect(reopened).toHaveLength(1);
-    expect(reopened[0]).toMatchObject({ id: completion.id, progress: 'partial' });
-
-    failing = false;
-    expect(await ledger.commit(reopened)).toMatchObject({ ok: true });
-    expect(store.peek()).toEqual(expect.arrayContaining([expect.objectContaining({ id: completion.id, progress: 'partial' })]));
-    expect(ledger.getMutationRecords()).toEqual(ledger.get().records);
-    expect(ledger.get().pendingCount).toBe(0);
-    expect(timers).toHaveLength(1);
-    ledger.dispose();
-  });
-
-  it('exposes a mutation projection during an in-flight write and clears it only after the winner commits', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let release;
-    let started;
-    store.update = (fn) => new Promise((resolve) => {
-      started = resolve;
-      release = () => resolve(originalUpdate(fn));
-    });
-    const ledger = createLedger({ store });
-    await ledger.load();
-    const completion = rec('do:flight', { progress: 'completed' });
-    const commit = ledger.commit([completion]);
-    await Promise.resolve();
-    expect(ledger.heldCount()).toBe(0); // detached into store.update
-    expect(ledger.getMutationRecords()).toEqual([completion]);
-    expect(ledger.get().records).toEqual([]);
-    release();
-    await commit;
-    expect(ledger.getMutationRecords()).toEqual(ledger.get().records);
-    expect(ledger.get().pendingCount).toBe(0);
-    ledger.dispose();
-  });
-
-  it('publishes a committed winner and an empty pending projection atomically', async () => {
-    const store = fakeStore({ initial: [] });
-    const ledger = createLedger({ store });
-    await ledger.load();
-    const seen = [];
-    ledger.subscribe((state) => seen.push({
-      ids: state.records?.map((record) => record.id) ?? undefined,
-      pendingCount: state.pendingCount,
-    }));
-    await ledger.commit([rec('atomic')]);
-    expect(seen.some((state) => state.pendingCount > 0 && state.ids.length === 0)).toBe(true);
-    expect(seen.some((state) => state.pendingCount === 0 && state.ids.includes('atomic'))).toBe(true);
-    expect(seen.filter((state) => state.pendingCount === 0 && !state.ids.includes('atomic'))).toEqual([]);
-    ledger.dispose();
-  });
-
-  it('shares one flush across concurrent commits and drains newer held rows in order', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let calls = 0;
-    let release;
-    store.update = (fn) => {
-      calls += 1;
-      if (calls === 1) return new Promise((resolve) => { release = () => resolve(originalUpdate(fn)); });
-      return originalUpdate(fn);
-    };
-    const ledger = createLedger({ store });
-    await ledger.load();
-    const first = ledger.commit([rec('first')]);
-    await Promise.resolve();
-    const second = ledger.commit([rec('second')]);
-    release();
-    await Promise.all([first, second]);
-    expect(store.peek().map((record) => record.id)).toEqual(['first', 'second']);
-    expect(ledger.get().records.map((record) => record.id)).toEqual(['first', 'second']);
-    expect(ledger.getMutationRecords()).toEqual(ledger.get().records);
-    expect(ledger.get().pendingCount).toBe(0);
-    ledger.dispose();
-  });
-
-  it('waits for an in-flight retry before restore so the retry cannot reintroduce old rows', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let calls = 0;
-    let release;
-    store.update = (fn) => {
-      calls += 1;
-      if (calls === 1) return new Promise((resolve) => { release = () => resolve(originalUpdate(fn)); });
-      return originalUpdate(fn);
-    };
-    const ledger = createLedger({ store });
-    await ledger.load();
-    const oldRow = rec('old');
-    const commit = ledger.commit([oldRow]);
-    await Promise.resolve();
-    const restored = rec('restored', { updatedAt: T2 });
-    const restore = ledger.restore([restored]);
-    await Promise.resolve();
-    expect(store.peek()).toEqual([]);
-    release();
-    await Promise.all([commit, restore]);
-    expect(store.peek()).toEqual([restored]);
-    expect(ledger.get().records).toEqual([restored]);
-    expect(ledger.getMutationRecords()).toEqual([restored]);
-    expect(ledger.get().pendingCount).toBe(0);
-    ledger.dispose();
-  });
-
-  it('gates a queued retry during restore and schedules it again when restore fails', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let failing = true;
-    store.update = async (fn) => failing
-      ? { ok: false, error: 'storageWrite' }
-      : originalUpdate(fn);
-    const originalWrite = store.write.bind(store);
-    let releaseRestore;
-    let restoreFailed = true;
-    store.write = () => new Promise((resolve) => {
-      releaseRestore = () => resolve(restoreFailed
-        ? { ok: false, error: 'storageWrite' }
-        : originalWrite([rec('restored', { updatedAt: T2 })]));
-    });
-    const timers = [];
-    const cancel = vi.fn();
-    const ledger = createLedger({ store, retry: { schedule: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, cancel } });
-    await ledger.load();
-    const oldRow = rec('old');
-    await ledger.commit([oldRow]);
-    expect(timers).toHaveLength(1);
-
-    const restore = ledger.restore([rec('restored', { updatedAt: T2 })]);
-    await Promise.resolve();
-    expect(cancel).toHaveBeenCalledWith(1);
-    // Calling a timer that was already queued after cancellation must not
-    // flush the old row while the replacement write is still pending.
-    expect(timers[0].fn()).toEqual({ ok: true, records: [] });
-    expect(store.peek()).toEqual([]);
-    releaseRestore();
-    await expect(restore).resolves.toMatchObject({ ok: false, error: 'storageWrite' });
-    expect(ledger.heldCount()).toBe(1);
-    expect(timers).toHaveLength(2); // failed restore restored the retry contract
-
-    restoreFailed = false;
-    failing = false;
-    await timers[1].fn();
-    expect(store.peek()).toEqual([oldRow]);
-    expect(ledger.get().pendingCount).toBe(0);
-    ledger.dispose();
-  });
-
-  it('lets a newer remote tombstone win over a held local row and does not leak pending state', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let failing = true;
-    store.update = async (fn) => failing
-      ? { ok: false, error: 'storageWrite' }
-      : originalUpdate(fn);
-    const timers = [];
-    const ledger = createLedger({ store, retry: { schedule: (fn, ms) => { timers.push({ fn, ms }); return timers.length; }, cancel: vi.fn() } });
-    await ledger.load();
-    const live = rec('same', { updatedAt: T1, title: 'local' });
-    const tombstone = rec('same', { updatedAt: T2, deleted: true, title: 'remote' });
-    await ledger.commit([live]);
-    expect(ledger.getMutationRecords()[0]).toBe(live);
-    await expect(ledger.applyRemote([tombstone])).resolves.toMatchObject({ ok: false, held: true });
-    expect(ledger.getMutationRecords()).toEqual([tombstone]);
-    failing = false;
-    await ledger.applyRemote([]);
-    expect(store.peek()).toEqual([tombstone]);
-    expect(ledger.getMutationRecords()).toEqual(ledger.get().records);
-    expect(ledger.get().pendingCount).toBe(0);
-    expect(ledger.get().pendingIds).toEqual([]);
-    expect(timers.length).toBeGreaterThan(0);
-    ledger.dispose();
-  });
-
-  it('clears held mutations on a successful restore and never exports them through state', async () => {
-    const store = fakeStore({ initial: [] });
-    const originalUpdate = store.update.bind(store);
-    let failing = true;
-    store.update = async (fn) => failing
-      ? { ok: false, error: 'storageWrite' }
-      : originalUpdate(fn);
-    const ledger = createLedger({ store, retry: { schedule: () => 1, cancel: vi.fn() } });
-    await ledger.load();
-    const held = rec('held');
-    await ledger.commit([held]);
-    expect(ledger.getMutationRecords()).toEqual([held]);
-    const restored = rec('restored', { updatedAt: T2 });
-    failing = false;
-    await expect(ledger.restore([restored])).resolves.toMatchObject({ ok: true });
-    expect(ledger.heldCount()).toBe(0);
-    expect(ledger.get().pendingCount).toBe(0);
-    expect(ledger.getMutationRecords()).toEqual([restored]);
-    expect(ledger.get().records).toEqual([restored]);
-    expect(store.peek()).toEqual([restored]);
-    await ledger.retryHeld();
-    expect(store.peek()).toEqual([restored]);
-    ledger.dispose();
   });
 
   it('notifies subscribers with each state change', async () => {

@@ -5,12 +5,13 @@
 // does not know about the Do ledger and never writes the task collection; the
 // owning main context remains the sole writer for these operations.
 
+import { validCivilDate } from './viewDates.js';
+
 function liveTask(item) {
-  if (!item || item.historical || !item.currentTask) return null;
+  if (!item || item.historical || !item.currentTask || item.currentTask.isJoboSyntheticOccurrence) return null;
   return item.currentTask;
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const NATIVE_CREATE_HANDLER = 'createTimelineTask';
 const COPY_FIELDS = Object.freeze([
@@ -23,7 +24,7 @@ function randomId() {
 }
 
 function normalizePlanInput({ date, startTime, duration = 30, title = '' } = {}) {
-  if (typeof date !== 'string' || !DATE_RE.test(date)) throw new TypeError('date must be YYYY-MM-DD');
+  if (!validCivilDate(date)) throw new TypeError('date must be YYYY-MM-DD');
   if (typeof startTime !== 'string' || !TIME_RE.test(startTime)) throw new TypeError('startTime must be HH:mm');
   if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0) {
     throw new TypeError('duration must be a positive number');
@@ -170,7 +171,7 @@ export function startPlanDrag(ctx, item, event) {
 /** Start resizing a live native Plan through main's task resize handler. */
 export function startPlanResize(ctx, item, event, scale = 80, { touch = false } = {}) {
   const task = liveTask(item);
-  if (!task || !planCapabilities(item).editable) return false;
+  if (!task || !planCapabilities(item).editable || !Number.isFinite(scale) || scale <= 0) return false;
   const handler = touch ? ctx?.handleTouchResizeStart : ctx?.handleResizeStart;
   if (typeof handler !== 'function') return false;
   handler(task, event, scale);
@@ -186,7 +187,7 @@ export function dropPlan(ctx, event, selectedDate, time) {
 
 /** Write notes through main's task-note path; imported items stay read-only. */
 export function writePlanNotes(ctx, task, text, isInbox = false) {
-  if (!task || task.imported || typeof ctx?.updateTaskNotes !== 'function') return false;
+  if (!task || task.imported || task.isJoboSyntheticOccurrence || typeof ctx?.updateTaskNotes !== 'function') return false;
   ctx.updateTaskNotes(task.id, text, isInbox);
   return true;
 }

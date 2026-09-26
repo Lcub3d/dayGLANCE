@@ -26,7 +26,7 @@ export function TimingSummary({ comparison, t }) {
   return text ? <span className="jobo-s5-timing-summary" title={text}><Clock size={12} aria-hidden="true" /><span>{text}</span></span> : null;
 }
 
-export default function PlanCard({ item, scale, startHour, ctx, t, onFocus, onSelect, onDragStart, onDragEnd, onDetails, onNotes, onToggleNotes, onComplete, completionDisabled = false, notesColumnOpen = false, noteVisible = false, selected }) {
+export default function PlanCard({ item, scale, startHour, ctx, t, onFocus, onSelect, onDragStart, onDragEnd, onDetails, onNotes, onToggleNotes, notesColumnOpen = false, noteVisible = false, selected }) {
   const ref = useRef(null);
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
@@ -68,12 +68,13 @@ export default function PlanCard({ item, scale, startHour, ctx, t, onFocus, onSe
     onClick={(event) => { event.stopPropagation(); onSelect(focus); }}
     onKeyDown={(event) => { if (event.target !== event.currentTarget) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onDetails(item, event.currentTarget); } }}
     onContextMenu={(event) => { if (!capability.editable || !ctx.setTaskContextMenu) return; event.preventDefault(); event.stopPropagation(); ctx.setTaskContextMenu({ x: event.clientX, y: event.clientY, taskId: task.id, isRecurring: String(task.id).startsWith('recurring-'), isImported: !!task.imported, isAllDay: false, dateStr: task.date }); }}>
+    <span className="jobo-s5-exact-interval" aria-hidden="true" style={{ height: `${(item.endMinute - item.startMinute) / 60 * scale}px` }} />
     <div className="jobo-s5-plan-content" style={{ height, paddingRight: !native && compact ? 30 : 0 }}>
-      {native ? <TimelineTaskCardContent task={task} height={height} isNarrowWidth={width < 300} flipNotesPanel={item.endMinute >= 1320} renderExtraActions={detailsButton} renderNotesAction={notesButton} suppressNotesPanel={notesColumnOpen} onToggleComplete={onComplete ? () => onComplete(item) : undefined} completionDisabled={completionDisabled}
+      {native ? <TimelineTaskCardContent task={task} height={height} isNarrowWidth={width < 300} flipNotesPanel={item.endMinute >= 1320} renderExtraActions={detailsButton} renderNotesAction={notesButton} suppressNotesPanel={notesColumnOpen}
       /> :
         <div className="jobo-s5-plan-shell">
           <div className="jobo-s5-title-row">
-            {capability.completable && <button type="button" role="checkbox" aria-checked={completed} disabled={completionDisabled} className="jobo-s5-check" onClick={() => onComplete ? onComplete(item) : togglePlanCompletion(ctx, item)} aria-label={`${t(completed ? 'jobo.view.reopenTask' : 'jobo.view.completeTask')}: ${task.title}`}>{completed && <Check size={11} />}</button>}
+            {capability.completable && <button type="button" role="checkbox" aria-checked={completed} className="jobo-s5-check" onClick={() => togglePlanCompletion(ctx, item)} aria-label={`${t(completed ? 'jobo.view.reopenTask' : 'jobo.view.completeTask')}: ${task.title}`}>{completed && <Check size={11} />}</button>}
             {item.historical && <History size={13} aria-label={t('jobo.view.capturedPlan')} />}
             <span className={`jobo-s5-title ${completed ? 'line-through' : ''}`} title={task.title}>{renderTitleWithoutTags(task.title)}</span>
           </div>

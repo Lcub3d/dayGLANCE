@@ -108,7 +108,11 @@ struct DaySummaryLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DaySummaryAttributes.self) { context in
             // ── Lock screen / notification banner ────────────────────────
+            // The tint is always dark, so the text is drawn for a dark
+            // ground: in light mode .primary/.secondary are dark and sat
+            // dark-on-dark on the lock screen.
             LockScreenView(state: context.state, isStale: context.isStale)
+                .environment(\.colorScheme, .dark)
                 .activityBackgroundTint(Color.black.opacity(0.55))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in

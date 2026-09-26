@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortByProjectOrder, applyProjectReorder } from './projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, sortProjectsByOrder } from './projectOrder.js';
 
 const t = (id, extra = {}) => ({ id, title: id, projectId: 'p1', lastModified: '2026-09-01T00:00:00.000Z', ...extra });
 
@@ -41,5 +41,37 @@ describe('applyProjectReorder', () => {
     expect(out.find((x) => x.id === 'b').projectOrder).toBe(10);
     expect(out.find((x) => x.id === 'a').projectOrder).toBe(20);
     expect(out).toHaveLength(inbox.length);
+  });
+});
+
+describe('orderProjectTasks', () => {
+  it('lists open scheduled by date, open inbox by projectOrder, then the completed in the same groups', () => {
+    const scheduled = [
+      { id: 's-late', date: '2026-10-05' },
+      { id: 's-done', date: '2026-09-01', completed: true },
+      { id: 's-early', date: '2026-09-28' },
+    ];
+    const unscheduled = [
+      { id: 'u-none' },
+      { id: 'u-20', projectOrder: 20 },
+      { id: 'u-done', projectOrder: 0, completed: true },
+      { id: 'u-10', projectOrder: 10 },
+    ];
+    expect(orderProjectTasks(scheduled, unscheduled).map((t) => t.id))
+      .toEqual(['s-early', 's-late', 'u-10', 'u-20', 'u-none', 's-done', 'u-done']);
+  });
+
+  it('tolerates missing lists and does not mutate its input', () => {
+    const scheduled = [{ id: 'b', date: '2026-10-02' }, { id: 'a', date: '2026-10-01' }];
+    expect(orderProjectTasks(scheduled, undefined).map((t) => t.id)).toEqual(['a', 'b']);
+    expect(scheduled.map((t) => t.id)).toEqual(['b', 'a']);
+    expect(orderProjectTasks(null, null)).toEqual([]);
+  });
+});
+
+describe('sortProjectsByOrder', () => {
+  it('orders by sortOrder with unordered projects after, in array order', () => {
+    const projects = [{ id: 'x' }, { id: 'b', sortOrder: 2 }, { id: 'y' }, { id: 'a', sortOrder: 1 }];
+    expect(sortProjectsByOrder(projects).map((p) => p.id)).toEqual(['a', 'b', 'x', 'y']);
   });
 });

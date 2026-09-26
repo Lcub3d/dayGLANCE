@@ -136,6 +136,8 @@ struct ProjectData: Codable {
     var goalId: String?
     var goalTitle: String?
     var goalColorHex: String?
+    /// The project's own colour as the app draws it (absent from older pushes).
+    var colorHex: String?
     var progressPct: Int?
     var totalTasks: Int?
     var completedTasks: Int?
@@ -198,4 +200,44 @@ struct DialBlock: Codable {
     var endsNextDay: Bool?
     var endMinTrue: Int?
     var startedPrevDay: Bool?
+}
+
+// MARK: - Tap links
+
+/// Where a widget's tap lands in the app: a dayglance:// link, stored by the
+/// app's URL handlers (ContentView.onOpenURL, SceneDelegate) and applied by
+/// the web layer (App.jsx, utils/goalsLink.js and utils/dayLink.js). The
+/// Android widgets open the same URLs (WidgetLinks.kt).
+enum WidgetLink {
+    /// Today's calendar, wherever the app was (Up Next).
+    static let today = URL(string: "dayglance://today")!
+
+    /// That goal in Goals & Projects; with no goal, the space.
+    static func goal(_ id: String?) -> URL { link("goal", id) }
+
+    /// That project, its card in view; with no project, the space.
+    static func project(_ id: String?) -> URL { link("project", id) }
+
+    /// Up Next's Done: complete that task.
+    static func completeTask(_ id: String) -> URL { link("completeTask", id) }
+
+    /// Up Next's Focus: a focus session on that task (without an id, on the
+    /// block the app derives from the clock).
+    static func startFocus(_ id: String?) -> URL { link("startFocus", id) }
+
+    /// RFC 3986 unreserved characters only. `.urlQueryAllowed` keeps '+',
+    /// '&' and '=', which URLSearchParams on the web side reads as a space
+    /// and as separators, so an id containing them (an ICS UID can) would
+    /// arrive cut or changed.
+    private static let unreserved = CharacterSet(charactersIn:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+    static func encode(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
+    }
+
+    private static func link(_ host: String, _ id: String?) -> URL {
+        guard let id, !id.isEmpty else { return URL(string: "dayglance://\(host)")! }
+        return URL(string: "dayglance://\(host)?id=\(encode(id))") ?? URL(string: "dayglance://\(host)")!
+    }
 }

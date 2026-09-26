@@ -57,24 +57,30 @@ class WidgetUpdateWorker(
         // 1. Decide what this run may touch, BEFORE fetching anything: a stale
         //    snapshot gets no native data patched into it, so there is nothing
         //    to fetch for it.
-        val existing = dataStore.widgetSnapshot?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val stored = dataStore.widgetSnapshot
+        val existing = stored?.let { runCatching { JSONObject(it) }.getOrNull() }
         val decision = WidgetSnapshotPatchPolicy.decide(
             existingSnapshotDate = existing?.optString("date", ""),
             hasExisting = existing != null,
             today = today,
         )
 
-        if (decision != SnapshotPatchDecision.LEAVE_UNTOUCHED) {
+        // Only CREATE writes. PATCH used to write the same-day snapshot back
+        // with fresh steps and device events, but no widget reads either
+        // field, and the write was a read-modify-write across two slow
+        // queries: an app push landing in between was overwritten with the
+        // older content (under the push's own fresh "updated" time), and the
+        // app's dedupe had already recorded that push, so it did not resend.
+        if (decision == SnapshotPatchDecision.CREATE) {
             // 2. Fetch fresh native data
             val steps = try { HealthRepository(context).getSteps(today) } catch (_: Throwable) { -1 }
             val calEvents = try { CalendarRepository(context).getEvents(today) } catch (_: Throwable) { emptyList() }
 
-            // 3. Patch the existing same-day snapshot, or build a new minimal one.
-            //    Only the CREATE case regenerated its content, so only it may
-            //    carry today's date and a fresh capture time.
-            val patched = patchSnapshot(today, steps, calEvents, existing, stamp = decision == SnapshotPatchDecision.CREATE)
-            dataStore.widgetSnapshot = patched.toString()
-            if (decision == SnapshotPatchDecision.CREATE) {
+            // 3. Build the calendar-only snapshot, unless the app pushed a
+            //    real one while the queries ran (the stored string changed).
+            if (dataStore.widgetSnapshot == stored) {
+                val created = patchSnapshot(today, steps, calEvents, null, stamp = true)
+                dataStore.widgetSnapshot = created.toString()
                 dataStore.widgetSnapshotUpdatedAt = System.currentTimeMillis()
             }
         }
@@ -112,6 +118,11 @@ class WidgetUpdateWorker(
         } catch (_: Throwable) { }
         try {
             MonthAgendaWidget.requestUpdate(context)
+        } catch (_: Throwable) { }
+        // Also re-arms the dial's minute tick, should the chain have died with
+        // the process (DayDialWidget.onUpdate).
+        try {
+            com.dayglance.app.widget.dial.DayDialWidget.requestUpdate(context)
         } catch (_: Throwable) { }
         // Backstop: refresh the Up Next notification from native data every 15 minutes.
         // This re-arms the alarm chain in case it was cleared by a system restart or

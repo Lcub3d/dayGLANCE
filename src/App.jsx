@@ -64,6 +64,8 @@ import { fetchIcsFeed, replaceFeedEvents, PRIMARY_FEED_ID, ICS_CALENDARS_KEY, lo
 import { nextPerUserCalendarEntry } from './utils/perUserCalendarEntry.js';
 import { TASK_COLORS, TAILWIND_TO_HEX, taskColorToHex, getProjectColor } from './utils/colorUtils.js';
 import { calculateGoalProgress } from './utils/goalProgress.js';
+import { buildWidgetGoalsProjects } from './utils/widgetGoalsProjects.js';
+import { resolveGoalsLink, areaFilterHides } from './utils/goalsLink.js';
 import { HABIT_ICONS, HABIT_ICON_NAMES, HABIT_COLORS } from './constants/habits.js';
 import { FRAME_COLORS } from './constants/frames.js';
 import { getOccurrencesInRange, getRecurrencePresets } from './utils/recurrenceEngine.js';
@@ -106,7 +108,6 @@ import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
-import useJoboViewWriter from './hooks/useJoboViewWriter.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -475,6 +476,9 @@ const DayPlanner = () => {
     return localStorage.getItem('day-planner-list-end-of-day') || null;
   });
   const [goalsDashboardFocusId, setGoalsDashboardFocusId] = useState(null);
+  // A project to bring into view in the Goals & Projects space (the Project
+  // widget's tap, utils/goalsLink.js). GoalDashboard consumes and clears it.
+  const [goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId] = useState(null);
   // Project whose PLANNER dashboard is open — rendered at the app top level so
   // it stacks between the G&P dashboard (z-60) and the task editor (z-80).
   const [plannerProjectId, setPlannerProjectId] = useState(null);
@@ -663,6 +667,9 @@ const DayPlanner = () => {
   };
   const openDayFromLink = (url) => {
     const r = resolveDayLink(url.searchParams, dayLinkEnvRef.current);
+    // Every day link is about the calendar: leave the Goals & Projects space
+    // (a no-op on a phone, which has a tab instead).
+    setDesktopSpace('calendar');
     if (r.date) setSelectedDate(new Date(r.date + 'T12:00:00'));
     if (r.dial) setShowDayDial(true);
     if (r.desktopView) setViewMode(r.desktopView);
@@ -1054,8 +1061,6 @@ const DayPlanner = () => {
   // stores, pushes, pulls and merges records.
   const {
     joboRecords, joboLoaded, joboWritable, joboError,
-    getJoboMutationRecords, joboPendingIds, joboPendingCount,
-    joboLoadState, joboWriteState,
     recordJobo, applyRemoteJobo, restoreJobo, reloadJobo,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
@@ -1294,7 +1299,7 @@ const DayPlanner = () => {
     trmnlSyncInProgressRef,
     performTrmnlSyncRef,
   } = useTrmnlSync();
-  const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
+  const { undoToast, setUndoToast, pushUndo, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
     playUISound,
@@ -2133,39 +2138,20 @@ const DayPlanner = () => {
       // calls performActionFor(shortcutItem:) or continue(userActivity:), so
       // polling immediately would always return null.
       setTimeout(() => {
-        if (window.DayGlanceNative?.getPendingDeepLink) {
-          const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
-          if (link) {
-            try {
-              const url = new URL(link);
-              const action = url.pathname.replace(/^\/+/, '') || url.hostname;
-              const taskId = url.searchParams.get('id');
-              if (action === 'task' && taskId) {
-                setSpotlightTaskId(taskId);
-              } else if (action === 'completeTask' && taskId) {
-                toggleComplete(taskId);
-              } else if (action === 'newScheduledTask') {
-                openNewTaskFormRef.current?.();
-              } else if (action === 'newInboxTask') {
-                openNewInboxTaskRef.current?.();
-              } else if (action === 'startFocus') {
-                setShowFocusMode(true);
-              } else if (action === 'voiceInput') {
-                voiceAutoStartRef.current = true;
-                setShowVoiceInput(true);
-              } else if (action === 'day') {
-                openDayFromLink(url);
-              }
-            } catch (_) {}
-          }
-        }
+        // The same drain Android and the cold start use: it is reassigned
+        // every render, so a link here runs the CURRENT handlers. This
+        // listener is registered once, and an inline copy of the switch in it
+        // closed over the first render (toggleComplete saw no tasks, so a
+        // widget Done skipped the task-calendar writeback) and knew only the
+        // routes that existed when it was written.
+        drainPendingDeepLinkRef.current?.();
         if (window.DayGlanceNative?.getPendingShortcutAction) {
           const rawAction = window.DayGlanceNative.getPendingShortcutAction();
           if (rawAction && rawAction !== 'null') {
             const action = rawAction.replace(/^"|"$/g, '');
             if (action === 'com.dayglance.newScheduledTask') openNewTaskFormRef.current?.();
             else if (action === 'com.dayglance.newInboxTask') openNewInboxTaskRef.current?.();
-            else if (action === 'com.dayglance.startFocus') setShowFocusMode(true);
+            else if (action === 'com.dayglance.startFocus') enterFocusModeRef.current?.();
             else if (action === 'com.dayglance.voiceInput') {
               voiceAutoStartRef.current = true;
               setShowVoiceInput(true);
@@ -2183,8 +2169,8 @@ const DayPlanner = () => {
             voiceAutoStartRef.current = true;
             setShowVoiceInput(true);
           }
-          else if (wa === 'startFocus') setShowFocusMode(true);
-          else if (wa === 'completeTask' && widgetAction.taskId) toggleComplete(widgetAction.taskId);
+          else if (wa === 'startFocus') enterFocusModeRef.current?.();
+          else if (wa === 'completeTask' && widgetAction.taskId) completeFromWidgetRef.current?.(widgetAction.taskId);
         }
       }, 200);
       if (window.DayGlanceNative?.getShareExtensionPending) {
@@ -2444,6 +2430,16 @@ const DayPlanner = () => {
   // (MainActivity.storeDeepLink) — same quoted-string shape from the bridge.
   // Reassigned every render, so a caller always gets current handlers.
   const drainPendingDeepLinkRef = useRef(null);
+  // A widget's Done (the Up Next widget, iOS Control Center): complete, never
+  // un-complete. The widget can be showing a task that another device or a
+  // sync has already completed; toggling would reopen it. A task not found in
+  // either list (a recurring occurrence) goes through toggleComplete as before.
+  const completeFromWidgetRef = useRef(null);
+  completeFromWidgetRef.current = (taskId) => {
+    const task = tasks.find(t => t.id === taskId) || unscheduledTasks.find(t => t.id === taskId);
+    if (task?.completed) return;
+    toggleComplete(taskId);
+  };
   drainPendingDeepLinkRef.current = () => {
     if (!window.DayGlanceNative?.getPendingDeepLink) return;
     const link = decodeBridgeLink(window.DayGlanceNative.getPendingDeepLink());
@@ -2453,15 +2449,42 @@ const DayPlanner = () => {
         const action = url.pathname.replace(/^\/+/, '') || url.hostname;
         const taskId = url.searchParams.get('id');
         if (action === 'task' && taskId) setSpotlightTaskId(taskId);
-        else if (action === 'completeTask' && taskId) toggleComplete(taskId);
+        else if (action === 'completeTask' && taskId) completeFromWidgetRef.current(taskId);
         else if (action === 'newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'newInboxTask') openNewInboxTaskRef.current?.();
-        else if (action === 'startFocus') setShowFocusMode(true);
+        // Through enterFocusMode, never the bare flag: it starts a fresh
+        // session and derives the block's tasks. Setting showFocusMode alone
+        // reopened the last session's leftovers (often an empty task list).
+        else if (action === 'startFocus') enterFocusModeRef.current?.(taskId || undefined);
         else if (action === 'voiceInput') {
           voiceAutoStartRef.current = true;
           setShowVoiceInput(true);
         }
         else if (action === 'day') openDayFromLink(url);
+        else if (action === 'today') {
+          // The Today and Up Next widgets: today's calendar, wherever the
+          // app was (a warm open would otherwise stay on another day, tab or
+          // space). The plain setters, as for a day link (utils/dayLink.js).
+          const today = new Date();
+          today.setHours(12, 0, 0, 0);
+          setSelectedDate(today);
+          setDesktopSpace('calendar');
+          if (dayLinkEnvRef.current.phone) { setMobileActiveTab('timeline'); setMobileSettingsView('main'); }
+        }
+        else if (action === 'goal' || action === 'project') {
+          const r = resolveGoalsLink(action, url.searchParams, {
+            enabled: goalsProjectsEnabled, phone: dayLinkEnvRef.current.phone,
+          });
+          if (r) {
+            if (r.space) setDesktopSpace(r.space);
+            if (r.mobileTab) { setMobileActiveTab(r.mobileTab); setMobileSettingsView('main'); }
+            // A goal the area filter hides has no card to go to: widen it.
+            const goalId = r.focusGoalId || projects.find(p => p.id === r.focusProjectId)?.goalId;
+            if (areaFilterHides(goals.find(g => g.id === goalId), goalsAreaFilter, areas)) setGoalsAreaFilter('all');
+            if (r.focusGoalId) setGoalsDashboardFocusId(r.focusGoalId);
+            if (r.focusProjectId) setGoalsDashboardFocusProjectId(r.focusProjectId);
+          }
+        }
       } catch (_) {}
     }
   };
@@ -2478,7 +2501,7 @@ const DayPlanner = () => {
         const action = rawAction.replace(/^"|"$/g, '');
         if (action === 'com.dayglance.newScheduledTask') openNewTaskFormRef.current?.();
         else if (action === 'com.dayglance.newInboxTask') openNewInboxTaskRef.current?.();
-        else if (action === 'com.dayglance.startFocus') setShowFocusMode(true);
+        else if (action === 'com.dayglance.startFocus') enterFocusModeRef.current?.();
         else if (action === 'com.dayglance.voiceInput') {
           voiceAutoStartRef.current = true;
           setShowVoiceInput(true);
@@ -2504,8 +2527,8 @@ const DayPlanner = () => {
         voiceAutoStartRef.current = true;
         setShowVoiceInput(true);
       }
-      else if (wa === 'startFocus') setShowFocusMode(true);
-      else if (wa === 'completeTask' && widgetAction.taskId) toggleComplete(widgetAction.taskId);
+      else if (wa === 'startFocus') enterFocusModeRef.current?.();
+      else if (wa === 'completeTask' && widgetAction.taskId) completeFromWidgetRef.current(widgetAction.taskId);
     }
     // Drains pending native actions once after load (keyed on dataLoaded). The
     // setters/voiceAutoStartRef are stable; toggleComplete is read at drain time.
@@ -2518,10 +2541,21 @@ const DayPlanner = () => {
     if (!spotlightTaskId || !dataLoaded) return;
     const scheduledTask = tasks.find(t => t.id === spotlightTaskId);
     if (scheduledTask?.date) {
+      // A task is shown on the calendar: leave the Goals & Projects space.
+      setDesktopSpace('calendar');
       setSelectedDate(new Date(scheduledTask.date + 'T12:00:00'));
       if (isMobile || isTablet) setMobileActiveTab('timeline');
     } else if (unscheduledTasks.find(t => t.id === spotlightTaskId)) {
       if (isMobile || isTablet) setMobileActiveTab('inbox');
+    } else {
+      // Not a stored task: a recurring occurrence (its id is the expansion's,
+      // not a row's) or one deleted since. The Today widget's rows are today's,
+      // so today's calendar is where the tap meant to go.
+      setDesktopSpace('calendar');
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      setSelectedDate(today);
+      if (isMobile || isTablet) setMobileActiveTab('timeline');
     }
     setSpotlightTaskId(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3063,7 +3097,7 @@ const DayPlanner = () => {
   // creates none (the flag gates the interface; the data still syncs).
   useJoboDetector({
     tasks, unscheduledTasks, recurringTasks,
-    joboRecords, getJoboMutationRecords, joboLoaded, joboWritable, recordJobo,
+    joboRecords, joboLoaded, joboWritable, recordJobo,
     isRemoteApply,
     enabled: joboEnabled,
   });
@@ -4345,7 +4379,12 @@ const DayPlanner = () => {
   // open-and-close case.
   const FOCUS_SPANS_PER_DAY = 60;
 
-  const enterFocusMode = () => {
+  // `taskId` (optional): the task a request named — the Up Next widget's
+  // Focus button (dayglance://startFocus?id=). It joins the session when the
+  // block derived from NOW does not already hold it, and is the session on its
+  // own when there is no block. Only a string counts: this is also a click
+  // handler, and an event is not a task.
+  const enterFocusMode = (taskId) => {
     setShowFocusMode(true);
     setFocusShowSettings(true);
     setFocusShowStats(false);
@@ -4356,7 +4395,12 @@ const DayPlanner = () => {
     setFocusCompletedTasks(new Set());
     setFocusTimerRunning(false);
     setFocusTaskMinutes({});
-    setFocusBlockTasks(computeFocusBlockTasks());
+    let block = computeFocusBlockTasks();
+    if (typeof taskId === 'string' && taskId && !block.some(t => t.id === taskId)) {
+      const named = getTasksForDate(new Date()).find(t => t.id === taskId && !t.completed);
+      if (named) block = [named, ...block];
+    }
+    setFocusBlockTasks(block);
     setFocusWorkMinutes(25);
     setFocusBreakMinutes(5);
     setFocusLongBreakMinutes(15);
@@ -4426,16 +4470,7 @@ const DayPlanner = () => {
         // with the end left unwrapped past 1440 when a session crosses
         // midnight (the log is keyed by the date the session STARTED).
         const startMin = focusSessionStart.getHours() * 60 + focusSessionStart.getMinutes();
-        // Only explicit participants can attribute this session to a JOBO Do.
-        // Retain full recurring instance IDs; the session's day is not the
-        // task's occurrence day. Older aggregate spans remain unattributed.
-        const taskMinutes = Object.fromEntries(Object.entries(minutesCopy)
-          .filter(([, minutes]) => Number.isFinite(minutes) && minutes > 0));
-        const span = {
-          id: crypto.randomUUID(), start: startMin, end: startMin + sessionMinutes,
-          startedAt: focusSessionStart.toISOString(), endedAt: new Date().toISOString(),
-          taskIds: Object.keys(taskMinutes), taskMinutes,
-        };
+        const span = { start: startMin, end: startMin + sessionMinutes };
         setFocusLog(prev => {
           const existing = prev[sessionDateStr] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
           const updated = {
@@ -7013,7 +7048,6 @@ const DayPlanner = () => {
     updateRecurrencePattern,
     updateRecurrenceEndCondition,
     toggleComplete,
-    setJoboTaskCompletion,
     postponeTask,
     moveToInbox,
     addSubtask,
@@ -7128,12 +7162,6 @@ const DayPlanner = () => {
           });
         }
       : null,
-  });
-  const recordJoboFromView = useJoboViewWriter({
-    records: joboRecords, pendingIds: joboPendingIds, recordJobo, pushUndoAction,
-    tasks, unscheduledTasks, recurringTasks, setJoboTaskCompletion,
-    // Let a partial-side-effect notice follow the generic undo success toast.
-    onNotice: message => window.setTimeout(() => setUndoToast({ message, actionable: false }), 0),
   });
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.
@@ -7685,8 +7713,12 @@ const DayPlanner = () => {
     } : null;
 
     // The tasks after the "Up Next" one — used to fill the widget when the
-    // primary task has no subtasks/notes. Cap at 4 (the Large widget's max).
-    const upcomingTaskItems = sortedUpcoming.slice(1, 5).map(t => ({
+    // primary task has no subtasks/notes, and to promote Up Next by the clock
+    // while the app sits in the background (the widgets draw at most 4 of
+    // them). Uncapped, like a projected day's (utils/widgetDayProjection.js):
+    // a capped list runs out, and a promotion past its end would claim the
+    // day is clear.
+    const upcomingTaskItems = sortedUpcoming.slice(1).map(t => ({
       id: t.id,
       title: stripWikilinksAndTags(t.title),
       colorHex: taskColorToHex(t.color, t.nativeCalendarColor),
@@ -7694,75 +7726,18 @@ const DayPlanner = () => {
       duration: t.duration || 0,
     }));
 
-    // ── All Goals (for Goal widget) ───────────────────────────────────────
-    const allGoalsData = goalsProjectsEnabled
-      ? visibleGoalsW
-          .filter(g => g.status === 'active')
-          .map(g => {
-            const childProjects = visibleProjectsW.filter(p => p.goalId === g.id && p.status !== 'archived');
-            const goalTasks = allTasksCombinedW.filter(
-              t => childProjects.some(p => p.id === t.projectId) && !t.archived
-            );
-            const pct = Math.round(calculateGoalProgress(g.id, visibleProjectsW, allTasksCombinedW) * 100);
-            const goalColorHex = TAILWIND_TO_HEX[g.color] || '#3b82f6';
-            let daysUntilDue = null;
-            if (g.targetDate) {
-              daysUntilDue = Math.round(
-                (new Date(g.targetDate) - new Date(todayStr)) / 86400000
-              );
-            }
-            return {
-              id: g.id,
-              title: g.title,
-              colorHex: goalColorHex,
-              targetDate: g.targetDate || '',
-              daysUntilDue,
-              progressPct: pct,
-              totalTasks: goalTasks.length,
-              completedTasks: goalTasks.filter(t => t.completed).length,
-              projects: childProjects.map(p => {
-                const ptasks = allTasksCombinedW.filter(t => t.projectId === p.id && !t.archived);
-                const pp = ptasks.length > 0
-                  ? Math.round((ptasks.filter(t => t.completed).length / ptasks.length) * 100) : 0;
-                return {
-                  id: p.id,
-                  title: p.title,
-                  status: p.status,
-                  progressPct: pp,
-                  totalTasks: ptasks.length,
-                  completedTasks: ptasks.filter(t => t.completed).length,
-                };
-              }),
-            };
-          })
-      : [];
-
-    // ── All Projects (for Project widget) ─────────────────────────────────
-    const allProjectsData = goalsProjectsEnabled
-      ? visibleProjectsW
-          .filter(p => p.status !== 'archived')
-          .map(p => {
-            const ptasks = allTasksCombinedW.filter(t => t.projectId === p.id && !t.archived);
-            const pp = ptasks.length > 0
-              ? Math.round((ptasks.filter(t => t.completed).length / ptasks.length) * 100) : 0;
-            const parentGoal = goals.find(g => g.id === p.goalId);
-            return {
-              id: p.id,
-              title: p.title,
-              status: p.status,
-              goalId: p.goalId || '',
-              goalTitle: parentGoal?.title || '',
-              goalColorHex: parentGoal ? (TAILWIND_TO_HEX[parentGoal.color] || '#3b82f6') : '',
-              progressPct: pp,
-              totalTasks: ptasks.length,
-              completedTasks: ptasks.filter(t => t.completed).length,
-              tasks: [...ptasks]
-                .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0))
-                .slice(0, 6)
-                .map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), completed: !!t.completed })),
-            };
-          })
-      : [];
+    // ── All Goals / All Projects (the Goal and Project widgets) ───────────
+    // Ordered as the app draws them (utils/widgetGoalsProjects.js).
+    const { allGoals: allGoalsData, allProjects: allProjectsData } = goalsProjectsEnabled
+      ? buildWidgetGoalsProjects({
+          goals: visibleGoalsW,
+          allGoals: goals,
+          projects: visibleProjectsW,
+          scheduled: tasks.filter(isVisibleForUser),
+          unscheduled: unscheduledTasks.filter(isVisibleForUser),
+          todayStr,
+        })
+      : { allGoals: [], allProjects: [] };
 
     // ── Steps (from HealthConnect cache if available) ─────────────────────
     let steps = -1;
@@ -8959,9 +8934,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError,
-    joboPendingIds, joboPendingCount,
-    joboLoadState, joboWriteState, recordJobo, recordJoboFromView, reloadJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,
@@ -9067,6 +9040,7 @@ const DayPlanner = () => {
     desktopSpace, setDesktopSpace, toggleDesktopSpace, goalsSpaceKeysRef,
     showGoalsDashboard, setShowGoalsDashboard,
     goalsDashboardFocusId, setGoalsDashboardFocusId,
+    goalsDashboardFocusProjectId, setGoalsDashboardFocusProjectId,
     goalsProjectsEnabled, setGoalsProjectsEnabled,
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,

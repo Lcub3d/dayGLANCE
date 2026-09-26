@@ -13,16 +13,21 @@ const labels = {
 const t = (key) => labels[key] || key;
 
 describe('DoProgressControl', () => {
-  it('renders one current value and keeps the four choices behind the popup', () => {
+  it('renders one current value and keeps only permitted reassessments behind the popup', () => {
     const html = renderToStaticMarkup(<DoProgressControl record={{ progress: 'partial' }} t={t} writable onChange={() => {}} />);
     expect(html).toContain('data-jobo-progress-control="true"');
     expect(html).toContain('data-progress-current="partial"');
     expect(html).toContain('aria-label="Progress: Partial"');
     expect(html).toContain('<select');
-    expect((html.match(/<option /g) || []).length).toBe(4);
+    expect((html.match(/<option /g) || []).length).toBe(3);
     expect(html).toContain('>Partial</span>');
     expect(html).not.toContain('data-progress-option=');
     expect(DO_PROGRESS_OPTIONS.map((option) => option.value)).toEqual(['started', 'partial', 'mostly', 'completed']);
+  });
+
+  it('may preserve an existing completed value without manufacturing a completion', () => {
+    const html = renderToStaticMarkup(<DoProgressControl record={{ progress: 'completed' }} t={t} writable />);
+    expect((html.match(/<option /g) || []).length).toBe(4);
   });
 
   it('maps the visible keyboard choices to record progress values', () => {

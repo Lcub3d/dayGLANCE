@@ -2,9 +2,9 @@ import AppIntents
 import WidgetKit
 import os
 
-// The systemExtraLarge month widget's arrows. Unlike CompleteTaskIntent and
-// StartFocusIntent (WidgetIntents.swift), this one does NOT open the app and
-// is NOT a ForegroundContinuableIntent: it runs in the widget extension,
+// The systemExtraLarge month widget's arrows. Unlike an intent that hands
+// work to the app, this one does NOT open the app and is NOT a
+// ForegroundContinuableIntent: it runs in the widget extension,
 // writes the selected day to the App Group — which the extension is entitled
 // to — and returns. WidgetKit reloads the widget after perform() on its own;
 // the explicit reload is belt and braces.

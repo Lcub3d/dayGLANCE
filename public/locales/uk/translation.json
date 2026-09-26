@@ -1897,7 +1897,8 @@
     "restoreToInbox": "Повернути у «Вхідні»",
     "showingAllPrioritiesClick": "Показано всі пріоритети (клацніть, щоб відфільтрувати)",
     "showingPriorityClick": "Показано пріоритет {{priority}}+ (клацніть, щоб змінити)",
-    "zero": "Порожні вхідні"
+    "zero": "Порожні вхідні",
+    "priorityAll": "Усі"
   },
   "glance": {
     "allDoneMessage": "{{time}}, усе зроблено!",

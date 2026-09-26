@@ -377,7 +377,7 @@ describe('scenario 13: the completion detector, end to end on two devices', () =
         tasks: d.tasks, isRemoteApply, loaded: ledger.get().loaded, writable: ledger.get().writable,
       });
       if (!edges) { if (advanceTo !== null) d.prev = advanceTo; return; }
-      const records = buildJoboRecords(edges, ledger.get().records, { observedAt });
+      const records = buildJoboRecords(edges, ledger.workingSet(), { observedAt });
       if (records.length) expect((await ledger.commit(records)).ok).toBe(true);
       d.prev = next;
     };

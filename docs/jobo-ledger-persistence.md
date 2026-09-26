@@ -255,6 +255,19 @@ importer all go through it.
   vault tier re-delivers every cycle does not grow it. This is what lets the
   detector stay one-shot: once it has handed a record over, the ledger owns
   it, and a transient storage failure cannot consume the completion edge.
+- **The detector builds against the working set, not state.** The ledger's
+  `workingSet()` is the committed records with the held queue merged over
+  them by the shared pick. The detector reads it at effect time, so a change
+  to a record that is accepted but not yet durable targets that record: a
+  completion held for retry and then unchecked is reassessed to `partial` in
+  the queue, and the retry persists `partial` (#1826). The working set is
+  never state; sync, backup and the view read committed records only, and a
+  held row is never published as if it were on disk.
+- **The held queue is in memory, and that is a documented limit.** A record
+  held during a storage outage does not survive the app closing before the
+  retry lands. Persisting the queue would need a second storage home, which
+  is the thing that is failing; a device that observes the same completion
+  through sync still produces it under the same id.
 - **Every mutation** goes through `update(fn)` and the hook refreshes state
   from the committed value, not from what it intended to write. A record in
   state that is not on disk is exactly what a crash loses.

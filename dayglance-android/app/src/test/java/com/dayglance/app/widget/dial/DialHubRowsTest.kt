@@ -123,10 +123,10 @@ class DialHubRowsTest {
         assertEquals("Gym", DialHubRows.fit("Gym", 100.0, narrow))
     }
 
-    // The slots in res/layout/widget_day_dial.xml are weights in canvas points
+    // The slots in res/layout/widget_day_dial_box.xml are weights in canvas points
     // and must be DialLiveSlot.rect exactly, or the strip lands off its row.
     @Test fun `the layout's live slots are DialLiveSlot's rects`() {
-        val xml = File("src/main/res/layout/widget_day_dial.xml").readText()
+        val xml = File("src/main/res/layout/widget_day_dial_box.xml").readText()
         val ids = mapOf(DialLiveSlot.TITLE to "iv_day_dial_live_title", DialLiveSlot.ROW1 to "iv_day_dial_live_row1", DialLiveSlot.ROW2 to "iv_day_dial_live_row2")
         for ((slot, id) in ids) {
             // The slot's image sits in a horizontal row inside a vertical column.

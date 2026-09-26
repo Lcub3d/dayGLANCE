@@ -275,6 +275,27 @@ describe('createLedger lifecycle', () => {
     expect(timers[4].ms).toBe(100);                  // backoff reset by the successful write
   });
 
+  // MUTATION: return state.records from workingSet and the detector cannot
+  // see a held record (#1826); publish held rows in state and sync would.
+  it('the working set is committed plus held; state stays committed-only', async () => {
+    const store = fakeStore({ initial: [rec('on-disk')] });
+    const original = store.update.bind(store);
+    let failing = false;
+    store.update = (fn) => (failing ? Promise.resolve({ ok: false, error: 'storageWrite' }) : original(fn));
+    const ledger = createLedger({ store, retry: { schedule: () => 1, cancel: () => {} } });
+    expect(ledger.workingSet()).toBe(undefined);          // not loaded is not empty, here too
+    await ledger.load();
+    expect(ledger.workingSet()).toBe(ledger.get().records); // nothing held: the committed array itself
+    failing = true;
+    await ledger.commit([rec('held', { title: 'pending' })]);
+    expect(ledger.get().records.map((r) => r.id)).toEqual(['on-disk']);
+    expect(ledger.workingSet().map((r) => r.id)).toEqual(['held', 'on-disk']);
+    // A newer held copy of a committed record shows its held version.
+    await ledger.commit([rec('on-disk', { updatedAt: T2, title: 'edited' })]);
+    expect(ledger.get().records[0].title).toBe('Draft');
+    expect(ledger.workingSet().find((r) => r.id === 'on-disk').title).toBe('edited');
+  });
+
   it('the held queue merges by id, so a row re-delivered every cycle does not grow it', async () => {
     const ledger = createLedger({ store: fakeStore({ initial: [] }) });
     await ledger.applyRemote([rec('same')]);

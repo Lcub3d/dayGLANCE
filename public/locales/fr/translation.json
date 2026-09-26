@@ -1816,7 +1816,8 @@
     "restoreToInbox": "Restaurer dans la boîte de réception",
     "showingAllPrioritiesClick": "Toutes les priorités sont affichées (cliquez pour filtrer)",
     "showingPriorityClick": "Priorité {{priority}}+ affichée (cliquez pour changer)",
-    "zero": "Boîte de réception vide"
+    "zero": "Boîte de réception vide",
+    "priorityAll": "Toutes"
   },
   "glance": {
     "allDoneMessage": "{{time}}, tout est fait !",

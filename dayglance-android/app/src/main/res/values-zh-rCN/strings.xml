@@ -195,4 +195,10 @@
     <string name="day_dial_zone_changed">时区已更改</string>
     <string name="day_dial_open_to_refresh">打开 dayGLANCE 以刷新</string>
     <string name="day_dial_open_to_set_up">打开 dayGLANCE 进行设置</string>
+    <string name="day_dial_all_day">全天</string>
+    <string name="day_dial_effort">投入</string>
+    <string name="day_dial_restore">恢复</string>
+    <string name="day_dial_legend_sleep">睡眠</string>
+    <string name="day_dial_unblocked">可用时间</string>
+    <string name="day_dial_routines">日常</string>
 </resources>

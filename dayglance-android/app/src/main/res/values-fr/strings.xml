@@ -194,4 +194,10 @@
     <string name="day_dial_zone_changed">Fuseau horaire modifié</string>
     <string name="day_dial_open_to_refresh">Ouvrez dayGLANCE pour actualiser</string>
     <string name="day_dial_open_to_set_up">Ouvrez dayGLANCE pour configurer</string>
+    <string name="day_dial_all_day">Toute la journée</string>
+    <string name="day_dial_effort">Effort</string>
+    <string name="day_dial_restore">Récupération</string>
+    <string name="day_dial_legend_sleep">Sommeil</string>
+    <string name="day_dial_unblocked">Temps libre</string>
+    <string name="day_dial_routines">Routines</string>
 </resources>

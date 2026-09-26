@@ -177,6 +177,27 @@ struct DialSnapshot: Codable {
     /// Start-sorted. `durationMin` is the DRAWN span, already clipped at
     /// midnight; `endMinTrue` carries the real end when `endsNextDay`.
     var blocks: [DialBlock]?
+    /// The day's all-day items, incomplete first, and the in-app legend's
+    /// totals: the iPad extra-large dial's cards (DialCardsColumn). Absent
+    /// from payloads before the cards; `totals` absent draws no legend.
+    var allDay: [DialAllDayItem]?
+    var totals: DialTotals?
+}
+
+struct DialAllDayItem: Codable {
+    var id: String?
+    var title: String?
+    var completed: Bool?
+    var colorHex: String?
+}
+
+/// Whole minutes (projectDialSnapshot rounds them). Sleep and unblocked are
+/// null without a declared day window.
+struct DialTotals: Codable {
+    var effortMinutes: Int?
+    var restoreMinutes: Int?
+    var sleepMinutes: Int?
+    var unblockedMinutes: Int?
 }
 
 struct DialBlock: Codable {

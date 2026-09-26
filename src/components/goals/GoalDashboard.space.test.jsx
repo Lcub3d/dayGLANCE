@@ -253,11 +253,87 @@ describe('GoalDashboard desktop space', () => {
 });
 
 describe('GoalDashboard embedded (phone) mode', () => {
-  it('is unchanged: the carousel, no sidebar, no toolbar', () => {
-    const html = render({ embedded: true, isActive: true });
-    expect(html).toContain('goal-carousel');
+  const phone = (props = {}, feat = {}) => render({ embedded: true, isActive: true, ...props }, feat);
+  const chips = (html) => [...html.matchAll(/<button[^>]*data-goal-chip="([^"]+)"[^>]*>/g)].map((m) => ({ id: m[1], active: m[0].includes('aria-pressed="true"') }));
+
+  it('has no sidebar or toolbar: the space is folded into one column', () => {
+    const html = phone();
     expect(html).not.toContain('data-goals-sidebar');
     expect(html).not.toContain('data-goals-main');
+  });
+
+  it('opens with Goals | Projects on top, counting every active goal and the OPEN standalone projects', () => {
+    const tabs = section(phone(), 'data-goals-tabs');
+    // Goals is the selected tab (the tablist's own label also says "Projects")
+    expect(tabs).toMatch(/aria-selected="true"[^>]*>(?:<svg[\s\S]*?<\/svg>)? Goals/);
+    expect(tabs).toMatch(/aria-selected="false"[^>]*>(?:<svg[\s\S]*?<\/svg>)? Projects/);
+    expect(tabs).toMatch(/Goals <span[^>]*>3<\/span>/);
+    expect(tabs).toMatch(/Projects <span[^>]*>1<\/span>/);
+    // the tabs come before the goals-only controls
+    const html = phone();
+    expect(html.indexOf('data-goals-tabs')).toBeLessThan(html.indexOf('aria-label="Area"'));
+  });
+
+  it('lists the goals as chips in carousel order, the first active one selected, over one page per goal', () => {
+    const html = phone();
+    expect(chips(html)).toEqual([
+      { id: 'done', active: false },
+      { id: 'ios', active: true },
+      { id: 'electron', active: false },
+    ]);
+    expect(html).toContain('goal-carousel');
+    const pages = [...html.matchAll(/data-goal-page="([^"]+)"/g)].map((m) => m[1]);
+    expect(pages).toEqual(['done', 'ios', 'electron']);
+    // no dots and arrows any more, and no standalone page at the end of the swipe
+    expect(html).not.toContain('w-4 h-2.5 bg-blue-500');
+    expect(html).not.toContain('Standalone projects');
+  });
+
+  it('draws the real GoalCard full width on each page, with the area badge the old card left out', () => {
+    const page = section(phone(), 'data-goal-page="ios"');
+    const ios = page.slice(0, page.indexOf('data-goal-page="electron"'));
+    expect(ios).toContain('rounded-xl overflow-hidden border-2 w-full');
+    expect(ios).toContain('App Development');
+    // then its projects: active first, completed compact under them
+    expect(cards(ios)).toEqual(['asc', 'billing']);
+    expect(ios).toContain('data-project-card="billing" data-compact="1"');
+  });
+
+  it('shows the standalone projects on the Projects tab, with Open | Completed and the filter, and no goal controls', () => {
+    const html = phone({ initialSidebarTab: 'projects' });
+    const list = section(html, 'data-standalone-list');
+    expect(cards(list)).toEqual(['dg']);
+    expect(html).toContain(' Open');
+    expect(html).toContain('data-project-filter');
+    // the phone has no '/' key, so the field carries no key hint
+    expect(html).not.toContain('>/</span>');
+    expect(html).not.toContain('aria-label="Area"');
+    expect(html).not.toContain('goal-carousel');
+  });
+
+  it('floats one contextual + over the content, above the Archived footer, with Aspire above it when on', () => {
+    const goals = section(phone(), 'data-goals-fabs');
+    expect(goals).toContain('absolute bottom-4 right-4');
+    expect(goals).toContain('aria-label="Add Goal"');
+    expect(goals).not.toContain('data-aspire-fab');
+    const html = phone();
+    expect(html.indexOf('data-goals-fabs')).toBeLessThan(html.indexOf('data-archived-section'));
+    expect(section(phone({ initialSidebarTab: 'projects' }), 'data-goals-fabs')).toContain('aria-label="Add Project"');
+    const on = section(phone({}, { aspireEnabled: true }), 'data-goals-fabs');
+    expect(on.indexOf('data-aspire-fab')).toBeLessThan(on.indexOf('aria-label="Add Goal"'));
+  });
+
+  it('keeps the roadmap under the tabs, and only on the Goals tab', () => {
+    const html = phone({}, { goalsViewMode: 'timeline' });
+    expect(html.indexOf('data-goals-tabs')).toBeLessThan(html.indexOf('data-goal-timeline'));
+    expect(html).not.toContain('goal-carousel');
+    const projects = phone({ initialSidebarTab: 'projects' }, { goalsViewMode: 'timeline' });
+    expect(projects).not.toContain('data-goal-timeline');
+    expect(projects).toContain('data-standalone-list');
+  });
+
+  it('stacks the archive lists instead of two columns', () => {
+    expect(phone()).toContain('Archived (2)');
   });
 
   it('renders nothing outside either mode', () => {

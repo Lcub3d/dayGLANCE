@@ -15,7 +15,7 @@ import { isTrayMode } from '../utils/trayMode.js';
 // completion through sync produces the same id.
 export default function useJoboDetector({
   tasks, unscheduledTasks, recurringTasks,
-  joboRecords, joboLoaded, joboWritable, recordJobo,
+  joboRecords, getJoboMutationRecords, joboLoaded, joboWritable, recordJobo,
   isRemoteApply,
   enabled,
 }) {
@@ -38,7 +38,12 @@ export default function useJoboDetector({
       if (advanceTo !== null) prevRef.current = advanceTo;
       return;
     }
-    const records = buildJoboRecords(edges, joboRecords, { observedAt: new Date().toISOString() });
+    // `joboRecords` is the committed state used for sync and backup. A
+    // completion handed to the ledger may be held while its write is in
+    // flight; the mutation projection includes that accepted row so a
+    // rerender cannot create a duplicate completion record.
+    const visibleRecords = getJoboMutationRecords?.() ?? joboRecords;
+    const records = buildJoboRecords(edges, visibleRecords, { observedAt: new Date().toISOString() });
     if (!records.length) {
       prevRef.current = nextSnap; // every edge was already present, or unusable
       return;

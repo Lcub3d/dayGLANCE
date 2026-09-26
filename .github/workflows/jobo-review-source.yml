@@ -1,0 +1,30 @@
+name: JOBO review snapshots
+on:
+  push:
+    branches: [review/jobo-slice5-20260927]
+    paths: [.github/workflows/jobo-review-source.yml]
+permissions:
+  contents: read
+jobs:
+  snapshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Archive pinned public source trees
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/jobo-review
+          git fetch https://github.com/krelltunez/dayGLANCE.git 49b0a4b42c87a0be62970723c8bc869954bb4cd2
+          git archive --format=tar.gz -o /tmp/jobo-review/upstream.tar.gz 49b0a4b42c87a0be62970723c8bc869954bb4cd2
+          git archive --format=tar.gz -o /tmp/jobo-review/pr18.tar.gz f99f462064eb66a956de286f455ce146b2beecec
+          git archive --format=tar.gz -o /tmp/jobo-review/pr18-base.tar.gz 014f6ea13a8f7114429d08a340667bf87b0e520d
+          git diff 014f6ea13a8f7114429d08a340667bf87b0e520d...f99f462064eb66a956de286f455ce146b2beecec > /tmp/jobo-review/pr18.diff
+          printf '%s\n' 'upstream 49b0a4b42c87a0be62970723c8bc869954bb4cd2' 'pr18 f99f462064eb66a956de286f455ce146b2beecec' > /tmp/jobo-review/refs.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobo-review-source
+          path: /tmp/jobo-review/
+          retention-days: 1

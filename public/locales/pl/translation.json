@@ -1846,7 +1846,10 @@
     "templateTaskNote": "Notatka",
     "templateTaskNoteHint": "(przenoszona do każdej sesji)",
     "optionalNote": "Opcjonalna notatka…",
-    "addTaskPlaceholder": "Dodaj zadanie…"
+    "addTaskPlaceholder": "Dodaj zadanie…",
+    "showFilters": "Pokaż filtry",
+    "hideFilters": "Ukryj filtry",
+    "filtersActive": "Filtry aktywne"
   },
   "colors": {
     "gray": "Szary",

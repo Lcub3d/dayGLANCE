@@ -1771,7 +1771,10 @@
     "templateTaskNote": "笔记",
     "templateTaskNoteHint": "（会带入每次会话）",
     "optionalNote": "可选注释...",
-    "addTaskPlaceholder": "添加任务..."
+    "addTaskPlaceholder": "添加任务...",
+    "showFilters": "显示筛选",
+    "hideFilters": "隐藏筛选",
+    "filtersActive": "筛选已启用"
   },
   "colors": {
     "gray": "灰色",

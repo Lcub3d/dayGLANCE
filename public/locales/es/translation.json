@@ -1771,7 +1771,10 @@
     "templateTaskNote": "Nota",
     "templateTaskNoteHint": "(se lleva a cada sesión)",
     "optionalNote": "Nota opcional…",
-    "addTaskPlaceholder": "Añadir tarea…"
+    "addTaskPlaceholder": "Añadir tarea…",
+    "showFilters": "Mostrar filtros",
+    "hideFilters": "Ocultar filtros",
+    "filtersActive": "Filtros activos"
   },
   "colors": {
     "gray": "Gris",

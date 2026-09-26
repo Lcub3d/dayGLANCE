@@ -17,6 +17,7 @@ import {
   dialTicks,
   dialDateFits,
   dialLabelYieldsToSun,
+  dialLabelYieldsToAlarm,
   canStartFocusFromBlock,
   findDialFocusBlock,
   focusSpanMinutes,
@@ -265,6 +266,62 @@ function SunMark({ min, kind }) {
         <path d={HORIZON_SUN} />
         <path d={kind === 'rise' ? SUNRISE_STEM : SUNSET_STEM} />
       </g>
+    </g>
+  );
+}
+
+// The next clock-app alarm (Android; utils/nextAlarm.js dialAlarmMark): a
+// hairline in the sun marks' grammar, in its own colour. Tomorrow's alarm
+// stands at 00 with its time written beside the "00" label and an arrow
+// (= tomorrow) — the needle sweeps up to it through the evening. After
+// midnight it moves to the alarm's real minute with the icon alone, inside
+// the declared night, so planned wake (the sleep arc's end) and the alarm
+// read against each other. Sky-400: clear of the effort blue (blue-300), the
+// violet sleep band and the amber sun.
+const ALARM_COLOR = '#38bdf8';
+const ALARM_CLOCK = 'M4 13a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M12 9v4l2 2 M5 3 2 6 M22 6l-3-3 M6.38 18.7 4 21 M17.64 18.67 20 21';
+const ARROW_RIGHT = 'M5 12h14 M12 5l7 7-7 7';
+
+function DialGlyph({ d, cx, cy, scale = GLYPH_SCALE }) {
+  return (
+    <path
+      d={d}
+      strokeWidth={2}
+      strokeLinejoin="round"
+      transform={`translate(${(cx - 12 * scale).toFixed(2)} ${(cy - 12 * scale).toFixed(2)}) scale(${scale})`}
+    />
+  );
+}
+
+function AlarmMark({ alarm, timeLabel, midnightLabel }) {
+  const p1 = dialPoint(CX, CY, R_INNER - 12, alarm.min);
+  const p2 = dialPoint(CX, CY, R_BEZEL + 8, alarm.min);
+  // The top label's width, so the group starts just past it: the cardinal
+  // labels are 26 units at 0.25em tracking.
+  const top = dialPoint(CX, CY, 478, 0);
+  const glyph = dialPoint(CX, CY, SUN_GLYPH_R, alarm.min);
+  const labelHalf = (midnightLabel.length * 26 * 0.62 + midnightLabel.length * 6.5) / 2;
+  const x0 = top.x + labelHalf + 12;
+  return (
+    <g stroke={ALARM_COLOR} strokeOpacity={0.75} fill="none" strokeLinecap="round">
+      <title>{timeLabel}</title>
+      <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} strokeWidth={1.5} />
+      {alarm.mode === 'today' ? (
+        <DialGlyph d={ALARM_CLOCK} cx={glyph.x} cy={glyph.y} />
+      ) : (
+        <>
+          <DialGlyph d={ALARM_CLOCK} cx={x0 + 11} cy={top.y} />
+          <text
+            x={x0 + 28} y={top.y}
+            dominantBaseline="central"
+            stroke="none" fill={ALARM_COLOR} fillOpacity={0.85}
+            style={{ fontSize: 22, fontWeight: 500 }}
+          >
+            {timeLabel}
+          </text>
+          <DialGlyph d={ARROW_RIGHT} cx={x0 + 36 + timeLabel.length * 22 * 0.56 + 11} cy={top.y} />
+        </>
+      )}
     </g>
   );
 }
@@ -566,8 +623,10 @@ function NowLine({ nowMin }) {
  * @param sun             {sunriseMin, sunsetMin} minutes-of-day (either may
  *                        be null in polar seasons), or null to omit the
  *                        solar layer entirely (no location known).
+ * @param alarm           The next clock-app alarm's mark (dialAlarmMark in
+ *                        utils/nextAlarm.js), or null: Android only, today only.
  */
-const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, daylight = null, moon = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onToggleTaskComplete = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true }) => {
+const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, daylight = null, moon = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onToggleTaskComplete = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true, alarm = null }) => {
   const { t, i18n } = useTranslation();
   const formatMinutes = (minutes) => formatDuration(minutes, t);
 
@@ -1243,7 +1302,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
                 x={p.x} y={p.y}
                 textAnchor="middle" dominantBaseline="central"
                 fill="#ffffff"
-                fillOpacity={dialLabelYieldsToSun(l.min, sun) ? 0 : (l.cardinal ? 0.4 : 0.26)}
+                fillOpacity={dialLabelYieldsToSun(l.min, sun) || dialLabelYieldsToAlarm(l.min, alarm) ? 0 : (l.cardinal ? 0.4 : 0.26)}
                 style={{ fontSize: l.cardinal ? 26 : 21, letterSpacing: '0.25em', fontWeight: 500 }}
               >
                 {use24HourClock ? l.h24 : l.h12}
@@ -1273,6 +1332,13 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
           {/* Solar hairlines — under the schedule, over the night. */}
           {sun?.sunriseMin != null && <SunMark min={sun.sunriseMin} kind="rise" />}
           {sun?.sunsetMin != null && <SunMark min={sun.sunsetMin} kind="set" />}
+          {alarm && (
+            <AlarmMark
+              alarm={alarm}
+              timeLabel={formatTime(alarm.hhmm)}
+              midnightLabel={use24HourClock ? HOUR_LABELS[0].h24 : HOUR_LABELS[0].h12}
+            />
+          )}
 
           {/* Weather ring — only for dates the hourly forecast covers. */}
           {hourlyWeather && <WeatherRing hourly={hourlyWeather} />}

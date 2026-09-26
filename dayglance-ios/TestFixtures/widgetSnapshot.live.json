@@ -3824,6 +3824,10 @@
     ]
   },
   "timezone": "America/Denver",
+  "dialAlarm": {
+    "on": true,
+    "fromMin": 1080
+  },
   "updatedAt": 1790013600000,
   "reloadWidgets": true
 }

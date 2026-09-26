@@ -1488,7 +1488,10 @@
     "slotTopLeft": "左上",
     "slotTopRight": "右上",
     "slotBottomLeft": "左下",
-    "slotBottomRight": "右下"
+    "slotBottomRight": "右下",
+    "layerAlarm": "下一个闹钟",
+    "alarmFrom": "明天的闹钟显示于",
+    "alarmAlways": "全天"
   },
   "intentLog": {
     "clearLog": "清空日志",

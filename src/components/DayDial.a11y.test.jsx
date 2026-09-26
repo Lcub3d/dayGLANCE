@@ -288,3 +288,33 @@ describe('DayDial keyboard/AT contract', () => {
     expect(options(html)[0].label).toBe('Deep work, 09:00 – 10:00, 1 Std., erledigt');
   });
 });
+
+// The alarm mark (Android; utils/nextAlarm.js dialAlarmMark). Static markup
+// again: what the face draws for each mode, and the label it yields.
+describe('DayDial alarm mark', () => {
+  const labels = (html) => Array.from(
+    html.matchAll(/fill-opacity="([^"]*)"[^>]*>(\d\d)<\/text>/g),
+  ).map(([, opacity, text]) => [text, Number(opacity)]);
+
+  it('draws nothing without an alarm', async () => {
+    const html = render(await i18nFor('en'));
+    expect(html).not.toContain('<title>06:30</title>');
+  });
+
+  it("tomorrow's alarm: the time and an arrow beside the 00 label, every label kept", async () => {
+    const html = render(await i18nFor('en'), { alarm: { mode: 'tomorrow', min: 0, hhmm: '06:30' } });
+    expect(html).toContain('<title>06:30</title>');
+    expect(html).toMatch(/<text[^>]*>06:30<\/text>/);
+    expect(html).toContain('M5 12h14'); // the arrow
+    expect(labels(html).every(([, o]) => o > 0)).toBe(true);
+  });
+
+  it('after midnight: icon only at the real time, and the label it lands on yields', async () => {
+    const html = render(await i18nFor('en'), { alarm: { mode: 'today', min: 530, hhmm: '08:50' } });
+    expect(html).toContain('<title>08:50</title>');
+    expect(html).not.toMatch(/<text[^>]*>08:50<\/text>/);
+    expect(html).not.toContain('M5 12h14');
+    expect(labels(html).find(([t]) => t === '09')[1]).toBe(0);
+    expect(labels(html).find(([t]) => t === '12')[1]).toBeGreaterThan(0);
+  });
+});

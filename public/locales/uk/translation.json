@@ -1547,7 +1547,10 @@
     "slotTopLeft": "Угорі ліворуч",
     "slotTopRight": "Угорі праворуч",
     "slotBottomLeft": "Унизу ліворуч",
-    "slotBottomRight": "Унизу праворуч"
+    "slotBottomRight": "Унизу праворуч",
+    "layerAlarm": "Наступний будильник",
+    "alarmFrom": "завтрашній з",
+    "alarmAlways": "увесь день"
   },
   "intentLog": {
     "clearLog": "Очистити журнал",

@@ -759,6 +759,17 @@ export function dialLabelYieldsToSun(labelMin, sun) {
   });
 }
 
+/**
+ * Whether an hour label yields to the alarm mark (dialAlarmMark): only once it
+ * stands at its real time, where its glyph shares the labels' radius band.
+ * At 00 (tomorrow's alarm) it sits beside the label instead.
+ */
+export function dialLabelYieldsToAlarm(labelMin, alarm) {
+  if (!alarm || alarm.mode !== 'today') return false;
+  const d = Math.abs(alarm.min - labelMin) % DIAL_DAY_MINUTES;
+  return Math.min(d, DIAL_DAY_MINUTES - d) < SUN_LABEL_CLEARANCE_MIN;
+}
+
 // A precipitation run's arc is broken around the glyph that marks it, and the
 // two share one radius. Stacking them at separate radii is not an option: the
 // only clear annulus between the temperature numerals and the daylight band's

@@ -1490,7 +1490,10 @@
     "slotTopLeft": "In alto a sinistra",
     "slotTopRight": "In alto a destra",
     "slotBottomLeft": "In basso a sinistra",
-    "slotBottomRight": "In basso a destra"
+    "slotBottomRight": "In basso a destra",
+    "layerAlarm": "Prossima sveglia",
+    "alarmFrom": "quella di domani dalle",
+    "alarmAlways": "tutto il giorno"
   },
   "intentLog": {
     "clearLog": "Cancella registro",

@@ -38,6 +38,7 @@ import {
 import { evaluateMissingSnapshot, ICLOUD_LAST_SYNCED_KEY } from './utils/icloudSeedGuard.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
+import { loadAlarmPrefs } from './utils/dialPrefs.js';
 import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
@@ -7944,6 +7945,12 @@ const DayPlanner = () => {
       // (WidgetFreshness.zoneChanged); a zone change with the app open
       // changes this field, so the hot fingerprint re-pushes on its own.
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      // The Day Dial's alarm-mark prefs (utils/dialPrefs.js), for the
+      // Android home-screen dial, which reads the alarm itself (ClockAlarm)
+      // but takes the user's choice from here. Device-local, like this
+      // snapshot. Read from storage each build, so a change in the dial's
+      // Layers panel rides the next minute's push.
+      dialAlarm: loadAlarmPrefs(),
       updatedAt: Date.now(),
     };
 

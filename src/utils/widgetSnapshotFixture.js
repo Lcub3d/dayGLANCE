@@ -16,6 +16,7 @@
 // matches what this builds.
 
 import { buildProjectedDay, projectionDates, dateToString } from './widgetDayProjection.js';
+import { DEFAULT_ALARM_PREFS } from './dialPrefs.js';
 import { buildWidgetMonthWindow } from './widgetMonthWindow.js';
 
 export const LIVE_SNAPSHOT_TIMEZONE = 'America/Denver';
@@ -132,6 +133,8 @@ export function buildLiveWidgetSnapshot() {
         : []),
     }),
     timezone: LIVE_SNAPSHOT_TIMEZONE,
+    // App.jsx sends the dial's alarm-mark prefs (utils/dialPrefs.js).
+    dialAlarm: { ...DEFAULT_ALARM_PREFS },
     updatedAt: Date.UTC(2026, 8, 21, 18, 0, 0),
     reloadWidgets: true,
   };

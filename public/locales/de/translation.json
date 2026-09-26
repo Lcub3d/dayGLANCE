@@ -1488,7 +1488,10 @@
     "slotTopLeft": "Oben links",
     "slotTopRight": "Oben rechts",
     "slotBottomLeft": "Unten links",
-    "slotBottomRight": "Unten rechts"
+    "slotBottomRight": "Unten rechts",
+    "layerAlarm": "Nächster Wecker",
+    "alarmFrom": "morgiger ab",
+    "alarmAlways": "ganztägig"
   },
   "intentLog": {
     "clearLog": "Protokoll löschen",

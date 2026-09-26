@@ -199,12 +199,15 @@ struct DayDialWidgetView: View {
             if family == .systemExtraLarge {
                 // The cards describe a live day; an outdated, mis-zoned or
                 // never-set-up one leaves the column empty.
+                // Split down the middle: the dial centred in the left half.
                 let dialSize = DialExtraLarge.dialSize(in: geo.size)
+                let half = geo.size.width / 2
                 HStack(spacing: 0) {
                     dial(parts, size: dialSize)
+                        .frame(width: half, height: geo.size.height)
                     DialCardsColumn(cards: status == .live ? DialCards(day: day, blocks: input.blocks) : .empty,
                                     height: Double(geo.size.height))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(width: half, height: geo.size.height)
                 }
                 .frame(width: geo.size.width, height: geo.size.height)
             } else {

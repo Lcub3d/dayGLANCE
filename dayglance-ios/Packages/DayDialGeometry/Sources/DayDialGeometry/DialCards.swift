@@ -52,14 +52,15 @@ public enum DialLegend {
     }
 }
 
-/// The extra-large layout: the dial at its full height on the left, the
-/// cards in the width it leaves. Sizes in points.
+/// The extra-large layout: the widget split down the middle, the dial
+/// centred in the left half at its full height, the cards in the right half.
+/// Sizes in points.
 public enum DialExtraLarge {
-    /// The dial's box: as tall as the widget, the canvas's aspect, never more
-    /// than 55 % of the width (so the cards keep a column at any iPad size).
+    /// The dial's box: as tall as the widget, the canvas's aspect, never
+    /// wider than its half.
     public static func dialSize(in size: CGSize) -> CGSize {
         let height = Double(size.height)
-        let width = Swift.min(height * DialSpec.canvasWidth / DialSpec.canvasHeight, Double(size.width) * 0.55)
+        let width = Swift.min(height * DialSpec.canvasWidth / DialSpec.canvasHeight, Double(size.width) / 2)
         return CGSize(width: width, height: width * DialSpec.canvasHeight / DialSpec.canvasWidth)
     }
 

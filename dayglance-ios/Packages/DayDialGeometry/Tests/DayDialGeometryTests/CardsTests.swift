@@ -41,11 +41,11 @@ final class CardsTests: XCTestCase {
             let dial = DialExtraLarge.dialSize(in: size)
             XCTAssertEqual(Double(dial.height), Double(size.height), accuracy: 0.001)
             XCTAssertEqual(Double(dial.width / dial.height), DialSpec.canvasWidth / DialSpec.canvasHeight, accuracy: 1e-9)
-            XCTAssertGreaterThan(Double(size.width - dial.width), 300, "the cards keep a real column")
+            XCTAssertLessThanOrEqual(Double(dial.width), Double(size.width) / 2, "the dial fits its half")
         }
-        // A box too narrow for both: the dial capped at 55 % of the width, aspect kept.
+        // A box too narrow for both: the dial capped at half the width, aspect kept.
         let capped = DialExtraLarge.dialSize(in: CGSize(width: 400, height: 400))
-        XCTAssertEqual(Double(capped.width), 220, accuracy: 0.001)
+        XCTAssertEqual(Double(capped.width), 200, accuracy: 0.001)
         XCTAssertLessThan(Double(capped.height), 400)
     }
 

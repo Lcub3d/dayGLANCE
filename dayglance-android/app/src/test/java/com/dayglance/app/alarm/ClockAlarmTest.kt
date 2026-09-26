@@ -17,4 +17,10 @@ class ClockAlarmTest {
         assertFalse(ClockAlarm.isClockApp(null))
         assertFalse(ClockAlarm.isClockApp(""))
     }
+
+    @Test fun `with no package named, the creator uid's packages decide`() {
+        assertTrue(ClockAlarm.isClockApp(null, listOf("com.google.android.deskclock")))
+        assertFalse(ClockAlarm.isClockApp(null, listOf("com.google.android.calendar")))
+        assertFalse(ClockAlarm.isClockApp(null, emptyList()))
+    }
 }

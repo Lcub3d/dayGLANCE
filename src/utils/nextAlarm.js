@@ -23,3 +23,21 @@ export function alarmHHMM(alarmMs) {
   const d = new Date(alarmMs);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
+
+/**
+ * TEMPORARY diagnostic: one line describing the bridge's next-alarm reading
+ * (nativeGetNextAlarmDebug), e.g.
+ * "alarm debug: Sat 06:30 · com.google.android.deskclock · accepted".
+ */
+export function formatAlarmDebug(debug, formatTime = (hhmm) => hhmm) {
+  if (!debug) return '';
+  const when = debug.triggerTime
+    ? `${new Date(debug.triggerTime).toLocaleDateString(undefined, { weekday: 'short' })} ${formatTime(alarmHHMM(debug.triggerTime))}`
+    : 'no alarm';
+  const creator = debug.creatorPackage
+    || (debug.hasShowIntent ? 'creator hidden' : 'no show intent');
+  const uid = debug.creatorUid != null ? ` (uid ${debug.creatorUid})` : '';
+  const uidPkgs = debug.uidPackages?.length ? ` [${debug.uidPackages.join(', ')}]` : '';
+  const verdict = debug.triggerTime ? ` · ${debug.accepted ? 'accepted' : 'rejected'}` : '';
+  return `alarm debug: ${when} · ${creator}${uid}${uidPkgs}${verdict}`;
+}

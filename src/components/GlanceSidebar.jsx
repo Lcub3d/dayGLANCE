@@ -4,8 +4,8 @@ import {
 } from 'lucide-react';
 import { renderTitle } from '../utils/textFormatting.jsx';
 import TaskStarButton from './TaskStarButton.jsx';
-import { nativeGetNextAlarm } from '../native.js';
-import { nextAlarmWithinTomorrow, alarmHHMM } from '../utils/nextAlarm.js';
+import { nativeGetNextAlarm, nativeGetNextAlarmDebug } from '../native.js';
+import { nextAlarmWithinTomorrow, alarmHHMM, formatAlarmDebug } from '../utils/nextAlarm.js';
 import GoalRing from './GoalRing.jsx';
 import { dateToString, extractTags, extractWikilinks, formatDeadlineDate } from '../utils/taskUtils.js';
 import { calculateGoalProgress } from '../utils/goalProgress.js';
@@ -1303,12 +1303,21 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
     // render: this section re-renders every minute via currentTime, so the
     // line tracks alarm edits without any subscription machinery.
     const alarmMs = nextAlarmWithinTomorrow(currentTime.getTime(), nativeGetNextAlarm());
-    const alarmLine = alarmMs ? (
+    const alarmLineMain = alarmMs ? (
       <div className="flex items-center gap-2">
         <AlarmClock size={13} className={textSecondary} />
         <span className={`text-sm ${textPrimary}`}>{t('app.alarmAt')} <span className="font-medium">{formatTime(alarmHHMM(alarmMs))}</span></span>
       </div>
     ) : null;
+    // TEMPORARY diagnostic (Android): what the system reports for the next
+    // alarm and whether it counts as a clock alarm. Remove once settled.
+    const alarmDebug = nativeGetNextAlarmDebug();
+    const alarmLine = (
+      <>
+        {alarmLineMain}
+        {alarmDebug && <div className={`text-[11px] font-mono ${textSecondary}`}>{formatAlarmDebug(alarmDebug, formatTime)}</div>}
+      </>
+    );
     const handleGlanceAheadClick = () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);

@@ -32,6 +32,17 @@
     <!-- Health Connect — queries block for devices running Health Connect as a standalone app -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- The clock apps whose alarms GLANCEahead shows (alarm/ClockAlarm.kt).
+             Package visibility (Android 11+): without these the system will
+             not name the app that created the next alarm, and every alarm
+             read as "not a clock app's". Keep in sync with CLOCK_PACKAGES. -->
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.sec.android.app.clockpackage" />
+        <package android:name="com.android.deskclock" />
+        <package android:name="com.oneplus.deskclock" />
+        <package android:name="com.coloros.alarmclock" />
+        <package android:name="com.huawei.deskclock" />
+        <package android:name="com.hihonor.deskclock" />
     </queries>
 
     <application

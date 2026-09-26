@@ -229,6 +229,11 @@ class NativeBridge(
     @JavascriptInterface
     fun getNextAlarm(): Long = ClockAlarm.nextTriggerMillis(context) ?: -1L
 
+    /** TEMPORARY diagnostic: what the system reports for the next alarm
+     *  (time, creator package/uid, verdict), shown in GLANCEahead. */
+    @JavascriptInterface
+    fun getNextAlarmDebug(): String = ClockAlarm.debugJson(context)
+
     // ── Notifications ───────────────────────────────────────────────────────
 
     @JavascriptInterface

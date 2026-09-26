@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { planHistory } from '../utils/originalPlan.js';
@@ -109,6 +110,44 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
   );
 }
 
+const HISTORY_PANEL_WIDTH = 230;
+const HISTORY_VIEWPORT_GUTTER = 8;
+const HISTORY_ANCHOR_GAP = 4;
+
+/**
+ * Return viewport coordinates for the history panel.
+ *
+ * This is kept separate from the component so the two placement rules are
+ * explicit: the panel starts at the history button, then moves above it when
+ * the lower edge of the viewport cannot hold the measured panel. The panel is
+ * rendered into document.body (see below), so these are always viewport
+ * coordinates and can never be rebased by a card's filter/transform.
+ */
+export function getPlanHistoryPopoverPosition(anchorRect, panelRect = null, viewport = null) {
+  const view = viewport ?? {
+    width: typeof window === 'undefined' ? 0 : window.innerWidth,
+    height: typeof window === 'undefined' ? 0 : window.innerHeight,
+  };
+  const measuredWidth = Number(panelRect?.width) || HISTORY_PANEL_WIDTH;
+  const measuredHeight = Number(panelRect?.height) || 0;
+  const availableWidth = Math.max(0, view.width - HISTORY_VIEWPORT_GUTTER * 2);
+  const panelWidth = Math.min(measuredWidth, availableWidth || measuredWidth);
+  const left = Math.max(
+    HISTORY_VIEWPORT_GUTTER,
+    Math.min(anchorRect.left, view.width - panelWidth - HISTORY_VIEWPORT_GUTTER),
+  );
+  const below = anchorRect.bottom + HISTORY_ANCHOR_GAP;
+  const above = anchorRect.top - HISTORY_ANCHOR_GAP - measuredHeight;
+  const bottomLimit = view.height - HISTORY_VIEWPORT_GUTTER;
+  const top = measuredHeight > 0 && below + measuredHeight > bottomLimit
+    ? (above >= HISTORY_VIEWPORT_GUTTER
+      ? above
+      : Math.max(HISTORY_VIEWPORT_GUTTER, bottomLimit - measuredHeight))
+    : Math.max(HISTORY_VIEWPORT_GUTTER, below);
+
+  return { top, left, width: panelWidth };
+}
+
 // `size` matches the icon scale of whichever card row this sits in: 12 on the
 // timeline card, 10 on the denser SCHED row.
 export default function TaskPlanHistory({ task, size = 12 }) {
@@ -118,45 +157,64 @@ export default function TaskPlanHistory({ task, size = 12 }) {
   // the history readable there instead of throwing.
   const formatTime = useDayPlannerCtx()?.formatTime ?? ((value) => value);
   const [open, setOpen] = useState(false);
-  // Fixed coordinates, measured from the button when it opens. An absolutely
-  // positioned panel is clipped by the timeline column and by the card itself —
-  // a WEEK column is narrower than this panel — so it has to escape both.
+  // Fixed coordinates, measured from the button when it opens and refreshed
+  // while the timeline moves. An absolutely positioned panel is clipped by
+  // the timeline column and by the card itself — a WEEK column is narrower
+  // than this panel — so it has to escape both.
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
   const buttonRef = useRef(null);
+  const popoverRef = useRef(null);
 
-  const PANEL_WIDTH = 230;
+  const updatePosition = useCallback(() => {
+    const anchor = buttonRef.current?.getBoundingClientRect();
+    if (!anchor) return;
+    const panel = popoverRef.current?.getBoundingClientRect() ?? null;
+    setPos(getPlanHistoryPopoverPosition(anchor, panel));
+  }, []);
+
   const toggle = () => {
     if (open) { setOpen(false); return; }
     const r = buttonRef.current?.getBoundingClientRect();
     if (r) {
-      setPos({
-        top: r.bottom + 4,
-        // Clamped to the viewport so a task at either edge still reads.
-        left: Math.max(8, Math.min(r.left, window.innerWidth - PANEL_WIDTH - 8)),
-      });
+      // Seed the position before the portal mounts; the effect below measures
+      // the real panel and applies the vertical clamp on the next frame.
+      setPos(getPlanHistoryPopoverPosition(r));
     }
     setOpen(true);
   };
 
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
-    const onPointerDown = (e) => { if (!ref.current?.contains(e.target)) close(); };
-    const onKeyDown = (e) => { if (e.key === 'Escape') close(); };
+    const onPointerDown = (e) => {
+      if (!ref.current?.contains(e.target) && !popoverRef.current?.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const onViewportChange = () => updatePosition();
+    // The panel follows its anchor when either the timeline scroller or the
+    // page scrolls. Capture is needed because scroll does not bubble from the
+    // board's overflow container to window.
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
-    // A fixed panel does not follow its anchor, so a resize retires it rather
-    // than leaving it over an unrelated part of the timeline. Deliberately NOT
-    // listening for scroll in the capture phase: the click that opens the panel
-    // can itself scroll the card into view, and that closed the panel instantly.
-    window.addEventListener('resize', close);
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    window.visualViewport?.addEventListener('resize', onViewportChange);
+    window.visualViewport?.addEventListener('scroll', onViewportChange);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', close);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+      window.visualViewport?.removeEventListener('resize', onViewportChange);
+      window.visualViewport?.removeEventListener('scroll', onViewportChange);
     };
-  }, [open]);
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (open) updatePosition();
+  }, [open, updatePosition]);
 
   const history = planHistory(task);
   // A task that slipped before the baseline shipped has a count but no plan to
@@ -176,16 +234,26 @@ export default function TaskPlanHistory({ task, size = 12 }) {
       >
         <History size={size} />
       </button>
-      {open && pos && (
+      {open && pos && typeof document !== 'undefined' && createPortal(
         <div
+          ref={popoverRef}
           onClick={(e) => e.stopPropagation()}
-          style={{ position: 'fixed', top: pos.top, left: pos.left, width: PANEL_WIDTH }}
+          style={{
+            position: 'fixed',
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
+            maxWidth: 'calc(100vw - 16px)',
+            maxHeight: 'calc(100vh - 16px)',
+            overflowY: 'auto',
+          }}
           className="z-50 rounded-lg shadow-xl border p-2 text-xs
                      bg-white dark:bg-gray-800 text-gray-800 dark:text-white
                      border-stone-300 dark:border-gray-700"
         >
           <PlanHistoryPanel history={history} task={task} formatTime={formatTime} />
-        </div>
+        </div>,
+        document.body,
       )}
     </span>
   );

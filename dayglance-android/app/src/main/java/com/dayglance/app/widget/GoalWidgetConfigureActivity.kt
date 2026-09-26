@@ -42,6 +42,9 @@ class GoalWidgetConfigureActivity : AppCompatActivity() {
         ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) { finish(); return }
+        // The activity is exported (the launcher starts it), so any app could
+        // launch it with an arbitrary id: act only on one of our Goal widgets.
+        if (!widgetBelongsTo(this, appWidgetId, GoalWidget::class.java)) { finish(); return }
 
         val snapshot = SharedDataStore(this).widgetSnapshot
         val allGoals: JSONArray? = snapshot?.let {

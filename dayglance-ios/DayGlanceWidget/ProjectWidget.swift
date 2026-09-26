@@ -24,14 +24,19 @@ struct ProjectEntity: AppEntity {
 /// Supplies the project list (from the latest snapshot) to the widget editor and
 /// resolves a previously-selected project by id.
 struct ProjectEntityQuery: EntityQuery {
+    // Resolving a saved choice looks at every project in the snapshot, so a
+    // widget pinned to a project that has since been completed keeps it.
     func entities(for identifiers: [String]) async throws -> [ProjectEntity] {
-        allEntities().filter { identifiers.contains($0.id) }
+        allEntities(includeCompleted: true).filter { identifiers.contains($0.id) }
     }
-    func suggestedEntities() async throws -> [ProjectEntity] { allEntities() }
+    // The picker offers the open ones only: the snapshot lists the projects
+    // the app shows (widgetGoalsProjects.js), and a completed project is
+    // reopened in the app before it is pinned again.
+    func suggestedEntities() async throws -> [ProjectEntity] { allEntities(includeCompleted: false) }
 
-    private func allEntities() -> [ProjectEntity] {
+    private func allEntities(includeCompleted: Bool) -> [ProjectEntity] {
         (loadSnapshot()?.allProjects ?? []).compactMap { p in
-            guard let id = p.id else { return nil }
+            guard let id = p.id, includeCompleted || p.status != "completed" else { return nil }
             return ProjectEntity(id: id, title: p.title ?? String(localized: "Untitled"), goalTitle: p.goalTitle)
         }
     }
@@ -78,14 +83,19 @@ struct ProjectWidgetView: View {
     var entry: ProjectEntry
     @Environment(\.widgetFamily) var family
 
-    // The configured project, falling back to the first active (non-completed,
-    // non-archived) project when nothing is selected or the selection is gone.
+    // The configured project; the first active (non-completed, non-archived)
+    // one only when nothing is selected. A selection no longer in the
+    // snapshot (archived or deleted) says so rather than showing an
+    // unrelated project under the same configuration.
     private var selectedProject: ProjectData? {
         let projects = entry.snapshot?.allProjects ?? []
-        if let id = entry.selectedProjectId, let match = projects.first(where: { $0.id == id }) {
-            return match
+        guard let id = entry.selectedProjectId else {
+            return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
         }
-        return projects.first(where: { $0.status != "completed" && $0.status != "archived" }) ?? projects.first
+        return projects.first(where: { $0.id == id })
+    }
+    private var configuredProjectIsGone: Bool {
+        entry.selectedProjectId != nil && selectedProject == nil && !(entry.snapshot?.allProjects ?? []).isEmpty
     }
 
     // Against the entry's date, not the clock (see ResolvedWidgetDay).
@@ -105,6 +115,11 @@ struct ProjectWidgetView: View {
             Group {
                 if let proj = selectedProject {
                     projectView(proj: proj)
+                } else if configuredProjectIsGone {
+                    Text("This project may have been archived or deleted. Edit the widget to choose another.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
                 } else {
                     Text("No active projects")
                         .font(.caption)
@@ -116,6 +131,8 @@ struct ProjectWidgetView: View {
         }
         .padding()
         .containerBackground(.background, for: .widget)
+        // The project on screen, its card in view (WidgetLink).
+        .widgetURL(WidgetLink.project(selectedProject?.id))
     }
 
     private var header: some View {
@@ -134,7 +151,10 @@ struct ProjectWidgetView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top) {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(hex: proj.goalColorHex ?? "#3b82f6"))
+                    // The project's colour, else its goal's; an empty string
+                    // (a standalone project's goal colour) is missing, not
+                    // Color(hex: "")'s white.
+                    .fill(Color(hex: [proj.colorHex, proj.goalColorHex].compactMap { $0 }.first { !$0.isEmpty } ?? "#3b82f6"))
                     .frame(width: 3, height: 36)
                 VStack(alignment: .leading, spacing: 2) {
                     if let goalTitle = proj.goalTitle, !goalTitle.isEmpty {
@@ -172,7 +192,10 @@ struct ProjectWidgetView: View {
                             .lineLimit(1)
                     }
                 }
-                let overflow = tasks.count - visible.count
+                // Against the project's total: the payload carries only the
+                // first few tasks (widgetGoalsProjects.js), so its length
+                // would hide how many more there are.
+                let overflow = max(proj.totalTasks ?? tasks.count, tasks.count) - visible.count
                 if overflow > 0 {
                     Text("+\(overflow) more")
                         .font(.caption2)

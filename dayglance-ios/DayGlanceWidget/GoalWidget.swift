@@ -72,14 +72,17 @@ struct GoalWidgetView: View {
     var entry: GoalEntry
     @Environment(\.widgetFamily) var family
 
-    // The configured goal, falling back to the first goal when nothing is
-    // selected or the selection is no longer in the snapshot.
+    // The configured goal; the first goal only when nothing is selected. A
+    // selection that is no longer in the snapshot (completed, paused or
+    // deleted: the payload lists active goals) says so rather than showing
+    // an unrelated goal under the same configuration.
     private var selectedGoal: GoalData? {
         let goals = entry.snapshot?.allGoals ?? []
-        if let id = entry.selectedGoalId, let match = goals.first(where: { $0.id == id }) {
-            return match
-        }
-        return goals.first
+        guard let id = entry.selectedGoalId else { return goals.first }
+        return goals.first(where: { $0.id == id })
+    }
+    private var configuredGoalIsGone: Bool {
+        entry.selectedGoalId != nil && selectedGoal == nil && !(entry.snapshot?.allGoals ?? []).isEmpty
     }
 
     // Against the entry's date, not the clock (see ResolvedWidgetDay). Goals
@@ -100,6 +103,11 @@ struct GoalWidgetView: View {
             Group {
                 if let goal = selectedGoal {
                     goalView(goal: goal)
+                } else if configuredGoalIsGone {
+                    Text("This goal may have been completed or deleted. Edit the widget to choose another.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
                 } else {
                     Text("No active goals")
                         .font(.caption)
@@ -111,6 +119,8 @@ struct GoalWidgetView: View {
         }
         .padding()
         .containerBackground(.background, for: .widget)
+        // The goal on screen, in Goals & Projects (WidgetLink).
+        .widgetURL(WidgetLink.goal(selectedGoal?.id))
     }
 
     private var header: some View {
@@ -178,15 +188,23 @@ struct GoalWidgetView: View {
                         }
                     }
                 }
+                // Projects past the rows the family has room for.
+                if projects.count > projectLimit {
+                    Text("+\(projects.count - projectLimit) more")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
         }
     }
 
     private func dueBadge(days: Int) -> some View {
         let (label, color): (String, Color) = {
-            if days < 0 { return ("\(abs(days))d overdue", .red) }
-            if days == 0 { return ("Due today", .orange) }
-            return ("\(days)d left", .secondary)
+            // String(localized:), not a plain String: Text(String) shows
+            // its argument verbatim and never looks it up.
+            if days < 0 { return (String(localized: "\(abs(days))d overdue"), .red) }
+            if days == 0 { return (String(localized: "Due today"), .orange) }
+            return (String(localized: "\(days)d left"), .secondary)
         }()
         return Text(label)
             .font(.caption2)

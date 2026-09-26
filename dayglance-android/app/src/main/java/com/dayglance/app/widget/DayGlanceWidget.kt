@@ -8,7 +8,6 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import androidx.work.WorkManager
-import com.dayglance.app.MainActivity
 import com.dayglance.app.R
 import com.dayglance.app.data.SharedDataStore
 import org.json.JSONObject
@@ -60,10 +59,15 @@ class DayGlanceWidget : AppWidgetProvider() {
         try { WidgetUpdateWorker.scheduleImmediate(context) } catch (_: Throwable) { }
     }
 
+    // The periodic worker is shared by every widget (and backstops the Up
+    // Next notification and reminder alarms), so the last Today widget going
+    // away cancels it only when no other dayGLANCE widget is still placed.
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         try {
-            WorkManager.getInstance(context).cancelUniqueWork(WidgetUpdateWorker.WORK_NAME)
+            if (!anyWidgetPlaced(context)) {
+                WorkManager.getInstance(context).cancelUniqueWork(WidgetUpdateWorker.WORK_NAME)
+            }
         } catch (_: Throwable) { }
     }
 
@@ -95,7 +99,7 @@ class DayGlanceWidget : AppWidgetProvider() {
                 // The "updated" time would describe a different day's content.
                 views.setTextViewText(R.id.tv_updated, "")
                 views.setTextViewText(R.id.tv_stale, formatPlannedLabel(context, freshness, use24Hour))
-                views.setTextColor(R.id.tv_stale, context.getColor(R.color.widget_text_secondary))
+                views.setThemedTextColor(context, R.id.tv_stale, R.color.widget_text_secondary)
                 views.setViewVisibility(R.id.tv_stale, View.VISIBLE)
             } else if (freshness.isStale) {
                 // A bare "8:42 PM" next to yesterday's content reads as tonight.
@@ -127,23 +131,16 @@ class DayGlanceWidget : AppWidgetProvider() {
             views.setRemoteAdapter(R.id.lv_agenda, serviceIntent)
             views.setEmptyView(R.id.lv_agenda, android.R.id.empty)
 
-            // Pending intent template — list items fire fill-in intents against this
-            val listItemLaunchIntent = Intent(context, MainActivity::class.java)
-            val listItemPi = android.app.PendingIntent.getActivity(
-                context, 1, listItemLaunchIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
-            )
-            views.setPendingIntentTemplate(R.id.lv_agenda, listItemPi)
+            // Pending intent template — list items fire fill-in intents against
+            // this. No data here: each row's fill-in supplies its own link (a
+            // fill-in's data applies only where the template has none).
+            views.setPendingIntentTemplate(R.id.lv_agenda, WidgetLinks.rowTemplate(context, 1))
         } catch (_: Throwable) { /* ListView stays empty — header still renders */ }
 
         // ── Tap-to-open ───────────────────────────────────────────────────
         try {
-            val launchIntent = Intent(context, MainActivity::class.java)
-            val pi = android.app.PendingIntent.getActivity(
-                context, 0, launchIntent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
-            )
-            views.setOnClickPendingIntent(R.id.widget_root, pi)
+            // Today's calendar, wherever the app was (WidgetLinks).
+            views.setOnClickPendingIntent(R.id.widget_root, WidgetLinks.pendingIntent(context, 0, WidgetLinks.TODAY))
         } catch (_: Throwable) { }
 
         // ── Refresh button ────────────────────────────────────────────────
@@ -208,3 +205,22 @@ class DayGlanceWidget : AppWidgetProvider() {
         }
     }
 }
+
+/** Whether any dayGLANCE widget is still on a home screen. The shared
+ *  periodic worker is cancelled only when none is. */
+internal fun anyWidgetPlaced(context: Context): Boolean {
+    val manager = AppWidgetManager.getInstance(context)
+    return listOf(
+        DayGlanceWidget::class.java, UpNextWidget::class.java, GoalWidget::class.java,
+        ProjectWidget::class.java, MonthGridWidget::class.java, MonthAgendaWidget::class.java,
+    ).any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
+}
+
+/** Whether [appWidgetId] is one of this app's widgets of [provider]. The
+ *  configure activities are exported (the launcher starts them), so they
+ *  check the id before storing a choice for it. */
+internal fun widgetBelongsTo(context: Context, appWidgetId: Int, provider: Class<*>): Boolean =
+    runCatching {
+        AppWidgetManager.getInstance(context).getAppWidgetInfo(appWidgetId)?.provider ==
+            ComponentName(context, provider)
+    }.getOrDefault(false)

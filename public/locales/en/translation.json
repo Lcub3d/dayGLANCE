@@ -1816,7 +1816,8 @@
     "restoreToInbox": "Restore to inbox",
     "showingAllPrioritiesClick": "Showing all priorities (click to filter)",
     "showingPriorityClick": "Showing priority {{priority}}+ (click to change)",
-    "zero": "Inbox zero"
+    "zero": "Inbox zero",
+    "priorityAll": "All"
   },
   "glance": {
     "allDoneMessage": "{{time}}, all done!",

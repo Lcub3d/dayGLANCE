@@ -841,6 +841,16 @@ const MobileLayout = () => {
                       }`}
                     />
                   ))}
+                  {/* The level in words, so the dashes read at a glance; one
+                      tap still cycles it (All, Low+, Medium+, High). */}
+                  <span data-priority-label className={`ml-1.5 text-xs font-medium ${inboxPriorityFilter === 0 ? textSecondary : (darkMode ? 'text-blue-400' : 'text-blue-600')}`}>
+                    {[
+                      t('inbox.priorityAll'),
+                      `${t('task.lowPriority')}+`,
+                      `${t('task.mediumPriority')}+`,
+                      t('task.highPriority'),
+                    ][inboxPriorityFilter] ?? t('inbox.priorityAll')}
+                  </span>
                 </button>
               </div>
               {/* pb clears the FAB stack (one or two 56px buttons) so the

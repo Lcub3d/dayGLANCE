@@ -1816,7 +1816,8 @@
     "restoreToInbox": "Restaurar en la bandeja de entrada",
     "showingAllPrioritiesClick": "Se muestran todas las prioridades (haz clic para filtrar)",
     "showingPriorityClick": "Se muestra la prioridad {{priority}}+ (haz clic para cambiar)",
-    "zero": "Bandeja de entrada vacía"
+    "zero": "Bandeja de entrada vacía",
+    "priorityAll": "Todas"
   },
   "glance": {
     "allDoneMessage": "{{time}}, ¡todo listo!",

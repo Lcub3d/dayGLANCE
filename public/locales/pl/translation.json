@@ -1891,7 +1891,8 @@
     "restoreToInbox": "Przywróć do skrzynki",
     "showingAllPrioritiesClick": "Wszystkie priorytety (kliknij, aby filtrować)",
     "showingPriorityClick": "Priorytet {{priority}}+ (kliknij, aby zmienić)",
-    "zero": "Pusta skrzynka"
+    "zero": "Pusta skrzynka",
+    "priorityAll": "Wszystkie"
   },
   "glance": {
     "allDoneMessage": "{{time}}, wszystko zrobione!",

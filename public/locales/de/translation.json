@@ -2073,8 +2073,68 @@
         "started": "Gestartet",
         "partial": "Teilweise",
         "mostly": "Größtenteils"
-      }
-    }
+      },
+      "addDo": "Add Do",
+      "addPlan": "Add Plan",
+      "titleRequired": "Enter a title for this Do.",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "capturedPlan": "Captured plan",
+      "fullDay": "Full day",
+      "compactDay": "Compact day",
+      "resizeStart": "Adjust start time",
+      "resizeEnd": "Adjust end time",
+      "completeTask": "Complete task",
+      "reopenTask": "Reopen task",
+      "endDate": "End date",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "gestureHint": "Drag Plan to Do · Drag to move · Pull an edge to resize",
+      "untimedHint": "No execution time recorded. Drag to the timeline or edit to enter an interval.",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+  "resizeColumns": "Drag to resize Plan / Do; double-click to center",
+  "latestAttempt": "Zuletzt: {{progress}}",
+  "latestShort": "Zuletzt",
+  "details": "Details",
+  "executionHistory": "Ausführungsverlauf ({{count}})",
+  "historyCount": "Verlauf ({{count}})",
+  "timeIncomplete": "Enthält einen Eintrag ohne Zeit; die Gesamtzeit kann nicht verglichen werden.",
+  "timeStart": {
+    "early": "{{minutes}} Min. früher gestartet",
+    "onTime": "Pünktlich gestartet",
+    "late": "{{minutes}} Min. später gestartet"
+  },
+  "timeFinish": {
+    "early": "{{minutes}} Min. früher beendet",
+    "onTime": "Pünktlich beendet",
+    "late": "{{minutes}} Min. später beendet"
+  },
+  "timeDuration": {
+    "shorter": "{{minutes}} Min. kürzer",
+    "onEstimate": "Wie geschätzt",
+    "longer": "{{minutes}} Min. länger"
+  },
+  "measuredMinutes": "Gemessene Zeit: {{minutes}} Min.",
+  "locateNotes": "Notizen öffnen",
+  "toggleNote": "Notiz ein-/ausblenden",
+  "shrinkNote": "Notiz verkleinern",
+  "growNote": "Notiz vergrößern",
+  "noAttempts": "Keine Ausführungen erfasst.",
+  "sourceLabel": "Quelle",
+  "source": {
+    "completion": "Aufgabenabschluss",
+    "manual": "Manueller Eintrag",
+    "focus": "Fokus-Sitzung"
+  },
+  "noTimedPlan": "Kein zeitlicher Plan",
+  "pendingSave": "Wartet auf lokale Speicherung; bei einem Fehler wird automatisch erneut versucht.",
+  "pendingCount": "{{count}} Änderung(en) warten auf das Speichern.",
+  "loadError": "JOBO konnte nicht geladen werden.",
+  "retryLoad": "Erneut laden",
+  "dropCreate": "Do erstellen",
+  "dropCorrect": "Do korrigieren",
+  "dropMove": "Do verschieben"
+}
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",

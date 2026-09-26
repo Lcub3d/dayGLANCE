@@ -1,12 +1,20 @@
 import {
+  DO_PROGRESS,
   DO_TIMING,
   TIMING_SUMMARY,
   compareExecutionToPlan,
   summarizeTiming,
   validateDoRecord,
 } from './core.js';
+import { resolveOccurrence } from './detector.js';
 
 const DAY_MINUTES = 24 * 60;
+const PROGRESS_ORDER = Object.freeze([
+  DO_PROGRESS.STARTED,
+  DO_PROGRESS.PARTIAL,
+  DO_PROGRESS.MOSTLY,
+  DO_PROGRESS.COMPLETED,
+]);
 
 function validDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -38,12 +46,35 @@ function planSnapshotKey(snapshot) {
   return `${snapshot.date}|${snapshot.startTime}|${snapshot.duration}`;
 }
 
+function createdAtMillis(record) {
+  const stamp = Date.parse(record?.createdAt ?? '');
+  return Number.isFinite(stamp) ? stamp : Number.NEGATIVE_INFINITY;
+}
+
+/**
+ * Return attempts newest first.  `updatedAt` is deliberately not part of the
+ * ordering: correcting an old attempt must not make it look like a new one.
+ * The id tie-break makes records with the same source timestamp deterministic
+ * across devices.
+ */
+export function sortJoboAttempts(records) {
+  return (Array.isArray(records) ? records : [])
+    .filter((record) => record && !record.deleted)
+    .slice()
+    .sort((a, b) => createdAtMillis(b) - createdAtMillis(a)
+      || String(b.id ?? '').localeCompare(String(a.id ?? '')));
+}
+
+export function latestJoboAttempt(records) {
+  return sortJoboAttempts(records)[0] || null;
+}
+
 function recurringInstanceDateFromRecord(record) {
   if (record?.source !== 'completion' || record.taskId == null || typeof record.id !== 'string') return null;
   const prefix = `do:${String(record.taskId)}:`;
   if (!record.id.startsWith(prefix)) return null;
   const rest = record.id.slice(prefix.length);
-  return /^\d{4}-\d{2}-\d{2}:/.test(rest) ? rest.slice(0, 10) : null;
+  return /^\d{4}-\d{2}-\d{2}(?::|$)/.test(rest) ? rest.slice(0, 10) : null;
 }
 
 function recordGroupKey(record) {
@@ -59,6 +90,10 @@ function recordGroupKey(record) {
   if (record.planSnapshot) {
     return `${String(record.taskId)}::${planSnapshotKey(record.planSnapshot)}`;
   }
+  // A manual/focus row with a recurring template id and no captured Plan
+  // has no occurrence identity. Keep it independent instead of assigning it
+  // to whichever occurrence happens to be visible in the selected day.
+  if (record.source !== 'completion') return `record::${record.id}`;
   const instanceDate = recurringInstanceDateFromRecord(record);
   return `${String(record.taskId)}::${instanceDate ? `instance:${instanceDate}` : 'none'}`;
 }
@@ -80,6 +115,118 @@ function safeSummary(plan, records, options = {}) {
   } catch {
     return [];
   }
+}
+
+function safeComparison(plan, records, options = {}) {
+  try {
+    return compareExecutionToPlan(plan, records, options);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keep the full comparison and the timed-only comparison together.  Slice 2
+ * intentionally makes a mixed timed/untimed history non-comparable as a
+ * whole, while the timed subset remains useful for diagnostics.
+ */
+function comparisonMetadata(plan, records, options = {}) {
+  const attempts = sortJoboAttempts(records);
+  const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED);
+  const comparison = safeComparison(plan, attempts, options);
+  const measuredComparison = safeComparison(plan, measuredAttempts, options);
+  return {
+    comparable: comparison?.comparable === true,
+    comparison,
+    measuredComparison,
+    hasUntimedAttempts: attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
+    attempts,
+    measuredAttempts,
+    measured: {
+      comparable: measuredComparison?.comparable === true,
+      attemptCount: attempts.length,
+      timedSessionCount: measuredAttempts.length,
+      untimedAttemptCount: attempts.length - measuredAttempts.length,
+      recordedMinutes: measuredComparison?.metrics?.recordedMinutes ?? null,
+      activeMinutes: measuredComparison?.metrics?.activeMinutes ?? null,
+      elapsedMinutes: measuredComparison?.metrics?.elapsedMinutes ?? null,
+    },
+  };
+}
+
+function progressesForGroup(records) {
+  const seen = new Set(records.map((record) => record.progress));
+  return PROGRESS_ORDER.filter((progress) => seen.has(progress));
+}
+
+function occurrenceDateForRecord(record) {
+  if (validDate(record?.planSnapshot?.date)) return record.planSnapshot.date;
+  return recurringInstanceDateFromRecord(record);
+}
+
+function noteKeyForTask(task) {
+  return task?.id == null ? null : String(task.id);
+}
+
+function buildTaskResolver(sourceTasks) {
+  const byId = new Map();
+  const recurringByDate = new Map();
+  const recurringTemplateIds = new Set();
+  for (const task of sourceTasks) {
+    if (!task || task.id == null) continue;
+    byId.set(String(task.id), task);
+    if (task.recurringTemplateId != null && validDate(task.date)) {
+      const templateId = String(task.recurringTemplateId);
+      recurringTemplateIds.add(templateId);
+      recurringByDate.set(`${templateId}::${task.date}`, task);
+    }
+  }
+
+  return (record) => {
+    if (record?.taskId == null) return null;
+    const taskId = String(record.taskId);
+    const exact = byId.get(taskId);
+    const occurrenceDate = occurrenceDateForRecord(record);
+    // A template id alone is not enough to resolve a recurring task. Prefer
+    // the captured occurrence date whenever expanded recurring candidates are
+    // present, even if a template object with the same id is also in lookup.
+    if (recurringTemplateIds.has(taskId)) {
+      if (!occurrenceDate) return null;
+      return recurringByDate.get(`${taskId}::${occurrenceDate}`) || null;
+    }
+    // An exact occurrence id is safe; ordinary task ids are safe as well.
+    return exact || null;
+  };
+}
+
+function expandRecurringOccurrence(template, date) {
+  if (!template || template.id == null || !validDate(date)) return null;
+  const exception = template.exceptions?.[date] || {};
+  const occurrence = resolveOccurrence(template, date);
+  return {
+    id: `recurring-${template.id}-${date}`,
+    title: exception.title ?? template.title,
+    startTime: exception.startTime ?? template.startTime,
+    duration: exception.duration ?? template.duration,
+    color: exception.color ?? template.color,
+    completed: (template.completedDates || []).includes(date),
+    isAllDay: exception.isAllDay ?? template.isAllDay ?? false,
+    assignedUserSyncIds: exception.assignedUserSyncIds ?? template.assignedUserSyncIds,
+    notes: template.notes || '',
+    subtasks: template.subtasks || [],
+    energy: template.energy,
+    date,
+    isRecurring: true,
+    recurringTemplateId: template.id,
+    recurrenceType: template.recurrence?.type,
+    projectId: template.projectId,
+    ...(template.isExample ? { isExample: true } : {}),
+    // This occurrence was synthesized outside the native expansion window.
+    // It can provide historical title/color/notes identity, but must never be
+    // treated as a live task for native edit/complete/drag capabilities.
+    isJoboSyntheticOccurrence: true,
+    ...occurrence,
+  };
 }
 
 export function resolveEditableDoRecord(records, openedRecord) {
@@ -126,7 +273,23 @@ export function timedSliceOnDate(record, date) {
   };
 }
 
-export function assignOverlapColumns(items) {
+export function assignOverlapColumns(items, options = {}) {
+  const scale = typeof options === 'number' ? options : options?.scale;
+  const minHeightPx = typeof options === 'object' && Number.isFinite(options?.minHeightPx)
+    ? Math.max(0, options.minHeightPx) : 40;
+  const gapPx = typeof options === 'object' && Number.isFinite(options?.gapPx)
+    ? Math.max(0, options.gapPx) : 2;
+  const useDisplayedFootprint = Number.isFinite(scale) && scale > 0;
+  const displayedEnd = (item) => {
+    if (!useDisplayedFootprint) return item.endMinute;
+    const actualMinutes = Math.max(0, item.endMinute - item.startMinute);
+    const actualHeightPx = actualMinutes / 60 * scale;
+    // cardStyle subtracts the visual gap from the card height and enforces a
+    // 40px minimum. Add the gap back here so the next card gets a real pixel
+    // separation instead of only an interval separation.
+    const cardHeightPx = Math.max(minHeightPx, actualHeightPx - gapPx);
+    return item.startMinute + ((cardHeightPx + gapPx) / scale) * 60;
+  };
   const sorted = [...items].sort((a, b) =>
     a.startMinute - b.startMinute
     || a.endMinute - b.endMinute
@@ -142,7 +305,7 @@ export function assignOverlapColumns(items) {
     const placed = cluster.map((item) => {
       let column = columnEnds.findIndex((end) => end <= item.startMinute);
       if (column < 0) column = columnEnds.length;
-      columnEnds[column] = item.endMinute;
+      columnEnds[column] = displayedEnd(item);
       return { ...item, column };
     });
     const columnCount = Math.max(1, columnEnds.length);
@@ -159,7 +322,7 @@ export function assignOverlapColumns(items) {
   for (const item of sorted) {
     if (cluster.length && item.startMinute >= clusterEnd) flush();
     cluster.push(item);
-    clusterEnd = Math.max(clusterEnd, item.endMinute);
+    clusterEnd = Math.max(clusterEnd, displayedEnd(item));
   }
   flush();
   return out;
@@ -169,28 +332,26 @@ export function buildJoboDayModel({
   date,
   tasks = [],
   taskLookup = tasks,
+  recurringTasks = [],
   records = [],
   now,
+  scale,
 }) {
-  const sourceTasks = Array.isArray(taskLookup) ? taskLookup : [];
-  const taskById = new Map();
-  for (const task of sourceTasks) {
-    if (task?.id != null) taskById.set(String(task.id), task);
-    // Slice 4 keeps the recurring template id in Do.taskId, while the visible
-    // planner occurrence has a composite recurring-* id. Alias the template
-    // only to the occurrence for this civil day so its title/color and Plan
-    // remain connected without changing either upstream identity.
-    if (task?.recurringTemplateId != null && task.date === date) {
-      taskById.set(String(task.recurringTemplateId), task);
-    }
+  const lookupTasks = Array.isArray(taskLookup) ? taskLookup : [];
+  const occurrenceDates = new Set([date]);
+  for (const record of Array.isArray(records) ? records : []) {
+    const occurrenceDate = occurrenceDateForRecord(record);
+    if (occurrenceDate) occurrenceDates.add(occurrenceDate);
   }
-
-  const recordBelongsToTask = (record, task) => {
-    if (record.taskId == null || task?.id == null) return false;
-    const recordId = String(record.taskId);
-    return recordId === String(task.id)
-      || (task.recurringTemplateId != null && recordId === String(task.recurringTemplateId));
-  };
+  const expandedFromTemplates = (Array.isArray(recurringTasks) ? recurringTasks : [])
+    .flatMap((template) => [...occurrenceDates]
+      .map((occurrenceDate) => expandRecurringOccurrence(template, occurrenceDate))
+      .filter(Boolean));
+  // Existing expanded objects carry live exception/completion fields. Template
+  // expansion fills only dates outside the current scheduler window; lookup
+  // objects therefore win deterministicly when both represent the same day.
+  const sourceTasks = [...expandedFromTemplates, ...lookupTasks];
+  const resolveRecordTask = buildTaskResolver(sourceTasks);
 
   const validLiveRecords = [];
   let invalidRecordCount = 0;
@@ -221,10 +382,17 @@ export function buildJoboDayModel({
   }
 
   const summaryByGroup = new Map();
+  const progressesByGroup = new Map();
+  const attemptsByGroup = new Map();
+  const metadataByGroup = new Map();
   for (const [key, group] of groups) {
     const snapshot = group[0]?.planSnapshot ?? null;
-    const knownUnplanned = snapshot === null && group.every((record) => record.taskId === null);
-    summaryByGroup.set(key, safeSummary(snapshot, group, { knownUnplanned }));
+    const knownUnplanned = snapshot === null;
+    const metadata = comparisonMetadata(snapshot, group, { knownUnplanned });
+    metadataByGroup.set(key, metadata);
+    summaryByGroup.set(key, metadata.comparison ? summarizeTiming(metadata.comparison) : []);
+    progressesByGroup.set(key, progressesForGroup(group));
+    attemptsByGroup.set(key, metadata.attempts);
   }
 
   const timedRecords = assignOverlapColumns(
@@ -232,24 +400,47 @@ export function buildJoboDayModel({
       .filter((record) => record.timing === DO_TIMING.TIMED)
       .map((record) => {
         const slice = timedSliceOnDate(record, date);
+        const groupKey = recordGroupKey(record);
+        const metadata = metadataByGroup.get(groupKey);
+        const task = resolveRecordTask(record);
         return {
           id: record.id,
+          groupKey,
           record,
-          task: record.taskId == null ? null : taskById.get(String(record.taskId)) || null,
-          labels: summaryByGroup.get(recordGroupKey(record)) || [],
+          task,
+          sourceTask: task,
+          noteKey: noteKeyForTask(task),
+          labels: summaryByGroup.get(groupKey) || [],
+          attempts: attemptsByGroup.get(groupKey) || [],
+          latestAttempt: latestJoboAttempt(attemptsByGroup.get(groupKey) || []),
+          comparison: metadata?.comparison || null,
+          comparisonMeta: metadata || null,
           ...slice,
         };
       }),
+    scale === undefined ? undefined : { scale },
   );
 
   const untimedRecords = visibleRecords
     .filter((record) => record.timing === DO_TIMING.UNTIMED)
-    .map((record) => ({
-      id: record.id,
-      record,
-      task: record.taskId == null ? null : taskById.get(String(record.taskId)) || null,
-      labels: summaryByGroup.get(recordGroupKey(record)) || [],
-    }))
+    .map((record) => {
+      const groupKey = recordGroupKey(record);
+      const metadata = metadataByGroup.get(groupKey);
+      const task = resolveRecordTask(record);
+      return {
+        id: record.id,
+        groupKey,
+        record,
+        task,
+        sourceTask: task,
+        noteKey: noteKeyForTask(task),
+        labels: summaryByGroup.get(groupKey) || [],
+        attempts: attemptsByGroup.get(groupKey) || [],
+        latestAttempt: latestJoboAttempt(attemptsByGroup.get(groupKey) || []),
+        comparison: metadata?.comparison || null,
+        comparisonMeta: metadata || null,
+      };
+    })
     .sort((a, b) => String(a.record.title).localeCompare(String(b.record.title)));
 
   // Final Plan is capture-once history. Render a captured Plan from the record
@@ -263,9 +454,7 @@ export function buildJoboDayModel({
     if (!plan || plan.date !== date) continue;
 
     capturedPlanKeys.add(key);
-    const linkedTask = representative.taskId == null
-      ? null
-      : taskById.get(String(representative.taskId)) || null;
+    const linkedTask = resolveRecordTask(representative);
     const task = linkedTask
       ? { ...linkedTask, title: representative.title }
       : {
@@ -275,11 +464,28 @@ export function buildJoboDayModel({
           notes: '',
         };
     const startMinute = timeMinutes(plan.startTime);
+    const livePlan = planFromTask(linkedTask);
+    const currentTask = !linkedTask?.isJoboSyntheticOccurrence
+      && livePlan && planSnapshotKey(livePlan) === planSnapshotKey(plan)
+      ? linkedTask : null;
+    const metadata = metadataByGroup.get(key);
+    const attempts = attemptsByGroup.get(key) || [];
     capturedPlans.push({
       id: `captured::${key}`,
+      groupKey: key,
+      currentTask,
+      historical: !currentTask,
       task,
+      sourceTask: linkedTask,
       plan,
       labels: summaryByGroup.get(key) || [],
+      progresses: progressesByGroup.get(key) || [],
+      attempts,
+      latestAttempt: latestJoboAttempt(attempts),
+      latestProgress: latestJoboAttempt(attempts)?.progress || null,
+      comparison: metadata?.comparison || null,
+      comparisonMeta: metadata || null,
+      noteKey: noteKeyForTask(linkedTask),
       startMinute,
       endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
     });
@@ -295,23 +501,32 @@ export function buildJoboDayModel({
       const startMinute = timeMinutes(plan.startTime);
       const key = taskPlanGroupKey(task, plan);
       const linked = key == null ? [] : (groups.get(key) || []);
-
-      let labels = [];
-      if (linked.length === 0 && now && invalidRecordCount === 0) {
-        // Core's internal key remains notStarted, but Slice 4 clarified the
-        // product meaning: this is only "no Do recorded", never proof that no
-        // execution happened. Invalid ledger rows also suppress that absence
-        // inference because the evidence set is not clean.
-        labels = safeSummary(plan, [], { displayedPlan: plan, now });
-      } else if (linked.length > 0) {
-        labels = safeSummary(plan, linked, { displayedPlan: plan });
-      }
+      const comparisonOptions = {
+        displayedPlan: plan,
+        ...(linked.length === 0 && now && invalidRecordCount === 0 ? { now } : {}),
+      };
+      const metadata = comparisonMetadata(plan, linked, comparisonOptions);
+      const labels = metadata.comparison && (linked.length > 0 || (now && invalidRecordCount === 0))
+        ? summarizeTiming(metadata.comparison) : [];
+      const attempts = metadata.attempts;
+      const latestAttempt = latestJoboAttempt(attempts);
 
       return {
         id: `current::${String(task.id)}::${planSnapshotKey(plan)}`,
+        groupKey: key,
+        currentTask: task,
+        historical: false,
         task,
+        sourceTask: task,
         plan,
         labels,
+        progresses: progressesByGroup.get(key) || [],
+        attempts,
+        latestAttempt,
+        latestProgress: latestAttempt?.progress || null,
+        comparison: metadata.comparison,
+        comparisonMeta: metadata,
+        noteKey: noteKeyForTask(task),
         startMinute,
         endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
       };
@@ -320,7 +535,7 @@ export function buildJoboDayModel({
   const planned = [...capturedPlans, ...currentPlans];
 
   return {
-    plans: assignOverlapColumns(planned),
+    plans: assignOverlapColumns(planned, scale === undefined ? undefined : { scale }),
     timedRecords,
     untimedRecords,
     invalidRecordCount,

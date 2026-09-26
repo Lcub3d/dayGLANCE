@@ -2166,8 +2166,68 @@
         "started": "Розпочато",
         "partial": "Частково",
         "mostly": "Майже"
-      }
-    }
+      },
+      "addDo": "Add Do",
+      "addPlan": "Add Plan",
+      "titleRequired": "Enter a title for this Do.",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "capturedPlan": "Captured plan",
+      "fullDay": "Full day",
+      "compactDay": "Compact day",
+      "resizeStart": "Adjust start time",
+      "resizeEnd": "Adjust end time",
+      "completeTask": "Complete task",
+      "reopenTask": "Reopen task",
+      "endDate": "End date",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "gestureHint": "Drag Plan to Do · Drag to move · Pull an edge to resize",
+      "untimedHint": "No execution time recorded. Drag to the timeline or edit to enter an interval.",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+  "resizeColumns": "Drag to resize Plan / Do; double-click to center",
+  "latestAttempt": "Остання спроба: {{progress}}",
+  "latestShort": "Остання",
+  "details": "Деталі",
+  "executionHistory": "Історія виконання ({{count}})",
+  "historyCount": "Історія ({{count}})",
+  "timeIncomplete": "Містить спробу без часу; загальний час неможливо порівняти.",
+  "timeStart": {
+    "early": "Почато на {{minutes}} хв раніше",
+    "onTime": "Почато вчасно",
+    "late": "Почато на {{minutes}} хв пізніше"
+  },
+  "timeFinish": {
+    "early": "Завершено на {{minutes}} хв раніше",
+    "onTime": "Завершено вчасно",
+    "late": "Завершено на {{minutes}} хв пізніше"
+  },
+  "timeDuration": {
+    "shorter": "На {{minutes}} хв коротше",
+    "onEstimate": "За оцінкою",
+    "longer": "На {{minutes}} хв довше"
+  },
+  "measuredMinutes": "Виміряний час: {{minutes}} хв",
+  "locateNotes": "Відкрити нотатки",
+  "toggleNote": "Показати або сховати нотатку",
+  "shrinkNote": "Зменшити висоту нотатки",
+  "growNote": "Збільшити висоту нотатки",
+  "noAttempts": "Спроб не записано.",
+  "sourceLabel": "Джерело",
+  "source": {
+    "completion": "Завершення завдання",
+    "manual": "Ручний запис",
+    "focus": "Сеанс зосередження"
+  },
+  "noTimedPlan": "Немає Плану з часом",
+  "pendingSave": "Очікується локальне збереження; у разі помилки буде автоматична повторна спроба.",
+  "pendingCount": "Очікують збереження зміни: {{count}}.",
+  "loadError": "Не вдалося завантажити JOBO.",
+  "retryLoad": "Повторити завантаження",
+  "dropCreate": "Створити Do",
+  "dropCorrect": "Виправити Do",
+  "dropMove": "Перемістити Do"
+}
   },
   "todoist": {
     "title": "Синхронізація Todoist",

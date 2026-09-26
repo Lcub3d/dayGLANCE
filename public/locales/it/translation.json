@@ -2075,8 +2075,68 @@
         "started": "Avviato",
         "partial": "Parziale",
         "mostly": "Quasi"
-      }
-    }
+      },
+      "addDo": "Add Do",
+      "addPlan": "Add Plan",
+      "titleRequired": "Enter a title for this Do.",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "capturedPlan": "Captured plan",
+      "fullDay": "Full day",
+      "compactDay": "Compact day",
+      "resizeStart": "Adjust start time",
+      "resizeEnd": "Adjust end time",
+      "completeTask": "Complete task",
+      "reopenTask": "Reopen task",
+      "endDate": "End date",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "gestureHint": "Drag Plan to Do · Drag to move · Pull an edge to resize",
+      "untimedHint": "No execution time recorded. Drag to the timeline or edit to enter an interval.",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+  "resizeColumns": "Drag to resize Plan / Do; double-click to center",
+  "latestAttempt": "Ultimo: {{progress}}",
+  "latestShort": "Ultimo",
+  "details": "Dettagli",
+  "executionHistory": "Cronologia dell’esecuzione ({{count}})",
+  "historyCount": "Cronologia ({{count}})",
+  "timeIncomplete": "Include un tentativo senza orario; il tempo complessivo non è confrontabile.",
+  "timeStart": {
+    "early": "Iniziato {{minutes}} min prima",
+    "onTime": "Iniziato in orario",
+    "late": "Iniziato {{minutes}} min in ritardo"
+  },
+  "timeFinish": {
+    "early": "Terminato {{minutes}} min prima",
+    "onTime": "Terminato in orario",
+    "late": "Terminato {{minutes}} min in ritardo"
+  },
+  "timeDuration": {
+    "shorter": "{{minutes}} min in meno",
+    "onEstimate": "Come previsto",
+    "longer": "{{minutes}} min in più"
+  },
+  "measuredMinutes": "Tempo misurato: {{minutes}} min",
+  "locateNotes": "Apri note",
+  "toggleNote": "Mostra o nascondi nota",
+  "shrinkNote": "Riduci altezza nota",
+  "growNote": "Aumenta altezza nota",
+  "noAttempts": "Nessun tentativo registrato.",
+  "sourceLabel": "Fonte",
+  "source": {
+    "completion": "Completamento attività",
+    "manual": "Inserimento manuale",
+    "focus": "Sessione di concentrazione"
+  },
+  "noTimedPlan": "Nessun piano con orario",
+  "pendingSave": "In attesa del salvataggio locale; in caso di errore verrà ritentato automaticamente.",
+  "pendingCount": "{{count}} modifica/e in attesa di essere salvata/e.",
+  "loadError": "Impossibile caricare JOBO.",
+  "retryLoad": "Riprova caricamento",
+  "dropCreate": "Crea Do",
+  "dropCorrect": "Correggi Do",
+  "dropMove": "Sposta Do"
+}
   },
   "todoist": {
     "title": "Sincronizzazione Todoist",

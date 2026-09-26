@@ -2073,8 +2073,68 @@
         "started": "Iniciado",
         "partial": "Parcial",
         "mostly": "Quase"
-      }
-    }
+      },
+      "addDo": "Add Do",
+      "addPlan": "Add Plan",
+      "titleRequired": "Enter a title for this Do.",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "capturedPlan": "Captured plan",
+      "fullDay": "Full day",
+      "compactDay": "Compact day",
+      "resizeStart": "Adjust start time",
+      "resizeEnd": "Adjust end time",
+      "completeTask": "Complete task",
+      "reopenTask": "Reopen task",
+      "endDate": "End date",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "gestureHint": "Drag Plan to Do · Drag to move · Pull an edge to resize",
+      "untimedHint": "No execution time recorded. Drag to the timeline or edit to enter an interval.",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+  "resizeColumns": "Drag to resize Plan / Do; double-click to center",
+  "latestAttempt": "Mais recente: {{progress}}",
+  "latestShort": "Mais recente",
+  "details": "Detalhes",
+  "executionHistory": "Histórico de execução ({{count}})",
+  "historyCount": "Histórico ({{count}})",
+  "timeIncomplete": "Inclui uma tentativa sem horário; o tempo total não pode ser comparado.",
+  "timeStart": {
+    "early": "Começou {{minutes}} min mais cedo",
+    "onTime": "Começou no horário",
+    "late": "Começou {{minutes}} min atrasado"
+  },
+  "timeFinish": {
+    "early": "Terminou {{minutes}} min mais cedo",
+    "onTime": "Terminou no horário",
+    "late": "Terminou {{minutes}} min atrasado"
+  },
+  "timeDuration": {
+    "shorter": "{{minutes}} min a menos",
+    "onEstimate": "Dentro da estimativa",
+    "longer": "{{minutes}} min a mais"
+  },
+  "measuredMinutes": "Tempo medido: {{minutes}} min",
+  "locateNotes": "Abrir notas",
+  "toggleNote": "Mostrar ou ocultar nota",
+  "shrinkNote": "Reduzir altura da nota",
+  "growNote": "Aumentar altura da nota",
+  "noAttempts": "Nenhuma tentativa registrada.",
+  "sourceLabel": "Origem",
+  "source": {
+    "completion": "Conclusão da tarefa",
+    "manual": "Entrada manual",
+    "focus": "Sessão de foco"
+  },
+  "noTimedPlan": "Nenhum plano com horário",
+  "pendingSave": "Aguardando o salvamento local; se falhar, haverá uma nova tentativa automática.",
+  "pendingCount": "{{count}} alteração(ões) aguardando salvamento.",
+  "loadError": "Não foi possível carregar o JOBO.",
+  "retryLoad": "Tentar carregar novamente",
+  "dropCreate": "Criar Do",
+  "dropCorrect": "Corrigir Do",
+  "dropMove": "Mover Do"
+}
   },
   "todoist": {
     "title": "Sincronização com o Todoist",

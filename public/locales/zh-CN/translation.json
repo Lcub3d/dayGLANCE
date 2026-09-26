@@ -2073,8 +2073,68 @@
         "started": "已开始",
         "partial": "部分完成",
         "mostly": "大部分完成"
-      }
-    }
+      },
+      "addDo": "新增 Do",
+      "addPlan": "新增 Plan",
+      "titleRequired": "请输入这条 Do 的标题。",
+      "capturedTitle": "标题保留为创建这条 Do 时的记录。",
+      "capturedPlan": "历史计划",
+      "fullDay": "全天",
+      "compactDay": "紧凑时段",
+      "resizeStart": "调整开始时间",
+      "resizeEnd": "调整结束时间",
+      "completeTask": "完成任务",
+      "reopenTask": "重新打开任务",
+      "endDate": "结束日期",
+      "recordChanged": "这条记录已发生变化，请关闭后重新打开再编辑。",
+      "gestureHint": "Plan 拖入 Do · 拖动调整时间 · 拉动边缘调整时长",
+      "untimedHint": "尚未记录实际时间。拖到时间轴或编辑后填写区间。",
+      "zoomOut": "缩小",
+      "zoomIn": "放大",
+      "resetZoom": "重置缩放",
+  "resizeColumns": "左右拖动调整 Plan / Do 宽度，双击居中",
+  "latestAttempt": "最近一次：{{progress}}",
+  "latestShort": "最近一次",
+  "details": "详情",
+  "executionHistory": "执行历史（{{count}}）",
+  "historyCount": "历史（{{count}}）",
+  "timeIncomplete": "含未计时记录，整体时间暂不可比较。",
+  "timeStart": {
+    "early": "提前 {{minutes}} 分钟开始",
+    "onTime": "按时开始",
+    "late": "晚 {{minutes}} 分钟开始"
+  },
+  "timeFinish": {
+    "early": "提前 {{minutes}} 分钟结束",
+    "onTime": "按时结束",
+    "late": "晚 {{minutes}} 分钟结束"
+  },
+  "timeDuration": {
+    "shorter": "比预计少 {{minutes}} 分钟",
+    "onEstimate": "符合预计时长",
+    "longer": "比预计多 {{minutes}} 分钟"
+  },
+  "measuredMinutes": "已计时时长：{{minutes}} 分钟",
+  "locateNotes": "打开笔记",
+  "toggleNote": "展开或收起笔记",
+  "shrinkNote": "缩小笔记高度",
+  "growNote": "增大笔记高度",
+  "noAttempts": "尚未记录执行。",
+  "sourceLabel": "来源",
+  "source": {
+    "completion": "任务完成",
+    "manual": "手动录入",
+    "focus": "专注会话"
+  },
+  "noTimedPlan": "没有带时间的计划",
+  "pendingSave": "等待本地保存；失败时会自动重试。",
+  "pendingCount": "有 {{count}} 项更改等待保存。",
+  "loadError": "无法加载 JOBO。",
+  "retryLoad": "重试加载",
+  "dropCreate": "创建 Do",
+  "dropCorrect": "修正 Do",
+  "dropMove": "移动 Do"
+}
   },
   "todoist": {
     "title": "Todoist 同步",

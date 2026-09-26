@@ -3,7 +3,8 @@
    native task colours, independent note tiles and hover connections. */
 
 .jobo-s5-root {
-  height: 100%;
+  flex: 1;
+  height: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -618,3 +619,123 @@
     min-width: 470px;
   }
 }
+
+/* Prototype interactions over the canonical Slice 4 ledger. */
+.jobo-s5-tools { gap: 4px; flex: none; white-space: nowrap; }
+.jobo-s5-tools button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 6px; font-size: 11px; }
+.jobo-s5-tools button[aria-pressed="true"] { background: rgb(127 127 127 / .16); }
+.jobo-s5-tools button:disabled { opacity: .45; cursor: default; }
+.jobo-s5-tools button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-board { min-width: 760px; }
+.jobo-s5-column-head, .jobo-s5-day-grid, .jobo-s5-untimed-row { grid-template-columns: minmax(160px, var(--jobo-plan-fr, 1fr)) 46px minmax(160px, var(--jobo-do-fr, 1fr)) minmax(210px, .85fr); }
+.jobo-s5-column-head { position: sticky; top: 0; z-index: 30; }
+.jobo-s5-column-head > :nth-child(4), .jobo-s5-untimed-notes-spacer { display: flex; }
+.jobo-s5-day-grid { min-width: 0; }
+.jobo-s5-hide-notes .jobo-s5-board { min-width: 480px; }
+.jobo-s5-hide-notes .jobo-s5-column-head, .jobo-s5-hide-notes .jobo-s5-day-grid, .jobo-s5-hide-notes .jobo-s5-untimed-row { grid-template-columns: minmax(160px, var(--jobo-plan-fr, 1fr)) 46px minmax(160px, var(--jobo-do-fr, 1fr)); }
+.jobo-s5-hide-notes .jobo-s5-column-head > :nth-child(4), .jobo-s5-hide-notes .jobo-s5-untimed-notes-spacer { display: none; }
+.jobo-s5-axis-handle { display: flex; align-items: center; justify-content: center; align-self: stretch; }
+.jobo-s5-axis-handle, .jobo-s5-time-ruler { cursor: col-resize; touch-action: none; user-select: none; }
+.jobo-s5-axis-handle:hover, .jobo-s5-time-ruler:hover { box-shadow: inset 1px 0 #94a3b8, inset -1px 0 #94a3b8; }
+.jobo-s5-time-ruler:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.jobo-s5-resizing-columns, .jobo-s5-resizing-columns * { cursor: col-resize !important; user-select: none; }
+.jobo-s5-head-cell > button { display: flex; align-items: center; justify-content: center; width: 28px; height: 26px; border-radius: 4px; }
+.jobo-s5-head-cell > button:hover { background: rgb(127 127 127 / .12); }
+.jobo-s5-card { box-shadow: 0 2px 5px rgb(0 0 0 / .12); }
+.jobo-s5-card[draggable="true"], .jobo-s5-untimed-card[draggable="true"] { cursor: grab; }
+.jobo-s5-card[draggable="true"]:active { cursor: grabbing; }
+.jobo-s5-check { width: 16px; height: 16px; flex: none; border: 1px solid rgb(255 255 255 / .8); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; }
+.jobo-s5-checked { background: rgb(255 255 255 / .25); }
+.jobo-s5-historical { background-image: repeating-linear-gradient(135deg, transparent, transparent 8px, rgb(255 255 255 / .07) 8px, rgb(255 255 255 / .07) 10px); }
+.jobo-s5-captured-label { position: absolute; right: 5px; bottom: 2px; font-size: 9px; opacity: .9; }
+.jobo-s5-historical .jobo-s5-meta-row { padding-right: 72px; }
+.jobo-s5-progress { max-width: 130px; min-height: 18px; padding: 0 3px; }
+.jobo-s5-resize { position: absolute; left: 0; right: 0; height: 6px; cursor: ns-resize; touch-action: none; z-index: 5; border-radius: 4px; }
+.jobo-s5-resize-start { top: -2px; }
+.jobo-s5-resize-end { bottom: -2px; }
+.jobo-s5-resize:hover, .jobo-s5-resize:focus-visible { background: rgb(255 255 255 / .4); }
+.jobo-s5-resize:disabled { display: none; }
+.jobo-s5-drop-hint { position: absolute; pointer-events: none; z-index: 25; border-top: 2px solid #2563eb; color: #1d4ed8; font-size: 12px; font-weight: 600; }
+.jobo-s5-drop-plan { grid-column: 1; grid-row: 1; left: 0; right: 0; }
+.jobo-s5-drop-do { grid-column: 3; grid-row: 1; left: 0; right: 0; }
+.jobo-s5-dark .jobo-s5-drop-hint { color: #93c5fd; border-color: #60a5fa; }
+.jobo-s5-untimed-card { min-height: 36px; height: auto; }
+.jobo-s5-untimed-card > button { display: inline-flex; align-items: center; gap: 5px; text-align: left; }
+.jobo-s5-untimed-list { flex-wrap: wrap; }
+.jobo-s5-notes-column { display: flex; }
+.jobo-s5-note-title b { flex: 1; }
+.jobo-s5-note-tile { max-height: 280px; border: 1px solid rgb(127 127 127 / .2); }
+.jobo-s5-note-tile textarea { width: calc(100% - 12px); min-height: 90px; max-height: 180px; resize: vertical; margin: 6px; padding: 5px; border-radius: 4px; border: 1px solid currentColor; background: rgb(0 0 0 / .12); color: inherit; font-size: 12px; }
+.jobo-s5-note-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 0 8px 8px; font-size: 12px; }
+.jobo-s5-note-actions button { min-height: 28px; }
+.jobo-s5-dialog-actions button { display: inline-flex; align-items: center; gap: 5px; }
+.jobo-s5-dialog-actions .jobo-s5-delete-button { color: #b91c1c; margin-right: auto; }
+.jobo-s5-root button:disabled { opacity: .45; cursor: default; }
+.jobo-s5-root button:focus-visible, .jobo-s5-root select:focus-visible, .jobo-s5-dialog input:focus-visible, .jobo-s5-dialog button:focus-visible, .jobo-s5-dialog select:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-dialog input:disabled { opacity: .7; }
+.jobo-s5-notice span { flex: 1; }
+
+/* Native task identity, execution history and timing are separate layers. */
+.jobo-s5-board { position: relative; }
+.jobo-s5-head-actions { display: flex; align-items: center; gap: 6px; }
+.jobo-s5-head-actions button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 2px 4px; border-radius: 4px; }
+.jobo-s5-head-actions button:hover { background: rgb(127 127 127 / .12); }
+.jobo-s5-head-actions button[aria-expanded="true"] { background: rgb(127 127 127 / .16); }
+.jobo-s5-card:focus-visible, .jobo-s5-untimed-card:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-selected { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-dark .jobo-s5-selected { outline-color: #93c5fd; }
+.jobo-s5-native-plan { padding: 0; }
+.jobo-s5-plan-content { position: relative; min-width: 0; }
+.jobo-s5-plan-shell { padding: 7px 8px; overflow: hidden; height: 100%; }
+.jobo-s5-plan-shell .jobo-s5-title { font-size: 14px; }
+.jobo-s5-native-plan .jobo-s5-plan-inspect { position: absolute; left: 6px; right: 5px; bottom: 3px; height: 22px; display: flex; align-items: center; justify-content: flex-end; gap: 3px; }
+.jobo-s5-native-plan .jobo-s5-plan-inspect.is-compact { left: auto; top: 6px; bottom: auto; }
+.jobo-s5-plan-inspect .jobo-s5-card-action { width: 22px; height: 22px; opacity: 1; }
+.jobo-s5-execution-summary { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; overflow: hidden; font-size: 11px; text-align: left; height: 22px; border-radius: 3px; }
+.jobo-s5-execution-summary:hover { background: rgb(255 255 255 / .15); }
+.jobo-s5-latest { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; max-width: 100%; overflow: hidden; flex-shrink: 0; }
+.jobo-s5-timing-summary { display: inline-flex; gap: 4px; align-items: center; min-width: 0; font-size: 12px; }
+.jobo-s5-timing-summary svg { flex-shrink: 0; }
+.jobo-s5-execution-summary .jobo-s5-timing-summary > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobo-s5-expanded-card, .jobo-s5-card:focus-within { z-index: 45; }
+.jobo-s5-title { font-size: 14px; }
+.jobo-s5-meta-row { font-size: 12px; gap: 6px; }
+.jobo-s5-do-card .jobo-s5-meta-row > span { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
+.jobo-s5-untimed-title { font-size: 12px; max-width: 170px; }
+.jobo-s5-now-line { z-index: 3; }
+.jobo-s5-notice { font-size: 12px; }
+.jobo-s5-note-tile.is-collapsed { min-height: 32px; max-height: none; height: auto; border-color: transparent; }
+.jobo-s5-note-tile.is-collapsed .jobo-s5-note-title { border: 0; }
+.jobo-s5-note-tile.is-open { min-height: 120px; max-height: 1000px; resize: vertical; }
+.jobo-s5-note-title { min-height: 32px; }
+.jobo-s5-note-title b { font-size: 12px; }
+.jobo-s5-note-source-date { display: block; font-size: 11px; font-weight: 400; }
+.jobo-s5-notes-column { position: sticky; top: 36px; max-height: calc(100vh - 180px); overflow: auto; scrollbar-width: thin; }
+.jobo-s5-note-text { font-size: 12px; }
+.jobo-s5-note-tile form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.jobo-s5-note-tile textarea { flex: 1; min-height: 36px; max-height: none; resize: none; }
+.jobo-s5-note-tile form p { padding: 0 8px; font-size: 12px; }
+.jobo-s5-note-size { display: flex; justify-content: flex-end; gap: 5px; padding: 0 12px 3px; }
+.jobo-s5-note-size button { padding: 2px; }
+.jobo-s5-details { position: fixed; z-index: 650; width: min(460px, calc(100vw - 24px)); max-height: min(660px, calc(100vh - 24px)); overflow: auto; padding: 16px; border-radius: 10px; box-shadow: 0 12px 32px rgb(0 0 0 / .2); font-size: 12px; line-height: 1.6; }
+.jobo-s5-details .jobo-s5-dialog-head { margin-bottom: 8px; }
+.jobo-s5-detail-plan { margin-bottom: 8px; }
+.jobo-s5-details-notes, .jobo-s5-details-edit { display: inline-flex; gap: 6px; align-items: center; padding: 4px 6px; margin: 5px 0; border-radius: 4px; }
+.jobo-s5-details button:hover { background: rgb(127 127 127 / .12); }
+.jobo-s5-attempt-list { margin-top: 12px; }
+.jobo-s5-attempt-list details { border-top: 1px solid rgb(127 127 127 / .2); }
+.jobo-s5-attempt-list summary { cursor: pointer; padding: 10px 2px; }
+.jobo-s5-attempt-list summary > span { margin-right: 8px; }
+.jobo-s5-attempt-progress { font-weight: 600; }
+.jobo-s5-attempt-body { padding: 0 12px 8px; }
+.jobo-s5-attempt-body p { overflow-wrap: anywhere; display: flex; align-items: center; gap: 4px; }
+.jobo-s5-detail-empty { padding: 12px 0; }
+.jobo-s5-details :is(button, summary):focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-drag-connection { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 25; color: #2563eb; }
+.jobo-s5-drop-hint { border: 2px dashed #2563eb; background: rgb(37 99 235 / .08); }
+.jobo-s5-drop-hint span { display: inline-block; position: sticky; top: 36px; background: #eff6ff; padding: 2px 5px; border-radius: 3px; }
+.jobo-s5-dark .jobo-s5-drop-hint span { background: #172554; }
+.jobo-s5-dialog-note { font-size: 12px; opacity: .85; }
+.jobo-s5-dialog-error { font-size: 12px; }
+.jobo-s5-dialog fieldset { min-width: 0; }
+.jobo-s5-dialog fieldset:disabled { opacity: .7; }

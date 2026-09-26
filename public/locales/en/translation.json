@@ -2073,8 +2073,68 @@
         "started": "Started",
         "partial": "Partial",
         "mostly": "Mostly"
-      }
-    }
+      },
+      "addDo": "Add Do",
+      "addPlan": "Add Plan",
+      "titleRequired": "Enter a title for this Do.",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "capturedPlan": "Captured plan",
+      "fullDay": "Full day",
+      "compactDay": "Compact day",
+      "resizeStart": "Adjust start time",
+      "resizeEnd": "Adjust end time",
+      "completeTask": "Complete task",
+      "reopenTask": "Reopen task",
+      "endDate": "End date",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "gestureHint": "Drag Plan to Do · Drag to move · Pull an edge to resize",
+      "untimedHint": "No execution time recorded. Drag to the timeline or edit to enter an interval.",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "resetZoom": "Reset zoom",
+  "resizeColumns": "Drag to resize Plan / Do; double-click to center",
+  "latestAttempt": "Latest: {{progress}}",
+  "latestShort": "Latest",
+  "details": "Details",
+  "executionHistory": "Execution history ({{count}})",
+  "historyCount": "History ({{count}})",
+  "timeIncomplete": "Includes an untimed attempt; overall time cannot be compared.",
+  "timeStart": {
+    "early": "Started {{minutes}} min early",
+    "onTime": "Started on time",
+    "late": "Started {{minutes}} min late"
+  },
+  "timeFinish": {
+    "early": "Finished {{minutes}} min early",
+    "onTime": "Finished on time",
+    "late": "Finished {{minutes}} min late"
+  },
+  "timeDuration": {
+    "shorter": "{{minutes}} min shorter",
+    "onEstimate": "On estimate",
+    "longer": "{{minutes}} min longer"
+  },
+  "measuredMinutes": "Measured time: {{minutes}} min",
+  "locateNotes": "Open notes",
+  "toggleNote": "Toggle note",
+  "shrinkNote": "Reduce note height",
+  "growNote": "Increase note height",
+  "noAttempts": "No attempts recorded.",
+  "sourceLabel": "Source",
+  "source": {
+    "completion": "Task completion",
+    "manual": "Manual entry",
+    "focus": "Focus session"
+  },
+  "noTimedPlan": "No timed plan",
+  "pendingSave": "Waiting for local save; will retry automatically if it fails.",
+  "pendingCount": "{{count}} change(s) waiting to be saved.",
+  "loadError": "Could not load JOBO.",
+  "retryLoad": "Retry loading",
+  "dropCreate": "Create Do",
+  "dropCorrect": "Correct Do",
+  "dropMove": "Move Do"
+}
   },
   "todoist": {
     "title": "Todoist Sync",

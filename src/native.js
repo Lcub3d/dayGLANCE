@@ -141,6 +141,21 @@ export const nativeGetSleep = async (date) => {
  * API for reading the user's Clock alarms, so the iOS bridge simply never
  * implements this and callers fall through to null.
  */
+/**
+ * TEMPORARY diagnostic (GLANCEahead readout): what the Android bridge sees for
+ * the next alarm — its time, the app that created it, and whether it counts as
+ * a clock alarm. null off Android. Remove with the readout.
+ */
+export const nativeGetNextAlarmDebug = () => {
+  const bridge = nativeBridge();
+  if (!bridge?.getNextAlarmDebug) return null;
+  try {
+    return JSON.parse(bridge.getNextAlarmDebug());
+  } catch {
+    return null;
+  }
+};
+
 export const nativeGetNextAlarm = () => {
   const bridge = nativeBridge();
   if (!bridge?.getNextAlarm) return null;

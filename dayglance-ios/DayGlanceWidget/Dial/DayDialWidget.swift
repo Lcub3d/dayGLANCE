@@ -209,6 +209,12 @@ struct DayDialWidgetView: View {
                                     height: Double(geo.size.height))
                         .frame(width: half, height: geo.size.height)
                 }
+                // The full-colour face is an opaque image on the dial's black,
+                // but the system draws the container background with its own
+                // shading on iPad, so the cards' half read as a grey gradient.
+                // Paint that black under both halves; the tinted modes keep
+                // the system's background (their face has no fill).
+                .background(mono ? Color.clear : Color(hex: DialSpec.backgroundHex))
                 .frame(width: geo.size.width, height: geo.size.height)
             } else {
                 dial(parts, size: geo.size)

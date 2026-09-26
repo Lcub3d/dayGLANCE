@@ -315,11 +315,32 @@ describe('GoalDashboard embedded (phone) mode', () => {
     expect(controls).toContain(' Completed');
     expect(controls).toContain('data-open-filter');
     expect(controls).toContain('aria-label="Filter projects…"');
+    // the closed filter fills the rest of the row, labelled, at the toggle's height
+    const button = controls.match(/<button[^>]*data-open-filter[^>]*>[\s\S]*?<\/button>/)[0];
+    expect(button).toContain('flex-1');
+    expect(button).toContain('h-8');
+    expect(button).toContain('>Filter</span>');
     expect(controls).not.toContain('data-project-filter');
     // it wraps rather than squeezing where a language's labels are long
     expect(controls).toMatch(/data-projects-controls[^>]*flex-wrap/);
     expect(html).not.toContain('aria-label="Area"');
     expect(html).not.toContain('goal-carousel');
+  });
+
+  it('keeps the area select readable: List | Roadmap in words only, wrapping below it when the row is short', () => {
+    const row = section(phone(), 'data-goal-controls');
+    const controls = row.slice(0, row.indexOf('data-goal-chips'));
+    expect(controls).toMatch(/data-goal-controls[^>]*flex-wrap/);
+    expect(controls.match(/<select[^>]*>/)[0]).toContain('min-w-[9rem]');
+    // words, no icons, on the phone's view toggle
+    const toggle = controls.slice(controls.indexOf('role="group"'));
+    expect(toggle).toContain(' List</button>');
+    expect(toggle).toContain(' Roadmap</button>');
+    expect(toggle.slice(0, toggle.indexOf('</div>'))).not.toContain('<svg');
+    // the desktop toolbar's toggle keeps its icons
+    const main = section(render({ desktop: true, isActive: true }), 'data-goals-main');
+    const desktopToggle = main.slice(main.indexOf('role="group"'));
+    expect(desktopToggle.slice(0, desktopToggle.indexOf('</div>'))).toContain('<svg');
   });
 
   describe('the controls chevron', () => {

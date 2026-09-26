@@ -1774,7 +1774,8 @@
     "addTaskPlaceholder": "Adicionar tarefa…",
     "showFilters": "Mostrar filtros",
     "hideFilters": "Ocultar filtros",
-    "filtersActive": "Filtros ativos"
+    "filtersActive": "Filtros ativos",
+    "filterButton": "Filtrar"
   },
   "colors": {
     "gray": "Cinza",

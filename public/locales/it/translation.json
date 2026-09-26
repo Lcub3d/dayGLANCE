@@ -1818,7 +1818,8 @@
     "restoreToInbox": "Ripristina nella posta in arrivo",
     "showingAllPrioritiesClick": "Sono mostrate tutte le priorità (clicca per filtrare)",
     "showingPriorityClick": "Priorità {{priority}}+ mostrata (clicca per cambiare)",
-    "zero": "Posta in arrivo vuota"
+    "zero": "Posta in arrivo vuota",
+    "priorityAll": "Tutte"
   },
   "glance": {
     "allDoneMessage": "{{time}}, tutto fatto!",

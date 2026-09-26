@@ -1816,7 +1816,8 @@
     "restoreToInbox": "Im Posteingang wiederherstellen",
     "showingAllPrioritiesClick": "Alle Prioritäten werden angezeigt (zum Filtern klicken)",
     "showingPriorityClick": "Priorität {{priority}}+ wird angezeigt (zum Ändern klicken)",
-    "zero": "Posteingang leer"
+    "zero": "Posteingang leer",
+    "priorityAll": "Alle"
   },
   "glance": {
     "allDoneMessage": "{{time}}, alles erledigt!",

@@ -1816,7 +1816,8 @@
     "restoreToInbox": "恢复到收件箱",
     "showingAllPrioritiesClick": "正在显示所有优先级（点击筛选）",
     "showingPriorityClick": "正在显示优先级 {{priority}}+（点击更改）",
-    "zero": "收件箱已清空"
+    "zero": "收件箱已清空",
+    "priorityAll": "全部"
   },
   "glance": {
     "allDoneMessage": "{{time}}，都完成了！",

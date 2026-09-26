@@ -308,6 +308,23 @@ const hexToRgb = (hex) => {
  * voice. Unparseable input falls back to the effort blue.
  */
 export function muteDialColor(hex) {
+  return muteDialColorWith(hex, 0.5, 0.73);
+}
+
+/**
+ * A frame's enclosure on the ring: the same hue rule, SOFTENED — saturation
+ * capped lower and lightness pulled down — so the outline sits below the block
+ * rims in weight and the needle stays the brightest thing on the face
+ * (docs/day-dial-frames-spec.html, "Softest"). The hub's frame title uses the
+ * standard muteDialColor instead: same hue, a stronger mute level, on purpose.
+ */
+export const DIAL_FRAME_MUTE = { satCap: 0.28, light: 0.62 };
+export function muteDialFrameColor(hex) {
+  return muteDialColorWith(hex, DIAL_FRAME_MUTE.satCap, DIAL_FRAME_MUTE.light);
+}
+
+/** muteDialColor with the saturation cap and pinned lightness as inputs. */
+export function muteDialColorWith(hex, satCap, light) {
   const rgb = hexToRgb(hex);
   if (!rgb) return DIAL_COLORS.effort;
   const [r, g, b] = rgb;
@@ -323,8 +340,8 @@ export function muteDialColor(hex) {
   const l0 = (max + min) / 2;
   const s0 = max === min ? 0 : (max - min) / (1 - Math.abs(2 * l0 - 1));
 
-  const s = Math.min(s0, 0.5);
-  const l = 0.73;
+  const s = Math.min(s0, satCap);
+  const l = light;
 
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((h * 6) % 2) - 1));

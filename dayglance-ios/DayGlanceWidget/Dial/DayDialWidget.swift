@@ -199,13 +199,22 @@ struct DayDialWidgetView: View {
             if family == .systemExtraLarge {
                 // The cards describe a live day; an outdated, mis-zoned or
                 // never-set-up one leaves the column empty.
+                // Split down the middle: the dial centred in the left half.
                 let dialSize = DialExtraLarge.dialSize(in: geo.size)
+                let half = geo.size.width / 2
                 HStack(spacing: 0) {
                     dial(parts, size: dialSize)
+                        .frame(width: half, height: geo.size.height)
                     DialCardsColumn(cards: status == .live ? DialCards(day: day, blocks: input.blocks) : .empty,
                                     height: Double(geo.size.height))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(width: half, height: geo.size.height)
                 }
+                // The full-colour face is an opaque image on the dial's black,
+                // but the system draws the container background with its own
+                // shading on iPad, so the cards' half read as a grey gradient.
+                // Paint that black under both halves; the tinted modes keep
+                // the system's background (their face has no fill).
+                .background(mono ? Color.clear : Color(hex: DialSpec.backgroundHex))
                 .frame(width: geo.size.width, height: geo.size.height)
             } else {
                 dial(parts, size: geo.size)

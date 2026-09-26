@@ -197,7 +197,7 @@
     <string name="day_dial_all_day">Ganztägig</string>
     <string name="day_dial_effort">Aufwand</string>
     <string name="day_dial_restore">Erholung</string>
-    <string name="day_dial_sleep">Schlaf</string>
+    <string name="day_dial_legend_sleep">Schlaf</string>
     <string name="day_dial_unblocked">Ungeplant</string>
     <string name="day_dial_routines">Routinen</string>
 </resources>

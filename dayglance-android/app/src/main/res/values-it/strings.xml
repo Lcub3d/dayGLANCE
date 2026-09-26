@@ -197,7 +197,7 @@
     <string name="day_dial_all_day">Tutto il giorno</string>
     <string name="day_dial_effort">Impegno</string>
     <string name="day_dial_restore">Recupero</string>
-    <string name="day_dial_sleep">Sonno</string>
+    <string name="day_dial_legend_sleep">Sonno</string>
     <string name="day_dial_unblocked">Tempo libero</string>
     <string name="day_dial_routines">Routine</string>
 </resources>

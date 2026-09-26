@@ -181,7 +181,20 @@ struct DialSnapshot: Codable {
     /// totals: the iPad extra-large dial's cards (DialCardsColumn). Absent
     /// from payloads before the cards; `totals` absent draws no legend.
     var allDay: [DialAllDayItem]?
+    /// The day's frames (docs/day-dial-frames-spec.html), start-ordered, each
+    /// with its nesting depth and its free slots as [startMin, endMin] pairs,
+    /// not floored at now. Absent from payloads before frames.
+    var frames: [DialFrameWire]?
     var totals: DialTotals?
+}
+
+struct DialFrameWire: Codable {
+    var name: String?
+    var colorHex: String?
+    var startMin: Int?
+    var endMin: Int?
+    var depth: Int?
+    var slots: [[Int]]?
 }
 
 struct DialAllDayItem: Codable {
@@ -198,6 +211,9 @@ struct DialTotals: Codable {
     var restoreMinutes: Int?
     var sleepMinutes: Int?
     var unblockedMinutes: Int?
+    /// Scheduled minutes inside the top-level frames over their minutes, as a
+    /// whole percent; null on a day without frames (no legend entry).
+    var framesPercent: Int?
 }
 
 struct DialBlock: Codable {

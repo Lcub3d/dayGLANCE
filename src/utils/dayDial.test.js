@@ -1461,7 +1461,7 @@ describe('projectDialSnapshot', () => {
     for (const v of Object.values(totals)) expect(v === null || Number.isInteger(v)).toBe(true);
     const bare = projectDialSnapshot({ date: 'd', dayTasks: [] });
     expect(bare.allDay).toEqual([]);
-    expect(bare.totals).toEqual({ effortMinutes: 0, restoreMinutes: 0, sleepMinutes: null, unblockedMinutes: null });
+    expect(bare.totals).toEqual({ effortMinutes: 0, restoreMinutes: 0, sleepMinutes: null, unblockedMinutes: null, framesPercent: null });
   });
 
   it('classifies energy the way the dial does', () => {

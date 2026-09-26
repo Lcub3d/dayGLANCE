@@ -37,6 +37,8 @@ export default function useJoboLedger({ pickRecord, store } = {}) {
     joboWritable: state.writable,
     joboError: state.error,
     recordJobo: ledger.current.commit,
+    // Committed plus held, for the detector only; see ledger.workingSet.
+    readJoboWorkingSet: ledger.current.workingSet,
     applyRemoteJobo: ledger.current.applyRemote,
     restoreJobo: ledger.current.restore,
     reloadJobo: ledger.current.load,

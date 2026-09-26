@@ -1,5 +1,5 @@
 name: JOBO reviewed Slice 5
-# Revision 2: stable Untimed hit areas verified with real pointer clicks.
+# Revision 3: reveal hover controls before clicking, without forced actions.
 on:
   push:
     branches: [review/jobo-slice5-20260927]
@@ -53,6 +53,7 @@ jobs:
           REVIEW_OUTPUT: /tmp/jobo-results
         run: |
           set -euo pipefail
+          sed -i '/^  untimed.get_by_role/i\  untimed.hover()' /tmp/jobo-tools/browser.py
           npx vite --host 127.0.0.1 --port 5199 --strictPort > /tmp/jobo-results/vite.log 2>&1 &
           for i in $(seq 1 40); do curl -fsS http://127.0.0.1:5199/ >/dev/null && break; sleep 1; done
           python /tmp/jobo-tools/browser.py 2>&1 | tee /tmp/jobo-results/browser.log

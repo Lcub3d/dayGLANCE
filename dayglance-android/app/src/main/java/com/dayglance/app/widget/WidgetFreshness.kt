@@ -130,9 +130,20 @@ internal const val STALE_CONTENT_ALPHA = 0.45f
  * 12/24-hour clock follow the device, with the snapshot's clock preference
  * winning when it carries one.
  */
-internal fun formatStaleLabel(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): String {
+internal fun formatStaleLabel(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): String =
+    (listOf(context.getString(R.string.widget_outdated)) + staleDetailParts(context, freshness, use24Hour)).joinToString("  ·  ")
+
+/**
+ * The stale label without its "Outdated" head, for a surface that shows the
+ * head on a row of its own (the Day Dial's hub): "as of Thu, Sep 17, 8:42 PM
+ * · 3 days old", or null when the snapshot said neither when nor what day.
+ */
+internal fun formatStaleDetail(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): String? =
+    staleDetailParts(context, freshness, use24Hour).takeIf { it.isNotEmpty() }?.joinToString("  ·  ")
+
+private fun staleDetailParts(context: Context, freshness: WidgetFreshness, use24Hour: Boolean): List<String> {
     val locale = context.resources.configuration.locales.let { if (it.isEmpty) Locale.getDefault() else it[0] }
-    val parts = mutableListOf(context.getString(R.string.widget_outdated))
+    val parts = mutableListOf<String>()
     if (freshness.capturedAtMs > 0L) {
         val skeleton = if (use24Hour) "EEEMMMdHm" else "EEEMMMdhm"
         val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
@@ -144,7 +155,7 @@ internal fun formatStaleLabel(context: Context, freshness: WidgetFreshness, use2
     if (freshness.daysOld >= 2) {
         parts += context.resources.getQuantityString(R.plurals.widget_days_old, freshness.daysOld, freshness.daysOld)
     }
-    return parts.joinToString("  ·  ")
+    return parts
 }
 
 /**

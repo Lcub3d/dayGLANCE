@@ -255,6 +255,21 @@
             </intent-filter>
         </activity>
 
+        <!-- Home screen widget: Day Dial (the day as a 24-hour dial; widget/dial/).
+             Its own minute tick is a broadcast to this receiver
+             (DayDialTicker), explicit by component. -->
+        <receiver
+            android:name=".widget.dial.DayDialWidget"
+            android:exported="true"
+            android:label="@string/widget_day_dial_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_day_dial_info" />
+        </receiver>
+
         <!-- Home screen widget: Month grid (six weeks, per-cell bitmaps) -->
         <receiver
             android:name=".widget.MonthGridWidget"

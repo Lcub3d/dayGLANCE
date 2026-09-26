@@ -42,6 +42,9 @@ class ReminderReceiver : BroadcastReceiver() {
         // re-arm it within 15 minutes, but a reboot at 23:58 should not miss
         // the boundary.
         runCatching { com.dayglance.app.widget.MidnightRolloverReceiver.arm(context) }
+        // The Day Dial redraws in full on boot (the system forgot its views)
+        // and its minute tick, also one-shot, starts again from there.
+        runCatching { com.dayglance.app.widget.dial.DayDialWidget.requestRedraw(context) }
     }
 
     private fun showReminder(context: Context, intent: Intent) {

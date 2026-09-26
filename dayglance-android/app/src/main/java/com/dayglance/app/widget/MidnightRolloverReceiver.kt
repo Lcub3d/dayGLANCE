@@ -54,6 +54,7 @@ class MidnightRolloverReceiver : BroadcastReceiver() {
         // a late or missed alarm still resets on the next render).
         runCatching { MonthAgendaSelectionStore.clearAll(context) }
         runCatching { MonthAgendaWidget.requestUpdate(context) }
+        runCatching { com.dayglance.app.widget.dial.DayDialWidget.requestUpdate(context) }
     }
 
     companion object {

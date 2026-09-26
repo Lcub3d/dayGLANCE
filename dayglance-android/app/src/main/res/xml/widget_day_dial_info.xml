@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Day Dial: the face is drawn for the size the host reports and redrawn on a
+  resize (DayDialWidget.onAppWidgetOptionsChanged). Below ~180dp the hub's
+  text is too small to read. No updatePeriodMillis: the widget keeps its own
+  minute tick while the screen is on (DayDialTicker), and the shared backstops
+  (MidnightRolloverReceiver, WidgetUpdateWorker, each push) cover the rest.
+
+  The picker preview is a static image: the live layout's face is a bitmap
+  the picker never draws. widget_day_dial_preview.png is the real
+  DialFacePainter run offline on the snapshot fixture (09:20 on its day).
+  Redraw it if the look changes.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="250dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="180dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="4"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_day_dial"
+    android:previewImage="@drawable/widget_day_dial_preview"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_day_dial_description" />

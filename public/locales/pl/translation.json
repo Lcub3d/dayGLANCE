@@ -2146,6 +2146,8 @@
     "view": {
       "activeLabel": "Czas aktywny",
       "addDo": "Add Do",
+      "continueDo": "Kontynuuj",
+      "continueDoHint": "Zapisz kolejną sesję tego zadania",
       "capturedPlan": "Captured plan",
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Wprowadź pełny przedział początku i końca.",

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { CheckCircle2, Clock, Pencil } from 'lucide-react';
+import { CheckCircle2, Clock, Pencil, Plus } from 'lucide-react';
 import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
+import { stripWikilinks } from '../../utils/taskUtils.js';
 import { timingRows } from './ExecutionAxes.jsx';
 
 // The Do side of JOBO, drawn with the same grid as the Plan side (DAY's own
@@ -36,7 +37,27 @@ export function estimateCompletion(item) {
 
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 
-function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails, onPointGesture, onResizeGesture }) {
+/**
+ * The card's timing signals, split by where they sit. A single status (no Do
+ * time recorded, nothing started, no plan to compare against) reads as part
+ * of the status line: "09:00–09:45 · Partial · Unplanned". The start, finish
+ * and duration comparison keeps a line of its own.
+ */
+export function cardSignals(comparison, t) {
+  const rows = comparison ? timingRows(comparison, t) : [];
+  if (rows.length === 1 && !rows[0].state) {
+    const [row] = rows;
+    return { inline: row.key === 'incomplete' ? { ...row, text: t('jobo.view.timeIncompleteShort'), title: row.text } : row, rows: [] };
+  }
+  return { inline: null, rows };
+}
+
+// Only an unfinished attempt linked to a task can be continued: the follow-up
+// shares its task and captured plan, so the two group as one execution. An
+// unlinked Do has nothing to tie a follow-up to.
+export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
+
+function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   const top = item.startMinute * hourHeight / 60;
   const height = Math.max(MIN_CARD_PX, (item.endMinute - item.startMinute) * hourHeight / 60 - 2);
@@ -47,7 +68,9 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
     : item.point
       ? ctx.formatTime(item.time)
       : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`;
-  const signals = !item.point && item.comparison ? timingRows(item.comparison, t) : [];
+  const { inline, rows: signals } = !item.point ? cardSignals(item.comparison, t) : { inline: null, rows: [] };
+  const status = pending ? t('jobo.view.pendingSave') : item.estimate ? t('jobo.view.estimatedShort') : progressText(record.progress, t);
+  const continuable = writable && !pending && !item.estimate && canContinue(record);
   // An interval that ends on another day is clipped here; resizing it from
   // this column would move an end the column cannot show.
   const canResize = writable && !pending && (item.estimate || (!item.point && record.endDate === record.date));
@@ -76,15 +99,27 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
       <div className="px-2 py-1 h-full flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           {item.point && <CheckCircle2 size={12} className="flex-shrink-0 opacity-90" aria-hidden="true" />}
-          <div className="font-semibold text-sm leading-tight truncate flex-1 min-w-0" title={record.title}>
+          <div className="font-semibold text-sm leading-tight truncate flex-1 min-w-0" title={stripWikilinks(record.title)}>
             {renderTitleWithoutTags(record.title)}
           </div>
+          {continuable && (
+            <button
+              type="button"
+              data-jobo-continue
+              onClick={(event) => { event.stopPropagation(); onContinue(item); }}
+              className="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors"
+              aria-label={`${t('jobo.view.continueDo')}: ${stripWikilinks(record.title)}`}
+              title={t('jobo.view.continueDoHint')}
+            >
+              <Plus size={12} />
+            </button>
+          )}
           {writable && !pending && (
             <button
               type="button"
               onClick={(event) => { event.stopPropagation(); onEdit(record); }}
               className="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors"
-              aria-label={`${t('common.edit')}: ${record.title}`}
+              aria-label={`${t('common.edit')}: ${stripWikilinks(record.title)}`}
             >
               <Pencil size={12} />
             </button>
@@ -98,7 +133,10 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
         {!isMicro && (
           <div className="text-xs opacity-90 flex items-center gap-1 min-w-0 whitespace-nowrap">
             <Clock size={10} className="flex-shrink-0" />
-            <span className="truncate">{timeLabel} · {pending ? t('jobo.view.pendingSave') : item.estimate ? t('jobo.view.estimatedShort') : progressText(record.progress, t)}</span>
+            <span className="truncate" title={inline?.title}>
+              {timeLabel} · {status}
+              {inline && <span data-jobo-axis={inline.key}> · {inline.text}</span>}
+            </span>
           </div>
         )}
         {!isMicro && signals.length > 0 && height > 60 && (
@@ -127,7 +165,7 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
 export default function DoColumn({
   date, hourHeight, items, ctx, t,
   writable, pendingIds = [], preview,
-  onAddAt, onEdit, onDetails, onPointGesture, onResizeGesture,
+  onAddAt, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture,
   laneRef,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
@@ -189,6 +227,7 @@ export default function DoColumn({
             writable={writable}
             pending={pendingIds.includes(item.id)}
             onEdit={onEdit}
+            onContinue={onContinue}
             onDetails={onDetails}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}

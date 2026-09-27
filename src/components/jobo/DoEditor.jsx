@@ -115,7 +115,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
   }}>
     <section ref={dialogRef} onKeyDown={onKeyDown} role="dialog" aria-modal="true" aria-labelledby="jobo-do-editor-title"
       className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto`}>
-      <h3 id="jobo-do-editor-title" className={`font-semibold ${textPrimary} mb-4 text-lg`}>{record ? t('common.edit') : t('jobo.view.addDo')}</h3>
+      <h3 id="jobo-do-editor-title" className={`font-semibold ${textPrimary} mb-4 text-lg`}>{record ? t('common.edit') : initial?.continuing ? t('jobo.view.continueDo') : t('jobo.view.addDo')}</h3>
       <form onSubmit={(event) => { event.preventDefault(); save(); }}>
         <fieldset disabled={busy} className="space-y-4">
           <div>

@@ -158,3 +158,46 @@ describe('a completion with a planned duration is drawn as a dashed estimate', (
     expect(recordJobo).not.toHaveBeenCalled();
   });
 });
+
+describe('an unfinished Do can be continued', () => {
+  const plan = { date: '2026-09-24', startTime: '09:00', duration: 30 };
+
+  it('offers Continue on an unfinished linked attempt, and not on a completed, unlinked or estimated one', () => {
+    expect(render({ joboRecords: [timed({ progress: 'partial', planSnapshot: plan })] })).toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ progress: 'completed', planSnapshot: plan })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ taskId: null })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [point({ planSnapshot: plan })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ progress: 'partial' })], joboWritable: false })).not.toContain('data-jobo-continue');
+  });
+
+  // MUTATION: drop the task or the plan from continueInitial and the
+  // follow-up is a separate "Unplanned" execution instead of a second session.
+  it('the follow-up shares the task and captured plan, so it groups with the original', async () => {
+    const { continueInitial } = await import('./JoboView.jsx');
+    const { createManualDo } = await import('../jobo/viewActions.js');
+    const { buildJoboDayModel } = await import('../jobo/viewModel.js');
+    const first = timed({ progress: 'partial', planSnapshot: plan });
+    const initial = continueInitial(first, '2026-09-24', 11 * 60);
+    expect(initial).toMatchObject({ title: 'Deep work', continuing: true, planSnapshot: plan });
+    const next = createManualDo({ id: 'manual:2', title: initial.title, task: initial.task, planSnapshot: initial.planSnapshot,
+      date: initial.date, startMinute: initial.startMinute, duration: initial.duration, now: Date.parse('2026-09-24T16:00:00Z') });
+    expect(next).toMatchObject({ taskId: 't1', planSnapshot: plan, progress: 'started', startTime: '11:00' });
+    const model = buildJoboDayModel({ date: '2026-09-24', tasks: [task], records: [first, next] });
+    expect(model.timedRecords).toHaveLength(2);
+    const [a, b] = model.timedRecords;
+    expect(a.groupKey).toBe(b.groupKey);
+    expect(a.attempts.map((attempt) => attempt.id ?? attempt.record?.id).sort()).toEqual(['manual:1', 'manual:2']);
+  });
+});
+
+describe('a single timing status reads on the status line', () => {
+  it('"Unplanned" sits beside the progress rather than on a line of its own', async () => {
+    const { cardSignals } = await import('./jobo/DoColumn.jsx');
+    const t = (key) => key;
+    expect(cardSignals({ planContext: 'noPlan', metrics: {} }, t)).toEqual({ inline: { key: 'unplanned', text: 'jobo.view.summary.unplanned' }, rows: [] });
+    expect(cardSignals({ metrics: { untimedAttemptCount: 1 } }, t).inline).toMatchObject({ text: 'jobo.view.timeIncompleteShort', title: 'jobo.view.timeIncomplete' });
+    expect(cardSignals(null, t)).toEqual({ inline: null, rows: [] });
+    const html = render({ joboRecords: [timed({ taskId: null, progress: 'partial' })] });
+    expect(html).toMatch(/10:00–11:00 · jobo\.view\.progress\.partial<span data-jobo-axis="unplanned"> · jobo\.view\.summary\.unplanned<\/span>/);
+  });
+});

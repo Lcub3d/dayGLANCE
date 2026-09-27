@@ -48,7 +48,7 @@ import { widgetDayTasks } from './utils/widgetNativeEvents.js';
 import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
-import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, renderTitleWithoutTags, extractShareTitle } from './utils/textFormatting.jsx';
+import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, extractShareTitle } from './utils/textFormatting.jsx';
 import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
@@ -6953,8 +6953,8 @@ const DayPlanner = () => {
       // Only include tasks that can actually fit in the available slot.
       // Tasks with no duration are always included (we don't know how long they take).
       const candidates = [
-        ...inboxItems.map(t => ({ id: t.id, title: renderTitleWithoutTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: true })),
-        ...todayScheduled.map(t => ({ id: t.id, title: renderTitleWithoutTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: false })),
+        ...inboxItems.map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: true })),
+        ...todayScheduled.map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: false })),
       ]
         .filter(t => !t.duration || t.duration <= effectiveMinutes)
         .slice(0, 20);
@@ -6992,7 +6992,7 @@ const DayPlanner = () => {
       setFrameNudgeError('Could not get suggestion.');
     }
     setFrameNudgeLoading(false);
-    // extractTags and renderTitleWithoutTags are module-level imports, not
+    // extractTags and stripWikilinksAndTags are module-level imports, not
     // reactive values, so they are intentionally not listed.
   }, [agendaNowMarker, aiConfig, currentTime, getFrameInstancesForDate, getTasksForDate, isVisibleForUser, unscheduledTasks]);
 

@@ -2059,6 +2059,8 @@
     "view": {
       "activeLabel": "Aktive Zeit",
       "addDo": "Add Do",
+      "continueDo": "Fortsetzen",
+      "continueDoHint": "Eine weitere Sitzung dieser Aufgabe erfassen",
       "capturedPlan": "Captured plan",
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Bitte vollständige Start- und Endzeit eingeben.",

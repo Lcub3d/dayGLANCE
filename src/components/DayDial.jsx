@@ -7,8 +7,10 @@ import DialComplications from './DialComplications.jsx';
 import {
   DIAL_COLORS,
   DIAL_DAY_MINUTES,
+  DIAL_FRAME_MAX_DEPTH,
   DIAL_FRAME_MIN_MINUTES,
   DIAL_FRAME_OPACITY,
+  DIAL_FRAME_STEP,
   computeDialFrames,
   computeDialModel,
   computeDialRoutines,
@@ -186,13 +188,27 @@ function TickField() {
 // below the wedges' rims and the now line stays the brightest thing here.
 // Pure context: not selectable, not pointed at; the hub speaks for the
 // frame now is in.
+//
+// One departure from the proportional scaling: here the band's inner edge
+// has no gap in front of it (the daylight band tucks under the wedges, to
+// 302), so the scaled inner outline landed ON the sky strip. It sits just
+// outside the strip instead, its stroke's inner edge on the strip's outer
+// edge; a nested frame steps in from there. The outer outline keeps the
+// scaled radius.
+const FRAME_INNER_FLOOR = R_DAYLIGHT_BAND[1];
+function frameRadii(depth) {
+  const r = dialFrameRadii(R_INNER, R_EDGE, depth);
+  const d = Math.max(0, Math.min(DIAL_FRAME_MAX_DEPTH, depth));
+  return { ...r, inner: FRAME_INNER_FLOOR + r.width / 2 + d * DIAL_FRAME_STEP * (R_EDGE - R_INNER) };
+}
+
 function FrameEnclosures({ frames }) {
   return (
     <g pointerEvents="none" aria-hidden="true">
       {frames
         .filter((f) => f.endMin - f.startMin >= DIAL_FRAME_MIN_MINUTES)
         .map((f) => {
-          const r = dialFrameRadii(R_INNER, R_EDGE, f.depth);
+          const r = frameRadii(f.depth);
           return (
             <path
               key={`${f.id}-${f.startMin}`}

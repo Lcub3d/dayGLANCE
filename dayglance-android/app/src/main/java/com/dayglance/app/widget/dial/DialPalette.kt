@@ -81,7 +81,17 @@ object DialPalette {
     const val ROUTINE_DONE_OPACITY = 0.18
 
     /** muteDialColor: keep the hue, cap saturation at 0.5, pin lightness at 0.73. */
-    fun mute(hex: String?): String {
+    fun mute(hex: String?): String = mute(hex, 0.5, 0.73)
+
+    /**
+     * A frame's enclosure (muteDialFrameColor): the same hue rule softened to
+     * 0.28 / 0.62, so the outline sits below the block rims. The hub's frame
+     * title uses [mute], on purpose.
+     */
+    fun muteFrame(hex: String?): String = mute(hex, DialFrames.SATURATION_CAP, DialFrames.LIGHTNESS)
+
+    /** muteDialColorWith: the cap and the pinned lightness as inputs. */
+    fun mute(hex: String?, saturationCap: Double, lightness: Double): String {
         val rgb = rgb(hex) ?: return FALLBACK_HEX
         val (r, g, b) = rgb
         val mx = maxOf(r, g, b)
@@ -97,8 +107,8 @@ object DialPalette {
         }
         val l0 = (mx + mn) / 2
         val s0 = if (mx == mn) 0.0 else (mx - mn) / (1 - abs(2 * l0 - 1))
-        val s = min(s0, 0.5)
-        val l = 0.73
+        val s = min(s0, saturationCap)
+        val l = lightness
         val c = (1 - abs(2 * l - 1)) * s
         val x = c * (1 - abs((h * 6) % 2 - 1))
         val m2 = l - c / 2

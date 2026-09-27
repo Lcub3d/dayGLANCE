@@ -102,8 +102,8 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
           <dd>{row.text}</dd>
         </div>)}
       </dl>}
-      {hasEstimated && <p>{t('jobo.daily.inferredHint')}</p>}
-      {(hasEstimated || hasUntimed) && metrics.length > 0 && <p>{t('jobo.daily.measuredOnly')}</p>}
+      {hasEstimated && <p>{t('jobo.view.inferredHint')}</p>}
+      {(hasEstimated || hasUntimed) && metrics.length > 0 && <p>{t('jobo.view.measuredOnly')}</p>}
       {metrics.length > 0 && <dl className="jobo-s5-execution-metrics">
         {metrics.map((row) => <div key={row.key}><dt>{row.key === 'recordedMinutes' ? t('jobo.view.recordedLabel', { defaultValue: 'Recorded' }) : row.key === 'activeMinutes' ? t('jobo.view.activeLabel', { defaultValue: 'Active' }) : row.key === 'elapsedMinutes' ? t('jobo.view.elapsedLabel', { defaultValue: 'Elapsed' }) : row.key === 'gapMinutes' ? t('jobo.view.gapLabel', { defaultValue: 'Gaps' }) : t('jobo.view.overlapLabel', { defaultValue: 'Overlap' })}</dt><dd>{row.text}</dd></div>)}
       </dl>}

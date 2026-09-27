@@ -17,6 +17,9 @@ enum class DialHubRowStyle {
     TITLE,
     /** Title row in the runway's teal: open time. */
     TITLE_OPEN,
+    /** Title row after the Frames mark, in the frame's colour through the
+     *  STANDARD mute (the ring uses the softer one): the current frame. */
+    TITLE_FRAME,
     /** Title row in warning amber: Outdated / Time zone changed. */
     TITLE_STATUS,
     /** Title row, white 55 %: Sleep. */
@@ -36,7 +39,22 @@ data class DialHubRow(
     val style: DialHubRowStyle,
     /** May shrink to [DialSpec.Hub.MINIMUM_SCALE] before it truncates. */
     val shrinks: Boolean = false,
+    /** [DialHubRowStyle.TITLE_FRAME]: the frame's own colour, unmuted. */
+    val colorHex: String? = null,
 )
+
+/**
+ * The frame the hub speaks for when nothing is running: the innermost frame
+ * the minute is inside ([DialFrames.current]) and its free time from then on.
+ */
+data class DialHubFrame(val name: String, val colorHex: String?, val startMin: Double, val endMin: Double,
+                        val availableMinutes: Double) {
+    companion object {
+        fun of(frames: List<DialFrame>, nowMin: Double): DialHubFrame? = DialFrames.current(frames, nowMin)?.let {
+            DialHubFrame(it.name, it.colorHex, it.startMin, it.endMin, DialFrames.availableMinutes(it, nowMin))
+        }
+    }
+}
 
 /**
  * The layout slots a live row can occupy. The row's baseline and font decide
@@ -85,6 +103,8 @@ interface DialHubCopy {
     fun nothingElseToday(): String
     fun thenOpen(duration: String): String
     fun thenUntilSleep(duration: String): String
+    /** "27m available": the free time left in the current frame. */
+    fun available(duration: String): String
     fun sleep(): String
     fun outdated(): String
     fun zoneChanged(): String
@@ -105,7 +125,7 @@ data class DialHubRows(
     /** Everything drawn into the face: the rows minus the live one. */
     val staticKey: String
         get() = buildList {
-            title?.let { if (!(hasLive && liveIndex == null)) add("t:${it.style}|${it.text}") else add("t:${it.style}|<live>") }
+            title?.let { if (!(hasLive && liveIndex == null)) add("t:${it.style}|${it.text}|${it.colorHex ?: ""}") else add("t:${it.style}|<live>") }
             stack.forEachIndexed { i, r -> add("r$i:${r.style}|${if (hasLive && liveIndex == i) "<live>" else r.text}") }
         }.joinToString("\n")
 
@@ -121,6 +141,8 @@ data class DialHubRows(
             outdatedDetail: String? = null,
             plannedAsOf: String? = null,
             measure: (String) -> Double = { it.length * 6.0 },
+            /** Set when nothing is running on a live day: its rows replace open time. */
+            frame: DialHubFrame? = null,
         ): DialHubRows {
             var title: DialHubRow? = null
             val stack = ArrayList<DialHubRow>()
@@ -155,6 +177,17 @@ data class DialHubRows(
                     } else if (s != null) {
                         title = DialHubRow(copy.sleep(), DialHubRowStyle.TITLE_SLEEP)
                         stack += DialHubRow(copy.until(copy.clock(s.endMin)), DialHubRowStyle.DETAIL)
+                    } else if (frame != null) {
+                        // The frame, as GLANCE shows it: name, span, time still
+                        // free. The free time counts down inside a free slot, so
+                        // it is the live row (a strip, not a face redraw).
+                        title = DialHubRow(frame.name, DialHubRowStyle.TITLE_FRAME, shrinks = true, colorHex = frame.colorHex)
+                        stack += DialHubRow("${copy.clock(frame.startMin)}–${copy.clock(frame.endMin)}", DialHubRowStyle.DETAIL)
+                        if (frame.availableMinutes > 0) {
+                            liveIndex = stack.size
+                            hasLive = true
+                            stack += DialHubRow(copy.available(copy.duration(frame.availableMinutes)), DialHubRowStyle.RUNWAY)
+                        }
                     } else if (o != null) {
                         title = DialHubRow(copy.open(copy.duration(o.minutesUntil)), DialHubRowStyle.TITLE_OPEN, shrinks = true)
                         hasLive = true

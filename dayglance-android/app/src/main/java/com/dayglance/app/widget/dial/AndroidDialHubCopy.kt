@@ -58,6 +58,7 @@ internal class AndroidDialHubCopy(
     override fun nothingElseToday() = context.getString(R.string.day_dial_nothing_else_today)
     override fun thenOpen(duration: String) = context.getString(R.string.day_dial_then_open, duration)
     override fun thenUntilSleep(duration: String) = context.getString(R.string.day_dial_then_until_sleep, duration)
+    override fun available(duration: String) = context.getString(R.string.day_dial_frame_available, duration)
     override fun sleep() = context.getString(R.string.day_dial_sleep)
     override fun outdated() = context.getString(R.string.widget_outdated)
     override fun zoneChanged() = context.getString(R.string.day_dial_zone_changed)

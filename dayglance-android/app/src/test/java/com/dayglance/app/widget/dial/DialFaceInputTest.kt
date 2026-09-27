@@ -39,6 +39,20 @@ class DialFaceInputTest {
         assertFalse(input.projectedDay)
     }
 
+    @Test fun `the fixture's frames reach the face, and name a new face`() {
+        val input = DialFaceInput.from(root, projectedDay = false)
+        assertEquals(listOf("Deep work", "Focus", "Admin", "Evening"), input.frames.map { it.name })
+        assertEquals(listOf(0, 1, 0, 0), input.frames.map { it.depth })
+        assertEquals(listOf(900.0 to 990.0), input.frames[2].slots)
+        assertNotEquals(input.copy(frames = emptyList()).seed, input.seed)
+        // Names and free time are the hub's: they do not redraw the face.
+        val renamed = input.copy(frames = input.frames.map { it.copy(name = "x", slots = emptyList()) })
+        assertEquals(input.seed, renamed.seed)
+        // A frame that does not end after it starts never reaches the ring.
+        val bad = JSONObject("""{"dial":{"blocks":[],"frames":[{"name":"x","startMin":600,"endMin":600,"depth":0,"slots":[]}]}}""")
+        assertTrue(DialFaceInput.from(bad, false).frames.isEmpty())
+    }
+
     @Test fun `a projected day reads its own entry and marks the tier`() {
         val day = root.getJSONArray("days").getJSONObject(0)
         val input = DialFaceInput.from(day, projectedDay = true)

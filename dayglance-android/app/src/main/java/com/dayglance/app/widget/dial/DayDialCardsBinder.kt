@@ -35,6 +35,7 @@ internal object DayDialCardsBinder {
         DialLegendKey.SLEEP to (R.id.ll_day_dial_legend_sleep to R.id.tv_day_dial_legend_sleep_value),
         DialLegendKey.UNBLOCKED to (R.id.ll_day_dial_legend_unblocked to R.id.tv_day_dial_legend_unblocked_value),
         DialLegendKey.ROUTINES to (R.id.ll_day_dial_legend_routines to R.id.tv_day_dial_legend_routines_value),
+        DialLegendKey.FRAMES to (R.id.ll_day_dial_legend_frames to R.id.tv_day_dial_legend_frames_value),
     )
 
     private val TEXT_ON = Color.argb((0.90 * 255).toInt(), 255, 255, 255)
@@ -87,15 +88,20 @@ internal object DayDialCardsBinder {
         }
         for ((key, ids) in LEGEND) {
             val item = cards.legend.firstOrNull { it.key == key }
-            views.setViewVisibility(ids.first, if (item != null) View.VISIBLE else View.GONE)
+            // Frames holds the tall grid's third column when absent, as the
+            // spacer it replaced did, so unblocked and routines keep their width.
+            val absent = if (key == DialLegendKey.FRAMES && arrangement.placement == DialPlacement.TALL) View.INVISIBLE else View.GONE
+            views.setViewVisibility(ids.first, if (item != null) View.VISIBLE else absent)
             if (item != null) views.setTextViewText(ids.second, legendValue(item, copy))
         }
     }
 
     private val LEGEND_ICONS = listOf(R.id.iv_day_dial_legend_effort_icon, R.id.iv_day_dial_legend_restore_icon,
-        R.id.iv_day_dial_legend_sleep_icon, R.id.iv_day_dial_legend_unblocked_icon, R.id.iv_day_dial_legend_routines_icon)
+        R.id.iv_day_dial_legend_sleep_icon, R.id.iv_day_dial_legend_unblocked_icon, R.id.iv_day_dial_legend_routines_icon,
+        R.id.iv_day_dial_legend_frames_icon)
     private val LEGEND_LABELS = listOf(R.id.tv_day_dial_legend_effort_label, R.id.tv_day_dial_legend_restore_label,
-        R.id.tv_day_dial_legend_sleep_label, R.id.tv_day_dial_legend_unblocked_label, R.id.tv_day_dial_legend_routines_label)
+        R.id.tv_day_dial_legend_sleep_label, R.id.tv_day_dial_legend_unblocked_label, R.id.tv_day_dial_legend_routines_label,
+        R.id.tv_day_dial_legend_frames_label)
 
     /**
      * Draws the cards up by the arrangement's scale: type, icons, the card
@@ -140,7 +146,10 @@ internal object DayDialCardsBinder {
 
     private fun px(dp: Double, resources: Resources): Int = (dp * resources.displayMetrics.density).toInt()
 
-    /** "3h 20m", or "2/3" for routines, as the in-app legend reads. */
-    fun legendValue(item: DialLegendItem, copy: DialHubCopy): String =
-        if (item.key == DialLegendKey.ROUTINES) "${item.done}/${item.total}" else copy.duration(item.minutes ?: 0.0)
+    /** "3h 20m", "2/3" for routines, or "45%" for frames, as the in-app legend reads. */
+    fun legendValue(item: DialLegendItem, copy: DialHubCopy): String = when (item.key) {
+        DialLegendKey.ROUTINES -> "${item.done}/${item.total}"
+        DialLegendKey.FRAMES -> "${item.percent ?: 0}%"
+        else -> copy.duration(item.minutes ?: 0.0)
+    }
 }

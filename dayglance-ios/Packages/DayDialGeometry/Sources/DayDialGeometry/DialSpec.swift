@@ -124,6 +124,9 @@ public enum DialSpec {
         public static let runwayFontSize: Double = 11
         public static let runwayOpacity: Double = 0.72
         public static let runwayColorHex = "#4ec9b0"
+        /// The Frames mark before a frame's name in the title row: the four
+        /// squares read at about the spec's 10pt glyph (4.2pt squares).
+        public static let frameMarkFontSize: Double = 10
         public static let runwayMinimumMinutes: Double = 30
 
         // Phase 5 states, in the same rows.

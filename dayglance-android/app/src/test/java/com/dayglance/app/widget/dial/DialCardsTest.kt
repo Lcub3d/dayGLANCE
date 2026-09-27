@@ -22,13 +22,15 @@ class DialCardsTest {
 
     @Test fun `the fixture's pushed day carries the legend, in the app's order`() {
         val c = DialCards.from(root, DialFaceInput.from(root, false).blocks)
-        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED), c.legend.map { it.key })
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED, DialLegendKey.FRAMES),
+            c.legend.map { it.key })
         assertEquals(200.0, c.legend[0].minutes!!, 0.0)
         assertEquals(590.0, c.legend[3].minutes!!, 0.0)
+        assertEquals(45, c.legend[4].percent)
         assertTrue(c.allDay.isEmpty())
         // Every projected day has its own.
         val day = root.getJSONArray("days").getJSONObject(0)
-        assertEquals(4, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
+        assertEquals(5, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
     }
 
     @Test fun `no declared window means no sleep and no unblocked, as in the app`() {
@@ -42,6 +44,18 @@ class DialCardsTest {
         val r = c.legend.last()
         assertEquals(DialLegendKey.ROUTINES, r.key)
         assertEquals(1, r.done); assertEquals(2, r.total)
+    }
+
+    @Test fun `frames come last with their percent, and not at all without frames`() {
+        val c = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"sleepMinutes":null,"unblockedMinutes":null,"framesPercent":0}""",
+            blocks = """[{"type":"routine","id":"r1","startMin":420,"durationMin":15,"completed":true}]"""))
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.ROUTINES, DialLegendKey.FRAMES), c.legend.map { it.key })
+        assertEquals(0, c.legend.last().percent)
+        assertEquals("0%", DayDialCardsBinder.legendValue(c.legend.last(), DialHubRowsTest.English))
+        val none = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"framesPercent":null}"""))
+        assertFalse(none.legend.any { it.key == DialLegendKey.FRAMES })
+        // Frames alone opens the tall grid's second row.
+        assertTrue(DialArrangement.tallLegendSecondRow(c))
     }
 
     @Test fun `an app build without totals draws no legend rather than an empty day`() {
@@ -159,6 +173,26 @@ class DialCardsTest {
         assertEquals(2 to 3, DialArrangement.overflow(5, 2))
         assertEquals(1 to 0, DialArrangement.overflow(1, 3))
         assertEquals(0 to 4, DialArrangement.overflow(4, 0))
+    }
+
+    // The id checks below read the layouts with a regex, which a malformed
+    // file passes; the resource merger does not (a Frames cell once shipped
+    // one closing tag short and broke the release build). Every layout must
+    // parse, and each legend cell must sit in its row or list.
+    @Test fun `every day dial layout is well-formed XML with the legend cells in place`() {
+        val parser = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+        for (file in File("src/main/res/layout").listFiles()!!.filter { it.name.startsWith("widget_day_dial") }) {
+            val doc = parser.parse(file)
+            val cells = doc.getElementsByTagName("LinearLayout")
+            for (i in 0 until cells.length) {
+                val cell = cells.item(i) as org.w3c.dom.Element
+                val id = cell.getAttribute("android:id")
+                if (!id.startsWith("@+id/ll_day_dial_legend_") || id.endsWith("row1") || id.endsWith("row2")) continue
+                val parent = (cell.parentNode as org.w3c.dom.Element).getAttribute("android:id")
+                assertTrue("${file.name}: $id sits in $parent",
+                    parent == "@+id/ll_day_dial_legend" || parent == "@+id/ll_day_dial_legend_row1" || parent == "@+id/ll_day_dial_legend_row2")
+            }
+        }
     }
 
     // The binder touches only ids a placement's layout carries: this pins the

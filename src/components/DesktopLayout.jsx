@@ -36,7 +36,6 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 
 const DesktopLayout = () => {
-  const [joboHeaderTarget, setJoboHeaderTarget] = useState(null);
   const {
     isPhone, isMobile, isTablet, isLandscape,
     visibleDays, visibleDates,
@@ -861,8 +860,8 @@ const DesktopLayout = () => {
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
-              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 shrink-0 ${cardBg}`}>
-              <CalendarHeader joboControlsRef={setJoboHeaderTarget} />
+              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 ${effectiveViewMode === 'jobo' ? 'shrink-0' : ''} ${cardBg}`}>
+              <CalendarHeader />
               </div>
 
               {/* Main calendar grid — switches between multi/day/week views, or
@@ -886,7 +885,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'week' && <WeekView />}
                     {effectiveViewMode === 'sched' && <SchedDashboard />}
                     {effectiveViewMode === 'month' && <MonthView />}
-                    {effectiveViewMode === 'jobo' && <JoboView headerControlsTarget={joboHeaderTarget} />}
+                    {effectiveViewMode === 'jobo' && <JoboView />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.

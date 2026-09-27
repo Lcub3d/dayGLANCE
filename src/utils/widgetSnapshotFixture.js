@@ -18,6 +18,8 @@
 import { buildProjectedDay, projectionDates, dateToString } from './widgetDayProjection.js';
 import { DEFAULT_ALARM_PREFS } from './dialPrefs.js';
 import { buildWidgetMonthWindow } from './widgetMonthWindow.js';
+import { frameInstancesForDate } from './frameInstances.js';
+import { computeAvailableSlots } from './dayOccupancy.js';
 
 export const LIVE_SNAPSHOT_TIMEZONE = 'America/Denver';
 export const LIVE_SNAPSHOT_PATH = 'dayglance-ios/TestFixtures/widgetSnapshot.live.json';
@@ -42,6 +44,28 @@ export function liveFixtureTasks(dateStr) {
     task(dateStr, { id: `${dateStr}-dinner`, title: 'Dinner with Sam', startTime: '18:30', duration: 90, color: 'bg-rose-500' }),
     task(dateStr, { id: `${dateStr}-read`, title: 'Read', startTime: '21:00', duration: 40, color: 'bg-indigo-500' }),
   ];
+}
+
+/**
+ * Frames on every weekday: a morning block with a focus frame inside it (the
+ * nested case, which only a per-day exception produces in the app), an
+ * afternoon block with nothing scheduled in it (0 %), and the evening. Colours
+ * are the editor's pastel classes, as stored.
+ */
+export const LIVE_FIXTURE_FRAMES = [
+  { id: 'f-morning', label: 'Deep work', color: 'bg-indigo-200', days: [1, 2, 3, 4, 5], start: '08:30', end: '12:30', enabled: true, bufferMinutes: 5 },
+  { id: 'f-focus', label: 'Focus', color: 'bg-green-200', days: [1, 2, 3, 4, 5], start: '09:00', end: '10:30', enabled: true, bufferMinutes: 5 },
+  { id: 'f-admin', label: 'Admin', color: 'bg-amber-200', days: [1, 2, 3, 4, 5], start: '15:00', end: '16:30', enabled: true, bufferMinutes: 5 },
+  { id: 'f-evening', label: 'Evening', color: 'bg-rose-200', days: [1, 2, 3, 4, 5], start: '18:00', end: '21:45', enabled: true, bufferMinutes: 5 },
+];
+
+/** The day's frames with their unfloored slots, as App.jsx's dialFramesForDate. */
+export function liveFixtureDialFrames(dateStr) {
+  const tasks = liveFixtureTasks(dateStr);
+  return frameInstancesForDate(LIVE_FIXTURE_FRAMES, dateStr).map((f) => ({
+    ...f,
+    slots: computeAvailableSlots(f, { tasks, dateStr, todayStr: dateStr, nowMinutes: 0 }),
+  }));
 }
 
 /** Monday weeks in the fixture, so the Swift side cannot assume Sunday. */
@@ -109,6 +133,7 @@ export function buildLiveWidgetSnapshot() {
       dateLabel: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
       dayTasks: liveFixtureTasks(dateStr),
       prevDayTasks: liveFixtureTasks(dateToString(prev)),
+      dialFrames: liveFixtureDialFrames(dateStr),
       dayWindow: { start: '06:30', stop: '22:30' },
       coords: LIVE_SNAPSHOT_COORDS,
     });

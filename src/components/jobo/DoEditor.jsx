@@ -3,6 +3,7 @@ import { Trash2, X } from 'lucide-react';
 import { DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
 import { doIntervalAt, prepareDoDelete, commitDoEdit } from '../../jobo/viewActions.js';
 import { createManualDo, prepareDoEdit } from '../../jobo/viewActions.js';
+import { receiptState } from '../../hooks/useJoboViewWriter.js';
 
 const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY, DO_PROGRESS.COMPLETED];
 const minute = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
@@ -22,6 +23,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
   const waiting = accepted || pendingIds.includes(id);
+  const submitted = useRef(null);
   const savingRef = useRef(false);
   const dialogRef = useRef(null);
   const latestRecords = useRef(records);
@@ -34,8 +36,11 @@ export default function DoEditor({ record, initial, records, writable, recordJob
     return () => previous?.isConnected && previous.focus();
   }, []);
   useEffect(() => {
-    if (accepted && !pendingIds.includes(id)) onClose();
-  }, [accepted, pendingIds, id, onClose]);
+    if (!accepted || pendingIds.includes(id) || !submitted.current) return;
+    const state = receiptState(submitted.current, records);
+    if (state === 'saved') onClose();
+    else if (state === 'superseded') { setAccepted(false); setError(t('jobo.view.recordChanged')); }
+  }, [accepted, pendingIds, id, onClose, records, t]);
 
   const save = async (remove = false) => {
     if (!writable || waiting || savingRef.current) return;
@@ -58,6 +63,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
           date: draft.date, startMinute: minute(draft.startTime), duration, progress: draft.progress, now });
       }
       if (!next) { setError(t('jobo.view.recordChanged')); return; }
+      submitted.current = next;
       const result = next !== record ? await commitDoEdit(recordJobo, next) : { ok: true };
       if (result.held && !result.ok) setAccepted(true);
       else onClose();
@@ -120,7 +126,7 @@ export default function DoEditor({ record, initial, records, writable, recordJob
         {error && <p className="jobo-s5-dialog-error" role="alert">{error}</p>}
         <div className="jobo-s5-dialog-actions">
           {record && <button type="button" className="jobo-s5-delete-button" onClick={() => save(true)} disabled={saving || waiting || !writable}><Trash2 size={14} />{t('common.delete')}</button>}
-          <button type="button" onClick={onClose} disabled={saving}>{t('common.cancel')}</button>
+          <button type="button" onClick={onClose} disabled={saving}>{t(waiting ? 'common.close' : 'common.cancel')}</button>
           <button type="submit" className="jobo-s5-save-button" disabled={saving || waiting || !writable}>{saving ? t('common.loading') : t('common.save')}</button>
         </div>
       </form>

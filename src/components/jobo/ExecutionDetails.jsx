@@ -1,13 +1,13 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, FileText, Pencil, X } from 'lucide-react';
+import { Clock, Pencil, X } from 'lucide-react';
 import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
 import { formatDuration } from '../../utils/formatDuration.js';
 import { doDurationMinutes } from '../../jobo/core.js';
-import { progressText } from './PlanCard.jsx';
+const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 import ExecutionAxes from './ExecutionAxes.jsx';
 
-export default function ExecutionDetails({ item, anchor, onClose, onEdit, onNotes, ctx, t, writable, pendingIds = [] }) {
+export default function ExecutionDetails({ item, anchor, onClose, onEdit, ctx, t, writable, pendingIds = [] }) {
   const ref = useRef(null);
   const [position, setPosition] = useState({ top: 80, left: 12 });
   const records = item.attempts || (item.record ? [item.record] : []);
@@ -47,7 +47,6 @@ export default function ExecutionDetails({ item, anchor, onClose, onEdit, onNote
     style={position} className={`jobo-s5-details ${ctx.cardBg} ${ctx.textPrimary} border ${ctx.borderClass}`}>
     <div className="jobo-s5-dialog-head"><div><h2 id="jobo-execution-title" className="jobo-s5-dialog-title">{renderTitleWithoutTags(title)}</h2><p>{t('jobo.view.executionHistory', { count: records.length })}</p></div><button type="button" className="jobo-s5-close-button" aria-label={t('common.close')} onClick={onClose}><X size={18} /></button></div>
     {item.plan && <p className="jobo-s5-detail-plan">{t(item.historical ? 'jobo.view.capturedPlan' : 'jobo.view.plan')}: {item.plan.date} · {ctx.formatTime(item.plan.startTime)} · {formatDuration(item.plan.duration, t)}</p>}
-    {item.noteKey && <button type="button" className="jobo-s5-details-notes" onClick={() => { onNotes(item); onClose(); }}><FileText size={14} />{t('jobo.view.locateNotes')}</button>}
     <ExecutionAxes comparison={item.comparison} comparisonMeta={item.comparisonMeta} labels={item.labels} latestAttempt={item.latestAttempt} records={records} t={t}>
       {records.length > 0 && <div className="jobo-s5-attempt-list">{records.map((record, index) => <details key={record.id} open={records.length === 1 ? true : undefined}>
         <summary><span className="jobo-s5-attempt-progress">{index === 0 && <span>{t('jobo.view.latestShort')} · </span>}{progressText(record.progress, t)}</span><span>{record.date} · {record.timing === 'untimed' ? t('jobo.view.untimed') : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`}</span></summary>

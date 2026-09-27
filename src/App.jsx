@@ -7033,12 +7033,29 @@ const DayPlanner = () => {
     });
   }, [getTasksForDate, routineOccupancy]);
 
+  // A frame's free time as the Day Dial ships it: the same rule, with two
+  // differences on purpose. No now floor (todayStr is the day itself and now
+  // is 00:00), because each widget entry floors the slots at its own minute
+  // (dialFrameAvailableMinutes); and no tag filter, because the dial draws the
+  // unfiltered day.
+  const dialFrameSlots = useCallback((frameInstance, date) => {
+    const dateStr = dateToString(date);
+    return computeAvailableSlotsPure(frameInstance, {
+      state: routineOccupancy,
+      tasks: getTasksForDate(date, false).filter(t => !t.isAllDay && t.startTime),
+      dateStr,
+      todayStr: dateStr,
+      nowMinutes: 0,
+    });
+  }, [getTasksForDate, routineOccupancy]);
+  const dialFramesForDate = useCallback((date) => getFrameInstancesForDate(date)
+    .map(f => ({ ...f, slots: dialFrameSlots(f, date) })), [getFrameInstancesForDate, dialFrameSlots]);
+
   const {
     setDeadline,
     postponeDeadlineTask,
     clearDeadline,
     addTask,
-    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,
@@ -7494,6 +7511,7 @@ const DayPlanner = () => {
         deadlineTasks: unscheduledTasks.filter(t => notBucketed(t) && t.deadline === dateStr && !t.completed && !t.isExample && isVisibleForUser(t)),
         frames: getFrameInstancesForDate(date),
         frameAvailableMinutes: (frame) => computeAvailableSlots(frame, date).reduce((sum, slot) => sum + slot.minutes, 0),
+        dialFrames: dialFramesForDate(date),
         dayWindow: getDayWindow(dateStr),
         coords,
         goalsDue,
@@ -7506,7 +7524,7 @@ const DayPlanner = () => {
     // days WITH a sky instead of leaving them skyless until a task changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    dataLoaded, widgetTodayKey, widgetTasksForDate, getFrameInstancesForDate, computeAvailableSlots, getDayWindow,
+    dataLoaded, widgetTodayKey, widgetTasksForDate, getFrameInstancesForDate, computeAvailableSlots, dialFramesForDate, getDayWindow,
     tasks, unscheduledTasks, goals, projects, goalsProjectsEnabled, isVisibleForUser, t, weather,
   ]);
 
@@ -7927,6 +7945,7 @@ const DayPlanner = () => {
           dayWindow: getDayWindow(todayStr),
           routines: todayRoutines,
           routineCompletions,
+          frames: dialFramesForDate(today),
         });
       })(),
       // ── The next three days, keyed by date ──────────────────────────────
@@ -8019,6 +8038,7 @@ const DayPlanner = () => {
     widgetSnapshotTick,
     projectedWidgetDays,
     widgetMonthWindow,
+    dialFramesForDate,
     t,
   ]);
 
@@ -8710,7 +8730,7 @@ const DayPlanner = () => {
     scrollToCurrentHour, scrollToHour,
 
     // ── Functions – task CRUD ─────────────────────────────────────────────────
-    addTask, createTimelineTask, toggleComplete,
+    addTask, toggleComplete,
     archiveInboxTask, restoreArchivedInboxTask,
     deleteRecurringInstance, updateRecurrencePattern,
     updateRecurrenceEndCondition, updateRecurringTemplate,
@@ -9123,7 +9143,7 @@ const DayPlanner = () => {
     // ── Functions – GTD / AI ──────────────────────────────────────────────────
     saveFrame, deleteFrame, skipFrameForDay,
     openFrameAdjust, openFrameSchedule, saveFrameAdjust,
-    getFrameInstancesForDate,
+    getFrameInstancesForDate, dialFramesForDate,
     getDayWindow, setDayWindow, clearDayWindow,
     dayWindowMenuOpen, setDayWindowMenuOpen,
     runSmartSchedule, applySmartSchedule,

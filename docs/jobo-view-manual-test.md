@@ -1,66 +1,36 @@
-# JOBO view acceptance checklist
+# JOBO Slice 5 acceptance
 
-This checklist describes the reviewed contract-aligned view, replacing the earlier
-fork-only completion experiment. Use isolated synthetic data, never the production
-profile or a personal Todoist/Obsidian account. Start with `npm run dev -- --port 5199`
-and open `?view=jobo&date=YYYY-MM-DD` after enabling JOBO in Experimental settings.
-The existing upstream desktop-width gate still applies.
+Scope follows #1726's review of #1840: shared-axis Plan/Do, the day model,
+manual Do creation, editing existing Do and the native Plan checkbox.
+The full interaction reference is preserved at
+`Lcub3d/dayGLANCE:reference/jobo-full-20260927` (`5918cef`).
 
-## Day header
+The view reads committed `joboRecords` only and writes through `recordJobo`.
+It does not use the detector's working set. Pending indicators are UI receipts,
+not a retry queue; a held write is not yet durable. A closed editor does not
+cancel an already accepted ledger write. Storage-outage restart limitations
+remain those documented by the ledger.
 
-- The five flat stat tiles sit between the selected date and JOBO display controls.
-  Light/dark mode and narrower desktop layouts must keep numbers readable; overflow
-  scrolls rather than silently hiding a comparison dimension.
-- Each tile opens definitions/details. Escape and the Close button close it and
-  restore focus. The modal's keyboard focus stays within its controls.
-- Two 40/30-minute Do intervals overlapping by 10 show 60 measured minutes.
-  Cross-midnight coverage is clipped. Plan budgets are separate, not inferred work.
-- Untimed-only shows unavailable measured minutes. Mixed evidence keeps known
-  minutes but excludes the incomplete group from all three comparison denominators.
-- A group can be late-starting, late-finishing and longer simultaneously.
-  Do progress must not change the native completion numerator.
-- Zoom, collapsed history, visible notes and unsaved drag previews do not change
-  committed header figures. Loading/errors must not appear as an empty ledger.
+## Checks with isolated synthetic data
 
-## Native Plan and Do editing
+- Plan and Do share an hour axis; short intervals retain an exact proportional
+  marker separate from the interaction target. Cross-midnight Do is clipped.
+- Native checkbox uses `toggleComplete`, leaving Slice 4 to create Untimed
+  completion evidence. No view infers measured minutes from a plan duration.
+- Manual Do allocates its id when the editor opens, before the first write;
+  a refused-write retry uses that same id. Do progress never changes a task.
+- Untimed correction keeps id, captured title/plan, source and original stamps.
+  Invalid intervals, stale versions and tombstones do not produce stale writes.
+- Held saves remain pending until committed; a superseding remote version is
+  a conflict, not an invitation to restamp and defeat the winner.
+- Loading, read errors, read-only devices and invalid evidence remain distinct.
+  No Do recorded is not proof that the native task never ran.
+- Task notes are optional and read-only in this slice. Narrow widths hide them.
+- Timing details retain separate start, finish and duration comparisons, and
+  distinguish the whole group from a measured subset and individual attempts.
 
-- Plan creation/edit/move/resize uses native task handlers. Captured historical
-  Plans have no native completion, editing or drag action.
-- Completing a native Plan produces the existing Slice 4 Untimed, completed Do;
-  no view-inferred actual interval is created. Check the completion stamp's date.
-- A manual Plan-to-Do drag or independent Do starts as `started`, not completed;
-  copying a completion record produces a new manual, started attempt.
-- Untimed correction retains id, title, captured plan, source and creation stamp.
-  Invalid/reversed intervals are rejected. A late remote edit is not overwritten.
-- Progress changes affect only this attempt. Manual editing cannot promote a
-  non-completed attempt to completed. A focused Do cannot undo a native task.
-- Native reopen retains the attempt as partial; later completion creates another
-  attempt. See the two separately documented upstream race/identity limitations.
-- Deleting a Do creates a tombstone, not a native task deletion.
-
-## History and notes
-
-- Rename/reschedule/delete a native task: its original captured title and plan stay
-  readable. Selecting an old Do reveals the correct capture, not today's schedule.
-- Repeat the same test with two recurring occurrences; groups and notes must not
-  cross occurrence dates. Synthesized historical occurrences stay read-only.
-- Linked task notes use native notes. Independent Do notes use the documented
-  opaque field. Hide is not Clear; a remote edit must not erase a local draft.
-- Short cards keep a proportional exact-interval marker; larger label hit targets
-  must not be mistaken for the real duration. Hover/keyboard selection shows links.
-
-## Save failures and availability
-
-- Refused writes keep the editor/draft and report the refusal. Held writes display
-  pending, never success before durability, while the canonical ledger retries.
-- A newer remote winner is kept and reported as a conflict; do not restamp a stale
-  edit merely to make it win. Read-only mode disables edits but permits inspection.
-- With a failed ledger read, no measured/comparison claims or fake empty data appear.
-
-## Evidence
-
-Automated unit/render/integration tests, lint and build are run separately from
-browser operations. Browser CI artifacts identify the exact source, viewport,
-synthetic fixtures and observed results. A prior prototype's manual test results
-are not carried forward as evidence for this revision. No hardware or personal
-cloud-sync validation is implied.
+Day tiles/Check belong to Slice 7. Independent Do notes need separate design.
+Plan creation/copy/drag/resize, hover connections and daily-note placement are
+not in this PR. Shared planner handlers, core, ledger, detector, sync and native
+platform code are unchanged. #1829 already resolved pending completion/uncheck;
+the same-key re-completion case is a separate issue, not a view workaround.

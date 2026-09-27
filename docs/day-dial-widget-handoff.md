@@ -915,3 +915,191 @@ What makes it real work rather than a port:
 Worth deciding after the iOS release has been in users' hands, not before:
 a week of Home Screen use will say whether the dial earns a second surface
 at all.
+
+## 10. Frames
+
+The day's frames drawn on the dial, in the app and on both widgets. The
+reference render and the settled design are `docs/day-dial-frames-spec.html`;
+this section records what the build decided on top of it.
+
+### Model and payload
+
+- **One producer.** `computeDialFrames` (`src/utils/dayDial.js`) turns
+  `frameInstancesForDate` output into the dial's frames and the Frames
+  percentage. The in-app dial calls it directly; `projectDialSnapshot`
+  ships its result as `dial.frames` and `dial.totals.framesPercent`, for the
+  pushed day and every projected day (frames are part of the shape of a
+  day, not its state).
+- **Wire shape**, per frame: `{name, colorHex, startMin, endMin, depth,
+  slots: [[startMin, endMin], ...]}`, start-ordered. `slots` is the frame's
+  free time from the same `computeAvailableSlots` GLANCE uses (so the same
+  buffer and occupancy rules), computed WITHOUT the now floor: each widget
+  entry takes "still available" at its own minute
+  (`dialFrameAvailableMinutes`) instead of freezing the push's. Two
+  deliberate differences from GLANCE's number: no tag filter (the dial
+  draws the unfiltered day), and completed tasks still occupy time (as in
+  GLANCE).
+- **Not derived from `sections`.** Today's `sections` drops frames that have
+  ended and frames with nothing free and nothing in them, while the ring
+  draws the whole day's; and a section carries its task rows, which the
+  ring already has as blocks.
+- **Colour.** A frame stores a pastel `-200` class (`FRAME_COLORS`), which
+  `TAILWIND_TO_HEX` never carried, so every frame reached the widgets'
+  `sections` as the fallback blue. `frameColorToHex` resolves the class to
+  its family's `-500`. That fixes `sections` too.
+- **Bytes**, measured against the 400 KB cap (`WIDGET_SNAPSHOT_CAP_BYTES`):
+  - the live fixture day (four frames, five slots) adds 447 bytes, or about
+    1.8 KB across the pushed and three projected days;
+  - a heavy day (eight frames, six slots each, long names) adds 1.4 KB, or
+    5.6 KB across four days (1.4 % of the cap);
+  - a day without frames adds 33 bytes (`"frames":[]` and a null percent).
+
+### Geometry
+
+- **Enclosure.** Each frame is an outline just outside each edge of the
+  block band, joined by radial end caps: the stroke of a closed annular
+  sector (`dialSectorPath` at the frame's two radii). On the widget, the
+  outlines are at r = 126 and 153, the gaps either side of the 129–151 band.
+  The stroke is 1.2 pt at opacity 0.45. Nothing else moves.
+- **Band-proportional.** `dialFrameRadii(rInner, rOuter, depth)` states every
+  length as a fraction of the band's width (3/22 inside, 2/22 outside, 3.2/22
+  per level, 1.2/22 stroke). The in-app dial's band (300–385 in its
+  1000-unit viewBox) therefore gets 288.4 / 392.7 and a 4.6-unit stroke: the
+  same design, scaled rather than copied, with one exception on the INNER
+  side. The in-app daylight band (the sky strip, 282–302) tucks under the
+  wedges, so there is no gap in front of the band, and the scaled inner
+  outline (288.4) landed on the strip. In the app the inner outline sits
+  just outside the strip instead: the inner edge of its stroke lies on the
+  strip's outer edge (302), and a nested frame steps in from there. The
+  outer outline keeps its scaled radius. The widgets are unchanged, because
+  their 126pt inner outline sits in a real gap, clear of their sky ring.
+- **Colour.** The frame's hex through `muteDialFrameColor`: saturation
+  capped at 0.28 and lightness 0.62 (`muteDialColorWith`, the app's
+  `muteDialColor` arithmetic with the two constants as inputs). This keeps
+  the ring below the block rims so the needle stays the brightest element.
+- **Nesting depth is capped at 1** (two drawn levels). One step in (3.2 of 22)
+  already puts the outlines on the band's own edges (129.2 / 149.8 on the
+  widget). A second step would draw through the wedges' fills and rims,
+  where it stops reading as an enclosure, so deeper frames draw at level 1.
+- **Vectors.** `muteDialFrameColor`, `dialFrameRadii`, `dialCurrentFrame` and
+  `dialFrameAvailableMinutes` are in `dayDial.vectors.json`, ported by
+  `DialFrames.swift` (`FramesTests`) and `DialFrames.kt` (`DialFramesTest`).
+  Depth and the percentage are decided once, in JS, and shipped.
+
+### Edge cases, decided
+
+- **Nesting.** The model has no parent field and the editor refuses
+  overlaps, but a per-day time exception or a drag-resize is not
+  re-checked, so one frame can end up inside another. Depth is containment:
+  the number of frames that wholly enclose this one. For an identical span,
+  the earlier frame is the outer one.
+- **Overlap without nesting.** Both frames stay at depth 0 and their outlines
+  cross where they overlap, which is what the day actually is. Neither frame
+  is moved to a lane, since lanes belong to blocks. The percentage uses the
+  union of the frames, so no minute counts twice.
+- **Midnight.** Frames cannot span it: the editor refuses `end <= start` and a
+  resize clamps to the day. A record that arrives that way anyway is dropped
+  rather than guessed at, and spans are clamped to 00:00–24:00.
+- **A frame with nothing in it.** It draws normally and counts toward the
+  percentage as 0 %. The hub shows its whole span as available.
+- **A day with no frames.** Nothing is drawn, and there is no Frames entry in
+  the metrics, the same rule as Sleep and Unblocked without a day window.
+  `framesPercent` is `null`, never 0: a dash would claim a measurement that
+  was never taken.
+- **Too short to draw.** Under `DIAL_FRAME_MIN_MINUTES` (10) the enclosure
+  is not drawn: 10 minutes is 5.5 pt of arc at the widget's inner outline,
+  about the least that still reads as a box. The editor's own floor is 15
+  minutes, so only an exception gets here. The frame stays in the model, so
+  the hub and the percentage still see it.
+
+### Hub
+
+A running block always wins. Frame rows appear only when nothing is running,
+and they replace the open-time rows from Phase 5:
+- the frame's name, at the task title's size and weight (15 pt, 600), in the
+  frame colour through the STANDARD `muteDialColor`, after the Frames mark;
+- its span;
+- the time still available in it.
+
+The current frame is the innermost one that now is inside
+(`dialCurrentFrame`). The ring and the title share a hue but not a mute
+level, on purpose.
+
+### Frames metric
+
+"Frames", as a whole percent, sits right of Routines in the in-app metrics,
+with the same label styling as the others. It is the scheduled block minutes
+inside frames divided by the frame minutes:
+- blocks are the ring's own tasks and calendar events, done or not, merged so
+  that lanes don't count twice;
+- sleep and routines are never among them;
+- the frame minutes are the union of the top-level frames.
+
+The app's nearest existing figure is the Weekly Review's frame utilisation
+(`WeeklyReviewModal.jsx`), which differs in four ways:
+- it covers a week of recurring frames only;
+- it counts a task by its START falling inside a frame, without clipping at
+  the frame's edges;
+- it leaves out imported calendar events;
+- it sums overlapping tasks twice.
+
+The dial's figure is what the ring shows for one day, so it can't be reused.
+
+### The Frames mark
+
+This is the app's own frames icon, lucide `LayoutGrid`: four rounded squares
+in a 2×2 grid, outlined, as used on the Frames button and in GLANCE's frame
+headers. The widgets use the nearest native equivalents: SF Symbol
+`square.grid.2x2` on iOS, and the same four-square outline as a vector on
+Android.
+
+### iOS widget
+
+- **In the cached face.** Frames are static for a day, so they are drawn into
+  the face image (`DialFaceView.frames`), after the separators so that a cut
+  between two touching blocks cannot erase a nested outline along the band's
+  edge. They get no past or future dimming.
+- **The cache key needs no new part, but the seed has to change.** Frames
+  don't vary with the entry, so the past bucket (`-b<n>`) and the key's shape
+  stay the same. They are drawn into the image, though, so each frame's span,
+  depth and colour join `DialFaceInput.seed`. Without that, an edited frame
+  would reuse a stale face. Names and free slots belong to the hub and stay
+  out of the seed. A day without frames keeps its existing key, so
+  `renderVersion` stays at `face-v4`.
+- **Tinted and clear Home Screens (mono).** The outline is white at the same
+  0.45. In that mode it is brighter than in full colour, where it is a
+  softened hue at 0.45, and it sits above the minor ticks (0.13).
+  `FramesWidgetTests` samples the rendered mono face to check that the
+  outline keeps its alpha.
+- **Hub.** `DialHubFrame` holds the frame and its free minutes. It is built
+  only on a live day when nothing is running and the entry isn't in sleep.
+  The title is `square.grid.2x2` plus the name at 15 pt semibold, in the
+  standard mute. The detail rows are the span and "Xm available" in the
+  runway teal; the available row is dropped when nothing is free. VoiceOver
+  reads the same facts.
+- **Extra-large (iPad).** The legend gains Frames, last, when
+  `framesPercent` is present.
+- **Previews.** `Frames · task running`, `· nothing running`, `· nested` and
+  `· a frame at 0 %` are the spec day at 17:18, matching the in-app dial's
+  scenarios.
+
+### Android widget
+
+- **Face.** `DialFacePainter.drawFrames` draws each frame's enclosure inside
+  the face layer, after the DST_OUT separator cuts. Frames join
+  `DialFaceInput.seed`, so an edited frame names a new face; names and free
+  slots stay out of it.
+- **Hub.** `DialHubRows.build(frame = …)` produces the frame rows when nothing
+  is running on a live day and it isn't sleep time. The title uses
+  `TITLE_FRAME`, which `drawFrameTitle` paints as the four-square mark plus
+  the name, centred together, in the standard mute. The "available" row is
+  the **live row** (the ROW1 strip): it counts down while now is inside a
+  free slot, and as a static row it would redraw the whole face every
+  minute. The face key keeps the frame's name and span.
+- **Cards.**
+  - The legend gains `FRAMES`, in the tall grid's third column (the spacer it
+    replaces) and as a row in the wide list.
+  - When a day has no frames, the tall cell is INVISIBLE rather than GONE, so
+    that unblocked and routines keep their thirds.
+  - The icon is `ic_day_dial_layout_grid`, lucide LayoutGrid, in the
+    neutral `#c8c8d2`.

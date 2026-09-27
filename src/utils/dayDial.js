@@ -1,6 +1,6 @@
 import { computeDaySummary } from './daySummary.js';
 import { deriveBlockEnergy } from './energyAxis.js';
-import { taskColorToHex } from './colorUtils.js';
+import { frameColorToHex, taskColorToHex } from './colorUtils.js';
 import { getMoonAltitude, getMoonIllumination } from './lunar.js';
 import { getPeakSunElevation, getSunElevation, getSunTimes, POLAR_DAY } from './solar.js';
 import { assignLanes } from './intervalLanes.js';
@@ -292,6 +292,147 @@ export function computeDialModel(dayTasks, dayWindow = null, prevDayTasks = null
   };
 }
 
+// ── Frames ──────────────────────────────────────────────────────────────────
+// docs/day-dial-frames-spec.html. A frame is drawn as an ENCLOSURE around the
+// span of the block band it covers: an outline just outside each edge of the
+// band, joined by radial end caps. Nothing else on the face moves for it.
+//
+// Every length here is a fraction of the block band's width, from the widget
+// spec (band 129–151pt, 22pt wide): the outline sits 3pt inside the band's
+// inner edge and 2pt outside its outer edge (the gaps either side of it), a
+// nested frame steps 3.2pt inward per level, and the stroke is 1.2pt. Stated
+// as fractions so the in-app dial (band 300–385 in its 1000-unit viewBox)
+// scales the same design rather than copying point values, and the three
+// renderers take the same numbers (dayDial.vectors.json `dialFrameRadii`).
+const FRAME_SPEC_BAND = 22;
+export const DIAL_FRAME_INNER_GAP = 3 / FRAME_SPEC_BAND;
+export const DIAL_FRAME_OUTER_GAP = 2 / FRAME_SPEC_BAND;
+export const DIAL_FRAME_STEP = 3.2 / FRAME_SPEC_BAND;
+export const DIAL_FRAME_STROKE = 1.2 / FRAME_SPEC_BAND;
+export const DIAL_FRAME_OPACITY = 0.45;
+/**
+ * The deepest drawn level. One step in (3.2 of 22) already puts the outline
+ * on the band's own edges; a second would draw it through the wedges'
+ * fills and rims, where it stops reading as an enclosure. Deeper frames draw
+ * at this level: the enclosure is still visible, only its depth is not.
+ */
+export const DIAL_FRAME_MAX_DEPTH = 1;
+/**
+ * The shortest frame drawn as an enclosure. Ten minutes is 5.5pt of arc at
+ * the widget's inner outline, about the smallest span whose two end caps
+ * still read as a box rather than as one thick tick. The editor's own floor
+ * is 15 minutes; this only guards a per-day exception squeezed below it. A
+ * shorter frame is still in the model (the hub and the percentage see it).
+ */
+export const DIAL_FRAME_MIN_MINUTES = 10;
+
+/** The outline's two radii and stroke for a frame at `depth`, on a band. */
+export function dialFrameRadii(rInner, rOuter, depth = 0) {
+  const w = rOuter - rInner;
+  const d = Math.max(0, Math.min(DIAL_FRAME_MAX_DEPTH, depth));
+  return {
+    inner: rInner - DIAL_FRAME_INNER_GAP * w + d * DIAL_FRAME_STEP * w,
+    outer: rOuter + DIAL_FRAME_OUTER_GAP * w - d * DIAL_FRAME_STEP * w,
+    width: DIAL_FRAME_STROKE * w,
+  };
+}
+
+const mergeSpans = (spans) => {
+  const sorted = spans.filter((x) => x.endMin > x.startMin)
+    .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+  const out = [];
+  for (const x of sorted) {
+    const last = out[out.length - 1];
+    if (last && x.startMin <= last.endMin) last.endMin = Math.max(last.endMin, x.endMin);
+    else out.push({ startMin: x.startMin, endMin: x.endMin });
+  }
+  return out;
+};
+const spanLength = (spans) => spans.reduce((sum, x) => sum + (x.endMin - x.startMin), 0);
+
+/**
+ * The day's frames as the dial draws and reads them, and the Frames metric.
+ *
+ * `instances` are frameInstancesForDate's ({frameId, label, color, start,
+ * end}), each optionally with `slots`: its free time, computeAvailableSlots's
+ * [{start, end}] computed WITHOUT the now floor, so a reader can take "still
+ * available" at any minute (dialFrameAvailableMinutes) rather than at the
+ * push. `blocks` are computeDialModel's.
+ *
+ *  - Midnight: the editor refuses end <= start, so a frame never crosses it.
+ *    One that arrives that way anyway (a hand-edited or synced record) is
+ *    dropped rather than guessed at; the span is clamped to the day.
+ *  - Nesting: the model has none, but a per-day exception or a resize can
+ *    leave one frame inside another (the overlap check runs only in the
+ *    editor). Depth is containment: how many frames wholly enclose this one
+ *    (an identical span counts the earlier frame as the outer), capped at
+ *    DIAL_FRAME_MAX_DEPTH. Frames that overlap WITHOUT one containing the
+ *    other both stay at depth 0; their outlines cross where they overlap,
+ *    which is the truth of the day.
+ *  - percent: scheduled block minutes inside frames ÷ frame minutes. Blocks
+ *    are the ring's own (tasks and calendar events, done or not; sleep and
+ *    routines are never in `blocks`), merged, so lanes do not count twice.
+ *    Frame minutes are the union of the TOP-LEVEL frames, so neither nesting
+ *    nor an overlap counts a minute twice. A frame with nothing in it is 0 %.
+ *    null when the day has no frames: there is no honest number to show.
+ *
+ * @returns {{frames: Array<{id, name, colorHex, startMin, endMin, depth,
+ *   slots: Array<{startMin, endMin}>}>, percent: number|null}}
+ */
+export function computeDialFrames(instances, blocks = []) {
+  const frames = (instances || [])
+    .map((f) => ({
+      id: f.frameId ?? f.id ?? null,
+      name: f.label || '',
+      colorHex: frameColorToHex(f.color),
+      startMin: Math.max(0, timeToMin(f.start)),
+      endMin: Math.min(DIAL_DAY_MINUTES, timeToMin(f.end)),
+      slots: (f.slots || [])
+        .map((x) => ({ startMin: timeToMin(x.start), endMin: timeToMin(x.end) }))
+        .filter((x) => x.endMin > x.startMin),
+    }))
+    .filter((f) => f.endMin > f.startMin);
+
+  const encloses = (outer, oi, inner, ii) => oi !== ii
+    && outer.startMin <= inner.startMin && outer.endMin >= inner.endMin
+    && (outer.startMin !== inner.startMin || outer.endMin !== inner.endMin || oi < ii);
+  const levels = frames.map((f, i) => frames.filter((g, j) => encloses(g, j, f, i)).length);
+  const out = frames
+    .map((f, i) => ({ ...f, depth: Math.min(DIAL_FRAME_MAX_DEPTH, levels[i]) }))
+    .sort((a, b) => a.startMin - b.startMin || a.depth - b.depth);
+
+  if (frames.length === 0) return { frames: out, percent: null };
+  const framed = mergeSpans(frames.filter((_, i) => levels[i] === 0));
+  const busy = mergeSpans(blocks || []);
+  let filled = 0;
+  for (const f of framed) {
+    for (const b of busy) filled += Math.max(0, Math.min(f.endMin, b.endMin) - Math.max(f.startMin, b.startMin));
+  }
+  const total = spanLength(framed);
+  return { frames: out, percent: total > 0 ? Math.round((filled / total) * 100) : null };
+}
+
+/** The frame the hub speaks for at `nowMin`: the innermost one it is inside. */
+export function dialCurrentFrame(frames, nowMin) {
+  if (nowMin == null) return null;
+  let pick = null;
+  for (const f of frames || []) {
+    if (f.startMin <= nowMin && nowMin < f.endMin
+      && (!pick || f.depth > pick.depth || (f.depth === pick.depth && f.startMin >= pick.startMin))) pick = f;
+  }
+  return pick;
+}
+
+/**
+ * Free minutes still ahead in a frame at `nowMin`: its slots from the later
+ * of their start and now. What GLANCE's "available" pill shows (its slots
+ * are the same computeAvailableSlots, floored at now when it is computed).
+ */
+export function dialFrameAvailableMinutes(frame, nowMin) {
+  return (frame?.slots || []).reduce(
+    (sum, x) => sum + Math.max(0, x.endMin - Math.max(x.startMin, nowMin ?? 0)), 0);
+}
+
 const hexToRgb = (hex) => {
   const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
   if (!m) return null;
@@ -308,6 +449,23 @@ const hexToRgb = (hex) => {
  * voice. Unparseable input falls back to the effort blue.
  */
 export function muteDialColor(hex) {
+  return muteDialColorWith(hex, 0.5, 0.73);
+}
+
+/**
+ * A frame's enclosure on the ring: the same hue rule, SOFTENED — saturation
+ * capped lower and lightness pulled down — so the outline sits below the block
+ * rims in weight and the needle stays the brightest thing on the face
+ * (docs/day-dial-frames-spec.html, "Softest"). The hub's frame title uses the
+ * standard muteDialColor instead: same hue, a stronger mute level, on purpose.
+ */
+export const DIAL_FRAME_MUTE = { satCap: 0.28, light: 0.62 };
+export function muteDialFrameColor(hex) {
+  return muteDialColorWith(hex, DIAL_FRAME_MUTE.satCap, DIAL_FRAME_MUTE.light);
+}
+
+/** muteDialColor with the saturation cap and pinned lightness as inputs. */
+export function muteDialColorWith(hex, satCap, light) {
   const rgb = hexToRgb(hex);
   if (!rgb) return DIAL_COLORS.effort;
   const [r, g, b] = rgb;
@@ -323,8 +481,8 @@ export function muteDialColor(hex) {
   const l0 = (max + min) / 2;
   const s0 = max === min ? 0 : (max - min) / (1 - Math.abs(2 * l0 - 1));
 
-  const s = Math.min(s0, 0.5);
-  const l = 0.73;
+  const s = Math.min(s0, satCap);
+  const l = light;
 
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
@@ -1043,6 +1201,8 @@ export function computeSkySnapshot(date, coords) {
  * @param opts.dayWindow     {start, stop} 'HH:MM' or null → no sleep blocks.
  * @param opts.routines      Today's routines or null.
  * @param opts.routineCompletions  {id: bool}.
+ * @param opts.frames        The day's frame instances, each with its unfloored
+ *                           `slots` (see computeDialFrames), or null.
  * @returns {{date: string, blocks: Array<{
  *   type: 'task'|'event'|'routine'|'sleep',
  *   startMin: number, durationMin: number,   // durationMin is the DRAWN span, clipped at midnight
@@ -1050,11 +1210,14 @@ export function computeSkySnapshot(date, coords) {
  *   lane?: number, laneCount?: number,
  *   endsNextDay?: true, endMinTrue?: number, startedPrevDay?: true,
  * }>, allDay: Array<{id, title, completed: boolean, colorHex}>,
+ *   frames: Array<{name, colorHex, startMin, endMin, depth, slots: Array<[startMin, endMin]>}>,
  *   totals: {effortMinutes: number, restoreMinutes: number,
- *            sleepMinutes: number|null, unblockedMinutes: number|null}}}
+ *            sleepMinutes: number|null, unblockedMinutes: number|null,
+ *            framesPercent: number|null}}}
  */
 export function projectDialSnapshot({
   date, dayTasks, prevDayTasks = null, dayWindow = null, routines = null, routineCompletions = null,
+  frames = null,
 }) {
   const model = computeDialModel(dayTasks, dayWindow, prevDayTasks);
   const bars = computeDialRoutines(routines, routineCompletions);
@@ -1129,7 +1292,25 @@ export function projectDialSnapshot({
     unblockedMinutes: wholeOrNull(model.unblockedMinutes),
   };
 
-  return { date, blocks, allDay, totals };
+  // Frames: part of the shape of the day, not its state, so projected days
+  // carry them too. The dial's own list rather than the snapshot's
+  // `sections`, which cannot be reused: today's sections drop frames that
+  // have ended and frames with nothing free and nothing in them, while the
+  // ring draws the whole day's frames; and a section carries its task rows,
+  // which the ring already has as blocks. Free time ships as the frame's
+  // unfloored slots, so each entry reads "still available" at its own minute.
+  const dialFrames = computeDialFrames(frames, model.blocks);
+  totals.framesPercent = dialFrames.percent;
+  const framesOut = dialFrames.frames.map((f) => ({
+    name: f.name,
+    colorHex: f.colorHex,
+    startMin: minute(f.startMin),
+    endMin: minute(f.endMin),
+    depth: f.depth,
+    slots: f.slots.map((x) => [minute(x.startMin), minute(x.endMin)]),
+  }));
+
+  return { date, blocks, allDay, frames: framesOut, totals };
 }
 
 /**

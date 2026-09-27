@@ -18,10 +18,11 @@ import kotlin.math.min
 
 data class DialAllDayItem(val id: String, val title: String, val completed: Boolean, val colorHex: String?)
 
-enum class DialLegendKey { EFFORT, RESTORE, SLEEP, UNBLOCKED, ROUTINES }
+enum class DialLegendKey { EFFORT, RESTORE, SLEEP, UNBLOCKED, ROUTINES, FRAMES }
 
-/** One legend entry: a duration, or for routines a done/total count. */
-data class DialLegendItem(val key: DialLegendKey, val minutes: Double? = null, val done: Int = 0, val total: Int = 0)
+/** One legend entry: a duration, for routines a done/total count, for frames a whole percent. */
+data class DialLegendItem(val key: DialLegendKey, val minutes: Double? = null, val done: Int = 0, val total: Int = 0,
+                          val percent: Int? = null)
 
 data class DialCards(val allDay: List<DialAllDayItem>, val legend: List<DialLegendItem>) {
     val isEmpty: Boolean get() = allDay.isEmpty() && legend.isEmpty()
@@ -30,7 +31,7 @@ data class DialCards(val allDay: List<DialAllDayItem>, val legend: List<DialLege
     val key: String
         get() = buildList {
             allDay.forEach { add("a:${it.id}|${it.title}|${it.completed}|${it.colorHex}") }
-            legend.forEach { add("l:${it.key}|${it.minutes}|${it.done}/${it.total}") }
+            legend.forEach { add("l:${it.key}|${it.minutes}|${it.done}/${it.total}|${it.percent ?: ""}") }
         }.joinToString("\n")
 
     companion object {
@@ -63,6 +64,8 @@ data class DialCards(val allDay: List<DialAllDayItem>, val legend: List<DialLege
                 if (routines.isNotEmpty()) {
                     legend += DialLegendItem(DialLegendKey.ROUTINES, done = routines.count { it.completed }, total = routines.size)
                 }
+                // Right of routines, only on a day with frames (null otherwise).
+                totals.num("framesPercent")?.let { legend += DialLegendItem(DialLegendKey.FRAMES, percent = it.toInt()) }
             }
             return DialCards(allDay, legend)
         }
@@ -167,9 +170,9 @@ data class DialArrangement(val placement: DialPlacement, val dialWidthDp: Double
             }
         }
 
-        /** Whether the tall legend's second row (unblocked, routines) shows. */
+        /** Whether the tall legend's second row (unblocked, routines, frames) shows. */
         fun tallLegendSecondRow(cards: DialCards): Boolean =
-            cards.legend.any { it.key == DialLegendKey.UNBLOCKED || it.key == DialLegendKey.ROUTINES }
+            cards.legend.any { it.key == DialLegendKey.UNBLOCKED || it.key == DialLegendKey.ROUTINES || it.key == DialLegendKey.FRAMES }
 
         /** The legend card's height in the tall layout: one row or two. */
         fun tallLegendDp(cards: DialCards): Double =

@@ -100,6 +100,22 @@ final class LiveSnapshotSkyTests: XCTestCase {
         }
     }
 
+    func testTheFramesSurviveTheSameDecode() throws {
+        // A nested pair, a frame with nothing in it, and the evening, from
+        // the app's own frame and free-time functions (widgetSnapshotFixture.js).
+        let snapshot = try loadFixture()
+        let day = ResolvedWidgetDay.resolve(snapshot, at: try noon(0, of: snapshot), calendar: calendar)
+        let frames = try XCTUnwrap(day.dial?.frames)
+        XCTAssertEqual(frames.map { $0.name ?? "" }, ["Deep work", "Focus", "Admin", "Evening"])
+        XCTAssertEqual(frames.map { $0.depth ?? -1 }, [0, 1, 0, 0])
+        XCTAssertEqual(frames[2].slots ?? [], [[900, 990]], "Admin has nothing in it: all free")
+        XCTAssertEqual(day.dial?.totals?.framesPercent, 45)
+        for offset in 1...3 {
+            let projected = ResolvedWidgetDay.resolve(snapshot, at: try noon(offset, of: snapshot), calendar: calendar)
+            XCTAssertEqual(projected.dial?.frames?.count, 4, "frames are the shape of a day: day +\(offset)")
+        }
+    }
+
     // MARK: the pixels
 
     /// The face at 1×, spec size, over the widget's background: what the

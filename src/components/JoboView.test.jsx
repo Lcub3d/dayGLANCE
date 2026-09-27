@@ -224,3 +224,34 @@ describe('a Do card opens its task\'s notes and pairs with its Plan card', () =>
     expect(html).toMatch(/<div class="contents" data-jobo-pairing="true"><div data-plan-column/);
   });
 });
+
+describe('START to END only', () => {
+  it('windowRange widens the window to whole hours and falls back to the whole day', async () => {
+    const { windowRange } = await import('./jobo/DoColumn.jsx');
+    expect(windowRange({ start: '07:30', stop: '18:15' })).toEqual({ startHour: 7, endHour: 19 });
+    expect(windowRange({ start: '06:00', stop: null })).toEqual({ startHour: 6, endHour: 24 });
+    expect(windowRange({ start: null, stop: '22:00' })).toEqual({ startHour: 0, endHour: 22 });
+    expect(windowRange({ start: '22:00', stop: '06:00' })).toEqual({ startHour: 0, endHour: 24 });
+    expect(windowRange(null)).toEqual({ startHour: 0, endHour: 24 });
+  });
+
+  it('offers the toggle only on a day with a window', () => {
+    expect(render()).not.toContain('data-jobo-window-toggle');
+    expect(render({ getDayWindow: () => ({ start: '08:00', stop: '18:00' }) })).toContain('data-jobo-window-toggle');
+  });
+
+  // MUTATION: leave the Do side at 24 hours, or drop windowStart from a card's
+  // top, and the two sides no longer line up.
+  it('with the toggle on, both sides draw START to END and cards sit relative to START', () => {
+    vi.stubGlobal('localStorage', { getItem: () => '1', setItem: () => {} });
+    try {
+      const html = render({ getDayWindow: () => ({ start: '08:00', stop: '18:00' }), joboRecords: [timed()] });
+      expect(fixture.planColumns[0]).toMatchObject({ startHour: 8, endHour: 18 });
+      expect(html.match(/border-b border-dashed/g)).toHaveLength(10);
+      expect(html).toContain('top:160px'); // 10:00 is two hours after 08:00, at 80px an hour
+      expect(html).toContain('aria-pressed="true"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

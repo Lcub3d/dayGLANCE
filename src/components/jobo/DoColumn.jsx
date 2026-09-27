@@ -36,6 +36,21 @@ export function estimateCompletion(item) {
   return { ...item, markerMinute: end, startMinute: start, endMinute: end, estimate: true };
 }
 
+/**
+ * The hours a day's START/END window covers, widened to whole hours the way
+ * the timeline draws them: START's hour to the hour END falls in or before.
+ * A missing edge is the day's own edge, and a window that does not run
+ * forward (END at or before START) is the whole day.
+ */
+export function windowRange(dayWindow) {
+  const minute = (time) => (/^\d{2}:\d{2}$/.test(time || '') ? Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) : null);
+  const start = minute(dayWindow?.start);
+  const stop = minute(dayWindow?.stop);
+  const startHour = start == null ? 0 : Math.floor(start / 60);
+  const endHour = stop == null ? 24 : Math.min(24, Math.ceil(stop / 60));
+  return endHour > startHour ? { startHour, endHour } : { startHour: 0, endHour: 24 };
+}
+
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 
 /**
@@ -58,10 +73,14 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
-  const top = item.startMinute * hourHeight / 60;
-  const height = Math.max(MIN_CARD_PX, (item.endMinute - item.startMinute) * hourHeight / 60 - 2);
+  // Drawn within the visible hours: a card that runs past a trimmed edge is
+  // cut at it, as DAY cuts a task at its column's edge.
+  const shownStart = Math.max(item.startMinute, offsetMin);
+  const shownEnd = Math.min(item.endMinute, limitMin);
+  const top = (Math.min(shownStart, limitMin) - offsetMin) * hourHeight / 60;
+  const height = Math.max(MIN_CARD_PX, (shownEnd - shownStart) * hourHeight / 60 - 2);
   const isMicro = height <= 40;
   const color = item.task?.color || item.sourceTask?.color || 'bg-purple-500';
   const timeLabel = item.estimate
@@ -191,6 +210,7 @@ export default function DoColumn({
   writable, pendingIds = [], preview,
   onAddAt, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture,
   hoverTaskId = null, onHoverTask = () => {},
+  startHour = 0, endHour = 24,
   laneRef,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
@@ -210,15 +230,23 @@ export default function DoColumn({
   const lane = laneRef || ownRef;
   const { darkMode, borderClass, currentTime } = ctx;
   const altRow = darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50';
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const offsetMin = startHour * 60;
+  const limitMin = endHour * 60;
+  const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  // Only what shows within the visible hours; a moment at the bottom edge
+  // (a completion at END) still shows.
+  const shown = items.filter((item) => (item.startMinute === item.endMinute
+    ? item.startMinute >= offsetMin && item.startMinute <= limitMin
+    : item.endMinute > offsetMin && item.startMinute < limitMin));
   const now = currentTime instanceof Date ? currentTime : new Date();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const nowY = (now.getHours() * 60 + now.getMinutes()) * hourHeight / 60;
+  const nowMinute = now.getHours() * 60 + now.getMinutes();
+  const nowY = (nowMinute - offsetMin) * hourHeight / 60;
 
   const minuteFromEvent = (event) => {
     const rect = lane.current?.getBoundingClientRect();
     if (!rect) return null;
-    return snapMinute((event.clientY - rect.top) / hourHeight * 60);
+    return snapMinute((event.clientY - rect.top) / hourHeight * 60 + offsetMin);
   };
   const overCard = (target) => !!target.closest?.('[data-jobo-record]');
 
@@ -236,7 +264,7 @@ export default function DoColumn({
         onClick={(event) => {
           if (!writable || overCard(event.target)) return;
           const minute = minuteFromEvent(event);
-          if (minute !== null) onAddAt(Math.min(minute, 1440 - 30));
+          if (minute !== null) onAddAt(Math.min(minute, limitMin - 30));
         }}
       >
         {hours.map((hour, i) => (
@@ -246,7 +274,7 @@ export default function DoColumn({
           </div>
         ))}
 
-        {isToday && (
+        {isToday && nowMinute >= offsetMin && nowMinute <= limitMin && (
           <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${nowY}px` }}>
             {/* Same structure as DAY's now line (dot, then line, centred), so
                 the two sides meet at exactly the same height. */}
@@ -254,11 +282,13 @@ export default function DoColumn({
           </div>
         )}
 
-        {items.map((item) => (
+        {shown.map((item) => (
           <DoCard
             key={item.id}
             item={item}
             hourHeight={hourHeight}
+            offsetMin={offsetMin}
+            limitMin={limitMin}
             ctx={ctx}
             t={t}
             writable={writable}
@@ -279,7 +309,7 @@ export default function DoColumn({
           <div
             data-jobo-gesture-preview
             className="absolute left-1 right-1 pointer-events-none rounded-lg border-2 border-dashed border-blue-500 bg-blue-500/15 z-20"
-            style={{ top: `${preview.start * hourHeight / 60}px`, height: `${Math.max(2, (preview.end - preview.start) * hourHeight / 60)}px` }}
+            style={{ top: `${(preview.start - offsetMin) * hourHeight / 60}px`, height: `${Math.max(2, (preview.end - preview.start) * hourHeight / 60)}px` }}
           >
             <div className="absolute right-1 -top-3 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded">
               {ctx.formatTime(clock(preview.start))}–{ctx.formatTime(clock(preview.end))}
@@ -288,7 +318,7 @@ export default function DoColumn({
         )}
 
         {hoverMinute !== null && !preview && writable && (
-          <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${hoverMinute * hourHeight / 60}px` }}>
+          <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${(hoverMinute - offsetMin) * hourHeight / 60}px` }}>
             <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60" />
             <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
               {ctx.formatTime(clock(hoverMinute))}
@@ -296,7 +326,7 @@ export default function DoColumn({
           </div>
         )}
 
-        {!items.length && (
+        {!shown.length && (
           <p className={`absolute top-3 inset-x-2 text-xs text-center pointer-events-none ${ctx.textSecondary}`}>{t('jobo.view.emptyDo')}</p>
         )}
       </div>

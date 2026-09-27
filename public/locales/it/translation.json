@@ -2061,6 +2061,8 @@
     "view": {
       "activeLabel": "Tempo attivo",
       "addDo": "Add Do",
+      "showWindowOnly": "Mostra solo da {{start}} a {{end}}",
+      "showAllHours": "Mostra tutte le ore",
       "continueDo": "Continua",
       "continueDoHint": "Registra un'altra sessione di questa attività",
       "linkedTo": "Collegato a {{title}}",

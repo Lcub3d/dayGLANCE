@@ -2152,6 +2152,8 @@
     "view": {
       "activeLabel": "Активний час",
       "addDo": "Add Do",
+      "showWindowOnly": "Показувати лише від {{start}} до {{end}}",
+      "showAllHours": "Показати всі години",
       "continueDo": "Продовжити",
       "continueDoHint": "Записати ще один сеанс цього завдання",
       "linkedTo": "Пов’язано з {{title}}",

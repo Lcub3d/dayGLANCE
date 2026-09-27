@@ -45,7 +45,7 @@ const ReminderToasts = () => {
                 {reminder.type === 'end' && !reminder.isCalendarEvent && (
                   <button
                     onClick={() => { toggleComplete(reminder.taskId); dismissReminder(reminder.id); }}
-                    className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    className="px-2.5 py-1 text-xs bg-accent-600 text-white rounded hover:bg-accent-700 transition-colors"
                   >
                     {t('focus.complete')}
                   </button>
@@ -53,7 +53,7 @@ const ReminderToasts = () => {
                 {reminder.type !== 'end' && reminder.type !== 'morning' && reminder.startTime && (
                   <button
                     onClick={() => snoozeReminder(reminder)}
-                    className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    className="px-2.5 py-1 text-xs bg-accent-600 text-white rounded hover:bg-accent-700 transition-colors"
                   >
                     {t('reminders.snoozeMinutes', { count: 15 })}
                   </button>

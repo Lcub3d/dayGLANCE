@@ -74,11 +74,39 @@ describe('view receipts over the unchanged ledger writer', () => {
     await expect(h.write([row()])).rejects.toThrow('failed');
     expect(h.render().pendingIds).toEqual([]);
   });
-  it('rejects malformed batches before handing anything to storage', async () => {
+  it('rejects malformed or duplicate batches before handing anything to storage', async () => {
     const h = harness();
     await expect(h.write([{ id: 'bad' }])).rejects.toThrow();
-    await expect(h.write([row(), row({ id: 'another' })])).rejects.toThrow();
+    await expect(h.write([row(), row()])).rejects.toThrow();
     expect(h.props.recordJobo).not.toHaveBeenCalled();
+  });
+  it('submits a valid batch once and clears every saved receipt together', async () => {
+    const first = row({ id: 'manual:first', taskId: 't1' });
+    const second = row({ id: 'manual:second', taskId: 't2', title: 'Capture second' });
+    const h = harness({ ok: true, value: [first, second] });
+    expect(await h.write([first, second])).toMatchObject({ ok: true });
+    expect(h.props.recordJobo).toHaveBeenCalledTimes(1);
+    expect(h.props.recordJobo).toHaveBeenCalledWith([first, second]);
+    expect(h.render().pendingIds).toEqual([]);
+  });
+  it('holds a whole batch and blocks a second edit when any row is pending', async () => {
+    const first = row({ id: 'manual:first', taskId: 't1' });
+    const second = row({ id: 'manual:second', taskId: 't2', title: 'Capture second' });
+    const h = harness({ ok: false, held: true, error: 'storageWrite' });
+    expect(await h.write([first, second])).toMatchObject({ held: true, ok: false });
+    expect(h.render().pendingIds).toEqual(['manual:first', 'manual:second']);
+    expect(await h.write([first, second])).toMatchObject({ ok: false, error: 'pending' });
+    expect(h.props.recordJobo).toHaveBeenCalledTimes(1);
+    expect(h.publish([first, second]).pendingIds).toEqual([]);
+  });
+  it('reports one superseded row as a batch conflict without retrying the batch', async () => {
+    const first = row({ id: 'manual:first', taskId: 't1' });
+    const second = row({ id: 'manual:second', taskId: 't2', title: 'Capture second' });
+    const winner = row({ id: second.id, taskId: second.taskId, title: 'Remote winner', updatedAt: '2026-09-27T11:00:00.000Z' });
+    const h = harness({ ok: true, value: [first, winner] });
+    expect(await h.write([first, second])).toMatchObject({ ok: false, error: 'recordChanged' });
+    expect(h.render().conflict).toBe(true);
+    expect(h.props.recordJobo).toHaveBeenCalledTimes(1);
   });
   it('uses the core tie rule, not only timestamp equality, to resolve receipts', () => {
     const expected = row();

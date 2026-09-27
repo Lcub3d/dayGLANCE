@@ -240,32 +240,32 @@ const SettingsModal = () => {
             >
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                    <Settings size={20} className="text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                    <Settings size={20} className="text-accent-600 dark:text-accent-400" />
                   </div>
                   <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('settings.title')}</h3>
                 </div>
 
                 {updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true) && (
-                  <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
+                  <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-accent-900/20 border-accent-800' : 'bg-accent-50 border-accent-200'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <div className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                        <div className={`text-sm font-medium ${darkMode ? 'text-accent-300' : 'text-accent-800'}`}>
                           {t('settings.updateAvailable', { version: updateInfo.latestVersion })}
                         </div>
-                        <div className={`text-xs mt-1 ${darkMode ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
+                        <div className={`text-xs mt-1 ${darkMode ? 'text-accent-400/70' : 'text-accent-600/70'}`}>
                           {t('settings.updateCurrentVersion', { version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?' })}
                         </div>
-                        <div className={`text-xs mt-2 space-y-1 ${darkMode ? 'text-blue-300/80' : 'text-blue-700/80'}`}>
+                        <div className={`text-xs mt-2 space-y-1 ${darkMode ? 'text-accent-300/80' : 'text-accent-700/80'}`}>
                           <div><strong>Vercel / Web:</strong> {t('settings.updateVercelHint')}</div>
-                          <div><strong>Docker:</strong> <code className={`text-[11px] px-1 py-0.5 rounded ${darkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>docker compose pull && docker compose up -d</code></div>
+                          <div><strong>Docker:</strong> <code className={`text-[11px] px-1 py-0.5 rounded ${darkMode ? 'bg-accent-900/50' : 'bg-accent-100'}`}>docker compose pull && docker compose up -d</code></div>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <a
                             href={updateInfo.releaseUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`text-xs font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} flex items-center gap-1`}
+                            className={`text-xs font-medium ${darkMode ? 'text-accent-400 hover:text-accent-300' : 'text-accent-600 hover:text-accent-700'} flex items-center gap-1`}
                           >
                             <ExternalLink size={12} />
                             {t('settings.updateReleaseNotes')}
@@ -281,7 +281,7 @@ const SettingsModal = () => {
                         className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 flex-shrink-0`}
                         title={t('common.dismiss')}
                       >
-                        <X size={14} className={darkMode ? 'text-blue-400' : 'text-blue-600'} />
+                        <X size={14} className={darkMode ? 'text-accent-400' : 'text-accent-600'} />
                       </button>
                     </div>
                   </div>
@@ -327,7 +327,7 @@ const SettingsModal = () => {
                                 onClick={() => setDefaultView(v)}
                                 className={`px-3 py-1.5 text-xs rounded-lg transition-colors uppercase ${
                                   defaultView === v
-                                    ? 'bg-blue-600 text-white'
+                                    ? 'bg-accent-600 text-white'
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}
                               >
@@ -345,7 +345,7 @@ const SettingsModal = () => {
                               onClick={() => setDayViewMode('calendar-day')}
                               className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                 dayViewMode === 'calendar-day'
-                                  ? 'bg-blue-600 text-white'
+                                  ? 'bg-accent-600 text-white'
                                   : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                               }`}
                             >
@@ -355,7 +355,7 @@ const SettingsModal = () => {
                               onClick={() => setDayViewMode('rolling-24')}
                               className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                 dayViewMode === 'rolling-24'
-                                  ? 'bg-blue-600 text-white'
+                                  ? 'bg-accent-600 text-white'
                                   : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                               }`}
                             >
@@ -370,7 +370,7 @@ const SettingsModal = () => {
                               onClick={() => setWeekViewMode('strict')}
                               className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                 weekViewMode === 'strict'
-                                  ? 'bg-blue-600 text-white'
+                                  ? 'bg-accent-600 text-white'
                                   : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                               }`}
                             >
@@ -380,7 +380,7 @@ const SettingsModal = () => {
                               onClick={() => setWeekViewMode('rolling')}
                               className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                 weekViewMode === 'rolling'
-                                  ? 'bg-blue-600 text-white'
+                                  ? 'bg-accent-600 text-white'
                                   : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                               }`}
                             >
@@ -397,7 +397,7 @@ const SettingsModal = () => {
                                 onClick={() => setWeekTimelineStartHour(h)}
                                 className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                   weekTimelineStartHour === h
-                                    ? 'bg-blue-600 text-white'
+                                    ? 'bg-accent-600 text-white'
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}
                               >
@@ -423,7 +423,7 @@ const SettingsModal = () => {
                                 onClick={() => setWeekTimelineEndHour(h)}
                                 className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                   weekTimelineEndHour === h
-                                    ? 'bg-blue-600 text-white'
+                                    ? 'bg-accent-600 text-white'
                                     : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                 }`}
                               >
@@ -442,7 +442,7 @@ const SettingsModal = () => {
                                   onClick={() => setGlancePage(value)}
                                   className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                                     glancePage === value
-                                      ? 'bg-blue-600 text-white'
+                                      ? 'bg-accent-600 text-white'
                                       : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                                   }`}
                                 >
@@ -477,7 +477,7 @@ const SettingsModal = () => {
                                   onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
                                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                                     mobileDefaultView === mode
-                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      ? 'bg-accent-600 text-white border-accent-600'
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
@@ -495,7 +495,7 @@ const SettingsModal = () => {
                                   onClick={() => { setDefaultView(v); setViewMode(v); }}
                                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                                     defaultView === v
-                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      ? 'bg-accent-600 text-white border-accent-600'
                                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                                   }`}
                                 >
@@ -527,7 +527,7 @@ const SettingsModal = () => {
                                       onClick={() => setListEndOfDayTime(value)}
                                       className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                                         active
-                                          ? 'bg-blue-600 text-white border-blue-600'
+                                          ? 'bg-accent-600 text-white border-accent-600'
                                           : `${darkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-stone-300 text-stone-700'}`
                                       }`}
                                     >
@@ -553,7 +553,7 @@ const SettingsModal = () => {
                         <label htmlFor="settings-language" className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.language')}</label>
                         <LanguagePicker
                           id="settings-language"
-                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
                         />
                       </div>
                       <div>
@@ -563,7 +563,7 @@ const SettingsModal = () => {
                             onClick={() => setUse24HourClock(false)}
                             className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                               !use24HourClock
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-accent-600 text-white'
                                 : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                             }`}
                           >
@@ -573,7 +573,7 @@ const SettingsModal = () => {
                             onClick={() => setUse24HourClock(true)}
                             className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                               use24HourClock
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-accent-600 text-white'
                                 : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                             }`}
                           >
@@ -588,7 +588,7 @@ const SettingsModal = () => {
                             onClick={() => setWeekStartDay(0)}
                             className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                               weekStartDay === 0
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-accent-600 text-white'
                                 : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                             }`}
                           >
@@ -598,7 +598,7 @@ const SettingsModal = () => {
                             onClick={() => setWeekStartDay(1)}
                             className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                               weekStartDay === 1
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-accent-600 text-white'
                                 : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                             }`}
                           >
@@ -611,7 +611,7 @@ const SettingsModal = () => {
                         <select
                           value={homeTimezone}
                           onChange={e => setHomeTimezone(e.target.value)}
-                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
                         >
                           {getTzOptions(homeTimezone).map(tz => (
                             <option key={tz} value={tz}>{getTzLabel(tz)}</option>
@@ -641,7 +641,7 @@ const SettingsModal = () => {
                           placeholder={t('settings.globalShortcutsPlaceholder')}
                           value={trayHotkey}
                           onKeyDown={handleHotkeyRecord}
-                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
+                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
                         />
                         {trayHotkey && (
                           <button
@@ -661,7 +661,7 @@ const SettingsModal = () => {
                           placeholder={t('settings.globalShortcutsPlaceholder')}
                           value={mainWindowHotkey}
                           onKeyDown={handleMainWindowHotkeyRecord}
-                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
+                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
                         />
                         {mainWindowHotkey && (
                           <button
@@ -691,7 +691,7 @@ const SettingsModal = () => {
                             onChange={(e) => setSoundEnabled(e.target.checked)}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${soundEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${soundEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -715,7 +715,7 @@ const SettingsModal = () => {
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div className="relative">
                           <input type="checkbox" checked={weatherEnabled} onChange={(e) => setWeatherEnabled(e.target.checked)} className="sr-only" />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -732,14 +732,14 @@ const SettingsModal = () => {
                               onChange={(e) => setWeatherZip(e.target.value)}
                               onBlur={() => fetchWeather()}
                               onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
-                              className={`w-48 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-48 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                           </div>
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherTempUnit')}</label>
                             <div className="flex gap-2">
-                              <button onClick={() => { setWeatherTempUnit('fahrenheit'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'fahrenheit' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°F</button>
-                              <button onClick={() => { setWeatherTempUnit('celsius'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'celsius' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°C</button>
+                              <button onClick={() => { setWeatherTempUnit('fahrenheit'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'fahrenheit' ? 'bg-accent-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°F</button>
+                              <button onClick={() => { setWeatherTempUnit('celsius'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'celsius' ? 'bg-accent-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°C</button>
                             </div>
                           </div>
                         </>
@@ -759,7 +759,7 @@ const SettingsModal = () => {
                       <label className="flex items-center gap-3 cursor-pointer">
                         <div className="relative">
                           <input type="checkbox" checked={dailyContentEnabled} onChange={(e) => setDailyContentEnabled(e.target.checked)} className="sr-only" />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${dailyContentEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${dailyContentEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${dailyContentEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -785,7 +785,7 @@ const SettingsModal = () => {
                             onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(e.target.checked); }}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${goalsProjectsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${goalsProjectsEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${goalsProjectsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -809,7 +809,7 @@ const SettingsModal = () => {
                             onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setRoutinesEnabled(e.target.checked); }}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${routinesEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${routinesEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${routinesEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -833,7 +833,7 @@ const SettingsModal = () => {
                             onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setHabitsEnabled(e.target.checked); }}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${habitsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${habitsEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${habitsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -860,7 +860,7 @@ const SettingsModal = () => {
                             onChange={(e) => setJoboEnabled(e.target.checked)}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -875,7 +875,7 @@ const SettingsModal = () => {
                             onChange={(e) => setAspireEnabled(e.target.checked)}
                             className="sr-only"
                           />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aspireEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                           </div>
                         </div>
@@ -897,7 +897,7 @@ const SettingsModal = () => {
                         <select
                           value={inboxAutoArchiveDays}
                           onChange={(e) => setInboxAutoArchiveDays(Number(e.target.value))}
-                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                         >
                           <option value={0}>{t('settings.inboxArchiveNever')}</option>
                           <option value={7}>{t('settings.inboxArchive7')}</option>
@@ -996,7 +996,7 @@ const SettingsModal = () => {
                           value={taskCalendarUrl}
                           onChange={(e) => setTaskCalendarUrl(e.target.value.replace(/^webcal:\/\//i, 'https://'))}
                           onPaste={(e) => { const text = e.clipboardData.getData('text'); if (/^webcal:\/\//i.test(text)) { e.preventDefault(); setTaskCalendarUrl(text.replace(/^webcal:\/\//i, 'https://')); } }}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                         />
                         <p className={`text-xs ${textSecondary} mt-1`}>
                           {t('settings.taskCalendarHint', { defaultValue: 'Tasks appear with striped pattern; completion state persists across syncs' })}
@@ -1013,7 +1013,7 @@ const SettingsModal = () => {
                                 placeholder={t('common.username')}
                                 value={taskCalendarAuth.username}
                                 onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, username: e.target.value }))}
-                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
                               />
                             </div>
                             <div className="flex-1">
@@ -1023,7 +1023,7 @@ const SettingsModal = () => {
                                 placeholder={t('settings.appPassword')}
                                 value={taskCalendarAuth.appPassword}
                                 onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, appPassword: e.target.value }))}
-                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
                               />
                             </div>
                           </div>
@@ -1034,7 +1034,7 @@ const SettingsModal = () => {
                               placeholder="https://cloud.example.com/remote.php/dav/calendars/user/personal/"
                               value={taskCalendarAuth.caldavBaseUrl}
                               onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, caldavBaseUrl: e.target.value }))}
-                              className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                              className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
                             />
                             <p className={`text-xs ${textSecondary} mt-0.5`}>
                               {t('settings.calDAVSyncHint', { defaultValue: 'For syncing completions back: the CalDAV collection URL (without ?export). In Nextcloud, the calendar ID in the URL may differ from the display name.' })}
@@ -1068,7 +1068,7 @@ const SettingsModal = () => {
                         <select
                           value={syncRetentionDays}
                           onChange={(e) => setSyncRetentionDays(Number(e.target.value))}
-                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                         >
                           <option value={7}>{formatUnit(7, 'day')}</option>
                           <option value={14}>{formatUnit(14, 'day')}</option>
@@ -1086,7 +1086,7 @@ const SettingsModal = () => {
                       <button
                         onClick={() => syncAll()}
                         disabled={isSyncing || !calSyncConfigured}
-                        className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
                         {isSyncing ? t('common.syncing') : t('common.syncNow')}
@@ -1124,7 +1124,7 @@ const SettingsModal = () => {
                                       const next = [...prev, cal.id];
                                       return next.length === availableCalendars.length ? [] : next;
                                     })}
-                                    className="rounded accent-blue-500"
+                                    className="rounded accent-accent-500"
                                   />
                                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cal.color }} />
                                   <span className="flex-1 truncate">{cal.name}</span>
@@ -1270,7 +1270,7 @@ const SettingsModal = () => {
                                           localStorage.setItem('dayglance-users', JSON.stringify(updated));
                                           setEditingUserId(null);
                                         }}
-                                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                        className="px-2 py-1 bg-accent-600 text-white rounded text-xs hover:bg-accent-700"
                                       >{t('common.save')}</button>
                                       <button type="button" onClick={() => setEditingUserId(null)} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
                                     </>
@@ -1352,7 +1352,7 @@ const SettingsModal = () => {
                                     setNewUserName('');
                                     setAddingUser(false);
                                   }}
-                                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                  className="px-2 py-1 bg-accent-600 text-white rounded text-xs hover:bg-accent-700"
                                 >{t('common.add')}</button>
                                 <button type="button" onClick={() => { setAddingUser(false); setNewUserName(''); }} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
                               </div>
@@ -1360,7 +1360,7 @@ const SettingsModal = () => {
                               <button
                                 type="button"
                                 onClick={() => setAddingUser(true)}
-                                className={`mt-2 text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                                className={`mt-2 text-sm ${darkMode ? 'text-accent-400 hover:text-accent-300' : 'text-accent-600 hover:text-accent-700'}`}
                               >{t('common.addPerson')}</button>
                             )}
                           </div>
@@ -1379,7 +1379,7 @@ const SettingsModal = () => {
                                   const prev = existing ? JSON.parse(existing) : {};
                                   localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...prev, usersPath: val }));
                                 }}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                               />
                               <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.usersSyncPathHint', { defaultValue: 'WebDAV path where the shared user list is stored. Must match across all GLANCE apps.' })}</p>
                             </div>
@@ -1734,7 +1734,7 @@ const SettingsModal = () => {
                               placeholder={t('settings.obsidianVaultRootPlaceholder', { defaultValue: '(vault root)' })}
                               value={obsidianConfig.dailyNotesPath || ''}
                               onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotesPath: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                             <p className={`text-xs ${textSecondary} mt-1`}>
                               {t('settings.obsidianDailyNotesFolderHint', { defaultValue: 'Leave empty for vault root. Common: "Daily Notes" or "journals"' })}
@@ -1749,7 +1749,7 @@ const SettingsModal = () => {
                               placeholder="dayGLANCE"
                               value={obsidianConfig.newNotesFolder ?? 'dayGLANCE'}
                               onChange={(e) => setObsidianConfig(prev => ({ ...prev, newNotesFolder: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                             {validateVaultFolderSetting(obsidianConfig.newNotesFolder) && (
                               <p className="text-xs text-red-500 mt-1">
@@ -1769,7 +1769,7 @@ const SettingsModal = () => {
                               placeholder="yyyy-MM-dd"
                               value={obsidianConfig.dailyNotePattern ?? 'yyyy-MM-dd'}
                               onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotePattern: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                             {validateDailyNotePattern(obsidianConfig.dailyNotePattern, formatDatePattern) && (
                               <p className="text-xs text-red-500 mt-1">
@@ -1789,7 +1789,7 @@ const SettingsModal = () => {
                               placeholder={buildLocalizedTaskHeading(t)}
                               value={obsidianConfig.taskHeading || ''}
                               onChange={(e) => setObsidianConfig(prev => ({ ...prev, taskHeading: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                             <p className={`text-xs ${textSecondary} mt-1`}>
                               {t('settings.obsidianTaskHeadingHintPrefix', { defaultValue: 'Tasks tagged' })} <code>#obsidian</code> {t('settings.obsidianTaskHeadingHintSuffix', { defaultValue: "are added under this heading in today's daily note" })}
@@ -1803,7 +1803,7 @@ const SettingsModal = () => {
                               value={dailyNoteTemplate}
                               onChange={(e) => setDailyNoteTemplate(e.target.value)}
                               placeholder={t('settings.obsidianDailyNoteTemplatePlaceholder', { defaultValue: 'Template for new daily notes...' })}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-500' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm resize-y`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-500' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm resize-y`}
                               rows={4}
                             />
                             <p className={`text-xs ${textSecondary} mt-1`}>
@@ -1878,7 +1878,7 @@ const SettingsModal = () => {
                                   placeholder="## Completed"
                                   value={obsidianConfig.completionLogHeading || ''}
                                   onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogHeading: e.target.value }))}
-                                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                                 />
                               </div>
                             )}
@@ -1990,7 +1990,7 @@ const SettingsModal = () => {
                           placeholder="https://usetrmnl.com/api/custom_plugins/your-uuid"
                           value={trmnlConfig?.webhookUrl || ''}
                           onChange={(e) => setTrmnlConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                         />
                         <p className={`text-xs ${textSecondary} mt-1`}>
                           {t('settings.trmnlWebhookHint', { defaultValue: 'Found in your DayGLANCE recipe settings on TRMNL' })}
@@ -2006,7 +2006,7 @@ const SettingsModal = () => {
                             placeholder={t('settings.trmnlBearerTokenPlaceholder', { defaultValue: 'Bearer token' })}
                           value={trmnlConfig?.apiKey || ''}
                           onChange={(e) => setTrmnlConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                         />
                       </div>
                       <div className="flex items-center gap-2">
@@ -2015,7 +2015,7 @@ const SettingsModal = () => {
                             <button
                               onClick={() => performTrmnlSync()}
                               disabled={trmnlSyncStatus === 'syncing'}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm"
+                              className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 flex items-center gap-2 text-sm"
                             >
                               <RefreshCw size={14} className={trmnlSyncStatus === 'syncing' ? 'animate-spin' : ''} />
                               {trmnlSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
@@ -2035,7 +2035,7 @@ const SettingsModal = () => {
                               setTimeout(() => performTrmnlSync(), 100);
                             }}
                             disabled={!trmnlConfig?.webhookUrl}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm disabled:opacity-50"
+                            className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 flex items-center gap-2 text-sm disabled:opacity-50"
                           >
                             <Wifi size={14} />
                             {t('settings.trmnlEnableSync')}
@@ -2082,7 +2082,7 @@ const SettingsModal = () => {
                             placeholder="https://nextcloud.example.com/remote.php/dav/files/user"
                             value={intentForm.webdavUrl}
                             onChange={e => setIntentForm(p => ({ ...p, webdavUrl: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -2093,7 +2093,7 @@ const SettingsModal = () => {
                               placeholder={t('common.username')}
                               value={intentForm.username}
                               onChange={e => setIntentForm(p => ({ ...p, username: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                           </div>
                           <div>
@@ -2103,7 +2103,7 @@ const SettingsModal = () => {
                               placeholder="••••••••••••"
                               value={intentForm.appPassword}
                               onChange={e => setIntentForm(p => ({ ...p, appPassword: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             />
                           </div>
                         </div>
@@ -2114,7 +2114,7 @@ const SettingsModal = () => {
                             placeholder="/GLANCE/events/"
                             value={intentForm.eventsPath}
                             onChange={e => setIntentForm(p => ({ ...p, eventsPath: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                           />
                           <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceEventsPathHint', { defaultValue: 'Path on the WebDAV server where event files are stored.' })}</p>
                         </div>
@@ -2124,7 +2124,7 @@ const SettingsModal = () => {
                             <select
                               value={intentForm.foregroundInterval}
                               onChange={e => setIntentForm(p => ({ ...p, foregroundInterval: Number(e.target.value) }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             >
                               <option value={30000}>{formatUnit(30, 'second')}</option>
                               <option value={60000}>{formatUnit(1, 'minute')}</option>
@@ -2139,7 +2139,7 @@ const SettingsModal = () => {
                             <select
                               value={intentForm.backgroundInterval}
                               onChange={e => setIntentForm(p => ({ ...p, backgroundInterval: Number(e.target.value) }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                             >
                               <option value={300000}>{formatUnit(5, 'minute')}</option>
                               <option value={900000}>{formatUnit(15, 'minute')}</option>
@@ -2158,7 +2158,7 @@ const SettingsModal = () => {
                             max={365}
                             value={intentForm.gcRetentionDays}
                             onChange={e => setIntentForm(p => ({ ...p, gcRetentionDays: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                           />
                           <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceRetentionHint', { defaultValue: 'Event files older than this are deleted automatically.' })}</p>
                         </div>
@@ -2187,7 +2187,7 @@ const SettingsModal = () => {
                         {intentSetupPhase === 'passphrase-needed' && (
                           <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
                             <div className="flex items-center gap-2 mb-2">
-                              <Lock size={13} className="text-blue-500 flex-shrink-0" />
+                              <Lock size={13} className="text-accent-500 flex-shrink-0" />
                               <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle', { defaultValue: 'Enter your sync passphrase to complete setup' })}</span>
                             </div>
                             <p className={`text-xs ${textSecondary} mb-3`}>
@@ -2200,7 +2200,7 @@ const SettingsModal = () => {
                               onChange={e => setIntentPassphraseInput(e.target.value)}
                               onKeyDown={e => { if (e.key === 'Escape') { setIntentSetupPhase(null); setIntentPassphraseInput(''); } }}
                               placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
                             />
                             <div className="flex gap-2">
                               <button
@@ -2227,7 +2227,7 @@ const SettingsModal = () => {
                                     setIntentSetupPhase({ error: err.message });
                                   }
                                 }}
-                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                                className="px-3 py-1.5 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50 text-sm"
                               >
                                 {t('common.confirm')}
                               </button>
@@ -2242,7 +2242,7 @@ const SettingsModal = () => {
                         )}
                         {intentSetupPhase === 'running' && (
                           <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                            <Loader size={14} className="animate-spin text-blue-500" />
+                            <Loader size={14} className="animate-spin text-accent-500" />
                             <span className={`text-sm ${textSecondary}`}>{t('settings.intentsEncryptionSettingUp', { defaultValue: 'Setting up intents encryption…' })}</span>
                           </div>
                         )}
@@ -2304,7 +2304,7 @@ const SettingsModal = () => {
                               setIntentSaved(true);
                               setTimeout(() => setIntentSaved(false), 2000);
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors flex items-center gap-1.5"
+                            className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-60 text-sm transition-colors flex items-center gap-1.5"
                           >
                             {intentSetupPhase === 'running' && <Loader size={13} className="animate-spin" />}
                             {intentSaved ? t('common.saved') : t('common.save')}
@@ -2396,7 +2396,7 @@ const SettingsModal = () => {
                                     onChange={e => setDbIntentsPassphraseInput(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Escape') { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); } }}
                                     placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-                                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
                                   />
                                   <div className="flex gap-2">
                                     <button
@@ -2417,7 +2417,7 @@ const SettingsModal = () => {
                                         setDbIntentsConfig({ ...existing, enabled: true });
                                         window.location.reload();
                                       }}
-                                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                                      className="px-3 py-1.5 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50 text-sm"
                                     >
                                       {t('common.confirm')}
                                     </button>
@@ -2435,7 +2435,7 @@ const SettingsModal = () => {
                               )}
                               {dbIntentsSetupPhase === 'running' && (
                                 <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                                  <Loader size={14} className="animate-spin text-blue-500" />
+                                  <Loader size={14} className="animate-spin text-accent-500" />
                                   <span className={`text-sm ${textSecondary}`}>{t('settings.glanceVaultEncryptionSettingUp', { defaultValue: 'Setting up vault intents encryption…' })}</span>
                                 </div>
                               )}
@@ -2492,7 +2492,7 @@ const SettingsModal = () => {
                                     setDbIntentsSaved(true);
                                     setTimeout(() => setDbIntentsSaved(false), 2000);
                                   }}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors"
+                                  className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-60 text-sm transition-colors"
                                 >
                                   {dbIntentsSaved ? t('common.saved') : t('common.save')}
                                 </button>
@@ -2542,7 +2542,7 @@ const SettingsModal = () => {
                               setIcloudIntentsSaved(true);
                               setTimeout(() => setIcloudIntentsSaved(false), 2000);
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                            className="px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors"
                           >
                             {icloudIntentsSaved ? t('common.saved') : t('common.save')}
                           </button>

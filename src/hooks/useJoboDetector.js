@@ -1,6 +1,7 @@
 import { useEffect, useRef, useReducer } from 'react';
 import { snapshotJoboState, planJoboTransitions, buildJoboRecords } from '../jobo/detector.js';
 import { isTrayMode } from '../utils/trayMode.js';
+import { expandLegacyCompletions } from '../jobo/completionInterval.js';
 
 // JOBO completion detector (slice 4). Watches task state for completion
 // transitions and writes Do records through recordJobo, the ledger's only
@@ -33,19 +34,25 @@ export default function useJoboDetector({
   useEffect(() => {
     if (isTrayMode) return;
     const nextSnap = snapshotJoboState(tasks, unscheduledTasks, recurringTasks);
+    const remoteApply = !!isRemoteApply?.();
     const { edges, advanceTo } = planJoboTransitions(prevRef.current, nextSnap, {
       tasks, unscheduledTasks, recurringTasks,
-      isRemoteApply: !!isRemoteApply?.(),
+      isRemoteApply: remoteApply,
       enabled: !!enabled,
       loaded: !!joboLoaded,
       writable: joboWritable !== false,
       inFlight: inFlightRef.current,
     });
-    if (!edges) {
+    const working = readJoboWorkingSet?.() || [];
+    const upgrades = enabled && joboLoaded && joboWritable !== false && !remoteApply && !inFlightRef.current
+      ? expandLegacyCompletions(working) : [];
+    if (!edges && !upgrades.length) {
       if (advanceTo !== null) prevRef.current = advanceTo;
       return;
     }
-    const records = buildJoboRecords(edges, readJoboWorkingSet?.(), { observedAt: new Date().toISOString() });
+    const upgraded = new Map(upgrades.map(record => [record.id, record]));
+    const edgeRecords = buildJoboRecords(edges, working.map(record => upgraded.get(record.id) || record), { observedAt: new Date().toISOString() });
+    const records = [...new Map([...upgrades, ...edgeRecords].map(record => [record.id, record])).values()];
     if (!records.length) {
       prevRef.current = nextSnap; // every edge was already present, or unusable
       return;

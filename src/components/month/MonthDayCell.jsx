@@ -184,8 +184,8 @@ export default function MonthDayCell({
       aria-label={label || date}
       onClick={onSelect ? () => onSelect(date) : undefined}
       className={`relative block p-0 m-0 border-0 bg-transparent text-left select-none appearance-none cursor-pointer overflow-hidden
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
-        ${isToday ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''} ${inMonth ? '' : 'opacity-40'}
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500
+        ${isToday ? 'bg-accent-50/40 dark:bg-accent-900/10' : ''} ${inMonth ? '' : 'opacity-40'}
         ${isSelected ? 'ring-2 ring-inset ring-brand !opacity-100' : ''}`}
       style={{ width, height }}
     >
@@ -225,7 +225,7 @@ export default function MonthDayCell({
         <span
           data-month-cell-date
           className={`inline-flex items-center justify-center font-semibold leading-none tabular-nums shrink-0 rounded-md
-            ${isToday ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-stone-900 dark:text-gray-100'}`}
+            ${isToday ? 'bg-accent-100 text-accent-700 dark:bg-accent-900/50 dark:text-accent-300' : 'text-stone-900 dark:text-gray-100'}`}
           style={{ width: m.dateSize, height: m.dateSize, fontSize: m.dateFont }}
         >
           {dayNumber}

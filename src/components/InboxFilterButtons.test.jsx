@@ -36,8 +36,8 @@ describe('InboxFilterButtons', () => {
   it('labels the filter and marks it only while a filter is on', () => {
     level = 0;
     expect(render()).toContain('<span>Filter</span>');
-    expect(render()).not.toContain('rounded-full bg-blue-500');
-    expect(render({ filterActive: true })).toContain('rounded-full bg-blue-500');
+    expect(render()).not.toContain('rounded-full bg-accent-500');
+    expect(render({ filterActive: true })).toContain('rounded-full bg-accent-500');
   });
 
   it('names the priority level: All, Low+, Medium+, High', () => {

@@ -141,9 +141,9 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
                   }}
                   className={`p-1 text-center text-sm rounded transition-colors ${
                     isSelected
-                      ? 'bg-blue-600 text-white font-bold'
+                      ? 'bg-accent-600 text-white font-bold'
                       : isToday
-                        ? darkMode ? 'bg-blue-900 text-blue-200 font-semibold' : 'bg-blue-100 text-blue-900 font-semibold'
+                        ? darkMode ? 'bg-accent-900 text-accent-200 font-semibold' : 'bg-accent-100 text-accent-900 font-semibold'
                         : darkMode
                           ? 'hover:bg-gray-700 text-gray-300'
                           : 'hover:bg-stone-100 text-stone-700'
@@ -221,7 +221,7 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
           {currentDeadline && (
             <>
               <div className={`border-t ${borderClass} my-1`}></div>
-              <div className={`px-3 py-1 text-sm font-medium ${darkMode ? 'text-blue-400' : 'text-blue-600'} flex items-center gap-2`}>
+              <div className={`px-3 py-1 text-sm font-medium ${darkMode ? 'text-accent-400' : 'text-accent-600'} flex items-center gap-2`}>
                 <Calendar size={14} />
                 Due {formatDeadlineDate(currentDeadline)}
               </div>

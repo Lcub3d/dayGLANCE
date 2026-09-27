@@ -32,8 +32,8 @@ const SyncPassphraseModal = ({ darkMode, textPrimary, textSecondary, borderClass
     <div className={`fixed inset-0 z-50 flex items-center justify-center ${bgOverlay}`}>
       <div className={`${bgModal} rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6`}>
         <div className="flex items-center gap-3 mb-4">
-          <div className={`p-2 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-            <Lock size={20} className="text-blue-500" />
+          <div className={`p-2 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-accent-50'}`}>
+            <Lock size={20} className="text-accent-500" />
           </div>
           <h2 className={`text-lg font-semibold ${textPrimary}`}>{t('sync.unlockTitle', { defaultValue: 'Unlock sync' })}</h2>
         </div>
@@ -51,7 +51,7 @@ const SyncPassphraseModal = ({ darkMode, textPrimary, textSecondary, borderClass
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
               placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
             />
           </div>
 
@@ -65,7 +65,7 @@ const SyncPassphraseModal = ({ darkMode, textPrimary, textSecondary, borderClass
             <button
               type="submit"
               disabled={!passphrase.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50"
             >
               {t('sync.unlock', { defaultValue: 'Unlock' })}
             </button>

@@ -82,7 +82,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
           ))}
           {(voiceParsedEdits || []).map((edit, i) => (
             <div key={`edit-${i}`} className={`${cardBg} rounded-lg px-3 py-2`}>
-              <div className={`text-xs font-medium text-blue-400 mb-0.5 uppercase tracking-wide`}>{actionLabels[edit.action] ?? edit.action}</div>
+              <div className={`text-xs font-medium text-accent-400 mb-0.5 uppercase tracking-wide`}>{actionLabels[edit.action] ?? edit.action}</div>
               <div className={`text-sm ${textPrimary} truncate`}>{edit.taskTitle ?? edit.id}</div>
             </div>
           ))}
@@ -99,7 +99,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
           </button>
           <button
             onClick={handleApply}
-            className="flex-1 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white transition-opacity hover:opacity-90"
+            className="flex-1 py-2 rounded-lg text-sm font-semibold bg-accent-500 text-white transition-opacity hover:opacity-90"
           >
             {t('voice.applyAll', { count: changeCount })}
           </button>
@@ -127,7 +127,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
                 ? 'bg-red-500 animate-pulse shadow-lg shadow-red-500/40'
                 : isProcessing
                   ? darkMode ? 'bg-white/10 text-gray-500' : 'bg-black/5 text-stone-400'
-                  : 'bg-blue-500 hover:bg-blue-600 shadow-lg shadow-blue-500/30'
+                  : 'bg-accent-500 hover:bg-accent-600 shadow-lg shadow-accent-500/30'
             }`}
           >
             {isProcessing
@@ -182,7 +182,7 @@ export default function TrayVoice({ darkMode, onClose, autoStart = false }) {
       {!isProcessing && !voiceIsRecording && canParse && (
         <button
           onClick={voiceParseWithAI}
-          className="mt-3 flex-shrink-0 py-2 rounded-lg text-sm font-semibold bg-blue-500 text-white transition-opacity hover:opacity-90"
+          className="mt-3 flex-shrink-0 py-2 rounded-lg text-sm font-semibold bg-accent-500 text-white transition-opacity hover:opacity-90"
         >
           {usesAI ? t('voice.parseWithAI') : t('voice.parse')}
         </button>

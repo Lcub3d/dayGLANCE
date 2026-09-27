@@ -75,15 +75,15 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
       return (
         <div className="relative rounded-full" style={{ width: clockSize, height: clockSize, ...faceStyle }}>
           <svg width={clockSize} height={clockSize} className="absolute inset-0 pointer-events-none">
-            <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
-            <circle cx={hx} cy={hy} r="5" fill="#3b82f6" opacity="0.35" />
-            <circle cx={cx} cy={cx} r="5" fill="#3b82f6" />
+            <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="var(--ui-accent)" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
+            <circle cx={hx} cy={hy} r="5" fill="var(--ui-accent)" opacity="0.35" />
+            <circle cx={cx} cy={cx} r="5" fill="var(--ui-accent)" />
           </svg>
           {minutes.map(min => {
             const { x, y } = pos(min * 6, outerR);
             return (
               <button type="button"key={min} onClick={() => setSelectedMinute(min)}
-                className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${min === selectedMinute ? 'bg-blue-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
+                className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${min === selectedMinute ? 'bg-accent-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
                 style={{ width: outerBtn, height: outerBtn, left: x - outerBtn / 2, top: y - outerBtn / 2 }}>
                 {min.toString().padStart(2, '0')}
               </button>
@@ -105,9 +105,9 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
       return (
         <div className="relative rounded-full" style={{ width: clockSize, height: clockSize, ...faceStyle }}>
           <svg width={clockSize} height={clockSize} className="absolute inset-0 pointer-events-none">
-            <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
-            <circle cx={hx} cy={hy} r="5" fill="#3b82f6" opacity="0.35" />
-            <circle cx={cx} cy={cx} r="5" fill="#3b82f6" />
+            <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="var(--ui-accent)" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
+            <circle cx={hx} cy={hy} r="5" fill="var(--ui-accent)" opacity="0.35" />
+            <circle cx={cx} cy={cx} r="5" fill="var(--ui-accent)" />
           </svg>
           {Array.from({ length: 12 }, (_, i) => {
             const label = i === 0 ? 12 : i;
@@ -115,7 +115,7 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
             const sel = label === 12 ? selectedHour === 12 : selectedHour === label;
             return (
               <button type="button"key={`o${label}`} onClick={() => { setSelectedHour(label); setMode('minute'); }}
-                className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${sel ? 'bg-blue-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
+                className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${sel ? 'bg-accent-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
                 style={{ width: outerBtn, height: outerBtn, left: x - outerBtn / 2, top: y - outerBtn / 2 }}>
                 {label}
               </button>
@@ -127,7 +127,7 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
             const sel = selectedHour === label;
             return (
               <button type="button"key={`i${label}`} onClick={() => { setSelectedHour(label); setMode('minute'); }}
-                className={`absolute rounded-full flex items-center justify-center transition-all ${isTablet ? 'text-xs' : 'text-[10px]'} ${sel ? 'bg-blue-600 text-white shadow-md' : darkMode ? 'text-gray-400 hover:bg-white/10' : 'text-stone-500 hover:bg-black/8'}`}
+                className={`absolute rounded-full flex items-center justify-center transition-all ${isTablet ? 'text-xs' : 'text-[10px]'} ${sel ? 'bg-accent-600 text-white shadow-md' : darkMode ? 'text-gray-400 hover:bg-white/10' : 'text-stone-500 hover:bg-black/8'}`}
                 style={{ width: innerBtn, height: innerBtn, left: x - innerBtn / 2, top: y - innerBtn / 2 }}>
                 {label.toString().padStart(2, '0')}
               </button>
@@ -144,9 +144,9 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
     return (
       <div className="relative rounded-full" style={{ width: clockSize, height: clockSize, ...faceStyle }}>
         <svg width={clockSize} height={clockSize} className="absolute inset-0 pointer-events-none">
-          <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
-          <circle cx={hx} cy={hy} r="5" fill="#3b82f6" opacity="0.35" />
-          <circle cx={cx} cy={cx} r="5" fill="#3b82f6" />
+          <line x1={cx} y1={cx} x2={hx} y2={hy} stroke="var(--ui-accent)" strokeWidth="3" strokeLinecap="round" opacity="0.65" />
+          <circle cx={hx} cy={hy} r="5" fill="var(--ui-accent)" opacity="0.35" />
+          <circle cx={cx} cy={cx} r="5" fill="var(--ui-accent)" />
         </svg>
         {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((label, i) => {
           const { x, y } = pos(i * 30, outerR);
@@ -156,7 +156,7 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
               const h24 = isAM ? (label === 12 ? 0 : label) : (label === 12 ? 12 : label + 12);
               setSelectedHour(h24); setMode('minute');
             }}
-              className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${sel ? 'bg-blue-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
+              className={`absolute rounded-full flex items-center justify-center font-medium transition-all ${isTablet ? 'text-sm' : 'text-xs'} ${sel ? 'bg-accent-600 text-white shadow-md' : darkMode ? 'text-gray-200 hover:bg-white/10' : 'text-stone-700 hover:bg-black/8'}`}
               style={{ width: outerBtn, height: outerBtn, left: x - outerBtn / 2, top: y - outerBtn / 2 }}>
               {label}
             </button>
@@ -179,12 +179,12 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
         <div className="flex justify-center mb-5">
           <div className={`flex items-center gap-1 px-4 py-2 rounded-2xl ${darkMode ? 'bg-gray-900/60' : 'bg-stone-100'}`}>
             <button type="button"onClick={() => setMode('hour')}
-              className={`${isTablet ? 'text-4xl w-16' : 'text-3xl w-12'} font-bold rounded-xl py-1 text-center transition-colors ${mode === 'hour' ? 'bg-blue-600 text-white' : textPrimary}`}>
+              className={`${isTablet ? 'text-4xl w-16' : 'text-3xl w-12'} font-bold rounded-xl py-1 text-center transition-colors ${mode === 'hour' ? 'bg-accent-600 text-white' : textPrimary}`}>
               {displayHour}
             </button>
             <span className={`${isTablet ? 'text-4xl' : 'text-3xl'} font-bold ${textSecondary} select-none`}>:</span>
             <button type="button"onClick={() => setMode('minute')}
-              className={`${isTablet ? 'text-4xl w-16' : 'text-3xl w-12'} font-bold rounded-xl py-1 text-center transition-colors ${mode === 'minute' ? 'bg-blue-600 text-white' : textPrimary}`}>
+              className={`${isTablet ? 'text-4xl w-16' : 'text-3xl w-12'} font-bold rounded-xl py-1 text-center transition-colors ${mode === 'minute' ? 'bg-accent-600 text-white' : textPrimary}`}>
               {selectedMinute.toString().padStart(2, '0')}
             </button>
             {!use24HourClock && (
@@ -200,7 +200,7 @@ const ClockTimePicker = ({ value, onChange, onClose, darkMode, isTablet, use24Ho
 
         <div className={`flex gap-2`}>
           <button type="button"onClick={onClose} className={`flex-1 ${isTablet ? 'py-3 text-base' : 'py-2.5 text-sm'} rounded-2xl font-medium ${darkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'} transition-colors`}>{t('common.cancel')}</button>
-          <button type="button"onClick={handleConfirm} className={`flex-1 ${isTablet ? 'py-3 text-base' : 'py-2.5 text-sm'} bg-blue-600 text-white rounded-2xl font-medium hover:bg-blue-700 transition-colors`}>{t('common.ok')}</button>
+          <button type="button"onClick={handleConfirm} className={`flex-1 ${isTablet ? 'py-3 text-base' : 'py-2.5 text-sm'} bg-accent-600 text-white rounded-2xl font-medium hover:bg-accent-700 transition-colors`}>{t('common.ok')}</button>
         </div>
       </div>
     </div>

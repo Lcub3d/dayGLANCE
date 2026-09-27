@@ -179,7 +179,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
       data-week-col={dateStr}
       onDragOver={onColDragOver}
       onDrop={onColDrop}
-      className={`flex-1 flex flex-col min-w-0 relative ${colIdx > 0 ? `border-l ${borderClass}` : ''} ${isToday ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
+      className={`flex-1 flex flex-col min-w-0 relative ${colIdx > 0 ? `border-l ${borderClass}` : ''} ${isToday ? (darkMode ? 'bg-accent-900/10' : 'bg-accent-50/40') : ''}`}
     >
       {/* Hour rows — only render visible hours */}
       {Array.from({ length: endHour - startHour }, (_, i) => {
@@ -461,10 +461,10 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
             style={{ top: `${topPx}px` }}
           >
             <div className="relative">
-              <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'}`}>
+              <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${darkMode ? 'bg-accent-500 text-white' : 'bg-accent-600 text-white'}`}>
                 {dayName} {formatTime(dragPreviewTime)}
               </div>
-              <div className="h-0.5 bg-blue-500" />
+              <div className="h-0.5 bg-accent-500" />
             </div>
           </div>
         );
@@ -607,7 +607,7 @@ const WeekView = () => {
               {edge && (
                 <button
                   onClick={() => setShowAllHours(v => !v)}
-                  className={`absolute ${atTopEdge ? 'top-0.5' : 'bottom-0.5'} right-2 text-[10px] leading-none text-blue-500 hover:text-blue-400 transition-colors select-none`}
+                  className={`absolute ${atTopEdge ? 'top-0.5' : 'bottom-0.5'} right-2 text-[10px] leading-none text-accent-500 hover:text-accent-400 transition-colors select-none`}
                   title={hiddenHere ? t('settings.weekTimelineHidden', { count: hiddenHere }) : undefined}
                 >
                   {hiddenHere ? `${arrow} ${edgeLabel} · ${hiddenHere}` : `${arrow} ${edgeLabel}`}

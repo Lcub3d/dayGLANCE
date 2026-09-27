@@ -11,11 +11,11 @@ const EVENT_COLORS = {
   completed:   'bg-green-100 text-green-700',
   uncompleted: 'bg-yellow-100 text-yellow-700',
   deleted:     'bg-red-100 text-red-700',
-  rescheduled: 'bg-blue-100 text-blue-700',
+  rescheduled: 'bg-accent-100 text-accent-700',
   updated:     'bg-stone-100 text-stone-600',
   create:      'bg-green-100 text-green-700',
   complete:    'bg-green-100 text-green-700',
-  open:        'bg-blue-100 text-blue-700',
+  open:        'bg-accent-100 text-accent-700',
   query:       'bg-stone-100 text-stone-600',
   notify:      'bg-purple-100 text-purple-700',
   error:       'bg-red-100 text-red-700',
@@ -26,11 +26,11 @@ const EVENT_COLORS_DARK = {
   completed:   'bg-green-900/40 text-green-400',
   uncompleted: 'bg-yellow-900/40 text-yellow-400',
   deleted:     'bg-red-900/40 text-red-400',
-  rescheduled: 'bg-blue-900/40 text-blue-400',
+  rescheduled: 'bg-accent-900/40 text-accent-400',
   updated:     'bg-gray-700 text-gray-400',
   create:      'bg-green-900/40 text-green-400',
   complete:    'bg-green-900/40 text-green-400',
-  open:        'bg-blue-900/40 text-blue-400',
+  open:        'bg-accent-900/40 text-accent-400',
   query:       'bg-gray-700 text-gray-400',
   notify:      'bg-purple-900/40 text-purple-400',
   error:       'bg-red-900/40 text-red-400',
@@ -238,7 +238,7 @@ const IntentActivityLogModal = () => {
                       {/* Direction icon */}
                       <div className="mt-0.5 flex-shrink-0">
                         {entry.direction === 'in'
-                          ? <><ArrowDownLeft size={13} className="text-blue-500" /><span className="sr-only">{t('intentLog.inbound')}</span></>
+                          ? <><ArrowDownLeft size={13} className="text-accent-500" /><span className="sr-only">{t('intentLog.inbound')}</span></>
                           : <><ArrowUpRight size={13} className="text-purple-500" /><span className="sr-only">{t('intentLog.outbound')}</span></>
                         }
                       </div>

@@ -35,8 +35,8 @@ const QuickAddChips = ({ chips, onDismiss, darkMode }) => {
             title={t('suggestions.removeChip', { label })}
             className={`inline-flex items-center gap-1 rounded-full pl-2 pr-1.5 py-0.5 text-xs font-medium transition-colors ${
               darkMode
-                ? 'bg-blue-500/15 text-blue-300 hover:bg-blue-500/25'
-                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                ? 'bg-accent-500/15 text-accent-300 hover:bg-accent-500/25'
+                : 'bg-accent-50 text-accent-700 hover:bg-accent-100'
             }`}
           >
             <Icon size={11} className="flex-shrink-0 opacity-70" />

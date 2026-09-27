@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X, Target, Pause, Play, Check, SkipForward, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { isNativeAndroid, nativeIsDndPermissionGranted, nativeRequestDndPermission } from '../native.js';
@@ -7,6 +7,7 @@ import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import { priorityLevel } from '../utils/taskPriority.js';
 
 const FocusModeModal = () => {
   const { t } = useTranslation();
@@ -14,6 +15,7 @@ const FocusModeModal = () => {
   const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx();
   const {
     exitFocusMode, startFocusTimer, dismissFocusStats, skipFocusPhase,
+    taskPomodoro,
     focusShowSettings, focusShowStats,
     focusWorkMinutes, setFocusWorkMinutes,
     focusBreakMinutes, setFocusBreakMinutes,
@@ -28,12 +30,26 @@ const FocusModeModal = () => {
     focusDeleteSubtask, focusUpdateSubtaskTitle,
     aiConfig, aiSubtasksLoadingForTask, generateAISubtasks,
   } = useFeaturesCtx();
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    dialogRef.current?.querySelector('button')?.focus();
+    return () => previous?.isConnected && previous.focus();
+  }, []);
+  const close = () => focusShowStats ? dismissFocusStats() : exitFocusMode(!focusShowSettings);
+  const onKeyDown = event => {
+    if (event.key === 'Escape') { event.stopPropagation(); close(); }
+    if (event.key !== 'Tab') return;
+    const controls = [...dialogRef.current.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled)')];
+    if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
+    if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
+  };
 
   return (
-    <div className="fixed inset-0 bg-gray-950 z-[70] flex flex-col items-center overflow-y-auto">
+    <div ref={dialogRef} role="dialog" aria-modal="true" onKeyDown={onKeyDown} aria-label={t(taskPomodoro?.target ? 'focus.pomodoroTimer' : 'focus.title')} className="fixed inset-0 bg-gray-950 z-[70] flex flex-col items-center overflow-y-auto">
       {/* Exit button */}
       <button
-        onClick={() => exitFocusMode(true)}
+        onClick={close}
         className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10"
         aria-label={t('common.close')}
       >
@@ -43,8 +59,9 @@ const FocusModeModal = () => {
       {/* Settings view */}
       {focusShowSettings && !focusShowStats && (
         <div className="w-full max-w-md px-6 py-8 my-auto flex flex-col items-center gap-6">
-          <Target size={48} className="text-blue-400" />
-          <h1 className="text-2xl font-bold text-white">{t('focus.title')}</h1>
+          <Target size={48} className="text-accent-400" />
+          <h1 className="text-2xl font-bold text-white">{t(taskPomodoro?.target ? 'focus.pomodoroTimer' : 'focus.title')}</h1>
+          {taskPomodoro?.target && <p className="text-sm text-gray-300">{t('focus.linkedTask', { title: taskPomodoro.target.title })}</p>}
 
           {/* Interval controls */}
           <div className="w-full space-y-3">
@@ -56,9 +73,9 @@ const FocusModeModal = () => {
               <div key={label} className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-3">
                 <span className="text-gray-300 text-sm">{label}</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => set(Math.max(1, value - 5))} className="w-8 h-8 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center text-lg font-bold">-</button>
+                  <button aria-label={t('focus.decreaseInterval', { label })} onClick={() => set(Math.max(1, value - 5))} className="w-8 h-8 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center text-lg font-bold">-</button>
                   <span className="text-white font-mono w-12 text-center">{t('voice.minutesShort', { count: value })}</span>
-                  <button onClick={() => set(value + 5)} className="w-8 h-8 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center text-lg font-bold">+</button>
+                  <button aria-label={t('focus.increaseInterval', { label })} onClick={() => set(Math.min(120, value + 5))} className="w-8 h-8 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center text-lg font-bold">+</button>
                 </div>
               </div>
             ))}
@@ -69,7 +86,7 @@ const FocusModeModal = () => {
             <h3 className="text-sm text-gray-400 font-medium">{t('focus.tasksInBlock')}</h3>
             {focusBlockTasks.map(task => (
               <div key={task.id} className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-3 py-2">
-                <div className={`w-3 h-3 rounded-full ${task.color} flex-shrink-0`} />
+                <div className="w-3 h-3 rounded-full task-priority-surface flex-shrink-0" data-priority={priorityLevel(task.priority)} />
                 <span className="text-gray-200 text-sm truncate flex-1">{stripWikilinks(task.title)}</span>
                 <span className="text-gray-500 text-xs">{t('voice.minutesShort', { count: task.duration })}</span>
               </div>
@@ -82,7 +99,7 @@ const FocusModeModal = () => {
               <span className="text-gray-300">{t('focus.enableDnd')}</span>
               <button
                 onClick={nativeRequestDndPermission}
-                className="ml-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex-shrink-0"
+                className="ml-3 px-3 py-1.5 bg-accent-600 hover:bg-accent-700 text-white rounded-lg text-xs font-medium transition-colors flex-shrink-0"
               >
                 {t('focus.grantAccess')}
               </button>
@@ -91,7 +108,7 @@ const FocusModeModal = () => {
 
           <button
             onClick={startFocusTimer}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-lg"
+            className="w-full py-3 bg-accent-600 hover:bg-accent-700 text-white font-semibold rounded-lg transition-colors text-lg"
           >
             {t('focus.startSession')}
           </button>
@@ -99,12 +116,16 @@ const FocusModeModal = () => {
       )}
 
       {/* Main focus view */}
+      {taskPomodoro?.target && taskPomodoro.saveState && <div className="px-6 pt-12 text-sm text-gray-200" role="status">
+        {t(`focus.pomodoroSave.${taskPomodoro.saveState}`)}
+        {taskPomodoro.saveState === 'error' && <button type="button" className="underline ml-3" onClick={taskPomodoro.retry}>{t('common.retry')}</button>}
+      </div>}
       {!focusShowSettings && !focusShowStats && (
         <div className="w-full max-w-lg px-6 py-8 my-auto flex flex-col items-center gap-6">
           {/* Phase indicator */}
           <div className="flex items-center gap-3">
             <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${
-              focusPhase === 'work' ? 'bg-blue-600 text-white' :
+              focusPhase === 'work' ? 'bg-accent-600 text-white' :
               focusPhase === 'shortBreak' ? 'bg-green-600 text-white' :
               'bg-purple-600 text-white'
             }`}>
@@ -147,8 +168,8 @@ const FocusModeModal = () => {
               <div
                 key={i}
                 className={`w-4 h-4 rounded-full transition-all ${
-                  i < (focusCycleCount % 4) ? 'bg-blue-500' :
-                  i === (focusCycleCount % 4) && focusPhase === 'work' ? 'bg-blue-500 animate-pulse' :
+                  i < (focusCycleCount % 4) ? 'bg-accent-500' :
+                  i === (focusCycleCount % 4) && focusPhase === 'work' ? 'bg-accent-500 animate-pulse' :
                   'bg-gray-700'
                 }`}
               />
@@ -163,12 +184,12 @@ const FocusModeModal = () => {
                 <div key={task.id} className={`bg-gray-800 rounded-lg p-3 flex flex-col gap-2 transition-opacity ${isDone ? 'opacity-40' : ''}`}>
                   {/* Header row: dot + title/time + complete button */}
                   <div className="flex items-start gap-3">
-                    <div className={`w-3 h-3 rounded-full ${task.color} flex-shrink-0 mt-1`} />
+                    <div className="w-3 h-3 rounded-full task-priority-surface flex-shrink-0 mt-1" data-priority={priorityLevel(task.priority)} />
                     <div className="flex-1 min-w-0">
                       <div className={`text-sm font-medium ${isDone ? 'text-gray-500 line-through' : 'text-gray-200'}`}>{stripWikilinks(task.title)}</div>
-                      <div className="text-xs text-gray-500">{formatTime(task.startTime)} - {formatTime(minutesToTime(timeToMinutes(task.startTime) + task.duration))}</div>
+                      {task.startTime && <div className="text-xs text-gray-500">{formatTime(task.startTime)} - {formatTime(minutesToTime(timeToMinutes(task.startTime) + task.duration))}</div>}
                     </div>
-                    {!isDone && (
+                    {!isDone && !taskPomodoro?.target && (
                       <button
                         onClick={() => focusCompleteTask(task.id)}
                         className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition-colors flex-shrink-0"
@@ -210,7 +231,7 @@ const FocusModeModal = () => {
           {/* Session elapsed time */}
           {focusSessionStart && (
             <div className="text-gray-500 text-sm mt-4">
-              {t('focus.sessionElapsed', { minutes: Math.floor((currentTime - focusSessionStart) / 60000) })}
+              {t('focus.sessionElapsed', { minutes: Math.max(0, Math.floor((currentTime - focusSessionStart) / 60000)) })}
             </div>
           )}
         </div>
@@ -225,7 +246,7 @@ const FocusModeModal = () => {
           <div className="w-full space-y-3">
             <div className="flex justify-between bg-gray-800 rounded-lg px-4 py-3">
               <span className="text-gray-400">{t('focus.totalTime')}</span>
-              <span className="text-white font-medium">{t('voice.minutesShort', { count: focusSessionStart ? Math.floor((currentTime - focusSessionStart) / 60000) : 0 })}</span>
+              <span className="text-white font-medium">{t('voice.minutesShort', { count: focusSessionStart ? Math.max(0, Math.floor((currentTime - focusSessionStart) / 60000)) : 0 })}</span>
             </div>
             <div className="flex justify-between bg-gray-800 rounded-lg px-4 py-3">
               <span className="text-gray-400">{t('focus.tasksCompleted')}</span>
@@ -239,7 +260,7 @@ const FocusModeModal = () => {
 
           <button
             onClick={dismissFocusStats}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-lg"
+            className="w-full py-3 bg-accent-600 hover:bg-accent-700 text-white font-semibold rounded-lg transition-colors text-lg"
           >
             {t('common.done')}
           </button>

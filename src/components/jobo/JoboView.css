@@ -12,6 +12,102 @@
   color: inherit;
 }
 
+.jobo-carry-dialog { width: 480px; max-width: calc(100vw - 32px); }
+.jobo-carry-list { max-height: 45vh; overflow: auto; margin: 8px 0; }
+.jobo-carry-list label, .jobo-carry-all { display: flex; gap: 10px; align-items: center; padding: 10px 4px; }
+.jobo-carry-list label { border-top: 1px solid rgb(127 127 127 / .18); }
+.jobo-carry-list label span { min-width: 0; }
+.jobo-carry-list b { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.jobo-carry-list small { display: block; font-size: 11px; opacity: .7; margin-top: 3px; }
+.jobo-carry-empty { padding: 24px 0; font-size: 13px; }
+.jobo-note-tools { gap: 2px; }
+.jobo-note-menu { position: relative; }
+.jobo-note-menu summary { cursor: pointer; display: flex; padding: 5px; border-radius: 4px; }
+.jobo-note-menu summary::-webkit-details-marker { display: none; }
+.jobo-note-menu > div { position: absolute; top: 100%; right: 0; width: 210px; padding: 6px; border-radius: 6px; z-index: 90; box-shadow: 0 5px 18px rgb(0 0 0 / .22); }
+.jobo-note-menu > div button { display: flex; width: 100%; padding: 8px; gap: 8px; text-align: left; }
+.jobo-note-menu > div button:hover { background: var(--ui-accent-soft); }
+.jobo-header-zoom { display: flex; align-items: center; }
+@media (min-width: 1501px) { .jobo-header-zoom.notes-open { display: none; } }
+@media (max-width: 1500px) { .jobo-s5-tools.jobo-note-tools > button { display: none; } }
+
+.jobo-s5-marquee {
+  position: absolute;
+  z-index: 24;
+  border: 1px solid var(--ui-accent);
+  background: rgb(var(--ui-accent-rgb) / .14);
+  pointer-events: none;
+}
+
+.jobo-s5-group-preview {
+  position: absolute;
+  z-index: 23;
+  box-sizing: border-box;
+  border: 2px dashed var(--ui-accent);
+  border-radius: 6px;
+  background: rgb(var(--ui-accent-rgb) / .14);
+  pointer-events: none;
+}
+
+.jobo-s5-selecting,
+.jobo-s5-selecting * {
+  user-select: none;
+  cursor: crosshair;
+}
+
+.jobo-s5-card[data-jobo-selected] {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+
+.jobo-s5-dragging .jobo-s5-card[data-jobo-selected] {
+  opacity: .6;
+}
+
+.jobo-s5-selection-tools {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 6px 14px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.jobo-s5-selection-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 5px;
+}
+
+.jobo-s5-trash-target {
+  color: #dc4545;
+}
+
+.jobo-s5-trash-target:hover,
+.jobo-s5-trash-target.is-over {
+  color: white;
+  background: #bd3030;
+}
+
+.jobo-s5-selection-tools button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.jobo-s5-selection-tools button:disabled {
+  opacity: .5;
+}
+
 .jobo-s5-column-head,
 .jobo-s5-day-grid,
 .jobo-s5-untimed-row {
@@ -342,7 +438,7 @@
 }
 
 .jobo-s5-note-title {
-  min-height: 24px;
+  height: 34px;
   flex: none;
   padding: 5px 7px 4px;
   display: flex;
@@ -362,6 +458,15 @@
 
 .jobo-s5-note-title button {
   flex: none;
+}
+
+[data-jobo-note-actions] {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  flex-wrap: nowrap;
+  height: 24px;
+  gap: 4px;
 }
 
 .jobo-s5-note-text {
@@ -517,7 +622,7 @@
 }
 
 .jobo-s5-note-resizer:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ui-accent);
   outline-offset: -2px;
 }
 
@@ -571,7 +676,7 @@
   left: 0;
   right: 0;
   grid-column: 1 / 4;
-  border-top: 1.5px solid #ef4444;
+  border-top: 1.5px solid var(--ui-accent);
   pointer-events: none;
   z-index: 80;
 }
@@ -584,7 +689,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--ui-accent);
 }
 
 .jobo-s5-untimed-row {
@@ -771,9 +876,9 @@
 }
 
 .jobo-s5-save-button {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb !important;
+  background: var(--ui-accent);
+  color: var(--ui-accent-on);
+  border-color: var(--ui-accent) !important;
 }
 
 .jobo-s5-dialog-actions button:disabled {
@@ -819,7 +924,7 @@
 .jobo-s5-tools button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 6px; font-size: 11px; }
 .jobo-s5-tools button[aria-pressed="true"] { background: rgb(127 127 127 / .16); }
 .jobo-s5-tools button:disabled { opacity: .45; cursor: default; }
-.jobo-s5-tools button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-tools button:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .jobo-s5-board { min-width: 760px; }
 .jobo-s5-column-head, .jobo-s5-day-grid, .jobo-s5-untimed-row { grid-template-columns: minmax(160px, var(--jobo-plan-fr, 1fr)) 46px minmax(160px, var(--jobo-do-fr, 1fr)) minmax(210px, .85fr); }
 .jobo-s5-column-head { position: sticky; top: 0; z-index: 30; }
@@ -831,7 +936,7 @@
 .jobo-s5-axis-handle { display: flex; align-items: center; justify-content: center; align-self: stretch; }
 .jobo-s5-axis-handle, .jobo-s5-time-ruler { cursor: col-resize; touch-action: none; user-select: none; }
 .jobo-s5-axis-handle:hover, .jobo-s5-time-ruler:hover { box-shadow: inset 1px 0 #94a3b8, inset -1px 0 #94a3b8; }
-.jobo-s5-time-ruler:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.jobo-s5-time-ruler:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
 .jobo-s5-resizing-columns, .jobo-s5-resizing-columns * { cursor: col-resize !important; user-select: none; }
 .jobo-s5-head-cell > button { display: flex; align-items: center; justify-content: center; width: 28px; height: 26px; border-radius: 4px; }
 .jobo-s5-head-cell > button:hover { background: rgb(127 127 127 / .12); }
@@ -850,10 +955,10 @@
 .jobo-s5-resize-end::after { content: ''; width: 48px; max-width: 100%; height: 4px; border-radius: 999px; background: white; pointer-events: none; }
 .jobo-s5-resize:hover, .jobo-s5-resize:focus-visible { background: rgb(255 255 255 / .4); }
 .jobo-s5-resize:disabled { display: none; }
-.jobo-s5-drop-hint { position: absolute; pointer-events: none; z-index: 25; border-top: 2px solid #2563eb; color: #1d4ed8; font-size: 12px; font-weight: 600; }
+.jobo-s5-drop-hint { position: absolute; pointer-events: none; z-index: 25; border-top: 2px solid var(--ui-accent); color: var(--ui-accent); font-size: 12px; font-weight: 600; }
 .jobo-s5-drop-plan { grid-column: 1; grid-row: 1; left: 0; right: 0; }
 .jobo-s5-drop-do { grid-column: 3; grid-row: 1; left: 0; right: 0; }
-.jobo-s5-dark .jobo-s5-drop-hint { color: #93c5fd; border-color: #60a5fa; }
+.jobo-s5-dark .jobo-s5-drop-hint { color: var(--ui-accent); border-color: var(--ui-accent); }
 .jobo-s5-untimed-card { min-height: 36px; height: auto; }
 .jobo-s5-untimed-card > button { display: inline-flex; align-items: center; gap: 5px; text-align: left; }
 .jobo-s5-untimed-list { flex-wrap: wrap; }
@@ -861,7 +966,7 @@
 .jobo-s5-dialog-actions button { display: inline-flex; align-items: center; gap: 5px; }
 .jobo-s5-dialog-actions .jobo-s5-delete-button { color: #b91c1c; margin-right: auto; }
 .jobo-s5-root button:disabled { opacity: .45; cursor: default; }
-.jobo-s5-root button:focus-visible, .jobo-s5-root select:focus-visible, .jobo-s5-dialog input:focus-visible, .jobo-s5-dialog button:focus-visible, .jobo-s5-dialog select:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-s5-root button:focus-visible, .jobo-s5-root select:focus-visible, .jobo-s5-dialog input:focus-visible, .jobo-s5-dialog button:focus-visible, .jobo-s5-dialog select:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .jobo-s5-dialog input:disabled { opacity: .7; }
 .jobo-s5-notice span { flex: 1; }
 
@@ -871,9 +976,11 @@
 .jobo-s5-head-actions button { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 2px 4px; border-radius: 4px; }
 .jobo-s5-head-actions button:hover { background: rgb(127 127 127 / .12); }
 .jobo-s5-head-actions button[aria-expanded="true"] { background: rgb(127 127 127 / .16); }
-.jobo-s5-card:focus-visible, .jobo-s5-untimed-card:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.jobo-s5-selected { outline: 2px solid #2563eb; outline-offset: 2px; }
-.jobo-s5-dark .jobo-s5-selected { outline-color: #93c5fd; }
+.jobo-s5-head-notes .jobo-s5-head-actions { min-width: 0; white-space: nowrap; }
+.jobo-s5-head-actions [data-jobo-check][aria-pressed="true"] { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.jobo-s5-card:focus-visible, .jobo-s5-untimed-card:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.jobo-s5-selected { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.jobo-s5-dark .jobo-s5-selected { outline-color: var(--ui-accent); }
 .jobo-s5-native-plan { padding: 0; }
 .jobo-s5-plan-content { position: relative; min-width: 0; }
 .jobo-s5-creating { user-select: none; }
@@ -914,11 +1021,9 @@
   .jobo-s5-plan-card [data-task-action-menu],
   .jobo-s5-plan-card .jobo-s5-plan-inspect { opacity: 1; pointer-events: auto; }
 }
-/* Hidden controls give their space back to the title. Keyboard focus reveals
-   them before interaction; touch devices keep the controls and their space. */
+/* Plan controls can give space back to the title. Do actions retain their
+   space so the focus-history button never moves underneath a pointer. */
 @media (hover: hover) and (pointer: fine) {
-  .jobo-s5-do-card:not(:hover):not(:focus-within) .jobo-s5-do-actions,
-  .jobo-s5-note-tile:not(:hover):not(:focus-within) [data-jobo-note-actions],
   .jobo-s5-plan-card:not(:hover):not(:focus-within):not(.jobo-s5-expanded-card) [data-task-controls-only] {
     width: 0;
     min-width: 0;
@@ -982,9 +1087,9 @@
 .jobo-s5-attempt-body { padding: 0 12px 8px; }
 .jobo-s5-attempt-body p { overflow-wrap: anywhere; display: flex; align-items: center; gap: 4px; }
 .jobo-s5-detail-empty { padding: 12px 0; }
-.jobo-s5-details :is(button, summary):focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.jobo-s5-drag-connection { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 25; color: #2563eb; }
-.jobo-s5-drop-hint { border: 2px dashed #2563eb; background: rgb(37 99 235 / .08); }
+.jobo-s5-details :is(button, summary):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.jobo-s5-drag-connection { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 25; color: var(--ui-accent); }
+.jobo-s5-drop-hint { border: 2px dashed var(--ui-accent); background: rgb(var(--ui-accent-rgb) / .08); }
 .jobo-s5-drop-hint span { display: inline-block; position: sticky; top: 36px; background: #eff6ff; padding: 2px 5px; border-radius: 3px; }
 .jobo-s5-dark .jobo-s5-drop-hint span { background: #172554; }
 .jobo-s5-dialog-note { font-size: 12px; opacity: .85; }
@@ -1005,5 +1110,87 @@
 .jobu-shell .jobo-s5-board,.jobu-shell .jobo-s5-day-grid{min-width:0}
 .jobu-shell .jobo-s5-column-head,.jobu-shell .jobo-s5-day-grid{grid-template-columns:minmax(0,var(--jobo-plan-fr,1fr)) 42px minmax(0,var(--jobo-do-fr,1fr)) minmax(220px,.8fr)}
 .jobu-shell .jobo-s5-hide-notes .jobo-s5-column-head,.jobu-shell .jobo-s5-hide-notes .jobo-s5-day-grid{grid-template-columns:minmax(0,var(--jobo-plan-fr,1fr)) 42px minmax(0,var(--jobo-do-fr,1fr))}
-.jobu-shell .jobo-s5-time-lane{min-width:0}.jobu-shell .jobo-s5-head-cell{min-width:0;overflow:hidden}.jobu-completion-point{position:absolute;left:4px;right:4px;transform:translateY(-50%);display:flex;align-items:center;gap:5px;min-height:28px;border-radius:5px;padding:3px 5px;z-index:5}.jobu-completion-point>button{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:11px;min-width:0;flex:1}.jobu-completion-point time{font-variant-numeric:tabular-nums}.jobu-point-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}.jobu-completion-point .jobo-s5-hover-actions{opacity:1;position:static}.jobu-shell .jobo-s5-card{min-width:0}.jobu-shell .jobo-s5-do-actions{flex-shrink:0}
+.jobu-shell .jobo-s5-time-lane{min-width:0}.jobu-shell .jobo-s5-head-cell{min-width:0;overflow:hidden}.jobu-shell .jobo-s5-card{min-width:0}.jobu-shell .jobo-s5-do-actions{flex-shrink:0}
+.jobu-shell .jobo-s5-head-notes { overflow: visible; }
+
+/* Completion evidence shares the Do collision layout, but its height is only
+   a readable label. The dot marks the exact timestamp, not an execution span. */
+.jobu-point-title { text-align: left; }
+.jobu-point-time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.jobu-point-dot {
+  position: absolute;
+  top: var(--jobo-point-offset);
+  left: -3px;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  pointer-events: none;
+}
 @media(max-width:1200px){.jobu-shell .jobo-s5-column-head,.jobu-shell .jobo-s5-day-grid{grid-template-columns:minmax(0,var(--jobo-plan-fr,1fr)) 38px minmax(0,var(--jobo-do-fr,1fr))}.jobu-shell .jobo-s5-head-notes,.jobu-shell .jobo-s5-notes-column{display:none}}
+
+/* Jobu dark mode uses the neutral charcoal surface from the product reference.
+   Keep these overrides scoped so the shared JOBO view retains its own theme. */
+.jobu-shell.jobu-dark .jobo-s5-root,
+.jobu-shell.jobu-dark .jobo-s5-scroll,
+.jobu-shell.jobu-dark .jobo-s5-day-grid,
+.jobu-shell.jobu-dark .jobo-s5-time-lane {
+  background-color: #232324;
+}
+
+.jobu-shell.jobu-dark .jobo-day-header,
+.jobu-shell.jobu-dark .jobo-s5-column-head,
+.jobu-shell.jobu-dark .jobo-s5-time-ruler,
+.jobu-shell.jobu-dark .jobo-s5-selection-tools {
+  background-color: #2b2b2d !important;
+}
+
+.jobu-shell.jobu-dark .jobo-s5-column-head,
+.jobu-shell.jobu-dark .jobo-s5-time-ruler,
+.jobu-shell.jobu-dark .jobo-s5-head-notes,
+.jobu-shell.jobu-dark .jobo-s5-notes-column,
+.jobu-shell.jobu-dark .jobo-s5-untimed-row,
+.jobu-shell.jobu-dark .jobo-s5-untimed-cell,
+.jobu-shell.jobu-dark .jobo-s5-hour,
+.jobu-shell.jobu-dark .jobo-s5-half,
+.jobu-shell.jobu-dark .jobo-s5-ruler-hour {
+  border-color: #424246 !important;
+}
+
+.jobu-shell.jobu-dark .jobo-s5-daily-note {
+  background-color: #2b2b2d;
+}
+
+/* A selected card gets a solid outer line and a light inner keyline. The
+   data attribute marks real group selection; focus and hover stay lightweight. */
+.jobu-shell .jobo-s5-card[data-jobo-selected],
+.jobu-shell .jobo-s5-untimed-card[data-jobo-selected] {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px rgb(239 246 255 / .95),
+    0 0 0 4px rgb(var(--ui-accent-rgb) / .52),
+    0 6px 12px rgb(0 0 0 / .3);
+}
+
+.jobu-shell.jobu-dark .jobo-s5-card[data-jobo-selected],
+.jobu-shell.jobu-dark .jobo-s5-untimed-card[data-jobo-selected] {
+  outline-color: var(--ui-accent);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / .95),
+    0 0 0 4px rgb(var(--ui-accent-rgb) / .72),
+    0 6px 14px rgb(0 0 0 / .56);
+}
+
+.jobu-shell .jobo-s5-dragging .jobo-s5-card[data-jobo-selected],
+.jobu-shell .jobo-s5-dragging .jobo-s5-untimed-card[data-jobo-selected] {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+  opacity: .88;
+}

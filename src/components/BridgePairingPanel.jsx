@@ -179,7 +179,7 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
               value={token}
               onChange={(e) => setToken(e.target.value)}
               autoComplete="off"
-              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
             />
             <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.obsidianBridgeTokenHint')}</p>
           </div>

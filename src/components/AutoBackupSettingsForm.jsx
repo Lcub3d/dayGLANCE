@@ -117,7 +117,7 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => onFolderRestore()}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-3 py-1.5 text-sm bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                   >
                     {t('backup.restoreBackup')}
                   </button>
@@ -176,7 +176,7 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                     </p>
                     <button
                       onClick={() => onFolderRestore()}
-                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1.5 text-sm bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
                     >
                       {t('backup.restoreBackup')}
                     </button>
@@ -267,7 +267,7 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                     placeholder={field.placeholder}
                     value={remoteConfig[field.key] || ''}
                     onChange={(e) => updateRemote({ [field.key]: e.target.value })}
-                    className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`}
+                    className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`}
                   />
                 </div>
               ))}
@@ -296,7 +296,7 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                 <button
                   onClick={() => onRemoteBackupNow(remoteConfig.frequency)}
                   disabled={status.remote.status === 'backing-up' || !remoteFieldsFilled}
-                  className={`px-3 py-1.5 ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition-colors disabled:opacity-50 text-sm`}
+                  className={`px-3 py-1.5 ${darkMode ? 'bg-accent-700 hover:bg-accent-600' : 'bg-accent-500 hover:bg-accent-600'} text-white rounded-lg transition-colors disabled:opacity-50 text-sm`}
                 >
                   {status.remote.status === 'backing-up' ? t('backup.backingUp') : t('backup.backupNow')}
                 </button>

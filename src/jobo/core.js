@@ -194,14 +194,13 @@ export function completeDoAttempt(records, input) {
 
 /**
  * Reassess one existing Do attempt without changing its interval or captured
- * history. Completed is created by completeDoAttempt; reassessment uses the
- * other three progress values.
+ * history. Reassessment changes this attempt only, never the linked task.
  */
 export function reassessDoProgress(record, progress, updatedAt) {
   assertRecord(record);
   if (record.deleted) throw new TypeError('Cannot reassess a deleted Do record');
-  if (![DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY].includes(progress)) {
-    throw new TypeError('Progress reassessment must be started, partial, or mostly');
+  if (!progressValues.includes(progress)) {
+    throw new TypeError('Invalid Do progress');
   }
   if (record.progress === progress) return record;
   assertLater(record, updatedAt);

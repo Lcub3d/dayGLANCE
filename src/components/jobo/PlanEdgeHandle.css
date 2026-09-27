@@ -1,0 +1,48 @@
+.jobo-plan-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  z-index: 8;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.jobo-plan-edge-start { top: -4px; }
+.jobo-plan-edge-end { bottom: -4px; cursor: ns-resize; }
+.jobo-plan-edge-line {
+  position: absolute;
+  width: 48px;
+  max-width: 50%;
+  height: 3px;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: #fff;
+  pointer-events: none;
+}
+.jobo-plan-edge-start .jobo-plan-edge-line { opacity: 0; }
+.jobo-plan-edge:hover .jobo-plan-edge-line,
+.jobo-plan-edge:focus-visible .jobo-plan-edge-line { opacity: 1; }
+.jobo-plan-edge.is-armed .jobo-plan-edge-line { width: calc(100% - 8px); max-width: none; background: #fef08a; }
+.jobo-plan-edge-hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: #171717;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.jobo-plan-edge-start .jobo-plan-edge-hint { bottom: 12px; }
+.jobo-plan-edge-end .jobo-plan-edge-hint { top: 12px; }
+.jobo-s5-card:has(.jobo-plan-edge.is-armed) { z-index: 15; }

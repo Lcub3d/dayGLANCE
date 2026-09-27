@@ -71,8 +71,8 @@ const IncompleteTasksModal = () => {
                                 const elTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
                                 const scrollTarget = Math.max(0, elTop - container.clientHeight / 2 + el.offsetHeight / 2);
                                 container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
-                                el.classList.add('ring-2', 'ring-blue-400');
-                                setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 2000);
+                                el.classList.add('ring-2', 'ring-accent-400');
+                                setTimeout(() => el.classList.remove('ring-2', 'ring-accent-400'), 2000);
                               }
                             }, 200);
                           } else {

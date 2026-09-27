@@ -6,6 +6,7 @@
 // owning main context remains the sole writer for these operations.
 
 import { validCivilDate } from './viewDates.js';
+import { canGroupTask } from './planGroupActions.js';
 
 function liveTask(item) {
   if (!item || item.historical || !item.currentTask || item.currentTask.isJoboSyntheticOccurrence) return null;
@@ -124,6 +125,56 @@ export function planCapabilities(item) {
   };
 }
 
+/**
+ * Group operations are intentionally stricter than a single Plan drag/edit.
+ * The item must still point at a live ordinary task; imported/native-calendar,
+ * historical and synthetic projections are owned by another source or have no
+ * writable task row behind them.
+ */
+export function canGroupPlan(item) {
+  if (!item || item.historical || !item.currentTask) return false;
+  return canGroupTask(item.currentTask, { historical: item.historical });
+}
+
+function groupPlanTasks(items) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  if (!items.every(canGroupPlan)) return null;
+  const ids = new Set();
+  const tasks = [];
+  for (const item of items) {
+    const task = item.currentTask;
+    const id = String(task.id);
+    if (ids.has(id)) return null;
+    ids.add(id);
+    tasks.push(task);
+  }
+  return tasks;
+}
+
+/** Forward one whole selected Plan group to main's task writer. */
+export function movePlanGroup(ctx, items, deltaMinutes) {
+  const tasks = groupPlanTasks(items);
+  if (!tasks || typeof ctx?.moveTimelineTasks !== 'function') return false;
+  const result = ctx.moveTimelineTasks(tasks, deltaMinutes);
+  return result === false || result?.ok === false ? false : true;
+}
+
+/** Forward a native Plan interval resize to the main task writer. */
+export function resizePlan(ctx, item, interval) {
+  const task = liveTask(item);
+  if (!task || !canGroupPlan(item) || typeof ctx?.resizeTimelineTask !== 'function') return false;
+  const result = ctx.resizeTimelineTask(task, interval);
+  return result === false || result?.ok === false ? false : true;
+}
+
+/** Forward one whole selected Plan group to main's recycle-bin writer. */
+export function deletePlanGroup(ctx, items) {
+  const tasks = groupPlanTasks(items);
+  if (!tasks || typeof ctx?.deleteTimelineTasks !== 'function') return false;
+  const result = ctx.deleteTimelineTasks(tasks);
+  return result === false || result?.ok === false ? false : true;
+}
+
 /** Open main's native new-Plan editor at an explicit date and time. */
 export function openNewPlan(ctx, dateString, time) {
   if (!ctx || typeof ctx.setNewTask !== 'function' || typeof ctx.setShowAddTask !== 'function') return false;
@@ -201,6 +252,10 @@ export function writeDailyNotes(ctx, date, text) {
 
 export default {
   planCapabilities,
+  canGroupPlan,
+  movePlanGroup,
+  resizePlan,
+  deletePlanGroup,
   createQuickPlan,
   copyPlan,
   openNewPlan,

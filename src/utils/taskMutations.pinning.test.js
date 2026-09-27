@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 //   1. useTaskActions.js scheduleDeadlineTaskAt: stamps lastModified, applies
 //      a duration || 30 fallback, no transitionId.
 //   2. useDragDrop.js handleDropOnCalendar inbox branch: stamps NOTHING extra,
-//      preserves duration verbatim, no transitionId.
+//      preserves duration and priority verbatim, no transitionId.
 // applyScheduleTask matches its cited source, scheduleDeadlineTaskAt (it
 // stamps lastModified and falls back on duration). If a schedule pin fails,
 // scheduleDeadlineTaskAt is the shape taskMutations must follow; the drop
@@ -206,7 +206,7 @@ function dragDropSetup(over = {}) {
 function dragAndDrop({ task, source, targetDate, overrideTime, header = false, depsOver = {} }) {
   const { cap, render } = dragDropSetup(depsOver);
   let dd = render();
-  dd.handleDragStart(task, source, { dataTransfer: {} });
+  dd.handleDragStart(task, source, { dataTransfer: { setData: vi.fn() } });
   dd = render(); // second render: handlers close over the updated drag state
   if (header) dd.handleDropOnDateHeader({ preventDefault() {} }, targetDate);
   else dd.handleDropOnCalendar({ preventDefault() {} }, targetDate, overrideTime);
@@ -373,7 +373,7 @@ describe('schedule pin: applyScheduleTask vs scheduleDeadlineTaskAt (canonical) 
     pinShapes('schedule(vs scheduleDeadlineTaskAt)', uiTask, res.task, {});
   });
 
-  it('matches the inbox-drop branch except the documented lastModified stamp', () => {
+  it('matches the inbox-drop branch except its retained priority and lastModified stamp', () => {
     const inboxTask = { ...inboxTaskFixture(), isAllDay: true };
     const cap = dragAndDrop({
       task: inboxTask, source: 'inbox',
@@ -387,6 +387,10 @@ describe('schedule pin: applyScheduleTask vs scheduleDeadlineTaskAt (canonical) 
     });
 
     pinShapes('schedule(vs inbox drop)', uiTask, res.task, {
+      priority: {
+        ui: inboxTask.priority, mcp: ABSENT,
+        why: 'timeline drag preserves inbox priority for the Plan checkbox; the deadline scheduling path still strips it',
+      },
       lastModified: {
         ui: ABSENT, mcp: NOW_ISO,
         why: 'applyScheduleTask follows its canonical source scheduleDeadlineTaskAt, which stamps lastModified; ' +

@@ -88,7 +88,7 @@ export default function DayHeaderCell({ date, className = '', compact = false, t
   const dateStr = dateToString(date);
   const isToday = dateStr === dateToString(new Date());
   const background = isToday
-    ? (darkMode ? 'bg-blue-900/30 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100')
+    ? (darkMode ? 'bg-accent-900/30 hover:bg-accent-900/50' : 'bg-accent-50 hover:bg-accent-100')
     : `${cardBg} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`;
   return (
     <div
@@ -100,7 +100,7 @@ export default function DayHeaderCell({ date, className = '', compact = false, t
       title={title || `${t('task.addTask')}: ${t('task.allDay')}`}
       {...rest}
     >
-      <div className={`font-bold ${compact ? 'text-sm' : ''} flex items-center justify-center gap-1.5 ${isToday ? 'text-blue-600' : textPrimary}`}>
+      <div className={`font-bold ${compact ? 'text-sm' : ''} flex items-center justify-center gap-1.5 ${isToday ? (darkMode ? 'text-accent-400' : 'text-accent-700') : textPrimary}`}>
         {formatShortDate(date)}
         <DayHeaderActions dateStr={dateStr} />
       </div>

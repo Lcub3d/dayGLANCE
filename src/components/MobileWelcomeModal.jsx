@@ -34,7 +34,7 @@ const MobileWelcomeModal = () => {
         {[0, 1, 2, 3, 4, 5, 6].map(i => (
           <div
             key={i}
-            className={`w-2 h-2 rounded-full transition-colors ${i === mobileWelcomeStep ? 'bg-blue-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
+            className={`w-2 h-2 rounded-full transition-colors ${i === mobileWelcomeStep ? 'bg-accent-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
           />
         ))}
       </div>
@@ -56,16 +56,16 @@ const MobileWelcomeModal = () => {
               />
             </label>
             <div className={`mt-5 flex items-center justify-center gap-2 text-xs ${textSecondary}`}>
-              <a href="https://www.glance-apps.com/dayglance/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500 transition-colors">{t('onboarding.privacyPolicy')}</a>
+              <a href="https://www.glance-apps.com/dayglance/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-500 transition-colors">{t('onboarding.privacyPolicy')}</a>
               <span className="opacity-50">·</span>
-              <a href="https://www.glance-apps.com/eula" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500 transition-colors">{t('onboarding.termsOfUse')}</a>
+              <a href="https://www.glance-apps.com/eula" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-500 transition-colors">{t('onboarding.termsOfUse')}</a>
             </div>
           </div>
         )}
         {mobileWelcomeStep === 1 && (
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Eye size={32} className="text-blue-500" />
+            <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Eye size={32} className="text-accent-500" />
             </div>
             <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>{t('onboarding.mobileGlance')}</h2>
             <ul className={`${textSecondary} text-sm text-center space-y-2 max-w-xs mx-auto list-none`}>
@@ -80,8 +80,8 @@ const MobileWelcomeModal = () => {
         )}
         {mobileWelcomeStep === 2 && (
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Calendar size={32} className="text-blue-500" />
+            <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Calendar size={32} className="text-accent-500" />
             </div>
             <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>{t('onboarding.mobileTimelineTitle')}</h2>
             <ul className={`${textSecondary} text-sm text-center space-y-2 max-w-xs mx-auto list-none`}>
@@ -95,8 +95,8 @@ const MobileWelcomeModal = () => {
         )}
         {mobileWelcomeStep === 3 && (
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Inbox size={32} className="text-blue-500" />
+            <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Inbox size={32} className="text-accent-500" />
             </div>
             <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>{t('onboarding.mobileInboxTitle')}</h2>
             <ul className={`${textSecondary} text-sm text-center space-y-2 max-w-xs mx-auto list-none`}>
@@ -128,8 +128,8 @@ const MobileWelcomeModal = () => {
                 <span>{t('onboarding.mobileFeatureHabits')}</span>
               </div>
               <div className="flex items-start gap-3">
-                <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Flag size={16} className="text-blue-500" />
+                <span className="w-8 h-8 bg-accent-100 dark:bg-accent-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Flag size={16} className="text-accent-500" />
                 </span>
                 <span>{t('onboarding.mobileFeatureGoals')}</span>
               </div>
@@ -167,7 +167,7 @@ const MobileWelcomeModal = () => {
             <div className="space-y-3 w-full max-w-xs mx-auto">
               <button
                 onClick={() => setShowWelcome(false)}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors"
+                className="w-full px-6 py-3 bg-accent-600 text-white rounded-xl hover:bg-accent-700 font-medium transition-colors"
               >
                 {t('onboarding.justGetStarted')}
               </button>
@@ -182,7 +182,7 @@ const MobileWelcomeModal = () => {
               href="https://docs.dayglance.app"
               target="_blank"
               rel="noopener noreferrer"
-              className={`inline-block mt-4 text-sm ${textSecondary} hover:text-blue-500 transition-colors`}
+              className={`inline-block mt-4 text-sm ${textSecondary} hover:text-accent-500 transition-colors`}
             >
               {t('onboarding.exploreDocs')}
             </a>
@@ -210,7 +210,7 @@ const MobileWelcomeModal = () => {
           {mobileWelcomeStep < 6 && (
             <button
               onClick={() => setMobileWelcomeStep(s => s + 1)}
-              className="p-2 rounded-full bg-blue-600"
+              className="p-2 rounded-full bg-accent-600"
             >
               <ChevronRight size={20} className="text-white" />
             </button>

@@ -44,7 +44,7 @@ const MobileTabBar = () => {
             setMobileActiveTab('dayglance');
             setMobileSettingsView('main');
           }}
-          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'dayglance' ? 'text-blue-500' : textSecondary}`}
+          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'dayglance' ? 'text-accent-500' : textSecondary}`}
         >
           <Eye size={iconSize} />
           {showLabels && <span className="text-[10px] font-medium">{t('common.glance')}</span>}
@@ -60,7 +60,7 @@ const MobileTabBar = () => {
             const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
             const [h, m] = (t.startTime || '0:0').split(':').map(Number);
             return (h * 60 + m + (t.duration || 0)) <= nowMin;
-          }) ? 'text-red-500' : 'text-blue-500') : textSecondary}`}
+          }) ? 'text-red-500' : 'text-accent-500') : textSecondary}`}
         >
           <div className="relative">
             <Calendar size={iconSize} />
@@ -86,12 +86,12 @@ const MobileTabBar = () => {
             setMobileActiveTab('inbox');
             setMobileSettingsView('main');
           }}
-          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full relative ${mobileActiveTab === 'inbox' ? 'text-blue-500' : textSecondary}`}
+          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full relative ${mobileActiveTab === 'inbox' ? 'text-accent-500' : textSecondary}`}
         >
           <div className="relative">
             <Inbox size={iconSize} />
             {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
-              <span className="absolute -top-1.5 -right-2.5 bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+              <span className="absolute -top-1.5 -right-2.5 bg-accent-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                 {filteredUnscheduledTasks.filter(t => !t.isExample).length}
               </span>
             )}
@@ -104,12 +104,12 @@ const MobileTabBar = () => {
             setMobileActiveTab('goals');
             setMobileSettingsView('main');
           }}
-          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'goals' ? 'text-blue-500' : textSecondary}`}
+          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'goals' ? 'text-accent-500' : textSecondary}`}
         >
           <div className="relative">
             <GitBranch size={iconSize} />
             {goalsCount > 0 && (
-              <span className={`absolute -top-1.5 -right-2.5 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1 ${hasOverdueGoal ? 'bg-red-600' : 'bg-blue-600'}`}>
+              <span className={`absolute -top-1.5 -right-2.5 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1 ${hasOverdueGoal ? 'bg-red-600' : 'bg-accent-600'}`}>
                 {goalsCount > 9 ? '9+' : goalsCount}
               </span>
             )}
@@ -121,7 +121,7 @@ const MobileTabBar = () => {
           onClick={() => {
             setMobileActiveTab('settings');
           }}
-          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'settings' ? 'text-blue-500' : textSecondary}`}
+          className={`flex flex-col items-center justify-center ${showLabels ? 'gap-0.5' : ''} flex-1 h-full ${mobileActiveTab === 'settings' ? 'text-accent-500' : textSecondary}`}
         >
           <Settings size={iconSize} />
           {showLabels && <span className="text-[10px] font-medium">{t('common.settings')}</span>}

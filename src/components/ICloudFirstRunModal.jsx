@@ -31,8 +31,8 @@ const ICloudFirstRunModal = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-sm w-full`}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-            <Cloud size={20} className="text-blue-600 dark:text-blue-400" />
+          <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+            <Cloud size={20} className="text-accent-600 dark:text-accent-400" />
           </div>
           <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('icloudFirstRun.title')}</h3>
         </div>
@@ -49,10 +49,10 @@ const ICloudFirstRunModal = ({
         <div className="space-y-3">
           <button
             onClick={onRestore}
-            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-left transition-colors"
+            className="w-full px-4 py-3 bg-accent-600 hover:bg-accent-700 text-white rounded-lg text-left transition-colors"
           >
             <div className="font-medium">{t('icloudFirstRun.restore')}</div>
-            <div className="text-sm text-blue-100">{t('icloudFirstRun.restoreHint')}</div>
+            <div className="text-sm text-accent-100">{t('icloudFirstRun.restoreHint')}</div>
           </button>
           <button
             onClick={onStartFresh}

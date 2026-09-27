@@ -513,7 +513,7 @@ const MobileLayout = () => {
                     {dateToString(selectedDate) !== dateToString(new Date()) && (
                       <button
                         onClick={goToToday}
-                        className="px-3 py-0.5 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 active:bg-blue-700 transition-colors"
+                        className="px-3 py-0.5 text-xs bg-accent-600 text-white rounded-full hover:bg-accent-700 active:bg-accent-700 transition-colors"
                       >
                         {t('common.today')}
                       </button>
@@ -568,8 +568,8 @@ const MobileLayout = () => {
                             className={`
                               h-10 rounded text-sm relative
                               ${!day ? 'invisible' : ''}
-                              ${isSelected ? 'bg-blue-600 text-white font-bold' : ''}
-                              ${!isSelected && isDayToday ? 'bg-blue-100 dark:bg-blue-900 font-semibold' : ''}
+                              ${isSelected ? 'bg-accent-600 text-white font-bold' : ''}
+                              ${!isSelected && isDayToday ? 'bg-accent-100 dark:bg-accent-900 font-semibold' : ''}
                               ${!isSelected && !isDayToday ? `${textPrimary} hover:bg-stone-100 dark:hover:bg-gray-700` : ''}
                               ${!day ? '' : 'cursor-pointer'}
                             `}
@@ -579,7 +579,7 @@ const MobileLayout = () => {
                               <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
                                 {hasNote && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-yellow-500'}`} />}
                                 {hasImported && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-stone-400'}`} />}
-                                {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-600'}`} />}
+                                {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-accent-600'}`} />}
                               </div>
                             )}
                           </button>
@@ -608,7 +608,7 @@ const MobileLayout = () => {
                     as in the desktop space; Add Area lives in Manage Areas. */}
                 <div className="px-4 py-3">
                   <h2 className={`font-bold text-lg ${textPrimary} flex items-center gap-2`}>
-                    <GitBranch size={20} className="text-blue-500" /> {t('goals.dashboardTitle')}
+                    <GitBranch size={20} className="text-accent-500" /> {t('goals.dashboardTitle')}
                   </h2>
                 </div>
               </div>
@@ -678,10 +678,10 @@ const MobileLayout = () => {
                       </div>
                     );
                   })()}
-                  <div className={`flex border-b ${borderClass} ${mobileDragPreviewTime === 'all-day' ? 'ring-2 ring-inset ring-blue-500' : ''}`}>
+                  <div className={`flex border-b ${borderClass} ${mobileDragPreviewTime === 'all-day' ? 'ring-2 ring-inset ring-accent-500' : ''}`}>
                     <div className={`w-12 flex-shrink-0 border-r ${borderClass} ${mobileDragPreviewTime === 'all-day' ? 'flex items-center justify-center' : ''}`}>
                       {mobileDragPreviewTime === 'all-day'
-                        ? <span className="text-[9px] font-bold text-blue-500">{t('task.allDay')}</span>
+                        ? <span className="text-[9px] font-bold text-accent-500">{t('task.allDay')}</span>
                         : <MobileViewToggle />
                       }
                     </div>
@@ -693,7 +693,7 @@ const MobileLayout = () => {
                           key={dateStr}
                           date={date}
                           compact
-                          className={`flex-1 ${idx > 0 ? `border-l ${borderClass}` : ''} ${mobileDragPreviewTime === 'all-day' ? (darkMode ? 'bg-blue-900/40' : 'bg-blue-100') : ''}`}
+                          className={`flex-1 ${idx > 0 ? `border-l ${borderClass}` : ''} ${mobileDragPreviewTime === 'all-day' ? (darkMode ? 'bg-accent-900/40' : 'bg-accent-100') : ''}`}
                         />
                       );
                     })}
@@ -748,7 +748,7 @@ const MobileLayout = () => {
                                 defaultValue={noteTask.notes || ''}
                                  placeholder={t('task.notesPlaceholder')}
                                 rows={4}
-                                className={`w-full text-sm p-3 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-white/5 text-white placeholder:text-white/40' : 'bg-black/5 text-stone-900 placeholder:text-stone-400'}`}
+                                className={`w-full text-sm p-3 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-white/5 text-white placeholder:text-white/40' : 'bg-black/5 text-stone-900 placeholder:text-stone-400'}`}
                                 onBlur={async (e) => {
                                   const newNotes = e.target.value;
                                   if (newNotes === (noteTask.notes || '')) return;
@@ -1077,7 +1077,7 @@ const MobileLayout = () => {
                   <button
                     onClick={() => { setMobileActiveTab('settings'); setMobileSettingsView('frames'); setFramesModalTab('schedule'); setEditingFrame(null); }}
                     className={`pointer-events-auto w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
-                      darkMode ? 'bg-gray-700 text-blue-300 hover:bg-gray-600' : 'bg-stone-200 text-blue-600 hover:bg-stone-300'
+                      darkMode ? 'bg-gray-700 text-accent-300 hover:bg-gray-600' : 'bg-stone-200 text-accent-600 hover:bg-stone-300'
                     }`}
                     aria-label={t('shortcuts.smartSchedule')}
                     title={t('shortcuts.smartSchedule')}
@@ -1088,7 +1088,7 @@ const MobileLayout = () => {
                 )}
                 <button
                   onClick={openNewInboxTask}
-                  className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center transition-colors"
+                  className="pointer-events-auto w-14 h-14 bg-accent-600 text-white rounded-full shadow-lg hover:bg-accent-700 active:bg-accent-800 flex items-center justify-center transition-colors"
                   aria-label={t('task.newInbox')}
                   title={t('task.newInbox')}
                 >
@@ -1115,7 +1115,7 @@ const MobileLayout = () => {
             <>
               <button
                 onClick={() => openNewTaskForm()}
-                className="fixed right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center transition-colors"
+                className="fixed right-4 z-40 w-14 h-14 bg-accent-600 text-white rounded-full shadow-lg hover:bg-accent-700 active:bg-accent-800 flex items-center justify-center transition-colors"
                 style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
               >
                 <Plus size={28} />
@@ -1205,7 +1205,7 @@ const MobileLayout = () => {
                       }
                       setShowWeeklyReview(true);
                     }}
-                    className={fabClass(showWeeklyReviewReminder ? 'bg-blue-600 text-white active:bg-blue-700' : darkMode ? 'bg-gray-700 text-gray-300 active:bg-gray-600' : 'bg-stone-200 text-stone-600 active:bg-stone-300')}
+                    className={fabClass(showWeeklyReviewReminder ? 'bg-accent-600 text-white active:bg-accent-700' : darkMode ? 'bg-gray-700 text-gray-300 active:bg-gray-600' : 'bg-stone-200 text-stone-600 active:bg-stone-300')}
                     style={delay(0)}
                   >
                     <BarChart3 size={22} />

@@ -213,7 +213,7 @@ const HyperGlanceModeModal = () => {
   };
 
   const phaseLabel = hgTimerPhase === 'work' ? t('focus.work') : hgTimerPhase === 'longBreak' ? t('focus.longBreak') : t('focus.breakLabel');
-  const phaseBg = hgTimerPhase === 'work' ? 'bg-blue-900 text-blue-300' : hgTimerPhase === 'longBreak' ? 'bg-purple-900 text-purple-300' : 'bg-green-900 text-green-300';
+  const phaseBg = hgTimerPhase === 'work' ? 'bg-accent-900 text-accent-300' : hgTimerPhase === 'longBreak' ? 'bg-purple-900 text-purple-300' : 'bg-green-900 text-green-300';
 
   const buildSessionStats = () => ({
     tasksCompleted: projectTasks.filter(t => t.completed).length,
@@ -295,7 +295,7 @@ const HyperGlanceModeModal = () => {
               <span className="text-gray-300">{t('focus.enableDoNotDisturb')}</span>
               <button
                 onClick={nativeRequestDndPermission}
-                className="ml-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors flex-shrink-0"
+                className="ml-3 px-3 py-1.5 bg-accent-600 hover:bg-accent-700 text-white rounded-lg text-xs font-medium transition-colors flex-shrink-0"
               >
                 {t('focus.grantAccess')}
               </button>
@@ -480,8 +480,8 @@ const HyperGlanceModeModal = () => {
                 <div
                   key={i}
                   className={`w-3 h-3 rounded-full transition-all ${
-                    i < (hgCycleCount % 4) ? 'bg-blue-500' :
-                    i === (hgCycleCount % 4) && hgTimerPhase === 'work' ? 'bg-blue-500 animate-pulse' :
+                    i < (hgCycleCount % 4) ? 'bg-accent-500' :
+                    i === (hgCycleCount % 4) && hgTimerPhase === 'work' ? 'bg-accent-500 animate-pulse' :
                     'bg-gray-700'
                   }`}
                 />

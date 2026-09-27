@@ -181,7 +181,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder={t('goals.goalTitlePlaceholder')}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
@@ -195,7 +195,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
           onChange={e => setDescription(e.target.value)}
           placeholder={t('goals.optionalDescription')}
           rows={2}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
@@ -214,7 +214,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
               setColor(area?.color || TASK_COLORS[0].class);
             }
           }}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
             darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
           }`}
         >
@@ -233,7 +233,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
             type="date"
             value={startDate}
             onChange={e => setStartDate(e.target.value)}
-            className={`w-full min-w-0 px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full min-w-0 px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
               darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
             }`}
           />
@@ -244,7 +244,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
             type="date"
             value={targetDate}
             onChange={e => setTargetDate(e.target.value)}
-            className={`w-full min-w-0 px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full min-w-0 px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
               darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
             }`}
           />
@@ -264,7 +264,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
               type="button"
               onClick={() => { setColor(c.class); setColorTouched(true); }}
               className={`w-7 h-7 rounded-full ${c.class} transition-transform ${
-                color === c.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-110'
+                color === c.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : 'hover:scale-110'
               }`}
               aria-label={t(`colors.${c.name.toLowerCase()}`)}
             />
@@ -306,7 +306,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
                 onClick={() => !opt.disabled && setStatus(opt.value)}
                 className={`flex-1 py-2 text-sm font-medium transition-colors border-r last:border-r-0 ${borderClass} ${
                   status === opt.value
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-accent-600 text-white'
                     : opt.disabled
                     ? `${textSecondary} opacity-30 cursor-not-allowed`
                     : `${textSecondary} ${hoverBg}`
@@ -333,7 +333,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
             type="checkbox"
             checked={hideStalled}
             onChange={e => setHideStalled(e.target.checked)}
-            className="w-4 h-4 rounded accent-blue-500"
+            className="w-4 h-4 rounded accent-accent-500"
           />
           <span className={`text-sm ${textSecondary}`}>{t('goals.hideStalledLabel', 'Hide Stalled flags for this goal')}</span>
         </label>
@@ -350,15 +350,15 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
             type="checkbox"
             checked={trackInLifeGlance}
             onChange={e => setTrackInLifeGlance(e.target.checked)}
-            className="w-4 h-4 rounded accent-blue-500"
+            className="w-4 h-4 rounded accent-accent-500"
           />
           <span className={`text-sm ${textSecondary}`}>{t('goals.trackInLifeGlance')}</span>
         </label>
       )}
       {alreadyShared && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-          <Link2 size={14} className="text-blue-400 flex-shrink-0" />
-          <span className="text-sm text-blue-400">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-500/10 border border-accent-500/20">
+          <Link2 size={14} className="text-accent-400 flex-shrink-0" />
+          <span className="text-sm text-accent-400">
             {initial.source_app === 'app.lifeglance' ? t('goals.fromLifeGlance') : t('goals.trackedInLifeGlance')}
           </span>
         </div>
@@ -393,7 +393,7 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
           <button
             type="submit"
             disabled={!title.trim()}
-            className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 text-sm rounded-lg bg-accent-600 hover:bg-accent-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {initial ? t('common.save') : t('goals.createGoal')}
           </button>
@@ -422,10 +422,10 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
   const [path, setPath] = useState(link?.name || '');
   const [error, setError] = useState('');
   if (!project || (!obsidianConfig?.enabled && !link)) return null;
-  const inputCls = `px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  const inputCls = `px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
     darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
   }`;
-  const btnCls = `px-2.5 py-1.5 text-xs rounded-lg border ${borderClass} ${textPrimary} hover:bg-blue-500/10`;
+  const btnCls = `px-2.5 py-1.5 text-xs rounded-lg border ${borderClass} ${textPrimary} hover:bg-accent-500/10`;
   const submit = () => {
     setError('');
     if (!linkProjectNote?.(kind, project.id, path)) {
@@ -542,7 +542,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder={t('goals.projectTitlePlaceholder')}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
@@ -560,7 +560,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
             if (!colorTouched) setColor(goal?.color || PROJECT_FALLBACK_COLOR);
             if (!usersTouched) setAssignedUserSyncIds(goal?.assignedUserSyncIds || []);
           }}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
             darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
           }`}
         >
@@ -584,7 +584,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
               type="button"
               onClick={() => { setColor(c.class); setColorTouched(true); }}
               className={`w-7 h-7 rounded-full ${c.class} transition-transform ${
-                color === c.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-110'
+                color === c.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : 'hover:scale-110'
               }`}
               aria-label={t(`colors.${c.name.toLowerCase()}`)}
             />
@@ -620,7 +620,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
                 onClick={() => !opt.disabled && setStatus(opt.value)}
                 className={`flex-1 py-2 text-sm font-medium transition-colors border-r last:border-r-0 ${borderClass} ${
                   status === opt.value
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-accent-600 text-white'
                     : opt.disabled
                     ? `${textSecondary} opacity-30 cursor-not-allowed`
                     : `${textSecondary} ${hoverBg}`
@@ -650,7 +650,7 @@ export const ProjectForm = ({ initial, prefill, goals, defaultGoalId, onSave, on
         <button
           type="submit"
           disabled={!title.trim()}
-          className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1.5 text-sm rounded-lg bg-accent-600 hover:bg-accent-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {initial ? t('common.save') : t('goals.createProject')}
         </button>
@@ -758,9 +758,9 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
       onDrop={onDrop}
       className={`w-full flex items-stretch gap-2.5 p-2.5 rounded-lg border text-left transition-colors select-none ${
         selected
-          ? (darkMode ? 'bg-blue-900/30 border-blue-700/60' : 'bg-blue-50 border-blue-200')
+          ? (darkMode ? 'bg-accent-900/30 border-accent-700/60' : 'bg-accent-50 border-accent-200')
           : `border-transparent ${hoverBg}`
-      } ${dropActive ? 'ring-2 ring-blue-500' : ''}`}
+      } ${dropActive ? 'ring-2 ring-accent-500' : ''}`}
       style={{ opacity: isCompleted ? 0.55 : 1 }}
     >
       <span className="w-[3px] rounded-sm flex-shrink-0 self-stretch" style={{ background: hex }} />
@@ -879,7 +879,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       data-move-before={proj.id}
       className={`relative w-full transition-opacity ${dragProjectId === proj.id ? 'opacity-40' : ''} ${
         (dropInsertBeforeId === proj.id && dragProjectId && dragProjectId !== proj.id) || focusedProjectId === proj.id
-          ? 'ring-2 ring-blue-500 rounded-xl' : ''
+          ? 'ring-2 ring-accent-500 rounded-xl' : ''
       }`}
       onDragOver={e => {
         e.preventDefault();
@@ -1137,7 +1137,7 @@ const ProjectSidebarRow = ({ project, focused, onSelect }) => {
       onClick={onSelect}
       className={`w-full flex items-center gap-2.5 px-2 py-2.5 rounded-lg border text-left transition-colors ${
         focused
-          ? (darkMode ? 'bg-blue-900/30 border-blue-700/60' : 'bg-blue-50 border-blue-200')
+          ? (darkMode ? 'bg-accent-900/30 border-accent-700/60' : 'bg-accent-50 border-accent-200')
           : `border-transparent ${hoverBg}`
       }`}
       style={{ opacity: isCompleted ? 0.55 : 1 }}
@@ -1191,7 +1191,7 @@ const GoalSpaceSidebar = ({
 
   const tabClass = (active) =>
     `flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold transition-colors border-b-2 ${
-      active ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`
+      active ? 'text-accent-500 border-accent-500' : `${textSecondary} border-transparent`
     }`;
   const countClass = `text-[11px] font-normal ${textSecondary}`;
 
@@ -1320,14 +1320,14 @@ export const ProjectsStatusToggle = ({ value, onChange, openCount, completedCoun
             onClick={() => onChange(key)}
             className={`flex items-center gap-1.5 ${compact ? 'px-2' : 'px-2.5'} py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
               active
-                ? 'bg-blue-600 text-white'
+                ? 'bg-accent-600 text-white'
                 : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
             }`}
           >
             {!compact && <Icon size={13} />} {label}
             {/* count badge: white on the blue (active) button, blue on the plain one */}
             <span className={`min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
-              active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+              active ? 'bg-white text-accent-600' : 'bg-accent-600 text-white'
             }`}>{count}</span>
           </button>
         );
@@ -1389,11 +1389,11 @@ export const MobileGoalsTabs = ({ tab, onTabChange, goalCount, openCount, contro
   const { t } = useTranslation();
   const tabClass = (active) =>
     `flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-medium transition-colors ${
-      active ? 'bg-blue-600 text-white' : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
+      active ? 'bg-accent-600 text-white' : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
     }`;
   const badgeClass = (active) =>
     `min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold flex items-center justify-center ${
-      active ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
+      active ? 'bg-white text-accent-600' : 'bg-accent-600 text-white'
     }`;
   const toggleLabel = controlsCollapsed ? t('goals.showFilters') : t('goals.hideFilters');
   return (
@@ -1418,7 +1418,7 @@ export const MobileGoalsTabs = ({ tab, onTabChange, goalCount, openCount, contro
         >
           <ChevronDown size={16} className={`transition-transform duration-200 ${controlsCollapsed ? '' : 'rotate-180'}`} />
           {filtersActive && controlsCollapsed && (
-            <span data-filters-active className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-500" />
+            <span data-filters-active className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent-500" />
           )}
         </button>
       )}
@@ -1720,7 +1720,7 @@ const MobileDashboard = ({
       data-mobile-proj-id={proj.id}
       className={`transition-opacity ${touchDragId === proj.id ? 'opacity-40' : ''} ${
         (touchOverId === proj.id && touchDragId && touchDragId !== proj.id) || flashProjectId === proj.id
-          ? 'ring-2 ring-blue-500 rounded-xl' : ''
+          ? 'ring-2 ring-accent-500 rounded-xl' : ''
       }`}
     >
       <ProjectCard
@@ -1776,7 +1776,7 @@ const MobileDashboard = ({
                     onClick={() => goToPage(i)}
                     className={`flex-shrink-0 flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full border text-xs font-medium transition-colors max-w-[11rem] ${
                       active
-                        ? 'bg-blue-600 border-blue-600 text-white'
+                        ? 'bg-accent-600 border-accent-600 text-white'
                         : `${borderClass} ${textSecondary} ${hoverBg}`
                     }`}
                     style={{ opacity: done && !active ? 0.55 : 1 }}
@@ -1960,7 +1960,7 @@ export const AreaFilter = ({ onManageAreas, iconOnly = false }) => {
         value={goalsAreaFilter}
         onChange={e => setGoalsAreaFilter(e.target.value)}
         aria-label={t('goals.area')}
-        className={`${iconOnly ? 'min-w-0 shrink flex-1' : 'flex-1 min-w-[9rem]'} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`${iconOnly ? 'min-w-0 shrink flex-1' : 'flex-1 min-w-[9rem]'} px-2.5 py-1.5 text-xs font-medium rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
           darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-stone-900'
         }`}
       >
@@ -2003,7 +2003,7 @@ export const ViewToggle = ({ className = '', compact = false }) => {
           onClick={() => setGoalsViewMode(key)}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
             goalsViewMode === key
-              ? 'bg-blue-600 text-white'
+              ? 'bg-accent-600 text-white'
               : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}`
           }`}
         >
@@ -2041,7 +2041,7 @@ const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchor
   if (archivedCount === 0) return null;
   const listClass = grid ? 'grid grid-cols-2 gap-1' : 'flex flex-col gap-1';
   const restoreClass = `flex-shrink-0 flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded ${
-    darkMode ? 'text-blue-400 hover:bg-blue-900/30' : 'text-blue-600 hover:bg-blue-50'
+    darkMode ? 'text-accent-400 hover:bg-accent-900/30' : 'text-accent-600 hover:bg-accent-50'
   }`;
   const toggle = (
     <button
@@ -2067,7 +2067,7 @@ const ArchivedSection = ({ archivedGoals, archivedProjects, grid = false, anchor
               <div className={listClass}>
                 {archivedGoals.map(g => (
                   <div key={g.id} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg ${hoverBg} min-w-0`}>
-                    <Flag size={11} className="text-blue-400 flex-shrink-0" />
+                    <Flag size={11} className="text-accent-400 flex-shrink-0" />
                     <span className={`text-xs ${textSecondary} flex-1 min-w-0 truncate`}>{g.title}</span>
                     <button onClick={() => updateGoal(g.id, { status: 'active' })} className={restoreClass}>
                       <RotateCcw size={9} /> {t('common.restore')}
@@ -2152,7 +2152,7 @@ const ManageAreas = ({ onClose }) => {
                   value={area.name}
                   onChange={e => updateArea(area.id, { name: e.target.value })}
                   placeholder={t('goals.areaName')}
-                  className={`flex-1 min-w-0 px-2 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`flex-1 min-w-0 px-2 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
                     darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
                   }`}
                 />
@@ -2180,7 +2180,7 @@ const ManageAreas = ({ onClose }) => {
                       type="button"
                       onClick={() => { updateArea(area.id, { color: c.class }); setPaletteForId(null); }}
                       className={`w-6 h-6 rounded-full ${c.class} transition-transform ${
-                        area.color === c.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-110'
+                        area.color === c.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : 'hover:scale-110'
                       }`}
                       aria-label={t(`colors.${c.name.toLowerCase()}`)}
                     />
@@ -2241,7 +2241,7 @@ const AreaForm = ({ initial, onClose }) => {
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder={t('goals.areaName')}
-          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
@@ -2255,7 +2255,7 @@ const AreaForm = ({ initial, onClose }) => {
               type="button"
               onClick={() => setColor(c.class)}
               className={`w-7 h-7 rounded-full ${c.class} transition-transform ${
-                color === c.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-110'
+                color === c.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : 'hover:scale-110'
               }`}
               aria-label={t(`colors.${c.name.toLowerCase()}`)}
             />
@@ -2276,7 +2276,7 @@ const AreaForm = ({ initial, onClose }) => {
           <button type="button" onClick={onClose} className={`px-3 py-1.5 text-sm rounded-lg ${hoverBg} ${textSecondary} transition-colors`}>
             {t('common.cancel')}
           </button>
-          <button type="submit" disabled={!name.trim()} className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="submit" disabled={!name.trim()} className="px-4 py-1.5 text-sm rounded-lg bg-accent-600 hover:bg-accent-700 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {initial ? t('common.save') : t('common.addArea')}
           </button>
         </div>
@@ -2359,7 +2359,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
       key={proj.id}
       data-detail-before={proj.id}
       className={`relative w-full transition-opacity ${dragId === proj.id ? 'opacity-40' : ''} ${
-        beforeId === proj.id && dragId && dragId !== proj.id ? 'ring-2 ring-blue-500 rounded-xl' : ''
+        beforeId === proj.id && dragId && dragId !== proj.id ? 'ring-2 ring-accent-500 rounded-xl' : ''
       }`}
       onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragId && dragId !== proj.id) setBeforeId(proj.id); }}
       onDrop={e => { e.preventDefault(); if (!dragId) return; moveProject(dragId, goal.id, proj.id); endDrag(); }}
@@ -2380,7 +2380,7 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
           <span className={`text-sm font-semibold ${textPrimary} truncate min-w-0`}>{goal.title}</span>
           <button
             onClick={() => onEditGoal(goal)}
-            className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-blue-500 hover:text-blue-600 px-1.5 py-1 rounded transition-colors"
+            className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-accent-500 hover:text-accent-600 px-1.5 py-1 rounded transition-colors"
           >
             <Edit2 size={13} /> {t('goals.editGoal')}
           </button>
@@ -2471,6 +2471,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     addProject, updateProject, moveProject,
     plannerProjectId, setPlannerProjectId,
     isVisibleForUser,
+    jobuData,
     aspireEnabled = false,
   } = useFeaturesCtx();
   // Workspace creation (companion §4.3, rulings D and E): the plugin creates and links the note.
@@ -2498,8 +2499,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // Projects tab filter field: title match, applied after Open | Completed.
   const [projectQuery, setProjectQuery] = useState('');
   const filterInputRef = useRef(null);
-  // Aspire (experimental): the placeholder modal opened from the FAB stack.
+  // Aspire: the real LifePlanner workspace opened from the FAB stack. The
+  // Jobu data adapter makes it available even when the old experiment switch
+  // is absent; test/legacy contexts without that adapter still use the switch.
   const [showAspire, setShowAspire] = useState(false);
+  const aspireAvailable = aspireEnabled || !!jobuData;
   // Phone: the controls under Goals | Projects hidden by its chevron. A
   // per-device preference; storage can be missing or throw (private mode,
   // tests), and then it simply starts expanded.
@@ -2779,8 +2783,10 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // Escape key — capture phase so this fires before useModalClose and other
   // handlers. While the screen is on screen it owns Escape for the things it
   // opened, in priority order: notes panel → task editor → PLANNER → forms →
-  // Manage Areas → "Move to…". When none of them is open the key is left
-  // alone, for whatever app-level modal is up (Settings, Spotlight, help…).
+  // Manage Areas → "Move to…". Aspire is deliberately omitted: LifePlanner
+  // owns its own capture listener so it can flush drafts before closing. When
+  // none of them is open the key is left alone, for whatever app-level modal
+  // is up (Settings, Spotlight, help…).
   // Escape NEVER leaves the space (spec D11): the switcher and `g` do that.
   useEffect(() => {
     if (!isActive) return;
@@ -2808,7 +2814,6 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       else if (areaForm) close = () => setAreaForm(null);
       else if (showManageAreas) close = () => setShowManageAreas(false);
       else if (moveToProject) close = () => setMoveToProject(null);
-      else if (showAspire) close = () => setShowAspire(false);
       if (!close) return;
       e.stopImmediatePropagation(); // prevent all other keydown listeners
       e.preventDefault();
@@ -2816,7 +2821,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     };
     document.addEventListener('keydown', handler, true); // capture phase
     return () => document.removeEventListener('keydown', handler, true);
-  }, [isActive, goalForm, projectForm, areaForm, showManageAreas, moveToProject, showAspire, showAddTask, expandedNotesTaskId,
+  }, [isActive, goalForm, projectForm, areaForm, showManageAreas, moveToProject, showAddTask, expandedNotesTaskId,
       plannerProjectId, setPlannerProjectId,
       setShowAddTask, setShowNewTaskDeadlinePicker, setExpandedNotesTaskId]);
 
@@ -2901,7 +2906,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const goalsTab = sidebarTab === 'goals';
   const fabStack = (className) => (
     <div data-goals-fabs className={`${className} z-10 flex flex-col items-center gap-2 pointer-events-none`}>
-      {aspireEnabled && (
+      {aspireAvailable && (
         <button
           type="button"
           onClick={() => setShowAspire(true)}
@@ -2918,7 +2923,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       <button
         type="button"
         onClick={() => (goalsTab ? setGoalForm({ editing: null }) : onNewProject(null))}
-        className="pointer-events-auto w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center transition-colors"
+        className="pointer-events-auto w-14 h-14 bg-accent-600 text-white rounded-full shadow-lg hover:bg-accent-700 active:bg-accent-800 flex items-center justify-center transition-colors"
         title={desktop ? `${goalsTab ? t('common.addGoal') : t('common.addProject')} (N)` : undefined}
         aria-label={goalsTab ? t('common.addGoal') : t('common.addProject')}
       >

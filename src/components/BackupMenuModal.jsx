@@ -24,8 +24,8 @@ const BackupMenuModal = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Save size={20} className="text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                <Save size={20} className="text-accent-600 dark:text-accent-400" />
               </div>
               <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('backup.title')}</h3>
             </div>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Trash2, X } from 'lucide-react';
 import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
+import '../TaskPriority.css';
 
 const MIN_NOTE_HEIGHT = 80;
 const MAX_NOTE_HEIGHT = 1000;
@@ -519,7 +520,8 @@ export default function IndependentDoNote({
     hidden={!displayVisible}
     tabIndex={-1}
     style={{ height }}
-    className={`jobo-s5-note-tile rounded-lg bg-purple-500 text-white ${selected || externalChange || deleted ? 'jobo-s5-selected' : ''}`}
+    className={`jobo-s5-note-tile rounded-lg task-priority-surface text-white ${selected || externalChange || deleted ? 'jobo-s5-selected' : ''}`}
+    data-priority="p4"
     data-jobo-note-link={link}
     data-jobo-do-note={id}
     data-jobo-note-kind="do"

@@ -38,7 +38,7 @@ export default function ViewToggles({ scope, views, label, heading, hint = true 
                   onChange={(e) => setViewHidden?.(scope, view, !e.target.checked)}
                   className="sr-only"
                 />
-                <div className={`w-10 h-6 rounded-full transition-colors ${on ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                <div className={`w-10 h-6 rounded-full transition-colors ${on ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`} />
                 </div>
               </div>

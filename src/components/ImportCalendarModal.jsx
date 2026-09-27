@@ -23,8 +23,8 @@ const ImportCalendarModal = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Upload size={20} className="text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                <Upload size={20} className="text-accent-600 dark:text-accent-400" />
               </div>
               <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('calendarImport.title')}</h3>
             </div>
@@ -38,7 +38,7 @@ const ImportCalendarModal = () => {
                   <button
                     key={c.class}
                     onClick={() => setImportColor(c.class)}
-                    className={`w-7 h-7 rounded-full ${c.class} transition-all ${importColor === c.class ? 'ring-2 ring-offset-2 ring-blue-500' + (darkMode ? ' ring-offset-gray-800' : '') : 'hover:scale-110'}`}
+                    className={`w-7 h-7 rounded-full ${c.class} transition-all ${importColor === c.class ? 'ring-2 ring-offset-2 ring-accent-500' + (darkMode ? ' ring-offset-gray-800' : '') : 'hover:scale-110'}`}
                     title={t(`colors.${c.name.toLowerCase()}`)}
                   />
                 ))}

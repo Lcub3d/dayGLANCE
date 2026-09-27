@@ -26,7 +26,7 @@ const DatePicker = ({ value, onChange, onClose }) => {
       const lastDay = new Date(year, month + 1, 0);
       const daysInMonth = lastDay.getDate();
       const startingDayOfWeek = (firstDay.getDay() - weekStartDay + 7) % 7;
-      
+
       const days = [];
       // Add empty slots for days before the first of the month
       for (let i = 0; i < startingDayOfWeek; i++) {
@@ -100,12 +100,12 @@ const DatePicker = ({ value, onChange, onClose }) => {
                     onClose();
                   }}
                   className={`p-2 text-center rounded-lg transition-colors ${
-                    isSelected 
-                      ? 'bg-blue-600 text-white font-bold' 
+                    isSelected
+                      ? 'bg-accent-600 text-white font-bold'
                       : isToday
-                        ? darkMode ? 'bg-blue-900 text-blue-200 font-semibold' : 'bg-blue-100 text-blue-900 font-semibold'
-                        : darkMode 
-                          ? 'hover:bg-gray-700 text-gray-300' 
+                        ? darkMode ? 'bg-accent-900 text-accent-200 font-semibold' : 'bg-accent-100 text-accent-900 font-semibold'
+                        : darkMode
+                          ? 'hover:bg-gray-700 text-gray-300'
                           : 'hover:bg-stone-100 text-stone-700'
                   }`}
                 >
@@ -122,7 +122,7 @@ const DatePicker = ({ value, onChange, onClose }) => {
                 onChange(dateToString(new Date()));
                 onClose();
               }}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex-1 px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700"
             >
               {t('common.today')}
             </button>

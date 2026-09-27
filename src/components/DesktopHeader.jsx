@@ -80,6 +80,8 @@ const DesktopHeader = () => {
 
   const dateLabel = monthViewActive
     ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, locale)
+    : effectiveViewMode === 'year'
+    ? `${t('jobu.year')} · ${selectedDate.getFullYear()}`
     : effectiveViewMode === 'day'
     ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, locale)
     : effectiveViewMode === 'jobo'
@@ -171,7 +173,7 @@ const DesktopHeader = () => {
             </button>
             <button
               onClick={goToToday}
-              className={`ml-1 px-3 py-1 flex-shrink-0 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors${dateToString(selectedDate) === dateToString(new Date()) ? ' invisible' : ''}`}
+              className={`ml-1 px-3 py-1 flex-shrink-0 text-xs bg-accent-600 text-white rounded-full hover:bg-accent-700 transition-colors${dateToString(selectedDate) === dateToString(new Date()) ? ' invisible' : ''}`}
             >
               {t('common.today')}
             </button>
@@ -205,14 +207,14 @@ const DesktopHeader = () => {
                         key={index}
                         onClick={() => day && goToDate(day)}
                         disabled={!day}
-                        className={`h-10 rounded text-sm relative ${!day ? 'invisible' : ''} ${isSelected ? 'bg-blue-600 text-white font-bold' : ''} ${!isSelected && isDayToday ? 'bg-blue-100 dark:bg-blue-900 font-semibold' : ''} ${!isSelected && !isDayToday ? `${textPrimary} hover:bg-stone-100 dark:hover:bg-gray-700` : ''} ${!day ? '' : 'cursor-pointer'}`}
+                        className={`h-10 rounded text-sm relative ${!day ? 'invisible' : ''} ${isSelected ? 'bg-accent-600 text-white font-bold' : ''} ${!isSelected && isDayToday ? 'bg-accent-100 dark:bg-accent-900 font-semibold' : ''} ${!isSelected && !isDayToday ? `${textPrimary} hover:bg-stone-100 dark:hover:bg-gray-700` : ''} ${!day ? '' : 'cursor-pointer'}`}
                       >
                         {day && day.getDate()}
                         {hasDots && (
                           <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
                             {hasNote && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-yellow-500'}`} />}
                             {hasImported && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-stone-400'}`} />}
-                            {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-600'}`} />}
+                            {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-accent-600'}`} />}
                           </div>
                         )}
                       </button>
@@ -248,7 +250,7 @@ const DesktopHeader = () => {
             <RefreshCw size={18} className={`${textSecondary} ${isSyncing ? 'animate-spin' : ''}`} />
             {calSyncConfigured && (
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                isSyncing ? 'bg-blue-500 animate-pulse' :
+                isSyncing ? 'bg-accent-500 animate-pulse' :
                 calSyncStatus === 'success' ? 'bg-green-500' :
                 calSyncStatus === 'error' ? 'bg-red-500' :
                 'bg-green-500'
@@ -265,7 +267,7 @@ const DesktopHeader = () => {
           >
             <Cloud size={18} className={`${textSecondary} ${effSyncing ? 'animate-pulse' : ''}`} />
             <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-              effSyncing ? 'bg-blue-500 animate-pulse' :
+              effSyncing ? 'bg-accent-500 animate-pulse' :
               effSyncStatus === 'error' ? 'bg-red-500' :
               'bg-green-500'
             }`} />
@@ -284,7 +286,7 @@ const DesktopHeader = () => {
             >
               <BookOpen size={18} className={`${textSecondary} ${obsidianSyncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                obsidianSyncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
+                obsidianSyncStatus === 'syncing' ? 'bg-accent-500 animate-pulse' :
                 obsidianSyncStatus === 'error' ? 'bg-red-500' :
                 'bg-green-500'
               }`} />

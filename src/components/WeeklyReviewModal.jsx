@@ -567,14 +567,14 @@ const WeeklyReviewModal = () => {
                     <>
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <StatCard value={`${pastCompleted}/${pastScheduled}`} label={t('weeklyReview.tasksDone')} icon={<CheckSquare size={16} className="text-green-400" />} />
-                        <StatCard value={`${pastCompletionRate}%`} label={t('weeklyReview.completion')} icon={<Target size={16} className="text-blue-400" />} />
+                        <StatCard value={`${pastCompletionRate}%`} label={t('weeklyReview.completion')} icon={<Target size={16} className="text-accent-400" />} />
                       </div>
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <StatCard value={formatMinutes(pastTimeSpent)} label={t('weeklyReview.timeSpent')} icon={<Clock size={16} className="text-orange-400" />} />
                         <StatCard value={formatMinutes(pastFocusMinutes)} label={t('weeklyReview.focusTime')} icon={<Target size={16} className="text-purple-400" />} />
                       </div>
                       <div className="grid grid-cols-2 gap-3 mb-3">
-                        <StatCard value={`${pastRecurringCompleted}/${pastRecurringScheduled}`} label={t('weeklyReview.recurring')} icon={<RefreshCw size={14} className="text-blue-400" />} />
+                        <StatCard value={`${pastRecurringCompleted}/${pastRecurringScheduled}`} label={t('weeklyReview.recurring')} icon={<RefreshCw size={14} className="text-accent-400" />} />
                         {bestDayName && (
                           <StatCard value={bestDayName} label={t('weeklyReview.bestDay', { count: bestDayCount })} icon={<Trophy size={16} className="text-yellow-400" />} />
                         )}
@@ -585,7 +585,7 @@ const WeeklyReviewModal = () => {
                             <StatCard value={pastCompletedGoals.length} label={t('weeklyReview.goalsCompleted', { count: pastCompletedGoals.length })} icon={<Flag size={16} className="text-amber-400" />} />
                           )}
                           {pastCompletedProjects.length > 0 && (
-                            <StatCard value={pastCompletedProjects.length} label={t('weeklyReview.projectsCompleted', { count: pastCompletedProjects.length })} icon={<FolderOpen size={16} className="text-blue-400" />} />
+                            <StatCard value={pastCompletedProjects.length} label={t('weeklyReview.projectsCompleted', { count: pastCompletedProjects.length })} icon={<FolderOpen size={16} className="text-accent-400" />} />
                           )}
                           {pastUnscheduledProjectDone.length > 0 && (
                             <StatCard value={pastUnscheduledProjectDone.length} label={t('weeklyReview.projectQueueDone')} icon={<TrendingUp size={16} className="text-green-400" />} />
@@ -739,13 +739,13 @@ const WeeklyReviewModal = () => {
                   <p className={`text-xs ${textSecondary} mb-4`}>{formatRange(nextStartStr, nextEndStr)}</p>
 
                   <div className="grid grid-cols-2 gap-3 mb-3">
-                    <StatCard value={nextScheduled} label={t('weeklyReview.scheduled')} icon={<CalendarDays size={16} className="text-blue-400" />} />
+                    <StatCard value={nextScheduled} label={t('weeklyReview.scheduled')} icon={<CalendarDays size={16} className="text-accent-400" />} />
                     <StatCard value={formatMinutes(nextPlannedMinutes)} label={t('weeklyReview.planned')} icon={<Clock size={16} className="text-orange-400" />} />
                   </div>
                   {(() => {
                     const tiles = [];
                     if (busiestDayName && busiestMinutes > 0) tiles.push({ key: 'busiest', value: busiestDayName, label: t('weeklyReview.busiest'), icon: <Zap size={16} className="text-amber-400" /> });
-                    if (nextRecurringCount > 0) tiles.push({ key: 'recurring', value: nextRecurringCount, label: t('weeklyReview.recurring'), icon: <RefreshCw size={14} className="text-blue-400" /> });
+                    if (nextRecurringCount > 0) tiles.push({ key: 'recurring', value: nextRecurringCount, label: t('weeklyReview.recurring'), icon: <RefreshCw size={14} className="text-accent-400" /> });
                     if (nextFrameTotalMinutes > 0) tiles.push({ key: 'frames', value: formatMinutes(nextFrameAvailableMinutes), label: t('weeklyReview.frameAvailability'), icon: <CalendarDays size={16} className="text-green-400" /> });
                     if (tiles.length === 0) return null;
                     return (
@@ -842,7 +842,7 @@ const WeeklyReviewModal = () => {
                   [0, 1].map(i => (
                     <button
                       key={i}
-                      className={`w-2.5 h-2.5 rounded-full transition-colors ${mobileReviewPage === i ? 'bg-blue-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}
+                      className={`w-2.5 h-2.5 rounded-full transition-colors ${mobileReviewPage === i ? 'bg-accent-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}
                       onClick={() => {
                         reviewScrollRef.current?.scrollTo({ left: i * reviewScrollRef.current.clientWidth, behavior: 'smooth' });
                       }}

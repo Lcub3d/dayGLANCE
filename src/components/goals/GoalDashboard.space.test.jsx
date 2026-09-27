@@ -202,8 +202,8 @@ describe('GoalDashboard desktop space', () => {
     expect(main).not.toContain(' Roadmap</button>');
     expect(main).toContain('lucide-circle-dashed');
     expect(main).toContain('lucide-circle-check-big');
-    expect(main).toMatch(/aria-pressed="true"[^>]*>[\s\S]*?Open<span class="[^"]*bg-white text-blue-600">1<\/span>/);
-    expect(main).toMatch(/aria-pressed="false"[^>]*>[\s\S]*?Completed<span class="[^"]*bg-blue-600 text-white">0<\/span>/);
+    expect(main).toMatch(/aria-pressed="true"[^>]*>[\s\S]*?Open<span class="[^"]*bg-white text-accent-600">1<\/span>/);
+    expect(main).toMatch(/aria-pressed="false"[^>]*>[\s\S]*?Completed<span class="[^"]*bg-accent-600 text-white">0<\/span>/);
     // the open standalone project's card is in the grid; completed ones are not
     expect(cards(main)).toEqual(['dg']);
     // sidebar row: progress ring and "done/total". The row uses the card's gate, so a
@@ -230,13 +230,18 @@ describe('GoalDashboard desktop space', () => {
     expect(render({ desktop: true, isActive: true })).toContain(' Roadmap</button>');
   });
 
-  it('stacks the Aspire FAB above + only when the experimental switch is on', () => {
+  it('stacks the Aspire FAB above + when the experimental switch is on', () => {
     const off = section(render({ desktop: true, isActive: true }), 'data-goals-fabs');
     expect(off).not.toContain('data-aspire-fab');
     const on = section(render({ desktop: true, isActive: true }, { aspireEnabled: true }), 'data-goals-fabs');
     expect(on).toContain('aria-label="Aspire"');
     expect(on.indexOf('data-aspire-fab')).toBeLessThan(on.indexOf('aria-label="Add Goal"'));
     expect(on).not.toContain('data-aspire-modal');
+  });
+
+  it('also exposes Aspire when the Jobu data adapter is available', () => {
+    const html = section(render({ desktop: true, isActive: true }, { jobuData: {} }), 'data-goals-fabs');
+    expect(html).toContain('data-aspire-fab');
   });
 
   it('deals cards into the columns in order and stacks each column', () => {

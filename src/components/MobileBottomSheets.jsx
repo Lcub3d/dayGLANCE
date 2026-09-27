@@ -166,14 +166,14 @@ const MobileBottomSheets = () => {
           {filterableTags.every(tag => selectedTags.includes(tag)) ? (
             <button
               onClick={clearTagFilter}
-              className="text-sm text-blue-500 hover:text-blue-600 active:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:active:text-blue-200 font-medium transition-colors"
+              className="text-sm text-accent-500 hover:text-accent-600 active:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300 dark:active:text-accent-200 font-medium transition-colors"
             >
               {t('common.clear')}
             </button>
           ) : (
             <button
               onClick={selectAllTags}
-              className="text-sm text-blue-500 hover:text-blue-600 active:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 dark:active:text-blue-200 font-medium transition-colors"
+              className="text-sm text-accent-500 hover:text-accent-600 active:text-accent-700 dark:text-accent-400 dark:hover:text-accent-300 dark:active:text-accent-200 font-medium transition-colors"
             >
               {t('common.selectAll')}
             </button>
@@ -210,13 +210,13 @@ const MobileBottomSheets = () => {
                 tagCount === 0 ? 'opacity-40' : ''
               } ${
                 selectedTags.includes(tag)
-                  ? darkMode ? 'bg-blue-500/20' : 'bg-blue-50'
+                  ? darkMode ? 'bg-accent-500/20' : 'bg-accent-50'
                   : darkMode ? 'active:bg-white/5' : 'active:bg-stone-50'
               }`}
             >
               <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
                 selectedTags.includes(tag)
-                  ? 'bg-blue-500 border-blue-500'
+                  ? 'bg-accent-500 border-accent-500'
                   : darkMode ? 'border-gray-600' : 'border-stone-300'
               }`}>
                 {selectedTags.includes(tag) && <Check size={14} className="text-white" />}
@@ -287,7 +287,7 @@ const MobileBottomSheets = () => {
                 {todayIncompleteTasks.length > 0 && (
                   <button
                     onClick={() => { setShowIncompleteTasks('today'); setShowMobileDailySummary(false); }}
-                    className="text-sm text-blue-500 active:text-blue-600"
+                    className="text-sm text-accent-500 active:text-accent-600"
                   >
                     {t('app.incompleteCount', { count: todayIncompleteTasks.length })}
                   </button>
@@ -336,7 +336,7 @@ const MobileBottomSheets = () => {
                 <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
+                <div className="flex items-center gap-2"><Clock size={14} className="text-accent-400" /> {t('app.timePlanned')}</div>
                 <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
               </div>
               {actualTodayFocusMinutes > 0 && (
@@ -426,12 +426,12 @@ const MobileBottomSheets = () => {
               )}
               {goalsProjectsEnabled && allTimeProjectsCreated > 0 && (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2"><FolderOpen size={14} className="text-blue-400" /> {t('app.projectsLabel')}</div>
+                  <div className="flex items-center gap-2"><FolderOpen size={14} className="text-accent-400" /> {t('app.projectsLabel')}</div>
                   <span className={`font-medium ${textPrimary}`}>{t('app.completedRatio', { done: allTimeProjectsCompleted, total: allTimeProjectsCreated })}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2"><CalendarDays size={14} className="text-blue-400" /> {t('app.tasksScheduled')}</div>
+                <div className="flex items-center gap-2"><CalendarDays size={14} className="text-accent-400" /> {t('app.tasksScheduled')}</div>
                 <span className={`font-medium ${textPrimary}`}>{allTimeScheduledCount}</span>
               </div>
               <div className="flex items-center justify-between">
@@ -441,7 +441,7 @@ const MobileBottomSheets = () => {
                   {allTimeIncompleteTasks.length > 0 && (
                     <button
                       onClick={() => { setShowIncompleteTasks('allTime'); setShowMobileDailySummary(false); }}
-                      className="ml-1 text-blue-500 active:text-blue-400"
+                      className="ml-1 text-accent-500 active:text-accent-400"
                     >
                       ({t('app.incompleteCount', { count: allTimeIncompleteTasks.length })})
                     </button>
@@ -465,7 +465,7 @@ const MobileBottomSheets = () => {
                 <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
+                <div className="flex items-center gap-2"><Clock size={14} className="text-accent-400" /> {t('app.timePlanned')}</div>
                 <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
               </div>
               {allTimeFocusMinutes > 0 && (

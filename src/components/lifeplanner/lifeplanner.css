@@ -1,7 +1,7 @@
 /* Native dayGLANCE surfaces and type, with ruled rows for inline writing. */
 .lp-backdrop { position:fixed; inset:0; z-index:60; background:rgb(0 0 0 / .3); padding:24px; display:flex; justify-content:center; align-items:center; }
-.lp-workspace,.lp-vision-sheet { --lp-paper:#fff; --lp-rule:#e7e5e4; --lp-muted:#57534e; --lp-faint:#78716c; --lp-hover:#f5f5f4; --lp-accent:#2563eb; background:var(--lp-paper); color:#1c1917; }
-.lp-paper-dark { --lp-paper:#1f2937; --lp-rule:#374151; --lp-muted:#9ca3af; --lp-faint:#9ca3af; --lp-hover:#374151; --lp-accent:#60a5fa; color:#f3f4f6; }
+.lp-workspace,.lp-vision-sheet { --lp-paper:#fff; --lp-rule:#e7e5e4; --lp-muted:#57534e; --lp-faint:#78716c; --lp-hover:#f5f5f4; --lp-accent:var(--ui-accent); background:var(--lp-paper); color:#1c1917; }
+.lp-paper-dark { --lp-paper:#1f2937; --lp-rule:#374151; --lp-muted:#9ca3af; --lp-faint:#9ca3af; --lp-hover:#374151; --lp-accent:var(--ui-accent); color:#f3f4f6; }
 .lp-workspace { position:relative; width:100%; max-width:1680px; height:calc(100dvh - 48px); border-radius:12px; display:flex; flex-direction:column; overflow:hidden; text-align:left; box-shadow:0 16px 48px #0002; }
 .lp-workspace[data-notebook-mode=notebook] { max-width:1180px; height:auto; min-height:min(480px,calc(100dvh - 48px)); max-height:calc(100dvh - 48px); }
 .lp-notebook-header { display:flex; align-items:center; gap:12px; padding:24px 32px; position:relative; flex-shrink:0; }
@@ -182,8 +182,8 @@
 .lp-note-options input { font-size:12px; }
 .lp-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:6px 12px; min-height:36px; font-size:14px; border-radius:8px; }
 .lp-button:hover { background:var(--lp-hover); }
-.lp-note-save { background:#2563eb; color:#fff; }
-.lp-note-save:hover { background:#1d4ed8; }
+.lp-note-save { background:var(--ui-accent); color:var(--ui-accent-on); }
+.lp-note-save:hover { background:var(--ui-accent); }
 .lp-project-mask { position:fixed; inset:0; z-index:80; }
 .lp-project-mask [role=dialog] { max-width:100%; }
 @media(hover:none) { .lp-block-handle,.lp-row-action { opacity:1; } .lp-block-handle { height:40px; margin-top:-4px; } .lp-icon { min-height:34px; } }

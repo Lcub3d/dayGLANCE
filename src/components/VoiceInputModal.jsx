@@ -280,7 +280,7 @@ const VoiceInputModal = () => {
                                   {task.time && <span>{task.time}</span>}
                                   <span>{t('voice.minutesShort', { count: task.duration, defaultValue: '{{count}} min' })}</span>
                                   {task.recurrenceDisplay && (
-                                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">{task.recurrenceDisplay}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-accent-500/20 text-accent-300">{task.recurrenceDisplay}</span>
                                   )}
                                   {task.priority > 0 && (
                                     <span className={priorityColors[task.priority]}>
@@ -325,7 +325,7 @@ const VoiceInputModal = () => {
                     </p>
 
                     {voiceParsedEdits.map((edit, idx) => {
-                      const actionColors = { move: 'bg-blue-500/20 text-blue-300', changeDuration: 'bg-orange-500/20 text-orange-300', rename: 'bg-purple-500/20 text-purple-300', delete: 'bg-red-500/20 text-red-300', complete: 'bg-green-500/20 text-green-300', uncomplete: 'bg-yellow-500/20 text-yellow-300', changePriority: 'bg-amber-500/20 text-amber-300', addTag: 'bg-teal-500/20 text-teal-300', removeTag: 'bg-pink-500/20 text-pink-300' };
+                      const actionColors = { move: 'bg-accent-500/20 text-accent-300', changeDuration: 'bg-orange-500/20 text-orange-300', rename: 'bg-purple-500/20 text-purple-300', delete: 'bg-red-500/20 text-red-300', complete: 'bg-green-500/20 text-green-300', uncomplete: 'bg-yellow-500/20 text-yellow-300', changePriority: 'bg-amber-500/20 text-amber-300', addTag: 'bg-teal-500/20 text-teal-300', removeTag: 'bg-pink-500/20 text-pink-300' };
                       // Describe what the edit will do
                       let changeDesc = '';
                       if (edit.action === 'move') changeDesc = `→ ${edit.date || ''}${edit.time ? ` ${t('voice.at', { defaultValue: 'at' })} ${edit.time}` : ''}`;

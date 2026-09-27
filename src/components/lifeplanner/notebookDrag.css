@@ -7,14 +7,14 @@
 }
 
 [data-lp-selection-surface] [data-lp-selected="true"] {
-  background: rgb(37 99 235 / 8%);
+  background: rgb(var(--ui-accent-rgb) / 8%);
 }
 
 .lp-selection-marquee {
   position: fixed;
   z-index: 1001;
-  border: 1px solid rgb(37 99 235 / 70%);
-  background: rgb(37 99 235 / 10%);
+  border: 1px solid rgb(var(--ui-accent-rgb) / 70%);
+  background: rgb(var(--ui-accent-rgb) / 10%);
   pointer-events: none;
 }
 
@@ -74,7 +74,7 @@
 }
 
 .lp-drag-trash:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 3px;
 }
 

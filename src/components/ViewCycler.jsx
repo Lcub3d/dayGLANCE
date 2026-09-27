@@ -70,16 +70,33 @@ const JoboIcon = () => (
   </svg>
 );
 
-const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon };
+const YearIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    {Array.from({ length: 12 }, (_, index) => (
+      <rect
+        key={index}
+        x={2 + (index % 4) * 4.5}
+        y={2 + Math.floor(index / 4) * 5.5}
+        width="3"
+        height="3"
+        rx="0.75"
+        fill={ORANGE}
+        fillOpacity={index === 5 ? 1 : 0.62}
+      />
+    ))}
+  </svg>
+);
+
+const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon, year: YearIcon };
 
 const ViewCycler = () => {
   const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();
   const label = t(VIEW_LABEL_KEYS[effectiveViewMode]);
 
-  // Narrow desktop (1-2 columns) offers MULTI, SCHED and MONTH — DAY/WEEK need
-  // the full 3-column breakpoint. MONTH steps out while the Day Dial is up,
-  // and views turned off on this device are out altogether.
+  // Narrow desktop (1-2 columns) offers the views in NARROW_DESKTOP_VIEW_MODES;
+  // DAY/WEEK need the full 3-column breakpoint. MONTH steps out while the Day
+  // Dial is up, and views turned off on this device are out altogether.
   const states = cyclerStates(canShowViewCycler, !!showDayDial, hiddenViews?.desktop);
 
   // Display + cycle from effectiveViewMode, not the raw stored mode: a stored

@@ -210,7 +210,7 @@ const DailyNotesModal = ({ dateStr, note, onSave, onClose, darkMode, isMobile, t
                 onKeyDown={handleKeyDown}
                 onBlur={handleBlur}
                 placeholder={t('planner.notesPlaceholder')}
-                className={`w-full ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 resize-y`}
+                className={`w-full ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-accent-500 resize-y`}
                 rows={8}
                 autoFocus
               />
@@ -256,7 +256,7 @@ const DailyNotesModal = ({ dateStr, note, onSave, onClose, darkMode, isMobile, t
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             placeholder={t('planner.notesPlaceholder')}
-            className={`w-full ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 resize-y`}
+            className={`w-full ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-accent-500 resize-y`}
             rows={10}
             autoFocus
           />

@@ -30,8 +30,8 @@ const RemindersSettingsModal = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Bell size={20} className="text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                <Bell size={20} className="text-accent-600 dark:text-accent-400" />
               </div>
               <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('settings.notifications')}</h3>
             </div>
@@ -45,7 +45,7 @@ const RemindersSettingsModal = () => {
                   onChange={(e) => setReminderSettings(prev => ({ ...prev, enabled: e.target.checked }))}
                   className="sr-only"
                 />
-                <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.enabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
                 </div>
               </div>
@@ -63,7 +63,7 @@ const RemindersSettingsModal = () => {
                       onChange={(e) => setReminderSettings(prev => ({ ...prev, inAppToasts: e.target.checked }))}
                       className="sr-only"
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.inAppToasts !== false ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.inAppToasts !== false ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.inAppToasts !== false ? 'translate-x-5' : 'translate-x-1'}`} />
                     </div>
                   </div>
@@ -85,7 +85,7 @@ const RemindersSettingsModal = () => {
                       }}
                       className="sr-only"
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.browserNotifications ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.browserNotifications ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.browserNotifications ? 'translate-x-5' : 'translate-x-1'}`} />
                     </div>
                   </div>
@@ -111,7 +111,7 @@ const RemindersSettingsModal = () => {
                         onClick={() => applyReminderPreset(key)}
                         className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
                           reminderSettings.preset === key
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-accent-600 text-white'
                             : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                         }`}
                       >
@@ -119,7 +119,7 @@ const RemindersSettingsModal = () => {
                       </button>
                     ))}
                     {reminderSettings.preset === 'custom' && (
-                      <span className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white">{t('reminders.presetCustom')}</span>
+                      <span className="px-3 py-1.5 text-xs rounded-lg bg-accent-600 text-white">{t('reminders.presetCustom')}</span>
                     )}
                   </div>
                 </div>
@@ -146,7 +146,7 @@ const RemindersSettingsModal = () => {
                           onClick={() => updateCategoryReminder(catKey, field, !reminderSettings.categories[catKey]?.[field])}
                           className={`px-2.5 py-1 text-xs rounded transition-colors ${
                             reminderSettings.categories[catKey]?.[field]
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-accent-600 text-white'
                               : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-stone-200 text-stone-500'} ${hoverBg}`
                           }`}
                         >
@@ -196,7 +196,7 @@ const RemindersSettingsModal = () => {
                     onChange={(e) => setReminderSettings(prev => ({ ...prev, weeklyReview: { ...prev.weeklyReview, enabled: e.target.checked } }))}
                     className="sr-only"
                   />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.weeklyReview?.enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                  <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.weeklyReview?.enabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.weeklyReview?.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
                   </div>
                 </div>
@@ -213,7 +213,7 @@ const RemindersSettingsModal = () => {
                           onClick={() => setReminderSettings(prev => ({ ...prev, weeklyReview: { ...prev.weeklyReview, day: i } }))}
                           className={`px-2 py-1 text-xs rounded-full transition-colors ${
                             reminderSettings.weeklyReview.day === i
-                              ? 'bg-blue-600 text-white'
+                              ? 'bg-accent-600 text-white'
                               : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'
                           }`}
                         >
@@ -251,7 +251,7 @@ const RemindersSettingsModal = () => {
                     onChange={(e) => setReminderSettings(prev => ({ ...prev, hyperGlance: { ...prev.hyperGlance, enabled: e.target.checked } }))}
                     className="sr-only"
                   />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.hyperGlance?.enabled !== false ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                  <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.hyperGlance?.enabled !== false ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.hyperGlance?.enabled !== false ? 'translate-x-5' : 'translate-x-1'}`} />
                   </div>
                 </div>
@@ -267,7 +267,7 @@ const RemindersSettingsModal = () => {
                         onClick={() => setReminderSettings(prev => ({ ...prev, hyperGlance: { ...prev.hyperGlance, upNextMinutes: mins } }))}
                         className={`px-2.5 py-1 text-xs rounded transition-colors ${
                           (reminderSettings.hyperGlance?.upNextMinutes ?? 10) === mins
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-accent-600 text-white'
                             : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-stone-200 text-stone-500'} ${hoverBg}`
                         }`}
                       >

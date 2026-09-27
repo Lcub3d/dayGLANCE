@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, ChevronDown, ChevronUp, NotebookPen, Trash2 } from 'lucide-react';
+import { BarChart3, BookOpen, CheckSquare, ChevronDown, ChevronUp, NotebookPen, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
@@ -38,6 +38,7 @@ export default function GlanceFabs() {
   const {
     setShowWeeklyReview, showWeeklyReviewReminder, setShowWeeklyReviewReminder,
     weeklyReviewDismissedRef, lastWeeklyReviewFiredRef,
+    setJobuPage,
   } = useFeaturesCtx();
   const { t } = useTranslation();
   const { collapsed, toggle } = useGlanceFabs();
@@ -59,6 +60,13 @@ export default function GlanceFabs() {
   // Listed TOP-DOWN, the order they render; the stagger counts up FROM the
   // handle, so it is the reverse of this list's index.
   const pills = [
+    ...(setJobuPage ? [{
+      key: 'tasks',
+      icon: <CheckSquare size={15} />,
+      label: t('jobu.tasks'),
+      title: t('jobu.tasks'),
+      onClick: () => setJobuPage('tasks'),
+    }] : []),
     {
       key: 'dailyNote',
       icon: obsidianConfig?.enabled ? <BookOpen size={15} /> : <NotebookPen size={15} />,
@@ -137,7 +145,7 @@ export default function GlanceFabs() {
             }
             setShowWeeklyReview(true);
           }}
-          className={fabClass(showWeeklyReviewReminder ? 'bg-blue-600 text-white hover:bg-blue-700' : neutralFab)}
+          className={fabClass(showWeeklyReviewReminder ? 'bg-accent-600 text-white hover:bg-accent-700' : neutralFab)}
           style={delay(0)}
         >
           <BarChart3 size={22} />

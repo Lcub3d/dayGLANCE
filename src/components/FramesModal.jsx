@@ -126,7 +126,7 @@ const FramesModal = () => {
                       </p>
                       <button
                         onClick={() => setEditingFrame('new')}
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        className="mt-2 px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors flex items-center gap-2"
                       >
                         <Plus size={16} />
                         {t('frames.createFrame')}

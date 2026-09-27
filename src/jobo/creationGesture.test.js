@@ -2,16 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { creationGestureMode, creationInterval } from './creationGesture.js';
 
 describe('empty-lane creation selection', () => {
-  it('separates a click, quick stroke and held range without treating jitter as a stroke', () => {
-    expect(creationGestureMode({ distance: 0, elapsed: 40 })).toBe('dialog');
-    expect(creationGestureMode({ distance: 4, elapsed: 900 })).toBe('dialog');
-    expect(creationGestureMode({ distance: 12, elapsed: 100 })).toBe('quick');
-    expect(creationGestureMode({ distance: 12, elapsed: 350 })).toBe('range');
+  it('separates a click, immediate marquee and held range without treating jitter as a stroke', () => {
+    expect(creationGestureMode({ distance: 0, elapsed: 40 })).toBe('pending');
+    expect(creationGestureMode({ distance: 4, elapsed: 900 })).toBe('armed');
+    expect(creationGestureMode({ distance: 12, elapsed: 100 })).toBe('select');
+    expect(creationGestureMode({ distance: 12, elapsed: 500 })).toBe('range');
     expect(creationGestureMode({ distance: -20, elapsed: 500 })).toBe('range');
+  });
+  it('locks a marquee for its entire drag, even beyond the hold delay or back at its origin', () => {
+    expect(creationGestureMode({ distance: 80, elapsed: 2000, previousMode: 'select' })).toBe('select');
+    expect(creationGestureMode({ distance: 0, elapsed: 2000, previousMode: 'select' })).toBe('select');
+    expect(creationGestureMode({ distance: 20, elapsed: 600, previousMode: 'armed' })).toBe('range');
+    expect(creationGestureMode({ distance: 0, elapsed: 900, previousMode: 'range' })).toBe('range');
   });
   it('creates a default half-hour on a click and clamps midnight', () => {
     expect(creationInterval(601, 601, false)).toEqual({ startMinute: 600, endMinute: 630, duration: 30 });
-    expect(creationInterval(1439, 1439, false)).toEqual({ startMinute: 1435, endMinute: 1440, duration: 5 });
+    expect(creationInterval(1439, 1439, false)).toEqual({ startMinute: 1410, endMinute: 1440, duration: 30 });
   });
   it('supports dragging either way without moving the anchor to a different day', () => {
     expect(creationInterval(600, 646)).toEqual({ startMinute: 600, endMinute: 645, duration: 45 });

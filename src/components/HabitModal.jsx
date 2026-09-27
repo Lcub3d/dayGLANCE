@@ -59,7 +59,7 @@ const HabitModal = () => {
                       placeholder={t('habit.habitNamePlaceholder')}
                       value={editingHabit.name || ''}
                       onChange={(e) => setEditingHabit(prev => ({ ...prev, name: e.target.value }))}
-                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       autoFocus
                     />
                   </div>
@@ -72,7 +72,7 @@ const HabitModal = () => {
                         onClick={() => setEditingHabit(prev => ({ ...prev, type: 'doMore' }))}
                         className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${
                           editingHabit.type === 'doMore'
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-accent-600 text-white'
                             : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-100 text-stone-700'}`
                         }`}
                       >
@@ -103,7 +103,7 @@ const HabitModal = () => {
                         min="1"
                         value={editingHabit.target || ''}
                         onChange={(e) => setEditingHabit(prev => ({ ...prev, target: parseInt(e.target.value) || 0 }))}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       />
                     </div>
                     <div className="flex-1">
@@ -113,7 +113,7 @@ const HabitModal = () => {
                         placeholder={t('habit.habitUnitPlaceholder')}
                         value={editingHabit.unit || ''}
                         onChange={(e) => setEditingHabit(prev => ({ ...prev, unit: e.target.value }))}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       />
                     </div>
                   </div>
@@ -174,7 +174,7 @@ const HabitModal = () => {
                             aria-label={t('habit.selectIcon', { icon: name })}
                             className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
                               editingHabit.icon === name
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-accent-600 text-white'
                                 : `${darkMode ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`
                             }`}
                           >
@@ -196,7 +196,7 @@ const HabitModal = () => {
                           title={t('habit.selectColor', { color: c.name })}
                           aria-label={t('habit.selectColor', { color: c.name })}
                           className={`w-9 h-9 rounded-full ${c.bg} transition-all ${
-                            editingHabit.color === c.name ? 'ring-2 ring-offset-2 ring-blue-500' : 'opacity-70 hover:opacity-100'
+                            editingHabit.color === c.name ? 'ring-2 ring-offset-2 ring-accent-500' : 'opacity-70 hover:opacity-100'
                           }`}
                           style={editingHabit.color === c.name && darkMode ? { ringOffsetColor: '#1f2937' } : undefined}
                         />
@@ -223,7 +223,7 @@ const HabitModal = () => {
                         setEditingHabit(null);
                       }}
                       disabled={!editingHabit.name?.trim() || !editingHabit.target}
-                      className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isNew ? t('habit.addHabit') : t('common.save')}
                     </button>
@@ -369,7 +369,7 @@ const HabitModal = () => {
               {activeHabits.length < 8 && (
                 <button
                   onClick={() => setEditingHabit({ name: '', icon: 'Droplets', color: 'blue', type: 'doMore', target: 8, unit: '', scheduledDays: [0, 1, 2, 3, 4, 5, 6] })}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-blue-500/30 text-blue-500 text-sm font-medium hover:bg-blue-500/5 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-accent-500/30 text-accent-500 text-sm font-medium hover:bg-accent-500/5 transition-colors"
                 >
                   <Plus size={16} />
                   {t('habit.addHabit')}
@@ -444,7 +444,7 @@ const HabitModal = () => {
                         <div key={habit.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${darkMode ? 'bg-gray-800/50' : 'bg-stone-50'} opacity-60`}>
                           <IconComp size={16} style={{ color: colorObj.ring }} />
                           <span className={`text-sm flex-1 ${textPrimary}`}>{habit.name}</span>
-                          <button onClick={() => updateHabit(habit.id, { archived: false })} className={`text-xs text-blue-500 font-medium px-2 py-1 rounded hover:bg-blue-500/10`}>{t('common.restore')}</button>
+                          <button onClick={() => updateHabit(habit.id, { archived: false })} className={`text-xs text-accent-500 font-medium px-2 py-1 rounded hover:bg-accent-500/10`}>{t('common.restore')}</button>
                           <button onClick={() => deleteHabit(habit.id)} className={`text-xs text-red-500 font-medium px-2 py-1 rounded hover:bg-red-500/10`}>{t('common.delete')}</button>
                         </div>
                       );

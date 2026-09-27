@@ -186,7 +186,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
           onClick={() => setShowMobileTagFilter(v => !v)}
           className={`px-2.5 h-full flex items-center rounded-lg transition-colors ${
             !filterableTags.every(tag => selectedTags.includes(tag))
-              ? 'bg-blue-500 text-white'
+              ? 'bg-accent-500 text-white'
               : darkMode ? 'bg-white/10 text-gray-400' : 'bg-black/5 text-stone-400'
           } ${interactionClass}`}
         >
@@ -210,9 +210,9 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   {filterableTags.every(tag => selectedTags.includes(tag)) ? (
-                    <button onClick={clearTagFilter} className="text-xs text-blue-500 hover:text-blue-600 font-medium">{t('common.clear')}</button>
+                    <button onClick={clearTagFilter} className="text-xs text-accent-500 hover:text-accent-600 font-medium">{t('common.clear')}</button>
                   ) : (
-                    <button onClick={selectAllTags} className="text-xs text-blue-500 hover:text-blue-600 font-medium">{t('common.selectAll')}</button>
+                    <button onClick={selectAllTags} className="text-xs text-accent-500 hover:text-accent-600 font-medium">{t('common.selectAll')}</button>
                   )}
                 </div>
               </div>
@@ -231,12 +231,12 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                         tagCount === 0 ? 'opacity-40' : ''
                       } ${
                         selectedTags.includes(tag)
-                          ? darkMode ? 'bg-blue-500/20' : 'bg-blue-50'
+                          ? darkMode ? 'bg-accent-500/20' : 'bg-accent-50'
                           : darkMode ? 'hover:bg-white/5' : 'hover:bg-stone-50'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                        selectedTags.includes(tag) ? 'bg-blue-500 border-blue-500' : darkMode ? 'border-gray-600' : 'border-stone-300'
+                        selectedTags.includes(tag) ? 'bg-accent-500 border-accent-500' : darkMode ? 'border-gray-600' : 'border-stone-300'
                       }`}>
                         {selectedTags.includes(tag) && <Check size={12} className="text-white" />}
                       </div>
@@ -377,7 +377,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                             onBlur={(e) => { doSetHabitCount(habit.id, parseInt(e.target.value) || 0); setHabitEditingCountId(null); }}
                             onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
                             onClick={(e) => e.stopPropagation()}
-                            className={`w-16 text-lg font-bold text-center rounded-lg border ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-stone-50 text-stone-900 border-stone-300'} outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
+                            className={`w-16 text-lg font-bold text-center rounded-lg border ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-stone-50 text-stone-900 border-stone-300'} outline-none focus:ring-2 focus:ring-accent-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                             onFocus={(e) => e.target.select()}
                           />
                         ) : (
@@ -461,7 +461,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 key={i}
                 onClick={() => setGlancePage(i)}
                 className={`rounded-full transition-all duration-200 ${i === glancePage
-                  ? 'w-4 h-2.5 bg-blue-500'
+                  ? 'w-4 h-2.5 bg-accent-500'
                   : `w-2.5 h-2.5 ${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
                 }`}
               />
@@ -730,8 +730,8 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                         const elTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
                         container.scrollTo({ top: Math.max(0, elTop - container.clientHeight / 2 + target.offsetHeight / 2), behavior: 'smooth' });
                       }
-                      target.classList.add('ring-2', 'ring-blue-400');
-                      setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000);
+                      target.classList.add('ring-2', 'ring-accent-400');
+                      setTimeout(() => target.classList.remove('ring-2', 'ring-accent-400'), 2000);
                     };
                     if (isTray) { openMainAt({ action: 'goto-task', taskId: task.id, date: task.date, startTime: task.startTime }); return; }
                     if (el) { applyRing(); } else if (task.date) { goToDate(task.date); setTimeout(applyRing, 200); }
@@ -1033,8 +1033,8 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 const elTop = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
                 container.scrollTo({ top: Math.max(0, elTop - container.clientHeight / 2 + target.offsetHeight / 2), behavior: 'smooth' });
               }
-              target.classList.add('ring-2', 'ring-blue-400');
-              setTimeout(() => target.classList.remove('ring-2', 'ring-blue-400'), 2000);
+              target.classList.add('ring-2', 'ring-accent-400');
+              setTimeout(() => target.classList.remove('ring-2', 'ring-accent-400'), 2000);
             };
             if (isTray) { openMainAt({ action: 'goto-task', taskId: task.id, date: task.date, startTime: task.startTime }); return; }
             if (el) { applyRing(); } else if (task.date) { goToDate(task.date); setTimeout(applyRing, 200); }
@@ -1053,7 +1053,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               <span className="truncate">{renderTitle(task.title)}</span>
             </div>
             <div className={`text-sm ${textSecondary} flex items-center gap-1`}>
-              <span className="whitespace-nowrap">{timeLabel}{relativeLabel ? ',' : ''}</span>{relativeLabel ? <span className={relativeState === 'overdue' ? 'text-orange-500 font-medium' : relativeState === 'inProgress' ? 'text-blue-500 font-medium' : ''}>{relativeLabel}</span> : ''}
+              <span className="whitespace-nowrap">{timeLabel}{relativeLabel ? ',' : ''}</span>{relativeLabel ? <span className={relativeState === 'overdue' ? 'text-orange-500 font-medium' : relativeState === 'inProgress' ? 'text-accent-500 font-medium' : ''}>{relativeLabel}</span> : ''}
               {relativeState === 'inProgress' && focusModeAvailable && (
                 <button
                   onClick={(e) => { e.stopPropagation(); isTray ? openMainAt({ action: 'focus-mode' }) : enterFocusMode(); }}
@@ -1070,7 +1070,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               return (
                 <button
                   onClick={(e) => { e.stopPropagation(); const next = projectFilter === task.projectId ? null : task.projectId; setProjectFilter(next); setInboxProjectFilter(next ? [next] : []); if (next) { setInboxPriorityFilter(0); setHideCompletedInbox(false); setHideProjectTasksInbox(false); setHideStandaloneTasksInbox(true); } else { setHideProjectTasksInbox(true); setHideStandaloneTasksInbox(false); } }}
-                  className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors ${darkMode ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800/70' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'} ${projectFilter === task.projectId ? 'ring-1 ring-blue-400' : ''}`}
+                  className={`inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors ${darkMode ? 'bg-accent-900/50 text-accent-300 hover:bg-accent-800/70' : 'bg-accent-100 text-accent-700 hover:bg-accent-200'} ${projectFilter === task.projectId ? 'ring-1 ring-accent-400' : ''}`}
                   title={projectFilter === task.projectId ? t('sched.clearProjectFilter') : t('sched.filterProject', { project: proj.title })}
                 >
                   {proj.title}
@@ -1179,14 +1179,14 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 </div>
                 {section.totalAvail > 0 && (
                   <div className="mt-1 flex items-center gap-1">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${darkMode ? 'bg-accent-900/40 text-accent-300' : 'bg-accent-100 text-accent-700'}`}>
                       {availStr} available
                     </span>
                     {/* Manually Schedule shortcut — tray has no modal layer, so main-window only */}
                     {!isTray && (
                       <button
                         onClick={() => openFrameSchedule(section.frame.frameId, section.frame.date)}
-                        className={`p-1 rounded-full transition-colors ${darkMode ? 'text-blue-300 hover:bg-blue-900/40' : 'text-blue-700 hover:bg-blue-100'}`}
+                        className={`p-1 rounded-full transition-colors ${darkMode ? 'text-accent-300 hover:bg-accent-900/40' : 'text-accent-700 hover:bg-accent-100'}`}
                         title={t('frames.manualSchedule')}
                         aria-label={t('frames.manualSchedule')}
                       >
@@ -1232,8 +1232,8 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
       {/* Now marker after all tasks/frames */}
       {filteredAgenda.length > 0 && !agendaNowMarker.insideTask && (sections.length > 0 ? nowIsAfterAllSections : agendaNowMarker.insertAfterIndex >= todayAgenda.length - 1) && (() => {
         const hr = currentTime.getHours();
-        const barColor = hr >= 22 ? 'bg-blue-500' : hr >= 19 ? 'bg-green-500' : 'bg-yellow-500';
-        const textColor = hr >= 22 ? 'text-blue-500' : hr >= 19 ? 'text-green-500' : 'text-yellow-600';
+        const barColor = hr >= 22 ? 'bg-accent-500' : hr >= 19 ? 'bg-green-500' : 'bg-yellow-500';
+        const textColor = hr >= 22 ? 'text-accent-500' : hr >= 19 ? 'text-green-500' : 'text-yellow-600';
         const subtitle = hr >= 22 ? t('glance.restForTomorrow') : hr >= 19 ? t('glance.enjoyEvening') : t('glance.relaxOrMoreTasks');
         return (
           <div key={`${keyPrefix}-now-marker-end`} className="flex gap-2.5 py-2.5">
@@ -1352,7 +1352,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 <span className={`text-sm font-medium ${darkMode ? 'text-orange-400' : 'text-orange-600'} flex items-center gap-1`}><AlertTriangle size={12} />{t('glance.deadlineCount', { count: deadlineCount })}</span>
               )}
               {committedStr && (
-                <span className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>{t('glance.committedDuration', { duration: committedStr })}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${darkMode ? 'bg-accent-900/40 text-accent-300' : 'bg-accent-100 text-accent-700'}`}>{t('glance.committedDuration', { duration: committedStr })}</span>
               )}
             </div>
           </div>

@@ -71,7 +71,7 @@ describe('DayHeaderCell', () => {
     const today = new Date(); today.setHours(12, 0, 0, 0);
     const html = await render(<DayHeaderCell date={today} compact />);
     expect(html).toContain('data-today="true"');
-    expect(html).toContain('text-blue-600');
+    expect(html).toContain('text-accent-700');
     expect(html).toContain('text-sm');
   });
 

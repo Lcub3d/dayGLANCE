@@ -23,6 +23,7 @@ const useFocusMode = () => {
   const [focusLogModalDate, setFocusLogModalDate] = useState(null);
   const wakeLockSentinel = useRef(null);
   const focusTimerRef = useRef(null);
+  const focusTimerDeadlineRef = useRef(null);
   const handleFocusTimerEndRef = useRef(null);
   const exitFocusModeRef = useRef(null);
   const focusModeAvailableRef = useRef(false);
@@ -38,21 +39,22 @@ const useFocusMode = () => {
   const focusTimerActive = showFocusMode && focusTimerRunning && focusTimerSeconds > 0;
   useEffect(() => {
     if (focusTimerActive) {
+      const deadline = Date.now() + focusTimerSeconds * 1000;
+      focusTimerDeadlineRef.current = deadline;
       focusTimerRef.current = setInterval(() => {
-        setFocusTimerSeconds(prev => {
-          if (prev <= 1) return 0;
-          return prev - 1;
-        });
+        setFocusTimerSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
       }, 1000);
       return () => clearInterval(focusTimerRef.current);
     }
-  }, [focusTimerActive]);
+  // Seconds are a projection of this phase's deadline, not an effect trigger.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTimerActive, focusPhase]);
 
   // Focus Mode timer end detection (reads from ref to avoid stale closure)
   useEffect(() => {
     if (showFocusMode && focusTimerRunning && focusTimerSeconds === 0 && !focusShowSettings) {
       setFocusTimerRunning(false);
-      handleFocusTimerEndRef.current?.();
+      handleFocusTimerEndRef.current?.(focusTimerDeadlineRef.current);
     }
   }, [focusTimerSeconds, showFocusMode, focusTimerRunning, focusShowSettings]);
 

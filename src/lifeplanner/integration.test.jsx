@@ -17,12 +17,16 @@ import { ProjectForm } from '../components/goals/GoalDashboard.jsx';
 
 const keys=(o,p='')=>Object.entries(o).flatMap(([k,v])=>typeof v==='object'?keys(v,`${p}${k}.`):`${p}${k}`).sort();
 describe('Life Planner native integration contracts',()=>{
-  it('mounts the complete prototype through the independent product shell and durable adapter',()=>{
+  it('mounts the complete prototype through Aspire and the durable adapter',()=>{
     const app=fs.readFileSync(path.join(root,'src/App.jsx'),'utf8');
     const shell=fs.readFileSync(path.join(root,'src/components/jobu/JobuShell.jsx'),'utf8');
+    const aspire=fs.readFileSync(path.join(root,'src/components/AspireModal.jsx'),'utf8');
     const view=fs.readFileSync(path.join(root,'src/components/lifeplanner/LifePlanner.jsx'),'utf8');
     expect(app).toContain('<JobuShell>');
-    expect(shell).toContain('<LifePlanner/>');
+    expect(shell).not.toContain('<LifePlanner/>');
+    expect(aspire).toContain("import LifePlanner from './lifeplanner/LifePlanner.jsx';");
+    expect(aspire).toContain('<LifePlanner />');
+    expect(aspire).toContain('setShowLifePlanner: closeLifePlanner');
     expect(view).toContain('createDurablePlannerStore(jobuData');
     expect(view).not.toContain('createPlannerStore(');
   });

@@ -277,7 +277,7 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
             onClick={() => setPeriodKey(p.key)}
             className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
               p.key === periodKey
-                ? 'bg-blue-600 text-white'
+                ? 'bg-accent-600 text-white'
                 : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >

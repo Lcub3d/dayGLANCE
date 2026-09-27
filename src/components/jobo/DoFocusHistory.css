@@ -55,7 +55,7 @@
 .jobo-s5-dark .jobo-s5-focus-history-popover,
 .jobo-s5-focus-history-popover.jobo-s5-dark {
   border-color: rgb(148 163 184 / .3);
-  background: #1f2937;
+  background: #262626;
   color: #f8fafc;
   box-shadow: 0 12px 30px rgb(0 0 0 / .42);
 }
@@ -87,7 +87,7 @@
 }
 
 .jobo-s5-focus-history-close:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
 }
 

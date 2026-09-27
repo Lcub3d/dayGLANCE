@@ -40,13 +40,13 @@ const ObsidianSyncToast = () => {
 
   let icon, message, accentColor;
   if (notice) {
-    icon = <CheckCircle size={16} className="text-blue-500 flex-shrink-0" />;
+    icon = <CheckCircle size={16} className="text-accent-500 flex-shrink-0" />;
     message = notice;
-    accentColor = 'bg-blue-500';
+    accentColor = 'bg-accent-500';
   } else if (isSyncing) {
-    icon = <Loader size={16} className="text-blue-500 animate-spin flex-shrink-0" />;
+    icon = <Loader size={16} className="text-accent-500 animate-spin flex-shrink-0" />;
     message = t(obsidianToastKey('syncing', vaultPosture));
-    accentColor = 'bg-blue-500';
+    accentColor = 'bg-accent-500';
   } else if (isSuccess) {
     icon = <CheckCircle size={16} className="text-green-500 flex-shrink-0" />;
     message = t(obsidianToastKey('success', vaultPosture));

@@ -102,7 +102,7 @@ const QuickAddFrameForm = ({ dateStr, dateDisplay, defaultStart, defaultEnd, def
             <button
               key={c.class}
               onClick={() => setColor(c.class)}
-              className={`w-7 h-7 rounded-full ${c.class} ${color === c.class ? 'ring-2 ring-blue-500 ring-offset-2' : ''} transition-all`}
+              className={`w-7 h-7 rounded-full ${c.class} ${color === c.class ? 'ring-2 ring-accent-500 ring-offset-2' : ''} transition-all`}
               style={darkMode ? { ringOffsetColor: '#1f2937' } : {}}
               title={t(`frames.colors.${c.name.toLowerCase()}`)}
             />
@@ -117,7 +117,7 @@ const QuickAddFrameForm = ({ dateStr, dateDisplay, defaultStart, defaultEnd, def
             <button
               key={level}
               onClick={() => setEnergyLevel(level)}
-              className={`flex-1 py-1.5 rounded text-xs font-medium capitalize transition-colors ${energyLevel === level ? 'bg-blue-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
+              className={`flex-1 py-1.5 rounded text-xs font-medium capitalize transition-colors ${energyLevel === level ? 'bg-accent-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
             >
               {t(`task.${level}Priority`)}
             </button>
@@ -125,7 +125,7 @@ const QuickAddFrameForm = ({ dateStr, dateDisplay, defaultStart, defaultEnd, def
         </div>
       </div>
 
-      <button onClick={handleSave} className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+      <button onClick={handleSave} className="w-full py-2.5 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors">
         {t('frames.createFrame')}
       </button>
       {timePickerField && (

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 const PHASE_KEYS = { work: 'focus.work', shortBreak: 'focus.shortBreak', longBreak: 'focus.longBreak' };
 const PHASE_COLORS = {
-  work: 'bg-blue-500/20 text-blue-400',
+  work: 'bg-accent-500/20 text-accent-400',
   shortBreak: 'bg-green-500/20 text-green-400',
   longBreak: 'bg-emerald-500/20 text-emerald-400',
 };
@@ -24,7 +24,7 @@ export default function TrayFocus({ darkMode, focusState }) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-6 gap-4">
-      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${PHASE_COLORS[phase] ?? 'bg-blue-500/20 text-blue-400'}`}>
+      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${PHASE_COLORS[phase] ?? 'bg-accent-500/20 text-accent-400'}`}>
         {t(PHASE_KEYS[phase], { defaultValue: phase })}
       </div>
 
@@ -49,7 +49,7 @@ export default function TrayFocus({ darkMode, focusState }) {
         </button>
         <button
           onClick={skip}
-          className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-blue-500 text-white transition-opacity hover:opacity-90"
+          className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-accent-500 text-white transition-opacity hover:opacity-90"
         >
           {t('common.skip')}
         </button>

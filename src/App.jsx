@@ -120,6 +120,7 @@ import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from '
 import useGoalsProjects from './hooks/useGoalsProjects.js';
 import useJoboLedger from './hooks/useJoboLedger.js';
 import useFocusMode from './hooks/useFocusMode.js';
+import useTaskPomodoro from './hooks/useTaskPomodoro.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
 import useObsidianSync from './hooks/useObsidianSync.js';
@@ -195,6 +196,7 @@ import MobileLayout from './components/MobileLayout.jsx';
 import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_SCOPES, resolveStoredView, normalizeHiddenViews, enabledViews, homeView, gateExperimentalViews } from './constants/views.js';
 import ShortcutHelpModal from './components/ShortcutHelpModal.jsx';
 import FocusModeModal from './components/FocusModeModal.jsx';
+import TaskPomodoroFab from './components/TaskPomodoroFab.jsx';
 import HyperGlanceModeModal from './components/HyperGlanceModeModal.jsx';
 import DayDialModal from './components/DayDialModal.jsx';
 import useAmbientScreensaver from './hooks/useAmbientScreensaver.js';
@@ -366,9 +368,8 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : true;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
-  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
-  // behind the same Experimental switch pattern; the FAB lives in the Goals &
-  // Projects space.
+  // Aspire opens Life Planner from the Goals & Projects space. Jobu also
+  // exposes that entry whenever its durable personal-data store is available.
   const [aspireEnabled, setAspireEnabled] = useState(() => {
     const saved = localStorage.getItem('day-planner-aspire-enabled');
     return saved !== null ? JSON.parse(saved) === true : false;
@@ -387,30 +388,31 @@ const DayPlanner = () => {
     const urlView = new URLSearchParams(window.location.search).get('view');
     if (urlView && allowed.includes(urlView)) return urlView;
     const def = localStorage.getItem('day-planner-default-view');
-    // A value this build does not know (written by another build, or by hand),
-    // or a view since turned off here, falls back to the first view still on.
-    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
+    // Keep Plan/Do as Jobu's home unless a saved preference selects another
+    // enabled view. Fall back to the first available view when JOBO is hidden.
+    const home = allowed.includes('jobo') ? 'jobo' : homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
     try { return resolveStoredView(def ? JSON.parse(def) : null, allowed, home); } catch { return home; }
   });
   // Only expose the cycler (and honour viewMode) when the 3-day breakpoint is active
   const canShowViewCycler = !isTablet && !isMobile && _visibleDays === 3;
   // Narrow desktop (1-2 columns) and tablet landscape: DAY/WEEK don't fit,
-  // but SCHED does — the cycler still shows there, restricted to MULTI and
-  // SCHED. Landscape tablets get the desktop SCHED dashboard (rail filters);
+  // so the cycler uses NARROW_DESKTOP_VIEW_MODES. Landscape tablets get the
+  // desktop SCHED dashboard (rail filters);
   // portrait keeps the mobile toggle + SchedView bottom-sheet variant.
   const schedOnlyCycler = (!isTablet && !isMobile && _visibleDays < 3) || (isTablet && isLandscape);
   // Otherwise the cycler is hidden and the stored mode is ignored until the
   // viewport grows back; the app behaves as 'multi' in the meantime.
-  // SCHED and MONTH fit any width, so the narrow cycler offers them too.
+  // SCHED, MONTH, JOBO and YEAR also fit the narrow desktop layout.
   // A view turned off on this device is never on screen either: the width's
   // first view still on stands in, as it does for a DAY/WEEK too narrow to fit.
   const effectiveViewMode = canShowViewCycler ? (hiddenViews.desktop.includes(viewMode) ? homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop) : viewMode)
-    : schedOnlyCycler ? ((viewMode === 'sched' || viewMode === 'month') && !hiddenViews.desktop.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews.desktop))
+    : schedOnlyCycler ? (NARROW_DESKTOP_VIEW_MODES.includes(viewMode) && !hiddenViews.desktop.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews.desktop))
     : 'multi';
   const [defaultView, setDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-default-view');
-    const home = homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
-    try { return resolveStoredView(saved ? JSON.parse(saved) : null, enabledViews(DESKTOP_VIEW_MODES, hiddenViews.desktop), home); } catch { return home; }
+    const allowed = enabledViews(DESKTOP_VIEW_MODES, hiddenViews.desktop);
+    const home = allowed.includes('jobo') ? 'jobo' : homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop);
+    try { return resolveStoredView(saved ? JSON.parse(saved) : null, allowed, home); } catch { return home; }
   });
   const [dayViewMode, setDayViewMode] = useState(() => {
     const saved = localStorage.getItem('day-planner-day-view-mode');
@@ -1277,6 +1279,8 @@ const DayPlanner = () => {
     exitFocusModeRef,
     focusModeAvailableRef,
   } = useFocusMode();
+  const taskPomodoro = useTaskPomodoro({ records: joboRecords, readWorkingSet: readJoboWorkingSet,
+    recordJobo, loaded: joboLoaded, writable: joboWritable });
 
   // ── HyperGLANCE state ────────────────────────────────────────────────────
   const [showHyperGlanceMode, setShowHyperGlanceMode] = React.useState(false);
@@ -4391,7 +4395,11 @@ const DayPlanner = () => {
   // block derived from NOW does not already hold it, and is the session on its
   // own when there is no block. Only a string counts: this is also a click
   // handler, and an event is not a task.
-  const enterFocusMode = (taskId) => {
+  const enterFocusMode = (taskId, exactTask = null, record = null) => {
+    if (showFocusMode) return;
+    if (exactTask || record) {
+      if (!taskPomodoro.bind(exactTask, record)) return;
+    } else taskPomodoro.clear();
     setShowFocusMode(true);
     setFocusShowSettings(true);
     setFocusShowStats(false);
@@ -4402,7 +4410,7 @@ const DayPlanner = () => {
     setFocusCompletedTasks(new Set());
     setFocusTimerRunning(false);
     setFocusTaskMinutes({});
-    let block = computeFocusBlockTasks();
+    let block = exactTask ? [exactTask] : record ? [{ id: record.taskId || record.id, title: record.title, duration: 25 }] : computeFocusBlockTasks();
     if (typeof taskId === 'string' && taskId && !block.some(t => t.id === taskId)) {
       const named = getTasksForDate(new Date()).find(t => t.id === taskId && !t.completed);
       if (named) block = [named, ...block];
@@ -4412,7 +4420,7 @@ const DayPlanner = () => {
     setFocusBreakMinutes(5);
     setFocusLongBreakMinutes(15);
     // Request fullscreen (web fallback; Android uses native immersive mode below)
-    try { document.documentElement.requestFullscreen?.(); } catch (e) {}
+    try { if (!exactTask && !record) document.documentElement.requestFullscreen?.(); } catch (e) {}
     // Request wake lock
     (async () => {
       try {
@@ -4424,10 +4432,12 @@ const DayPlanner = () => {
     // Android: immersive mode + pause notifications + DND
     nativeEnterFocusMode();
   };
+  const enterTaskPomodoro = (task, record = null) => enterFocusMode(undefined, task, record);
   enterFocusModeRef.current = enterFocusMode;
   openRoutinesDashboardRef.current = openRoutinesDashboard;
 
   const startFocusTimer = () => {
+    taskPomodoro.startCycle(focusWorkMinutes);
     setFocusShowSettings(false);
     setFocusSessionStart(new Date());
     setFocusPhase('work');
@@ -4442,6 +4452,10 @@ const DayPlanner = () => {
   startFocusTimerRef.current = startFocusTimer;
 
   const exitFocusMode = (showStats = true) => {
+    if (taskPomodoro.target && !taskPomodoro.finishSession()) {
+      if (!showStats) dismissFocusStats();
+      return;
+    }
     setFocusTimerRunning(false);
     if (focusTimerRef.current) {
       clearInterval(focusTimerRef.current);
@@ -4449,7 +4463,7 @@ const DayPlanner = () => {
     }
     // Distribute partial work time for current in-progress work cycle
     const minutesCopy = { ...focusTaskMinutes };
-    if (focusPhase === 'work' && focusTimerSeconds < focusWorkMinutes * 60) {
+    if (focusSessionStart && focusPhase === 'work' && focusTimerSeconds < focusWorkMinutes * 60) {
       const elapsedMinutes = (focusWorkMinutes * 60 - focusTimerSeconds) / 60;
       const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
       if (activeTasks.length > 0) {
@@ -4518,10 +4532,11 @@ const DayPlanner = () => {
   };
 
   const skipFocusPhase = () => {
+    taskPomodoro.skipCycle();
     if (focusPhase === 'work') {
-      const newCycle = focusCycleCount + 1;
+      const newCycle = focusCycleCount + (taskPomodoro.target ? 0 : 1);
       setFocusCycleCount(newCycle);
-      if (newCycle % 4 === 0) {
+      if (newCycle > 0 && newCycle % 4 === 0) {
         setFocusPhase('longBreak');
         setFocusTimerSeconds(focusLongBreakMinutes * 60);
       } else {
@@ -4529,13 +4544,15 @@ const DayPlanner = () => {
         setFocusTimerSeconds(focusBreakMinutes * 60);
       }
     } else {
+      taskPomodoro.startCycle(focusWorkMinutes);
       setFocusPhase('work');
       setFocusTimerSeconds(focusWorkMinutes * 60);
     }
   };
 
-  const handleFocusTimerEnd = () => {
+  const handleFocusTimerEnd = (endedAt) => {
     if (focusPhase === 'work') {
+      taskPomodoro.finishCycle(endedAt || Date.now());
       // Distribute work minutes across active (non-completed) block tasks
       const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
       if (activeTasks.length > 0) {
@@ -4561,6 +4578,7 @@ const DayPlanner = () => {
       }
     } else {
       // Break ended → start work
+      taskPomodoro.startCycle(focusWorkMinutes);
       setFocusPhase('work');
       setFocusTimerSeconds(focusWorkMinutes * 60);
       playFocusSound('work');
@@ -7078,11 +7096,14 @@ const DayPlanner = () => {
     updateRecurrenceEndCondition,
     toggleComplete,
     postponeTask,
+    moveTimelineTasks,
+    resizeTimelineTask,
     moveToInbox,
     addSubtask,
     toggleSubtask,
     deleteSubtask,
     updateSubtaskTitle,
+    deleteTimelineTasks,
     moveToRecycleBin,
     deleteRecurringInstance,
     recordDeletedTaskTombstone,
@@ -8746,6 +8767,7 @@ const DayPlanner = () => {
     deleteRecurringInstance, updateRecurrencePattern,
     updateRecurrenceEndCondition, updateRecurringTemplate,
     moveToRecycleBin, moveToInbox, undeleteTask,
+     moveTimelineTasks, resizeTimelineTask, deleteTimelineTasks,
     setDeadline, clearDeadline, postponeTask, postponeDeadlineTask,
     cyclePriority, changeTaskColor,
     toggleSubtask, addSubtask, deleteSubtask, updateSubtaskTitle, updateTaskNotes,
@@ -8987,6 +9009,7 @@ const DayPlanner = () => {
     habitLongPressOpenedAt,
 
     // ── Focus mode ────────────────────────────────────────────────────────────
+    taskPomodoro, enterTaskPomodoro,
     showFocusMode, setShowFocusMode,
     focusPhase, setFocusPhase,
     focusTimerSeconds, setFocusTimerSeconds,
@@ -9211,6 +9234,7 @@ const DayPlanner = () => {
         </div>
       )}
       <JobuShell>{isMobile ? <MobileLayout /> : <DesktopLayout />}</JobuShell>
+      {!isMobile && desktopSpace !== 'goals' && <TaskPomodoroFab tablet={isTablet} />}
 
       {showTimePicker && (
         <ClockTimePicker
@@ -9437,8 +9461,8 @@ const DayPlanner = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Cloud size={20} className="text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                <Cloud size={20} className="text-accent-600 dark:text-accent-400" />
               </div>
               <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('app.existingDataFound')}</h3>
             </div>
@@ -9472,10 +9496,10 @@ const DayPlanner = () => {
                   }
                   cloudSyncInProgressRef.current = false;
                 }}
-                className={`w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-left transition-colors`}
+                className={`w-full px-4 py-3 bg-accent-600 hover:bg-accent-700 text-white rounded-lg text-left transition-colors`}
               >
                 <div className="font-medium">{t('app.mergeBoth')}</div>
-                <div className="text-sm text-blue-100">{t('app.mergeBothHint')}</div>
+                <div className="text-sm text-accent-100">{t('app.mergeBothHint')}</div>
               </button>
               <button
                 onClick={() => {
@@ -9532,14 +9556,14 @@ const DayPlanner = () => {
               <div className={`p-2 rounded-full ${
                 syncNotification.type === 'success' ? 'bg-green-100 dark:bg-green-900/30' :
                 syncNotification.type === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
-                'bg-blue-100 dark:bg-blue-900/30'
+                'bg-accent-100 dark:bg-accent-900/30'
               }`}>
                 {syncNotification.type === 'success' ? (
                   <Check size={20} className="text-green-600 dark:text-green-400" />
                 ) : syncNotification.type === 'error' ? (
                   <AlertCircle size={20} className="text-red-600 dark:text-red-400" />
                 ) : (
-                  <RefreshCw size={20} className="text-blue-600 dark:text-blue-400" />
+                  <RefreshCw size={20} className="text-accent-600 dark:text-accent-400" />
                 )}
               </div>
               <h3 className={`text-lg font-semibold ${textPrimary}`}>
@@ -9557,7 +9581,7 @@ const DayPlanner = () => {
                 className={`px-4 py-2 ${
                   syncNotification.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
                   syncNotification.type === 'error' ? 'bg-red-600 hover:bg-red-700' :
-                  'bg-blue-600 hover:bg-blue-700'
+                  'bg-accent-600 hover:bg-accent-700'
                 } text-white rounded-lg`}
               >
                 OK
@@ -9575,7 +9599,7 @@ const DayPlanner = () => {
             {undoToast.actionable && (
               <button
                 onClick={() => { performUndo(); }}
-                className="font-semibold text-blue-400 hover:text-blue-300 ml-1"
+                className="font-semibold text-accent-400 hover:text-accent-300 ml-1"
               >
                 {t('shortcuts.undoAction')}
               </button>
@@ -9593,7 +9617,7 @@ const DayPlanner = () => {
           <button
             onClick={() => { setShowFramesModal(true); setEditingFrame(null); }}
             className={`fixed z-40 w-14 h-14 rounded-full shadow-lg active:opacity-90 flex items-center justify-center transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}
-            style={{ right: '1rem', bottom: '5.5rem' }}
+            style={{ right: '1rem', bottom: '9.5rem' }}
             title={`${t('settings.frames')} & ${t('shortcuts.smartSchedule')}`}
           >
             <LayoutGrid size={22} />
@@ -9601,7 +9625,7 @@ const DayPlanner = () => {
           {/* + New task FAB */}
           <button
             onClick={openNewTaskForm}
-            className="fixed z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg active:bg-blue-700 flex items-center justify-center transition-colors"
+            className="fixed z-40 w-14 h-14 bg-accent-600 text-white rounded-full shadow-lg active:bg-accent-700 flex items-center justify-center transition-colors"
             style={{ right: '1rem', bottom: '1.5rem' }}
             title={t('shortcuts.newScheduledTask')}
           >
@@ -9623,14 +9647,14 @@ const DayPlanner = () => {
           <button
             onClick={() => { setShowFramesModal(true); setEditingFrame(null); }}
             className={`fixed z-40 w-14 h-14 rounded-full shadow-lg hover:opacity-90 flex items-center justify-center transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}
-            style={{ right: '1.5rem', bottom: '5.5rem' }}
+            style={{ right: '1.5rem', bottom: '9.5rem' }}
             title={`${t('settings.frames')} & ${t('shortcuts.smartSchedule')}`}
           >
             <LayoutGrid size={22} />
           </button>
           <button
             onClick={openNewTaskForm}
-            className="fixed z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-colors"
+            className="fixed z-40 w-14 h-14 bg-accent-600 text-white rounded-full shadow-lg hover:bg-accent-700 flex items-center justify-center transition-colors"
             style={{ right: '1.5rem', bottom: '1.5rem' }}
             title={t('shortcuts.newScheduledTask')}
           >
@@ -9739,7 +9763,7 @@ const DayPlanner = () => {
                       <div>
                         <div className={`text-lg font-bold ${textPrimary}`}>{t('app.summaryProgress', { done: actualTodayCompletedTasks.length, total: actualTodayNonImportedTasks.length })}</div>
                         {todayIncompleteTasks.length > 0 && (
-                          <button onClick={() => { setShowIncompleteTasks('today'); setShowMobileDailySummary(false); }} className="text-sm text-blue-500 hover:text-blue-600">
+                          <button onClick={() => { setShowIncompleteTasks('today'); setShowMobileDailySummary(false); }} className="text-sm text-accent-500 hover:text-accent-600">
                             {t('app.incompleteCount', { count: todayIncompleteTasks.length })}
                           </button>
                         )}
@@ -9785,7 +9809,7 @@ const DayPlanner = () => {
                         <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayCompletedMinutes + inboxCompletedTodayMinutes, t)}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
+                        <div className="flex items-center gap-2"><Clock size={14} className="text-accent-400" /> {t('app.timePlanned')}</div>
                         <span className={`font-medium ${textPrimary}`}>{formatDuration(actualTodayPlannedMinutes, t)}</span>
                       </div>
                       {actualTodayFocusMinutes > 0 && (
@@ -9875,12 +9899,12 @@ const DayPlanner = () => {
                   )}
                   {goalsProjectsEnabled && allTimeProjectsCreated > 0 && (
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2"><FolderOpen size={14} className="text-blue-400" /> {t('app.projectsLabel')}</div>
+                      <div className="flex items-center gap-2"><FolderOpen size={14} className="text-accent-400" /> {t('app.projectsLabel')}</div>
                       <span className={`font-medium ${textPrimary}`}>{t('app.completedRatio', { done: allTimeProjectsCompleted, total: allTimeProjectsCreated })}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2"><CalendarDays size={14} className="text-blue-400" /> {t('app.tasksScheduled')}</div>
+                    <div className="flex items-center gap-2"><CalendarDays size={14} className="text-accent-400" /> {t('app.tasksScheduled')}</div>
                     <span className={`font-medium ${textPrimary}`}>{allTimeScheduledCount}</span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -9890,7 +9914,7 @@ const DayPlanner = () => {
                       {allTimeIncompleteTasks.length > 0 && (
                         <button
                           onClick={() => { setShowIncompleteTasks('allTime'); setShowMobileDailySummary(false); }}
-                          className="ml-1 text-blue-500 hover:text-blue-400"
+                          className="ml-1 text-accent-500 hover:text-accent-400"
                         >
                           ({t('app.incompleteCount', { count: allTimeIncompleteTasks.length })})
                         </button>
@@ -9914,7 +9938,7 @@ const DayPlanner = () => {
                     <span className={`font-medium ${textPrimary}`}>{formatDuration(totalCompletedMinutes + allTimeInboxCompletedMinutes + allTimeUnscheduledProjectDoneMinutes, t)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2"><Clock size={14} className="text-blue-400" /> {t('app.timePlanned')}</div>
+                    <div className="flex items-center gap-2"><Clock size={14} className="text-accent-400" /> {t('app.timePlanned')}</div>
                     <span className={`font-medium ${textPrimary}`}>{formatDuration(totalScheduledMinutes, t)}</span>
                   </div>
                   {allTimeFocusMinutes > 0 && (
@@ -9944,7 +9968,7 @@ const DayPlanner = () => {
         <div className="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-auto" style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
           <button
             onClick={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-blue-600 text-white active:bg-blue-700 transition-opacity`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-accent-600 text-white active:bg-accent-700 transition-opacity`}
           >
             <Clock size={14} />
             <span>{t('app.refocusTimeline')}</span>
@@ -10081,7 +10105,7 @@ const DayPlanner = () => {
             {/* Header */}
             <div className={`flex items-center justify-between px-5 py-4 border-b ${borderClass}`}>
               <div className="flex items-center gap-2">
-                <HelpCircle size={18} className="text-blue-500" />
+                <HelpCircle size={18} className="text-accent-500" />
                 <h2 className={`font-semibold ${textPrimary}`}>{t('app.helpFeedback')}</h2>
               </div>
               <button onClick={() => setShowHelpModal(false)} className={`p-1 rounded-lg ${darkMode ? 'hover:bg-white/10' : 'hover:bg-stone-100'}`}>
@@ -10097,7 +10121,7 @@ const DayPlanner = () => {
                   href="https://docs.dayglance.app"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 text-accent-500 hover:text-accent-400 transition-colors text-sm font-medium"
                 >
                   <ExternalLink size={14} />
                   docs.dayglance.app
@@ -10109,7 +10133,7 @@ const DayPlanner = () => {
                 <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('app.contactIssues')}</p>
                 <a
                   href="mailto:support@glance-apps.com"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 text-accent-500 hover:text-accent-400 transition-colors text-sm font-medium"
                 >
                   <ExternalLink size={14} />
                   support@glance-apps.com
@@ -10118,7 +10142,7 @@ const DayPlanner = () => {
                   href="https://github.com/krelltunez/dayGLANCE/issues"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium mt-1.5"
+                  className="flex items-center gap-2 text-accent-500 hover:text-accent-400 transition-colors text-sm font-medium mt-1.5"
                 >
                   <ExternalLink size={14} />
                   Report an issue on GitHub
@@ -10132,7 +10156,7 @@ const DayPlanner = () => {
                   href="https://www.glance-apps.com/dayglance/privacy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 text-accent-500 hover:text-accent-400 transition-colors text-sm font-medium"
                 >
                   <ExternalLink size={14} />
                   {t('onboarding.privacyPolicy')}
@@ -10141,7 +10165,7 @@ const DayPlanner = () => {
                   href="https://www.glance-apps.com/eula"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium mt-1.5"
+                  className="flex items-center gap-2 text-accent-500 hover:text-accent-400 transition-colors text-sm font-medium mt-1.5"
                 >
                   <ExternalLink size={14} />
                   {t('onboarding.termsOfUse')}
@@ -10164,7 +10188,7 @@ const DayPlanner = () => {
                         setGettingStartedDismissed(true);
                       }
                     }}
-                    className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${!gettingStartedDismissed ? 'bg-blue-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
+                    className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${!gettingStartedDismissed ? 'bg-accent-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
                   >
                     <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${!gettingStartedDismissed ? 'left-5' : 'left-1'}`} />
                   </button>

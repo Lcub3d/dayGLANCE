@@ -107,7 +107,7 @@ const MobileNewTaskModal = () => {
                   value={newTask.title}
                   onChange={handleNewTaskInputChange}
                   autoFocus={!mobileEditingTask && !newTask.title}
-                  className={`w-full px-3 py-3 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-base`}
+                  className={`w-full px-3 py-3 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-base`}
                 />
                 {/* Natural-language parse chips — tap to undo a parse */}
                 {!mobileEditingTask && !mobileEditingNativeEvent && (
@@ -202,7 +202,7 @@ const MobileNewTaskModal = () => {
                         assignedUserSyncIds: proj?.assignedUserSyncIds || [],
                       });
                     }}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                   >
                     <option value="">{t('task.noProject')}</option>
                     {(() => {
@@ -263,7 +263,7 @@ const MobileNewTaskModal = () => {
                           type="button"
                           onClick={toggle}
                           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm border transition-colors ${isSelected
-                            ? `border-blue-500 ${darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`
+                            ? `border-accent-500 ${darkMode ? 'bg-accent-500/20 text-accent-300' : 'bg-accent-50 text-accent-700'}`
                             : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-stone-600'}`}`}
                         >
                           <span
@@ -290,7 +290,7 @@ const MobileNewTaskModal = () => {
                             type="button"
                             onClick={() => setMobileEditingTask(prev => ({ ...prev, _assignScope: opt.key }))}
                             className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${active
-                              ? `border-blue-500 ${darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`
+                              ? `border-accent-500 ${darkMode ? 'bg-accent-500/20 text-accent-300' : 'bg-accent-50 text-accent-700'}`
                               : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-stone-600'}`}`}
                           >
                             {opt.label}
@@ -311,7 +311,7 @@ const MobileNewTaskModal = () => {
                       type="button"
                       key={color.class}
                       onClick={() => setNewTask({ ...newTask, color: color.class })}
-                      className={`${color.class} w-full aspect-square rounded-full transition-transform ${(newTask.color || colors[0].class) === color.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
+                      className={`${color.class} w-full aspect-square rounded-full transition-transform ${(newTask.color || colors[0].class) === color.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : ''}`}
                       title={t(`colors.${color.name.toLowerCase()}`)}
                     />
                   ))}
@@ -375,7 +375,7 @@ const MobileNewTaskModal = () => {
                     <select
                       value={newTask.duration}
                       onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) })}
-                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                     >
                       {durationOptions.map(minutes => (
                         <option key={minutes} value={minutes}>{t('common.minutesShort', { count: minutes })}</option>
@@ -419,7 +419,7 @@ const MobileNewTaskModal = () => {
                       value={newTask.duration}
                       onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) })}
                       disabled={newTask.isAllDay || newTask.keepUnscheduled}
-                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay || newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay || newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {durationOptions.map(minutes => (
                         <option key={minutes} value={minutes}>{t('common.minutesShort', { count: minutes })}</option>
@@ -429,7 +429,7 @@ const MobileNewTaskModal = () => {
                   <div>
                     <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.allDay')}</label>
                     <label className={`flex items-center h-10 ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} onClick={(e) => { e.preventDefault(); !newTask.keepUnscheduled && setNewTask(prev => ({ ...prev, isAllDay: !prev.isAllDay })); }}>
-                      <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-blue-600 border-blue-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-accent-600 border-accent-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
                         {newTask.isAllDay && <Check size={14} className="text-white" strokeWidth={3} />}
                       </div>
                       <span className={`ml-2 text-sm ${textPrimary}`}>{t('task.allDay')}</span>
@@ -442,7 +442,7 @@ const MobileNewTaskModal = () => {
                         className="flex items-center gap-2 cursor-pointer py-1"
                         onClick={(e) => { e.preventDefault(); setNewTask(prev => ({ ...prev, keepUnscheduled: !prev.keepUnscheduled })); }}
                       >
-                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${newTask.keepUnscheduled ? 'bg-blue-600 border-blue-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${newTask.keepUnscheduled ? 'bg-accent-600 border-accent-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
                           {newTask.keepUnscheduled && <Check size={14} className="text-white" strokeWidth={3} />}
                         </div>
                         <div>
@@ -459,7 +459,7 @@ const MobileNewTaskModal = () => {
                         type="button"
                         onClick={() => !newTask.keepUnscheduled && setShowRecurrencePicker(!showRecurrencePicker)}
                         disabled={newTask.keepUnscheduled}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-left text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.recurrence ? 'ring-2 ring-blue-500' : ''} ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-left text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.recurrence ? 'ring-2 ring-accent-500' : ''} ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {newTask.recurrence ? getRecurrenceLabel(newTask.recurrence, t, i18n.resolvedLanguage || i18n.language) : t('task.noRepeat')}
                       </button>
@@ -477,7 +477,7 @@ const MobileNewTaskModal = () => {
                             }}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               !newTask.recurrence.endDate && !newTask.recurrence.maxOccurrences
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -488,7 +488,7 @@ const MobileNewTaskModal = () => {
                             onClick={() => setShowRecurrenceEndDatePicker({ source: 'new' })}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               newTask.recurrence.endDate
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -506,7 +506,7 @@ const MobileNewTaskModal = () => {
                             }}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               newTask.recurrence.maxOccurrences
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -564,7 +564,7 @@ const MobileNewTaskModal = () => {
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="flex-1 px-4 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 font-medium"
                 >
                   {mobileEditingTask ? t('task.saveChanges') : newTask.openInInbox ? (newTask.projectId ? t('task.addToProject') : t('task.addToInbox')) : newTask.projectId && newTask.keepUnscheduled ? t('task.addToProject') : newTask.projectId ? t('task.addToProjectAndSchedule') : t('task.addToSchedule')}
                 </button>
@@ -648,7 +648,7 @@ const MobileNewTaskModal = () => {
                   type="text"
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  className={`w-full px-3 py-3 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-base`}
+                  className={`w-full px-3 py-3 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-base`}
                 />
               </div>
 
@@ -660,7 +660,7 @@ const MobileNewTaskModal = () => {
                     type="button"
                     onClick={() => setNewTask({ ...newTask, color: '' })}
                     title={t('task.useCalendarColor')}
-                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform ${!newTask.color ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : darkMode ? 'border-gray-600' : 'border-stone-300'}`}
+                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-transform ${!newTask.color ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : darkMode ? 'border-gray-600' : 'border-stone-300'}`}
                     style={mobileEditingNativeEvent.nativeCalendarColor ? { backgroundColor: mobileEditingNativeEvent.nativeCalendarColor } : {}}
                   >
                     {!mobileEditingNativeEvent.nativeCalendarColor && <span className={`text-xs ${textSecondary}`}>—</span>}
@@ -670,7 +670,7 @@ const MobileNewTaskModal = () => {
                       type="button"
                       key={color.class}
                       onClick={() => setNewTask({ ...newTask, color: color.class })}
-                      className={`${color.class} w-8 h-8 rounded-full transition-transform ${newTask.color === color.class ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
+                      className={`${color.class} w-8 h-8 rounded-full transition-transform ${newTask.color === color.class ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : ''}`}
                       title={t(`colors.${color.name.toLowerCase()}`)}
                     />
                   ))}
@@ -706,7 +706,7 @@ const MobileNewTaskModal = () => {
                     value={newTask.duration}
                     onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) })}
                     disabled={newTask.isAllDay}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay ? 'opacity-50' : ''}`}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay ? 'opacity-50' : ''}`}
                   >
                     {durationOptions.map(minutes => (
                       <option key={minutes} value={minutes}>{t('common.minutesShort', { count: minutes })}</option>
@@ -716,7 +716,7 @@ const MobileNewTaskModal = () => {
                 <div>
                   <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.allDay')}</label>
                   <label className="flex items-center h-10 cursor-pointer" onClick={(e) => { e.preventDefault(); setNewTask(prev => ({ ...prev, isAllDay: !prev.isAllDay })); }}>
-                    <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-blue-600 border-blue-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-accent-600 border-accent-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
                       {newTask.isAllDay && <Check size={14} className="text-white" strokeWidth={3} />}
                     </div>
                     <span className={`ml-2 text-sm ${textPrimary}`}>{t('task.allDay')}</span>
@@ -731,7 +731,7 @@ const MobileNewTaskModal = () => {
                   value={newTask.notes || ''}
                   onChange={(e) => setNewTask({ ...newTask, notes: e.target.value })}
                   rows={2}
-                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-sm resize-none`}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} text-sm resize-none`}
                   placeholder={t('task.notesPlaceholder')}
                 />
               </div>
@@ -740,7 +740,7 @@ const MobileNewTaskModal = () => {
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="flex-1 px-4 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 font-medium"
                 >
                   {t('task.saveChanges')}
                 </button>

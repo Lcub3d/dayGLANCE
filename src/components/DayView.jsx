@@ -184,7 +184,7 @@ const DayViewColumn = ({ col, colIdx, hourHeight }) => {
   };
 
   return (
-    <div className={`flex-1 flex flex-col min-w-0 ${colIdx > 0 ? `border-l ${borderClass}` : ''} ${showNowLine ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}>
+    <div className={`flex-1 flex flex-col min-w-0 ${colIdx > 0 ? `border-l ${borderClass}` : ''} ${showNowLine ? (darkMode ? 'bg-accent-900/10' : 'bg-accent-50/40') : ''}`}>
       <div
         ref={colContentRef}
         className="flex-1 relative flex flex-col"
@@ -547,8 +547,8 @@ const DayViewColumn = ({ col, colIdx, hourHeight }) => {
               className="absolute left-16 right-0 pointer-events-none z-30"
               style={{ top: `${topPx}px` }}
             >
-              <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60" />
-              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
+              <div className="absolute left-0 right-12 h-0.5 bg-accent-400/60" />
+              <div className="absolute right-1 bg-accent-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
                 {formatTime(hoverPreviewTime)}
               </div>
             </div>
@@ -574,10 +574,10 @@ const DayViewColumn = ({ col, colIdx, hourHeight }) => {
               style={{ top: `${topPx}px` }}
             >
               <div className="relative">
-                <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'}`}>
+                <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${darkMode ? 'bg-accent-500 text-white' : 'bg-accent-600 text-white'}`}>
                   {formatTime(dragPreviewTime)}{showDateLabel}
                 </div>
-                <div className="h-0.5 bg-blue-500" />
+                <div className="h-0.5 bg-accent-500" />
               </div>
             </div>
           );

@@ -33,7 +33,7 @@ const RailSection = ({ title, storageKey, count, children, defaultOpen = true })
         className={`w-full flex items-center justify-between py-1.5 px-1 rounded ${hoverBg} transition-colors`}
       >
         <span className={`text-xs font-semibold uppercase tracking-wide ${textPrimary}`}>
-          {title}{count ? <span className="ml-1.5 text-blue-500">{count}</span> : null}
+          {title}{count ? <span className="ml-1.5 text-accent-500">{count}</span> : null}
         </span>
         {open ? <ChevronDown size={13} className={textSecondary} /> : <ChevronRight size={13} className={textSecondary} />}
       </button>
@@ -81,7 +81,7 @@ const SchedDashboard = () => {
 
   const chip = (selected) => `px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
     selected
-      ? 'bg-blue-600 text-white border-blue-600'
+      ? 'bg-accent-600 text-white border-accent-600'
       : `${borderClass} ${textSecondary} ${hoverBg}`
   }`;
 
@@ -107,7 +107,7 @@ const SchedDashboard = () => {
           {visibleDays.map(day => (
             <div key={day.dateStr} className="flex flex-col gap-1.5">
               <div className={`flex items-center justify-between border-b ${borderClass} pb-1`}>
-                <span className={`flex items-center gap-1.5 text-sm font-semibold ${day.dateStr === todayStr ? 'text-blue-500' : textPrimary}`}>
+                <span className={`flex items-center gap-1.5 text-sm font-semibold ${day.dateStr === todayStr ? 'text-accent-500' : textPrimary}`}>
                   <span>{dayLabel(day)}</span>
                   <DayHeaderActions dateStr={day.dateStr} />
                 </span>
@@ -164,7 +164,7 @@ const SchedDashboard = () => {
           {filtersActive && (
             <button
               onClick={() => setFilters(EMPTY_SCHED_FILTERS)}
-              className="flex items-center gap-1 text-xs font-medium text-blue-500"
+              className="flex items-center gap-1 text-xs font-medium text-accent-500"
             >
               <X size={11} />
               {t('common.clear', 'Clear')}
@@ -194,7 +194,7 @@ const SchedDashboard = () => {
                   key={c.class}
                   onClick={() => setFilters(f => toggleSchedFilter(f, 'colors', c.class))}
                   className={`w-6 h-6 rounded-full ${c.class} transition-transform ${
-                    filters.colors.includes(c.class) ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : 'hover:scale-110 opacity-80'
+                    filters.colors.includes(c.class) ? 'ring-2 ring-offset-2 ring-accent-500 scale-110' : 'hover:scale-110 opacity-80'
                   }`}
                   aria-label={c.name}
                 />

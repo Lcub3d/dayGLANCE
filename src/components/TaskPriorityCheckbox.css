@@ -1,0 +1,58 @@
+@import './TaskPriority.css';
+
+.task-priority-checkbox {
+  --task-priority-color: var(--task-priority-solid);
+  --task-priority-tint: color-mix(in srgb, var(--task-priority-color) 12%, transparent);
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--task-priority-color);
+  border-radius: 3px;
+  background: var(--task-priority-tint);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, filter 120ms ease;
+}
+
+.task-priority-checkbox[data-theme='dark'] {
+  --task-priority-color: var(--task-priority-bright);
+  --task-priority-tint: color-mix(in srgb, var(--task-priority-color) 20%, transparent);
+  color: #1f1f1f;
+}
+
+/* A light inset keeps the colored square visible against a matching card. */
+.task-priority-surface .task-priority-checkbox {
+  --task-priority-color: var(--task-priority-solid);
+  --task-priority-tint: color-mix(in srgb, var(--task-priority-color) 12%, white);
+  outline: 1px solid #fff;
+  outline-offset: 0;
+  color: #fff;
+}
+
+.task-priority-checkbox[aria-checked='true'] {
+  background: var(--task-priority-color);
+}
+
+.task-priority-checkbox:hover {
+  filter: brightness(1.08);
+}
+
+.task-priority-checkbox:focus-visible {
+  outline: 2px solid var(--task-priority-color);
+  outline-offset: 2px;
+}
+
+.task-priority-surface .task-priority-checkbox:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.task-priority-checkbox:disabled {
+  cursor: default;
+  opacity: 0.55;
+}

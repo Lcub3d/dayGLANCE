@@ -25,6 +25,18 @@ export default function useNavigation({
       setSelectedDate(prev => shiftDateByMonths(prev, direction));
       return;
     }
+    // YEAR: the same chrome is reused by the annual view, where one step is a
+    // calendar year. Keep the date's month/day when possible so returning to a
+    // day view lands on the corresponding day.
+    if (effectiveViewMode === 'year') {
+      setSelectedDate(prev => {
+        const newDate = new Date(prev);
+        newDate.setFullYear(newDate.getFullYear() + direction);
+        newDate.setHours(12, 0, 0, 0);
+        return newDate;
+      });
+      return;
+    }
     const stride = effectiveViewMode === 'day' || effectiveViewMode === 'jobo' ? 1
       : effectiveViewMode === 'week' || effectiveViewMode === 'sched' ? 7
       : visibleDays;
@@ -67,8 +79,8 @@ export default function useNavigation({
           const elTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
           const scrollTarget = Math.max(0, elTop - container.clientHeight / 2 + el.offsetHeight / 2);
           container.scrollTo({ top: scrollTarget, behavior: 'smooth' });
-          el.classList.add('ring-2', 'ring-blue-400');
-          setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 2000);
+          el.classList.add('ring-2', 'ring-accent-400');
+          setTimeout(() => el.classList.remove('ring-2', 'ring-accent-400'), 2000);
         }
       }, delay);
     };

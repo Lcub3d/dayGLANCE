@@ -115,7 +115,7 @@ const GroupChips = ({ tasks, deadlineTasks = [], date, dateStr, darkMode, border
     <>
       {isTablet && (
         <>
-          <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-blue-900/80 text-blue-300' : 'bg-blue-100 text-blue-600'} rounded-lg flex items-center pl-3 text-xs font-medium`}>
+          <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-accent-900/80 text-accent-300' : 'bg-accent-100 text-accent-600'} rounded-lg flex items-center pl-3 text-xs font-medium`}>
             <Inbox size={14} className="mr-1" />{t('settings.inbox')}
           </div>
           <div data-swipe-strip="left" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-amber-900/80 text-amber-300' : 'bg-amber-100 text-amber-600'} rounded-lg flex items-center justify-end pr-3 text-xs font-medium`}>

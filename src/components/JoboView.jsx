@@ -31,6 +31,19 @@ import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 const GRID = 'grid grid-cols-[calc(50%+2rem)_minmax(0,1fr)]';
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
+/**
+ * The editor's opening state for continuing `record`: its title, its task and
+ * its captured plan. createManualDo derives the taskId from `task`, so passing
+ * the record's own taskId keeps a recurring template id as it is.
+ */
+export const continueInitial = (record, date, startMinute) => ({
+  date, startMinute, duration: 30,
+  title: record.title,
+  task: { id: record.taskId },
+  planSnapshot: record.planSnapshot ?? null,
+  continuing: true,
+});
+
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
@@ -109,6 +122,17 @@ export default function JoboView() {
       : { record });
   };
   const openAdd = (startMinute) => { closeDetails(); setEditor({ initial: { date, startMinute, duration: 30 } }); };
+  // Continue an unfinished attempt: a new Do on the same task and captured
+  // plan, so it joins the original as another session of one execution. It
+  // starts where the attempt ended, or now if that has already passed today.
+  const openContinue = (item) => {
+    closeDetails();
+    const { record } = item;
+    const ended = snapMinute(item.markerMinute ?? item.endMinute);
+    const nowMinute = snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes());
+    const startMinute = Math.min(1410, date === nowDate ? Math.max(ended, nowMinute) : ended);
+    setEditor({ initial: continueInitial(record, date, startMinute) });
+  };
 
   const saveEdit = async (record, patch) => {
     const current = live.current;
@@ -289,6 +313,7 @@ export default function JoboView() {
             laneRef={doLane}
             onAddAt={openAdd}
             onEdit={openEdit}
+            onContinue={openContinue}
             onDetails={(item, anchor) => setDetails({ item, anchor })}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}

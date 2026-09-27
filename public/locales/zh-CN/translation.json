@@ -2059,6 +2059,8 @@
     "view": {
       "activeLabel": "实际活动时间",
       "addDo": "新增 Do",
+      "continueDo": "继续",
+      "continueDoHint": "为此任务再记录一个时段",
       "capturedPlan": "历史计划",
       "capturedTitle": "标题保留为创建这条 Do 时的记录。",
       "completeInterval": "请填写完整的开始和结束时间。",

@@ -2059,6 +2059,8 @@
     "view": {
       "activeLabel": "Tiempo activo",
       "addDo": "Add Do",
+      "continueDo": "Continuar",
+      "continueDoHint": "Registrar otra sesión de esta tarea",
       "capturedPlan": "Captured plan",
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Introduce un intervalo completo de inicio y fin.",

@@ -6,7 +6,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { isNativeAndroid, isNativeApp, nativeUpdateEvent, SOURCE_APPS } from '../native.js';
-import { renderTitleWithoutTags, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
+import { renderTitleWithoutTags, renderTitleWithoutWikilinks, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { extractTags, extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
@@ -176,7 +176,7 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
                 className="font-semibold text-sm leading-tight truncate flex-1 min-w-0"
                 title={stripWikilinks(task.title)}
               >
-                {stripWikilinks(task.title)}
+                {renderTitleWithoutWikilinks(task.title)}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {task.notes && (

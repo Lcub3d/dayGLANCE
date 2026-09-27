@@ -741,7 +741,7 @@ export default function useDragDrop({
     setDragOverRecycleBin(false);
   };
 
-  const handleResizeStart = (task, e) => {
+  const handleResizeStart = (task, e, pixelsPerHour = 80) => {
     e.stopPropagation();
     e.preventDefault();
     pushUndo();
@@ -760,7 +760,7 @@ export default function useDragDrop({
 
     const handleMouseMove = (moveEvent) => {
       const deltaY = moveEvent.clientY - startY;
-      const deltaMinutes = Math.round((deltaY / 80) * 60 / 15) * 15;
+      const deltaMinutes = Math.round((deltaY / pixelsPerHour) * 60 / 15) * 15;
       const newDuration = Math.max(15, startDuration + deltaMinutes);
       finalDuration = newDuration;
 
@@ -815,7 +815,7 @@ export default function useDragDrop({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleTouchResizeStart = (task, e) => {
+  const handleTouchResizeStart = (task, e, pixelsPerHour = 80) => {
     e.stopPropagation();
     pushUndo();
     setIsResizing(true);
@@ -830,7 +830,7 @@ export default function useDragDrop({
     const handleTouchMove = (moveEvent) => {
       moveEvent.preventDefault();
       const deltaY = moveEvent.touches[0].clientY - startY;
-      const deltaMinutes = Math.round((deltaY / 80) * 60 / 15) * 15;
+      const deltaMinutes = Math.round((deltaY / pixelsPerHour) * 60 / 15) * 15;
       const newDuration = Math.max(15, startDuration + deltaMinutes);
       finalDuration = newDuration;
 

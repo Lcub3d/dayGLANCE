@@ -1062,7 +1062,7 @@ const DayPlanner = () => {
   // stores, pushes, pulls and merges records.
   const {
     joboRecords, joboLoaded, joboWritable, joboError,
-    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet,
+    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet, reloadJobo,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
   const joboRecordsRef = useRef(joboRecords);
@@ -7038,6 +7038,7 @@ const DayPlanner = () => {
     postponeDeadlineTask,
     clearDeadline,
     addTask,
+    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,
@@ -8709,7 +8710,7 @@ const DayPlanner = () => {
     scrollToCurrentHour, scrollToHour,
 
     // ── Functions – task CRUD ─────────────────────────────────────────────────
-    addTask, toggleComplete,
+    addTask, createTimelineTask, toggleComplete,
     archiveInboxTask, restoreArchivedInboxTask,
     deleteRecurringInstance, updateRecurrencePattern,
     updateRecurrenceEndCondition, updateRecurringTemplate,
@@ -8940,7 +8941,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

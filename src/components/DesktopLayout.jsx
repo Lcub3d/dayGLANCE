@@ -36,6 +36,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 
 const DesktopLayout = () => {
+  const [joboHeaderTarget, setJoboHeaderTarget] = useState(null);
   const {
     isPhone, isMobile, isTablet, isLandscape,
     visibleDays, visibleDates,
@@ -856,12 +857,12 @@ const DesktopLayout = () => {
           <div className="flex-1 min-w-0 relative">
             <div
               ref={calendarRef}
-              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
+              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
-              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 ${cardBg}`}>
-              <CalendarHeader />
+              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 shrink-0 ${cardBg}`}>
+              <CalendarHeader joboControlsRef={setJoboHeaderTarget} />
               </div>
 
               {/* Main calendar grid — switches between multi/day/week views, or
@@ -885,7 +886,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'week' && <WeekView />}
                     {effectiveViewMode === 'sched' && <SchedDashboard />}
                     {effectiveViewMode === 'month' && <MonthView />}
-                    {effectiveViewMode === 'jobo' && <JoboView />}
+                    {effectiveViewMode === 'jobo' && <JoboView headerControlsTarget={joboHeaderTarget} />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.

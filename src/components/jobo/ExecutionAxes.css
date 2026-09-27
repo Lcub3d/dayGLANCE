@@ -1,0 +1,90 @@
+.jobo-s5-execution-axes {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.jobo-s5-execution-axis {
+  min-width: 0;
+  padding-top: 9px;
+  border-top: 1px solid rgb(127 127 127 / .2);
+}
+
+.jobo-s5-execution-axis h3 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.jobo-s5-execution-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 7px;
+}
+
+.jobo-s5-execution-summary > span {
+  max-width: 100%;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgb(127 127 127 / .12);
+  overflow-wrap: anywhere;
+}
+
+.jobo-s5-execution-axis dl {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.jobo-s5-execution-axis dl > div {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+}
+
+.jobo-s5-execution-axis dt {
+  flex: 0 0 5.5em;
+  opacity: .68;
+}
+
+.jobo-s5-execution-axis dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.jobo-s5-execution-metrics {
+  margin-top: 7px !important;
+  font-size: 11px;
+  opacity: .86;
+}
+
+.jobo-s5-execution-metrics dt {
+  flex-basis: 12em;
+  max-width: 60%;
+}
+
+.jobo-s5-execution-note,
+.jobo-s5-execution-empty,
+.jobo-s5-execution-latest {
+  margin: 5px 0 0;
+}
+
+.jobo-s5-execution-note {
+  padding: 5px 7px;
+  border-radius: 4px;
+  background: rgb(127 127 127 / .1);
+}
+
+.jobo-s5-execution-latest {
+  display: flex;
+  gap: 5px;
+}
+
+.jobo-s5-execution-latest > span {
+  opacity: .68;
+}

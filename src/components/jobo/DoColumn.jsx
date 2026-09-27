@@ -17,6 +17,23 @@ export const snapMinute = (minute) =>
   Math.max(0, Math.min(1440, Math.round(minute / SNAP_MINUTES) * SNAP_MINUTES));
 const MIN_CARD_PX = 27; // the task cards' minimum height (DayView getTaskSlice)
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+/**
+ * A completion whose captured plan has a duration is drawn as the block it most
+ * likely was: that duration, ending at the completion. DISPLAY ONLY. Nothing is
+ * stored until the user moves or resizes it (or saves it from the editor), so
+ * the ledger, and every measured figure built on it, never contains a guess.
+ * A completion with no planned duration (an Inbox task) stays a marker.
+ */
+export function estimateCompletion(item) {
+  if (!item?.point || item.estimate) return item;
+  const duration = item.record?.planSnapshot?.duration;
+  if (!(Number.isFinite(duration) && duration > 0)) return item;
+  const end = item.startMinute;
+  const start = Math.max(0, end - duration);
+  if (end - start < 1) return item;
+  return { ...item, markerMinute: end, startMinute: start, endMinute: end, estimate: true };
+}
+
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 
 function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails, onPointGesture, onResizeGesture }) {
@@ -25,29 +42,37 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
   const height = Math.max(MIN_CARD_PX, (item.endMinute - item.startMinute) * hourHeight / 60 - 2);
   const isMicro = height <= 40;
   const color = item.task?.color || item.sourceTask?.color || 'bg-purple-500';
-  const timeLabel = item.point
-    ? ctx.formatTime(item.time)
-    : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`;
+  const timeLabel = item.estimate
+    ? `~${ctx.formatTime(clock(item.startMinute))}–${ctx.formatTime(item.time)}`
+    : item.point
+      ? ctx.formatTime(item.time)
+      : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`;
   const signals = !item.point && item.comparison ? timingRows(item.comparison, t) : [];
   // An interval that ends on another day is clipped here; resizing it from
   // this column would move an end the column cannot show.
-  const canResize = writable && !pending && !item.point && record.endDate === record.date;
+  const canResize = writable && !pending && (item.estimate || (!item.point && record.endDate === record.date));
+  const movable = writable && !pending && item.point;
   const startsGesture = (event) => !event.target.closest('button');
 
   return (
     <div
       data-jobo-record={record.id}
       data-jobo-point={item.point ? 'true' : undefined}
-      className={`absolute pointer-events-auto shadow-md rounded-lg overflow-hidden text-white ${color}
-        ${item.point && writable && !pending ? 'cursor-ns-resize' : 'cursor-pointer'}
+      data-jobo-estimate={item.estimate ? 'true' : undefined}
+      className={`absolute pointer-events-auto rounded-lg overflow-hidden text-white ${color}
+        ${item.estimate ? 'bg-opacity-60 border-2 border-dashed border-white/80' : 'shadow-md'}
+        ${movable ? (item.estimate ? 'cursor-grab active:cursor-grabbing' : 'cursor-ns-resize') : 'cursor-pointer'}
         ${pending ? 'opacity-60' : ''}`}
       style={{ top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined }}
       onClick={(event) => { event.stopPropagation(); if (startsGesture(event)) onDetails(item, event.currentTarget); }}
-      onPointerDown={(event) => { if (item.point && writable && !pending && startsGesture(event)) onPointGesture(event, item); }}
-      title={item.point && writable ? t('jobo.view.dragCompletion') : undefined}
+      onPointerDown={(event) => { if (movable && startsGesture(event)) onPointGesture(event, item); }}
+      title={item.estimate
+        ? `${t('jobo.view.inferredPlanDuration')} ${t('jobo.view.dragCompletion')}`
+        : item.point && writable ? t('jobo.view.dragCompletion') : undefined}
     >
-      {/* A completion is a moment: the white rule marks it exactly. */}
-      {item.point && <div className="absolute top-0 left-0 right-0 h-0.5 bg-white pointer-events-none" aria-hidden="true" />}
+      {/* A completion is a moment: the white rule marks it exactly, at the
+          top of a marker and at the bottom (its end) of an estimate. */}
+      {item.point && <div className={`absolute ${item.estimate ? 'bottom-0' : 'top-0'} left-0 right-0 h-0.5 bg-white pointer-events-none`} aria-hidden="true" />}
       <div className="px-2 py-1 h-full flex flex-col min-w-0">
         <div className="flex items-center gap-1 min-w-0">
           {item.point && <CheckCircle2 size={12} className="flex-shrink-0 opacity-90" aria-hidden="true" />}
@@ -73,7 +98,7 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails
         {!isMicro && (
           <div className="text-xs opacity-90 flex items-center gap-1 min-w-0 whitespace-nowrap">
             <Clock size={10} className="flex-shrink-0" />
-            <span className="truncate">{timeLabel} · {pending ? t('jobo.view.pendingSave') : progressText(record.progress, t)}</span>
+            <span className="truncate">{timeLabel} · {pending ? t('jobo.view.pendingSave') : item.estimate ? t('jobo.view.estimatedShort') : progressText(record.progress, t)}</span>
           </div>
         )}
         {!isMicro && signals.length > 0 && height > 60 && (

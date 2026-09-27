@@ -6,7 +6,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
-import DoColumn, { snapMinute } from './jobo/DoColumn.jsx';
+import DoColumn, { snapMinute, estimateCompletion } from './jobo/DoColumn.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
@@ -70,7 +70,10 @@ export default function JoboView() {
     now: { date: nowDate, time: nowTime },
   }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, ctx.isVisibleForUser, nowDate, nowTime]);
   const doItems = useMemo(
-    () => assignOverlapColumns([...model.timedRecords, ...model.untimedRecords], { scale: hourHeight, minHeightPx: 27, gapPx: 2 }),
+    () => assignOverlapColumns(
+      [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
+      { scale: hourHeight, minHeightPx: 27, gapPx: 2 },
+    ),
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
@@ -96,7 +99,15 @@ export default function JoboView() {
 
   const closeEditor = useCallback(() => setEditor(null), []);
   const closeDetails = useCallback(() => setDetails(null), []);
-  const openEdit = (record) => { closeDetails(); setEditor({ record }); };
+  // Editing an estimate opens with the estimated times filled in, so saving
+  // it is the explicit "keep as shown"; clearing the start keeps the marker.
+  const openEdit = (record) => {
+    closeDetails();
+    const shown = doItems.find((item) => item.record?.id === record.id && item.estimate);
+    setEditor(shown
+      ? { record, initial: { patch: { startTime: clock(shown.startMinute), endTime: shown.time, date: shown.date } } }
+      : { record });
+  };
   const openAdd = (startMinute) => { closeDetails(); setEditor({ initial: { date, startMinute, duration: 30 } }); };
 
   const saveEdit = async (record, patch) => {
@@ -113,20 +124,24 @@ export default function JoboView() {
   };
 
   // One pointer gesture on the Do column, with a live preview. `toRange`
-  // turns the snapped minute under the pointer into { start, end } or null;
-  // `toPatch` turns the final range into the record patch.
+  // turns the snapped minute under the pointer (and the one it went down on)
+  // into { start, end } or null; `toPatch` turns the final range into the
+  // record patch.
   const runGesture = (event, { toRange, toPatch, record }) => {
     if (event.button !== 0 || !joboWritable || writer.pendingIds.includes(record.id)) return;
     event.preventDefault();
     event.stopPropagation();
     gestureCleanup.current?.();
     const startY = event.clientY;
+    const laneTop = doLane.current?.getBoundingClientRect().top ?? 0;
+    const downMinute = (startY - laneTop) / hourHeight * 60;
     let range = null;
     const move = (e) => {
       if (Math.abs(e.clientY - startY) < 5) { range = null; setPreview(null); return; }
       const bounds = doLane.current?.getBoundingClientRect();
       if (!bounds) return;
-      range = toRange(snapMinute((e.clientY - bounds.top) / hourHeight * 60));
+      const minute = (e.clientY - bounds.top) / hourHeight * 60;
+      range = toRange(snapMinute(minute), minute - downMinute);
       setPreview(range);
     };
     const cleanup = () => {
@@ -142,6 +157,14 @@ export default function JoboView() {
       move(e);
       const chosen = range;
       cleanup();
+      // The browser follows a drag's pointerup with a click on whatever is
+      // under it: the empty column (which would open Add Do) or the card
+      // (its details). A drag is not a click, so swallow that one click.
+      if (Math.abs(e.clientY - startY) >= 5) {
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        window.addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+      }
       const patch = chosen && toPatch(chosen);
       if (patch) saveEdit(record, patch);
     };
@@ -152,17 +175,48 @@ export default function JoboView() {
     window.addEventListener('keydown', escape, true);
   };
 
+  // The timed patch for an interval of the item's day. Midnight is the next
+  // day's 00:00, the shape core expects.
+  const timedPatch = (date, start, end) => {
+    const next = new Date(`${date}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    return {
+      timing: 'timed', date, startTime: clock(start),
+      endDate: end >= 1440 ? next.toISOString().slice(0, 10) : date, endTime: clock(end % 1440),
+    };
+  };
+
+  // Drag an estimate to where the work really was: it moves whole, its start
+  // snapped to 15 minutes, and saving it makes it a timed Do under the same id.
+  const onEstimateMove = (event, item) => {
+    const duration = item.endMinute - item.startMinute;
+    runGesture(event, {
+      record: item.record,
+      toRange: (_minute, delta) => {
+        const start = Math.max(0, Math.min(1440 - duration, snapMinute(item.startMinute + delta)));
+        return start === item.startMinute ? null : { start, end: start + duration };
+      },
+      toPatch: (range) => timedPatch(item.date, range.start, range.end),
+    });
+  };
+
   // Drag from a completion marker: the marker is one end of the interval,
-  // the pointer the other. Same id; the record becomes timed.
-  const onPointGesture = (event, item) => runGesture(event, {
+  // the pointer the other. Same id; the record becomes timed. An estimate
+  // moves instead.
+  const onPointGesture = (event, item) => (item.estimate ? onEstimateMove(event, item) : runGesture(event, {
     record: item.record,
     toRange: (minute) => (minute === item.startMinute ? null
       : { start: Math.min(item.startMinute, minute), end: Math.max(item.startMinute, minute) }),
     toPatch: (range) => intervalFromMarker(item, range.start === item.startMinute ? range.end : range.start),
-  });
+  }));
 
-  // Drag the bottom handle of a timed Do to move its end, as with a task.
-  const onResizeGesture = (event, item) => runGesture(event, {
+  // Drag the bottom handle of a timed Do to move its end, as with a task. On
+  // an estimate it sets the real end, keeping the estimated start.
+  const onResizeGesture = (event, item) => (item.estimate ? runGesture(event, {
+    record: item.record,
+    toRange: (minute) => (minute > item.startMinute && minute !== item.endMinute ? { start: item.startMinute, end: minute } : null),
+    toPatch: (range) => timedPatch(item.date, range.start, range.end),
+  }) : runGesture(event, {
     record: item.record,
     toRange: (minute) => (minute > item.startMinute ? { start: item.startMinute, end: minute } : null),
     toPatch: (range) => {
@@ -175,7 +229,7 @@ export default function JoboView() {
       }
       return { endDate: item.record.date, endTime: clock(range.end) };
     },
-  });
+  }));
 
   if (!joboLoaded) {
     return (

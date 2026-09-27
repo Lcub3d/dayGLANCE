@@ -132,3 +132,29 @@ describe('the Do editor reads an end before the start as the next day', () => {
     expect(endDateFor('2026-09-24', '09:00', '09:00')).toBe('2026-09-24');
   });
 });
+
+describe('a completion with a planned duration is drawn as a dashed estimate', () => {
+  const planned = () => point({ planSnapshot: { date: '2026-09-24', startTime: '08:30', duration: 60 } });
+
+  it('spans the planned duration ending at the completion, and stays a marker without one', async () => {
+    const { estimateCompletion } = await import('./jobo/DoColumn.jsx');
+    const item = { id: 'x', point: true, startMinute: 592, endMinute: 592, time: '09:52', date: '2026-09-24', record: planned() };
+    expect(estimateCompletion(item)).toMatchObject({ estimate: true, startMinute: 532, endMinute: 592, markerMinute: 592 });
+    expect(estimateCompletion({ ...item, record: point() })).toEqual({ ...item, record: point() });
+    expect(estimateCompletion({ ...item, point: false })).toMatchObject({ point: false });
+    expect(estimateCompletion({ ...item, startMinute: 20, endMinute: 20 })).toMatchObject({ startMinute: 0, endMinute: 20 });
+  });
+
+  // MUTATION: drop estimateCompletion from the view and the card is a marker
+  // again; store the estimate and recordJobo is called on render.
+  it('renders dashed and labelled, and drawing it writes nothing to the ledger', () => {
+    const recordJobo = vi.fn();
+    const html = render({ joboRecords: [planned()], recordJobo });
+    expect(html).toContain('data-jobo-estimate="true"');
+    expect(html).toContain('border-dashed border-white/80');
+    expect(html).toContain('top:680px');   // completed 09:30, planned 60 min: from 08:30, at 80px an hour
+    expect(html).toContain('jobo.view.estimatedShort');
+    expect(html).toContain('~08:30–09:30');
+    expect(recordJobo).not.toHaveBeenCalled();
+  });
+});

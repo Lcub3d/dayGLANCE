@@ -8,10 +8,33 @@ const record = (overrides = {}) => createDoRecord({ id: 'do:t:stamp', taskId: 't
   createdAt: '2026-09-24T10:23:54+08:00', updatedAt: '2026-09-24T10:23:54+08:00',
   observedAt: '2026-09-24T04:00:00Z', ...overrides });
 describe('completion point projection', () => {
-  it.each(['Z', '+08:00', '-07:00'])('uses the source clock for %s, not the observer timezone', offset => {
+  it.each(['+08:00', '-07:00'])('keeps the source civil clock for an explicit %s offset', offset => {
     const row = record({ createdAt: `2026-09-24T10:23:54${offset}`, updatedAt: `2026-09-25T10:23:54${offset}`, observedAt: `2026-09-26T10:23:54${offset}` });
     expect(completionMarker(row)).toEqual({ date: '2026-09-24', time: '10:23', startMinute: 623, endMinute: 623, point: true });
     expect(row.startTime).toBeNull();
+  });
+  it('projects a recurring Z stamp into viewer-local time without rewriting occurrence identity', () => {
+    const previousTz = process.env.TZ;
+    process.env.TZ = 'America/Chicago';
+    try {
+      const row = record({
+        date: '2026-09-18',
+        createdAt: '2026-09-19T02:00:00Z',
+        updatedAt: '2026-09-19T02:00:00Z',
+        observedAt: '2026-09-19T02:00:01Z',
+        planSnapshot: { date: '2026-09-18', startTime: '20:00', duration: 60 },
+      });
+      expect(completionMarker(row)).toEqual({ date: '2026-09-18', time: '21:00', startMinute: 1260, endMinute: 1260, point: true });
+      expect(buildJoboDayModel({ date: '2026-09-18', records: [row] }).untimedRecords[0])
+        .toMatchObject({ startMinute: 1260, endMinute: 1260, point: true });
+      expect(buildJoboDayModel({ date: '2026-09-19', records: [row] }).untimedRecords).toHaveLength(0);
+      expect(row.date).toBe('2026-09-18');
+      expect(row.id).toBe('do:t:stamp');
+      expect(row.createdAt).toBe('2026-09-19T02:00:00Z');
+    } finally {
+      if (previousTz === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTz;
+    }
   });
   it('projects an old/recurring record on its completion day without rewriting the occurrence date', () => {
     const row = record({ createdAt: '2026-09-25T00:10:00+08:00', updatedAt: '2026-09-25T00:10:00+08:00', observedAt: '2026-09-25T00:10:01+08:00' });

@@ -43,6 +43,7 @@ import {
   isInsertOnly,
   getEntityLastModified,
   reconcileCrossList,
+  carryAbsentCollections,
 } from './dbAdapter.js';
 import { pruneAllTombstones, tombstoneCutoff } from './tombstoneRetention.js';
 import { partitionSnapshotDeletes, reassertPropagatedDeletes } from './snapshotDeleteGuard.js';
@@ -756,6 +757,13 @@ export function createDbEngine(callbacks = {}) {
       // dirty diff below, the mid-cycle-edit detection in the commit merge, and
       // (via the HWM=0 branch) the full seed.
       const baseHashes = shredHashes(mirror);
+      // Snapshot entries of a collection kind the payload OMITS (its key is
+      // undefined, not []): unknown this cycle, not empty. The diff carries
+      // them forward untouched and the saved snapshot keeps them, so a device
+      // whose JOBO ledger has not finished its strict read does not propose
+      // (and the guard does not have to skip and re-fetch) every ledger row as
+      // a vanish-delete on launch. See carryAbsentCollections in dbAdapter.js.
+      let carriedHashes = {};
       // Bug-2 state: glitch-suspect vanish-deletes the guard skipped this cycle.
       let glitchSkipped = [];
       // Deletes the diff actually marked dirty this cycle (with the guard's
@@ -775,7 +783,12 @@ export function createDbEngine(callbacks = {}) {
         if (pushDbg) console.log('[push] initial full-seed cycle (HWM=0) — every row dirty');
       } else {
         const prev = await loadSnapshot();
-        const cur = baseHashes;
+        carriedHashes = carryAbsentCollections(prev, mirror);
+        // The cycle-start hashes plus the carried entries: a carried row hashes
+        // equal to its snapshot entry, so it is neither dirty nor a delete
+        // candidate. baseHashes itself stays the live state as of cycle start
+        // (the commit merge below compares live-now against it).
+        const cur = { ...baseHashes, ...carriedHashes };
         for (const [id, h] of Object.entries(cur)) {
           if (prev[id] === h) continue;
           // The vault already holds exactly this content for this row (acked on
@@ -1194,8 +1207,13 @@ export function createDbEngine(callbacks = {}) {
       // tombstone / cross-list fingerprint still holds (they can never enter the
       // skipped/glitch set, so no guard loop) and a repeated soft-delete is
       // idempotent at the vault.
+      // The saved snapshot keeps the carried entries of any omitted kind (a
+      // row the pull re-listed this cycle is in vaultSnapshot already and
+      // wins): "the state the vault knows" still includes rows this device
+      // said nothing about. Without this the next cycle, once the ledger has
+      // loaded, would re-push every ledger row as 'new'.
       if (glitchUnresolved.length === 0) {
-        await saveSnapshot(vaultSnapshot);
+        await saveSnapshot({ ...carriedHashes, ...vaultSnapshot });
       } else {
         console.warn(
           `[push] GUARD: ${glitchUnresolved.length} glitch-suspect row(s) could not be re-fetched from the vault — ` +

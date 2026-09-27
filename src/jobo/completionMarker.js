@@ -12,11 +12,18 @@ function viewerLocalCivil(stamp) {
   return { date, time };
 }
 
+/**
+ * The civil date and time a stamp shows as: its own clock when it carries an
+ * offset, the viewer's local clock when it is UTC. Display only.
+ */
+export function completionMoment(stamp) {
+  if (typeof stamp !== 'string' || !Number.isFinite(Date.parse(stamp))) return null;
+  return /Z$/i.test(stamp) ? viewerLocalCivil(stamp) : { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
+}
+
 export function completionMarker(record) {
   if (!validateDoRecord(record).ok || record.deleted || record.timing !== DO_TIMING.UNTIMED) return null;
-  const civil = /Z$/i.test(record.createdAt)
-    ? viewerLocalCivil(record.createdAt)
-    : { date: record.createdAt.slice(0, 10), time: record.createdAt.slice(11, 16) };
+  const civil = completionMoment(record.createdAt);
   const minute = Number(civil.time.slice(0, 2)) * 60 + Number(civil.time.slice(3, 5));
   return { date: civil.date, time: civil.time, startMinute: minute, endMinute: minute, point: true };
 }

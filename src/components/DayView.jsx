@@ -35,8 +35,15 @@ function getTaskSlice(task, col, hourHeight, timeToMinutes) {
 }
 
 // ── DayViewColumn ─────────────────────────────────────────────────────────────
-
-const DayViewColumn = ({ col, colIdx, hourHeight }) => {
+//
+// One timeline column: an hour gutter and the event area for `col.startHour`
+// to `col.endHour` of `col.date`, at `hourHeight` pixels per hour. Everything
+// else comes from app state, so a column rendered anywhere inside the app
+// behaves exactly like DAY: the real task cards, drag and drop (Inbox too),
+// the blue hover line, click-to-add, the timeline context menu, Frames,
+// HyperGLANCE bars, routines and the now line. DAY renders three 8-hour
+// columns; JOBO renders one 24-hour column as its Plan side.
+export const DayViewColumn = ({ col, colIdx, hourHeight }) => {
   const {
     isTablet,
     darkMode, use24HourClock,
@@ -117,7 +124,7 @@ const DayViewColumn = ({ col, colIdx, hourHeight }) => {
     return end > col.startHour * 60 && start < col.endHour * 60;
   });
 
-  const hours = Array.from({ length: 8 }, (_, i) => col.startHour + i);
+  const hours = Array.from({ length: col.endHour - col.startHour }, (_, i) => col.startHour + i);
   const altRow = darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50';
 
   const now = new Date();
@@ -424,7 +431,7 @@ const DayViewColumn = ({ col, colIdx, hourHeight }) => {
                   task={task}
                   height={height}
                   isNarrowWidth={isNarrowWidth}
-                  flipNotesPanel={(8 * hourHeight) - (top + height) < 200}
+                  flipNotesPanel={(hours.length * hourHeight) - (top + height) < 200}
                 />
                 {clippedBottom && (
                   <div className="absolute bottom-0 left-0 right-0 flex justify-center pointer-events-none">

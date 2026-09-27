@@ -67,3 +67,14 @@ describe('completion point projection', () => {
     expect(completionMarker(record({ timing: 'timed', startTime: '09:00', endDate: '2026-09-24', endTime: '10:00' }))).toBeNull();
   });
 });
+
+describe('completionMoment', () => {
+  it('keeps an offset stamp on its own clock and projects a UTC stamp into local time, for display only', async () => {
+    const { completionMoment } = await import('./completionMarker.js');
+    expect(completionMoment('2026-09-18T21:00:00-05:00')).toEqual({ date: '2026-09-18', time: '21:00' });
+    const utc = completionMoment('2026-09-19T02:00:00.000Z');
+    const local = new Date('2026-09-19T02:00:00.000Z');
+    expect(utc.time).toBe(`${String(local.getHours()).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`);
+    expect(completionMoment('not a stamp')).toBe(null);
+  });
+});

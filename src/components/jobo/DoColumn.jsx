@@ -1,0 +1,200 @@
+import React, { useRef, useState } from 'react';
+import { CheckCircle2, Clock, Pencil } from 'lucide-react';
+import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
+import { timingRows } from './ExecutionAxes.jsx';
+
+// The Do side of JOBO, drawn with the same grid as the Plan side (DAY's own
+// column): alternating hour rows, the dashed half-hour line, the now line,
+// the blue hover line with its time label, and cards styled like the app's
+// task cards. Every gesture snaps to 15 minutes, as the rest of the app does;
+// exact minutes are typed in the editor.
+//
+// It only renders and reports gestures. Writes go through the callbacks, and
+// from there through recordJobo, the ledger's only writer.
+
+export const SNAP_MINUTES = 15;
+export const snapMinute = (minute) =>
+  Math.max(0, Math.min(1440, Math.round(minute / SNAP_MINUTES) * SNAP_MINUTES));
+const MIN_CARD_PX = 27; // the task cards' minimum height (DayView getTaskSlice)
+const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
+
+function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onDetails, onPointGesture, onResizeGesture }) {
+  const { record } = item;
+  const top = item.startMinute * hourHeight / 60;
+  const height = Math.max(MIN_CARD_PX, (item.endMinute - item.startMinute) * hourHeight / 60 - 2);
+  const isMicro = height <= 40;
+  const color = item.task?.color || item.sourceTask?.color || 'bg-purple-500';
+  const timeLabel = item.point
+    ? ctx.formatTime(item.time)
+    : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`;
+  const signals = !item.point && item.comparison ? timingRows(item.comparison, t) : [];
+  // An interval that ends on another day is clipped here; resizing it from
+  // this column would move an end the column cannot show.
+  const canResize = writable && !pending && !item.point && record.endDate === record.date;
+  const startsGesture = (event) => !event.target.closest('button');
+
+  return (
+    <div
+      data-jobo-record={record.id}
+      data-jobo-point={item.point ? 'true' : undefined}
+      className={`absolute pointer-events-auto shadow-md rounded-lg overflow-hidden text-white ${color}
+        ${item.point && writable && !pending ? 'cursor-ns-resize' : 'cursor-pointer'}
+        ${pending ? 'opacity-60' : ''}`}
+      style={{ top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined }}
+      onClick={(event) => { event.stopPropagation(); if (startsGesture(event)) onDetails(item, event.currentTarget); }}
+      onPointerDown={(event) => { if (item.point && writable && !pending && startsGesture(event)) onPointGesture(event, item); }}
+      title={item.point && writable ? t('jobo.view.dragCompletion') : undefined}
+    >
+      {/* A completion is a moment: the white rule marks it exactly. */}
+      {item.point && <div className="absolute top-0 left-0 right-0 h-0.5 bg-white pointer-events-none" aria-hidden="true" />}
+      <div className="px-2 py-1 h-full flex flex-col min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          {item.point && <CheckCircle2 size={12} className="flex-shrink-0 opacity-90" aria-hidden="true" />}
+          <div className="font-semibold text-sm leading-tight truncate flex-1 min-w-0" title={record.title}>
+            {renderTitleWithoutTags(record.title)}
+          </div>
+          {writable && !pending && (
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); onEdit(record); }}
+              className="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors"
+              aria-label={`${t('common.edit')}: ${record.title}`}
+            >
+              <Pencil size={12} />
+            </button>
+          )}
+          {isMicro && (
+            <div className="text-xs opacity-90 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
+              <Clock size={10} />{timeLabel}
+            </div>
+          )}
+        </div>
+        {!isMicro && (
+          <div className="text-xs opacity-90 flex items-center gap-1 min-w-0 whitespace-nowrap">
+            <Clock size={10} className="flex-shrink-0" />
+            <span className="truncate">{timeLabel} · {pending ? t('jobo.view.pendingSave') : progressText(record.progress, t)}</span>
+          </div>
+        )}
+        {!isMicro && signals.length > 0 && height > 60 && (
+          <div className="text-xs opacity-80 flex gap-1 min-w-0 overflow-hidden mt-0.5">
+            {signals.map((row) => (
+              <span key={row.key} data-jobo-axis={row.key} title={row.text} className="truncate border-l border-white/40 pl-1 first:border-l-0 first:pl-0">{row.text}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      {canResize && (
+        <div
+          onPointerDown={(event) => { event.stopPropagation(); onResizeGesture(event, item); }}
+          onClick={(event) => event.stopPropagation()}
+          className="absolute bottom-0 left-1/3 right-1/3 h-3 cursor-ns-resize hover:bg-white/20 flex items-center justify-center select-none"
+          style={{ marginBottom: '-4px', touchAction: 'none' }}
+          aria-hidden="true"
+        >
+          <div className="w-12 h-1 bg-white rounded-full" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function DoColumn({
+  date, hourHeight, items, ctx, t,
+  writable, pendingIds = [], preview,
+  onAddAt, onEdit, onDetails, onPointGesture, onResizeGesture,
+  laneRef,
+}) {
+  const [hoverMinute, setHoverMinute] = useState(null);
+  const ownRef = useRef(null);
+  const lane = laneRef || ownRef;
+  const { darkMode, borderClass, currentTime } = ctx;
+  const altRow = darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50';
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const now = currentTime instanceof Date ? currentTime : new Date();
+  const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const nowY = (now.getHours() * 60 + now.getMinutes()) * hourHeight / 60;
+
+  const minuteFromEvent = (event) => {
+    const rect = lane.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return snapMinute((event.clientY - rect.top) / hourHeight * 60);
+  };
+  const overCard = (target) => !!target.closest?.('[data-jobo-record]');
+
+  return (
+    <div className={`min-w-0 border-l ${borderClass} ${isToday ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}>
+      <div
+        ref={lane}
+        data-jobo-lane="do"
+        className="relative"
+        onMouseMove={(event) => {
+          if (preview || overCard(event.target)) { if (hoverMinute !== null) setHoverMinute(null); return; }
+          setHoverMinute(minuteFromEvent(event));
+        }}
+        onMouseLeave={() => setHoverMinute(null)}
+        onClick={(event) => {
+          if (!writable || overCard(event.target)) return;
+          const minute = minuteFromEvent(event);
+          if (minute !== null) onAddAt(Math.min(minute, 1440 - 30));
+        }}
+      >
+        {hours.map((hour, i) => (
+          <div key={hour} className="relative" style={{ height: `${hourHeight}px` }}>
+            <div className={`border-b h-full ${borderClass} ${i % 2 === 1 ? altRow : ''} ${writable ? 'cursor-pointer' : ''}`} />
+            <div className={`absolute left-0 right-0 border-b border-dashed ${borderClass} opacity-50 pointer-events-none`} style={{ top: `${hourHeight / 2}px` }} />
+          </div>
+        ))}
+
+        {isToday && (
+          <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${nowY}px` }}>
+            {/* Same structure as DAY's now line (dot, then line, centred), so
+                the two sides meet at exactly the same height. */}
+            <div className="flex items-center"><div className="w-2 h-2 -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
+          </div>
+        )}
+
+        {items.map((item) => (
+          <DoCard
+            key={item.id}
+            item={item}
+            hourHeight={hourHeight}
+            ctx={ctx}
+            t={t}
+            writable={writable}
+            pending={pendingIds.includes(item.id)}
+            onEdit={onEdit}
+            onDetails={onDetails}
+            onPointGesture={onPointGesture}
+            onResizeGesture={onResizeGesture}
+          />
+        ))}
+
+        {preview && (
+          <div
+            data-jobo-gesture-preview
+            className="absolute left-1 right-1 pointer-events-none rounded-lg border-2 border-dashed border-blue-500 bg-blue-500/15 z-20"
+            style={{ top: `${preview.start * hourHeight / 60}px`, height: `${Math.max(2, (preview.end - preview.start) * hourHeight / 60)}px` }}
+          >
+            <div className="absolute right-1 -top-3 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded">
+              {ctx.formatTime(clock(preview.start))}–{ctx.formatTime(clock(preview.end))}
+            </div>
+          </div>
+        )}
+
+        {hoverMinute !== null && !preview && writable && (
+          <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${hoverMinute * hourHeight / 60}px` }}>
+            <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60" />
+            <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
+              {ctx.formatTime(clock(hoverMinute))}
+            </div>
+          </div>
+        )}
+
+        {!items.length && (
+          <p className={`absolute top-3 inset-x-2 text-xs text-center pointer-events-none ${ctx.textSecondary}`}>{t('jobo.view.emptyDo')}</p>
+        )}
+      </div>
+    </div>
+  );
+}

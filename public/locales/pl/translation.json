@@ -1544,7 +1544,9 @@
     "slotBottomRight": "Prawy dolny",
     "layerAlarm": "Następny alarm",
     "alarmFrom": "jutrzejszy od",
-    "alarmAlways": "cały dzień"
+    "alarmAlways": "cały dzień",
+    "frames": "Ramki",
+    "frameAvailable": "{{time}} dostępne"
   },
   "intentLog": {
     "clearLog": "Wyczyść dziennik",

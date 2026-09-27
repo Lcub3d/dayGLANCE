@@ -1491,7 +1491,9 @@
     "slotBottomRight": "Unten rechts",
     "layerAlarm": "Nächster Wecker",
     "alarmFrom": "morgiger ab",
-    "alarmAlways": "ganztägig"
+    "alarmAlways": "ganztägig",
+    "frames": "Rahmen",
+    "frameAvailable": "{{time}} verfügbar"
   },
   "intentLog": {
     "clearLog": "Protokoll löschen",

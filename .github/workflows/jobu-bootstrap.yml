@@ -1,0 +1,44 @@
+name: Jobu integration workspace
+on:
+  push:
+    branches: [work/jobu-bootstrap]
+permissions:
+  contents: read
+jobs:
+  workspace:
+    if: github.repository == 'Lcub3d/dayGLANCE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export source baselines
+        run: |
+          mkdir -p /tmp/jobu-bundle/{full,life,main,contrib}
+          git archive 5918cefd60e1b2a91f3121cce23396e4a5d077a9 | tar -x -C /tmp/jobu-bundle/full
+          git archive ba42ef2ad907be0c5c3633cfaf891b70b91389bb | tar -x -C /tmp/jobu-bundle/life
+          git archive 04f4f94db22e06e94ed156017dae3a7f4901193c | tar -x -C /tmp/jobu-bundle/main
+          git archive 3da80f21f293819fd170c19ae035594de6cc7967 | tar -x -C /tmp/jobu-bundle/contrib
+          git log -1 --format='%H %s' 5918cefd60e1b2a91f3121cce23396e4a5d077a9 > /tmp/jobu-bundle/refs.txt
+          git diff --name-status 49b0a4b42c87a0be62970723c8bc869954bb4cd2 5918cefd60e1b2a91f3121cce23396e4a5d077a9 > /tmp/jobu-bundle/full-files.txt
+          tar -czf /tmp/jobu-sources.tar.gz -C /tmp jobu-bundle
+      - name: Install and pack locked dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          tar -czf /tmp/jobu-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobu-workspace
+          path: |
+            /tmp/jobu-sources.tar.gz
+            /tmp/jobu-dependencies.tar.gz
+          retention-days: 3
+          compression-level: 0

@@ -1082,3 +1082,24 @@ Android.
 - **Previews.** `Frames · task running`, `· nothing running`, `· nested` and
   `· a frame at 0 %` are the spec day at 17:18, matching the in-app dial's
   scenarios.
+
+### Android widget
+
+- **Face.** `DialFacePainter.drawFrames` draws each frame's enclosure inside
+  the face layer, after the DST_OUT separator cuts. Frames join
+  `DialFaceInput.seed`, so an edited frame names a new face; names and free
+  slots stay out of it.
+- **Hub.** `DialHubRows.build(frame = …)` produces the frame rows when nothing
+  is running on a live day and it isn't sleep time. The title uses
+  `TITLE_FRAME`, which `drawFrameTitle` paints as the four-square mark plus
+  the name, centred together, in the standard mute. The "available" row is
+  the **live row** (the ROW1 strip): it counts down while now is inside a
+  free slot, and as a static row it would redraw the whole face every
+  minute. The face key keeps the frame's name and span.
+- **Cards.**
+  - The legend gains `FRAMES`, in the tall grid's third column (the spacer it
+    replaces) and as a row in the wide list.
+  - When a day has no frames, the tall cell is INVISIBLE rather than GONE, so
+    that unblocked and routines keep their thirds.
+  - The icon is `ic_day_dial_layout_grid`, lucide LayoutGrid, in the
+    neutral `#c8c8d2`.

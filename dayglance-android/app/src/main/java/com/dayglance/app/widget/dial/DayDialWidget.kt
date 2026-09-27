@@ -377,7 +377,11 @@ internal class DayDialFrame(
             val painter = DialFacePainter(DialFontsFactory.fonts(context))
             val planned = if (status == DialHubStatus.LIVE && day.isProjected) formatPlannedLabel(context, day.freshness, use24) else null
             val detail = if (status == DialHubStatus.OUTDATED) formatStaleDetail(context, day.freshness, use24) else null
-            val rows = DialHubRows.build(status, hub, copy, detail, planned, painter::measureDetail)
+            // Frames speak only when nothing is running on a live day, in place
+            // of open time; a running block (or sleep) always wins.
+            val hubFrame = if (status == DialHubStatus.LIVE && hub.current == null && hub.sleep == null)
+                DialHubFrame.of(input.frames, nowMin) else null
+            val rows = DialHubRows.build(status, hub, copy, detail, planned, painter::measureDetail, hubFrame)
 
             val header = DialHubHeader(
                 eyebrow = now.dayOfWeek.getDisplayName(TextStyle.FULL, locale).uppercase(locale),

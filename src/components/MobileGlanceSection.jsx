@@ -1088,7 +1088,7 @@ const MobileGlanceSection = () => {
                 {section.totalAvail > 0 && (
                   <div className="mt-1 flex items-center gap-1">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
-                      {availStr} available
+                      {t('dial.frameAvailable', { time: availStr })}
                     </span>
                     <button
                       onClick={() => openFrameSchedule(section.frame.frameId, section.frame.date)}

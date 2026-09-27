@@ -2076,6 +2076,7 @@
       "gapMinutes": "{{minutes}} min",
       "inferredHint": "This experimental interval was inferred from a Plan duration. It is displayed as history, but excluded from measured time and exact comparisons.",
       "inferredPlanDuration": "Start time inferred from the Plan duration.",
+      "estimatedShort": "Estimated",
       "invalidRecords": "Ignoring {{count}} invalid ledger record(s) in this view.",
       "latestShort": "Latest",
       "loadError": "Could not load JOBO.",

@@ -6,7 +6,7 @@ import { formatDuration } from '../../utils/formatDuration.js';
 import { doDurationMinutes } from '../../jobo/core.js';
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 import ExecutionAxes from './ExecutionAxes.jsx';
-import { completionMarker } from '../../jobo/completionMarker.js';
+import { completionMarker, completionMoment } from '../../jobo/completionMarker.js';
 
 export default function ExecutionDetails({ item, anchor, onClose, onEdit, ctx, t, writable, pendingIds = [] }) {
   const ref = useRef(null);
@@ -54,7 +54,7 @@ export default function ExecutionDetails({ item, anchor, onClose, onEdit, ctx, t
         <div className="[&_p]:my-1"><p>{record.title}</p><p>{t('jobo.view.sourceLabel')}: {t(`jobo.view.source.${record.source}`, { defaultValue: record.source })}</p>
           {record.timing === 'timed' && <p><Clock size={12} />{formatDuration(doDurationMinutes(record), t)}</p>}
           {record.timingBasis === 'planDuration' && <p>{t('jobo.view.inferredPlanDuration')}</p>}
-          {record.source === 'completion' && <p>{t('jobo.view.completedAt', { time: `${record.createdAt.slice(0, 10)} ${ctx.formatTime(record.createdAt.slice(11, 16))}` })}</p>}
+          {record.source === 'completion' && completionMoment(record.createdAt) && <p>{t('jobo.view.completedAt', { time: `${completionMoment(record.createdAt).date} ${ctx.formatTime(completionMoment(record.createdAt).time)}` })}</p>}
           <p>{t('jobo.view.capturedPlan')}: {record.planSnapshot ? `${record.planSnapshot.date} ${ctx.formatTime(record.planSnapshot.startTime)} · ${formatDuration(record.planSnapshot.duration, t)}` : t('jobo.view.noTimedPlan')}</p>
           {pendingIds.includes(record.id) ? <p role="status">{t('jobo.view.pendingSave')}</p> : writable && <button type="button" className="inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10" onClick={() => onEdit({ record })}><Pencil size={13} />{t('common.edit')}</button>}
         </div>

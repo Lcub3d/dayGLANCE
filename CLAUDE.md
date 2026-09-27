@@ -108,6 +108,12 @@ feature-local namespace. Add new keys to `public/locales/*/translation.json`;
   `workingSet()` (committed plus held), never `joboRecords`, so an uncheck of
   a completion still held for retry is not lost (#1826). The working set is
   never published as state.
+- **The JOBO view is built from the app's timeline, not beside it.** The Plan
+  side is DAY's own `DayViewColumn` over 24 hours, so drag and drop, the hover
+  line, click-to-add, the context menu, Frames and the real task cards come
+  with it; the Do side (`src/components/jobo/DoColumn.jsx`) draws to the same
+  grid and snaps to 15 minutes like every view. Do not reimplement timeline
+  behaviour inside JOBO: extend the shared column instead.
 
 # Adding a field to a task
 

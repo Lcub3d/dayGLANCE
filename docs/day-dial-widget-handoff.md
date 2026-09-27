@@ -965,9 +965,14 @@ this section records what the build decided on top of it.
   length as a fraction of the band's width (3/22 inside, 2/22 outside, 3.2/22
   per level, 1.2/22 stroke). The in-app dial's band (300–385 in its
   1000-unit viewBox) therefore gets 288.4 / 392.7 and a 4.6-unit stroke: the
-  same design, scaled rather than copied. The inner outline crosses the
-  in-app daylight band (282–302), which tucks under the wedges; at 0.45 it
-  reads as a fine rule over a glow.
+  same design, scaled rather than copied, with one exception on the INNER
+  side. The in-app daylight band (the sky strip, 282–302) tucks under the
+  wedges, so there is no gap in front of the band, and the scaled inner
+  outline (288.4) landed on the strip. In the app the inner outline sits
+  just outside the strip instead: the inner edge of its stroke lies on the
+  strip's outer edge (302), and a nested frame steps in from there. The
+  outer outline keeps its scaled radius. The widgets are unchanged, because
+  their 126pt inner outline sits in a real gap, clear of their sky ring.
 - **Colour.** The frame's hex through `muteDialFrameColor`: saturation
   capped at 0.28 and lightness 0.62 (`muteDialColorWith`, the app's
   `muteDialColor` arithmetic with the two constants as inputs). This keeps

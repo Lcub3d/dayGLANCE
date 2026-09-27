@@ -76,6 +76,15 @@ describe('Day Dial frames', () => {
     expect(firstRadius(outer.d) - firstRadius(inner.d)).toBeCloseTo((3.2 / 22) * 85, 5);
   });
 
+  it('the inner outline sits just outside the sky strip, not on it', async () => {
+    const [top, nested] = enclosures(render(await i18nEn(), FRAME_SCENARIOS.nested));
+    // The inner arc is the path's second arc (dialSectorPath: outer, then inner back).
+    const innerRadius = (d) => Number(d.split(' A ')[2].split(' ')[0]);
+    // Daylight band 282–302: the stroke's inner edge is on the strip's outer edge.
+    expect(innerRadius(top.d) - top.width / 2).toBeCloseTo(302, 5);
+    expect(innerRadius(nested.d) - innerRadius(top.d)).toBeCloseTo((3.2 / 22) * 85, 5);
+  });
+
   it('a frame at 0 %: drawn, the figure reads 0 %, all of it available', async () => {
     const html = render(await i18nEn(), FRAME_SCENARIOS.empty);
     expect(enclosures(html)).toHaveLength(1);

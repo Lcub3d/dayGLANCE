@@ -175,6 +175,26 @@ class DialCardsTest {
         assertEquals(0 to 4, DialArrangement.overflow(4, 0))
     }
 
+    // The id checks below read the layouts with a regex, which a malformed
+    // file passes; the resource merger does not (a Frames cell once shipped
+    // one closing tag short and broke the release build). Every layout must
+    // parse, and each legend cell must sit in its row or list.
+    @Test fun `every day dial layout is well-formed XML with the legend cells in place`() {
+        val parser = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+        for (file in File("src/main/res/layout").listFiles()!!.filter { it.name.startsWith("widget_day_dial") }) {
+            val doc = parser.parse(file)
+            val cells = doc.getElementsByTagName("LinearLayout")
+            for (i in 0 until cells.length) {
+                val cell = cells.item(i) as org.w3c.dom.Element
+                val id = cell.getAttribute("android:id")
+                if (!id.startsWith("@+id/ll_day_dial_legend_") || id.endsWith("row1") || id.endsWith("row2")) continue
+                val parent = (cell.parentNode as org.w3c.dom.Element).getAttribute("android:id")
+                assertTrue("${file.name}: $id sits in $parent",
+                    parent == "@+id/ll_day_dial_legend" || parent == "@+id/ll_day_dial_legend_row1" || parent == "@+id/ll_day_dial_legend_row2")
+            }
+        }
+    }
+
     // The binder touches only ids a placement's layout carries: this pins the
     // layouts to what DayDialCardsBinder assumes.
     @Test fun `each placement's layout carries exactly the views its binder touches`() {

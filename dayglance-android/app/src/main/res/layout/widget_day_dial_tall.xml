@@ -407,6 +407,7 @@
                             android:textColor="#e6ffffff"
                             android:textSize="13sp" />
                     </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

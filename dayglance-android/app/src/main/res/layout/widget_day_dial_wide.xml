@@ -398,6 +398,7 @@
                             android:textColor="#e6ffffff"
                             android:textSize="13sp" />
                     </LinearLayout>
+                </LinearLayout>
                 <LinearLayout
                     android:id="@+id/ll_day_dial_legend_frames"
                     android:layout_width="match_parent"

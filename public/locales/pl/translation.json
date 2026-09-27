@@ -2146,6 +2146,8 @@
     "view": {
       "activeLabel": "Czas aktywny",
       "addDo": "Add Do",
+      "showWindowOnly": "Pokaż tylko od {{start}} do {{end}}",
+      "showAllHours": "Pokaż wszystkie godziny",
       "continueDo": "Kontynuuj",
       "continueDoHint": "Zapisz kolejną sesję tego zadania",
       "linkedTo": "Powiązane z {{title}}",

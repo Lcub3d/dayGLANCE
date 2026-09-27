@@ -2059,6 +2059,8 @@
     "view": {
       "activeLabel": "实际活动时间",
       "addDo": "新增 Do",
+      "showWindowOnly": "仅显示 {{start}} 到 {{end}}",
+      "showAllHours": "显示所有时段",
       "continueDo": "继续",
       "continueDoHint": "为此任务再记录一个时段",
       "linkedTo": "已关联到 {{title}}",

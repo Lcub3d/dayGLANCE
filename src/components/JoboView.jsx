@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, FoldVertical, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
-import DoColumn, { snapMinute, estimateCompletion } from './jobo/DoColumn.jsx';
+import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
+import useJoboWindowOnly from '../hooks/useJoboWindowOnly.js';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
@@ -76,7 +77,18 @@ export default function JoboView() {
   const { selectedDate, getTasksForDate } = ctx;
   const date = dateToString(selectedDate);
   const dayStart = useMemo(() => { const d = new Date(selectedDate); d.setHours(0, 0, 0, 0); return d; }, [selectedDate]);
-  const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour: 0, endHour: 24 }), [dayStart, date]);
+  // START to END only, when the day has a window and the toggle is on. Both
+  // sides draw the same hours; every minute/pixel conversion below goes
+  // through windowStart.
+  const { getDayWindow } = useFeaturesCtx();
+  const [windowOnly, toggleWindowOnly] = useJoboWindowOnly();
+  const dayWindow = getDayWindow?.(date) ?? null;
+  const fullDay = { startHour: 0, endHour: 24 };
+  const windowHours = dayWindow ? windowRange(dayWindow) : fullDay;
+  const canTrim = windowHours.startHour !== 0 || windowHours.endHour !== 24;
+  const { startHour, endHour } = windowOnly && canTrim ? windowHours : fullDay;
+  const windowStart = startHour * 60;
+  const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour, endHour }), [dayStart, date, startHour, endHour]);
   const currentTime = ctx.currentTime instanceof Date ? ctx.currentTime : new Date();
   const nowDate = dateToString(currentTime);
   const nowTime = clock(currentTime.getHours() * 60 + currentTime.getMinutes());
@@ -114,10 +126,11 @@ export default function JoboView() {
       8 * 60,
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
-    el.scrollTop = Math.max(0, (anchorMinute - 60) * hourHeight / 60);
-    // Only on a new day or a new hour height, never on an ordinary re-render.
+    el.scrollTop = Math.max(0, (anchorMinute - 60 - windowStart) * hourHeight / 60);
+    // Only on a new day, hour height or visible range, never on an ordinary
+    // re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, hourHeight]);
+  }, [date, hourHeight, windowStart]);
 
   useEffect(() => () => gestureCleanup.current?.(), []);
   useEffect(() => { gestureCleanup.current?.(); }, [date]);
@@ -177,13 +190,13 @@ export default function JoboView() {
     gestureCleanup.current?.();
     const startY = event.clientY;
     const laneTop = doLane.current?.getBoundingClientRect().top ?? 0;
-    const downMinute = (startY - laneTop) / hourHeight * 60;
+    const downMinute = (startY - laneTop) / hourHeight * 60 + windowStart;
     let range = null;
     const move = (e) => {
       if (Math.abs(e.clientY - startY) < 5) { range = null; setPreview(null); return; }
       const bounds = doLane.current?.getBoundingClientRect();
       if (!bounds) return;
-      const minute = (e.clientY - bounds.top) / hourHeight * 60;
+      const minute = (e.clientY - bounds.top) / hourHeight * 60 + windowStart;
       range = toRange(snapMinute(minute), minute - downMinute);
       setPreview(range);
     };
@@ -301,7 +314,23 @@ export default function JoboView() {
       <div ref={scrollRef} className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${ctx.darkMode ? 'dark-scrollbar' : ''}`}>
         <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
           <div className="flex min-w-0">
-            <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass}`} />
+            <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass} flex items-center justify-center`}>
+              {/* Over the hour gutter: trim to the day's START and END, or
+                  show every hour again. Only when the day has a window. */}
+              {canTrim && (
+                <button
+                  type="button"
+                  data-jobo-window-toggle
+                  onClick={toggleWindowOnly}
+                  aria-pressed={windowOnly}
+                  className={`p-1 rounded-lg transition-colors ${windowOnly ? 'text-blue-500' : ctx.textSecondary} ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                  title={windowOnly ? t('jobo.view.showAllHours') : t('jobo.view.showWindowOnly', { start: t('strip.markerStart').toLocaleUpperCase(), end: t('strip.markerEnd').toLocaleUpperCase() })}
+                  aria-label={windowOnly ? t('jobo.view.showAllHours') : t('jobo.view.showWindowOnly', { start: t('strip.markerStart').toLocaleUpperCase(), end: t('strip.markerEnd').toLocaleUpperCase() })}
+                >
+                  {windowOnly ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
+                </button>
+              )}
+            </div>
             <div className="flex-1 min-w-0 px-3 py-1.5 flex items-center">{t('jobo.view.plan')}</div>
           </div>
           <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
@@ -353,6 +382,8 @@ export default function JoboView() {
             onContinue={openContinue}
             hoverTaskId={hoverTaskId}
             onHoverTask={setHoverTaskId}
+            startHour={startHour}
+            endHour={endHour}
             onDetails={(item, anchor) => setDetails({ item, anchor })}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}

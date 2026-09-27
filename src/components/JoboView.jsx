@@ -21,7 +21,7 @@ const two = value => String(value).padStart(2, '0');
 const clock = minute => `${two(Math.floor((minute % 1440) / 60))}:${two(minute % 60)}`;
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 const columns = 'grid grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)] min-w-0';
-const button = 'p-1 rounded hover:bg-white/15 focus-visible:outline focus-visible:outline-2 disabled:opacity-40';
+const button = 'shrink-0 p-1 rounded hover:bg-white/15 focus-visible:outline focus-visible:outline-2 disabled:opacity-40';
 const canNote = task => task && !task.imported && !task.isJoboSyntheticOccurrence;
 const style = (item, hour) => ({ top: (item.startMinute - hour * 60) / 60 * SCALE,
   height: Math.max(40, (item.endMinute - item.startMinute) / 60 * SCALE - 2),
@@ -32,12 +32,17 @@ function NotesButton({ task, t, onNotes }) {
     onClick={event => onNotes(task, event.currentTarget)}><FileText size={13} /></button>;
 }
 function Signals({ item, t }) {
-  return timingRows(item.comparison, t).map(row => <span key={row.key} data-jobo-axis={row.key} className="shrink-0 border-l border-white/40 pl-1">{row.text}</span>);
+  // Full comparisons stay in ExecutionDetails; a narrow card must not become
+  // a second horizontal scroller or push its primary controls out of reach.
+  return <span className="hidden min-w-0 gap-1 overflow-hidden [@container(min-width:18rem)]:flex">
+    {timingRows(item.comparison, t).map(row => <span key={row.key} data-jobo-axis={row.key}
+      title={row.text} className="min-w-0 truncate border-l border-white/40 pl-1">{row.text}</span>)}
+  </span>;
 }
 function PlanCard({ item, startHour, ctx, t, onDetails, onNotes }) {
   const native = item.currentTask;
   const completable = native && !item.historical && !native.isJoboSyntheticOccurrence && (!native.imported || native.isTaskCalendar);
-  return <article className={`absolute box-border rounded-lg p-1 pl-2 overflow-hidden text-white ${item.task.color || 'bg-blue-500'}`}
+  return <article className={`absolute box-border [container-type:inline-size] rounded-lg p-1 pl-2 overflow-hidden text-white ${item.task.color || 'bg-blue-500'}`}
     style={style(item, startHour)} data-jobo-plan={item.id}>
     <span className="absolute top-0 left-0.5 w-0.5 bg-current opacity-80 pointer-events-none" aria-hidden="true" style={{ height: (item.endMinute - item.startMinute) / 60 * SCALE }} />
     <div className="flex items-center gap-1 h-4 text-[10px] whitespace-nowrap">
@@ -47,14 +52,16 @@ function PlanCard({ item, startHour, ctx, t, onDetails, onNotes }) {
         onClick={event => onDetails(item, event.currentTarget)}>{renderTitleWithoutTags(item.task.title)}</button>
       <NotesButton task={item.sourceTask || native} {...{ t, onNotes }} />
     </div>
-    <div className="flex items-center gap-1 h-4 text-[10px] whitespace-nowrap overflow-x-auto">
-      <span className="shrink-0">{ctx.formatTime(item.plan.startTime)} · {formatDuration(item.plan.duration, t)}</span><Signals {...{ item, t }} />
+    <div data-jobo-metadata className="flex min-w-0 items-center gap-1 h-4 text-[10px] whitespace-nowrap overflow-hidden">
+      <span className="max-w-full shrink-0 truncate" title={`${ctx.formatTime(item.plan.startTime)} · ${formatDuration(item.plan.duration, t)}`}>{ctx.formatTime(item.plan.startTime)}<span className="hidden [@container(min-width:12rem)]:inline"> · {formatDuration(item.plan.duration, t)}</span></span><Signals {...{ item, t }} />
     </div>
   </article>;
 }
 function DoCard({ item, startHour, ctx, t, writable, pending, onEdit, onDetails, onNotes, onMarkerDrag }) {
   const { record } = item;
-  return <article className={`absolute box-border rounded-lg p-1 pl-2 overflow-hidden text-white ${item.task?.color || 'bg-purple-500'}`}
+  const timeLabel = item.point ? ctx.formatTime(item.time)
+    : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`;
+  return <article className={`absolute box-border [container-type:inline-size] rounded-lg p-1 pl-2 overflow-hidden text-white ${item.task?.color || 'bg-purple-500'}`}
     style={style(item, startHour)} data-jobo-record={record.id} data-jobo-point={item.point ? 'true' : undefined}
     onPointerDown={event => { if (item.point && writable && !pending && !event.target.closest('button,input')) onMarkerDrag(event, item); }}>
     {item.point ? <span className="absolute top-0 left-0 right-0 h-0.5 bg-current" aria-hidden="true" />
@@ -69,9 +76,9 @@ function DoCard({ item, startHour, ctx, t, writable, pending, onEdit, onDetails,
       <NotesButton task={item.sourceTask || item.task} {...{ t, onNotes }} />
       <button type="button" className={button} disabled={!writable || pending} onClick={() => onEdit(record)} aria-label={`${t('common.edit')}: ${record.title}`}><Pencil size={13} /></button>
     </div>
-    <div className="flex items-center gap-1 h-4 text-[10px] whitespace-nowrap overflow-x-auto">
-      <span className="shrink-0">{item.point ? ctx.formatTime(item.time) : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`}</span>
-      <span className="shrink-0">{progressText(record.progress, t)}</span>
+    <div data-jobo-metadata className="flex min-w-0 items-center gap-1 h-4 text-[10px] whitespace-nowrap overflow-hidden">
+      <span className="min-w-0 truncate [@container(min-width:12rem)]:shrink-0" title={timeLabel}>{timeLabel}</span>
+      <span className="hidden min-w-0 truncate [@container(min-width:12rem)]:inline" title={progressText(record.progress, t)}>{progressText(record.progress, t)}</span>
       {pending ? <span role="status">{t('jobo.view.pendingSave')}</span> : !item.point && <Signals {...{ item, t }} />}
     </div>
   </article>;
@@ -154,7 +161,7 @@ export default function JoboView() {
   if (!joboLoaded) return <div data-jobo-view className={`h-full flex items-center justify-center gap-2 p-6 ${ctx.textSecondary}`} role={joboError ? 'alert' : 'status'}>
     {joboError ? <><AlertTriangle size={16} />{t('jobo.view.loadError')}{reloadJobo && <button type="button" onClick={() => reloadJobo()}>{t('jobo.view.retryLoad')}</button>}</> : t('common.loading')}
   </div>;
-  return <div data-jobo-view className={`h-full min-h-0 min-w-0 flex flex-col ${ctx.textPrimary}`}>
+  return <div data-jobo-view className={`flex-1 min-h-0 min-w-0 flex flex-col ${ctx.textPrimary}`}>
     <div className={`jobo-s5-toolbar flex items-center px-3 py-1.5 border-b ${ctx.cardBg} ${ctx.borderClass}`}>
       <button type="button" className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg ${ctx.hoverBg || 'hover:bg-black/5'} disabled:opacity-40`} disabled={!joboWritable}
         onClick={() => setEditor({ initial: { date, startMinute: date === nowDate ? Math.min(1410, currentTime.getHours() * 60 + currentTime.getMinutes()) : 540, duration: 30 } })}><Plus size={14} />{t('jobo.view.addDo')}</button>

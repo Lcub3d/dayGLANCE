@@ -41,3 +41,18 @@ Based on #1726 and the UI follow-up on #1840. The full scaffold remains on
   disabled/read-only actions and dark mode need both unit and browser checks.
 - Day tiles remain a separate follow-up PR as agreed in #1726. Plan creation,
   copying/dragging/resizing, daily notes and independent Do notes remain deferred.
+
+## Narrow-desktop regression
+
+- Check 1024, 1280 and 1440px with the 340px GLANCE/Inbox sidebar still present,
+  not just a full-window JOBO component. Keep Plan and Do visible together.
+- Include overlapping cards, long titles and translated progress/timing labels.
+  Primary buttons must remain clickable; secondary card text may truncate, with
+  the full title available on hover and the full comparison in ExecutionDetails.
+  Card metadata must not introduce nested horizontal scrolling.
+- Open formatted/Obsidian-linked task notes through the native notes panel and
+  the Do editor from the narrow layout. Both must fit the viewport and close
+  with Escape without affecting the underlying Plan.
+- A native completion appears at its source completion time on the Do axis.
+  There is no separate Untimed strip or selector. A completion time alone must
+  not fabricate a start time, elapsed duration or a new record identity.

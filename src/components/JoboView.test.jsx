@@ -57,3 +57,33 @@ describe('minimal JOBO view', () => {
     expect(editor).toContain('createPortal');
   });
 });
+
+
+describe('JOBO narrow-card controls', () => {
+  it('keeps secondary comparisons clipped without nested horizontal scrollers', () => {
+    const html = render();
+    expect(html).toContain('data-jobo-metadata');
+    expect(html).toContain('min-w-0 truncate');
+    expect(html).not.toContain('overflow-x-auto');
+    expect(html).not.toContain('min-w-[1600px]');
+    expect(html).toContain('task.notes: Native Plan');
+    expect(html).toContain('title="Native Plan"');
+  });
+
+  it('keeps point actions available without a user-facing Untimed category', () => {
+    const stamp = '2026-09-24T09:30:00.000Z';
+    const row = createDoRecord({ id: 'do:t1:narrow', taskId: 't1', title: 'A long captured title in a narrow column',
+      source: 'completion', progress: 'completed', timing: 'untimed', date: '2026-09-24',
+      startTime: null, endDate: null, endTime: null, planSnapshot: null,
+      createdAt: stamp, updatedAt: stamp, observedAt: stamp });
+    const html = render({ joboRecords: [row] });
+    expect(html).toContain('data-jobo-point="true"');
+    expect(html).toContain('data-jobo-marker-handle');
+    expect(html).toContain('title="09:30"');
+    expect(html).toContain('shrink-0 p-1 rounded');
+    expect(html).not.toContain('jobo.view.untimed');
+    expect(html).not.toContain('jobo-s5-untimed');
+    expect(row.startTime).toBeNull();
+    expect(row.endTime).toBeNull();
+  });
+});

@@ -2059,6 +2059,7 @@
     "view": {
       "activeLabel": "Aktive Zeit",
       "addDo": "Add Do",
+      "keepEstimate": "Wie angezeigt übernehmen",
       "dailyNoteEmpty": "Noch keine Tagesnotiz. Klicke, um eine zu schreiben.",
       "selectForNotes": "Klicke auf eine Aufgabe oder ein Do, um hier ihre Notizen zu sehen.",
       "showNotesSidebar": "Notizen-Seitenleiste anzeigen",
@@ -2077,6 +2078,7 @@
       "completeInterval": "Bitte vollständige Start- und Endzeit eingeben.",
       "completedAt": "Als erledigt markiert um {{time}}",
       "completedByCompletion": "„Abgeschlossen“ entsteht durch ein Abschlussereignis. Eine Neubewertung kann Gestartet, Teilweise oder Größtenteils sein.",
+      "completedStays": "Bleibt erledigt. Passe die Zeiten an und speichere.",
       "completionAxis": "Erledigung",
       "do": "Ausführung",
       "elapsedLabel": "Verstrichene Zeit",

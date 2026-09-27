@@ -256,6 +256,13 @@ export default function JoboView() {
     };
   };
 
+  // Keep an estimate as shown: the same timed write a move or an editor save
+  // makes, under the same id, with the times the card displays.
+  const keepEstimate = (item) => {
+    if (!item.estimate) return;
+    saveEdit(item.record, timedPatch(item.date, item.startMinute, item.endMinute));
+  };
+
   // Drag an estimate to where the work really was: it moves whole, its start
   // snapped to 15 minutes, and saving it makes it a timed Do under the same id.
   const onEstimateMove = (event, item) => {
@@ -414,6 +421,7 @@ export default function JoboView() {
             laneRef={doLane}
             onAddAt={openAdd}
             onEdit={openEdit}
+            onKeep={keepEstimate}
             onContinue={openContinue}
             hoverTaskId={hoverTaskId}
             onHoverTask={setHoverTaskId}

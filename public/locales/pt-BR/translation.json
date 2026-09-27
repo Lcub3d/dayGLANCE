@@ -2059,6 +2059,7 @@
     "view": {
       "activeLabel": "Tempo ativo",
       "addDo": "Add Do",
+      "keepEstimate": "Manter como mostrado",
       "dailyNoteEmpty": "Ainda não há nota diária. Clique para escrever uma.",
       "selectForNotes": "Clique em uma tarefa ou um Do para ver as notas aqui.",
       "showNotesSidebar": "Mostrar barra lateral de notas",
@@ -2077,6 +2078,7 @@
       "completeInterval": "Informe um intervalo completo de início e fim.",
       "completedAt": "Marcado como concluído às {{time}}",
       "completedByCompletion": "Concluído é criado por um evento de conclusão. Um Do reavaliado pode ficar como Iniciado, Parcial ou Quase.",
+      "completedStays": "Continua concluído. Ajuste os horários e salve.",
       "completionAxis": "Conclusão",
       "do": "Execução",
       "elapsedLabel": "Tempo decorrido",

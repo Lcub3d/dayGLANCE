@@ -30,6 +30,16 @@ final class CardsTests: XCTestCase {
         XCTAssertEqual(items.last, DialLegendItem(key: .routines, done: 1, total: 2))
     }
 
+    func testFramesComeLastWithTheirPercent() {
+        let items = DialLegend.items(hasTotals: true, effortMinutes: 0, restoreMinutes: 0, sleepMinutes: nil,
+                                     unblockedMinutes: nil, blocks: [routine("a", done: true)], framesPercent: 45)
+        XCTAssertEqual(items.map(\.key), [.effort, .restore, .routines, .frames])
+        XCTAssertEqual(items.last, DialLegendItem(key: .frames, percent: 45))
+        let none = DialLegend.items(hasTotals: true, effortMinutes: 0, restoreMinutes: 0, sleepMinutes: nil,
+                                    unblockedMinutes: nil, blocks: [], framesPercent: nil)
+        XCTAssertFalse(none.contains { $0.key == .frames }, "a day without frames has no entry")
+    }
+
     func testAPayloadWithoutTotalsDrawsNoLegend() {
         XCTAssertEqual(DialLegend.items(hasTotals: false, effortMinutes: 60, restoreMinutes: 0, sleepMinutes: nil,
                                         unblockedMinutes: nil, blocks: [routine("a", done: true)]), [])

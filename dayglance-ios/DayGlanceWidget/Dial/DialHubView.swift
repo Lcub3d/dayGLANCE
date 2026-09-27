@@ -115,6 +115,32 @@ enum DialHubStatus: Equatable {
     case zoneChanged
 }
 
+/// The frame the hub speaks for when nothing is running
+/// (docs/day-dial-frames-spec.html): the innermost frame the entry's minute
+/// is inside, and its free time from that minute on.
+struct DialHubFrame: Equatable {
+    var name: String
+    var colorHex: String?
+    var startMin: Double
+    var endMin: Double
+    var availableMinutes: Double
+
+    init(name: String, colorHex: String?, startMin: Double, endMin: Double, availableMinutes: Double) {
+        self.name = name
+        self.colorHex = colorHex
+        self.startMin = startMin
+        self.endMin = endMin
+        self.availableMinutes = availableMinutes
+    }
+
+    /// The current frame at `nowMin`, or nil outside every frame.
+    init?(frames: [DialFrame], nowMin: Double) {
+        guard let f = DialFrames.current(frames, nowMin: nowMin) else { return nil }
+        self.init(name: f.name, colorHex: f.colorHex, startMin: f.startMin, endMin: f.endMin,
+                  availableMinutes: DialFrames.availableMinutes(f, nowMin: nowMin))
+    }
+}
+
 struct DialHubView: View {
     /// The entry's day, for the eyebrow and the date row.
     let date: Date
@@ -128,6 +154,9 @@ struct DialHubView: View {
     /// The projected tier's soft note ("Planned as of Mon 8:42 PM"): the
     /// lowest, smallest row, so the task rows read first.
     var plannedAsOf: String? = nil
+    /// Set only when nothing is running on a live day: the frame rows take
+    /// the place of the open-time rows. A running block always wins.
+    var frame: DialHubFrame? = nil
 
     private typealias H = DialSpec.Hub
 
@@ -219,6 +248,15 @@ struct DialHubView: View {
                 // "Sleep", muted rather than teal: it is context, not a task.
                 title = titleRow(String(localized: "Sleep"), color: Color.white.opacity(H.sleepOpacity))
                 stack.append(detailRow(sleepText(s)))
+            } else if let f = frame {
+                // The frame, as GLANCE shows it: name, span, time still free.
+                title = frameTitle(f)
+                stack.append(detailRow(frameSpan(f)))
+                if f.availableMinutes > 0 {
+                    stack.append(HubRow(text: frameAvailable(f), font: .system(size: H.runwayFontSize),
+                                        color: Color(hex: H.runwayColorHex).opacity(H.runwayOpacity),
+                                        metrics: UIFont.systemFont(ofSize: H.runwayFontSize)))
+                }
             } else if let o = state.open {
                 // Open time in the runway's teal, live like the countdown.
                 title = openTitle(o)
@@ -260,6 +298,29 @@ struct DialHubView: View {
     /// static rounded time left.
     func leftRow(_ c: DialHubCurrent) -> HubRow {
         detailRow(leftText(c), live: countdownEnd.flatMap { Self.live(phrase: String(localized: "\(Self.durationMarker) left"), end: $0) })
+    }
+
+    /// The frame's name after the Frames mark (the app's LayoutGrid, SF
+    /// Symbol square.grid.2x2), at a task title's size and weight. Only the
+    /// colour differs: the STANDARD mute, not the ring's softer one.
+    func frameTitle(_ f: DialHubFrame) -> HubRow {
+        let mark = Text(Image(systemName: "square.grid.2x2")).font(.system(size: H.frameMarkFontSize, weight: .semibold))
+        return HubRow(text: f.name, live: mark + Text(verbatim: " " + f.name), font: titleFont,
+                      color: Color(hex: WidgetDialPalette.mute(hex: f.colorHex)).opacity(H.titleOpacity),
+                      metrics: titleMetrics, minimumScale: DialHubTypography.titleMinimumScale)
+    }
+
+    /// "14:00–17:45".
+    func frameSpan(_ f: DialHubFrame) -> String {
+        let clock = { (m: Double) in
+            DialHubClock.text(minutesOfDay: m.truncatingRemainder(dividingBy: DialGeometry.dayMinutes), use24Hour: use24Hour, reference: date)
+        }
+        return "\(clock(f.startMin))–\(clock(f.endMin))"
+    }
+
+    /// "27m available".
+    func frameAvailable(_ f: DialHubFrame) -> String {
+        String(localized: "\(DialHubClock.duration(minutes: f.availableMinutes)) available")
     }
 
     /// "35m open", the title row of the empty state, in the runway's teal;
@@ -346,7 +407,7 @@ struct DialHubView: View {
     /// 10 minutes left. Then 4 hours, 30 minutes open." Same catalog strings
     /// as the rows, wide durations.
     static func summary(date: Date, state: DialHubState, use24Hour: Bool?, status: DialHubStatus,
-                        plannedAsOf: String?) -> String {
+                        plannedAsOf: String?, frame: DialHubFrame? = nil) -> String {
         var parts = [date.formatted(Date.FormatStyle().weekday(.wide).month(.wide).day())]
         let wide = { (m: Double) in DialHubClock.duration(minutes: m, width: .wide) }
         let clock = { (m: Double) in DialHubClock.text(minutesOfDay: m, use24Hour: use24Hour, reference: date) }
@@ -369,6 +430,10 @@ struct DialHubView: View {
                 }
             } else if let s = state.sleep {
                 parts.append(String(localized: "Sleep") + ", " + String(localized: "until \(clock(s.endMin))"))
+            } else if let f = frame {
+                var line = "\(f.name), \(clock(f.startMin))–\(clock(f.endMin.truncatingRemainder(dividingBy: DialGeometry.dayMinutes)))"
+                if f.availableMinutes > 0 { line += ", " + String(localized: "\(wide(f.availableMinutes)) available") }
+                parts.append(line)
             } else if let o = state.open {
                 var line = String(localized: "\(wide(o.minutesUntil)) open")
                 if let end = o.endMin {

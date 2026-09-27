@@ -32,10 +32,14 @@ struct DialFaceInput: Equatable {
     var moon: DialMoonGlyph?
     /// WidgetDayTier.projected: completion flags are not information.
     var projectedDay: Bool
+    /// The day's frames (docs/day-dial-frames-spec.html): enclosures on the
+    /// face, and the hub's frame rows when nothing is running.
+    var frames: [DialFrame]
 
     init(blocks: [DialFaceBlock], sky: [DialSpec.SkySegment] = [], sunriseMin: Double? = nil, sunsetMin: Double? = nil,
-         moon: DialMoonGlyph? = nil, projectedDay: Bool = false) {
+         moon: DialMoonGlyph? = nil, projectedDay: Bool = false, frames: [DialFrame] = []) {
         self.blocks = blocks
+        self.frames = frames
         self.sky = sky
         self.sunriseMin = sunriseMin
         self.sunsetMin = sunsetMin
@@ -79,9 +83,17 @@ struct DialFaceInput: Equatable {
                                      mirror: sky.southern ?? false)
             }
         }
+        let frames: [DialFrame] = (dial?.frames ?? []).compactMap { f -> DialFrame? in
+            guard let start = f.startMin, let end = f.endMin, end > start else { return nil }
+            let slots = (f.slots ?? []).compactMap { pair -> DialFrameSlot? in
+                pair.count == 2 && pair[1] > pair[0] ? DialFrameSlot(startMin: Double(pair[0]), endMin: Double(pair[1])) : nil
+            }
+            return DialFrame(name: f.name ?? "", colorHex: f.colorHex, startMin: Double(start), endMin: Double(end),
+                             depth: f.depth ?? 0, slots: slots)
+        }
         self.init(blocks: blocks, sky: segments,
                   sunriseMin: sky?.sunriseMin.map(Double.init), sunsetMin: sky?.sunsetMin.map(Double.init),
-                  moon: moon, projectedDay: projectedDay)
+                  moon: moon, projectedDay: projectedDay, frames: frames)
     }
 
     /// A canonical text of everything the FACE draws. Two inputs that draw
@@ -98,6 +110,13 @@ struct DialFaceInput: Equatable {
         }
         parts.append("rise=\(sunriseMin.map { "\($0)" } ?? "-")|set=\(sunsetMin.map { "\($0)" } ?? "-")")
         if let moon { parts.append("moon=\(moon.fraction)|\(moon.waxing ? 1 : 0)|\(moon.minutes)|\(moon.mirror ? "s" : "n")") }
+        // Frames are static for the day, so they add nothing per entry (the
+        // past bucket is unchanged), but they are drawn into the image, so an
+        // edited frame must name a new face. Names and free slots are the
+        // hub's and stay out; a day without frames keeps its old key.
+        for f in frames {
+            parts.append("f:\(f.startMin)|\(f.endMin)|\(f.depth)|\(f.colorHex ?? "-")")
+        }
         return parts.joined(separator: "\n")
     }
 

@@ -1047,3 +1047,33 @@ in a 2×2 grid, outlined, as used on the Frames button and in GLANCE's frame
 headers. The widgets use the nearest native equivalents: SF Symbol
 `square.grid.2x2` on iOS, and the same four-square outline as a vector on
 Android.
+
+### iOS widget
+
+- **In the cached face.** Frames are static for a day, so they are drawn into
+  the face image (`DialFaceView.frames`), after the separators so that a cut
+  between two touching blocks cannot erase a nested outline along the band's
+  edge. They get no past or future dimming.
+- **The cache key needs no new part, but the seed has to change.** Frames
+  don't vary with the entry, so the past bucket (`-b<n>`) and the key's shape
+  stay the same. They are drawn into the image, though, so each frame's span,
+  depth and colour join `DialFaceInput.seed`. Without that, an edited frame
+  would reuse a stale face. Names and free slots belong to the hub and stay
+  out of the seed. A day without frames keeps its existing key, so
+  `renderVersion` stays at `face-v4`.
+- **Tinted and clear Home Screens (mono).** The outline is white at the same
+  0.45. In that mode it is brighter than in full colour, where it is a
+  softened hue at 0.45, and it sits above the minor ticks (0.13).
+  `FramesWidgetTests` samples the rendered mono face to check that the
+  outline keeps its alpha.
+- **Hub.** `DialHubFrame` holds the frame and its free minutes. It is built
+  only on a live day when nothing is running and the entry isn't in sleep.
+  The title is `square.grid.2x2` plus the name at 15 pt semibold, in the
+  standard mute. The detail rows are the span and "Xm available" in the
+  runway teal; the available row is dropped when nothing is free. VoiceOver
+  reads the same facts.
+- **Extra-large (iPad).** The legend gains Frames, last, when
+  `framesPercent` is present.
+- **Previews.** `Frames · task running`, `· nothing running`, `· nested` and
+  `· a frame at 0 %` are the spec day at 17:18, matching the in-app dial's
+  scenarios.

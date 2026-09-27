@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlarmClock, CalendarDays, Eclipse, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Thermometer, X, Timer } from 'lucide-react';
+import { AlarmClock, CalendarDays, Eclipse, LayoutGrid, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Thermometer, X, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -36,7 +36,7 @@ const IDLE_RETURN_MS = 5 * 60_000;
 // summary strip's collapse state): a wall panel and a phone reasonably want
 // different layers, so this deliberately does not ride the sync payload.
 const DIAL_LAYERS_KEY = 'day-planner-dial-layers';
-const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true, focus: true };
+const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true, focus: true, frames: true };
 const loadLayers = () => {
   try {
     return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem(DIAL_LAYERS_KEY) || '{}') };
@@ -98,7 +98,7 @@ const DayDialModal = () => {
     tasks, unscheduledTasks,
   } = useDayPlannerCtx();
   const {
-    getDayWindow, routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
+    getDayWindow, dialFramesForDate, routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
     habitsEnabled, activeHabits, getTodayHabitCount, setHabitCount, incrementHabit,
     goalsProjectsEnabled, projects,
     focusLog, focusModeAvailable, enterFocusMode,
@@ -555,6 +555,14 @@ const DayDialModal = () => {
     [layers.focus, focusLog, dateStr],
   );
 
+  // The day's frames with their free time, as the widgets get them
+  // (App.jsx dialFramesForDate). A layer like the others: off draws no
+  // enclosures, no hub rows and no Frames figure.
+  const dialFrames = useMemo(
+    () => (layers.frames ? dialFramesForDate(selectedDate) : null),
+    [layers.frames, dialFramesForDate, selectedDate],
+  );
+
   // Starting a session leaves the dial: focus mode is its own fullscreen
   // view, with its own wake lock and (on Android) its own notification.
   // enterFocusMode derives the block from NOW, which is why the dial only
@@ -752,6 +760,7 @@ const DayDialModal = () => {
       <DayDial
         dayTasks={dayTasks}
         prevDayTasks={prevDayTasks}
+        frames={dialFrames}
         // Routines are a today-only construct (useRoutines rolls them at
         // midnight), so any other date gets none rather than a stale set.
         routines={layers.routines && routinesEnabled && isToday ? todayRoutines : null}
@@ -823,6 +832,12 @@ const DayDialModal = () => {
               label={t('dial.focus', 'Focus')}
               on={layers.focus}
               onChange={(v) => setLayer('focus', v)}
+            />
+            <ToggleRow
+              icon={LayoutGrid}
+              label={t('dial.frames', 'Frames')}
+              on={layers.frames}
+              onChange={(v) => setLayer('frames', v)}
             />
             {alarmAvailable && (
               <>

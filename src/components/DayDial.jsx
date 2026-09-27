@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Leaf, MoonStar, Sparkles, Timer, Undo2, Zap } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, LayoutGrid, Leaf, MoonStar, Sparkles, Timer, Undo2, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { stripWikilinks } from '../utils/taskUtils.js';
 import { formatDuration } from '../utils/formatDuration.js';
@@ -7,9 +7,15 @@ import DialComplications from './DialComplications.jsx';
 import {
   DIAL_COLORS,
   DIAL_DAY_MINUTES,
+  DIAL_FRAME_MIN_MINUTES,
+  DIAL_FRAME_OPACITY,
+  computeDialFrames,
   computeDialModel,
   computeDialRoutines,
   dialArcPath,
+  dialCurrentFrame,
+  dialFrameAvailableMinutes,
+  dialFrameRadii,
   dialIntensity,
   dialLaneBand,
   dialPoint,
@@ -24,6 +30,7 @@ import {
   initialDialSelection,
   moonPhasePath,
   muteDialColor,
+  muteDialFrameColor,
   padDialSegment,
   precipArcSegments,
   precipRuns,
@@ -170,6 +177,41 @@ function TickField() {
     </g>
   );
 }
+
+// Frames: each of the day's frames as an ENCLOSURE around the span of the
+// schedule band it covers — an outline just outside each edge of the band,
+// joined by radial end caps (docs/day-dial-frames-spec.html). The widget
+// spec's numbers, scaled to this band by dialFrameRadii rather than copied,
+// in the frame's colour through the SOFTENED mute, so the enclosure sits
+// below the wedges' rims and the now line stays the brightest thing here.
+// Pure context: not selectable, not pointed at; the hub speaks for the
+// frame now is in.
+function FrameEnclosures({ frames }) {
+  return (
+    <g pointerEvents="none" aria-hidden="true">
+      {frames
+        .filter((f) => f.endMin - f.startMin >= DIAL_FRAME_MIN_MINUTES)
+        .map((f) => {
+          const r = dialFrameRadii(R_INNER, R_EDGE, f.depth);
+          return (
+            <path
+              key={`${f.id}-${f.startMin}`}
+              d={dialSectorPath(CX, CY, r.inner, r.outer, f.startMin, f.endMin)}
+              fill="none"
+              stroke={muteDialFrameColor(f.colorHex)}
+              strokeOpacity={DIAL_FRAME_OPACITY}
+              strokeWidth={r.width}
+              strokeLinejoin="round"
+            />
+          );
+        })}
+    </g>
+  );
+}
+
+// The Frames mark's colour in the legend: a neutral, like the label beside
+// it. A frame has no one hue to stand for all of them.
+const FRAMES_MARK_COLOR = '#c8c8d2';
 
 function Segment({
   startMin, endMin, color, fillMute = 1, edgeMute = 1, padStart = true, padEnd = true,
@@ -626,7 +668,7 @@ function NowLine({ nowMin }) {
  * @param alarm           The next clock-app alarm's mark (dialAlarmMark in
  *                        utils/nextAlarm.js), or null: Android only, today only.
  */
-const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineCompletions = null, daylight = null, moon = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onToggleTaskComplete = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true, alarm = null }) => {
+const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null, routineCompletions = null, daylight = null, moon = null, focusSpans = null, onStartFocus = null, complications = null, onOpenTask = null, onToggleTaskComplete = null, onSetHabitCount = null, onIncrementHabit = null, dayWindow, date, nowMin = null, dayIsPast = false, formatTime, use24HourClock = false, sun = null, hourlyWeather = null, onToggleComplete = null, onOpenInPlanner = null, onStepDay = null, onGoToday = null, chromeVisible = true, alarm = null }) => {
   const { t, i18n } = useTranslation();
   const formatMinutes = (minutes) => formatDuration(minutes, t);
 
@@ -660,6 +702,12 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
   );
 
   const focus = nowMin !== null ? findDialFocusBlock(model.blocks, nowMin) : null;
+
+  // The day's frames and the Frames figure, from the ring's own blocks.
+  const dialFrames = useMemo(() => computeDialFrames(frames, model.blocks), [frames, model.blocks]);
+  // A running block always wins the hub; the frame speaks only when nothing
+  // is running, in place of the "next at" and "nothing else" rows.
+  const hubFrame = focus?.current ? null : dialCurrentFrame(dialFrames.frames, nowMin);
 
   // Block inspection: hover or tap a wedge and the hub becomes its readout,
   // reverting to the live display after a beat. Details render in the hub
@@ -1168,6 +1216,18 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
         Icon: Sparkles,
       }]
       : []),
+    // Scheduled minutes inside frames over frame minutes (computeDialFrames).
+    // No frames, no entry — the same rule as sleep without a day window:
+    // there is no honest number to show.
+    ...(dialFrames.percent !== null
+      ? [{
+        key: 'frames',
+        label: t('dial.frames', 'Frames'),
+        color: FRAMES_MARK_COLOR,
+        value: `${dialFrames.percent}%`,
+        Icon: LayoutGrid,
+      }]
+      : []),
   ];
 
   // Legend — short enumerable facts, quiet enough to leave the now line the
@@ -1378,6 +1438,8 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
               part of a block the work landed in. */}
           {focusSpans?.length > 0 && <FocusRail spans={focusSpans} />}
 
+          {dialFrames.frames.length > 0 && <FrameEnclosures frames={dialFrames.frames} />}
+
           {routineBars.length > 0 && (
             <RoutineBars
               bars={routineBars}
@@ -1517,6 +1579,31 @@ const DayDial = ({ dayTasks, prevDayTasks = null, routines = null, routineComple
               {(inspected.completed || nowMin !== null) && (
                 <div className="text-white/40 text-[clamp(11px,1.8vmin,16px)] mt-0.5">
                   {inspected.completed ? t('dial.completed', 'completed') : relLabel(inspected)}
+                </div>
+              )}
+            </>
+          ) : hubFrame ? (
+            // The frame now is in, as GLANCE shows it: name, span, and the
+            // time still free inside it. The title is a task title's size and
+            // weight; only its colour differs, the STANDARD mute rather than
+            // the ring's softer one, so the two share a hue at different
+            // strengths.
+            <>
+              <div
+                className="flex items-center gap-2 max-w-full text-[clamp(13px,2.4vmin,22px)] font-medium"
+                style={{ color: muteDialColor(hubFrame.colorHex) }}
+              >
+                <LayoutGrid className="flex-shrink-0 w-[0.85em] h-[0.85em]" strokeWidth={2} aria-hidden="true" />
+                <span className="truncate">{hubFrame.name}</span>
+              </div>
+              <div className="text-white/40 text-[clamp(11px,1.8vmin,16px)] mt-0.5 tabular-nums">
+                {formatTime(minToHHMM(hubFrame.startMin))}–{formatTime(minToHHMM(hubFrame.endMin % DIAL_DAY_MINUTES))}
+              </div>
+              {dialFrameAvailableMinutes(hubFrame, nowMin) > 0 && (
+                <div className="text-[#4ec9b0]/75 text-[clamp(11px,1.8vmin,16px)] mt-0.5">
+                  {t('dial.frameAvailable', '{{time}} available', {
+                    time: formatMinutes(dialFrameAvailableMinutes(hubFrame, nowMin)),
+                  })}
                 </div>
               )}
             </>

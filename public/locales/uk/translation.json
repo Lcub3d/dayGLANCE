@@ -1550,7 +1550,9 @@
     "slotBottomRight": "Унизу праворуч",
     "layerAlarm": "Наступний будильник",
     "alarmFrom": "завтрашній з",
-    "alarmAlways": "увесь день"
+    "alarmAlways": "увесь день",
+    "frames": "Фрейми",
+    "frameAvailable": "{{time}} доступно"
   },
   "intentLog": {
     "clearLog": "Очистити журнал",

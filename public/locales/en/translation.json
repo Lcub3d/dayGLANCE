@@ -1491,7 +1491,9 @@
     "slotBottomRight": "Bottom right",
     "layerAlarm": "Next alarm",
     "alarmFrom": "tomorrow's from",
-    "alarmAlways": "all day"
+    "alarmAlways": "all day",
+    "frames": "Frames",
+    "frameAvailable": "{{time}} available"
   },
   "intentLog": {
     "clearLog": "Clear log",

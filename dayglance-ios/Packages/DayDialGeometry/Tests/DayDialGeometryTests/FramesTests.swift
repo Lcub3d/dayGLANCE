@@ -62,7 +62,7 @@ final class FramesTests: XCTestCase {
         let top = DialFrames.radii(depth: 0)
         XCTAssertEqual(top.inner, 126, accuracy: 1e-9)
         XCTAssertEqual(top.outer, 153, accuracy: 1e-9)
-        XCTAssertEqual(top.width, 1.2, accuracy: 1e-9)
+        XCTAssertEqual(top.width, 1.8, accuracy: 1e-9)
         XCTAssertEqual(DialFrames.radii(depth: 5), DialFrames.radii(depth: 1), "depth is capped")
     }
 

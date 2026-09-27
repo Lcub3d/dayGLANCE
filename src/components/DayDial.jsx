@@ -101,9 +101,11 @@ const R_ROUTINE_BAND = [404, 432]; // inside the tick field (400–436)
 // with: the temps are at 250 and the precipitation arc at 292, so this sits
 // with them rather than out in the tick field, where the ticks stripe
 // straight through a band and it reads as a highlighter mark on a scale.
-// The outer edge tucks two units UNDER the wedges (drawn beneath them), which
-// is what makes the band feel attached to the ring instead of floating below.
-const R_DAYLIGHT_BAND = [282, 302];
+// The outer edge meets the wedges' inner edge, which is what makes the band
+// feel attached to the ring instead of floating below. It used to tuck two
+// units UNDER them (302); with frames outlined along that edge the tucked
+// sliver read as a task spilling onto the sky strip.
+const R_DAYLIGHT_BAND = [282, 300];
 const DAYLIGHT_COLOR = '#fcd34d';
 // Feathered rather than cut: three concentric sub-bands, the outer two at a
 // third strength, so the band has no hard radial edge to read as an object.
@@ -186,41 +188,62 @@ function TickField() {
 // spec's numbers, scaled to this band by dialFrameRadii rather than copied,
 // in the frame's colour through the SOFTENED mute, so the enclosure sits
 // below the wedges' rims and the now line stays the brightest thing here.
-// Pure context: not selectable, not pointed at; the hub speaks for the
-// frame now is in.
+// Selectable like a block: the OUTLINE is the target (hover, tap, and the
+// ring's keyboard walk), and the hub then speaks for that frame.
 //
-// One departure from the proportional scaling: here the band's inner edge
-// has no gap in front of it (the daylight band tucks under the wedges, to
-// 302), so the scaled inner outline landed ON the sky strip. It sits just
-// outside the strip instead, its stroke's inner edge on the strip's outer
-// edge; a nested frame steps in from there. The outer outline keeps the
-// scaled radius.
-const FRAME_INNER_FLOOR = R_DAYLIGHT_BAND[1];
-function frameRadii(depth) {
-  const r = dialFrameRadii(R_INNER, R_EDGE, depth);
-  const d = Math.max(0, Math.min(DIAL_FRAME_MAX_DEPTH, depth));
-  return { ...r, inner: FRAME_INNER_FLOOR + r.width / 2 + d * DIAL_FRAME_STEP * (R_EDGE - R_INNER) };
+// Two departures from the proportional scaling, both about this band:
+//
+//  - Width. Scaled, the stroke is 1.2/22 of the band (4.6 units), which is
+//    right on a phone-sized dial and heavy on a desktop or tablet one, where
+//    the same units are twice the pixels. It is capped at a fixed number of
+//    screen pixels, so it thins only where the dial is large. It thins from
+//    the INSIDE: the outer outline's outer edge stays where the phone draws
+//    it, and the inner outline keeps its inner edge on the band's.
+//  - The inner outline. Here the band's inner edge has no gap in front of it
+//    (the daylight band meets it), so the outline lies ON the wedges' inner
+//    edge, its stroke from R_INNER outward: no wedge reaches past it, and it
+//    never crosses onto the sky strip. A nested frame steps in from there.
+const FRAME_PHONE_STROKE = (1.2 / 22) * (R_EDGE - R_INNER);
+const FRAME_MAX_STROKE_PX = 2.4;
+const FRAME_OUTER_EDGE = dialFrameRadii(R_INNER, R_EDGE, 0).outer + FRAME_PHONE_STROKE / 2;
+const FRAME_HIT_PX = 12;
+function appFrameRadii(depth, dialPx = null) {
+  const width = dialPx ? Math.min(FRAME_PHONE_STROKE, (FRAME_MAX_STROKE_PX * 1000) / dialPx) : FRAME_PHONE_STROKE;
+  const step = Math.max(0, Math.min(DIAL_FRAME_MAX_DEPTH, depth)) * DIAL_FRAME_STEP * (R_EDGE - R_INNER);
+  return { inner: R_INNER + width / 2 + step, outer: FRAME_OUTER_EDGE - width / 2 - step, width };
 }
 
-function FrameEnclosures({ frames }) {
+function FrameEnclosures({ frames, dialPx, selectedId, onEnter, onLeave, onTap }) {
+  // The hit target: the same outline, stroked wide and transparent, so a
+  // hairline is still easy to point at. In screen pixels, like the width.
+  const hit = (FRAME_HIT_PX * 1000) / (dialPx || 500);
   return (
-    <g pointerEvents="none" aria-hidden="true">
-      {frames
-        .filter((f) => f.endMin - f.startMin >= DIAL_FRAME_MIN_MINUTES)
-        .map((f) => {
-          const r = frameRadii(f.depth);
-          return (
+    <g>
+      {frames.map((f) => {
+        const r = appFrameRadii(f.depth, dialPx);
+        const d = dialSectorPath(CX, CY, r.inner, r.outer, f.startMin, f.endMin);
+        const selected = selectedId === f.id;
+        return (
+          <g
+            key={f.id}
+            onMouseEnter={() => onEnter(f)}
+            onMouseLeave={onLeave}
+            onClick={() => onTap(f)}
+            style={{ cursor: 'pointer' }}
+          >
             <path
-              key={`${f.id}-${f.startMin}`}
-              d={dialSectorPath(CX, CY, r.inner, r.outer, f.startMin, f.endMin)}
+              d={d}
               fill="none"
               stroke={muteDialFrameColor(f.colorHex)}
-              strokeOpacity={DIAL_FRAME_OPACITY}
+              strokeOpacity={selected ? 0.95 : DIAL_FRAME_OPACITY}
               strokeWidth={r.width}
               strokeLinejoin="round"
+              pointerEvents="none"
             />
-          );
-        })}
+            <path d={d} fill="none" stroke="transparent" strokeWidth={hit} pointerEvents="stroke" />
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -704,10 +727,24 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   // Everything the arrow keys can walk, in one time-ordered list: the ring's
   // blocks and the routine bars together, so a routine is not a thing only a
   // mouse can reach.
-  const selectable = useMemo(
-    () => [...model.blocks, ...routineBars].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin),
-    [model.blocks, routineBars],
+  // The day's frames and the Frames figure, from the ring's own blocks. The
+  // drawn ones (long enough for an enclosure) are selectable too, with an id
+  // of their own so a frame never collides with a task.
+  const dialFrames = useMemo(() => computeDialFrames(frames, model.blocks), [frames, model.blocks]);
+  const frameItems = useMemo(
+    () => dialFrames.frames
+      .filter((f) => f.endMin - f.startMin >= DIAL_FRAME_MIN_MINUTES)
+      .map((f) => ({ ...f, id: `frame-${f.id}-${f.startMin}`, title: f.name, isFrame: true })),
+    [dialFrames],
   );
+  const selectable = useMemo(
+    () => [...model.blocks, ...routineBars, ...frameItems]
+      .sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin),
+    [model.blocks, routineBars, frameItems],
+  );
+  // Where the keyboard ENTERS the ring: the block the hub is narrating, never
+  // a frame (a frame spans the block now is in, and would win the pick).
+  const entryItems = useMemo(() => selectable.filter((b) => !b.isFrame), [selectable]);
 
   // Paint inner lanes first: the glow filter spreads past a lane's own band,
   // so the outermost (most specific — see assignDialLanes) wedge has to lay
@@ -719,8 +756,6 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
 
   const focus = nowMin !== null ? findDialFocusBlock(model.blocks, nowMin) : null;
 
-  // The day's frames and the Frames figure, from the ring's own blocks.
-  const dialFrames = useMemo(() => computeDialFrames(frames, model.blocks), [frames, model.blocks]);
   // A running block always wins the hub; the frame speaks only when nothing
   // is running, in place of the "next at" and "nothing else" rows.
   const hubFrame = focus?.current ? null : dialCurrentFrame(dialFrames.frames, nowMin);
@@ -731,6 +766,9 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   // and a tooltip would be foreign chrome on a dial face. Hover holds while
   // the pointer stays; a tap (no hover on touch) gets a fixed dwell.
   const [inspected, setInspected] = useState(null);
+  // What the hub's frame rows speak for: a frame pointed at or walked to,
+  // else (nothing inspected) the frame now is in.
+  const shownFrame = inspected?.isFrame ? inspected : (inspected ? null : hubFrame);
   const inspectTimerRef = useRef(null);
   const scheduleInspectClear = (ms) => {
     clearTimeout(inspectTimerRef.current);
@@ -762,7 +800,8 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   useEffect(() => () => clearTimeout(sheetTimerRef.current), []);
 
   const inspectTap = (b) => {
-    if (inspected?.id === b.id) { openSheet(b); return; }
+    // A frame has nothing to act on: a second tap just keeps it read.
+    if (inspected?.id === b.id && !b.isFrame) { openSheet(b); return; }
     clearTimeout(inspectTimerRef.current);
     setInspected(b);
     scheduleInspectClear(4000);
@@ -783,7 +822,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   // tick (the ref is written during render, as App.jsx does for the dial's
   // own open state).
   const liveRef = useRef(null);
-  liveRef.current = { blocks: selectable, nowMin };
+  liveRef.current = { blocks: selectable, entry: entryItems, nowMin };
 
   // Paging to another date drops the selection with it — but if the ring
   // still holds focus, re-arm on the new day: a focused ring must never be
@@ -791,7 +830,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   useEffect(() => {
     setSheetBlock(null);
     const focused = typeof document !== 'undefined' && listRef.current === document.activeElement;
-    setInspected(focused ? initialDialSelection(liveRef.current.blocks, liveRef.current.nowMin) : null);
+    setInspected(focused ? initialDialSelection(liveRef.current.entry, liveRef.current.nowMin) : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
@@ -801,14 +840,14 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   const inspectedRef = useRef(null);
   inspectedRef.current = inspected;
   const navigateByKey = (key) => {
-    const { blocks, nowMin: liveNow } = liveRef.current;
+    const { blocks, entry, nowMin: liveNow } = liveRef.current;
     if (!blocks.length) return false;
     const current = inspectedRef.current;
     // Arriving from nothing lands on the block the hub is already
     // narrating, never on the top of the day.
     const move = (delta) => selectBlock(current
       ? stepDialSelection(blocks, current.id, delta)
-      : initialDialSelection(blocks, liveNow));
+      : initialDialSelection(entry.length ? entry : blocks, liveNow));
     switch (key) {
       // Up/down, not left/right: those page the day at the overlay level,
       // and the schedule answers as the vertical list a listbox always is.
@@ -826,7 +865,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
       switch (e.key) {
         case 'Enter':
         case ' ':
-          if (!inspected) return;
+          if (!inspected || inspected.isFrame) return;
           openSheet(inspected, true);
           break;
         case 'Escape':
@@ -876,7 +915,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   const onListFocus = (e) => {
     if (e.target !== e.currentTarget) return;
     if (keyEntryRef.current) return;
-    if (!inspected) selectBlock(initialDialSelection(selectable, nowMin));
+    if (!inspected) selectBlock(initialDialSelection(entryItems.length ? entryItems : selectable, nowMin));
   };
   const onListBlur = (e) => {
     // Focus moving into the action sheet is not leaving the ring — that
@@ -1022,6 +1061,14 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
   // typographically — there is no typography in an option label), and the
   // commas give the reader its pauses.
   const blockA11yLabel = (b) => {
+    if (b.isFrame) {
+      const avail = nowMin !== null ? dialFrameAvailableMinutes(b, nowMin) : 0;
+      return [
+        `${t('dial.frames', 'Frames')}: ${b.name}`,
+        `${formatTime(minToHHMM(b.startMin))} – ${formatTime(minToHHMM(b.endMin % DIAL_DAY_MINUTES))}`,
+        avail > 0 ? t('dial.frameAvailable', '{{time}} available', { time: formatMinutes(avail) }) : null,
+      ].filter(Boolean).join(', ');
+    }
     const c = blockClock(b);
     return [
       stripWikilinks(b.title),
@@ -1454,7 +1501,16 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
               part of a block the work landed in. */}
           {focusSpans?.length > 0 && <FocusRail spans={focusSpans} />}
 
-          {dialFrames.frames.length > 0 && <FrameEnclosures frames={dialFrames.frames} />}
+          {frameItems.length > 0 && (
+            <FrameEnclosures
+              frames={frameItems}
+              dialPx={dialPx}
+              selectedId={inspected?.id}
+              onEnter={inspectEnter}
+              onLeave={inspectLeave}
+              onTap={inspectTap}
+            />
+          )}
 
           {routineBars.length > 0 && (
             <RoutineBars
@@ -1576,7 +1632,7 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
             </span>
           </div>
           <div className="w-24 border-t border-white/15 my-[1.5vmin]" />
-          {inspected ? (
+          {inspected && !inspected.isFrame ? (
             <>
               <div className="flex items-center gap-2 max-w-full">
                 <span
@@ -1598,27 +1654,28 @@ const DayDial = ({ dayTasks, prevDayTasks = null, frames = null, routines = null
                 </div>
               )}
             </>
-          ) : hubFrame ? (
-            // The frame now is in, as GLANCE shows it: name, span, and the
-            // time still free inside it. The title is a task title's size and
+          ) : shownFrame ? (
+            // The frame now is in (or the one pointed at), as GLANCE shows
+            // it: name, span, and the time still free inside it — today only;
+            // another day's free time is not "still available". The title is a task title's size and
             // weight; only its colour differs, the STANDARD mute rather than
             // the ring's softer one, so the two share a hue at different
             // strengths.
             <>
               <div
                 className="flex items-center gap-2 max-w-full text-[clamp(13px,2.4vmin,22px)] font-medium"
-                style={{ color: muteDialColor(hubFrame.colorHex) }}
+                style={{ color: muteDialColor(shownFrame.colorHex) }}
               >
                 <LayoutGrid className="flex-shrink-0 w-[0.85em] h-[0.85em]" strokeWidth={2} aria-hidden="true" />
-                <span className="truncate">{hubFrame.name}</span>
+                <span className="truncate">{shownFrame.name}</span>
               </div>
               <div className="text-white/40 text-[clamp(11px,1.8vmin,16px)] mt-0.5 tabular-nums">
-                {formatTime(minToHHMM(hubFrame.startMin))}–{formatTime(minToHHMM(hubFrame.endMin % DIAL_DAY_MINUTES))}
+                {formatTime(minToHHMM(shownFrame.startMin))}–{formatTime(minToHHMM(shownFrame.endMin % DIAL_DAY_MINUTES))}
               </div>
-              {dialFrameAvailableMinutes(hubFrame, nowMin) > 0 && (
+              {nowMin !== null && dialFrameAvailableMinutes(shownFrame, nowMin) > 0 && (
                 <div className="text-[#4ec9b0]/75 text-[clamp(11px,1.8vmin,16px)] mt-0.5">
                   {t('dial.frameAvailable', '{{time}} available', {
-                    time: formatMinutes(dialFrameAvailableMinutes(hubFrame, nowMin)),
+                    time: formatMinutes(dialFrameAvailableMinutes(shownFrame, nowMin)),
                   })}
                 </div>
               )}

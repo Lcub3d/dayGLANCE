@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { doLinkCandidates, matchDoLinks, linkFor } from './linkCandidates.js';
+import { doLinkCandidates, matchDoLinks, linkFor, projectPath } from './linkCandidates.js';
 import { createManualDo } from './viewActions.js';
 import { buildJoboRecords } from './detector.js';
 import { buildJoboDayModel } from './viewModel.js';
@@ -67,5 +67,23 @@ describe('a linked Do groups with the task\'s completion', () => {
   it('an Inbox task links with no plan, and an all-day task too', () => {
     expect(linkFor({ id: 'i1', title: 'x' })).toEqual({ task: { id: 'i1', title: 'x' }, planSnapshot: null });
     expect(linkFor({ ...review, isAllDay: true }).planSnapshot).toBeNull();
+  });
+});
+
+describe('a project task is named by its goal and project', () => {
+  const projects = [{ id: 'p1', title: 'dayGLANCE', goalId: 'g1' }, { id: 'p2', title: 'Garden' }];
+  const goals = [{ id: 'g1', title: 'Ship JOBO' }];
+
+  it('gives the project, and the goal when the project has one', () => {
+    expect(projectPath({ projectId: 'p1' }, projects, goals)).toEqual({ project: 'dayGLANCE', goal: 'Ship JOBO' });
+    expect(projectPath({ projectId: 'p2' }, projects, goals)).toEqual({ project: 'Garden', goal: null });
+    expect(projectPath({ projectId: 'gone' }, projects, goals)).toBeNull();
+    expect(projectPath({}, projects, goals)).toBeNull();
+  });
+
+  it('candidates carry the path only when projects are passed in (Goals and Projects on)', () => {
+    const task = { id: 'i9', title: 'Write the JOBO docs', projectId: 'p1' };
+    expect(doLinkCandidates({ inboxTasks: [task], projects, goals })[0].path).toEqual({ project: 'dayGLANCE', goal: 'Ship JOBO' });
+    expect(doLinkCandidates({ inboxTasks: [task] })[0].path).toBeNull();
   });
 });

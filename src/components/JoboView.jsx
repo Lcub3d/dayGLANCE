@@ -56,7 +56,7 @@ export const continueInitial = (record, date, startMinute) => ({
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo } = useFeaturesCtx();
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
@@ -138,9 +138,12 @@ export default function JoboView() {
   // What a new Do can link to, built only while an editor is open.
   const linkCandidates = useMemo(
     () => (editor && !editor.record
-      ? doLinkCandidates({ dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks })
+      ? doLinkCandidates({
+        dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks,
+        ...(goalsProjectsEnabled ? { projects: projects || [], goals: goals || [] } : {}),
+      })
       : []),
-    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks],
+    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals],
   );
   const closeEditor = useCallback(() => setEditor(null), []);
   const closeDetails = useCallback(() => setDetails(null), []);

@@ -67,9 +67,15 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
   const [suggestIndex, setSuggestIndex] = useState(-1);
   const canLink = !record && !link?.fixed;
   const matches = canLink && suggestOpen ? matchDoLinks(linkCandidates, draft.title) : [];
-  const where = ({ task, where: place }) => (place === 'inbox'
-    ? t('jobo.view.linkInbox')
-    : task.isAllDay || !task.startTime ? t('jobo.view.linkAllDay') : showTime(task.startTime));
+  // Where the task sits: its time on the day (or all day), then its goal and
+  // project. A project task in the Inbox is named by its project, not "Inbox".
+  const where = ({ task, where: place, path }) => {
+    const project = path ? [path.goal, path.project].filter(Boolean).join(' › ') : null;
+    const when = place === 'inbox'
+      ? (project ? null : t('jobo.view.linkInbox'))
+      : task.isAllDay || !task.startTime ? t('jobo.view.linkAllDay') : showTime(task.startTime);
+    return [when, project].filter(Boolean).join(' · ');
+  };
   const pick = (candidate) => {
     setLink({ ...linkFor(candidate.task), title: candidate.task.title, where: where(candidate), typed: draft.title });
     setDraft((prev) => ({ ...prev, title: candidate.task.title }));

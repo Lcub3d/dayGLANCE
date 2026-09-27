@@ -10,11 +10,26 @@ import { planSnapshotOf } from './detector.js';
 const plain = (task) => stripWikilinksAndTags(task?.title ?? '').toLowerCase();
 
 /**
+ * Where a task sits in Goals and Projects, for telling tasks apart in the
+ * suggestions: its project's title and, when the project belongs to one, the
+ * goal's. Null for a task with no project, or with one that no longer exists.
+ */
+export function projectPath(task, projects = [], goals = []) {
+  if (!task?.projectId) return null;
+  const project = projects.find((p) => p.id === task.projectId);
+  if (!project) return null;
+  const goal = project.goalId ? goals.find((g) => g.id === project.goalId) : null;
+  return { project: project.title, goal: goal?.title ?? null };
+}
+
+/**
  * What a new Do can link to: the selected day's tasks, then the Inbox. An
  * imported calendar event is not a task the user owns (a task calendar is),
- * and an archived Inbox item is out of play. One entry per id.
+ * and an archived Inbox item is out of play. One entry per id. Pass
+ * `projects` and `goals` (only when Goals and Projects is on) and each entry
+ * carries its `path`.
  */
-export function doLinkCandidates({ dayTasks = [], inboxTasks = [] } = {}) {
+export function doLinkCandidates({ dayTasks = [], inboxTasks = [], projects = [], goals = [] } = {}) {
   const seen = new Set();
   const out = [];
   const add = (task, where) => {
@@ -22,7 +37,7 @@ export function doLinkCandidates({ dayTasks = [], inboxTasks = [] } = {}) {
     if (task.imported && !task.isTaskCalendar) return;
     if (task.archived) return;
     seen.add(task.id);
-    out.push({ task, where });
+    out.push({ task, where, path: projectPath(task, projects, goals) });
   };
   dayTasks.forEach((task) => add(task, 'plan'));
   inboxTasks.forEach((task) => add(task, 'inbox'));

@@ -210,3 +210,17 @@ describe('a single timing status reads on the status line', () => {
     expect(html).toMatch(/10:00–11:00 · jobo\.view\.progress\.partial<span data-jobo-axis="unplanned"> · jobo\.view\.summary\.unplanned<\/span>/);
   });
 });
+
+describe('a Do card opens its task\'s notes and pairs with its Plan card', () => {
+  it('offers Notes on a Do linked to a task, and not on an unlinked one', () => {
+    expect(render({ joboRecords: [timed()] })).toContain('data-jobo-notes-toggle');
+    expect(render({ joboRecords: [timed({ taskId: null })] })).not.toContain('data-jobo-notes-toggle');
+  });
+
+  // MUTATION: render DayViewColumn outside the wrapper and hovering a Plan
+  // card no longer finds its Do cards.
+  it('wraps DAY\'s column in the hover listener without changing the grid', () => {
+    const html = render();
+    expect(html).toMatch(/<div class="contents" data-jobo-pairing="true"><div data-plan-column/);
+  });
+});

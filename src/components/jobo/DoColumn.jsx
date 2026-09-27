@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { CheckCircle2, Clock, Pencil, Plus } from 'lucide-react';
-import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
+import React, { useEffect, useRef, useState } from 'react';
+import { CheckCircle2, Clock, FileText, Pencil, Plus } from 'lucide-react';
+import { renderTitleWithoutTags, hasNotesOrSubtasks } from '../../utils/textFormatting.jsx';
+import DoNotesPanel from './DoNotesPanel.jsx';
 import { stripWikilinks } from '../../utils/taskUtils.js';
 import { timingRows } from './ExecutionAxes.jsx';
 
@@ -57,7 +58,7 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   const top = item.startMinute * hourHeight / 60;
   const height = Math.max(MIN_CARD_PX, (item.endMinute - item.startMinute) * hourHeight / 60 - 2);
@@ -76,6 +77,9 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinu
   const canResize = writable && !pending && (item.estimate || (!item.point && record.endDate === record.date));
   const movable = writable && !pending && item.point;
   const startsGesture = (event) => !event.target.closest('button');
+  // The task this attempt belongs to, as the Plan side shows it: the key for
+  // hover pairing and whose notes the Notes button opens.
+  const task = item.sourceTask || null;
 
   return (
     <div
@@ -85,8 +89,14 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinu
       className={`absolute pointer-events-auto rounded-lg overflow-hidden text-white ${color}
         ${item.estimate ? 'bg-opacity-60 border-2 border-dashed border-white/80' : 'shadow-md'}
         ${movable ? (item.estimate ? 'cursor-grab active:cursor-grabbing' : 'cursor-ns-resize') : 'cursor-pointer'}
-        ${pending ? 'opacity-60' : ''}`}
-      style={{ top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined }}
+        ${pending ? 'opacity-60' : ''}
+        ${notesOpen ? 'overflow-visible z-30' : ''}`}
+      style={{
+        top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined,
+        ...(highlighted ? { outline: '2px solid rgb(59 130 246)', outlineOffset: '1px' } : {}),
+      }}
+      onMouseEnter={() => onHover(task?.id ?? null)}
+      onMouseLeave={() => onHover(null)}
       onClick={(event) => { event.stopPropagation(); if (startsGesture(event)) onDetails(item, event.currentTarget); }}
       onPointerDown={(event) => { if (movable && startsGesture(event)) onPointGesture(event, item); }}
       title={item.estimate
@@ -102,6 +112,19 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinu
           <div className="font-semibold text-sm leading-tight truncate flex-1 min-w-0" title={stripWikilinks(record.title)}>
             {renderTitleWithoutTags(record.title)}
           </div>
+          {task && (
+            <button
+              type="button"
+              data-jobo-notes-toggle
+              onClick={(event) => { event.stopPropagation(); onNotes(notesOpen ? null : item.id); }}
+              className={`flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors ${hasNotesOrSubtasks(task) ? '' : 'opacity-40'}`}
+              aria-label={`${t('task.notes')}: ${stripWikilinks(record.title)}`}
+              aria-expanded={notesOpen}
+              title={t('sched.notesSubtasks')}
+            >
+              <FileText size={12} />
+            </button>
+          )}
           {continuable && (
             <button
               type="button"
@@ -158,6 +181,7 @@ function DoCard({ item, hourHeight, ctx, t, writable, pending, onEdit, onContinu
           <div className="w-12 h-1 bg-white rounded-full" />
         </div>
       )}
+      {notesOpen && task && <DoNotesPanel task={task} height={height} above={item.endMinute >= 22 * 60} />}
     </div>
   );
 }
@@ -166,9 +190,22 @@ export default function DoColumn({
   date, hourHeight, items, ctx, t,
   writable, pendingIds = [], preview,
   onAddAt, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture,
+  hoverTaskId = null, onHoverTask = () => {},
   laneRef,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
+  // One notes panel at a time, JOBO's own: the global expanded-notes id
+  // would also open the same task's panel on its Plan card.
+  const [notesFor, setNotesFor] = useState(null);
+  useEffect(() => {
+    if (!notesFor) return undefined;
+    const close = (event) => {
+      if (event.type === 'keydown' ? event.key === 'Escape' : !event.target.closest?.('[data-jobo-notes],[data-jobo-notes-toggle]')) setNotesFor(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [notesFor]);
   const ownRef = useRef(null);
   const lane = laneRef || ownRef;
   const { darkMode, borderClass, currentTime } = ctx;
@@ -228,6 +265,10 @@ export default function DoColumn({
             pending={pendingIds.includes(item.id)}
             onEdit={onEdit}
             onContinue={onContinue}
+            highlighted={hoverTaskId != null && item.sourceTask?.id === hoverTaskId}
+            notesOpen={notesFor === item.id}
+            onNotes={setNotesFor}
+            onHover={onHoverTask}
             onDetails={onDetails}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}

@@ -32,6 +32,13 @@ import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 const GRID = 'grid grid-cols-[calc(50%+2rem)_minmax(0,1fr)]';
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
+// A task id inside an attribute selector. CSS.escape where the platform has
+// it; otherwise quotes and backslashes, the only characters that can break
+// out of the quoted value.
+const cssEscape = (value) => (typeof CSS !== 'undefined' && CSS.escape
+  ? CSS.escape(String(value))
+  : String(value).replace(/["\\]/g, '\\$&'));
+
 /**
  * The editor's opening state for continuing `record`: its title, its task and
  * its captured plan. createManualDo derives the taskId from `task`, so passing
@@ -56,6 +63,10 @@ export default function JoboView() {
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
   const [gestureError, setGestureError] = useState('');
+  // Hover pairing: the task under the pointer on either side. Its Plan card
+  // and every Do card that belongs to it are outlined together, which reads
+  // where colour alone cannot (two tasks can share a colour).
+  const [hoverTaskId, setHoverTaskId] = useState(null);
   const scrollRef = useRef(null);
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
@@ -310,7 +321,23 @@ export default function JoboView() {
           </div>
         </div>
         <div className={GRID}>
-          <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+          {/* `contents` keeps DAY's column the grid cell; the wrapper only
+              listens, and scopes the outline rule to the Plan side. */}
+          <div
+            className="contents"
+            data-jobo-pairing
+            onMouseOver={(event) => {
+              // Always set: a Do card's leave may have just queued null, and a
+              // comparison against this render's value would skip the update.
+              setHoverTaskId(event.target.closest?.('[data-task-id]')?.getAttribute('data-task-id') ?? null);
+            }}
+            onMouseLeave={() => setHoverTaskId(null)}
+          >
+            {hoverTaskId != null && (
+              <style>{`[data-jobo-pairing] [data-task-id="${cssEscape(hoverTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px}`}</style>
+            )}
+            <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+          </div>
           <DoColumn
             date={date}
             hourHeight={hourHeight}
@@ -324,6 +351,8 @@ export default function JoboView() {
             onAddAt={openAdd}
             onEdit={openEdit}
             onContinue={openContinue}
+            hoverTaskId={hoverTaskId}
+            onHoverTask={setHoverTaskId}
             onDetails={(item, anchor) => setDetails({ item, anchor })}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}

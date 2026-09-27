@@ -31,6 +31,7 @@ class DialHubRowsTest {
         override fun nothingElseToday() = "Nothing else today"
         override fun thenOpen(duration: String) = "then $duration open"
         override fun thenUntilSleep(duration: String) = "then $duration until sleep"
+        override fun available(duration: String) = "$duration available"
         override fun sleep() = "Sleep"
         override fun outdated() = "Outdated"
         override fun zoneChanged() = "Time zone changed"
@@ -50,6 +51,38 @@ class DialHubRowsTest {
 
     private fun rows(nowMin: Double, blocks: List<DialFaceBlock> = day, planned: String? = null) =
         DialHubRows.build(DialHubStatus.LIVE, DialHub.resolve(blocks, nowMin), English, plannedAsOf = planned)
+
+    private val admin = DialFrame("Admin", "#f59e0b", 840.0, 1065.0, 0, listOf(840.0 to 865.0, 1010.0 to 1065.0))
+
+    @Test fun `nothing running inside a frame - its rows replace open time, the free time live`() {
+        val frame = DialHubFrame.of(listOf(admin), 1038.0)
+        assertEquals(27.0, frame!!.availableMinutes, 0.0)
+        val r = DialHubRows.build(DialHubStatus.LIVE, DialHub.resolve(emptyList(), 1038.0), English, frame = frame)
+        assertEquals("Admin", r.title?.text)
+        assertEquals(DialHubRowStyle.TITLE_FRAME, r.title?.style)
+        assertEquals("#f59e0b", r.title?.colorHex)
+        assertEquals(listOf("14:00–17:45", "27m available"), r.stack.map { it.text })
+        assertEquals(DialLiveSlot.ROW1, r.liveSlot)
+        assertEquals("27m available", r.liveRow?.text)
+        // The face key sees the frame's name but not the minute-by-minute free time.
+        val later = DialHubRows.build(DialHubStatus.LIVE, DialHub.resolve(emptyList(), 1040.0), English,
+            frame = DialHubFrame.of(listOf(admin), 1040.0))
+        assertEquals(r.staticKey, later.staticKey)
+    }
+
+    @Test fun `a frame with nothing free has no available row and nothing live`() {
+        val full = DialHubFrame("Admin", "#f59e0b", 840.0, 1065.0, 0.0)
+        val r = DialHubRows.build(DialHubStatus.LIVE, DialHub.resolve(emptyList(), 1000.0), English, frame = full)
+        assertEquals(listOf("14:00–17:45"), r.stack.map { it.text })
+        assertNull(r.liveRow)
+    }
+
+    @Test fun `the innermost frame speaks, and none outside every frame`() {
+        val calls = DialFrame("Calls", "#14b8a6", 1030.0, 1050.0, 1, listOf(1030.0 to 1050.0))
+        assertEquals("Calls", DialHubFrame.of(listOf(admin, calls), 1038.0)?.name)
+        assertEquals("Admin", DialHubFrame.of(listOf(admin, calls), 1055.0)?.name)
+        assertNull(DialHubFrame.of(listOf(admin, calls), 1100.0))
+    }
 
     @Test fun `a current block with a tag - title, tag, until, the live time left, runway`() {
         val r = rows(680.0, listOf(task("docs", 600.0, 750.0, "Write API documentation", "work"), task("gym", 1020.0, 1140.0)))

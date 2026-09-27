@@ -398,6 +398,42 @@
                             android:textColor="#e6ffffff"
                             android:textSize="13sp" />
                     </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/ll_day_dial_legend_frames"
+                    android:layout_width="match_parent"
+                    android:layout_height="34dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:visibility="gone">
+                    <ImageView
+                        android:id="@+id/iv_day_dial_legend_frames_icon"
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:src="@drawable/ic_day_dial_layout_grid"
+                        android:importantForAccessibility="no" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_frames_label"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:singleLine="true"
+                            android:text="@string/day_dial_frames"
+                            android:textColor="#73ffffff"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tv_day_dial_legend_frames_value"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:singleLine="true"
+                            android:textColor="#e6ffffff"
+                            android:textSize="13sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

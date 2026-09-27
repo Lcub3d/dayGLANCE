@@ -22,13 +22,15 @@ class DialCardsTest {
 
     @Test fun `the fixture's pushed day carries the legend, in the app's order`() {
         val c = DialCards.from(root, DialFaceInput.from(root, false).blocks)
-        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED), c.legend.map { it.key })
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED, DialLegendKey.FRAMES),
+            c.legend.map { it.key })
         assertEquals(200.0, c.legend[0].minutes!!, 0.0)
         assertEquals(590.0, c.legend[3].minutes!!, 0.0)
+        assertEquals(45, c.legend[4].percent)
         assertTrue(c.allDay.isEmpty())
         // Every projected day has its own.
         val day = root.getJSONArray("days").getJSONObject(0)
-        assertEquals(4, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
+        assertEquals(5, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
     }
 
     @Test fun `no declared window means no sleep and no unblocked, as in the app`() {
@@ -42,6 +44,18 @@ class DialCardsTest {
         val r = c.legend.last()
         assertEquals(DialLegendKey.ROUTINES, r.key)
         assertEquals(1, r.done); assertEquals(2, r.total)
+    }
+
+    @Test fun `frames come last with their percent, and not at all without frames`() {
+        val c = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"sleepMinutes":null,"unblockedMinutes":null,"framesPercent":0}""",
+            blocks = """[{"type":"routine","id":"r1","startMin":420,"durationMin":15,"completed":true}]"""))
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.ROUTINES, DialLegendKey.FRAMES), c.legend.map { it.key })
+        assertEquals(0, c.legend.last().percent)
+        assertEquals("0%", DayDialCardsBinder.legendValue(c.legend.last(), DialHubRowsTest.English))
+        val none = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"framesPercent":null}"""))
+        assertFalse(none.legend.any { it.key == DialLegendKey.FRAMES })
+        // Frames alone opens the tall grid's second row.
+        assertTrue(DialArrangement.tallLegendSecondRow(c))
     }
 
     @Test fun `an app build without totals draws no legend rather than an empty day`() {

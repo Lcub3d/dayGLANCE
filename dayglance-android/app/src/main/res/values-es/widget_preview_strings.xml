@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_preview_date">mar, 10 mar</string>
+    <string name="widget_preview_updated">8:42</string>
+    <string name="widget_preview_today_allday_title">Cumpleaños de mamá</string>
+    <string name="widget_preview_today_frame_name">Trabajo profundo</string>
+    <string name="widget_preview_today_frame_times">9:00 – 11:30</string>
+    <string name="widget_preview_today_frame_free">30 min libres</string>
+    <string name="widget_preview_today_task1_title">Revisar pull requests</string>
+    <string name="widget_preview_today_task1_time">9:00 – 10:00  #trabajo</string>
+    <string name="widget_preview_today_task2_title">Redactar el brief del proyecto</string>
+    <string name="widget_preview_today_task2_project">Rediseño de la web</string>
+    <string name="widget_preview_today_task2_time">10:00 – 11:00</string>
+    <string name="widget_preview_today_task3_title">Comida con Sam</string>
+    <string name="widget_preview_today_task3_time">12:30 – 13:30</string>
+    <string name="widget_preview_upnext_title">Preparar el informe trimestral</string>
+    <string name="widget_preview_upnext_time">14:00 – 15:30</string>
+    <string name="widget_preview_upnext_time_until">en 25m</string>
+    <string name="widget_preview_upnext_project">Finanzas</string>
+    <string name="widget_preview_upnext_tags">#trabajo  #enfoque</string>
+    <string name="widget_preview_upnext_sub1">Sacar las cifras de ventas</string>
+    <string name="widget_preview_upnext_sub2">Preparar las diapositivas de resumen</string>
+    <string name="widget_preview_project_goal">Nueva casa</string>
+    <string name="widget_preview_project_title">Reforma de la cocina</string>
+    <string name="widget_preview_project_task1">Elegir acabados de los muebles</string>
+    <string name="widget_preview_project_task2">Llamar al electricista</string>
+    <string name="widget_preview_project_task3">Medir la cocina</string>
+    <string name="widget_preview_project_task4">Fijar un presupuesto</string>
+    <string name="widget_preview_goal_title">Correr una media maratón</string>
+    <string name="widget_preview_goal_due">quedan 42d</string>
+    <string name="widget_preview_goal_project1">Aumentar el kilometraje semanal</string>
+    <string name="widget_preview_goal_project2">Inscribirse en una carrera</string>
+    <string name="widget_preview_goal_project3">Comprar zapatillas</string>
+</resources>

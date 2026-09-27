@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sample content for the widget picker previews (res/layout/widget_*_preview.xml).
+  Every name is prefixed widget_preview_ and exists only here; translations
+  live in values-*/widget_preview_strings.xml.
+-->
+<resources>
+    <string name="widget_preview_date">Tue, Mar 10</string>
+    <string name="widget_preview_updated">8:42 AM</string>
+    <string name="widget_preview_today_allday_title">Mom\'s birthday</string>
+    <string name="widget_preview_today_frame_name">Deep work</string>
+    <string name="widget_preview_today_frame_times">9:00 – 11:30 AM</string>
+    <string name="widget_preview_today_frame_free">30m free</string>
+    <string name="widget_preview_today_task1_title">Review pull requests</string>
+    <string name="widget_preview_today_task1_time">9:00 – 10:00 AM  #work</string>
+    <string name="widget_preview_today_task2_title">Write project brief</string>
+    <string name="widget_preview_today_task2_project">Website redesign</string>
+    <string name="widget_preview_today_task2_time">10:00 – 11:00 AM</string>
+    <string name="widget_preview_today_task3_title">Lunch with Sam</string>
+    <string name="widget_preview_today_task3_time">12:30 – 1:30 PM</string>
+    <string name="widget_preview_upnext_title">Prepare quarterly report</string>
+    <string name="widget_preview_upnext_time">2:00 – 3:30 PM</string>
+    <string name="widget_preview_upnext_time_until">in 25m</string>
+    <string name="widget_preview_upnext_project">Finance</string>
+    <string name="widget_preview_upnext_tags">#work  #focus</string>
+    <string name="widget_preview_upnext_sub1">Pull the sales figures</string>
+    <string name="widget_preview_upnext_sub2">Draft the summary slides</string>
+    <string name="widget_preview_project_goal">New home</string>
+    <string name="widget_preview_project_title">Kitchen renovation</string>
+    <string name="widget_preview_project_task1">Choose cabinet finishes</string>
+    <string name="widget_preview_project_task2">Book the electrician</string>
+    <string name="widget_preview_project_task3">Measure the kitchen</string>
+    <string name="widget_preview_project_task4">Set a budget</string>
+    <string name="widget_preview_goal_title">Run a half marathon</string>
+    <string name="widget_preview_goal_due">42d left</string>
+    <string name="widget_preview_goal_project1">Build weekly mileage</string>
+    <string name="widget_preview_goal_project2">Sign up for a race</string>
+    <string name="widget_preview_goal_project3">Buy running shoes</string>
+</resources>

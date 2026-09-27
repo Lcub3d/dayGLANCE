@@ -15,8 +15,17 @@ const RES = join(dirname(fileURLToPath(import.meta.url)), '../dayglance-android/
 
 const UNTRANSLATED = new Set(['app_name']);
 
-function parseStrings(path) {
-  const xml = readFileSync(path, 'utf8');
+// Strings may be split across several files in one values directory (e.g.
+// strings.xml plus widget_preview_strings.xml); aapt merges them, so every
+// check reads the directory as a whole.
+const stringFiles = (dir) => readdirSync(join(RES, dir))
+  .filter((f) => f.endsWith('.xml'))
+  .filter((f) => /<(?:string|plurals|string-array)\s+name=/.test(readFileSync(join(RES, dir, f), 'utf8')))
+  .sort();
+const readStringsXml = (dir) => stringFiles(dir).map((f) => readFileSync(join(RES, dir, f), 'utf8')).join('\n');
+
+function parseStrings(dir) {
+  const xml = readStringsXml(dir);
   const out = new Map();
   for (const m of xml.matchAll(/<string name="([^"]+)">([\s\S]*?)<\/string>/g)) out.set(m[1], m[2]);
   for (const m of xml.matchAll(/<plurals name="([^"]+)">([\s\S]*?)<\/plurals>/g)) {
@@ -27,7 +36,7 @@ function parseStrings(path) {
   return out;
 }
 
-const base = parseStrings(join(RES, 'values/strings.xml'));
+const base = parseStrings('values');
 const locales = readdirSync(RES).filter((d) => /^values-[a-z]{2}(-r[A-Z]{2})?$/.test(d));
 const placeholders = (v) => (v.match(/%(\d\$)?[sd]/g) ?? []).sort().join(',');
 
@@ -37,20 +46,20 @@ describe('Android string resources', () => {
   });
 
   it.each(locales)('%s carries no keys absent from the base file', (loc) => {
-    const strings = parseStrings(join(RES, loc, 'strings.xml'));
+    const strings = parseStrings(loc);
     expect(strings.size).toBeGreaterThan(0);
     const extra = [...strings.keys()].filter((k) => !base.has(k));
     expect(extra, `${loc} has keys aapt would reject`).toEqual([]);
   });
 
   it.each(locales)('%s translates every translatable key', (loc) => {
-    const strings = parseStrings(join(RES, loc, 'strings.xml'));
+    const strings = parseStrings(loc);
     const missing = [...base.keys()].filter((k) => !UNTRANSLATED.has(k.split('#')[0]) && !strings.has(k));
     expect(missing, `${loc} would silently render these in English`).toEqual([]);
   });
 
   it.each(locales)('%s keeps every format placeholder', (loc) => {
-    const strings = parseStrings(join(RES, loc, 'strings.xml'));
+    const strings = parseStrings(loc);
     const mismatched = [...strings]
       .filter(([k, v]) => placeholders(v) !== placeholders(base.get(k) ?? ''))
       .map(([k]) => k);
@@ -58,16 +67,18 @@ describe('Android string resources', () => {
   });
 
   it.each(locales)('%s escapes apostrophes for aapt', (loc) => {
-    const strings = parseStrings(join(RES, loc, 'strings.xml'));
+    const strings = parseStrings(loc);
     const bad = [...strings].filter(([, v]) => /(^|[^\\])'/.test(v)).map(([k]) => k);
     expect(bad, `${loc} unescaped apostrophes fail the resource compile`).toEqual([]);
   });
 
   // A Map keeps the last of two same-named entries, so the checks above
   // cannot see a duplicate; aapt refuses it ("Found item String/x more than
-  // one time"), which broke a release build once (day_dial_sleep).
+  // one time"), which broke a release build once (day_dial_sleep). The
+  // directory is read whole, since a name repeated across two of its files
+  // fails the same way.
   it.each(['values', ...locales])('%s declares each string once', (dir) => {
-    const xml = readFileSync(join(RES, dir, 'strings.xml'), 'utf8');
+    const xml = readStringsXml(dir);
     const names = [...xml.matchAll(/<(?:string|plurals|string-array)\s+name="([^"]+)"/g)].map((m) => m[1]);
     const dupes = names.filter((n, i) => names.indexOf(n) !== i);
     expect(dupes, `${dir} declares these more than once`).toEqual([]);

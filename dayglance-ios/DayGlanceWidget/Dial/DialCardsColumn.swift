@@ -31,7 +31,8 @@ struct DialCards {
                                        restoreMinutes: totals?.restoreMinutes.map(Double.init),
                                        sleepMinutes: totals?.sleepMinutes.map(Double.init),
                                        unblockedMinutes: totals?.unblockedMinutes.map(Double.init),
-                                       blocks: blocks)
+                                       blocks: blocks,
+                                       framesPercent: totals?.framesPercent)
     }
 
     init(allDay: [DialAllDayItem], legend: [DialLegendItem]) {
@@ -165,6 +166,8 @@ struct DialCardsColumn: View {
         case .sleep: return "moon.stars"
         case .unblocked: return "circle.dashed"
         case .routines: return "sparkles"
+        // The app's frames icon, lucide LayoutGrid: four outlined squares.
+        case .frames: return "square.grid.2x2"
         }
     }
 
@@ -176,6 +179,8 @@ struct DialCardsColumn: View {
         case .sleep: return "#c4b5fd"
         case .unblocked: return "#9ca3af"
         case .routines: return "#5eead4"
+        // A neutral: no one frame's colour stands for all of them.
+        case .frames: return "#c8c8d2"
         }
     }
 
@@ -188,11 +193,16 @@ struct DialCardsColumn: View {
         case .sleep: return String(localized: "legend.sleep", defaultValue: "Sleep")
         case .unblocked: return String(localized: "Unblocked")
         case .routines: return String(localized: "Routines")
+        case .frames: return String(localized: "Frames")
         }
     }
 
     /// "3h 20m", or "2/3" for routines, as the in-app legend reads.
     static func value(_ item: DialLegendItem) -> String {
-        item.key == .routines ? "\(item.done)/\(item.total)" : DialHubClock.duration(minutes: item.minutes ?? 0)
+        switch item.key {
+        case .routines: return "\(item.done)/\(item.total)"
+        case .frames: return "\(item.percent ?? 0)%"
+        default: return DialHubClock.duration(minutes: item.minutes ?? 0)
+        }
     }
 }

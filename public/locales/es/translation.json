@@ -1491,7 +1491,9 @@
     "slotBottomRight": "Abajo derecha",
     "layerAlarm": "Próxima alarma",
     "alarmFrom": "la de mañana desde",
-    "alarmAlways": "todo el día"
+    "alarmAlways": "todo el día",
+    "frames": "Bloques",
+    "frameAvailable": "{{time}} disponibles"
   },
   "intentLog": {
     "clearLog": "Borrar registro",

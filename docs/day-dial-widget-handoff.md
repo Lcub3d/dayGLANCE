@@ -965,9 +965,14 @@ this section records what the build decided on top of it.
   length as a fraction of the band's width (3/22 inside, 2/22 outside, 3.2/22
   per level, 1.2/22 stroke). The in-app dial's band (300–385 in its
   1000-unit viewBox) therefore gets 288.4 / 392.7 and a 4.6-unit stroke: the
-  same design, scaled rather than copied. The inner outline crosses the
-  in-app daylight band (282–302), which tucks under the wedges; at 0.45 it
-  reads as a fine rule over a glow.
+  same design, scaled rather than copied, with one exception on the INNER
+  side. The in-app daylight band (the sky strip, 282–302) tucks under the
+  wedges, so there is no gap in front of the band, and the scaled inner
+  outline (288.4) landed on the strip. In the app the inner outline sits
+  just outside the strip instead: the inner edge of its stroke lies on the
+  strip's outer edge (302), and a nested frame steps in from there. The
+  outer outline keeps its scaled radius. The widgets are unchanged, because
+  their 126pt inner outline sits in a real gap, clear of their sky ring.
 - **Colour.** The frame's hex through `muteDialFrameColor`: saturation
   capped at 0.28 and lightness 0.62 (`muteDialColorWith`, the app's
   `muteDialColor` arithmetic with the two constants as inputs). This keeps
@@ -1047,6 +1052,36 @@ in a 2×2 grid, outlined, as used on the Frames button and in GLANCE's frame
 headers. The widgets use the nearest native equivalents: SF Symbol
 `square.grid.2x2` on iOS, and the same four-square outline as a vector on
 Android.
+
+### iOS widget
+
+- **In the cached face.** Frames are static for a day, so they are drawn into
+  the face image (`DialFaceView.frames`), after the separators so that a cut
+  between two touching blocks cannot erase a nested outline along the band's
+  edge. They get no past or future dimming.
+- **The cache key needs no new part, but the seed has to change.** Frames
+  don't vary with the entry, so the past bucket (`-b<n>`) and the key's shape
+  stay the same. They are drawn into the image, though, so each frame's span,
+  depth and colour join `DialFaceInput.seed`. Without that, an edited frame
+  would reuse a stale face. Names and free slots belong to the hub and stay
+  out of the seed. A day without frames keeps its existing key, so
+  `renderVersion` stays at `face-v4`.
+- **Tinted and clear Home Screens (mono).** The outline is white at the same
+  0.45. In that mode it is brighter than in full colour, where it is a
+  softened hue at 0.45, and it sits above the minor ticks (0.13).
+  `FramesWidgetTests` samples the rendered mono face to check that the
+  outline keeps its alpha.
+- **Hub.** `DialHubFrame` holds the frame and its free minutes. It is built
+  only on a live day when nothing is running and the entry isn't in sleep.
+  The title is `square.grid.2x2` plus the name at 15 pt semibold, in the
+  standard mute. The detail rows are the span and "Xm available" in the
+  runway teal; the available row is dropped when nothing is free. VoiceOver
+  reads the same facts.
+- **Extra-large (iPad).** The legend gains Frames, last, when
+  `framesPercent` is present.
+- **Previews.** `Frames · task running`, `· nothing running`, `· nested` and
+  `· a frame at 0 %` are the spec day at 17:18, matching the in-app dial's
+  scenarios.
 
 ### Android widget
 

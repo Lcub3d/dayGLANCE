@@ -9143,7 +9143,7 @@ const DayPlanner = () => {
     // ── Functions – GTD / AI ──────────────────────────────────────────────────
     saveFrame, deleteFrame, skipFrameForDay,
     openFrameAdjust, openFrameSchedule, saveFrameAdjust,
-    getFrameInstancesForDate,
+    getFrameInstancesForDate, dialFramesForDate,
     getDayWindow, setDayWindow, clearDayWindow,
     dayWindowMenuOpen, setDayWindowMenuOpen,
     runSmartSchedule, applySmartSchedule,

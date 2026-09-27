@@ -1491,7 +1491,9 @@
     "slotBottomRight": "En bas à droite",
     "layerAlarm": "Prochaine alarme",
     "alarmFrom": "celle de demain dès",
-    "alarmAlways": "toute la journée"
+    "alarmAlways": "toute la journée",
+    "frames": "Plages",
+    "frameAvailable": "{{time}} disponibles"
   },
   "intentLog": {
     "clearLog": "Effacer le journal",

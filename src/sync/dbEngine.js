@@ -69,6 +69,12 @@ const CRYPTO_DB_NAME = 'dayglance-db-crypto';
 const SNAPSHOT_DB_NAME = 'dayglance-db-sync';
 // Set synchronously by resetVaultSyncCursor; see the note there.
 const SNAPSHOT_VOID_SUFFIX = '-db-sync-snapshot-void';
+// The pre-cycle pull cursor, written synchronously BEFORE a cycle's pull and
+// cleared once that cycle either commits or rolls itself back. A value still
+// present at startup therefore means the last cycle did NEITHER — the process
+// died inside it — and the cursor has to be rewound (recoverStrandedPullCursor).
+// See the note on the rollback in dbSyncCycle's catch for why that matters.
+const PULL_MARK_SUFFIX = '-db-sync-pull-mark';
 
 // The storage prefix App.jsx's engine uses (tests override it per device).
 const DEFAULT_STORAGE_KEY_PREFIX = 'dayglance-vault';
@@ -90,6 +96,9 @@ const SYNC_CURSOR_KEY_SUFFIXES = [
   '-db-sync-push-ack',
   '-db-sync-dirty',
   '-db-sync-quarantine',
+  // Meaningless after a cursor reset, like the quarantine set: the full re-pull
+  // from HWM=0 re-lists everything the mark would have rewound to.
+  '-db-sync-pull-mark',
 ];
 
 // Reset the DB tier's persisted sync-cursor state. MUST be called by every
@@ -365,6 +374,20 @@ export function createDbEngine(callbacks = {}) {
   // store-injection pattern the intents outbox already uses.
   const snapshotStore = callbacks.snapshotStore || createIdbKeyValue(SNAPSHOT_DB_NAME);
   const SNAPSHOT_VOID_KEY = `${storageKeyPrefix}${SNAPSHOT_VOID_SUFFIX}`;
+  const PULL_MARK_KEY = `${storageKeyPrefix}${PULL_MARK_SUFFIX}`;
+
+  // ── Pre-cycle pull-cursor mark ────────────────────────────────────────────
+  // localStorage rather than the snapshot's IndexedDB store, for the same reason
+  // the Todoist command UUIDs stay in localStorage: only a synchronous write is
+  // durable the moment it returns, and this one has to survive the process being
+  // killed an instant later. An async put would be exactly the write that never
+  // lands in the case this exists to cover.
+  const writePullMark = (hwm) => {
+    try { localStorage.setItem(PULL_MARK_KEY, String(hwm)); } catch { /* storage unavailable */ }
+  };
+  const clearPullMark = () => {
+    try { localStorage.removeItem(PULL_MARK_KEY); } catch { /* storage unavailable */ }
+  };
 
   const loadSnapshot = async () => {
     // A reset wrote the tombstone but may not have finished — or even started —
@@ -537,6 +560,46 @@ export function createDbEngine(callbacks = {}) {
     onStatusChange: callbacks.onStatusChange,
     onError: callbacks.onError,
   });
+
+  // ── Stranded-pull-cursor recovery (process death mid-cycle) ───────────────
+  // The catch in dbSyncCycle rewinds the pull cursor whenever a cycle fails,
+  // because our applyRemoteEntity writes into a per-cycle mirror that the catch
+  // discards. That covers a THROW. It cannot cover the process being killed:
+  // no catch runs, so @glance-apps/sync's per-page cursor stays advanced past
+  // pages whose rows only ever reached the discarded mirror, and those rows sit
+  // below the cursor forever — never re-listed by an incremental pull, and
+  // invisible to the glitch heal (which only re-fetches rows that were in the
+  // snapshot and vanished; these were never in either).
+  //
+  // Android is where this actually bites: it kills app processes on backgrounding
+  // and under memory pressure, mid-network-callback, which desktop and Electron
+  // do not. The symptom is a device permanently missing a handful of rows while
+  // every LATER change syncs normally, because the cursor keeps advancing and
+  // only the stranded window is unreachable.
+  //
+  // A mark left behind means the last cycle neither committed nor rolled back.
+  // Rewinding to it costs one re-pull of rows this device already has, which is
+  // idempotent (entity-grain LWW), so a spurious rewind is harmless — the
+  // asymmetry is deliberate, since the failure it prevents is permanent.
+  const recoverStrandedPullCursor = () => {
+    let raw;
+    try { raw = localStorage.getItem(PULL_MARK_KEY); } catch { return; }
+    if (raw == null) return;
+    clearPullMark();
+    const marked = Number(raw);
+    // Only ever REWIND. A corrupt or forward mark must never move the cursor up:
+    // that would skip rows outright, which is the very loss this guards against.
+    if (!Number.isFinite(marked) || marked < 0) return;
+    let current;
+    try { current = engine.getHighWaterMark(); } catch { return; }
+    if (!(marked < current)) return;
+    console.warn(
+      `[pull] GUARD: last cycle neither committed nor rolled back (process killed mid-cycle?) — ` +
+      `rewinding pull cursor ${current} → ${marked} so its pages are re-listed.`
+    );
+    try { engine.setHighWaterMark(marked); } catch { /* storage unavailable */ }
+  };
+  recoverStrandedPullCursor();
 
   // In-flight guard so a debounced push never overlaps a cadence-triggered cycle.
   let syncing = false;
@@ -733,6 +796,11 @@ export function createDbEngine(callbacks = {}) {
     // below. Captured under the in-flight guard, so nothing else can move the
     // cursor between here and the rollback.
     const preCycleHwm = engine.getHighWaterMark();
+    // Persist it too, synchronously, BEFORE anything can advance the cursor. The
+    // in-memory `preCycleHwm` serves the catch below; this serves the case no
+    // catch can (recoverStrandedPullCursor). Cleared on both exits, so it is only
+    // ever left behind by a death between here and one of them.
+    writePullMark(preCycleHwm);
     try {
       mirror = clone(callbacks.getData()) || {};
 
@@ -956,6 +1024,10 @@ export function createDbEngine(callbacks = {}) {
         if (!isSuppressedError(err)) throw err;
         armDeferredRetry(Math.max(1000, err.retryInMs ?? 1000));
         callbacks.onStatusChange?.('idle');
+        // Nothing ran and the cursor did not move, so the mark equals the live
+        // cursor and the startup recovery would no-op on it anyway. Cleared for
+        // hygiene, so a mark left in storage always means a real death.
+        clearPullMark();
         return {
           applied: 0, skipped: 0, skippedEntityIds: [],
           suppressed: true, direction: 'pull', reason: err.reason, retryInMs: err.retryInMs, retryPending: true,
@@ -1272,6 +1344,11 @@ export function createDbEngine(callbacks = {}) {
       // (sync/initialPull.js): their guards can now see the fleet's state.
       markInitialPullComplete();
       callbacks.onStatusChange?.('success');
+      // Committed: the cursor now describes state this device actually holds, so
+      // the mark has nothing left to protect. Cleared here rather than in a
+      // finally, because a finally would also clear it on the paths that return
+      // EARLY (throttled, suppressed) without capturing a mark at all.
+      clearPullMark();
       return {
         applied: pull?.applied ?? 0, skipped: pull?.skipped ?? 0, skippedEntityIds: pull?.skippedEntityIds ?? [],
         ...(pushSuppressedRetryInMs !== null ? { pushSuppressed: true, retryInMs: pushSuppressedRetryInMs, retryPending: true } : {}),
@@ -1308,6 +1385,10 @@ export function createDbEngine(callbacks = {}) {
       // is all-or-nothing. Making the benefit safe here would need durable
       // per-page commits, which is an architecture change, not a bump.
       try { engine.setHighWaterMark(preCycleHwm); } catch { /* storage unavailable */ }
+      // Rolled back here, so the startup recovery has nothing to do. Clearing
+      // AFTER the rewind, never before: a death in between leaves the mark, and
+      // the recovery redoes the same rewind.
+      clearPullMark();
       // Drain the per-cycle trip flags (audit low). A guard or latch that
       // tripped inside THIS cycle is accounted for by the failure strike
       // below; left set, the flag would surface in the NEXT cycle's success

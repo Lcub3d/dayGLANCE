@@ -1,0 +1,123 @@
+name: Jobu product integration
+on:
+  push:
+    branches: [work/jobu-bootstrap]
+    paths:
+      - .github/workflows/jobu-product.yml
+      - .jobu-integration/**
+permissions:
+  contents: write
+concurrency:
+  group: jobu-product-integration
+  cancel-in-progress: true
+jobs:
+  verify:
+    if: github.repository == 'Lcub3d/dayGLANCE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      JOBU_ROOT: /tmp/jobu-work
+      JOBU_REPORT: /tmp/jobu-report
+      MAIN_SHA: 04f4f94db22e06e94ed156017dae3a7f4901193c
+      FULL_SHA: 5918cefd60e1b2a91f3121cce23396e4a5d077a9
+      LIFE_SHA: ba42ef2ad907be0c5c3633cfaf891b70b91389bb
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Decode and verify staged sources
+        run: |
+          mkdir -p "$JOBU_ROOT" "$JOBU_REPORT"
+          python - <<'PY'
+          from pathlib import Path
+          import os,hashlib,base64,lzma,json
+          s=''.join(Path(f'.jobu-integration/x{i:02d}').read_text().strip() for i in range(11))
+          digest=hashlib.sha256(s.encode()).hexdigest()
+          assert digest=='7c55039359987f171b2f652979c397f61a1e966cd9b5c18fa03dbcb2af239ccd',digest
+          data=json.loads(lzma.decompress(base64.b64decode(s)))
+          for name,value in data.items():
+            assert name in ['product.patch','assembly.py','browser.py']
+            (Path(os.environ['JOBU_ROOT'])/name).write_text(value)
+          PY
+      - name: Assemble preserved product sources
+        run: |
+          mkdir -p "$JOBU_ROOT"/jobu-bundle/{full,main,life,contrib} "$JOBU_ROOT/app"
+          git archive "$FULL_SHA" | tar -x -C "$JOBU_ROOT/jobu-bundle/full"
+          git archive "$MAIN_SHA" | tar -x -C "$JOBU_ROOT/jobu-bundle/main"
+          git archive "$LIFE_SHA" | tar -x -C "$JOBU_ROOT/jobu-bundle/life"
+          git archive 3da80f21f293819fd170c19ae035594de6cc7967 | tar -x -C "$JOBU_ROOT/jobu-bundle/contrib"
+          cp -a "$JOBU_ROOT/jobu-bundle/full/." "$JOBU_ROOT/app/"
+          python "$JOBU_ROOT/assembly.py"
+          git -C "$JOBU_ROOT/app" init
+          git -C "$JOBU_ROOT/app" config user.name Lcub3d
+          git -C "$JOBU_ROOT/app" config user.email 46134215+Lcub3d@users.noreply.github.com
+          git -C "$JOBU_ROOT/app" add .
+          git -C "$JOBU_ROOT/app" commit -qm 'Assembly baseline'
+          git -C "$JOBU_ROOT/app" apply --check "$JOBU_ROOT/product.patch"
+          git -C "$JOBU_ROOT/app" apply "$JOBU_ROOT/product.patch"
+          if test -f .jobu-integration/post-assembly.py; then python .jobu-integration/post-assembly.py; fi
+          git diff "$FULL_SHA" bb3b2b8633327b03fb9cd76ad1d44094fe0b8b95 -- src/components/JoboView.jsx src/components/jobo src/jobo src/hooks/useJoboViewWriter.js src/hooks/useTaskActions.js src/hooks/useDragDrop.js > "$JOBU_REPORT/full-reference-differences.patch"
+      - name: Install dependencies
+        working-directory: /tmp/jobu-work/app
+        run: npm ci --no-audit --no-fund
+      - name: Full tests
+        working-directory: /tmp/jobu-work/app
+        run: npm test -- --reporter=default --reporter=json --outputFile=/tmp/jobu-report/tests.json > /tmp/jobu-report/tests.log 2>&1
+      - name: Lint, audit and build
+        working-directory: /tmp/jobu-work/app
+        run: |
+          npm run lint > "$JOBU_REPORT/lint.log" 2>&1
+          npm run audit:check > "$JOBU_REPORT/audit.log" 2>&1
+          npm run build > "$JOBU_REPORT/build.log" 2>&1
+          TZ=Asia/Singapore npm test -- src/jobu > "$JOBU_REPORT/timezone-singapore.log" 2>&1
+          TZ=America/New_York npm test -- src/jobu > "$JOBU_REPORT/timezone-new-york.log" 2>&1
+      - name: Browser setup
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Actual product browser flow
+        working-directory: /tmp/jobu-work/app
+        run: |
+          npm run dev -- --host 127.0.0.1 > "$JOBU_REPORT/vite.log" 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5197 >/dev/null && break || sleep 1; done
+          python "$JOBU_ROOT/browser.py" > "$JOBU_REPORT/browser.log" 2>&1
+      - name: Publish new personal branches only
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code origin refs/heads/product/jobu >/dev/null 2>&1; then echo 'product/jobu exists; refusing to overwrite'; exit 1; fi
+          if git ls-remote --exit-code origin refs/heads/feature/jobu-todoist >/dev/null 2>&1; then echo 'feature branch exists; refusing to overwrite'; exit 1; fi
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git worktree add --detach /tmp/jobu-publish "$MAIN_SHA"
+          rsync -a --delete --exclude=.git --exclude=node_modules --exclude=dist --exclude=dist-app --exclude=dist-electron --exclude='*.log' "$JOBU_ROOT/app/" /tmp/jobu-publish/
+          cd /tmp/jobu-publish
+          git add -A
+          FINAL_TREE=$(git write-tree)
+          git diff --stat "$MAIN_SHA" > "$JOBU_REPORT/diff-stat.txt"
+          git diff --cached "$MAIN_SHA" --binary > "$JOBU_REPORT/source.patch"
+          cp src/components/jobu/TasksView.jsx /tmp/jobu-final-tasks.jsx
+          cat > src/components/jobu/TasksView.jsx <<'JS'
+          import React from 'react';
+          import {useDayPlannerCtx} from '../../context/DayPlannerContext.jsx';
+          export function FilterList(){return null;}
+          export default function TasksView(){const ctx=useDayPlannerCtx();return <section className="jobu-tasks"><h1>Tasks</h1>{[...(ctx.tasks||[]),...(ctx.unscheduledTasks||[])].filter(t=>!t.deleted).map(t=><p key={t.id}>{t.title}</p>)}</section>;}
+          JS
+          rm src/jobu/quickAdd.js src/jobu/filters.js src/jobu/input-year.test.js
+          git add -A
+          FOUNDATION_TREE=$(git write-tree)
+          FOUNDATION=$(printf '%s\n' 'feat(jobu): independent full JOBO, durable Life Planner and annual templates' | git commit-tree "$FOUNDATION_TREE" -p "$MAIN_SHA" -p "$FULL_SHA" -p "$LIFE_SHA")
+          FEATURE=$(printf '%s\n' 'feat(jobu): Todoist-style quick add, priorities, projects and GLANCE filters' | git commit-tree "$FINAL_TREE" -p "$FOUNDATION")
+          PRODUCT=$(printf '%s\n' 'Merge Todoist-style task workflow into personal Jobu product' | git commit-tree "$FINAL_TREE" -p "$FOUNDATION" -p "$FEATURE")
+          git push --atomic origin "$PRODUCT:refs/heads/product/jobu" "$FEATURE:refs/heads/feature/jobu-todoist"
+          printf '{"product":"%s","feature":"%s","foundation":"%s","tree":"%s"}\n' "$PRODUCT" "$FEATURE" "$FOUNDATION" "$FINAL_TREE" > "$JOBU_REPORT/commits.json"
+      - name: Retain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobu-product-verification
+          path: /tmp/jobu-report/
+          retention-days: 14

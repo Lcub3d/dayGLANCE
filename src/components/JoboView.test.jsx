@@ -109,6 +109,15 @@ describe('JOBO view', () => {
     expect(editor).toContain('useState(() => record?.id || `manual:${crypto.randomUUID()}`)');
     expect(editor).not.toMatch(/toggleComplete|setTasks|localStorage|indexedDB/);
   });
+
+  // MUTATION: go back to <input type="date|time"> and this fails; the browser's
+  // own pickers match nothing else in dayGLANCE.
+  it('the Do editor uses the app\'s own date and time pickers, never the browser\'s', () => {
+    const editor = readFileSync(new URL('./jobo/DoEditor.jsx', import.meta.url), 'utf8');
+    expect(editor).toContain("from '../ClockTimePicker.jsx'");
+    expect(editor).toContain("from '../DatePicker.jsx'");
+    expect(editor).not.toMatch(/type="(date|time)"/);
+  });
 });
 
 describe('Do column gestures snap like the rest of the app', () => {

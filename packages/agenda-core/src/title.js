@@ -6,8 +6,11 @@
 // The sidebar renders tags faded and wikilinks as their display text with
 // a click-through to the note, so it needs the title as segments rather
 // than a string. Nothing here decides what a tag or link MEANS.
+//
+// A web address is matched first and kept as text, so a tag-shaped fragment
+// inside one (…/guide#setup) is not a tag, as in the app's extractTags.
 
-const TOKEN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|#(\p{L}[\p{L}\p{N}_/-]*)/gu;
+const TOKEN = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|#(\p{L}[\p{L}\p{N}_/-]*)/gu;
 
 /**
  * @param {string} title
@@ -19,17 +22,25 @@ export function splitTitle(title) {
   const s = String(title ?? '');
   const out = [];
   let last = 0;
+  // Adjacent text (a run, then an address kept as text) reads as one segment.
+  const text = (value) => {
+    const prev = out[out.length - 1];
+    if (prev?.type === 'text') prev.text += value;
+    else out.push({ type: 'text', text: value });
+  };
   for (const m of s.matchAll(TOKEN)) {
     const at = m.index ?? 0;
-    if (at > last) out.push({ type: 'text', text: s.slice(last, at) });
+    if (at > last) text(s.slice(last, at));
     if (m[1] !== undefined) {
-      const target = m[1].trim();
-      out.push({ type: 'link', text: (m[2] ?? target).trim() || target, target });
+      text(m[1]);
+    } else if (m[2] !== undefined) {
+      const target = m[2].trim();
+      out.push({ type: 'link', text: (m[3] ?? target).trim() || target, target });
     } else {
-      out.push({ type: 'tag', text: m[0], tag: m[3].toLowerCase() });
+      out.push({ type: 'tag', text: m[0], tag: m[4].toLowerCase() });
     }
     last = at + m[0].length;
   }
-  if (last < s.length) out.push({ type: 'text', text: s.slice(last) });
+  if (last < s.length) text(s.slice(last));
   return out;
 }

@@ -59,17 +59,25 @@ const TAG_BODY = '[\\p{L}\\p{N}_/-]';
 export const TAG_BODY_CHAR = new RegExp(`^${TAG_BODY}$`, 'u');
 /** A whole tag name, without the leading `#`. */
 export const TAG_NAME = new RegExp(`^${TAG_START}${TAG_BODY}*$`, 'u');
-// Safe to hoist despite the `g` flag: String#match resets lastIndex itself.
-const TAG_IN_TEXT = new RegExp(`#(${TAG_START}${TAG_BODY}*)`, 'gu');
+// A web address. A tag-shaped fragment inside one (…/guide#setup) is part
+// of the address, not a tag: it is neither extracted nor stripped, so the
+// address survives every surface and the Obsidian completion log. The tag
+// readers match an address first and skip it. packages/obsidian-format and
+// packages/agenda-core mirror this by hand.
+const WEB_ADDRESS = 'https?:\\/\\/[^\\s<>"{}|\\\\^`[\\]]+';
+// Safe to hoist despite the `g` flag: matchAll and replace reset lastIndex.
+const TAG_OR_ADDRESS = new RegExp(`(${WEB_ADDRESS})|#(${TAG_START}${TAG_BODY}*)`, 'gu');
+
+/** The #tags in a text, without the `#`, case kept, web addresses skipped. */
+export const tagsIn = (text) => [...String(text ?? '').matchAll(TAG_OR_ADDRESS)]
+  .filter((m) => m[1] === undefined)
+  .map((m) => m[2]);
 
 // Extract #hashtags from a task title (tags must start with a letter).
-export const extractTags = (title) => {
-  const matches = title.match(TAG_IN_TEXT);
-  return matches ? matches.map(tag => tag.slice(1).toLowerCase()) : [];
-};
+export const extractTags = (title) => tagsIn(title).map(tag => tag.toLowerCase());
 
-/** Drops every #tag from a text, leaving the whitespace around it. */
-export const stripTags = (text) => String(text ?? '').replace(TAG_IN_TEXT, '');
+/** Drops every #tag from a text, leaving the whitespace around it and any web address whole. */
+export const stripTags = (text) => String(text ?? '').replace(TAG_OR_ADDRESS, (all, address) => (address ? all : ''));
 
 // A [[wikilink]] in a title: the target (path and heading, as Obsidian
 // resolves it) and an optional |alias. One regex for every reader below.

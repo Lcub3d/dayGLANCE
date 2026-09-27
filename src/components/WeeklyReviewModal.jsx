@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, BarChart3, CalendarDays, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Flag, Flame, FolderOpen, Loader, RefreshCw, Sparkles, Target, TrendingUp, Trophy, X, Zap } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
-import { dateToString, formatDateRange, stripWikilinks } from '../utils/taskUtils.js';
+import { dateToString, formatDateRange, stripWikilinks, tagsIn } from '../utils/taskUtils.js';
 import { getOccurrencesInRange } from '../utils/recurrenceEngine.js';
 import { calculateProjectProgress, isProjectStalled } from '../utils/projectProgress.js';
 import { calculateGoalProgress } from '../utils/goalProgress.js';
@@ -260,7 +260,7 @@ const WeeklyReviewModal = () => {
         // Tag breakdown for AI summary
         const tagStats = {};
         pastRegular.forEach(t => {
-          const taskTags = (t.title.match(/#(\p{L}[\p{L}\p{N}_]*)/gu) || []).map(tag => tag.slice(1));
+          const taskTags = tagsIn(t.title);
           taskTags.forEach(tag => {
             if (!tagStats[tag]) tagStats[tag] = { total: 0, completed: 0 };
             tagStats[tag].total++;

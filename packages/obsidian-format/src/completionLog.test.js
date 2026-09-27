@@ -74,3 +74,14 @@ describe('completionLogDate', () => {
     expect(completionLogDate('garbage', '2026-09-02')).toBe('2026-09-02');
   });
 });
+
+// MUTATION: drop the address alternative and the fragment moves to the end
+// of the line as a real vault tag, and the link breaks.
+describe('formatCompletionLogEntry keeps web addresses whole', () => {
+  it('a fragment in a URL stays in the URL and is not written as a tag', () => {
+    const line = formatCompletionLogEntry({ title: 'Read https://example.com/guide#setup #docs', completedAt: '2026-09-27T10:00:00-05:00', fallbackDate: '2026-09-27' });
+    expect(line).toContain('Read https://example.com/guide#setup [completion::');
+    expect(line.endsWith(' #docs')).toBe(true);
+    expect(line).not.toMatch(/ #setup/);
+  });
+});

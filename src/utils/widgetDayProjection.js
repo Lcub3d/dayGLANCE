@@ -34,7 +34,7 @@
 // week would get projected days with recurring blocks silently missing.
 
 import { stripWikilinksAndTags, dateToString } from './taskUtils.js';
-import { taskColorToHex, TAILWIND_TO_HEX } from './colorUtils.js';
+import { taskColorToHex, frameColorToHex } from './colorUtils.js';
 import { computeSkySnapshot, projectDialSnapshot } from './dayDial.js';
 
 // Local on purpose: streamDeckPayload.js exports one but pulls in an Electron
@@ -140,7 +140,7 @@ export function buildScheduleSections({ scheduled, frames, frameAvailableMinutes
 
     const frameTasks = scheduled.filter(t => taskFrameMap.get(String(t.id)) === frame.frameId);
     const totalAvail = frameAvailableMinutes(frame);
-    const frameColorHex = TAILWIND_TO_HEX[frame.color] || '#3b82f6';
+    const frameColorHex = frameColorToHex(frame.color);
 
     if (totalAvail > 0 || frameTasks.length > 0) {
       sections.push({
@@ -179,6 +179,8 @@ export function buildScheduleSections({ scheduled, frames, frameAvailableMinutes
  * @param opts.frameAvailableMinutes (frame) => minutes; the caller wraps
  *                         computeAvailableSlots(frame, date), which already
  *                         knows a future day has no elapsed time.
+ * @param opts.dialFrames  The same frames with their unfloored `slots`, for
+ *                         the Day Dial (projectDialSnapshot `frames`).
  * @param opts.dayWindow   getDayWindow(dateStr) or null.
  * @param opts.coords      Stored weather coords or null → no sky.
  * @param opts.goalsDue    Goals with targetDate === dateStr, already shaped.
@@ -187,7 +189,7 @@ export function buildScheduleSections({ scheduled, frames, frameAvailableMinutes
 export function buildProjectedDay({
   date, dateStr, dateLabel,
   dayTasks = [], prevDayTasks = [], deadlineTasks = [],
-  frames = [], frameAvailableMinutes = () => 0,
+  frames = [], frameAvailableMinutes = () => 0, dialFrames = null,
   dayWindow = null, coords = null, goalsDue = [],
   projectNameFor = () => '',
 }) {
@@ -246,6 +248,7 @@ export function buildProjectedDay({
       dayWindow,
       routines: null,
       routineCompletions: null,
+      frames: dialFrames,
     }),
   };
 }

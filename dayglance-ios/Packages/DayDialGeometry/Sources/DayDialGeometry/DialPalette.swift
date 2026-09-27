@@ -97,6 +97,18 @@ public struct WidgetDialPalette: DialColorMuting, DialIntensityProviding, DialSt
     /// wedge in one pastel family. The arithmetic is dayDial.js's, in its
     /// order, so the two round to the same byte.
     public static func mute(hex: String?) -> String {
+        mute(hex: hex, saturationCap: 0.5, lightness: 0.73)
+    }
+
+    /// A frame's enclosure (muteDialFrameColor): the same hue rule, softened
+    /// to saturation 0.28 and lightness 0.62 so the outline sits below the
+    /// block rims. The hub's frame title uses `mute(hex:)`, on purpose.
+    public static func muteFrame(hex: String?) -> String {
+        mute(hex: hex, saturationCap: DialFrames.saturationCap, lightness: DialFrames.lightness)
+    }
+
+    /// muteDialColorWith: the cap and the pinned lightness as inputs.
+    public static func mute(hex: String?, saturationCap: Double, lightness: Double) -> String {
         guard let rgb = Self.rgb(hex) else { return fallbackHex }
         let (r, g, b) = rgb
         let mx = Swift.max(r, g, b)
@@ -111,8 +123,8 @@ public struct WidgetDialPalette: DialColorMuting, DialIntensityProviding, DialSt
         let l0 = (mx + mn) / 2
         let s0 = mx == mn ? 0 : (mx - mn) / (1 - abs(2 * l0 - 1))
 
-        let s = Swift.min(s0, 0.5)
-        let l = 0.73
+        let s = Swift.min(s0, saturationCap)
+        let l = lightness
 
         let c = (1 - abs(2 * l - 1)) * s
         let x = c * (1 - abs((h * 6).truncatingRemainder(dividingBy: 2) - 1))

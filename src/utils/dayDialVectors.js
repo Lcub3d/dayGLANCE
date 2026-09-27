@@ -32,9 +32,13 @@ import {
   computeDialModel,
   computeDialRoutines,
   computeMoonBand,
+  computeDialFrames,
   computeSkySnapshot,
   dialAngle,
   dialArcPath,
+  dialCurrentFrame,
+  dialFrameAvailableMinutes,
+  dialFrameRadii,
   dialIntensity,
   dialLaneBand,
   dialPoint,
@@ -44,6 +48,7 @@ import {
   initialDialSelection,
   moonPhasePath,
   muteDialColor,
+  muteDialFrameColor,
   padDialSegment,
   projectDialSnapshot,
   stepDialSelection,
@@ -232,6 +237,47 @@ const geometry = () => ({
       '#111111', '#ffffff', '#808080', '#6f6f9e', '#4ec9b0', '#5b7fa8', '#5f6b8f', '#a08a5b', '#8a6ba8',
       'not-a-color', null, '#abc']
       .map((hex) => ({ input: { hex }, expected: { hex: muteDialColor(hex) } })),
+  },
+
+  muteDialFrameColor: {
+    description: 'A frame\'s enclosure colour: muteDialColor\'s arithmetic with saturation capped at 0.28 and lightness 0.62 '
+      + '(docs/day-dial-frames-spec.html). The first eight are the frame palette\'s hexes (colorUtils frameColorToHex).',
+    cases: ['#6366f1', '#f59e0b', '#22c55e', '#3b82f6', '#f43f5e', '#a855f7', '#14b8a6', '#f97316',
+      '#111111', '#ffffff', '#808080', 'not-a-color', null]
+      .map((hex) => ({ input: { hex }, expected: { hex: muteDialFrameColor(hex) } })),
+  },
+
+  dialFrameRadii: {
+    description: 'A frame\'s outline radii and stroke on a block band, at a nesting depth (capped). '
+      + 'Band-proportional: the widget band 129–151 gives the spec\'s 126 / 153 / 1.2pt.',
+    cases: [
+      ...[0, 1, 2].map((depth) => ({ rInner: SPEC.rBlock - SPEC.wBlock / 2, rOuter: SPEC.rBlock + SPEC.wBlock / 2, depth })),
+      ...[0, 1, 2].map((depth) => ({ rInner: WEB.rInner, rOuter: WEB.rEdge, depth })),
+    ].map((input) => ({ input, expected: dialFrameRadii(input.rInner, input.rOuter, input.depth) })),
+  },
+
+  dialCurrentFrame: {
+    description: 'The frame the hub speaks for: the innermost frame now is inside (deepest, then latest start); null outside all.',
+    cases: (() => {
+      const { frames } = computeDialFrames([
+        { frameId: 'day', label: 'Work day', color: 'bg-blue-200', start: '09:00', end: '17:00' },
+        { frameId: 'focus', label: 'Focus', color: 'bg-green-200', start: '10:00', end: '11:30' },
+        { frameId: 'evening', label: 'Evening', color: 'bg-rose-200', start: '19:00', end: '22:00' },
+      ]);
+      const wire = frames.map(({ name, startMin, endMin, depth }) => ({ name, startMin, endMin, depth }));
+      return [480, 540, 600, 689, 690, 1019, 1020, 1140, 1319, 1320].map((nowMin) => ({
+        input: { frames: wire, nowMin },
+        expected: { name: dialCurrentFrame(wire, nowMin)?.name ?? null },
+      }));
+    })(),
+  },
+
+  dialFrameAvailableMinutes: {
+    description: 'Free minutes still ahead in a frame at nowMin: each slot from the later of its start and now.',
+    cases: [480, 540, 560, 600, 700, 900, 930, 960, 1100].map((nowMin) => {
+      const frame = { slots: [{ startMin: 540, endMin: 600 }, { startMin: 900, endMin: 960 }] };
+      return { input: { slots: [[540, 600], [900, 960]], nowMin }, expected: { minutes: dialFrameAvailableMinutes(frame, nowMin) } };
+    }),
   },
 
   moonPhasePath: {

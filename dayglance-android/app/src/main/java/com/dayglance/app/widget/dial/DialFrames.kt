@@ -31,7 +31,8 @@ object DialFrames {
     const val INNER_GAP = 3.0 / 22
     const val OUTER_GAP = 2.0 / 22
     const val STEP = 3.2 / 22
-    const val STROKE = 1.2 / 22
+    /** 1.8pt: the spec's 1.2pt read too faint on device. */
+    const val STROKE = 1.8 / 22
     const val OPACITY = 0.45
     /** One level of nesting is drawn; a second step would cross the wedges. */
     const val MAX_DEPTH = 1

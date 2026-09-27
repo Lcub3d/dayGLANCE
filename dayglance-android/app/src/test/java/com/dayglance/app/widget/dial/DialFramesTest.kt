@@ -46,7 +46,7 @@ class DialFramesTest {
         val top = DialFrames.radii(0)
         assertEquals(126.0, top.inner, 1e-9)
         assertEquals(153.0, top.outer, 1e-9)
-        assertEquals(1.2, top.width, 1e-9)
+        assertEquals(1.8, top.width, 1e-9)
         assertEquals(DialFrames.radii(1), DialFrames.radii(4))
     }
 

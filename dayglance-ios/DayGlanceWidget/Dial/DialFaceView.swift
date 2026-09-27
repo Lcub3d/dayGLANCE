@@ -200,7 +200,7 @@ struct DialFaceView: View {
     // MARK: frames: an enclosure around the span of the band each covers
     //
     // docs/day-dial-frames-spec.html: an outline at r = 126 and 153 (the gaps
-    // either side of the band) joined by radial end caps, 1.2pt at 0.45, in
+    // either side of the band) joined by radial end caps, 1.8pt at 0.45, in
     // the frame's colour through the SOFTENED mute, so it sits below the
     // rims and the needle stays the brightest thing on the face. A nested
     // frame steps in 3.2pt (capped at one level by the app). Drawn after the

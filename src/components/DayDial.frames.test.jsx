@@ -50,10 +50,12 @@ describe('Day Dial frames', () => {
     const html = render(await i18nEn(), FRAME_SCENARIOS.running);
     const rings = enclosures(html);
     expect(rings.map((r) => r.stroke)).toEqual(['#3b82f6', '#f59e0b', '#f43f5e'].map(muteDialFrameColor));
-    // 1.2 of the widget's 22pt band, on this band's 85 units.
+    // The phone width: 1.2 of the widget spec's 22pt band, on this band's 85
+    // units (the static render has no measured dial, so no pixel cap).
     expect(rings[0].width).toBeCloseTo((1.2 / 22) * 85, 5);
     expect(html).toContain('Monthly budget review');
-    expect(html).not.toContain('available');
+    // No frame rows in the hub while a task runs (the option labels may say it).
+    expect(html).not.toContain('text-[#4ec9b0]/75');
     expect(legendValue(html, 'Frames')).toMatch(/^\d+%$/);
   });
 
@@ -76,13 +78,27 @@ describe('Day Dial frames', () => {
     expect(firstRadius(outer.d) - firstRadius(inner.d)).toBeCloseTo((3.2 / 22) * 85, 5);
   });
 
-  it('the inner outline sits just outside the sky strip, not on it', async () => {
+  it('the inner outline lies on the wedges\' inner edge, the outer keeps its outer edge', async () => {
     const [top, nested] = enclosures(render(await i18nEn(), FRAME_SCENARIOS.nested));
-    // The inner arc is the path's second arc (dialSectorPath: outer, then inner back).
+    // dialSectorPath: the outer arc first, then the inner arc back.
+    const outerRadius = (d) => Number(d.split(' A ')[1].split(' ')[0]);
     const innerRadius = (d) => Number(d.split(' A ')[2].split(' ')[0]);
-    // Daylight band 282–302: the stroke's inner edge is on the strip's outer edge.
-    expect(innerRadius(top.d) - top.width / 2).toBeCloseTo(302, 5);
+    // The band starts at 300 and the sky strip stops there: the stroke's
+    // inner edge is the band's, so no wedge reaches past it.
+    expect(innerRadius(top.d) - top.width / 2).toBeCloseTo(300, 5);
+    // The outer outline's outer edge is where the phone draws it; a thinner
+    // stroke narrows from the inside.
+    expect(outerRadius(top.d) + top.width / 2).toBeCloseTo(385 + (2 / 22) * 85 + ((1.2 / 22) * 85) / 2, 5);
     expect(innerRadius(nested.d) - innerRadius(top.d)).toBeCloseTo((3.2 / 22) * 85, 5);
+  });
+
+  it('frames are selectable: an outline to point at and a spoken option', async () => {
+    const html = render(await i18nEn(), FRAME_SCENARIOS.frameRows);
+    // A wide transparent stroke over each outline takes the pointer.
+    expect((html.match(/stroke="transparent"[^>]*pointer-events="stroke"/g) || []).length).toBe(3);
+    // And each is an option in the ring's listbox, among the blocks.
+    expect(html).toContain('>Frames: Admin, 14:00 – 17:45, 27m available<');
+    expect(html).toContain('>Frames: Deep work, 09:00 – 12:30<');
   });
 
   it('a frame at 0 %: drawn, the figure reads 0 %, all of it available', async () => {

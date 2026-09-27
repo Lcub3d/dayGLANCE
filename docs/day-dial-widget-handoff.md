@@ -960,19 +960,40 @@ this section records what the build decided on top of it.
   block band, joined by radial end caps: the stroke of a closed annular
   sector (`dialSectorPath` at the frame's two radii). On the widget, the
   outlines are at r = 126 and 153, the gaps either side of the 129–151 band.
-  The stroke is 1.2 pt at opacity 0.45. Nothing else moves.
+  The stroke is 1.8 pt at opacity 0.45. The spec drew 1.2 pt, which read
+  too faint on devices. Nothing else moves.
 - **Band-proportional.** `dialFrameRadii(rInner, rOuter, depth)` states every
-  length as a fraction of the band's width (3/22 inside, 2/22 outside, 3.2/22
-  per level, 1.2/22 stroke). The in-app dial's band (300–385 in its
-  1000-unit viewBox) therefore gets 288.4 / 392.7 and a 4.6-unit stroke: the
-  same design, scaled rather than copied, with one exception on the INNER
-  side. The in-app daylight band (the sky strip, 282–302) tucks under the
-  wedges, so there is no gap in front of the band, and the scaled inner
-  outline (288.4) landed on the strip. In the app the inner outline sits
-  just outside the strip instead: the inner edge of its stroke lies on the
-  strip's outer edge (302), and a nested frame steps in from there. The
-  outer outline keeps its scaled radius. The widgets are unchanged, because
-  their 126pt inner outline sits in a real gap, clear of their sky ring.
+  length as a fraction of the band's width: 3/22 inside, 2/22 outside, 3.2/22
+  per level, and 1.8/22 for the stroke. The widgets draw exactly that.
+- **The in-app dial places its own outlines** (`appFrameRadii` in
+  `DayDial.jsx`). It starts from the same design and differs in three ways,
+  all found on device:
+  - *Width.* The stroke is 1.2/22 of the band (4.6 units) on a phone-sized
+    dial, and is capped at 2.4 screen pixels. On a desktop or tablet dial,
+    where the same units are about twice the pixels, the line gets thinner
+    rather than heavier.
+  - *Thinning comes from the inside.* The outer outline's outer edge stays
+    where the phone draws it (≈395), whatever the width.
+  - *The inner outline lies on the wedges' inner edge.* Its stroke runs from
+    300 outward, so no wedge reaches past it. The daylight band (the sky
+    strip) now ends at 300 rather than tucking under the wedges to 302. That
+    tucked sliver was what looked like a task spilling past the border onto
+    the strip.
+  - Nested frames step in 3.2/22 of the band from both edges.
+  - The widgets are unaffected: their 126 pt inner outline sits in a real gap,
+    clear of their sky ring.
+- **Selectable in the app.** A drawn frame joins the ring's selectable items
+  (`frameItems`):
+  - **Pointer:** the outline is the target, through a transparent 12 px hit
+    stroke.
+  - **Hub:** pointing at a frame, tapping it or walking to it with the
+    keyboard puts it in the hub, with the same rows as the current frame
+    ("available" on today only).
+  - **Screen readers:** each frame has its own listbox option, "Frames:
+    <name>, <span>, <available>".
+  - **No action sheet.** A second tap or Enter does nothing, because a frame
+    has nothing to act on.
+  - **Keyboard entry** still lands on a block, never on a frame.
 - **Colour.** The frame's hex through `muteDialFrameColor`: saturation
   capped at 0.28 and lightness 0.62 (`muteDialColorWith`, the app's
   `muteDialColor` arithmetic with the two constants as inputs). This keeps

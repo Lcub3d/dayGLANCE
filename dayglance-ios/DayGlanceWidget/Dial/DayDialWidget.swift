@@ -192,8 +192,13 @@ struct DayDialWidgetView: View {
             ? day.freshness.plannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour) : nil
         let use24Hour = entry.snapshot?.use24Hour
         let mono = renderingMode != .fullColor
+        // Frames speak only when nothing is running on a live day, in place
+        // of the open-time rows; a running block (or sleep) always wins.
+        let hubFrame = (status == .live && hub.current == nil && hub.sleep == nil)
+            ? DialHubFrame(frames: input.frames, nowMin: nowMin) : nil
         let parts = DialParts(input: input, nowMin: nowMin, hub: hub, use24Hour: use24Hour, countdownEnd: countdownEnd,
-                              openEnd: openEnd, status: status, plannedAsOf: plannedAsOf, dimmed: dimmed, mono: mono)
+                              openEnd: openEnd, status: status, plannedAsOf: plannedAsOf, dimmed: dimmed, mono: mono,
+                              frame: hubFrame)
 
         GeometryReader { geo in
             if family == .systemExtraLarge {
@@ -224,7 +229,7 @@ struct DayDialWidgetView: View {
         .widgetURL(Self.tapURL(day: day, entryDate: entry.date, calendar: calendar))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: DialHubView.summary(date: entry.date, state: hub, use24Hour: use24Hour,
-                                                               status: status, plannedAsOf: plannedAsOf)))
+                                                               status: status, plannedAsOf: plannedAsOf, frame: hubFrame)))
     }
 
     /// What one entry's dial draws, resolved once in `body`.
@@ -239,6 +244,7 @@ struct DayDialWidgetView: View {
         let plannedAsOf: String?
         let dimmed: Bool
         let mono: Bool
+        let frame: DialHubFrame?
     }
 
     /// The dial at `size`: face, hub and needle in the spec's coordinates,
@@ -251,7 +257,7 @@ struct DayDialWidgetView: View {
                     .grayscale(p.dimmed ? 0.5 : 0)
                 DialHubView(date: entry.date, state: p.hub, use24Hour: p.use24Hour,
                             countdownEnd: p.countdownEnd, openEnd: p.openEnd,
-                            status: p.status, plannedAsOf: p.plannedAsOf)
+                            status: p.status, plannedAsOf: p.plannedAsOf, frame: p.frame)
                 DialNeedleView(nowMin: p.nowMin)
                     .widgetAccentable()
             }

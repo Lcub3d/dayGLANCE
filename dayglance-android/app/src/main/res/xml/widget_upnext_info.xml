@@ -9,6 +9,6 @@
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_upnext"
-    android:previewLayout="@layout/widget_upnext"
+    android:previewLayout="@layout/widget_upnext_preview"
     android:widgetCategory="home_screen"
     android:description="@string/widget_upnext_description" />

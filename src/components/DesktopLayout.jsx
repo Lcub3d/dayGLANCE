@@ -856,11 +856,11 @@ const DesktopLayout = () => {
           <div className="flex-1 min-w-0 relative">
             <div
               ref={calendarRef}
-              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
+              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
-              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 ${cardBg}`}>
+              <div ref={(el) => { stickyHeaderRef.current = el; }} className={`sticky top-0 z-20 ${effectiveViewMode === 'jobo' ? 'shrink-0' : ''} ${cardBg}`}>
               <CalendarHeader />
               </div>
 

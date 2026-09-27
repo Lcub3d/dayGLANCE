@@ -2055,7 +2055,91 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt."
+    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
+    "view": {
+      "activeLabel": "Aktive Zeit",
+      "addDo": "Add Do",
+      "capturedPlan": "Captured plan",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "completeInterval": "Bitte vollständige Start- und Endzeit eingeben.",
+      "completedAt": "Als erledigt markiert um {{time}}",
+      "completedByCompletion": "„Abgeschlossen“ entsteht durch ein Abschlussereignis. Eine Neubewertung kann Gestartet, Teilweise oder Größtenteils sein.",
+      "completionAxis": "Erledigung",
+      "do": "Ausführung",
+      "elapsedLabel": "Verstrichene Zeit",
+      "elapsedMinutes": "{{minutes}} Min. verstrichen",
+      "emptyDo": "An diesem Tag wurde kein Do erfasst.",
+      "emptyPlan": "Kein zeitlich geplanter Plan an diesem Tag.",
+      "endDate": "End date",
+      "executionHistory": "Ausführungsverlauf ({{count}})",
+      "gapLabel": "Lücken zwischen Sitzungen",
+      "gapMinutes": "{{minutes}} Min. Lücken",
+      "inferredHint": "Dieses experimentelle Intervall wurde aus der Plandauer geschätzt. Es bleibt als Verlauf sichtbar, zählt aber nicht als Messung oder genauer Vergleich.",
+      "inferredPlanDuration": "Startzeit aus der Plandauer abgeleitet.",
+      "invalidRecords": "{{count}} ungültige Ledger-Einträge werden in dieser Ansicht ignoriert.",
+      "latestShort": "Zuletzt",
+      "loadError": "JOBO konnte nicht geladen werden.",
+      "measuredOnly": "Nur gemessene Einträge, nicht die gesamte Ausführung.",
+      "noAttempts": "Keine Ausführungen erfasst.",
+      "noAttemptsShort": "Noch keine Ausführungen",
+      "noTimedPlan": "Kein zeitlicher Plan",
+      "overlapLabel": "Überschneidende Zeit",
+      "overlapMinutes": "{{minutes}} Min. Überschneidung",
+      "pendingSave": "Wartet auf lokale Speicherung; bei einem Fehler wird automatisch erneut versucht.",
+      "plan": "Plan",
+      "progress": {
+        "started": "Gestartet",
+        "partial": "Teilweise",
+        "mostly": "Größtenteils"
+      },
+      "progressLabel": "Fortschritt",
+      "readOnly": "JOBO ist auf diesem Gerät schreibgeschützt. Änderungen an Do-Einträgen sind deaktiviert.",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordedLabel": "Gemessene Zeit",
+      "recordedMinutes": "{{minutes}} Min. erfasst",
+      "retryLoad": "Erneut laden",
+      "source": {
+        "completion": "Aufgabenabschluss",
+        "manual": "Manueller Eintrag",
+        "focus": "Fokus-Sitzung"
+      },
+      "sourceLabel": "Quelle",
+      "storageError": "Das JOBO-Ledger konnte nicht geschrieben werden. Bereits gespeicherte Daten werden weiterhin angezeigt.",
+      "summary": {
+        "withinPlan": "Im Plan",
+        "late": "Spät",
+        "longer": "Länger",
+        "split": "Geteilt",
+        "notStarted": "Kein Do erfasst",
+        "unplanned": "Ungeplant"
+      },
+      "timeAxis": "Zeitverlauf",
+      "timeDuration": {
+        "shorter": "{{minutes}} Min. kürzer",
+        "onEstimate": "Wie geschätzt",
+        "longer": "{{minutes}} Min. länger"
+      },
+      "timeDurationLabel": "Dauer",
+      "timeFinish": {
+        "early": "{{minutes}} Min. früher beendet",
+        "onTime": "Pünktlich beendet",
+        "late": "{{minutes}} Min. später beendet"
+      },
+      "timeFinishLabel": "Ende",
+      "timeIncomplete": "Tatsächlicher Beginn/Ende nicht vollständig erfasst.",
+      "timeIncompleteShort": "Zeit ergänzen",
+      "timeStart": {
+        "early": "{{minutes}} Min. früher gestartet",
+        "onTime": "Pünktlich gestartet",
+        "late": "{{minutes}} Min. später gestartet"
+      },
+      "timeStartLabel": "Start",
+      "titleRequired": "Enter a title for this Do.",
+      "updateFailed": "Die Do-Änderung konnte nicht gespeichert werden.",
+      "setInterval": "Tatsächlichen Zeitraum festlegen",
+      "dragCompletion": "Ziehen, um den Zeitraum festzulegen; mit Enter bearbeiten.",
+      "completionPoint": "Erfasst um {{time}}. Für einen Zeitraum den tatsächlichen Beginn ergänzen."
+    }
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",

@@ -18,7 +18,7 @@ describe('view modes', () => {
       for (const v of list.slice(list.indexOf('sched') + 1)) expect(EXPERIMENTAL_DESKTOP_VIEWS[v]).toBeDefined();
     }
     expect(DESKTOP_VIEW_MODES).toEqual(['multi', 'day', 'week', 'month', 'sched', 'jobo']);
-    expect(NARROW_DESKTOP_VIEW_MODES.at(-1)).toBe('sched');
+    expect(NARROW_DESKTOP_VIEW_MODES.at(-1)).toBe('jobo');
     expect(MOBILE_VIEW_MODES.at(-1)).toBe('sched');
   });
 
@@ -32,9 +32,9 @@ describe('view modes', () => {
 
   it('leaves MONTH out of the cyclers while the Day Dial is up', () => {
     expect(cyclerStates(true, false, gated())).toEqual(['multi', 'day', 'week', 'month', 'sched']);
-    expect(cyclerStates(false)).toEqual(['multi', 'month', 'sched']);
+    expect(cyclerStates(false, false, gated())).toEqual(['multi', 'month', 'sched']);
     expect(cyclerStates(true, true, gated())).toEqual(['multi', 'day', 'week', 'sched']);
-    expect(cyclerStates(false, true)).toEqual(['multi', 'sched']);
+    expect(cyclerStates(false, true, gated())).toEqual(['multi', 'sched']);
     expect(mobileToggleStates()).toEqual(['grid', 'list', 'month', 'sched']);
     expect(mobileToggleStates(true)).toEqual(['grid', 'list', 'sched']);
   });
@@ -70,7 +70,7 @@ describe('views turned off per device', () => {
     expect(enabledViews(DESKTOP_VIEW_MODES, gated(['multi']))).toEqual(['day', 'week', 'month', 'sched']);
     expect(enabledViews(MOBILE_VIEW_MODES, ['grid', 'list', 'month'])).toEqual(['sched']);
     expect(cyclerStates(true, false, gated(['multi', 'sched']))).toEqual(['day', 'week', 'month']);
-    expect(cyclerStates(false, false, ['month'])).toEqual(['multi', 'sched']);
+    expect(cyclerStates(false, false, gated(['month']))).toEqual(['multi', 'sched']);
     expect(cyclerStates(true, true, gated(['day']))).toEqual(['multi', 'week', 'sched']);
     expect(mobileToggleStates(false, ['grid'])).toEqual(['list', 'month', 'sched']);
     expect(mobileToggleStates(true, ['sched'])).toEqual(['grid', 'list']);
@@ -140,11 +140,15 @@ describe('experimental views behind a flag', () => {
   it('never offers an off view as something to turn on or off per device', () => {
     expect(offeredViews(DESKTOP_VIEW_MODES, {})).toEqual(['multi', 'day', 'week', 'month', 'sched']);
     expect(offeredViews(DESKTOP_VIEW_MODES, { joboEnabled: true })).toEqual(DESKTOP_VIEW_MODES);
-    expect(offeredViews(NARROW_DESKTOP_VIEW_MODES, {})).toEqual(NARROW_DESKTOP_VIEW_MODES);
+    expect(offeredViews(NARROW_DESKTOP_VIEW_MODES, {})).toEqual(['multi', 'month', 'sched']);
   });
 
-  it('is never offered on a narrow desktop, where DAY and WEEK do not fit either', () => {
-    expect(NARROW_DESKTOP_VIEW_MODES).not.toContain('jobo');
+  it('offers JOBO on narrow desktops/landscape, but not the phone/portrait toggle', () => {
+    const hidden = gated([], { joboEnabled: true });
+    expect(NARROW_DESKTOP_VIEW_MODES).toContain('jobo');
+    expect(cyclerStates(false, false, hidden)).toContain('jobo');
+    expect(cyclerStates(false, false, gated())).not.toContain('jobo');
+    expect(resolveStoredView('jobo', enabledViews(NARROW_DESKTOP_VIEW_MODES, hidden), 'multi')).toBe('jobo');
     expect(MOBILE_VIEW_MODES).not.toContain('jobo');
   });
 });

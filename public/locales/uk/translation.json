@@ -2148,7 +2148,91 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "План проти факту. Цей режим створюється частинами; перша з них — перемикач, що його показує."
+    "placeholder": "План проти факту. Цей режим створюється частинами; перша з них — перемикач, що його показує.",
+    "view": {
+      "activeLabel": "Активний час",
+      "addDo": "Add Do",
+      "capturedPlan": "Captured plan",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "completeInterval": "Укажіть повний інтервал початку й завершення.",
+      "completedAt": "Позначено як виконане о {{time}}",
+      "completedByCompletion": "Стан «Завершено» створюється подією завершення. Переоцінений Do може бути «Розпочато», «Частково» або «Майже».",
+      "completionAxis": "Виконання",
+      "do": "Виконання",
+      "elapsedLabel": "Час, що минув",
+      "elapsedMinutes": "{{minutes}} хв минуло",
+      "emptyDo": "На цей день немає записаного Do.",
+      "emptyPlan": "На цей день немає Плану з часом.",
+      "endDate": "End date",
+      "executionHistory": "Історія виконання ({{count}})",
+      "gapLabel": "Перерви між сеансами",
+      "gapMinutes": "{{minutes}} хв перерв",
+      "inferredHint": "Цей експериментальний інтервал обчислено з тривалості плану. Він лишається в історії, але не вважається виміром чи точним порівнянням.",
+      "inferredPlanDuration": "Час початку визначено з тривалості Плану.",
+      "invalidRecords": "У цьому поданні пропущено {{count}} некоректних записів журналу.",
+      "latestShort": "Остання",
+      "loadError": "Не вдалося завантажити JOBO.",
+      "measuredOnly": "Лише виміряні записи, не все виконання.",
+      "noAttempts": "Спроб не записано.",
+      "noAttemptsShort": "Спроб ще немає",
+      "noTimedPlan": "Немає Плану з часом",
+      "overlapLabel": "Перекриття",
+      "overlapMinutes": "{{minutes}} хв перекриття",
+      "pendingSave": "Очікується локальне збереження; у разі помилки буде автоматична повторна спроба.",
+      "plan": "План",
+      "progress": {
+        "started": "Розпочато",
+        "partial": "Частково",
+        "mostly": "Майже"
+      },
+      "progressLabel": "Прогрес",
+      "readOnly": "JOBO на цьому пристрої лише для читання. Редагування Do вимкнено.",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordedLabel": "Виміряний час",
+      "recordedMinutes": "{{minutes}} хв записано",
+      "retryLoad": "Повторити завантаження",
+      "source": {
+        "completion": "Завершення завдання",
+        "manual": "Ручний запис",
+        "focus": "Сеанс зосередження"
+      },
+      "sourceLabel": "Джерело",
+      "storageError": "Не вдалося записати журнал JOBO. Уже зафіксовані дані й надалі відображаються.",
+      "summary": {
+        "withinPlan": "За планом",
+        "late": "Пізно",
+        "longer": "Довше",
+        "split": "Розділено",
+        "notStarted": "Немає запису виконання",
+        "unplanned": "Незаплановано"
+      },
+      "timeAxis": "Показники часу",
+      "timeDuration": {
+        "shorter": "На {{minutes}} хв коротше",
+        "onEstimate": "За оцінкою",
+        "longer": "На {{minutes}} хв довше"
+      },
+      "timeDurationLabel": "Тривалість",
+      "timeFinish": {
+        "early": "Завершено на {{minutes}} хв раніше",
+        "onTime": "Завершено вчасно",
+        "late": "Завершено на {{minutes}} хв пізніше"
+      },
+      "timeFinishLabel": "Завершення",
+      "timeIncomplete": "Фактичний початок і кінець записані не повністю.",
+      "timeIncompleteShort": "Додати час",
+      "timeStart": {
+        "early": "Почато на {{minutes}} хв раніше",
+        "onTime": "Почато вчасно",
+        "late": "Почато на {{minutes}} хв пізніше"
+      },
+      "timeStartLabel": "Початок",
+      "titleRequired": "Enter a title for this Do.",
+      "updateFailed": "Не вдалося зберегти зміну Do.",
+      "setInterval": "Задати фактичний інтервал",
+      "dragCompletion": "Перетягніть, щоб задати інтервал; Enter для редагування.",
+      "completionPoint": "Записано о {{time}}. Додайте фактичний початок, щоб записати інтервал."
+    }
   },
   "todoist": {
     "title": "Синхронізація Todoist",

@@ -1,0 +1,30 @@
+name: Jobu UI dependencies
+on:
+  push:
+    branches: [work/jobu-bootstrap]
+    paths: [.github/workflows/jobu-ui-deps.yml]
+permissions:
+  contents: read
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          npm ci --no-audit --no-fund
+          npm install --save-exact @xyflow/react@12.11.3 --no-audit --no-fund
+          tar -czf /tmp/jobu-ui-deps.tar.gz node_modules package.json package-lock.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jobu-ui-deps
+          path: /tmp/jobu-ui-deps.tar.gz
+          retention-days: 3
+          compression-level: 0

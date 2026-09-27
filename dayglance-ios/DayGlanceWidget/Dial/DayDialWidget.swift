@@ -68,7 +68,10 @@ struct DayDialProvider: TimelineProvider {
         let snapshot = loadSnapshot()
         let calendar = Calendar.current
         let now = Date()
-        let size = context.displaySize
+        // The extra-large widget's dial is a box inside it (DialExtraLarge),
+        // and the face is cached by the size it is drawn at: warm that size.
+        let size = context.family == .systemExtraLarge
+            ? DialExtraLarge.dialSize(in: context.displaySize) : context.displaySize
 
         // The days this payload can render, each with its block boundaries
         // on its own clock, and the midnight after the last one.
@@ -157,6 +160,8 @@ struct DayDialWidgetView: View {
     /// the full-colour design take the accent group's colour where the
     /// platform gives it one (white on iOS, the theme's on other platforms).
     @Environment(\.widgetRenderingMode) private var renderingMode
+    /// systemExtraLarge (iPad): the dial on the left, the cards on the right.
+    @Environment(\.widgetFamily) private var family
 
     var body: some View {
         let calendar = Calendar.current
@@ -187,27 +192,77 @@ struct DayDialWidgetView: View {
             ? day.freshness.plannedAsOfLabel(use24Hour: entry.snapshot?.use24Hour) : nil
         let use24Hour = entry.snapshot?.use24Hour
         let mono = renderingMode != .fullColor
+        // Frames speak only when nothing is running on a live day, in place
+        // of the open-time rows; a running block (or sleep) always wins.
+        let hubFrame = (status == .live && hub.current == nil && hub.sleep == nil)
+            ? DialHubFrame(frames: input.frames, nowMin: nowMin) : nil
+        let parts = DialParts(input: input, nowMin: nowMin, hub: hub, use24Hour: use24Hour, countdownEnd: countdownEnd,
+                              openEnd: openEnd, status: status, plannedAsOf: plannedAsOf, dimmed: dimmed, mono: mono,
+                              frame: hubFrame)
 
         GeometryReader { geo in
-            DialCanvas {
-                ZStack(alignment: .topLeading) {
-                    face(input: input, nowMin: nowMin, size: geo.size, mono: mono)
-                        .opacity(dimmed ? 0.45 : 1)
-                        .grayscale(dimmed ? 0.5 : 0)
-                    DialHubView(date: entry.date, state: hub, use24Hour: use24Hour,
-                                countdownEnd: countdownEnd, openEnd: openEnd,
-                                status: status, plannedAsOf: plannedAsOf)
-                    DialNeedleView(nowMin: nowMin)
-                        .widgetAccentable()
+            if family == .systemExtraLarge {
+                // The cards describe a live day; an outdated, mis-zoned or
+                // never-set-up one leaves the column empty.
+                // Split down the middle: the dial centred in the left half.
+                let dialSize = DialExtraLarge.dialSize(in: geo.size)
+                let half = geo.size.width / 2
+                HStack(spacing: 0) {
+                    dial(parts, size: dialSize)
+                        .frame(width: half, height: geo.size.height)
+                    DialCardsColumn(cards: status == .live ? DialCards(day: day, blocks: input.blocks) : .empty,
+                                    height: Double(geo.size.height))
+                        .frame(width: half, height: geo.size.height)
                 }
+                // The full-colour face is an opaque image on the dial's black,
+                // but the system draws the container background with its own
+                // shading on iPad, so the cards' half read as a grey gradient.
+                // Paint that black under both halves; the tinted modes keep
+                // the system's background (their face has no fill).
+                .background(mono ? Color.clear : Color(hex: DialSpec.backgroundHex))
+                .frame(width: geo.size.width, height: geo.size.height)
+            } else {
+                dial(parts, size: geo.size)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
         }
         .containerBackground(Color(hex: DialSpec.backgroundHex), for: .widget)
         .widgetURL(Self.tapURL(day: day, entryDate: entry.date, calendar: calendar))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: DialHubView.summary(date: entry.date, state: hub, use24Hour: use24Hour,
-                                                               status: status, plannedAsOf: plannedAsOf)))
+                                                               status: status, plannedAsOf: plannedAsOf, frame: hubFrame)))
+    }
+
+    /// What one entry's dial draws, resolved once in `body`.
+    private struct DialParts {
+        let input: DialFaceInput
+        let nowMin: Double
+        let hub: DialHubState
+        let use24Hour: Bool?
+        let countdownEnd: Date?
+        let openEnd: Date?
+        let status: DialHubStatus
+        let plannedAsOf: String?
+        let dimmed: Bool
+        let mono: Bool
+        let frame: DialHubFrame?
+    }
+
+    /// The dial at `size`: face, hub and needle in the spec's coordinates,
+    /// fitted by DialCanvas. The face is cached by the size it is drawn at.
+    private func dial(_ p: DialParts, size: CGSize) -> some View {
+        DialCanvas {
+            ZStack(alignment: .topLeading) {
+                face(input: p.input, nowMin: p.nowMin, size: size, mono: p.mono)
+                    .opacity(p.dimmed ? 0.45 : 1)
+                    .grayscale(p.dimmed ? 0.5 : 0)
+                DialHubView(date: entry.date, state: p.hub, use24Hour: p.use24Hour,
+                            countdownEnd: p.countdownEnd, openEnd: p.openEnd,
+                            status: p.status, plannedAsOf: p.plannedAsOf, frame: p.frame)
+                DialNeedleView(nowMin: p.nowMin)
+                    .widgetAccentable()
+            }
+        }
+        .frame(width: size.width, height: size.height)
     }
 
     /// The cached face, or a live draw when the cache has nothing. No
@@ -274,7 +329,9 @@ struct DayDialWidget: Widget {
         }
         .configurationDisplayName("Day Dial")
         .description("Your day as a dial.")
-        .supportedFamilies([.systemLarge])
+        // systemExtraLarge is iPad-only: the dial at full height with the
+        // in-app dial's All Day pill and legend beside it (DialCardsColumn).
+        .supportedFamilies([.systemLarge, .systemExtraLarge])
         .contentMarginsDisabled()
     }
 }

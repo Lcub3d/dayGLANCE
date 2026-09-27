@@ -351,11 +351,73 @@
       }
     ],
     "allDay": [],
+    "frames": [
+      {
+        "name": "Deep work",
+        "colorHex": "#6366f1",
+        "startMin": 510,
+        "endMin": 750,
+        "depth": 0,
+        "slots": [
+          [
+            510,
+            535
+          ],
+          [
+            635,
+            640
+          ],
+          [
+            665,
+            730
+          ]
+        ]
+      },
+      {
+        "name": "Focus",
+        "colorHex": "#22c55e",
+        "startMin": 540,
+        "endMin": 630,
+        "depth": 1,
+        "slots": []
+      },
+      {
+        "name": "Admin",
+        "colorHex": "#f59e0b",
+        "startMin": 900,
+        "endMin": 990,
+        "depth": 0,
+        "slots": [
+          [
+            900,
+            990
+          ]
+        ]
+      },
+      {
+        "name": "Evening",
+        "colorHex": "#f43f5e",
+        "startMin": 1080,
+        "endMin": 1305,
+        "depth": 0,
+        "slots": [
+          [
+            1080,
+            1105
+          ],
+          [
+            1205,
+            1255
+          ]
+        ]
+      }
+    ],
     "totals": {
       "effortMinutes": 200,
       "restoreMinutes": 170,
       "sleepMinutes": 480,
-      "unblockedMinutes": 590
+      "unblockedMinutes": 590,
+      "framesPercent": 45
     }
   },
   "use24Hour": false,
@@ -715,11 +777,73 @@
           }
         ],
         "allDay": [],
+        "frames": [
+          {
+            "name": "Deep work",
+            "colorHex": "#6366f1",
+            "startMin": 510,
+            "endMin": 750,
+            "depth": 0,
+            "slots": [
+              [
+                510,
+                535
+              ],
+              [
+                635,
+                640
+              ],
+              [
+                665,
+                730
+              ]
+            ]
+          },
+          {
+            "name": "Focus",
+            "colorHex": "#22c55e",
+            "startMin": 540,
+            "endMin": 630,
+            "depth": 1,
+            "slots": []
+          },
+          {
+            "name": "Admin",
+            "colorHex": "#f59e0b",
+            "startMin": 900,
+            "endMin": 990,
+            "depth": 0,
+            "slots": [
+              [
+                900,
+                990
+              ]
+            ]
+          },
+          {
+            "name": "Evening",
+            "colorHex": "#f43f5e",
+            "startMin": 1080,
+            "endMin": 1305,
+            "depth": 0,
+            "slots": [
+              [
+                1080,
+                1105
+              ],
+              [
+                1205,
+                1255
+              ]
+            ]
+          }
+        ],
         "totals": {
           "effortMinutes": 200,
           "restoreMinutes": 170,
           "sleepMinutes": 480,
-          "unblockedMinutes": 590
+          "unblockedMinutes": 590,
+          "framesPercent": 45
         }
       }
     },
@@ -1076,11 +1200,73 @@
           }
         ],
         "allDay": [],
+        "frames": [
+          {
+            "name": "Deep work",
+            "colorHex": "#6366f1",
+            "startMin": 510,
+            "endMin": 750,
+            "depth": 0,
+            "slots": [
+              [
+                510,
+                535
+              ],
+              [
+                635,
+                640
+              ],
+              [
+                665,
+                730
+              ]
+            ]
+          },
+          {
+            "name": "Focus",
+            "colorHex": "#22c55e",
+            "startMin": 540,
+            "endMin": 630,
+            "depth": 1,
+            "slots": []
+          },
+          {
+            "name": "Admin",
+            "colorHex": "#f59e0b",
+            "startMin": 900,
+            "endMin": 990,
+            "depth": 0,
+            "slots": [
+              [
+                900,
+                990
+              ]
+            ]
+          },
+          {
+            "name": "Evening",
+            "colorHex": "#f43f5e",
+            "startMin": 1080,
+            "endMin": 1305,
+            "depth": 0,
+            "slots": [
+              [
+                1080,
+                1105
+              ],
+              [
+                1205,
+                1255
+              ]
+            ]
+          }
+        ],
         "totals": {
           "effortMinutes": 200,
           "restoreMinutes": 170,
           "sleepMinutes": 480,
-          "unblockedMinutes": 590
+          "unblockedMinutes": 590,
+          "framesPercent": 45
         }
       }
     },
@@ -1437,11 +1623,73 @@
           }
         ],
         "allDay": [],
+        "frames": [
+          {
+            "name": "Deep work",
+            "colorHex": "#6366f1",
+            "startMin": 510,
+            "endMin": 750,
+            "depth": 0,
+            "slots": [
+              [
+                510,
+                535
+              ],
+              [
+                635,
+                640
+              ],
+              [
+                665,
+                730
+              ]
+            ]
+          },
+          {
+            "name": "Focus",
+            "colorHex": "#22c55e",
+            "startMin": 540,
+            "endMin": 630,
+            "depth": 1,
+            "slots": []
+          },
+          {
+            "name": "Admin",
+            "colorHex": "#f59e0b",
+            "startMin": 900,
+            "endMin": 990,
+            "depth": 0,
+            "slots": [
+              [
+                900,
+                990
+              ]
+            ]
+          },
+          {
+            "name": "Evening",
+            "colorHex": "#f43f5e",
+            "startMin": 1080,
+            "endMin": 1305,
+            "depth": 0,
+            "slots": [
+              [
+                1080,
+                1105
+              ],
+              [
+                1205,
+                1255
+              ]
+            ]
+          }
+        ],
         "totals": {
           "effortMinutes": 200,
           "restoreMinutes": 170,
           "sleepMinutes": 480,
-          "unblockedMinutes": 590
+          "unblockedMinutes": 590,
+          "framesPercent": 45
         }
       }
     }
@@ -3824,6 +4072,10 @@
     ]
   },
   "timezone": "America/Denver",
+  "dialAlarm": {
+    "on": true,
+    "fromMin": 1080
+  },
   "updatedAt": 1790013600000,
   "reloadWidgets": true
 }

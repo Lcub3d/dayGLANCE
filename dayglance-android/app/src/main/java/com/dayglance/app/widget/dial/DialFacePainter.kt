@@ -43,12 +43,17 @@ data class DialHubHeader(val eyebrow: String, val date: String)
 
 class DialFacePainter(private val fonts: DialFonts) {
 
+    private companion object {
+        /** One square of the Frames mark, spec points (the spec's framesIcon). */
+        const val FRAME_MARK_UNIT = 4.2
+    }
+
     /**
      * The whole static image at [scale] pixels per spec point, transparent
      * outside the drawing (the widget's own background shows through).
      */
     fun drawFace(scale: Float, input: DialFaceInput, nowMin: Double, header: DialHubHeader,
-                 rows: DialHubRows, dimmed: Boolean): Bitmap {
+                 rows: DialHubRows, dimmed: Boolean, alarm: DialAlarmMark? = null, alarmTime: String? = null): Bitmap {
         val bmp = Bitmap.createBitmap(px(DialSpec.CANVAS_WIDTH, scale), px(DialSpec.CANVAS_HEIGHT, scale), Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         c.scale(scale, scale)
@@ -70,9 +75,12 @@ class DialFacePainter(private val fonts: DialFonts) {
         val styles = DialBand.styles(input.blocks, nowMin, input.projectedDay)
         drawBlocks(c, styles)
         drawSeparators(c, styles)
-        drawLabels(c)
+        drawFrames(c, input.frames)
+        drawLabels(c, alarm)
         c.restore()
 
+        // The alarm is the device's own fact, not the snapshot's: never dimmed.
+        alarm?.let { drawAlarm(c, it, alarmTime ?: "") }
         drawHub(c, header, rows)
         return bmp
     }
@@ -208,14 +216,95 @@ class DialFacePainter(private val fonts: DialFonts) {
         }
     }
 
-    private fun drawLabels(c: Canvas) {
-        val p = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, white(DialSpec.LABEL_OPACITY)).apply {
-            letterSpacing = (DialSpec.LABEL_TRACKING / DialSpec.LABEL_FONT_SIZE).toFloat()
+    // Frames (docs/day-dial-frames-spec.html): an enclosure around the span of
+    // the band each frame covers, an outline at r = 126 and 153 joined by
+    // radial end caps, 1.8pt at 0.45 in the frame's colour through the
+    // SOFTENED mute, below the rims so the needle stays the brightest thing.
+    // After the separators, which cut with DST_OUT and would otherwise erase a
+    // nested outline running along the band's edge. Static for the day.
+    private fun drawFrames(c: Canvas, frames: List<DialFrame>) {
+        for (f in frames) {
+            if (!DialFrames.drawn(f)) continue
+            val r = DialFrames.radii(f.depth)
+            val start = start(f.startMin)
+            val sweep = sweep(f.startMin, f.endMin)
+            val outline = Path().apply {
+                arcTo(oval(r.outer), start, sweep, true)
+                arcTo(oval(r.inner), start + sweep, -sweep)
+                close()
+            }
+            c.drawPath(outline, stroke(r.width, Paint.Cap.BUTT).apply {
+                strokeJoin = Paint.Join.ROUND
+                color = color(DialPalette.muteFrame(f.colorHex), DialFrames.OPACITY)
+            })
         }
+    }
+
+    private fun labelPaint() = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, white(DialSpec.LABEL_OPACITY)).apply {
+        letterSpacing = (DialSpec.LABEL_TRACKING / DialSpec.LABEL_FONT_SIZE).toFloat()
+    }
+
+    private fun drawLabels(c: Canvas, alarm: DialAlarmMark?) {
+        val p = labelPaint()
         for (label in DialSpec.hourLabels) {
+            if (DialAlarm.labelYields(label.minutes, alarm)) continue
             val pt = DialSpec.labelPoint(label)
             c.drawText(label.text, pt.x.toFloat(), centredBaseline(pt.y, p), p)
         }
+    }
+
+    // ── Alarm mark (DialAlarm; the in-app dial's AlarmMark) ─────────────────
+
+    private fun drawAlarm(c: Canvas, mark: DialAlarmMark, time: String) {
+        val color = color(DialAlarm.COLOR_HEX, 0.8)
+        val (a, b) = DialSpec.point(DialAlarm.LINE_INNER_RADIUS, mark.minute) to DialSpec.point(DialAlarm.LINE_OUTER_RADIUS, mark.minute)
+        c.drawLine(a.x.toFloat(), a.y.toFloat(), b.x.toFloat(), b.y.toFloat(), stroke(1.2, Paint.Cap.ROUND).apply { this.color = color })
+        if (mark.mode == DialAlarmMode.TODAY) {
+            val g = DialSpec.point(DialAlarm.GLYPH_RADIUS, mark.minute)
+            drawAlarmClock(c, g.x, g.y, color)
+            return
+        }
+        // Tomorrow: icon, time and arrow in a row beside the "00" label.
+        val label = DialSpec.hourLabels.first { it.minutes == 0 }
+        val at = DialSpec.labelPoint(label)
+        val lp = labelPaint()
+        var x = at.x + lp.measureText(label.text) / 2 + 5
+        val y = at.y
+        drawAlarmClock(c, x + 4.8, y, color)
+        x += 11.5
+        val tp = text(fonts.medium, DialSpec.LABEL_FONT_SIZE, color).apply { textAlign = Paint.Align.LEFT }
+        c.drawText(time, x.toFloat(), centredBaseline(y, tp), tp)
+        x += tp.measureText(time) + 4
+        drawArrow(c, x + 4.8, y, color)
+    }
+
+    /** Lucide "alarm-clock" on its 24 grid, drawn 0.4× about (cx, cy). */
+    private fun drawAlarmClock(c: Canvas, cx: Double, cy: Double, color: Int) {
+        glyph(c, cx, cy, color) { p ->
+            c.drawCircle(12f, 13f, 8f, p)
+            c.drawPath(Path().apply { moveTo(12f, 9f); lineTo(12f, 13f); lineTo(14f, 15f) }, p)
+            c.drawLine(5f, 3f, 2f, 6f, p)
+            c.drawLine(22f, 6f, 19f, 3f, p)
+            c.drawLine(6.38f, 18.7f, 4f, 21f, p)
+            c.drawLine(17.64f, 18.67f, 20f, 21f, p)
+        }
+    }
+
+    /** Lucide "arrow-right" (= tomorrow), the same scale. */
+    private fun drawArrow(c: Canvas, cx: Double, cy: Double, color: Int) {
+        glyph(c, cx, cy, color) { p ->
+            c.drawLine(5f, 12f, 19f, 12f, p)
+            c.drawPath(Path().apply { moveTo(12f, 5f); lineTo(19f, 12f); lineTo(12f, 19f) }, p)
+        }
+    }
+
+    private fun glyph(c: Canvas, cx: Double, cy: Double, color: Int, draw: (Paint) -> Unit) {
+        val k = 0.4f
+        c.save()
+        c.translate(cx.toFloat() - 12 * k, cy.toFloat() - 12 * k)
+        c.scale(k, k)
+        draw(stroke(2.4, Paint.Cap.ROUND).apply { strokeJoin = Paint.Join.ROUND; this.color = color })
+        c.restore()
     }
 
     // ── Hub ──────────────────────────────────────────────────────────────────
@@ -236,7 +325,46 @@ class DialFacePainter(private val fonts: DialFonts) {
     }
 
     private fun drawRow(c: Canvas, row: DialHubRow, baseline: Double) {
+        if (row.style == DialHubRowStyle.TITLE_FRAME) {
+            drawFrameTitle(c, row, baseline)
+            return
+        }
         drawCentred(c, row.text, baseline, paintFor(row.style), row.shrinks)
+    }
+
+    /**
+     * The Frames mark (the app's LayoutGrid: four rounded squares in a 2×2
+     * grid, outlined) and the frame's name, centred together, in the frame's
+     * colour through the STANDARD mute at a task title's size and weight.
+     */
+    private fun drawFrameTitle(c: Canvas, row: DialHubRow, baseline: Double) {
+        val h = DialSpec.Hub
+        val paint = text(fonts.semibold, h.TITLE_FONT_SIZE, color(DialPalette.mute(row.colorHex), h.TITLE_OPACITY))
+        val unit = FRAME_MARK_UNIT
+        val gap = unit * 0.42
+        val mark = unit * 2 + gap
+        val space = 6f
+        val room = (DialSpec.Hub.width(baseline, DialSpec.Hub.CHORD_INSET) - mark - space).toFloat()
+        if (room <= 0f) return
+        var width = paint.measureText(row.text)
+        if (width > room) {
+            paint.textSize *= max(DialSpec.Hub.MINIMUM_SCALE.toFloat(), room / width)
+            width = paint.measureText(row.text)
+        }
+        val shown = if (width > room) TextUtils.ellipsize(row.text, paint, room, TextUtils.TruncateAt.END).toString() else row.text
+        width = paint.measureText(shown)
+        val left = DialSpec.CX.toFloat() - (mark.toFloat() + space + width) / 2
+        val sw = max(0.75, unit * 0.22)
+        val markPaint = stroke(sw, Paint.Cap.BUTT).apply { color = paint.color }
+        val top = baseline - mark + 0.5
+        for ((col, line) in listOf(0 to 0, 1 to 0, 0 to 1, 1 to 1)) {
+            val x = left + col * (unit + gap) + sw / 2
+            val y = top + line * (unit + gap) + sw / 2
+            c.drawRoundRect(RectF(x.toFloat(), y.toFloat(), (x + unit - sw).toFloat(), (y + unit - sw).toFloat()),
+                (unit * 0.26).toFloat(), (unit * 0.26).toFloat(), markPaint)
+        }
+        paint.textAlign = Paint.Align.LEFT
+        c.drawText(shown, left + mark.toFloat() + space, baseline.toFloat(), paint)
     }
 
     private fun paintFor(style: DialHubRowStyle): TextPaint {
@@ -245,6 +373,9 @@ class DialFacePainter(private val fonts: DialFonts) {
             DialHubRowStyle.TITLE -> text(fonts.semibold, h.TITLE_FONT_SIZE, white(h.TITLE_OPACITY))
             DialHubRowStyle.TITLE_OPEN -> text(fonts.semibold, h.TITLE_FONT_SIZE, color(h.OPEN_COLOR_HEX, h.TITLE_OPACITY))
             DialHubRowStyle.TITLE_STATUS -> text(fonts.semibold, h.TITLE_FONT_SIZE, color(h.STATUS_COLOR_HEX, h.TITLE_OPACITY))
+            // Drawn by drawFrameTitle with the frame's own colour; this is its
+            // measure only.
+            DialHubRowStyle.TITLE_FRAME -> text(fonts.semibold, h.TITLE_FONT_SIZE, white(h.TITLE_OPACITY))
             DialHubRowStyle.TITLE_SLEEP -> text(fonts.semibold, h.TITLE_FONT_SIZE, white(h.SLEEP_OPACITY))
             DialHubRowStyle.TAG -> text(fonts.italic, h.TAG_FONT_SIZE, white(h.TAG_OPACITY))
             DialHubRowStyle.DETAIL -> text(fonts.regular, h.COUNTDOWN_FONT_SIZE, white(h.COUNTDOWN_OPACITY))

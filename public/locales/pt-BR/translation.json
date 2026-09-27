@@ -1488,7 +1488,12 @@
     "slotTopLeft": "Superior esquerdo",
     "slotTopRight": "Superior direito",
     "slotBottomLeft": "Inferior esquerdo",
-    "slotBottomRight": "Inferior direito"
+    "slotBottomRight": "Inferior direito",
+    "layerAlarm": "Próximo alarme",
+    "alarmFrom": "o de amanhã a partir de",
+    "alarmAlways": "o dia todo",
+    "frames": "Blocos",
+    "frameAvailable": "{{time}} disponíveis"
   },
   "intentLog": {
     "clearLog": "Limpar registro",

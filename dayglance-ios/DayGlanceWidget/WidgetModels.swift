@@ -177,6 +177,43 @@ struct DialSnapshot: Codable {
     /// Start-sorted. `durationMin` is the DRAWN span, already clipped at
     /// midnight; `endMinTrue` carries the real end when `endsNextDay`.
     var blocks: [DialBlock]?
+    /// The day's all-day items, incomplete first, and the in-app legend's
+    /// totals: the iPad extra-large dial's cards (DialCardsColumn). Absent
+    /// from payloads before the cards; `totals` absent draws no legend.
+    var allDay: [DialAllDayItem]?
+    /// The day's frames (docs/day-dial-frames-spec.html), start-ordered, each
+    /// with its nesting depth and its free slots as [startMin, endMin] pairs,
+    /// not floored at now. Absent from payloads before frames.
+    var frames: [DialFrameWire]?
+    var totals: DialTotals?
+}
+
+struct DialFrameWire: Codable {
+    var name: String?
+    var colorHex: String?
+    var startMin: Int?
+    var endMin: Int?
+    var depth: Int?
+    var slots: [[Int]]?
+}
+
+struct DialAllDayItem: Codable {
+    var id: String?
+    var title: String?
+    var completed: Bool?
+    var colorHex: String?
+}
+
+/// Whole minutes (projectDialSnapshot rounds them). Sleep and unblocked are
+/// null without a declared day window.
+struct DialTotals: Codable {
+    var effortMinutes: Int?
+    var restoreMinutes: Int?
+    var sleepMinutes: Int?
+    var unblockedMinutes: Int?
+    /// Scheduled minutes inside the top-level frames over their minutes, as a
+    /// whole percent; null on a day without frames (no legend entry).
+    var framesPercent: Int?
 }
 
 struct DialBlock: Codable {

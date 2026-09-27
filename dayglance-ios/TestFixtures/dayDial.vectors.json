@@ -11,7 +11,7 @@
     "strength": 0.0005
   },
   "counts": {
-    "geometry": 177,
+    "geometry": 215,
     "sky": 16,
     "snapshot": 2
   },
@@ -3500,6 +3500,644 @@
           },
           "expected": {
             "hex": "#93c5fd"
+          }
+        }
+      ]
+    },
+    "muteDialFrameColor": {
+      "description": "A frame's enclosure colour: muteDialColor's arithmetic with saturation capped at 0.28 and lightness 0.62 (docs/day-dial-frames-spec.html). The first eight are the frame palette's hexes (colorUtils frameColorToHex).",
+      "cases": [
+        {
+          "input": {
+            "hex": "#6366f1"
+          },
+          "expected": {
+            "hex": "#8384b9"
+          }
+        },
+        {
+          "input": {
+            "hex": "#f59e0b"
+          },
+          "expected": {
+            "hex": "#b9a583"
+          }
+        },
+        {
+          "input": {
+            "hex": "#22c55e"
+          },
+          "expected": {
+            "hex": "#83b997"
+          }
+        },
+        {
+          "input": {
+            "hex": "#3b82f6"
+          },
+          "expected": {
+            "hex": "#8398b9"
+          }
+        },
+        {
+          "input": {
+            "hex": "#f43f5e"
+          },
+          "expected": {
+            "hex": "#b9838c"
+          }
+        },
+        {
+          "input": {
+            "hex": "#a855f7"
+          },
+          "expected": {
+            "hex": "#9f83b9"
+          }
+        },
+        {
+          "input": {
+            "hex": "#14b8a6"
+          },
+          "expected": {
+            "hex": "#83b9b3"
+          }
+        },
+        {
+          "input": {
+            "hex": "#f97316"
+          },
+          "expected": {
+            "hex": "#b99983"
+          }
+        },
+        {
+          "input": {
+            "hex": "#111111"
+          },
+          "expected": {
+            "hex": "#9e9e9e"
+          }
+        },
+        {
+          "input": {
+            "hex": "#ffffff"
+          },
+          "expected": {
+            "hex": "#9e9e9e"
+          }
+        },
+        {
+          "input": {
+            "hex": "#808080"
+          },
+          "expected": {
+            "hex": "#9e9e9e"
+          }
+        },
+        {
+          "input": {
+            "hex": "not-a-color"
+          },
+          "expected": {
+            "hex": "#93c5fd"
+          }
+        },
+        {
+          "input": {
+            "hex": null
+          },
+          "expected": {
+            "hex": "#93c5fd"
+          }
+        }
+      ]
+    },
+    "dialFrameRadii": {
+      "description": "A frame's outline radii and stroke on a block band, at a nesting depth (capped). Band-proportional: the widget band 129–151 gives the spec's 126 / 153 / 1.2pt.",
+      "cases": [
+        {
+          "input": {
+            "rInner": 129,
+            "rOuter": 151,
+            "depth": 0
+          },
+          "expected": {
+            "inner": 126,
+            "outer": 153,
+            "width": 1.8
+          }
+        },
+        {
+          "input": {
+            "rInner": 129,
+            "rOuter": 151,
+            "depth": 1
+          },
+          "expected": {
+            "inner": 129.2,
+            "outer": 149.8,
+            "width": 1.8
+          }
+        },
+        {
+          "input": {
+            "rInner": 129,
+            "rOuter": 151,
+            "depth": 2
+          },
+          "expected": {
+            "inner": 129.2,
+            "outer": 149.8,
+            "width": 1.8
+          }
+        },
+        {
+          "input": {
+            "rInner": 300,
+            "rOuter": 385,
+            "depth": 0
+          },
+          "expected": {
+            "inner": 288.40909090909093,
+            "outer": 392.72727272727275,
+            "width": 6.954545454545454
+          }
+        },
+        {
+          "input": {
+            "rInner": 300,
+            "rOuter": 385,
+            "depth": 1
+          },
+          "expected": {
+            "inner": 300.7727272727273,
+            "outer": 380.3636363636364,
+            "width": 6.954545454545454
+          }
+        },
+        {
+          "input": {
+            "rInner": 300,
+            "rOuter": 385,
+            "depth": 2
+          },
+          "expected": {
+            "inner": 300.7727272727273,
+            "outer": 380.3636363636364,
+            "width": 6.954545454545454
+          }
+        }
+      ]
+    },
+    "dialCurrentFrame": {
+      "description": "The frame the hub speaks for: the innermost frame now is inside (deepest, then latest start); null outside all.",
+      "cases": [
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 480
+          },
+          "expected": {
+            "name": null
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 540
+          },
+          "expected": {
+            "name": "Work day"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 600
+          },
+          "expected": {
+            "name": "Focus"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 689
+          },
+          "expected": {
+            "name": "Focus"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 690
+          },
+          "expected": {
+            "name": "Work day"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 1019
+          },
+          "expected": {
+            "name": "Work day"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 1020
+          },
+          "expected": {
+            "name": null
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 1140
+          },
+          "expected": {
+            "name": "Evening"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 1319
+          },
+          "expected": {
+            "name": "Evening"
+          }
+        },
+        {
+          "input": {
+            "frames": [
+              {
+                "name": "Work day",
+                "startMin": 540,
+                "endMin": 1020,
+                "depth": 0
+              },
+              {
+                "name": "Focus",
+                "startMin": 600,
+                "endMin": 690,
+                "depth": 1
+              },
+              {
+                "name": "Evening",
+                "startMin": 1140,
+                "endMin": 1320,
+                "depth": 0
+              }
+            ],
+            "nowMin": 1320
+          },
+          "expected": {
+            "name": null
+          }
+        }
+      ]
+    },
+    "dialFrameAvailableMinutes": {
+      "description": "Free minutes still ahead in a frame at nowMin: each slot from the later of its start and now.",
+      "cases": [
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 480
+          },
+          "expected": {
+            "minutes": 120
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 540
+          },
+          "expected": {
+            "minutes": 120
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 560
+          },
+          "expected": {
+            "minutes": 100
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 600
+          },
+          "expected": {
+            "minutes": 60
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 700
+          },
+          "expected": {
+            "minutes": 60
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 900
+          },
+          "expected": {
+            "minutes": 60
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 930
+          },
+          "expected": {
+            "minutes": 30
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 960
+          },
+          "expected": {
+            "minutes": 0
+          }
+        },
+        {
+          "input": {
+            "slots": [
+              [
+                540,
+                600
+              ],
+              [
+                900,
+                960
+              ]
+            ],
+            "nowMin": 1100
+          },
+          "expected": {
+            "minutes": 0
           }
         }
       ]
@@ -8493,11 +9131,13 @@
               }
             ],
             "allDay": [],
+            "frames": [],
             "totals": {
               "effortMinutes": 840,
               "restoreMinutes": 210,
               "sleepMinutes": 475,
-              "unblockedMinutes": 65
+              "unblockedMinutes": 65,
+              "framesPercent": null
             }
           }
         },
@@ -8511,11 +9151,13 @@
             "date": "2026-09-16",
             "blocks": [],
             "allDay": [],
+            "frames": [],
             "totals": {
               "effortMinutes": 0,
               "restoreMinutes": 0,
               "sleepMinutes": null,
-              "unblockedMinutes": null
+              "unblockedMinutes": null,
+              "framesPercent": null
             }
           }
         }

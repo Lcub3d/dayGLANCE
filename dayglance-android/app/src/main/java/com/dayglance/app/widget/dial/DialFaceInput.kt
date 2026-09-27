@@ -22,6 +22,9 @@ data class DialFaceInput(
     val moon: DialMoonGlyph? = null,
     /** A projected day: completion flags are not information. */
     val projectedDay: Boolean = false,
+    /** The day's frames (docs/day-dial-frames-spec.html): enclosures on the
+     *  face, and the hub's frame rows when nothing is running. */
+    val frames: List<DialFrame> = emptyList(),
 ) {
     /**
      * Canonical text of everything the FACE's ring draws. Titles, tags and
@@ -37,6 +40,9 @@ data class DialFaceInput(
             for (s in sky) add("s:${s.hour}|${s.body}|${s.strength}")
             add("rise=${sunriseMin ?: "-"}|set=${sunsetMin ?: "-"}")
             moon?.let { add("moon=${it.fraction}|${it.waxing.bit()}|${it.minutes}|${if (it.mirror) "s" else "n"}") }
+            // Static for the day and drawn into the face: an edited frame names
+            // a new face. Names and free slots are the hub's and stay out.
+            for (f in frames) add("f:${f.startMin}|${f.endMin}|${f.depth}|${f.colorHex ?: "-"}")
         }.joinToString("\n")
 
     companion object {
@@ -84,7 +90,25 @@ data class DialFaceInput(
                         glyphMin, sky.optBoolean("southern", false))
                 }
             }
-            return DialFaceInput(blocks, segments, sky?.num("sunriseMin"), sky?.num("sunsetMin"), moon, projectedDay)
+            val frames = ArrayList<DialFrame>()
+            val farr = fields?.optJSONObject("dial")?.optJSONArray("frames")
+            for (i in 0 until (farr?.length() ?: 0)) {
+                val f = farr?.optJSONObject(i) ?: continue
+                val start = f.num("startMin") ?: continue
+                val end = f.num("endMin") ?: continue
+                if (end <= start) continue
+                val slots = ArrayList<Pair<Double, Double>>()
+                val sarr = f.optJSONArray("slots")
+                for (k in 0 until (sarr?.length() ?: 0)) {
+                    val pair = sarr?.optJSONArray(k) ?: continue
+                    if (pair.length() != 2) continue
+                    val a = pair.optDouble(0)
+                    val b = pair.optDouble(1)
+                    if (!a.isNaN() && !b.isNaN() && b > a) slots += a to b
+                }
+                frames += DialFrame(f.str("name") ?: "", f.str("colorHex"), start, end, f.optInt("depth", 0), slots)
+            }
+            return DialFaceInput(blocks, segments, sky?.num("sunriseMin"), sky?.num("sunsetMin"), moon, projectedDay, frames)
         }
 
         /** The gallery / never-opened face: a plausible summer sky, no blocks. */

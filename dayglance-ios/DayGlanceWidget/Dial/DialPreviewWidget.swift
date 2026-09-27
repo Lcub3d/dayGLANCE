@@ -55,7 +55,9 @@ enum DialPreviewScenario: String, AppEnum, CaseIterable {
     case shortTitle, longTitle, sparse, dense
     // State scenarios (a WidgetSnapshot → DayDialWidgetView).
     case openTime, openUntilSleep, nothingElse, sleeping, projected, outdated, zoneChanged, southernMoon,
-         placeholder, noData, screenshot
+         placeholder, noData, screenshot,
+         // Frames (docs/day-dial-frames-spec.html): the spec's day at 17:18.
+         framesRunning, framesOpen, framesNested, framesEmpty
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Scenario"
     static var caseDisplayRepresentations: [DialPreviewScenario: DisplayRepresentation] = [
@@ -74,6 +76,10 @@ enum DialPreviewScenario: String, AppEnum, CaseIterable {
         .placeholder: "Placeholder",
         .noData: "No data",
         .screenshot: "Screenshot day (shoot 10:00–12:30)",
+        .framesRunning: "Frames · task running",
+        .framesOpen: "Frames · nothing running",
+        .framesNested: "Frames · nested",
+        .framesEmpty: "Frames · a frame at 0 %",
     ]
 
     var isFaceScenario: Bool {
@@ -341,6 +347,19 @@ enum DialPreviewFixture {
         case .screenshot:
             let now = Date()
             return State(snapshot: snapshot(date: isoDay(now), rows: screenshotDay, capturedAt: now), now: now)
+        case .framesRunning:
+            return framesState(rows: framesDay + [framesRunningRow], frames: framesDisjoint(adminSlots: [[840, 865], [1010, 1015]]), percent: 78)
+        case .framesOpen:
+            return framesState(rows: framesDay, frames: framesDisjoint(adminSlots: [[840, 865], [1010, 1065]]), percent: 71)
+        case .framesNested:
+            return framesState(rows: framesDay, frames: [
+                frame("Work day", "#3b82f6", 540, 1065, slots: [[665, 685], [755, 865], [1010, 1065]]),
+                frame("Focus", "#22c55e", 600, 750, depth: 1, slots: [[665, 685]]),
+                frame("Evening", "#f43f5e", 1170, 1330, slots: [[1170, 1180], [1295, 1330]]),
+            ], percent: 61)
+        case .framesEmpty:
+            return framesState(rows: [Row(s: 0, e: 390, kind: .sleep), Row(s: 1350, e: 1440, kind: .sleep)],
+                               frames: [frame("Reading", "#14b8a6", 1020, 1110, slots: [[1020, 1110]])], percent: 0)
         default:
             return State(snapshot: nil, now: fixtureInstant(minute: 11 * 60 + 20), isPlaceholder: true)
         }
@@ -364,6 +383,44 @@ enum DialPreviewFixture {
         Row(s: 1320, e: 1350, kind: .routine, title: "Journal"),
         Row(s: 1380, e: 1440, kind: .sleep),
     ]
+
+    // MARK: frames: the spec's day (src/components/dayDialFrameScenarios.js,
+    // the same four the in-app dial's tests render; slots and percentages
+    // are what computeDialFrames gives for them)
+
+    static let framesDay: [Row] = [
+        Row(s: 0, e: 390, kind: .sleep),
+        Row(s: 540, e: 600, kind: .task, color: "blue", done: true, title: "Inbox zero"),
+        Row(s: 600, e: 660, kind: .task, color: "purple", done: true, title: "Spec review"),
+        Row(s: 690, e: 750, kind: .event, color: "ics", title: "Design sync"),
+        Row(s: 870, e: 930, kind: .task, color: "green", done: true, title: "Invoices"),
+        Row(s: 930, e: 1005, kind: .task, color: "yellow", done: true, title: "Expenses"),
+        Row(s: 1185, e: 1245, kind: .task, color: "pink", title: "Dinner"),
+        Row(s: 1245, e: 1290, kind: .task, color: "blue", title: "Read"),
+        Row(s: 1350, e: 1440, kind: .sleep),
+    ]
+    static let framesRunningRow = Row(s: 1020, e: 1110, kind: .task, color: "green", title: "Monthly budget review", tag: "finance")
+
+    static func frame(_ name: String, _ hex: String, _ s: Int, _ e: Int, depth: Int = 0, slots: [[Int]]) -> DialFrameWire {
+        DialFrameWire(name: name, colorHex: hex, startMin: s, endMin: e, depth: depth, slots: slots)
+    }
+
+    static func framesDisjoint(adminSlots: [[Int]]) -> [DialFrameWire] {
+        [
+            frame("Deep work", "#3b82f6", 540, 750, slots: [[665, 685]]),
+            frame("Admin", "#f59e0b", 840, 1065, slots: adminSlots),
+            frame("Evening", "#f43f5e", 1170, 1330, slots: [[1170, 1180], [1295, 1330]]),
+        ]
+    }
+
+    static func framesState(rows: [Row], frames: [DialFrameWire], percent: Int) -> State {
+        let july7 = isoDay(fixtureInstant(minute: 0))
+        var snap = snapshot(date: july7, rows: rows, capturedAt: fixtureInstant(minute: 7 * 60 + 5))
+        snap.dial?.frames = frames
+        snap.dial?.totals = DialTotals(effortMinutes: nil, restoreMinutes: nil, sleepMinutes: nil, unblockedMinutes: nil,
+                                       framesPercent: percent)
+        return State(snapshot: snap, now: fixtureInstant(minute: 17 * 60 + 18))
+    }
 
     /// A zone whose offset differs from `zone` at `now`, so the mismatch is real.
     static func otherZone(than zone: TimeZone, at now: Date) -> String {

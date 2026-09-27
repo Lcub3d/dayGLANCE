@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { CalendarDays, Eclipse, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Thermometer, X, Timer } from 'lucide-react';
+import { AlarmClock, CalendarDays, Eclipse, LayoutGrid, Layers, Maximize, Minimize, Monitor, Sparkles, Sunrise, Thermometer, X, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -7,8 +7,11 @@ import { dateToString } from '../utils/taskUtils.js';
 import { getStoredWeatherCoords, getSunTimes } from '../utils/solar.js';
 import { computeDayAlignment, computeDayCompletion, computeDaylightBand, computeFocusSpans, computeMoonBand, computeProjectProgress, dialPeakUv, assignComplicationSlot, normaliseComplicationSlots } from '../utils/dayDial.js';
 import { acquireWakeLock, releaseWakeLock } from '../utils/wakeLock.js';
-import { isNativeApp, nativeSetImmersiveMode } from '../native.js';
-import { AMBIENT_DELAY_OPTIONS, loadAmbientPrefs, saveAmbientPrefs } from '../utils/dialPrefs.js';
+import { isNativeAndroid, isNativeApp, nativeGetNextAlarm, nativeSetImmersiveMode } from '../native.js';
+import {
+  ALARM_FROM_OPTIONS, AMBIENT_DELAY_OPTIONS, loadAlarmPrefs, loadAmbientPrefs, saveAlarmPrefs, saveAmbientPrefs,
+} from '../utils/dialPrefs.js';
+import { dialAlarmMark } from '../utils/nextAlarm.js';
 import DayDial from './DayDial.jsx';
 import Wordmark from './Wordmark.jsx';
 
@@ -33,7 +36,7 @@ const IDLE_RETURN_MS = 5 * 60_000;
 // summary strip's collapse state): a wall panel and a phone reasonably want
 // different layers, so this deliberately does not ride the sync payload.
 const DIAL_LAYERS_KEY = 'day-planner-dial-layers';
-const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true, focus: true };
+const DEFAULT_LAYERS = { solar: true, weather: true, calendars: true, routines: true, focus: true, frames: true };
 const loadLayers = () => {
   try {
     return { ...DEFAULT_LAYERS, ...JSON.parse(localStorage.getItem(DIAL_LAYERS_KEY) || '{}') };
@@ -95,7 +98,7 @@ const DayDialModal = () => {
     tasks, unscheduledTasks,
   } = useDayPlannerCtx();
   const {
-    getDayWindow, routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
+    getDayWindow, dialFramesForDate, routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
     habitsEnabled, activeHabits, getTodayHabitCount, setHabitCount, incrementHabit,
     goalsProjectsEnabled, projects,
     focusLog, focusModeAvailable, enterFocusMode,
@@ -472,6 +475,24 @@ const DayDialModal = () => {
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [showLayers]);
 
+  // The alarm mark (Android): the device's next clock-app alarm, read per
+  // minute like GLANCEahead's line (the bridge call is a cheap system read),
+  // and only on today's dial. Its prefs are device-local and also reach the
+  // home-screen dial through the widget snapshot (App.jsx).
+  const alarmAvailable = isNativeAndroid();
+  const [alarmPrefs, setAlarmPrefs] = useState(loadAlarmPrefs);
+  const setAlarmPref = (key, value) => setAlarmPrefs((prev) => {
+    const next = { ...prev, [key]: value };
+    saveAlarmPrefs(next);
+    return next;
+  });
+  const alarmMark = useMemo(
+    () => (alarmAvailable && alarmPrefs.on && isToday
+      ? dialAlarmMark(currentTime.getTime(), nativeGetNextAlarm(), alarmPrefs.fromMin)
+      : null),
+    [alarmAvailable, alarmPrefs, isToday, currentTime],
+  );
+
   // Solar layer: sunrise/sunset computed locally from the weather feature's
   // persisted geocode (utils/solar.js) — any date, works offline. No
   // location ever configured → null → the layer doesn't render.
@@ -532,6 +553,14 @@ const DayDialModal = () => {
   const focusSpans = useMemo(
     () => (layers.focus ? computeFocusSpans(focusLog, dateStr) : []),
     [layers.focus, focusLog, dateStr],
+  );
+
+  // The day's frames with their free time, as the widgets get them
+  // (App.jsx dialFramesForDate). A layer like the others: off draws no
+  // enclosures, no hub rows and no Frames figure.
+  const dialFrames = useMemo(
+    () => (layers.frames ? dialFramesForDate(selectedDate) : null),
+    [layers.frames, dialFramesForDate, selectedDate],
   );
 
   // Starting a session leaves the dial: focus mode is its own fullscreen
@@ -731,6 +760,7 @@ const DayDialModal = () => {
       <DayDial
         dayTasks={dayTasks}
         prevDayTasks={prevDayTasks}
+        frames={dialFrames}
         // Routines are a today-only construct (useRoutines rolls them at
         // midnight), so any other date gets none rather than a stale set.
         routines={layers.routines && routinesEnabled && isToday ? todayRoutines : null}
@@ -757,6 +787,7 @@ const DayDialModal = () => {
         onStepDay={stepDay}
         onGoToday={() => setSelectedDate(new Date())}
         chromeVisible={chromeShown}
+        alarm={alarmMark}
       />
 
       {/* Layers panel — same register as the block action sheet. Ambient
@@ -802,6 +833,42 @@ const DayDialModal = () => {
               on={layers.focus}
               onChange={(v) => setLayer('focus', v)}
             />
+            <ToggleRow
+              icon={LayoutGrid}
+              label={t('dial.frames', 'Frames')}
+              on={layers.frames}
+              onChange={(v) => setLayer('frames', v)}
+            />
+            {alarmAvailable && (
+              <>
+                <ToggleRow
+                  icon={AlarmClock}
+                  label={t('dial.layerAlarm', 'Next alarm')}
+                  on={alarmPrefs.on}
+                  onChange={(v) => setAlarmPref('on', v)}
+                />
+                {alarmPrefs.on && (
+                  <label className="flex items-center gap-3 px-3 pb-1.5 pt-0.5">
+                    <span className="text-white/40 text-xs flex-1">
+                      {t('dial.alarmFrom', "tomorrow's from")}
+                    </span>
+                    <select
+                      value={alarmPrefs.fromMin}
+                      onChange={(e) => setAlarmPref('fromMin', Number(e.target.value))}
+                      className="rounded-lg border border-white/10 bg-[#1a1e27] px-2 py-1 text-xs text-white/85 focus:outline-none focus:ring-1 focus:ring-[#fe8b00]/60"
+                    >
+                      {ALARM_FROM_OPTIONS.map((m) => (
+                        <option key={m} value={m}>
+                          {m === 0
+                            ? t('dial.alarmAlways', 'all day')
+                            : formatTime(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </>
+            )}
             {/* Complications: four slots, filled in the order they are
                 switched on. Only offered where the face has room for them —
                 see COMPLICATION_MIN_DIAL_PX. */}

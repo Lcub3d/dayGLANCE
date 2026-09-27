@@ -32,6 +32,20 @@ export const TAILWIND_TO_HEX = {
   'bg-lime-500': '#84cc16', 'bg-fuchsia-500': '#d946ef',
 };
 
+// A frame's colour is one of FRAME_COLORS' pastel `-200` classes
+// (constants/frames.js), which TAILWIND_TO_HEX does not carry, so every frame
+// reached the widgets as the fallback blue. Frames resolve to their family's
+// `-500` instead: the same hue, and the one every mute (muteDialColor and the
+// softer frame mute) takes its hue from, since both pin the lightness.
+const FRAME_TO_HEX = {
+  'bg-indigo-200': '#6366f1', 'bg-amber-200': '#f59e0b', 'bg-green-200': '#22c55e',
+  'bg-blue-200': '#3b82f6', 'bg-rose-200': '#f43f5e', 'bg-purple-200': '#a855f7',
+  'bg-teal-200': '#14b8a6', 'bg-orange-200': '#f97316',
+};
+
+/** A frame's `color` class → hex; the editor's default (indigo) when unknown. */
+export const frameColorToHex = (cls) => FRAME_TO_HEX[cls] || TAILWIND_TO_HEX[cls] || '#6366f1';
+
 /**
  * Converts a 6-digit hex color + alpha to an rgba() string safe for Android WebView.
  * Android WebView does not support 8-digit hex (#RRGGBBAA).

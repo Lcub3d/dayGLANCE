@@ -81,6 +81,41 @@ final class LiveSnapshotSkyTests: XCTestCase {
         XCTAssertTrue(input.blocks.contains { $0.completed })
     }
 
+    func testThePushedDayFillsTheExtraLargeCards() throws {
+        // The iPad extra-large column reads `totals` and `allDay` off the same
+        // decode; a live push must reach DialCards as a full legend, not the
+        // empty column a pre-cards payload draws.
+        let snapshot = try loadFixture()
+        let day = ResolvedWidgetDay.resolve(snapshot, at: try noon(0, of: snapshot), calendar: calendar)
+        XCTAssertNotNil(day.dial?.totals, "the live push carries the legend's totals")
+        XCTAssertNotNil(day.dial?.allDay, "the live push carries the all-day list (empty on the fixture day)")
+        let input = DialFaceInput(day: day)
+        let cards = DialCards(day: day, blocks: input.blocks)
+        XCTAssertEqual(Array(cards.legend.map(\.key).prefix(4)), [.effort, .restore, .sleep, .unblocked])
+        XCTAssertEqual(cards.legend.first?.minutes, 200)
+        for offset in 1...3 {
+            let projected = ResolvedWidgetDay.resolve(snapshot, at: try noon(offset, of: snapshot), calendar: calendar)
+            XCTAssertFalse(DialCards(day: projected, blocks: DialFaceInput(day: projected).blocks).legend.isEmpty,
+                           "day +\(offset)")
+        }
+    }
+
+    func testTheFramesSurviveTheSameDecode() throws {
+        // A nested pair, a frame with nothing in it, and the evening, from
+        // the app's own frame and free-time functions (widgetSnapshotFixture.js).
+        let snapshot = try loadFixture()
+        let day = ResolvedWidgetDay.resolve(snapshot, at: try noon(0, of: snapshot), calendar: calendar)
+        let frames = try XCTUnwrap(day.dial?.frames)
+        XCTAssertEqual(frames.map { $0.name ?? "" }, ["Deep work", "Focus", "Admin", "Evening"])
+        XCTAssertEqual(frames.map { $0.depth ?? -1 }, [0, 1, 0, 0])
+        XCTAssertEqual(frames[2].slots ?? [], [[900, 990]], "Admin has nothing in it: all free")
+        XCTAssertEqual(day.dial?.totals?.framesPercent, 45)
+        for offset in 1...3 {
+            let projected = ResolvedWidgetDay.resolve(snapshot, at: try noon(offset, of: snapshot), calendar: calendar)
+            XCTAssertEqual(projected.dial?.frames?.count, 4, "frames are the shape of a day: day +\(offset)")
+        }
+    }
+
     // MARK: the pixels
 
     /// The face at 1×, spec size, over the widget's background: what the

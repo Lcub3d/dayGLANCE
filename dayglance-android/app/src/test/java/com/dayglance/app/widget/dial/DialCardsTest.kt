@@ -22,13 +22,15 @@ class DialCardsTest {
 
     @Test fun `the fixture's pushed day carries the legend, in the app's order`() {
         val c = DialCards.from(root, DialFaceInput.from(root, false).blocks)
-        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED), c.legend.map { it.key })
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.SLEEP, DialLegendKey.UNBLOCKED, DialLegendKey.FRAMES),
+            c.legend.map { it.key })
         assertEquals(200.0, c.legend[0].minutes!!, 0.0)
         assertEquals(590.0, c.legend[3].minutes!!, 0.0)
+        assertEquals(45, c.legend[4].percent)
         assertTrue(c.allDay.isEmpty())
         // Every projected day has its own.
         val day = root.getJSONArray("days").getJSONObject(0)
-        assertEquals(4, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
+        assertEquals(5, DialCards.from(day, DialFaceInput.from(day, true).blocks).legend.size)
     }
 
     @Test fun `no declared window means no sleep and no unblocked, as in the app`() {
@@ -42,6 +44,18 @@ class DialCardsTest {
         val r = c.legend.last()
         assertEquals(DialLegendKey.ROUTINES, r.key)
         assertEquals(1, r.done); assertEquals(2, r.total)
+    }
+
+    @Test fun `frames come last with their percent, and not at all without frames`() {
+        val c = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"sleepMinutes":null,"unblockedMinutes":null,"framesPercent":0}""",
+            blocks = """[{"type":"routine","id":"r1","startMin":420,"durationMin":15,"completed":true}]"""))
+        assertEquals(listOf(DialLegendKey.EFFORT, DialLegendKey.RESTORE, DialLegendKey.ROUTINES, DialLegendKey.FRAMES), c.legend.map { it.key })
+        assertEquals(0, c.legend.last().percent)
+        assertEquals("0%", DayDialCardsBinder.legendValue(c.legend.last(), DialHubRowsTest.English))
+        val none = cards(fields(totals = """{"effortMinutes":60,"restoreMinutes":0,"framesPercent":null}"""))
+        assertFalse(none.legend.any { it.key == DialLegendKey.FRAMES })
+        // Frames alone opens the tall grid's second row.
+        assertTrue(DialArrangement.tallLegendSecondRow(c))
     }
 
     @Test fun `an app build without totals draws no legend rather than an empty day`() {
@@ -93,7 +107,9 @@ class DialCardsTest {
         assertEquals(380.0 - 62.0, legend.dialHeightDp, 0.0)
         // Chips by width, capped by the layout's three.
         assertEquals(2, DialArrangement.choose(300.0, 450.0, both).allDayChips)
-        assertEquals(3, DialArrangement.choose(600.0, 900.0, both).allDayChips)
+        assertEquals(3, DialArrangement.choose(600.0, 900.0, both, resizable = false).allDayChips)
+        // Drawn up 1.6×, each chip needs more room: two.
+        assertEquals(2, DialArrangement.choose(600.0, 900.0, both).allDayChips)
     }
 
     @Test fun `the tall legend takes a second row only for unblocked or routines`() {
@@ -103,6 +119,39 @@ class DialCardsTest {
         // A taller legend needs more spare height before it is placed.
         assertEquals(DialPlacement.TALL, DialArrangement.choose(300.0, 380.0, legendOnly).placement)
         assertEquals(DialPlacement.DIAL, DialArrangement.choose(300.0, 380.0, full).placement)
+    }
+
+    @Test fun `the cards scale up with a tablet placement, never past the cap or below phone size`() {
+        // The #1830 device test: a tablet's tall placement drew phone-sized cards.
+        val tablet = DialArrangement.choose(500.0, 780.0, both)
+        assertEquals(DialPlacement.TALL, tablet.placement)
+        assertEquals(1.6, tablet.scale, 1e-9)
+        assertTrue("the dial still fills its width", tablet.dialHeightDp >= 500.0 * 382 / 364)
+        assertEquals(1.0, DialArrangement.choose(300.0, 450.0, both).scale, 0.0)
+        assertEquals(1.2, DialArrangement.choose(360.0, 560.0, both).scale, 1e-9)
+        // The #1830 tablet (~505 × 770dp): both cards fit at phone size, so
+        // both still show, drawn up only as far as they fit together.
+        val both2 = both.copy(legend = both.legend + DialLegendItem(DialLegendKey.UNBLOCKED, 555.0))
+        val t = DialArrangement.choose(497.0, 762.0, both2)
+        assertTrue(t.showAllDay); assertTrue(t.showLegend)
+        assertTrue(t.scale > 1.0 && t.scale < 1.6)
+        assertTrue("the dial still fills its width", t.dialHeightDp >= 497.0 * 382 / 364 - 1e-9)
+        // No resizable views (below Android 12): the layouts' own dp.
+        assertEquals(1.0, DialArrangement.choose(500.0, 780.0, both, resizable = false).scale, 0.0)
+        // Wide scales with the height, capped lower.
+        val wide = DialArrangement.choose(900.0, 500.0, both)
+        assertEquals(DialPlacement.WIDE, wide.placement)
+        assertEquals(1.5, wide.scale, 1e-9)
+        assertEquals(900.0 - DialArrangement.WIDE_COLUMN_DP * 1.5, wide.dialWidthDp, 1e-9)
+    }
+
+    @Test fun `a lone all-day title gets nearly the whole card, not a fixed cap`() {
+        // The #1830 device test clipped "Monthly Budget" at 96dp with the row empty.
+        assertTrue(DialArrangement.tallTitleMaxDp(500.0, 1.6, shown = 1, hidden = 0) > 300)
+        val two = DialArrangement.tallTitleMaxDp(300.0, 1.0, shown = 2, hidden = 0)
+        assertEquals((300.0 - 64) / 2 - 24, two, 1e-9)
+        assertTrue("room is kept for +N", DialArrangement.tallTitleMaxDp(300.0, 1.0, 2, 3) < two)
+        assertEquals(0.0, DialArrangement.tallTitleMaxDp(300.0, 1.0, 0, 0), 0.0)
     }
 
     @Test fun `a wide placement puts the cards beside`() {
@@ -126,6 +175,26 @@ class DialCardsTest {
         assertEquals(0 to 4, DialArrangement.overflow(4, 0))
     }
 
+    // The id checks below read the layouts with a regex, which a malformed
+    // file passes; the resource merger does not (a Frames cell once shipped
+    // one closing tag short and broke the release build). Every layout must
+    // parse, and each legend cell must sit in its row or list.
+    @Test fun `every day dial layout is well-formed XML with the legend cells in place`() {
+        val parser = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
+        for (file in File("src/main/res/layout").listFiles()!!.filter { it.name.startsWith("widget_day_dial") }) {
+            val doc = parser.parse(file)
+            val cells = doc.getElementsByTagName("LinearLayout")
+            for (i in 0 until cells.length) {
+                val cell = cells.item(i) as org.w3c.dom.Element
+                val id = cell.getAttribute("android:id")
+                if (!id.startsWith("@+id/ll_day_dial_legend_") || id.endsWith("row1") || id.endsWith("row2")) continue
+                val parent = (cell.parentNode as org.w3c.dom.Element).getAttribute("android:id")
+                assertTrue("${file.name}: $id sits in $parent",
+                    parent == "@+id/ll_day_dial_legend" || parent == "@+id/ll_day_dial_legend_row1" || parent == "@+id/ll_day_dial_legend_row2")
+            }
+        }
+    }
+
     // The binder touches only ids a placement's layout carries: this pins the
     // layouts to what DayDialCardsBinder assumes.
     @Test fun `each placement's layout carries exactly the views its binder touches`() {
@@ -141,8 +210,13 @@ class DialCardsTest {
             val cards = placement != DialPlacement.DIAL
             assertEquals(file, cards, "ll_day_dial_allday" in all && "tv_day_dial_allday_more" in all && "ll_day_dial_legend" in all)
             assertEquals("$file row2", placement == DialPlacement.TALL, "ll_day_dial_legend_row2" in all)
+            // What DayDialCardsBinder.size() resizes.
+            assertEquals("$file row1", placement == DialPlacement.TALL, "ll_day_dial_legend_row1" in all)
+            assertEquals("$file column", placement == DialPlacement.WIDE, "ll_day_dial_column" in all)
+            assertEquals("$file all-day icon and label", cards, "iv_day_dial_allday_icon" in all && "tv_day_dial_allday_label" in all)
             for (k in DialLegendKey.entries.map { it.name.lowercase() }) {
-                assertEquals("$file $k", cards, "ll_day_dial_legend_$k" in all && "tv_day_dial_legend_${k}_value" in all)
+                assertEquals("$file $k", cards, "ll_day_dial_legend_$k" in all && "tv_day_dial_legend_${k}_value" in all &&
+                    "iv_day_dial_legend_${k}_icon" in all && "tv_day_dial_legend_${k}_label" in all)
             }
         }
     }

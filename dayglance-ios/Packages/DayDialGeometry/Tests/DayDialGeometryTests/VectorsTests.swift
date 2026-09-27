@@ -123,7 +123,7 @@ final class VectorsTests: XCTestCase {
         XCTAssertEqual(Self.fixture["format"] as? String, "dayDial.vectors/1")
         XCTAssertEqual(num(Self.fixture["dayMinutes"]), DialGeometry.dayMinutes)
         let counts = dict(Self.fixture["counts"])
-        XCTAssertEqual(Int(num(counts["geometry"])), 177)
+        XCTAssertEqual(Int(num(counts["geometry"])), 215)
         XCTAssertEqual(Int(num(counts["sky"])), 16)
         XCTAssertEqual(Int(num(counts["snapshot"])), 2)
     }
@@ -133,7 +133,10 @@ final class VectorsTests: XCTestCase {
                                    "padDialSegment", "dialLaneBand", "assignDialLanes", "computeDialModel",
                                    "computeDialRoutines", "moonPhasePath", "findDialFocusBlock",
                                    // Phase 2, PaletteTests.swift.
-                                   "muteDialColor", "dialIntensity"]
+                                   "muteDialColor", "dialIntensity",
+                                   // Frames, FramesTests.swift.
+                                   "muteDialFrameColor", "dialFrameRadii", "dialCurrentFrame",
+                                   "dialFrameAvailableMinutes"]
         // The keyboard selection walk is web accessibility UI with no widget analogue.
         let deferred: Set<String> = ["dialSelection"]
         let present = Set(section("geometry").keys)

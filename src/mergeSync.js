@@ -1,3 +1,4 @@
+import { mergeJobuRecords, stable as stableJobu } from './jobu/data.js';
 // Re-exports from @glance-apps/sync.
 // dayGLANCE tasks use `lastModified` for the per-item timestamp, so
 // mergeTaskArrays pins timestampField rather than re-exporting the alias
@@ -464,6 +465,16 @@ export const mergeSyncData = (local, remote, retentionDays) => {
       result.data.joboRecords = jobo.merged;
       if (jobo.localChanged) result.localChanged = true;
       if (jobo.remoteChanged) result.remoteChanged = true;
+    }
+  }
+  // Personal product revisions are immutable user data, not a task cache.
+  // Missing collection means unknown; never apply task retention horizons.
+  {
+    const merged = mergeJobuRecords(local?.jobuRecords, remote?.jobuRecords);
+    if (merged !== undefined) {
+      result.data.jobuRecords = merged;
+      if (stableJobu(merged) !== stableJobu(local?.jobuRecords)) result.localChanged = true;
+      if (stableJobu(merged) !== stableJobu(remote?.jobuRecords)) result.remoteChanged = true;
     }
   }
   // Keep device-local settings on this device's own value rather than the

@@ -1,3 +1,4 @@
+import { mergeJobuRecords, validateJobuRecords, stable as stableJobu } from '../jobu/data.js';
 // dayGLANCE → GLANCEvault entity-to-row adapter.
 //
 // Stage 1 (representability): pure shred/reassemble — proven lossless on one
@@ -54,6 +55,7 @@ export const COLLECTION_KINDS = {
   // pulled copy runs through core's pickJoboRecord (applyRemoteJobo) rather
   // than the engine's remote-wins tie, which two devices would never agree on.
   joboRecords:      { idField: 'id',     tsField: 'updatedAt'    },
+  jobuRecords:      { idField: 'id',     tsField: 'updatedAt'    },
 };
 
 // The five task-shaped kinds. A task keeps its `id` while moving between these
@@ -135,7 +137,7 @@ export function entityKind(entity) {
 // Other collections and per-date dailyNotes use normal entity-grain LWW.
 export function isInsertOnly(entity) {
   const k = entityKind(entity);
-  return k === SINGLETON_KIND || k === 'recurringTasks' || k === 'joboRecords';
+  return k === SINGLETON_KIND || k === 'recurringTasks' || k === 'joboRecords' || k === 'jobuRecords';
 }
 
 export function getEntityLastModified(entity) {
@@ -223,7 +225,7 @@ export function shredState(data) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function reassembleState(rows) {
   const data = {};
-  for (const kind of Object.keys(COLLECTION_KINDS)) data[kind] = [];
+  for (const kind of Object.keys(COLLECTION_KINDS)) if (kind !== 'jobuRecords') data[kind] = [];
   data[DATE_MAP_KIND] = {};
 
   for (const row of rows || []) {
@@ -235,6 +237,7 @@ export function reassembleState(rows) {
     } else if (kind === DATE_MAP_KIND) {
       data[DATE_MAP_KIND][entity._key] = entity.value;
     } else if (COLLECTION_KINDS[kind]) {
+      if (!data[kind]) data[kind] = [];
       data[kind].push(entity.value);
     } else {
       throw new Error(`reassembleState: unroutable row _kind=${JSON.stringify(kind)}`);
@@ -402,6 +405,12 @@ export function applyRemoteEntity(data, entity) {
   if (kind === 'recurringTasks') {
     return applyRemoteRecurring(data, entity.value);
   }
+  if (kind === 'jobuRecords') {
+    validateJobuRecords([entity.value]);
+    data.jobuRecords = mergeJobuRecords(data.jobuRecords, [entity.value]);
+    const winner = data.jobuRecords.find(row => row.id === entity.value.id);
+    return stableJobu(winner) === stableJobu(entity.value) ? [] : [makeEntityId('jobuRecords', entity.value.id)];
+  }
   if (kind === 'joboRecords') {
     return applyRemoteJobo(data, entity.value);
   }
@@ -431,7 +440,7 @@ export function applyRemoteDelete(data, entityId) {
   // from a device whose ledger vanished from its payload, and the snapshot
   // guard already refuses to propagate that; refusing it here too keeps the
   // history on a device that receives one anyway.
-  if (kind === 'joboRecords') return;
+  if (kind === 'joboRecords' || kind === 'jobuRecords') return;
   if (COLLECTION_KINDS[kind]) {
     const cfg = COLLECTION_KINDS[kind];
     data[kind] = (data[kind] || []).filter((x) => x == null || String(x[cfg.idField] ?? x.id) !== id);

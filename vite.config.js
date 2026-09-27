@@ -105,7 +105,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   server: {
-    port: 5174,
+    port: 5197,
+    strictPort: true,
   },
   build: {
     sourcemap: false,
@@ -124,9 +125,11 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB — the main chunk crossed 3 MiB in 2026-08
       },
       manifest: {
-        name: 'dayGLANCE',
-        short_name: 'dayGLANCE',
-        description: 'A beautiful time-blocking day planner with task management',
+        id: '/jobu',
+        name: 'Jobu',
+        short_id: '/jobu',
+        name: 'Jobu',
+        description: 'Jobu — planning, execution and reflection',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
@@ -157,9 +160,7 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
-        url_handlers: [
-          { origin: 'https://dayglance.app' },
-        ],
+
       },
     }),
   ],

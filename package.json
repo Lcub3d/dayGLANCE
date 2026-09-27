@@ -7,14 +7,14 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5197 --strictPort",
     "build": "vite build",
     "build:android": "./node_modules/.bin/vite build --config vite.config.android.js",
     "build:ios": "./node_modules/.bin/vite build --config vite.config.ios.js",
     "ios:generate": "bash scripts/gen-ios-project.sh",
     "ios:vectors": "node scripts/export-dial-vectors.mjs",
     "ios": "npm run build:ios && npm run ios:generate",
-    "preview": "vite preview",
+    "preview": "vite preview --port 4197 --strictPort",
     "reviewer-code": "node scripts/reviewer-code.js",
     "bump": "node scripts/bump-version.mjs",
     "ssrf:vectors": "node scripts/export-ssrf-vectors.mjs",
@@ -28,7 +28,9 @@
     "build:helpers": "npm run build:calendar-helper && npm run build:speech-helper",
     "build:electron": "npm run build:helpers && vite build --config vite.config.electron.js && npx tsc -p tsconfig.electron.json && npx tsc -p tsconfig.electron.preload.json && electron-builder --config electron-builder.config.cjs",
     "build:electron:release": "npm run build:helpers && vite build --config vite.config.electron.js && npx tsc -p tsconfig.electron.json && npx tsc -p tsconfig.electron.preload.json && electron-builder --config electron-builder.config.cjs --publish never",
-    "build:electron:mas": "npm run build:helpers && DAYGLANCE_MAS_BUILD=1 vite build --config vite.config.electron.js && npx tsc -p tsconfig.electron.json && npx tsc -p tsconfig.electron.preload.json && DAYGLANCE_APP_ID=com.dayglance electron-builder --config electron-builder.config.cjs --mac mas --universal --publish never"
+    "build:electron:mas": "npm run build:helpers && DAYGLANCE_MAS_BUILD=1 vite build --config vite.config.electron.js && npx tsc -p tsconfig.electron.json && npx tsc -p tsconfig.electron.preload.json && DAYGLANCE_APP_ID=com.dayglance electron-builder --config electron-builder.config.cjs --mac mas --universal --publish never",
+    "test:jobu": "vitest run src/jobu src/lifeplanner src/jobo",
+    "audit:check": "node scripts/audit-check.mjs"
   },
   "dependencies": {
     "@glance-apps/agenda-core": "file:packages/agenda-core",
@@ -38,6 +40,7 @@
     "@glance-apps/sync": "2.0.0",
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
+    "@xyflow/react": "12.11.3",
     "hono": "^4.13.5",
     "i18next": "^26.3.1",
     "i18next-browser-languagedetector": "^8.2.1",

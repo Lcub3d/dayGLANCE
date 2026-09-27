@@ -1,0 +1,120 @@
+/* The prototype keeps execution state quiet beside native task labels. */
+.jobo-s5-proto-status-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.jobo-s5-proto-timing-axis {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.jobo-s5-proto-more {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 16px;
+  opacity: .75;
+}
+
+.jobo-s5-proto-status-badges.can-wrap {
+  flex-wrap: wrap;
+}
+
+.jobo-s5-proto-status-badge {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  height: 20px;
+  padding: 1px 3px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: left;
+  opacity: .88;
+}
+
+.jobo-s5-proto-status-badge > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobo-s5-proto-status-badge > svg,
+.jobo-s5-proto-status-badge > small {
+  flex-shrink: 0;
+}
+
+.jobo-s5-proto-status-badge > small {
+  font-size: 9px;
+  opacity: .72;
+}
+
+.jobo-s5-proto-status-badge:hover,
+.jobo-s5-proto-status-badge:focus-visible {
+  background: rgb(255 255 255 / .14);
+  opacity: 1;
+}
+
+.jobo-s5-proto-status-badge:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -1px;
+}
+
+.jobo-s5-proto-time-badge.is-attention {
+  color: #ffe7a3;
+}
+
+.jobo-s5-proto-time-badge.is-muted {
+  opacity: .72;
+}
+
+.jobo-s5-proto-time-badge.is-ok {
+  color: #c9f0d3;
+}
+
+.jobo-s5-proto-time-badge.is-info {
+  color: #cce7ff;
+}
+
+.jobo-s5-proto-time-badge.is-danger {
+  color: #ffd1d1;
+}
+
+.jobo-s5-proto-progress-badge {
+  font-weight: 600;
+}
+
+/* The native card gives its inline metadata only a 16px row. Keep the
+   prototype badge within that row and leave room for the clock badge. */
+.jobo-s5-inline-status .jobo-s5-proto-status-badges {
+  width: 100%;
+}
+
+.jobo-s5-inline-status .jobo-s5-proto-timing-axis {
+  min-width: 0;
+}
+
+.jobo-s5-inline-status .jobo-s5-proto-status-badge {
+  height: 18px;
+  padding-block: 0;
+  box-sizing: border-box;
+  font-size: 10px;
+}
+
+.jobo-s5-inline-status .jobo-s5-proto-progress-badge {
+  max-width: 55%;
+}

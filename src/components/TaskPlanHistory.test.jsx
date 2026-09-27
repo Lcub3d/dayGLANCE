@@ -5,7 +5,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 import { DayPlannerContext } from '../context/DayPlannerContext.jsx';
-import TaskPlanHistory, { PlanHistoryPanel } from './TaskPlanHistory.jsx';
+import TaskPlanHistory, { getPlanHistoryPopoverPosition, PlanHistoryPanel } from './TaskPlanHistory.jsx';
 import { planHistory } from '../utils/originalPlan.js';
 
 // The badge must be ABSENT on the overwhelming majority of tasks: everything
@@ -56,6 +56,32 @@ describe('TaskPlanHistory', () => {
     const html = await render({ id: 't1', ...PLANNED, startTime: '16:00', originalPlan: PLANNED });
     expect(html).not.toContain('Originally planned');
     expect(html).toContain('aria-expanded="false"');
+  });
+});
+
+describe('history popover placement', () => {
+  const viewport = { width: 800, height: 600 };
+  const anchor = { left: 300, top: 200, bottom: 220 };
+
+  it('anchors below the history button in viewport coordinates', () => {
+    expect(getPlanHistoryPopoverPosition(anchor, null, viewport)).toMatchObject({
+      top: 224,
+      left: 300,
+      width: 230,
+    });
+  });
+
+  it('flips above the button when the measured panel would leave the viewport', () => {
+    expect(getPlanHistoryPopoverPosition({ left: 300, top: 520, bottom: 540 }, { width: 230, height: 120 }, viewport)).toMatchObject({
+      top: 396,
+      left: 300,
+      width: 230,
+    });
+  });
+
+  it('clamps the panel to both viewport edges', () => {
+    expect(getPlanHistoryPopoverPosition({ left: 2, top: 20, bottom: 40 }, { width: 230, height: 80 }, viewport).left).toBe(8);
+    expect(getPlanHistoryPopoverPosition({ left: 790, top: 20, bottom: 40 }, { width: 230, height: 80 }, viewport).left).toBe(562);
   });
 });
 

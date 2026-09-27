@@ -1,3 +1,5 @@
+import useJobuData from './jobu/useJobuData.js';
+import JobuShell from './components/jobu/JobuShell.jsx';
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import i18n from 'i18next';
 import { Plus, Clock, X, GripVertical, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Moon, Sun, Upload, Inbox, AlertCircle, Calendar, Check, RefreshCw, Palette, Trash2, Undo2, BarChart3, SkipForward, Hash, MoreHorizontal, Save, Menu, BrainCircuit, AlertTriangle, FileText, ExternalLink, CheckSquare, HelpCircle, Sparkles, Link, GripHorizontal, Play, Pause, Trophy, Cloud, Settings, Search, Bell, Target, TrendingUp, Zap, CalendarDays, Ban, Volume2, VolumeX, Pencil, Eye, Filter, Smartphone, CheckCircle, Pin, PinOff, NotebookPen, MapPin, BookOpen, Flag, FolderOpen, Droplets, Footprints, Dumbbell, Apple, Cigarette, Coffee, Flame, Heart, ListChecks, Minus, Wine, Candy, Pill, Activity, CupSoda, Mic, MicOff, Loader, Key, Server, Wifi, WifiOff, LayoutGrid, RotateCcw } from 'lucide-react';
@@ -361,7 +363,7 @@ const DayPlanner = () => {
   // being tried, not carried to every device by a restore.
   const [joboEnabled, setJoboEnabled] = useState(() => {
     const saved = localStorage.getItem('day-planner-jobo-enabled');
-    return saved !== null ? JSON.parse(saved) === true : false;
+    return saved !== null ? JSON.parse(saved) === true : true;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
   // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
@@ -1062,9 +1064,12 @@ const DayPlanner = () => {
   // stores, pushes, pulls and merges records.
   const {
     joboRecords, joboLoaded, joboWritable, joboError,
-    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet,
+    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet, reloadJobo,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
+  const jobu = useJobuData();
+  const jobuRecordsRef = useRef(jobu.records);
+  jobuRecordsRef.current = jobu.records;
   const joboRecordsRef = useRef(joboRecords);
   joboRecordsRef.current = joboRecords;
   // A ledger write that fails is held and retried by the next apply, and the
@@ -1080,6 +1085,7 @@ const DayPlanner = () => {
   // it, and a write still in flight at reload is lost. The throw lands in each
   // path's own catch, which alerts and leaves the app as it was.
   const restoreJoboOrThrow = async (data) => {
+    if (data?.jobuRecords !== undefined) await jobu.data.restore(data.jobuRecords);
     if (!Array.isArray(data?.joboRecords)) return; // an older backup: the ledger is left as is
     const result = await restoreJobo(data.joboRecords);
     if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
@@ -4854,6 +4860,7 @@ const DayPlanner = () => {
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(jobuRecordsRef.current !== undefined ? { jobuRecords: jobuRecordsRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4917,6 +4924,7 @@ const DayPlanner = () => {
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(jobuRecordsRef.current !== undefined ? { jobuRecords: jobuRecordsRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -5915,6 +5923,7 @@ const DayPlanner = () => {
         // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
         // treat an absent key as "does not carry it"; [] would mean empty.
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(jobuRecordsRef.current !== undefined ? { jobuRecords: jobuRecordsRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -6210,6 +6219,7 @@ const DayPlanner = () => {
     // JOBO ledger rows go through the hook, the only writer: merged by id with
     // incoming timestamps untouched, held until the ledger has loaded.
     if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
+    if (data.jobuRecords !== undefined) jobu.data.applyRemote(data.jobuRecords);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -7056,6 +7066,7 @@ const DayPlanner = () => {
     postponeDeadlineTask,
     clearDeadline,
     addTask,
+    createTimelineTask,
     openNewTaskForm,
     openNewAllDayTask,
     openNewInboxTask,
@@ -8730,7 +8741,7 @@ const DayPlanner = () => {
     scrollToCurrentHour, scrollToHour,
 
     // ── Functions – task CRUD ─────────────────────────────────────────────────
-    addTask, toggleComplete,
+    addTask, createTimelineTask, toggleComplete,
     archiveInboxTask, restoreArchivedInboxTask,
     deleteRecurringInstance, updateRecurrencePattern,
     updateRecurrenceEndCondition, updateRecurringTemplate,
@@ -8961,7 +8972,8 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
+    jobuData: jobu.data, jobuRecords: jobu.records, jobuLoaded: jobu.loaded, jobuWritable: jobu.writable, jobuError: jobu.error,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,
@@ -9198,11 +9210,7 @@ const DayPlanner = () => {
           </p>
         </div>
       )}
-      {isMobile ? (
-        <MobileLayout />
-      ) : (
-        <DesktopLayout />
-      )}
+      <JobuShell>{isMobile ? <MobileLayout /> : <DesktopLayout />}</JobuShell>
 
       {showTimePicker && (
         <ClockTimePicker

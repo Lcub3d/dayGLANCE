@@ -1,3 +1,20 @@
+# Jobu personal product
+
+`product/jobu` is Lcub3d's independent product mainline. It is not the upstream
+Slice 5 PR. Upstream slice boundaries are historical context, not approval gates.
+`feature/jobu-todoist` is the task-entry development branch. New feature PRs
+must target `product/jobu`, never upstream or the sync-only `main` by default.
+Do not modify `main`, `contrib/*`, or `reference/*` to develop Jobu.
+
+Data integrity is still mandatory: strict reads, atomic commits, explicit
+migration, immutable revision history, no guessed execution durations, no silent
+conflict loss, sync/backup/reset coverage and executable regression tests.
+Product decisions belong to Lcub3d. Architecture changes are allowed with tests
+and migration notes. See `docs/jobu-architecture.md`.
+
+The inherited contribution guidance below applies when preparing upstream PRs;
+where branch policy differs, the Jobu policy above takes precedence.
+
 # Git Workflow
 
 ## Branch Strategy

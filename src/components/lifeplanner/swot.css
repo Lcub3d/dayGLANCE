@@ -1,0 +1,71 @@
+.lp-swot-entry { align-self:flex-start; flex-shrink:0; min-height:24px; padding:3px 7px; margin:8px 0 0; border:0; border-radius:999px; background:#fee2e2; font-size:9px; line-height:18px; font-weight:600; letter-spacing:.03em; color:#b91c1c; }
+.lp-swot-entry:hover:not(:disabled) { color:#991b1b; background:#fecaca; }
+.lp-paper-dark .lp-swot-entry { color:#fca5a5; background:#4c252d; }
+.lp-swot-mask { position:fixed; inset:0; z-index:65; background:rgb(0 0 0 / .28); display:flex; align-items:center; justify-content:center; padding:24px; }
+.lp-swot-sheet { --lp-paper:#fff; --lp-rule:#e7e5e4; --lp-muted:#57534e; --lp-hover:#f5f5f4; --lp-soft:#fafaf9; --lp-accent:#2563eb; position:relative; background:var(--lp-paper); color:#1c1917; width:820px; max-width:100%; max-height:calc(100dvh - 48px); border-radius:12px; box-shadow:0 16px 48px #0002; display:flex; flex-direction:column; overflow:hidden; text-align:left; }
+.lp-swot-sheet.lp-paper-dark { --lp-paper:#1f2937; --lp-rule:#374151; --lp-muted:#9ca3af; --lp-hover:#374151; --lp-soft:#263140; --lp-accent:#60a5fa; color:#f3f4f6; }
+.lp-swot-header { min-height:44px; flex-shrink:0; }
+.lp-swot-close { position:absolute; top:8px; right:12px; z-index:2; color:var(--lp-muted); }
+.lp-swot-body { overflow:auto; min-height:0; padding:0 32px 24px; scrollbar-gutter:stable; }
+.lp-swot-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px 32px; }
+.lp-swot-factors { gap:0; background:var(--lp-soft); border-radius:8px; overflow:hidden; }
+.lp-swot-factors>label { min-width:0; padding:16px 20px 12px; }
+.lp-swot-factors>label:nth-child(even) { border-left:1px solid var(--lp-rule); }
+.lp-swot-factors>label:nth-child(n+3) { border-top:1px solid var(--lp-rule); }
+.lp-swot-label { display:flex; align-items:baseline; gap:8px; min-width:0; font-size:12px; font-weight:500; line-height:20px; color:var(--lp-muted); }
+.lp-swot-label b { color:inherit; font-size:14px; font-weight:600; flex-shrink:0; }
+.lp-swot-factors .lp-swot-label { color:inherit; font-size:13px; font-weight:600; }
+.lp-swot-sheet textarea { display:block; width:100%; min-width:0; background:transparent; color:inherit; font:inherit; font-size:14px; line-height:24px; padding:8px 0; border:0; border-radius:0; resize:vertical; }
+.lp-swot-sheet textarea::placeholder { color:var(--lp-muted); opacity:1; }
+.lp-swot-sheet textarea:focus { outline:none; box-shadow:0 1px 0 var(--lp-accent); }
+.lp-swot-sheet button:focus-visible { outline:2px solid var(--lp-accent); outline-offset:2px; }
+.lp-swot-sheet button:disabled { opacity:.4; cursor:default; }
+.lp-swot-strategies { margin-top:28px; }
+.lp-swot-section-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+.lp-swot-section-bar h3 { font-size:15px; font-weight:600; line-height:24px; }
+.lp-swot-ai-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:32px; padding:5px 10px; border:1px solid var(--lp-rule); border-radius:6px; font-size:12px; font-weight:500; color:var(--lp-muted); }
+.lp-swot-ai-button:hover:not(:disabled) { background:var(--lp-hover); color:var(--lp-accent); }
+.lp-swot-sheet .lp-swot-ai-button:disabled { opacity:.65; }
+.lp-swot-group-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:32px; border-bottom:1px solid var(--lp-rule); }
+.lp-swot-add { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:28px; height:28px; border-radius:5px; color:var(--lp-muted); }
+.lp-swot-add:hover:not(:disabled) { background:var(--lp-hover); color:var(--lp-accent); }
+.lp-swot-rows { margin-top:4px; }
+.lp-swot-strategy { display:flex; align-items:flex-start; gap:4px; border-bottom:1px solid var(--lp-rule); }
+.lp-swot-strategy:last-child { border-bottom-color:transparent; }
+.lp-swot-strategy textarea { resize:none; overflow:hidden; flex:1; }
+.lp-swot-promote { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; flex-shrink:0; margin-top:8px; border-radius:5px; color:var(--lp-muted); }
+.lp-swot-promote:hover:not(:disabled),.lp-swot-promote.is-linked { color:var(--lp-accent); background:var(--lp-hover); }
+.lp-swot-remove { width:28px; height:28px; margin-top:8px; border-radius:5px; color:var(--lp-muted); opacity:0; }
+.lp-swot-strategy:hover .lp-swot-remove,.lp-swot-strategy:focus-within .lp-swot-remove { opacity:1; }
+.lp-swot-suggestions { margin-bottom:20px; padding:4px 12px; background:var(--lp-soft); border-radius:8px; }
+.lp-swot-suggestion { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--lp-rule); font-size:14px; line-height:24px; }
+.lp-swot-suggestion:last-child { border-bottom:0; }
+.lp-swot-suggestion b { color:var(--lp-muted); min-width:24px; font-size:12px; font-weight:600; }
+.lp-swot-suggestion p { flex:1; min-width:0; overflow-wrap:anywhere; }
+.lp-swot-suggestion .lp-button { flex-shrink:0; font-size:12px; color:var(--lp-accent); min-height:28px; }
+.lp-swot-footer { display:flex; justify-content:flex-end; gap:8px; align-items:center; padding:12px 32px 20px; flex-shrink:0; }
+.lp-swot-footer .lp-button { min-height:34px; font-size:13px; }
+.lp-swot-footer .lp-swot-save { background:#2563eb; color:#fff; }
+.lp-swot-footer .lp-swot-save:hover { background:#1d4ed8; }
+.lp-swot-sheet .lp-error { padding:8px 0; }
+@media(max-width:650px) {
+  .lp-swot-mask { padding:10px; }
+  .lp-swot-sheet { max-height:calc(100dvh - 20px); }
+  .lp-swot-body { padding:0 16px 16px; }
+  .lp-swot-sheet .lp-swot-close { width:40px; height:40px; top:2px; right:8px; }
+  .lp-swot-grid { grid-template-columns:minmax(0,1fr); gap:20px; }
+  .lp-swot-factors { gap:0; }
+  .lp-swot-factors>label { padding:12px 16px; }
+  .lp-swot-factors>label:nth-child(even) { border-left:0; }
+  .lp-swot-factors>label+label { border-top:1px solid var(--lp-rule); }
+  .lp-swot-sheet textarea { font-size:16px; }
+  .lp-swot-strategies { margin-top:24px; }
+  .lp-swot-footer { padding:10px 16px max(16px,env(safe-area-inset-bottom)); }
+  .lp-swot-remove { opacity:1; }
+  .lp-swot-promote,.lp-swot-remove,.lp-swot-add { width:32px; height:32px; }
+  .lp-category-writing .lp-wish-writing { flex-wrap:nowrap; }
+  .lp-category-writing .lp-wish-writing>.lp-ruled-input { flex:1; width:0; }
+}
+@media(hover:none) { .lp-swot-remove { opacity:1; } .lp-swot-close { min-width:40px; min-height:40px; top:2px; right:8px; } }
+@media(prefers-reduced-motion:reduce) { .lp-swot-sheet .animate-spin { animation:none; } }
+@media(forced-colors:active) { .lp-swot-sheet { --lp-paper:Canvas; --lp-soft:Canvas; --lp-rule:CanvasText; --lp-muted:CanvasText; --lp-accent:LinkText; color:CanvasText; } }

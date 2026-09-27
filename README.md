@@ -1,3 +1,45 @@
+# Jobu — personal product by Lcub3d
+
+An independently maintained product line in the dayGLANCE fork. **`product/jobu`
+is the personal mainline**; `feature/jobu-todoist` develops the task-entry layer.
+Upstream `main`, `contrib/*` PR branches and frozen references remain separate.
+
+## Run locally
+
+```sh
+git fetch origin
+git switch product/jobu
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5197`. Use a new browser profile or separate sync vault
+for this first pass; do not mix production data with stock dayGLANCE while
+validating migrations. `npm run build` and `npm run preview` use port 4197.
+
+## Included
+
+- Full JOBO workspace (not the reduced upstream Slice 5 view).
+- Todoist-inspired native task input, p1–p4, projects, labels and GLANCE filters.
+- Original Life Planner notebook, assistant, visions/stages, SWOT and Life Map.
+- Year completion heatmap, day templates and explicit template-task generation.
+- Versioned personal data with strict transactional saves, conflict history,
+  both sync adapters, import/export and legacy planner migration.
+
+[Architecture, data ownership, supported syntax and known limits](docs/jobu-architecture.md).
+This is a working first pass, not a signed native release or a guarantee of
+production cross-device service compatibility. Run tests before importing data.
+
+## Acknowledgments
+
+Built on dayGLANCE by **krelltunez and contributors**. Their work on task/calendar
+integration, JOBO persistence, deterministic merge, strict reads and failure
+handling is retained and extended. Original copyright and MIT license notices
+remain. Todoist-inspired input is independently implemented; no affiliation with
+Doist is claimed. The original upstream README follows as reference.
+
+---
+
 # dayGLANCE
 
 **Your day, at a glance.** A privacy-first day planner with visual time-blocking, deep integrations, and zero lock-in. Use it free at [dayglance.app](https://dayglance.app) or self-host it on your own server. Your data stays on your device, and nothing is ever sent to a server unless you choose to sync it yourself.

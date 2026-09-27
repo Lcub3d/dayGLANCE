@@ -92,16 +92,16 @@ const useGoalsProjects = () => {
 
   // ── Goal CRUD ────────────────────────────────────────────────────────────────
 
-  const addGoal = useCallback((fields) => {
+  const addGoal = useCallback((fields, options = {}) => {
     const now = new Date().toISOString();
     const newGoal = {
       status: 'active',
-      id: crypto.randomUUID(),
+      id: options.id || crypto.randomUUID(),
       ...fields,
       createdAt: now,
       updatedAt: now,
     };
-    setGoals(prev => [...prev, newGoal]);
+    setGoals(prev => prev.some(item => item.id === newGoal.id) ? prev : [...prev, newGoal]);
     return newGoal;
   }, []);
 
@@ -174,16 +174,16 @@ const useGoalsProjects = () => {
 
   // ── Project CRUD ─────────────────────────────────────────────────────────────
 
-  const addProject = useCallback((fields) => {
+  const addProject = useCallback((fields, options = {}) => {
     const now = new Date().toISOString();
     const newProject = {
       status: 'active',
       ...fields,
-      id: crypto.randomUUID(),
+      id: options.id || crypto.randomUUID(),
       createdAt: now,
       updatedAt: now,
     };
-    setProjects(prev => [...prev, newProject]);
+    setProjects(prev => prev.some(item => item.id === newProject.id) ? prev : [...prev, newProject]);
     return newProject;
   }, []);
 

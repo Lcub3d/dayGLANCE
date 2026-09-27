@@ -186,6 +186,47 @@ function makeSingletonEntity(data, key) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ABSENT COLLECTIONS: a kind the payload omits is unknown, not empty
+// ─────────────────────────────────────────────────────────────────────────────
+// A collection KEY that is missing from the payload means "this device has
+// nothing to say about that kind" (the JOBO ledger omits `joboRecords` until
+// its strict IndexedDB read completes; an older build never had the key). An
+// EMPTY array means "this device's copy is empty". shredState cannot tell the
+// two apart: it reads both as no rows. On the apply side that is harmless
+// (absent carries nothing), but at the push diff it read as every previous
+// row of that kind vanishing at once: 23 `joboRecords:do:…` vanish-deletes on
+// each launch, all skipped by the snapshot-delete guard as glitches and each
+// re-fetched by id from the vault (23 row-gets per launch against the rate
+// budget, and a wall of GUARD warnings). This is the missing half of "not
+// loaded is not empty" (docs/jobo-ledger-persistence.md).
+//
+// The rule: for a collection kind whose key is absent from the payload, the
+// diff carries the previous snapshot's entries of that kind forward, so the
+// cycle proposes neither upserts nor deletes for it, and the saved snapshot
+// keeps them, so the cycle after the ledger loads diffs clean too. `[]` still
+// means empty and still diffs as such.
+
+/** The collection kinds whose key is missing from the payload (`undefined`). */
+export function absentCollectionKinds(data) {
+  if (!data || typeof data !== 'object') return Object.keys(COLLECTION_KINDS);
+  return Object.keys(COLLECTION_KINDS).filter((kind) => data[kind] === undefined);
+}
+
+/**
+ * The entries of a previous snapshot (entityId → hash) whose kind the payload
+ * omits, to be carried forward untouched by the diff and the saved snapshot.
+ */
+export function carryAbsentCollections(prevHashes, data) {
+  const carried = {};
+  const absent = new Set(absentCollectionKinds(data));
+  if (absent.size === 0 || !prevHashes) return carried;
+  for (const entityId of Object.keys(prevHashes)) {
+    if (absent.has(splitEntityId(entityId)[0])) carried[entityId] = prevHashes[entityId];
+  }
+  return carried;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SHRED: full payload `.data` → rows
 // ─────────────────────────────────────────────────────────────────────────────
 export function shredState(data) {

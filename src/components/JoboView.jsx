@@ -1,24 +1,328 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import { dateToString } from '../utils/taskUtils.js';
+import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
+import { DayViewColumn } from './DayView.jsx';
+import DoColumn, { snapMinute, estimateCompletion } from './jobo/DoColumn.jsx';
+import DoEditor from './jobo/DoEditor.jsx';
+import ExecutionDetails from './jobo/ExecutionDetails.jsx';
+import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
+import { intervalFromMarker } from '../jobo/completionMarker.js';
+import { prepareDoEdit, commitDoEdit } from '../jobo/viewActions.js';
+import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 
-// JOBO: plan versus actual. The sixth desktop view, behind the `joboEnabled`
-// flag, being landed in slices from the prototype in #1673.
+// JOBO: Plan and Do for one day, side by side on one hour axis.
 //
-// This first slice is the switch and the seat: the view is registered, keyed
-// to 6, cycles, and can be turned off per device like any other, so every
-// later slice has somewhere to land that already behaves like a view. What it
-// SHOWS comes after the ledger does (src/jobo/, none of it here yet), because
-// a view drawn from a store that cannot survive a sync is worse than no view.
+// The Plan side IS the app's timeline: DAY's own column over 24 hours, so it
+// has the real task cards, drag and drop (Inbox included), the blue hover
+// line, click-to-add, the timeline context menu, Frames and the now line,
+// and the native checkbox completes the task through the usual handler (the
+// slice 4 detector then records the Do). Nothing here re-implements them.
+//
+// The Do side is drawn to the same grid (DoColumn) from the day model
+// (src/jobo/viewModel.js). It reads committed `joboRecords` only and writes
+// through `recordJobo`, via the receipt hook that never calls a pending
+// write saved. Gestures snap to 15 minutes like every other view.
+
+// Plan's cell holds the 4rem hour gutter plus its half; Do gets the other half.
+const GRID = 'grid grid-cols-[calc(50%+2rem)_minmax(0,1fr)]';
+const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+
 export default function JoboView() {
   const { t } = useTranslation();
-  const { textPrimary, textSecondary } = useDayPlannerCtx();
-  return (
-    <div data-jobo-view className="h-full flex items-center justify-center p-8">
-      <div className="max-w-md text-center space-y-2">
-        <div className={`text-lg font-semibold tracking-wide ${textPrimary}`}>{t('jobo.title')}</div>
-        <p className={`text-sm ${textSecondary}`}>{t('jobo.placeholder')}</p>
+  const ctx = useDayPlannerCtx();
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo } = useFeaturesCtx();
+  const writer = useJoboViewWriter({ records: joboRecords, recordJobo });
+  const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
+
+  const [editor, setEditor] = useState(null);
+  const [details, setDetails] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [gestureError, setGestureError] = useState('');
+  const scrollRef = useRef(null);
+  const doLane = useRef(null);
+  const gestureCleanup = useRef(null);
+  const live = useRef(null);
+  live.current = { joboRecords, joboWritable, joboLoaded, pendingIds: writer.pendingIds };
+
+  const { selectedDate, getTasksForDate } = ctx;
+  const date = dateToString(selectedDate);
+  const dayStart = useMemo(() => { const d = new Date(selectedDate); d.setHours(0, 0, 0, 0); return d; }, [selectedDate]);
+  const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour: 0, endHour: 24 }), [dayStart, date]);
+  const currentTime = ctx.currentTime instanceof Date ? ctx.currentTime : new Date();
+  const nowDate = dateToString(currentTime);
+  const nowTime = clock(currentTime.getHours() * 60 + currentTime.getMinutes());
+
+  const dayTasks = useMemo(
+    () => getTasksForDate(selectedDate, false).filter((task) => !task.isAllDay && task.startTime),
+    [getTasksForDate, selectedDate],
+  );
+  const lookup = useMemo(
+    () => [...(ctx.tasks || []), ...(ctx.unscheduledTasks || []), ...(ctx.expandedRecurringTasks || []), ...dayTasks],
+    [ctx.tasks, ctx.unscheduledTasks, ctx.expandedRecurringTasks, dayTasks],
+  );
+  const model = useMemo(() => buildJoboDayModel({
+    date, tasks: dayTasks, taskLookup: lookup, recurringTasks: ctx.recurringTasks,
+    records: joboRecords || [], scale: hourHeight, isVisibleForUser: ctx.isVisibleForUser,
+    now: { date: nowDate, time: nowTime },
+  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, ctx.isVisibleForUser, nowDate, nowTime]);
+  const doItems = useMemo(
+    () => assignOverlapColumns(
+      [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
+      { scale: hourHeight, minHeightPx: 27, gapPx: 2 },
+    ),
+    [model.timedRecords, model.untimedRecords, hourHeight],
+  );
+  const liveDetail = details && doItems.find((item) => item.id === details.item.id);
+
+  // Open on the part of the day that matters: an hour before now on today,
+  // otherwise an hour before the first Plan or Do.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const firstMinute = Math.min(
+      ...model.plans.map((item) => item.startMinute),
+      ...doItems.map((item) => item.startMinute),
+      8 * 60,
+    );
+    const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
+    el.scrollTop = Math.max(0, (anchorMinute - 60) * hourHeight / 60);
+    // Only on a new day or a new hour height, never on an ordinary re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, hourHeight]);
+
+  useEffect(() => () => gestureCleanup.current?.(), []);
+  useEffect(() => { gestureCleanup.current?.(); }, [date]);
+
+  const closeEditor = useCallback(() => setEditor(null), []);
+  const closeDetails = useCallback(() => setDetails(null), []);
+  // Editing an estimate opens with the estimated times filled in, so saving
+  // it is the explicit "keep as shown"; clearing the start keeps the marker.
+  const openEdit = (record) => {
+    closeDetails();
+    const shown = doItems.find((item) => item.record?.id === record.id && item.estimate);
+    setEditor(shown
+      ? { record, initial: { patch: { startTime: clock(shown.startMinute), endTime: shown.time, date: shown.date } } }
+      : { record });
+  };
+  const openAdd = (startMinute) => { closeDetails(); setEditor({ initial: { date, startMinute, duration: 30 } }); };
+
+  const saveEdit = async (record, patch) => {
+    const current = live.current;
+    if (!current.joboLoaded || !current.joboWritable || current.pendingIds.includes(record.id)) return;
+    setGestureError('');
+    try {
+      const next = prepareDoEdit({ records: current.joboRecords, record, patch, now: Date.now() });
+      if (!next) { setGestureError(t('jobo.view.recordChanged')); return; }
+      await commitDoEdit(writer.write, next);
+    } catch (error) {
+      setGestureError(t(error.code === 'recordChanged' ? 'jobo.view.recordChanged' : 'jobo.view.updateFailed'));
+    }
+  };
+
+  // One pointer gesture on the Do column, with a live preview. `toRange`
+  // turns the snapped minute under the pointer (and the one it went down on)
+  // into { start, end } or null; `toPatch` turns the final range into the
+  // record patch.
+  const runGesture = (event, { toRange, toPatch, record }) => {
+    if (event.button !== 0 || !joboWritable || writer.pendingIds.includes(record.id)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    gestureCleanup.current?.();
+    const startY = event.clientY;
+    const laneTop = doLane.current?.getBoundingClientRect().top ?? 0;
+    const downMinute = (startY - laneTop) / hourHeight * 60;
+    let range = null;
+    const move = (e) => {
+      if (Math.abs(e.clientY - startY) < 5) { range = null; setPreview(null); return; }
+      const bounds = doLane.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const minute = (e.clientY - bounds.top) / hourHeight * 60;
+      range = toRange(snapMinute(minute), minute - downMinute);
+      setPreview(range);
+    };
+    const cleanup = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', cleanup);
+      window.removeEventListener('keydown', escape, true);
+      setPreview(null);
+      gestureCleanup.current = null;
+    };
+    const escape = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); cleanup(); } };
+    const finish = (e) => {
+      move(e);
+      const chosen = range;
+      cleanup();
+      // The browser follows a drag's pointerup with a click on whatever is
+      // under it: the empty column (which would open Add Do) or the card
+      // (its details). A drag is not a click, so swallow that one click.
+      if (Math.abs(e.clientY - startY) >= 5) {
+        const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        window.addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+      }
+      const patch = chosen && toPatch(chosen);
+      if (patch) saveEdit(record, patch);
+    };
+    gestureCleanup.current = cleanup;
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish, { once: true });
+    window.addEventListener('pointercancel', cleanup, { once: true });
+    window.addEventListener('keydown', escape, true);
+  };
+
+  // The timed patch for an interval of the item's day. Midnight is the next
+  // day's 00:00, the shape core expects.
+  const timedPatch = (date, start, end) => {
+    const next = new Date(`${date}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    return {
+      timing: 'timed', date, startTime: clock(start),
+      endDate: end >= 1440 ? next.toISOString().slice(0, 10) : date, endTime: clock(end % 1440),
+    };
+  };
+
+  // Drag an estimate to where the work really was: it moves whole, its start
+  // snapped to 15 minutes, and saving it makes it a timed Do under the same id.
+  const onEstimateMove = (event, item) => {
+    const duration = item.endMinute - item.startMinute;
+    runGesture(event, {
+      record: item.record,
+      toRange: (_minute, delta) => {
+        const start = Math.max(0, Math.min(1440 - duration, snapMinute(item.startMinute + delta)));
+        return start === item.startMinute ? null : { start, end: start + duration };
+      },
+      toPatch: (range) => timedPatch(item.date, range.start, range.end),
+    });
+  };
+
+  // Drag from a completion marker: the marker is one end of the interval,
+  // the pointer the other. Same id; the record becomes timed. An estimate
+  // moves instead.
+  const onPointGesture = (event, item) => (item.estimate ? onEstimateMove(event, item) : runGesture(event, {
+    record: item.record,
+    toRange: (minute) => (minute === item.startMinute ? null
+      : { start: Math.min(item.startMinute, minute), end: Math.max(item.startMinute, minute) }),
+    toPatch: (range) => intervalFromMarker(item, range.start === item.startMinute ? range.end : range.start),
+  }));
+
+  // Drag the bottom handle of a timed Do to move its end, as with a task. On
+  // an estimate it sets the real end, keeping the estimated start.
+  const onResizeGesture = (event, item) => (item.estimate ? runGesture(event, {
+    record: item.record,
+    toRange: (minute) => (minute > item.startMinute && minute !== item.endMinute ? { start: item.startMinute, end: minute } : null),
+    toPatch: (range) => timedPatch(item.date, range.start, range.end),
+  }) : runGesture(event, {
+    record: item.record,
+    toRange: (minute) => (minute > item.startMinute ? { start: item.startMinute, end: minute } : null),
+    toPatch: (range) => {
+      if (range.end === item.endMinute) return null;
+      // Midnight is the next day's 00:00, the shape core expects.
+      if (range.end >= 1440) {
+        const next = new Date(`${item.record.date}T00:00:00Z`);
+        next.setUTCDate(next.getUTCDate() + 1);
+        return { endDate: next.toISOString().slice(0, 10), endTime: '00:00' };
+      }
+      return { endDate: item.record.date, endTime: clock(range.end) };
+    },
+  }));
+
+  if (!joboLoaded) {
+    return (
+      <div data-jobo-view className={`h-full flex items-center justify-center gap-2 p-6 ${ctx.textSecondary}`} role={joboError ? 'alert' : 'status'}>
+        {joboError ? (
+          <>
+            <AlertTriangle size={16} />{t('jobo.view.loadError')}
+            {reloadJobo && <button type="button" className="underline" onClick={() => reloadJobo()}>{t('jobo.view.retryLoad')}</button>}
+          </>
+        ) : t('common.loading')}
       </div>
+    );
+  }
+
+  const status = gestureError
+    || (writer.conflict ? t('jobo.view.recordChanged')
+      : joboError ? t('jobo.view.storageError')
+        : !joboWritable ? t('jobo.view.readOnly')
+          : model.invalidRecordCount > 0 ? t('jobo.view.invalidRecords', { count: model.invalidRecordCount }) : '');
+
+  return (
+    <div data-jobo-view className={`flex-1 min-h-0 min-w-0 flex flex-col ${ctx.textPrimary}`}>
+      {status && (
+        <div className="flex items-center gap-2 px-3 py-1 text-xs" role="status"><AlertTriangle size={14} />{status}</div>
+      )}
+      <div ref={scrollRef} className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${ctx.darkMode ? 'dark-scrollbar' : ''}`}>
+        <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
+          <div className="flex min-w-0">
+            <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass}`} />
+            <div className="flex-1 min-w-0 px-3 py-1.5">{t('jobo.view.plan')}</div>
+          </div>
+          <div className={`min-w-0 px-3 py-1.5 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
+            <span>{t('jobo.view.do')}</span>
+            <button
+              type="button"
+              className={`flex items-center gap-1 text-xs font-normal px-2 py-0.5 rounded-lg ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'} disabled:opacity-40`}
+              disabled={!joboWritable}
+              onClick={() => openAdd(date === nowDate
+                ? Math.min(1410, snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes()))
+                : 9 * 60)}
+            >
+              <Plus size={14} />{t('jobo.view.addDo')}
+            </button>
+          </div>
+        </div>
+        <div className={GRID}>
+          <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+          <DoColumn
+            date={date}
+            hourHeight={hourHeight}
+            items={doItems}
+            ctx={ctx}
+            t={t}
+            writable={joboWritable}
+            pendingIds={writer.pendingIds}
+            preview={preview}
+            laneRef={doLane}
+            onAddAt={openAdd}
+            onEdit={openEdit}
+            onDetails={(item, anchor) => setDetails({ item, anchor })}
+            onPointGesture={onPointGesture}
+            onResizeGesture={onResizeGesture}
+          />
+        </div>
+      </div>
+      {liveDetail && (
+        <ExecutionDetails
+          item={liveDetail}
+          anchor={details.anchor}
+          onClose={closeDetails}
+          onEdit={({ record }) => openEdit(record)}
+          ctx={ctx}
+          t={t}
+          writable={joboWritable}
+          pendingIds={writer.pendingIds}
+        />
+      )}
+      {editor && (
+        <DoEditor
+          {...editor}
+          records={joboRecords || []}
+          writable={joboWritable}
+          recordJobo={writer.write}
+          onClose={closeEditor}
+          pendingIds={writer.pendingIds}
+          t={t}
+          cardBg={ctx.cardBg}
+          textPrimary={ctx.textPrimary}
+          textSecondary={ctx.textSecondary}
+          borderClass={ctx.borderClass}
+          darkMode={ctx.darkMode}
+        />
+      )}
     </div>
   );
 }

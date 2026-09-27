@@ -33,7 +33,7 @@ export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jo
  */
 export const EXPERIMENTAL_DESKTOP_VIEWS = { jobo: 'joboEnabled' };
 /** Narrow desktop and landscape tablet: DAY and WEEK need the 3-column grid. */
-export const NARROW_DESKTOP_VIEW_MODES = ['multi', 'month', 'sched'];
+export const NARROW_DESKTOP_VIEW_MODES = ['multi', 'month', 'sched', 'jobo'];
 export const MOBILE_VIEW_MODES = ['grid', 'list', 'month', 'sched'];
 
 /** The two switchers hidden views are kept for: the desktop cycler and the phone toggle. */

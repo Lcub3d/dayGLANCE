@@ -2142,7 +2142,92 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje."
+    "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
+    "view": {
+      "activeLabel": "Czas aktywny",
+      "addDo": "Add Do",
+      "capturedPlan": "Captured plan",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "completeInterval": "Wprowadź pełny przedział początku i końca.",
+      "completedAt": "Oznaczono jako ukończone o {{time}}",
+      "completedByCompletion": "Stan Ukończone powstaje przez zdarzenie ukończenia. Ponowna ocena Do może mieć stan Rozpoczęte, Częściowe lub Prawie.",
+      "completionAxis": "Ukończenie",
+      "do": "Wykonanie",
+      "elapsedLabel": "Czas, który upłynął",
+      "elapsedMinutes": "{{minutes}} min upłynęło",
+      "emptyDo": "Brak zapisanego Do na ten dzień.",
+      "emptyPlan": "Brak czasowego Planu na ten dzień.",
+      "endDate": "End date",
+      "executionHistory": "Historia wykonania ({{count}})",
+      "gapLabel": "Przerwy między sesjami",
+      "gapMinutes": "{{minutes}} min przerw",
+      "inferredHint": "Ten eksperymentalny przedział wyliczono z czasu planu. Pozostaje w historii, lecz nie liczy się jako pomiar ani dokładne porównanie.",
+      "inferredPlanDuration": "Godzina rozpoczęcia wywnioskowana z czasu trwania Planu.",
+      "estimatedShort": "Szacowane",
+      "invalidRecords": "W tym widoku pomijanych jest {{count}} nieprawidłowych wpisów rejestru.",
+      "latestShort": "Ostatnio",
+      "loadError": "Nie udało się wczytać JOBO.",
+      "measuredOnly": "Tylko wpisy z pomiarem, nie całe wykonanie.",
+      "noAttempts": "Brak zarejestrowanych prób.",
+      "noAttemptsShort": "Brak prób",
+      "noTimedPlan": "Brak Planu z godziną",
+      "overlapLabel": "Nakładanie się",
+      "overlapMinutes": "{{minutes}} min nakładania",
+      "pendingSave": "Oczekiwanie na zapis lokalny; po błędzie nastąpi automatyczna próba ponowna.",
+      "plan": "Plan",
+      "progress": {
+        "started": "Rozpoczęte",
+        "partial": "Częściowe",
+        "mostly": "Prawie"
+      },
+      "progressLabel": "Postęp",
+      "readOnly": "JOBO jest na tym urządzeniu tylko do odczytu. Edycja wpisów Do jest wyłączona.",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordedLabel": "Zmierzony czas",
+      "recordedMinutes": "{{minutes}} min zarejestrowano",
+      "retryLoad": "Spróbuj wczytać ponownie",
+      "source": {
+        "completion": "Ukończenie zadania",
+        "manual": "Wpis ręczny",
+        "focus": "Sesja skupienia"
+      },
+      "sourceLabel": "Źródło",
+      "storageError": "Nie udało się zapisać rejestru JOBO. Wcześniej zatwierdzone dane są nadal wyświetlane.",
+      "summary": {
+        "withinPlan": "Zgodnie z planem",
+        "late": "Późno",
+        "longer": "Dłużej",
+        "split": "Podzielone",
+        "notStarted": "Brak zapisu wykonania",
+        "unplanned": "Nieplanowane"
+      },
+      "timeAxis": "Wykorzystanie czasu",
+      "timeDuration": {
+        "shorter": "{{minutes}} min krócej",
+        "onEstimate": "Zgodnie z szacunkiem",
+        "longer": "{{minutes}} min dłużej"
+      },
+      "timeDurationLabel": "Czas trwania",
+      "timeFinish": {
+        "early": "Zakończono {{minutes}} min wcześniej",
+        "onTime": "Zakończono na czas",
+        "late": "Zakończono {{minutes}} min później"
+      },
+      "timeFinishLabel": "Koniec",
+      "timeIncomplete": "Rzeczywisty początek i koniec nie są w pełni zapisane.",
+      "timeIncompleteShort": "Uzupełnij czas",
+      "timeStart": {
+        "early": "Rozpoczęto {{minutes}} min wcześniej",
+        "onTime": "Rozpoczęto na czas",
+        "late": "Rozpoczęto {{minutes}} min później"
+      },
+      "timeStartLabel": "Początek",
+      "titleRequired": "Enter a title for this Do.",
+      "updateFailed": "Nie udało się zapisać zmiany Do.",
+      "setInterval": "Ustaw rzeczywisty przedział",
+      "dragCompletion": "Przeciągnij, aby ustawić przedział; Enter otwiera edycję.",
+      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział."
+    }
   },
   "todoist": {
     "title": "Synchronizacja Todoist",

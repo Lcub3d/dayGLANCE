@@ -2055,7 +2055,92 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it."
+    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
+    "view": {
+      "activeLabel": "Active time",
+      "addDo": "Add Do",
+      "capturedPlan": "Captured plan",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "completeInterval": "Enter a complete start and end interval.",
+      "completedAt": "Marked complete at {{time}}",
+      "completedByCompletion": "Completed is created by a completion event. A reassessed Do can be Started, Partial, or Mostly.",
+      "completionAxis": "Completion",
+      "do": "Do",
+      "elapsedLabel": "Elapsed span",
+      "elapsedMinutes": "{{minutes}} min",
+      "emptyDo": "No Do recorded on this day.",
+      "emptyPlan": "No timed Plan on this day.",
+      "endDate": "End date",
+      "executionHistory": "Execution history ({{count}})",
+      "gapLabel": "Gaps between sessions",
+      "gapMinutes": "{{minutes}} min",
+      "inferredHint": "This experimental interval was inferred from a Plan duration. It is displayed as history, but excluded from measured time and exact comparisons.",
+      "inferredPlanDuration": "Start time inferred from the Plan duration.",
+      "estimatedShort": "Estimated",
+      "invalidRecords": "Ignoring {{count}} invalid ledger record(s) in this view.",
+      "latestShort": "Latest",
+      "loadError": "Could not load JOBO.",
+      "measuredOnly": "Measured records only; not the full execution.",
+      "noAttempts": "No attempts recorded.",
+      "noAttemptsShort": "No attempts yet",
+      "noTimedPlan": "No timed plan",
+      "overlapLabel": "Overlapping time",
+      "overlapMinutes": "{{minutes}} min",
+      "pendingSave": "Waiting for local save; will retry automatically if it fails.",
+      "plan": "Plan",
+      "progress": {
+        "started": "Started",
+        "partial": "Partial",
+        "mostly": "Mostly"
+      },
+      "progressLabel": "Progress",
+      "readOnly": "JOBO is read-only on this device. Do edits are disabled.",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordedLabel": "Measured time",
+      "recordedMinutes": "{{minutes}} min",
+      "retryLoad": "Retry loading",
+      "source": {
+        "completion": "Task completion",
+        "manual": "Manual entry",
+        "focus": "Focus session"
+      },
+      "sourceLabel": "Source",
+      "storageError": "The JOBO ledger could not be written. Existing committed data is still shown.",
+      "summary": {
+        "withinPlan": "On plan",
+        "late": "Late",
+        "longer": "Longer",
+        "split": "Split",
+        "notStarted": "No Do recorded",
+        "unplanned": "Unplanned"
+      },
+      "timeAxis": "Time performance",
+      "timeDuration": {
+        "shorter": "{{minutes}} min shorter",
+        "onEstimate": "On estimate",
+        "longer": "{{minutes}} min over plan"
+      },
+      "timeDurationLabel": "Duration",
+      "timeFinish": {
+        "early": "Finished {{minutes}} min early",
+        "onTime": "Finished on time",
+        "late": "Finished {{minutes}} min late"
+      },
+      "timeFinishLabel": "Finish",
+      "timeIncomplete": "Actual start/end not fully recorded.",
+      "timeIncompleteShort": "Time to add",
+      "timeStart": {
+        "early": "Started {{minutes}} min early",
+        "onTime": "Started on time",
+        "late": "Started {{minutes}} min late"
+      },
+      "timeStartLabel": "Start",
+      "titleRequired": "Enter a title for this Do.",
+      "updateFailed": "Could not save the Do change.",
+      "setInterval": "Set actual interval",
+      "dragCompletion": "Drag to set the actual interval; use Enter to edit.",
+      "completionPoint": "Recorded at {{time}}. Add the actual start to record an interval."
+    }
   },
   "todoist": {
     "title": "Todoist Sync",

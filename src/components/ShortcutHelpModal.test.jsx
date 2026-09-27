@@ -31,7 +31,8 @@ describe('ShortcutHelpModal view keys', () => {
     expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['jobo'] } }))).toEqual(['1', '2', '3', '4', '5', 'C']);
     expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: [] } }))).toEqual(['1', '2', '3', '4', '5', '6', 'C']);
     expect(keys(await render({ canShowViewCycler: true, hiddenViews: { desktop: ['month', 'day', 'jobo'], mobile: ['month'] } }))).toEqual(['1', '3', '5', 'C']);
-    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: { desktop: ['sched'] } }))).toEqual(['1', '4', 'C']);
+    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: { desktop: ['sched'] } }))).toEqual(['1', '4', '6', 'C']);
+    expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: true, hiddenViews: { desktop: ['sched', 'jobo'] } }))).toEqual(['1', '4', 'C']);
     expect(keys(await render({ canShowViewCycler: false, schedOnlyCycler: false, hiddenViews: { desktop: [] } }))).toEqual([]);
   });
 });

@@ -2057,7 +2057,92 @@
   },
   "jobo": {
     "title": "JOBO",
-    "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra."
+    "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
+    "view": {
+      "activeLabel": "Tempo attivo",
+      "addDo": "Add Do",
+      "capturedPlan": "Captured plan",
+      "capturedTitle": "The recorded title is kept as it was when this Do was created.",
+      "completeInterval": "Inserisci un intervallo completo di inizio e fine.",
+      "completedAt": "Contrassegnato come completato alle {{time}}",
+      "completedByCompletion": "Completato viene creato da un evento di completamento. Un Do rivalutato può essere Avviato, Parziale o Quasi.",
+      "completionAxis": "Completamento",
+      "do": "Esecuzione",
+      "elapsedLabel": "Tempo trascorso",
+      "elapsedMinutes": "{{minutes}} min trascorsi",
+      "emptyDo": "Nessun Do registrato per questo giorno.",
+      "emptyPlan": "Nessun Piano con orario per questo giorno.",
+      "endDate": "End date",
+      "executionHistory": "Cronologia dell’esecuzione ({{count}})",
+      "gapLabel": "Intervalli tra sessioni",
+      "gapMinutes": "{{minutes}} min di intervallo",
+      "inferredHint": "Questo intervallo sperimentale è dedotto dalla durata del piano. Resta nella cronologia ma non conta come misura o confronto esatto.",
+      "inferredPlanDuration": "Ora di inizio ricavata dalla durata del Piano.",
+      "estimatedShort": "Stimato",
+      "invalidRecords": "In questa vista vengono ignorati {{count}} record del registro non validi.",
+      "latestShort": "Ultimo",
+      "loadError": "Impossibile caricare JOBO.",
+      "measuredOnly": "Solo registrazioni misurate, non tutta l’esecuzione.",
+      "noAttempts": "Nessun tentativo registrato.",
+      "noAttemptsShort": "Nessun tentativo ancora",
+      "noTimedPlan": "Nessun piano con orario",
+      "overlapLabel": "Sovrapposizione",
+      "overlapMinutes": "{{minutes}} min di sovrapposizione",
+      "pendingSave": "In attesa del salvataggio locale; in caso di errore verrà ritentato automaticamente.",
+      "plan": "Piano",
+      "progress": {
+        "started": "Avviato",
+        "partial": "Parziale",
+        "mostly": "Quasi"
+      },
+      "progressLabel": "Avanzamento",
+      "readOnly": "JOBO è in sola lettura su questo dispositivo. Le modifiche ai Do sono disabilitate.",
+      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordedLabel": "Tempo misurato",
+      "recordedMinutes": "{{minutes}} min registrati",
+      "retryLoad": "Riprova caricamento",
+      "source": {
+        "completion": "Completamento attività",
+        "manual": "Inserimento manuale",
+        "focus": "Sessione di concentrazione"
+      },
+      "sourceLabel": "Fonte",
+      "storageError": "Non è stato possibile scrivere il registro JOBO. I dati già salvati restano visibili.",
+      "summary": {
+        "withinPlan": "In piano",
+        "late": "In ritardo",
+        "longer": "Più lungo",
+        "split": "Suddiviso",
+        "notStarted": "Nessuna esecuzione registrata",
+        "unplanned": "Non pianificato"
+      },
+      "timeAxis": "Andamento del tempo",
+      "timeDuration": {
+        "shorter": "{{minutes}} min in meno",
+        "onEstimate": "Come previsto",
+        "longer": "{{minutes}} min in più"
+      },
+      "timeDurationLabel": "Durata",
+      "timeFinish": {
+        "early": "Terminato {{minutes}} min prima",
+        "onTime": "Terminato in orario",
+        "late": "Terminato {{minutes}} min in ritardo"
+      },
+      "timeFinishLabel": "Fine",
+      "timeIncomplete": "Inizio e fine effettivi non completamente registrati.",
+      "timeIncompleteShort": "Tempo da aggiungere",
+      "timeStart": {
+        "early": "Iniziato {{minutes}} min prima",
+        "onTime": "Iniziato in orario",
+        "late": "Iniziato {{minutes}} min in ritardo"
+      },
+      "timeStartLabel": "Inizio",
+      "titleRequired": "Enter a title for this Do.",
+      "updateFailed": "Impossibile salvare la modifica del Do.",
+      "setInterval": "Imposta intervallo effettivo",
+      "dragCompletion": "Trascina per impostare l’intervallo; Invio per modificare.",
+      "completionPoint": "Registrato alle {{time}}. Aggiungi l’inizio effettivo per registrare un intervallo."
+    }
   },
   "todoist": {
     "title": "Sincronizzazione Todoist",

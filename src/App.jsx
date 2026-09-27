@@ -399,11 +399,11 @@ const DayPlanner = () => {
   const schedOnlyCycler = (!isTablet && !isMobile && _visibleDays < 3) || (isTablet && isLandscape);
   // Otherwise the cycler is hidden and the stored mode is ignored until the
   // viewport grows back; the app behaves as 'multi' in the meantime.
-  // SCHED and MONTH fit any width, so the narrow cycler offers them too.
+  // SCHED, MONTH and the two-column JOBO fit narrow desktop/landscape widths.
   // A view turned off on this device is never on screen either: the width's
   // first view still on stands in, as it does for a DAY/WEEK too narrow to fit.
   const effectiveViewMode = canShowViewCycler ? (hiddenViews.desktop.includes(viewMode) ? homeView(DESKTOP_VIEW_MODES, hiddenViews.desktop) : viewMode)
-    : schedOnlyCycler ? ((viewMode === 'sched' || viewMode === 'month') && !hiddenViews.desktop.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews.desktop))
+    : schedOnlyCycler ? (NARROW_DESKTOP_VIEW_MODES.includes(viewMode) && !hiddenViews.desktop.includes(viewMode) ? viewMode : homeView(NARROW_DESKTOP_VIEW_MODES, hiddenViews.desktop))
     : 'multi';
   const [defaultView, setDefaultView] = useState(() => {
     const saved = localStorage.getItem('day-planner-default-view');
@@ -1062,7 +1062,7 @@ const DayPlanner = () => {
   // stores, pushes, pulls and merges records.
   const {
     joboRecords, joboLoaded, joboWritable, joboError,
-    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet,
+    recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet, reloadJobo,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
   const joboRecordsRef = useRef(joboRecords);
@@ -8961,7 +8961,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError, recordJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

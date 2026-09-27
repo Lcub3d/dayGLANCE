@@ -33,19 +33,30 @@ export function sortByProjectOrder(tasks) {
 
 /**
  * Apply a reorder of one project's tasks to the inbox array. `orderedIds` is
- * the project's reorderable tasks in their new order. Each gets a renumbered
- * projectOrder (0, 10, 20, ...) and a fresh stamp so the change syncs and
- * wins the merge; the array positions move too, so the file tier and the
- * general inbox see the same order they always did.
+ * the project's WHOLE inbox group in its new order: the open tasks as dragged,
+ * then the completed ones (projectReorderIds builds it). Each gets a
+ * renumbered projectOrder (0, 10, 20, ...); the array positions move too, so
+ * the file tier and the general inbox see the same order they always did.
+ *
+ * Every member is stamped, not only the ones whose number changed. The order
+ * rides each task's own lastModified, and sync keeps the newer copy of each
+ * task: stamping only the changed rows let two reorders made on two devices
+ * mix, task by task, into duplicate numbers whose tie falls back to an array
+ * order that differs per device, so the list reshuffled between syncs. With
+ * the whole group stamped, the newest reorder wins as a whole. Completed tasks
+ * are numbered too, after the open ones, so un-completing one cannot collide
+ * with the number another task has since taken. A drop that changes nothing
+ * returns the input untouched (no stamp, no push).
  */
 export function applyProjectReorder(unscheduledTasks, orderedIds, now = new Date().toISOString()) {
   const ids = (orderedIds || []).map(String);
   const orderOf = new Map(ids.map((id, i) => [id, i * PROJECT_ORDER_STEP]));
   const byId = new Map((unscheduledTasks || []).map((t) => [String(t.id), t]));
+  const unchanged = [...orderOf].every(([id, order]) => !byId.has(id) || byId.get(id).projectOrder === order);
+  if (unchanged) return unscheduledTasks || [];
   const restamped = (t) => {
     const order = orderOf.get(String(t.id));
     if (order === undefined) return t;
-    if (t.projectOrder === order) return t;                 // already there: no stamp, no push
     return { ...t, projectOrder: order, lastModified: now };
   };
   // Array positions: the moved group occupies the slots its members held,
@@ -67,6 +78,15 @@ export function applyProjectReorder(unscheduledTasks, orderedIds, now = new Date
  * @param {object[]} scheduled    The project's scheduled tasks (already filtered).
  * @param {object[]} unscheduled  The project's unscheduled tasks (already filtered).
  */
+/**
+ * The ids applyProjectReorder takes for one project: the open inbox tasks in
+ * their new order, then the completed ones in their current order.
+ */
+export function projectReorderIds(openIdsInNewOrder, projectInbox) {
+  const done = sortByProjectOrder((projectInbox || []).filter((t) => t && t.completed)).map((t) => t.id);
+  return [...(openIdsInNewOrder || []), ...done];
+}
+
 export function orderProjectTasks(scheduled, unscheduled) {
   const sched = [...(Array.isArray(scheduled) ? scheduled : [])]
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));

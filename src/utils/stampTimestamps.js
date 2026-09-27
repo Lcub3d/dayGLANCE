@@ -56,11 +56,21 @@
 // another device. Without this, the first save after the feature ships would
 // re-stamp every newly scheduled task and those fabricated timestamps would beat
 // real completions made elsewhere — the exact resurrection described above.
+//
+// `obsidianNoteLinkSeen` / `obsidianNoteLinkSeenAt` are the Obsidian merge's
+// record of when it last saw a task line carry the link to its note
+// (utils/mergeObsidianTasks.js). The merge bumps the stamp whenever the note's
+// mtime rises, and for a project task that note is the PROJECT note, so any
+// edit to it touched every task linked in it. As an edit, that re-stamped a
+// stale copy on a device that had not yet pulled newer ones, and the stale
+// copy then won everywhere: it reverted project task order across devices and
+// could as easily have resurrected a completion made elsewhere.
 function normalizeField(task) {
   // obsidianClearedTime is bookkeeping for the inbox merge (utils/inboxMove.js):
   // set by the move that already stamps, and cleared when the line is next
   // observed untimed. Clearing it is not an edit anyone should out-rank.
-  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, planTrail: _stops, ...rest } = task;
+  const { lastModified: _omit, obsidianClearedTime: _marker, originalPlan: _baseline, deferrals: _slips, planTrail: _stops,
+    obsidianNoteLinkSeen: _linkSeen, obsidianNoteLinkSeenAt: _linkSeenAt, ...rest } = task;
   return { ...rest, notes: rest.notes ?? '', subtasks: rest.subtasks ?? [], archived: rest.archived ?? false, priority: rest.priority ?? 0, starredDate: rest.starredDate ?? null };
 }
 

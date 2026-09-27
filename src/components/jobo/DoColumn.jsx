@@ -211,6 +211,7 @@ export default function DoColumn({
   onAddAt, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture,
   hoverTaskId = null, onHoverTask = () => {},
   startHour = 0, endHour = 24,
+  onNotesInSidebar,
   laneRef,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
@@ -297,7 +298,8 @@ export default function DoColumn({
             onContinue={onContinue}
             highlighted={hoverTaskId != null && item.sourceTask?.id === hoverTaskId}
             notesOpen={notesFor === item.id}
-            onNotes={setNotesFor}
+            // With the notes sidebar open, a card's Notes shows its task there.
+            onNotes={onNotesInSidebar ? () => onNotesInSidebar(item.sourceTask) : setNotesFor}
             onHover={onHoverTask}
             onDetails={onDetails}
             onPointGesture={onPointGesture}

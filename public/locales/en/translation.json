@@ -2059,6 +2059,10 @@
     "view": {
       "activeLabel": "Active time",
       "addDo": "Add Do",
+      "dailyNoteEmpty": "No daily note yet. Click to write one.",
+      "selectForNotes": "Click a task or a Do to see its notes here.",
+      "showNotesSidebar": "Show notes sidebar",
+      "hideNotesSidebar": "Hide notes sidebar",
       "showWindowOnly": "Show only {{start}} to {{end}}",
       "showAllHours": "Show all hours",
       "continueDo": "Continue",

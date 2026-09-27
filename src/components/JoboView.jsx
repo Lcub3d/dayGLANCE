@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FoldVertical, Plus, UnfoldVertical } from 'lucide-react';
+import { AlertTriangle, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -7,7 +7,9 @@ import { dateToString } from '../utils/taskUtils.js';
 import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
 import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
-import useJoboWindowOnly from '../hooks/useJoboWindowOnly.js';
+import useJoboPreference from '../hooks/useJoboPreference.js';
+import useMinWidth from '../hooks/useMinWidth.js';
+import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
@@ -68,6 +70,13 @@ export default function JoboView() {
   // and every Do card that belongs to it are outlined together, which reads
   // where colour alone cannot (two tasks can share a colour).
   const [hoverTaskId, setHoverTaskId] = useState(null);
+  // The notes sidebar, on wide screens only: the Daily Note, and the notes
+  // of the task last clicked on either side (or picked with a Do card's
+  // Notes button, which then opens here instead of below the card).
+  const wide = useMinWidth(1600);
+  const [notesPreferred, toggleNotesSidebar] = useJoboPreference('notes-sidebar');
+  const sidebar = wide && notesPreferred;
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const scrollRef = useRef(null);
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
@@ -81,7 +90,7 @@ export default function JoboView() {
   // sides draw the same hours; every minute/pixel conversion below goes
   // through windowStart.
   const { getDayWindow } = useFeaturesCtx();
-  const [windowOnly, toggleWindowOnly] = useJoboWindowOnly();
+  const [windowOnly, toggleWindowOnly] = useJoboPreference('window-only');
   const dayWindow = getDayWindow?.(date) ?? null;
   const fullDay = { startHour: 0, endHour: 24 };
   const windowHours = dayWindow ? windowRange(dayWindow) : fullDay;
@@ -114,6 +123,8 @@ export default function JoboView() {
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
+  // The selected task as it is now, so the sidebar follows edits and sync.
+  const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
 
   // Open on the part of the day that matters: an hour before now on today,
   // otherwise an hour before the first Plan or Do.
@@ -314,6 +325,7 @@ export default function JoboView() {
       {status && (
         <div className="flex items-center gap-2 px-3 py-1 text-xs" role="status"><AlertTriangle size={14} />{status}</div>
       )}
+      <div className="flex-1 min-h-0 min-w-0 flex">
       <div ref={scrollRef} className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${ctx.darkMode ? 'dark-scrollbar' : ''}`}>
         <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
           <div className="flex min-w-0">
@@ -338,6 +350,7 @@ export default function JoboView() {
           </div>
           <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
+            <div className="flex items-center gap-1.5">
             <button
               type="button"
               data-jobo-add
@@ -350,6 +363,20 @@ export default function JoboView() {
             >
               <Plus size={14} strokeWidth={3} /><span className="text-xs font-medium">{t('jobo.view.addDo')}</span>
             </button>
+            {wide && (
+              <button
+                type="button"
+                data-jobo-notes-sidebar-toggle
+                onClick={toggleNotesSidebar}
+                aria-pressed={notesPreferred}
+                className={`p-1 rounded-lg transition-colors ${notesPreferred ? 'text-blue-500' : ctx.textSecondary} ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                title={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
+                aria-label={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
+              >
+                {notesPreferred ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+              </button>
+            )}
+            </div>
           </div>
         </div>
         <div className={GRID}>
@@ -358,6 +385,11 @@ export default function JoboView() {
           <div
             className="contents"
             data-jobo-pairing
+            // Capture: DAY's cards stop their own clicks from bubbling.
+            onClickCapture={(event) => {
+              const id = event.target.closest?.('[data-task-id]')?.getAttribute('data-task-id');
+              if (sidebar && id != null) setSelectedTaskId(id);
+            }}
             onMouseOver={(event) => {
               // Always set: a Do card's leave may have just queued null, and a
               // comparison against this render's value would skip the update.
@@ -387,11 +419,19 @@ export default function JoboView() {
             onHoverTask={setHoverTaskId}
             startHour={startHour}
             endHour={endHour}
-            onDetails={(item, anchor) => setDetails({ item, anchor })}
+            onDetails={(item, anchor) => {
+              setDetails({ item, anchor });
+              if (sidebar && item.sourceTask) setSelectedTaskId(item.sourceTask.id);
+            }}
+            onNotesInSidebar={sidebar ? (task) => setSelectedTaskId(task.id) : undefined}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}
           />
         </div>
+      </div>
+      {sidebar && (
+        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} />
+      )}
       </div>
       {liveDetail && (
         <ExecutionDetails

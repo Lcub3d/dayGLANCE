@@ -8,14 +8,14 @@
 // payload the engine shreds, the vault adapter's per-row merge, the file-tier
 // merge, and the hook's state on the other device. Scenario numbers follow the
 // design doc. The mutation that must break each one is named beside it.
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { setSyncPassphrase } from '@glance-apps/sync';
 import { createDbEngine } from './dbEngine.js';
 import { setVaultConfig } from './vaultConfig.js';
 import { createMemoryKeyValue } from '../utils/idbKeyValue.js';
 import {
   shredState, reassembleState, applyRemoteEntity, applyRemoteDelete, getLocalEntity,
-  isInsertOnly, makeEntityId, COLLECTION_KINDS,
+  isInsertOnly, makeEntityId, COLLECTION_KINDS, absentCollectionKinds, carryAbsentCollections,
 } from './dbAdapter.js';
 import { createVault, createDevice, syncToConvergence } from './dbVaultSim.js';
 import { mergeSyncData } from '../mergeSync.js';
@@ -233,6 +233,71 @@ describe('scenario 11: restore writes through the checked write and a fresh hook
 
 // 12. A pulled record whose ledger write fails is not lost.
 //
+// The real engine over the app's two callbacks, in memory (scenarios 12 and 14).
+function memLocalStorage() {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem: (k, v) => m.set(k, String(v)),
+    removeItem: (k) => m.delete(k),
+    clear: () => m.clear(),
+  };
+}
+// The real client's surface, in memory, with the single-row GET the heal uses.
+function memVault() {
+  const salts = new Map();
+  const log = new Map();
+  let seq = 0;
+  const calls = { batch: 0, deleteRow: 0, getRow: 0 };
+  return {
+    calls,
+    async getSalt(accountId) { return salts.get(accountId) || null; },
+    async putSalt(accountId, fresh) { if (!salts.has(accountId)) salts.set(accountId, fresh); return salts.get(accountId); },
+    async batch(app, { rows }) {
+      calls.batch += 1;
+      for (const r of rows) log.set(r.entityId, { entityId: r.entityId, seq: ++seq, envelope: r.envelope, deleted: false });
+      return { maxSeq: seq };
+    },
+    async deleteRow(app, entityId) { calls.deleteRow += 1; log.set(entityId, { entityId, seq: ++seq, envelope: null, deleted: true }); return { seq }; },
+    async list(app, { since }) {
+      return { rows: [...log.values()].filter((r) => r.seq > since).sort((a, b) => a.seq - b.seq), hasMore: false };
+    },
+    async getRow(app, entityId) {
+      // The engine probes `__glance_keycheck` on a fresh engine; only a
+      // real row id here is the glitch heal's re-fetch.
+      if (!String(entityId).startsWith('__glance')) calls.getRow += 1;
+      const r = log.get(entityId);
+      return r && !r.deleted ? { ...r } : null;
+    },
+    async device() { return { updated: true }; },
+    has: (entityId) => { const r = log.get(entityId); return !!r && !r.deleted; },
+  };
+}
+// A device is the real engine wrapper over the app's two callbacks, with the
+// ledger wired exactly as App.jsx wires it: buildSyncPayload carries the
+// collection only once loaded; applyEngineData hands pulled rows to the hook
+// and does not await the write.
+function makeDevice(name, vault, ledger, snapshotStore = createMemoryKeyValue()) {
+  let data = JSON.parse(JSON.stringify(EMPTY));
+  let nativeKey = null;
+  const engine = createDbEngine({
+    vaultClient: vault,
+    storageKeyPrefix: `jobo-${name}`,
+    deviceId: `device-${name}`,
+    snapshotStore,
+    nativeGetSyncKey: () => nativeKey,
+    nativeStoreSyncKey: (v) => { nativeKey = v; },
+    getData: () => ({ ...JSON.parse(JSON.stringify(data)), ...payloadData(ledger) }),
+    commitData: (d) => {
+      const { joboRecords, ...rest } = d;
+      data = rest;
+      if (Array.isArray(joboRecords)) ledger.applyRemote(joboRecords);
+    },
+  });
+  return { engine, ledger };
+}
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 // The engine's contract is that dayGLANCE's applyRemoteEntity writes a per-cycle
 // mirror, so the pull cursor advances at end of pull and the mirror is committed
 // through applyEngineData, which hands the ledger rows to the hook WITHOUT
@@ -244,63 +309,6 @@ describe('scenario 11: restore writes through the checked write and a fresh hook
 // re-committed every cycle until it lands, and the snapshot is withheld until
 // then. The other device's copy is never touched.
 describe('scenario 12: a ledger write that fails after a pull is re-delivered, never lost', () => {
-  function memLocalStorage() {
-    const m = new Map();
-    return {
-      getItem: (k) => (m.has(k) ? m.get(k) : null),
-      setItem: (k, v) => m.set(k, String(v)),
-      removeItem: (k) => m.delete(k),
-      clear: () => m.clear(),
-    };
-  }
-  // The real client's surface, in memory, with the single-row GET the heal uses.
-  function memVault() {
-    const salts = new Map();
-    const log = new Map();
-    let seq = 0;
-    return {
-      async getSalt(accountId) { return salts.get(accountId) || null; },
-      async putSalt(accountId, fresh) { if (!salts.has(accountId)) salts.set(accountId, fresh); return salts.get(accountId); },
-      async batch(app, { rows }) {
-        for (const r of rows) log.set(r.entityId, { entityId: r.entityId, seq: ++seq, envelope: r.envelope, deleted: false });
-        return { maxSeq: seq };
-      },
-      async deleteRow(app, entityId) { log.set(entityId, { entityId, seq: ++seq, envelope: null, deleted: true }); return { seq }; },
-      async list(app, { since }) {
-        return { rows: [...log.values()].filter((r) => r.seq > since).sort((a, b) => a.seq - b.seq), hasMore: false };
-      },
-      async getRow(app, entityId) {
-        const r = log.get(entityId);
-        return r && !r.deleted ? { ...r } : null;
-      },
-      async device() { return { updated: true }; },
-      has: (entityId) => { const r = log.get(entityId); return !!r && !r.deleted; },
-    };
-  }
-  // A device is the real engine wrapper over the app's two callbacks, with the
-  // ledger wired exactly as App.jsx wires it: buildSyncPayload carries the
-  // collection only once loaded; applyEngineData hands pulled rows to the hook
-  // and does not await the write.
-  function makeDevice(name, vault, ledger) {
-    let data = JSON.parse(JSON.stringify(EMPTY));
-    let nativeKey = null;
-    const engine = createDbEngine({
-      vaultClient: vault,
-      storageKeyPrefix: `jobo-${name}`,
-      deviceId: `device-${name}`,
-      snapshotStore: createMemoryKeyValue(),
-      nativeGetSyncKey: () => nativeKey,
-      nativeStoreSyncKey: (v) => { nativeKey = v; },
-      getData: () => ({ ...JSON.parse(JSON.stringify(data)), ...payloadData(ledger) }),
-      commitData: (d) => {
-        const { joboRecords, ...rest } = d;
-        data = rest;
-        if (Array.isArray(joboRecords)) ledger.applyRemote(joboRecords);
-      },
-    });
-    return { engine, ledger };
-  }
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   beforeEach(() => {
     global.localStorage = memLocalStorage();
@@ -522,5 +530,110 @@ describe('scenario 13: the completion detector, end to end on two devices', () =
     b.push(vault);
     await a.pull(vault, '2026-09-19T20:11:00.000Z');
     expect(a.records()).toHaveLength(1);                       // forwarded, not created
+  });
+});
+
+// 14. The launch push before the ledger has loaded.
+//
+// buildSyncPayload omits `joboRecords` until the strict IndexedDB read
+// completes, and the first cycle after launch usually runs before it does.
+// The push diff compares the payload against the previous snapshot, and it
+// used to read an omitted collection as an EMPTY one: every ledger row in the
+// snapshot became a vanish-delete, the guard skipped each as a glitch and
+// re-fetched it by id (23 row-gets and a wall of GUARD warnings per launch on
+// a real account). An omitted kind is unknown, not empty: its snapshot entries
+// carry forward untouched, and `[]` alone means empty.
+describe('scenario 14: a payload that omits the ledger key at the launch push', () => {
+  beforeEach(() => {
+    global.localStorage = memLocalStorage();
+    setVaultConfig({ enabled: true, vaultUrl: 'https://vault.test', vaultToken: 'tok', accountId: 'acct-jobo' });
+    setSyncPassphrase('correct horse battery staple');
+  });
+  afterAll(() => { delete global.localStorage; });
+
+  const guardWarnings = (spy) => spy.mock.calls.filter((args) => String(args[0]).includes('GUARD'));
+
+  it('the carry helper: an omitted kind carries its snapshot entries, an empty one carries nothing', () => {
+    const prev = { [jid(rec())]: 'h1', 'tasks:t1': 'h2', 'dailyNotes:2026-09-19': 'h3' };
+    expect(absentCollectionKinds({ ...EMPTY })).toEqual(['joboRecords']);
+    expect(absentCollectionKinds({ ...EMPTY, joboRecords: [] })).toEqual([]);
+    expect(carryAbsentCollections(prev, { ...EMPTY })).toEqual({ [jid(rec())]: 'h1' });
+    expect(carryAbsentCollections(prev, { ...EMPTY, joboRecords: [] })).toEqual({});
+    // A payload with no tasks key either carries both kinds; the date map is not a collection kind.
+    const { tasks, ...noTasks } = EMPTY;
+    expect(carryAbsentCollections(prev, noTasks)).toEqual({ [jid(rec())]: 'h1', 'tasks:t1': 'h2' });
+  });
+
+  it('proposes no vanish-delete, re-fetches nothing, and re-pushes nothing once the ledger loads', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const vault = memVault();
+      const record = rec();
+      const store = memStore([record]);
+      const snapshots = createMemoryKeyValue();
+      const first = createLedger({ store });
+      await first.load();
+      const A = makeDevice('A', vault, first, snapshots);
+      await A.engine.dbSyncCycle();                       // HWM=0 seed: the record reaches the vault
+      await A.engine.dbSyncCycle();                       // the pull lists it; HWM advances; snapshot holds the row
+      expect(vault.has(jid(record))).toBe(true);
+      expect(A.engine.getHighWaterMark()).toBeGreaterThan(0);
+      const pushesBefore = vault.calls.batch;
+
+      // Relaunch: same device, same snapshot, a ledger whose strict read has
+      // not completed. The payload has no joboRecords key at all.
+      const relaunched = createLedger({ store });
+      expect(payloadData(relaunched)).toEqual({});
+      const A2 = makeDevice('A', vault, relaunched, snapshots);
+      await A2.engine.dbSyncCycle();
+      // MUTATION: drop carryAbsentCollections from the diff (`cur = baseHashes`)
+      // and the row is a vanish-delete: the guard warns and getRow is called.
+      expect(guardWarnings(warn)).toEqual([]);
+      expect(vault.calls.getRow).toBe(0);
+      expect(vault.calls.deleteRow).toBe(0);
+      expect(vault.calls.batch).toBe(pushesBefore);
+      expect(vault.has(jid(record))).toBe(true);
+
+      // The ledger loads; the next cycle has nothing to say about the row.
+      // MUTATION: save `vaultSnapshot` alone and the row is 'new' against the
+      // saved snapshot: one more batch push here.
+      await relaunched.load();
+      expect(relaunched.get().records).toEqual([record]);
+      await A2.engine.dbSyncCycle();
+      expect(vault.calls.batch).toBe(pushesBefore);
+      expect(guardWarnings(warn)).toEqual([]);
+      expect(vault.has(jid(record))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('an empty loaded ledger still reads as empty: the vanish is proposed and the guard handles it', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const vault = memVault();
+      const record = rec();
+      const snapshots = createMemoryKeyValue();
+      const first = createLedger({ store: memStore([record]) });
+      await first.load();
+      const A = makeDevice('A', vault, first, snapshots);
+      await A.engine.dbSyncCycle();
+      await A.engine.dbSyncCycle();
+
+      // Relaunch with a ledger that has loaded and is EMPTY (`joboRecords: []`).
+      const emptied = createLedger({ store: memStore([]) });
+      await emptied.load();
+      expect(payloadData(emptied)).toEqual({ joboRecords: [] });
+      const A2 = makeDevice('A', vault, emptied, snapshots);
+      await A2.engine.dbSyncCycle();
+      // The diff sees the row vanish; with no tombstone the guard keeps it and
+      // re-fetches it, exactly as before this change.
+      expect(guardWarnings(warn).length).toBeGreaterThan(0);
+      expect(vault.calls.getRow).toBe(1);
+      expect(vault.calls.deleteRow).toBe(0);
+      expect(vault.has(jid(record))).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

@@ -59,17 +59,25 @@ const TAG_BODY = '[\\p{L}\\p{N}_/-]';
 export const TAG_BODY_CHAR = new RegExp(`^${TAG_BODY}$`, 'u');
 /** A whole tag name, without the leading `#`. */
 export const TAG_NAME = new RegExp(`^${TAG_START}${TAG_BODY}*$`, 'u');
-// Safe to hoist despite the `g` flag: String#match resets lastIndex itself.
-const TAG_IN_TEXT = new RegExp(`#(${TAG_START}${TAG_BODY}*)`, 'gu');
+// A web address. A tag-shaped fragment inside one (…/guide#setup) is part
+// of the address, not a tag: it is neither extracted nor stripped, so the
+// address survives every surface and the Obsidian completion log. The tag
+// readers match an address first and skip it. packages/obsidian-format and
+// packages/agenda-core mirror this by hand.
+const WEB_ADDRESS = 'https?:\\/\\/[^\\s<>"{}|\\\\^`[\\]]+';
+// Safe to hoist despite the `g` flag: matchAll and replace reset lastIndex.
+const TAG_OR_ADDRESS = new RegExp(`(${WEB_ADDRESS})|#(${TAG_START}${TAG_BODY}*)`, 'gu');
+
+/** The #tags in a text, without the `#`, case kept, web addresses skipped. */
+export const tagsIn = (text) => [...String(text ?? '').matchAll(TAG_OR_ADDRESS)]
+  .filter((m) => m[1] === undefined)
+  .map((m) => m[2]);
 
 // Extract #hashtags from a task title (tags must start with a letter).
-export const extractTags = (title) => {
-  const matches = title.match(TAG_IN_TEXT);
-  return matches ? matches.map(tag => tag.slice(1).toLowerCase()) : [];
-};
+export const extractTags = (title) => tagsIn(title).map(tag => tag.toLowerCase());
 
-/** Drops every #tag from a text, leaving the whitespace around it. */
-export const stripTags = (text) => String(text ?? '').replace(TAG_IN_TEXT, '');
+/** Drops every #tag from a text, leaving the whitespace around it and any web address whole. */
+export const stripTags = (text) => String(text ?? '').replace(TAG_OR_ADDRESS, (all, address) => (address ? all : ''));
 
 // A [[wikilink]] in a title: the target (path and heading, as Obsidian
 // resolves it) and an optional |alias. One regex for every reader below.
@@ -118,14 +126,42 @@ export const sameNoteTarget = (a, b) => {
   return !!x && x === y;
 };
 
+// A web link in a title: a Markdown link, `[label](https://…)`, or a bare URL.
+// Only http(s). A title is user text that also arrives from Obsidian, Todoist
+// and calendars, so no other scheme (javascript:, data:, file:) is ever
+// treated as a link.
+const WEB_LINK_IN_TEXT = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+
+// The pieces of a title with its web links split out: `{ text }` runs and
+// `{ href, label }` links. A bare URL's label drops the scheme and a trailing
+// slash. textFormatting's title renderers draw it.
+export const splitTitleLinks = (title) => {
+  const str = String(title ?? '');
+  const parts = [];
+  let last = 0;
+  for (const m of str.matchAll(WEB_LINK_IN_TEXT)) {
+    if (m.index > last) parts.push({ text: str.slice(last, m.index) });
+    const href = m[2] || m[3];
+    parts.push({ href, label: m[1] || href.replace(/^https?:\/\//, '').replace(/\/$/, '') });
+    last = m.index + m[0].length;
+  }
+  if (last < str.length) parts.push({ text: str.slice(last) });
+  return parts;
+};
+
+// A Markdown link reduced to its label; a bare URL stays as typed.
+export const stripMarkdownLinks = (text) =>
+  String(text ?? '').replace(WEB_LINK_IN_TEXT, (all, label, href, bare) => label || bare);
+
 // The title without its [[wikilinks]]: the one rule for every surface that
 // cannot show a link (lists, tooltips, toasts, notifications, widgets, the
 // Stream Deck, TRMNL, AI context). Hashtags stay. A title that is nothing
 // but a link, or a link and tags, keeps the note's name in the link's place
 // rather than going blank: "[[Project brief]] #work" reads "Project brief
 // #work". Three surfaces used to fall back to the raw brackets for that case.
+// A Markdown web link reads as its label: "[Fix it](https://…)" is "Fix it".
 export const stripWikilinks = (title) => {
-  const parts = splitTitleNoteLinks(title);
+  const parts = splitTitleNoteLinks(stripMarkdownLinks(title));
   const text = parts.filter(p => p.text !== undefined).map(p => p.text).join(' ')
     .replace(/\s+/g, ' ').trim();
   const link = parts.find(p => p.note !== undefined);

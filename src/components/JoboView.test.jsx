@@ -35,7 +35,7 @@ const timed = (over = {}) => createDoRecord({
   createdAt: stamp, updatedAt: stamp, observedAt: stamp, ...over,
 });
 
-function render(extra = {}) {
+function render(extra = {}, ctxExtra = {}) {
   fixture.planColumns = [];
   fixture.ctx = {
     selectedDate: new Date(2026, 8, 24, 12), currentTime: new Date(2026, 8, 24, 12),
@@ -43,6 +43,7 @@ function render(extra = {}) {
     getTasksForDate: () => [task], formatTime: (value) => value,
     textPrimary: '', textSecondary: '', cardBg: '', borderClass: '', darkMode: false,
     calendarRef: { current: null }, stickyHeaderRef: { current: null },
+    ...ctxExtra,
   };
   fixture.features = { joboRecords: [], joboLoaded: true, joboWritable: true, joboError: null, recordJobo: vi.fn(), reloadJobo: vi.fn(), ...extra };
   return renderToStaticMarkup(<JoboView />);
@@ -109,6 +110,15 @@ describe('JOBO view', () => {
     expect(editor).toContain('useState(() => record?.id || `manual:${crypto.randomUUID()}`)');
     expect(editor).not.toMatch(/toggleComplete|setTasks|localStorage|indexedDB/);
   });
+
+  // MUTATION: go back to <input type="date|time"> and this fails; the browser's
+  // own pickers match nothing else in dayGLANCE.
+  it('the Do editor uses the app\'s own date and time pickers, never the browser\'s', () => {
+    const editor = readFileSync(new URL('./jobo/DoEditor.jsx', import.meta.url), 'utf8');
+    expect(editor).toContain("from '../ClockTimePicker.jsx'");
+    expect(editor).toContain("from '../DatePicker.jsx'");
+    expect(editor).not.toMatch(/type="(date|time)"/);
+  });
 });
 
 describe('Do column gestures snap like the rest of the app', () => {
@@ -156,5 +166,131 @@ describe('a completion with a planned duration is drawn as a dashed estimate', (
     expect(html).toContain('jobo.view.estimatedShort');
     expect(html).toContain('~08:30–09:30');
     expect(recordJobo).not.toHaveBeenCalled();
+  });
+});
+
+describe('an unfinished Do can be continued', () => {
+  const plan = { date: '2026-09-24', startTime: '09:00', duration: 30 };
+
+  it('offers Continue on an unfinished linked attempt, and not on a completed, unlinked or estimated one', () => {
+    expect(render({ joboRecords: [timed({ progress: 'partial', planSnapshot: plan })] })).toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ progress: 'completed', planSnapshot: plan })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ taskId: null })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [point({ planSnapshot: plan })] })).not.toContain('data-jobo-continue');
+    expect(render({ joboRecords: [timed({ progress: 'partial' })], joboWritable: false })).not.toContain('data-jobo-continue');
+  });
+
+  // MUTATION: drop the task or the plan from continueInitial and the
+  // follow-up is a separate "Unplanned" execution instead of a second session.
+  it('the follow-up shares the task and captured plan, so it groups with the original', async () => {
+    const { continueInitial } = await import('./JoboView.jsx');
+    const { createManualDo } = await import('../jobo/viewActions.js');
+    const { buildJoboDayModel } = await import('../jobo/viewModel.js');
+    const first = timed({ progress: 'partial', planSnapshot: plan });
+    const initial = continueInitial(first, '2026-09-24', 11 * 60);
+    expect(initial).toMatchObject({ title: 'Deep work', continuing: true, planSnapshot: plan });
+    const next = createManualDo({ id: 'manual:2', title: initial.title, task: initial.task, planSnapshot: initial.planSnapshot,
+      date: initial.date, startMinute: initial.startMinute, duration: initial.duration, now: Date.parse('2026-09-24T16:00:00Z') });
+    expect(next).toMatchObject({ taskId: 't1', planSnapshot: plan, progress: 'started', startTime: '11:00' });
+    const model = buildJoboDayModel({ date: '2026-09-24', tasks: [task], records: [first, next] });
+    expect(model.timedRecords).toHaveLength(2);
+    const [a, b] = model.timedRecords;
+    expect(a.groupKey).toBe(b.groupKey);
+    expect(a.attempts.map((attempt) => attempt.id ?? attempt.record?.id).sort()).toEqual(['manual:1', 'manual:2']);
+  });
+});
+
+describe('a single timing status reads on the status line', () => {
+  it('"Unplanned" sits beside the progress rather than on a line of its own', async () => {
+    const { cardSignals } = await import('./jobo/DoColumn.jsx');
+    const t = (key) => key;
+    expect(cardSignals({ planContext: 'noPlan', metrics: {} }, t)).toEqual({ inline: { key: 'unplanned', text: 'jobo.view.summary.unplanned' }, rows: [] });
+    expect(cardSignals({ metrics: { untimedAttemptCount: 1 } }, t).inline).toMatchObject({ text: 'jobo.view.timeIncompleteShort', title: 'jobo.view.timeIncomplete' });
+    expect(cardSignals(null, t)).toEqual({ inline: null, rows: [] });
+    const html = render({ joboRecords: [timed({ taskId: null, progress: 'partial' })] });
+    expect(html).toMatch(/10:00–11:00 · jobo\.view\.progress\.partial<span data-jobo-axis="unplanned"> · jobo\.view\.summary\.unplanned<\/span>/);
+  });
+});
+
+describe('a Do card opens its task\'s notes and pairs with its Plan card', () => {
+  it('offers Notes on a Do linked to a task, and not on an unlinked one', () => {
+    expect(render({ joboRecords: [timed()] })).toContain('data-jobo-notes-toggle');
+    expect(render({ joboRecords: [timed({ taskId: null })] })).not.toContain('data-jobo-notes-toggle');
+  });
+
+  // MUTATION: render DayViewColumn outside the wrapper and hovering a Plan
+  // card no longer finds its Do cards.
+  it('wraps DAY\'s column in the hover listener without changing the grid', () => {
+    const html = render();
+    expect(html).toMatch(/<div class="contents" data-jobo-pairing="true"><div data-plan-column/);
+  });
+});
+
+describe('START to END only', () => {
+  it('windowRange widens the window to whole hours and falls back to the whole day', async () => {
+    const { windowRange } = await import('./jobo/DoColumn.jsx');
+    expect(windowRange({ start: '07:30', stop: '18:15' })).toEqual({ startHour: 7, endHour: 19 });
+    expect(windowRange({ start: '06:00', stop: null })).toEqual({ startHour: 6, endHour: 24 });
+    expect(windowRange({ start: null, stop: '22:00' })).toEqual({ startHour: 0, endHour: 22 });
+    expect(windowRange({ start: '22:00', stop: '06:00' })).toEqual({ startHour: 0, endHour: 24 });
+    expect(windowRange(null)).toEqual({ startHour: 0, endHour: 24 });
+  });
+
+  it('offers the toggle only on a day with a window', () => {
+    expect(render()).not.toContain('data-jobo-window-toggle');
+    expect(render({ getDayWindow: () => ({ start: '08:00', stop: '18:00' }) })).toContain('data-jobo-window-toggle');
+  });
+
+  // MUTATION: leave the Do side at 24 hours, or drop windowStart from a card's
+  // top, and the two sides no longer line up.
+  it('with the toggle on, both sides draw START to END and cards sit relative to START', () => {
+    vi.stubGlobal('localStorage', { getItem: () => '1', setItem: () => {} });
+    try {
+      const html = render({ getDayWindow: () => ({ start: '08:00', stop: '18:00' }), joboRecords: [timed()] });
+      expect(fixture.planColumns[0]).toMatchObject({ startHour: 8, endHour: 18 });
+      expect(html.match(/border-b border-dashed/g)).toHaveLength(10);
+      expect(html).toContain('top:160px'); // 10:00 is two hours after 08:00, at 80px an hour
+      expect(html).toContain('aria-pressed="true"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('the notes sidebar', () => {
+  const wideScreen = (matches) => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches, addEventListener() {}, removeEventListener() {} }) });
+    vi.stubGlobal('localStorage', { getItem: (key) => (key === 'dg-jobo-notes-sidebar' ? '1' : null), setItem: () => {} });
+  };
+
+  it('opens on a wide screen when chosen, with the Daily Note on top', () => {
+    wideScreen(true);
+    try {
+      const html = render({}, { dailyNotes: { '2026-09-24': { text: 'Standup moved to 10' } } });
+      expect(html).toContain('data-jobo-notes-sidebar');
+      expect(html).toContain('data-jobo-notes-sidebar-toggle');
+      expect(html).toContain('Standup moved to 10');
+      expect(html).toContain('jobo.view.selectForNotes');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('is not offered below 1600px, whatever was chosen', () => {
+    wideScreen(false);
+    try {
+      const html = render();
+      expect(html).not.toContain('data-jobo-notes-sidebar');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // The Daily Note is edited only through the Daily Notes modal, which owns
+  // the vault read-fresh and write-back rules.
+  it('never edits the Daily Note in place', () => {
+    const source = readFileSync(new URL('./jobo/JoboNotesSidebar.jsx', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/setDailyNotes\(|<textarea|saveDailyNote/);
+    expect(source).toContain('setDailyNotesModalDate');
   });
 });

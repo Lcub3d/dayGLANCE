@@ -106,6 +106,28 @@ describe.each(['zh-CN', 'en', 'de'])('%s GLANCE localization', (language) => {
   });
 });
 
+// The availability chip formats its duration through formatDuration, so the
+// number was already localized while the word beside it was a bare JSX text
+// node. Polish read "1 godz. 26 min available".
+describe.each(['pl', 'uk', 'de', 'en'])('%s GLANCE frame availability', (language) => {
+  describe.each(surfaces)('%s surface', (surface) => {
+    it('translates the word beside the duration, not just the duration', async () => {
+      const i18n = await translation(language);
+      const html = renderGlance(surface, i18n, {}, {
+        getFrameInstancesForDate: () => ([
+          { frameId: 'frame-1', name: 'Evening', start: '19:00', end: '21:00', date: '2026-09-08', color: 'bg-blue-200' },
+        ]),
+        // Stubbed: this is about the words around the number, not the slot
+        // arithmetic, which dayOccupancy has its own tests for.
+        computeAvailableSlots: () => ([{ minutes: 120 }]),
+      });
+      const expected = i18n.t('dial.frameAvailable', { time: i18n.t('common.durationHours', { hours: 2 }) });
+      expect(html).toContain(escape(expected));
+      if (language !== 'en') expect(html).not.toContain(' available');
+    });
+  });
+});
+
 describe.each(['zh-CN', 'en'])('%s GLANCE detail labels', (language) => {
   it('localizes the mobile notes close button accessible name', async () => {
     const i18n = await translation(language);

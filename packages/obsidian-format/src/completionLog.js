@@ -31,10 +31,12 @@ export const DEFAULT_COMPLETION_LOG_HEADING = '## Completed';
 
 // Mirrors extractTags in src/utils/taskUtils.js (the app-side source of
 // truth for what counts as an inline tag): letters/digits/_/-// after a
-// leading letter. Kept in sync BY HAND — the package cannot import from the
-// app. Case is preserved here (display), where the app util lowercases
-// (filter keys).
-const TAG_RE = /#(\p{L}[\p{L}\p{N}_/-]*)/gu;
+// leading letter, and never inside a web address, so …/guide#setup keeps its
+// fragment and does not become a vault tag. The address alternative matches
+// first and is left in place. Kept in sync BY HAND — the package cannot
+// import from the app. Case is preserved here (display), where the app util
+// lowercases (filter keys).
+const TAG_OR_ADDRESS = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)|#(\p{L}[\p{L}\p{N}_/-]*)/gu;
 
 /**
  * Format one completion-log line.
@@ -58,8 +60,8 @@ export function formatCompletionLogEntry({ title, completedAt, fallbackDate, pro
   const rawTitle = String(title ?? '').replace(/\s*\n+\s*/g, ' ').trim();
   // Strip inline tags from the label; re-render them after the fields so
   // the label reads cleanly and the tags stay standard Obsidian tags.
-  const tags = rawTitle.match(TAG_RE) || [];
-  let label = rawTitle.replace(TAG_RE, '').replace(/\s{2,}/g, ' ').trim();
+  const tags = [...rawTitle.matchAll(TAG_OR_ADDRESS)].filter((m) => m[1] === undefined).map((m) => m[0]);
+  let label = rawTitle.replace(TAG_OR_ADDRESS, (all, address) => (address ? all : '')).replace(/\s{2,}/g, ' ').trim();
   if (!label) label = rawTitle; // a tags-only title keeps its tags as the label
 
   // Display time: the wall-clock HH:mm of the completion. An offset-bearing

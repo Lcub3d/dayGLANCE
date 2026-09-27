@@ -6,7 +6,7 @@ import {
   nativeStartRecording, nativeStopRecording, triggerHaptic,
   nativeSupportsSpeech, nativeStartSpeech, nativeStopSpeech, nativeCancelSpeech,
 } from '../native.js';
-import { dateToString, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
+import { dateToString, completionTimestamp, stripWikilinks, extractTags } from '../utils/taskUtils.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { parseTranscriptTasks } from '../utils/voiceQuickAdd.js';
 import { normalizeVoiceParseResult } from '../utils/voiceParseResult.js';
@@ -582,7 +582,7 @@ export default function useVoiceInput({
             const setter = isInbox ? setUnscheduledTasks : setTasks;
             setter(prev => prev.map(t => {
               if (t.id !== id) return t;
-              const existing = (t.title.match(/#(\p{L}[\p{L}\p{N}_]*)/gu) || []).map(s => s.slice(1).toLowerCase());
+              const existing = extractTags(t.title);
               if (existing.includes(edit.tag.toLowerCase())) return t;
               return { ...t, title: t.title + ` #${edit.tag}`, transitionId: crypto.randomUUID() };
             }));

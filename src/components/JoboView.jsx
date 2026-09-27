@@ -1,16 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
-import DoColumn, { snapMinute, estimateCompletion } from './jobo/DoColumn.jsx';
+import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
+import useJoboPreference from '../hooks/useJoboPreference.js';
+import useMinWidth from '../hooks/useMinWidth.js';
+import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
+import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 
@@ -31,10 +35,30 @@ import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 const GRID = 'grid grid-cols-[calc(50%+2rem)_minmax(0,1fr)]';
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 
+// A task id inside an attribute selector. CSS.escape where the platform has
+// it; otherwise quotes and backslashes, the only characters that can break
+// out of the quoted value.
+const cssEscape = (value) => (typeof CSS !== 'undefined' && CSS.escape
+  ? CSS.escape(String(value))
+  : String(value).replace(/["\\]/g, '\\$&'));
+
+/**
+ * The editor's opening state for continuing `record`: its title, its task and
+ * its captured plan. createManualDo derives the taskId from `task`, so passing
+ * the record's own taskId keeps a recurring template id as it is.
+ */
+export const continueInitial = (record, date, startMinute) => ({
+  date, startMinute, duration: 30,
+  title: record.title,
+  task: { id: record.taskId },
+  planSnapshot: record.planSnapshot ?? null,
+  continuing: true,
+});
+
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo } = useFeaturesCtx();
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
@@ -42,6 +66,17 @@ export default function JoboView() {
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
   const [gestureError, setGestureError] = useState('');
+  // Hover pairing: the task under the pointer on either side. Its Plan card
+  // and every Do card that belongs to it are outlined together, which reads
+  // where colour alone cannot (two tasks can share a colour).
+  const [hoverTaskId, setHoverTaskId] = useState(null);
+  // The notes sidebar, on wide screens only: the Daily Note, and the notes
+  // of the task last clicked on either side (or picked with a Do card's
+  // Notes button, which then opens here instead of below the card).
+  const wide = useMinWidth(1600);
+  const [notesPreferred, toggleNotesSidebar] = useJoboPreference('notes-sidebar');
+  const sidebar = wide && notesPreferred;
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const scrollRef = useRef(null);
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
@@ -51,7 +86,18 @@ export default function JoboView() {
   const { selectedDate, getTasksForDate } = ctx;
   const date = dateToString(selectedDate);
   const dayStart = useMemo(() => { const d = new Date(selectedDate); d.setHours(0, 0, 0, 0); return d; }, [selectedDate]);
-  const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour: 0, endHour: 24 }), [dayStart, date]);
+  // START to END only, when the day has a window and the toggle is on. Both
+  // sides draw the same hours; every minute/pixel conversion below goes
+  // through windowStart.
+  const { getDayWindow } = useFeaturesCtx();
+  const [windowOnly, toggleWindowOnly] = useJoboPreference('window-only');
+  const dayWindow = getDayWindow?.(date) ?? null;
+  const fullDay = { startHour: 0, endHour: 24 };
+  const windowHours = dayWindow ? windowRange(dayWindow) : fullDay;
+  const canTrim = windowHours.startHour !== 0 || windowHours.endHour !== 24;
+  const { startHour, endHour } = windowOnly && canTrim ? windowHours : fullDay;
+  const windowStart = startHour * 60;
+  const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour, endHour }), [dayStart, date, startHour, endHour]);
   const currentTime = ctx.currentTime instanceof Date ? ctx.currentTime : new Date();
   const nowDate = dateToString(currentTime);
   const nowTime = clock(currentTime.getHours() * 60 + currentTime.getMinutes());
@@ -77,6 +123,8 @@ export default function JoboView() {
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
+  // The selected task as it is now, so the sidebar follows edits and sync.
+  const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
 
   // Open on the part of the day that matters: an hour before now on today,
   // otherwise an hour before the first Plan or Do.
@@ -89,14 +137,25 @@ export default function JoboView() {
       8 * 60,
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
-    el.scrollTop = Math.max(0, (anchorMinute - 60) * hourHeight / 60);
-    // Only on a new day or a new hour height, never on an ordinary re-render.
+    el.scrollTop = Math.max(0, (anchorMinute - 60 - windowStart) * hourHeight / 60);
+    // Only on a new day, hour height or visible range, never on an ordinary
+    // re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, hourHeight]);
+  }, [date, hourHeight, windowStart]);
 
   useEffect(() => () => gestureCleanup.current?.(), []);
   useEffect(() => { gestureCleanup.current?.(); }, [date]);
 
+  // What a new Do can link to, built only while an editor is open.
+  const linkCandidates = useMemo(
+    () => (editor && !editor.record
+      ? doLinkCandidates({
+        dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks,
+        ...(goalsProjectsEnabled ? { projects: projects || [], goals: goals || [] } : {}),
+      })
+      : []),
+    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals],
+  );
   const closeEditor = useCallback(() => setEditor(null), []);
   const closeDetails = useCallback(() => setDetails(null), []);
   // Editing an estimate opens with the estimated times filled in, so saving
@@ -109,6 +168,17 @@ export default function JoboView() {
       : { record });
   };
   const openAdd = (startMinute) => { closeDetails(); setEditor({ initial: { date, startMinute, duration: 30 } }); };
+  // Continue an unfinished attempt: a new Do on the same task and captured
+  // plan, so it joins the original as another session of one execution. It
+  // starts where the attempt ended, or now if that has already passed today.
+  const openContinue = (item) => {
+    closeDetails();
+    const { record } = item;
+    const ended = snapMinute(item.markerMinute ?? item.endMinute);
+    const nowMinute = snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes());
+    const startMinute = Math.min(1410, date === nowDate ? Math.max(ended, nowMinute) : ended);
+    setEditor({ initial: continueInitial(record, date, startMinute) });
+  };
 
   const saveEdit = async (record, patch) => {
     const current = live.current;
@@ -134,13 +204,13 @@ export default function JoboView() {
     gestureCleanup.current?.();
     const startY = event.clientY;
     const laneTop = doLane.current?.getBoundingClientRect().top ?? 0;
-    const downMinute = (startY - laneTop) / hourHeight * 60;
+    const downMinute = (startY - laneTop) / hourHeight * 60 + windowStart;
     let range = null;
     const move = (e) => {
       if (Math.abs(e.clientY - startY) < 5) { range = null; setPreview(null); return; }
       const bounds = doLane.current?.getBoundingClientRect();
       if (!bounds) return;
-      const minute = (e.clientY - bounds.top) / hourHeight * 60;
+      const minute = (e.clientY - bounds.top) / hourHeight * 60 + windowStart;
       range = toRange(snapMinute(minute), minute - downMinute);
       setPreview(range);
     };
@@ -255,28 +325,83 @@ export default function JoboView() {
       {status && (
         <div className="flex items-center gap-2 px-3 py-1 text-xs" role="status"><AlertTriangle size={14} />{status}</div>
       )}
+      <div className="flex-1 min-h-0 min-w-0 flex">
       <div ref={scrollRef} className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${ctx.darkMode ? 'dark-scrollbar' : ''}`}>
         <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
           <div className="flex min-w-0">
-            <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass}`} />
-            <div className="flex-1 min-w-0 px-3 py-1.5">{t('jobo.view.plan')}</div>
+            <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass} flex items-center justify-center`}>
+              {/* Over the hour gutter: trim to the day's START and END, or
+                  show every hour again. Only when the day has a window. */}
+              {canTrim && (
+                <button
+                  type="button"
+                  data-jobo-window-toggle
+                  onClick={toggleWindowOnly}
+                  aria-pressed={windowOnly}
+                  className={`p-1 rounded-lg transition-colors ${windowOnly ? 'text-blue-500' : ctx.textSecondary} ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                  title={windowOnly ? t('jobo.view.showAllHours') : t('jobo.view.showWindowOnly', { start: t('strip.markerStart').toLocaleUpperCase(), end: t('strip.markerEnd').toLocaleUpperCase() })}
+                  aria-label={windowOnly ? t('jobo.view.showAllHours') : t('jobo.view.showWindowOnly', { start: t('strip.markerStart').toLocaleUpperCase(), end: t('strip.markerEnd').toLocaleUpperCase() })}
+                >
+                  {windowOnly ? <UnfoldVertical size={16} /> : <FoldVertical size={16} />}
+                </button>
+              )}
+            </div>
+            <div className="flex-1 min-w-0 px-3 py-1.5 flex items-center">{t('jobo.view.plan')}</div>
           </div>
-          <div className={`min-w-0 px-3 py-1.5 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
+          <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
+            <div className="flex items-center gap-1.5">
             <button
               type="button"
-              className={`flex items-center gap-1 text-xs font-normal px-2 py-0.5 rounded-lg ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'} disabled:opacity-40`}
+              data-jobo-add
+              // The Inbox's New Task button, so adding reads the same everywhere.
+              className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"
               disabled={!joboWritable}
               onClick={() => openAdd(date === nowDate
                 ? Math.min(1410, snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes()))
                 : 9 * 60)}
             >
-              <Plus size={14} />{t('jobo.view.addDo')}
+              <Plus size={14} strokeWidth={3} /><span className="text-xs font-medium">{t('jobo.view.addDo')}</span>
             </button>
+            {wide && (
+              <button
+                type="button"
+                data-jobo-notes-sidebar-toggle
+                onClick={toggleNotesSidebar}
+                aria-pressed={notesPreferred}
+                className={`p-1 rounded-lg transition-colors ${notesPreferred ? 'text-blue-500' : ctx.textSecondary} ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                title={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
+                aria-label={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
+              >
+                {notesPreferred ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+              </button>
+            )}
+            </div>
           </div>
         </div>
         <div className={GRID}>
-          <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+          {/* `contents` keeps DAY's column the grid cell; the wrapper only
+              listens, and scopes the outline rule to the Plan side. */}
+          <div
+            className="contents"
+            data-jobo-pairing
+            // Capture: DAY's cards stop their own clicks from bubbling.
+            onClickCapture={(event) => {
+              const id = event.target.closest?.('[data-task-id]')?.getAttribute('data-task-id');
+              if (sidebar && id != null) setSelectedTaskId(id);
+            }}
+            onMouseOver={(event) => {
+              // Always set: a Do card's leave may have just queued null, and a
+              // comparison against this render's value would skip the update.
+              setHoverTaskId(event.target.closest?.('[data-task-id]')?.getAttribute('data-task-id') ?? null);
+            }}
+            onMouseLeave={() => setHoverTaskId(null)}
+          >
+            {hoverTaskId != null && (
+              <style>{`[data-jobo-pairing] [data-task-id="${cssEscape(hoverTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px}`}</style>
+            )}
+            <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+          </div>
           <DoColumn
             date={date}
             hourHeight={hourHeight}
@@ -289,11 +414,24 @@ export default function JoboView() {
             laneRef={doLane}
             onAddAt={openAdd}
             onEdit={openEdit}
-            onDetails={(item, anchor) => setDetails({ item, anchor })}
+            onContinue={openContinue}
+            hoverTaskId={hoverTaskId}
+            onHoverTask={setHoverTaskId}
+            startHour={startHour}
+            endHour={endHour}
+            onDetails={(item, anchor) => {
+              setDetails({ item, anchor });
+              if (sidebar && item.sourceTask) setSelectedTaskId(item.sourceTask.id);
+            }}
+            onNotesInSidebar={sidebar ? (task) => setSelectedTaskId(task.id) : undefined}
             onPointGesture={onPointGesture}
             onResizeGesture={onResizeGesture}
           />
         </div>
+      </div>
+      {sidebar && (
+        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} />
+      )}
       </div>
       {liveDetail && (
         <ExecutionDetails
@@ -310,6 +448,7 @@ export default function JoboView() {
       {editor && (
         <DoEditor
           {...editor}
+          linkCandidates={editor.record ? undefined : linkCandidates}
           records={joboRecords || []}
           writable={joboWritable}
           recordJobo={writer.write}

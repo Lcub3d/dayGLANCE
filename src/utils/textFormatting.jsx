@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
 import { isOnlyPhoneNumber, phoneTelUrl, canDialHere } from './phoneNumber.js';
-import { splitTitleNoteLinks, stripTags, stripWikilinks, stripWikilinksAndTags } from './taskUtils.js';
+import { splitTitleNoteLinks, splitTitleLinks, stripTags, stripWikilinks, stripWikilinksAndTags } from './taskUtils.js';
 
 // URL detection regex for notes
 export const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
@@ -229,11 +229,57 @@ export const isObsidianNoteOnlyTask = (task) => {
   return /\[\[[^\]]+\]\]/.test(task.title || '');
 };
 
+// ── Links in titles ─────────────────────────────────────────────────────────
+// A web link in a title, `[label](https://…)` or a bare URL, renders as a real
+// link wherever a title is displayed. splitTitleLinks (taskUtils) is the pure
+// half and admits http(s) only.
+
+// A link inside a card: it opens the page and does nothing else. The card
+// around it may be draggable, clickable or a gesture surface, so the pointer
+// events stop here, and the link inherits the card's colour. In the macOS
+// title bar (the NOW banner) it carves itself out of the drag region.
+const TitleLink = ({ href, label }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    draggable={false}
+    title={href}
+    style={{ WebkitAppRegion: 'no-drag' }}
+    className="underline decoration-dotted underline-offset-2 hover:opacity-80"
+    onClick={(e) => e.stopPropagation()}
+    onMouseDown={(e) => e.stopPropagation()}
+    onPointerDown={(e) => e.stopPropagation()}
+    onDoubleClick={(e) => e.stopPropagation()}
+  >{label}</a>
+);
+
+// Keep a run's outer spacing when stripping it, so "see https://x now" does
+// not collapse to "seex.comnow" around the link.
+const stripRun = (text, strip) => {
+  const lead = /^\s/.test(text) ? ' ' : '';
+  const trail = /\s$/.test(text) ? ' ' : '';
+  const core = strip(text);
+  return core ? `${lead}${core}${trail}` : (lead || trail);
+};
+
+// Render a title's text runs with `renderText` (after `strip`, if given) and
+// its links as links. A title without links is handled whole, as before.
+const withTitleLinks = (title, renderText, strip) => {
+  const parts = splitTitleLinks(title);
+  if (!parts.some((part) => part.href)) return renderText(strip ? strip(title) : title);
+  return parts.map((part, i) => (part.href
+    ? <TitleLink key={i} href={part.href} label={part.label} />
+    : <React.Fragment key={i}>{renderText(strip ? stripRun(part.text, strip) : part.text)}</React.Fragment>));
+};
+
 // Strip wikilinks from displayed text; style hashtags. Spacing is kept as
 // typed (renderTitleWithNoteLinks feeds it the runs between links), except
 // that a title with no words besides its links and tags takes stripWikilinks'
 // answer, the note's name, rather than rendering blank.
-export const renderTitle = (title) => {
+export const renderTitle = (title) => withTitleLinks(title, renderTitleText);
+
+const renderTitleText = (title) => {
   const raw = title || '';
   let stripped = raw.replace(/\[\[[^\]]+\]\]/g, '');
   if (stripped !== raw && !stripTags(stripped).trim()) stripped = stripWikilinks(raw);
@@ -308,4 +354,8 @@ export const highlightMatch = (text, query) => {
 
 // Remove wikilinks AND hashtags: the compact rows (SCHED, Bucket List, the
 // timeline's narrow card) and AI context. Same rule as stripWikilinksAndTags.
-export const renderTitleWithoutTags = (title) => stripWikilinksAndTags(title);
+// Links in the title stay live links; everything else is stripped as before.
+export const renderTitleWithoutTags = (title) => withTitleLinks(title, (text) => text, stripWikilinksAndTags);
+
+// The same, for surfaces that keep tags (an imported event's title).
+export const renderTitleWithoutWikilinks = (title) => withTitleLinks(title, (text) => text, stripWikilinks);

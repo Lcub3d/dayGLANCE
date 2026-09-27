@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Check, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, LayoutGrid, Leaf, MoonStar, Sparkles, Timer, Undo2, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { stripWikilinks } from '../utils/taskUtils.js';
+import { stripWikilinks, stripTags, tagsIn } from '../utils/taskUtils.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import DialComplications from './DialComplications.jsx';
 import {
@@ -618,8 +618,8 @@ function RoutineBars({ bars, selectedId, onEnter, onLeave, onTap }) {
 // itself carries the highlight.
 const splitHubTitle = (title) => {
   const stripped = stripWikilinks(title || '');
-  const tags = stripped.match(/#\p{L}[\p{L}\p{N}_]*/gu) || [];
-  const text = stripped.replace(/#\p{L}[\p{L}\p{N}_]*/gu, '').replace(/\s+/g, ' ').trim();
+  const tags = tagsIn(stripped).map((tag) => `#${tag}`);
+  const text = stripTags(stripped).replace(/\s+/g, ' ').trim();
   return { text, tags };
 };
 const renderHubTitle = (title) => splitHubTitle(title).text;

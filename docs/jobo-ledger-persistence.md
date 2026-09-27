@@ -242,7 +242,16 @@ importer all go through it.
   not loaded its ledger"; `[]` means "this device's ledger is empty". Both
   tiers already distinguish an absent bundle from an empty one for other
   data, and the vault tier treats absent as "does not carry it", never as a
-  delete.
+  delete. That holds on the PUSH side as well as the apply side: the
+  engine's snapshot diff carries an omitted collection kind's previous
+  snapshot entries forward untouched (`carryAbsentCollections` in
+  `dbAdapter.js`), so the launch cycle that runs before the strict read
+  completes proposes no upserts and no deletes for the ledger, and the saved
+  snapshot keeps the rows so the cycle after the load diffs clean. Before
+  that carry, the first push after every launch read the omitted key as an
+  empty ledger, and every ledger row became a vanish-delete that the
+  snapshot-delete guard skipped and re-fetched by id (one row-get per record
+  per launch). `[]` still diffs as empty.
 - **Applies during load are held, and held is retryable.** A remote apply
   that arrives before `loaded` is queued and merged after hydration. Merging
   it into the stale initial state and then loading over it would drop it.

@@ -2059,6 +2059,7 @@
     "view": {
       "activeLabel": "Active time",
       "addDo": "Add Do",
+      "keepEstimate": "Keep as shown",
       "dailyNoteEmpty": "No daily note yet. Click to write one.",
       "selectForNotes": "Click a task or a Do to see its notes here.",
       "showNotesSidebar": "Show notes sidebar",
@@ -2077,6 +2078,7 @@
       "completeInterval": "Enter a complete start and end interval.",
       "completedAt": "Marked complete at {{time}}",
       "completedByCompletion": "Completed is created by a completion event. A reassessed Do can be Started, Partial, or Mostly.",
+      "completedStays": "Stays Completed. Adjust the times and save.",
       "completionAxis": "Completion",
       "do": "Do",
       "elapsedLabel": "Elapsed span",

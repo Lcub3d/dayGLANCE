@@ -218,7 +218,7 @@ class DialFacePainter(private val fonts: DialFonts) {
 
     // Frames (docs/day-dial-frames-spec.html): an enclosure around the span of
     // the band each frame covers, an outline at r = 126 and 153 joined by
-    // radial end caps, 1.2pt at 0.45 in the frame's colour through the
+    // radial end caps, 1.8pt at 0.45 in the frame's colour through the
     // SOFTENED mute, below the rims so the needle stays the brightest thing.
     // After the separators, which cut with DST_OUT and would otherwise erase a
     // nested outline running along the band's edge. Static for the day.

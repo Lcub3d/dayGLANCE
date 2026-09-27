@@ -2126,18 +2126,19 @@
         "late": "Terminou {{minutes}} min atrasado"
       },
       "timeFinishLabel": "Fim",
-      "timeIncomplete": "Inclui uma tentativa sem horário; o tempo total não pode ser comparado.",
-      "timeIncompleteShort": "Tempo não comparável",
+      "timeIncomplete": "Início e fim reais não registados por completo.",
+      "timeIncompleteShort": "Adicionar tempo",
       "timeStart": {
         "early": "Começou {{minutes}} min mais cedo",
         "onTime": "Começou a horas",
         "late": "Começou {{minutes}} min atrasado"
       },
       "timeStartLabel": "Início",
-      "timed": "Com horário",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Sem horário",
-      "updateFailed": "Não foi possível guardar a alteração do Do."
+      "updateFailed": "Não foi possível guardar a alteração do Do.",
+      "setInterval": "Definir intervalo real",
+      "dragCompletion": "Arraste para definir o intervalo; Enter para editar.",
+      "completionPoint": "Registado às {{time}}. Adicione o início real para registar um intervalo."
     }
   },
   "todoist": {

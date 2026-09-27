@@ -6,6 +6,7 @@ import { formatDuration } from '../../utils/formatDuration.js';
 import { doDurationMinutes } from '../../jobo/core.js';
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 import ExecutionAxes from './ExecutionAxes.jsx';
+import { completionMarker } from '../../jobo/completionMarker.js';
 
 export default function ExecutionDetails({ item, anchor, onClose, onEdit, ctx, t, writable, pendingIds = [] }) {
   const ref = useRef(null);
@@ -44,18 +45,18 @@ export default function ExecutionDetails({ item, anchor, onClose, onEdit, ctx, t
     event.preventDefault(); entries[next]?.focus();
   };
   return createPortal(<section ref={ref} tabIndex={-1} role="dialog" aria-modal="false" aria-labelledby="jobo-execution-title" onKeyDown={keys}
-    style={position} className={`jobo-s5-details ${ctx.cardBg} ${ctx.textPrimary} border ${ctx.borderClass}`}>
-    <div className="jobo-s5-dialog-head"><div><h2 id="jobo-execution-title" className="jobo-s5-dialog-title">{renderTitleWithoutTags(title)}</h2><p>{t('jobo.view.executionHistory', { count: records.length })}</p></div><button type="button" className="jobo-s5-close-button" aria-label={t('common.close')} onClick={onClose}><X size={18} /></button></div>
-    {item.plan && <p className="jobo-s5-detail-plan">{t(item.historical ? 'jobo.view.capturedPlan' : 'jobo.view.plan')}: {item.plan.date} · {ctx.formatTime(item.plan.startTime)} · {formatDuration(item.plan.duration, t)}</p>}
+    style={position} className={`jobo-s5-details fixed z-50 w-[min(410px,calc(100vw-24px))] max-h-[calc(100vh-24px)] overflow-auto rounded-lg shadow-xl p-4 text-xs ${ctx.cardBg} ${ctx.textPrimary} border ${ctx.borderClass}`}>
+    <div className="flex items-start justify-between gap-2 mb-3"><div><h2 id="jobo-execution-title" className="text-sm font-semibold">{renderTitleWithoutTags(title)}</h2><p>{t('jobo.view.executionHistory', { count: records.length })}</p></div><button type="button" className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10" aria-label={t('common.close')} onClick={onClose}><X size={18} /></button></div>
+    {item.plan && <p className="mb-2">{t(item.historical ? 'jobo.view.capturedPlan' : 'jobo.view.plan')}: {item.plan.date} · {ctx.formatTime(item.plan.startTime)} · {formatDuration(item.plan.duration, t)}</p>}
     <ExecutionAxes comparison={item.comparison} comparisonMeta={item.comparisonMeta} labels={item.labels} latestAttempt={item.latestAttempt} records={records} t={t}>
-      {records.length > 0 && <div className="jobo-s5-attempt-list">{records.map((record, index) => <details key={record.id} open={records.length === 1 ? true : undefined}>
-        <summary><span className="jobo-s5-attempt-progress">{index === 0 && <span>{t('jobo.view.latestShort')} · </span>}{progressText(record.progress, t)}</span><span>{record.date} · {record.timing === 'untimed' ? t('jobo.view.untimed') : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`}</span></summary>
-        <div className="jobo-s5-attempt-body"><p>{record.title}</p><p>{t('jobo.view.sourceLabel')}: {t(`jobo.view.source.${record.source}`, { defaultValue: record.source })}</p>
+      {records.length > 0 && <div className="divide-y divide-stone-300 dark:divide-gray-600 [&_details]:py-2 [&_summary]:cursor-pointer [&_summary]:flex [&_summary]:justify-between [&_summary]:gap-2">{records.map((record, index) => <details key={record.id} open={records.length === 1 ? true : undefined}>
+        <summary><span className="jobo-s5-attempt-progress">{index === 0 && <span>{t('jobo.view.latestShort')} · </span>}{progressText(record.progress, t)}</span><span>{completionMarker(record)?.date || record.date} · {record.timing === 'untimed' ? ctx.formatTime(completionMarker(record)?.time || '') : `${ctx.formatTime(record.startTime)}–${record.endDate !== record.date ? `${record.endDate} ` : ''}${ctx.formatTime(record.endTime)}`}</span></summary>
+        <div className="[&_p]:my-1"><p>{record.title}</p><p>{t('jobo.view.sourceLabel')}: {t(`jobo.view.source.${record.source}`, { defaultValue: record.source })}</p>
           {record.timing === 'timed' && <p><Clock size={12} />{formatDuration(doDurationMinutes(record), t)}</p>}
           {record.timingBasis === 'planDuration' && <p>{t('jobo.view.inferredPlanDuration')}</p>}
-          {record.completedAt && Number.isFinite(Date.parse(record.completedAt)) && <p>{t('jobo.view.completedAt', { time: new Date(record.completedAt).toLocaleString() })}</p>}
+          {record.source === 'completion' && <p>{t('jobo.view.completedAt', { time: `${record.createdAt.slice(0, 10)} ${ctx.formatTime(record.createdAt.slice(11, 16))}` })}</p>}
           <p>{t('jobo.view.capturedPlan')}: {record.planSnapshot ? `${record.planSnapshot.date} ${ctx.formatTime(record.planSnapshot.startTime)} · ${formatDuration(record.planSnapshot.duration, t)}` : t('jobo.view.noTimedPlan')}</p>
-          {pendingIds.includes(record.id) ? <p role="status">{t('jobo.view.pendingSave')}</p> : writable && <button type="button" className="jobo-s5-details-edit" onClick={() => onEdit({ record })}><Pencil size={13} />{t('common.edit')}</button>}
+          {pendingIds.includes(record.id) ? <p role="status">{t('jobo.view.pendingSave')}</p> : writable && <button type="button" className="inline-flex items-center gap-1 mt-1 px-2 py-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10" onClick={() => onEdit({ record })}><Pencil size={13} />{t('common.edit')}</button>}
         </div>
       </details>)}</div>}
     </ExecutionAxes>

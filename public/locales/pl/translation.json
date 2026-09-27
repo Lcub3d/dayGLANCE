@@ -2213,18 +2213,19 @@
         "late": "Zakończono {{minutes}} min później"
       },
       "timeFinishLabel": "Koniec",
-      "timeIncomplete": "Zawiera próbę bez pomiaru; całkowitego czasu nie można porównać.",
-      "timeIncompleteShort": "Czas nieporównywalny",
+      "timeIncomplete": "Rzeczywisty początek i koniec nie są w pełni zapisane.",
+      "timeIncompleteShort": "Uzupełnij czas",
       "timeStart": {
         "early": "Rozpoczęto {{minutes}} min wcześniej",
         "onTime": "Rozpoczęto na czas",
         "late": "Rozpoczęto {{minutes}} min później"
       },
       "timeStartLabel": "Początek",
-      "timed": "Z czasem",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Bez czasu",
-      "updateFailed": "Nie udało się zapisać zmiany Do."
+      "updateFailed": "Nie udało się zapisać zmiany Do.",
+      "setInterval": "Ustaw rzeczywisty przedział",
+      "dragCompletion": "Przeciągnij, aby ustawić przedział; Enter otwiera edycję.",
+      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział."
     }
   },
   "todoist": {

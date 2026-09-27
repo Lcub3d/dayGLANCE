@@ -10,6 +10,8 @@ import {
 import { resolveOccurrence } from './detector.js';
 import { validCivilDate } from './viewDates.js';
 
+import { completionMarker } from './completionMarker.js';
+
 const DAY_MINUTES = 24 * 60;
 const PROGRESS_ORDER = Object.freeze([
   DO_PROGRESS.STARTED,
@@ -389,7 +391,7 @@ export function buildJoboDayModel({
 
   const visibleRecords = validLiveRecords.filter((record) => (
     record.timing === DO_TIMING.UNTIMED
-      ? record.date === date
+      ? completionMarker(record)?.date === date
       : timedSliceOnDate(record, date) !== null
   ));
 
@@ -451,6 +453,7 @@ export function buildJoboDayModel({
       const metadata = metadataByGroup.get(groupKey);
       const task = resolveRecordTask(record);
       return {
+        ...completionMarker(record),
         id: record.id,
         groupKey,
         record,

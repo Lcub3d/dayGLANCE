@@ -2126,18 +2126,19 @@
         "late": "晚结束 {{minutes}} 分钟"
       },
       "timeFinishLabel": "结束",
-      "timeIncomplete": "含未计时记录，整体时间暂不可比较。",
-      "timeIncompleteShort": "时间暂不可比",
+      "timeIncomplete": "实际起止时间尚未完整记录。",
+      "timeIncompleteShort": "待补时间",
       "timeStart": {
         "early": "提前 {{minutes}} 分钟开始",
         "onTime": "按时开始",
         "late": "晚开始 {{minutes}} 分钟"
       },
       "timeStartLabel": "开始",
-      "timed": "已计时",
       "titleRequired": "请输入这条 Do 的标题。",
-      "untimed": "未计时",
-      "updateFailed": "无法保存执行记录的修改。"
+      "updateFailed": "无法保存执行记录的修改。",
+      "setInterval": "补充实际时段",
+      "dragCompletion": "拖动设置实际时段；按回车可编辑。",
+      "completionPoint": "记录于 {{time}}。填写实际开始时间即可补充执行时段。"
     }
   },
   "todoist": {

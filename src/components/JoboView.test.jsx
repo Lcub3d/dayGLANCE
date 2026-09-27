@@ -21,7 +21,8 @@ describe('minimal JOBO view', () => {
     const html = render();
     expect(html).toContain('Native Plan');
     expect(html).toContain('checked');
-    expect(html).toContain('Native note');
+    expect(html).toContain('task.notes: Native Plan');
+    expect(html).not.toContain('Native note');
     expect(html).toContain('jobo.view.addDo');
     expect(html).not.toMatch(/data-jobo-daily|jobo-s5-connections|draggable=|jobo-priority|jobo-s5-time-frames/);
   });
@@ -31,14 +32,17 @@ describe('minimal JOBO view', () => {
     expect(html).not.toContain('common.loading');
     expect(html).not.toContain('jobo.view.emptyDo');
   });
-  it('keeps untimed evidence editable without inventing a time span', () => {
+  it('draws completion evidence as a source-time point without inventing a time span', () => {
     const stamp = '2026-09-24T09:30:00.000Z';
     const row = createDoRecord({ id: 'do:t1:x', taskId: 't1', title: 'Captured work', source: 'completion', progress: 'completed',
       timing: 'untimed', date: '2026-09-24', startTime: null, endDate: null, endTime: null, planSnapshot: null,
       createdAt: stamp, updatedAt: stamp, observedAt: stamp });
     const html = render({ joboRecords: [row] });
     expect(html).toContain('Captured work');
-    expect(html).toContain('jobo.view.untimed');
+    expect(html).not.toContain('jobo.view.untimed');
+    expect(html).toContain('data-jobo-point="true"');
+    expect(html).toContain('09:30');
+    expect(html).toContain('top:126px');
     expect(html).toContain('common.edit: Captured work');
     expect(row.startTime).toBeNull();
   });
@@ -48,5 +52,8 @@ describe('minimal JOBO view', () => {
     expect(view).not.toMatch(/readJoboWorkingSet|workingSet\(|createQuickPlan|copyPlan|startPlanDrag|writeDailyNotes|prepareDoNotesEdit/);
     expect(editor).toContain('useState(() => record?.id || `manual:${crypto.randomUUID()}`)');
     expect(editor).not.toMatch(/toggleComplete|setTasks|localStorage|indexedDB/);
+    expect(editor).not.toContain('jobo.view.untimed');
+    expect(editor).not.toContain('jobo.view.timed');
+    expect(editor).toContain('createPortal');
   });
 });

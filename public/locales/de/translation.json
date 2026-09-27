@@ -2126,18 +2126,19 @@
         "late": "{{minutes}} Min. später beendet"
       },
       "timeFinishLabel": "Ende",
-      "timeIncomplete": "Enthält einen Eintrag ohne Zeit; die Gesamtzeit kann nicht verglichen werden.",
-      "timeIncompleteShort": "Zeit nicht vergleichbar",
+      "timeIncomplete": "Tatsächlicher Beginn/Ende nicht vollständig erfasst.",
+      "timeIncompleteShort": "Zeit ergänzen",
       "timeStart": {
         "early": "{{minutes}} Min. früher gestartet",
         "onTime": "Pünktlich gestartet",
         "late": "{{minutes}} Min. später gestartet"
       },
       "timeStartLabel": "Start",
-      "timed": "Mit Zeit",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Ohne Zeit",
-      "updateFailed": "Die Do-Änderung konnte nicht gespeichert werden."
+      "updateFailed": "Die Do-Änderung konnte nicht gespeichert werden.",
+      "setInterval": "Tatsächlichen Zeitraum festlegen",
+      "dragCompletion": "Ziehen, um den Zeitraum festzulegen; mit Enter bearbeiten.",
+      "completionPoint": "Erfasst um {{time}}. Für einen Zeitraum den tatsächlichen Beginn ergänzen."
     }
   },
   "todoist": {

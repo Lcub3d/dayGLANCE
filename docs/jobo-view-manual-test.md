@@ -1,36 +1,43 @@
 # JOBO Slice 5 acceptance
 
-Scope follows #1726's review of #1840: shared-axis Plan/Do, the day model,
-manual Do creation, editing existing Do and the native Plan checkbox.
-The full interaction reference is preserved at
-`Lcub3d/dayGLANCE:reference/jobo-full-20260927` (`5918cef`).
+Based on #1726 and the UI follow-up on #1840. The full scaffold remains on
+`reference/jobo-full-20260927`; this PR is the minimal shared-axis view.
 
-The view reads committed `joboRecords` only and writes through `recordJobo`.
-It does not use the detector's working set. Pending indicators are UI receipts,
-not a retry queue; a held write is not yet durable. A closed editor does not
-cancel an already accepted ledger write. Storage-outage restart limitations
-remain those documented by the ledger.
+## Native integration
 
-## Checks with isolated synthetic data
+- JOBO is available on narrow desktop and landscape tablet through the same
+  registry, switcher and shortcut keys. Phones and portrait tablets are unchanged.
+- Notes open the existing `NotesSubtasksPanel`, including formatted text,
+  subtasks and linked Obsidian notes. There is no plain-text or daily-note column.
+- The Do editor uses the desktop modal's Tailwind layout and theme tokens,
+  a body portal, Escape/focus restoration and a keyboard focus loop.
+- No JOBO-specific stylesheet is loaded. Inline styles encode time geometry only.
 
-- Plan and Do share an hour axis; short intervals retain an exact proportional
-  marker separate from the interaction target. Cross-midnight Do is clipped.
-- Native checkbox uses `toggleComplete`, leaving Slice 4 to create Untimed
-  completion evidence. No view infers measured minutes from a plan duration.
-- Manual Do allocates its id when the editor opens, before the first write;
-  a refused-write retry uses that same id. Do progress never changes a task.
-- Untimed correction keeps id, captured title/plan, source and original stamps.
-  Invalid intervals, stale versions and tombstones do not produce stale writes.
-- Held saves remain pending until committed; a superseding remote version is
-  a conflict, not an invitation to restamp and defeat the winner.
-- Loading, read errors, read-only devices and invalid evidence remain distinct.
-  No Do recorded is not proof that the native task never ran.
-- Task notes are optional and read-only in this slice. Narrow widths hide them.
-- Timing details retain separate start, finish and duration comparisons, and
-  distinguish the whole group from a measured subset and individual attempts.
+## Completion points and intervals
 
-Day tiles/Check belong to Slice 7. Independent Do notes need separate design.
-Plan creation/copy/drag/resize, hover connections and daily-note placement are
-not in this PR. Shared planner handlers, core, ledger, detector, sync and native
-platform code are unchanged. #1829 already resolved pending completion/uncheck;
-the same-key re-completion case is a separate issue, not a view workaround.
+- Completing a native Plan still calls `toggleComplete`. Slice 4 captures its
+  completion stamp. A completion stamp is a time point, not a measured interval.
+- New and historical records without a measured interval appear as markers on
+  the Do axis at `createdAt`'s own date/time prefix, including Z/offset stamps.
+  There is no top strip or Timed/Untimed selector. Missing start/end data is not
+  replaced with a planned start, zero minutes or a fabricated duration.
+- Drag a marker to select an interval anchored at its time; release writes the
+  explicit interval under the same id. A click, Escape or pointer cancellation
+  does not write. Keyboard users can open the same interval fields with Enter.
+- The editor pre-fills a completion point's end time from its stamp, leaving
+  the actual start blank. Progress-only changes preserve the point; supplying a
+  start/end changes it to a timed interval, without changing captured history.
+- UTC and offset points remain at their source civil coordinates on all devices.
+  Recurring occurrence identity is separate from the day the completion occurred.
+
+## Persistence and review checks
+
+- Committed `joboRecords` remains the only evidence input. Every Do edit goes
+  through `recordJobo`; the view does not read the working set or own a retry queue.
+- Manual Do ids are allocated once before writing and survive refused-write retry.
+- Stale edits/tombstones are rejected. Held writes show pending until committed.
+- Read failure is not an empty day. No Do recorded does not negate native completion.
+- Cross-midnight intervals, point/interval overlaps, 1024/1280/1440px layouts,
+  disabled/read-only actions and dark mode need both unit and browser checks.
+- Day tiles remain a separate follow-up PR as agreed in #1726. Plan creation,
+  copying/dragging/resizing, daily notes and independent Do notes remain deferred.

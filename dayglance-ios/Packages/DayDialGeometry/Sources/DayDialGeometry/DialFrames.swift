@@ -60,11 +60,12 @@ public struct DialFrameRadii: Equatable {
 public enum DialFrames {
     // Fractions of the block band's width, from the widget spec's 22pt band:
     // 3pt inside its inner edge, 2pt outside its outer edge, 3.2pt in per
-    // nesting level, a 1.2pt stroke.
+    // nesting level, a 1.8pt stroke (the spec's 1.2pt read too faint on
+    // device).
     public static let innerGap = 3.0 / 22
     public static let outerGap = 2.0 / 22
     public static let step = 3.2 / 22
-    public static let stroke = 1.2 / 22
+    public static let stroke = 1.8 / 22
     public static let opacity = 0.45
     /// One level of nesting is drawn; a second step would put the outline
     /// through the wedges. Deeper frames draw at this level.

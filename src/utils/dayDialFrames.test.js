@@ -20,8 +20,11 @@ const frame = (over) => ({ frameId: 'f', label: 'Frame', color: 'bg-blue-200', s
 const block = (startMin, endMin) => ({ startMin, endMin });
 
 describe('frame geometry', () => {
-  it('is the spec at the widget band: 126 and 153, 3.2 in per level, 1.2 wide', () => {
-    expect(dialFrameRadii(129, 151, 0)).toEqual({ inner: 126, outer: 153, width: 1.2 });
+  it('is the spec at the widget band: 126 and 153, 3.2 in per level, 1.8 wide', () => {
+    const top = dialFrameRadii(129, 151, 0);
+    expect(top.inner).toBeCloseTo(126, 10);
+    expect(top.outer).toBeCloseTo(153, 10);
+    expect(top.width).toBeCloseTo(1.8, 10);
     const nested = dialFrameRadii(129, 151, 1);
     expect(nested.inner).toBeCloseTo(129.2, 10);
     expect(nested.outer).toBeCloseTo(149.8, 10);
@@ -36,7 +39,7 @@ describe('frame geometry', () => {
     const app = dialFrameRadii(300, 385, 0);
     expect((300 - app.inner) / 85).toBeCloseTo(3 / 22, 10);
     expect((app.outer - 385) / 85).toBeCloseTo(2 / 22, 10);
-    expect(app.width / 85).toBeCloseTo(1.2 / 22, 10);
+    expect(app.width / 85).toBeCloseTo(1.8 / 22, 10);
   });
 });
 

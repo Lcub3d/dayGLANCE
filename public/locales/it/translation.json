@@ -2128,18 +2128,19 @@
         "late": "Terminato {{minutes}} min in ritardo"
       },
       "timeFinishLabel": "Fine",
-      "timeIncomplete": "Include un tentativo senza orario; il tempo complessivo non è confrontabile.",
-      "timeIncompleteShort": "Tempo non confrontabile",
+      "timeIncomplete": "Inizio e fine effettivi non completamente registrati.",
+      "timeIncompleteShort": "Tempo da aggiungere",
       "timeStart": {
         "early": "Iniziato {{minutes}} min prima",
         "onTime": "Iniziato in orario",
         "late": "Iniziato {{minutes}} min in ritardo"
       },
       "timeStartLabel": "Inizio",
-      "timed": "Con orario",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Senza orario",
-      "updateFailed": "Impossibile salvare la modifica del Do."
+      "updateFailed": "Impossibile salvare la modifica del Do.",
+      "setInterval": "Imposta intervallo effettivo",
+      "dragCompletion": "Trascina per impostare l’intervallo; Invio per modificare.",
+      "completionPoint": "Registrato alle {{time}}. Aggiungi l’inizio effettivo per registrare un intervallo."
     }
   },
   "todoist": {

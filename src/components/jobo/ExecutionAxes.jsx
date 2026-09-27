@@ -1,7 +1,6 @@
 import React from 'react';
 import { Check, Clock } from 'lucide-react';
 import { summarizeTiming } from '../../jobo/core.js';
-import './ExecutionAxes.css';
 
 function translate(t, key, defaultValue, values = {}) {
   return t(key, { ...values, defaultValue });
@@ -90,13 +89,13 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
       : t(`jobo.view.progress.${latestAttempt.progress}`)
     : null;
 
-  return <div className="jobo-s5-execution-axes">
-    <section className="jobo-s5-execution-axis" data-jobo-execution-axis="timing" aria-labelledby="jobo-time-axis-title">
+  return <div className="grid gap-3 my-3">
+    <section className="min-w-0 pt-2 border-t border-stone-300 dark:border-gray-600 [&_h3]:flex [&_h3]:items-center [&_h3]:gap-1 [&_h3]:font-semibold [&_h3]:mb-2 [&_dl]:grid [&_dl]:gap-1 [&_dl>div]:flex [&_dl>div]:gap-2 [&_dt]:w-24 [&_dt]:shrink-0 [&_dt]:opacity-70 [&_dd]:min-w-0 [&_dd]:break-words" data-jobo-execution-axis="timing" aria-labelledby="jobo-time-axis-title">
       <h3 id="jobo-time-axis-title"><Clock size={14} aria-hidden="true" />{translate(t, 'jobo.view.timeAxis', 'Time performance')}</h3>
-      {canonical.length > 0 && <div className="jobo-s5-execution-summary" data-jobo-timing-summary>
+      {canonical.length > 0 && <div className="flex flex-wrap gap-1 mb-2 [&_span]:rounded [&_span]:bg-black/5 dark:[&_span]:bg-white/10 [&_span]:px-1 [&_span]:py-0.5" data-jobo-timing-summary>
         {canonical.map((row) => <span key={row.key} title={row.title}>{row.text}</span>)}
       </div>}
-      {detailTiming.length > 0 && <dl className="jobo-s5-execution-timing-list">
+      {detailTiming.length > 0 && <dl className="text-xs">
         {detailTiming.map((row) => <div key={row.key} data-jobo-timing-row={row.key}>
           <dt>{row.key === 'incomplete' ? t('jobo.view.timeIncompleteShort') : row.key === 'start' ? t('jobo.view.timeStartLabel', { defaultValue: 'Start' }) : row.key === 'finish' ? t('jobo.view.timeFinishLabel', { defaultValue: 'Finish' }) : row.key === 'duration' ? t('jobo.view.timeDurationLabel', { defaultValue: 'Duration' }) : ''}</dt>
           <dd>{row.text}</dd>
@@ -104,15 +103,15 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
       </dl>}
       {hasEstimated && <p>{t('jobo.view.inferredHint')}</p>}
       {(hasEstimated || hasUntimed) && metrics.length > 0 && <p>{t('jobo.view.measuredOnly')}</p>}
-      {metrics.length > 0 && <dl className="jobo-s5-execution-metrics">
+      {metrics.length > 0 && <dl className="mt-2 text-[11px] opacity-90">
         {metrics.map((row) => <div key={row.key}><dt>{row.key === 'recordedMinutes' ? t('jobo.view.recordedLabel', { defaultValue: 'Recorded' }) : row.key === 'activeMinutes' ? t('jobo.view.activeLabel', { defaultValue: 'Active' }) : row.key === 'elapsedMinutes' ? t('jobo.view.elapsedLabel', { defaultValue: 'Elapsed' }) : row.key === 'gapMinutes' ? t('jobo.view.gapLabel', { defaultValue: 'Gaps' }) : t('jobo.view.overlapLabel', { defaultValue: 'Overlap' })}</dt><dd>{row.text}</dd></div>)}
       </dl>}
-      {!canonical.length && !detailTiming.length && !metrics.length && !hasUntimed && !hasEstimated && <p className="jobo-s5-execution-empty">{t('jobo.view.noAttemptsShort')}</p>}
+      {!canonical.length && !detailTiming.length && !metrics.length && !hasUntimed && !hasEstimated && <p className="mt-1 opacity-70">{t('jobo.view.noAttemptsShort')}</p>}
     </section>
-    <section className="jobo-s5-execution-axis" data-jobo-execution-axis="completion" aria-labelledby="jobo-progress-axis-title">
+    <section className="min-w-0 pt-2 border-t border-stone-300 dark:border-gray-600 [&_h3]:flex [&_h3]:items-center [&_h3]:gap-1 [&_h3]:font-semibold [&_h3]:mb-2 [&_dl]:grid [&_dl]:gap-1 [&_dl>div]:flex [&_dl>div]:gap-2 [&_dt]:w-24 [&_dt]:shrink-0 [&_dt]:opacity-70 [&_dd]:min-w-0 [&_dd]:break-words" data-jobo-execution-axis="completion" aria-labelledby="jobo-progress-axis-title">
       <h3 id="jobo-progress-axis-title"><Check size={14} aria-hidden="true" />{translate(t, 'jobo.view.completionAxis', 'Completion')}</h3>
-      {latestAttempt && <p className="jobo-s5-execution-latest" data-progress={latestAttempt.progress}><span>{t('jobo.view.latestShort')}:</span> {progressLabel}</p>}
-      {!records.length && <p className="jobo-s5-execution-empty">{t('jobo.view.noAttempts')}</p>}
+      {latestAttempt && <p className="mt-1 flex gap-1" data-progress={latestAttempt.progress}><span>{t('jobo.view.latestShort')}:</span> {progressLabel}</p>}
+      {!records.length && <p className="mt-1 opacity-70">{t('jobo.view.noAttempts')}</p>}
       {children}
     </section>
   </div>;

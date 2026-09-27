@@ -2126,18 +2126,19 @@
         "late": "Finished {{minutes}} min late"
       },
       "timeFinishLabel": "Finish",
-      "timeIncomplete": "Includes an untimed attempt; overall time cannot be compared.",
-      "timeIncompleteShort": "Time not comparable",
+      "timeIncomplete": "Actual start/end not fully recorded.",
+      "timeIncompleteShort": "Time to add",
       "timeStart": {
         "early": "Started {{minutes}} min early",
         "onTime": "Started on time",
         "late": "Started {{minutes}} min late"
       },
       "timeStartLabel": "Start",
-      "timed": "Timed",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Untimed",
-      "updateFailed": "Could not save the Do change."
+      "updateFailed": "Could not save the Do change.",
+      "setInterval": "Set actual interval",
+      "dragCompletion": "Drag to set the actual interval; use Enter to edit.",
+      "completionPoint": "Recorded at {{time}}. Add the actual start to record an interval."
     }
   },
   "todoist": {

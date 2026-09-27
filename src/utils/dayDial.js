@@ -300,7 +300,9 @@ export function computeDialModel(dayTasks, dayWindow = null, prevDayTasks = null
 // Every length here is a fraction of the block band's width, from the widget
 // spec (band 129–151pt, 22pt wide): the outline sits 3pt inside the band's
 // inner edge and 2pt outside its outer edge (the gaps either side of it), a
-// nested frame steps 3.2pt inward per level, and the stroke is 1.2pt. Stated
+// nested frame steps 3.2pt inward per level, and the stroke is 1.8pt (the
+// spec drew 1.2pt; on devices that read too faint, so the widgets thickened
+// it). The in-app dial sets its own width (DayDial.jsx). Stated
 // as fractions so the in-app dial (band 300–385 in its 1000-unit viewBox)
 // scales the same design rather than copying point values, and the three
 // renderers take the same numbers (dayDial.vectors.json `dialFrameRadii`).
@@ -308,7 +310,7 @@ const FRAME_SPEC_BAND = 22;
 export const DIAL_FRAME_INNER_GAP = 3 / FRAME_SPEC_BAND;
 export const DIAL_FRAME_OUTER_GAP = 2 / FRAME_SPEC_BAND;
 export const DIAL_FRAME_STEP = 3.2 / FRAME_SPEC_BAND;
-export const DIAL_FRAME_STROKE = 1.2 / FRAME_SPEC_BAND;
+export const DIAL_FRAME_STROKE = 1.8 / FRAME_SPEC_BAND;
 export const DIAL_FRAME_OPACITY = 0.45;
 /**
  * The deepest drawn level. One step in (3.2 of 22) already puts the outline

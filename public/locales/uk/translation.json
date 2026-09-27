@@ -2219,18 +2219,19 @@
         "late": "Завершено на {{minutes}} хв пізніше"
       },
       "timeFinishLabel": "Завершення",
-      "timeIncomplete": "Містить спробу без часу; загальний час неможливо порівняти.",
-      "timeIncompleteShort": "Час неможливо порівняти",
+      "timeIncomplete": "Фактичний початок і кінець записані не повністю.",
+      "timeIncompleteShort": "Додати час",
       "timeStart": {
         "early": "Почато на {{minutes}} хв раніше",
         "onTime": "Почато вчасно",
         "late": "Почато на {{minutes}} хв пізніше"
       },
       "timeStartLabel": "Початок",
-      "timed": "З часом",
       "titleRequired": "Enter a title for this Do.",
-      "untimed": "Без часу",
-      "updateFailed": "Не вдалося зберегти зміну Do."
+      "updateFailed": "Не вдалося зберегти зміну Do.",
+      "setInterval": "Задати фактичний інтервал",
+      "dragCompletion": "Перетягніть, щоб задати інтервал; Enter для редагування.",
+      "completionPoint": "Записано о {{time}}. Додайте фактичний початок, щоб записати інтервал."
     }
   },
   "todoist": {

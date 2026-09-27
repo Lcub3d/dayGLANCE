@@ -11,6 +11,7 @@ import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
+import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 
@@ -110,6 +111,13 @@ export default function JoboView() {
   useEffect(() => () => gestureCleanup.current?.(), []);
   useEffect(() => { gestureCleanup.current?.(); }, [date]);
 
+  // What a new Do can link to, built only while an editor is open.
+  const linkCandidates = useMemo(
+    () => (editor && !editor.record
+      ? doLinkCandidates({ dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks })
+      : []),
+    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks],
+  );
   const closeEditor = useCallback(() => setEditor(null), []);
   const closeDetails = useCallback(() => setDetails(null), []);
   // Editing an estimate opens with the estimated times filled in, so saving
@@ -283,19 +291,21 @@ export default function JoboView() {
         <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
           <div className="flex min-w-0">
             <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass}`} />
-            <div className="flex-1 min-w-0 px-3 py-1.5">{t('jobo.view.plan')}</div>
+            <div className="flex-1 min-w-0 px-3 py-1.5 flex items-center">{t('jobo.view.plan')}</div>
           </div>
-          <div className={`min-w-0 px-3 py-1.5 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
+          <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
             <button
               type="button"
-              className={`flex items-center gap-1 text-xs font-normal px-2 py-0.5 rounded-lg ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'} disabled:opacity-40`}
+              data-jobo-add
+              // The Inbox's New Task button, so adding reads the same everywhere.
+              className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40"
               disabled={!joboWritable}
               onClick={() => openAdd(date === nowDate
                 ? Math.min(1410, snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes()))
                 : 9 * 60)}
             >
-              <Plus size={14} />{t('jobo.view.addDo')}
+              <Plus size={14} strokeWidth={3} /><span className="text-xs font-medium">{t('jobo.view.addDo')}</span>
             </button>
           </div>
         </div>
@@ -335,6 +345,7 @@ export default function JoboView() {
       {editor && (
         <DoEditor
           {...editor}
+          linkCandidates={editor.record ? undefined : linkCandidates}
           records={joboRecords || []}
           writable={joboWritable}
           recordJobo={writer.write}

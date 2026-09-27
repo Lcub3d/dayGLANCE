@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, Clock, AlertCircle, Hash } from 'lucide-react';
 
-const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, borderClass, textPrimary, hoverBg }) => {
+const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, borderClass, textPrimary, hoverBg, fullWidth = false }) => {
   if (suggestions.length === 0) return null;
 
   const getIcon = (type) => {
@@ -16,11 +16,12 @@ const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, 
   };
 
   return (
-    <div className={`absolute top-full left-0 mt-1 ${cardBg} rounded-lg p-1 z-50 shadow-xl border ${borderClass} min-w-[160px] max-h-40 overflow-y-auto`}>
+    <div className={`absolute top-full left-0 ${fullWidth ? 'right-0' : ''} mt-1 ${cardBg} rounded-lg p-1 z-50 shadow-xl border ${borderClass} min-w-[160px] max-h-40 overflow-y-auto`}>
       {suggestions.map((suggestion, index) => (
         <button
           key={`${suggestion.type}-${suggestion.value}-${index}`}
           type="button"
+          data-suggestion={suggestion.value}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -33,7 +34,7 @@ const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, 
               : `${textPrimary} ${hoverBg}`
           }`}
         >
-          {getIcon(suggestion.type)}
+          {suggestion.icon ?? getIcon(suggestion.type)}
           <span className="truncate">{suggestion.display}</span>
         </button>
       ))}

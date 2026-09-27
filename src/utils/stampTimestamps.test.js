@@ -180,6 +180,27 @@ describe('stampTimestamps — priority presence is not an edit', () => {
   });
 });
 
+describe('stampTimestamps — the Obsidian note-link observation is not an edit', () => {
+  // mergeObsidianTasks bumps obsidianNoteLinkSeenAt whenever the linked note's
+  // mtime rises; for a project task that is the project note, so every edit to
+  // it touched every task linked in it. Counted as an edit, it re-stamped a
+  // stale copy that then won everywhere (project order reverted across devices).
+  it('does NOT re-stamp when only the note-link observation moved', () => {
+    const stored = { id: 1, title: 'Tile', projectOrder: 0, obsidianNoteTarget: 'Kitchen', obsidianNoteLinkSeen: true,
+      obsidianNoteLinkSeenAt: '2026-09-01T00:00:00.000Z', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, obsidianNoteLinkSeenAt: '2026-09-27T00:00:00.000Z' }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe(stored.lastModified);
+    const first = stampTimestamps([{ ...stored, obsidianNoteLinkSeen: undefined, obsidianNoteLinkSeenAt: undefined }], [stored], 'NOW');
+    expect(first[0].lastModified).toBe(stored.lastModified);
+  });
+
+  it('a real edit alongside it still re-stamps', () => {
+    const stored = { id: 1, title: 'Tile', obsidianNoteLinkSeenAt: '2026-09-01T00:00:00.000Z', lastModified: ISO(60) };
+    const out = stampTimestamps([{ ...stored, title: 'Tile the floor', obsidianNoteLinkSeenAt: '2026-09-27T00:00:00.000Z' }], [stored], 'NOW');
+    expect(out[0].lastModified).toBe('NOW');
+  });
+});
+
 describe('stampTimestamps — gaining an originalPlan is not an edit', () => {
   // originalPlan (see utils/originalPlan.js) is written by the persist pass, not
   // by the user. If its appearance counted as a change it would re-stamp

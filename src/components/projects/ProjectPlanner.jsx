@@ -27,7 +27,7 @@ const IS_LONG_PRESS_ROW = isLongPressRowDevice();
 import SchedTaskCard from '../sched/SchedTaskCard.jsx';
 import HyperGlanceEditor from './HyperGlanceEditor.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
-import { sortByProjectOrder, applyProjectReorder } from '../../utils/projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, projectReorderIds } from '../../utils/projectOrder.js';
 
 /**
  * PLANNER — a per-project planning dashboard, themed to the project's color.
@@ -160,7 +160,7 @@ const ProjectPlanner = ({ project, onClose }) => {
     ordered.splice(toIdx, 0, moved);
     // A field on each task (utils/projectOrder.js): syncs on both tiers and
     // survives the Obsidian cycle. Array positions move too, as before.
-    reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, ordered));
+    reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, projectReorderIds(ordered, unscheduled)));
   };
 
   const handleDragStart = (e, idx) => {

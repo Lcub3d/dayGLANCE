@@ -22,7 +22,7 @@ import { dateToString, extractWikilinks, completionTimestamp } from '../../utils
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
-import { sortByProjectOrder, applyProjectReorder, orderProjectTasks } from '../../utils/projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, projectReorderIds } from '../../utils/projectOrder.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../../utils/longPressReorder.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
@@ -214,7 +214,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
     const ordered = projectUnscheduled.filter(t => !t.completed).map(t => t.id);
     const [moved] = ordered.splice(dragIdx, 1);
     ordered.splice(idx, 0, moved);
-    reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, ordered));
+    reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, projectReorderIds(ordered, projectUnscheduled)));
     setDragIdx(null);
     setDragOverIdx(null);
   };
@@ -241,7 +241,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
       if (ordered[fromIdx] && ordered[overIdx]) {
         const [moved] = ordered.splice(fromIdx, 1);
         ordered.splice(overIdx, 0, moved);
-        reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, ordered));
+        reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, projectReorderIds(ordered, projectUnscheduled)));
       }
     }
     setDragIdx(null);

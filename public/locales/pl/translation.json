@@ -2146,6 +2146,10 @@
     "view": {
       "activeLabel": "Czas aktywny",
       "addDo": "Add Do",
+      "dailyNoteEmpty": "Brak notatki dziennej. Kliknij, aby ją napisać.",
+      "selectForNotes": "Kliknij zadanie lub Do, aby zobaczyć tutaj jego notatki.",
+      "showNotesSidebar": "Pokaż panel notatek",
+      "hideNotesSidebar": "Ukryj panel notatek",
       "showWindowOnly": "Pokaż tylko od {{start}} do {{end}}",
       "showAllHours": "Pokaż wszystkie godziny",
       "continueDo": "Kontynuuj",

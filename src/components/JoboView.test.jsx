@@ -35,7 +35,7 @@ const timed = (over = {}) => createDoRecord({
   createdAt: stamp, updatedAt: stamp, observedAt: stamp, ...over,
 });
 
-function render(extra = {}) {
+function render(extra = {}, ctxExtra = {}) {
   fixture.planColumns = [];
   fixture.ctx = {
     selectedDate: new Date(2026, 8, 24, 12), currentTime: new Date(2026, 8, 24, 12),
@@ -43,6 +43,7 @@ function render(extra = {}) {
     getTasksForDate: () => [task], formatTime: (value) => value,
     textPrimary: '', textSecondary: '', cardBg: '', borderClass: '', darkMode: false,
     calendarRef: { current: null }, stickyHeaderRef: { current: null },
+    ...ctxExtra,
   };
   fixture.features = { joboRecords: [], joboLoaded: true, joboWritable: true, joboError: null, recordJobo: vi.fn(), reloadJobo: vi.fn(), ...extra };
   return renderToStaticMarkup(<JoboView />);
@@ -253,5 +254,43 @@ describe('START to END only', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('the notes sidebar', () => {
+  const wideScreen = (matches) => {
+    vi.stubGlobal('window', { matchMedia: () => ({ matches, addEventListener() {}, removeEventListener() {} }) });
+    vi.stubGlobal('localStorage', { getItem: (key) => (key === 'dg-jobo-notes-sidebar' ? '1' : null), setItem: () => {} });
+  };
+
+  it('opens on a wide screen when chosen, with the Daily Note on top', () => {
+    wideScreen(true);
+    try {
+      const html = render({}, { dailyNotes: { '2026-09-24': { text: 'Standup moved to 10' } } });
+      expect(html).toContain('data-jobo-notes-sidebar');
+      expect(html).toContain('data-jobo-notes-sidebar-toggle');
+      expect(html).toContain('Standup moved to 10');
+      expect(html).toContain('jobo.view.selectForNotes');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('is not offered below 1600px, whatever was chosen', () => {
+    wideScreen(false);
+    try {
+      const html = render();
+      expect(html).not.toContain('data-jobo-notes-sidebar');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // The Daily Note is edited only through the Daily Notes modal, which owns
+  // the vault read-fresh and write-back rules.
+  it('never edits the Daily Note in place', () => {
+    const source = readFileSync(new URL('./jobo/JoboNotesSidebar.jsx', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/setDailyNotes\(|<textarea|saveDailyNote/);
+    expect(source).toContain('setDailyNotesModalDate');
   });
 });

@@ -2152,6 +2152,10 @@
     "view": {
       "activeLabel": "Активний час",
       "addDo": "Add Do",
+      "dailyNoteEmpty": "Щоденної нотатки ще немає. Натисніть, щоб написати.",
+      "selectForNotes": "Натисніть на завдання або Do, щоб побачити тут його нотатки.",
+      "showNotesSidebar": "Показати панель нотаток",
+      "hideNotesSidebar": "Сховати панель нотаток",
       "showWindowOnly": "Показувати лише від {{start}} до {{end}}",
       "showAllHours": "Показати всі години",
       "continueDo": "Продовжити",

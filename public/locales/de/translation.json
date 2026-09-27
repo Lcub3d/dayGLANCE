@@ -2059,6 +2059,10 @@
     "view": {
       "activeLabel": "Aktive Zeit",
       "addDo": "Add Do",
+      "dailyNoteEmpty": "Noch keine Tagesnotiz. Klicke, um eine zu schreiben.",
+      "selectForNotes": "Klicke auf eine Aufgabe oder ein Do, um hier ihre Notizen zu sehen.",
+      "showNotesSidebar": "Notizen-Seitenleiste anzeigen",
+      "hideNotesSidebar": "Notizen-Seitenleiste ausblenden",
       "showWindowOnly": "Nur {{start}} bis {{end}} anzeigen",
       "showAllHours": "Alle Stunden anzeigen",
       "continueDo": "Fortsetzen",

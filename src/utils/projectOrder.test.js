@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, sortProjectsByOrder } from './projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, sortProjectsByOrder, projectReorderIds } from './projectOrder.js';
+import { mergeTaskArrays } from '../mergeSync.js';
 
 const t = (id, extra = {}) => ({ id, title: id, projectId: 'p1', lastModified: '2026-09-01T00:00:00.000Z', ...extra });
 
@@ -29,11 +30,19 @@ describe('applyProjectReorder', () => {
     expect(sortByProjectOrder(out.filter((x) => x.projectId === 'p1')).map((x) => x.id)).toEqual(['c', 'a', 'b']);
   });
 
-  it('a task already at its number is not re-stamped (no needless push)', () => {
+  it('a drop that changes nothing is a no-op: no stamp, no push', () => {
     const first = applyProjectReorder(inbox, ['a', 'b', 'c'], NOW);
     const again = applyProjectReorder(first, ['a', 'b', 'c'], '2026-09-08T21:00:00.000Z');
-    expect(again.find((x) => x.id === 'a')).toBe(first.find((x) => x.id === 'a'));
-    expect(again.every((x) => x.lastModified !== '2026-09-08T21:00:00.000Z')).toBe(true);
+    expect(again).toBe(first);
+  });
+
+  it('any change stamps the WHOLE group, not only the rows whose number moved', () => {
+    const first = applyProjectReorder(inbox, ['a', 'b', 'c'], NOW);
+    const later = '2026-09-08T21:00:00.000Z';
+    // Swapping b and c leaves a at 0, and it is stamped anyway.
+    const out = applyProjectReorder(first, ['a', 'c', 'b'], later);
+    for (const id of ['a', 'b', 'c']) expect(out.find((x) => x.id === id).lastModified).toBe(later);
+    expect(out.find((x) => x.id === 'other1')).toBe(first[0]);
   });
 
   it('ids not in the inbox are ignored; the rest still renumber', () => {
@@ -41,6 +50,33 @@ describe('applyProjectReorder', () => {
     expect(out.find((x) => x.id === 'b').projectOrder).toBe(10);
     expect(out.find((x) => x.id === 'a').projectOrder).toBe(20);
     expect(out).toHaveLength(inbox.length);
+  });
+});
+
+describe('reorders on two devices converge (the order held on one device, reshuffled on the next)', () => {
+  // Each device keeps its own copy; sync keeps the newer copy of each task
+  // (mergeTaskArrays, the file tier's rule, and the vault tier's per-row pick).
+  const start = [t('a', { projectOrder: 0 }), t('b', { projectOrder: 10 }), t('c', { projectOrder: 20 })];
+  const merge = (x, y) => mergeTaskArrays(x, y, {}).merged;
+  const order = (list) => sortByProjectOrder(list).map((x) => x.id);
+
+  it('two stale reorders resolve to the newer one as a whole, with no tied numbers', () => {
+    const onX = applyProjectReorder(start, ['b', 'a', 'c'], '2026-09-08T20:00:00.000Z');   // X: b first
+    const onY = applyProjectReorder(start, ['a', 'c', 'b'], '2026-09-08T21:00:00.000Z');   // Y, later, never saw X: b last
+    const both = [merge(onX, onY), merge(onY, onX)];
+    for (const merged of both) {
+      expect(order(merged)).toEqual(['a', 'c', 'b']);
+      expect(new Set(merged.map((x) => x.projectOrder)).size).toBe(3);
+    }
+  });
+
+  it('completed tasks keep a number after the open ones, so un-completing one cannot collide', () => {
+    const inbox = [t('a', { projectOrder: 0 }), t('done', { projectOrder: 10, completed: true }), t('b', { projectOrder: 20 })];
+    const ids = projectReorderIds(['b', 'a'], inbox);
+    expect(ids).toEqual(['b', 'a', 'done']);
+    const out = applyProjectReorder(inbox, ids, '2026-09-08T20:00:00.000Z');
+    const reopened = out.map((x) => (x.id === 'done' ? { ...x, completed: false } : x));
+    expect(order(reopened)).toEqual(['b', 'a', 'done']);
   });
 });
 

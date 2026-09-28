@@ -77,6 +77,37 @@ export default function JoboView() {
   const [notesPreferred, toggleNotesSidebar] = useJoboPreference('notes-sidebar');
   const sidebar = wide && notesPreferred;
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  // The width the Plan/Do scroll area's scrollbar takes (0 where scrollbars
+  // overlay). The Do header sits inside that area and the sidebar header
+  // does not, so the sidebar header pads its button by this much to land it
+  // where it sat in the Do header. ResizeObserver catches both a resize and
+  // a scrollbar appearing or going (the content box changes either way).
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setScrollbarWidth(Math.max(0, el.offsetWidth - el.clientWidth));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [joboLoaded]);
+  // The sidebar's button, styled like Add Do. It stays at the top right of
+  // the view: at the end of the Do header while the sidebar is closed, and at
+  // the end of the sidebar's own header row, the same height, once it opens.
+  const notesToggle = (
+    <button
+      type="button"
+      data-jobo-notes-sidebar-toggle
+      onClick={toggleNotesSidebar}
+      aria-pressed={notesPreferred}
+      className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      title={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
+    >
+      {notesPreferred ? <PanelRightClose size={14} strokeWidth={2.5} /> : <PanelRightOpen size={14} strokeWidth={2.5} />}
+      <span className="text-xs font-medium">{t('task.notes')}</span>
+    </button>
+  );
   const scrollRef = useRef(null);
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
@@ -370,19 +401,7 @@ export default function JoboView() {
             >
               <Plus size={14} strokeWidth={3} /><span className="text-xs font-medium">{t('jobo.view.addDo')}</span>
             </button>
-            {wide && (
-              <button
-                type="button"
-                data-jobo-notes-sidebar-toggle
-                onClick={toggleNotesSidebar}
-                aria-pressed={notesPreferred}
-                className={`p-1 rounded-lg transition-colors ${notesPreferred ? 'text-blue-500' : ctx.textSecondary} ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
-                title={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
-                aria-label={t(notesPreferred ? 'jobo.view.hideNotesSidebar' : 'jobo.view.showNotesSidebar')}
-              >
-                {notesPreferred ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-              </button>
-            )}
+            {wide && !sidebar && notesToggle}
             </div>
           </div>
         </div>
@@ -438,7 +457,7 @@ export default function JoboView() {
         </div>
       </div>
       {sidebar && (
-        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} />
+        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} headerAction={notesToggle} headerInset={scrollbarWidth} />
       )}
       </div>
       {liveDetail && (

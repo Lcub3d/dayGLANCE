@@ -2056,6 +2056,11 @@
     "comingSoon": "即将推出"
   },
   "jobo": {
+    "undo": {
+      "changed": "这条执行记录之后已被修改，因此保持不变。",
+      "completionBlocked": "撤销暂时无法恢复为“已完成”，因此执行记录保持不变。",
+      "failed": "无法保存此修改，请重试。"
+    },
     "title": "JOBO",
     "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "view": {

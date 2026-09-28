@@ -60,8 +60,9 @@ export const continueInitial = (record, date, startMinute) => ({
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
-  const writer = useJoboViewWriter({ records: joboRecords, recordJobo });
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
+  // Every accepted Do write becomes a step in the app's undo history.
+  const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [editor, setEditor] = useState(null);

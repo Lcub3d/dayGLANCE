@@ -2056,6 +2056,11 @@
     "comingSoon": "Demnächst"
   },
   "jobo": {
+    "undo": {
+      "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
+      "completionBlocked": "Rückgängig kann „Abgeschlossen“ noch nicht wiederherstellen; das Do bleibt, wie es ist.",
+      "failed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen."
+    },
     "title": "JOBO",
     "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
     "view": {

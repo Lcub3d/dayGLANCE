@@ -2143,6 +2143,11 @@
     "comingSoon": "Wkrótce"
   },
   "jobo": {
+    "undo": {
+      "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
+      "completionBlocked": "Cofanie nie może jeszcze przywrócić stanu Ukończone, więc Do pozostał bez zmian.",
+      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie."
+    },
     "title": "JOBO",
     "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
     "view": {

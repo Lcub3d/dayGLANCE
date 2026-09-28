@@ -2056,6 +2056,11 @@
     "comingSoon": "Em breve"
   },
   "jobo": {
+    "undo": {
+      "changed": "Este Do mudou desde então, então foi mantido como está.",
+      "completionBlocked": "Desfazer ainda não pode restaurar Concluído, então o Do foi mantido como está.",
+      "failed": "Não foi possível salvar a alteração. Tente novamente."
+    },
     "title": "JOBO",
     "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "view": {

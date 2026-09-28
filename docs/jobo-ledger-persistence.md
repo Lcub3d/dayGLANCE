@@ -420,6 +420,24 @@ would drop the very tombstones that make this work (see "Both sync tiers"). A to
 a kept tombstone is what makes a returning stale copy lose on `updatedAt`
 under every transport, at any age. The collection stays bounded by use.
 
+**Undo is the one way back over a tombstone.** Do edits made in the JOBO view
+(edit, move, resize, add, delete) join the app's undo history (#1726). An undo
+or redo is a fresh edit, never a rollback: `src/jobo/undo.js` writes the
+earlier content back under the same id, through `recordJobo`, with an
+`updatedAt` strictly newer than the current version, so it wins by the
+ordinary pick in the ledger and in both sync tiers. Undoing a deletion is
+therefore a newer live copy over the tombstone. Two guards keep that from
+weakening deletion anywhere else:
+
+- The current winner must still be the version the step left behind. If
+  anything newer landed since (another device, the detector, a later edit),
+  the step reports a conflict and writes nothing.
+- It never moves a record into Completed. Restoring Completed waits for the
+  completion rules in #1867, and until then such a step is refused.
+
+A stale device returning with an old live copy still loses to the tombstone:
+nothing but an explicit undo writes a newer version.
+
 ## Orphans
 
 A record whose `taskId` no longer resolves is kept. The prototype's rule is

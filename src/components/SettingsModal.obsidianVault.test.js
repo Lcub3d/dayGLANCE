@@ -23,3 +23,27 @@ describe('Obsidian settings: Change Vault', () => {
     expect(handler).not.toMatch(/disconnectVault|setTasks|setUnscheduledTasks|removeItem/);
   });
 });
+
+// Where a lost vault shows. Before, the green check, the header dot and the
+// bridge panel all read healthy ("Obsidian is not running") while the vault
+// could not be reached at all.
+describe('a lost vault is shown, not passed off as connected', () => {
+  const read = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
+
+  it('Settings swaps the green check for the reason and the fix', () => {
+    const source = read('./SettingsModal.jsx');
+    expect(source).toMatch(/obsidianVaultAccess === 'lost'\s*\?\s*<AlertCircle/);
+    expect(source).toContain("data-obsidian-vault-lost className=\"text-xs text-red-500\">{t('settings.obsidianVaultAccessLost')}");
+  });
+
+  it('the header dot turns red and says why', () => {
+    const source = read('./DesktopHeader.jsx');
+    expect(source).toContain("obsidianSyncStatus === 'error' || obsidianVaultAccess === 'lost' ? 'bg-red-500'");
+    expect(source).toContain("t('settings.obsidianVaultAccessLost')");
+  });
+
+  it('the bridge panel says the vault is unreachable instead of "Obsidian is not running"', () => {
+    const source = read('./BridgePairingPanel.jsx');
+    expect(source).toMatch(/vaultLost \? \(\s*<p data-bridge-vault-unreachable/);
+  });
+});

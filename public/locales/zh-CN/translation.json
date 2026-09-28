@@ -267,6 +267,7 @@
   "settings": {
     "obsidianDailyNoteTemplateBridgeHint": "创建新的每日笔记时预先填入。{{dateToken}} 会替换为笔记日期。如果由 Bridge 插件创建笔记，则优先使用插件中配置的模板笔记。",
     "obsidianBridgeWaiting": "此设备上未运行 Obsidian。任务仍会照常在各设备间同步。涉及笔记的更改会先排队，待任一已配对设备上运行带有 bridge 插件的 Obsidian 时写入笔记库。",
+    "obsidianBridgeVaultUnreachable": "此设备无法访问该库，因此无法判断 Obsidian 是否在运行，也无法配对插件。请用“更换 Obsidian 库”重新选择库文件夹。",
     "obsidianBridgeWaitingLastSeen": "Obsidian 上次在此设备同步于 {{when}}。",
     "obsidianBridgeWaitingNeverSeen": "此设备尚未与该插件同步过 Obsidian。",
     "glanceBackgroundPollHint": "浏览器标签页隐藏时的检查频率。",
@@ -615,6 +616,7 @@
     "obsidianVaultConnected": "Obsidian 库已连接",
     "obsidianVaultSettings": "Obsidian 库设置",
     "obsidianChangeVault": "更换 Obsidian 库",
+    "obsidianVaultAccessLost": "此设备无法访问你的 Obsidian 库。点击“立即同步”重新允许访问，或在设置中用“更换 Obsidian 库”重新选择文件夹。",
     "obsidianConnectVault": "连接 Obsidian 库",
     "obsidianDisconnect": "断开",
     "glanceWebdavEndpoint": "WebDAV 端点",

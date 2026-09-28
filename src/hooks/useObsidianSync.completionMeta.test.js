@@ -17,6 +17,7 @@ vi.mock('react', () => ({
 const writeTaskStateToFile = vi.fn();
 vi.mock('../obsidian.js', () => ({
   tryRestoreVaultAccess: vi.fn(async () => null),
+  probeVaultAccess: vi.fn(async () => 'ok'),
   getVaultAccess: vi.fn(async () => null),
   syncObsidianVault: vi.fn(async () => null),
   syncObsidianVaultNative: vi.fn(async () => null),

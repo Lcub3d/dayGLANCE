@@ -19,6 +19,7 @@ vi.mock('react', () => ({
 const getVaultAccess = vi.fn();
 vi.mock('../obsidian.js', () => ({
   tryRestoreVaultAccess: vi.fn(async () => null),
+  probeVaultAccess: vi.fn(async () => 'ok'),
   getVaultAccess: (...a) => getVaultAccess(...a),
   syncObsidianVault: vi.fn(async () => null),
   syncObsidianVaultNative: vi.fn(async () => null),
@@ -123,7 +124,13 @@ describe('restore retry — poll and visibility ticks are not gated on a handle'
     expect(obsidianVaultHandleRef.current).toBe(handle);
   });
 
-  it('a genuinely missing vault costs one silent attempt per tick — no error state, no loop', async () => {
+  // A configured vault this device cannot reach used to be entirely silent,
+  // so it read as connected (and a stream-side cycle as "Synced") while
+  // every note read and vault write failed. Now it is said ONCE, as an error
+  // on the way in, and then stays quiet: still one attempt per tick, no loop,
+  // no error re-raised per poll. MUTATION: drop sayVaultLost and the first
+  // expectation fails; drop the once-guard and the call count does.
+  it('a genuinely missing vault is said once, then costs one quiet attempt per tick, with no loop', async () => {
     const { obsidianVaultHandleRef, interval, setObsidianSyncStatus } = useMountedObsidianSync();
     getVaultAccess.mockResolvedValue(null);
     await interval.cb();
@@ -131,6 +138,7 @@ describe('restore retry — poll and visibility ticks are not gated on a handle'
     await interval.cb();
     expect(getVaultAccess).toHaveBeenCalledTimes(3); // exactly one per tick
     expect(obsidianVaultHandleRef.current).toBeNull();
-    expect(setObsidianSyncStatus).not.toHaveBeenCalled(); // silent: no 'syncing', no 'error'
+    expect(setObsidianSyncStatus).toHaveBeenCalledTimes(1); // said once: never 'syncing', never a second 'error'
+    expect(setObsidianSyncStatus).toHaveBeenCalledWith('error');
   });
 });

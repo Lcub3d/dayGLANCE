@@ -175,6 +175,37 @@ export async function requestVaultAccess() {
 }
 
 /**
+ * Whether this device can actually reach its vault: 'ok' or 'lost'.
+ *
+ * A stored handle is not proof. A browser permission can lapse, and on
+ * desktop a macOS bookmark can go stale (the app replaced, the data migrated
+ * from another Mac) while the restore still hands back a handle; every read
+ * then fails while Settings reads connected. And the reads that run each
+ * cycle turn any failure into "no file", so an unreachable vault looked like
+ * a vault with no heartbeat ("Obsidian is not running"), and a sync on the
+ * GLANCEvault stream still reported success.
+ *
+ * So probe the vault root itself: the desktop shim stats it in the main
+ * process; a browser handle must hold its permission and list one entry.
+ * 'native' handles report their own read failures and are not probed here.
+ * Never throws.
+ */
+export async function probeVaultAccess(vaultHandle) {
+  if (!vaultHandle) return 'lost';
+  if (vaultHandle === 'native') return 'ok';
+  try {
+    if (typeof vaultHandle.probe === 'function') return (await vaultHandle.probe()) ? 'ok' : 'lost';
+    if (typeof vaultHandle.queryPermission === 'function'
+      && (await vaultHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') return 'lost';
+    const entries = vaultHandle.keys?.() ?? vaultHandle.entries?.();
+    if (entries?.next) await entries.next();
+    return 'ok';
+  } catch {
+    return 'lost';
+  }
+}
+
+/**
  * Silently restore a previously-granted vault handle from IndexedDB.
  * Only succeeds if permission is already 'granted' — does NOT call
  * requestPermission, so it is safe to call on page load without a user gesture.

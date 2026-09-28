@@ -27,7 +27,8 @@ vi.mock('../obsidian.js', async (importOriginal) => {
   return {
     ...actual,
     tryRestoreVaultAccess: vi.fn(async () => null),
-    getVaultAccess: vi.fn(async () => null),
+    probeVaultAccess: vi.fn(async () => 'ok'),
+  getVaultAccess: vi.fn(async () => null),
     syncObsidianVault: vi.fn(async () => ({ dailyNotes: {}, scheduledTasks: [], inboxTasks: [] })),
     syncObsidianVaultNative: vi.fn(async () => null),
     writeTaskStateToFile: vi.fn(async () => true),

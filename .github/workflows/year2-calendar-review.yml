@@ -45,6 +45,18 @@ jobs:
           PY
           git rm .github/workflows/year2-calendar-review.yml
           git apply --unidiff-zero --index /tmp/year2-payload/implementation.patch
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/components/jobu/Year2View.jsx');s=p.read_text()
+          old='  const move = (event, date) => {\n    if (event.ctrlKey'
+          new='  const move = (event, date) => {\n    // The native day sheet owns paging while open, even if focus is still\n    // on the date button that opened it. Do not consume its arrow keys.\n    if (sheetDate) return;\n    if (event.ctrlKey'
+          assert s.count(old)==1;p.write_text(s.replace(old,new))
+          p=Path('scripts/year2-calendar-review.py');s=p.read_text()
+          old="                screenshot(page, 'year2-calendar-agenda.png')"
+          new="                # Screenshot after the native sheet entrance transition.\n                page.wait_for_timeout(250)\n"+old
+          assert s.count(old)==1;p.write_text(s.replace(old,new))
+          PY
+          git add src/components/jobu/Year2View.jsx scripts/year2-calendar-review.py
           git diff --cached --check
           git config user.name 'Lcub3d'
           git config user.email '46134215+Lcub3d@users.noreply.github.com'

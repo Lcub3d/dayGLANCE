@@ -9,27 +9,23 @@ permissions:
 jobs:
   environment:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
-    env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: 51513fbbc548a541529bd0aed308921875359b6c
           persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - name: Prepare exact baseline and calendar dependency
+      - name: Archive exact baseline
+        shell: bash
         run: |
-          mkdir -p /tmp/year2-environment
-          git archive 51513fbbc548a541529bd0aed308921875359b6c | gzip > /tmp/year2-environment/source.tar.gz
-          npm ci --no-audit --no-fund
-          npm install --save-exact lunar-javascript@1.7.7 --ignore-scripts --no-audit --no-fund
-          cp package.json package-lock.json /tmp/year2-environment/
-          tar -czf /tmp/year2-environment/node-modules.tar.gz node_modules
+          set -euo pipefail
+          mkdir -p /tmp/year2-source
+          git archive HEAD | gzip > /tmp/year2-source/source.tar.gz
+          git rev-parse HEAD > /tmp/year2-source/commit.txt
+          git rev-parse HEAD^{tree} > /tmp/year2-source/tree.txt
+          test $(stat -c%s /tmp/year2-source/source.tar.gz) -gt 1000
       - uses: actions/upload-artifact@v4
         with:
-          name: year2-calendar-environment
-          path: /tmp/year2-environment/
+          name: year2-calendar-source
+          path: /tmp/year2-source/
           retention-days: 2

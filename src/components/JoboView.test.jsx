@@ -289,6 +289,16 @@ describe('the notes sidebar', () => {
     }
   });
 
+  // MUTATION: go back to a fixed width and Plan, Do and Notes stop matching.
+  it('is one third of the view, the same width as Plan and as Do', () => {
+    wideScreen(true);
+    try {
+      expect(render()).toMatch(/data-jobo-notes-sidebar[^>]*class="w-\[calc\(\(100%-4rem\)\/3\)\] min-w-80 /);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('is not offered below 1600px, whatever was chosen', () => {
     wideScreen(false);
     try {

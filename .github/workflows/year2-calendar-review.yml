@@ -54,7 +54,12 @@ jobs:
           p=Path('scripts/year2-calendar-review.py');s=p.read_text()
           old="                screenshot(page, 'year2-calendar-agenda.png')"
           new="                # Screenshot after the native sheet entrance transition.\n                page.wait_for_timeout(250)\n"+old
-          assert s.count(old)==1;p.write_text(s.replace(old,new))
+          assert s.count(old)==1;s=s.replace(old,new)
+          s=s.replace("loaded(page, '2200-01-01')", "loaded(page, '2101-01-01')")
+          needle="    expect(page.locator('[data-year2-month]')).to_have_count(12)"
+          assert s.count(needle)==1
+          s=s.replace(needle,needle+"\n    expect(page.locator(f'[data-year2-date=\"{date}\"]')).to_have_attribute('aria-pressed', 'true')")
+          p.write_text(s)
           PY
           git add src/components/jobu/Year2View.jsx scripts/year2-calendar-review.py
           git diff --cached --check

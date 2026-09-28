@@ -77,6 +77,21 @@ export default function JoboView() {
   const [notesPreferred, toggleNotesSidebar] = useJoboPreference('notes-sidebar');
   const sidebar = wide && notesPreferred;
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  // The width the Plan/Do scroll area's scrollbar takes (0 where scrollbars
+  // overlay). The Do header sits inside that area and the sidebar header
+  // does not, so the sidebar header pads its button by this much to land it
+  // where it sat in the Do header. ResizeObserver catches both a resize and
+  // a scrollbar appearing or going (the content box changes either way).
+  const [scrollbarWidth, setScrollbarWidth] = useState(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setScrollbarWidth(Math.max(0, el.offsetWidth - el.clientWidth));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [joboLoaded]);
   // The sidebar's button, styled like Add Do. It stays at the top right of
   // the view: at the end of the Do header while the sidebar is closed, and at
   // the end of the sidebar's own header row, the same height, once it opens.
@@ -442,7 +457,7 @@ export default function JoboView() {
         </div>
       </div>
       {sidebar && (
-        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} headerAction={notesToggle} />
+        <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} headerAction={notesToggle} headerInset={scrollbarWidth} />
       )}
       </div>
       {liveDetail && (

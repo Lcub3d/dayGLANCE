@@ -18,7 +18,7 @@ import { extractWikilinks } from '../../utils/taskUtils.js';
 // timeline card opens, which saves through the app's own actions.
 export const SIDEBAR_WIDTH = 'w-[calc((100%-4rem)/3)] min-w-80';
 
-export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAction = null }) {
+export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAction = null, headerInset = 0 }) {
   const {
     darkMode, borderClass, textPrimary, textSecondary, unscheduledTasks,
     dailyNotes, setDailyNotesModalDate,
@@ -38,9 +38,11 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
     // one column. Never narrower than the old fixed 20rem.
     <aside data-jobo-notes-sidebar className={`${SIDEBAR_WIDTH} flex-shrink-0 border-l ${borderClass} flex flex-col min-h-0`} aria-label={t('task.notes')}>
       {/* The same height as the Plan and Do header row (py-1 around the h-7
-          button, then the border), so the sidebar button lands exactly where
-          it sat in the Do header before the sidebar opened. */}
-      <div data-jobo-sidebar-header className={`px-3 py-1 border-b ${borderClass} flex items-center justify-end flex-shrink-0`}>
+          button, then the border), and inset by the Do side's scrollbar
+          width (headerInset), so the sidebar button lands exactly where it
+          sat in the Do header before the sidebar opened. */}
+      <div data-jobo-sidebar-header className={`px-3 py-1 border-b ${borderClass} flex items-center justify-end flex-shrink-0`}
+        style={headerInset ? { paddingRight: `calc(0.75rem + ${headerInset}px)` } : undefined}>
         {headerAction}
       </div>
       <section className={`flex flex-col min-h-0 max-h-[50%] border-b ${borderClass} p-3`}>

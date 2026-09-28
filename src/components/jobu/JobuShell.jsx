@@ -1,4 +1,4 @@
-import React,{lazy,Suspense,useRef,useState} from 'react';
+import React,{lazy,Suspense,useCallback,useRef,useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {FeaturesContext,useFeaturesCtx} from '../../context/FeaturesContext.jsx';
 import {useDayPlannerCtx} from '../../context/DayPlannerContext.jsx';
@@ -13,9 +13,10 @@ const LifePlanner=lazy(()=>import('../lifeplanner/LifePlanner.jsx'));
 export default function JobuShell({children}){
  const f=useFeaturesCtx(),ctx=useDayPlannerCtx(),{t}=useTranslation();
  const [page,setPage]=useState('jobo'),[filter,setFilter]=useState('!completed'),[error,setError]=useState(''),[history,setHistory]=useState(false),[entity,setEntity]=useState('');
- const file=useRef(null);
- function select(next){if(next==='jobo')f.setJoboEnabled(true);setPage(next);}
- const personal={...f,setJobuPage:select,jobuFilter:filter,setShowLifePlanner:show=>select(show?'life':'jobo')};
+ const file=useRef(null), navigationGuard=useRef(null);
+ const registerJobuNavigationGuard=useCallback(guard=>{navigationGuard.current=guard;return()=>{if(navigationGuard.current===guard)navigationGuard.current=null;};},[]);
+ function select(next){if(next!==page&&navigationGuard.current&&!navigationGuard.current())return;if(next==='jobo')f.setJoboEnabled(true);setPage(next);}
+ const personal={...f,registerJobuNavigationGuard,setJobuPage:select,jobuFilter:filter,setShowLifePlanner:show=>select(show?'life':'jobo')};
  const exportData=()=>{try{const blob=new Blob([f.jobuData.export()],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`jobu-personal-${dayKey(new Date())}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){setError(e.message);}};
  const importData=async e=>{const input=e.target,uploaded=input.files?.[0];if(!uploaded)return;try{if(uploaded.size>50000000)throw Error('file too large');const data=JSON.parse(await uploaded.text());if(data.format!=='jobu-personal'||data.version!==1)throw Error('format');if(window.confirm(t('jobu.importConfirm')))await f.jobuData.restore(data.records);}catch(err){setError(err.message);}finally{input.value='';}};
  const entities=[...new Set((f.jobuRecords||[]).map(row=>row.entityId))];

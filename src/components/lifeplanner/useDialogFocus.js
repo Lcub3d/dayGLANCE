@@ -14,7 +14,7 @@ export default function useDialogFocus(ref, onClose, active = true) {
     const controls = () => [...root.querySelectorAll('button, input, textarea, select, [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length > 0);
     (root.querySelector('[data-initial-focus]') || controls()[0] || root).focus({ preventScroll: true });
     const keydown = event => {
-      if (event.key === 'Escape' && !event.target.closest('[data-inline-edit]')) {
+      if (event.key === 'Escape' && !event.target.closest('[data-inline-edit], [data-life-network]')) {
         event.preventDefault(); event.stopImmediatePropagation(); close.current(); return;
       }
       if (event.key !== 'Tab') return;

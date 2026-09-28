@@ -53,7 +53,7 @@ function RuledField({ value, onChange, onCommit, onCancel, label, placeholder, d
 
 export default function LifePlanner() {
   const ctx = useDayPlannerCtx();
-  const { jobuData, setShowLifePlanner, setPlannerProjectId, setShowGoalsDashboard, setGoalsDashboardFocusId, isVisibleForUser, multiUserEnabled, goals, projects, addGoal, updateGoal, addProject, updateProject } = useFeaturesCtx();
+  const { jobuData, registerJobuNavigationGuard, setShowLifePlanner, setPlannerProjectId, setShowGoalsDashboard, setGoalsDashboardFocusId, isVisibleForUser, multiUserEnabled, goals, projects, addGoal, updateGoal, addProject, updateProject } = useFeaturesCtx();
   const { t } = useTranslation();
   const L = (key, options) => t(`lifeplanner.${key}`, options);
   const [store] = useState(() => createDurablePlannerStore(jobuData, {
@@ -64,6 +64,9 @@ export default function LifePlanner() {
   const storageError = useSyncExternalStore(store.subscribe, store.error, store.error);
   const [guided, setGuided] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const mapLeaveGuard = useRef(null);
+  const onMapLeaveGuard = useCallback(guard => { mapLeaveGuard.current = guard; }, []);
+  useEffect(() => registerJobuNavigationGuard?.(() => !mapLeaveGuard.current || mapLeaveGuard.current()), [registerJobuNavigationGuard]);
   const [notebookFocus, setNotebookFocus] = useState(null);
   const [referencesOpen, setReferencesOpen] = useState(true);
   const [query, setQuery] = useState('');
@@ -172,6 +175,7 @@ export default function LifePlanner() {
     return true;
   }
   const close = async () => {
+    if (mapOpen && mapLeaveGuard.current && !mapLeaveGuard.current()) return;
     if (menu) { setMenu(null); return; }
     if (tools) { setTools(false); return; }
     if (selection.selection.ids.length) { selection.clear(); return; }
@@ -209,6 +213,7 @@ export default function LifePlanner() {
   }
   useDialogFocus(root, close, !editor && !swotWish);
   async function toggleGuide() {
+    if (mapOpen && mapLeaveGuard.current && !mapLeaveGuard.current()) return;
     drag.cancel();
     if (!await flushDrafts()) return;
     selection.clear(); setMenu(null); setTools(false);
@@ -220,6 +225,7 @@ export default function LifePlanner() {
       unscheduledTasks: allowed(ctx.unscheduledTasks), recurringTasks: allowed(ctx.recurringTasks) };
   }, [goals, projects, ctx.tasks, ctx.unscheduledTasks, ctx.recurringTasks, multiUserEnabled, isVisibleForUser]);
   async function toggleMap() {
+    if (mapOpen && mapLeaveGuard.current && !mapLeaveGuard.current()) return;
     drag.cancel();
     if (!await flushDrafts()) return;
     selection.clear(); setMenu(null); setTools(false); setMapOpen(value => !value);
@@ -411,7 +417,7 @@ export default function LifePlanner() {
         <button type="button" className="lp-icon" title={L('clearSelection')} aria-label={L('clearSelection')} onClick={() => { selection.clear(); setMenu(null); }}><X size={15} /></button>
       </div>}
       {mapOpen ? <Suspense fallback={<p className="lp-no-results" role="status">{t('lifeMap.loading')}</p>}>
-        <LifeMap document={doc} {...mapData} darkMode={ctx.darkMode} readOnly={readOnly}
+        <LifeMap document={doc} jobuData={jobuData} onLeaveGuard={onMapLeaveGuard} {...mapData} darkMode={ctx.darkMode} readOnly={readOnly}
           onOpen={openMapNode} onNotebook={() => returnNotebook()} />
       </Suspense> : <div id="lp-paper" className="lp-paper-scroll" data-lp-scroll {...selection.rootProps}>
         {guided ? <section data-life-guide className={`lp-assistant-sheet ${referencesOpen ? '' : 'is-condensed'}`} aria-label={L('guide')}>

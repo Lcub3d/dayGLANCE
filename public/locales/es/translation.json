@@ -257,7 +257,8 @@
     "apply": "Aplicar",
     "minutesShort": "{{count}} min",
     "nextWeek": "Próxima semana",
-    "taskProgress": "{{done}}/{{total}} tareas"
+    "taskProgress": "{{done}}/{{total}} tareas",
+    "retry": "Reintentar"
   },
   "errorBoundary": {
     "title": "Algo salió mal",
@@ -1128,7 +1129,20 @@
     "stop": "Detener",
     "skipPhase": "Saltar fase",
     "startHyperGlance": "Iniciar hyperGLANCE",
-    "tasksRemaining": "Tareas (quedan {{count}})"
+    "tasksRemaining": "Tareas (quedan {{count}})",
+    "chooseTask": "Elige una tarea para tu pomodoro",
+    "searchTasks": "Buscar tareas",
+    "taskDragHint": "Haz clic para elegir una tarea o arrastra el temporizador sobre una tarea, o viceversa, para vincularlos.",
+    "linkedTask": "Tarea vinculada: {{title}}",
+    "decreaseInterval": "Reducir la duración de {{label}}",
+    "increaseInterval": "Aumentar la duración de {{label}}",
+    "pomodoroDetails": "Detalles del pomodoro",
+    "pomodoroCount": "{{count}} pomodoros",
+    "pomodoroSave": {
+      "saving": "Guardando pomodoro…",
+      "saved": "Guardado en el bloque Do vinculado",
+      "error": "No se pudo guardar el pomodoro. Pendiente de reintento."
+    }
   },
   "voice": {
     "title": "Entrada de voz",
@@ -2208,7 +2222,14 @@
         "onEstimate": "Según estimación",
         "shorter": "{{minutes}} min menos",
         "longer": "{{minutes}} min más"
-      }
+      },
+      "progressHint": "Elige Iniciado, Parcial, Casi completado o Completado. Esto solo modifica este registro Do.",
+      "carryHint": "Devuelve a la bandeja de entrada el trabajo no iniciado, iniciado o parcialmente completado. Se conservan los planes originales y los registros Do.",
+      "carryEmpty": "No hay nada que trasladar.",
+      "carryToInbox": "Enviar a la bandeja de entrada ({{count}})",
+      "noteTools": "Herramientas de notas",
+      "undoTasks": "Deshacer cambios en las tareas",
+      "exportBackup": "Exportar copia de seguridad completa"
     },
     "daily": {
       "title": "Comparación del día",

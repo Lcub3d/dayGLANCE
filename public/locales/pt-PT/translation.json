@@ -257,7 +257,8 @@
     "apply": "Aplicar",
     "minutesShort": "{{count}} min",
     "nextWeek": "Próxima semana",
-    "taskProgress": "{{done}}/{{total}} tarefas"
+    "taskProgress": "{{done}}/{{total}} tarefas",
+    "retry": "Tentar novamente"
   },
   "errorBoundary": {
     "title": "Algo correu mal",
@@ -1128,7 +1129,20 @@
     "stop": "Parar",
     "skipPhase": "Saltar fase",
     "startHyperGlance": "Iniciar hyperGLANCE",
-    "tasksRemaining": "Tarefas (restantes: {{count}})"
+    "tasksRemaining": "Tarefas (restantes: {{count}})",
+    "chooseTask": "Escolha uma tarefa para o seu pomodoro",
+    "searchTasks": "Pesquisar tarefas",
+    "taskDragHint": "Clique para escolher uma tarefa ou arraste o temporizador sobre uma tarefa, ou vice-versa, para os associar.",
+    "linkedTask": "Tarefa associada: {{title}}",
+    "decreaseInterval": "Diminuir a duração de {{label}}",
+    "increaseInterval": "Aumentar a duração de {{label}}",
+    "pomodoroDetails": "Detalhes do pomodoro",
+    "pomodoroCount": "{{count}} pomodoros",
+    "pomodoroSave": {
+      "saving": "A guardar pomodoro…",
+      "saved": "Guardado no bloco Do associado",
+      "error": "Não foi possível guardar o pomodoro. A aguardar nova tentativa."
+    }
   },
   "voice": {
     "title": "Entrada de voz",
@@ -2208,7 +2222,14 @@
         "onEstimate": "Dentro da estimativa",
         "shorter": "{{minutes}} min abaixo",
         "longer": "{{minutes}} min acima"
-      }
+      },
+      "progressHint": "Escolha Iniciado, Parcial, Quase concluído ou Concluído. Isto altera apenas este registo Do.",
+      "carryHint": "Devolva à caixa de entrada o trabalho não iniciado, iniciado ou parcialmente concluído. Os planos originais e os registos Do são preservados.",
+      "carryEmpty": "Nada a transferir.",
+      "carryToInbox": "Enviar para a caixa de entrada ({{count}})",
+      "noteTools": "Ferramentas de notas",
+      "undoTasks": "Anular alterações nas tarefas",
+      "exportBackup": "Exportar cópia de segurança completa"
     },
     "daily": {
       "title": "Comparação do dia",

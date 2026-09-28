@@ -92,6 +92,13 @@ describe('unified Life Map durable owner',()=>{
     await placeLifeNodes(data,[{id:'a',expectedHead:row(data,'a').id,position:lanePosition('project'),type:'project'}]);
     expect(projectNativeNodes(readLifeNodes(data.get().records).nodes,'project')).toHaveLength(1);data.dispose();
   });
+  it('rejects duplicate placement commands atomically instead of creating competing revisions',async()=>{
+    const {data}=await setup();await saveLifeNode(data,createLifeNode({id:'a'}),null);
+    const before=data.get().records, head=row(data,'a').id;
+    await expect(placeLifeNodes(data,[{id:'a',expectedHead:head,position:lanePosition('wish'),type:'wish'},
+      {id:'a',expectedHead:head,position:lanePosition('goal'),type:'goal'}])).rejects.toThrow('conflict');
+    expect(data.get().records).toEqual(before);data.dispose();
+  });
   it('allows same-type hierarchies and multiple parents, but rejects self/cyclic/stale edges',async()=>{
     const {data}=await setup();for(const id of ['a','b','c']) await saveLifeNode(data,createLifeNode({id,type:'wish'}),null);
     await connectLifeNodes(data,'a','b',row(data,'b').id,row(data,'a').id);
@@ -201,4 +208,59 @@ describe('unified Life Map durable owner',()=>{
     await expect(data.save(LIFE_NODE_SCHEMA,'lifeNodeSchema',row(data,LIFE_NODE_SCHEMA).value,{deleted:true})).rejects.toThrow('format');
     expect(readLifeNodes(data.get().records).ready).toBe(true);expect(row(data,LIFE_NODE_SCHEMA).value.format).toBe('jobu-life-nodes');data.dispose();
   });
+  it('requires a valid recovery snapshot before any migration can publish', async () => {
+    const {data} = fixture(); await data.load();
+    const storage = memoryStorage(sources());
+    storage.setItem(LIFE_SOURCE_BACKUP, '{incomplete');
+    await expect(migrateLifeNodes(data, {storage})).rejects.toThrow();
+    expect(data.get().records).toEqual([]);
+    expect(storage.getItem('day-planner-goals')).toBe(JSON.stringify(sources().goals));
+    expect(storage.getItem(LIFE_SOURCE_BACKUP)).toBe('{incomplete'); data.dispose();
+  });
+  it('blocks direct migration when writing the recovery copy fails, then retries intact', async () => {
+    const {data} = fixture(); await data.load(); const storage = memoryStorage(sources());
+    const write = storage.setItem; storage.setItem = () => { throw Error('quota'); };
+    await expect(migrateLifeNodes(data, {storage})).rejects.toThrow();
+    expect(data.get().records).toEqual([]);
+    storage.setItem = write; await migrateLifeNodes(data, {storage});
+    expect(readLifeNodes(data.get().records).nodes).toHaveLength(5);
+    expect(JSON.parse(storage.getItem(LIFE_SOURCE_BACKUP)).sources['day-planner-goals']).toBe(JSON.stringify(sources().goals));
+    data.dispose();
+  });
+  it('does not let a repeated handoff replace an already bound native goal ID', async () => {
+    const {data} = await setup(sources()), before = data.get().records;
+    await expect(replaceNativeLifeNodes(data, 'goal', list => [...list, {
+      id:'other-goal', title:'Another handoff', status:'active',
+      lifeplanner:{wishId:'w',visionId:'v',stepId:'z-first'},
+    }], expected(data))).rejects.toThrow('conflict');
+    expect(data.get().records).toEqual(before);
+    expect(projectNativeNodes(readLifeNodes(before).nodes,'goal').map(g=>g.id)).toEqual(['g']); data.dispose();
+  });
+  it('validates the final graph of a multi-project edit, not each old graph separately', async () => {
+    const {data} = await setup();
+    for (const id of ['a','b']) await saveLifeNode(data, createLifeNode({ id, type:'project',
+      bindings:{projectId:`p-${id}`,goalId:`g-${id}`},
+      details:{project:{id:`p-${id}`,title:id},goal:{id:`g-${id}`,title:id}},
+    }), null);
+    const before = data.get().records;
+    await expect(replaceNativeLifeNodes(data, 'project', list => list.map(p => ({...p,
+      goalId:p.id === 'p-a' ? 'g-b' : 'g-a',
+    })), expected(data))).rejects.toThrow('lifeCycle');
+    expect(data.get().records).toEqual(before); data.dispose();
+  });
+  it('does not allow new cycles inside nodes already downstream of a remote cycle', async () => {
+    const {data} = await setup();
+    for (const id of ['a','b','c']) await saveLifeNode(data, createLifeNode({id}), null);
+    // Independently valid edits can meet in sync as a cycle. Keep all history,
+    // allow non-structural repairs, but never add another cyclic relationship.
+    await data.save('a','lifeNode',{...row(data,'a').value,parentIds:['b']});
+    await data.save('b','lifeNode',{...row(data,'b').value,parentIds:['a']});
+    await data.save('c','lifeNode',{...row(data,'c').value,parentIds:['b']});
+    await patchLifeNode(data,'a',{title:'Still editable'},row(data,'a').id);
+    const before=data.get().records;
+    await expect(patchLifeNode(data,'a',{parentIds:['b','c']},row(data,'a').id)).rejects.toThrow('lifeCycle');
+    expect(data.get().records).toEqual(before);
+    await patchLifeNode(data,'a',{parentIds:[]},row(data,'a').id); data.dispose();
+  });
+
 });

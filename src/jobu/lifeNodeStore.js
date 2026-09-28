@@ -1,7 +1,7 @@
 import { materializeJobu, stable } from './data.js';
 import { defaultDocument, validateDocument } from '../lifeplanner/model.js';
 import { STORAGE_KEY } from '../lifeplanner/store.js';
-import { createLifeNode, flattenLifeSources, generatedStageTitle, LIFE_NODE_SCHEMA, lifeHierarchyCycles,
+import { createLifeNode, flattenLifeSources, generatedStageTitle, LIFE_NODE_SCHEMA, lifeHierarchyCycles, lifeDescendants,
   lifeKey, patchFromNative, projectNativeNodes, projectNotebookNodes, strictNativeList, validateLifeValue, withNotebookOrder } from '../lifeplanner/entities.js';
 
 const liveRows = heads => [...heads.values()].filter(r => r.kind === 'lifeNode' && !r.deleted);
@@ -31,8 +31,16 @@ const json = (storage, key, fallback) => {
 export const LIFE_SOURCE_BACKUP = 'jobu-life-node-source-backup-v1';
 export function backupLifeSources(storage = globalThis.localStorage) {
   if (!storage) throw Error('storageRead');
-  if (storage.getItem(LIFE_SOURCE_BACKUP) !== null) return;
   const keys = [STORAGE_KEY, 'day-planner-goals', 'day-planner-projects', 'day-planner-deleted-goal-ids', 'day-planner-deleted-project-ids', 'day-planner-life-map-view-v1'];
+  const existing = storage.getItem(LIFE_SOURCE_BACKUP);
+  if (existing !== null) {
+    let backup;
+    try { backup = JSON.parse(existing); } catch { throw Error('format'); }
+    if (backup?.format !== 'jobu-life-source-backup' || backup.version !== 1 || !backup.sources
+      || keys.some(key => !Object.hasOwn(backup.sources, key)
+        || (backup.sources[key] !== null && typeof backup.sources[key] !== 'string'))) throw Error('format');
+    return;
+  }
   const sources = Object.fromEntries(keys.map(key => [key, storage.getItem(key)]));
   // Recovery snapshot only. It is never read as the live planning owner.
   storage.setItem(LIFE_SOURCE_BACKUP, JSON.stringify({ format: 'jobu-life-source-backup', version: 1, sources }));
@@ -53,6 +61,9 @@ export function legacyNotebook(records, storage, fallback = defaultDocument()) {
  */
 export function migrateLifeNodes(data, { storage = globalThis.localStorage } = {}) {
   return data.transact((records, heads) => {
+    // Every entry point (including the map's retry) must protect the raw sources,
+    // not just the initial React effect. A failed copy prevents the transaction.
+    backupLifeSources(storage);
     if (heads.has(LIFE_NODE_SCHEMA)) return [];
     const document = legacyNotebook(records, storage);
     const goals = strictNativeList(json(storage, 'day-planner-goals', []));
@@ -126,7 +137,7 @@ export function notebookLifeChanges(records, before, after) {
   for (const p of before.principles) if (!newMottos.has(p.id)) changes.push({ entityId: `lifeMotto:${p.id}`, kind: 'lifeMotto', value: p, deleted: true });
   const order = { wishes: after.wishes.map(w => w.id), principles: after.principles.map(p => p.id) };
   if (stable(heads.get('lifeOrder')?.value) !== stable(order)) changes.push({ entityId: 'lifeOrder', kind: 'lifeOrder', value: order });
-  return changes;
+  return validateNodeChanges(changes, heads);
 }
 
 function typeBinding(value, candidateId) {
@@ -137,18 +148,38 @@ function typeBinding(value, candidateId) {
   return { ...value, bindings: { ...value.bindings, [`${value.type}Id`]: candidateId },
     details: { ...value.details, [value.type]: { id: candidateId, status: value.completed ? 'completed' : 'active' } } };
 }
-function validateStructure(value, heads) {
+function validateStructure(value, heads, beforeHeads = heads) {
   validateLifeValue('lifeNode', value);
   for (const binding of ['goalId', 'projectId']) if (value.bindings[binding] && liveRows(heads).some(row =>
     row.entityId !== value.id && row.value.bindings[binding] === value.bindings[binding])) throw Error('conflict');
   for (const p of value.parentIds) if (!heads.has(p) || heads.get(p).deleted || heads.get(p).kind !== 'lifeNode') {
     // Already-orphaned relationships remain recoverable when editing a title.
-    if (!heads.get(value.id)?.value.parentIds.includes(p)) throw Error('missing');
+    if (!beforeHeads.get(value.id)?.value.parentIds.includes(p)) throw Error('missing');
   }
   const nodes = liveRows(heads).filter(r => r.entityId !== value.id).map(r => r.value).concat(value);
-  const before = new Set(lifeHierarchyCycles(liveRows(heads).map(r => r.value)));
-  if (lifeHierarchyCycles(nodes).some(id => !before.has(id))) throw Error('lifeCycle');
+  const previous = beforeHeads.get(value.id);
+  const oldParents = new Set(previous && !previous.deleted ? previous.value.parentIds : []);
+  const added = value.parentIds.filter(parent => !oldParents.has(parent));
+  // Kahn's leftover set also includes descendants of preexisting remote cycles.
+  // Comparing those sets would miss a new cycle inside that affected population.
+  if (added.length) {
+    const descendants = lifeDescendants(nodes, value.id);
+    if (added.some(parent => descendants.has(parent))) throw Error('lifeCycle');
+  }
 }
+/** Validate the proposed transaction as a whole. Per-item checks against the
+ * old graph miss cycles formed by two otherwise-valid simultaneous edits and
+ * cannot see parents/aliases created or retired in the same transaction. */
+function validateNodeChanges(changes, heads) {
+  if (new Set(changes.map(change => change.entityId)).size !== changes.length) throw Error('conflict');
+  const next = new Map(heads);
+  for (const change of changes) next.set(change.entityId, { ...heads.get(change.entityId), ...change });
+  for (const change of changes) if (change.kind === 'lifeNode' && !change.deleted) {
+    validateStructure(change.value, next, heads);
+  }
+  return changes;
+}
+
 export function saveLifeNode(data, value, expectedHead) {
   value = typeBinding(value, crypto.randomUUID());
   return data.transact((_records, heads) => {
@@ -172,12 +203,12 @@ export function deleteLifeNode(data, row) {
   return data.save(row.entityId, 'lifeNode', row.value, { expectedHead: row.id, deleted: true });
 }
 export function placeLifeNodes(data, placements) {
-  return data.transact((_records, heads) => placements.map(({ id, expectedHead, position, type }) => {
+  return data.transact((_records, heads) => validateNodeChanges(placements.map(({ id, expectedHead, position, type }) => {
     assertHead(heads, id, expectedHead); const row = heads.get(id);
-    if (!row || row.deleted) throw Error('missing');
+    if (!row || row.deleted || row.kind !== 'lifeNode') throw Error('missing');
     const value = typeBinding({ ...row.value, position, onCanvas: true, ...(type === undefined ? {} : { type }) }, crypto.randomUUID());
-    validateStructure(value, heads); return nodeChange(value);
-  }));
+    return nodeChange(value);
+  }), heads));
 }
 export function connectLifeNodes(data, parentId, childId, childHead, parentHead) {
   return data.transact((_records, heads) => {
@@ -194,6 +225,7 @@ export function connectLifeNodes(data, parentId, childId, childHead, parentHead)
  * snapshot calls this API: it is exclusively a local user-command boundary.
  */
 export function replaceNativeLifeNodes(data, kind, updater, expectedRows) {
+  let receipts = [];
   return data.transact((_records, heads) => {
     if (!heads.has(LIFE_NODE_SCHEMA)) throw Error('loading');
     const rows = liveRows(heads), nodes = rows.map(r => r.value), binding = `${kind}Id`;
@@ -212,19 +244,20 @@ export function replaceNativeLifeNodes(data, kind, updater, expectedRows) {
           const parent = nodes.find(n => n.bindings.goalId === String(raw.goalId));
           value = { ...value, parentIds: value.parentIds.filter(id => !goalParents.has(id)).concat(parent ? [parent.id] : []) };
         }
-        validateStructure(value, heads); changes.push(nodeChange(value));
+        changes.push(nodeChange(value));
       } else {
         // A stage handed off to a native goal keeps its preexisting network ID.
         const meta = raw.lifeplanner;
         const stage = kind === 'goal' && meta ? rows.find(r => r.value.bindings.stageId === meta.stepId
           && r.value.bindings.visionId === meta.visionId && r.value.bindings.wishId === meta.wishId) : null;
-        if (stage && expectedRows && expectedRows.get(stage.entityId) !== stage.id) throw Error('conflict');
+        if (stage && ((stage.value.bindings.goalId && stage.value.bindings.goalId !== String(raw.id))
+          || (expectedRows && expectedRows.get(stage.entityId) !== stage.id))) throw Error('conflict');
         const key = stage?.entityId || lifeKey(kind, raw.id);
         if (heads.has(key) && !stage) throw Error('conflict');
         const parent = kind === 'project' && nodes.find(n => n.bindings.goalId === String(raw.goalId));
         let value = stage?.value || createLifeNode({ id: key, type: kind, parentIds: parent ? [parent.id] : [] });
         value = { ...patchFromNative(value, kind, raw), bindings: { ...value.bindings, [binding]: String(raw.id) } };
-        validateStructure(value, heads); changes.push(nodeChange(value));
+        changes.push(nodeChange(value));
       }
     }
     for (const raw of before) if (!incoming.has(String(raw.id))) {
@@ -232,8 +265,12 @@ export function replaceNativeLifeNodes(data, kind, updater, expectedRows) {
       if (expectedRows && expectedRows.get(row.entityId) !== row.id) throw Error('conflict');
       changes.push({ ...nodeChange(row.value), deleted: true });
     }
-    if (new Set(changes.map(c => c.entityId)).size !== changes.length) throw Error('conflict');
+    validateNodeChanges(changes, heads);
+    receipts = changes.map(change => ({ entityId: change.entityId, before: heads.get(change.entityId)?.id ?? null }));
     return changes;
+  }).then(records => {
+    const committed = materializeJobu(records);
+    return { records, receipts: receipts.map(receipt => ({ ...receipt, after: committed.get(receipt.entityId).id })) };
   });
 }
 

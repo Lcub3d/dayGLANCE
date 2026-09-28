@@ -257,7 +257,8 @@
     "apply": "Apply",
     "minutesShort": "{{count}} min",
     "nextWeek": "Next week",
-    "taskProgress": "{{done}}/{{total}} tasks"
+    "taskProgress": "{{done}}/{{total}} tasks",
+    "retry": "Retry"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -2081,7 +2082,7 @@
       "completeInterval": "Enter a complete start and end interval.",
       "editClock": "The device clock is not later than this record's last update. Try again after the clock catches up.",
       "check": "Check",
-      "checkHint": "Review unfinished, late or overlong Plans. Manually opened notes stay open.",
+      "checkHint": "Show notes for unfinished, late or overlong Plans. Manually opened notes stay open when Check is turned off.",
       "inferredPlanDuration": "Start time inferred from the Plan duration.",
       "completedAt": "Marked complete at {{time}}",
       "noteCleared": "Note cleared",
@@ -2095,8 +2096,6 @@
       "focusSessionHint": "Sessions this task participated in; intervals may include breaks or pauses.",
       "doCompletionLinkHint": "New Do records start Completed. The last Do on the execution timeline determines the linked Plan checkbox.",
       "progressHint": "Choose Started, Partial, Mostly or Completed. This changes only this Do record.",
-      "check": "Check",
-      "checkHint": "Show notes for unfinished, late or overlong Plans. Manually opened notes stay open when Check is turned off.",
       "carryHint": "Return unstarted, started or partially completed work to the inbox. Original plans and Do records are kept.",
       "carryEmpty": "Nothing to carry forward.",
       "carryToInbox": "Send to inbox ({{count}})",

@@ -269,7 +269,8 @@
     "apply": "Zastosuj",
     "minutesShort": "{{count}} min",
     "nextWeek": "Następny tydzień",
-    "taskProgress": "{{done}}/{{total}} zadań"
+    "taskProgress": "{{done}}/{{total}} zadań",
+    "retry": "Ponów próbę"
   },
   "errorBoundary": {
     "title": "Coś poszło nie tak",
@@ -1155,7 +1156,20 @@
     "stop": "Zatrzymaj",
     "skipPhase": "Pomiń fazę",
     "startHyperGlance": "Uruchom hyperGLANCE",
-    "tasksRemaining": "Zadania (pozostało: {{count}})"
+    "tasksRemaining": "Zadania (pozostało: {{count}})",
+    "chooseTask": "Wybierz zadanie do pomodoro",
+    "searchTasks": "Szukaj zadań",
+    "taskDragHint": "Kliknij, aby wybrać zadanie, lub przeciągnij minutnik na zadanie albo zadanie na minutnik, aby je połączyć.",
+    "linkedTask": "Powiązane zadanie: {{title}}",
+    "decreaseInterval": "Skróć czas: {{label}}",
+    "increaseInterval": "Wydłuż czas: {{label}}",
+    "pomodoroDetails": "Szczegóły pomodoro",
+    "pomodoroCount": "Pomodoro: {{count}}",
+    "pomodoroSave": {
+      "saving": "Zapisywanie pomodoro…",
+      "saved": "Zapisano w powiązanym bloku Do",
+      "error": "Nie udało się zapisać pomodoro. Oczekiwanie na ponowną próbę."
+    }
   },
   "voice": {
     "title": "Wprowadzanie głosowe",
@@ -2295,7 +2309,14 @@
         "onEstimate": "Zgodnie z szacunkiem",
         "shorter": "{{minutes}} min mniej",
         "longer": "{{minutes}} min więcej"
-      }
+      },
+      "progressHint": "Wybierz Rozpoczęte, Częściowo, W większości lub Ukończone. Zmiana dotyczy tylko tego wpisu Do.",
+      "carryHint": "Przenieś nierozpoczętą, rozpoczętą lub częściowo ukończoną pracę z powrotem do skrzynki. Oryginalne plany i wpisy Do zostaną zachowane.",
+      "carryEmpty": "Nie ma nic do przeniesienia.",
+      "carryToInbox": "Przenieś do skrzynki ({{count}})",
+      "noteTools": "Narzędzia notatek",
+      "undoTasks": "Cofnij zmiany zadań",
+      "exportBackup": "Eksportuj pełną kopię zapasową"
     },
     "daily": {
       "title": "Porównanie dnia",

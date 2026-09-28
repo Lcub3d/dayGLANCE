@@ -257,7 +257,8 @@
     "apply": "Appliquer",
     "minutesShort": "{{count}} min",
     "nextWeek": "Semaine prochaine",
-    "taskProgress": "{{done}}/{{total}} tâches"
+    "taskProgress": "{{done}}/{{total}} tâches",
+    "retry": "Réessayer"
   },
   "errorBoundary": {
     "title": "Une erreur est survenue",
@@ -1128,7 +1129,20 @@
     "stop": "Arrêter",
     "skipPhase": "Passer cette phase",
     "startHyperGlance": "Démarrer hyperGLANCE",
-    "tasksRemaining": "Tâches restantes : {{count}}"
+    "tasksRemaining": "Tâches restantes : {{count}}",
+    "chooseTask": "Choisissez une tâche pour votre pomodoro",
+    "searchTasks": "Rechercher des tâches",
+    "taskDragHint": "Cliquez pour choisir une tâche, ou faites glisser le minuteur sur une tâche, ou inversement, pour les associer.",
+    "linkedTask": "Tâche associée : {{title}}",
+    "decreaseInterval": "Réduire la durée de {{label}}",
+    "increaseInterval": "Augmenter la durée de {{label}}",
+    "pomodoroDetails": "Détails du pomodoro",
+    "pomodoroCount": "{{count}} pomodoros",
+    "pomodoroSave": {
+      "saving": "Enregistrement du pomodoro…",
+      "saved": "Enregistré dans le bloc Do associé",
+      "error": "Le pomodoro n’a pas pu être enregistré. En attente d’une nouvelle tentative."
+    }
   },
   "voice": {
     "title": "Saisie vocale",
@@ -2208,7 +2222,14 @@
         "onEstimate": "Selon l’estimation",
         "shorter": "{{minutes}} min de moins",
         "longer": "{{minutes}} min de plus"
-      }
+      },
+      "progressHint": "Choisissez Commencé, Partiel, Presque terminé ou Terminé. Seul cet enregistrement Do est modifié.",
+      "carryHint": "Renvoyez dans la boîte de réception le travail non commencé, commencé ou partiellement terminé. Les plans d’origine et les enregistrements Do sont conservés.",
+      "carryEmpty": "Rien à reporter.",
+      "carryToInbox": "Envoyer dans la boîte de réception ({{count}})",
+      "noteTools": "Outils de notes",
+      "undoTasks": "Annuler les modifications des tâches",
+      "exportBackup": "Exporter une sauvegarde complète"
     },
     "daily": {
       "title": "Comparaison du jour",

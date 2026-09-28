@@ -257,7 +257,8 @@
     "apply": "Applica",
     "minutesShort": "{{count}} min",
     "nextWeek": "Settimana prossima",
-    "taskProgress": "{{done}}/{{total}} attività"
+    "taskProgress": "{{done}}/{{total}} attività",
+    "retry": "Riprova"
   },
   "errorBoundary": {
     "title": "Qualcosa è andato storto",
@@ -1130,7 +1131,20 @@
     "stop": "Interrompi",
     "skipPhase": "Salta fase",
     "startHyperGlance": "Avvia hyperGLANCE",
-    "tasksRemaining": "Attività rimanenti: {{count}}"
+    "tasksRemaining": "Attività rimanenti: {{count}}",
+    "chooseTask": "Scegli un’attività per il tuo pomodoro",
+    "searchTasks": "Cerca attività",
+    "taskDragHint": "Fai clic per scegliere un’attività oppure trascina il timer su un’attività, o viceversa, per collegarli.",
+    "linkedTask": "Attività collegata: {{title}}",
+    "decreaseInterval": "Riduci la durata di {{label}}",
+    "increaseInterval": "Aumenta la durata di {{label}}",
+    "pomodoroDetails": "Dettagli del pomodoro",
+    "pomodoroCount": "{{count}} pomodori",
+    "pomodoroSave": {
+      "saving": "Salvataggio del pomodoro…",
+      "saved": "Salvato nel blocco Do collegato",
+      "error": "Impossibile salvare il pomodoro. In attesa di un nuovo tentativo."
+    }
   },
   "voice": {
     "title": "Input vocale",
@@ -2210,7 +2224,14 @@
         "onEstimate": "Secondo stima",
         "shorter": "{{minutes}} min in meno",
         "longer": "{{minutes}} min in più"
-      }
+      },
+      "progressHint": "Scegli Iniziato, Parziale, Quasi completato o Completato. Verrà modificato solo questo record Do.",
+      "carryHint": "Riporta nella posta in arrivo il lavoro non iniziato, iniziato o parzialmente completato. I piani originali e i record Do vengono conservati.",
+      "carryEmpty": "Niente da riportare.",
+      "carryToInbox": "Invia alla posta in arrivo ({{count}})",
+      "noteTools": "Strumenti per le note",
+      "undoTasks": "Annulla le modifiche alle attività",
+      "exportBackup": "Esporta backup completo"
     },
     "daily": {
       "title": "Confronto del giorno",

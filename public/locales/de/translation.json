@@ -257,7 +257,8 @@
     "apply": "Übernehmen",
     "minutesShort": "{{count}} Min.",
     "nextWeek": "Nächste Woche",
-    "taskProgress": "{{done}}/{{total}} Aufgaben"
+    "taskProgress": "{{done}}/{{total}} Aufgaben",
+    "retry": "Erneut versuchen"
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
@@ -1128,7 +1129,20 @@
     "stop": "Stopp",
     "skipPhase": "Phase überspringen",
     "startHyperGlance": "hyperGLANCE starten",
-    "tasksRemaining": "Aufgaben (noch {{count}})"
+    "tasksRemaining": "Aufgaben (noch {{count}})",
+    "chooseTask": "Wähle eine Aufgabe für deinen Pomodoro",
+    "searchTasks": "Aufgaben suchen",
+    "taskDragHint": "Klicke, um eine Aufgabe auszuwählen, oder ziehe den Timer auf eine Aufgabe bzw. eine Aufgabe auf den Timer, um sie zu verknüpfen.",
+    "linkedTask": "Verknüpfte Aufgabe: {{title}}",
+    "decreaseInterval": "Dauer für {{label}} verkürzen",
+    "increaseInterval": "Dauer für {{label}} verlängern",
+    "pomodoroDetails": "Pomodoro-Details",
+    "pomodoroCount": "{{count}} Pomodoros",
+    "pomodoroSave": {
+      "saving": "Pomodoro wird gespeichert…",
+      "saved": "Im verknüpften Do-Block gespeichert",
+      "error": "Der Pomodoro konnte nicht gespeichert werden. Ein erneuter Versuch steht aus."
+    }
   },
   "voice": {
     "title": "Spracheingabe",
@@ -2208,7 +2222,14 @@
         "onEstimate": "Wie geplant",
         "shorter": "{{minutes}} Min. weniger",
         "longer": "{{minutes}} Min. mehr"
-      }
+      },
+      "progressHint": "Wähle Begonnen, Teilweise, Größtenteils oder Abgeschlossen. Dies ändert nur diesen Do-Eintrag.",
+      "carryHint": "Verschiebe nicht begonnene, begonnene oder teilweise abgeschlossene Arbeit zurück in den Eingang. Ursprüngliche Pläne und Do-Einträge bleiben erhalten.",
+      "carryEmpty": "Nichts zum Übertragen.",
+      "carryToInbox": "In den Eingang verschieben ({{count}})",
+      "noteTools": "Notizwerkzeuge",
+      "undoTasks": "Aufgabenänderungen rückgängig machen",
+      "exportBackup": "Vollständige Sicherung exportieren"
     },
     "daily": {
       "title": "Tagesvergleich",

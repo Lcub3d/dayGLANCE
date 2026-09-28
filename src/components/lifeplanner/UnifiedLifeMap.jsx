@@ -145,7 +145,11 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
   const spread = async () => {
     if (!writable || !canLeave()) return;
     const all = boardLayout(graph.nodes);
-    if (await run(() => placeLifeNodes(jobuData, inbox.map(n => ({ id: n.id, expectedHead: data.heads.get(n.id).id, position: all.get(n.id) }))))) fit(n => n + 1);
+    if (await run(() => placeLifeNodes(jobuData, inbox.map(n => ({ id: n.id, expectedHead: data.heads.get(n.id).id, position: all.get(n.id) }))))) {
+      // canLeave already resolved any draft. The placement created new heads;
+      // keep the selected clean editor aligned with our committed placement.
+      refreshEditor(n => n + 1); fit(n => n + 1);
+    }
   };
   const activeRow = data.heads.get(selection), selectedTask = graph.nodes.find(n => n.id === selection && n.kind === 'task');
   const laneHeight = Math.max(900, ...[...positions.values()].map(p => p.y + 250));
@@ -187,7 +191,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
         <div className="lb-inbox-list">{inbox.map(n => <div key={n.id} className="lb-inbox-card" draggable={writable} data-inbox-node={n.id}
           onDragStart={e => { dragHeads.current.set(n.id, data.heads.get(n.id).id); e.dataTransfer.setData(MIME, n.id); e.dataTransfer.effectAllowed = 'move'; }}>
           <button type="button" onClick={() => choose(n.id)}>{n.title || B('untitled')}</button>
-          <button type="button" disabled={!writable} aria-label={`${B('place')} · ${n.title}`} onClick={async () => { if (!canLeave()) return; if (await run(() => placeLifeNodes(jobuData, [{ id: n.id, expectedHead: data.heads.get(n.id).id, position: positions.get(n.id) }]))) { select(n.id); fit(x => x + 1); } }}><Plus size={13} /></button>
+          <button type="button" disabled={!writable} aria-label={`${B('place')} · ${n.title}`} onClick={async () => { if (!canLeave()) return; if (await run(() => placeLifeNodes(jobuData, [{ id: n.id, expectedHead: data.heads.get(n.id).id, position: positions.get(n.id) }]))) { select(n.id); refreshEditor(x => x + 1); fit(x => x + 1); } }}><Plus size={13} /></button>
         </div>)}</div>
       </aside>
       <div className="lm-canvas lb-canvas" ref={host} data-life-map-canvas onDragOver={e => { if (e.dataTransfer.types.includes(MIME)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}

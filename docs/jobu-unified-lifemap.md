@@ -58,7 +58,7 @@ remain in History, with their old live heads retired. Native payloads, genuine
 stage handoff identities and ordered measured milestones are preserved. Old
 native tombstones do not resurrect nodes. Corrupt/future sources block migration;
 failed transactions publish no partial result. Retry does not duplicate nodes.
-A failure to save the source-recovery copy prevents automatic cache overwrite.
+Every migration entry point, including the map retry, requires a valid source-recovery copy. A missing or corrupt copy or a failed backup write blocks migration and cache overwrite; the existing bytes are not silently replaced.
 
 History restore creates a new revision. Restoring canonical nodes validates
 aliases and hierarchy; retired nested `lifeWish` versions are inspection-only
@@ -92,7 +92,8 @@ the unclassified inbox.
 - With a node focused by keyboard, Enter opens its editor, Left/Right moves it
   between lanes and Up/Down moves it vertically. Moves are persisted, not merely
   React Flow previews. Zoom/fit and the editor provide non-drag alternatives.
-- “Add child” creates an unclassified child in the current scope. Optional linked
+- “Add child” creates a child in the next planning type (Project remains Project),
+  in the current scope; classification remains editable. Optional linked
   tasks are read-only in the map and open through their existing editor.
 
 Changing lane does not reparent a node; changing a parent does not force a type.
@@ -141,8 +142,34 @@ StrictMode test exercises migration, entry navigation, editing and reload of a
 native project. It uses synthetic data on a separate local origin, never personal
 accounts or the user's running Jobu instance.
 
-The pinned product base `8bc1b96` already fails 10 assertions in
-`src/locales.test.js` (9) and `src/sync/joboRecordsSync.test.js` (1). Final checks
-compare the candidate's failure names to that unchanged base, rather than
-skipping tests or hiding failures. In particular, the existing personal JOBO
-Timed/Untimed scenario is not changed by this planning-storage feature.
+## Follow-up review of PR #28
+
+The initial candidate inherited ten failures from product base `8bc1b96`.
+This follow-up removes that failure allowance: every suite must pass. It adds
+`common.retry` to every shipped locale, translates the missing focus/task-note
+strings in eight languages, and updates the stale two-device test to Jobu's
+already-existing editable backward interval default. The scenario still checks
+one source-keyed ID, exact source-clock coordinates, immutable snapshot data and
+convergence; no detector, core or sync transport behavior is changed here. A
+completion-derived default is not a measured focus span.
+
+Storage regressions now cover final-transaction hierarchy validation (including
+new cycles inside the descendants of an existing remote cycle), duplicate batch
+placements, repeated native handoffs that must not replace a bound goal ID, and
+mandatory validated recovery snapshots on direct migration/retry.
+
+`nativeLifeQueue.js` serializes inherited native user commands over the same
+canonical journal. Only receipts for its own successfully committed revisions
+advance later queued commands' expected heads. A remote winner is never adopted
+as local ownership; conflict stops the sequence. The first failed save retains
+itself and all later commands for explicit retry/discard, and supplied arrays
+are snapshotted at enqueue time. The queue is transient, not a second database
+or crash-durable outbox. Pending/failed commands keep the unload warning active.
+
+Spreading or placing the selected inbox card refreshes its clean editor only
+after the placement commits, avoiding a falsely stale, disabled form. Dirty
+forms retain their confirmation guard and failed placements retain their draft.
+
+Run `TZ=UTC npm test`, `npm run lint`, `npm run build`, and the focused
+Jobu/Lifemap plus JOBO sync suite in Asia/Shanghai and America/New_York. There
+are no skipped tests, loosened locale assertions or baseline-failure exemptions.

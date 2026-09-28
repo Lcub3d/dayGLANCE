@@ -12,9 +12,13 @@ Completion-point presentation adopts the validated helper from `3da80f2`.
 
 Full JOBO retains daily analysis, manual creation, native Plan creation/copy/drag/
 resize, per-attempt reassessment, snapshots/comparison, Focus/Priority/Frames,
-connections and notes. We do not restore the earlier inferred-duration or
-bidirectional completion experiment: a completion timestamp is not a measured
-interval. Completion-only Do appears as a point, never an invented timed span.
+connections and notes. The initial integration displayed completion-only Do as
+points. The subsequent personal-product interaction change `30d8676` uses editable
+backward-looking interval defaults ending at the source completion clock. That
+is a Jobu product choice, not an upstream timing contract or proof of measured
+focus time. PR #28's follow-up review preserves this existing behavior and aligns
+the inherited convergence test with it; it does not introduce a new completion
+bridge or modify the JOBO detector, core, or transport implementation.
 
 Life Planner retains the ruled notebook, opt-in assistant, mottos, visions and
 stages, SWOT, native goal/project handoff and Life Map. It does not require the

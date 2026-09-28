@@ -257,7 +257,8 @@
     "apply": "应用",
     "minutesShort": "{{count}} 分钟",
     "nextWeek": "下周",
-    "taskProgress": "{{done}}/{{total}} 个任务"
+    "taskProgress": "{{done}}/{{total}} 个任务",
+    "retry": "重试"
   },
   "errorBoundary": {
     "title": "出了点问题",
@@ -2080,8 +2081,8 @@
       "progressLabel": "进度",
       "completeInterval": "请填写完整的开始和结束时间。",
       "editClock": "设备时间没有晚于该记录的上次更新时间，请在时间追上后重试。",
-      "check": "复盘 (Check)",
-      "checkHint": "展开未完成、延迟或超时计划的备注；手动展开的备注始终保留。",
+      "check": "复盘（Check）",
+      "checkHint": "展开未完成、晚开始、晚结束或用时更久的计划笔记；关闭复盘时，手动展开的笔记始终保留。",
       "inferredPlanDuration": "开始时间根据计划时长推算。",
       "completedAt": "完成标记时间：{{time}}",
       "noteCleared": "备注已清空",
@@ -2095,8 +2096,6 @@
       "focusSessionHint": "此任务参与的专注时段，可能包含休息或暂停。",
       "doCompletionLinkHint": "新建执行默认已完成。Do 时间轴上的最后一条执行决定对应 Plan 的勾选状态。",
       "progressHint": "可调整为已开始、部分完成、基本完成或已完成；只更新这条执行记录。",
-      "check": "复盘（Check）",
-      "checkHint": "展开未完成、晚开始、晚结束或用时更久的计划笔记；关闭复盘时，手动展开的笔记始终保留。",
       "carryHint": "将未开始、已开始或部分完成的事项放回收件箱，原计划和执行记录会保留。",
       "carryEmpty": "没有需要结转的事项。",
       "carryToInbox": "放入收件箱（{{count}}）",

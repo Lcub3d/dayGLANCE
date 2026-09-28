@@ -1,3 +1,5 @@
+import { stripTags } from '../utils/taskUtils.js';
+import { sourceLabels } from './labels.js';
 import { parseQuickAdd, stripSpans } from '../utils/quickAddParser.js';
 import { dayKey, validDay } from './year.js';
 const pad=n=>String(n).padStart(2,'0');
@@ -68,5 +70,5 @@ export function makeJobuTask(parsed,{id,now=new Date().toISOString()}={}){
   date:date||undefined,startTime:parsed.startTime||undefined,isAllDay:!!date&&!parsed.startTime,
   duration:parsed.duration,color:'bg-blue-500',lastModified:now};
 }
-export function taskLabels(task){return [...String(task.title||'').matchAll(/(?:^|\s)#([\p{L}\p{N}_-]+)/gu)].map(m=>m[1]);}
-export function taskDisplayTitle(task){return String(task.title||'').replace(/(?:^|\s)#[\p{L}\p{N}_-]+/gu,'').trim();}
+export function taskLabels(task){return sourceLabels(task);}
+export function taskDisplayTitle(task){return String(task.title || '').split(/(\[\[[\s\S]*?\]\])/g).map(part => part.startsWith('[[') ? part : stripTags(part)).join('').trim();}

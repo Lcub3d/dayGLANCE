@@ -1,3 +1,4 @@
+import { LabelsEntry } from '../jobu/FilterSidebar.jsx';
 import React, {
   useCallback,
   useEffect,
@@ -1201,6 +1202,7 @@ const GoalSpaceSidebar = ({
       className={`${cardBg} border-r ${borderClass} flex flex-col flex-shrink-0 relative`}
       style={{ width: '340px', height: '100%' }}
     >
+      <LabelsEntry />
       <div role="tablist" aria-label={t('goals.dashboardTitle')} className={`flex border-b ${borderClass} flex-shrink-0`}>
         <button
           type="button"
@@ -1397,7 +1399,7 @@ export const MobileGoalsTabs = ({ tab, onTabChange, goalCount, openCount, contro
     }`;
   const toggleLabel = controlsCollapsed ? t('goals.showFilters') : t('goals.hideFilters');
   return (
-    <div className="flex items-stretch gap-2">
+    <div><LabelsEntry /><div className="flex items-stretch gap-2">
       <div data-goals-tabs role="tablist" aria-label={t('goals.dashboardTitle')} className={`flex-1 min-w-0 flex rounded-lg border ${borderClass} overflow-hidden`}>
         <button type="button" role="tab" aria-selected={tab === 'goals'} onClick={() => onTabChange('goals')} className={tabClass(tab === 'goals')}>
           <Flag size={13} className="flex-shrink-0" /> <span className="truncate">{t('goals.goals')}</span> <span className={badgeClass(tab === 'goals')}>{goalCount}</span>
@@ -1422,7 +1424,7 @@ export const MobileGoalsTabs = ({ tab, onTabChange, goalCount, openCount, contro
           )}
         </button>
       )}
-    </div>
+    </div></div>
   );
 };
 

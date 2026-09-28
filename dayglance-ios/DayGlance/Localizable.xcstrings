@@ -40,7 +40,7 @@
             "value" : "Marcar como concluída"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "标记为已完成"
@@ -87,7 +87,7 @@
             "value" : "Adiar 15 min"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "稍后 15 分钟提醒"

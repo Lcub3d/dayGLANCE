@@ -40,7 +40,7 @@
             "value" : "%@ disponíveis"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "可用 %@"
@@ -87,7 +87,7 @@
             "value" : "faltam %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "剩余 %@"
@@ -134,7 +134,7 @@
             "value" : "%@ livre"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "空闲 %@"
@@ -181,7 +181,7 @@
             "value" : "há %lld dias"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 天前"
@@ -228,7 +228,7 @@
             "value" : "%lld agendados"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld 项计划"
@@ -275,7 +275,7 @@
             "value" : "%lld%% · %lld/%lld tarefas"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld%% · %lld/%lld 个任务"
@@ -322,7 +322,7 @@
             "value" : "faltam %lld d"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "剩余 %lld 天"
@@ -369,7 +369,7 @@
             "value" : "%lld d de atraso"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "逾期 %lld 天"
@@ -416,7 +416,7 @@
             "value" : "+%lld mais"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "还有 %lld 项"
@@ -463,7 +463,7 @@
             "value" : "Adicionar tarefa à caixa de entrada"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "将任务添加到收件箱"
@@ -510,7 +510,7 @@
             "value" : "Adicionar tarefa agendada"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "添加计划任务"
@@ -557,7 +557,7 @@
             "value" : "Adicionar tarefa por voz"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "通过语音添加任务"
@@ -604,7 +604,7 @@
             "value" : "Adiciona uma tarefa ao plano de hoje."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "将任务添加到今天的日程。"
@@ -651,7 +651,7 @@
             "value" : "Dia inteiro"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "全天"
@@ -698,7 +698,7 @@
             "value" : "Dia inteiro ou com prazo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "全天或到期"
@@ -745,7 +745,7 @@
             "value" : "Capture uma tarefa por voz."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "通过语音添加任务。"
@@ -792,7 +792,7 @@
             "value" : "Escolha qual objetivo este widget mostra."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择此小组件显示的目标。"
@@ -839,7 +839,7 @@
             "value" : "Escolha qual projeto este widget mostra."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择此小组件显示的项目。"
@@ -886,7 +886,7 @@
             "value" : "Data"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "日期"
@@ -933,7 +933,7 @@
             "value" : "Mostrador do dia"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "日程表盘"
@@ -980,7 +980,7 @@
             "value" : "Feito"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "完成"
@@ -1027,7 +1027,7 @@
             "value" : "Prazo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "到期"
@@ -1074,7 +1074,7 @@
             "value" : "Termina hoje"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天到期"
@@ -1121,7 +1121,7 @@
             "value" : "Esforço"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "投入"
@@ -1168,7 +1168,7 @@
             "value" : "Foco"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "专注"
@@ -1215,7 +1215,7 @@
             "value" : "Blocos"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "时间框架"
@@ -1262,7 +1262,7 @@
             "value" : "OBJETIVO"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "目标"
@@ -1309,7 +1309,7 @@
             "value" : "Objetivo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "目标"
@@ -1356,7 +1356,7 @@
             "value" : "Caixa de entrada"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "收件箱任务"
@@ -1403,7 +1403,7 @@
             "value" : "Mês"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "月"
@@ -1450,7 +1450,7 @@
             "value" : "Dia seguinte"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "后一天"
@@ -1497,7 +1497,7 @@
             "value" : "Nenhum objetivo ativo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无进行中的目标"
@@ -1544,7 +1544,7 @@
             "value" : "Nenhum projeto ativo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "暂无进行中的项目"
@@ -1591,7 +1591,7 @@
             "value" : "Nada mais hoje"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天没有其他安排"
@@ -1638,7 +1638,7 @@
             "value" : "Nada agendado"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "无安排"
@@ -1685,7 +1685,7 @@
             "value" : "Agora: %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "当前：%@"
@@ -1732,7 +1732,7 @@
             "value" : "DESATUALIZADO"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "已过期"
@@ -1779,7 +1779,7 @@
             "value" : "Abra o dayGLANCE para atualizar"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 dayGLANCE 以刷新"
@@ -1826,7 +1826,7 @@
             "value" : "Abra o dayGLANCE para configurar"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "打开 dayGLANCE 进行设置"
@@ -1873,7 +1873,7 @@
             "value" : "Desatualizado"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "已过期"
@@ -1920,7 +1920,7 @@
             "value" : "PROJETO"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "项目"
@@ -1967,7 +1967,7 @@
             "value" : "Planeado em %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "计划截至 %@"
@@ -2014,7 +2014,7 @@
             "value" : "Planeado com antecedência"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "提前计划"
@@ -2061,7 +2061,7 @@
             "value" : "Dia anterior"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "前一天"
@@ -2108,7 +2108,7 @@
             "value" : "Progresso de um objetivo. Toque sem soltar para escolher qual."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "显示目标进度。长按以选择目标。"
@@ -2155,7 +2155,7 @@
             "value" : "Progresso de um projeto. Toque sem soltar para escolher qual."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "显示项目进度。长按以选择项目。"
@@ -2202,7 +2202,7 @@
             "value" : "Projeto"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "项目"
@@ -2249,7 +2249,7 @@
             "value" : "Capture rapidamente uma tarefa na caixa de entrada."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "快速将任务添加到收件箱。"
@@ -2296,7 +2296,7 @@
             "value" : "Recuperação"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "恢复"
@@ -2343,7 +2343,7 @@
             "value" : "Rotinas"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "日常"
@@ -2390,7 +2390,7 @@
             "value" : "Tarefa agendada"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "计划任务"
@@ -2437,7 +2437,7 @@
             "value" : "Escolher objetivo"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择目标"
@@ -2484,7 +2484,7 @@
             "value" : "Escolher projeto"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择项目"
@@ -2531,7 +2531,7 @@
             "value" : "Mostrar dia"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看当天"
@@ -2578,7 +2578,7 @@
             "value" : "Mostrar hoje"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "查看今天"
@@ -2625,7 +2625,7 @@
             "value" : "Seis semanas da sua agenda num relance."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "一览六周日程"
@@ -2672,7 +2672,7 @@
             "value" : "Sono"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "睡眠"
@@ -2719,7 +2719,7 @@
             "value" : "Este objetivo pode ter sido concluído ou eliminado. Edite o widget para escolher outro."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "该目标可能已完成或删除。请编辑小组件以选择其他目标。"
@@ -2766,7 +2766,7 @@
             "value" : "Este projeto pode ter sido arquivado ou eliminado. Edite o widget para escolher outro."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "该项目可能已归档或删除。请编辑小组件以选择其他项目。"
@@ -2813,7 +2813,7 @@
             "value" : "Fuso horário alterado"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "时区已更改"
@@ -2860,7 +2860,7 @@
             "value" : "Hoje"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "今天"
@@ -2907,7 +2907,7 @@
             "value" : "A SEGUIR"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "接下来"
@@ -2954,7 +2954,7 @@
             "value" : "Tempo livre"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "可用时间"
@@ -3001,7 +3001,7 @@
             "value" : "Sem título"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "未命名"
@@ -3048,7 +3048,7 @@
             "value" : "A seguir"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "接下来"
@@ -3095,7 +3095,7 @@
             "value" : "Tarefa por voz"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "语音任务"
@@ -3142,7 +3142,7 @@
             "value" : "O teu dia como um mostrador."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "以表盘呈现你的一天"
@@ -3189,7 +3189,7 @@
             "value" : "A sua próxima tarefa agendada."
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的下一个计划任务。"
@@ -3236,7 +3236,7 @@
             "value" : "em %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "截至 %@"
@@ -3289,7 +3289,7 @@
             "value" : "Sono"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "睡眠"
@@ -3336,7 +3336,7 @@
             "value" : "depois %@ livre"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "之后空闲 %@"
@@ -3383,7 +3383,7 @@
             "value" : "depois %@ até dormir"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "之后 %@ 至睡眠"
@@ -3430,7 +3430,7 @@
             "value" : "até às %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "至 %@"
@@ -3477,7 +3477,7 @@
             "value" : "até %@ às %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "至 %@（%@）"
@@ -3524,7 +3524,7 @@
             "value" : "até às %@ · faltam %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "至 %@ · 剩余 %@"
@@ -3571,7 +3571,7 @@
             "value" : "até dormir às %@"
           }
         },
-        "zh-CN" : {
+        "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "至 %@ 睡眠"

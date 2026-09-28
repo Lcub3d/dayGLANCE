@@ -59,6 +59,15 @@ describe('read-only JOBO date-header tiles', () => {
     expect(text(html)).not.toContain(resource.jobo.stats.scope.split(' · ')[0]);
   });
 
+  it('keeps the three primary tiles visible and steps secondary tiles aside below xl', async () => {
+    const { html } = await render();
+    expect(html).toMatch(/data-jobo-stat="native" class="(?![^"]*hidden xl:flex)[^"]*"/);
+    expect(html).toMatch(/data-jobo-stat="time" class="(?![^"]*hidden xl:flex)[^"]*"/);
+    expect(html).toMatch(/data-jobo-stat="start" class="(?![^"]*hidden xl:flex)[^"]*"/);
+    expect(html).toMatch(/data-jobo-stat="finish" class="[^"]*hidden xl:flex[^"]*"/);
+    expect(html).toMatch(/data-jobo-stat="duration" class="[^"]*hidden xl:flex[^"]*"/);
+  });
+
   it('is in CalendarHeader beside the date, not in the Plan/Do header', async () => {
     const { html } = await render({ header: true });
     expect(html).toContain(`data-day-header="${date}"`);

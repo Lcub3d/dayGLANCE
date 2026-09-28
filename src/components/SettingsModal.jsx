@@ -1892,6 +1892,33 @@ const SettingsModal = () => {
                               <RefreshCw size={14} className={obsidianSyncStatus === 'syncing' ? 'animate-spin' : ''} />
                               {obsidianSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
                             </button>
+                            {/* Re-pick the vault folder without disconnecting. Stored
+                                access can lapse (an expired browser permission, a
+                                stale macOS bookmark after the app is replaced) while
+                                Settings still reads connected, and every note read
+                                and vault write then fails. Disconnect is no way back:
+                                it also drops the Obsidian-imported tasks. Picking
+                                again stores fresh access (a new directory handle, or
+                                a new bookmark on desktop) and keeps everything else. */}
+                            <button
+                              data-obsidian-change-vault
+                              onClick={async () => {
+                                if (isNativeApp()) { nativePickVault(); return; }
+                                try {
+                                  const handle = await requestVaultAccess();
+                                  if (!handle) return;
+                                  obsidianVaultHandleRef.current = handle;
+                                  setObsidianConfig(prev => ({ ...prev, enabled: true, vaultName: handle.name }));
+                                  performObsidianSync();
+                                } catch (err) {
+                                  console.error('Obsidian: failed to change vault', err);
+                                }
+                              }}
+                              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors flex items-center gap-2`}
+                            >
+                              <FolderOpen size={14} />
+                              {t('settings.obsidianChangeVault')}
+                            </button>
                             <button
                               onClick={async () => {
                                 await disconnectVault();

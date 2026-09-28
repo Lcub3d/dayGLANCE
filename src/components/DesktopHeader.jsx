@@ -42,7 +42,7 @@ const DesktopHeader = () => {
     setShowBackupMenu,
     cloudSyncConfig, cloudSyncStatus, cloudSyncLastSynced,
     vaultEnabled, vaultStatus, vaultLastSynced, vaultSyncNow,
-    obsidianConfig, obsidianSyncStatus, obsidianSyncError, obsidianLastSynced,
+    obsidianConfig, obsidianSyncStatus, obsidianSyncError, obsidianLastSynced, obsidianVaultAccess,
     cloudSyncUpload, syncAll, performObsidianSync,
   } = useSyncCtx();
   const { setShowRemindersSettings, activeReminders, desktopSpace = 'calendar' } = useFeaturesCtx();
@@ -278,14 +278,16 @@ const DesktopHeader = () => {
               className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg} ${obsidianSyncStatus === 'syncing' ? 'opacity-70 cursor-not-allowed' : ''}`}
               title={obsidianSyncStatus === 'syncing'
                 ? t('common.syncing')
-                : obsidianSyncStatus === 'error' && obsidianSyncError
+                : obsidianVaultAccess === 'lost'
+                  ? `${t('settings.obsidian')}: ${t('settings.obsidianVaultAccessLost')}`
+                  : obsidianSyncStatus === 'error' && obsidianSyncError
                   ? `${t('settings.obsidian')}: ${t('settings.obsidianSyncFailed')} (${obsidianSyncError})`
                   : `${t('settings.obsidian')}${lastSynced(obsidianLastSynced) || ` — ${t('common.lastSynced')}: ${t('common.never')}`}`}
             >
               <BookOpen size={18} className={`${textSecondary} ${obsidianSyncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
                 obsidianSyncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
-                obsidianSyncStatus === 'error' ? 'bg-red-500' :
+                obsidianSyncStatus === 'error' || obsidianVaultAccess === 'lost' ? 'bg-red-500' :
                 'bg-green-500'
               }`} />
             </button>

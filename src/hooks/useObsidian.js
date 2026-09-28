@@ -10,6 +10,12 @@ const useObsidian = () => {
   });
   const [obsidianSyncStatus, setObsidianSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'success' | 'error'
   const [obsidianSyncError, setObsidianSyncError] = useState(null);
+  // Whether this device can reach its vault (probeVaultAccess): 'unknown'
+  // until the first probe, then 'ok' or 'lost'. Kept apart from the sync
+  // status on purpose: a paired device still syncs its tasks through
+  // GLANCEvault with the vault unreachable, so a cycle can succeed while the
+  // vault is lost, and the header and Settings must say so either way.
+  const [obsidianVaultAccess, setObsidianVaultAccess] = useState('unknown');
   // Fire-and-forget neutral notice (e.g. a two-sided retitle resolution) —
   // separate from the ERROR channel on purpose: a conflict is a one-shot
   // event, not a failure, and must never latch or show red.
@@ -81,6 +87,7 @@ const useObsidian = () => {
     obsidianSyncStatus, setObsidianSyncStatus,
     obsidianSyncNotice, setObsidianSyncNotice,
     obsidianSyncError, setObsidianSyncError,
+    obsidianVaultAccess, setObsidianVaultAccess,
     obsidianLastSynced, setObsidianLastSynced,
     obsidianVaultHandleRef,
     obsidianSyncInProgressRef,

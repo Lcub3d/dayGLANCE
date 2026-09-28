@@ -16,6 +16,8 @@ import { extractWikilinks } from '../../utils/taskUtils.js';
 // only a change to what it loaded, so an always-open editor here could not
 // save without going around them. The task's notes are the same panel a
 // timeline card opens, which saves through the app's own actions.
+export const SIDEBAR_WIDTH = 'w-[calc((100%-4rem)/3)] min-w-80';
+
 export default function JoboNotesSidebar({ date, task, onClearTask, t }) {
   const {
     darkMode, borderClass, textPrimary, textSecondary, unscheduledTasks,
@@ -30,7 +32,11 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t }) {
   const heading = `text-xs font-semibold uppercase tracking-wide ${textSecondary}`;
 
   return (
-    <aside data-jobo-notes-sidebar className={`w-80 flex-shrink-0 border-l ${borderClass} flex flex-col min-h-0`} aria-label={t('task.notes')}>
+    // A third of the view, the same width as Plan and as Do. The view is the
+    // 4rem hour gutter plus three equal columns, and JoboView's grid gives
+    // Plan (with the gutter) 50% + 2rem of what is left: so this is exactly
+    // one column. Never narrower than the old fixed 20rem.
+    <aside data-jobo-notes-sidebar className={`${SIDEBAR_WIDTH} flex-shrink-0 border-l ${borderClass} flex flex-col min-h-0`} aria-label={t('task.notes')}>
       <section className={`flex flex-col min-h-0 max-h-[50%] border-b ${borderClass} p-3`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className={heading}>{t('common.dailyNote')}</h3>

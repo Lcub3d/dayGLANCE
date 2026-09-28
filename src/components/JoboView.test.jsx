@@ -146,13 +146,26 @@ describe('the Do editor reads an end before the start as the next day', () => {
 describe('a completion with a planned duration is drawn as a dashed estimate', () => {
   const planned = () => point({ planSnapshot: { date: '2026-09-24', startTime: '08:30', duration: 60 } });
 
-  it('spans the planned duration ending at the completion, and stays a marker without one', async () => {
+  // MUTATION: go back to "planned length ending at the completion" and a task
+  // finished late reads as started late instead of running long.
+  it('runs from the planned start to the completion, and stays a marker without a plan', async () => {
     const { estimateCompletion } = await import('./jobo/DoColumn.jsx');
     const item = { id: 'x', point: true, startMinute: 592, endMinute: 592, time: '09:52', date: '2026-09-24', record: planned() };
-    expect(estimateCompletion(item)).toMatchObject({ estimate: true, startMinute: 532, endMinute: 592, markerMinute: 592 });
+    // Planned 08:30 for 60 minutes, completed 09:52: started as planned, ran 22 minutes long.
+    expect(estimateCompletion(item)).toMatchObject({ estimate: true, startMinute: 510, endMinute: 592, markerMinute: 592 });
     expect(estimateCompletion({ ...item, record: point() })).toEqual({ ...item, record: point() });
     expect(estimateCompletion({ ...item, point: false })).toMatchObject({ point: false });
     expect(estimateCompletion({ ...item, startMinute: 20, endMinute: 20 })).toMatchObject({ startMinute: 0, endMinute: 20 });
+  });
+
+  it('falls back to the planned length when the planned start says little', async () => {
+    const { estimateCompletion } = await import('./jobo/DoColumn.jsx');
+    const at = (minute, date = '2026-09-24') => estimateCompletion({ id: 'x', point: true, startMinute: minute, endMinute: minute, date, record: planned() });
+    expect(at(540)).toMatchObject({ startMinute: 510, endMinute: 540 });   // finished early: ran short
+    expect(at(690)).toMatchObject({ startMinute: 510, endMinute: 690 });   // three planned hours after 08:30: still within reach
+    expect(at(691)).toMatchObject({ startMinute: 631, endMinute: 691 });   // beyond reach: the planned hour, ending at the completion
+    expect(at(480)).toMatchObject({ startMinute: 420, endMinute: 480 });   // before the planned start
+    expect(at(592, '2026-09-25')).toMatchObject({ startMinute: 532 });     // another day
   });
 
   // MUTATION: drop estimateCompletion from the view and the card is a marker
@@ -276,6 +289,16 @@ describe('the notes sidebar', () => {
     }
   });
 
+  // MUTATION: go back to a fixed width and Plan, Do and Notes stop matching.
+  it('is one third of the view, the same width as Plan and as Do', () => {
+    wideScreen(true);
+    try {
+      expect(render()).toMatch(/data-jobo-notes-sidebar[^>]*class="w-\[calc\(\(100%-4rem\)\/3\)\] min-w-80 /);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('is not offered below 1600px, whatever was chosen', () => {
     wideScreen(false);
     try {
@@ -292,5 +315,30 @@ describe('the notes sidebar', () => {
     const source = readFileSync(new URL('./jobo/JoboNotesSidebar.jsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/setDailyNotes\(|<textarea|saveDailyNote/);
     expect(source).toContain('setDailyNotesModalDate');
+  });
+});
+
+describe('an estimate can be kept in one click', () => {
+  const planned = () => point({ planSnapshot: { date: '2026-09-24', startTime: '08:30', duration: 60 } });
+
+  it('offers Keep on an estimate, and not on a timed Do or a read-only ledger', () => {
+    expect(render({ joboRecords: [planned()] })).toContain('data-jobo-keep');
+    expect(render({ joboRecords: [timed()] })).not.toContain('data-jobo-keep');
+    expect(render({ joboRecords: [planned()], joboWritable: false })).not.toContain('data-jobo-keep');
+  });
+});
+
+describe('the Do card\'s notes icon follows the timeline card', () => {
+  it('shows the Obsidian book, lit, for a task whose note is in the vault', () => {
+    const html = render({ joboRecords: [timed()] }, { tasks: [{ ...task, title: '[[Native Plan]]' }], getTasksForDate: () => [{ ...task, title: '[[Native Plan]]' }] });
+    const button = html.match(/<button[^>]*data-jobo-notes-toggle[^>]*>.*?<\/button>/s)[0];
+    expect(button).toContain('lucide-book-open');
+    expect(button).not.toMatch(/class="[^"]*opacity-40/);
+  });
+
+  it('is faded with the document icon when there is nothing to open', () => {
+    const button = render({ joboRecords: [timed()] }).match(/<button[^>]*data-jobo-notes-toggle[^>]*>.*?<\/button>/s)[0];
+    expect(button).toContain('opacity-40');
+    expect(button).toContain('lucide-file-text');
   });
 });

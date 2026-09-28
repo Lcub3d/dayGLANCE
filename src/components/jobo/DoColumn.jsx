@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Clock, FileText, Pencil, Plus } from 'lucide-react';
-import { renderTitleWithoutTags, hasNotesOrSubtasks } from '../../utils/textFormatting.jsx';
+import { BookOpen, Check, CheckCircle2, CheckSquare, Clock, FileText, Pencil, Plus } from 'lucide-react';
+import { renderTitleWithoutTags, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask } from '../../utils/textFormatting.jsx';
 import DoNotesPanel from './DoNotesPanel.jsx';
-import { stripWikilinks } from '../../utils/taskUtils.js';
+import { extractWikilinks, stripWikilinks } from '../../utils/taskUtils.js';
 import { timingRows } from './ExecutionAxes.jsx';
 
 // The Do side of JOBO, drawn with the same grid as the Plan side (DAY's own
@@ -19,19 +19,36 @@ export const snapMinute = (minute) =>
   Math.max(0, Math.min(1440, Math.round(minute / SNAP_MINUTES) * SNAP_MINUTES));
 const MIN_CARD_PX = 27; // the task cards' minimum height (DayView getTaskSlice)
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+// How far past its planned start a completion can land and still read as
+// "started as planned": up to three times the planned length. Beyond that the
+// planned start says little about when the work began.
+const PLAN_START_REACH = 3;
+
 /**
  * A completion whose captured plan has a duration is drawn as the block it most
- * likely was: that duration, ending at the completion. DISPLAY ONLY. Nothing is
- * stored until the user moves or resizes it (or saves it from the editor), so
- * the ledger, and every measured figure built on it, never contains a guess.
- * A completion with no planned duration (an Inbox task) stays a marker.
+ * likely was. DISPLAY ONLY. Nothing is stored until the user keeps, moves or
+ * resizes it (or saves it from the editor), so the ledger, and every measured
+ * figure built on it, never contains a guess. A completion with no planned
+ * duration (an Inbox task) stays a marker.
+ *
+ * The guess: the work began at the planned start and ended at the completion,
+ * so a task finished late reads as running long, and one finished early as
+ * running short. That holds when the completion falls on the plan's day, after
+ * its start, and within reach of it; otherwise the planned length, ending at
+ * the completion.
  */
 export function estimateCompletion(item) {
   if (!item?.point || item.estimate) return item;
-  const duration = item.record?.planSnapshot?.duration;
+  const plan = item.record?.planSnapshot;
+  const duration = plan?.duration;
   if (!(Number.isFinite(duration) && duration > 0)) return item;
   const end = item.startMinute;
-  const start = Math.max(0, end - duration);
+  const planStart = /^\d{2}:\d{2}$/.test(plan.startTime || '')
+    ? Number(plan.startTime.slice(0, 2)) * 60 + Number(plan.startTime.slice(3))
+    : null;
+  const startedAsPlanned = planStart != null && plan.date === item.date
+    && planStart < end && end - planStart <= duration * PLAN_START_REACH;
+  const start = startedAsPlanned ? planStart : Math.max(0, end - duration);
   if (end - start < 1) return item;
   return { ...item, markerMinute: end, startMinute: start, endMinute: end, estimate: true };
 }
@@ -73,7 +90,7 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   // Drawn within the visible hours: a card that runs past a trimmed edge is
   // cut at it, as DAY cuts a task at its column's edge.
@@ -136,12 +153,28 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
               type="button"
               data-jobo-notes-toggle
               onClick={(event) => { event.stopPropagation(); onNotes(notesOpen ? null : item.id); }}
-              className={`flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors ${hasNotesOrSubtasks(task) ? '' : 'opacity-40'}`}
+              // The timeline card's rule: lit when there is something to
+              // open, notes, subtasks or a linked Obsidian note.
+              className={`flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors ${hasNotesOrSubtasks(task) || extractWikilinks(task.title).length > 0 ? '' : 'opacity-40'}`}
               aria-label={`${t('task.notes')}: ${stripWikilinks(record.title)}`}
               aria-expanded={notesOpen}
               title={t('sched.notesSubtasks')}
             >
-              <FileText size={12} />
+              {hasOnlySubtasks(task) ? <CheckSquare size={12} /> : isObsidianNoteOnlyTask(task) ? <BookOpen size={12} /> : <FileText size={12} />}
+            </button>
+          )}
+          {/* Keep the estimate as shown: one click records it as a timed Do,
+              the same write as saving it from the editor. */}
+          {item.estimate && writable && !pending && (
+            <button
+              type="button"
+              data-jobo-keep
+              onClick={(event) => { event.stopPropagation(); onKeep(item); }}
+              className="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors"
+              aria-label={`${t('jobo.view.keepEstimate')}: ${stripWikilinks(record.title)}`}
+              title={t('jobo.view.keepEstimate')}
+            >
+              <Check size={12} />
             </button>
           )}
           {continuable && (
@@ -208,7 +241,7 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
 export default function DoColumn({
   date, hourHeight, items, ctx, t,
   writable, pendingIds = [], preview,
-  onAddAt, onEdit, onContinue, onDetails, onPointGesture, onResizeGesture,
+  onAddAt, onEdit, onKeep, onContinue, onDetails, onPointGesture, onResizeGesture,
   hoverTaskId = null, onHoverTask = () => {},
   startHour = 0, endHour = 24,
   onNotesInSidebar,
@@ -295,6 +328,7 @@ export default function DoColumn({
             writable={writable}
             pending={pendingIds.includes(item.id)}
             onEdit={onEdit}
+            onKeep={onKeep}
             onContinue={onContinue}
             highlighted={hoverTaskId != null && item.sourceTask?.id === hoverTaskId}
             notesOpen={notesFor === item.id}

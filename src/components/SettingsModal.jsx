@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
+import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_LABEL_KEYS, enabledViews, offeredViews } from '../constants/views.js';
@@ -95,7 +95,7 @@ const SettingsModal = () => {
     syncRetentionDays, setSyncRetentionDays,
     syncAll, isSyncing, calSyncLastSynced,
     availableCalendars, setAvailableCalendars, calendarFilter, setCalendarFilter,
-    obsidianConfig, setObsidianConfig, obsidianSyncStatus, obsidianSyncError, obsidianLastSynced, setObsidianLastSynced,
+    obsidianConfig, setObsidianConfig, obsidianSyncStatus, obsidianSyncError, obsidianLastSynced, setObsidianLastSynced, obsidianVaultAccess,
     obsidianLaunchOnWrite, setObsidianLaunchOnWrite,
     obsidianCompletionDates, setObsidianCompletionDates,
     obsidianVaultHandleRef, unportableVaultFiles, setUnportableVaultFiles,
@@ -1639,7 +1639,7 @@ const SettingsModal = () => {
                       <button onClick={() => toggleSettingsSection('obsidian')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
                         <BookOpen size={16} className={textSecondary} />
                         {t('settings.obsidianIntegration')}
-                        {obsidianConfig?.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                        {obsidianConfig?.enabled && <span className={`mr-1 w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} />}
                         <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.obsidian ? '' : 'rotate-180'}`} />
                       </button>
                       {!collapsedSettings.obsidian && (<>
@@ -1723,8 +1723,16 @@ const SettingsModal = () => {
                           <div className={`flex items-center gap-2 text-sm ${textPrimary}`}>
                             <FolderOpen size={14} className={textSecondary} />
                             <span className="truncate">{obsidianConfig.vaultName || t('settings.obsidianVaultConnected')}</span>
-                            <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
+                            {obsidianVaultAccess === 'lost'
+                              ? <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+                              : <CheckCircle size={14} className="text-green-500 flex-shrink-0" />}
                           </div>
+                          {/* Configured is not reachable: say so here, where the
+                              green check used to claim otherwise, and point at
+                              the button that fixes it. */}
+                          {obsidianVaultAccess === 'lost' && (
+                            <p data-obsidian-vault-lost className="text-xs text-red-500">{t('settings.obsidianVaultAccessLost')}</p>
+                          )}
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>
                               {t('settings.obsidianDailyNotesFolder')}

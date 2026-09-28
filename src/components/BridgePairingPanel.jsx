@@ -8,6 +8,7 @@ import { getVaultConfig } from '../sync/vaultConfig.js';
 import { deriveBridgeStatus, describeAgo } from '../utils/bridgeStatus.js';
 import { activeLocale } from '../utils/localeFormatting.js';
 import { useTranslation } from 'react-i18next';
+import { useSyncCtx } from '../context/SyncContext.jsx';
 
 // Bridge-plugin pairing (Obsidian build-out Phase 6, spec §3.2/§3.4): mints
 // the dead-drop offer and shows the one-time code the user types into
@@ -107,6 +108,9 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
   };
 
   const status = deriveBridgeStatus(hb, meta);
+  // An unreachable vault has no heartbeat to read, which used to look like
+  // "Obsidian is not running". Say what is actually wrong instead.
+  const vaultLost = useSyncCtx()?.obsidianVaultAccess === 'lost';
 
   return (
     <div className={`border ${borderClass} rounded-lg p-3 space-y-2`}>
@@ -114,6 +118,9 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
         <Link2 size={14} className={textSecondary} />
         {t('settings.obsidianBridgeTitle')}
       </div>
+      {vaultLost ? (
+        <p data-bridge-vault-unreachable className="text-xs text-red-500">{t('settings.obsidianBridgeVaultUnreachable')}</p>
+      ) : (<>
       <p className={`text-xs ${hb.pluginAuthoritative ? 'text-green-500' : textSecondary}`}>
         {hb.pluginAuthoritative
           ? (pairedDays === null
@@ -134,6 +141,7 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
             : t('settings.obsidianBridgeWaitingLastSeen', { when: describeAgo(status.lastBeatMs, Date.now(), activeLocale()) })}
         </p>
       )}
+      </>)}
       {/* Stamping tri-state from the plugin's heartbeat (2026-08-31
           config-null incident): 'no-config' is the loud one — the plugin is
           holding daily-note reporting, fail closed, until its config row

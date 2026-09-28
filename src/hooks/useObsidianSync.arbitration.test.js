@@ -17,8 +17,10 @@ vi.mock('react', () => ({
 const writeTaskStateToFile = vi.fn();
 const syncObsidianVault = vi.fn(async () => ({ dailyNotes: {}, scheduledTasks: [], inboxTasks: [] }));
 const readVaultHeartbeat = vi.fn(async () => null);
+const probeVaultAccess = vi.fn(async () => 'ok');
 vi.mock('../obsidian.js', () => ({
   tryRestoreVaultAccess: vi.fn(async () => null),
+  probeVaultAccess: (...a) => probeVaultAccess(...a),
   getVaultAccess: vi.fn(async () => null),
   syncObsidianVault: (...a) => syncObsidianVault(...a),
   syncObsidianVaultNative: vi.fn(async () => null),
@@ -92,6 +94,8 @@ const prevUncompleted = () => ({
 });
 
 const setObsidianSyncError = vi.fn();
+const setObsidianSyncStatus = vi.fn();
+const setObsidianVaultAccess = vi.fn();
 
 function useMountedHook({ authoritative, defaultTaskHeading, taskHeading }) {
   effects.length = 0;
@@ -118,8 +122,8 @@ function useMountedHook({ authoritative, defaultTaskHeading, taskHeading }) {
     setObsidianConfig: vi.fn(), obsidianLaunchOnWrite: null,
     obsidianCompletionDates: false,
     obsidianSyncError: null,
-    setObsidianSyncStatus: vi.fn(), setObsidianSyncError, setObsidianLastSynced: vi.fn(),
-    setObsidianSyncNotice: vi.fn(),
+    setObsidianSyncStatus, setObsidianSyncError, setObsidianLastSynced: vi.fn(),
+    setObsidianSyncNotice: vi.fn(), setObsidianVaultAccess,
     obsidianVaultHandleRef: { current: {} },
     obsidianSyncInProgressRef: { current: false },
     obsidianPrevTaskStateRef: prevRef,
@@ -145,6 +149,8 @@ beforeEach(() => {
   reconcileArchivedBaseline.mockClear(); reconcileArchivedBaseline.mockReturnValue(null);
   getBridgePairingMeta.mockClear(); getBridgePairingMeta.mockResolvedValue(null);
   readVaultHeartbeat.mockReset(); readVaultHeartbeat.mockResolvedValue(null);
+  probeVaultAccess.mockReset(); probeVaultAccess.mockResolvedValue('ok');
+  setObsidianSyncStatus.mockClear(); setObsidianVaultAccess.mockClear();
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -229,5 +235,48 @@ describe('sync cycle under plugin authority', () => {
     const { api } = useMountedHook({ authoritative: true });
     await api.performObsidianSync();
     expect(reconcileArchivedBaseline).not.toHaveBeenCalled();
+  });
+});
+
+// A paired device syncs its tasks through GLANCEvault whether or not it can
+// reach its own vault, so a cycle used to report "Synced" on a device whose
+// every note read and vault write was failing. The cycle still runs (the
+// stream side is real), but it never reports success while the vault is
+// unreachable, and it says so once, not on every poll.
+describe('a vault this device cannot reach', () => {
+  const pairedBeat = { paired: true, accountId: 'acct-1', deviceId: 'dev', tsMs: Date.now() };
+  const statuses = () => setObsidianSyncStatus.mock.calls.map(([s]) => (typeof s === 'function' ? s('syncing') : s));
+
+  // MUTATION: drop the lost branch in finishObsidianCycle and 'success' returns.
+  it('still syncs the stream side, but never reports success, and says why once', async () => {
+    readVaultHeartbeat.mockResolvedValue(pairedBeat);
+    probeVaultAccess.mockResolvedValue('lost');
+    const { api } = useMountedHook({ authoritative: true });
+    await api.performObsidianSync();
+    expect(fetchBridgeObservations).toHaveBeenCalledTimes(1);
+    expect(setObsidianVaultAccess).toHaveBeenLastCalledWith('lost');
+    expect(statuses()).not.toContain('success');
+    expect(statuses()).toContain('error');
+    expect(setObsidianSyncError).toHaveBeenCalledWith(expect.stringContaining("Can't reach your Obsidian vault"));
+  });
+
+  it('a second cycle while still lost stays quiet: no second error, still no success', async () => {
+    readVaultHeartbeat.mockResolvedValue(pairedBeat);
+    probeVaultAccess.mockResolvedValue('lost');
+    const { api } = useMountedHook({ authoritative: true });
+    await api.performObsidianSync();
+    setObsidianSyncError.mockClear(); setObsidianSyncStatus.mockClear();
+    await api.performObsidianSync();
+    expect(setObsidianSyncError).not.toHaveBeenCalled();
+    expect(statuses()).not.toContain('success');
+    expect(statuses()).not.toContain('error');
+  });
+
+  it('a reachable vault reports success exactly as before', async () => {
+    readVaultHeartbeat.mockResolvedValue(pairedBeat);
+    const { api } = useMountedHook({ authoritative: true });
+    await api.performObsidianSync();
+    expect(setObsidianVaultAccess).toHaveBeenLastCalledWith('ok');
+    expect(statuses()).toContain('success');
   });
 });

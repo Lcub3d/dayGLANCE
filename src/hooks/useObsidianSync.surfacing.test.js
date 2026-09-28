@@ -15,6 +15,7 @@ const writeTaskStateNative = vi.fn();
 const syncObsidianVault = vi.fn();
 vi.mock('../obsidian.js', () => ({
   tryRestoreVaultAccess: vi.fn(async () => null),
+  probeVaultAccess: vi.fn(async () => 'ok'),
   getVaultAccess: vi.fn(async () => null),
   syncObsidianVault: (...a) => syncObsidianVault(...a),
   syncObsidianVaultNative: vi.fn(async () => null),

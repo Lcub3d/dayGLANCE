@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import i18n from 'i18next';
 import {
-  tryRestoreVaultAccess, getVaultAccess,
+  tryRestoreVaultAccess, getVaultAccess, probeVaultAccess,
   syncObsidianVault, syncObsidianVaultNative,
   writeTaskStateToFile, writeTaskStateNative,
   simpleHash as obsidianSimpleHash,
@@ -155,6 +155,7 @@ export default function useObsidianSync({
   obsidianSyncError,
   setObsidianSyncStatus, setObsidianSyncError, setObsidianLastSynced,
   setObsidianSyncNotice,
+  setObsidianVaultAccess,
   obsidianVaultHandleRef, obsidianSyncInProgressRef, obsidianPrevTaskStateRef,
   obsidianTasksRef, obsidianInboxRef,
   recycleBin, setRecycleBin,
@@ -341,6 +342,33 @@ export default function useObsidianSync({
   // main, Android ObsidianRepository) do their own freshness reads at
   // fire/arm time, where the answer is current rather than up to a scan old.
   const bridgeHeartbeatRef = useRef({ obsidianRunning: false, pluginAuthoritative: false });
+
+  // ── Vault access (probeVaultAccess) ──────────────────────────────────────
+  // Recorded at startup and at the head of every cycle. A LOST vault is
+  // said once, as an error, on the transition into it; after that it stays
+  // visible (the header dot, Settings, the bridge panel) without re-raising
+  // a toast on every poll. A cycle never reports success while it is lost,
+  // since a paired device's tasks still sync through GLANCEvault and that
+  // success would read as the vault being fine.
+  const vaultAccessRef = useRef('unknown');
+  const vaultLostUnsaidRef = useRef(false);
+  // English when i18next has nothing to give (not yet initialised).
+  const vaultLostText = () => i18n.t('settings.obsidianVaultAccessLost')
+    || "Can't reach your Obsidian vault on this device. Press Sync Now to allow access again, or choose the folder with Change Vault in Settings.";
+  const noteVaultAccess = (state) => {
+    if (state === 'lost' && vaultAccessRef.current !== 'lost') vaultLostUnsaidRef.current = true;
+    if (state === 'ok') vaultLostUnsaidRef.current = false;
+    vaultAccessRef.current = state;
+    setObsidianVaultAccess?.(state);
+  };
+  // Say a newly lost vault now, outside a cycle (startup, a failed
+  // re-acquire): one error, never repeated while the vault stays lost.
+  const sayVaultLost = () => {
+    if (!vaultLostUnsaidRef.current) return;
+    vaultLostUnsaidRef.current = false;
+    setObsidianSyncError(vaultLostText());
+    setObsidianSyncStatus('error');
+  };
   // Consecutive plugin-mode cycles whose inbound fetch produced nothing
   // (utils/bridgeInboundPolicy.js): the dead-stream toast shows on the
   // second, a key-pending hold counts as nothing, a successful fetch resets.
@@ -496,7 +524,13 @@ export default function useObsidianSync({
     // A successful cycle proves the vault pipeline is healthy again — the
     // channel reset clears any latched task-write error (clearing path 2).
     taskWriteErrorRef.current = null;
-    if (restoreErrorRef.current) {
+    if (vaultAccessRef.current === 'lost') {
+      // The stream side may have synced, but this device cannot reach its
+      // vault: never "Synced". Said once (sayVaultLost); quiet after that,
+      // with the header and Settings still showing it.
+      if (vaultLostUnsaidRef.current) sayVaultLost();
+      else setObsidianSyncStatus(s => (s === 'syncing' ? 'idle' : s));
+    } else if (restoreErrorRef.current) {
       // …but a MISSING-NOTE condition outlives a successful cycle (it
       // legitimately completes without the missing file). Keep it showing;
       // it clears on the 'restored' event when a retry lands.
@@ -520,18 +554,24 @@ export default function useObsidianSync({
     // reconnects on the next tick without user action. On Electron this is one
     // obsidian:restore IPC ending in one fs access check; in the browser, a
     // button click can prompt for permission, while a timer/visibility caller
-    // without a user gesture silently gets null. Null → skip, silently: a
-    // still-missing vault must not produce an error state once per poll.
+    // without a user gesture silently gets null. Null → skip the cycle, and
+    // record the vault as lost: said once as an error on the way in, then
+    // shown quietly (header, Settings), never raised once per poll.
     if (!obsidianVaultHandleRef.current) {
       try {
         const handle = await getVaultAccess();
-        if (!handle) return;
+        if (!handle) { noteVaultAccess('lost'); sayVaultLost(); return; }
         obsidianVaultHandleRef.current = handle;
         scanVaultNotes(handle).then(({ names, unportable }) => { setWikilinkCandidates(names); setUnportableVaultFiles?.(unportable); }).catch(() => {});
       } catch {
+        noteVaultAccess('lost');
+        sayVaultLost();
         return;
       }
     }
+    // Whether the vault is really reachable, before the cycle reports
+    // anything: finishObsidianCycle reads the answer.
+    noteVaultAccess(await probeVaultAccess(obsidianVaultHandleRef.current));
     obsidianSyncInProgressRef.current = true;
     // Set by the plugin branch when stampable (untagged) tasks exist after a
     // merge: the writeback effect run that merge triggers is skipped by the
@@ -1313,7 +1353,15 @@ export default function useObsidianSync({
     (async () => {
       try {
         const handle = await tryRestoreVaultAccess();
-        if (handle) {
+        if (!handle) {
+          // Configured but not restorable (an expired browser permission, a
+          // desktop vault never re-picked): lost until a sync re-acquires it.
+          // Unless a handle arrived meanwhile (the folder was just picked).
+          if (!obsidianVaultHandleRef.current) {
+            noteVaultAccess('lost');
+            sayVaultLost();
+          }
+        } else {
           obsidianVaultHandleRef.current = handle;
           performObsidianSync();
           scanVaultNotes(handle).then(({ names, unportable }) => { setWikilinkCandidates(names); setUnportableVaultFiles?.(unportable); }).catch(() => {});

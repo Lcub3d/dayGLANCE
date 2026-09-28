@@ -60,6 +60,13 @@ function makeDirHandle(api, relPath, name) {
     // Access is managed by the main process's security-scoped bookmark, so from
     // the renderer's perspective permission is always granted.
     async queryPermission() { return 'granted'; },
+    // …which is exactly why it cannot answer "can I still reach the vault":
+    // probeVaultAccess asks this instead. The main process stats the folder
+    // itself, and a stale bookmark or a missing folder answers null.
+    async probe() {
+      const st = await api.stat(relPath);
+      return !!st && st.kind === 'directory';
+    },
     async requestPermission() { return 'granted'; },
 
     async getDirectoryHandle(childName, opts = {}) {

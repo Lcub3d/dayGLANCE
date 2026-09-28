@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { lazy, Suspense, useEffect, useState, useRef } from 'react';
 import {
   Bell, BookOpen, ChevronLeft, ChevronRight, Cloud,
   Eye, HelpCircle, Inbox, Moon,
@@ -26,7 +26,8 @@ import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
 import JoboView from './JoboView.jsx';
 import YearView from './jobu/YearView.jsx';
-import Year2View from './jobu/Year2View.jsx';
+// The optional calendar engine stays out of the initial application chunk.
+const Year2View = lazy(() => import('./jobu/Year2View.jsx'));
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -890,7 +891,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'month' && <MonthView />}
                     {effectiveViewMode === 'jobo' && <JoboView headerControlsTarget={joboHeaderTarget} />}
                     {effectiveViewMode === 'year' && <YearView />}
-                    {effectiveViewMode === 'year2' && <Year2View />}
+                    {effectiveViewMode === 'year2' && <Suspense fallback={<div role="status" className={`p-4 text-sm ${textSecondary}`}>{t('common.loading')}</div>}><Year2View /></Suspense>}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.

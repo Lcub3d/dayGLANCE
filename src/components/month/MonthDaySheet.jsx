@@ -39,8 +39,9 @@ export const isMonthDaySheetOpen = () => typeof document !== 'undefined' && !!do
  * @param {string} props.date       YYYY-MM-DD; the sheet shows this one day
  * @param {() => void} props.onClose
  * @param {(dateStr: string) => void} [props.onNavigate]  asked to show the adjacent day
+ * @param {React.ReactNode} [props.headerExtra] optional read-only date context, supplied by the owner
  */
-export default function MonthDaySheet({ date, onClose, onNavigate }) {
+export default function MonthDaySheet({ date, onClose, onNavigate, headerExtra = null }) {
   const { cardBg, borderClass, textPrimary, textSecondary, hoverBg } = useDayPlannerCtx();
   const { t, i18n } = useTranslation();
   const scrollRef = useRef(null);
@@ -84,6 +85,7 @@ export default function MonthDaySheet({ date, onClose, onNavigate }) {
             <X size={16} />
           </button>
         </div>
+        {headerExtra}
         <div ref={scrollRef} {...contentProps} data-month-day-sheet-content className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <SchedView dateRange={{ from: date, to: date }} embedded />
         </div>

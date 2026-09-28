@@ -2,73 +2,38 @@ name: Year 2 calendar review
 on:
   push:
     branches: [feat/jobu-year2-chinese-calendar]
-    paths: ['.github/workflows/year2-calendar-review.yml']
+  pull_request:
+    branches: [product/jobu]
+    paths:
+      - 'src/components/jobu/Year2*'
+      - 'src/components/jobu/useYear2Calendar.js'
+      - 'src/jobu/calendar/**'
+      - 'scripts/year2*'
+      - '.github/workflows/year2-calendar-review.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: year2-calendar-prepare
+  group: year2-calendar-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  prepare-review:
-    if: github.repository == 'Lcub3d/dayGLANCE'
+  review:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Verify and apply the exact reviewed source
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p review-artifacts /tmp/year2-payload
-          python - <<'PY'
-          import base64, hashlib, json, subprocess, zlib
-          from pathlib import Path
-          shas = ['7845b0a85de82287a1e6c002ecd3172039e40d86','6db69250b5ec0746c2ef7802f8f0e2c2ffe1ed0e','6d600cd773f73ac6ecda64ddc8e707774b021524','abfbbb8c54735f375dbd34fbd700c6c23a192ee9','f57f8286d7783e2331a26aa8989403b0d63a2f80','0f79afcb371684f76ab7feb821e8e832fd0364ff','81262a36e0271fc41d831aa49772052292fe8909','58aee0073c62b017f55f4f8bdb5ecf18b5aa223a','8a6b4d2dcb002f8e426dcbfb5051800340b4c5d6','c239237d9d86c00da48112c8d21976bba5777b62','580f8908de3dc80ad1086b6d02454c065aae4b09','65db24056cddfab87c20f85b14844e83572b208e','e5081d29686e97811933dfb41d0bb8eeca8c9b49','fa00b49fa1e156e24c5b3273e6bcc899bc2475ce','75c254beb2728cad1e9056231a9dc7a9b9c0c841','7d9306519aaebccd25875d2d5a995f09fbfc076b','fe39b350c47678454243d1cce8f42f622b99f9cf']
-          chunks=[]
-          for sha in shas:
-              d=json.loads(subprocess.check_output(['gh','api',f'repos/Lcub3d/dayGLANCE/git/blobs/{sha}']))
-              value=base64.b64decode(d['content'])
-              assert hashlib.sha1(f'blob {len(value)}\0'.encode()+value).hexdigest()==sha
-              chunks.append(value)
-          patch=zlib.decompress(base64.b64decode(b''.join(chunks), validate=True))
-          assert hashlib.sha256(patch).hexdigest()=='81566fa9f2e6cc3da29584313796bf0665d0942e59181bb0cdd9b9a2888cf723'
-          Path('/tmp/year2-payload/implementation.patch').write_bytes(patch)
-          PY
-          git rm .github/workflows/year2-calendar-review.yml
-          git apply --unidiff-zero --index /tmp/year2-payload/implementation.patch
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('src/components/jobu/Year2View.jsx');s=p.read_text()
-          old='  const move = (event, date) => {\n    if (event.ctrlKey'
-          new='  const move = (event, date) => {\n    // The native day sheet owns paging while open, even if focus is still\n    // on the date button that opened it. Do not consume its arrow keys.\n    if (sheetDate) return;\n    if (event.ctrlKey'
-          assert s.count(old)==1;p.write_text(s.replace(old,new))
-          p=Path('scripts/year2-calendar-review.py');s=p.read_text()
-          old="                screenshot(page, 'year2-calendar-agenda.png')"
-          new="                # Screenshot after the native sheet entrance transition.\n                page.wait_for_timeout(250)\n"+old
-          assert s.count(old)==1;s=s.replace(old,new)
-          s=s.replace("loaded(page, '2200-01-01')", "loaded(page, '2101-01-01')")
-          needle="    expect(page.locator('[data-year2-month]')).to_have_count(12)"
-          assert s.count(needle)==1
-          s=s.replace(needle,needle+"\n    expect(page.locator(f'[data-year2-date=\"{date}\"]')).to_have_attribute('aria-pressed', 'true')")
-          p.write_text(s)
-          PY
-          git add src/components/jobu/Year2View.jsx scripts/year2-calendar-review.py
-          git diff --cached --check
-          git config user.name 'Lcub3d'
-          git config user.email '46134215+Lcub3d@users.noreply.github.com'
-          git commit -m 'feat(jobu): add layered Chinese calendar to Year 2'
+      - run: |
+          mkdir -p review-artifacts
           git rev-parse HEAD > review-artifacts/commit.txt
           git rev-parse HEAD^{tree} > review-artifacts/tree.txt
-          git archive HEAD | gzip > review-artifacts/source.tar.gz
           npm ci --no-audit --no-fund
       - name: Lint and full unit suite
         run: |
@@ -83,41 +48,24 @@ jobs:
           npm run build 2>&1 | tee review-artifacts/build-web.txt
           npm run build:android 2>&1 | tee review-artifacts/build-android.txt
           npm run build:ios 2>&1 | tee review-artifacts/build-ios-web.txt
-      - name: Start production application
+      - name: Review browser
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
           sudo apt-get install -y fonts-noto-cjk
           npx vite preview --host 127.0.0.1 --port 4173 > review-artifacts/server.txt 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173/ >/dev/null && break || sleep 1; done
-      - name: Native Year 2 browser regression
-        id: original
-        continue-on-error: true
+      - name: Native Year 2 regression
         run: |
           set -o pipefail
           YEAR2_REVIEW_DIR=review-artifacts/original python scripts/year2-browser-review.py 2>&1 | tee review-artifacts/original-browser.txt
       - name: Chinese calendar interaction and screenshots
-        id: calendar
-        continue-on-error: true
         run: |
           set -o pipefail
           YEAR2_CALENDAR_REVIEW_DIR=review-artifacts/calendar python scripts/year2-calendar-review.py 2>&1 | tee review-artifacts/calendar-browser.txt
-      - name: Publish only the passing source to this feature branch
-        if: success() && steps.original.outcome == 'success' && steps.calendar.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          test "$(git ls-remote origin refs/heads/feat/jobu-year2-chinese-calendar | cut -f1)" = "$GITHUB_SHA"
-          test "$(gh api 'repos/Lcub3d/dayGLANCE/pulls?state=closed&head=Lcub3d:feat/jobu-year2-chinese-calendar' --jq '[.[] | select(.merged_at != null)] | length')" = 0
-          git push origin HEAD:refs/heads/feat/jobu-year2-chinese-calendar
-          echo Published > review-artifacts/published.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: year2-calendar-candidate
+          name: year2-calendar-review
           path: review-artifacts/
           retention-days: 14
-      - name: Require both browser suites
-        if: always()
-        run: test '${{ steps.original.outcome }}' = success && test '${{ steps.calendar.outcome }}' = success

@@ -1,9 +1,10 @@
 // Jobu's personal-product data. Immutable revisions retain both sides of a
 // concurrent text edit; materialization picks one, backup retains every version.
 import { createJoboStore } from '../jobo/store.js';
+import { NETWORK_KINDS, validateNetworkValue } from '../lifeplanner/supportNetwork.js';
 export const JOBU_DB = 'jobu-personal-v1';
 export const JOBU_KEY = 'jobu-personal-records-v1';
-export const KINDS = ['lifeWish', 'lifeMotto', 'lifeOrder', 'dayTemplate', 'day', 'filter', 'taskMeta', 'doNote'];
+export const KINDS = ['lifeWish', 'lifeMotto', 'lifeOrder', 'dayTemplate', 'day', 'filter', 'taskMeta', 'doNote', ...NETWORK_KINDS];
 export const stable = value => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
@@ -28,6 +29,7 @@ export function validateJobuRecords(records) {
       !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(row.updatedAt) ||
       !Number.isFinite(Date.parse(row.updatedAt)) || !Object.hasOwn(row, 'value')) throw new Error('format');
     assertJSON(row);
+    if (!row.deleted) validateNetworkValue(row.kind, row.value);
     if (!row.deleted && (!row.value || typeof row.value !== 'object' || Array.isArray(row.value))) throw new Error('format');
     const text = JSON.stringify(row);
     if (!text || text.length > 2000000 || stable(JSON.parse(text)) !== stable(row)) throw new Error('format');
@@ -109,7 +111,7 @@ export function createJobuData({ store = createJoboStore({ dbName: JOBU_DB, key:
         output = mergeJobuRecords(records, incoming);
         return output;
       });
-      if (!result.ok) { if (!['conflict', 'format', 'missing'].includes(result.error)) publish({ error: 'storageWrite' }); throw new Error(result.error || 'storageWrite'); }
+      if (!result.ok) { if (!['conflict', 'format', 'missing', 'networkBudget', 'networkCycle', 'networkComparison'].includes(result.error)) publish({ error: 'storageWrite' }); throw new Error(result.error || 'storageWrite'); }
       accept(result.value); channel?.postMessage('changed'); return output;
     }),
     save: (entityId, kind, value, { expectedHead, operationId, deleted = false } = {}) => api.transact((records, map) => {

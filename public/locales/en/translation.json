@@ -2056,6 +2056,20 @@
     "comingSoon": "Coming soon"
   },
   "jobo": {
+    "stats": {
+      "title": "Day statistics",
+      "native": "Scheduled tasks",
+      "recorded": "Recorded time",
+      "lateStart": "Late starts",
+      "lateFinish": "Late finishes",
+      "longer": "Longer duration",
+      "nativeScope": "Completed / all current timed tasks. This is the native task checkbox, not Do progress.",
+      "timeScope": "Union of committed measured intervals on this day. Estimates and unknown durations are excluded.",
+      "timeDetails": "Planned: {{planned}} · Untimed: {{untimed}} · Inferred: {{inferred}}.",
+      "comparisonScope": "Each captured Plan dated this day is counted once, using its full execution group, including later-day attempts.",
+      "breakdown": "Early/shorter: {{early}} · On time/estimate: {{on}} · Excluded groups: {{excluded}}.",
+      "scope": "Full-day records · Untimed: {{untimed}} · Comparable captured Plans: {{comparable}} / {{total}}."
+    },
     "title": "JOBO",
     "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
     "view": {

@@ -11,6 +11,7 @@ import useJoboPreference from '../hooks/useJoboPreference.js';
 import useMinWidth from '../hooks/useMinWidth.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
+import JoboStatsHeader from './jobo/JoboStatsHeader.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
@@ -385,6 +386,7 @@ export default function JoboView() {
             )}
             </div>
           </div>
+          <JoboStatsHeader model={model} ctx={ctx} />
         </div>
         <div className={GRID}>
           {/* `contents` keeps DAY's column the grid cell; the wrapper only

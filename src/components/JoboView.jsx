@@ -8,6 +8,8 @@ import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
 import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
 import useJoboPreference from '../hooks/useJoboPreference.js';
+import useJoboRefocus from '../hooks/useJoboRefocus.js';
+import RefocusTimelineToast from './RefocusTimelineToast.jsx';
 import useMinWidth from '../hooks/useMinWidth.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
@@ -158,7 +160,9 @@ export default function JoboView() {
   const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
 
   // Open on the part of the day that matters: an hour before now on today,
-  // otherwise an hour before the first Plan or Do.
+  // otherwise an hour before the first Plan or Do. Today's opening is also
+  // where Refocus timeline returns to.
+  const scrollTopFor = (anchorMinute) => Math.max(0, (anchorMinute - 60 - windowStart) * hourHeight / 60);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -168,11 +172,23 @@ export default function JoboView() {
       8 * 60,
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
-    el.scrollTop = Math.max(0, (anchorMinute - 60 - windowStart) * hourHeight / 60);
+    el.scrollTop = scrollTopFor(anchorMinute);
     // Only on a new day, hour height or visible range, never on an ordinary
     // re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, hourHeight, windowStart]);
+
+  // Refocus timeline, as in MULTI: on today, when the now line is out of
+  // view, and on its own at every :00 and :30.
+  const headerRef = useRef(null);
+  const nowMinute = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const refocus = useJoboRefocus({
+    scrollRef,
+    headerRef,
+    enabled: joboLoaded && date === nowDate && nowMinute >= windowStart && nowMinute <= endHour * 60,
+    nowOffset: (nowMinute - windowStart) * hourHeight / 60,
+    homeTop: scrollTopFor(currentTime.getHours() * 60),
+  });
 
   useEffect(() => () => gestureCleanup.current?.(), []);
   useEffect(() => { gestureCleanup.current?.(); }, [date]);
@@ -365,7 +381,7 @@ export default function JoboView() {
       )}
       <div className="flex-1 min-h-0 min-w-0 flex">
       <div ref={scrollRef} className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${ctx.darkMode ? 'dark-scrollbar' : ''}`}>
-        <div className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
+        <div ref={headerRef} className={`${GRID} sticky top-0 z-40 border-b text-sm font-semibold ${ctx.cardBg} ${ctx.borderClass}`}>
           <div className="flex min-w-0">
             <div className={`w-16 flex-shrink-0 border-r ${ctx.borderClass} flex items-center justify-center`}>
               {/* Over the hour gutter: trim to the day's START and END, or
@@ -460,6 +476,7 @@ export default function JoboView() {
         <JoboNotesSidebar date={date} task={selectedTask} onClearTask={() => setSelectedTaskId(null)} t={t} headerAction={notesToggle} headerInset={scrollbarWidth} />
       )}
       </div>
+      {refocus.scrolledAway && <RefocusTimelineToast onRefocus={refocus.refocus} isMobile={!!ctx.isMobile} />}
       {liveDetail && (
         <ExecutionDetails
           item={liveDetail}

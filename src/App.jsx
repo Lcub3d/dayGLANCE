@@ -176,6 +176,7 @@ import useAppInit from './hooks/useAppInit.js';
 import useSaveOnChange from './hooks/useSaveOnChange.js';
 import { useNotifyTrayOnChange } from './utils/trayNotify.js';
 import useTimelineScroll from './hooks/useTimelineScroll.js';
+import RefocusTimelineToast from './components/RefocusTimelineToast.jsx';
 import useModalClose from './hooks/useModalClose.js';
 import useFullscreenEscape from './hooks/useFullscreenEscape.js';
 import useMobileInteractions from './hooks/useMobileInteractions.js';
@@ -9949,15 +9950,7 @@ const DayPlanner = () => {
 
       {/* Refocus timeline toast — all form factors except mobile list view */}
       {timelineScrolledAway && effectiveViewMode === 'multi' && !((isMobile && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) || tabletListView) && (
-        <div className="fixed left-1/2 -translate-x-1/2 z-50 pointer-events-auto" style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
-          <button
-            onClick={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-sm font-medium bg-blue-600 text-white active:bg-blue-700 transition-opacity`}
-          >
-            <Clock size={14} />
-            <span>{t('app.refocusTimeline')}</span>
-          </button>
-        </div>
+        <RefocusTimelineToast isMobile={isMobile} onRefocus={() => { setTimelineScrolledAway(false); scrollToCurrentHour(true); }} />
       )}
 
       {/* Weekly Review Reminder Toast */}

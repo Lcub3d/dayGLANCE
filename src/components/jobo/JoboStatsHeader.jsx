@@ -50,16 +50,17 @@ export default function JoboStatsHeader({ className = '' }) {
     })}`;
   };
   const tiles = [
-    ['native', CheckCircle, t('jobo.stats.native'), `${count(stats.native.completed)} / ${count(stats.native.total)}`, t('jobo.stats.nativeScope'), 'text-green-500'],
+    ['native', CheckCircle, t('jobo.stats.native'), `${count(stats.native.completed)} / ${count(stats.native.total)}`, t('jobo.stats.nativeScope'), 'text-green-500', false],
     ['time', Clock, t('jobo.stats.recorded'), duration(stats.recordedMinutes), `${t('jobo.stats.timeScope')} ${t('jobo.stats.timeDetails', {
       planned: duration(stats.native.plannedMinutes), untimed: count(stats.untimedCount), inferred: count(stats.inferredCount),
-    })}`, 'text-orange-400'],
-    ['start', LogIn, t('jobo.stats.lateStart'), ratio(c.start.late), details('start'), 'text-amber-500'],
-    ['finish', LogOut, t('jobo.stats.lateFinish'), ratio(c.finish.late), details('finish'), 'text-orange-400'],
-    ['duration', Hourglass, t('jobo.stats.longer'), ratio(c.duration.longer), details('duration'), 'text-purple-400'],
+    })}`, 'text-orange-400', false],
+    ['start', LogIn, t('jobo.stats.lateStart'), ratio(c.start.late), details('start'), 'text-amber-500', false],
+    ['finish', LogOut, t('jobo.stats.lateFinish'), ratio(c.finish.late), details('finish'), 'text-orange-400', true],
+    ['duration', Hourglass, t('jobo.stats.longer'), ratio(c.duration.longer), details('duration'), 'text-purple-400', true],
   ];
-  // The same tile sizing as MonthStats. Narrow rows scroll within this cell;
-  // they never wrap or push the timeline down. Side notes live in tooltips.
+  // Match MonthStats dense mode: keep the three primary measures visible and
+  // step the two secondary tiles aside below xl. Their values remain available
+  // in the parent/tile tooltips without creating a hidden-scroll affordance.
   const tile = 'flex-1 min-w-[8.5rem] px-3 py-1 flex flex-col justify-center gap-0.5';
   const label = `text-[10px] uppercase tracking-wide leading-none whitespace-nowrap flex items-center gap-1 ${textSecondary}`;
   const valueClass = `text-sm font-semibold leading-tight tabular-nums whitespace-nowrap flex items-baseline gap-1.5 ${textPrimary}`;
@@ -68,8 +69,8 @@ export default function JoboStatsHeader({ className = '' }) {
       data-comparable-groups={c.comparableCount ?? ''} data-jobo-stats-date={date}
       role="group" aria-label={t('jobo.stats.title')} title={scope}
       className={`min-w-0 flex items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
-      {tiles.map(([key, Icon, labelText, value, hint, tone]) => (
-        <div key={key} data-jobo-stat={key} className={`${tile} border-l ${borderClass}`} title={`${hint} ${scope}`}>
+      {tiles.map(([key, Icon, labelText, value, hint, tone, secondary]) => (
+        <div key={key} data-jobo-stat={key} className={`${tile} ${secondary ? 'hidden xl:flex' : ''} border-l ${borderClass}`} title={`${hint} ${scope}`}>
           <dt className={label}><Icon size={10} className={tone} aria-hidden="true" />{labelText}</dt>
           <dd className={valueClass}>{value}</dd>
         </div>

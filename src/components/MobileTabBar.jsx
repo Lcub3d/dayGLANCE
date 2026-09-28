@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Eye, GitBranch, Inbox, Settings } from 'lucide-react';
+import { Calendar, Eye, Filter, GitBranch, Inbox, Settings } from 'lucide-react';
 import { isNativeAndroid } from '../native.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -16,7 +16,7 @@ const MobileTabBar = () => {
   } = useDayPlannerCtx();
   const { t } = useTranslation();
   const {
-    goalsProjectsEnabled, goals, handleRoutinesDone, isVisibleForUser,
+    goalsProjectsEnabled, goals, handleRoutinesDone, isVisibleForUser, setJobuPage,
   } = useFeaturesCtx();
 
   // Count only the active user's goals (matches the per-user visibility used
@@ -98,6 +98,7 @@ const MobileTabBar = () => {
           </div>
           {showLabels && <span className="text-[10px] font-medium">{t('settings.inbox')}</span>}
         </button>
+        {setJobuPage && <button type="button" className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full ${textSecondary}`} onClick={() => setJobuPage('filters')}><Filter size={iconSize} /><span className="text-[10px] font-medium">{t('organizer.filters')}</span></button>}
         {goalsProjectsEnabled && (
         <button
           onClick={() => {

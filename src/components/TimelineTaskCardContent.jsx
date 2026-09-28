@@ -1,3 +1,4 @@
+import { TaskLabelChips } from './jobu/TaskLabels.jsx';
 import React from 'react';
 import {
   BookOpen, CheckSquare, Clock, ExternalLink, Repeat,
@@ -47,13 +48,14 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
   } = useDayPlannerCtx();
   const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx();
   const {
-    goalsProjectsEnabled,
+    goalsProjectsEnabled, jobuOrganizer,
     projects,
     projectFilter, setProjectFilter,
     aiConfig, aiSubtasksLoadingForTask, generateAISubtasks,
     multiUserEnabled, users,
   } = useFeaturesCtx();
 
+  const visibleLabels = jobuOrganizer?.loaded ? jobuOrganizer.labels.namesFor(task) : extractTags(task.title);
   const isImported = task.imported;
   const isCalendarEvent = isImported && !task.isTaskCalendar;
   const isMicroHeight = height <= 40;
@@ -293,10 +295,10 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
                       </div>
                     </div>
                   )}
-                  {(extractTags(task.title).length > 0 || (goalsProjectsEnabled && task.projectId)) && (
+                  {(visibleLabels.length > 0 || (goalsProjectsEnabled && task.projectId)) && (
                     <div className="flex items-center gap-1 flex-wrap text-xs italic opacity-75">
-                      {extractTags(task.title).length > 0 && (
-                        <span className="truncate">{extractTags(task.title).map(tag => `#${tag}`).join(' ')}</span>
+                      {visibleLabels.length > 0 && (
+                        jobuOrganizer ? <TaskLabelChips task={task} /> : <span className="truncate">{extractTags(task.title).map(tag => `#${tag}`).join(' ')}</span>
                       )}
                       {goalsProjectsEnabled && task.projectId && (() => {
                         const proj = projects.find(p => p.id === task.projectId);
@@ -387,10 +389,10 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
                       </div>
                     </div>
                   )}
-                  {(extractTags(task.title).length > 0 || (goalsProjectsEnabled && task.projectId)) && (
+                  {(visibleLabels.length > 0 || (goalsProjectsEnabled && task.projectId)) && (
                     <div className="flex items-center gap-1 flex-wrap text-xs italic opacity-75">
-                      {extractTags(task.title).length > 0 && (
-                        <span className="truncate">{extractTags(task.title).map(tag => `#${tag}`).join(' ')}</span>
+                      {visibleLabels.length > 0 && (
+                        jobuOrganizer ? <TaskLabelChips task={task} /> : <span className="truncate">{extractTags(task.title).map(tag => `#${tag}`).join(' ')}</span>
                       )}
                       {goalsProjectsEnabled && task.projectId && (() => {
                         const proj = projects.find(p => p.id === task.projectId);

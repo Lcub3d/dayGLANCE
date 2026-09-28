@@ -1,3 +1,4 @@
+import FilterSidebar, { FiltersTab } from './jobu/FilterSidebar.jsx';
 import React, { lazy, Suspense, useEffect, useState, useRef } from 'react';
 import {
   Bell, BookOpen, ChevronLeft, ChevronRight, Cloud,
@@ -776,6 +777,7 @@ const DesktopLayout = () => {
                     )}
                   </span>
                 </button>
+                <FiltersTab active={tabletActiveTab === 'filters'} onClick={() => setTabletActiveTab('filters')} />
               </div>
 
               {/* Scrollable content */}
@@ -796,6 +798,7 @@ const DesktopLayout = () => {
                     <InboxSidebar variant="tablet" />
                   </div>
                 )}
+                {tabletActiveTab === 'filters' && <FilterSidebar />}
               </div>
               {tabletActiveTab === 'inbox' && <InboxArchivedBar />}
               {/* Action pills + the handle that collapses them, bottom-left. */}
@@ -832,6 +835,7 @@ const DesktopLayout = () => {
                   )}
                 </span>
               </button>
+              <FiltersTab active={tabletActiveTab === 'filters'} onClick={() => setTabletActiveTab('filters')} />
             </div>
             {/* Scrollable content */}
             <div className={`flex-1 overflow-y-auto ${darkMode ? 'dark-scrollbar' : ''}`}>
@@ -849,6 +853,7 @@ const DesktopLayout = () => {
                 <InboxSidebar variant="desktop" />
               </div>
               )}
+              {tabletActiveTab === 'filters' && <FilterSidebar />}
             </div>
             {tabletActiveTab === 'inbox' && <InboxArchivedBar />}
             {/* Action pills + the handle that collapses them, bottom-left. */}

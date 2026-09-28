@@ -2056,13 +2056,13 @@
     "comingSoon": "Bientôt"
   },
   "jobo": {
+    "title": "JOBO",
+    "placeholder": "Prévu contre réalisé. Cette vue se construit par étapes ; la première est l'interrupteur qui l'affiche.",
     "undo": {
       "changed": "Ce Do a changé depuis ; il est laissé tel quel.",
       "completionBlocked": "L’annulation ne peut pas encore rétablir Terminé ; le Do est laissé tel quel.",
       "failed": "Impossible d’enregistrer la modification. Réessayez."
     },
-    "title": "JOBO",
-    "placeholder": "Prévu contre réalisé. Cette vue se construit par étapes ; la première est l'interrupteur qui l'affiche.",
     "view": {
       "activeLabel": "Temps actif",
       "addDo": "Add Do",

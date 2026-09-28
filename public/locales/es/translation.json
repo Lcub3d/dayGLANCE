@@ -2056,13 +2056,13 @@
     "comingSoon": "Próximamente"
   },
   "jobo": {
+    "title": "JOBO",
+    "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
     "undo": {
       "changed": "Este Do cambió desde entonces, así que se dejó como está.",
       "completionBlocked": "Deshacer aún no puede restaurar Completado, así que el Do se dejó como está.",
       "failed": "No se pudo guardar el cambio. Inténtalo de nuevo."
     },
-    "title": "JOBO",
-    "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
     "view": {
       "activeLabel": "Tiempo activo",
       "addDo": "Add Do",

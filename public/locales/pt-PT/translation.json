@@ -2056,13 +2056,13 @@
     "comingSoon": "Brevemente"
   },
   "jobo": {
+    "title": "JOBO",
+    "placeholder": "Planeado versus realizado. Esta vista está a ser construída por partes; a primeira é o interruptor que a mostra.",
     "undo": {
       "changed": "Este Do mudou entretanto, por isso foi mantido como está.",
       "completionBlocked": "Anular ainda não consegue repor Concluído, por isso o Do foi mantido como está.",
       "failed": "Não foi possível guardar a alteração. Tente novamente."
     },
-    "title": "JOBO",
-    "placeholder": "Planeado versus realizado. Esta vista está a ser construída por partes; a primeira é o interruptor que a mostra.",
     "view": {
       "activeLabel": "Tempo ativo",
       "addDo": "Add Do",

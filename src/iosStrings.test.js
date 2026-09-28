@@ -12,8 +12,8 @@ import { fileURLToPath } from 'node:url';
  */
 const IOS = join(dirname(fileURLToPath(import.meta.url)), '../dayglance-ios');
 const CATALOGS = ['DayGlanceWidget/Localizable.xcstrings', 'DayGlance/Localizable.xcstrings'];
-const LANGS = ['de', 'es', 'fr', 'it', 'pt-PT', 'pt-BR'];
-const specifiers = (v) => (v.match(/%(lld|@|d)/g) ?? []).sort().join(',');
+const LANGS = ['de', 'es', 'fr', 'it', 'pt-PT', 'pt-BR', 'zh-CN'];
+const specifiers = (v) => (v.match(/%(lld|@|d|%)/g) ?? []).sort().join(',');
 
 describe.each(CATALOGS)('%s', (rel) => {
   const catalog = JSON.parse(readFileSync(join(IOS, rel), 'utf8'));
@@ -26,7 +26,10 @@ describe.each(CATALOGS)('%s', (rel) => {
 
   it.each(LANGS)('every key carries a translated %s value', (lng) => {
     const missing = entries
-      .filter(([, e]) => e.localizations && !e.localizations[lng]?.stringUnit?.value)
+      .filter(([, e]) => {
+        const unit = e.localizations?.[lng]?.stringUnit;
+        return !unit?.value?.trim() || unit.state !== 'translated';
+      })
       .map(([k]) => k);
     expect(missing, `these keys would render English on ${lng} devices`).toEqual([]);
   });

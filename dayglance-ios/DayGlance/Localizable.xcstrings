@@ -39,6 +39,12 @@
             "state" : "translated",
             "value" : "Marcar como concluída"
           }
+        },
+        "zh-CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标记为已完成"
+          }
         }
       }
     },
@@ -79,6 +85,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adiar 15 min"
+          }
+        },
+        "zh-CN" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "稍后 15 分钟提醒"
           }
         }
       }

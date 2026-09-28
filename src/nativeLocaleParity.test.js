@@ -46,7 +46,6 @@ const NATIVE_TRANSLATION_PENDING = {
     uk: 'Web bundle only, as pl.',
   },
   ios: {
-    'zh-CN': 'Never reached the string catalogs: #1555 covered the web, Electron and Android sides only.',
     pl: 'Web bundle only.',
     uk: 'Web bundle only.',
   },

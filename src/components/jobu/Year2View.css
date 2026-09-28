@@ -1,52 +1,112 @@
-/* Month tiles borrow Trilium's year-calendar layout, not its theme or data.
-   Everything is scoped to this view; the original YEAR heatmap is untouched. */
+/* A calendar, not a task dashboard: Gregorian date → quiet lunar annotation
+   → native tasks. Day-off/makeup status is an independent visual layer. */
 .year2-view {
-  --y2-paper: var(--ju-paper, #fff);
-  --y2-bg: var(--ju-bg, #fafaf9);
+  --y2-paper: var(--ju-paper, #fffdf8);
+  --y2-bg: var(--ju-bg, #f8f7f3);
   --y2-text: var(--ju-text, #292524);
   --y2-muted: var(--ju-muted, #78716c);
-  --y2-line: var(--ju-line, #e7e5e4);
-  --y2-accent: var(--ui-accent, #eab308);
+  --y2-line: var(--ju-line, #e7e5de);
+  --y2-accent: var(--ui-accent, #cc7e22);
+  --y2-rest: #a44b40;
+  --y2-work: #8b631e;
+  --y2-term: #507261;
+  --y2-festival: #94661f;
   container-type: inline-size;
-  color: var(--y2-text);
-  background: var(--y2-bg);
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  color: var(--y2-text); background: var(--y2-bg);
+  flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  scrollbar-gutter: stable; scroll-padding-top: 88px;
 }
-.year2-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; font-size: 12px; color: var(--y2-muted); }
-.year2-toolbar > span { display: flex; align-items: center; gap: 7px; }
-.year2-toolbar button { flex: none; padding: 4px 12px; border: 1px solid var(--y2-line); border-radius: 5px; background: var(--y2-paper); color: var(--y2-text); }
-.year2-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 0 20px 24px; }
-.year2-month { min-width: 0; padding: 12px 10px 8px; border: 1px solid var(--y2-line); border-radius: 8px; background: var(--y2-paper); }
-.year2-month[data-current-month] { border-color: color-mix(in srgb, var(--y2-accent) 55%, var(--y2-line)); }
-.year2-month h2 { margin: 0 0 10px; padding: 0 4px; font-size: 14px; font-weight: 650; }
+.year2-dark { color-scheme: dark; --y2-rest: #e5a295; --y2-work: #dec288; --y2-term: #a7c5ac; --y2-festival: #d4bb8a; }
+.year2-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 17px 22px 11px; position: sticky; top: 0; z-index: 25; background: var(--y2-bg); }
+.year2-year-title { display: flex; gap: 9px; align-items: center; }
+.year2-year-title > svg { color: var(--y2-accent); }
+.year2-year-title strong { font-size: 23px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
+.year2-year-title > span { font-size: 11px; color: var(--y2-muted); padding-left: 5px; }
+.year2-toolbar-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11px; }
+.year2-density { display: inline-flex; background: color-mix(in srgb, var(--y2-muted) 7%, transparent); border: 1px solid var(--y2-line); border-radius: 7px; padding: 2px; }
+.year2-density button { display: flex; align-items: center; gap: 5px; border-radius: 5px; padding: 5px 8px; color: var(--y2-muted); }
+.year2-density button[aria-pressed=true] { background: var(--y2-paper); color: var(--y2-text); box-shadow: 0 1px 3px #00000010; }
+.year2-layer-button,.year2-today-button { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--y2-line); border-radius: 7px; background: var(--y2-paper); color: var(--y2-text); }
+.year2-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 23px 12px; font-size: 10px; color: var(--y2-muted); }
+.year2-legend > span { display: inline-flex; align-items: center; gap: 4px; }
+.year2-legend-region { padding-left: 8px; border-left: 1px solid var(--y2-line); }
+.year2-native-hint { margin-left: auto; }
+.year2-term-legend i { width: 4px; height: 4px; border-radius: 50%; background: var(--y2-term); }
+.year2-holiday-rail { display: flex; align-items: stretch; gap: 0; overflow-x: auto; margin: 0 22px 13px; padding: 7px 0; border-block: 1px solid var(--y2-line); scrollbar-width: thin; }
+.year2-holiday-rail button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 2px 15px; border-right: 1px solid var(--y2-line); flex: 1 0 auto; text-align: left; font-size: 11px; border-radius: 3px; }
+.year2-holiday-rail button:first-child { padding-left: 5px; }
+.year2-holiday-rail button:last-child { border: 0; }
+.year2-holiday-rail button small { font-size: 10px; color: var(--y2-muted); font-variant-numeric: tabular-nums; }
+.year2-holiday-rail button:hover,.year2-holiday-rail button[aria-pressed=true] { background: color-mix(in srgb, var(--y2-accent) 9%, transparent); }
+.year2-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; padding: 0 22px 24px; }
+.year2-month { min-width: 0; padding: 13px 11px 9px; border: 1px solid var(--y2-line); border-radius: 10px; background: var(--y2-paper); }
+.year2-month[data-current-month] { border-color: color-mix(in srgb, var(--y2-accent) 50%, var(--y2-line)); }
+.year2-month-title { display: flex; align-items: baseline; gap: 9px; padding: 0 2px 10px; }
+.year2-month h2 { margin: 0; padding: 0; font-size: 15px; font-weight: 650; }
 .year2-month h2 button { border-radius: 4px; padding: 1px 3px; }
 .year2-month h2 button:hover { color: var(--y2-accent); }
-.year2-weekdays, .year2-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.year2-weekdays { margin-bottom: 5px; font-size: 10px; text-align: center; color: var(--y2-muted); }
+.year2-month-lunar { font-size: 10px; color: var(--y2-muted); }
+.year2-weekdays,.year2-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.year2-weekdays { padding-bottom: 5px; border-bottom: 1px solid var(--y2-line); font-size: 9px; text-align: center; color: var(--y2-muted); }
 .year2-weekdays span { overflow: hidden; text-overflow: ellipsis; padding: 1px; }
-.year2-weekdays [data-weekend] { opacity: .65; }
-.year2-days { grid-template-rows: repeat(6, 58px); gap: 1px; }
-.year2-day { min-width: 0; padding: 3px 2px 2px; border-radius: 4px; text-align: left; position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid transparent; }
-.year2-day[data-weekend] { background: color-mix(in srgb, var(--y2-muted) 4%, transparent); }
-.year2-day:hover { background: color-mix(in srgb, var(--y2-accent) 10%, transparent); }
-.year2-day[data-selected] { border-color: var(--y2-accent); background: color-mix(in srgb, var(--y2-accent) 7%, transparent); }
-.year2-day-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; height: 17px; flex: none; }
-.year2-day-heading svg { color: var(--y2-accent); flex: none; }
-.year2-day-number { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.year2-weekdays [data-weekend] { opacity: .7; }
+.year2-days { grid-template-rows: repeat(6, 66px); gap: 2px 1px; padding-top: 3px; }
+.year2-day { min-width: 0; padding: 3px 3px 2px; border-radius: 5px; text-align: left; position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid transparent; }
+.year2-day[data-weekend] { background: color-mix(in srgb, var(--y2-muted) 3.5%, transparent); }
+.year2-day[data-arrangement=rest] { background: color-mix(in srgb, var(--y2-rest) 6.5%, transparent); }
+.year2-day[data-arrangement=work] { background: color-mix(in srgb, var(--y2-work) 5%, transparent); }
+.year2-day:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--y2-accent) 60%, transparent); }
+.year2-day[data-selected] { border-color: var(--y2-accent); }
+.year2-day-heading { display: flex; align-items: center; justify-content: space-between; height: 20px; flex: none; gap: 1px; }
+.year2-day-marks { display: inline-flex; gap: 2px; align-items: center; min-width: 0; }
+.year2-day-heading svg { color: var(--y2-muted); flex: none; }
+.year2-day-number { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; font-size: 13px; font-weight: 550; font-variant-numeric: tabular-nums; }
 .year2-day[data-today] .year2-day-number { background: var(--y2-accent); color: var(--ui-accent-on, #fff); border-radius: 50%; font-weight: 700; }
+.year2-status { display: inline-flex; align-items: center; justify-content: center; min-width: 13px; height: 14px; padding: 0 2px; border-radius: 3px; font-size: 8px; line-height: 14px; font-weight: 600; flex: none; }
+.year2-status-rest { color: var(--y2-rest); background: color-mix(in srgb, var(--y2-rest) 12%, transparent); }
+.year2-status-work { color: var(--y2-work); background: color-mix(in srgb, var(--y2-work) 12%, transparent); }
+.year2-lunar { display: block; min-height: 12px; font-size: 9px; line-height: 12px; padding-left: 2px; color: var(--y2-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.year2-lunar-festival { color: var(--y2-festival); font-weight: 550; }
+.year2-lunar-term { color: var(--y2-term); font-weight: 550; }
 .year2-events { display: flex; flex-direction: column; gap: 2px; padding-top: 3px; min-width: 0; }
 .year2-event { display: flex; align-items: center; gap: 3px; min-width: 0; font-size: 9px; line-height: 10px; }
 .year2-event i { width: 3px; height: 8px; flex: none; border-radius: 2px; }
 .year2-event > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .year2-event[data-completed] { opacity: .6; }
 .year2-event[data-completed] > span { text-decoration: line-through; }
-.year2-more { font-size: 9px; line-height: 9px; color: var(--y2-muted); text-align: right; }
-.year2-loading { padding: 0 20px 8px; font-size: 12px; color: var(--y2-muted); }
-.year2-view button:focus-visible { outline: 2px solid var(--y2-accent); outline-offset: 1px; z-index: 1; }
-.year2-dark { color-scheme: dark; }
-@container (max-width: 950px) { .year2-months { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 12px 20px; } .year2-toolbar { padding: 10px 12px; } }
-@container (max-width: 570px) { .year2-months { grid-template-columns: minmax(0, 1fr); } .year2-days { grid-template-rows: repeat(6, 64px); } .year2-event { font-size: 10px; } }
+.year2-more { position: absolute; right: 3px; bottom: 1px; font-size: 8px; line-height: 9px; color: var(--y2-muted); background: var(--y2-paper); border-radius: 2px; padding: 0 1px; }
+.year2-dots { display: flex; align-items: center; gap: 3px; height: 9px; margin-top: 2px; padding-left: 2px; }
+.year2-dots > i { display: inline-block; height: 3px; width: 3px; border-radius: 50%; }
+.year2-dots > small { font-size: 8px; color: var(--y2-muted); }
+.year2-view[data-density=overview] .year2-days { grid-template-rows: repeat(6, 46px); }
+.year2-view[data-density=overview] .year2-events { display: none; }
+.year2-view[data-density=overview] .year2-day-heading { height: 18px; }
+.year2-view[data-density=overview] .year2-day-number { height: 18px; font-size: 12px; }
+.year2-view[data-density=overview] .year2-lunar { min-height: 11px; line-height: 11px; }
+.year2-view[data-density=overview] .year2-dots { height: 6px; margin-top: 1px; }
+.year2-view[data-density=overview] .year2-day-marks svg { display: none; }
+.year2-layers { position: relative; }
+.year2-layer-options { position: absolute; right: 0; top: calc(100% + 8px); width: min(300px, calc(100vw - 36px)); z-index: 35; padding: 16px; border: 1px solid var(--y2-line); border-radius: 10px; box-shadow: 0 12px 35px #0002; background: var(--y2-paper); color: var(--y2-text); }
+.year2-layer-options h3 { font-size: 12px; font-weight: 600; margin: 0 0 9px; }
+.year2-switch-label { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; font-size: 12px; cursor: pointer; }
+.year2-switch-label input { appearance: auto; accent-color: var(--y2-accent); width: 15px; height: 15px; }
+.year2-option-hint,.year2-source-info { color: var(--y2-muted); font-size: 10px; line-height: 1.65; }
+.year2-option-hint { margin: 5px 0 12px; }
+.year2-region-label { display: flex; flex-direction: column; gap: 7px; font-size: 11px; border-top: 1px solid var(--y2-line); padding-top: 12px; }
+.year2-region-label select { font: inherit; color: var(--y2-text); border: 1px solid var(--y2-line); background: var(--y2-paper); padding: 6px 8px; border-radius: 5px; }
+.year2-source-info { margin-top: 8px; }
+.year2-source-info a { display: inline-flex; align-items: center; gap: 4px; text-decoration: underline; text-underline-offset: 2px; padding: 4px 0; color: var(--y2-text); }
+.year2-options-footer { display: flex; justify-content: space-between; gap: 8px; color: var(--y2-muted); margin-top: 13px; font-size: 10px; }
+.year2-options-footer button { text-decoration: underline; text-underline-offset: 3px; }
+.year2-preference-error { padding: 5px 22px; font-size: 11px; color: var(--y2-rest); }
+.year2-layer-options .year2-preference-error { padding: 5px 0; }
+.year2-coverage-note,.year2-loading { padding: 2px 22px 10px; font-size: 11px; color: var(--y2-muted); }
+.year2-date-meta { padding: 11px 16px 12px; flex: none; font-size: 12px; line-height: 1.7; color: var(--y2-muted); border-bottom: 1px solid var(--y2-line); }
+.year2-date-arrangement { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 4px; }
+.year2-date-arrangement small { width: 100%; padding-left: 20px; font-variant-numeric: tabular-nums; }
+.year2-view button:focus-visible,.year2-view a:focus-visible,.year2-view select:focus-visible,.year2-view input:focus-visible { outline: 2px solid var(--y2-accent); outline-offset: 2px; z-index: 1; }
+@container (min-width: 1400px) { .year2-view[data-density=overview] .year2-months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (max-width: 1000px) { .year2-months { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 14px 20px; } .year2-toolbar { padding: 12px 14px 10px; } .year2-holiday-rail { margin-inline: 14px; } .year2-legend { margin-inline: 14px; } }
+@container (max-width: 580px) { .year2-months { grid-template-columns: minmax(0, 1fr); } .year2-toolbar-controls { gap: 6px; } .year2-year-title > span,.year2-native-hint { display: none; } .year2-toolbar { position: relative; } .year2-event { font-size: 10px; } .year2-day-number { font-size: 14px; } .year2-lunar { font-size: 10px; } }
+@media (forced-colors: active) { .year2-day[data-arrangement] { border: 1px dashed CanvasText; } .year2-day[data-selected] { outline: 2px solid Highlight; } .year2-status { border: 1px solid CanvasText; } }
+@media (prefers-reduced-motion: reduce) { .year2-view { scroll-behavior: auto; } }

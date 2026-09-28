@@ -8,6 +8,9 @@ import { DayPlannerContext } from '../../context/DayPlannerContext.jsx';
 import { FeaturesContext } from '../../context/FeaturesContext.jsx';
 import Year2View, { Year2Month } from './Year2View.jsx';
 import { year2Months } from '../../jobu/year2.js';
+import { chineseCalendarYear } from '../../jobu/calendar/chineseCalendar.js';
+import { calendarDefaults } from '../../jobu/calendar/preferences.js';
+import { Year2CalendarDetail } from './Year2CalendarLayers.jsx';
 
 const items = {'2026-09-16': [
   {id:'a',title:'Report',color:'bg-blue-500',startTime:'09:00'},
@@ -66,5 +69,36 @@ describe('Year 2 native integration',()=>{
     expect(setTasks).not.toHaveBeenCalled();
     expect(recordJobo).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('Year 2 cultural and official schedule layers', () => {
+  const options = { ...calendarDefaults('zh-CN'), region: 'CN' };
+  it('adds independent holiday and makeup badges without changing native items', async () => {
+    const html = await wrap('zh-CN', month({ metadata: chineseCalendarYear(2026), options }));
+    expect(html).toContain('data-arrangement="rest"'); expect(html).toContain('data-arrangement="work"');
+    expect(html).toContain('中秋节'); expect(html).toContain('八月'); expect(html).toContain('秋分');
+    expect(html).toContain('Report'); expect(html).toContain('>+1<');
+    expect((html.match(/data-year2-date=/g)||[])).toHaveLength(30);
+  });
+  it('does not mark ordinary weekends as official rest days when the region is off', async () => {
+    const html = await wrap('en', month({ metadata: chineseCalendarYear(2026), options: calendarDefaults('en') }));
+    expect(html).not.toContain('data-arrangement='); expect(html).not.toContain('year2-lunar');
+  });
+  it('keeps original titles accessible in overview mode', async () => {
+    const html = await wrap('en', month({ options: { ...options, density: 'overview' } }));
+    expect(html).toContain('year2-dots'); expect(html).toContain('Report');
+    expect(html).toContain('bg-blue-500');
+  });
+  it('adds read-only date context to the existing agenda, not a parallel day editor', async () => {
+    const html = await wrap('zh-CN', <Year2CalendarDetail date="2026-09-25" options={options} />);
+    expect(html).toContain('2026年八月十五'); expect(html).toContain('中秋节');
+    expect(html).toContain('2026-09-25'); expect(html).toContain('2026-09-27');
+    expect(html).not.toContain('<input'); expect(html).not.toContain('role="dialog"');
+  });
+  it('omits absent-year official status without hiding known lunar festivals', async () => {
+    const html = await wrap('zh-CN', <Year2CalendarDetail date="2027-02-06" options={options} />);
+    expect(html).toContain('春节'); expect(html).not.toContain('year2-date-arrangement');
   });
 });

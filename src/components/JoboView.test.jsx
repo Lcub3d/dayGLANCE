@@ -299,6 +299,31 @@ describe('the notes sidebar', () => {
     }
   });
 
+  // The button stays at the top right: the end of the Do header while the
+  // sidebar is closed, the end of the sidebar's header row once it opens.
+  it('keeps its labelled blue button at the top right, open or closed', () => {
+    const button = /<button[^>]*data-jobo-notes-sidebar-toggle[^>]*class="h-7 px-2\.5[^"]*bg-blue-600[^"]*"[^>]*>.*?task\.notes<\/span><\/button>/s;
+    wideScreen(true);
+    try {
+      const open = render();
+      expect(open).toMatch(button);
+      expect(open).toMatch(/data-jobo-sidebar-header[^>]*>\s*<button[^>]*data-jobo-notes-sidebar-toggle/);
+      expect(open.match(/data-jobo-notes-sidebar-toggle/g)).toHaveLength(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    vi.stubGlobal('window', { matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) });
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => {} });
+    try {
+      const closed = render();
+      expect(closed).not.toContain('data-jobo-notes-sidebar"');
+      expect(closed).toMatch(button);
+      expect(closed).toMatch(/jobo\.view\.addDo<\/span><\/button><button[^>]*data-jobo-notes-sidebar-toggle/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('is not offered below 1600px, whatever was chosen', () => {
     wideScreen(false);
     try {

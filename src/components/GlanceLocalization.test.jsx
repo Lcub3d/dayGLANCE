@@ -188,13 +188,13 @@ describe.each(languages)('%s view labels', (language) => {
         </DayPlannerContext.Provider>
       </I18nextProvider>,
     );
-    expect(render([])).toContain(`title="${escape(i18n.t('sched.viewTooltip', { view: 'JOBO', keys: '1/2/3/4/5/6/7' }))}"`);
-    expect(render(['jobo'])).toContain('1/2/3/4/5/7');
+    expect(render([])).toContain(`title="${escape(i18n.t('sched.viewTooltip', { view: 'JOBO', keys: '1/2/3/4/5/6/7/8' }))}"`);
+    expect(render(['jobo'])).toContain('1/2/3/4/5/7/8');
   });
 
-  it.each(['multi', 'day', 'week', 'sched', 'month', 'year'])('localizes %s label, tooltip and accessible name', async (view) => {
+  it.each(['multi', 'day', 'week', 'sched', 'month', 'year', 'year2'])('localizes %s label, tooltip and accessible name', async (view) => {
     const i18n = await translation(language);
-    const key = view === 'year' ? 'jobu.year' : `sched.view${view[0].toUpperCase()}${view.slice(1)}Short`;
+    const key = view === 'year2' ? 'jobu.year2' : view === 'year' ? 'jobu.year' : `sched.view${view[0].toUpperCase()}${view.slice(1)}Short`;
     expect(i18n.exists(key)).toBe(true);
     const label = i18n.t(key);
     for (const canShowViewCycler of [false, true]) {
@@ -211,11 +211,11 @@ describe.each(languages)('%s view labels', (language) => {
       );
       expect(html).toContain(`>${escape(label)}</span>`);
       expect(html).toContain(`title="${escape(i18n.t('sched.viewTooltip', {
-        view: label, keys: canShowViewCycler ? '1/2/3/4/5/7' : '1/4/5/7',
+        view: label, keys: canShowViewCycler ? '1/2/3/4/5/7/8' : '1/4/5/7/8',
       }))}"`);
       expect(html).toContain(`aria-label="${escape(i18n.t('sched.viewAria', { view: label }))}"`);
-      if (language === 'zh-CN') expect(label).toBe({ multi: '多日', day: '单日', week: '周', sched: '日程', month: '月', year: '年视图' }[view]);
-      if (language === 'en') expect(label).toBe(view === 'year' ? 'Year' : view.toUpperCase());
+      if (language === 'zh-CN') expect(label).toBe({ multi: '多日', day: '单日', week: '周', sched: '日程', month: '月', year: '年视图', year2: '年2' }[view]);
+      if (language === 'en') expect(label).toBe(view === 'year2' ? 'Year 2' : view === 'year' ? 'Year' : view.toUpperCase());
     }
   });
 });

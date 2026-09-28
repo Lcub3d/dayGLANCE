@@ -2811,7 +2811,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Année 2",
+    "year2Hint": "Douze mois en un coup d’œil · choisir un jour pour son agenda",
+    "year2OpenMonth": "Ouvrir {{month}} dans la vue mensuelle",
+    "year2DeviceCalendarHint": "Les événements de l’appareil se chargent autour de la date choisie ; les tâches locales couvrent toute l’année."
   },
   "lifeNetwork": {
     "title": "Support network",

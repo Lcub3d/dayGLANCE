@@ -2811,7 +2811,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Year 2",
+    "year2Hint": "Twelve months at a glance · select a day for its agenda",
+    "year2OpenMonth": "Open {{month}} in Month view",
+    "year2DeviceCalendarHint": "Device-calendar events load around the selected date; local tasks cover the full year."
   },
   "lifeNetwork": {
     "title": "Support network",

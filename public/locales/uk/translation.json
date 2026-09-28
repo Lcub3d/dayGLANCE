@@ -2904,7 +2904,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Рік 2",
+    "year2Hint": "Дванадцять місяців одним поглядом · оберіть день для розкладу",
+    "year2OpenMonth": "Відкрити {{month}} у місячному поданні",
+    "year2DeviceCalendarHint": "Події календаря пристрою завантажуються навколо вибраної дати; локальні завдання охоплюють увесь рік."
   },
   "lifeNetwork": {
     "title": "Support network",

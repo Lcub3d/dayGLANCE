@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { getNextOccurrence } from '../utils/recurrenceEngine.js';
 import { shiftDateByMonths } from '../utils/monthGrid.js';
+import { shiftYear2Date } from '../jobu/year2.js';
 
 export default function useNavigation({
   visibleDays,
@@ -28,6 +29,10 @@ export default function useNavigation({
     // YEAR: the same chrome is reused by the annual view, where one step is a
     // calendar year. Keep the date's month/day when possible so returning to a
     // day view lands on the corresponding day.
+    if (effectiveViewMode === 'year2') {
+      setSelectedDate(prev => shiftYear2Date(prev, direction));
+      return;
+    }
     if (effectiveViewMode === 'year') {
       setSelectedDate(prev => {
         const newDate = new Date(prev);

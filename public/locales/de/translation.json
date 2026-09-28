@@ -2811,7 +2811,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Jahr 2",
+    "year2Hint": "Zwölf Monate im Überblick · Tag für die Agenda wählen",
+    "year2OpenMonth": "{{month}} in der Monatsansicht öffnen",
+    "year2DeviceCalendarHint": "Gerätekalender laden rund um das gewählte Datum; lokale Aufgaben decken das ganze Jahr ab."
   },
   "lifeNetwork": {
     "title": "Support network",

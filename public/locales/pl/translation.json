@@ -2898,7 +2898,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Rok 2",
+    "year2Hint": "Dwanaście miesięcy w skrócie · wybierz dzień, aby zobaczyć plan",
+    "year2OpenMonth": "Otwórz {{month}} w widoku miesiąca",
+    "year2DeviceCalendarHint": "Wydarzenia z urządzenia są ładowane wokół wybranej daty; zadania lokalne obejmują cały rok."
   },
   "lifeNetwork": {
     "title": "Support network",

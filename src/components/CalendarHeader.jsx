@@ -278,7 +278,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
     );
   })}
     </>
-  ) : effectiveViewMode === 'year' ? (
+  ) : (effectiveViewMode === 'year' || effectiveViewMode === 'year2') ? (
     /* YEAR: the annual view owns its date selection and heatmap. Keep this
        header free of the selected-day header and all-day statistics; it only
        names the year and leaves the cycler available for returning to a
@@ -288,7 +288,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
       {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
     </div>
     <div className={`flex-1 min-w-0 flex items-center justify-center px-6 ${cardBg}`} style={{ minHeight: 'var(--header-row-h)' }}>
-      <span className={`font-bold ${textPrimary}`}>{t('jobu.year')} · {selectedDate.getFullYear()}</span>
+      <span className={`font-bold ${textPrimary}`}>{t(effectiveViewMode === 'year2' ? 'jobu.year2' : 'jobu.year')} · {selectedDate.getFullYear()}</span>
     </div>
     </>
   ) : effectiveViewMode === 'jobo' ? (

@@ -2811,7 +2811,11 @@
       "ambiguousProject": "同名项目需明确选择",
       "date": "无效日期",
       "label": "暂不支持此标签格式"
-    }
+    },
+    "year2": "年2",
+    "year2Hint": "十二个月一览 · 点击日期查看当天日程",
+    "year2OpenMonth": "在月视图中打开{{month}}",
+    "year2DeviceCalendarHint": "设备日历按所选日期附近加载；本地任务展示全年。"
   },
   "lifeNetwork": {
     "title": "支撑网络",

@@ -26,6 +26,7 @@ import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
 import JoboView from './JoboView.jsx';
 import YearView from './jobu/YearView.jsx';
+import Year2View from './jobu/Year2View.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -858,7 +859,7 @@ const DesktopLayout = () => {
           <div className="flex-1 min-w-0 relative">
             <div
               ref={calendarRef}
-              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'year' ? 'overflow-auto flex flex-col' : effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
+              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'year' ? 'overflow-auto flex flex-col' : effectiveViewMode === 'year2' || effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
@@ -889,6 +890,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'month' && <MonthView />}
                     {effectiveViewMode === 'jobo' && <JoboView headerControlsTarget={joboHeaderTarget} />}
                     {effectiveViewMode === 'year' && <YearView />}
+                    {effectiveViewMode === 'year2' && <Year2View />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.

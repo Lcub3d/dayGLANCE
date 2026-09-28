@@ -29,7 +29,7 @@ export default function JobuShell({ children }) {
   const select = next => {
     if (next !== page && navigationGuard.current && !navigationGuard.current()) return;
     if (next === 'tasks') { setPage('tasks'); return; }
-    if (next === 'jobo' || next === 'year') {
+    if (next === 'jobo' || next === 'year' || next === 'year2') {
       if (next === 'jobo') f.setJoboEnabled(true);
       ctx.setViewMode(next);
     }

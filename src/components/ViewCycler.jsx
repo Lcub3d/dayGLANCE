@@ -87,7 +87,16 @@ const YearIcon = () => (
   </svg>
 );
 
-const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon, year: YearIcon };
+const Year2Icon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    {Array.from({ length: 12 }, (_, i) => (
+      <rect key={i} x={2 + (i % 3) * 6} y={1.5 + Math.floor(i / 3) * 4.5}
+        width="4" height="3" rx="0.5" stroke={ORANGE} strokeWidth="0.8" fill={ORANGE} fillOpacity="0.18" />
+    ))}
+  </svg>
+);
+
+const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon, year: YearIcon, year2: Year2Icon };
 
 const ViewCycler = () => {
   const { setViewMode, effectiveViewMode, textSecondary, canShowViewCycler, showDayDial, hiddenViews } = useDayPlannerCtx();

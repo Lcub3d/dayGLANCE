@@ -4194,8 +4194,14 @@ const DayPlanner = () => {
   // the selection — see utils/nativeFetchWindow.js for the two views that
   // draw past the radius and lost their events to it.
   const nativeFetchWindow = useMemo(
-    () => nativeFetchWindowFor(selectedDate, { visibleDates, weekViewDates, monthViewRange, schedWindow }),
-    [selectedDate, visibleDates, weekViewDates, monthViewRange, schedWindow]);
+    () => nativeFetchWindowFor(selectedDate, {
+      visibleDates, weekViewDates, schedWindow,
+      // The annual view draws local tasks for a whole year. Native mobile
+      // adapters query one day at a time; keep their bounded selection window
+      // rather than silently truncating a year at the 100-day bridge ceiling.
+      monthViewRange: effectiveViewMode === 'year2' && (isAndroidApp || isIOSApp) ? null : monthViewRange,
+    }),
+    [selectedDate, visibleDates, weekViewDates, monthViewRange, schedWindow, effectiveViewMode, isAndroidApp, isIOSApp]);
   // The effect below keys on the span, not the selection: moving inside the
   // month (or the week) keeps the span, so it neither refetches nor lets
   // events flicker.

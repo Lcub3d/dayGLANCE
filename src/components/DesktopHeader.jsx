@@ -80,8 +80,8 @@ const DesktopHeader = () => {
 
   const dateLabel = monthViewActive
     ? formatLocalizedDate(selectedDate, { month: 'long', year: 'numeric' }, locale)
-    : effectiveViewMode === 'year'
-    ? `${t('jobu.year')} · ${selectedDate.getFullYear()}`
+    : (effectiveViewMode === 'year' || effectiveViewMode === 'year2')
+    ? `${t(effectiveViewMode === 'year2' ? 'jobu.year2' : 'jobu.year')} · ${selectedDate.getFullYear()}`
     : effectiveViewMode === 'day'
     ? formatDateRange([...new Map(dayViewColumns.map(c => [c.dateStr, c.date])).values()], t, locale)
     : effectiveViewMode === 'jobo'

@@ -54,7 +54,7 @@ export function useMonthItemsForDate() {
         .map((r) => ({ ...r, id: `routine-${r.id}` }))
       : [];
     const deadlines = (getDeadlineTasksForDate?.(dateStr) || []).map((t) => ({
-      id: `deadline-${t.id}`, kind: 'deadline', isAllDay: true, completed: !!t.completed, date: dateStr,
+      id: `deadline-${t.id}`, title: t.title, color: t.color, kind: 'deadline', isAllDay: true, completed: !!t.completed, date: dateStr,
     }));
     return [...tasks, ...routines, ...deadlines];
   }, [getTasksForDate, getDeadlineTasksForDate, routinesEnabled, todayRoutines, routinesDate, routineCompletions]);

@@ -2813,7 +2813,11 @@
       "ambiguousProject": "Ambiguous project",
       "date": "Invalid date",
       "label": "Unsupported label"
-    }
+    },
+    "year2": "Anno 2",
+    "year2Hint": "Dodici mesi a colpo d’occhio · scegli un giorno per la sua agenda",
+    "year2OpenMonth": "Apri {{month}} nella vista mensile",
+    "year2DeviceCalendarHint": "Gli eventi del dispositivo vengono caricati vicino alla data selezionata; le attività locali coprono tutto l’anno."
   },
   "lifeNetwork": {
     "title": "Support network",

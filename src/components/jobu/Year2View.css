@@ -1,0 +1,52 @@
+/* Month tiles borrow Trilium's year-calendar layout, not its theme or data.
+   Everything is scoped to this view; the original YEAR heatmap is untouched. */
+.year2-view {
+  --y2-paper: var(--ju-paper, #fff);
+  --y2-bg: var(--ju-bg, #fafaf9);
+  --y2-text: var(--ju-text, #292524);
+  --y2-muted: var(--ju-muted, #78716c);
+  --y2-line: var(--ju-line, #e7e5e4);
+  --y2-accent: var(--ui-accent, #eab308);
+  container-type: inline-size;
+  color: var(--y2-text);
+  background: var(--y2-bg);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.year2-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; font-size: 12px; color: var(--y2-muted); }
+.year2-toolbar > span { display: flex; align-items: center; gap: 7px; }
+.year2-toolbar button { flex: none; padding: 4px 12px; border: 1px solid var(--y2-line); border-radius: 5px; background: var(--y2-paper); color: var(--y2-text); }
+.year2-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 0 20px 24px; }
+.year2-month { min-width: 0; padding: 12px 10px 8px; border: 1px solid var(--y2-line); border-radius: 8px; background: var(--y2-paper); }
+.year2-month[data-current-month] { border-color: color-mix(in srgb, var(--y2-accent) 55%, var(--y2-line)); }
+.year2-month h2 { margin: 0 0 10px; padding: 0 4px; font-size: 14px; font-weight: 650; }
+.year2-month h2 button { border-radius: 4px; padding: 1px 3px; }
+.year2-month h2 button:hover { color: var(--y2-accent); }
+.year2-weekdays, .year2-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.year2-weekdays { margin-bottom: 5px; font-size: 10px; text-align: center; color: var(--y2-muted); }
+.year2-weekdays span { overflow: hidden; text-overflow: ellipsis; padding: 1px; }
+.year2-weekdays [data-weekend] { opacity: .65; }
+.year2-days { grid-template-rows: repeat(6, 58px); gap: 1px; }
+.year2-day { min-width: 0; padding: 3px 2px 2px; border-radius: 4px; text-align: left; position: relative; overflow: hidden; display: flex; flex-direction: column; border: 1px solid transparent; }
+.year2-day[data-weekend] { background: color-mix(in srgb, var(--y2-muted) 4%, transparent); }
+.year2-day:hover { background: color-mix(in srgb, var(--y2-accent) 10%, transparent); }
+.year2-day[data-selected] { border-color: var(--y2-accent); background: color-mix(in srgb, var(--y2-accent) 7%, transparent); }
+.year2-day-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; height: 17px; flex: none; }
+.year2-day-heading svg { color: var(--y2-accent); flex: none; }
+.year2-day-number { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.year2-day[data-today] .year2-day-number { background: var(--y2-accent); color: var(--ui-accent-on, #fff); border-radius: 50%; font-weight: 700; }
+.year2-events { display: flex; flex-direction: column; gap: 2px; padding-top: 3px; min-width: 0; }
+.year2-event { display: flex; align-items: center; gap: 3px; min-width: 0; font-size: 9px; line-height: 10px; }
+.year2-event i { width: 3px; height: 8px; flex: none; border-radius: 2px; }
+.year2-event > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.year2-event[data-completed] { opacity: .6; }
+.year2-event[data-completed] > span { text-decoration: line-through; }
+.year2-more { font-size: 9px; line-height: 9px; color: var(--y2-muted); text-align: right; }
+.year2-loading { padding: 0 20px 8px; font-size: 12px; color: var(--y2-muted); }
+.year2-view button:focus-visible { outline: 2px solid var(--y2-accent); outline-offset: 1px; z-index: 1; }
+.year2-dark { color-scheme: dark; }
+@container (max-width: 950px) { .year2-months { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 12px 20px; } .year2-toolbar { padding: 10px 12px; } }
+@container (max-width: 570px) { .year2-months { grid-template-columns: minmax(0, 1fr); } .year2-days { grid-template-rows: repeat(6, 64px); } .year2-event { font-size: 10px; } }

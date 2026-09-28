@@ -1,4 +1,5 @@
 import useJobuData from './jobu/useJobuData.js';
+import { mayApplyLegacyLifeSnapshot } from './jobu/lifeNodeStore.js';
 import JobuShell from './components/jobu/JobuShell.jsx';
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import i18n from 'i18next';
@@ -1045,9 +1046,11 @@ const DayPlanner = () => {
     handleRoutinesDone,
     selectTodayChipsForOwner,
   } = useRoutines({ currentTime, onboardingProgress, setOnboardingProgress, hrOwnerRef });
+  const jobu = useJobuData();
   const {
-    goals, setGoals,
-    projects, setProjects,
+    goals, setGoals, loadGoals,
+    projects, setProjects, loadProjects,
+    lifeNodesReady, lifeNodesError, lifeNodesPending, retryLifeNodes, discardLifeNodeWrites,
     areas, setAreas,
     goalsAreaFilter, setGoalsAreaFilter,
     goalsViewMode, setGoalsViewMode,
@@ -1057,7 +1060,7 @@ const DayPlanner = () => {
     addGoal, updateGoal, deleteGoal,
     addArea, updateArea, deleteArea, reorderAreas,
     addProject, updateProject, deleteProject, moveProject,
-  } = useGoalsProjects();
+  } = useGoalsProjects({ lifeData: jobu.data, bootLoaded: dataLoaded });
   // JOBO ledger (docs/jobo-ledger-persistence.md). The hook is the only
   // writer. `joboRecords` is undefined until the ledger has loaded, and the
   // sync payload omits the collection while it is: undefined means "this
@@ -1069,7 +1072,6 @@ const DayPlanner = () => {
     recordJobo, applyRemoteJobo, restoreJobo, readJoboWorkingSet, reloadJobo,
   } = useJoboLedger();
   // The engine and the backup builders can run a beat after a render.
-  const jobu = useJobuData();
   const jobuRecordsRef = useRef(jobu.records);
   jobuRecordsRef.current = jobu.records;
   const joboRecordsRef = useRef(joboRecords);
@@ -1811,7 +1813,8 @@ const DayPlanner = () => {
     setDarkMode, setSyncUrl, setTaskCalendarUrl, setCompletedTaskUids,
     setDailyNotes, setRoutineDefinitions, setTodayRoutines, setRoutinesDate,
     setRemovedTodayRoutineIds, setHabits, setHabitLogs, setHabitsEnabled,
-    setRoutinesEnabled, setGoals, setProjects, setAreas, setGoalsProjectsEnabled, setDataLoaded,
+    setRoutinesEnabled, setGoals: loadGoals, setProjects: loadProjects, setAreas, setGoalsProjectsEnabled, setDataLoaded,
+    preserveLifeSources: !lifeNodesReady,
     setUnscheduledOrderTimestamp,
     // values for saveData
     tasks, unscheduledTasks, recycleBin, recurringTasks, todayRoutines: allTodayRoutines,
@@ -6221,13 +6224,14 @@ const DayPlanner = () => {
       localStorage.setItem('day-planner-bucket-config', JSON.stringify(normalized));
       setBucketConfig(normalized);
     }
-    if (data.goals) {
+    const applyLegacyLife = mayApplyLegacyLifeSnapshot(jobu.data.get().records, data.jobuRecords);
+    if (data.goals && applyLegacyLife) {
       localStorage.setItem('day-planner-goals', JSON.stringify(data.goals));
-      setGoals(data.goals);
+      loadGoals(data.goals);
     }
-    if (data.projects) {
+    if (data.projects && applyLegacyLife) {
       localStorage.setItem('day-planner-projects', JSON.stringify(data.projects));
-      setProjects(data.projects);
+      loadProjects(data.projects);
     }
     if (data.areas) {
       localStorage.setItem('day-planner-areas', JSON.stringify(data.areas));
@@ -8995,6 +8999,7 @@ const DayPlanner = () => {
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
     joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
+    lifeNodesReady, lifeNodesError, lifeNodesPending, retryLifeNodes, discardLifeNodeWrites,
     jobuData: jobu.data, jobuRecords: jobu.records, jobuLoaded: jobu.loaded, jobuWritable: jobu.writable, jobuError: jobu.error,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,

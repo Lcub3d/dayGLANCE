@@ -1,8 +1,10 @@
+import { lifeNodesReady, notebookFromLifeNodes, notebookLifeChanges } from './lifeNodeStore.js';
 import { defaultDocument, validateDocument } from '../lifeplanner/model.js';
 import { STORAGE_KEY, BACKUP_FORMAT } from '../lifeplanner/store.js';
 import { jobuValues, materializeJobu, stable } from './data.js';
 const LIFE = new Set(['lifeWish', 'lifeMotto', 'lifeOrder']);
 function documentFrom(records, defaults) {
+  if (lifeNodesReady(records)) return notebookFromLifeNodes(records, defaults);
   const order = jobuValues(records, 'lifeOrder')[0]?.value;
   if (!order) return defaults;
   const sorted = (kind, ids) => jobuValues(records, kind).sort((a,b) => {
@@ -57,7 +59,7 @@ export function createDurablePlannerStore(data, { defaults = [], storage = globa
         const before = documentFrom(records, blank);
         if (expectedRevision != null && before.revision !== expectedRevision) throw new Error('conflict');
         const after = validateDocument({ ...transform(structuredClone(before)), revision: before.revision + 1, updatedAt: new Date().toISOString() });
-        return changesFor(before, after);
+        return lifeNodesReady(records) ? notebookLifeChanges(records, before, after) : changesFor(before, after);
       });
       return adapter.get();
     },

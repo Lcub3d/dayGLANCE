@@ -3,6 +3,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { FeaturesContext, useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
+import { restorePlanningRevision } from '../../jobu/lifeNodeStore.js';
 import { dayKey } from '../../jobu/year.js';
 import './jobu.css';
 
@@ -75,6 +76,11 @@ export default function JobuShell({ children }) {
       <input ref={file} type="file" accept="application/json" hidden onChange={importData} />
       {(f.jobuError || error) && <div className="jobu-global-error" role="alert">{t('jobu.saveError')}: {error || f.jobuError} <button onClick={() => { setError(''); f.jobuData.load(); }}>{t('jobu.retry')}</button></div>}
       {f.multiUserEnabled && <p className="jobu-global-error">{t('jobu.personalOnly')}</p>}
+      {(f.lifeNodesError || f.lifeNodesPending > 0) && <div className="jobu-global-error" role="status">
+        {f.lifeNodesError ? t('lifeBoard.nativeSaveError', { code: f.lifeNodesError }) : t('lifeBoard.saving')}
+        {f.lifeNodesError && <><button onClick={f.retryLifeNodes}>{t('jobu.retry')}</button>
+          {f.lifeNodesReady && <button onClick={() => { if (window.confirm(t('lifeBoard.discard'))) f.discardLifeNodeWrites(); }}>{t('lifeBoard.discardAction')}</button>}</>}
+      </div>}
       <div className="jobu-content">
         <Suspense fallback={<p>{t('jobu.loading')}</p>}>
           {page === 'tasks'
@@ -86,8 +92,8 @@ export default function JobuShell({ children }) {
         <div className="jobu-dialog" role="dialog" aria-modal="true" aria-label={t('jobu.history')}>
           <h2>{t('jobu.history')}</h2><p>{t('jobu.historyHint')}</p>
           <select aria-label={t('jobu.entity')} value={entity} onChange={e => setEntity(e.target.value)}><option value="">{t('jobu.entity')}</option>{entities.map(id => <option key={id}>{id}</option>)}</select>
-          {revisions.map(row => <details key={row.id}><summary>{row.updatedAt} {row.deleted ? '×' : ''}</summary><pre>{JSON.stringify(row.value, null, 2)}</pre><button disabled={!f.jobuWritable} onClick={async () => {
-            try { await f.jobuData.save(row.entityId, row.kind, row.value, { deleted: row.deleted }); setHistory(false); }
+          {revisions.map(row => <details key={row.id}><summary>{row.updatedAt} {row.deleted ? '×' : ''}</summary><pre>{JSON.stringify(row.value, null, 2)}</pre><button disabled={!f.jobuWritable || row.kind === 'lifeNodeSchema' || (f.lifeNodesReady && row.kind === 'lifeWish')} title={f.lifeNodesReady && row.kind === 'lifeWish' ? t('lifeBoard.legacyHistory') : undefined} onClick={async () => {
+            try { await restorePlanningRevision(f.jobuData, row); setHistory(false); }
             catch (e) { setError(e.message); }
           }}>{t('jobu.restoreRevision')}</button></details>)}
           <button onClick={() => setHistory(false)}>{t('jobu.close')}</button>

@@ -32,6 +32,7 @@ export default function useDataPersistence({
   setRemovedTodayRoutineIds, setHabits, setHabitLogs, setHabitsEnabled,
   setRoutinesEnabled, setGoals, setProjects, setAreas, setGoalsProjectsEnabled, setDataLoaded,
   setUnscheduledOrderTimestamp,
+  preserveLifeSources = false,
   // values for saveData
   tasks, unscheduledTasks, recycleBin, recurringTasks, todayRoutines,
   darkMode, syncUrl, taskCalendarUrl, syncRetentionDays, completedTaskUids,
@@ -302,8 +303,12 @@ export default function useDataPersistence({
     safeSet('day-planner-habits-enabled', JSON.stringify(habitsEnabled));
     safeSet('day-planner-routines-enabled', JSON.stringify(routinesEnabled));
     safeSet('day-planner-gtd-frames', JSON.stringify(gtdFrames));
-    safeSet('day-planner-goals', JSON.stringify(goals));
-    safeSet('day-planner-projects', JSON.stringify(projects));
+    // Before the atomic planning migration, these are irreplaceable sources.
+    // Afterwards they are compatibility caches for inherited backup tools.
+    if (!preserveLifeSources) {
+      safeSet('day-planner-goals', JSON.stringify(goals));
+      safeSet('day-planner-projects', JSON.stringify(projects));
+    }
     safeSet('day-planner-areas', JSON.stringify(areas));
     safeSet('day-planner-goals-projects-enabled', JSON.stringify(goalsProjectsEnabled));
     if (unscheduledOrderTimestamp) safeSet('day-planner-unscheduled-order-ts', unscheduledOrderTimestamp);

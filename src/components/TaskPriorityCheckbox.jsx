@@ -12,12 +12,14 @@ export default function TaskPriorityCheckbox({
   ariaLabel = 'Toggle task completion',
   onClick,
   className = '',
+  disabled = false,
 }) {
   const level = priorityLevel(priority);
   return (
     <button
       type="button"
       role="checkbox"
+      disabled={disabled}
       aria-checked={!!checked}
       aria-label={ariaLabel}
       data-priority={level}

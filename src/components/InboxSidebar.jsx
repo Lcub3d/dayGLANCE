@@ -1,3 +1,4 @@
+import { TaskLabelChips } from './jobu/TaskLabels.jsx';
 import React, { useState, useRef } from 'react';
 import {
   AlertCircle, Archive, BookOpen, BrainCircuit,
@@ -221,6 +222,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
                     </div>
                   )}
                   <div className="text-xs opacity-90 mt-1 flex items-center gap-2 flex-wrap">
+                    <TaskLabelChips task={task} />
                     <span>{t('common.minutesShort', { count: task.duration })}</span>
                     {task.deadline && (
                       <span className="flex items-center gap-1">
@@ -503,6 +505,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
                       {renderTitle(task.title)}
                     </div>
                     <div className="text-xs opacity-90 mt-1 flex items-center gap-2 flex-wrap">
+                      <TaskLabelChips task={task} />
                       <span>{t('common.minutesShort', { count: task.duration })}</span>
                       {task.deadline && (
                         <span className="flex items-center gap-1">

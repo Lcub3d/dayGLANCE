@@ -4,38 +4,48 @@ import { useTranslation } from 'react-i18next';
 import { FeaturesContext, useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { restorePlanningRevision } from '../../jobu/lifeNodeStore.js';
+import useOrganizer from '../../jobu/useOrganizer.js';
+import { saveLabel } from '../../jobu/organizerStore.js';
+import { sourceLabels } from '../../jobu/labels.js';
 import { dayKey } from '../../jobu/year.js';
 import './jobu.css';
 
 const TasksView = lazy(() => import('./TasksView.jsx'));
+const LabelsPage = lazy(() => import('./LabelsPage.jsx'));
 
 export default function JobuShell({ children }) {
   const f = useFeaturesCtx(), ctx = useDayPlannerCtx(), { t } = useTranslation();
   const [page, setPage] = useState('calendar');
+  const [request, setRequest] = useState(null);
+  const jobuOrganizer = useOrganizer(ctx, f);
   const [error, setError] = useState('');
   const [history, setHistory] = useState(false);
   const [entity, setEntity] = useState('');
   const file = useRef(null);
-  const navigationGuard = useRef(null);
+  const navigationGuard = useRef([]);
   const registerJobuNavigationGuard = useCallback(guard => {
-    navigationGuard.current = guard;
+    navigationGuard.current.push(guard);
     return () => {
-      if (navigationGuard.current === guard) navigationGuard.current = null;
+      navigationGuard.current = navigationGuard.current.filter(fn => fn !== guard);
     };
   }, []);
 
   // CalendarHeader owns all timeline views. This shell only opens the task
   // list; it no longer has a second, competing Plan/Do or year-view route.
   const select = next => {
-    if (next !== page && navigationGuard.current && !navigationGuard.current()) return;
-    if (next === 'tasks') { setPage('tasks'); return; }
+    if (next !== page && navigationGuard.current.some(guard => !guard())) return;
+    if (['tasks', 'filters', 'labels'].includes(next)) { if (next !== 'tasks') setRequest(null); setPage(next); return; }
     if (next === 'jobo' || next === 'year' || next === 'year2') {
       if (next === 'jobo') f.setJoboEnabled(true);
       ctx.setViewMode(next);
     }
     setPage('calendar');
   };
-  const personal = { ...f, registerJobuNavigationGuard, setJobuPage: select };
+  const openJobuFilter = (query, title) => {
+    if (navigationGuard.current.some(guard => !guard())) return;
+    setRequest({ query, title, id: crypto.randomUUID() }); setPage('tasks');
+  };
+  const personal = { ...f, jobuOrganizer, openJobuFilter, registerJobuNavigationGuard, setJobuPage: select };
   const exportData = () => {
     try {
       const blob = new Blob([f.jobuData.export()], { type: 'application/json' });
@@ -68,9 +78,9 @@ export default function JobuShell({ children }) {
 
   return <FeaturesContext.Provider value={personal}>
     <div className={`jobu-shell ${ctx.darkMode ? 'jobu-dark' : ''}`} onKeyDown={e => {
-      if (page === 'tasks') {
+      if (page !== 'calendar') {
         e.stopPropagation();
-        if (e.key === 'Escape' && !e.target.closest('input,textarea,select,[contenteditable="true"]')) setPage('calendar');
+        if (e.key === 'Escape' && !e.target.closest('input,textarea,select,[contenteditable="true"]')) select('calendar');
       } else if (e.target.closest('input,textarea,select,[contenteditable="true"]')) e.stopPropagation();
     }}>
       <input ref={file} type="file" accept="application/json" hidden onChange={importData} />
@@ -83,8 +93,8 @@ export default function JobuShell({ children }) {
       </div>}
       <div className="jobu-content">
         <Suspense fallback={<p>{t('jobu.loading')}</p>}>
-          {page === 'tasks'
-            ? <TasksView onClose={() => setPage('calendar')} headerActions={dataActions} />
+          {page === 'labels' ? <LabelsPage onClose={() => select('calendar')} headerActions={dataActions} />
+            : page !== 'calendar' ? <TasksView key={request?.id || page} request={request} filtersPage={page === 'filters'} onClose={() => select('calendar')} headerActions={dataActions} />
             : <div className="jobu-native">{children}</div>}
         </Suspense>
       </div>
@@ -93,7 +103,11 @@ export default function JobuShell({ children }) {
           <h2>{t('jobu.history')}</h2><p>{t('jobu.historyHint')}</p>
           <select aria-label={t('jobu.entity')} value={entity} onChange={e => setEntity(e.target.value)}><option value="">{t('jobu.entity')}</option>{entities.map(id => <option key={id}>{id}</option>)}</select>
           {revisions.map(row => <details key={row.id}><summary>{row.updatedAt} {row.deleted ? '×' : ''}</summary><pre>{JSON.stringify(row.value, null, 2)}</pre><button disabled={!f.jobuWritable || row.kind === 'lifeNodeSchema' || (f.lifeNodesReady && row.kind === 'lifeWish')} title={f.lifeNodesReady && row.kind === 'lifeWish' ? t('lifeBoard.legacyHistory') : undefined} onClick={async () => {
-            try { await restorePlanningRevision(f.jobuData, row); setHistory(false); }
+            try {
+              if (row.kind === 'label') await saveLabel(f.jobuData, row.value, { deleted: row.deleted, expectedHead: jobuOrganizer.heads.get(row.entityId)?.id ?? null, sourceNames: jobuOrganizer.entries.flatMap(e => sourceLabels(e.task)) });
+              else await restorePlanningRevision(f.jobuData, row);
+              setHistory(false);
+            }
             catch (e) { setError(e.message); }
           }}>{t('jobu.restoreRevision')}</button></details>)}
           <button onClick={() => setHistory(false)}>{t('jobu.close')}</button>

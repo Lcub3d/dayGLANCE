@@ -1,11 +1,12 @@
 // Jobu's personal-product data. Immutable revisions retain both sides of a
 // concurrent text edit; materialization picks one, backup retains every version.
+import { validateOrganizerValue } from './labels.js';
 import { createJoboStore } from '../jobo/store.js';
 import { LIFE_NODE_KINDS, LIFE_NODE_SCHEMA, validateLifeValue } from '../lifeplanner/entities.js';
 import { NETWORK_KINDS, validateNetworkValue } from '../lifeplanner/supportNetwork.js';
 export const JOBU_DB = 'jobu-personal-v1';
 export const JOBU_KEY = 'jobu-personal-records-v1';
-export const KINDS = ['lifeWish', 'lifeMotto', 'lifeOrder', 'dayTemplate', 'day', 'filter', 'taskMeta', 'doNote', ...NETWORK_KINDS, ...LIFE_NODE_KINDS];
+export const KINDS = ['lifeWish', 'lifeMotto', 'lifeOrder', 'dayTemplate', 'day', 'filter', 'label', 'taskMeta', 'doNote', ...NETWORK_KINDS, ...LIFE_NODE_KINDS];
 export const stable = value => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
@@ -30,7 +31,10 @@ export function validateJobuRecords(records) {
       !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(row.updatedAt) ||
       !Number.isFinite(Date.parse(row.updatedAt)) || !Object.hasOwn(row, 'value')) throw new Error('format');
     assertJSON(row);
+    // Deleted label rows retain their validated aliases to reserve identity.
+    if (!row.deleted || row.kind === 'label') validateOrganizerValue(row.kind, row.value);
     if (!row.deleted) { validateNetworkValue(row.kind, row.value); validateLifeValue(row.kind, row.value); }
+    if (row.kind === 'label' && row.value?.id !== row.entityId) throw new Error('format');
     if (row.kind === 'lifeNode' && row.value?.id !== row.entityId) throw new Error('format');
     if ((row.entityId === LIFE_NODE_SCHEMA && row.kind !== 'lifeNodeSchema') || (row.kind === 'lifeNodeSchema' && (row.entityId !== LIFE_NODE_SCHEMA || row.deleted))) throw new Error('format');
     if (!row.deleted && (!row.value || typeof row.value !== 'object' || Array.isArray(row.value))) throw new Error('format');

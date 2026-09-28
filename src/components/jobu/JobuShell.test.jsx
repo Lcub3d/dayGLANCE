@@ -15,6 +15,7 @@ vi.mock('react', async () => ({
     return runtime.slots[index];
   },
   useCallback: callback => callback,
+  useMemo: callback => callback(),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: key => key }) }));
 vi.mock('../../context/DayPlannerContext.jsx', () => ({ useDayPlannerCtx: () => runtime.planner }));
@@ -56,6 +57,28 @@ describe('Jobu navigation shell', () => {
     tree = render();
     expect(elements(tree)).toContain(child);
     expect(runtime.planner.setViewMode).not.toHaveBeenCalled();
+  });
+
+  it('opens a new filter request even from the task page without mutating the calendar view', () => {
+    render().props.value.openJobuFilter('today', 'Today');
+    let view = elements(render()).find(element => element.props.request);
+    expect(view.props.request.query).toBe('today'); const first = view.key;
+    render().props.value.openJobuFilter('%进行', 'Working');
+    view = elements(render()).find(element => element.props.request);
+    expect(view.props.request.query).toBe('%进行'); expect(view.key).not.toBe(first);
+    expect(runtime.planner.setViewMode).not.toHaveBeenCalled();
+  });
+
+  it('a nested editor guard cannot mask an existing unsaved page guard', () => {
+    const leavePage = vi.fn(() => false);
+    const unregisterPage = render().props.value.registerJobuNavigationGuard(leavePage);
+    const unregisterEditor = render().props.value.registerJobuNavigationGuard(() => true);
+    render().props.value.openJobuFilter('p1', 'First');
+    expect(elements(render())).toContain(child);
+    unregisterEditor(); render().props.value.setJobuPage('labels');
+    expect(elements(render())).toContain(child);
+    unregisterPage(); render().props.value.setJobuPage('labels');
+    expect(elements(render())).not.toContain(child);
   });
 
   it('a dated task returns to the native Plan/Do view and enables it', () => {

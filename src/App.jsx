@@ -49,7 +49,7 @@ import { useWidgetNativeEvents } from './hooks/useWidgetNativeEvents.js';
 import { getStoredWeatherCoords } from './utils/solar.js';
 import useFolderBackup from './hooks/useFolderBackup.js';
 import { URL_REGEX, isOnlyUrl, renderFormattedText, hasNotesOrSubtasks, isLinkOnlyTask, getLinkUrl, hasOnlySubtasks, renderTitle, highlightMatch, extractShareTitle } from './utils/textFormatting.jsx';
-import { msUntilMidnightRefresh } from './utils/midnightRefresh.js';
+import { msUntilMidnightRefresh, rememberViewsForMidnight, readMidnightViews, clearMidnightViews } from './utils/midnightRefresh.js';
 import { computeAvailableSlots as computeAvailableSlotsPure, adjustPastConflicts } from './utils/dayOccupancy.js';
 import { frameInstancesForDate } from './utils/frameInstances.js';
 import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilinks, stripWikilinksAndTags, getRecurrenceLabel, formatDate, formatDateRange, formatShortDate, formatDeadlineDate, computeTaskCalendarTombstones, computeRecurringSeriesTombstones } from './utils/taskUtils.js';
@@ -384,6 +384,9 @@ const DayPlanner = () => {
     // URL ?view= param takes priority over defaultView on cold load.
     const urlView = new URLSearchParams(window.location.search).get('view');
     if (urlView && allowed.includes(urlView)) return urlView;
+    // The nightly reload keeps the view that was on screen (midnightRefresh.js).
+    const handed = readMidnightViews()?.desktop;
+    if (handed && allowed.includes(handed)) return handed;
     const def = localStorage.getItem('day-planner-default-view');
     // A value this build does not know (written by another build, or by hand),
     // or a view since turned off here, falls back to the first view still on.
@@ -430,7 +433,11 @@ const DayPlanner = () => {
     _setMobileDefaultView(mode);
     localStorage.setItem('day-planner-mobile-default-view', JSON.stringify(mode));
   };
-  const [mobileViewMode, setMobileViewMode] = useState(mobileDefaultView);
+  const [mobileViewMode, setMobileViewMode] = useState(() => {
+    // The nightly reload keeps the view that was on screen (midnightRefresh.js).
+    const handed = readMidnightViews()?.mobile;
+    return handed && enabledViews(MOBILE_VIEW_MODES, hiddenViews.mobile).includes(handed) ? handed : mobileDefaultView;
+  });
   // Turning a view off in one switcher on this device ('desktop' is the
   // cycler, 'mobile' the phone toggle). The last view on in a switcher
   // cannot be turned off (the switch is disabled too). Whatever was on the
@@ -2222,9 +2229,16 @@ const DayPlanner = () => {
   // new day. The offset (00:00:30, not 00:00:01) is deliberate: it lets the
   // 15s clock tick fire and the in-app routine rollover (useRoutines) complete
   // and sync BEFORE the reload, instead of racing it. See utils/midnightRefresh.js.
+  // The view on screen rides across it (rememberViewsForMidnight), so a
+  // view left open overnight is still open on the new day.
+  const viewsOnScreenRef = useRef(null);
+  viewsOnScreenRef.current = { desktop: viewMode, mobile: mobileViewMode };
   useEffect(() => {
+    // Read by the view state initialisers above; spent once the start has them.
+    clearMidnightViews();
     if (isTrayMode) return;
     const midnightTimer = setTimeout(() => {
+      rememberViewsForMidnight(viewsOnScreenRef.current);
       window.location.reload();
     }, msUntilMidnightRefresh());
     return () => clearTimeout(midnightTimer);

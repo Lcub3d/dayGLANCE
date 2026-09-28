@@ -118,6 +118,7 @@ function explicitSession(raw, fallbackDate = null) {
     endMinute: resolvedEnd,
     durationMinutes,
     taskMinutes,
+    kind: raw.kind === 'pomodoro' ? 'pomodoro' : 'focus',
   };
 }
 
@@ -279,6 +280,7 @@ export function selectDoFocusHistory({ record = null, task = null, focusSessions
   if (!target.recordId && !target.hasTaskIdentity) return [];
 
   const candidates = [
+    ...collectSessions(record?.pomodoroSessions),
     ...collectSessions(focusSessions),
     ...collectSessions(focusLog),
   ];

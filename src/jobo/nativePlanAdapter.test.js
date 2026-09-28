@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  canGroupPlan,
   copyPlan,
   createQuickPlan,
+  deletePlanGroup,
   dropPlan,
   editPlan,
+  movePlanGroup,
   openNewPlan,
   planCapabilities,
+  resizePlan,
   startPlanDrag,
   startPlanResize,
   togglePlanCompletion,
@@ -60,6 +64,46 @@ describe('planCapabilities', () => {
       draggable: true,
       completable: false,
     });
+  });
+});
+
+describe('native Plan group operations', () => {
+  it('allows only live ordinary tasks and passes the native task objects once', () => {
+    const first = task({ id: 'first' });
+    const second = task({ id: 'second' });
+    const items = [item({ currentTask: first }), item({ currentTask: second })];
+    const ctx = { moveTimelineTasks: vi.fn() };
+    expect(items.every(canGroupPlan)).toBe(true);
+    expect(movePlanGroup(ctx, items, 45)).toBe(true);
+    expect(ctx.moveTimelineTasks).toHaveBeenCalledWith([first, second], 45);
+  });
+
+  it('refuses a mixed readonly or duplicate selection before invoking main', () => {
+    const ctx = { moveTimelineTasks: vi.fn(), deleteTimelineTasks: vi.fn() };
+    expect(canGroupPlan(item({ historical: true }))).toBe(false);
+    expect(canGroupPlan(item({ currentTask: task({ imported: true }) }))).toBe(false);
+    const live = item({ currentTask: task({ id: 'same' }) });
+    expect(movePlanGroup(ctx, [live, live], 15)).toBe(false);
+    expect(deletePlanGroup(ctx, [live, item({ currentTask: task({ imported: true }) })])).toBe(false);
+    expect(ctx.moveTimelineTasks).not.toHaveBeenCalled();
+    expect(ctx.deleteTimelineTasks).not.toHaveBeenCalled();
+  });
+
+  it('treats a false or explicit failed result as a failed native operation', () => {
+    const live = item();
+    expect(movePlanGroup({ moveTimelineTasks: vi.fn(() => false) }, [live], 15)).toBe(false);
+    expect(deletePlanGroup({ deleteTimelineTasks: vi.fn(() => ({ ok: false })) }, [live])).toBe(false);
+    expect(deletePlanGroup({ deleteTimelineTasks: vi.fn() }, [live])).toBe(true);
+  });
+
+  it('forwards a live Plan interval resize and blocks readonly rows', () => {
+    const live = item({ currentTask: task({ id: 'resize-me' }) });
+    const resizeTimelineTask = vi.fn();
+    expect(resizePlan({ resizeTimelineTask }, live, { startTime: '11:30', duration: 25 })).toBe(true);
+    expect(resizeTimelineTask).toHaveBeenCalledWith(live.currentTask, { startTime: '11:30', duration: 25 });
+    expect(resizePlan({ resizeTimelineTask }, item({ historical: true }), { startTime: '11:30', duration: 25 })).toBe(false);
+    expect(resizePlan({ resizeTimelineTask }, item({ currentTask: task({ imported: true }) }), { startTime: '11:30', duration: 25 })).toBe(false);
+    expect(resizePlan({ resizeTimelineTask: vi.fn(() => false) }, live, { startTime: '11:30', duration: 25 })).toBe(false);
   });
 });
 

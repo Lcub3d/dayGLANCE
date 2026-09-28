@@ -8,6 +8,8 @@ import {
 import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, extractWikilinks, formatDeadlineDate } from '../utils/taskUtils.js';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
+import TaskPriorityCheckbox from './TaskPriorityCheckbox.jsx';
+import { priorityLevel } from '../utils/taskPriority.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import DeadlinePickerPopover from './DeadlinePickerPopover.jsx';
 import InboxFilterPopover from './InboxFilterPopover.jsx';
@@ -104,7 +106,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
       <div className="flex items-center gap-2">
         <button
           onClick={openNewInboxTask}
-          className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
           title={t('task.newInbox')}
         >
           <Plus size={14} strokeWidth={3} />
@@ -113,7 +115,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
         {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
           <button
             onClick={() => { setShowFramesModal(true); setFramesModalTab('schedule'); setEditingFrame(null); }}
-            className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="h-8 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors"
             title={t('inbox.aiSmartSchedule', { defaultValue: 'AI Smart Schedule' })}
           >
             <BrainCircuit size={14} />
@@ -162,7 +164,8 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
             draggable
             onDragStart={(e) => handleDragStart(task, 'inbox', e)}
             onDragEnd={handleDragEnd}
-            className={`${task.color} rounded-lg p-3 cursor-move shadow-sm ${task.completed ? 'opacity-50' : ''} relative ${task.isExample ? 'border-2 border-dashed border-white/50' : ''}`}
+            className={`task-priority-surface rounded-lg p-3 cursor-move shadow-sm ${task.completed ? 'opacity-50' : ''} relative ${task.isExample ? 'border-2 border-dashed border-white/50' : ''}`}
+            data-priority={priorityLevel(task.priority)} data-pomodoro-task={task.id}
           >
             {task.isExample && (
               <span className="absolute -top-2 -right-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
@@ -171,12 +174,9 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
             )}
             <div className="flex items-start justify-between text-white">
               <div className="flex items-start gap-2 flex-1 min-w-0">
-                <button
-                  onClick={() => toggleComplete(task.id, true)}
-                  className={`mt-0.5 rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
-                >
-                  {task.completed && <Check size={10} strokeWidth={3} />}
-                </button>
+                <TaskPriorityCheckbox priority={task.priority} checked={!!task.completed} darkMode={darkMode}
+                  className="mt-0.5" onClick={() => toggleComplete(task.id, true)}
+                  ariaLabel={`${t(task.completed ? 'sched.markIncomplete' : 'sched.markComplete')}: ${task.title}`} />
                 <div className="flex-1 min-w-0">
                   {editingTaskId === task.id ? (
                     <div className="relative tag-autocomplete-container">
@@ -397,7 +397,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
     <div className="flex items-center gap-2">
       <button
         onClick={openNewInboxTask}
-        className="p-2 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"
+        className="p-2 flex items-center justify-center bg-accent-600 text-white rounded-lg active:bg-accent-700 transition-colors"
         title={t('task.newInbox')}
       >
         <Plus size={16} strokeWidth={3} />
@@ -405,7 +405,7 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
       {aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
         <button
           onClick={() => { setShowFramesModal(true); setFramesModalTab('schedule'); setEditingFrame(null); }}
-          className="p-2 flex items-center justify-center bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors"
+          className="p-2 flex items-center justify-center bg-accent-600 text-white rounded-lg active:bg-accent-700 transition-colors"
           title={t('inbox.aiSmartSchedule', { defaultValue: 'AI Smart Schedule' })}
         >
           <BrainCircuit size={16} />
@@ -475,7 +475,8 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
                 dateStr: dateToString(new Date()),
               });
             }}
-            className={`relative select-none ${task.color} rounded-lg px-3 py-4 shadow-sm ${task.completed ? 'opacity-50' : ''} ${task.isExample ? 'border-2 border-dashed border-white/50' : ''}`}
+            className={`relative select-none task-priority-surface rounded-lg px-3 py-4 shadow-sm ${task.completed ? 'opacity-50' : ''} ${task.isExample ? 'border-2 border-dashed border-white/50' : ''}`}
+            data-priority={priorityLevel(task.priority)} data-pomodoro-task={task.id}
             onTouchStart={(e) => handleMobileTaskTouchStart(e, task, 'inbox')}
             onTouchMove={(e) => handleMobileTaskTouchMove(e)}
             onTouchEnd={(e) => handleMobileTaskTouchEnd(e, task.id, 'inbox')}
@@ -488,12 +489,9 @@ const InboxSidebar = ({ variant = 'desktop' }) => {
             <div className="text-white">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-2 flex-1 min-w-0">
-                  <button
-                    onClick={() => toggleComplete(task.id, true)}
-                    className={`mt-0.5 rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
-                  >
-                    {task.completed && <Check size={10} strokeWidth={3} />}
-                  </button>
+                  <TaskPriorityCheckbox priority={task.priority} checked={!!task.completed} darkMode={darkMode}
+                    className="mt-0.5" onClick={() => toggleComplete(task.id, true)}
+                    ariaLabel={`${t(task.completed ? 'sched.markIncomplete' : 'sched.markComplete')}: ${task.title}`} />
                   <div className="flex-1 min-w-0">
                     <div
                       className={`font-medium text-sm ${task.completed ? 'line-through' : ''}`}

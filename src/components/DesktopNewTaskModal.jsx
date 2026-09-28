@@ -139,7 +139,7 @@ const DesktopNewTaskModal = () => {
                   onChange={handleNewTaskInputChange}
                   onKeyDown={handleNewTaskInputKeyDown}
                   autoFocus={!(isTablet && mobileEditingTask)}
-                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                 />
                 {showSuggestions && suggestionContext === 'newTask' && (
                   <SuggestionAutocomplete
@@ -244,7 +244,7 @@ const DesktopNewTaskModal = () => {
                         assignedUserSyncIds: proj?.assignedUserSyncIds || [],
                       });
                     }}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                   >
                     <option value="">{t('task.noProject')}</option>
                     {(() => {
@@ -303,7 +303,7 @@ const DesktopNewTaskModal = () => {
                           type="button"
                           onClick={toggle}
                           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm border transition-colors ${isSelected
-                            ? `border-blue-500 ${darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`
+                            ? `border-accent-500 ${darkMode ? 'bg-accent-500/20 text-accent-300' : 'bg-accent-50 text-accent-700'}`
                             : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-stone-600'}`}`}
                         >
                           <span
@@ -333,7 +333,7 @@ const DesktopNewTaskModal = () => {
                             type="button"
                             onClick={() => setMobileEditingTask(prev => ({ ...prev, _assignScope: opt.key }))}
                             className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${active
-                              ? `border-blue-500 ${darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`
+                              ? `border-accent-500 ${darkMode ? 'bg-accent-500/20 text-accent-300' : 'bg-accent-50 text-accent-700'}`
                               : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-stone-600'}`}`}
                           >
                             {opt.label}
@@ -383,7 +383,7 @@ const DesktopNewTaskModal = () => {
                         <select
                           value={newTask.duration}
                           onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) })}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                         >
                           {durationOptions.map(minutes => (
                             <option key={minutes} value={minutes}>{t('common.minutesShort', { count: minutes, defaultValue: '{{count}} min' })}</option>
@@ -554,7 +554,7 @@ const DesktopNewTaskModal = () => {
                         type="button"
                         onClick={() => !newTask.keepUnscheduled && setShowRecurrencePicker(!showRecurrencePicker)}
                         disabled={newTask.keepUnscheduled}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-left text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.recurrence ? 'ring-2 ring-blue-500' : ''} ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-left text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.recurrence ? 'ring-2 ring-accent-500' : ''} ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {newTask.recurrence ? getRecurrenceLabel(newTask.recurrence, t, i18n.resolvedLanguage || i18n.language) : t('task.noRepeat')}
                       </button>
@@ -572,7 +572,7 @@ const DesktopNewTaskModal = () => {
                             }}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               !newTask.recurrence.endDate && !newTask.recurrence.maxOccurrences
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -583,7 +583,7 @@ const DesktopNewTaskModal = () => {
                             onClick={() => setShowRecurrenceEndDatePicker({ source: 'new' })}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               newTask.recurrence.endDate
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -601,7 +601,7 @@ const DesktopNewTaskModal = () => {
                             }}
                             className={`px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${
                               newTask.recurrence.maxOccurrences
-                                ? 'bg-blue-600 text-white border-blue-600'
+                                ? 'bg-accent-600 text-white border-accent-600'
                                 : `${darkMode ? 'bg-gray-700 text-white' : 'bg-white'}`
                             }`}
                           >
@@ -647,7 +647,7 @@ const DesktopNewTaskModal = () => {
                         value={newTask.duration}
                         onChange={(e) => setNewTask({ ...newTask, duration: parseInt(e.target.value) })}
                         disabled={newTask.isAllDay || newTask.keepUnscheduled}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay || newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} ${newTask.isAllDay || newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         {durationOptions.map(minutes => (
                           <option key={minutes} value={minutes}>
@@ -659,7 +659,7 @@ const DesktopNewTaskModal = () => {
                     <div>
                       <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.allDay')}</label>
                       <div className={`flex items-center h-10 ${newTask.keepUnscheduled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`} onClick={() => !newTask.keepUnscheduled && setNewTask(prev => ({ ...prev, isAllDay: !prev.isAllDay }))}>
-                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-blue-600 border-blue-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${newTask.isAllDay ? 'bg-accent-600 border-accent-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
                           {newTask.isAllDay && <Check size={14} className="text-white" strokeWidth={3} />}
                         </div>
                         <span className={`ml-2 text-sm ${textPrimary}`}>{t('task.allDay')}</span>
@@ -672,7 +672,7 @@ const DesktopNewTaskModal = () => {
                           className="flex items-center gap-2 cursor-pointer"
                           onClick={() => setNewTask(prev => ({ ...prev, keepUnscheduled: !prev.keepUnscheduled }))}
                         >
-                          <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${newTask.keepUnscheduled ? 'bg-blue-600 border-blue-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
+                          <div className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors flex-shrink-0 ${newTask.keepUnscheduled ? 'bg-accent-600 border-accent-600' : darkMode ? 'border-gray-500' : 'border-stone-300'}`}>
                             {newTask.keepUnscheduled && <Check size={14} className="text-white" strokeWidth={3} />}
                           </div>
                           <span className={`text-sm ${textPrimary}`}>{t('task.unscheduled')}</span>
@@ -707,7 +707,7 @@ const DesktopNewTaskModal = () => {
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700"
                 >
                   {mobileEditingTask ? t('task.saveChanges') : newTask.openInInbox ? (newTask.projectId ? t('task.addToProject') : t('task.addToInbox')) : newTask.projectId && newTask.keepUnscheduled ? t('task.addToProject') : newTask.projectId ? t('task.addToProjectAndSchedule') : t('task.addToSchedule')}
                 </button>

@@ -21,6 +21,47 @@
 
 :root {
   --header-row-h: 46px;
+  --ui-accent-rgb: 184 74 60;
+  --ui-accent: rgb(var(--ui-accent-rgb));
+  --ui-accent-soft: rgb(var(--ui-accent-rgb) / .14);
+  --ui-accent-on: #fff;
+  --ui-gray-50: 249 250 251;
+  --ui-gray-100: 243 244 246;
+  --ui-gray-200: 229 231 235;
+  --ui-gray-300: 209 213 219;
+  --ui-gray-400: 156 163 175;
+  --ui-gray-500: 107 114 128;
+  --ui-gray-600: 75 85 99;
+  --ui-gray-700: 55 65 81;
+  --ui-gray-800: 31 41 55;
+  --ui-gray-900: 17 24 39;
+  --ui-gray-950: 3 7 18;
+}
+
+.dark {
+  /* Todoist dark-theme accent sampled from the supplied reference. */
+  --ui-accent-rgb: 209 114 101;
+  --ui-accent-on: #211d1c;
+  /* Reference: sidebar/titlebar #262626; main surface #1f1f1f. */
+  --ui-gray-50: 250 250 250;
+  --ui-gray-100: 245 245 245;
+  --ui-gray-200: 229 229 229;
+  --ui-gray-300: 212 212 212;
+  --ui-gray-400: 163 163 163;
+  --ui-gray-500: 115 115 115;
+  --ui-gray-600: 82 82 82;
+  --ui-gray-700: 61 61 61;
+  --ui-gray-800: 38 38 38;
+  --ui-gray-900: 31 31 31;
+  --ui-gray-950: 20 20 20;
+}
+
+:is(.bg-accent-500, .bg-accent-600).text-white {
+  color: var(--ui-accent-on);
+}
+
+input[type='checkbox'], input[type='radio'], input[type='range'] {
+  accent-color: var(--ui-accent);
 }
 
 * {
@@ -67,15 +108,15 @@ body {
 
 /* Dark mode scrollbar */
 .dark-scrollbar::-webkit-scrollbar-track {
-  background: #374151;
+  background: rgb(var(--ui-gray-800));
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb {
-  background: #6b7280;
+  background: rgb(var(--ui-gray-600));
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: rgb(var(--ui-gray-400));
 }
 
 /* Firefox scrollbar */
@@ -85,7 +126,7 @@ body {
 }
 
 .dark-scrollbar {
-  scrollbar-color: #6b7280 #374151;
+  scrollbar-color: rgb(var(--ui-gray-600)) rgb(var(--ui-gray-800));
 }
 
 /* Dark mode number input spinners */
@@ -103,7 +144,7 @@ body:not(.using-pointer) a:focus-visible,
 body:not(.using-pointer) input:focus-visible,
 body:not(.using-pointer) select:focus-visible,
 body:not(.using-pointer) textarea:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -114,7 +155,7 @@ body:not(.using-pointer) textarea:focus-visible {
 .dark body:not(.using-pointer) input:focus-visible,
 .dark body:not(.using-pointer) select:focus-visible,
 .dark body:not(.using-pointer) textarea:focus-visible {
-  outline-color: #60a5fa;
+  outline-color: var(--ui-accent);
 }
 
 /* Suppress browser default focus ring after pointer interaction */

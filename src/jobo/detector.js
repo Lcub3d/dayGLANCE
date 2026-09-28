@@ -18,10 +18,8 @@
 // - FIRST SIGHT IS NEVER A TRANSITION. A task that arrives completed (import,
 //   restore, the first render) was not completed now.
 // - A DO RECORD NEVER CHANGES THE PLAN. Nothing here touches a task.
-// - A COMPLETION IS UNTIMED. A checkbox says the work happened, not when it
-//   began, so the record is `timing: 'untimed'` with the plan captured as it
-//   stands. Untimed never means zero minutes; the interval can be corrected in
-//   the view later, under the same id.
+// - A COMPLETION GETS AN EDITABLE INTERVAL ending at its source stamp, using
+//   the task's duration (30 minutes by default), as in the Jobo prototype.
 // - UN-COMPLETING TARGETS THE RECORD BY THE PREVIOUS KEY. The uncheck clears
 //   the stamp in `next`, so the key comes from `prev`. The attempt drops to
 //   Partially completed and is never deleted. Completing again is a new key.
@@ -33,6 +31,7 @@
 //   device's clock would defeat convergence, so it is skipped.
 
 import { completeDoAttempt, reassessDoProgress, DO_PROGRESS, DO_TIMING } from './core.js';
+import { completionInterval } from './completionInterval.js';
 
 const isStamp = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -131,7 +130,7 @@ export function findJoboEdges(prev, next, { tasks, unscheduledTasks, recurringTa
       if (!date) continue; // a stamp with no calendar date in it cannot place the Do
       completions.push({
         id: completionKey(id, is), taskId: t.id, title: titleOf(t),
-        date, planSnapshot: planSnapshotOf(t), completedAt: is,
+        date, planSnapshot: planSnapshotOf(t), duration: t.duration, completedAt: is,
       });
     } else if (was !== false && is === false) {
       if (typeof was !== 'string') continue; // the completion we saw had no stamp; nothing to target
@@ -149,7 +148,7 @@ export function findJoboEdges(prev, next, { tasks, unscheduledTasks, recurringTa
       const occurrence = resolveOccurrence(r, date);
       completions.push({
         id: recurringKey(id, date, stamp), taskId: r.id, title: titleOf(occurrence),
-        date, planSnapshot: planSnapshotOf(occurrence, date), completedAt: stamp,
+        date, planSnapshot: planSnapshotOf(occurrence, date), duration: occurrence.duration, completedAt: stamp,
       });
     }
     for (const [date, stamp] of Object.entries(prevDates)) {
@@ -219,8 +218,10 @@ export function buildJoboRecords(edges, records, { observedAt, warn = console.wa
   for (const c of edges?.completions || []) {
     try {
       const next = completeDoAttempt(current, {
-        id: c.id, taskId: c.taskId, timing: DO_TIMING.UNTIMED,
-        date: c.date, startTime: null, endDate: null, endTime: null,
+        id: c.id, taskId: c.taskId,
+        ...(completionInterval(c.completedAt, c.duration ?? c.planSnapshot?.duration) || {
+          timing: DO_TIMING.UNTIMED, date: c.date, startTime: null, endDate: null, endTime: null,
+        }),
         title: c.title, planSnapshot: c.planSnapshot,
         createdAt: c.completedAt, updatedAt: c.completedAt, observedAt,
       });

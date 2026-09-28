@@ -318,14 +318,14 @@ const MobileSettingsPanel = () => {
         onClick={() => setMobileSettingsView('frames')}
         className={`${cardBg} border ${borderClass} rounded-xl p-4 flex flex-col items-center gap-2`}
       >
-        <LayoutGrid size={24} className={mobileSettingsView === 'frames' ? 'text-blue-500' : textSecondary} />
+        <LayoutGrid size={24} className={mobileSettingsView === 'frames' ? 'text-accent-500' : textSecondary} />
         <span className={`text-xs font-medium ${textPrimary}`}>{t('settings.frames')}</span>
       </button>
       <button
         onClick={() => { if (!goalsProjectsEnabled) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(!goalsProjectsEnabled); }}
         className={`${cardBg} border ${borderClass} rounded-xl p-4 flex flex-col items-center gap-2`}
       >
-        {goalsProjectsEnabled ? <Flag size={24} className="text-blue-500" /> : <Flag size={24} className={textSecondary} />}
+        {goalsProjectsEnabled ? <Flag size={24} className="text-accent-500" /> : <Flag size={24} className={textSecondary} />}
         <span className={`text-xs font-medium ${textPrimary}`}>{goalsProjectsEnabled ? t('settings.goalsOn') : t('settings.goalsOff')}</span>
       </button>
       {/* Row 3: Routines | Habits | AI */}
@@ -372,7 +372,7 @@ const MobileSettingsPanel = () => {
           <div className="relative">
             <RefreshCw size={20} className={`${textSecondary} ${isSyncing ? 'animate-spin' : ''}`} />
             <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-              isSyncing ? 'bg-blue-500 animate-pulse' : calSyncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'
+              isSyncing ? 'bg-accent-500 animate-pulse' : calSyncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'
             }`} />
           </div>
           <span className={`font-medium ${textPrimary}`}>{t('settings.syncCalendars')}</span>
@@ -390,10 +390,10 @@ const MobileSettingsPanel = () => {
           const syncing = st === 'uploading' || st === 'downloading';
           return (
             <div className="relative">
-              <Cloud size={20} className={`${syncOn ? 'text-blue-500' : textSecondary} ${syncing ? 'animate-pulse' : ''}`} />
+              <Cloud size={20} className={`${syncOn ? 'text-accent-500' : textSecondary} ${syncing ? 'animate-pulse' : ''}`} />
               {syncOn && (
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                  syncing ? 'bg-blue-500 animate-pulse' : st === 'error' ? 'bg-red-500' : 'bg-green-500'
+                  syncing ? 'bg-accent-500 animate-pulse' : st === 'error' ? 'bg-red-500' : 'bg-green-500'
                 }`} />
               )}
             </div>
@@ -411,7 +411,7 @@ const MobileSettingsPanel = () => {
             <BookOpen size={20} className={obsidianConfig?.enabled ? 'text-purple-400' : textSecondary} />
             {obsidianConfig?.enabled && (
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                obsidianSyncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' : obsidianSyncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'
+                obsidianSyncStatus === 'syncing' ? 'bg-accent-500 animate-pulse' : obsidianSyncStatus === 'error' ? 'bg-red-500' : 'bg-green-500'
               }`} />
             )}
           </div>
@@ -432,7 +432,7 @@ const MobileSettingsPanel = () => {
         className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
       >
         <div className="relative">
-          <Activity size={20} className={(intentForm.webdavUrl || dbIntentsEnabled) ? 'text-blue-500' : textSecondary} />
+          <Activity size={20} className={(intentForm.webdavUrl || dbIntentsEnabled) ? 'text-accent-500' : textSecondary} />
           {(intentForm.webdavUrl || dbIntentsEnabled) && (
             <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} bg-green-500`} />
           )}
@@ -573,7 +573,7 @@ const MobileSettingsPanel = () => {
               onClick={() => { setMobileDefaultView(value); setMobileViewMode(value); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 mobileDefaultView === value
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-accent-600 text-white border-accent-600'
                   : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
               }`}
             >
@@ -605,7 +605,7 @@ const MobileSettingsPanel = () => {
                     onClick={() => setListEndOfDayTime(value)}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                       active
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-accent-600 text-white border-accent-600'
                         : `${darkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-stone-300 text-stone-700'}`
                     }`}
                   >
@@ -627,7 +627,7 @@ const MobileSettingsPanel = () => {
         </label>
         <LanguagePicker
           id="mobile-settings-language"
-          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
         />
       </div>
 
@@ -642,7 +642,7 @@ const MobileSettingsPanel = () => {
         <select
           value={homeTimezone}
           onChange={e => setHomeTimezone(e.target.value)}
-          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
         >
           {getTzOptions(homeTimezone).map(tz => (
             <option key={tz} value={tz}>{getTzLabel(tz)}</option>
@@ -671,7 +671,7 @@ const MobileSettingsPanel = () => {
           onChange={(e) => setWeatherZip(e.target.value)}
           onBlur={() => fetchWeather()}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
-          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
         />
         <div className={`text-xs ${textSecondary}`}>{t('settings.weatherTempUnit')}</div>
         <div className="flex gap-2">
@@ -681,7 +681,7 @@ const MobileSettingsPanel = () => {
               onClick={() => { setWeatherTempUnit(value); setTimeout(fetchWeather, 100); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                 weatherTempUnit === value
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-accent-600 text-white border-accent-600'
                   : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
               }`}
             >
@@ -708,7 +708,7 @@ const MobileSettingsPanel = () => {
                   onClick={() => setGlancePage(value)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     glancePage === value
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-accent-600 text-white border-accent-600'
                       : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
                   }`}
                 >
@@ -744,7 +744,7 @@ const MobileSettingsPanel = () => {
             placeholder="https://..."
             value={taskCalendarUrl}
             onChange={(e) => setTaskCalendarUrl(e.target.value)}
-            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
           />
         </div>
         {taskCalendarUrl && (
@@ -757,7 +757,7 @@ const MobileSettingsPanel = () => {
                 placeholder={t('common.username')}
                 value={taskCalendarAuth.username}
                 onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, username: e.target.value }))}
-                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
               />
             </div>
             <div>
@@ -767,7 +767,7 @@ const MobileSettingsPanel = () => {
                 placeholder={t('settings.appPassword')}
                 value={taskCalendarAuth.appPassword}
                 onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, appPassword: e.target.value }))}
-                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
               />
             </div>
             <div>
@@ -777,7 +777,7 @@ const MobileSettingsPanel = () => {
                 placeholder="https://cloud.example.com/remote.php/dav/calendars/user/personal/"
                 value={taskCalendarAuth.caldavBaseUrl}
                 onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, caldavBaseUrl: e.target.value }))}
-                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
               />
               <p className={`text-xs ${textSecondary} mt-0.5`}>
                 {t('settings.calDAVSyncHint')}
@@ -809,7 +809,7 @@ const MobileSettingsPanel = () => {
           <select
             value={syncRetentionDays}
             onChange={(e) => setSyncRetentionDays(Number(e.target.value))}
-            className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+            className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
           >
             <option value={7}>{t('settings.keepPastEventsDays', { count: 7, defaultValue: '{{count}} days' })}</option>
             <option value={14}>{t('settings.keepPastEventsDays', { count: 14, defaultValue: '{{count}} days' })}</option>
@@ -827,7 +827,7 @@ const MobileSettingsPanel = () => {
         <button
           onClick={() => syncAll()}
           disabled={isSyncing || !calSyncConfigured}
-          className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
           {isSyncing ? t('settings.syncing') : t('settings.syncNow')}
@@ -858,7 +858,7 @@ const MobileSettingsPanel = () => {
                         const next = [...prev, cal.id];
                         return next.length === availableCalendars.length ? [] : next;
                       })}
-                      className="rounded accent-blue-500"
+                      className="rounded accent-accent-500"
                     />
                     <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cal.color }} />
                     <span className="flex-1 truncate">{cal.name}</span>
@@ -885,7 +885,7 @@ const MobileSettingsPanel = () => {
           <select
             value={inboxAutoArchiveDays}
             onChange={(e) => setInboxAutoArchiveDays(Number(e.target.value))}
-            className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+            className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
           >
             <option value={0}>{t('settings.inboxArchiveNever')}</option>
             <option value={7}>{t('settings.inboxArchive7')}</option>
@@ -950,7 +950,7 @@ const MobileSettingsPanel = () => {
             onChange={(e) => setReminderSettings(prev => ({ ...prev, enabled: e.target.checked }))}
             className="sr-only"
           />
-          <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+          <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.enabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
           </div>
         </div>
@@ -968,7 +968,7 @@ const MobileSettingsPanel = () => {
               onChange={(e) => setLiveActivityEnabled(e.target.checked)}
               className="sr-only"
             />
-            <div className={`w-10 h-6 rounded-full transition-colors ${liveActivityEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+            <div className={`w-10 h-6 rounded-full transition-colors ${liveActivityEnabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${liveActivityEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
           </div>
@@ -985,7 +985,7 @@ const MobileSettingsPanel = () => {
           <label className="flex items-center gap-3 cursor-pointer">
             <div className="relative">
               <input type="checkbox" checked={reminderSettings.inAppToasts !== false} onChange={(e) => setReminderSettings(prev => ({ ...prev, inAppToasts: e.target.checked }))} className="sr-only" />
-              <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.inAppToasts !== false ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+              <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.inAppToasts !== false ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.inAppToasts !== false ? 'translate-x-5' : 'translate-x-1'}`} />
               </div>
             </div>
@@ -1000,7 +1000,7 @@ const MobileSettingsPanel = () => {
                 if (val && typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission();
                 setReminderSettings(prev => ({ ...prev, browserNotifications: val }));
               }} className="sr-only" />
-              <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.browserNotifications ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+              <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.browserNotifications ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.browserNotifications ? 'translate-x-5' : 'translate-x-1'}`} />
               </div>
             </div>
@@ -1029,14 +1029,14 @@ const MobileSettingsPanel = () => {
                   key={key}
                   onClick={() => applyReminderPreset(key)}
                   className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                    reminderSettings.preset === key ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                    reminderSettings.preset === key ? 'bg-accent-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
                   }`}
                 >
                   {label}
                 </button>
               ))}
               {reminderSettings.preset === 'custom' && (
-                <span className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white">{t('reminders.presetCustom')}</span>
+                <span className="px-3 py-1.5 text-xs rounded-lg bg-accent-600 text-white">{t('reminders.presetCustom')}</span>
               )}
             </div>
           </div>
@@ -1062,7 +1062,7 @@ const MobileSettingsPanel = () => {
                     key={field}
                     onClick={() => updateCategoryReminder(catKey, field, !reminderSettings.categories[catKey]?.[field])}
                     className={`px-2.5 py-1 text-xs rounded transition-colors ${
-                      reminderSettings.categories[catKey]?.[field] ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-stone-200 text-stone-500'} ${hoverBg}`
+                      reminderSettings.categories[catKey]?.[field] ? 'bg-accent-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-stone-200 text-stone-500'} ${hoverBg}`
                     }`}
                   >
                     {label}
@@ -1104,7 +1104,7 @@ const MobileSettingsPanel = () => {
             <label className="flex items-center gap-3 cursor-pointer mb-3">
               <div className="relative">
                 <input type="checkbox" checked={reminderSettings.weeklyReview?.enabled ?? true} onChange={(e) => setReminderSettings(prev => ({ ...prev, weeklyReview: { ...prev.weeklyReview, enabled: e.target.checked } }))} className="sr-only" />
-                <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.weeklyReview?.enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.weeklyReview?.enabled ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.weeklyReview?.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
                 </div>
               </div>
@@ -1120,7 +1120,7 @@ const MobileSettingsPanel = () => {
                         key={label}
                         onClick={() => setReminderSettings(prev => ({ ...prev, weeklyReview: { ...prev.weeklyReview, day: i } }))}
                         className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                          reminderSettings.weeklyReview.day === i ? 'bg-blue-600 text-white' : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'
+                          reminderSettings.weeklyReview.day === i ? 'bg-accent-600 text-white' : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'
                         }`}
                       >
                         {label}
@@ -1154,7 +1154,7 @@ const MobileSettingsPanel = () => {
         <label className="flex items-center gap-3 cursor-pointer mb-3">
           <div className="relative">
             <input type="checkbox" checked={reminderSettings.hyperGlance?.enabled !== false} onChange={(e) => setReminderSettings(prev => ({ ...prev, hyperGlance: { ...prev.hyperGlance, enabled: e.target.checked } }))} className="sr-only" />
-            <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.hyperGlance?.enabled !== false ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+            <div className={`w-10 h-6 rounded-full transition-colors ${reminderSettings.hyperGlance?.enabled !== false ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${reminderSettings.hyperGlance?.enabled !== false ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
           </div>
@@ -1176,7 +1176,7 @@ const MobileSettingsPanel = () => {
                   onClick={() => setReminderSettings(prev => ({ ...prev, hyperGlance: { ...prev.hyperGlance, upNextMinutes: mins } }))}
                   className={`px-2.5 py-1 text-xs rounded transition-colors ${
                     (reminderSettings.hyperGlance?.upNextMinutes ?? 10) === mins
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-accent-600 text-white'
                       : `${darkMode ? 'bg-gray-700 text-gray-400' : 'bg-stone-200 text-stone-500'} ${hoverBg}`
                   }`}
                 >
@@ -1549,7 +1549,7 @@ const MobileSettingsPanel = () => {
         <span className="text-sm font-medium">{t('common.settings')}</span>
       </button>
       <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-        <Cloud size={18} className={cloudSyncConfig?.enabled ? 'text-blue-500' : textSecondary} />
+        <Cloud size={18} className={cloudSyncConfig?.enabled ? 'text-accent-500' : textSecondary} />
         {t('settings.cloudSync')}
       </h4>
       <p className={`text-xs ${textSecondary}`}>{t('settings.cloudSyncDesc')}</p>
@@ -1815,7 +1815,7 @@ const MobileSettingsPanel = () => {
                   placeholder="## Completed"
                   value={obsidianConfig.completionLogHeading || ''}
                   onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogHeading: e.target.value }))}
-                  className={`mt-2 w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                  className={`mt-2 w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                 />
               )}
             </div>
@@ -1959,7 +1959,7 @@ const MobileSettingsPanel = () => {
                 placeholder="## Completed"
                 value={obsidianConfig.completionLogHeading || ''}
                 onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogHeading: e.target.value }))}
-                className={`mt-2 w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                className={`mt-2 w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
               />
             )}
           </div>
@@ -2026,7 +2026,7 @@ const MobileSettingsPanel = () => {
 
   {/* GLANCE Integrations sub-view */}
   {mobileSettingsView === 'intent' && (() => {
-    const inputCls = `w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm`;
+    const inputCls = `w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-400' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm`;
     const labelCls = `block text-sm ${textSecondary} mb-1`;
     const sectionCls = `text-xs font-semibold uppercase tracking-wide ${textSecondary} px-1 mb-2`;
 
@@ -2057,7 +2057,7 @@ const MobileSettingsPanel = () => {
           <span className="text-sm font-medium">{t('common.settings')}</span>
         </button>
         <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-          <Activity size={18} className={intentForm.webdavUrl ? 'text-blue-500' : textSecondary} />
+          <Activity size={18} className={intentForm.webdavUrl ? 'text-accent-500' : textSecondary} />
           {t('settings.glanceIntegrations')}
         </h4>
         <p className={`text-xs ${textSecondary} -mt-3`}>
@@ -2222,7 +2222,7 @@ const MobileSettingsPanel = () => {
           {intentSetupPhase === 'passphrase-needed' && (
             <div className={`mt-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
               <div className="flex items-center gap-2 mb-2">
-                <Lock size={13} className="text-blue-500 flex-shrink-0" />
+                <Lock size={13} className="text-accent-500 flex-shrink-0" />
                 <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle')}</span>
               </div>
               <p className={`text-xs ${textSecondary} mb-3`}>{t('settings.intentsPassphraseSetupHint')}</p>
@@ -2233,7 +2233,7 @@ const MobileSettingsPanel = () => {
                 onChange={e => setIntentPassphraseInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Escape') { setIntentSetupPhase(null); setIntentPassphraseInput(''); } }}
                 placeholder={t('sync.passphrasePlaceholder')}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
               />
               <div className="flex gap-2">
                 <button
@@ -2256,7 +2256,7 @@ const MobileSettingsPanel = () => {
                       setIntentSetupPhase({ error: err.message });
                     }
                   }}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="px-3 py-1.5 bg-accent-600 text-white rounded-lg text-sm hover:bg-accent-700 disabled:opacity-50 transition-colors"
                 >
                   {t('common.confirm')}
                 </button>
@@ -2271,7 +2271,7 @@ const MobileSettingsPanel = () => {
           )}
           {intentSetupPhase === 'running' && (
             <div className={`mt-2 flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-              <Loader size={14} className="animate-spin text-blue-500" />
+              <Loader size={14} className="animate-spin text-accent-500" />
               <span className={`text-sm ${textSecondary}`}>{t('settings.intentsEncryptionSettingUp')}</span>
             </div>
           )}
@@ -2320,7 +2320,7 @@ const MobileSettingsPanel = () => {
               setIntentSaved(true);
               setTimeout(() => setIntentSaved(false), 2000);
             }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 disabled:opacity-60 transition-colors flex items-center gap-1.5"
           >
             {intentSetupPhase === 'running' && <Loader size={13} className="animate-spin" />}
             {intentSaved ? t('common.saved') : t('common.save')}
@@ -2418,7 +2418,7 @@ const MobileSettingsPanel = () => {
                       onChange={e => setDbIntentsPassphraseInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Escape') { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); } }}
                       placeholder={t('sync.passphrasePlaceholder')}
-                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
                     />
                     <div className="flex gap-2">
                       <button
@@ -2438,7 +2438,7 @@ const MobileSettingsPanel = () => {
                           setDbIntentsConfig({ ...existing, enabled: true });
                           window.location.reload();
                         }}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                        className="px-3 py-1.5 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50 text-sm"
                       >
                         {t('common.confirm')}
                       </button>
@@ -2456,7 +2456,7 @@ const MobileSettingsPanel = () => {
                 )}
                 {dbIntentsSetupPhase === 'running' && (
                   <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                    <Loader size={14} className="animate-spin text-blue-500" />
+                    <Loader size={14} className="animate-spin text-accent-500" />
                     <span className={`text-sm ${textSecondary}`}>{t('settings.glanceVaultEncryptionSettingUp')}</span>
                   </div>
                 )}
@@ -2508,7 +2508,7 @@ const MobileSettingsPanel = () => {
                     setDbIntentsSaved(true);
                     setTimeout(() => setDbIntentsSaved(false), 2000);
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  className="px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 disabled:opacity-60 transition-colors"
                 >
                   {dbIntentsSaved ? t('common.saved') : t('common.save')}
                 </button>
@@ -2558,7 +2558,7 @@ const MobileSettingsPanel = () => {
                 setIcloudIntentsSaved(true);
                 setTimeout(() => setIcloudIntentsSaved(false), 2000);
               }}
-              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="mt-3 px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors"
             >
               {icloudIntentsSaved ? t('common.saved') : t('common.save')}
             </button>
@@ -2629,7 +2629,7 @@ const MobileSettingsPanel = () => {
                     </p>
                     <button
                       onClick={() => setEditingFrame('new')}
-                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      className="mt-2 px-4 py-2 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors flex items-center gap-2"
                     >
                       <Plus size={16} />
                       {t('frames.createFrame')}
@@ -2736,7 +2736,7 @@ const MobileSettingsPanel = () => {
                       placeholder={t('habit.habitNamePlaceholder')}
                       value={editingHabit.name || ''}
                       onChange={(e) => setEditingHabit(prev => ({ ...prev, name: e.target.value }))}
-                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       autoFocus
                     />
                   </div>
@@ -2745,7 +2745,7 @@ const MobileSettingsPanel = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingHabit(prev => ({ ...prev, type: 'doMore' }))}
-                        className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${editingHabit.type === 'doMore' ? 'bg-blue-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-100 text-stone-700')}`}
+                        className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors ${editingHabit.type === 'doMore' ? 'bg-accent-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-100 text-stone-700')}`}
                       >{t('habit.doMore')}</button>
                       <button
                         onClick={() => setEditingHabit(prev => ({ ...prev, type: 'limit' }))}
@@ -2762,7 +2762,7 @@ const MobileSettingsPanel = () => {
                         min="1"
                         value={editingHabit.target || ''}
                         onChange={(e) => setEditingHabit(prev => ({ ...prev, target: parseInt(e.target.value) || 0 }))}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       />
                     </div>
                     <div className="flex-1">
@@ -2772,7 +2772,7 @@ const MobileSettingsPanel = () => {
                         placeholder={t('habit.habitUnitPlaceholder')}
                         value={editingHabit.unit || ''}
                         onChange={(e) => setEditingHabit(prev => ({ ...prev, unit: e.target.value }))}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                       />
                     </div>
                   </div>
@@ -2822,7 +2822,7 @@ const MobileSettingsPanel = () => {
                           <button
                             key={name}
                             onClick={() => setEditingHabit(prev => ({ ...prev, icon: name }))}
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${editingHabit.icon === name ? 'bg-blue-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200')}`}
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${editingHabit.icon === name ? 'bg-accent-600 text-white' : (darkMode ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200')}`}
                           >
                             <Icon size={18} />
                           </button>
@@ -2837,7 +2837,7 @@ const MobileSettingsPanel = () => {
                         <button
                           key={c.name}
                           onClick={() => setEditingHabit(prev => ({ ...prev, color: c.name }))}
-                          className={`w-9 h-9 rounded-full ${c.bg} transition-all ${editingHabit.color === c.name ? 'ring-2 ring-offset-2 ring-blue-500' : 'opacity-70 hover:opacity-100'}`}
+                          className={`w-9 h-9 rounded-full ${c.bg} transition-all ${editingHabit.color === c.name ? 'ring-2 ring-offset-2 ring-accent-500' : 'opacity-70 hover:opacity-100'}`}
                         />
                       ))}
                     </div>
@@ -2854,7 +2854,7 @@ const MobileSettingsPanel = () => {
                         setEditingHabit(null);
                       }}
                       disabled={!editingHabit.name?.trim() || !editingHabit.target}
-                      className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >{isNew ? t('habit.addHabit') : t('common.save')}</button>
                   </div>
                 </div>
@@ -2947,7 +2947,7 @@ const MobileSettingsPanel = () => {
               {activeHabits.length < 8 && (
                 <button
                   onClick={() => setEditingHabit({ name: '', icon: 'Droplets', color: 'blue', type: 'doMore', target: 8, unit: '', scheduledDays: [0, 1, 2, 3, 4, 5, 6] })}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-blue-500/30 text-blue-500 text-sm font-medium hover:bg-blue-500/5 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-accent-500/30 text-accent-500 text-sm font-medium hover:bg-accent-500/5 transition-colors"
                 >
                   <Plus size={16} />
                   {t('habit.addHabit')}
@@ -3016,7 +3016,7 @@ const MobileSettingsPanel = () => {
                         <div key={habit.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${darkMode ? 'bg-gray-800/50' : 'bg-stone-50'} opacity-60`}>
                           <IconComp size={16} style={{ color: colorObj.ring }} />
                           <span className={`text-sm flex-1 ${textPrimary}`}>{habit.name}</span>
-                          <button onClick={() => updateHabit(habit.id, { archived: false })} className="text-xs text-blue-500 font-medium px-2 py-1 rounded hover:bg-blue-500/10">{t('common.restore')}</button>
+                          <button onClick={() => updateHabit(habit.id, { archived: false })} className="text-xs text-accent-500 font-medium px-2 py-1 rounded hover:bg-accent-500/10">{t('common.restore')}</button>
                           <button onClick={() => deleteHabit(habit.id)} className="text-xs text-red-500 font-medium px-2 py-1 rounded hover:bg-red-500/10">{t('common.delete')}</button>
                         </div>
                       );
@@ -3165,7 +3165,7 @@ const MobileSettingsPanel = () => {
                       localStorage.setItem('dayglance-users', JSON.stringify(updated));
                       setMuEditingUserId(null);
                     }}
-                    className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs"
+                    className="px-2 py-1 bg-accent-600 text-white rounded-lg text-xs"
                   >{t('common.save')}</button>
                   <button type="button" onClick={() => setMuEditingUserId(null)} className={`px-2 py-1 rounded-lg text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
                 </>
@@ -3241,7 +3241,7 @@ const MobileSettingsPanel = () => {
                 setMuNewUserName('');
                 setMuAddingUser(false);
               }}
-              className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm"
+              className="px-3 py-1 bg-accent-600 text-white rounded-lg text-sm"
             >{t('common.add')}</button>
             <button type="button" onClick={() => { setMuAddingUser(false); setMuNewUserName(''); }} className={`px-2 py-1 rounded-lg text-sm ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
           </div>
@@ -3249,7 +3249,7 @@ const MobileSettingsPanel = () => {
           <button
             type="button"
             onClick={() => setMuAddingUser(true)}
-            className={`mt-3 w-full ${cardBg} border ${borderClass} rounded-xl p-3 flex items-center justify-center gap-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'} text-sm font-medium`}
+            className={`mt-3 w-full ${cardBg} border ${borderClass} rounded-xl p-3 flex items-center justify-center gap-2 ${darkMode ? 'text-accent-400' : 'text-accent-600'} text-sm font-medium`}
           >
             {t('common.addPerson')}
           </button>
@@ -3272,7 +3272,7 @@ const MobileSettingsPanel = () => {
               const prev = existing ? JSON.parse(existing) : {};
               localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...prev, usersPath: val }));
             }}
-            className={`w-full px-3 py-2 border ${borderClass} rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+            className={`w-full px-3 py-2 border ${borderClass} rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
           />
           <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.usersSyncPathHint')}</p>
         </div>

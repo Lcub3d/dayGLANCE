@@ -235,7 +235,8 @@ export default function useDragDrop({
     setDragSource(source);
     setDragPreviewTime(null);
     setExpandedNotesTaskId(null); // Close notes panel when dragging
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.effectAllowed = source === 'inbox' ? 'copyMove' : 'move';
+    e.dataTransfer.setData('application/x-dayglance-task', String(task.id));
   };
 
   const handleDragEnd = () => {
@@ -429,9 +430,9 @@ export default function useDragDrop({
     pushUndo();
     if (dragSource === 'inbox') {
       setUnscheduledTasks(prev => prev.filter(t => t.id !== draggedTask.id));
-      const { priority, deadline, ...taskWithoutPriorityAndDeadline } = draggedTask;
+      const { deadline, ...scheduledTask } = draggedTask;
       setTasks(prev => [...prev, {
-        ...taskWithoutPriorityAndDeadline,
+        ...scheduledTask,
         startTime,
         date: dropDateStr,
         isAllDay: false

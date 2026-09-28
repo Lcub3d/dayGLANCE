@@ -20,7 +20,7 @@ export default function InboxFilterButtons({ filterActive, onToggleFilter, filte
     inboxPriorityFilter, setInboxPriorityFilter, playUISound,
   } = useDayPlannerCtx();
   const { t } = useTranslation();
-  const active = darkMode ? 'text-blue-400' : 'text-blue-600';
+  const active = darkMode ? 'text-accent-400' : 'text-accent-600';
   const priorityHint = inboxPriorityFilter === 0
     ? t('inbox.showingAllPrioritiesClick', { defaultValue: 'Showing all priorities (click to filter)' })
     : t('inbox.showingPriorityClick', { priority: inboxPriorityFilter, defaultValue: 'Showing priority {{priority}}+ (click to change)' });
@@ -46,7 +46,7 @@ export default function InboxFilterButtons({ filterActive, onToggleFilter, filte
       >
         <Filter size={14} />
         <span>{t('goals.filterButton')}</span>
-        {filterActive && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />}
+        {filterActive && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent-500" />}
       </button>
       <button
         type="button"
@@ -62,7 +62,7 @@ export default function InboxFilterButtons({ filterActive, onToggleFilter, filte
               inboxPriorityFilter === 0
                 ? `${darkMode ? 'bg-gray-500' : 'bg-stone-400'}`
                 : i < inboxPriorityFilter
-                  ? 'bg-blue-500'
+                  ? 'bg-accent-500'
                   : `${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`
             }`}
           />

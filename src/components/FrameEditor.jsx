@@ -135,7 +135,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
             </span>
             <button
               onClick={() => { setSingleDate(null); setDays([new Date(singleDate + 'T12:00:00').getDay()]); }}
-              className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+              className="text-xs text-accent-500 hover:text-accent-400 transition-colors"
             >
               {t('goals.hgRecurring')}
             </button>
@@ -149,7 +149,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
               <button
                 key={i}
                 onClick={() => toggleDay(i)}
-                className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${days.includes(i) ? 'bg-blue-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
+                className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${days.includes(i) ? 'bg-accent-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
               >
                 {d}
               </button>
@@ -184,7 +184,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
             <button
               key={c.class}
               onClick={() => setColor(c.class)}
-              className={`w-7 h-7 rounded-full ${c.class} ${color === c.class ? 'ring-2 ring-blue-500 ring-offset-2' : ''} transition-all`}
+              className={`w-7 h-7 rounded-full ${c.class} ${color === c.class ? 'ring-2 ring-accent-500 ring-offset-2' : ''} transition-all`}
               style={darkMode ? { ringOffsetColor: '#1f2937' } : {}}
               title={colorLabels[c.name] ?? c.name}
               aria-label={colorLabels[c.name] ?? c.name}
@@ -201,7 +201,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
             <button
               key={level}
               onClick={() => setEnergyLevel(level)}
-              className={`flex-1 py-1.5 rounded text-xs font-medium capitalize transition-colors ${energyLevel === level ? 'bg-blue-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
+              className={`flex-1 py-1.5 rounded text-xs font-medium capitalize transition-colors ${energyLevel === level ? 'bg-accent-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
             >
               {energyLabels[level]}
             </button>
@@ -227,7 +227,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
               <button
                 key={tag}
                 onClick={() => toggleTag(tag)}
-                className={`px-2 py-1 rounded-full text-xs transition-colors ${tagAffinity.includes(tag) ? 'bg-blue-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
+                className={`px-2 py-1 rounded-full text-xs transition-colors ${tagAffinity.includes(tag) ? 'bg-accent-600 text-white' : darkMode ? 'bg-gray-800 text-gray-400' : 'bg-stone-100 text-stone-500'}`}
               >
                 #{tag}
               </button>
@@ -240,7 +240,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
       <label className="flex items-center gap-3 cursor-pointer">
         <div className="relative">
           <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="sr-only" />
-          <div className={`w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-700' : 'bg-stone-300'}`} />
+          <div className={`w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-accent-600' : darkMode ? 'bg-gray-700' : 'bg-stone-300'}`} />
           <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${enabled ? 'translate-x-5' : ''}`} />
         </div>
         <span className={`text-sm ${textPrimary}`}>{t('common.enabled')}</span>
@@ -248,7 +248,7 @@ const FrameEditor = ({ frame, onSave, onDelete, onCancel, allTags, darkMode, tex
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">
-        <button onClick={handleSave} className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+        <button onClick={handleSave} className="flex-1 py-2.5 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors">
           {frame ? t('task.saveChanges') : t('frames.createFrame')}
         </button>
         {frame && (

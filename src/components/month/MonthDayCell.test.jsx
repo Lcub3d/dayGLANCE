@@ -175,9 +175,9 @@ describe('MonthDayCell', () => {
   it('marks today with a soft rounded square and dims days outside the month', () => {
     const today = render({ items: [], isToday: true });
     expect(today).toContain('data-today="true"');
-    expect(today).toMatch(/data-month-cell-date[^>]*rounded-md[^>]*bg-blue-100 text-blue-700/);
+    expect(today).toMatch(/data-month-cell-date[^>]*rounded-md[^>]*bg-accent-100 text-accent-700/);
     expect(today).not.toContain('rounded-full');
-    expect(today).not.toContain('bg-blue-600');
+    expect(today).not.toContain('bg-accent-600');
     expect(render({ items: [] })).not.toContain('data-today');
     expect(render({ items: [], inMonth: false })).toContain('opacity-40');
     expect(render({ items: [], inMonth: false })).toContain('data-in-month="false"');

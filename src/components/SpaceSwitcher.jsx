@@ -59,7 +59,7 @@ export default function SpaceSwitcher() {
             title={title}
             className={`w-9 h-8 rounded-md flex items-center justify-center transition-colors ${
               active
-                ? 'bg-blue-600 text-white'
+                ? 'bg-accent-600 text-white'
                 : `${textSecondary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-300/70'}`
             }`}
           >

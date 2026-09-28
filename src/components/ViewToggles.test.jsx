@@ -30,7 +30,7 @@ describe('ViewToggles', () => {
   // the everyday case, so it gets no switch here.
   it("lists a switcher's views in order with its hidden ones off, and any view can be turned off", async () => {
     const html = await render('en', { hiddenViews: { desktop: ['multi', 'sched'], mobile: ['month'] } }, { scope: 'desktop', views: offeredViews(DESKTOP_VIEW_MODES), label: (v) => v.toUpperCase() });
-    expect(toggles(html)).toEqual(['multi:false', 'day:true', 'week:true', 'month:true', 'sched:false']);
+    expect(toggles(html)).toEqual(['multi:false', 'day:true', 'week:true', 'month:true', 'sched:false', 'year:true']);
     expect(html).toContain('data-view-toggles="desktop"');
     expect(html).toContain('Views on this device');
     expect(html).not.toContain('disabled');
@@ -40,7 +40,7 @@ describe('ViewToggles', () => {
   it('offers JOBO a switch of its own only once its flag is on', async () => {
     const views = offeredViews(DESKTOP_VIEW_MODES, { joboEnabled: true });
     const html = await render('en', { hiddenViews: { desktop: [], mobile: [] } }, { scope: 'desktop', views, label: (v) => v.toUpperCase() });
-    expect(toggles(html)).toEqual(['multi:true', 'day:true', 'week:true', 'month:true', 'sched:true', 'jobo:true']);
+    expect(toggles(html)).toEqual(['multi:true', 'day:true', 'week:true', 'month:true', 'sched:true', 'jobo:true', 'year:true']);
   });
 
   it("reads the other switcher's list for scope mobile, and disables the last switch still on", async () => {

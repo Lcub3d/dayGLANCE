@@ -130,7 +130,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
         isEvent ? '' : 'cursor-pointer active:opacity-70'
       } ${task.completed || isFinishedEvent ? 'opacity-55' : ''} ${dnd ? 'select-none dnd-no-select' : ''} ${
         dnd?.isSource ? 'opacity-40' : ''
-      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-blue-400' : 'border-t-2 border-t-blue-500') : ''}`}
+      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-accent-400' : 'border-t-2 border-t-accent-500') : ''}`}
       style={{ borderLeft: `4px solid ${hex}` }}
     >
       {dnd && (
@@ -185,7 +185,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
             {!isEvent && (
               <button
                 onClick={openNotesPanel}
-                className={`flex items-center gap-0.5 flex-shrink-0 p-0.5 -m-0.5 hover:opacity-100 hover:text-blue-500 ${
+                className={`flex items-center gap-0.5 flex-shrink-0 p-0.5 -m-0.5 hover:opacity-100 hover:text-accent-500 ${
                   hasNotesContent ? 'opacity-70' : 'opacity-35'
                 }`}
                 title={hasNotesContent ? t('sched.notesSubtasks', 'Notes & subtasks') : t('sched.addNotesSubtasks', 'Add notes or subtasks')}
@@ -206,7 +206,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="flex-shrink-0 opacity-70 hover:opacity-100 hover:text-blue-500"
+                className="flex-shrink-0 opacity-70 hover:opacity-100 hover:text-accent-500"
                 title={linkUrl}
               >
                 <ExternalLink size={10} />
@@ -235,7 +235,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
       {onSchedule && !task.completed && !isEvent && (
         <button
           onClick={e => { e.stopPropagation(); onSchedule(task); }}
-          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
+          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-accent-500 ${textSecondary}`}
           title={t('sched.scheduleForTodaySlot', 'Schedule for today (next open slot)')}
           aria-label={t('sched.scheduleForToday', 'Schedule for today')}
         >
@@ -245,7 +245,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
       {canPostpone && (
         <button
           onClick={e => { e.stopPropagation(); postponeTask(task.id); }}
-          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
+          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-accent-500 ${textSecondary}`}
           title={t('sched.postponeTomorrow', 'Postpone to tomorrow')}
           aria-label={t('sched.postponeTomorrow', 'Postpone to tomorrow')}
         >

@@ -29,7 +29,7 @@ const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, 
           onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
           className={`w-full text-left px-2 py-1.5 rounded text-sm flex items-center gap-2 ${
             index === selectedIndex
-              ? 'bg-blue-500 text-white'
+              ? 'bg-accent-500 text-white'
               : `${textPrimary} ${hoverBg}`
           }`}
         >

@@ -1,7 +1,8 @@
 # Lifemap support network (Jobu)
 
 This feature belongs to **`product/jobu`**, not an upstream JOBO slice. Open
-**Life → Life Map → Support network** (中文：人生规划 → 人生蓝图 → 支撑网络).
+**Goals & Projects → Aspire → Life Map → Support network**
+(中文：目标与项目 → Aspire → 人生蓝图 → 支撑网络).
 The existing notebook, native goal/project/task ownership and JOBO ledger are
 unchanged. No new runtime dependency is added.
 
@@ -112,7 +113,7 @@ silently rescaling. Duplicate semantic entries imported under different entity
 IDs are flagged, not double-counted. Edit or remove the conflicting relations;
 raw imported duplicate assessments can be inspected/restored through History.
 
-Use **Jobu's top-bar Backup / History** or a **whole-app backup** for this data.
+Use **Tasks → Data actions → Backup / History** or a **whole-app backup** for this data.
 The legacy notebook-only export covers the notebook, not this network. Native
 tasks/goals still require a whole-app backup alongside personal revisions.
 Import merges history; restoring an earlier value creates a new revision, not a

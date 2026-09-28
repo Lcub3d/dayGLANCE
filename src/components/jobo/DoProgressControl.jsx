@@ -41,7 +41,6 @@ export default function DoProgressControl({ record, t, writable = false, onChang
   const currentLabel = progressLabel(t, current);
   const choose = (value, event) => {
     event?.stopPropagation();
-    if (value === DO_PROGRESS.COMPLETED && record?.progress !== DO_PROGRESS.COMPLETED) return;
     if (writable && typeof onChange === 'function') onChange(value);
   };
   const handleKeyDown = (event) => {
@@ -65,7 +64,7 @@ export default function DoProgressControl({ record, t, writable = false, onChang
       disabled={!writable} data-progress-current={current.value} onChange={(event) => choose(event.target.value, event)}
       onKeyDown={handleKeyDown} onPointerDown={stopPropagation} onMouseDown={stopPropagation}
       onClick={stopPropagation} onDoubleClick={stopPropagation} onDragStart={stopPropagation} onContextMenu={stopPropagation}>
-      {OPTIONS.filter(option => option.value !== DO_PROGRESS.COMPLETED || record?.progress === DO_PROGRESS.COMPLETED).map((option) => <option key={option.value} value={option.value}>{progressLabel(t, option)}</option>)}
+      {OPTIONS.map((option) => <option key={option.value} value={option.value}>{progressLabel(t, option)}</option>)}
     </select>
   </div>;
 }

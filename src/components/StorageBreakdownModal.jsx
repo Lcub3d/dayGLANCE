@@ -65,7 +65,7 @@ const StorageBreakdownModal = () => {
                   localStorage cap; it is the lowest common denominator across the
                   targets, the tightest being the iOS and Android webviews. */}
               <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} mb-4`}>
-                <div className={`h-full rounded-full transition-all ${warn ? 'bg-orange-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, totalBytes / (5 * 1024 * 1024) * 100)}%` }} />
+                <div className={`h-full rounded-full transition-all ${warn ? 'bg-orange-500' : 'bg-accent-500'}`} style={{ width: `${Math.min(100, totalBytes / (5 * 1024 * 1024) * 100)}%` }} />
               </div>
               {databaseBytes != null && (
                 <div className={`text-xs mb-4 ${textSecondary}`}>

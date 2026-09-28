@@ -38,7 +38,7 @@ export default function TrayReminders({ darkMode, reminders }) {
               <button
                 onClick={() => complete(r)}
                 title={t('sched.markComplete')}
-                className="px-2 py-0.5 text-xs rounded bg-blue-600 text-white transition-opacity hover:opacity-80"
+                className="px-2 py-0.5 text-xs rounded bg-accent-600 text-white transition-opacity hover:opacity-80"
               >
                 {t('focus.complete')}
               </button>

@@ -155,17 +155,17 @@ describe('createManualDo', () => {
     expect(record.planSnapshot.duration).toBe(60);
   });
 
-  it('keeps null-task manual work independent and never creates completed progress', () => {
+  it('keeps null-task manual work independent and permits completed progress', () => {
     const record = createManualDo({
       id: 'manual:independent', title: 'Unlinked work', date: '2026-09-26',
       startMinute: 60, now: NOW,
     });
     expect(record.taskId).toBeNull();
     expect(record.planSnapshot).toBeNull();
-    expect(() => createManualDo({
+    expect(createManualDo({
       id: 'manual:bad', title: 'Bad', date: '2026-09-26', startMinute: 60,
       progress: DO_PROGRESS.COMPLETED, now: NOW,
-    })).toThrow();
+    }).progress).toBe(DO_PROGRESS.COMPLETED);
   });
 });
 
@@ -259,7 +259,7 @@ describe('prepareDoEdit and prepareDoDelete', () => {
     expect(prepareDoDelete({ records: [deleted], record, now: NOW })).toBeNull();
   });
 
-  it('does not restore completed progress through a manual edit', () => {
+  it('allows completed progress through a manual edit of the same record', () => {
     const completed = completeDoAttempt([], {
       id: 'do:t:stamp', taskId: 't', timing: 'untimed', date: '2026-09-26',
       startTime: null, endDate: null, endTime: null, title: 'Done',
@@ -269,9 +269,9 @@ describe('prepareDoEdit and prepareDoDelete', () => {
     expect(() => prepareDoEdit({
       records: [completed], record: completed, progress: DO_PROGRESS.COMPLETED, now: NOW,
     })).not.toThrow();
-    expect(() => prepareDoEdit({
+    expect(prepareDoEdit({
       records: [record], record, progress: DO_PROGRESS.COMPLETED, now: NOW,
-    })).toThrow();
+    })).toMatchObject({ id: record.id, progress: DO_PROGRESS.COMPLETED });
   });
 
   it('tombstones the current version without deleting history', () => {
@@ -283,7 +283,7 @@ describe('prepareDoEdit and prepareDoDelete', () => {
 });
 
 describe('slice 4 detector and view lifecycle', () => {
-  it('keeps one completion id through untimed capture, correction, reassessment, tombstone, and re-observation', () => {
+  it('keeps one completion id through timed capture, correction, reassessment, tombstone, and re-observation', () => {
     const task = {
       id: 'task-1', title: 'Ship report', date: '2026-09-26', startTime: '09:00', duration: 60,
       completed: false,
@@ -293,7 +293,7 @@ describe('slice 4 detector and view lifecycle', () => {
     const next = snapshotJoboState([done], [], []);
     const edges = findJoboEdges(prev, next, { tasks: [done], unscheduledTasks: [], recurringTasks: [] });
     let [untimed] = buildJoboRecords(edges, [], { observedAt: '2026-09-26T10:00:01.000Z' });
-    expect(untimed.timing).toBe('untimed');
+    expect(untimed.timing).toBe('timed');
     const corrected = prepareDoEdit({
       records: [untimed], record: untimed,
       patch: doIntervalAt('2026-09-26', 10 * 60, 30), now: NOW,

@@ -29,9 +29,9 @@ export default function TodoistSettings({ variant = 'section' }) {
   // which read as a noticeably darker, unfocusable panel sitting inside the
   // normal one. bg-gray-700/text-white and bg-white/text-stone-900 are the
   // app-wide field colours, and the focus ring is what every other field has.
-  const fieldClass = `w-full px-3 py-2 border ${borderClass} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`;
+  const fieldClass = `w-full px-3 py-2 border ${borderClass} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`;
   const buttonClass = `px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary}`;
-  const primaryButtonClass = 'px-4 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50';
+  const primaryButtonClass = 'px-4 py-2 rounded-lg text-sm bg-accent-600 text-white hover:bg-accent-700 transition-colors disabled:opacity-50';
   const toggle = (field, value) => updateSettings({ [field]: settings[field].includes(value)
     ? settings[field].filter(item => item !== value) : [...settings[field], value] });
   const choices = field => {

@@ -265,10 +265,10 @@ const MobileTimeGrid = () => {
                 style={{ top: `${dragTop}px` }}
               >
                 <div className="relative">
-                  <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'}`}>
+                  <div className={`absolute bottom-0.5 right-0 px-1.5 py-0.5 rounded text-[10px] font-bold ${darkMode ? 'bg-accent-500 text-white' : 'bg-accent-600 text-white'}`}>
                     {formatTime(mobileDragPreviewTime)}
                   </div>
-                  <div className="h-0.5 bg-blue-500"></div>
+                  <div className="h-0.5 bg-accent-500"></div>
                 </div>
               </div>
             );
@@ -282,8 +282,8 @@ const MobileTimeGrid = () => {
                 top: `${minutesToPosition(timeToMinutes(hoverPreviewTime))}px`
               }}
             >
-              <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60"></div>
-              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
+              <div className="absolute left-0 right-12 h-0.5 bg-accent-400/60"></div>
+              <div className="absolute right-1 bg-accent-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
                 {formatTime(hoverPreviewTime)}
               </div>
             </div>
@@ -414,7 +414,7 @@ const MobileTimeGrid = () => {
                 {(!task.imported || !!task.nativeEventId) && (
                   <>
                     {!task.imported && (
-                      <div data-swipe-strip="right" style={{ display: 'none' }} className={`absolute inset-0 ${typeof task.id === 'string' && task.id.startsWith('recurring-') ? (darkMode ? 'bg-red-900/80 text-red-300' : 'bg-red-100 text-red-600') : (darkMode ? 'bg-blue-900/80 text-blue-300' : 'bg-blue-100 text-blue-600')} rounded-lg flex items-center pl-3 text-xs font-medium`}>
+                      <div data-swipe-strip="right" style={{ display: 'none' }} className={`absolute inset-0 ${typeof task.id === 'string' && task.id.startsWith('recurring-') ? (darkMode ? 'bg-red-900/80 text-red-300' : 'bg-red-100 text-red-600') : (darkMode ? 'bg-accent-900/80 text-accent-300' : 'bg-accent-100 text-accent-600')} rounded-lg flex items-center pl-3 text-xs font-medium`}>
                         {typeof task.id === 'string' && task.id.startsWith('recurring-') ? (
                           <><Trash2 size={14} className="mr-1" />{t('common.delete')}</>
                         ) : (

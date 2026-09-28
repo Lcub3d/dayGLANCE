@@ -37,7 +37,7 @@ const DesktopWelcomeModal = () => {
             <button
               key={i}
               onClick={() => setDesktopWelcomeStep(i)}
-              className={`w-2 h-2 rounded-full transition-colors ${i === desktopWelcomeStep ? 'bg-blue-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
+              className={`w-2 h-2 rounded-full transition-colors ${i === desktopWelcomeStep ? 'bg-accent-500' : (darkMode ? 'bg-gray-600' : 'bg-stone-300')}`}
             />
           ))}
         </div>
@@ -85,34 +85,34 @@ const DesktopWelcomeModal = () => {
                 </label>
               )}
               <div className={`mt-5 flex items-center justify-center gap-2 text-xs ${textSecondary}`}>
-                <a href="https://www.glance-apps.com/dayglance/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500 transition-colors">{t('onboarding.privacyPolicy')}</a>
+                <a href="https://www.glance-apps.com/dayglance/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-500 transition-colors">{t('onboarding.privacyPolicy')}</a>
                 <span className="opacity-50">·</span>
-                <a href="https://www.glance-apps.com/eula" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-500 transition-colors">{t('onboarding.termsOfUse')}</a>
+                <a href="https://www.glance-apps.com/eula" target="_blank" rel="noopener noreferrer" className="underline hover:text-accent-500 transition-colors">{t('onboarding.termsOfUse')}</a>
               </div>
             </div>
           )}
           {desktopWelcomeStep === 1 && (
             <div className="text-center w-full max-w-sm">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Plus size={32} className="text-blue-500" />
+              <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Plus size={32} className="text-accent-500" />
               </div>
               <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>{t('onboarding.layoutTitle')}</h2>
               <div className={`text-sm ${textSecondary} space-y-3 text-left`}>
                 <div className="flex items-start gap-3">
-                  <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Eye size={16} className="text-blue-500" />
+                  <span className="w-8 h-8 bg-accent-100 dark:bg-accent-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Eye size={16} className="text-accent-500" />
                   </span>
                   <span><strong className={textPrimary}>{t('onboarding.glanceSection')}</strong>: {t('onboarding.glanceSectionDesc')}</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Inbox size={16} className="text-blue-500" />
+                  <span className="w-8 h-8 bg-accent-100 dark:bg-accent-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Inbox size={16} className="text-accent-500" />
                   </span>
                   <span><strong className={textPrimary}>{t('onboarding.inboxSection')}</strong>: {t('onboarding.inboxSectionDesc')}</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Calendar size={16} className="text-blue-500" />
+                  <span className="w-8 h-8 bg-accent-100 dark:bg-accent-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Calendar size={16} className="text-accent-500" />
                   </span>
                   <span><strong className={textPrimary}>{t('onboarding.timelineSection')}</strong>: {t('onboarding.timelineSectionDesc')} <Plus size={12} className="inline mx-0.5" /></span>
                 </div>
@@ -121,8 +121,8 @@ const DesktopWelcomeModal = () => {
           )}
           {desktopWelcomeStep === 2 && (
             <div className="text-center w-full max-w-sm">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <GripVertical size={32} className="text-blue-500" />
+              <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <GripVertical size={32} className="text-accent-500" />
               </div>
               <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>{t('onboarding.interactingTitle')}</h2>
               <ul className={`text-sm ${textSecondary} space-y-2 text-left list-none`}>
@@ -141,8 +141,8 @@ const DesktopWelcomeModal = () => {
           )}
           {desktopWelcomeStep === 3 && (
             <div className="text-center w-full max-w-sm">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                <Search size={32} className="text-blue-500" />
+              <div className="w-16 h-16 bg-accent-100 dark:bg-accent-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Search size={32} className="text-accent-500" />
               </div>
               <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>{t('onboarding.spotlightTitle')}</h2>
               <div className={`text-sm ${textSecondary} space-y-3 text-left`}>
@@ -260,8 +260,8 @@ const DesktopWelcomeModal = () => {
                   <span><strong className={textPrimary}>{t('onboarding.habitsFeature')}</strong>: {t('onboarding.habitsFeatureDesc')}</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Flag size={16} className="text-blue-500" />
+                  <span className="w-8 h-8 bg-accent-100 dark:bg-accent-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Flag size={16} className="text-accent-500" />
                   </span>
                   <span><strong className={textPrimary}>{t('onboarding.goalsFeature')}</strong>: {t('onboarding.goalsFeatureDesc')}</span>
                 </div>
@@ -281,7 +281,7 @@ const DesktopWelcomeModal = () => {
               <div className="space-y-3 w-full max-w-xs mx-auto">
                 <button
                   onClick={() => { setShowWelcome(false); setDesktopWelcomeStep(0); }}
-                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors"
+                  className="w-full px-6 py-3 bg-accent-600 text-white rounded-xl hover:bg-accent-700 font-medium transition-colors"
                 >
                   {t('onboarding.justGetStarted')}
                 </button>
@@ -296,7 +296,7 @@ const DesktopWelcomeModal = () => {
                 href="https://docs.dayglance.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`inline-block mt-4 text-sm ${textSecondary} hover:text-blue-500 transition-colors`}
+                className={`inline-block mt-4 text-sm ${textSecondary} hover:text-accent-500 transition-colors`}
               >
                 {t('onboarding.exploreDocs')}
               </a>
@@ -324,7 +324,7 @@ const DesktopWelcomeModal = () => {
             {desktopWelcomeStep < 7 && (
               <button
                 onClick={() => setDesktopWelcomeStep(s => s + 1)}
-                className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
+                className="p-2 rounded-full bg-accent-600 hover:bg-accent-700 transition-colors"
               >
                 <ChevronRight size={20} className="text-white" />
               </button>

@@ -242,8 +242,12 @@ describe('Do progress reassessment', () => {
     assert.equal(original.progress, DO_PROGRESS.COMPLETED);
   });
 
-  it('does not use reassessment to create Completed', () => {
-    assert.throws(() => reassessDoProgress(record(), DO_PROGRESS.COMPLETED, T2), TypeError);
+  it('can mark an existing partial attempt Completed without creating another attempt', () => {
+    const original = record({ progress: DO_PROGRESS.PARTIAL });
+    const changed = reassessDoProgress(original, DO_PROGRESS.COMPLETED, T2);
+    assert.equal(changed.progress, DO_PROGRESS.COMPLETED);
+    assert.equal(changed.id, original.id);
+    assert.deepEqual(changed.planSnapshot, original.planSnapshot);
     assert.throws(() => reassessDoProgress(record(), 'complete', T2), TypeError);
   });
 

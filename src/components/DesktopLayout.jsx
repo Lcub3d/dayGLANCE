@@ -25,6 +25,7 @@ import SchedDashboard from './sched/SchedDashboard.jsx';
 import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
 import JoboView from './JoboView.jsx';
+import YearView from './jobu/YearView.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -556,7 +557,7 @@ const DesktopLayout = () => {
               {dateToString(selectedDate) !== dateToString(new Date()) && (
                 <button
                   onClick={goToToday}
-                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded-full hover:bg-blue-700 active:bg-blue-700 transition-colors"
+                  className="px-3 py-1 text-xs bg-accent-600 text-white rounded-full hover:bg-accent-700 active:bg-accent-700 transition-colors"
                 >
                   {t('common.today')}
                 </button>
@@ -585,9 +586,9 @@ const DesktopLayout = () => {
               <RefreshCw size={18} className={`${textSecondary} ${isSyncing ? 'animate-spin' : ''}`} />
               {calSyncConfigured && (
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                  isSyncing ? 'bg-blue-500 animate-pulse' :
+                  isSyncing ? 'bg-accent-500 animate-pulse' :
                   calSyncStatus === 'success' ? 'bg-green-500' :
-                  calSyncStatus === 'error' ? 'bg-red-500' :
+                  calSyncStatus === 'error' ? 'bg-accent-500' :
                   'bg-green-500'
                 }`} />
               )}
@@ -603,8 +604,8 @@ const DesktopLayout = () => {
             >
               <Cloud size={18} className={`${textSecondary} ${effSyncing ? 'animate-pulse' : ''}`} />
               <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                effSyncing ? 'bg-blue-500 animate-pulse' :
-                effSyncStatus === 'error' ? 'bg-red-500' :
+                effSyncing ? 'bg-accent-500 animate-pulse' :
+                effSyncStatus === 'error' ? 'bg-accent-500' :
                 'bg-green-500'
               }`} />
             </button>
@@ -623,8 +624,8 @@ const DesktopLayout = () => {
               >
                 <BookOpen size={18} className={`${textSecondary} ${obsidianSyncStatus === 'syncing' ? 'animate-pulse' : ''}`} />
                 <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-                  obsidianSyncStatus === 'syncing' ? 'bg-blue-500 animate-pulse' :
-                  obsidianSyncStatus === 'error' ? 'bg-red-500' :
+                  obsidianSyncStatus === 'syncing' ? 'bg-accent-500 animate-pulse' :
+                  obsidianSyncStatus === 'error' ? 'bg-accent-500' :
                   'bg-green-500'
                 }`} />
               </button>
@@ -637,7 +638,7 @@ const DesktopLayout = () => {
             >
               <Settings size={18} className={textSecondary} />
               {(updateInfo || Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone) && (
-                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${updateInfo ? 'bg-red-500' : 'bg-amber-500'}`} />
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${updateInfo ? 'bg-accent-500' : 'bg-amber-500'}`} />
               )}
             </button>
             <button
@@ -714,14 +715,14 @@ const DesktopLayout = () => {
                       key={index}
                       onClick={() => day && goToDate(day)}
                       disabled={!day}
-                      className={`h-10 rounded text-sm relative ${!day ? 'invisible' : ''} ${isSelected ? 'bg-blue-600 text-white font-bold' : ''} ${!isSelected && isDayToday ? 'bg-blue-100 dark:bg-blue-900 font-semibold' : ''} ${!isSelected && !isDayToday ? `${textPrimary} active:bg-stone-100 dark:active:bg-gray-700` : ''} ${!day ? '' : 'cursor-pointer'}`}
+                      className={`h-10 rounded text-sm relative ${!day ? 'invisible' : ''} ${isSelected ? 'bg-accent-600 text-white font-bold' : ''} ${!isSelected && isDayToday ? 'bg-accent-100 dark:bg-accent-900 font-semibold' : ''} ${!isSelected && !isDayToday ? `${textPrimary} active:bg-stone-100 dark:active:bg-gray-700` : ''} ${!day ? '' : 'cursor-pointer'}`}
                     >
                       {day && day.getDate()}
                       {hasDots && (
                         <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
                           {hasNote && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-yellow-500'}`} />}
                           {hasImported && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-stone-400'}`} />}
-                          {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-blue-600'}`} />}
+                          {hasAppTask && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-accent-600'}`} />}
                         </div>
                       )}
                     </button>
@@ -755,19 +756,19 @@ const DesktopLayout = () => {
                 <button
                   onClick={() => setTabletActiveTab('glance')}
                   style={{ height: 'var(--header-row-h)' }}
-                  className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors border-b-2 ${tabletActiveTab === 'glance' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
+                  className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors border-b-2 ${tabletActiveTab === 'glance' ? (darkMode ? 'text-accent-400 border-accent-400' : 'text-accent-600 border-accent-600') : `${textSecondary} border-transparent`}`}
                 >
                   <span className="flex items-center justify-center gap-1.5"><Eye size={16} /> {t('common.glance')}</span>
                 </button>
                 <button
                   onClick={() => setTabletActiveTab('inbox')}
                   style={{ height: 'var(--header-row-h)' }}
-                  className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
+                  className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? (darkMode ? 'text-accent-400 border-accent-400' : 'text-accent-600 border-accent-600') : `${textSecondary} border-transparent`}`}
                 >
                   <span className="flex items-center justify-center gap-1.5">
                     <Inbox size={16} /> {t('settings.inbox')}
                     {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
-                      <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+                      <span className="bg-accent-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                         {filteredUnscheduledTasks.filter(t => !t.isExample).length}
                       </span>
                     )}
@@ -811,19 +812,19 @@ const DesktopLayout = () => {
               <button
                 onClick={() => setTabletActiveTab('glance')}
                 style={{ height: 'var(--header-row-h)' }}
-                className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors border-b-2 ${tabletActiveTab === 'glance' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
+                className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors border-b-2 ${tabletActiveTab === 'glance' ? (darkMode ? 'text-accent-400 border-accent-400' : 'text-accent-600 border-accent-600') : `${textSecondary} border-transparent`}`}
               >
                 <span className="flex items-center justify-center gap-1.5"><Eye size={16} /> {t('common.glance')}</span>
               </button>
               <button
                 onClick={() => setTabletActiveTab('inbox')}
                 style={{ height: 'var(--header-row-h)' }}
-                className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? 'text-blue-500 border-blue-500' : `${textSecondary} border-transparent`}`}
+                className={`flex-1 flex items-center justify-center text-sm font-semibold transition-colors relative border-b-2 ${tabletActiveTab === 'inbox' ? (darkMode ? 'text-accent-400 border-accent-400' : 'text-accent-600 border-accent-600') : `${textSecondary} border-transparent`}`}
               >
                 <span className="flex items-center justify-center gap-1.5">
                     <Inbox size={16} /> {t('settings.inbox')}
                   {filteredUnscheduledTasks.filter(t => !t.isExample).length > 0 && (
-                    <span className="bg-blue-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
+                    <span className="bg-accent-600 text-white text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1">
                       {filteredUnscheduledTasks.filter(t => !t.isExample).length}
                     </span>
                   )}
@@ -857,7 +858,7 @@ const DesktopLayout = () => {
           <div className="flex-1 min-w-0 relative">
             <div
               ref={calendarRef}
-              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
+              className={`${cardBg} border-x border-b ${borderClass} ${effectiveViewMode === 'year' ? 'overflow-auto flex flex-col' : effectiveViewMode === 'month' || effectiveViewMode === 'jobo' || (tabletListView && mobileViewMode === 'month') ? 'overflow-hidden flex flex-col' : effectiveViewMode === 'multi' || effectiveViewMode === 'sched' ? `overflow-y-scroll overflow-x-hidden ${darkMode ? 'dark-scrollbar' : ''}` : 'overflow-hidden'} relative`}
               style={{ height: '100%' }}
             >
               {/* Combined sticky header — date headers + all-day section */}
@@ -887,6 +888,7 @@ const DesktopLayout = () => {
                     {effectiveViewMode === 'sched' && <SchedDashboard />}
                     {effectiveViewMode === 'month' && <MonthView />}
                     {effectiveViewMode === 'jobo' && <JoboView headerControlsTarget={joboHeaderTarget} />}
+                    {effectiveViewMode === 'year' && <YearView />}
                     {/* Summary strip — sticky over the timeline's own scroll
                         container so it stays visible without reserving layout
                         height. Timeline views only; sched is a dashboard.
@@ -901,7 +903,7 @@ const DesktopLayout = () => {
                         titlebarPills lets it stand down for today while the
                         macOS title bar carries the same numbers — always false
                         on a tablet, since that bar is Electron-on-macOS only. */}
-                    {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && (
+                    {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && effectiveViewMode !== 'year' && (
                       <SummaryStrip
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}
@@ -978,7 +980,7 @@ const DesktopLayout = () => {
           onDragOver={handleDragOverRecycleBin}
           onDragLeave={() => setDragOverRecycleBin(false)}
           onDrop={handleDropOnRecycleBin}
-          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all duration-150 pointer-events-auto ${dragOverRecycleBin ? 'bg-red-600 scale-110' : 'bg-red-500'}`}
+          className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all duration-150 pointer-events-auto ${dragOverRecycleBin ? 'bg-accent-600 scale-110' : 'bg-accent-500'}`}
         >
           <Trash2 size={26} className="text-white" />
         </div>
@@ -987,7 +989,7 @@ const DesktopLayout = () => {
       {isTablet && mobileDragTaskIdState !== null && (
         <div
           ref={trashFabRef}
-          className={`fixed z-50 w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all duration-150 ${mobileDragOverTrash ? 'bg-red-600 scale-110' : 'bg-red-500'}`}
+          className={`fixed z-50 w-16 h-16 rounded-full shadow-xl flex items-center justify-center transition-all duration-150 ${mobileDragOverTrash ? 'bg-accent-600 scale-110' : 'bg-accent-500'}`}
           style={{ left: 'calc(340px + 1rem)', bottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
         >
           <Trash2 size={26} className="text-white" />

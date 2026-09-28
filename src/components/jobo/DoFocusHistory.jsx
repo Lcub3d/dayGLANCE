@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlarmClock, X } from 'lucide-react';
+import { AlarmClock, Timer, X } from 'lucide-react';
 import {
   focusSessionDuration,
   focusSessionLabel,
@@ -107,17 +107,19 @@ export default function DoFocusHistory({
   defaultOpen = false,
 }) {
   const { sessions, legacyMinutes, precise } = selectDoFocusHistorySummary({ record, task, focusSessions, focusLog });
+  const pomodoros = sessions.filter(session => session.kind === 'pomodoro');
+  const shownSessions = pomodoros.length ? pomodoros : sessions;
   const hasHistory = precise || Number.isFinite(legacyMinutes);
   const [open, setOpen] = useState(defaultOpen);
   const anchorRef = useRef(null);
   const closeRef = useRef(null);
   const popoverRef = useRef(null);
   const popupId = `jobo-focus-history-${useId().replace(/:/g, '')}`;
-  const label = translate(t, 'jobo.view.focusHistory', FALLBACKS.label);
+  const label = pomodoros.length ? translate(t, 'focus.pomodoroDetails', 'Pomodoro details') : translate(t, 'jobo.view.focusHistory', FALLBACKS.label);
   const closeLabel = translate(t, 'jobo.view.closeFocusHistory', FALLBACKS.close);
   const minuteUnit = translate(t, 'jobo.view.minutesShort', FALLBACKS.minutes);
   const legacyTotal = legacyMinutes == null ? '' : `${minutesValue(legacyMinutes)}${minuteUnit}`;
-  const triggerLabel = precise
+  const triggerLabel = pomodoros.length ? translate(t, 'focus.pomodoroCount', `${pomodoros.length} pomodoros`, { count: pomodoros.length }) : precise
     ? focusCountLabel(t, sessions.length)
     : translate(t, 'jobo.view.focusLegacyTotal', legacyTotal || FALLBACKS.legacyTotal, { minutes: legacyMinutes });
 
@@ -162,7 +164,7 @@ export default function DoFocusHistory({
     </div>
     {precise ? <>
       <ol className="jobo-s5-focus-history-list">
-        {sessions.map((session, index) => {
+        {shownSessions.map((session, index) => {
           const duration = focusSessionDuration(session);
           const durationText = Number.isFinite(duration)
             ? ` · ${minutesValue(duration)}${minuteUnit}`
@@ -203,8 +205,8 @@ export default function DoFocusHistory({
       onDoubleClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <AlarmClock size={12} aria-hidden="true" />
-      <span aria-hidden="true" data-jobo-focus-count="true">{precise ? sessions.length : legacyTotal}</span>
+      {pomodoros.length ? <Timer size={12} aria-hidden="true" /> : <AlarmClock size={12} aria-hidden="true" />}
+      <span aria-hidden="true" data-jobo-focus-count="true">{precise ? shownSessions.length : legacyTotal}</span>
     </button>
     {open && (typeof document !== 'undefined' && document.body
       ? createPortal(<div id={popupId} role="dialog" aria-label={label}>{popup}</div>, document.body)

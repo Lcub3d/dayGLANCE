@@ -5,6 +5,8 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 
+const jobu = vi.hoisted(() => ({ setJobuPage: undefined }));
+
 // Goals & Projects is a space of its own on desktop and tablet (the header's
 // switcher, or `g`), so the GLANCE panel no longer carries a pill that opens
 // it — even with the feature on.
@@ -23,6 +25,7 @@ vi.mock('../context/FeaturesContext.jsx', () => ({
     goalsProjectsEnabled: true, setShowGoalsDashboard: () => {},
     setShowWeeklyReview: () => {}, showWeeklyReviewReminder: false, setShowWeeklyReviewReminder: () => {},
     weeklyReviewDismissedRef: { current: null }, lastWeeklyReviewFiredRef: { current: null },
+    setJobuPage: jobu.setJobuPage,
   }),
 }));
 
@@ -36,6 +39,17 @@ async function render() {
 }
 
 describe('GlanceFabs', () => {
+  it('places the task entry above the daily note using the same pill styling', async () => {
+    jobu.setJobuPage = vi.fn();
+    const html = await render();
+    const buttons = [...html.matchAll(/<button[^>]*>[\s\S]*?<\/button>/g)].map(match => match[0]);
+    const task = buttons.find(button => button.includes('>Tasks<'));
+    const daily = buttons.find(button => button.includes('>Daily Note<'));
+    expect(task).toBeDefined();
+    expect(html.indexOf(task)).toBeLessThan(html.indexOf(daily));
+    expect(task.match(/class="([^"]+)"/)[1]).toBe(daily.match(/class="([^"]+)"/)[1]);
+    jobu.setJobuPage = undefined;
+  });
   it('keeps the daily note pill but no Goals & Projects pill, even with the feature on', async () => {
     const html = await render();
     expect(html).toContain('Daily Note');

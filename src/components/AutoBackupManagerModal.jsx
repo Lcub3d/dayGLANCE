@@ -35,8 +35,8 @@ const AutoBackupManagerModal = () => {
             {/* Header */}
             <div className="p-6 pb-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <Clock size={20} className="text-blue-600 dark:text-blue-400" />
+                <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                  <Clock size={20} className="text-accent-600 dark:text-accent-400" />
                 </div>
                 <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('backup.autoBackup')}</h3>
                 <button onClick={() => { setShowAutoBackupManager(false); setAutoBackupRestoreConfirm(null); }} className={`ml-auto p-1 rounded ${hoverBg}`}>
@@ -50,7 +50,7 @@ const AutoBackupManagerModal = () => {
                   onClick={() => setAutoBackupManagerTab('settings')}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                     autoBackupManagerTab === 'settings'
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      ? 'border-accent-500 text-accent-600 dark:text-accent-400'
                       : `border-transparent ${textSecondary} ${hoverBg}`
                   }`}
                 >
@@ -60,7 +60,7 @@ const AutoBackupManagerModal = () => {
                   onClick={() => { setAutoBackupManagerTab('history'); loadAutoBackupHistory(); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                     autoBackupManagerTab === 'history'
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      ? 'border-accent-500 text-accent-600 dark:text-accent-400'
                       : `border-transparent ${textSecondary} ${hoverBg}`
                   }`}
                 >

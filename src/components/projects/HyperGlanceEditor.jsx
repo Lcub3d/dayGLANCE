@@ -187,7 +187,7 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                   type="button"
                   onClick={() => setHgIsRecurring(opt.value)}
                   className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
-                    hgIsRecurring === opt.value ? 'bg-blue-600 text-white' : `${textSecondary} ${hoverBg}`
+                    hgIsRecurring === opt.value ? 'bg-accent-600 text-white' : `${textSecondary} ${hoverBg}`
                   }`}
                 >
                   {opt.label}
@@ -312,7 +312,7 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                   onChange={e => setHgNewTask(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addHGTemplateTask(); } }}
                   placeholder={t('goals.addTaskPlaceholder', 'Add task…')}
-                  className={`flex-1 px-2 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`flex-1 px-2 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
                     darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
                   }`}
                 />
@@ -320,7 +320,7 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                   type="button"
                   onClick={addHGTemplateTask}
                   disabled={!hgNewTask.trim()}
-                  className="px-2 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40"
+                  className="px-2 py-1.5 text-sm rounded-lg bg-accent-600 hover:bg-accent-700 text-white disabled:opacity-40"
                 >
                   <Plus size={14} />
                 </button>
@@ -342,7 +342,7 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                   type="text"
                   value={editingTemplateTask.name}
                   onChange={e => setEditingTemplateTask(prev => ({ ...prev, name: e.target.value }))}
-                  className={`w-full px-2 py-1.5 text-sm rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-stone-300 text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-2 py-1.5 text-sm rounded-lg border ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-stone-300 text-stone-900'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
                   autoFocus
                 />
               </div>
@@ -353,13 +353,13 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
                   onChange={e => setEditingTemplateTask(prev => ({ ...prev, notes: e.target.value }))}
                   rows={3}
                   placeholder={t('goals.optionalNote', 'Optional note…')}
-                  className={`w-full px-2 py-1.5 text-sm rounded-lg border resize-none ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-white border-stone-300 text-stone-900 placeholder-stone-400'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  className={`w-full px-2 py-1.5 text-sm rounded-lg border resize-none ${darkMode ? 'bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-500' : 'bg-white border-stone-300 text-stone-900 placeholder-stone-400'} focus:outline-none focus:ring-2 focus:ring-accent-500`}
                 />
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-4">
               <button type="button" onClick={() => setEditingTemplateTask(null)} className={`px-3 py-1.5 text-sm rounded-lg ${hoverBg} ${textSecondary} transition-colors`}>{t('common.cancel', 'Cancel')}</button>
-              <button type="button" onClick={saveEditingTemplateTask} disabled={!editingTemplateTask.name.trim()} className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50">{t('common.save', 'Save')}</button>
+              <button type="button" onClick={saveEditingTemplateTask} disabled={!editingTemplateTask.name.trim()} className="px-3 py-1.5 text-sm rounded-lg bg-accent-600 hover:bg-accent-700 text-white font-medium disabled:opacity-50">{t('common.save', 'Save')}</button>
             </div>
           </div>
         </div>

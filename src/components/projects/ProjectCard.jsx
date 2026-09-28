@@ -579,7 +579,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                     draggable && dragIdx === incompleteUnscheduledIdx ? 'opacity-40' : ''
                   } ${
                     draggable && dragOverIdx === incompleteUnscheduledIdx && dragIdx !== incompleteUnscheduledIdx
-                      ? darkMode ? 'border-t-2 border-blue-400' : 'border-t-2 border-blue-500'
+                      ? darkMode ? 'border-t-2 border-accent-400' : 'border-t-2 border-accent-500'
                       : ''
                   }`}
                   style={{ borderLeft: `2px solid ${projectHex}99` }}
@@ -707,7 +707,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                 }
               }}
               placeholder={t('task.titlePlaceholder')}
-              className={`flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg border ${borderClass} focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+              className={`flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg border ${borderClass} focus:outline-none focus:ring-1 focus:ring-accent-500 ${
                 darkMode
                   ? 'bg-gray-700 text-gray-100 placeholder-gray-500'
                   : 'bg-white text-stone-900 placeholder-stone-400'
@@ -715,7 +715,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
             />
             <button
               type="submit"
-              className="flex-shrink-0 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+              className="flex-shrink-0 p-1.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white transition-colors"
             >
               <Plus size={12} />
             </button>

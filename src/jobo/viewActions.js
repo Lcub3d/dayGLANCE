@@ -24,6 +24,7 @@ const EDITABLE_PROGRESS = Object.freeze([
   DO_PROGRESS.STARTED,
   DO_PROGRESS.PARTIAL,
   DO_PROGRESS.MOSTLY,
+  DO_PROGRESS.COMPLETED,
 ]);
 const EDITABLE_FIELDS = new Set(['timing', 'date', 'startTime', 'endDate', 'endTime']);
 const DROP_SNAP_MINUTES = 5;
@@ -235,11 +236,11 @@ export function resolveDoDropTarget({ record, item, date, minute } = {}) {
  */
 export function resolveDropTarget({ lane, type, item, date, minute } = {}) {
   if (lane === 'plan' && type === 'plan') {
-    return resolvePlanDropTarget({ date, minute, duration: item?.plan?.duration });
+    return resolvePlanDropTarget({ date, minute, duration: item?.plan?.duration ?? item?.currentTask?.duration ?? item?.task?.duration ?? 30 });
   }
   if (lane !== 'do') return null;
   if (type === 'plan') {
-    return resolvePlanDropTarget({ date, minute, duration: item?.plan?.duration });
+    return resolvePlanDropTarget({ date, minute, duration: item?.plan?.duration ?? item?.currentTask?.duration ?? item?.task?.duration ?? 30 });
   }
   if (type === 'untimed') {
     const result = resolvePlanDropTarget({ date, minute, duration: 30 });
@@ -287,7 +288,7 @@ export function createManualDo({
     throw new TypeError('task must be an object or null');
   }
   if (!EDITABLE_PROGRESS.includes(progress)) {
-    throw new TypeError('Manual Do progress must be started, partial, or mostly');
+    throw new TypeError('Invalid Do progress');
   }
   const stamp = stampFromEpoch(now);
   const interval = doIntervalAt(date, startMinute, duration);
@@ -407,9 +408,6 @@ export function prepareDoEdit({ records, record, patch = {}, progress, now } = {
   }
   if (progress !== undefined && !Object.values(DO_PROGRESS).includes(progress)) {
     throw new TypeError('Invalid Do progress');
-  }
-  if (progress === DO_PROGRESS.COMPLETED && current.progress !== DO_PROGRESS.COMPLETED) {
-    throw new TypeError('Manual editing cannot restore completed progress');
   }
   const intervalChanged = Object.keys(patch).some((key) => patch[key] !== current[key]);
   const progressChanged = progress !== undefined && progress !== current.progress;

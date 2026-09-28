@@ -70,7 +70,7 @@ const CalendarList = () => {
     { id: newFeedId(), name: '', url: '', username: '', password: '', color: 'bg-blue-600', enabled: true },
   ]);
 
-  const inputClass = `w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`;
+  const inputClass = `w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`;
 
   return (
     <div className="space-y-2">
@@ -133,7 +133,7 @@ const CalendarList = () => {
               <button
                 key={c.class}
                 onClick={() => updateCard(cal.id, { color: c.class })}
-                className={`w-5 h-5 rounded-full ${c.class} transition-all ${(cal.color || 'bg-gray-600') === c.class ? 'ring-2 ring-offset-1 ring-blue-500' + (darkMode ? ' ring-offset-gray-800' : '') : 'hover:scale-110'}`}
+                className={`w-5 h-5 rounded-full ${c.class} transition-all ${(cal.color || 'bg-gray-600') === c.class ? 'ring-2 ring-offset-1 ring-accent-500' + (darkMode ? ' ring-offset-gray-800' : '') : 'hover:scale-110'}`}
                 title={c.name}
               />
             ))}

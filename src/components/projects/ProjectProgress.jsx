@@ -19,7 +19,7 @@ const ProjectProgress = ({ progress, compact = false }) => {
       >
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            pct === 100 ? 'bg-green-500' : 'bg-blue-500'
+            pct === 100 ? 'bg-green-500' : 'bg-accent-500'
           }`}
           style={{ width: `${pct}%` }}
         />

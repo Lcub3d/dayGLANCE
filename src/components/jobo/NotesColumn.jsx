@@ -4,6 +4,8 @@ import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
 import { writePlanNotes, writeDailyNotes } from '../../jobo/nativePlanAdapter.js';
 import IndependentDoNote from './IndependentDoNote.jsx';
 import { sortNoteTasks } from './noteOrder.js';
+import { priorityLevel } from '../../utils/taskPriority.js';
+import '../TaskPriority.css';
 
 const MIN_NOTE_HEIGHT = 80;
 const MAX_NOTE_HEIGHT = 1000;
@@ -29,7 +31,7 @@ function NoteTile({
   title,
   subtitle,
   text,
-  color,
+  priority,
   editable,
   onSave,
   onHide,
@@ -303,7 +305,8 @@ function NoteTile({
     hidden={!visible}
     tabIndex={-1}
     style={{ height }}
-    className={`jobo-s5-note-tile rounded-lg ${color || 'jobo-s5-daily-note'} ${selected ? 'jobo-s5-selected' : ''}`}
+    className={`jobo-s5-note-tile rounded-lg ${daily ? 'jobo-s5-daily-note' : 'task-priority-surface text-white'} ${selected ? 'jobo-s5-selected' : ''}`}
+    data-priority={daily ? undefined : priorityLevel(priority)}
     data-jobo-note-requested={requestFlash ? 'true' : undefined}
     data-jobo-note-state={externalChange ? 'conflict' : saveError ? 'error' : undefined}
     data-jobo-note-link={link}
@@ -421,7 +424,7 @@ export default function NotesColumn({
       title={task.title}
       subtitle={task.recurringTemplateId ? task.date : null}
       text={task.notes || ''}
-      color={`${task.color || 'bg-blue-500'} text-white`}
+      priority={task.priority}
       editable={!task.imported && !task.isJoboSyntheticOccurrence}
       t={t}
       link={String(task.id)}

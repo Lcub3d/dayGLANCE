@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  BookOpen, Check, CheckSquare, Clock, ExternalLink, Repeat,
+  BookOpen, CheckSquare, Clock, ExternalLink, Repeat,
   FileText, Inbox, MapPin, MoreHorizontal,
   Pencil, RefreshCw, SkipForward, Trash2,
   Phone,
@@ -12,6 +12,7 @@ import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import TaskPlanHistory from './TaskPlanHistory.jsx';
 import TaskStarButton from './TaskStarButton.jsx';
+import TaskPriorityCheckbox from './TaskPriorityCheckbox.jsx';
 import UserAssignmentBadge from './UserAssignmentBadge.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -229,12 +230,13 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
             <div className="pr-6" data-task-narrow-content>
               <div className="flex items-center gap-1">
                 {(!isImported || task.isTaskCalendar) && (
-                  <button
+                  <TaskPriorityCheckbox
+                    priority={task.priority}
+                    checked={task.completed}
+                    darkMode={darkMode}
+                    ariaLabel={`${t(task.completed ? 'sched.markIncomplete' : 'sched.markComplete')}: ${stripWikilinks(task.title)}`}
                     onClick={() => toggleComplete(task.id)}
-                    className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
-                  >
-                    {task.completed && <Check size={10} strokeWidth={3} />}
-                  </button>
+                  />
                 )}
                 {task.isRecurring && <RefreshCw size={12} className="flex-shrink-0 opacity-75 hover:opacity-100 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRecurrenceTaskId(task.id); }} />}
                 {task.importSource === 'obsidian' && <BookOpen size={12} className="flex-shrink-0 opacity-75" title={t('task.fromObsidian', { defaultValue: 'From Obsidian' })} />}
@@ -323,12 +325,13 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel, 
             <div className="flex items-center justify-between gap-1">
               <div className="flex items-center gap-1 flex-1 min-w-0">
                 {(!isImported || task.isTaskCalendar) && (
-                  <button
+                  <TaskPriorityCheckbox
+                    priority={task.priority}
+                    checked={task.completed}
+                    darkMode={darkMode}
+                    ariaLabel={`${t(task.completed ? 'sched.markIncomplete' : 'sched.markComplete')}: ${stripWikilinks(task.title)}`}
                     onClick={() => toggleComplete(task.id)}
-                    className={`rounded flex-shrink-0 ${task.completed ? 'bg-white/40' : 'bg-white/20'} border-2 border-white w-4 h-4 flex items-center justify-center hover:bg-white/30 transition-colors`}
-                  >
-                    {task.completed && <Check size={10} strokeWidth={3} />}
-                  </button>
+                  />
                 )}
                 {task.isRecurring && <RefreshCw size={12} className="flex-shrink-0 opacity-75 hover:opacity-100 cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingRecurrenceTaskId(task.id); }} />}
                 {task.importSource === 'obsidian' && <BookOpen size={12} className="flex-shrink-0 opacity-75" title={t('task.fromObsidian', { defaultValue: 'From Obsidian' })} />}

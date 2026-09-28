@@ -66,7 +66,7 @@ const SchedView = ({ dateRange, embedded = false } = {}) => {
           onClick={() => setShowFilters(true)}
           className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
             filtersActive
-              ? 'bg-blue-600 text-white border-blue-600'
+              ? 'bg-accent-600 text-white border-accent-600'
               : `${borderClass} ${textSecondary} ${hoverBg}`
           }`}
         >
@@ -100,7 +100,7 @@ const SchedView = ({ dateRange, embedded = false } = {}) => {
       {/* Day groups */}
       {visibleDays.map(day => (
         <div key={day.dateStr} className="flex flex-col gap-1.5">
-          <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${day.dateStr === todayStr ? 'text-blue-500' : textSecondary} pt-1`}>
+          <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${day.dateStr === todayStr ? 'text-accent-500' : textSecondary} pt-1`}>
             <span>{dayLabel(day)}</span>
             <DayHeaderActions dateStr={day.dateStr} size={12} />
           </div>

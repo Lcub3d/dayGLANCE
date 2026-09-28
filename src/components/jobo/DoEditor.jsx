@@ -80,7 +80,6 @@ export default function DoEditor({ record, initial, records, writable, recordJob
       event.preventDefault(); target?.focus();
     }
   };
-  const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED || record?.progress === DO_PROGRESS.COMPLETED);
 
   return createPortal(<div className="jobo-s5-modal-mask" onMouseDown={(event) => {
     if (event.target === event.currentTarget && !saving) onClose();
@@ -107,10 +106,10 @@ export default function DoEditor({ record, initial, records, writable, recordJob
         </div>
         <label className="jobo-s5-field"><span>{t('jobo.view.progressLabel')}</span>
           <select value={draft.progress} onChange={set('progress')} disabled={saving}>
-            {progressOptions.map((value) => <option key={value} value={value}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
+            {PROGRESS.map((value) => <option key={value} value={value}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
           </select>
         </label>
-        <p className="jobo-s5-dialog-note">{t('jobo.view.completedByCompletion')}</p>
+        <p className="jobo-s5-dialog-note">{t('jobo.view.progressHint')}</p>
         </fieldset>
         {waiting && <p className="jobo-s5-dialog-note" role="status">{t('jobo.view.pendingSave')}</p>}
         {error && <p className="jobo-s5-dialog-error" role="alert">{error}</p>}

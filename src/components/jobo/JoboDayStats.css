@@ -3,7 +3,7 @@
 .jobo-day-stats { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
 .jobo-day-tile { display: flex; flex: 1; min-width: 112px; flex-direction: column; justify-content: center; gap: 3px; padding: 4px 10px; text-align: left; background: transparent; }
 .jobo-day-tile:hover { background: rgb(127 127 127 / .08); }
-.jobo-day-tile:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+.jobo-day-tile:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
 .jobo-day-percent { display: flex; align-items: center; gap: 6px; }
 .jobo-day-track { height: 3px; width: 48px; background: rgb(127 127 127 / .2); border-radius: 4px; overflow: hidden; }
 .jobo-day-track > span { display: block; height: 100%; background: #f59e0b; }
@@ -12,7 +12,7 @@
 .jobo-day-details h2 { font-size: 16px; font-weight: 600; }
 .jobo-day-details h3 { margin-top: 16px; font-weight: 600; }
 .jobo-day-details summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
-.jobo-day-details :is(button, summary):focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.jobo-day-details :is(button, summary):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 .jobo-day-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; margin: 12px 0; }
 .jobo-day-facts > div { display: flex; justify-content: space-between; gap: 10px; }
 .jobo-day-facts dd { font-variant-numeric: tabular-nums; font-weight: 600; }

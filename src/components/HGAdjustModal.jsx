@@ -83,7 +83,7 @@ const HGAdjustModal = () => {
           </button>
           <button
             onClick={saveHGAdjust}
-            className="flex-1 px-3 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="flex-1 px-3 py-2 rounded-lg text-sm bg-accent-600 text-white hover:bg-accent-700 transition-colors"
           >
             {t('common.save')}
           </button>

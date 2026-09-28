@@ -6,7 +6,7 @@ import NotesColumn from './NotesColumn.jsx';
 const t = (key) => key;
 const ctx = { borderClass: 'border-slate-200', dailyNotes: {} };
 const tasks = [
-  { id: 'with-note', title: 'A task with notes #work', notes: 'keep this text', color: 'bg-red-500' },
+  { id: 'with-note', title: 'A task with notes #work', notes: 'keep this text', color: 'bg-green-500', priority: 3 },
   { id: 'without-note', title: 'A task without notes', notes: '', color: 'bg-blue-500' },
   { id: 'readonly', title: 'Imported note', notes: 'read only', color: 'bg-green-500', imported: true },
 ];
@@ -44,11 +44,13 @@ describe('NotesColumn visibility contract', () => {
     expect(html).toContain('placeholder="jobo.view.notePlaceholder"');
   });
 
-  it('renders task notes before the daily note and preserves task colors', () => {
+  it('renders task notes before the daily note using the linked task priority', () => {
     const html = render({ isTaskNoteVisible: () => true });
 
     expect(html.indexOf('data-jobo-note-link="with-note"')).toBeLessThan(html.indexOf('data-jobo-note-link="daily:2026-09-26"'));
-    expect(html).toContain('bg-red-500 text-white');
+    expect(sectionOpeningTag(html, 'with-note')).toContain('data-priority="p1"');
+    expect(sectionOpeningTag(html, 'without-note')).toContain('data-priority="p4"');
+    expect(sectionOpeningTag(html, 'daily:2026-09-26')).not.toContain('data-priority');
     expect(html).toContain('class="jobo-s5-note-resizer"');
     expect(html).toContain('aria-valuemin="80"');
     expect(html).toContain('aria-valuemax="1000"');

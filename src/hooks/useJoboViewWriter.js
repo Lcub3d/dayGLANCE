@@ -21,6 +21,21 @@ export function receiptState(expected, records) {
   catch { return 'superseded'; }
 }
 
+/** Validate one complete, non-empty batch before it reaches the ledger. */
+export function validateDoBatch(input) {
+  if (!Array.isArray(input) || input.length === 0) {
+    throw new TypeError('A view edit submits one or more canonical Do records');
+  }
+  const ids = new Set();
+  for (const record of input) {
+    if (!record || typeof record !== 'object' || ids.has(record.id) || !validateDoRecord(record).ok) {
+      throw new TypeError('A view edit submits one or more unique canonical Do records');
+    }
+    ids.add(record.id);
+  }
+  return input;
+}
+
 export default function useJoboViewWriter({ records, recordJobo }) {
   const live = useRef({ records, recordJobo });
   live.current = { records, recordJobo };
@@ -46,38 +61,51 @@ export default function useJoboViewWriter({ records, recordJobo }) {
   }, [records, publish]);
 
   const write = useCallback(async input => {
-    if (!Array.isArray(input) || input.length !== 1 || !validateDoRecord(input[0]).ok) {
-      throw new TypeError('A view edit submits one canonical Do record');
+    const batch = validateDoBatch(input);
+    if (batch.some(record => receipts.current.has(record.id))) return { ok: false, error: 'pending' };
+    if (batch.every(record => sameDoValue(live.current.records?.find(row => row?.id === record.id), record))) {
+      return { ok: true };
     }
-    const record = input[0];
-    if (receipts.current.has(record.id)) return { ok: false, error: 'pending' };
-    if (sameDoValue(live.current.records?.find(row => row?.id === record.id), record)) return { ok: true };
-    const receipt = { record, accepted: false };
-    receipts.current.set(record.id, receipt);
+    for (const record of batch) receipts.current.set(record.id, { record, accepted: false });
     publish();
     if (mounted.current) setConflict(false);
     try {
-      const result = await live.current.recordJobo(input);
+      // One ledger call is the atomic boundary for a view batch.  Never loop
+      // over records here: a held write must keep the whole selection together
+      // and a storage failure must not leave a partial receipt set.
+      const result = await live.current.recordJobo(batch);
       if (result?.ok) {
         // A successful merge can still select a newer remote version. Never
         // call that our save, and never restamp/re-submit to defeat the winner.
-        const state = receiptState(record, result.value || live.current.records);
-        receipts.current.delete(record.id);
-        if (state === 'superseded') {
+        const committed = result.value || live.current.records;
+        let superseded = false;
+        for (const record of batch) {
+          const state = receiptState(record, committed);
+          receipts.current.delete(record.id);
+          superseded = superseded || state === 'superseded';
+        }
+        if (superseded) {
           if (mounted.current) setConflict(true);
           return { ok: false, error: 'recordChanged' };
         }
       } else if (result?.held) {
-        receipt.accepted = true;
-        const state = receiptState(record, live.current.records);
-        if (state !== 'pending') {
-          receipts.current.delete(record.id);
-          if (state === 'superseded' && mounted.current) setConflict(true);
+        let superseded = false;
+        for (const record of batch) {
+          const receipt = receipts.current.get(record.id);
+          if (receipt) receipt.accepted = true;
+          const state = receiptState(record, live.current.records);
+          if (state !== 'pending') {
+            receipts.current.delete(record.id);
+            superseded = superseded || state === 'superseded';
+          }
         }
-      } else receipts.current.delete(record.id);
+        if (superseded && mounted.current) setConflict(true);
+      } else {
+        for (const record of batch) receipts.current.delete(record.id);
+      }
       return result;
     } catch (error) {
-      receipts.current.delete(record.id);
+      for (const record of batch) receipts.current.delete(record.id);
       throw error;
     } finally { publish(); }
   }, [publish]);

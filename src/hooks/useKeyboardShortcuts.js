@@ -367,8 +367,8 @@ export default function useKeyboardShortcuts({
         }
       }
 
-      // 1/2/3/4/5 to jump directly to multi/day/week/month/sched view: the
-      // views the cycler offers at this width, minus any turned off on this
+      // Number keys jump directly to the views the cycler offers at this width:
+      // multi/day/week/month/sched/jobo/year, minus any turned off on this
       // device. (The Day Dial's modal check above already stands every
       // shortcut down while it is up, MONTH included.)
       if (noModifiers && (canShowViewCycler || schedOnlyCycler) && Object.values(VIEW_SHORTCUT_KEYS).includes(e.key)) {

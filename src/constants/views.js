@@ -4,7 +4,7 @@
 // portrait tablets use the MobileViewToggle over `mobileViewMode`. MONTH is
 // in both (it is the phone's case above all) and sits before SCHED, so the
 // calendar views come first and the agenda last: 1 MULTI, 2 DAY, 3 WEEK,
-// 4 MONTH, 5 SCHED. While the Day Dial is up (the kiosk runs it unattended)
+// 4 MONTH, 5 SCHED, 6 JOBO, 7 YEAR. While the Day Dial is up (the kiosk runs it unattended)
 // MONTH is left out of every switcher, so a day sheet cannot be opened with
 // nobody there to dismiss it.
 //
@@ -20,7 +20,7 @@
 // view still on for that width, and only when a width leaves none does it
 // show the list's first view regardless.
 
-export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jobo'];
+export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jobo', 'year'];
 
 /**
  * Desktop views that exist behind an experimental flag, keyed by the flag that
@@ -33,13 +33,13 @@ export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jo
  */
 export const EXPERIMENTAL_DESKTOP_VIEWS = { jobo: 'joboEnabled' };
 /** Narrow desktop and landscape tablet: DAY and WEEK need the 3-column grid. */
-export const NARROW_DESKTOP_VIEW_MODES = ['multi', 'month', 'sched'];
+export const NARROW_DESKTOP_VIEW_MODES = ['multi', 'month', 'sched', 'jobo', 'year'];
 export const MOBILE_VIEW_MODES = ['grid', 'list', 'month', 'sched'];
 
 /** The two switchers hidden views are kept for: the desktop cycler and the phone toggle. */
 export const VIEW_SCOPES = { desktop: DESKTOP_VIEW_MODES, mobile: MOBILE_VIEW_MODES };
 /** The number key that jumps to each desktop view. */
-export const VIEW_SHORTCUT_KEYS = { multi: '1', day: '2', week: '3', month: '4', sched: '5', jobo: '6' };
+export const VIEW_SHORTCUT_KEYS = { multi: '1', day: '2', week: '3', month: '4', sched: '5', jobo: '6', year: '7' };
 
 /** The short, localised view name each surface shows: MULTI / DAY / WEEK …, or a
  *  locale's own (German TAGE / WOCHE). Shared so the cycler button and the
@@ -51,6 +51,7 @@ export const VIEW_LABEL_KEYS = {
   month: 'sched.viewMonthShort',
   sched: 'sched.viewSchedShort',
   jobo: 'sched.viewJoboShort',
+  year: 'jobu.year',
 };
 
 /**

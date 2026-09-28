@@ -37,13 +37,13 @@ describe('edges', () => {
     expect(uncompletions).toEqual([]);
   });
 
-  it('the key is the task\'s own stamp, and the record is untimed with the plan captured as it stands', () => {
+  it('the key is the task\'s own stamp, with its duration and plan captured as they stand', () => {
     const prev = snap([task()]);
     const tasks = [done(task())];
     const [c] = findJoboEdges(prev, snap(tasks), { tasks }).completions;
     expect(c).toEqual({
       id: 'do:t1:2026-09-19T15:10:02-05:00', taskId: 't1', title: 'Draft the report',
-      date: '2026-09-19', planSnapshot: { date: '2026-09-19', startTime: '14:30', duration: 60 }, completedAt: DONE_AT,
+      date: '2026-09-19', planSnapshot: { date: '2026-09-19', startTime: '14:30', duration: 60 }, duration: 60, completedAt: DONE_AT,
     });
     // MUTATION: key on the observing device's clock and this fails on the
     // second device (see the sync scenario) and here.
@@ -79,7 +79,7 @@ describe('edges', () => {
     const [c] = findJoboEdges(prev, snap([], [], recurringTasks), { recurringTasks }).completions;
     expect(c).toEqual({
       id: 'do:r1:2026-09-18:2026-09-19T20:10:02.000Z', taskId: 'r1', title: 'Gym',
-      date: '2026-09-18', planSnapshot: { date: '2026-09-18', startTime: '07:00', duration: 45 }, completedAt: DONE_Z,
+      date: '2026-09-18', planSnapshot: { date: '2026-09-18', startTime: '07:00', duration: 45 }, duration: 45, completedAt: DONE_Z,
     });
   });
 
@@ -166,11 +166,11 @@ describe('the gate', () => {
 describe('building records', () => {
   const edgesFor = (prevTasks, tasks) => findJoboEdges(snap(prevTasks), snap(tasks), { tasks });
 
-  it('a completion becomes an untimed Completed attempt anchored to the completion stamp, observed now', () => {
+  it('a completion becomes a timed Completed attempt ending at its source stamp', () => {
     const [r] = buildJoboRecords(edgesFor([task()], [done(task())]), [], { observedAt: OBSERVED });
     expect(r).toEqual({
-      id: 'do:t1:2026-09-19T15:10:02-05:00', taskId: 't1', timing: 'untimed',
-      date: '2026-09-19', startTime: null, endDate: null, endTime: null,
+      id: 'do:t1:2026-09-19T15:10:02-05:00', taskId: 't1', timing: 'timed',
+      date: '2026-09-19', startTime: '14:10', endDate: '2026-09-19', endTime: '15:10',
       title: 'Draft the report', planSnapshot: { date: '2026-09-19', startTime: '14:30', duration: 60 },
       source: 'completion', progress: 'completed',
       createdAt: DONE_AT, updatedAt: DONE_AT, observedAt: OBSERVED, deleted: false,

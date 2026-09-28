@@ -38,8 +38,8 @@ const EditRecurrenceModal = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <RefreshCw size={20} className="text-blue-600 dark:text-blue-400" />
+                <div className="p-2 rounded-full bg-accent-100 dark:bg-accent-900/30">
+                  <RefreshCw size={20} className="text-accent-600 dark:text-accent-400" />
                 </div>
                 <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('modal.editRecurrenceTitle')}</h3>
               </div>
@@ -86,7 +86,7 @@ const EditRecurrenceModal = () => {
                         updateRecurrencePattern(templateId, dateStr, { ...preset.value, ...endFields });
                       }}
                       className={`w-full text-left px-3 py-2 text-sm rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${
-                        isActive ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-700') : textPrimary
+                        isActive ? (darkMode ? 'bg-gray-700 text-accent-400' : 'bg-accent-50 text-accent-700') : textPrimary
                       }`}
                     >
                       <span className="flex items-center gap-2">
@@ -103,7 +103,7 @@ const EditRecurrenceModal = () => {
                   <button
                     onClick={() => updateRecurrenceEndCondition(templateId, {})}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${
-                      !currentRecurrence.endDate && !currentRecurrence.maxOccurrences ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-700') : textPrimary
+                      !currentRecurrence.endDate && !currentRecurrence.maxOccurrences ? (darkMode ? 'bg-gray-700 text-accent-400' : 'bg-accent-50 text-accent-700') : textPrimary
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -114,7 +114,7 @@ const EditRecurrenceModal = () => {
                   <button
                     onClick={() => setShowRecurrenceEndDatePicker({ source: 'edit', templateId })}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${
-                      currentRecurrence.endDate ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-700') : textPrimary
+                      currentRecurrence.endDate ? (darkMode ? 'bg-gray-700 text-accent-400' : 'bg-accent-50 text-accent-700') : textPrimary
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -133,7 +133,7 @@ const EditRecurrenceModal = () => {
                         }
                       }}
                       className={`flex-1 text-left px-3 py-2 text-sm rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${
-                        currentRecurrence.maxOccurrences ? (darkMode ? 'bg-gray-700 text-blue-400' : 'bg-blue-50 text-blue-700') : textPrimary
+                        currentRecurrence.maxOccurrences ? (darkMode ? 'bg-gray-700 text-accent-400' : 'bg-accent-50 text-accent-700') : textPrimary
                       }`}
                     >
                       <span className="flex items-center gap-2">

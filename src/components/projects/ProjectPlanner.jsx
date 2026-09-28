@@ -430,7 +430,7 @@ const ProjectPlanner = ({ project, onClose }) => {
               )}
               {scheduledDays.length > 0 ? scheduledDays.map(group => (
                 <div key={group.dateStr ?? 'completed'} className="flex flex-col gap-1">
-                  <span className={`text-[11px] font-semibold ${group.dateStr === todayStr ? 'text-blue-500' : textSecondary} ${group.dateStr ? '' : 'opacity-60'}`}>
+                  <span className={`text-[11px] font-semibold ${group.dateStr === todayStr ? 'text-accent-500' : textSecondary} ${group.dateStr ? '' : 'opacity-60'}`}>
                     {dayHeading(group.dateStr)}
                   </span>
                   {group.tasks.map(task => <SchedTaskCard key={task.id} task={task} onEdit={editTask} />)}
@@ -483,7 +483,7 @@ const ProjectPlanner = ({ project, onClose }) => {
                   value={quickAddTitle}
                   onChange={e => setQuickAddTitle(e.target.value)}
                   placeholder={t('planner.addTaskPlaceholder', 'Add a task…')}
-                  className={`flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-accent-500 ${
                     darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
                   }`}
                 />

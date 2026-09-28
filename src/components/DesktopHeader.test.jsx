@@ -162,6 +162,14 @@ describe('DesktopHeader layout', () => {
     expect(fixture.formatMonth).toHaveBeenCalledWith(date, { month: 'long', year: 'numeric' }, 'en');
   });
 
+  it('labels YEAR with the selected year instead of a day range', () => {
+    fixture.planner.effectiveViewMode = 'year';
+    const button = titleButton(render());
+    expect(button).toContain('title="jobu.year · 2026"');
+    expect(button).toContain('>jobu.year · 2026</button>');
+    expect(fixture.formatRange).not.toHaveBeenCalled();
+  });
+
   it('keeps navigation hit targets non-shrinking beside the flexible date label', () => {
     const html = render();
     expect(html.match(/<button[^>]*aria-label="common.back"[^>]*>/)?.[0]).toContain('flex-shrink-0');

@@ -1,0 +1,25 @@
+/* Shared Todoist priority hues: solid fills keep white card text readable. */
+:is(.task-priority-surface, .task-priority-checkbox) {
+  --task-priority-solid: #626262;
+  --task-priority-bright: #a8a8a8;
+}
+
+:is(.task-priority-surface, .task-priority-checkbox)[data-priority='p1'] {
+  --task-priority-solid: #c43d39;
+  --task-priority-bright: #ff7773;
+}
+
+:is(.task-priority-surface, .task-priority-checkbox)[data-priority='p2'] {
+  --task-priority-solid: #a45a00;
+  --task-priority-bright: #ffa62b;
+}
+
+:is(.task-priority-surface, .task-priority-checkbox)[data-priority='p3'] {
+  --task-priority-solid: #245db8;
+  --task-priority-bright: #5795ef;
+}
+
+.task-priority-surface {
+  background-color: var(--task-priority-solid);
+  color: #fff;
+}

@@ -77,7 +77,7 @@ const RecurrencePicker = ({ placement = 'bottom', highlightSelected = false }) =
       onClick={() => applyFrequency(type)}
       className={`flex-1 px-2 py-1 text-xs rounded-md border ${borderClass} transition-colors ${
         recurrence?.type === type
-          ? 'bg-blue-600 text-white border-blue-600'
+          ? 'bg-accent-600 text-white border-accent-600'
           : `${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-white'} ${textPrimary}`
       }`}
     >
@@ -100,7 +100,7 @@ const RecurrencePicker = ({ placement = 'bottom', highlightSelected = false }) =
           onClick={() => applyPreset(preset)}
           className={`w-full text-left px-3 py-2 text-sm ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${
             highlightSelected && JSON.stringify(recurrence) === JSON.stringify(preset.value)
-              ? (darkMode ? 'bg-gray-700' : 'bg-blue-50 text-blue-700')
+              ? (darkMode ? 'bg-gray-700' : 'bg-accent-50 text-accent-700')
               : textPrimary
           } ${i === 0 ? 'rounded-t-lg' : ''}`}
         >
@@ -123,7 +123,7 @@ const RecurrencePicker = ({ placement = 'bottom', highlightSelected = false }) =
                 aria-label={dayFull(dow)}
                 className={`w-7 h-7 rounded-md text-xs font-semibold transition-colors flex-shrink-0 border ${
                   active
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-accent-600 text-white border-accent-600'
                     : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white'} ${textSecondary}`
                 }`}
               >

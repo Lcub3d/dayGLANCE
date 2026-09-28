@@ -22,11 +22,19 @@ vi.mock('../utils/trayMode.js', () => ({ isTrayMode: false }));
 
 const { default: useJoboDetector } = await import('./useJoboDetector.js');
 const { createLedger } = await import('../jobo/ledger.js');
+const { createDoRecord } = await import('../jobo/core.js');
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const DONE_AT = '2026-09-19T15:10:02-05:00';
 const task = (over = {}) => ({ id: 't1', title: 'Draft', date: '2026-09-19', startTime: '14:30', duration: 60, completed: false, ...over });
 const done = (t) => ({ ...t, completed: true, completedAt: DONE_AT });
+const legacyCompletion = () => createDoRecord({
+  id: `do:t1:${DONE_AT}`, taskId: 't1', title: 'Captured draft',
+  source: 'completion', progress: 'completed', timing: 'untimed',
+  date: '2026-09-19', startTime: null, endDate: null, endTime: null,
+  planSnapshot: { date: '2026-09-19', startTime: '14:30', duration: 60 },
+  createdAt: DONE_AT, updatedAt: DONE_AT, observedAt: DONE_AT,
+});
 
 function useRenderedHook(props) {
   effects.length = 0;
@@ -50,6 +58,46 @@ beforeEach(() => {
 });
 
 describe('useJoboDetector', () => {
+  it('persists a legacy automatic point as an editable interval once, even on first sight', async () => {
+    let disk = [legacyCompletion()];
+    const update = vi.fn(async fn => { disk = fn(disk); return { ok: true, value: disk }; });
+    const ledger = createLedger({ store: {
+      async writable() { return true; },
+      async read() { return { ok: true, value: disk }; },
+      update,
+      async write(value) { disk = value; return { ok: true, value: disk }; },
+    } });
+    await ledger.load();
+    const wired = props([done(task())], { recordJobo: ledger.commit, readJoboWorkingSet: ledger.workingSet });
+    useRenderedHook(wired);
+    await flush();
+    expect(disk).toHaveLength(1);
+    expect(disk[0]).toMatchObject({ id: `do:t1:${DONE_AT}`, title: 'Captured draft',
+      timing: 'timed', startTime: '14:10', endTime: '15:10', progress: 'completed' });
+    expect(disk[0].planSnapshot).toEqual(legacyCompletion().planSnapshot);
+    expect(update).toHaveBeenCalledTimes(1);
+    useRenderedHook(wired);
+    await flush();
+    expect(update).toHaveBeenCalledTimes(1);
+    ledger.dispose();
+  });
+
+  it.each([
+    ['disabled', { enabled: false }],
+    ['not loaded', { joboLoaded: false }],
+    ['read only', { joboWritable: false }],
+    ['remote apply', { isRemoteApply: () => true }],
+  ])('defers legacy interval upgrades while %s', async (_label, gate) => {
+    const working = () => [legacyCompletion()];
+    useRenderedHook(props([], { readJoboWorkingSet: working, ...gate }));
+    await flush();
+    expect(recordJobo).not.toHaveBeenCalled();
+    useRenderedHook(props([], { readJoboWorkingSet: working }));
+    await flush();
+    expect(recordJobo).toHaveBeenCalledTimes(1);
+    expect(recordJobo.mock.calls[0][0][0]).toMatchObject({ timing: 'timed', startTime: '14:10', endTime: '15:10' });
+  });
+
   it('a completion edge writes one record through recordJobo, and a re-render writes nothing more', async () => {
     useRenderedHook(props([task()]));
     useRenderedHook(props([done(task())]));
@@ -57,7 +105,7 @@ describe('useJoboDetector', () => {
     expect(recordJobo).toHaveBeenCalledTimes(1);
     const [records] = recordJobo.mock.calls[0];
     expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'completed', timing: 'untimed', source: 'completion' });
+    expect(records[0]).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'completed', timing: 'timed', source: 'completion', startTime: '14:10', endTime: '15:10' });
     expect(bump).toHaveBeenCalledTimes(1);
     useRenderedHook(props([done(task())]));
     await flush();

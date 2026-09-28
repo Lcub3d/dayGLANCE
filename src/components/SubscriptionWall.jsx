@@ -301,11 +301,11 @@ export default function SubscriptionWall({
               onChange={e => { setCodeValue(e.target.value); setCodeError(false); }}
               onKeyDown={e => e.key === 'Enter' && handleCodeSubmit()}
               placeholder={t('subscription.accessCodePlaceholder', { defaultValue: 'Access code' })}
-              className={`flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 ${dark ? 'bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
+              className={`flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-accent-500 ${dark ? 'bg-gray-900 border-gray-700 text-gray-100 placeholder-gray-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
             />
             <button
               onClick={handleCodeSubmit}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
+              className="rounded-lg bg-accent-600 px-3 py-2 text-xs font-medium text-white hover:bg-accent-700"
             >
               {t('subscription.unlock', { defaultValue: 'Unlock' })}
             </button>

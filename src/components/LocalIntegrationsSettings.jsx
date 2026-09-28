@@ -276,14 +276,14 @@ const LocalIntegrationsSettings = ({ variant }) => {
     if (okApplied) setPortDraft(null);
   };
 
-  const inputClass = `px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`;
+  const inputClass = `px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`;
   const smallBtn = `px-3 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors flex items-center gap-1.5`;
 
   const toggle = (checked, onChange, label, sub) => (
     <label className="flex items-center gap-3 cursor-pointer">
       <div className="relative flex-shrink-0">
         <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="sr-only" />
-        <div className={`w-10 h-6 rounded-full transition-colors ${checked ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+        <div className={`w-10 h-6 rounded-full transition-colors ${checked ? 'bg-accent-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
           <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-1'}`} />
         </div>
       </div>
@@ -597,7 +597,7 @@ const LocalIntegrationsSettings = ({ variant }) => {
                             href={MCP_SETUP_GUIDE_URL}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-blue-500 hover:underline"
+                            className="text-accent-500 hover:underline"
                           >
                             {t('settings.mcpSetupGuideLink', { defaultValue: 'Open the setup guide' })}
                           </a>
@@ -618,7 +618,7 @@ const LocalIntegrationsSettings = ({ variant }) => {
                     href={MCP_SETUP_GUIDE_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-500 hover:underline"
+                    className="text-accent-500 hover:underline"
                   >
                     {t('settings.mcpSetupGuide', { defaultValue: 'setup guide' })}
                   </a>
@@ -663,7 +663,7 @@ const LocalIntegrationsSettings = ({ variant }) => {
               </button>
               <button
                 onClick={consent.onAccept}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 text-sm"
               >
                 {consent.copy.accept}
               </button>

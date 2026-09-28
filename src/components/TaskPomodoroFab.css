@@ -1,0 +1,38 @@
+.task-pomodoro-fab {
+  position: fixed;
+  bottom: 5.5rem;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f5e6e3;
+  color: #b84a3c;
+  box-shadow: 0 4px 10px rgb(0 0 0 / .18);
+  cursor: grab;
+}
+.task-pomodoro-fab.is-dark { background: #3a302e; color: #ef9b8e; }
+.task-pomodoro-fab:hover { background: #ecd3ce; }
+.task-pomodoro-fab.is-dark:hover { background: #503a36; }
+.task-pomodoro-fab.is-drag-over, .task-pomodoro-drop-target {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+.task-pomodoro-fab:disabled { opacity: .5; cursor: default; }
+.task-pomodoro-fab:focus-visible { outline: 3px solid var(--ui-accent); outline-offset: 3px; }
+.task-pomodoro-mask { position: fixed; inset: 0; z-index: 75; background: rgb(0 0 0 / .45); display: grid; place-items: center; padding: 20px; }
+.task-pomodoro-picker { width: min(420px, 100%); max-height: min(560px, 90vh); background: #fff; color: #262626; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 16px 40px rgb(0 0 0 / .24); }
+.task-pomodoro-picker.is-dark { background: #262626; color: #fafafa; }
+.task-pomodoro-picker header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.task-pomodoro-picker h2 { font-size: 18px; font-weight: 600; }
+.task-pomodoro-picker header button { width: 32px; height: 32px; display: grid; place-items: center; }
+.task-pomodoro-picker p { font-size: 13px; margin-block: 10px 14px; line-height: 1.6; }
+.task-pomodoro-picker input { background: transparent; border: 1px solid #888; border-radius: 6px; padding: 8px 10px; color: inherit; }
+.task-pomodoro-options { margin-top: 12px; overflow-y: auto; }
+.task-pomodoro-options > button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 8px; border-radius: 6px; }
+.task-pomodoro-options > button:hover { background: rgb(127 127 127 / .12); }
+.task-pomodoro-options i { flex: none; width: 12px; height: 12px; border-radius: 3px; }
+.task-pomodoro-options span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.task-pomodoro-options small { display: block; font-size: 11px; opacity: .72; margin-top: 2px; }
+.task-pomodoro-picker :is(button, input):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }

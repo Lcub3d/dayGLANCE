@@ -52,7 +52,7 @@ const FrameScheduleModal = () => {
             {frameScheduleModal.frame.label} &middot; {frameScheduleModal.dateStr}
           </p>
           <p className="mt-1.5">
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>{t('frames.minAvailable', { minutes: totalAvailable })}</span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${darkMode ? 'bg-accent-900/40 text-accent-300' : 'bg-accent-100 text-accent-700'}`}>{t('frames.minAvailable', { minutes: totalAvailable })}</span>
           </p>
           {hasAffinity && (
             <div className={`flex rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-stone-200'} p-0.5 mt-2`}>

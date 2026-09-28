@@ -51,14 +51,14 @@ const InboxArchivedBar = () => {
                   {renderTitle(task.title)}
                 </span>
                 {proj && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${darkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0 ${darkMode ? 'bg-accent-900/40 text-accent-300' : 'bg-accent-100 text-accent-600'}`}>
                     {proj.title}
                   </span>
                 )}
                 <button
                   onClick={() => restoreArchivedInboxTask(task.id)}
                   className={`flex-shrink-0 flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded transition-colors ${
-                    darkMode ? 'text-blue-400 hover:bg-blue-900/30' : 'text-blue-600 hover:bg-blue-50'
+                    darkMode ? 'text-accent-400 hover:bg-accent-900/30' : 'text-accent-600 hover:bg-accent-50'
                   }`}
                   title={t('inbox.restoreToInbox', { defaultValue: 'Restore to inbox' })}
                 >

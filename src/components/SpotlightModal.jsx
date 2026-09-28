@@ -64,7 +64,7 @@ const SpotlightModal = () => {
             <div className={`px-4 py-8 text-center text-sm ${textSecondary}`}>{t('spotlight.noResults')}</div>
           ) : (() => {
             const sourceBadgeColors = darkMode ? {
-              scheduled: 'bg-blue-900/40 text-blue-300',
+              scheduled: 'bg-accent-900/40 text-accent-300',
               event: 'bg-amber-900/40 text-amber-300',
               inbox: 'bg-green-900/40 text-green-300',
               project: 'bg-green-900/40 text-green-300',
@@ -73,7 +73,7 @@ const SpotlightModal = () => {
               archived: 'bg-gray-700/60 text-gray-400',
               dailynote: 'bg-indigo-900/40 text-indigo-300',
             } : {
-              scheduled: 'bg-blue-100 text-blue-700',
+              scheduled: 'bg-accent-100 text-accent-700',
               event: 'bg-amber-100 text-amber-700',
               inbox: 'bg-green-100 text-green-700',
               project: 'bg-green-100 text-green-700',
@@ -97,7 +97,7 @@ const SpotlightModal = () => {
                     </div>
                   )}
                   <div
-                    className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${isSelected ? (darkMode ? 'bg-gray-700' : 'bg-blue-50') : (darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-stone-50')}`}
+                    className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${isSelected ? (darkMode ? 'bg-gray-700' : 'bg-accent-50') : (darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-stone-50')}`}
                     onClick={() => handleSpotlightSelect(result)}
                     onMouseEnter={() => setSpotlightSelectedIndex(idx)}
                     ref={el => {

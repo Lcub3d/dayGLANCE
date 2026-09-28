@@ -181,13 +181,13 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
             key={dateStr}
             onClick={() => { goToDate(date); openNewAllDayTask(dateStr); }}
             className={`flex-1 flex items-center justify-center py-1.5 px-1 text-center cursor-pointer transition-colors ${idx > 0 ? `border-l ${borderClass}` : ''}
-              ${isSelected ? (darkMode ? 'bg-blue-900/40' : 'bg-blue-100') : isDateToday ? (darkMode ? 'bg-blue-900/20' : 'bg-blue-50') : ''}`}
+              ${isSelected ? (darkMode ? 'bg-accent-900/40' : 'bg-accent-100') : isDateToday ? (darkMode ? 'bg-accent-900/20' : 'bg-accent-50') : ''}`}
             style={{ minHeight: 'var(--header-row-h)' }}
             title={`${t('task.addTask')}: ${t('task.allDay')}`}
           >
-            <div className={`font-bold flex items-center justify-center gap-1.5 whitespace-nowrap ${isDateToday || isSelected ? 'text-blue-600' : textPrimary}`}>
+            <div className={`font-bold flex items-center justify-center gap-1.5 whitespace-nowrap ${isDateToday || isSelected ? 'text-accent-600' : textPrimary}`}>
               <span>{formatLocalizedDate(date, { weekday: 'short' })}</span>
-              <span className={`font-normal ${isDateToday || isSelected ? 'text-blue-500' : textSecondary}`}>
+              <span className={`font-normal ${isDateToday || isSelected ? 'text-accent-500' : textSecondary}`}>
                 {/* Short month: seven cells plus the two buttons must fit the narrow cycler's width */}
                 {formatLocalizedDate(date, { month: 'short', day: 'numeric' })}
               </span>
@@ -213,14 +213,14 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
           <div
             key={dateStr}
             className={`flex-1 flex items-center justify-center py-1.5 px-1 text-center cursor-pointer transition-colors ${idx > 0 ? `border-l ${borderClass}` : ''}
-              ${isDateToday ? (darkMode ? 'bg-blue-900/30 hover:bg-blue-900/50' : 'bg-blue-50 hover:bg-blue-100') : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100')}`}
+              ${isDateToday ? (darkMode ? 'bg-accent-900/30 hover:bg-accent-900/50' : 'bg-accent-50 hover:bg-accent-100') : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100')}`}
             style={{ minHeight: 'var(--header-row-h)' }}
             onClick={() => openNewAllDayTask(dateStr)}
             title={`${t('task.addTask')}: ${t('task.allDay')}`}
           >
-            <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday ? 'text-blue-600' : textPrimary}`}>
+            <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday ? 'text-accent-600' : textPrimary}`}>
               <span>{formatLocalizedDate(date, { weekday: 'short' })}</span>
-              <span className={`font-normal ${isDateToday ? 'text-blue-500' : textSecondary}`}>
+              <span className={`font-normal ${isDateToday ? 'text-accent-500' : textSecondary}`}>
                 {formatLocalizedDate(date, { month: 'long', day: 'numeric' })}
               </span>
               <DayHeaderActions dateStr={dateStr} />
@@ -278,6 +278,19 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
     );
   })}
     </>
+  ) : effectiveViewMode === 'year' ? (
+    /* YEAR: the annual view owns its date selection and heatmap. Keep this
+       header free of the selected-day header and all-day statistics; it only
+       names the year and leaves the cycler available for returning to a
+       calendar view. */
+    <>
+    <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
+      {(canShowViewCycler || schedOnlyCycler) && <ViewCycler />}
+    </div>
+    <div className={`flex-1 min-w-0 flex items-center justify-center px-6 ${cardBg}`} style={{ minHeight: 'var(--header-row-h)' }}>
+      <span className={`font-bold ${textPrimary}`}>{t('jobu.year')} · {selectedDate.getFullYear()}</span>
+    </div>
+    </>
   ) : effectiveViewMode === 'jobo' ? (
     /* JOBO: the selected day and its view controls share one header row. */
     <>
@@ -308,7 +321,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
       return (
         <div
           key={group.dateStr}
-          className={`relative flex flex-col items-center justify-center py-2 cursor-pointer transition-colors ${isDateToday ? (darkMode ? 'bg-blue-900/30' : 'bg-blue-50') : cardBg} ${idx > 0 ? `border-l ${borderClass}` : ''} ${isDragOverThis ? (darkMode ? 'bg-green-700' : 'bg-green-200') : ''}`}
+          className={`relative flex flex-col items-center justify-center py-2 cursor-pointer transition-colors ${isDateToday ? (darkMode ? 'bg-accent-900/30' : 'bg-accent-50') : cardBg} ${idx > 0 ? `border-l ${borderClass}` : ''} ${isDragOverThis ? (darkMode ? 'bg-green-700' : 'bg-green-200') : ''}`}
           style={{ gridColumn: `span ${group.count}`, minHeight: 'var(--header-row-h)' }}
           onDragOver={(e) => { e.preventDefault(); if (autoScrollInterval.current) { clearInterval(autoScrollInterval.current); autoScrollInterval.current = null; } }}
           onDragEnter={(e) => { e.preventDefault(); setDragOverAllDay(group.dateStr); setDragPreviewTime(null); }}
@@ -332,7 +345,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
           {isDragOverThis && (
             <div className={`absolute inset-0 pointer-events-none ring-2 ring-inset ${darkMode ? 'ring-green-400' : 'ring-green-500'}`} />
           )}
-          <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday ? 'text-blue-600' : textPrimary} ${idx === 0 && canShowViewCycler ? 'pl-16' : ''}`}>
+          <div className={`font-bold flex items-center justify-center gap-1.5 ${isDateToday ? 'text-accent-600' : textPrimary} ${idx === 0 && canShowViewCycler ? 'pl-16' : ''}`}>
             {formatShortDate(group.date)}
             {timeRange && (
               <span className={`font-normal text-xs ${textSecondary}`}>· {timeRange}</span>
@@ -380,7 +393,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
         <div
           key={dateStr}
           className={`flex-1 flex flex-wrap items-center justify-center gap-1 py-1 min-w-0 overflow-hidden ${idx > 0 ? `border-l ${borderClass}` : ''}
-            ${isDateToday ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
+            ${isDateToday ? (darkMode ? 'bg-accent-900/10' : 'bg-accent-50/40') : ''}`}
         >
           {allDayTasks.length > 0 && (
             <button
@@ -395,7 +408,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
                 }
               }}
               className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors
-                ${darkMode ? 'bg-blue-700/60 text-blue-200 hover:bg-blue-700' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                ${darkMode ? 'bg-accent-700/60 text-accent-200 hover:bg-accent-700' : 'bg-accent-100 text-accent-700 hover:bg-accent-200'}`}
             >
               {allDayTasks.length} all day
             </button>
@@ -608,7 +621,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
                 {/* Tablet swipe strips — outside data-swipe-container so they stay behind as content slides */}
                 {isTablet && !isImported && (
                   <>
-                    <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${isRecurringAllDay ? (darkMode ? 'bg-red-900/80 text-red-300' : 'bg-red-100 text-red-600') : (darkMode ? 'bg-blue-900/80 text-blue-300' : 'bg-blue-100 text-blue-600')} rounded-lg flex items-center pl-3 text-xs font-medium`}>
+                    <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${isRecurringAllDay ? (darkMode ? 'bg-red-900/80 text-red-300' : 'bg-red-100 text-red-600') : (darkMode ? 'bg-accent-900/80 text-accent-300' : 'bg-accent-100 text-accent-600')} rounded-lg flex items-center pl-3 text-xs font-medium`}>
                       {isRecurringAllDay ? (
                         <><Trash2 size={14} className="mr-1" />{t('common.delete')}</>
                       ) : (
@@ -655,7 +668,7 @@ const CalendarHeader = ({ joboControlsRef } = {}) => {
               {/* Swipe action strips — outside data-swipe-container so they stay behind as content slides */}
               {isTablet && (
                 <>
-                  <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-blue-900/80 text-blue-300' : 'bg-blue-100 text-blue-600'} rounded-lg flex items-center pl-3 text-xs font-medium`}>
+                  <div data-swipe-strip="right" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-accent-900/80 text-accent-300' : 'bg-accent-100 text-accent-600'} rounded-lg flex items-center pl-3 text-xs font-medium`}>
                     <Inbox size={14} className="mr-1" />{t('settings.inbox')}
                   </div>
                   <div data-swipe-strip="left" style={{ display: 'none', left: '8px' }} className={`absolute inset-0 ${darkMode ? 'bg-amber-900/80 text-amber-300' : 'bg-amber-100 text-amber-600'} rounded-lg flex items-center justify-end pr-3 text-xs font-medium`}>

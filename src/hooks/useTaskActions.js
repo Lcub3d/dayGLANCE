@@ -5,6 +5,16 @@ import { stripSpans } from '../utils/quickAddParser.js';
 import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
+import {
+  canGroupTask,
+  isPlanGroupReadonly,
+  MINUTES_PER_DAY,
+  nextDeletionStamp,
+  parsePlanTime,
+  samePlanVersion,
+  shiftedPlanStart,
+} from '../jobo/planGroupActions.js';
+import { validCivilDate } from '../jobo/viewDates.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -643,6 +653,344 @@ export default function useTaskActions({
     }
   };
 
+  // ── JOBO Plan group actions ─────────────────────────────────────────────
+  // The view passes the exact native task object used to render each Plan.  A
+  // group is accepted only after every row has been checked against the live
+  // task/template collection.  This keeps a stale selection from applying
+  // half of a move before the other half is discovered.
+  const recurringInstanceInfo = (task) => {
+    let parsed = typeof parseRecurringId === 'function' ? parseRecurringId(task?.id) : null;
+    if (!parsed && typeof task?.id === 'string' && task.id.startsWith('recurring-')) {
+      const parts = task.id.split('-');
+      if (parts.length >= 5) {
+        const dateStr = parts.slice(-3).join('-');
+        const rawTemplateId = parts.slice(1, -3).join('-');
+        parsed = { templateId: /^\d+$/.test(rawTemplateId) ? Number(rawTemplateId) : rawTemplateId, dateStr };
+      }
+    }
+    if (parsed) return parsed;
+    if (task?.recurringTemplateId != null && task?.date) {
+      return { templateId: task.recurringTemplateId, dateStr: task.date };
+    }
+    return null;
+  };
+
+  const sameTemplateVersion = (template, requested) => {
+    if (!template || !requested) return false;
+    for (const key of ['version', 'lastModified', 'updatedAt']) {
+      // Expanded recurring instances in the scheduler do not carry the
+      // template's stamp.  When both sides expose one, however, it is an
+      // optimistic version and must match exactly.
+      if (Object.prototype.hasOwnProperty.call(template, key)
+        && Object.prototype.hasOwnProperty.call(requested, key)
+        && template[key] !== requested[key]) return false;
+    }
+    return true;
+  };
+
+  const samePlanShape = (current, requested) => current?.date === requested?.date
+    && current?.startTime === requested?.startTime
+    && Number(current?.duration) === Number(requested?.duration)
+    && Boolean(current?.isAllDay) === Boolean(requested?.isAllDay);
+
+  const normalizeTimelineInterval = (interval) => {
+    if (!interval || typeof interval.startTime !== 'string'
+      || typeof interval.duration !== 'number'
+      || !Number.isInteger(interval.duration) || interval.duration <= 0) return null;
+    const startMinute = parsePlanTime(interval.startTime);
+    if (startMinute == null || startMinute + interval.duration > MINUTES_PER_DAY) return null;
+    return { startTime: interval.startTime, duration: interval.duration };
+  };
+
+  const effectiveRecurringOccurrence = (template, dateStr) => {
+    const exception = template?.exceptions?.[dateStr] || {};
+    return {
+      exception,
+      startTime: exception.startTime !== undefined ? exception.startTime : template?.startTime,
+      duration: exception.duration !== undefined ? exception.duration : (template?.duration ?? 30),
+      isAllDay: exception.isAllDay !== undefined ? exception.isAllDay : (template?.isAllDay ?? false),
+    };
+  };
+
+  const prepareTimelineGroup = (requestedTasks, { deltaMinutes = null } = {}) => {
+    if (!Array.isArray(requestedTasks) || requestedTasks.length === 0) return null;
+    if (deltaMinutes !== null && (!Number.isInteger(deltaMinutes) || deltaMinutes === 0)) return null;
+
+    const ids = new Set();
+    const recurringKeys = new Set();
+    const prepared = [];
+    let groupDate = null;
+
+    for (const requested of requestedTasks) {
+      if (!canGroupTask(requested) || isPlanGroupReadonly(requested)) return null;
+      const idKey = String(requested.id);
+      if (ids.has(idKey)) return null;
+      ids.add(idKey);
+      if (typeof requested.date !== 'string' || !requested.date) return null;
+      if (groupDate === null) groupDate = requested.date;
+      if (requested.date !== groupDate) return null;
+
+      const recurring = recurringInstanceInfo(requested);
+      if (recurring) {
+        if (recurring.dateStr !== requested.date) return null;
+        const recurringKey = `${String(recurring.templateId)}::${recurring.dateStr}`;
+        if (recurringKeys.has(recurringKey)) return null;
+        recurringKeys.add(recurringKey);
+        const template = (Array.isArray(recurringTasks) ? recurringTasks : [])
+          .find(candidate => String(candidate?.id) === String(recurring.templateId));
+        if (!template || isPlanGroupReadonly(template) || !sameTemplateVersion(template, requested)) return null;
+        const occurrence = effectiveRecurringOccurrence(template, recurring.dateStr);
+        if (occurrence.exception.deleted || occurrence.isAllDay) return null;
+        if (requested.startTime !== occurrence.startTime
+          || Number(requested.duration) !== Number(occurrence.duration)) return null;
+        const nextStartTime = deltaMinutes === null
+          ? requested.startTime
+          : shiftedPlanStart({ ...requested, startTime: occurrence.startTime, duration: occurrence.duration }, deltaMinutes);
+        if (!nextStartTime) return null;
+        prepared.push({ kind: 'recurring', requested, template, dateStr: recurring.dateStr, nextStartTime });
+        continue;
+      }
+
+      const current = (Array.isArray(tasks) ? tasks : [])
+        .find(candidate => String(candidate?.id) === idKey);
+      if (!current || !samePlanVersion(current, requested) || !samePlanShape(current, requested)
+        || !canGroupTask(current) || current.date !== groupDate) return null;
+      if (current.isAllDay || typeof current.startTime !== 'string') return null;
+      const nextStartTime = deltaMinutes === null
+        ? current.startTime
+        : shiftedPlanStart(current, deltaMinutes);
+      if (!nextStartTime) return null;
+      prepared.push({ kind: 'ordinary', requested, current, nextStartTime });
+    }
+
+    return prepared;
+  };
+
+  const freshTaskStamp = (previous, now) => {
+    const prior = typeof previous === 'string' ? Date.parse(previous) : NaN;
+    const floor = Number.isFinite(prior) ? prior + 1 : 0;
+    const stamp = Math.max(now.value, floor);
+    now.value = stamp + 1;
+    return new Date(stamp).toISOString();
+  };
+
+  const moveTimelineTasks = (requestedTasks, deltaMinutes) => {
+    const prepared = prepareTimelineGroup(requestedTasks, { deltaMinutes });
+    if (!prepared) return false;
+    const ordinary = prepared.filter(entry => entry.kind === 'ordinary');
+    const recurring = prepared.filter(entry => entry.kind === 'recurring');
+    if (ordinary.length && typeof setTasks !== 'function') return false;
+    if (recurring.length && typeof setRecurringTasks !== 'function') return false;
+
+    // Generate transition IDs once per accepted operation.  They are kept on
+    // the original rows, matching the single-task drag path; no task identity
+    // or user data is reconstructed during a group move.
+    const transitionIds = new Map(ordinary.map(entry => [String(entry.current.id),
+      typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : undefined]));
+    const moveNow = { value: Date.now() };
+    const moveStamps = new Map(ordinary.map(entry => [String(entry.current.id),
+      freshTaskStamp(entry.current.lastModified, moveNow)]));
+    pushUndo();
+
+    if (ordinary.length) {
+      const byId = new Map(ordinary.map(entry => [String(entry.current.id), entry]));
+      setTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        if (!ordinary.every(entry => {
+          const current = rows.find(row => String(row?.id) === String(entry.current.id));
+          return current && samePlanVersion(current, entry.requested) && samePlanShape(current, entry.requested);
+        })) return prev;
+        return rows.map(row => {
+          const entry = byId.get(String(row?.id));
+          if (!entry) return row;
+          const transitionId = transitionIds.get(String(row.id));
+          const moved = { ...row, startTime: entry.nextStartTime, lastModified: moveStamps.get(String(row.id)) };
+          return transitionId ? { ...moved, transitionId } : moved;
+        });
+      });
+    }
+
+    if (recurring.length) {
+      const byTemplate = new Map();
+      for (const entry of recurring) {
+        const key = String(entry.template.id);
+        if (!byTemplate.has(key)) byTemplate.set(key, []);
+        byTemplate.get(key).push(entry);
+      }
+      const now = { value: Date.now() };
+      setRecurringTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        if (![...byTemplate.values()].every(entries => {
+          const template = rows.find(row => String(row?.id) === String(entries[0].template.id));
+          return template && sameTemplateVersion(template, entries[0].requested);
+        })) return prev;
+        return rows.map(template => {
+          const entries = byTemplate.get(String(template?.id));
+          if (!entries) return template;
+          const exceptions = { ...(template.exceptions || {}) };
+          for (const entry of entries) {
+            exceptions[entry.dateStr] = {
+              ...(exceptions[entry.dateStr] || {}),
+              startTime: entry.nextStartTime,
+            };
+          }
+          return { ...template, exceptions, lastModified: freshTaskStamp(template.lastModified, now) };
+        });
+      });
+    }
+
+    if (typeof playUISound === 'function') playUISound('drop');
+    return true;
+  };
+
+  const resizeTimelineTask = (requestedTask, interval) => {
+    const nextInterval = normalizeTimelineInterval(interval);
+    if (!nextInterval || !canGroupTask(requestedTask) || isPlanGroupReadonly(requestedTask)
+      || typeof requestedTask.date !== 'string' || !validCivilDate(requestedTask.date)) return false;
+
+    const recurring = recurringInstanceInfo(requestedTask);
+    if (recurring) {
+      if (recurring.dateStr !== requestedTask.date) return false;
+      const template = (Array.isArray(recurringTasks) ? recurringTasks : [])
+        .find(candidate => String(candidate?.id) === String(recurring.templateId));
+      if (!template || isPlanGroupReadonly(template) || !sameTemplateVersion(template, requestedTask)) return false;
+      const occurrence = effectiveRecurringOccurrence(template, recurring.dateStr);
+      if (occurrence.exception.deleted || occurrence.isAllDay
+        || requestedTask.startTime !== occurrence.startTime
+        || Number(requestedTask.duration) !== Number(occurrence.duration)) return false;
+      if (nextInterval.startTime === occurrence.startTime
+        && nextInterval.duration === Number(occurrence.duration)) return false;
+      if (typeof setRecurringTasks !== 'function') return false;
+
+      const stamp = freshTaskStamp(template.lastModified, { value: Date.now() });
+      pushUndo();
+      setRecurringTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        const liveTemplate = rows.find(row => String(row?.id) === String(template.id));
+        if (!liveTemplate || isPlanGroupReadonly(liveTemplate)
+          || !sameTemplateVersion(liveTemplate, requestedTask)) return prev;
+        const liveOccurrence = effectiveRecurringOccurrence(liveTemplate, recurring.dateStr);
+        if (liveOccurrence.exception.deleted || liveOccurrence.isAllDay
+          || requestedTask.startTime !== liveOccurrence.startTime
+          || Number(requestedTask.duration) !== Number(liveOccurrence.duration)) return prev;
+        return rows.map(row => {
+          if (String(row?.id) !== String(template.id)) return row;
+          const exceptions = { ...(row.exceptions || {}) };
+          exceptions[recurring.dateStr] = {
+            ...(exceptions[recurring.dateStr] || {}),
+            startTime: nextInterval.startTime,
+            duration: nextInterval.duration,
+          };
+          return { ...row, exceptions, lastModified: stamp };
+        });
+      });
+    } else {
+      const current = (Array.isArray(tasks) ? tasks : [])
+        .find(candidate => String(candidate?.id) === String(requestedTask.id));
+      if (!current || !validCivilDate(current.date) || !samePlanVersion(current, requestedTask)
+        || !samePlanShape(current, requestedTask) || !canGroupTask(current)
+        || isPlanGroupReadonly(current) || current.date !== requestedTask.date
+        || current.isAllDay || typeof current.startTime !== 'string') return false;
+      if (nextInterval.startTime === current.startTime
+        && nextInterval.duration === Number(current.duration)) return false;
+      if (typeof setTasks !== 'function') return false;
+
+      const stamp = freshTaskStamp(current.lastModified, { value: Date.now() });
+      const transitionId = typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID() : undefined;
+      pushUndo();
+      setTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        const live = rows.find(row => String(row?.id) === String(current.id));
+        if (!live || !samePlanVersion(live, requestedTask) || !samePlanShape(live, requestedTask)
+          || !canGroupTask(live) || isPlanGroupReadonly(live) || live.date !== requestedTask.date
+          || live.isAllDay || typeof live.startTime !== 'string') return prev;
+        return rows.map(row => {
+          if (String(row?.id) !== String(current.id)) return row;
+          const resized = { ...row, startTime: nextInterval.startTime, duration: nextInterval.duration, lastModified: stamp };
+          return transitionId ? { ...resized, transitionId } : resized;
+        });
+      });
+    }
+
+    if (typeof playUISound === 'function') playUISound('drop');
+    return true;
+  };
+
+  const deleteTimelineTasks = (requestedTasks) => {
+    const prepared = prepareTimelineGroup(requestedTasks);
+    if (!prepared) return false;
+    const ordinary = prepared.filter(entry => entry.kind === 'ordinary');
+    const recurring = prepared.filter(entry => entry.kind === 'recurring');
+    if (ordinary.length && (typeof setTasks !== 'function' || typeof setRecycleBin !== 'function')) return false;
+    if (recurring.length && typeof setRecurringTasks !== 'function') return false;
+
+    const now = { value: Date.now() };
+    const recycleEntries = ordinary.map(entry => {
+      const stamp = nextDeletionStamp(entry.current.lastModified, now.value);
+      now.value = Math.max(now.value, Date.parse(stamp) + 1);
+      return {
+        ...entry.current,
+        _deletedFrom: 'calendar',
+        deletedAt: stamp,
+        lastModified: stamp,
+      };
+    });
+    pushUndo();
+
+    if (ordinary.length) {
+      const ids = new Set(ordinary.map(entry => String(entry.current.id)));
+      setRecycleBin(prev => [...(Array.isArray(prev) ? prev : []), ...recycleEntries]);
+      setTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        if (!ordinary.every(entry => {
+          const current = rows.find(row => String(row?.id) === String(entry.current.id));
+          return current && samePlanVersion(current, entry.requested) && samePlanShape(current, entry.requested);
+        })) return prev;
+        return rows.filter(row => !ids.has(String(row?.id)));
+      });
+      if (typeof expandedNotesTaskId === 'string'
+        && ids.has(String(expandedNotesTaskId)) && typeof setExpandedNotesTaskId === 'function') {
+        setExpandedNotesTaskId(null);
+      }
+    }
+
+    if (recurring.length) {
+      const byTemplate = new Map();
+      for (const entry of recurring) {
+        const key = String(entry.template.id);
+        if (!byTemplate.has(key)) byTemplate.set(key, []);
+        byTemplate.get(key).push(entry);
+      }
+      setRecurringTasks(prev => {
+        const rows = Array.isArray(prev) ? prev : [];
+        if (![...byTemplate.values()].every(entries => {
+          const template = rows.find(row => String(row?.id) === String(entries[0].template.id));
+          return template && sameTemplateVersion(template, entries[0].requested);
+        })) return prev;
+        return rows.map(template => {
+          const entries = byTemplate.get(String(template?.id));
+          if (!entries) return template;
+          const exceptions = { ...(template.exceptions || {}) };
+          for (const entry of entries) {
+            exceptions[entry.dateStr] = {
+              ...(exceptions[entry.dateStr] || {}),
+              deleted: true,
+            };
+          }
+          return { ...template, exceptions, lastModified: freshTaskStamp(template.lastModified, now) };
+        });
+      });
+    }
+
+    if (typeof playUISound === 'function') playUISound('swoosh');
+    triggerHaptic('success');
+    if (onboardingProgress && !onboardingProgress.hasUsedActionButtons && typeof setOnboardingProgress === 'function') {
+      setOnboardingProgress(prev => ({ ...prev, hasUsedActionButtons: true }));
+    }
+    return true;
+  };
+
   const moveToInbox = (id) => {
     pushUndo();
     if (typeof id === 'string' && id.startsWith('recurring-')) return;
@@ -978,6 +1326,8 @@ export default function useTaskActions({
     toggleComplete,
     // Move
     postponeTask,
+    moveTimelineTasks,
+    resizeTimelineTask,
     moveToInbox,
     // Subtasks
     addSubtask,
@@ -985,6 +1335,7 @@ export default function useTaskActions({
     deleteSubtask,
     updateSubtaskTitle,
     // Delete
+    deleteTimelineTasks,
     moveToRecycleBin,
     deleteRecurringInstance,
     recordDeletedTaskTombstone,

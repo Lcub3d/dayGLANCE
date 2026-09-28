@@ -97,7 +97,7 @@ const InboxFilterPopover = ({ open, onClose, buttonRef }) => {
   if (!open) return null;
 
   const chipBase = 'inline-flex items-center text-xs px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer select-none';
-  const chipOn = darkMode ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white';
+  const chipOn = darkMode ? 'bg-accent-600 text-white' : 'bg-accent-600 text-white';
   const chipOff = darkMode ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-stone-100 text-stone-600 hover:bg-stone-200';
 
   const SectionLabel = ({ children }) => (

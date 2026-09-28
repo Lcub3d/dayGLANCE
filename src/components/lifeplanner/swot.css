@@ -2,8 +2,8 @@
 .lp-swot-entry:hover:not(:disabled) { color:#991b1b; background:#fecaca; }
 .lp-paper-dark .lp-swot-entry { color:#fca5a5; background:#4c252d; }
 .lp-swot-mask { position:fixed; inset:0; z-index:65; background:rgb(0 0 0 / .28); display:flex; align-items:center; justify-content:center; padding:24px; }
-.lp-swot-sheet { --lp-paper:#fff; --lp-rule:#e7e5e4; --lp-muted:#57534e; --lp-hover:#f5f5f4; --lp-soft:#fafaf9; --lp-accent:#2563eb; position:relative; background:var(--lp-paper); color:#1c1917; width:820px; max-width:100%; max-height:calc(100dvh - 48px); border-radius:12px; box-shadow:0 16px 48px #0002; display:flex; flex-direction:column; overflow:hidden; text-align:left; }
-.lp-swot-sheet.lp-paper-dark { --lp-paper:#1f2937; --lp-rule:#374151; --lp-muted:#9ca3af; --lp-hover:#374151; --lp-soft:#263140; --lp-accent:#60a5fa; color:#f3f4f6; }
+.lp-swot-sheet { --lp-paper:#fff; --lp-rule:#e7e5e4; --lp-muted:#57534e; --lp-hover:#f5f5f4; --lp-soft:#fafaf9; --lp-accent:var(--ui-accent); position:relative; background:var(--lp-paper); color:#1c1917; width:820px; max-width:100%; max-height:calc(100dvh - 48px); border-radius:12px; box-shadow:0 16px 48px #0002; display:flex; flex-direction:column; overflow:hidden; text-align:left; }
+.lp-swot-sheet.lp-paper-dark { --lp-paper:#1f2937; --lp-rule:#374151; --lp-muted:#9ca3af; --lp-hover:#374151; --lp-soft:#263140; --lp-accent:var(--ui-accent); color:#f3f4f6; }
 .lp-swot-header { min-height:44px; flex-shrink:0; }
 .lp-swot-close { position:absolute; top:8px; right:12px; z-index:2; color:var(--lp-muted); }
 .lp-swot-body { overflow:auto; min-height:0; padding:0 32px 24px; scrollbar-gutter:stable; }
@@ -45,8 +45,8 @@
 .lp-swot-suggestion .lp-button { flex-shrink:0; font-size:12px; color:var(--lp-accent); min-height:28px; }
 .lp-swot-footer { display:flex; justify-content:flex-end; gap:8px; align-items:center; padding:12px 32px 20px; flex-shrink:0; }
 .lp-swot-footer .lp-button { min-height:34px; font-size:13px; }
-.lp-swot-footer .lp-swot-save { background:#2563eb; color:#fff; }
-.lp-swot-footer .lp-swot-save:hover { background:#1d4ed8; }
+.lp-swot-footer .lp-swot-save { background:var(--ui-accent); color:var(--ui-accent-on); }
+.lp-swot-footer .lp-swot-save:hover { background:var(--ui-accent); }
 .lp-swot-sheet .lp-error { padding:8px 0; }
 @media(max-width:650px) {
   .lp-swot-mask { padding:10px; }

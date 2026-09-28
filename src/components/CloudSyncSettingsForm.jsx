@@ -351,7 +351,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 placeholder={field.placeholder}
                 value={formData[field.key] || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
               />
               {field.type === 'password' && (
                 <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.aiApiKeyHint')}</p>
@@ -366,7 +366,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               placeholder="GLANCE/dayglance"
               value={formData.syncFolder || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, syncFolder: e.target.value }))}
-              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
             />
             <p className={`text-xs ${textSecondary} mt-0.5`}>{t('sync.form.syncFolderHint')}</p>
           </div>
@@ -463,7 +463,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 placeholder={passphraseRequired ? t('sync.form.passphrasePlaceholderNew') : t('sync.form.passphrasePlaceholderReenter')}
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
               />
             </div>
 
@@ -475,7 +475,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                   placeholder={t('sync.form.confirmPassphrasePlaceholder')}
                   value={passphraseConfirm}
                   onChange={(e) => setPassphraseConfirm(e.target.value)}
-                  className={`w-full px-3 py-2 border ${passphraseMismatch ? 'border-red-500' : borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                  className={`w-full px-3 py-2 border ${passphraseMismatch ? 'border-red-500' : borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                 />
                 {passphraseMismatch && (
                   <p className="text-xs text-red-500 mt-0.5">{t('sync.form.passphraseMismatch')}</p>
@@ -520,7 +520,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 placeholder="https://vault.glance-apps.com"
                 value={vaultUrl}
                 onChange={(e) => setVaultUrl(e.target.value)}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
               />
               {vaultUrl.trim() && !vaultUrlCheck.ok && (
                 <p className="text-xs text-red-500 mt-0.5">{t(vaultUrlCheck.messageKey)}</p>
@@ -537,7 +537,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                   placeholder={t('sync.form.deviceTokenPlaceholder')}
                   value={vaultToken}
                   onChange={(e) => setVaultToken(e.target.value)}
-                  className={`w-full px-3 py-2 pr-10 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                  className={`w-full px-3 py-2 pr-10 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                 />
                 <button
                   type="button"
@@ -556,7 +556,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 placeholder={t('sync.form.accountIdPlaceholder')}
                 value={vaultAccountId}
                 onChange={(e) => setVaultAccountId(e.target.value)}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
               />
             </div>
             {/* Vault actions: pre-save Test Connection (mirrors the WebDAV button
@@ -668,7 +668,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         <button
           onClick={handleSave}
           disabled={!canSave || vaultBootstrapping}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 disabled:opacity-50"
         >
           {vaultBootstrapping ? t('sync.form.enabling') : ((cloudSyncConfig?.enabled || vaultOriginal?.enabled) ? t('common.save') : t('sync.form.saveEnable'))}
         </button>

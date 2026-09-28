@@ -121,7 +121,7 @@ const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartS
   return (
     <div className="space-y-4">
       <div className="flex flex-col items-center py-8 gap-3">
-        <CalendarDays size={48} className="text-blue-500" />
+        <CalendarDays size={48} className="text-accent-500" />
         <h3 className={`text-lg font-semibold ${textPrimary}`}>{isReschedule ? 'Reschedule Tasks' : 'Smart Schedule'}</h3>
         <p className={`text-sm ${textSecondary} text-center max-w-xs`}>
           {isReschedule
@@ -138,7 +138,7 @@ const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartS
         <button
           onClick={onRun}
           disabled={smartScheduleLoading}
-          className="mt-2 px-6 py-3 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+          className="mt-2 px-6 py-3 bg-accent-600 text-white rounded-lg text-sm font-medium hover:bg-accent-700 transition-colors flex items-center gap-2 disabled:opacity-50"
         >
           {smartScheduleLoading ? (
             <><Loader size={16} className="animate-spin" /> {isReschedule ? 'Rescheduling...' : 'Scheduling...'}</>

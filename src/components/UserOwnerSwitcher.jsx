@@ -34,7 +34,7 @@ export default function UserOwnerSwitcher({
               type="button"
               onClick={() => onChange(key)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm border transition-colors ${isSelected
-                ? `border-blue-500 ${darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`
+                ? `border-accent-500 ${darkMode ? 'bg-accent-500/20 text-accent-300' : 'bg-accent-50 text-accent-700'}`
                 : `${borderClass} ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-stone-600'}`}`}
             >
               <span

@@ -1,89 +1,39 @@
-name: Year 2 calendar base integration
+name: Year 2 calendar review
 on:
   push:
     branches: [feat/jobu-year2-chinese-calendar]
-    paths: ['.github/workflows/year2-calendar-review.yml']
+  pull_request:
+    branches: [product/jobu]
+    paths:
+      - 'src/components/jobu/Year2*'
+      - 'src/components/jobu/useYear2Calendar.js'
+      - 'src/jobu/calendar/**'
+      - 'scripts/year2*'
+      - '.github/workflows/year2-calendar-review.yml'
   workflow_dispatch:
 permissions:
-  contents: write
-  pull-requests: read
+  contents: read
 concurrency:
-  group: year2-calendar-base-integration
+  group: year2-calendar-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  integrate:
-    if: github.repository == 'Lcub3d/dayGLANCE'
+  review:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: Integrate latest Jobu without dropping either set of translations
-        shell: bash
-        run: |
-          set -euo pipefail
+      - run: |
           mkdir -p review-artifacts
-          git config user.name Lcub3d
-          git config user.email 46134215+Lcub3d@users.noreply.github.com
-          git show 46a787f149fa7fb0db793f2ef3f03ae6c37ac745:.github/workflows/year2-calendar-review.yml > .github/workflows/year2-calendar-review.yml
-          git add .github/workflows/year2-calendar-review.yml
-          git commit -m 'chore: restore read-only Year 2 review'
-          git fetch origin product/jobu
-          test "$(git rev-parse FETCH_HEAD)" = 343e485cd07076abf8cff967c1cf630629fa2a82
-          git merge --no-commit --no-ff 343e485cd07076abf8cff967c1cf630629fa2a82 || true
-          python - <<'PY'
-          import json, subprocess
-          from pathlib import Path
-          def run(*args): return subprocess.check_output(args).decode()
-          unresolved=run('git','diff','--name-only','--diff-filter=U').splitlines()
-          for name in unresolved:
-              if name=='src/components/DesktopLayout.jsx':
-                  source=run('git','show',f':3:{name}')
-                  edits=[
-                      ("import React, { useEffect, useState, useRef } from 'react';", "import React, { lazy, Suspense, useEffect, useState, useRef } from 'react';"),
-                      ("import Year2View from './jobu/Year2View.jsx';", "// The optional calendar engine stays out of the initial application chunk.\nconst Year2View = lazy(() => import('./jobu/Year2View.jsx'));"),
-                      ("{effectiveViewMode === 'year2' && <Year2View />}", "{effectiveViewMode === 'year2' && <Suspense fallback={<div role=\"status\" className={`p-4 text-sm ${textSecondary}`}>{t('common.loading')}</div>}><Year2View /></Suspense>}"),
-                  ]
-                  for before,after in edits:
-                      assert source.count(before)==1, f'Unexpected DesktopLayout context: {before}'
-                      source=source.replace(before,after)
-                  Path(name).write_text(source)
-                  subprocess.check_call(['git','add',name])
-                  continue
-              assert name.startswith('public/locales/') and name.endswith('/translation.json'), f'Unexpected conflict: {name}'
-              base,ours,theirs=[json.loads(run('git','show',f':{stage}:{name}')) for stage in (1,2,3)]
-              missing=object()
-              def merge(b,o,t,path=''):
-                  if o==t:return o
-                  if o==b:return t
-                  if t==b:return o
-                  if isinstance(o,dict) and isinstance(t,dict) and (isinstance(b,dict) or b is missing):
-                      b={} if b is missing else b
-                      result={}
-                      for k in dict.fromkeys([*o,*t]):
-                          value=merge(b.get(k,missing),o.get(k,missing),t.get(k,missing),path+'.'+k)
-                          if value is not missing:result[k]=value
-                      return result
-                  raise RuntimeError(f'Overlapping semantic translation edit: {name}{path}')
-              merged=merge(base,ours,theirs)
-              Path(name).write_text(json.dumps(merged,ensure_ascii=False,indent=2)+'\n')
-              subprocess.check_call(['git','add',name])
-          assert not run('git','diff','--name-only','--diff-filter=U').strip()
-          assert Path('.git/MERGE_HEAD').exists(), 'Merge did not start'
-          subprocess.check_call(['git','diff','--cached','--check'])
-          subprocess.check_call(['git','commit','-m','Merge current Jobu filters and labels into Year 2 calendar'])
-          subprocess.check_call(['git','merge-base','--is-ancestor','343e485cd07076abf8cff967c1cf630629fa2a82','HEAD'])
-          PY
           git rev-parse HEAD > review-artifacts/commit.txt
           git rev-parse HEAD^{tree} > review-artifacts/tree.txt
-          git archive HEAD | gzip > review-artifacts/source.tar.gz
           npm ci --no-audit --no-fund
       - name: Lint and full unit suite
         run: |
@@ -98,30 +48,24 @@ jobs:
           npm run build 2>&1 | tee review-artifacts/build-web.txt
           npm run build:android 2>&1 | tee review-artifacts/build-android.txt
           npm run build:ios 2>&1 | tee review-artifacts/build-ios-web.txt
-      - name: Start production application
+      - name: Review browser
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
           sudo apt-get install -y fonts-noto-cjk
           npx vite preview --host 127.0.0.1 --port 4173 > review-artifacts/server.txt 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173/ >/dev/null && break || sleep 1; done
-      - name: Original Year 2 and Chinese calendar browser suites
+      - name: Native Year 2 regression
         run: |
           set -o pipefail
           YEAR2_REVIEW_DIR=review-artifacts/original python scripts/year2-browser-review.py 2>&1 | tee review-artifacts/original-browser.txt
-          YEAR2_CALENDAR_REVIEW_DIR=review-artifacts/calendar python scripts/year2-calendar-review.py 2>&1 | tee review-artifacts/calendar-browser.txt
-      - name: Publish verified candidate without force
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Chinese calendar interaction and screenshots
         run: |
-          set -euo pipefail
-          test "$(git ls-remote origin refs/heads/feat/jobu-year2-chinese-calendar | cut -f1)" = "$GITHUB_SHA"
-          test "$(gh api repos/Lcub3d/dayGLANCE/pulls/31 --jq .state)" = open
-          git push origin HEAD:refs/heads/feat/jobu-year2-chinese-calendar
-          echo Published > review-artifacts/published.txt
+          set -o pipefail
+          YEAR2_CALENDAR_REVIEW_DIR=review-artifacts/calendar python scripts/year2-calendar-review.py 2>&1 | tee review-artifacts/calendar-browser.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: year2-calendar-integrated
+          name: year2-calendar-review
           path: review-artifacts/
           retention-days: 14

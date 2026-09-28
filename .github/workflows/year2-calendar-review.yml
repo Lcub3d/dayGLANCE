@@ -6,6 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pull-requests: read
 concurrency:
   group: year2-calendar-base-integration
   cancel-in-progress: true
@@ -43,6 +44,19 @@ jobs:
           def run(*args): return subprocess.check_output(args).decode()
           unresolved=run('git','diff','--name-only','--diff-filter=U').splitlines()
           for name in unresolved:
+              if name=='src/components/DesktopLayout.jsx':
+                  source=run('git','show',f':3:{name}')
+                  edits=[
+                      ("import React, { useEffect, useState, useRef } from 'react';", "import React, { lazy, Suspense, useEffect, useState, useRef } from 'react';"),
+                      ("import Year2View from './jobu/Year2View.jsx';", "// The optional calendar engine stays out of the initial application chunk.\nconst Year2View = lazy(() => import('./jobu/Year2View.jsx'));"),
+                      ("{effectiveViewMode === 'year2' && <Year2View />}", "{effectiveViewMode === 'year2' && <Suspense fallback={<div role=\"status\" className={`p-4 text-sm ${textSecondary}`}>{t('common.loading')}</div>}><Year2View /></Suspense>}"),
+                  ]
+                  for before,after in edits:
+                      assert source.count(before)==1, f'Unexpected DesktopLayout context: {before}'
+                      source=source.replace(before,after)
+                  Path(name).write_text(source)
+                  subprocess.check_call(['git','add',name])
+                  continue
               assert name.startswith('public/locales/') and name.endswith('/translation.json'), f'Unexpected conflict: {name}'
               base,ours,theirs=[json.loads(run('git','show',f':{stage}:{name}')) for stage in (1,2,3)]
               missing=object()

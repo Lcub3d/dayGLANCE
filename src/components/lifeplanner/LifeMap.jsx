@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { buildLifeMap, emptyMapView, filterLifeMap, layoutLifeMap, MAP_TOMBSTONE_KEYS, readMapTombstones, readMapView, writeMapView } from '../../lifeplanner/lifeMap.js';
 import useLifeNetwork from './useLifeNetwork.js';
 import LifeNetworkPanel from './LifeNetworkPanel.jsx';
+import UnifiedLifeMap from './UnifiedLifeMap.jsx';
 import SupportEdge from './SupportEdge.jsx';
 import { networkNodeId } from '../../lifeplanner/supportNetwork.js';
 import { flowIdentity, domainIdentity } from '../../lifeplanner/flowIdentity.js';
@@ -247,5 +248,6 @@ function MapCanvas({ document, jobuData, onLeaveGuard, goals, projects, tasks, u
 }
 
 export default function LifeMap(props) {
+  if (props.jobuData) return <UnifiedLifeMap {...props} />;
   return <ReactFlowProvider><MapCanvas {...props} /></ReactFlowProvider>;
 }

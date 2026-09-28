@@ -421,7 +421,15 @@ describe('scenario 13: the completion detector, end to end on two devices', () =
     await a.render({ observedAt: '2026-09-19T20:10:03.000Z' });
     expect(a.records()).toHaveLength(1);                       // A: state
     const record = a.records()[0];
-    expect(record).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'completed', timing: 'untimed', updatedAt: DONE_AT });
+    // Jobu deliberately creates an editable backward-looking default interval.
+    // Keep the upstream convergence scenario, but pin this personal product's
+    // source-clock coordinates rather than its old Untimed presentation.
+    expect(record).toMatchObject({ id: `do:t1:${DONE_AT}`, progress: 'completed', timing: 'timed',
+      date: '2026-09-19', startTime: '14:10', endDate: '2026-09-19', endTime: '15:10',
+      title: t1.title, source: 'completion', createdAt: DONE_AT, updatedAt: DONE_AT,
+      observedAt: '2026-09-19T20:10:03.000Z',
+      planSnapshot: { date: t1.date, startTime: t1.startTime, duration: t1.duration },
+    });
 
     a.push(vault);                                             // A: payload → vault
     await b.pull(vault, '2026-09-19T20:10:30.000Z');           // B: apply → hook → state, then B's own detector sees the edge

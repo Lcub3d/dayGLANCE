@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import useLifeNativeCollections from '../jobu/useLifeNativeCollections.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 
 /**
@@ -32,9 +33,11 @@ export const resolveDesktopSpace = (prev, value, enabled) => {
   return next === 'goals' ? 'goals' : 'calendar';
 };
 
-const useGoalsProjects = () => {
-  const [goals, setGoals] = useState([]);
-  const [projects, setProjects] = useState([]);
+const useGoalsProjects = ({ lifeData, bootLoaded } = {}) => {
+  const [legacyGoals, setLegacyGoals] = useState([]);
+  const [legacyProjects, setLegacyProjects] = useState([]);
+  const life = useLifeNativeCollections({ data: lifeData, bootLoaded, legacyGoals, legacyProjects, setLegacyGoals, setLegacyProjects });
+  const { goals, projects, setGoals, setProjects } = life;
   // Areas group goals into a category level above them (e.g. "Money/Finance",
   // "App Development"). Standalone projects are never associated with an area.
   const [areas, setAreas] = useState([]);
@@ -103,7 +106,7 @@ const useGoalsProjects = () => {
     };
     setGoals(prev => prev.some(item => item.id === newGoal.id) ? prev : [...prev, newGoal]);
     return newGoal;
-  }, []);
+  }, [setGoals]);
 
   const updateGoal = useCallback((id, updates) => {
     setGoals(prev => prev.map(g =>
@@ -111,15 +114,16 @@ const useGoalsProjects = () => {
         ? { ...g, ...updates, updatedAt: new Date().toISOString() }
         : g
     ));
-  }, []);
+  }, [setGoals]);
 
   const deleteGoal = useCallback((id) => {
     setGoals(prev => prev.filter(g => g.id !== id));
+    if (lifeData) return; // The canonical journal owns deletion tombstones.
     // Record tombstone so cloud sync doesn't resurrect the goal from other devices
     const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-goal-ids') || '{}');
     tombstones[String(id)] = new Date().toISOString();
     localStorage.setItem('day-planner-deleted-goal-ids', JSON.stringify(tombstones));
-  }, []);
+  }, [setGoals, lifeData]);
 
   // ── Area CRUD ────────────────────────────────────────────────────────────────
 
@@ -161,7 +165,7 @@ const useGoalsProjects = () => {
     const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-area-ids') || '{}');
     tombstones[String(id)] = new Date().toISOString();
     localStorage.setItem('day-planner-deleted-area-ids', JSON.stringify(tombstones));
-  }, []);
+  }, [setGoals]);
 
   // Reassign order (0, 10, 20…) from an ordered list of area ids so the order syncs.
   const reorderAreas = useCallback((orderedIds) => {
@@ -185,7 +189,7 @@ const useGoalsProjects = () => {
     };
     setProjects(prev => prev.some(item => item.id === newProject.id) ? prev : [...prev, newProject]);
     return newProject;
-  }, []);
+  }, [setProjects]);
 
   const updateProject = useCallback((id, updates) => {
     setProjects(prev => prev.map(p =>
@@ -193,15 +197,16 @@ const useGoalsProjects = () => {
         ? { ...p, ...updates, updatedAt: new Date().toISOString() }
         : p
     ));
-  }, []);
+  }, [setProjects]);
 
   const deleteProject = useCallback((id) => {
     setProjects(prev => prev.filter(p => p.id !== id));
+    if (lifeData) return; // The canonical journal owns deletion tombstones.
     // Record tombstone so cloud sync doesn't resurrect the project from other devices
     const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-project-ids') || '{}');
     tombstones[String(id)] = new Date().toISOString();
     localStorage.setItem('day-planner-deleted-project-ids', JSON.stringify(tombstones));
-  }, []);
+  }, [setProjects, lifeData]);
 
   // Move a project to a new goal (or standalone) and optionally insert it before
   // a specific sibling. Renumbers sortOrder for affected groups so the order syncs.
@@ -252,9 +257,11 @@ const useGoalsProjects = () => {
         return p;
       });
     });
-  }, []);
+  }, [setProjects]);
 
   return {
+    ...life,
+    loadGoals: setLegacyGoals, loadProjects: setLegacyProjects,
     goals, setGoals,
     projects, setProjects,
     areas, setAreas,

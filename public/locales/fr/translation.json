@@ -257,7 +257,8 @@
     "apply": "Appliquer",
     "minutesShort": "{{count}} min",
     "nextWeek": "Semaine prochaine",
-    "taskProgress": "{{done}}/{{total}} tâches"
+    "taskProgress": "{{done}}/{{total}} tâches",
+    "retry": "Réessayer"
   },
   "errorBoundary": {
     "title": "Une erreur est survenue",
@@ -1128,7 +1129,20 @@
     "stop": "Arrêter",
     "skipPhase": "Passer cette phase",
     "startHyperGlance": "Démarrer hyperGLANCE",
-    "tasksRemaining": "Tâches restantes : {{count}}"
+    "tasksRemaining": "Tâches restantes : {{count}}",
+    "chooseTask": "Choisissez une tâche pour votre pomodoro",
+    "searchTasks": "Rechercher des tâches",
+    "taskDragHint": "Cliquez pour choisir une tâche, ou faites glisser le minuteur sur une tâche, ou inversement, pour les associer.",
+    "linkedTask": "Tâche associée : {{title}}",
+    "decreaseInterval": "Réduire la durée de {{label}}",
+    "increaseInterval": "Augmenter la durée de {{label}}",
+    "pomodoroDetails": "Détails du pomodoro",
+    "pomodoroCount": "{{count}} pomodoros",
+    "pomodoroSave": {
+      "saving": "Enregistrement du pomodoro…",
+      "saved": "Enregistré dans le bloc Do associé",
+      "error": "Le pomodoro n’a pas pu être enregistré. En attente d’une nouvelle tentative."
+    }
   },
   "voice": {
     "title": "Saisie vocale",
@@ -2208,7 +2222,14 @@
         "onEstimate": "Selon l’estimation",
         "shorter": "{{minutes}} min de moins",
         "longer": "{{minutes}} min de plus"
-      }
+      },
+      "progressHint": "Choisissez Commencé, Partiel, Presque terminé ou Terminé. Seul cet enregistrement Do est modifié.",
+      "carryHint": "Renvoyez dans la boîte de réception le travail non commencé, commencé ou partiellement terminé. Les plans d’origine et les enregistrements Do sont conservés.",
+      "carryEmpty": "Rien à reporter.",
+      "carryToInbox": "Envoyer dans la boîte de réception ({{count}})",
+      "noteTools": "Outils de notes",
+      "undoTasks": "Annuler les modifications des tâches",
+      "exportBackup": "Exporter une sauvegarde complète"
     },
     "daily": {
       "title": "Comparaison du jour",
@@ -2879,7 +2900,8 @@
       "vision": "Vision",
       "goal": "Goal",
       "project": "Project",
-      "task": "Task"
+      "task": "Task",
+      "untyped": "Unclassified"
     },
     "condition": {
       "unknown": "Not assessed",
@@ -2907,5 +2929,73 @@
     "deleteValueConfirm": "Remove only this assessment? The node, relationships and all previous versions remain.",
     "duplicateData": "Conflicting duplicate relationships or assessments were imported. Resolve them before ranking; nothing is silently picked.",
     "unresolved": "Unavailable references"
+  },
+  "lifeBoard": {
+    "sourceBackup": "Pre-upgrade source backup",
+    "legacyHistory": "Retired nested wishes are read-only. Restore a unified item revision or export the pre-upgrade source backup.",
+    "title": "Life Map",
+    "editor": "Planning item",
+    "name": "Name",
+    "type": "Type",
+    "description": "Notes / description",
+    "parents": "Parent items",
+    "addParent": "Choose a parent…",
+    "unlinkParent": "Remove this parent link",
+    "missingParent": "Missing parent · link retained",
+    "close": "Close",
+    "save": "Save",
+    "reload": "Reload latest",
+    "focus": "Focus this item and descendants",
+    "child": "Add child item",
+    "delete": "Delete item",
+    "deleteConfirm": "Delete this item? Its children and linked native tasks will not be deleted. History is retained.",
+    "stale": "This item changed elsewhere. Reload the latest version before editing; your draft has not been applied.",
+    "bindingHint": "Classification and hierarchy are independent. Existing notebook / native IDs and task links survive type changes. The old views retain their compatibility roles.",
+    "metricTitle": "Legacy measured outcome: {{title}}. The free-form map title does not rewrite that measurement.",
+    "untyped": "Unclassified",
+    "untitled": "Untitled",
+    "search": "Search planning items",
+    "showTasks": "Show linked tasks",
+    "notebook": "Notebook",
+    "focusPath": "Focus path",
+    "all": "Full map",
+    "missingNode": "Item no longer available",
+    "count": "{{count}} items",
+    "externalLinks": "{{count}} links outside focus",
+    "inbox": "Unclassified inbox",
+    "inboxHint": "Capture now, classify later. Drag into a lane or edit the type. Placing on the canvas alone keeps it unclassified.",
+    "quickAdd": "Capture an idea…",
+    "add": "Add",
+    "spread": "Place all on canvas",
+    "place": "Place on canvas",
+    "staging": "Unclassified · canvas",
+    "preparing": "Preparing unified planning data",
+    "migrationHint": "An atomic upgrade retains existing IDs, fields and history. Invalid source data is not replaced with an empty list.",
+    "retry": "Retry",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "fit": "Fit items",
+    "taskHint": "Tasks stay in the native task store. Planning classification does not change their schedule or completion.",
+    "openTask": "Open native task",
+    "hierarchyLink": "Parent → child",
+    "hierarchyHint": "Only this planning relationship will be removed. Neither item nor its native task links will be deleted.",
+    "unlink": "Remove link",
+    "saving": "Saving…",
+    "hint": "Drag across lanes to classify · right handle → left handle to link parent/child · double-click or use Focus to edit a branch. No copies are created.",
+    "discard": "Discard the unsaved draft and continue?",
+    "discardAction": "Discard failed edits",
+    "newChild": "New planning item",
+    "nativeSaveError": "Planning edit not saved ({{code}}). Retry or discard; saved data remains unchanged.",
+    "errors": {
+      "format": "The source or stored format is invalid. No data was replaced.",
+      "missing": "The item or a linked parent is no longer available.",
+      "conflict": "This item changed elsewhere. Reload its latest version; your unsaved draft is retained.",
+      "lifeCycle": "This link would create a circular parent/child hierarchy. Support feedback can be added separately in the support network.",
+      "storageWrite": "Could not save. Your draft is retained; free storage or retry.",
+      "storageRead": "Unable to read planning data. Editing is disabled.",
+      "loading": "Unified planning data has not finished loading."
+    },
+    "cycleWarning": "{{count}} nodes are affected by a merged hierarchy cycle. Edit parent links to resolve it.",
+    "orphanWarning": "{{count}} nodes retain links to missing parents. Review them in the editor."
   }
 }

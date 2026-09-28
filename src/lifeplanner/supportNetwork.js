@@ -34,12 +34,13 @@ export function validateNetworkValue(kind, v) {
 // A planned stage keeps its identity after native-goal handoff. Screen IDs and
 // positions remain presentation; neither a rename nor materialization rewires it.
 export function networkNodeId(node) {
+  if (node.networkId) return node.networkId;
   return node.kind === 'goal' && node.wishId != null && node.visionId != null && node.stepId != null
     ? JSON.stringify(['stage', String(node.wishId), String(node.visionId), String(node.stepId)]) : node.id;
 }
 export function networkNodes(graph) {
   const nodes = new Map();
-  for (const n of graph.nodes) if (!n.missing && ['wish', 'vision', 'goal', 'project', 'task'].includes(n.kind)) {
+  for (const n of graph.nodes) if (!n.missing && ['wish', 'vision', 'goal', 'project', 'task', 'untyped'].includes(n.kind)) {
     const key = networkNodeId(n);
     if (!nodes.has(key)) nodes.set(key, { ...n, mapId: n.id, id: key });
   }

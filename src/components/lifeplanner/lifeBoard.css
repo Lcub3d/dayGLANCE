@@ -1,0 +1,73 @@
+.life-board { min-height:360px; }
+.lb-toolbar { gap:14px; }
+.lb-toolbar>button { display:flex; align-items:center; gap:6px; font-size:12px; padding:6px 8px; border-radius:5px; }
+.lb-toolbar>button[aria-pressed=true] { background:var(--lp-hover); color:var(--lp-accent); }
+.lb-breadcrumb { display:flex; align-items:center; gap:8px; padding:0 24px 10px; font-size:12px; min-height:30px; flex-wrap:wrap; }
+.lb-breadcrumb button { color:var(--lp-muted); max-width:220px; text-overflow:ellipsis; white-space:nowrap; overflow:hidden; }
+.lb-breadcrumb button[aria-current] { color:var(--lp-accent); font-weight:600; }
+.lb-body { display:flex; flex:1; min-height:0; border-top:1px solid var(--lp-rule); }
+.lb-canvas { border-top:0; min-width:160px; min-height:420px; }
+.lb-inbox { width:200px; flex:0 0 200px; border-right:1px solid var(--lp-rule); padding:14px 12px; display:flex; flex-direction:column; gap:12px; background:var(--lp-paper); }
+.lb-inbox h3 { display:flex; align-items:center; gap:7px; font-size:13px; }
+.lb-inbox h3 span { margin-left:auto; color:var(--lp-muted); font-size:11px; }
+.lb-inbox p,.lb-hint { font-size:11px; line-height:1.65; color:var(--lp-muted); }
+.lb-inbox form { display:flex; border-bottom:1px solid var(--lp-rule); }
+.lb-inbox input { min-width:0; width:100%; padding:7px 0; background:transparent; outline:none; font-size:12px; }
+.lb-inbox form button { padding:5px; }
+.lb-spread { font-size:11px; padding:6px 8px; background:var(--lp-hover); color:var(--lp-accent); border-radius:4px; }
+.lb-inbox-list { overflow-y:auto; min-height:0; display:flex; flex-direction:column; gap:8px; }
+.lb-inbox-card { display:flex; align-items:center; gap:6px; padding:9px; border:1px solid var(--lp-rule); border-radius:5px; background:var(--lp-paper); font-size:12px; cursor:grab; }
+.lb-inbox-card button:first-child { flex:1; text-align:left; overflow-wrap:anywhere; }
+.lb-inbox-card button:last-child { padding:4px; color:var(--lp-muted); }
+.life-board button:disabled { opacity:.4; cursor:not-allowed; }
+.life-board :is(button,select,input,textarea):focus-visible { outline:2px solid var(--lp-accent); outline-offset:2px; }
+.life-board .lb-node { height:110px; }
+.lb-node .react-flow__handle { width:11px; height:20px; min-width:11px; pointer-events:all; border-radius:5px; border:2px solid var(--lp-paper); background:var(--lp-muted); }
+.lb-node .react-flow__handle:hover { background:var(--lp-accent); }
+.lb-node .react-flow__handle:not(.connectable) { pointer-events:none; opacity:.4; }
+.lb-focus-node { position:absolute; bottom:6px; right:9px; width:24px; height:22px; display:grid; place-items:center; color:var(--lp-muted); border-radius:4px; }
+.lb-focus-node:hover { color:var(--lp-accent); background:var(--lp-hover); }
+.lb-child-count { position:absolute; bottom:9px; left:14px; font-size:10px; color:var(--lp-muted); }
+.lm-untyped { border-left-style:dashed; border-left-color:var(--lp-muted); }
+.lb-lanes { pointer-events:none; position:absolute; inset:0; }
+.lb-lane { position:absolute; border-left:1px solid var(--lp-rule); background:color-mix(in srgb,var(--lane-tint, #aaa) 4%,transparent); }
+.lb-lane-wish { --lane-tint:#ba9b5d; }
+.lb-lane-vision { --lane-tint:#8f9fbc; }
+.lb-lane-goal { --lane-tint:#92a899; }
+.lb-lane-project { --lane-tint:#ad9dba; }
+.lb-lane-untyped { background:transparent; border-left:0; }
+.lb-lane-heading { position:absolute; left:48px; width:224px; color:var(--lp-muted); font-size:16px; font-weight:600; letter-spacing:.12em; padding-bottom:12px; border-bottom:2px solid var(--lane-tint,var(--lp-rule)); }
+/* The portal is transformed by React Flow. It contains only paint, below nodes
+   and edges; it never contributes artificial giant nodes to fitView. */
+.life-board .react-flow__viewport-portal { z-index:-1; }
+.life-board .react-flow__nodes { z-index:2; }
+.lb-editor { flex:0 0 276px; width:276px; min-width:0; overflow-y:auto; border-left:1px solid var(--lp-rule); background:var(--lp-paper); padding:15px; }
+.lb-editor>header { display:flex; justify-content:space-between; align-items:center; color:var(--lp-muted); font-size:12px; margin-bottom:15px; }
+.lb-editor form>label { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; font-size:11px; color:var(--lp-muted); }
+.lb-editor input,.lb-editor select,.lb-editor textarea { padding:8px; border:1px solid var(--lp-rule); border-radius:5px; background:var(--lp-paper); color:inherit; font-size:13px; min-width:0; max-width:100%; }
+.lb-editor textarea { resize:vertical; }
+.lb-parent-list { display:flex; flex-direction:column; gap:6px; margin:8px 0 12px; font-size:11px; }
+.lb-parent-list li { display:flex; justify-content:space-between; gap:8px; }
+.lb-parent-list button { padding:3px; }
+.lb-actions { display:flex; gap:14px; align-items:center; }
+.lb-actions button { display:flex; align-items:center; gap:5px; padding:7px 0; color:var(--lp-accent); font-size:12px; }
+.lb-editor-tools { display:flex; flex-direction:column; align-items:flex-start; gap:10px; border-top:1px solid var(--lp-rule); padding:14px 0; margin-top:14px; }
+.lb-editor-tools button { display:flex; align-items:center; gap:7px; font-size:12px; }
+.lb-editor>p[role=alert],.lb-editor form>p[role=alert] { font-size:12px; color:#b45309; }
+.lb-id { display:block; font-size:9px; overflow-wrap:anywhere; color:var(--lp-muted); margin-top:12px; }
+@media(max-width:1000px) { .lb-inbox { width:170px; flex-basis:170px; } .lb-editor { width:245px; flex-basis:245px; } }
+@media(max-width:720px) {
+  .lb-body { flex-wrap:wrap; position:relative; }
+  .lb-inbox { width:135px; flex-basis:135px; padding:10px 8px; }
+  .lb-canvas { flex:1; min-width:170px; }
+  .lb-editor { position:absolute; z-index:20; right:8px; bottom:52px; width:min(290px,calc(100% - 16px)); max-height:65%; border:1px solid var(--lp-rule); border-radius:6px; box-shadow:0 4px 18px #0002; }
+  .lb-breadcrumb { padding-inline:16px; }
+  .lb-breadcrumb .lm-count { width:100%; margin-left:0; }
+  .life-board .ln-panel { position:absolute; z-index:20; right:4px; top:0; bottom:0; width:min(360px,calc(100% - 8px)); }
+}
+@media(forced-colors:active) { .lb-lane { background:transparent; border-color:CanvasText; } .lb-node .react-flow__handle { background:CanvasText; } }
+
+.lb-diagnostics { padding:7px 24px; color:var(--lp-muted); font-size:12px; background:var(--lp-hover); }
+
+.lb-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-right:18px; }
+.lb-footer>button { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--lp-muted); padding:4px 8px; }

@@ -12,9 +12,13 @@ Completion-point presentation adopts the validated helper from `3da80f2`.
 
 Full JOBO retains daily analysis, manual creation, native Plan creation/copy/drag/
 resize, per-attempt reassessment, snapshots/comparison, Focus/Priority/Frames,
-connections and notes. We do not restore the earlier inferred-duration or
-bidirectional completion experiment: a completion timestamp is not a measured
-interval. Completion-only Do appears as a point, never an invented timed span.
+connections and notes. The initial integration displayed completion-only Do as
+points. The subsequent personal-product interaction change `30d8676` uses editable
+backward-looking interval defaults ending at the source completion clock. That
+is a Jobu product choice, not an upstream timing contract or proof of measured
+focus time. PR #28's follow-up review preserves this existing behavior and aligns
+the inherited convergence test with it; it does not introduce a new completion
+bridge or modify the JOBO detector, core, or transport implementation.
 
 Life Planner retains the ruled notebook, opt-in assistant, mottos, visions and
 stages, SWOT, native goal/project handoff and Life Map. It does not require the
@@ -25,9 +29,10 @@ retained for this first integration, not declared a permanent Jobu limitation.
 
 | Domain | Durable owner | Write path |
 | --- | --- | --- |
-| Tasks, native goals and projects | Existing native collections | Native handlers/setters |
+| Tasks | Existing native collections | Native handlers/setters |
+| Wishes, visions, goals, projects, unclassified ideas | Canonical `lifeNode` revisions | Unified Life Map / notebook / native adapters -> Jobu transaction |
 | Execution evidence | Existing JOBO ledger | `recordJobo` |
-| Wishes/visions, mottos/order | Personal immutable revisions | `createDurablePlannerStore` -> Jobu transaction |
+| Mottos/order | Personal immutable revisions | `createDurablePlannerStore` -> Jobu transaction |
 | Day templates and day assignments | Personal immutable revisions | Jobu transaction |
 | Saved filters | Personal immutable revisions | Jobu transaction |
 | Independent Do note text | Separate personal `doNote` revisions | Jobu transaction (not whole-Do text merge) |
@@ -53,17 +58,21 @@ App payloads, apply, backups/restore and full reset include the new collection.
 Tests walk real adapter boundaries and IndexedDB. **No live cloud credentials
 or physical cross-device provider sessions were used during integration.**
 
-On first opening Life Planner, valid `day-planner-lifeplanner-v1` data is migrated
-once inside a transaction. The source is not overwritten. Malformed/future data
-fails closed. Existing native project/goal links retain IDs. Native handoff IDs
-are honored idempotently. Cross-collection goal/project writes are recoverable
-via stable IDs but are not one database transaction with the personal journal.
+Personal planning now uses a common flat node format. Native goal/project
+collections are compatibility projections; legacy nested notebook views adapt
+writes to the same journal. Existing IDs, measured milestone facets and tasks
+remain intact when map classification changes. The first loaded personal session
+performs an atomic idempotent upgrade with an exact local source-recovery copy.
+Malformed/future data fails closed. See [Unified Life Map](jobu-unified-lifemap.md)
+for the schema, lane/inbox/focus interactions, mixed-version upgrade requirements,
+legacy editor limitations and recovery procedure.
 
-Personal export includes revisions only; native tasks/goals/Do remain in the
-whole-app backup. Import merges revision history, not a destructive rewind.
-A restore of a previous entity creates a new revision. Export both whole-app and
-personal backups before changing deployments. UI layout preferences may remain
-device-local; they are not user planning content.
+Personal export includes planning revisions; tasks and execution records remain
+in the whole-app backup. Import merges history rather than performing a destructive
+rewind. Restore of an entity creates a new revision; retired nested wish versions
+are inspection-only after normalization. Export both whole-app and personal
+backups before changing deployments. Planning hierarchy, classification and node
+positions are journal data; transient focus/zoom may remain device-local.
 
 ## Task input and filters
 

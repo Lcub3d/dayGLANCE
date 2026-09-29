@@ -11,9 +11,10 @@ Select **Gantt** beside **Canvas**. Ranges are 1, 3 or 6 months and 1, 2 or 5
 years. Page the visible period, return to Today, or locate the dated plans.
 The latter fits up to five years; longer histories remain available by paging.
 Rows form a collapsible outline. A node with multiple parents appears once,
-with the other parents named in its tooltip. Focus uses the existing branch
-navigation. On narrow phones the inbox can be opened with its toolbar button;
-only the chart scrolls horizontally, with the names and date scale kept visible.
+with the additional-parent count shown beside its type and in its tooltip.
+Focus uses the existing branch navigation. On narrow phones the inbox can be
+opened with its toolbar button; only the chart scrolls horizontally, with the
+names and date scale kept visible.
 
 Click a bar, milestone or row name to open the **existing node editor**. Its date
 buttons use the app's `DatePicker`; selecting a date changes only the draft.

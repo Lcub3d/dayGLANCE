@@ -36,7 +36,7 @@ export default function useJoboUndo({ joboRecords, readJoboWorkingSet, recordJob
         const result = await write([plan.record]);
         if (result?.ok || result?.held) {
           entry.expect = plan.record;
-          return { ok: true };
+          return { ok: true, message: tr(direction === 'undo' ? 'jobo.undo.undone' : 'jobo.undo.redone') };
         }
       } catch (err) {
         console.error('[jobo] undo write failed:', err);

@@ -269,7 +269,11 @@
     "apply": "Zastosuj",
     "minutesShort": "{{count}} min",
     "nextWeek": "Następny tydzień",
-    "taskProgress": "{{done}}/{{total}} zadań"
+    "taskProgress": "{{done}}/{{total}} zadań",
+    "undone": "Cofnięto",
+    "redone": "Przywrócono",
+    "undoFailed": "Nie udało się cofnąć",
+    "redoFailed": "Nie udało się przywrócić"
   },
   "errorBoundary": {
     "title": "Coś poszło nie tak",
@@ -2156,20 +2160,25 @@
       "recorded": "Zapisany czas",
       "lateStart": "Późne rozpoczęcia",
       "lateFinish": "Późne zakończenia",
-      "longer": "Dłuższy czas",
-      "nativeScope": "Ukończone / wszystkie bieżące zadania z godziną. Stan zadania, nie postęp Do.",
-      "timeScope": "Suma przedziałów zmierzonego i zapisanego czasu tego dnia bez nakładania. Bez szacunków i nieznanych czasów.",
-      "timeDetails": "Plan: {{planned}} · Bez czasu: {{untimed}} · Wywnioskowane: {{inferred}}.",
-      "comparisonScope": "Każdy zapisany plan z tego dnia liczy się raz z całym wykonaniem, także z późniejszych dni.",
-      "breakdown": "Wcześniej/krócej: {{early}} · O czasie/według szacunku: {{on}} · Wykluczone grupy: {{excluded}}.",
-      "scope": "Cały dzień · Bez czasu: {{untimed}} · Porównywalne zapisane plany: {{comparable}} / {{total}}."
+      "longer": "Trwało dłużej",
+      "nativeScope": "Odhaczone dziś zadania z godziną, spośród wszystkich dzisiejszych zadań z godziną.",
+      "timeScope": "Czas zapisany dziś we wpisach Do. Nakładające się okresy liczą się raz; bez szacunków i Do bez godzin.",
+      "timeDetails": "Plan: {{planned}} · Bez godzin: {{untimed}} · Szacowane: {{inferred}}.",
+      "comparisonScope": "Spośród dzisiejszych zaplanowanych zadań z Do z godzinami. Zadanie wykonane w kilku sesjach lub dniach liczy się raz.",
+      "scope": "Cały dzień · Porównane: {{comparable}} z {{total}} zaplanowanych zadań · Bez godzin: {{untimed}}",
+      "breakdownTiming": "Wcześniej: {{early}} · Na czas: {{on}}",
+      "breakdownDuration": "Krócej: {{early}} · Zgodnie z planem: {{on}}",
+      "notCompared": "Nieporównane (brak godzin): {{excluded}}",
+      "secondary": "Późne zakończenia: {{finish}} · Trwało dłużej: {{longer}}"
     },
     "title": "JOBO",
     "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
     "undo": {
       "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
       "completionBlocked": "Jego zadanie nie jest już ukończone, więc Do nie może wrócić do stanu Ukończone. Pozostał bez zmian.",
-      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie."
+      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie.",
+      "undone": "Cofnięto zmianę Do",
+      "redone": "Przywrócono zmianę Do"
     },
     "view": {
       "activeLabel": "Czas aktywny",
@@ -2192,7 +2201,7 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Wprowadź pełny przedział początku i końca.",
       "completedAt": "Oznaczono jako ukończone o {{time}}",
-      "completionUnavailable": "Ukończono jest dostępne dla ręcznych wpisów bez zadania lub wpisów ukończenia, których zadanie nadal jest ukończone.",
+      "completionUnavailable": "Do powiązanego z zadaniem nie można ukończyć samodzielnie. Wybierz inny postęp albo ukończ zadanie.",
       "completedStays": "Pozostaje ukończone. Dostosuj godziny i zapisz.",
       "completeTask": "Ukończ zadanie",
       "completeTaskHint": "Odhacza powiązane zadanie, tak jak jego pole wyboru. Ukończenie pojawia się jako osobny Do.",
@@ -2230,7 +2239,7 @@
       },
       "progressLabel": "Postęp",
       "readOnly": "JOBO jest na tym urządzeniu tylko do odczytu. Edycja wpisów Do jest wyłączona.",
-      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordChanged": "Ten wpis się zmienił. Zamknij go i otwórz ponownie przed edycją.",
       "recordedLabel": "Zmierzony czas",
       "recordedMinutes": "{{minutes}} min zarejestrowano",
       "retryLoad": "Spróbuj wczytać ponownie",
@@ -2244,37 +2253,46 @@
       "summary": {
         "withinPlan": "Zgodnie z planem",
         "late": "Późno",
-        "longer": "Dłużej",
-        "split": "Podzielone",
+        "longer": "Trwało dłużej",
+        "split": "Kilka sesji",
         "notStarted": "Brak zapisu wykonania",
-        "unplanned": "Nieplanowane"
+        "unplanned": "Nieplanowane",
+        "startedLate": "Późny start",
+        "finishedLate": "Późne zakończenie"
       },
       "timeAxis": "Wykorzystanie czasu",
       "timeDuration": {
-        "shorter": "{{minutes}} min krócej",
+        "shorter": "{{amount}} krócej",
         "onEstimate": "Zgodnie z szacunkiem",
-        "longer": "{{minutes}} min dłużej"
+        "longer": "{{amount}} dłużej"
       },
       "timeDurationLabel": "Czas trwania",
       "timeFinish": {
-        "early": "Zakończono {{minutes}} min wcześniej",
+        "early": "Zakończono {{amount}} wcześniej",
         "onTime": "Zakończono na czas",
-        "late": "Zakończono {{minutes}} min później"
+        "late": "Zakończono {{amount}} później"
       },
       "timeFinishLabel": "Koniec",
       "timeIncomplete": "Rzeczywisty początek i koniec nie są w pełni zapisane.",
       "timeIncompleteShort": "Uzupełnij czas",
       "timeStart": {
-        "early": "Rozpoczęto {{minutes}} min wcześniej",
+        "early": "Rozpoczęto {{amount}} wcześniej",
         "onTime": "Rozpoczęto na czas",
-        "late": "Rozpoczęto {{minutes}} min później"
+        "late": "Rozpoczęto {{amount}} później"
       },
       "timeStartLabel": "Początek",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "Nie udało się zapisać zmiany Do.",
       "setInterval": "Ustaw rzeczywisty przedział",
       "dragCompletion": "Przeciągnij, aby ustawić przedział; Enter otwiera edycję.",
-      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział."
+      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział.",
+      "offsetMinutes": "{{minutes}} min",
+      "offsetDays": "{{days}} d.",
+      "offsetDaysHours": "{{days}} d. {{hours}} godz.",
+      "completeTaskInstead": "Tego Do nie można ukończyć samodzielnie. Ukończ zadanie poniżej; jego ukończenie zostanie zapisane jako osobny Do.",
+      "taskAlreadyDone": "Zadanie jest już wykonane. Jego ukończenie jest zapisane jako osobny Do.",
+      "linkedNoCompletion": "Do powiązanego z zadaniem nie można ukończyć samodzielnie.",
+      "checkTaskAgain": "Odhacz zadanie ponownie, aby ukończyć ten Do."
     }
   },
   "todoist": {

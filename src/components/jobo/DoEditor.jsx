@@ -199,6 +199,17 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
   // neither silently downgrade the draft nor defer the error until save.
   const completionUnavailable = draft.progress === DO_PROGRESS.COMPLETED
     && record?.progress !== DO_PROGRESS.COMPLETED && !completionAllowed;
+  // The hint under Progress appears only when Completed is out of reach, and
+  // says what to do instead. A Completed record keeps its own reassurance.
+  const progressHint = (() => {
+    if (!record) return null;
+    if (record.progress === DO_PROGRESS.COMPLETED) return 'jobo.view.completedStays';
+    if (completionAllowed) return null;
+    if (record.source === 'completion') return 'jobo.view.checkTaskAgain';
+    if (record.taskId == null) return null;
+    if (onCompleteTask) return 'jobo.view.completeTaskInstead';
+    return taskCompleted ? 'jobo.view.taskAlreadyDone' : 'jobo.view.linkedNoCompletion';
+  })();
   const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED
     || record?.progress === DO_PROGRESS.COMPLETED || completionAllowed || draft.progress === DO_PROGRESS.COMPLETED);
 
@@ -316,7 +327,7 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
                 saving new times keeps it Completed. */}
             {completionUnavailable
               ? <p className={`mt-1 text-xs ${textSecondary}`} role="status">{t('jobo.view.completionUnavailable')}</p>
-              : record && <p className={`mt-1 text-xs ${textSecondary}`}>{t(record.progress === DO_PROGRESS.COMPLETED ? 'jobo.view.completedStays' : 'jobo.view.completionUnavailable')}</p>}
+              : progressHint && <p data-jobo-progress-hint className={`mt-1 text-xs ${textSecondary}`}>{t(progressHint)}</p>}
           </div>
           {/* The linked task's own checkbox, placed here. It checks the task off
               through the app's handler and closes; the completion then arrives

@@ -39,6 +39,11 @@ function harness() {
 }
 
 beforeEach(() => { runtime.slots = []; runtime.cursor = 0; });
+const useUndoWithT = (h) => {
+  runtime.cursor = 0;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  return useUndo(h.props);
+};
 
 describe('one history for tasks and Do edits', () => {
   it('undoes the most recent step first, whichever kind', async () => {
@@ -100,5 +105,23 @@ describe('one history for tasks and Do edits', () => {
     await h.settle();
     expect(stale.redo).not.toHaveBeenCalled();
     expect(h.props.playUISound).not.toHaveBeenCalled();
+  });
+
+  // MUTATION: ignore a step's own message and a Do edit undone from MULTI
+  // says only "Undone", with nothing on screen to show what changed.
+  it('shows a step\'s own message, and translates the generic ones', async () => {
+    const h = harness();
+    h.api.pushUndoAction(h.action('do', { ok: true, message: 'Do change undone' }));
+    h.api.performUndo();
+    await h.settle();
+    expect(h.toast()).toEqual({ message: 'Do change undone', actionable: false });
+    const translated = harness();
+    translated.props.t = (key) => `t:${key}`;
+    translated.api.pushUndo();
+    translated.toast();
+    runtime.cursor = 0;
+    const api = useUndoWithT(translated);
+    api.performUndo();
+    expect(translated.toast()).toEqual({ message: 't:common.undone', actionable: false });
   });
 });

@@ -41,14 +41,19 @@ export default function JoboStatsHeader({ className = '' }) {
   const scope = stats.invalidCount ? t('jobo.view.invalidRecords', { count: stats.invalidCount }) : t('jobo.stats.scope', {
     comparable: count(c.comparableCount), total: count(c.groupCount), untimed: count(stats.untimedCount),
   });
+  // Each comparison tile names its own two outcomes (early and on time for
+  // starts and finishes, shorter and as planned for duration) and how many
+  // planned tasks could not be compared for missing times.
   const details = dimension => {
     const values = c[dimension];
-    return `${t('jobo.stats.comparisonScope')} ${t('jobo.stats.breakdown', {
-      early: count(values[dimension === 'duration' ? 'shorter' : 'early']),
-      on: count(values[dimension === 'duration' ? 'onEstimate' : 'onTime']),
-      excluded: count(c.excludedCount),
-    })}`;
+    const breakdown = dimension === 'duration'
+      ? t('jobo.stats.breakdownDuration', { early: count(values.shorter), on: count(values.onEstimate) })
+      : t('jobo.stats.breakdownTiming', { early: count(values.early), on: count(values.onTime) });
+    return `${t('jobo.stats.comparisonScope')}\n${breakdown} · ${t('jobo.stats.notCompared', { excluded: count(c.excludedCount) })}`;
   };
+  // The row's own tooltip also carries the two secondary figures, which is
+  // the only place they can be read below xl, where their tiles step aside.
+  const rowTitle = `${scope}\n${t('jobo.stats.secondary', { finish: ratio(c.finish.late), longer: ratio(c.duration.longer) })}`;
   const tiles = [
     ['native', CheckCircle, t('jobo.stats.native'), `${count(stats.native.completed)} / ${count(stats.native.total)}`, t('jobo.stats.nativeScope'), 'text-green-500', false],
     ['time', Clock, t('jobo.stats.recorded'), duration(stats.recordedMinutes), `${t('jobo.stats.timeScope')} ${t('jobo.stats.timeDetails', {
@@ -59,18 +64,18 @@ export default function JoboStatsHeader({ className = '' }) {
     ['duration', Hourglass, t('jobo.stats.longer'), ratio(c.duration.longer), details('duration'), 'text-purple-400', true],
   ];
   // Match MonthStats dense mode: keep the three primary measures visible and
-  // step the two secondary tiles aside below xl. Their values remain available
-  // in the parent/tile tooltips without creating a hidden-scroll affordance.
+  // step the two secondary tiles aside below xl. Their values stay readable
+  // in the row's tooltip (rowTitle) without a hidden-scroll affordance.
   const tile = 'flex-1 min-w-[8.5rem] px-3 py-1 flex flex-col justify-center gap-0.5';
   const label = `text-[10px] uppercase tracking-wide leading-none whitespace-nowrap flex items-center gap-1 ${textSecondary}`;
   const valueClass = `text-sm font-semibold leading-tight tabular-nums whitespace-nowrap flex items-baseline gap-1.5 ${textPrimary}`;
   return (
     <dl data-jobo-stats data-recorded-minutes={stats.recordedMinutes ?? ''}
       data-comparable-groups={c.comparableCount ?? ''} data-jobo-stats-date={date}
-      role="group" aria-label={t('jobo.stats.title')} title={scope}
+      role="group" aria-label={t('jobo.stats.title')} title={rowTitle}
       className={`min-w-0 flex items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
       {tiles.map(([key, Icon, labelText, value, hint, tone, secondary]) => (
-        <div key={key} data-jobo-stat={key} className={`${tile} ${secondary ? 'hidden xl:flex' : ''} border-l ${borderClass}`} title={`${hint} ${scope}`}>
+        <div key={key} data-jobo-stat={key} className={`${tile} ${secondary ? 'hidden xl:flex' : ''} border-l ${borderClass}`} title={`${hint}\n${scope}`}>
           <dt className={label}><Icon size={10} className={tone} aria-hidden="true" />{labelText}</dt>
           <dd className={valueClass}>{value}</dd>
         </div>

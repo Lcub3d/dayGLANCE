@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 
-const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, playUISound }) => {
+const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, playUISound, t }) => {
+  // Toast text, translated when the app passes t (tests may not).
+  const say = (key, fallback) => (typeof t === 'function' ? t(key) : fallback);
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const tasksRef = useRef(tasks);
@@ -59,10 +61,12 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks
       try { result = await entry.action[direction](); } catch { result = { ok: false }; }
       if (result?.ok) {
         playUISound('undo');
-        setUndoToast({ message: done, actionable: false });
+        // An action step can name what it did ("Do change undone"), so an
+        // undo that lands off screen still says what changed.
+        setUndoToast({ message: result.message || done, actionable: false });
       } else {
         otherStackRef.current = otherStackRef.current.filter((e) => e !== entry);
-        setUndoToast({ message: result?.message || (direction === 'undo' ? 'Could not undo' : 'Could not redo'), actionable: false });
+        setUndoToast({ message: result?.message || (direction === 'undo' ? say('common.undoFailed', 'Could not undo') : say('common.redoFailed', 'Could not redo')), actionable: false });
       }
     });
   };
@@ -71,7 +75,7 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks
     if (undoStackRef.current.length === 0) return;
     const snapshot = undoStackRef.current[undoStackRef.current.length - 1];
     undoStackRef.current = undoStackRef.current.slice(0, -1);
-    if (snapshot.action) { runAction(snapshot, 'undo', redoStackRef, 'Undone'); return; }
+    if (snapshot.action) { runAction(snapshot, 'undo', redoStackRef, say('common.undone', 'Undone')); return; }
     redoStackRef.current = [
       ...redoStackRef.current,
       {
@@ -86,14 +90,14 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks
     setRecycleBin(snapshot.recycleBin);
     setRecurringTasks(snapshot.recurringTasks);
     playUISound('undo');
-    setUndoToast({ message: 'Undone', actionable: false });
+    setUndoToast({ message: say('common.undone', 'Undone'), actionable: false });
   };
 
   const performRedo = () => {
     if (redoStackRef.current.length === 0) return;
     const snapshot = redoStackRef.current[redoStackRef.current.length - 1];
     redoStackRef.current = redoStackRef.current.slice(0, -1);
-    if (snapshot.action) { runAction(snapshot, 'redo', undoStackRef, 'Redone'); return; }
+    if (snapshot.action) { runAction(snapshot, 'redo', undoStackRef, say('common.redone', 'Redone')); return; }
     undoStackRef.current = [
       ...undoStackRef.current,
       {
@@ -108,7 +112,7 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks
     setRecycleBin(snapshot.recycleBin);
     setRecurringTasks(snapshot.recurringTasks);
     playUISound('undo');
-    setUndoToast({ message: 'Redone', actionable: false });
+    setUndoToast({ message: say('common.redone', 'Redone'), actionable: false });
   };
 
   return { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo };

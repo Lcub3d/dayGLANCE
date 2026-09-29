@@ -53,10 +53,27 @@ describe('Do editor Completed eligibility', () => {
     expect(html).toContain('role="status">jobo.view.completionUnavailable');
     expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
   });
-  it('uses the single completion eligibility message for an eligible existing reassessment', () => {
-    const html = render({ record: record() });
-    expect(html).toContain('jobo.view.completionUnavailable');
-    expect(html).not.toContain('jobo.view.completedByCompletion');
+  // The hint under Progress appears only when Completed is out of reach, and
+  // says what to do instead (#1726 wording pass).
+  const hint = (html) => html.match(/data-jobo-progress-hint[^>]*>([^<]*)</)?.[1] ?? null;
+  it('says nothing when Completed is available', () => {
+    expect(hint(render({ record: record() }))).toBeNull();
+    const completion = record({ id: `do:t1:${stamp}`, taskId: 't1', source: 'completion' });
+    expect(hint(render({ record: completion, taskCompleted: true }))).toBeNull();
+    expect(render({ record: record() })).not.toContain('jobo.view.completedByCompletion');
+  });
+  it('points a linked Do at its task, by the task\'s state', () => {
+    const linked = record({ taskId: 't1' });
+    expect(hint(render({ record: linked, onCompleteTask: () => {} }))).toBe('jobo.view.completeTaskInstead');
+    expect(hint(render({ record: linked, taskCompleted: true }))).toBe('jobo.view.taskAlreadyDone');
+    expect(hint(render({ record: linked }))).toBe('jobo.view.linkedNoCompletion');
+  });
+  it('asks for the task to be checked again on a completion record whose task is open', () => {
+    const completion = record({ id: `do:t1:${stamp}`, taskId: 't1', source: 'completion' });
+    expect(hint(render({ record: completion, taskCompleted: false }))).toBe('jobo.view.checkTaskAgain');
+  });
+  it('keeps the reassurance on a Completed record', () => {
+    expect(hint(render({ record: record({ progress: 'completed' }) }))).toBe('jobo.view.completedStays');
   });
   it('does not mistake keeping an existing Completed value for a new reassessment', () => {
     const html = render({ record: record({ source: 'completion', taskId: 'missing', progress: 'completed' }) });

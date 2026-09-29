@@ -2208,6 +2208,25 @@
       "taskAlreadyDone": "Il compito è già fatto. Il suo completamento viene registrato come un Do a sé.",
       "linkedNoCompletion": "Un Do collegato a un compito non può essere completato da solo.",
       "checkTaskAgain": "Spunta di nuovo il compito per completare questo Do."
+    },
+    "check": {
+      "open": "Riepilogo",
+      "title": "Riepilogo giornaliero",
+      "intro": "Esecuzioni registrate dell’intera giornata, in ordine cronologico. L’assenza di registrazioni non dimostra che non sia stato svolto lavoro.",
+      "empty": "Nessuna esecuzione registrata per questo giorno.",
+      "group": "Gruppo di esecuzione completo",
+      "groupScope": "Tutti i tentativi di questo gruppo di esecuzione, inclusi quelli di altri giorni.",
+      "measuredSessions": "Sessioni misurate",
+      "unmeasured": "Tentativi non misurati",
+      "inDay": "Registrato in questo giorno: {{duration}}",
+      "untimed": "Esecuzione registrata; durata non misurata.",
+      "completionTime": "Completamento registrato alle {{time}}",
+      "recordTime": "Registrazione creata alle {{time}}",
+      "notes": "Note dell’attività",
+      "currentNotes": "Note attuali dell’attività, non un’istantanea salvata.",
+      "notesUnavailable": "L’attività collegata non è più disponibile.",
+      "noTaskNotes": "Nessuna nota per l’attività.",
+      "openNote": "Apri {{name}} in Obsidian"
     }
   },
   "todoist": {

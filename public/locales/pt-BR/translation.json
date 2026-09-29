@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "A tarefa já está feita. A conclusão é registrada como um Do próprio.",
       "linkedNoCompletion": "Um Do vinculado a uma tarefa não pode ser concluído sozinho.",
       "checkTaskAgain": "Marque a tarefa novamente para concluir este Do."
+    },
+    "check": {
+      "open": "Revisão",
+      "title": "Revisão diária",
+      "intro": "Execuções registradas do dia inteiro, em ordem cronológica. A ausência de registros não comprova que nenhum trabalho foi feito.",
+      "empty": "Nenhuma execução registrada para este dia.",
+      "group": "Grupo de execução completo",
+      "groupScope": "Todas as tentativas deste grupo de execução, incluindo as de outros dias.",
+      "measuredSessions": "Sessões medidas",
+      "unmeasured": "Tentativas não medidas",
+      "inDay": "Registrado neste dia: {{duration}}",
+      "untimed": "Execução registrada; duração não medida.",
+      "completionTime": "Conclusão registrada às {{time}}",
+      "recordTime": "Registro criado às {{time}}",
+      "notes": "Notas da tarefa",
+      "currentNotes": "Notas atuais da tarefa, não uma cópia capturada.",
+      "notesUnavailable": "A tarefa vinculada não está mais disponível.",
+      "noTaskNotes": "Nenhuma nota da tarefa.",
+      "openNote": "Abrir {{name}} no Obsidian"
     }
   },
   "todoist": {

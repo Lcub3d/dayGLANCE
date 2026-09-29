@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "La tâche est déjà faite. Son achèvement est enregistré comme un Do à part entière.",
       "linkedNoCompletion": "Un Do lié à une tâche ne peut pas être terminé seul.",
       "checkTaskAgain": "Cochez à nouveau la tâche pour terminer ce Do."
+    },
+    "check": {
+      "open": "Bilan",
+      "title": "Bilan quotidien",
+      "intro": "Exécutions enregistrées de toute la journée, par ordre chronologique. L’absence de données ne signifie pas qu’aucun travail n’a été fait.",
+      "empty": "Aucune exécution enregistrée pour ce jour.",
+      "group": "Groupe d’exécution complet",
+      "groupScope": "Toutes les tentatives de ce groupe d’exécution, y compris celles des autres jours.",
+      "measuredSessions": "Sessions mesurées",
+      "unmeasured": "Tentatives non mesurées",
+      "inDay": "Enregistré ce jour : {{duration}}",
+      "untimed": "Exécution enregistrée ; durée non mesurée.",
+      "completionTime": "Achèvement enregistré à {{time}}",
+      "recordTime": "Entrée créée à {{time}}",
+      "notes": "Notes de la tâche",
+      "currentNotes": "Notes actuelles de la tâche, et non un instantané enregistré.",
+      "notesUnavailable": "La tâche liée n’est plus disponible.",
+      "noTaskNotes": "Aucune note pour cette tâche.",
+      "openNote": "Ouvrir {{name}} dans Obsidian"
     }
   },
   "todoist": {

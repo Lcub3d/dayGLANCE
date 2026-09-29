@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "Die Aufgabe ist bereits erledigt. Ihr Abschluss wird als eigenes Do erfasst.",
       "linkedNoCompletion": "Ein mit einer Aufgabe verknüpftes Do kann nicht allein abgeschlossen werden.",
       "checkTaskAgain": "Hake die Aufgabe erneut ab, um dieses Do abzuschließen."
+    },
+    "check": {
+      "open": "Rückblick",
+      "title": "Tagesrückblick",
+      "intro": "Erfasste Ausführungen des ganzen Tages in zeitlicher Reihenfolge. Fehlende Einträge bedeuten nicht, dass nichts getan wurde.",
+      "empty": "Für diesen Tag wurde keine Ausführung erfasst.",
+      "group": "Vollständige Ausführungsgruppe",
+      "groupScope": "Alle Versuche dieser Ausführungsgruppe, auch an anderen Tagen.",
+      "measuredSessions": "Gemessene Sitzungen",
+      "unmeasured": "Ungemessene Versuche",
+      "inDay": "An diesem Tag erfasst: {{duration}}",
+      "untimed": "Ausführung erfasst; Dauer nicht gemessen.",
+      "completionTime": "Abschluss erfasst um {{time}}",
+      "recordTime": "Eintrag erstellt um {{time}}",
+      "notes": "Aufgabennotizen",
+      "currentNotes": "Aktuelle Aufgabennotizen, keine gespeicherte Momentaufnahme.",
+      "notesUnavailable": "Die verknüpfte Aufgabe ist nicht mehr verfügbar.",
+      "noTaskNotes": "Keine Aufgabennotizen.",
+      "openNote": "{{name}} in Obsidian öffnen"
     }
   },
   "todoist": {

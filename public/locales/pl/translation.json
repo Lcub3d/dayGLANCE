@@ -2293,6 +2293,25 @@
       "taskAlreadyDone": "Zadanie jest już wykonane. Jego ukończenie jest zapisane jako osobny Do.",
       "linkedNoCompletion": "Do powiązanego z zadaniem nie można ukończyć samodzielnie.",
       "checkTaskAgain": "Odhacz zadanie ponownie, aby ukończyć ten Do."
+    },
+    "check": {
+      "open": "Przegląd",
+      "title": "Przegląd dnia",
+      "intro": "Zarejestrowane wykonania z całego dnia w kolejności czasowej. Brak wpisów nie oznacza braku pracy.",
+      "empty": "Brak zarejestrowanych wykonań w tym dniu.",
+      "group": "Pełna grupa wykonania",
+      "groupScope": "Wszystkie próby w tej grupie wykonania, także z innych dni.",
+      "measuredSessions": "Zmierzone sesje",
+      "unmeasured": "Próby bez pomiaru",
+      "inDay": "Zarejestrowano w tym dniu: {{duration}}",
+      "untimed": "Wykonanie zarejestrowane; czas trwania niezmierzony.",
+      "completionTime": "Ukończenie zarejestrowano o {{time}}",
+      "recordTime": "Wpis utworzono o {{time}}",
+      "notes": "Notatki zadania",
+      "currentNotes": "Aktualne notatki zadania, a nie zapisany wcześniej stan.",
+      "notesUnavailable": "Powiązane zadanie nie jest już dostępne.",
+      "noTaskNotes": "Brak notatek zadania.",
+      "openNote": "Otwórz {{name}} w Obsidian"
     }
   },
   "todoist": {

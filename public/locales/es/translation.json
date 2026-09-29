@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "La tarea ya está hecha. Su finalización se registra como un Do propio.",
       "linkedNoCompletion": "Un Do vinculado a una tarea no puede completarse por sí solo.",
       "checkTaskAgain": "Vuelve a marcar la tarea para completar este Do."
+    },
+    "check": {
+      "open": "Revisión",
+      "title": "Revisión diaria",
+      "intro": "Ejecuciones registradas de todo el día en orden cronológico. La ausencia de registros no demuestra que no se haya trabajado.",
+      "empty": "No hay ejecuciones registradas para este día.",
+      "group": "Grupo de ejecución completo",
+      "groupScope": "Todos los intentos de este grupo de ejecución, incluidos los de otros días.",
+      "measuredSessions": "Sesiones medidas",
+      "unmeasured": "Intentos sin medir",
+      "inDay": "Registrado este día: {{duration}}",
+      "untimed": "Ejecución registrada; duración no medida.",
+      "completionTime": "Finalización registrada a las {{time}}",
+      "recordTime": "Registro creado a las {{time}}",
+      "notes": "Notas de la tarea",
+      "currentNotes": "Notas actuales de la tarea, no una captura guardada.",
+      "notesUnavailable": "La tarea vinculada ya no está disponible.",
+      "noTaskNotes": "No hay notas de la tarea.",
+      "openNote": "Abrir {{name}} en Obsidian"
     }
   },
   "todoist": {

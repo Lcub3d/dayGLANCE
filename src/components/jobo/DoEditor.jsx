@@ -11,7 +11,7 @@ import { doIntervalAt, prepareDoDelete, commitDoEdit } from '../../jobo/viewActi
 import { createManualDo, prepareDoEdit } from '../../jobo/viewActions.js';
 import { receiptState } from '../../hooks/useJoboViewWriter.js';
 import SuggestionAutocomplete from '../SuggestionAutocomplete.jsx';
-import { matchDoLinks, linkFor } from '../../jobo/linkCandidates.js';
+import { matchDoLinks, linkFor, doTagSuggestions, completeDoTag } from '../../jobo/linkCandidates.js';
 import { stripWikilinks, stripWikilinksAndTags } from '../../utils/taskUtils.js';
 
 const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY, DO_PROGRESS.COMPLETED];
@@ -47,7 +47,7 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
   const openedDraft = useRef(draft);
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState(null); // 'date' | 'startTime' | 'endTime'
-  const { formatTime, use24HourClock, isTablet } = useDayPlannerCtx() || {};
+  const { formatTime, use24HourClock, isTablet, allTags = [] } = useDayPlannerCtx() || {};
   const showTime = (value) => (value ? (formatTime ? formatTime(value) : value) : '—');
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -68,7 +68,25 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestIndex, setSuggestIndex] = useState(-1);
   const canLink = !record && !link?.fixed;
-  const matches = canLink && suggestOpen ? matchDoLinks(linkCandidates, draft.title) : [];
+  // An unlinked new Do takes #tags in its title the way a new task does:
+  // typing # offers the app's existing tags, and Tab or Space completes one.
+  // A linked Do carries its task's title, tags included, so it offers none.
+  const titleRef = useRef(null);
+  const [cursor, setCursor] = useState(null);
+  const [tagIndex, setTagIndex] = useState(0);
+  const tagMatches = !record && !link && suggestOpen ? doTagSuggestions(draft.title, cursor, allTags) : [];
+  const applyTag = (tag) => {
+    const next = completeDoTag(draft.title, cursor ?? draft.title.length, tag);
+    setDraft((prev) => ({ ...prev, title: next.title }));
+    setCursor(next.cursor);
+    setTagIndex(0);
+    setTimeout(() => {
+      titleRef.current?.focus();
+      titleRef.current?.setSelectionRange(next.cursor, next.cursor);
+    }, 0);
+  };
+  // While a tag is being typed, its suggestions replace the task ones.
+  const matches = canLink && suggestOpen && !tagMatches.length ? matchDoLinks(linkCandidates, draft.title) : [];
   // Where the task sits: its time on the day (or all day), then its goal and
   // project. A project task in the Inbox is named by its project, not "Inbox".
   const where = ({ task, where: place, path }) => {
@@ -85,6 +103,19 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
     setSuggestIndex(-1);
   };
   const onTitleKeyDown = (event) => {
+    if (tagMatches.length) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setTagIndex((i) => (event.key === 'ArrowDown' ? Math.min(tagMatches.length - 1, i + 1) : Math.max(0, i - 1)));
+      } else if (event.key === 'Tab' || event.key === ' ') {
+        event.preventDefault();
+        applyTag(tagMatches[Math.min(tagIndex, tagMatches.length - 1)]);
+      } else if (event.key === 'Escape') {
+        event.stopPropagation();
+        setSuggestOpen(false);
+      }
+      return;
+    }
     if (!matches.length) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -189,15 +220,28 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
             <div className="relative">
               {/* A linked title is the task's own and is saved as written;
                   the field shows it as it reads, and Unlink makes it editable. */}
-              <input id="jobo-do-title" className={input} required autoComplete="off"
+              <input id="jobo-do-title" ref={titleRef} className={input} required autoComplete="off"
                 value={link && !record ? stripWikilinks(draft.title) : draft.title}
                 readOnly={!!link && !record}
-                onChange={(event) => { set('title')(event); setSuggestOpen(true); setSuggestIndex(-1); }}
+                onChange={(event) => { set('title')(event); setCursor(event.target.selectionStart); setSuggestOpen(true); setSuggestIndex(-1); setTagIndex(0); }}
+                onSelect={(event) => setCursor(event.target.selectionStart)}
                 onKeyDown={onTitleKeyDown}
                 onBlur={() => setSuggestOpen(false)}
                 aria-autocomplete={canLink ? 'list' : undefined}
                 aria-expanded={canLink ? matches.length > 0 : undefined}
                 disabled={!!record || saving} />
+              {tagMatches.length > 0 && (
+                <SuggestionAutocomplete
+                  suggestions={tagMatches.map((tag) => ({ type: 'tag', value: tag, display: `#${tag}` }))}
+                  selectedIndex={Math.min(tagIndex, tagMatches.length - 1)}
+                  onSelect={(suggestion) => applyTag(suggestion.value)}
+                  cardBg={cardBg}
+                  borderClass={borderClass}
+                  textPrimary={textPrimary}
+                  hoverBg={darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}
+                  fullWidth
+                />
+              )}
               {matches.length > 0 && (
                 <SuggestionAutocomplete
                   suggestions={matches.map((candidate) => ({

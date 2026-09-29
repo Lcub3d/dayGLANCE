@@ -61,6 +61,16 @@ manually or via BRAT, not submitted to the community directory.
   when Obsidian Sync changes data.json under a running copy
   (`onExternalSettingsChange`, Obsidian 1.5.7+), so a re-pair reaches every
   copy without a restart. Pinned by `test/scope.scenarios.test.ts` 25 and 26.
+  **The fleet view** (the same day's second half): a stale copy said so on
+  its own device, which is the machine the user is not sitting at. So every
+  copy now publishes a plaintext status row, `meta:copy:<deviceId>` (its
+  hostname or platform, plugin version, the pairing it holds, its stale
+  verdict, how many intents it is holding), on change and hourly, deleted on
+  unpair; every dayGLANCE device lists the copies under "Copies of this
+  vault" and says on every machine when one is behind. dayGLANCE also
+  probes its own oldest unconsumed intents every ten minutes and says so
+  when one has waited that long while a copy holds the applier lease, which
+  catches the effect whatever the cause. Scenarios 27 and 28.
 - **Agenda sidebar** (companion spec 4.2): a right-sidebar view — mini
   month calendar over the selected day's agenda (scheduled tasks, recurring
   instances, imported calendar events; ±35 days around today; no inbox),

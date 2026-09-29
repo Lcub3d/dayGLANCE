@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link2 } from 'lucide-react';
 import { readVaultHeartbeatNative } from '../obsidian.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
-import { getBridgePairingMeta } from '../utils/obsidianBridgeStream.js';
+import { getBridgePairingMeta, readBridgeDeliveryState } from '../utils/obsidianBridgeStream.js';
+import { readBridgeCopies } from '../utils/obsidianBridgeInbound.js';
+import { deriveBridgeFleet } from '../utils/bridgeFleet.js';
+import BridgeFleetList from './BridgeFleetList.jsx';
 import { deriveBridgeStatus, describeAgo } from '../utils/bridgeStatus.js';
 import { activeLocale } from '../utils/localeFormatting.js';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +27,8 @@ const BridgeStatusPanel = ({ darkMode, textPrimary, textSecondary, borderClass }
   const { t } = useTranslation();
   const [hb, setHb] = useState({ obsidianRunning: false, pluginAuthoritative: false });
   const [meta, setMeta] = useState(null);
+  const [fleet, setFleet] = useState({ copies: [], behind: [], current: [] });
+  const [delivery, setDelivery] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +47,10 @@ const BridgeStatusPanel = ({ darkMode, textPrimary, textSecondary, borderClass }
         // (same pattern as the desktop panel).
         const m = (await getBridgePairingMeta())
           ?? (await getBridgePairingMeta({ force: true }));
-        if (!cancelled) setMeta(m ?? null);
+        if (cancelled) return;
+        setMeta(m ?? null);
+        setFleet(deriveBridgeFleet(readBridgeCopies(), m ?? null));
+        setDelivery(readBridgeDeliveryState());
       } catch { /* a liveness probe must never break the settings UI */ }
     };
     probe();
@@ -117,6 +125,7 @@ const BridgeStatusPanel = ({ darkMode, textPrimary, textSecondary, borderClass }
       {status.state === 'notDetected' && (
         <p className={`text-xs ${textSecondary}`}>{t('settings.obsidianBridgeNotDetected')}</p>
       )}
+      <BridgeFleetList fleet={fleet} delivery={delivery} textSecondary={textSecondary} />
       <p className={`text-xs ${textSecondary}`}>{t('settings.obsidianBridgePairedOnce')}</p>
     </div>
   );

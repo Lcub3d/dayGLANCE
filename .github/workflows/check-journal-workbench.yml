@@ -1,34 +1,130 @@
-name: Check journal workbench
+name: Check journal validation
 on:
   push:
     branches: [work/jobo-check-verify-20260929]
     paths: [.github/workflows/check-journal-workbench.yml]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  prepare:
+  validate:
+    if: github.repository == 'Lcub3d/dayGLANCE'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      CHECK_RESULTS: ${{ runner.temp }}/check-results
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          path: workbench
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          path: product
+      - name: Apply scoped product changes
+        run: |
+          mkdir -p "$CHECK_RESULTS"
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, pathlib, subprocess
+          encoded = ''.join(pathlib.Path(f'workbench/.github/check-journal-payload.{n}.b64').read_text().strip() for n in range(1, 5))
+          raw = lzma.decompress(base64.b64decode(encoded))
+          assert hashlib.sha256(raw).hexdigest() == 'e91518e98268d73bce2ee1ec86ffc3f49013891dc9c88e1fee63d28b0f4a94f9'
+          data = json.loads(raw)
+          root = pathlib.Path('product')
+          allowed = {'docs/jobo-check-journal.md', 'src/components/JoboView.jsx', 'src/components/jobo/JoboCheckPanel.jsx', 'src/components/jobo/JoboCheckPanel.test.jsx', 'src/jobo/checkJournal.js', 'src/jobo/checkJournal.test.js'}
+          allowed |= {f'public/locales/{lng}/translation.json' for lng in ['en','de','es','fr','it','pt-BR','pt-PT','pl','uk','zh-CN']}
+          assert set(data['paths']) == allowed
+          for name, text in data['files'].items():
+              assert name in allowed and not (root / name).exists()
+              (root / name).parent.mkdir(parents=True, exist_ok=True)
+              (root / name).write_text(text)
+          subprocess.run(['git','apply','--check','-'], input=data['viewPatch'], text=True, cwd=root, check=True)
+          subprocess.run(['git','apply','-'], input=data['viewPatch'], text=True, cwd=root, check=True)
+          for lng, strings in data['locales'].items():
+              path = root / f'public/locales/{lng}/translation.json'
+              assert str(path.relative_to(root)) in allowed
+              obj = json.loads(path.read_text())
+              assert 'check' not in obj['jobo']
+              obj['jobo']['check'] = strings
+              path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + '\n')
+          subprocess.run(['git','add','--',*sorted(allowed)], cwd=root, check=True)
+          changed = subprocess.check_output(['git','diff','--cached','--name-only'], cwd=root, text=True).splitlines()
+          assert set(changed) == allowed, changed
+          subprocess.run(['git','diff','--cached','--check'], cwd=root, check=True)
+          pathlib.Path('/tmp/check-product-paths.json').write_text(json.dumps(sorted(allowed)))
+          pathlib.Path('/tmp/check-browser.py').write_text(data['browser'])
+          for name, text in data['fixture'].items():
+              assert name in {'check-fixture.html','check-fixture.jsx'}
+              (root / name).write_text(text)
+          with (root / '.git/info/exclude').open('a') as f:
+              f.write('\ncheck-fixture.html\ncheck-fixture.jsx\n')
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
-      - name: Package isolated source and test dependencies
+          cache-dependency-path: product/package-lock.json
+      - name: Install dependencies
+        working-directory: product
+        run: npm ci
+      - name: Audit, lint and full UTC suite
+        working-directory: product
         run: |
-          mkdir -p /tmp/check-workbench/source
-          git archive HEAD | tar -x -C /tmp/check-workbench/source
-          cp -a node_modules /tmp/check-workbench/source/
-          tar -czf /tmp/check-workbench.tar.gz -C /tmp/check-workbench/source .
+          set -o pipefail
+          npm run audit 2>&1 | tee "$CHECK_RESULTS/audit.log"
+          npm run lint 2>&1 | tee "$CHECK_RESULTS/lint.log"
+          TZ=UTC npm test 2>&1 | tee "$CHECK_RESULTS/full-tests.log"
+      - name: Timezone and locale regressions
+        working-directory: product
+        run: |
+          set -o pipefail
+          for zone in Asia/Singapore America/Chicago; do
+            TZ="$zone" npx vitest run src/jobo/checkJournal.test.js src/components/jobo/JoboCheckPanel.test.jsx src/locales.test.js 2>&1 | tee -a "$CHECK_RESULTS/timezones.log"
+          done
+      - name: Build web and iOS WebView
+        working-directory: product
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$CHECK_RESULTS/web-build.log"
+          npm run build:ios 2>&1 | tee "$CHECK_RESULTS/webview-build.log"
+      - name: Install isolated browser runner
+        run: |
+          python3 -m venv "$RUNNER_TEMP/check-browser-venv"
+          "$RUNNER_TEMP/check-browser-venv/bin/pip" install playwright
+          "$RUNNER_TEMP/check-browser-venv/bin/python" -m playwright install --with-deps chromium
+      - name: Chromium journal interactions and layouts
+        working-directory: product
+        run: |
+          set -o pipefail
+          ./node_modules/.bin/vite --host 127.0.0.1 --port 5178 > "$CHECK_RESULTS/vite.log" 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" || true' EXIT
+          for n in $(seq 1 30); do curl -fsS http://127.0.0.1:5178/check-fixture.html > /dev/null && break || sleep 1; done
+          "$RUNNER_TEMP/check-browser-venv/bin/python" /tmp/check-browser.py 2>&1 | tee "$CHECK_RESULTS/browser.log"
+      - name: Publish product-only branch (never main)
+        working-directory: product
+        run: |
+          set -euo pipefail
+          test -z "$(git ls-remote --heads origin refs/heads/feat/jobo-check-journal)"
+          test "$(git rev-parse HEAD)" = 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          python3 - <<'PY'
+          import json, subprocess
+          expected = json.load(open('/tmp/check-product-paths.json'))
+          actual = subprocess.check_output(['git','diff','--cached','--name-only'], text=True).splitlines()
+          assert sorted(actual) == expected
+          assert not subprocess.check_output(['git','diff','--name-only'], text=True).strip()
+          PY
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git switch -c feat/jobo-check-journal
+          git commit -m 'feat(jobo): add read-only Check journal'
+          git push origin HEAD:refs/heads/feat/jobo-check-journal
+          git rev-parse HEAD | tee "$CHECK_RESULTS/product-head.txt"
+          git diff HEAD^ --stat | tee "$CHECK_RESULTS/product-scope.txt"
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: check-workbench
-          path: /tmp/check-workbench.tar.gz
-          retention-days: 2
+          name: check-journal-validation
+          path: ${{ runner.temp }}/check-results
+          retention-days: 7

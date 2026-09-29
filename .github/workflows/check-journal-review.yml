@@ -1,0 +1,58 @@
+name: Check journal review
+on:
+  push:
+    branches: [ci/jobo-check-journal-20260930]
+    paths: ['.github/workflows/check-journal-review.yml']
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f5f0f895edb2b7a094f61e393af24159da728648
+          path: product
+      - uses: actions/checkout@v4
+        with:
+          repository: krelltunez/dayGLANCE
+          ref: main
+          path: upstream
+      - name: Export the exact sources
+        run: |
+          mkdir reports
+          git -C product archive --format=tar.gz HEAD > reports/head-source.tar.gz
+          git -C upstream archive --format=tar.gz HEAD > reports/main-source.tar.gz
+          git -C product rev-parse HEAD > reports/head.txt
+          git -C upstream rev-parse HEAD > reports/main.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-journal-sources
+          path: reports/
+          retention-days: 7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - run: npm ci
+        working-directory: product
+      - name: Baseline validation
+        working-directory: product
+        env:
+          TZ: UTC
+        run: |
+          npm test -- --reporter=default --reporter=json --outputFile.json=../reports/baseline-utc.json > ../reports/baseline-tests.log 2>&1
+          npm run lint > ../reports/baseline-lint.log 2>&1
+          npm run audit > ../reports/baseline-audit.log 2>&1
+      - name: Preserve locked dependencies for offline local checks
+        if: always()
+        run: tar -C product -czf reports/node-modules.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-journal-baseline
+          path: reports/
+          retention-days: 7
+          compression-level: 0

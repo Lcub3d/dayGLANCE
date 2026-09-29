@@ -160,3 +160,19 @@ describe('Check journal, a projection of the day model', () => {
     expect(result.invalidRecordCount).toBeGreaterThan(0);
   });
 });
+
+
+describe('Check journal chronology regressions', () => {
+  it('orders midnight-clipped rows by actual start rather than their end', () => {
+    const first = record({ id: 'first', date: '2026-09-23', startTime: '23:00', endTime: '01:00' });
+    const second = record({ id: 'second', date: '2026-09-23', startTime: '23:50', endTime: '00:10' });
+    expect(ids(journal([second, first]))).toEqual(['first', 'second']);
+    expect(ids(journal([first, second]))).toEqual(['first', 'second']);
+  });
+  it('uses the documented id tie-break at equal starts, not interval length', () => {
+    const a = record({ id: 'a-long', endTime: '10:00' });
+    const z = record({ id: 'z-short', endTime: '09:10' });
+    expect(ids(journal([z, a]))).toEqual(['a-long', 'z-short']);
+    expect(ids(journal([a, z]))).toEqual(['a-long', 'z-short']);
+  });
+});

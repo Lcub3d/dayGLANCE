@@ -377,7 +377,9 @@ export default function JoboView() {
   }));
 
   const checkPanel = checkOpen && <JoboCheckPanel key={date} date={date} model={model}
-    loaded={joboLoaded} error={joboError} onClose={closeCheck} ctx={ctx} t={t} />;
+    loaded={joboLoaded} error={joboError} onClose={closeCheck}
+    ctx={{ darkMode: ctx.darkMode, cardBg: ctx.cardBg, textPrimary: ctx.textPrimary,
+      textSecondary: ctx.textSecondary, borderClass: ctx.borderClass, formatTime: ctx.formatTime }} t={t} />;
 
   if (!joboLoaded) {
     return (

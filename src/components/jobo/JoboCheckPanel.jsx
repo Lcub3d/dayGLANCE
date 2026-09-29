@@ -48,11 +48,26 @@ function TaskNotes({ task, ctx, t, openInObsidian }) {
   </details>;
 }
 
+function EvidenceHint({ record, ctx, t }) {
+  if (record.timingBasis === 'planDuration') {
+    return <p className={`mt-2 text-xs ${ctx.textSecondary}`} data-jobo-check-estimated>{t('jobo.view.inferredPlanDuration')}</p>;
+  }
+  if (record.timing === 'untimed') {
+    return <p className={`mt-2 text-xs ${ctx.textSecondary}`} data-jobo-check-untimed>{t('jobo.check.untimed')}</p>;
+  }
+  return null;
+}
+
 function JournalEntry({ item, ctx, t, openInObsidian }) {
   const { record, sourceTask, attempts = [record] } = item;
   const plan = record.planSnapshot;
   const rows = timingRows(item.comparison, t);
-  const metrics = metricRows(item.comparison, item.comparisonMeta, t);
+  // Zero from an empty measured subset is not a duration measurement.
+  // Consume the model's measured comparison directly, including gap/overlap
+  // when estimates make the whole-group comparison unavailable.
+  const metrics = item.measuredSessions > 0
+    ? metricRows(item.comparisonMeta?.measuredComparison || item.comparison, item.comparisonMeta, t)
+    : [];
   return <li data-jobo-check-record={record.id} className={`rounded-lg border p-4 ${ctx.borderClass}`}>
     <div className="flex flex-wrap items-start justify-between gap-2">
       <h3 className="min-w-0 break-words font-semibold [overflow-wrap:anywhere]">{renderTitle(record.title)}</h3>
@@ -64,8 +79,7 @@ function JournalEntry({ item, ctx, t, openInObsidian }) {
       <dt className={ctx.textSecondary}>{t('jobo.view.do')}</dt>
       <dd>{actualText(record, ctx, t)}</dd>
     </dl>
-    {record.timing === 'untimed' && <p className={`mt-2 text-xs ${ctx.textSecondary}`}>{t('jobo.check.untimed')}</p>}
-    {record.timingBasis === 'planDuration' && <p className={`mt-2 text-xs ${ctx.textSecondary}`}>{t('jobo.view.inferredPlanDuration')}</p>}
+    <EvidenceHint record={record} ctx={ctx} t={t} />
     {item.recordedMinutes != null && <p className={`mt-2 text-xs ${ctx.textSecondary}`} data-jobo-check-measured>
       {t('jobo.check.inDay', { duration: formatDuration(item.recordedMinutes, t) })}
     </p>}
@@ -87,9 +101,10 @@ function JournalEntry({ item, ctx, t, openInObsidian }) {
           <dt className={`min-w-24 ${ctx.textSecondary}`}>{t(`jobo.view.${METRIC_LABELS[row.key]}`)}</dt><dd>{row.text}</dd>
         </div>)}
       </dl>}
-      <ul className={`mt-3 divide-y text-xs ${ctx.borderClass}`}>{attempts.map(attempt => <li key={attempt.id} className="py-2 break-words">
+      <ul className={`mt-3 divide-y text-xs ${ctx.borderClass}`}>{attempts.map(attempt => <li key={attempt.id} data-jobo-check-attempt={attempt.id} className="py-2 break-words">
         <p>{actualText(attempt, ctx, t)} · {progressText(attempt, t)}</p>
         <p>{renderTitle(attempt.title)}</p>
+        <EvidenceHint record={attempt} ctx={ctx} t={t} />
       </li>)}</ul>
     </details>
     {sourceTask ? <TaskNotes task={sourceTask} ctx={ctx} t={t} openInObsidian={openInObsidian} />
@@ -110,6 +125,13 @@ export default function JoboCheckPanel({ model, date, loaded, error, onClose, ct
     closeButton.current?.focus();
     return () => { if (previous?.isConnected) previous.focus(); };
   }, []);
+  useEffect(() => {
+    // A remote deletion or read-error transition can remove the focused row.
+    // Keep keyboard navigation in the panel instead of the underlying view.
+    if (dialog.current && !dialog.current.contains(document.activeElement)) {
+      closeButton.current?.focus();
+    }
+  }, [model, loaded, error]);
   const onKeyDown = event => {
     // Do not let date navigation, new-task or undo shortcuts reach the view
     // behind a reading panel. Native link/disclosure keyboard actions remain.

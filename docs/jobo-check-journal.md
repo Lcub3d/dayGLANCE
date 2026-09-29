@@ -37,3 +37,11 @@ Manual/browser acceptance:
 6. Check narrow/wide layouts and light/dark themes in English, Chinese and German. Read-only ledgers can still open the journal.
 
 Browser fixtures use synthetic task data; live accounts, real multi-device sync and physical devices require separate acceptance. The first pass does not claim those tests.
+
+## Review follow-up
+
+The first-pass scope is unchanged. Check receives only display/formatting context, not the task-action context. Its journal orders overnight slices by their real starts before applying the ID tie-break. Correcting an end time does not reorder records with equal starts.
+
+An entirely unmeasured group has no measured-duration metrics, rather than displaying zero as if it were an observation. Mixed groups consume the existing day model's measured comparison for recorded, elapsed, gap and overlap figures. Each expanded attempt retains its own untimed/estimated label, including attempts outside the selected day.
+
+When a committed update or error removes a focused journal entry, focus returns to the panel's close control. No mutation, queue, storage, task action, new grouping rule or shared-model change is introduced by these fixes.

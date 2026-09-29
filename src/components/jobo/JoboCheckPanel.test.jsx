@@ -107,3 +107,50 @@ describe('read-only Check panel', () => {
     for (const forbidden of ['recordJobo', 'workingSet', 'localStorage', 'sessionStorage', 'toggleComplete', 'updateTaskNotes']) expect(panel).not.toContain(forbidden);
   });
 });
+
+
+describe('Check evidence and boundary regressions', () => {
+  it.each([
+    ['untimed manual', { taskId: null, timing: 'untimed', startTime: null, endDate: null, endTime: null }],
+    ['untimed completion', { source: 'completion', progress: 'completed', timing: 'untimed', startTime: null, endDate: null, endTime: null }],
+    ['plan-duration estimate', { timingBasis: 'planDuration' }],
+  ])('does not present unknown duration as zero measured metrics: %s', (_, extra) => {
+    const html = render([make(extra)]);
+    expect(html).not.toContain('data-jobo-check-measured');
+    expect(html).not.toContain('data-jobo-check-metrics');
+    expect(html).toContain('Unmeasured attempts');
+  });
+  it('retains measured gap and overlap metrics when a group also has an estimate', () => {
+    const html = render([
+      make(),
+      make({ id: 'measured-2', startTime: '09:20', endTime: '10:00' }),
+      make({ id: 'estimate', startTime: '11:00', endTime: '12:00', timingBasis: 'planDuration' }),
+    ]);
+    for (const key of ['recordedLabel', 'elapsedLabel', 'gapLabel', 'overlapLabel']) {
+      expect(html).toContain(`>${i18n.t(`jobo.view.${key}`)}</dt>`);
+    }
+  });
+  it('labels an estimated off-day attempt inside a measured row’s full group', () => {
+    const html = render([
+      make(),
+      make({ id: 'estimate', date: '2026-09-25', endDate: '2026-09-25', timingBasis: 'planDuration' }),
+    ]);
+    const group = html.split('data-jobo-check-group')[1].split('data-jobo-check-notes')[0];
+    expect(group).toContain(i18n.t('jobo.view.inferredPlanDuration'));
+  });
+  it('does not pass the full task action context into the read-only Check panel', () => {
+    const view = readFileSync(new URL('../JoboView.jsx', import.meta.url), 'utf8');
+    const props = view.match(/<JoboCheckPanel[\s\S]*?\/>/)[0];
+    expect(props).not.toContain('ctx={ctx}');
+    for (const key of ['cardBg', 'textPrimary', 'textSecondary', 'borderClass', 'darkMode', 'formatTime']) {
+      expect(props).toContain(key);
+    }
+  });
+  it('renders checklist notes as read-only text rather than task actions', () => {
+    const html = render([make()], {}, [{ ...task, notes: '- [ ] Next thought\n- [x] Previous thought' }]);
+    expect(html).toContain('Next thought');
+    expect(html).toContain('Previous thought');
+    expect(html).not.toContain('<input');
+    expect(html).not.toContain('<textarea');
+  });
+});

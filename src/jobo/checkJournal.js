@@ -30,7 +30,10 @@ export function buildCheckJournal(model) {
           ? item.durationMinutes : null,
       };
     })
+    // Clipping two overnight records to 00:00 must not reverse their
+    // real start order. For genuinely equal starts, use identity rather than
+    // duration, which can change when an interval is corrected.
     .sort((a, b) => a.startMinute - b.startMinute
-      || a.endMinute - b.endMinute || byId(a.id, b.id));
+      || byId(attemptStart(a.record), attemptStart(b.record)) || byId(a.id, b.id));
   return { entries, invalidRecordCount: model?.invalidRecordCount || 0 };
 }

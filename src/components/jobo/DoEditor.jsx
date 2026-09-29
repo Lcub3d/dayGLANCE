@@ -203,7 +203,8 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
                   suggestions={matches.map((candidate) => ({
                     type: 'task',
                     value: candidate.task.id,
-                    display: `${stripWikilinksAndTags(candidate.task.title)} · ${where(candidate)}`,
+                    display: stripWikilinksAndTags(candidate.task.title),
+                    detail: where(candidate),
                     icon: <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${candidate.task.color || 'bg-blue-500'}`} aria-hidden="true" />,
                   }))}
                   selectedIndex={suggestIndex}
@@ -218,9 +219,11 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
             </div>
             {record && <p className={`mt-1 text-xs ${textSecondary}`}>{t('jobo.view.capturedTitle')}</p>}
             {!record && link && (
-              <p data-jobo-link className={`mt-1.5 text-xs ${textSecondary} flex items-center gap-1 min-w-0`}>
-                <Link2 size={12} className="flex-shrink-0" aria-hidden="true" />
-                <span className="truncate">{t('jobo.view.linkedTo', { title: stripWikilinksAndTags(link.title) })}{link.where ? ` · ${link.where}` : ''}</span>
+              <p data-jobo-link className={`mt-1.5 text-xs ${textSecondary} flex items-start gap-1 min-w-0`}>
+                <Link2 size={12} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                {/* Wraps rather than truncating, so a long goal and project
+                    path stays readable. */}
+                <span className="min-w-0 break-words">{t('jobo.view.linkedTo', { title: stripWikilinksAndTags(link.title) })}{link.where ? ` · ${link.where}` : ''}</span>
                 {!link.fixed && (
                   <button type="button" className={`ml-1 underline flex-shrink-0 ${darkMode ? 'hover:text-white' : 'hover:text-stone-900'}`}
                     onClick={() => { setDraft((prev) => ({ ...prev, title: link.typed ?? prev.title })); setLink(null); }}>{t('jobo.view.unlink')}</button>

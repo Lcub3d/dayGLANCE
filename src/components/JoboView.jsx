@@ -57,10 +57,15 @@ export const continueInitial = (record, date, startMinute) => ({
   continuing: true,
 });
 
+// A card's details open on click and close on a second click of the same
+// card. ExecutionDetails closes on a click anywhere else, but leaves its own
+// card to this toggle, so the two never fight over one click.
+export const toggleDetails = (open, item, anchor) => (open?.item?.id === item.id ? null : { item, anchor });
+
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
   // Every accepted Do write becomes a step in the app's undo history.
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
@@ -146,9 +151,9 @@ export default function JoboView() {
   );
   const model = useMemo(() => buildJoboDayModel({
     date, tasks: dayTasks, taskLookup: lookup, recurringTasks: ctx.recurringTasks,
-    records: joboRecords || [], scale: hourHeight, isVisibleForUser: ctx.isVisibleForUser,
+    records: joboRecords || [], scale: hourHeight, isVisibleForUser,
     now: { date: nowDate, time: nowTime },
-  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, ctx.isVisibleForUser, nowDate, nowTime]);
+  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, isVisibleForUser, nowDate, nowTime]);
   const doItems = useMemo(
     () => assignOverlapColumns(
       [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
@@ -198,11 +203,14 @@ export default function JoboView() {
   const linkCandidates = useMemo(
     () => (editor && !editor.record
       ? doLinkCandidates({
-        dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks,
+        // The day's tasks arrive filtered for this household member; the
+        // Inbox is filtered here the same way.
+        dayTasks: getTasksForDate(selectedDate, false),
+        inboxTasks: (ctx.unscheduledTasks || []).filter((task) => typeof isVisibleForUser !== 'function' || isVisibleForUser(task)),
         ...(goalsProjectsEnabled ? { projects: projects || [], goals: goals || [] } : {}),
       })
       : []),
-    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals],
+    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals, isVisibleForUser],
   );
   const closeEditor = useCallback(() => setEditor(null), []);
   // "Complete task" in the editor is the linked task's checkbox: the same
@@ -473,7 +481,7 @@ export default function JoboView() {
             startHour={startHour}
             endHour={endHour}
             onDetails={(item, anchor) => {
-              setDetails({ item, anchor });
+              setDetails((open) => toggleDetails(open, item, anchor));
               if (sidebar && item.sourceTask) setSelectedTaskId(item.sourceTask.id);
             }}
             onNotesInSidebar={sidebar ? (task) => setSelectedTaskId(task.id) : undefined}

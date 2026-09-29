@@ -123,3 +123,21 @@ describe('read-only JOBO date-header tiles', () => {
     } finally { vi.unstubAllGlobals(); }
   });
 });
+
+// Wording pass: plain tooltips, a breakdown per tile, and the two secondary
+// figures readable in the row tooltip below xl.
+describe('statistics tooltips', () => {
+  it('names each tile\'s own outcomes and keeps the hidden figures in the row tooltip', async () => {
+    const { html, resource } = await render();
+    const s = resource.jobo.stats;
+    const row = html.match(/data-jobo-stats-date="[^"]*" role="group" aria-label="[^"]*" title="([^"]*)"/)[1];
+    // MUTATION: drop the secondary line and late finishes and ran long
+    // cannot be read anywhere below xl.
+    expect(row).toContain(s.secondary.split(':')[0]);
+    const tile = (key) => html.match(new RegExp(`data-jobo-stat="${key}"[^>]*title="([^"]*)"`))[1];
+    expect(tile('start')).toContain(s.breakdownTiming.split(':')[0]);
+    expect(tile('duration')).toContain(s.breakdownDuration.split(':')[0]);
+    expect(tile('duration')).not.toContain(s.breakdownTiming.split(':')[0]);
+    expect(html).not.toMatch(/jobo\.stats\.\w+/);
+  });
+});

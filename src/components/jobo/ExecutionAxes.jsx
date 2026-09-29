@@ -1,9 +1,24 @@
 import React from 'react';
 import { Check, Clock } from 'lucide-react';
 import { summarizeTiming } from '../../jobo/core.js';
+import { formatDuration } from '../../utils/formatDuration.js';
 
 function translate(t, key, defaultValue, values = {}) {
   return t(key, { ...values, defaultValue });
+}
+
+/**
+ * An offset as people read it: minutes under an hour ("45 min"), the app's
+ * compact duration under a day ("2h 15m"), and days and hours beyond that
+ * ("1d 22h"), where minutes stop meaning anything.
+ */
+export function formatOffset(minutes, t) {
+  const total = Math.max(0, Math.round(Math.abs(Number(minutes) || 0)));
+  if (total < 60) return t('jobo.view.offsetMinutes', { minutes: total });
+  if (total < 1440) return formatDuration(total, t);
+  const days = Math.floor(total / 1440);
+  const hours = Math.floor((total % 1440) / 60);
+  return hours ? t('jobo.view.offsetDaysHours', { days, hours }) : t('jobo.view.offsetDays', { days });
 }
 
 export function timingRows(comparison, t) {
@@ -25,7 +40,7 @@ export function timingRows(comparison, t) {
     ['duration', 'timeDuration', comparison.durationComparison, metrics.durationDifferenceMinutes],
   ].map(([key, group, state, minutes]) => ({
     key,
-    text: t(`jobo.view.${group}.${state}`, { minutes: Math.abs(minutes) }),
+    text: t(`jobo.view.${group}.${state}`, { amount: formatOffset(minutes, t) }),
     state,
   }));
 }
@@ -61,13 +76,21 @@ export function summaryRows(labels, comparison, t) {
   }
   const incomplete = comparison?.metrics?.untimedAttemptCount > 0;
   if (incomplete && !canonical.includes('timeIncomplete')) canonical = ['timeIncomplete', ...canonical];
-  return canonical.map((label) => ({
+  return canonical.map((label) => {
+    // Core's "late" means the start or the finish was late. Say which, so
+    // the label agrees with the lines under it ("Started on time" beside
+    // "Late" read as a contradiction).
+    const shown = label === 'late' && comparison
+      ? (comparison.startTiming === 'late' ? 'startedLate' : 'finishedLate')
+      : label;
+    return {
     key: label,
-    text: label === 'timeIncomplete'
+    text: shown === 'timeIncomplete'
       ? t('jobo.view.timeIncompleteShort')
-      : t(`jobo.view.summary.${label}`, { defaultValue: label }),
+      : t(`jobo.view.summary.${shown}`, { defaultValue: shown }),
     title: label === 'timeIncomplete' ? t('jobo.view.timeIncomplete') : undefined,
-  }));
+    };
+  });
 }
 
 /**

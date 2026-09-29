@@ -60,11 +60,11 @@ describe('a Do edit in the undo history', () => {
     await edit(prepareDoEdit({ records: [current()], record: current(), patch: { startTime: '09:30' }, now: Date.now() }));
     expect(current().startTime).toBe('09:30');
     expect(steps).toHaveLength(1);
-    expect(await steps[0].undo()).toEqual({ ok: true });
+    expect(await steps[0].undo()).toEqual({ ok: true, message: 'jobo.undo.undone' });
     expect(current().startTime).toBe('09:00');
-    expect(await steps[0].redo()).toEqual({ ok: true });
+    expect(await steps[0].redo()).toEqual({ ok: true, message: 'jobo.undo.redone' });
     expect(current().startTime).toBe('09:30');
-    expect(await steps[0].undo()).toEqual({ ok: true });
+    expect(await steps[0].undo()).toEqual({ ok: true, message: 'jobo.undo.undone' });
     expect(current().startTime).toBe('09:00');
   });
 
@@ -72,7 +72,7 @@ describe('a Do edit in the undo history', () => {
     const { steps, current, edit } = await setup([row()]);
     await edit(prepareDoDelete({ records: [current()], record: current(), now: Date.now() }));
     expect(current().deleted).toBe(true);
-    expect(await steps[0].undo()).toEqual({ ok: true });
+    expect(await steps[0].undo()).toEqual({ ok: true, message: 'jobo.undo.undone' });
     expect(current()).toMatchObject({ deleted: false, startTime: '09:00' });
   });
 
@@ -113,7 +113,7 @@ describe('a Do edit in the undo history', () => {
     await edit(prepareDoEdit({ records: [current('do:t1:x')], record: current('do:t1:x'), progress: 'partial', now: Date.now() }));
     expect(await steps[0].undo()).toEqual({ ok: false, message: 'jobo.undo.completionBlocked' });
     sources.tasks = [{ id: 't1', title: 'Deep work', completed: true }];   // checked again since
-    expect(await steps[0].undo()).toEqual({ ok: true });
+    expect(await steps[0].undo()).toEqual({ ok: true, message: 'jobo.undo.undone' });
     expect(current('do:t1:x').progress).toBe('completed');
 
     const occurrence = row({ id: 'do:tmpl:2026-09-28:2026-09-28T10:00:00Z', taskId: 'tmpl', source: 'completion', progress: 'completed',
@@ -121,7 +121,7 @@ describe('a Do edit in the undo history', () => {
     const template = { id: 'tmpl', title: 'Standup', startTime: '09:00', duration: 60, recurrence: { type: 'daily' }, completedDates: ['2026-09-28'] };
     const r = await setup([occurrence], { recurringTasks: [template] });
     await r.edit(prepareDoEdit({ records: [r.current(occurrence.id)], record: r.current(occurrence.id), progress: 'partial', now: Date.now() }));
-    expect(await r.steps[0].undo()).toEqual({ ok: true });
+    expect(await r.steps[0].undo()).toEqual({ ok: true, message: 'jobo.undo.undone' });
     expect(r.current(occurrence.id).progress).toBe('completed');
   });
 });

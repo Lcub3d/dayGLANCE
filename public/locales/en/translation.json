@@ -257,7 +257,11 @@
     "apply": "Apply",
     "minutesShort": "{{count}} min",
     "nextWeek": "Next week",
-    "taskProgress": "{{done}}/{{total}} tasks"
+    "taskProgress": "{{done}}/{{total}} tasks",
+    "undone": "Undone",
+    "redone": "Redone",
+    "undoFailed": "Could not undo",
+    "redoFailed": "Could not redo"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -2069,20 +2073,25 @@
       "recorded": "Recorded time",
       "lateStart": "Late starts",
       "lateFinish": "Late finishes",
-      "longer": "Longer duration",
-      "nativeScope": "Completed / all current timed tasks. This is the native task checkbox, not Do progress.",
-      "timeScope": "Union of committed measured intervals on this day. Estimates and unknown durations are excluded.",
-      "timeDetails": "Planned: {{planned}} · Untimed: {{untimed}} · Inferred: {{inferred}}.",
-      "comparisonScope": "Each captured Plan dated this day is counted once, using its full execution group, including later-day attempts.",
-      "breakdown": "Early/shorter: {{early}} · On time/estimate: {{on}} · Excluded groups: {{excluded}}.",
-      "scope": "Full-day records · Untimed: {{untimed}} · Comparable captured Plans: {{comparable}} / {{total}}."
+      "longer": "Ran long",
+      "nativeScope": "Today's timed tasks checked off, out of all of today's timed tasks.",
+      "timeScope": "Time recorded in Do entries today. Overlaps count once; estimates and Do without times aren't included.",
+      "timeDetails": "Planned: {{planned}} · Without times: {{untimed}} · Estimated: {{inferred}}.",
+      "comparisonScope": "Out of today's planned tasks with timed Do. A task done over several sessions or days counts once.",
+      "scope": "Whole day · Compared: {{comparable}} of {{total}} planned tasks · Without times: {{untimed}}",
+      "breakdownTiming": "Early: {{early}} · On time: {{on}}",
+      "breakdownDuration": "Shorter: {{early}} · As planned: {{on}}",
+      "notCompared": "Not compared (missing times): {{excluded}}",
+      "secondary": "Late finishes: {{finish}} · Ran long: {{longer}}"
     },
     "title": "JOBO",
     "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",
-      "failed": "Could not save that change. Try again."
+      "failed": "Could not save that change. Try again.",
+      "undone": "Do change undone",
+      "redone": "Do change redone"
     },
     "view": {
       "activeLabel": "Active time",
@@ -2105,7 +2114,7 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Enter a complete start and end interval.",
       "completedAt": "Marked complete at {{time}}",
-      "completionUnavailable": "Completed is available for unlinked manual work, or completion records whose task is still completed.",
+      "completionUnavailable": "A Do linked to a task can't be Completed on its own. Choose another progress, or complete the task.",
       "completedStays": "Stays Completed. Adjust the times and save.",
       "completeTask": "Complete task",
       "completeTaskHint": "Checks off the linked task, as its checkbox does. The completion shows as a Do of its own.",
@@ -2157,37 +2166,46 @@
       "summary": {
         "withinPlan": "On plan",
         "late": "Late",
-        "longer": "Longer",
-        "split": "Split",
+        "longer": "Ran long",
+        "split": "Several sessions",
         "notStarted": "No Do recorded",
-        "unplanned": "Unplanned"
+        "unplanned": "Unplanned",
+        "startedLate": "Started late",
+        "finishedLate": "Finished late"
       },
       "timeAxis": "Time performance",
       "timeDuration": {
-        "shorter": "{{minutes}} min shorter",
+        "shorter": "{{amount}} shorter",
         "onEstimate": "On estimate",
-        "longer": "{{minutes}} min over plan"
+        "longer": "{{amount}} over plan"
       },
       "timeDurationLabel": "Duration",
       "timeFinish": {
-        "early": "Finished {{minutes}} min early",
+        "early": "Finished {{amount}} early",
         "onTime": "Finished on time",
-        "late": "Finished {{minutes}} min late"
+        "late": "Finished {{amount}} late"
       },
       "timeFinishLabel": "Finish",
       "timeIncomplete": "Actual start/end not fully recorded.",
       "timeIncompleteShort": "Time to add",
       "timeStart": {
-        "early": "Started {{minutes}} min early",
+        "early": "Started {{amount}} early",
         "onTime": "Started on time",
-        "late": "Started {{minutes}} min late"
+        "late": "Started {{amount}} late"
       },
       "timeStartLabel": "Start",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "Could not save the Do change.",
       "setInterval": "Set actual interval",
       "dragCompletion": "Drag to set the actual interval; use Enter to edit.",
-      "completionPoint": "Recorded at {{time}}. Add the actual start to record an interval."
+      "completionPoint": "Recorded at {{time}}. Add the actual start to record an interval.",
+      "offsetMinutes": "{{minutes}} min",
+      "offsetDays": "{{days}}d",
+      "offsetDaysHours": "{{days}}d {{hours}}h",
+      "completeTaskInstead": "This Do can't be Completed on its own. Complete the task below; its completion is recorded as a Do of its own.",
+      "taskAlreadyDone": "The task is already done. Its completion is recorded as a Do of its own.",
+      "linkedNoCompletion": "A Do linked to a task can't be Completed on its own.",
+      "checkTaskAgain": "Check the task off again to make this Completed."
     }
   },
   "todoist": {

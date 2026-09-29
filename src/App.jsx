@@ -1313,7 +1313,7 @@ const DayPlanner = () => {
   const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
-    playUISound,
+    playUISound, t,
   });
 
   // Kept updated every render so the URL action handler reads the latest task state,

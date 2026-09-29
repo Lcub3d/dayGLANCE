@@ -148,6 +148,13 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
   // The task this attempt belongs to, as the Plan side shows it: the key for
   // hover pairing and whose notes the Notes button opens.
   const task = item.sourceTask || null;
+  // A short card (under 40px) has no room for its status line, so the
+  // tooltip carries it: time, progress, "Finished later" and the signal.
+  const statusLine = [timeLabel, status, finished && t('jobo.view.finishedLater'), inline?.text].filter(Boolean).join(' · ');
+  const gestureHint = item.estimate
+    ? `${t('jobo.view.inferredPlanDuration')} ${t('jobo.view.dragCompletion')}`
+    : item.point && writable ? t('jobo.view.dragCompletion') : null;
+  const cardTitle = [isMicro ? statusLine : null, gestureHint].filter(Boolean).join('\n') || undefined;
 
   return (
     <div
@@ -167,9 +174,7 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
       onMouseLeave={() => onHover(null)}
       onClick={(event) => { event.stopPropagation(); if (startsGesture(event)) onDetails(item, event.currentTarget); }}
       onPointerDown={(event) => { if (movable && startsGesture(event)) onPointGesture(event, item); }}
-      title={item.estimate
-        ? `${t('jobo.view.inferredPlanDuration')} ${t('jobo.view.dragCompletion')}`
-        : item.point && writable ? t('jobo.view.dragCompletion') : undefined}
+      title={cardTitle}
     >
       {/* A completion is a moment: the white rule marks it exactly, at the
           top of a marker and at the bottom (its end) of an estimate. */}

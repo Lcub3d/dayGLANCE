@@ -397,6 +397,16 @@ describe('the notes sidebar', () => {
 // Multi-user: the Do side shows only this member's completions. The filter
 // lives in the features context; the planner context has none, which is how
 // the view once looked in the wrong place and filtered nothing.
+describe('a short card still says its status', () => {
+  // MUTATION: drop the tooltip and a 15-minute Do shows no progress at all.
+  it('puts the status line in the tooltip when there is no room to show it', () => {
+    const html = render({ joboRecords: [timed({ startTime: '10:00', endTime: '10:15', progress: 'partial' })] });
+    expect(html).toMatch(/data-jobo-record="manual:1"[^>]*title="10:00–10:15 · jobo\.view\.progress\.partial/);
+    const tall = render({ joboRecords: [timed({ progress: 'partial' })] });
+    expect(tall).not.toMatch(/data-jobo-record="manual:1"[^>]*title=/);
+  });
+});
+
 describe('a card\'s details close on a second click', () => {
   // MUTATION: always open (the old behaviour) and a second click on the card
   // leaves the details up, with only Esc to close them.

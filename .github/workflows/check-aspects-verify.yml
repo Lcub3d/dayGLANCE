@@ -1,0 +1,94 @@
+name: Check aspects verification
+on:
+  push:
+    branches: [work/jobo-check-aspects]
+    paths: [.github/workflows/check-aspects-verify.yml]
+permissions:
+  contents: write
+concurrency:
+  group: check-aspects-publish
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Reconstruct the exact main-based presentation candidate
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/check-results
+          python - <<'PY'
+          import base64, hashlib, json, lzma, subprocess
+          from pathlib import Path
+          raw = lzma.decompress(base64.b64decode(Path('.github/review/check-aspects.b64').read_text().strip(), validate=True))
+          assert hashlib.sha256(raw).hexdigest() == '937823153445755e592abf627f334d49c62e2c16f27c6cfc4c0fc5580901984a', 'Patch checksum mismatch'
+          patch = Path('/tmp/check-results/change.patch')
+          patch.write_bytes(raw)
+          base = '0a7632a2c87f1b138dfbdc84156bee7355ea3338'
+          subprocess.run(['git','checkout','--detach',base], check=True)
+          subprocess.run(['git','apply','--index',str(patch)], check=True)
+          paths = subprocess.check_output(['git','diff','--cached','--name-only',base], text=True).splitlines()
+          components = {'src/components/JoboView.jsx','src/components/jobo/CheckPanel.jsx','src/components/jobo/CheckPanel.test.jsx','src/components/jobo/checkSummary.js','src/components/jobo/checkSummary.test.js'}
+          locales = {f'public/locales/{lang}/translation.json' for lang in ['de','en','es','fr','it','pl','pt-BR','pt-PT','uk','zh-CN']}
+          assert set(paths) == components | locales, paths
+          for path in locales:
+              before = json.loads(subprocess.check_output(['git','show',f'{base}:{path}']))
+              after = json.loads(Path(path).read_text())
+              assert 'check' not in before['jobo'], 'Base now contains a Check panel; review instead of replacing'
+              assert after['jobo'].pop('check')
+              assert before == after, f'Existing locale changed: {path}'
+          tree = subprocess.check_output(['git','write-tree'], text=True).strip()
+          assert tree == '92a83edf9468bb2fce63e0edddd5ec8c9b4cdd09', 'Not the locally tested tree'
+          Path('/tmp/check-results/scope.txt').write_text('Fresh main parent: '+base+'\nTree: '+tree+'\n'+ '\n'.join(paths)+'\n')
+          PY
+          git diff --cached --check
+      - name: Install exact lockfile dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify tests, lint, audit and both web bundles
+        run: |
+          set -euo pipefail
+          TZ=UTC npm test > /tmp/check-results/full-tests.log 2>&1
+          tail -n 10 /tmp/check-results/full-tests.log
+          npm run lint > /tmp/check-results/lint.log 2>&1
+          npm run audit > /tmp/check-results/audit.log 2>&1
+          npm run build > /tmp/check-results/build.log 2>&1
+          npm run build:ios > /tmp/check-results/ios-webview.log 2>&1
+          TZ=Asia/Singapore npx vitest run src/components/jobo/checkSummary.test.js src/components/jobo/CheckPanel.test.jsx src/components/JoboView.test.jsx src/locales.test.js > /tmp/check-results/singapore.log 2>&1
+          TZ=America/Chicago npx vitest run src/components/jobo/checkSummary.test.js src/components/jobo/CheckPanel.test.jsx src/components/JoboView.test.jsx src/locales.test.js > /tmp/check-results/chicago.log 2>&1
+      - name: Publish a new feature branch, never main or PR33
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BASE=0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          BRANCH=feat/jobo-check-aspects
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$BASE" || { echo 'Main moved; refusing stale publication'; exit 1; }
+          test -z "$(git ls-remote --heads origin "$BRANCH")" || { echo 'Feature branch already exists; refusing replacement'; exit 1; }
+          TREE=$(git write-tree)
+          test "$TREE" = 92a83edf9468bb2fce63e0edddd5ec8c9b4cdd09
+          git diff --exit-code
+          git config user.name 'Lcub3d'
+          git config user.email '46134215+Lcub3d@users.noreply.github.com'
+          COMMIT=$(printf '%s\n' 'feat(jobo): present Check as a concise daily report' '' 'Six read-only aspects with P1-P4 breakdowns; consumes existing committed core and day statistics without changing their contracts.' | git commit-tree "$TREE" -p "$BASE")
+          AUTH="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$AUTH" push origin "$COMMIT:refs/heads/$BRANCH"
+          unset AUTH GH_TOKEN
+          printf 'base %s\nbranch %s\ncommit %s\ntree %s\n' "$BASE" "$BRANCH" "$COMMIT" "$TREE" > /tmp/check-results/published.txt
+          cat /tmp/check-results/published.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-aspects-verification-${{ github.run_number }}
+          path: /tmp/check-results/
+          retention-days: 7

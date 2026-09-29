@@ -17,7 +17,7 @@ import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
-import { prepareDoEdit, commitDoEdit } from '../jobo/viewActions.js';
+import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
@@ -205,6 +205,15 @@ export default function JoboView() {
     [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals],
   );
   const closeEditor = useCallback(() => setEditor(null), []);
+  // "Complete task" in the editor is the linked task's checkbox: the same
+  // handler, with the Inbox flag the Inbox's own checkbox passes. The Do
+  // record is never written by it; the detector records the completion.
+  const completeTaskFor = (record) => {
+    const task = record ? model.resolveRecordTask(record) : null;
+    if (!offersCompleteTask(record, task) || typeof ctx.toggleComplete !== 'function') return undefined;
+    const fromInbox = (ctx.unscheduledTasks || []).some((inboxTask) => inboxTask.id === task.id);
+    return () => ctx.toggleComplete(task.id, fromInbox);
+  };
   const closeDetails = useCallback(() => setDetails(null), []);
   // Editing an estimate opens with the estimated times filled in, so saving
   // it is the explicit "keep as shown"; clearing the start keeps the marker.
@@ -494,6 +503,7 @@ export default function JoboView() {
         <DoEditor
           {...editor}
           taskCompleted={model.resolveRecordTask(editor.record)?.completed === true}
+          onCompleteTask={completeTaskFor(editor.record)}
           linkCandidates={editor.record ? undefined : linkCandidates}
           records={joboRecords || []}
           writable={joboWritable}

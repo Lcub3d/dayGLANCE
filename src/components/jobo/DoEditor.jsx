@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { completionMarker } from '../../jobo/completionMarker.js';
-import { Link2, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Link2, Trash2, X } from 'lucide-react';
 import ClockTimePicker from '../ClockTimePicker.jsx';
 import DatePicker from '../DatePicker.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
@@ -31,7 +31,7 @@ export const endDateFor = (date, startTime, endTime) => {
 // and keyboard hint, and the app's own DatePicker and ClockTimePicker opened
 // from buttons exactly as the new-task modal opens them, so adding a Do reads
 // like adding a task.
-export default function DoEditor({ record, taskCompleted = false, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
+export default function DoEditor({ record, taskCompleted = false, onCompleteTask, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
   const [id] = useState(() => record?.id || `manual:${crypto.randomUUID()}`);
   const marker = completionMarker(record);
   const [draft, setDraft] = useState(() => ({
@@ -43,6 +43,8 @@ export default function DoEditor({ record, taskCompleted = false, initial, linkC
     } : doIntervalAt(initial.date, initial.startMinute, initial.duration || 30)),
     ...initial?.patch,
   }));
+  // What the form opened with, so "Complete task" can tell unsaved changes.
+  const openedDraft = useRef(draft);
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState(null); // 'date' | 'startTime' | 'endTime'
   const { formatTime, use24HourClock, isTablet } = useDayPlannerCtx() || {};
@@ -269,6 +271,23 @@ export default function DoEditor({ record, taskCompleted = false, initial, linkC
               ? <p className={`mt-1 text-xs ${textSecondary}`} role="status">{t('jobo.view.completionUnavailable')}</p>
               : record && <p className={`mt-1 text-xs ${textSecondary}`}>{t(record.progress === DO_PROGRESS.COMPLETED ? 'jobo.view.completedStays' : 'jobo.view.completionUnavailable')}</p>}
           </div>
+          {/* The linked task's own checkbox, placed here. It checks the task off
+              through the app's handler and closes; the completion then arrives
+              as its own Do, and this one stays as recorded. Unsaved changes
+              would be lost, so they come first. */}
+          {onCompleteTask && (() => {
+            const unsaved = JSON.stringify(draft) !== JSON.stringify(openedDraft.current);
+            return (
+              <div data-jobo-complete-task>
+                <button type="button" disabled={unsaved}
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg flex items-center justify-center gap-2 ${textPrimary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} disabled:opacity-50 transition-colors`}
+                  onClick={() => { onCompleteTask(); onClose(); }}>
+                  <CheckCircle2 size={16} className="text-green-500" aria-hidden="true" />{t('jobo.view.completeTask')}
+                </button>
+                <p className={`mt-1 text-xs ${textSecondary}`}>{t(unsaved ? 'jobo.view.completeTaskSaveFirst' : 'jobo.view.completeTaskHint')}</p>
+              </div>
+            );
+          })()}
         </fieldset>
         {waiting && <p className={`mt-3 text-xs ${textSecondary}`} role="status">{t('jobo.view.pendingSave')}</p>}
         {error && <p className={`mt-3 p-2 rounded-lg text-sm ${darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-700'}`} role="alert">{error}</p>}

@@ -1315,8 +1315,6 @@ const DayPlanner = () => {
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
     playUISound,
   });
-  // Do edits in the JOBO view join the same history; see useJoboUndo.
-  const recordJoboUndo = useJoboUndo({ joboRecords, readJoboWorkingSet, recordJobo, pushUndoAction, t });
 
   // Kept updated every render so the URL action handler reads the latest task state,
   // including tasks that loaded from persistence after the initial render.
@@ -6601,6 +6599,12 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown, weekStartDay, expansionDayKey]);
   expandedRecurringTasksRef.current = expandedRecurringTasks;
+  // Do edits in the JOBO view join the same history; see useJoboUndo. It
+  // reads the live task lists to apply core's rule for restoring Completed.
+  const recordJoboUndo = useJoboUndo({
+    joboRecords, readJoboWorkingSet, recordJobo, pushUndoAction, t,
+    taskSources: { tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks },
+  });
 
   // Build today's non-overdue HG sessions for the reminder engine.
   // Only sessions with an explicit scheduled time are included (skips time-unset sessions).

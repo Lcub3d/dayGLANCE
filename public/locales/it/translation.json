@@ -2076,7 +2076,7 @@
     "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
     "undo": {
       "changed": "Questo Do è cambiato nel frattempo, quindi è stato lasciato com'è.",
-      "completionBlocked": "Annulla non può ancora ripristinare Completato, quindi il Do è stato lasciato com'è.",
+      "completionBlocked": "Il suo compito non è più completato, quindi il Do non può tornare Completato. È stato lasciato com'è.",
       "failed": "Impossibile salvare la modifica. Riprova."
     },
     "view": {
@@ -2102,6 +2102,9 @@
       "completedAt": "Contrassegnato come completato alle {{time}}",
       "completionUnavailable": "Completato è disponibile per attività manuali senza un compito collegato o registrazioni di completamento il cui compito è ancora completato.",
       "completedStays": "Resta completato. Modifica gli orari e salva.",
+      "completeTask": "Completa compito",
+      "completeTaskHint": "Spunta il compito collegato, come la sua casella. Il completamento appare come un Do a sé.",
+      "completeTaskSaveFirst": "Salva o annulla prima le modifiche.",
       "completionAxis": "Completamento",
       "do": "Esecuzione",
       "elapsedLabel": "Tempo trascorso",

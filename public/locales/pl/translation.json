@@ -2161,7 +2161,7 @@
     "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
     "undo": {
       "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
-      "completionBlocked": "Cofanie nie może jeszcze przywrócić stanu Ukończone, więc Do pozostał bez zmian.",
+      "completionBlocked": "Jego zadanie nie jest już ukończone, więc Do nie może wrócić do stanu Ukończone. Pozostał bez zmian.",
       "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie."
     },
     "view": {
@@ -2187,6 +2187,9 @@
       "completedAt": "Oznaczono jako ukończone o {{time}}",
       "completionUnavailable": "Ukończono jest dostępne dla ręcznych wpisów bez zadania lub wpisów ukończenia, których zadanie nadal jest ukończone.",
       "completedStays": "Pozostaje ukończone. Dostosuj godziny i zapisz.",
+      "completeTask": "Ukończ zadanie",
+      "completeTaskHint": "Odhacza powiązane zadanie, tak jak jego pole wyboru. Ukończenie pojawia się jako osobny Do.",
+      "completeTaskSaveFirst": "Najpierw zapisz lub anuluj zmiany.",
       "completionAxis": "Ukończenie",
       "do": "Wykonanie",
       "elapsedLabel": "Czas, który upłynął",

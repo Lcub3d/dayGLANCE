@@ -2074,7 +2074,7 @@
     "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "undo": {
       "changed": "Este Do mudou desde então, então foi mantido como está.",
-      "completionBlocked": "Desfazer ainda não pode restaurar Concluído, então o Do foi mantido como está.",
+      "completionBlocked": "A tarefa não está mais concluída, então o Do não pode voltar a Concluído. Foi mantido como está.",
       "failed": "Não foi possível salvar a alteração. Tente novamente."
     },
     "view": {
@@ -2100,6 +2100,9 @@
       "completedAt": "Marcado como concluído às {{time}}",
       "completionUnavailable": "Concluído está disponível para registros manuais sem tarefa vinculada ou registros de conclusão cuja tarefa continua concluída.",
       "completedStays": "Continua concluído. Ajuste os horários e salve.",
+      "completeTask": "Concluir tarefa",
+      "completeTaskHint": "Marca a tarefa vinculada, como sua caixa de seleção. A conclusão aparece como um Do próprio.",
+      "completeTaskSaveFirst": "Salve ou cancele suas alterações primeiro.",
       "completionAxis": "Conclusão",
       "do": "Execução",
       "elapsedLabel": "Tempo decorrido",

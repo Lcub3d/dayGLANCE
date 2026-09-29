@@ -65,3 +65,21 @@ describe('Do editor Completed eligibility', () => {
     expect(html).not.toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
   });
 });
+
+// "Complete task" is the linked task's checkbox, placed in the editor: shown
+// when JoboView hands it a handler, which it does only for a linked manual Do
+// whose task is not done (offersCompleteTask). It never writes the record.
+describe('Complete task in the Do editor', () => {
+  it('shows the action only when there is a task to complete', () => {
+    const linked = record({ taskId: 't1' });
+    const html = render({ record: linked, onCompleteTask: () => {} });
+    expect(html).toContain('data-jobo-complete-task');
+    expect(html).toContain('jobo.view.completeTask');
+    expect(html).toContain('jobo.view.completeTaskHint');
+    expect(render({ record: linked })).not.toContain('data-jobo-complete-task');
+  });
+  it('sits inside the form, so a read-only ledger disables it with the rest', () => {
+    const html = render({ record: record({ taskId: 't1' }), onCompleteTask: () => {}, writable: false });
+    expect(html).toMatch(/<fieldset disabled=""[\s\S]*data-jobo-complete-task[\s\S]*<\/fieldset>/);
+  });
+});

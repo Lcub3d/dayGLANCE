@@ -2074,7 +2074,7 @@
     "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
-      "completionBlocked": "撤销暂时无法恢复为“已完成”，因此执行记录保持不变。",
+      "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
       "failed": "无法保存此修改，请重试。"
     },
     "view": {
@@ -2100,6 +2100,9 @@
       "completedAt": "完成标记时间：{{time}}",
       "completionUnavailable": "未关联任务的手动执行可以标为已完成；任务完成产生的执行记录仅在对应任务仍已完成时可以恢复为已完成。",
       "completedStays": "保持已完成。调整时间后保存。",
+      "completeTask": "完成任务",
+      "completeTaskHint": "勾选关联的任务，与其复选框相同。完成情况会作为一条单独的执行记录显示。",
+      "completeTaskSaveFirst": "请先保存或取消你的修改。",
       "completionAxis": "完成度",
       "do": "执行",
       "elapsedLabel": "首尾跨度",

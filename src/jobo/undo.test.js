@@ -100,16 +100,34 @@ describe('an added Do', () => {
   });
 });
 
-// Until the completion change (#1867) lands with its eligibility rules, undo
-// never writes Completed onto a record that is not Completed.
-describe('Completed stays out of undo for now', () => {
+// Undo moves a record into Completed only where core allows Completed
+// (#1867's canCompleteDo), with the task's state as it is when undo runs.
+describe('restoring Completed follows core\'s rule', () => {
   const completed = row({ progress: 'completed', source: 'completion', id: 'do:t1:x' });
+  const reassessed = prepareDoEdit({ records: [completed], record: completed, progress: 'partial', now: NOW });
+  const entry = () => joboUndoEntry(completed, reassessed);
 
-  // MUTATION: drop the guard and undoing a reassessment writes Completed
-  // with no completion event behind it.
-  it('refuses to undo a reassessment from Completed', () => {
-    const reassessed = prepareDoEdit({ records: [completed], record: completed, progress: 'partial', now: NOW });
-    expect(planJoboUndo(joboUndoEntry(completed, reassessed), 'undo', [reassessed], NOW + 1000)).toEqual({ blocked: 'completion' });
+  it('restores a completion record while its task is still completed', () => {
+    const isTaskCompleted = (record) => record.taskId === 't1';
+    expect(planJoboUndo(entry(), 'undo', [reassessed], NOW + 1000, { isTaskCompleted }).record).toMatchObject({ progress: 'completed', id: 'do:t1:x' });
+  });
+
+  // MUTATION: drop the guard, or stop asking about the task, and undo writes
+  // Completed with the task unchecked.
+  it('refuses while the task is not completed, and by default', () => {
+    expect(planJoboUndo(entry(), 'undo', [reassessed], NOW + 1000, { isTaskCompleted: () => false })).toEqual({ blocked: 'completion' });
+    expect(planJoboUndo(entry(), 'undo', [reassessed], NOW + 1000)).toEqual({ blocked: 'completion' });
+  });
+
+  it('restores an unlinked manual Do freely, and never gives a linked manual Do Completed', () => {
+    const unlinked = row({ taskId: null, progress: 'completed' });
+    const down = prepareDoEdit({ records: [unlinked], record: unlinked, progress: 'partial', now: NOW });
+    expect(planJoboUndo(joboUndoEntry(unlinked, down), 'undo', [down], NOW + 1000).record.progress).toBe('completed');
+    // A linked manual Do that was somehow Completed (older data): even with
+    // its task completed, core does not grant it Completed.
+    const linked = row({ progress: 'completed' });
+    const linkedDown = createDoRecord({ ...linked, progress: 'partial', updatedAt: later(1000) });
+    expect(planJoboUndo(joboUndoEntry(linked, linkedDown), 'undo', [linkedDown], NOW, { isTaskCompleted: () => true })).toEqual({ blocked: 'completion' });
   });
 
   it('still undoes a time edit on a Completed record, and a deleted Completed record comes back', () => {

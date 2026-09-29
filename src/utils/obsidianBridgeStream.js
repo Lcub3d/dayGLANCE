@@ -288,7 +288,10 @@ async function doFlush() {
       for (const intent of chunk) {
         rows.push({
           entityId: `${BRIDGE_INTENT_PREFIX}${intent.intentId}`,
-          envelope: await sealBridgeEnvelope(subkey, intent),
+          // Tagged with the generation it is sealed under (the pairing
+          // split, 2026-09-29): a plugin copy that cannot open it holds it
+          // and names the pairing it needs, instead of deleting it.
+          envelope: await sealBridgeEnvelope(subkey, intent, meta?.generation ?? null),
           createdAt: Date.parse(intent.createdAt) || Date.now(),
         });
       }
@@ -343,7 +346,7 @@ export async function publishBridgeConfig({ dailyNotesPath, dailyNotePattern, ta
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,
-      rows: [{ entityId: BRIDGE_CONFIG_META_ID, envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+      rows: [{ entityId: BRIDGE_CONFIG_META_ID, envelope: await sealBridgeEnvelope(subkey, payload, meta?.generation ?? null), createdAt: Date.now() }],
     });
     recordOwnWriteSeq(ack?.maxSeq);
     publishedConfigHash = hash;
@@ -380,7 +383,7 @@ export async function publishBridgeCalendarProjection(payload, contentHash) {
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,
-      rows: [{ entityId: bridgeCalendarProjectionId(payload.deviceId), envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+      rows: [{ entityId: bridgeCalendarProjectionId(payload.deviceId), envelope: await sealBridgeEnvelope(subkey, payload, meta?.generation ?? null), createdAt: Date.now() }],
     });
     recordOwnWriteSeq(ack?.maxSeq);
     publishedProjectionHash = hash;

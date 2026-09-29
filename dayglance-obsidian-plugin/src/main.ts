@@ -305,6 +305,7 @@ export default class DayGlanceBridgePlugin extends Plugin {
         await this.saveData(this.data);
       },
       templateStatus: () => this.transport.templateStatus(),
+      stalePairing: () => this.transport.stalePairingInfo(),
       getEditorHiding: () => this.editorHiding(),
       setEditorHiding: async (s) => {
         this.data.editorHiding = normalizeEditorHidingSettings(s);
@@ -366,6 +367,40 @@ export default class DayGlanceBridgePlugin extends Plugin {
         void this.noteBlocks.tick();
       }, HEARTBEAT_INTERVAL_MS),
     );
+  }
+
+  /**
+   * data.json changed underneath a running copy: Obsidian Sync delivered
+   * another copy's settings (Obsidian ≥ 1.5.7 calls this; older builds
+   * pick the file up at the next load, as before). THE PAIRING SPLIT
+   * (2026-09-29): the plugin read its pairing only at load, so two copies
+   * ran for two days on a key the vault had rotated away from, and deleted
+   * every intent they could not read. Now a re-pair reaches every running
+   * copy: the shared fields are reloaded, and a changed pairing generation
+   * resets the stream state exactly as entering the code here would.
+   */
+  async onExternalSettingsChange(): Promise<void> {
+    let fresh: BridgeData | null = null;
+    try { fresh = ((await this.loadData()) as BridgeData | null) ?? {}; } catch (e) { console.error('dayGLANCE bridge: could not reload the synced settings', e); return; }
+    const before = this.data.pairing?.generation ?? null;
+    // Device-local fields never live in data.json once the local store is
+    // available; keep the in-memory copies where they still do.
+    const keep = this.localStore.available ? {} : { deviceId: this.data.deviceId, bridge: this.data.bridge };
+    this.data = { ...fresh, ...keep };
+    const after = this.data.pairing?.generation ?? null;
+    if (after !== before) {
+      // A new pairing (or an unpairing) arrived through sync: the cursor and
+      // the applied set belong to the superseded stream.
+      if (after !== null) this.resetBridgeState(); else this.clearBridgeState();
+      console.info(after !== null
+        ? `dayGLANCE bridge: synced settings carry a new pairing (paired ${this.data.pairing?.pairedAt ?? 'unknown date'}); switching to it.`
+        : 'dayGLANCE bridge: synced settings carry no pairing; this copy is now unpaired.');
+      this.agenda.notifyViewerChanged();
+      await this.writeHeartbeat();
+      void this.transport.drain();
+    }
+    applyEditorHidingSettings(document, this.editorHiding());
+    this.transport.scopeChanged();
   }
 
   onunload(): void {
@@ -492,6 +527,12 @@ export default class DayGlanceBridgePlugin extends Plugin {
         // instead of the state being invisible until fragments appear.
         // Meaningful only while paired; readers gate on freshness+paired.
         stamping: this.data.pairing ? this.transport.stampingState() : null,
+        // THE PAIRING SPLIT (2026-09-29): which pairing this copy holds, and
+        // whether the transport found it older than the vault's. dayGLANCE
+        // compares the generation with the meta:pairing row it seals under
+        // and says "re-pair this copy" instead of "active".
+        generation: this.data.pairing?.generation ?? null,
+        pairingStale: !!this.data.pairing && this.transport.pairingStale(),
       });
       await adapter.write(normalizePath(HEARTBEAT_PATH), JSON.stringify(payload));
     } catch (e) {

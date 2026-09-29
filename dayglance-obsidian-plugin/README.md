@@ -43,6 +43,24 @@ manually or via BRAT, not submitted to the community directory.
   reports plain **observations** — the latest state of daily notes and
   task-marked files, one upserted row per path — and never interprets an
   edit; that is dayGLANCE's scan pipeline's job.
+  **The pairing split** (0.9.2, the 2026-09-29 incident): a re-pair on one
+  desktop rotated the bridge key while two other copies kept the old
+  data.json in memory for two days, and the drain's old rule for a row it
+  could not decrypt ("sealed under a rotated-away generation, consume and
+  delete") let whichever stale copy held the lease delete every write the
+  fleet sealed under the new key, silently. Now a copy NEVER deletes an
+  intent it cannot read: the row is held below the cursor floor, counted
+  and said once, and dropped only after a week unreadable. A copy reads the
+  vault's `meta:pairing` row before asserting its own and, when the vault
+  was paired later than it was, STANDS DOWN: no lease, no applies, no
+  reports, one console line, a warning in its settings tab, and
+  `generation` plus `pairingStale` in its heartbeat so dayGLANCE's bridge
+  panel says "this copy is behind, restart or re-pair" instead of "active".
+  Every envelope carries the generation it was sealed under in the clear,
+  so a held row names the pairing it needs. And the pairing is reloaded
+  when Obsidian Sync changes data.json under a running copy
+  (`onExternalSettingsChange`, Obsidian 1.5.7+), so a re-pair reaches every
+  copy without a restart. Pinned by `test/scope.scenarios.test.ts` 25 and 26.
 - **Agenda sidebar** (companion spec 4.2): a right-sidebar view — mini
   month calendar over the selected day's agenda (scheduled tasks, recurring
   instances, imported calendar events; ±35 days around today; no inbox),

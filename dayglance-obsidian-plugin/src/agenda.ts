@@ -507,7 +507,7 @@ export class AgendaStore {
         accountId: pairing.accountId,
         rows: [{
           entityId: `${BRIDGE_ACTION_PREFIX}${actionId}`,
-          envelope: await sealBridgeEnvelope(subkey, payload),
+          envelope: await sealBridgeEnvelope(subkey, payload, pairing.generation),
           createdAt: Date.now(),
         }],
       });

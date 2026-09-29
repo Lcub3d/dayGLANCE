@@ -37,20 +37,48 @@
 //
 // @param {{obsidianRunning: boolean, pluginAuthoritative: boolean, stamping?: string|null, lastBeatMs?: number|null}|null} hb
 //   obsidianHeartbeatState(...) of this device's heartbeat read
-// @param {{pairedAt?: string}|null} meta  the discovered meta:pairing row
+// THE STALE-PAIRING STATE (2026-09-29, the pairing split): the plugin here
+// is running and paired, but with an OLDER pairing than the vault's, so it
+// applies none of this device's changes and reports none of its own. It is
+// the fourth state, not a flavour of 'active': "active" is exactly what the
+// panel said for two days while two copies deleted every write they could
+// not read. Two signals name it, either sufficing: the plugin's own verdict
+// in its heartbeat (`pairingStale`, from the plugin comparing the vault's
+// meta:pairing row with its stored pairing), or a heartbeat `generation`
+// that differs from the meta row this device seals under (an older plugin
+// build that carries the generation but not the verdict, or a verdict not
+// yet reached). A pre-field build carries neither and reads as before.
+//
+// @param {{obsidianRunning: boolean, pluginAuthoritative: boolean, stamping?: string|null, lastBeatMs?: number|null, generation?: string|null, pairingStale?: boolean}|null} hb
+//   obsidianHeartbeatState(...) of this device's heartbeat read
+// @param {{pairedAt?: string, generation?: string}|null} meta  the discovered meta:pairing row
 //   (null: vault unpaired, or unreachable/not yet fetched — callers treat
 //   absence conservatively)
 // @param {number} [nowMs]
-// @returns {{ state: 'active'|'unpairedHere'|'waiting'|'notDetected', vaultPaired: boolean, pairedDays: number|null, stamping: 'armed'|'off'|'no-config'|null, lastBeatMs: number|null }}
+// @returns {{ state: 'active'|'stalePairing'|'unpairedHere'|'waiting'|'notDetected', vaultPaired: boolean, pairedDays: number|null, stamping: 'armed'|'off'|'no-config'|null, lastBeatMs: number|null }}
 export function deriveBridgeStatus(hb, meta, nowMs = Date.now()) {
   const t = meta?.pairedAt ? Date.parse(meta.pairedAt) : NaN;
   const pairedDays = Number.isFinite(t) ? Math.max(0, Math.floor((nowMs - t) / 86400000)) : null;
   const vaultPaired = !!meta;
   const lastBeatMs = Number.isFinite(hb?.lastBeatMs) ? hb.lastBeatMs : null;
+  if (hb?.pluginAuthoritative && isStalePairing(hb, meta)) return { state: 'stalePairing', vaultPaired, pairedDays, stamping: null, lastBeatMs };
   if (hb?.pluginAuthoritative) return { state: 'active', vaultPaired, pairedDays, stamping: hb.stamping ?? null, lastBeatMs };
   if (hb?.obsidianRunning) return { state: 'unpairedHere', vaultPaired, pairedDays, stamping: null, lastBeatMs };
   if (vaultPaired) return { state: 'waiting', vaultPaired, pairedDays, stamping: null, lastBeatMs };
   return { state: 'notDetected', vaultPaired, pairedDays, stamping: null, lastBeatMs };
+}
+
+/**
+ * Whether the plugin here holds an older pairing than the vault (see the
+ * stale-pairing state above). The plugin's own verdict wins; otherwise a
+ * generation on the beat that differs from the meta row's. Unknown on
+ * either side is not a claim.
+ */
+export function isStalePairing(hb, meta) {
+  if (hb?.pairingStale === true) return true;
+  const beat = typeof hb?.generation === 'string' && hb.generation ? hb.generation : null;
+  const vault = typeof meta?.generation === 'string' && meta.generation ? meta.generation : null;
+  return beat !== null && vault !== null && beat !== vault;
 }
 
 /**

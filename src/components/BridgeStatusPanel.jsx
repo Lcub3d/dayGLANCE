@@ -83,6 +83,10 @@ const BridgeStatusPanel = ({ darkMode, textPrimary, textSecondary, borderClass }
           )}
         </>
       )}
+      {status.state === 'stalePairing' && (
+        /* THE STALE-PAIRING STATE (2026-09-29): see BridgePairingPanel. */
+        <p data-bridge-stale-pairing className="text-xs text-red-500">{t('settings.obsidianBridgeStalePairing')}</p>
+      )}
       {status.state === 'unpairedHere' && (
         <>
           <p className="text-xs text-amber-500">{t('settings.obsidianBridgeUnpairedHere')}</p>

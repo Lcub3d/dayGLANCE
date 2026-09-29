@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveBridgeStatus } from './bridgeStatus.js';
+import { deriveBridgeStatus, isStalePairing } from './bridgeStatus.js';
 
 const NOW = Date.parse('2026-08-31T12:00:00Z');
 
@@ -102,5 +102,29 @@ describe('describeAgo', () => {
   });
   it('never goes negative on a skewed-ahead beat', () => {
     expect(describeAgo(now + 3600000, now, 'en')).toMatch(/now|this minute|0 minutes/);
+  });
+});
+
+describe('THE STALE-PAIRING STATE (2026-09-29, the pairing split)', () => {
+  const meta = { pairedAt: '2026-09-28T01:59:41.499Z', generation: 'gen-new' };
+  it("the plugin's own verdict names it, whatever the generations say", () => {
+    const out = deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true, pairingStale: true, generation: 'gen-new', stamping: 'armed' }, meta, NOW);
+    expect(out.state).toBe('stalePairing');
+    expect(out.vaultPaired).toBe(true);
+    expect(out.stamping).toBe(null); // a stale copy stamps nothing that reaches anyone
+  });
+  it('a beat generation that differs from the meta row names it too (an older build without the verdict)', () => {
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true, generation: 'gen-old' }, meta, NOW).state).toBe('stalePairing');
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true, generation: 'gen-new' }, meta, NOW).state).toBe('active');
+  });
+  it('unknown on either side is not a claim: a pre-field beat, or no meta row yet, reads active', () => {
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true }, meta, NOW).state).toBe('active');
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true, generation: 'gen-old' }, null, NOW).state).toBe('active');
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: true, generation: 'gen-old' }, { pairedAt: meta.pairedAt }, NOW).state).toBe('active');
+    expect(isStalePairing({ generation: 'gen-old', pairingStale: false }, { generation: 'gen-old' })).toBe(false);
+  });
+  it('never claimed for a copy that is not running and paired here', () => {
+    expect(deriveBridgeStatus({ obsidianRunning: true, pluginAuthoritative: false, generation: 'gen-old' }, meta, NOW).state).toBe('unpairedHere');
+    expect(deriveBridgeStatus({ obsidianRunning: false, pluginAuthoritative: false, generation: 'gen-old' }, meta, NOW).state).toBe('waiting');
   });
 });

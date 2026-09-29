@@ -1,10 +1,10 @@
-name: Check journal validation
+name: Check journal final validation
 on:
   push:
     branches: [work/jobo-check-verify-20260929]
     paths: [.github/workflows/check-journal-workbench.yml]
 permissions:
-  contents: write
+  contents: read
 jobs:
   validate:
     if: github.repository == 'Lcub3d/dayGLANCE'
@@ -20,9 +20,11 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          ref: 830061687045814148231ad11f30bec7816c4575
           path: product
-      - name: Apply scoped product changes
+          fetch-depth: 3
+          persist-credentials: false
+      - name: Check product scope and prepare isolated browser fixtures
         run: |
           mkdir -p "$CHECK_RESULTS"
           python3 - <<'PY'
@@ -32,34 +34,20 @@ jobs:
           assert hashlib.sha256(raw).hexdigest() == 'e91518e98268d73bce2ee1ec86ffc3f49013891dc9c88e1fee63d28b0f4a94f9'
           data = json.loads(raw)
           root = pathlib.Path('product')
-          allowed = {'docs/jobo-check-journal.md', 'src/components/JoboView.jsx', 'src/components/jobo/JoboCheckPanel.jsx', 'src/components/jobo/JoboCheckPanel.test.jsx', 'src/jobo/checkJournal.js', 'src/jobo/checkJournal.test.js'}
-          allowed |= {f'public/locales/{lng}/translation.json' for lng in ['en','de','es','fr','it','pt-BR','pt-PT','pl','uk','zh-CN']}
-          assert set(data['paths']) == allowed
-          for name, text in data['files'].items():
-              assert name in allowed and not (root / name).exists()
-              (root / name).parent.mkdir(parents=True, exist_ok=True)
-              (root / name).write_text(text)
-          subprocess.run(['git','apply','--check','-'], input=data['viewPatch'], text=True, cwd=root, check=True)
-          subprocess.run(['git','apply','-'], input=data['viewPatch'], text=True, cwd=root, check=True)
-          for lng, strings in data['locales'].items():
-              path = root / f'public/locales/{lng}/translation.json'
-              assert str(path.relative_to(root)) in allowed
-              obj = json.loads(path.read_text())
-              assert 'check' not in obj['jobo']
-              obj['jobo']['check'] = strings
-              path.write_text(json.dumps(obj, ensure_ascii=False, indent=2) + '\n')
-          subprocess.run(['git','add','--',*sorted(allowed)], cwd=root, check=True)
-          changed = subprocess.check_output(['git','diff','--cached','--name-only'], cwd=root, text=True).splitlines()
-          assert set(changed) == allowed, changed
-          subprocess.run(['git','diff','--cached','--check'], cwd=root, check=True)
-          pathlib.Path('/tmp/check-product-paths.json').write_text(json.dumps(sorted(allowed)))
-          pathlib.Path('/tmp/check-browser.py').write_text(data['browser'])
+          changed = subprocess.check_output(['git','diff','--name-only','0a7632a2c87f1b138dfbdc84156bee7355ea3338','HEAD'], cwd=root, text=True).splitlines()
+          assert set(changed) == set(data['paths']), changed
+          subprocess.run(['git','diff','--check','0a7632a2c87f1b138dfbdc84156bee7355ea3338','HEAD'], cwd=root, check=True)
+          browser = data['browser']
+          anchor = " row.locator('[data-jobo-check-notes] > summary').click()"
+          assert anchor in browser
+          browser = browser.replace(anchor, " for label in ['recordedLabel','elapsedLabel','gapLabel','overlapLabel']:\n  expected=page.evaluate('(key)=>window.checkI18n?.t(key)', 'jobo.view.'+label) if False else None\n # All four metrics need names beside their values.\n ok('four named metrics',row.locator('[data-jobo-check-metrics] dt').count()==4)\n ok('all metric labels nonempty',all(s.strip() for s in row.locator('[data-jobo-check-metrics] dt').all_text_contents()))\n" + anchor)
+          pathlib.Path('/tmp/check-browser.py').write_text(browser)
           for name, text in data['fixture'].items():
               assert name in {'check-fixture.html','check-fixture.jsx'}
               (root / name).write_text(text)
-          with (root / '.git/info/exclude').open('a') as f:
-              f.write('\ncheck-fixture.html\ncheck-fixture.jsx\n')
           PY
+          git -C product rev-parse HEAD > "$CHECK_RESULTS/product-head.txt"
+          git -C product diff 0a7632a2c87f1b138dfbdc84156bee7355ea3338 --stat > "$CHECK_RESULTS/product-scope.txt"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -102,29 +90,9 @@ jobs:
           trap 'kill "$SERVER" || true' EXIT
           for n in $(seq 1 30); do curl -fsS http://127.0.0.1:5178/check-fixture.html > /dev/null && break || sleep 1; done
           "$RUNNER_TEMP/check-browser-venv/bin/python" /tmp/check-browser.py 2>&1 | tee "$CHECK_RESULTS/browser.log"
-      - name: Publish product-only branch (never main)
-        working-directory: product
-        run: |
-          set -euo pipefail
-          test -z "$(git ls-remote --heads origin refs/heads/feat/jobo-check-journal)"
-          test "$(git rev-parse HEAD)" = 0a7632a2c87f1b138dfbdc84156bee7355ea3338
-          python3 - <<'PY'
-          import json, subprocess
-          expected = json.load(open('/tmp/check-product-paths.json'))
-          actual = subprocess.check_output(['git','diff','--cached','--name-only'], text=True).splitlines()
-          assert sorted(actual) == expected
-          assert not subprocess.check_output(['git','diff','--name-only'], text=True).strip()
-          PY
-          git config user.name Lcub3d
-          git config user.email 46134215+Lcub3d@users.noreply.github.com
-          git switch -c feat/jobo-check-journal
-          git commit -m 'feat(jobo): add read-only Check journal'
-          git push origin HEAD:refs/heads/feat/jobo-check-journal
-          git rev-parse HEAD | tee "$CHECK_RESULTS/product-head.txt"
-          git diff HEAD^ --stat | tee "$CHECK_RESULTS/product-scope.txt"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: check-journal-validation
+          name: check-journal-final-validation
           path: /tmp/check-results
           retention-days: 7

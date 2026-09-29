@@ -41,6 +41,14 @@ describe('read-only Check panel', () => {
     expect(html).not.toContain('data-jobo-check-progress="completed"');
     expect(html).toContain('Measured sessions');
   });
+  it.each(['en', 'zh-CN'])('labels all group duration figures in %s', (language) => {
+    const t = i18n.getFixedT(language);
+    const html = render([make()], { t });
+    expect(html).toContain('data-jobo-check-metrics');
+    for (const key of ['recordedLabel', 'elapsedLabel', 'gapLabel', 'overlapLabel']) {
+      expect(html).toContain(`>${t(`jobo.view.${key}`)}</dt>`);
+    }
+  });
   it('exposes only navigation/disclosure, no editing or completion controls', () => {
     const html = render();
     for (const tag of ['<input', '<textarea', '<select', '<form', 'contenteditable']) expect(html).not.toContain(tag);

@@ -10,6 +10,10 @@ import { extractWikilinks } from '../../utils/taskUtils.js';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { timingRows, metricRows } from './ExecutionAxes.jsx';
 
+const METRIC_LABELS = {
+  recordedMinutes: 'recordedLabel', elapsedMinutes: 'elapsedLabel',
+  gapMinutes: 'gapLabel', overlapMinutes: 'overlapLabel',
+};
 const progressText = (record, t) => t(record.progress === 'completed'
   ? 'common.completed' : `jobo.view.progress.${record.progress}`);
 const showTime = (ctx, time) => ctx.formatTime ? ctx.formatTime(time) : time;
@@ -78,7 +82,11 @@ function JournalEntry({ item, ctx, t, openInObsidian }) {
       {item.comparisonMeta?.hasEstimatedAttempts && <p className="mt-2 text-xs">{t('jobo.view.inferredHint')}</p>}
       {(item.comparisonMeta?.hasUntimedAttempts || item.comparisonMeta?.hasEstimatedAttempts) && metrics.length > 0
         && <p className="mt-2 text-xs">{t('jobo.view.measuredOnly')}</p>}
-      {metrics.length > 0 && <ul className={`mt-2 space-y-1 text-xs ${ctx.textSecondary}`}>{metrics.map(row => <li key={row.key}>{row.text}</li>)}</ul>}
+      {metrics.length > 0 && <dl className="mt-2 grid gap-1 text-xs" data-jobo-check-metrics>
+        {metrics.map(row => <div key={row.key} className="flex flex-wrap gap-x-3">
+          <dt className={`min-w-24 ${ctx.textSecondary}`}>{t(`jobo.view.${METRIC_LABELS[row.key]}`)}</dt><dd>{row.text}</dd>
+        </div>)}
+      </dl>}
       <ul className={`mt-3 divide-y text-xs ${ctx.borderClass}`}>{attempts.map(attempt => <li key={attempt.id} className="py-2 break-words">
         <p>{actualText(attempt, ctx, t)} · {progressText(attempt, t)}</p>
         <p>{renderTitle(attempt.title)}</p>

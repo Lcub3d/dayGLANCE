@@ -34,7 +34,7 @@
 // offer at `.dayglance/pairing`, the user types the displayed code here,
 // the credentials are verified against GLANCEvault and stored in data.json.
 
-import { Notice, Plugin, normalizePath } from 'obsidian';
+import { Notice, Platform, Plugin, normalizePath } from 'obsidian';
 // The shared vault-format core — the SAME package dayGLANCE consumes, so the
 // heartbeat's writer and its readers can never drift apart (the first proof
 // the format-package boundary works in both directions). Bundled into
@@ -107,6 +107,27 @@ const mintDeviceId = (): string => {
   return `dgb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+// The copy status row's name for this copy: the machine's hostname where
+// Obsidian runs on Electron (the owner's own server sees it; it is what
+// makes "Windows-desktop is behind" readable), else the platform.
+const platformLabel = (): string => {
+  if (Platform.isIosApp) return 'ios';
+  if (Platform.isAndroidApp) return 'android';
+  if (Platform.isMacOS) return 'mac';
+  if (Platform.isWin) return 'windows';
+  if (Platform.isLinux) return 'linux';
+  return 'unknown';
+};
+const copyName = (): string | null => {
+  try {
+    const req = (window as unknown as { require?: (m: string) => { hostname?: () => string } }).require;
+    const host = Platform.isDesktopApp && typeof req === 'function' ? req('os')?.hostname?.() : null;
+    if (typeof host === 'string' && host.trim()) return host.trim();
+  } catch { /* no Node here */ }
+  const label = platformLabel();
+  return label === 'unknown' ? null : { ios: 'iPhone or iPad', android: 'Android', mac: 'Mac', windows: 'Windows', linux: 'Linux' }[label] ?? null;
+};
+
 export default class DayGlanceBridgePlugin extends Plugin {
   private deviceId = '';
   private data: BridgeData = {};
@@ -163,6 +184,11 @@ export default class DayGlanceBridgePlugin extends Plugin {
       getProjectNotes: () => normalizeProjectNoteSettings(this.data.projectNotes),
       getViewer: () => this.viewer(),
       getDeviceId: () => this.deviceId,
+      // The copy status row (the fleet-wide half of the pairing split):
+      // how this copy is named to every dayGLANCE device.
+      getCopyName: () => copyName(),
+      getPlatform: () => platformLabel(),
+      getPluginVersion: () => String((this.manifest as { version?: unknown })?.version ?? ''),
       // A note linked or unlinked while open: its completed-line hiding
       // follows the map without waiting for the next edit.
       onLinkedNotesChanged: () => refreshEditorHiding(this.app),
@@ -305,6 +331,7 @@ export default class DayGlanceBridgePlugin extends Plugin {
         await this.saveData(this.data);
       },
       templateStatus: () => this.transport.templateStatus(),
+      stalePairing: () => this.transport.stalePairingInfo(),
       getEditorHiding: () => this.editorHiding(),
       setEditorHiding: async (s) => {
         this.data.editorHiding = normalizeEditorHidingSettings(s);
@@ -368,6 +395,40 @@ export default class DayGlanceBridgePlugin extends Plugin {
     );
   }
 
+  /**
+   * data.json changed underneath a running copy: Obsidian Sync delivered
+   * another copy's settings (Obsidian ≥ 1.5.7 calls this; older builds
+   * pick the file up at the next load, as before). THE PAIRING SPLIT
+   * (2026-09-29): the plugin read its pairing only at load, so two copies
+   * ran for two days on a key the vault had rotated away from, and deleted
+   * every intent they could not read. Now a re-pair reaches every running
+   * copy: the shared fields are reloaded, and a changed pairing generation
+   * resets the stream state exactly as entering the code here would.
+   */
+  async onExternalSettingsChange(): Promise<void> {
+    let fresh: BridgeData | null = null;
+    try { fresh = ((await this.loadData()) as BridgeData | null) ?? {}; } catch (e) { console.error('dayGLANCE bridge: could not reload the synced settings', e); return; }
+    const before = this.data.pairing?.generation ?? null;
+    // Device-local fields never live in data.json once the local store is
+    // available; keep the in-memory copies where they still do.
+    const keep = this.localStore.available ? {} : { deviceId: this.data.deviceId, bridge: this.data.bridge };
+    this.data = { ...fresh, ...keep };
+    const after = this.data.pairing?.generation ?? null;
+    if (after !== before) {
+      // A new pairing (or an unpairing) arrived through sync: the cursor and
+      // the applied set belong to the superseded stream.
+      if (after !== null) this.resetBridgeState(); else this.clearBridgeState();
+      console.info(after !== null
+        ? `dayGLANCE bridge: synced settings carry a new pairing (paired ${this.data.pairing?.pairedAt ?? 'unknown date'}); switching to it.`
+        : 'dayGLANCE bridge: synced settings carry no pairing; this copy is now unpaired.');
+      this.agenda.notifyViewerChanged();
+      await this.writeHeartbeat();
+      void this.transport.drain();
+    }
+    applyEditorHidingSettings(document, this.editorHiding());
+    this.transport.scopeChanged();
+  }
+
   onunload(): void {
     // Live sync (Phase 7): close the SSE stream and cancel its timers —
     // a disabled plugin must not hold a socket open.
@@ -391,6 +452,8 @@ export default class DayGlanceBridgePlugin extends Plugin {
   private async unpair(): Promise<void> {
     const previous = this.data.pairing;
     if (!previous) return;
+    // This copy's status row goes with its credentials (best-effort).
+    await this.transport.retireCopyStatus(previous);
     delete this.data.pairing;
     this.clearBridgeState();
     delete this.data.viewer;
@@ -492,6 +555,12 @@ export default class DayGlanceBridgePlugin extends Plugin {
         // instead of the state being invisible until fragments appear.
         // Meaningful only while paired; readers gate on freshness+paired.
         stamping: this.data.pairing ? this.transport.stampingState() : null,
+        // THE PAIRING SPLIT (2026-09-29): which pairing this copy holds, and
+        // whether the transport found it older than the vault's. dayGLANCE
+        // compares the generation with the meta:pairing row it seals under
+        // and says "re-pair this copy" instead of "active".
+        generation: this.data.pairing?.generation ?? null,
+        pairingStale: !!this.data.pairing && this.transport.pairingStale(),
       });
       await adapter.write(normalizePath(HEARTBEAT_PATH), JSON.stringify(payload));
     } catch (e) {

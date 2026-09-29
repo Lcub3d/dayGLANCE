@@ -59,11 +59,11 @@ vi.mock('../../src/utils/obsidianBridgeMode.js', () => ({
   reconcileArchivedBaseline: vi.fn(() => null),
 }));
 
-const { createScenario, VAULT_URL, ACCOUNT_ID, until, advanceFake } = await import('./harness');
+const { createScenario, VAULT_URL, ACCOUNT_ID, until, advanceFake, makePairing } = await import('./harness');
 const { default: useObsidianSync } = await import('../../src/hooks/useObsidianSync.js');
 const { flushBridgeOutbox, emitBridgeIntent, __resetBridgeStreamForTests } = await import('../../src/utils/obsidianBridgeStream.js');
 const { toInboxCopy } = await import('../../src/utils/inboxMove.js');
-const { PROJECT_NOTE_ID_KEY, BRIDGE_PAIRING_META_ID, BRIDGE_VAULT_APP } = await import('@glance-apps/obsidian-format');
+const { PROJECT_NOTE_ID_KEY, BRIDGE_PAIRING_META_ID, BRIDGE_APPLIER_META_ID, BRIDGE_VAULT_APP, decodePlainBridgeRow, sealBridgeEnvelope, importBridgeSubkey, bridgeCopyStatusId } = await import('@glance-apps/obsidian-format');
 void PROJECT_NOTE_ID_KEY;
 
 type Task = Record<string, any>;
@@ -799,6 +799,187 @@ describe('vault task scope, end to end', () => {
     await A.sync();
     expect(A.all().find((t) => t.id === id)!.title).toBe('Fix the boiler pump #obsidian');
   });
+
+  it('25. THE PAIRING SPLIT (2026-09-29): a copy on an older pairing never overwrites the vault\'s row, never claims the lease, holds what it cannot read, and applies it once the current pairing arrives', async () => {
+    await bootWithScopedNote();
+    const metaGeneration = () => {
+      const row = s.vault.live(BRIDGE_VAULT_APP).find((r) => r.entityId === BRIDGE_PAIRING_META_ID);
+      return (decodePlainBridgeRow(row!.envelope!) as { generation?: string }).generation;
+    };
+    expect(metaGeneration()).toBe(s.pairing.generation);
+    // B: a second desktop whose plugin still holds last month's pairing (the
+    // synced data.json arrived underneath it, unread until a restart).
+    const old = await makePairing({ generation: 'gen-old', pairedAt: new Date(Date.now() - 30 * 86_400_000).toISOString(), saltByte: 9 });
+    const B = s.plugin.second('plugin-B', old);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await B.transport.drain();
+    expect(B.transport.pairingStale()).toBe(true);
+    // MUTATION: assert-before-read (the old drain) puts 'gen-old' in the
+    // vault's row here, and every dayGLANCE device then seals under a dead key.
+    expect(metaGeneration()).toBe(s.pairing.generation);
+    expect(warn.mock.calls.some(([m]) => String(m).includes('older pairing'))).toBe(true);
+    // A quits; its lease lapses. dayGLANCE writes under the current pairing.
+    s.plugin.shutdown();
+    await s.advance(310_000);
+    await A.emit('task_append', {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: 'Line 25', startTime: null, duration: null, isAllDay: true, date: null, blockId: 'split0025' },
+    });
+    await B.transport.drain();
+    await s.advance(2500);
+    await B.transport.drain();
+    const intents = () => s.vault.live(BRIDGE_VAULT_APP).filter((r) => r.entityId.startsWith('int:'));
+    // Held, not deleted (MUTATION: the old consume-and-delete empties this),
+    // nothing applied, and the expired lease still names A: B never claimed.
+    expect(intents()).toHaveLength(1);
+    expect(s.text(NOTE)).not.toContain('Line 25');
+    expect(B.data.bridge!.appliedIds).toEqual([]);
+    const lease = s.vault.live(BRIDGE_VAULT_APP).find((r) => r.entityId === BRIDGE_APPLIER_META_ID);
+    expect((decodePlainBridgeRow(lease!.envelope!) as { deviceId?: string }).deviceId).toBe('plugin-A');
+    expect(warn.mock.calls.some(([m]) => String(m).includes('held, not deleted') && String(m).includes(s.pairing.generation))).toBe(true);
+    // Obsidian Sync delivers the current data.json (main.ts reloads it on
+    // onExternalSettingsChange): B now holds the vault's pairing.
+    B.data.pairing = s.pairing;
+    await B.transport.drain();   // current again: claims the free lease
+    await s.advance(2500);
+    await B.transport.drain();   // settled: applies the held row
+    expect(s.text(NOTE)).toContain('Line 25 ^dg-split0025');
+    expect(intents()).toHaveLength(0);
+    expect(B.transport.pairingStale()).toBe(false);
+    warn.mockRestore();
+    B.shutdown();
+  });
+
+  it('26. NEVER DELETE WHAT THIS COPY CANNOT READ (2026-09-29): an intent sealed under a pairing nobody current holds is held and said once; only a week unreadable drops it', async () => {
+    await bootWithScopedNote();
+    // Rows sealed under a revoked pairing (a device whose meta cache was
+    // behind a re-pair): the current copy cannot open them.
+    const revoked = await makePairing({ generation: 'gen-revoked', pairedAt: new Date(Date.now() - 60 * 86_400_000).toISOString(), saltByte: 11 });
+    const key = await importBridgeSubkey(revoked.subkeyB64);
+    const ghost = (n: number) => ({
+      v: 1, kind: 'intent', type: 'task_append', intentId: `ghost-${n}`, createdAt: new Date().toISOString(),
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: `Ghost ${n}`, startTime: null, duration: null, isAllDay: true, date: null, blockId: `ghost000${n}` },
+    });
+    const put = async (n: number, createdAt: number) => s.vault.handle(
+      'POST', `${VAULT_URL}/sync/${BRIDGE_VAULT_APP}/batch`,
+      JSON.stringify({ accountId: ACCOUNT_ID, rows: [{ entityId: `int:ghost-${n}`, envelope: await sealBridgeEnvelope(key, ghost(n), 'gen-revoked'), createdAt }] }),
+      'Bearer device-token',
+    );
+    await put(1, Date.now());                        // fresh: held
+    await put(2, Date.now() - 8 * 86_400_000);       // a week unreadable: dropped, aloud
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await s.plugin.transport.drain();
+    const live = () => s.vault.live(BRIDGE_VAULT_APP).filter((r) => r.entityId.startsWith('int:ghost')).map((r) => r.entityId);
+    expect(live()).toEqual(['int:ghost-1']);
+    expect(s.text(NOTE)).not.toContain('Ghost');
+    expect(s.plugin.data.bridge!.appliedIds).not.toContain('ghost-1');
+    expect(s.plugin.data.bridge!.appliedIds).toContain('ghost-2');
+    const held = () => warn.mock.calls.filter(([m]) => String(m).includes('held, not deleted'));
+    expect(held()).toHaveLength(1);
+    expect(String(held()[0][0])).toContain('gen-revoked');   // the tag names the pairing it needs
+    expect(warn.mock.calls.filter(([m]) => String(m).includes('dropping intent ghost-2'))).toHaveLength(1);
+    // The next drain re-lists the held row (the cursor floor) and repeats
+    // nothing; a current intent still applies around it.
+    await s.plugin.transport.drain();
+    expect(held()).toHaveLength(1);
+    expect(live()).toEqual(['int:ghost-1']);
+    await A.emit('task_append', {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: 'Line 26', startTime: null, duration: null, isAllDay: true, date: null, blockId: 'split0026' },
+    });
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toContain('Line 26 ^dg-split0026');
+    expect(live()).toEqual(['int:ghost-1']);
+    warn.mockRestore();
+  });
+
+  it('27. THE FLEET VIEW (2026-09-29): every copy publishes its status row; a stale copy reports behind with its held count; the app on ANOTHER machine says so, and clears once the copy catches up', async () => {
+    await bootWithScopedNote();
+    const copyRow = (deviceId: string) => {
+      const row = s.vault.live(BRIDGE_VAULT_APP).find((r) => r.entityId === bridgeCopyStatusId(deviceId));
+      return row ? decodePlainBridgeRow(row.envelope!) as Record<string, unknown> : null;
+    };
+    // A's copy published itself at boot: current, holding nothing.
+    expect(copyRow('plugin-A')).toMatchObject({ kind: 'copy', deviceId: 'plugin-A', generation: s.pairing.generation, stale: false, held: 0 });
+    // B: a second desktop on last month's pairing.
+    const old = await makePairing({ generation: 'gen-old', pairedAt: new Date(Date.now() - 30 * 86_400_000).toISOString(), saltByte: 9 });
+    const B = s.plugin.second('plugin-B', old);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await B.transport.drain();
+    expect(copyRow('plugin-B')).toMatchObject({ stale: true, generation: 'gen-old', held: 0 });
+    // A current intent lands; B (a follower) holds it and says so in its row.
+    await A.emit('task_append', {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: 'Line 27', startTime: null, duration: null, isAllDay: true, date: null, blockId: 'fleet0027' },
+    });
+    await B.transport.drain();
+    expect(copyRow('plugin-B')).toMatchObject({ stale: true, held: 1 });
+    // The dayGLANCE device (the laptop the user sits at, whose own copy is
+    // current) reads both rows on its next cycle and says the fleet is split.
+    await A.sync();
+    const copies = JSON.parse(A.store.get('dayglance-bridge-copies') ?? '{}') as Record<string, { stale?: boolean; held?: number }>;
+    expect(Object.keys(copies).sort()).toEqual(['plugin-A', 'plugin-B']);
+    expect(copies['plugin-B']).toMatchObject({ stale: true, held: 1 });
+    expect(A.log.some((l) => l.startsWith('error:') && l.includes('hold an older pairing'))).toBe(true);
+    // MUTATION: drop the copy row capture from fetchBridgeObservations and
+    // the laptop never learns; drop the alarm from finishObsidianCycle and
+    // it learns silently.
+    const errorsBefore = A.log.filter((l) => l.startsWith('error:') && !l.startsWith('error:null')).length;
+    await A.sync();                                  // said once: quiet, and not "Synced"
+    expect(A.log.filter((l) => l.startsWith('error:') && !l.startsWith('error:null')).length).toBe(errorsBefore);
+    expect(A.log.slice(-3).some((l) => l.startsWith('status:success'))).toBe(false);
+    // B catches up (the synced settings arrive): its row flips, the alarm clears.
+    B.data.pairing = s.pairing;
+    await B.transport.drain();
+    expect(copyRow('plugin-B')).toMatchObject({ stale: false, held: 0 });
+    await A.sync();
+    expect(A.log.slice(-4).some((l) => l.startsWith('status:success'))).toBe(true);
+    expect(A.log.filter((l) => l.startsWith('error:') && !l.startsWith('error:null')).length).toBe(errorsBefore);
+    warn.mockRestore();
+    B.shutdown();
+  });
+
+  it('28. THE DELIVERY CHECK (2026-09-29, the safety net): a change of this device left unconsumed for ten minutes while a copy is applying is said, whatever the cause; consumed, it clears', async () => {
+    await bootWithScopedNote();
+    // The cause here: this device seals under a pairing the vault rotated
+    // away from (a meta cache five minutes behind a re-pair). The current
+    // copy cannot read the row and holds it (scenario 26).
+    const revoked = await makePairing({ generation: 'gen-revoked', pairedAt: new Date(Date.now() - 60 * 86_400_000).toISOString(), saltByte: 11 });
+    A.store.set('dayglance-bridge-pairing-meta', JSON.stringify({
+      meta: { v: 1, kind: 'pairing-meta', generation: revoked.generation, pairingSalt: revoked.pairingSalt, pairedAt: revoked.pairedAt }, fetchedAt: Date.now(),
+    }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await A.emit('task_append', {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: 'Line 28', startTime: null, duration: null, isAllDay: true, date: null, blockId: 'deliv0028' },
+    });
+    await s.plugin.transport.drain();
+    const ghosts = () => s.vault.live(BRIDGE_VAULT_APP).filter((r) => r.entityId.startsWith('int:'));
+    expect(ghosts()).toHaveLength(1);
+    // Under ten minutes: nothing to say yet, whatever the plugin is doing.
+    await A.sync();
+    expect(A.log.some((l) => l.includes('waiting more than 10 minutes'))).toBe(false);
+    // Ten minutes on, with the plugin still applying (its lease renewed), the
+    // change is still there: the device says so, once.
+    await advanceFake(610_000, 2000);        // coarse steps: nothing here is timing-sensitive below a second
+    await s.plugin.transport.drain();
+    await A.sync();
+    expect(A.log.filter((l) => l.startsWith('error:') && l.includes('waiting more than 10 minutes'))).toHaveLength(1);
+    expect(JSON.parse(A.store.get('dayglance-bridge-delivery') ?? '{}')).toMatchObject({ waiting: 1, leaseLive: true });
+    // MUTATION: skip the probe (or the lease read) in checkBridgeDelivery and
+    // this never fires; alarm on a dead lease and every phone's overnight
+    // queue would fire it.
+    // A copy that can read it drains it away (here: the row is consumed);
+    // the next due check finds it gone and the alarm clears.
+    s.vault.handle('DELETE', `${VAULT_URL}/sync/${BRIDGE_VAULT_APP}/${encodeURIComponent(ghosts()[0].entityId)}`, undefined, 'Bearer device-token');
+    await advanceFake(610_000, 2000);        // coarse steps: nothing here is timing-sensitive below a second
+    await s.plugin.transport.drain();
+    await A.sync();
+    expect(JSON.parse(A.store.get('dayglance-bridge-delivery') ?? '{}')).toMatchObject({ waiting: 0 });
+    expect(A.log.slice(-4).some((l) => l.startsWith('status:success'))).toBe(true);
+    warn.mockRestore();
+  }, 30_000);
 
   it('9. a plugin reload republishes the pairing meta WITH the scope (harness finding)', async () => {
     await bootWithScopedNote();

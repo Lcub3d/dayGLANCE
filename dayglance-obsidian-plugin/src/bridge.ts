@@ -27,6 +27,7 @@ import { App, MarkdownView, Platform, TFile, getAllTags, normalizePath, requestU
 import {
   applyBridgeIntent,
   openBridgeEnvelope,
+  readBridgeEnvelopeGeneration,
   sealBridgeEnvelope,
   encodePlainBridgeRow,
   observationEntityId,
@@ -49,6 +50,7 @@ import {
   BRIDGE_CONFIG_META_ID,
   BRIDGE_INTENT_PREFIX,
   BRIDGE_APPLIER_META_ID,
+  bridgeCopyStatusId,
   decodePlainBridgeRow,
   noteKeyForPath,
   noteInScope,
@@ -144,6 +146,43 @@ const APPLIER_LEASE_MS = 300_000;
 const APPLIER_RENEW_AFTER_MS = 150_000;
 const APPLIER_CLAIM_SETTLE_MS = 2_000;
 interface ApplierLease { deviceId: string; claimedAt: number; until: number }
+// THE PAIRING SPLIT (2026-09-29, the field incident). A re-pair on one
+// desktop rotated the bridge key; two other copies kept the old data.json
+// in memory for two days (the plugin read its pairing only at load, and
+// Obsidian Sync had delivered the new file underneath them), so every intent
+// the fleet sealed under the new key was unreadable to them. The drain's
+// rule for an unreadable row was "sealed under a rotated-away generation,
+// consume and delete" — and whichever stale copy held the applier lease
+// deleted two days of writes, silently: task placements, retitles, note
+// writes and completions, with no console line and a green status panel.
+// Three rules replace that:
+//   1. NEVER DELETE WHAT THIS COPY CANNOT READ. An unreadable intent is held
+//      below the cursor floor like a deferred one, counted, and said once;
+//      it applies when a copy holding its pairing drains. Only a row that
+//      has stayed unreadable for UNREADABLE_INTENT_TTL_MS is dropped, with a
+//      console line, so a truly revoked pairing's rows do not pin the cursor
+//      forever.
+//   2. A COPY THAT IS BEHIND STANDS DOWN. Before asserting its own
+//      meta:pairing row, a copy reads the vault's; a different generation
+//      paired later than its own means this copy is stale: it never claims
+//      the applier lease, applies nothing, reports nothing (its reports
+//      would be sealed under a key dayGLANCE no longer derives), says so
+//      once, and carries the verdict in its heartbeat so dayGLANCE can say
+//      "re-pair this copy" instead of "active". The old unconditional
+//      re-assert would have overwritten the vault's row with the stale
+//      generation and pulled every dayGLANCE device back onto the dead key.
+//   3. THE ENVELOPE NAMES ITS GENERATION (format package): an unreadable row
+//      can be told from a corrupt one, and the held count names the pairing
+//      it needs.
+// main.ts adds the fourth: the pairing is reloaded when Obsidian Sync
+// changes data.json (onExternalSettingsChange), so a re-pair reaches every
+// running copy without a restart.
+const UNREADABLE_INTENT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export interface StalePairing { generation: string; pairedAt: string | null }
+// The COPY STATUS row (the fleet-wide half): what this copy tells every
+// dayGLANCE device about itself. Renewed hourly so readers can age out a
+// copy that is gone; rewritten at once when its content changes.
+const COPY_STATUS_RENEW_MS = 60 * 60 * 1000;
 // Intent types that rewrite one note's text and can share a single write
 // (coalesced per note per drain: a burst of four is one edit and one
 // editor reload, the other half of the incident's fix).
@@ -231,6 +270,12 @@ export interface BridgeHost {
   onLinkedNotesChanged?(): void;
   /** This vault copy's device id (the heartbeat's wire key). Names the applier lease. */
   getDeviceId?(): string;
+  /** How the copy status row names this copy to the fleet (a hostname on desktop, the platform elsewhere). */
+  getCopyName?(): string | null;
+  /** 'mac' | 'windows' | 'linux' | 'ios' | 'android' | 'unknown', for the copy status row. */
+  getPlatform?(): string | null;
+  /** The plugin build this copy runs, for the copy status row. */
+  getPluginVersion?(): string | null;
 }
 
 /** The intents that CREATE a daily note when it is missing (the template ladder's daily creation point). */
@@ -370,6 +415,20 @@ export class BridgeTransport {
   private applier: ApplierLease | null = null;
   private applierKnownGeneration: string | null = null;
   private applierFollowerLogged = false;
+  // THE PAIRING SPLIT (see the header note by UNREADABLE_INTENT_TTL_MS):
+  // the vault's pairing this copy is behind, or null; the generation that
+  // verdict was last said for; when each unreadable intent was first seen
+  // (its row's createdAt when the server reports one) and the held count
+  // last said, so the console line repeats only when the count changes.
+  private stalePairing: StalePairing | null = null;
+  private stalePairingSaidFor: string | null = null;
+  private unreadableFirstSeen = new Map<string, number>();
+  private unreadableSaidCount = 0;
+  // The last drain's held count (the copy status row carries it).
+  private unreadableCount = 0;
+  // The copy status row as last written: its content key and the time, so a
+  // drain rewrites it only on change or for the hourly renewal.
+  private copyStatusWritten: { key: string; at: number } | null = null;
   private linkScanAt = 0;
   private adopted = new Set<string>();
   private adoptQueue: string[] = [];
@@ -507,6 +566,126 @@ export class BridgeTransport {
    *  wakes an idle drain (audit low: that ack was never recorded). */
   recordOwnSeq(seq: number | null | undefined): void {
     if (typeof seq === 'number' && Number.isFinite(seq)) this.sseGate.recordOwnSeq(seq);
+  }
+
+  /** True while this copy's pairing is older than the vault's: it applies and reports nothing (the heartbeat's `pairingStale`). */
+  pairingStale(): boolean { return this.stalePairing !== null; }
+  /** The intents this copy held unreadable on its last drain. */
+  heldIntents(): number { return this.unreadableCount; }
+
+  /** The copy status row's content (the fleet-wide half, see bridgeStream.js). */
+  private copyStatusPayload(pairing: BridgePairing): Record<string, unknown> {
+    return {
+      v: 1, kind: 'copy',
+      deviceId: this.host.getDeviceId?.() ?? '',
+      name: this.host.getCopyName?.() ?? null,
+      platform: this.host.getPlatform?.() ?? null,
+      pluginVersion: this.host.getPluginVersion?.() ?? null,
+      generation: pairing.generation, pairedAt: pairing.pairedAt,
+      stale: this.stalePairing !== null,
+      ...(this.stalePairing ? { staleAgainst: this.stalePairing } : {}),
+      held: this.unreadableCount,
+    };
+  }
+
+  /** Write the copy status row when its content changed or the renewal is due. Never throws. */
+  private async publishCopyStatus(client: VaultClient, pairing: BridgePairing): Promise<void> {
+    const deviceId = this.host.getDeviceId?.() ?? '';
+    if (!deviceId || this.disposed) return;
+    const payload = this.copyStatusPayload(pairing);
+    const key = JSON.stringify(payload);
+    const now = Date.now();
+    if (this.copyStatusWritten && this.copyStatusWritten.key === key && now - this.copyStatusWritten.at < COPY_STATUS_RENEW_MS) return;
+    try {
+      const ack = await client.batch(BRIDGE_VAULT_APP, {
+        accountId: pairing.accountId,
+        rows: [{ entityId: bridgeCopyStatusId(deviceId), envelope: encodePlainBridgeRow({ ...payload, ts: new Date(now).toISOString() }), createdAt: now }],
+      }) as { maxSeq?: unknown } | null;
+      this.recordOwnSeq(Number(ack?.maxSeq));
+      this.copyStatusWritten = { key, at: now };
+    } catch (e) {
+      if (isRateLimitError(e)) this.noteRateLimit();
+      else console.error('dayGLANCE bridge: copy status write failed', e);
+    }
+  }
+
+  /** Unpairing: this copy's status row goes with its credentials. Never throws. */
+  async retireCopyStatus(pairing: BridgePairing): Promise<void> {
+    const deviceId = this.host.getDeviceId?.() ?? '';
+    if (!deviceId) return;
+    try {
+      const res = await this.client(pairing).deleteRow(BRIDGE_VAULT_APP, bridgeCopyStatusId(deviceId), pairing.accountId) as { seq?: unknown } | null;
+      this.recordOwnSeq(Number(res?.seq));
+    } catch (e) {
+      if (isRateLimitError(e)) this.noteRateLimit();
+      else console.error('dayGLANCE bridge: copy status cleanup failed', e);
+    }
+    this.copyStatusWritten = null;
+  }
+  /** The vault's pairing this copy is behind, or null. */
+  stalePairingInfo(): StalePairing | null { return this.stalePairing; }
+
+  /**
+   * The vault's meta:pairing row against this copy's pairing (rule 2 of the
+   * pairing split). A different generation paired LATER than ours makes this
+   * copy stale; the same generation, an older one, a missing or deleted row
+   * (unpaired, or a garbage row from a pre-base64 build) does not. Called
+   * with the row read at the first drain of a generation and with every
+   * meta:pairing row the listing passes, so a re-pair elsewhere is noticed
+   * within a drain. Returns the verdict; says a new one once.
+   */
+  private adoptVaultPairingMeta(row: { envelope?: string | null; deleted?: boolean } | null | undefined, pairing: BridgePairing): boolean {
+    const p = row && !row.deleted && row.envelope
+      ? decodePlainBridgeRow(row.envelope) as { kind?: string; generation?: unknown; pairedAt?: unknown } | null
+      : null;
+    const generation = p?.kind === 'pairing-meta' && typeof p.generation === 'string' && p.generation ? p.generation : null;
+    const theirs = typeof p?.pairedAt === 'string' ? Date.parse(p.pairedAt) : NaN;
+    const mine = Date.parse(pairing.pairedAt);
+    // A different generation with no usable dates on either side is treated
+    // as newer: the vault's row is what dayGLANCE devices seal under, so a
+    // key that does not match it cannot read their writes whichever is
+    // older, and standing down loses nothing that asserting would gain.
+    const stale = generation !== null && generation !== pairing.generation
+      && (!Number.isFinite(theirs) || !Number.isFinite(mine) || theirs > mine);
+    const was = this.stalePairing;
+    this.stalePairing = stale ? { generation: generation as string, pairedAt: typeof p?.pairedAt === 'string' ? p.pairedAt : null } : null;
+    if (stale && this.stalePairingSaidFor !== generation) {
+      this.stalePairingSaidFor = generation;
+      console.warn(
+        `dayGLANCE bridge: this copy holds an older pairing (${pairing.pairedAt}) than the vault (${this.stalePairing?.pairedAt ?? 'unknown date'}): ` +
+        'it will not apply or report until it is re-paired. Restart Obsidian here once the synced plugin settings arrive, ' +
+        'or start pairing again in dayGLANCE and enter the code in Settings → dayGLANCE Bridge.',
+      );
+    }
+    if (was && !stale) {
+      this.stalePairingSaidFor = null;
+      console.info('dayGLANCE bridge: this copy holds the vault\'s current pairing again; applying and reporting resume.');
+      void this.resumePendingObservations();
+    }
+    return stale;
+  }
+
+  /**
+   * First drain of a pairing generation: read the vault's meta:pairing row
+   * and either stand down (stale) or assert ours over it, as before. The
+   * assert is also the self-heal for a row an older build wrote in the
+   * pre-base64 wire format. 'unknown' (the read failed) retries next drain
+   * and asserts nothing: an unconditional assert is exactly what let a stale
+   * copy overwrite a newer pairing.
+   */
+  private async reconcilePairingMeta(client: VaultClient, pairing: BridgePairing): Promise<'asserted' | 'stale' | 'unknown'> {
+    let row: { envelope?: string | null; deleted?: boolean } | null;
+    try {
+      row = await client.getRow(BRIDGE_VAULT_APP, BRIDGE_PAIRING_META_ID, pairing.accountId) as { envelope?: string | null; deleted?: boolean } | null;
+    } catch (e) {
+      const status = (e as { status?: number } | null)?.status;
+      if (status === 429 || status === 401 || status === 403) throw e; // brake / refutation, classified by the drain
+      console.error('dayGLANCE bridge: pairing meta read failed', e);
+      return 'unknown';
+    }
+    if (this.adoptVaultPairingMeta(row, pairing)) return 'stale';
+    this.recordOwnSeq(await publishPairingMeta(pairing, undefined, this.host.getViewer?.() ?? pairing.userSyncId ?? null, this.host.getScope?.() ?? null));
+    return 'asserted';
   }
 
   private async resumePendingObservations(): Promise<void> {
@@ -942,8 +1121,10 @@ export class BridgeTransport {
         // The row carries the viewer override and the task scope too
         // (harness finding, 2026-09-04): republishing it bare after every
         // reload silently dropped both until the settings were touched.
-        this.recordOwnSeq(await publishPairingMeta(pairing, undefined, this.host.getViewer?.() ?? pairing.userSyncId ?? null, this.host.getScope?.() ?? null));
-        this.metaAssertedGeneration = pairing.generation;
+        // Read before asserting (the pairing split, rule 2): a copy that is
+        // behind the vault stands down instead of overwriting the row.
+        const verdict = await this.reconcilePairingMeta(client, pairing);
+        if (verdict !== 'unknown') this.metaAssertedGeneration = pairing.generation;
       }
       // CONFIG RECOVERY BY DIRECT READ (2026-08-31 config-null incident):
       // paging can never re-list a config row whose seq sits below the
@@ -988,11 +1169,13 @@ export class BridgeTransport {
       // holder only (ONE APPLIER PER VAULT); every other copy keeps them
       // listable through the cursor floor.
       const pendingIntents: PendingIntent[] = [];
+      // The generations of the intent rows this drain could not open (rule 1).
+      const unreadable: string[] = [];
       let hasMore = true;
       while (hasMore && !this.disposed) {
         const page = await client.list(BRIDGE_VAULT_APP, { accountId: pairing.accountId, since });
         hasMore = !!page.hasMore;
-        const rows = (page.rows ?? []) as Array<{ entityId?: string; envelope?: string; seq?: number; deleted?: boolean }>;
+        const rows = (page.rows ?? []) as Array<{ entityId?: string; envelope?: string; seq?: number; deleted?: boolean; createdAt?: number }>;
         if (rows.length === 0) break;
         let batchMax = since;
         for (const row of rows) {
@@ -1029,6 +1212,9 @@ export class BridgeTransport {
           if (!entityId.startsWith(BRIDGE_INTENT_PREFIX)) {
             // meta rows and our own observations also live here; refresh the
             // config cache opportunistically, skip everything else.
+            // A re-listed meta:pairing row is a re-pair somewhere (or this
+            // copy's own assert echoing back): the verdict follows it.
+            if (entityId === BRIDGE_PAIRING_META_ID) { this.adoptVaultPairingMeta(row, pairing); continue; }
             if (entityId === BRIDGE_CONFIG_META_ID && row.envelope) {
               const cfg = await openBridgeEnvelope(subkey, row.envelope) as (BridgeConfigRow & { kind?: string }) | null;
               if (cfg?.kind === 'config') await this.adoptConfig(cfg);
@@ -1046,20 +1232,58 @@ export class BridgeTransport {
           }
           const intent = row.envelope ? await openBridgeEnvelope(subkey, row.envelope) : null;
           if (intent === null) {
-            // Sealed under a rotated-away generation (or tampered): can never
-            // be applied by anyone — treat as consumed.
-            applied.add(intentId);
-            appliedDirty = true;
-            this.deleteIntentRow(client, entityId, pairing.accountId);
+            // NEVER DELETE WHAT THIS COPY CANNOT READ (the pairing split,
+            // rule 1). Sealed under a pairing this copy does not hold, or
+            // under the same one with a key that does not match (a root key
+            // that differs between devices), or corrupt: this copy cannot
+            // tell which, and a copy that can read it may drain next. Hold
+            // it below the cursor floor like a deferred apply. The one exit
+            // is age: a row unreadable for a week is dropped, said aloud.
+            const firstSeen = this.unreadableFirstSeen.get(intentId)
+              ?? (Number.isFinite(Number(row.createdAt)) && Number(row.createdAt) > 0 ? Number(row.createdAt) : Date.now());
+            const gen = row.envelope ? readBridgeEnvelopeGeneration(row.envelope) : null;
+            if (Date.now() - firstSeen > UNREADABLE_INTENT_TTL_MS) {
+              console.warn(
+                `dayGLANCE bridge: dropping intent ${intentId}: unreadable by this copy for more than ${Math.round(UNREADABLE_INTENT_TTL_MS / 86_400_000)} days ` +
+                `(sealed under pairing ${gen ?? 'unknown'}; this copy holds ${pairing.generation}).`,
+              );
+              this.unreadableFirstSeen.delete(intentId);
+              applied.add(intentId);
+              appliedDirty = true;
+              this.deleteIntentRow(client, entityId, pairing.accountId);
+              continue;
+            }
+            this.unreadableFirstSeen.set(intentId, firstSeen);
+            unreadable.push(gen ?? 'unknown');
+            retryFloor = Math.min(retryFloor, seq);
             continue;
           }
+          this.unreadableFirstSeen.delete(intentId);
           pendingIntents.push({ intent: intent as Record<string, unknown>, intentId, entityId, seq });
         }
         since = batchMax;
       }
+      this.unreadableCount = unreadable.length;
+      if (unreadable.length !== this.unreadableSaidCount) {
+        // Said when the count changes, not every 30 seconds: the held rows
+        // re-list on every drain by design (the cursor floor).
+        this.unreadableSaidCount = unreadable.length;
+        if (unreadable.length > 0) {
+          const gens = [...new Set(unreadable)].join(', ');
+          console.warn(
+            `dayGLANCE bridge: ${unreadable.length} dayGLANCE change(s) cannot be read by this copy and are held, not deleted ` +
+            `(sealed under pairing ${gens}; this copy holds ${pairing.generation}). They apply when a copy holding that pairing syncs, ` +
+            'or once this copy is re-paired or restarted after the synced plugin settings arrive.',
+          );
+        } else {
+          console.info('dayGLANCE bridge: no held dayGLANCE changes remain.');
+        }
+      }
       // ONE APPLIER PER VAULT: the role is decided every drain (the holder
       // renews, a claim settles), the intents applied only by the holder.
-      const role = this.disposed ? 'follower' : await this.applierRole(client, pairing, Date.now());
+      // A stale copy (rule 2) never claims: it is a follower whatever the
+      // lease says, and a lease it already held lapses by expiry.
+      const role = this.disposed || this.stalePairing ? 'follower' : await this.applierRole(client, pairing, Date.now());
       if (pendingIntents.length > 0 && role !== 'leader') {
         for (const p of pendingIntents) retryFloor = Math.min(retryFloor, p.seq);
       } else if (pendingIntents.length > 0) {
@@ -1082,6 +1306,9 @@ export class BridgeTransport {
           }
         }
       }
+      // The fleet-wide half: tell every dayGLANCE device what this copy
+      // holds and what it is holding back (on change, else hourly).
+      await this.publishCopyStatus(client, pairing);
       // THE CURSOR FLOOR: `since` keeps advancing so pagination works, but
       // neither the in-memory nor the persisted cursor may pass an intent
       // row that is still unconsumed (deferred on a dirty buffer, failed, or
@@ -1427,12 +1654,12 @@ export class BridgeTransport {
   private async emitLink(fields: { targetId: string; path: string; deleted?: boolean; unlinked?: boolean; previousPath?: string }): Promise<boolean> {
     try {
       const pairing = this.host.getPairing();
-      if (!pairing || this.rateLimited()) return false;
+      if (!pairing || this.rateLimited() || this.stalePairing) return false; // stale: the caller re-derives later
       const subkey = await this.subkeyFor(pairing);
       const payload: Record<string, unknown> = { v: 1, kind: 'observation', link: true, ...fields, observedAt: new Date().toISOString() };
       const ack = await this.client(pairing).batch(BRIDGE_VAULT_APP, {
         accountId: pairing.accountId,
-        rows: [{ entityId: linkObservationEntityId(fields.targetId), envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+        rows: [{ entityId: linkObservationEntityId(fields.targetId), envelope: await sealBridgeEnvelope(subkey, payload, pairing.generation), createdAt: Date.now() }],
       });
       const ackSeq = Number((ack as { maxSeq?: unknown } | null)?.maxSeq);
       if (Number.isFinite(ackSeq)) this.sseGate.recordOwnSeq(ackSeq);
@@ -1831,12 +2058,12 @@ export class BridgeTransport {
   private async emitWithdrawal(path: string): Promise<void> {
     try {
       const pairing = this.host.getPairing();
-      if (!pairing || this.rateLimited()) return;
+      if (!pairing || this.rateLimited() || this.stalePairing) return;
       const subkey = await this.subkeyFor(pairing);
       const payload = { v: 1, kind: 'observation', path, withdrawn: true, observedAt: new Date().toISOString() };
       const ack = await this.client(pairing).batch(BRIDGE_VAULT_APP, {
         accountId: pairing.accountId,
-        rows: [{ entityId: await observationEntityId(path), envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+        rows: [{ entityId: await observationEntityId(path), envelope: await sealBridgeEnvelope(subkey, payload, pairing.generation), createdAt: Date.now() }],
       });
       const ackSeq = Number((ack as { maxSeq?: unknown } | null)?.maxSeq);
       if (Number.isFinite(ackSeq)) this.sseGate.recordOwnSeq(ackSeq);
@@ -1904,6 +2131,11 @@ export class BridgeTransport {
     try {
       const pairing = this.host.getPairing();
       if (!pairing) return;
+      // A stale copy reports nothing (the pairing split, rule 2): its
+      // report would be sealed under a key dayGLANCE no longer derives, and
+      // it would stamp lines it then could not report. The path stays
+      // pending and is resumed when the current pairing arrives.
+      if (this.stalePairing) return;
       // A DELETED report re-checks existence at emit time (audit fix M12):
       // a deleted report's retry (armed on a failure) coalesces per path with
       // a recreated file's pending live observation, so the stale retry used
@@ -2190,7 +2422,7 @@ export class BridgeTransport {
         accountId: pairing.accountId,
         rows: [{
           entityId: await observationEntityId(path),
-          envelope: await sealBridgeEnvelope(subkey, payload),
+          envelope: await sealBridgeEnvelope(subkey, payload, pairing.generation),
           createdAt: Date.now(),
         }],
       });

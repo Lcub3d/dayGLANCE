@@ -17,7 +17,7 @@ import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
-import { prepareDoEdit, commitDoEdit } from '../jobo/viewActions.js';
+import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
@@ -57,11 +57,17 @@ export const continueInitial = (record, date, startMinute) => ({
   continuing: true,
 });
 
+// A card's details open on click and close on a second click of the same
+// card. ExecutionDetails closes on a click anywhere else, but leaves its own
+// card to this toggle, so the two never fight over one click.
+export const toggleDetails = (open, item, anchor) => (open?.item?.id === item.id ? null : { item, anchor });
+
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, goalsProjectsEnabled, projects, goals } = useFeaturesCtx();
-  const writer = useJoboViewWriter({ records: joboRecords, recordJobo });
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
+  // Every accepted Do write becomes a step in the app's undo history.
+  const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [editor, setEditor] = useState(null);
@@ -145,9 +151,9 @@ export default function JoboView() {
   );
   const model = useMemo(() => buildJoboDayModel({
     date, tasks: dayTasks, taskLookup: lookup, recurringTasks: ctx.recurringTasks,
-    records: joboRecords || [], scale: hourHeight, isVisibleForUser: ctx.isVisibleForUser,
+    records: joboRecords || [], scale: hourHeight, isVisibleForUser,
     now: { date: nowDate, time: nowTime },
-  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, ctx.isVisibleForUser, nowDate, nowTime]);
+  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, isVisibleForUser, nowDate, nowTime]);
   const doItems = useMemo(
     () => assignOverlapColumns(
       [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
@@ -197,13 +203,25 @@ export default function JoboView() {
   const linkCandidates = useMemo(
     () => (editor && !editor.record
       ? doLinkCandidates({
-        dayTasks: getTasksForDate(selectedDate, false), inboxTasks: ctx.unscheduledTasks,
+        // The day's tasks arrive filtered for this household member; the
+        // Inbox is filtered here the same way.
+        dayTasks: getTasksForDate(selectedDate, false),
+        inboxTasks: (ctx.unscheduledTasks || []).filter((task) => typeof isVisibleForUser !== 'function' || isVisibleForUser(task)),
         ...(goalsProjectsEnabled ? { projects: projects || [], goals: goals || [] } : {}),
       })
       : []),
-    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals],
+    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals, isVisibleForUser],
   );
   const closeEditor = useCallback(() => setEditor(null), []);
+  // "Complete task" in the editor is the linked task's checkbox: the same
+  // handler, with the Inbox flag the Inbox's own checkbox passes. The Do
+  // record is never written by it; the detector records the completion.
+  const completeTaskFor = (record) => {
+    const task = record ? model.resolveRecordTask(record) : null;
+    if (!offersCompleteTask(record, task) || typeof ctx.toggleComplete !== 'function') return undefined;
+    const fromInbox = (ctx.unscheduledTasks || []).some((inboxTask) => inboxTask.id === task.id);
+    return () => ctx.toggleComplete(task.id, fromInbox);
+  };
   const closeDetails = useCallback(() => setDetails(null), []);
   // Editing an estimate opens with the estimated times filled in, so saving
   // it is the explicit "keep as shown"; clearing the start keeps the marker.
@@ -463,7 +481,7 @@ export default function JoboView() {
             startHour={startHour}
             endHour={endHour}
             onDetails={(item, anchor) => {
-              setDetails({ item, anchor });
+              setDetails((open) => toggleDetails(open, item, anchor));
               if (sidebar && item.sourceTask) setSelectedTaskId(item.sourceTask.id);
             }}
             onNotesInSidebar={sidebar ? (task) => setSelectedTaskId(task.id) : undefined}
@@ -492,6 +510,8 @@ export default function JoboView() {
       {editor && (
         <DoEditor
           {...editor}
+          taskCompleted={model.resolveRecordTask(editor.record)?.completed === true}
+          onCompleteTask={completeTaskFor(editor.record)}
           linkCandidates={editor.record ? undefined : linkCandidates}
           records={joboRecords || []}
           writable={joboWritable}

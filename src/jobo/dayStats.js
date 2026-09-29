@@ -1,0 +1,59 @@
+// Read-only aggregation of the existing day model, before any display-only
+// completion estimate or drag preview. No second model build, state or writer.
+//
+// Time is committed measured coverage clipped to the selected day. Comparison
+// is per captured Plan dated that day, using its COMPLETE attempt group (which
+// can span days). These scopes must not be divided into an actual/plan ratio.
+export function summarizeJoboDayModel(model) {
+  if (!model) return null;
+  const native = new Map();
+  for (const item of model.plans) {
+    const task = item.currentTask;
+    if (task?.id == null || task.archived || task.isJoboSyntheticOccurrence
+      || (task.imported && !task.isTaskCalendar)) continue;
+    native.set(String(task.id), { task, minutes: Math.max(0, item.endMinute - item.startMinute) });
+  }
+  const current = [...native.values()];
+  const measured = model.timedRecords.filter(item => item.record.timingBasis !== 'planDuration');
+  let end = -Infinity;
+  let recordedMinutes = 0;
+  for (const item of [...measured].sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute)) {
+    recordedMinutes += Math.max(0, item.endMinute - Math.max(item.startMinute, end));
+    end = Math.max(end, item.endMinute);
+  }
+  // Plans may expose both a captured title and a renamed current task at the
+  // same time. Each captured execution group contributes only once.
+  const captured = new Map();
+  for (const item of model.plans) {
+    if (item.id.startsWith('captured::') && item.attempts.length) captured.set(item.groupKey, item);
+  }
+  const groups = [...captured.values()];
+  const clean = model.invalidRecordCount === 0;
+  const comparable = clean ? groups.filter(item => item.comparison?.comparable === true) : [];
+  const start = { early: 0, onTime: 0, late: 0 };
+  const finish = { early: 0, onTime: 0, late: 0 };
+  const duration = { shorter: 0, onEstimate: 0, longer: 0 };
+  for (const { comparison } of comparable) {
+    start[comparison.startTiming] += 1;
+    finish[comparison.finishTiming] += 1;
+    duration[comparison.durationComparison] += 1;
+  }
+  return {
+    native: {
+      completed: current.filter(({ task }) => task.completed === true).length,
+      total: current.length,
+      plannedMinutes: current.reduce((sum, item) => sum + item.minutes, 0),
+    },
+    // No measured intervals means unknown recorded duration, not zero activity.
+    recordedMinutes: clean && measured.length ? recordedMinutes : null,
+    untimedCount: model.untimedRecords.length,
+    inferredCount: model.timedRecords.length - measured.length,
+    invalidCount: model.invalidRecordCount,
+    comparison: {
+      comparableCount: clean ? comparable.length : null,
+      groupCount: groups.length,
+      excludedCount: clean ? groups.length - comparable.length : null,
+      start, finish, duration,
+    },
+  };
+}

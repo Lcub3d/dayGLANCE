@@ -124,6 +124,19 @@ export const BRIDGE_ACTION_PREFIX = 'act:';
 // deviceId, from, to, publishedAt, events:[…]}`. Readers union the rows and
 // prefer the freshest copy of an event id. Never deleted by the reader.
 export const BRIDGE_PROJECTION_PREFIX = 'proj:';
+// COPY STATUS rows (2026-09-29, the fleet-wide half of the pairing split):
+// one PLAINTEXT row per plugin copy, `meta:copy:<deviceId>`, written by that
+// copy on load, on every pairing verdict or held-count change, and renewed
+// hourly. Payload `{v:1, kind:'copy', deviceId, name, platform,
+// pluginVersion, generation, pairedAt, stale, staleAgainst?, held, ts}`.
+// Every dayGLANCE device reads the stream, so every app instance can say
+// which copies of the vault are current and which are behind, whichever
+// machine the user is sitting at. Plaintext because it carries nothing the
+// meta:pairing row does not already publish plus a hostname the owner
+// chose to share with their own server. A copy deletes its row on unpair;
+// readers age out a row not renewed for a week.
+export const BRIDGE_COPY_PREFIX = 'meta:copy:';
+export const bridgeCopyStatusId = (deviceId) => `${BRIDGE_COPY_PREFIX}${String(deviceId)}`;
 // Project and goal notes (companion §4.3, ruling A): the frontmatter key that
 // holds the entity's dayGLANCE id — the durable identity of the link; the
 // path on the entity record is only the cached locator.
@@ -191,13 +204,40 @@ export async function observationEntityId(path) {
 // trip is then byte-exact identity (pinned in the tests against the
 // server's exact Buffer semantics).
 
-/** Seal a payload into a row envelope under the bridge subkey. */
-export async function sealBridgeEnvelope(subkey, payload) {
+/**
+ * Seal a payload into a row envelope under the bridge subkey.
+ *
+ * THE GENERATION TAG (2026-09-29, the pairing split). `generation` is the
+ * pairing generation the subkey was derived from, carried in the CLEAR
+ * beside the ciphertext (it is the pairing salt, which the plaintext
+ * meta:pairing row already publishes: not a secret). A reader that cannot
+ * open the envelope can then tell "sealed under a pairing I do not hold"
+ * from "corrupt", and the plugin's drain holds the first instead of
+ * deleting it as garbage. Optional and additive: an envelope without the
+ * tag reads exactly as before.
+ */
+export async function sealBridgeEnvelope(subkey, payload, generation = null) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv }, subkey, enc.encode(JSON.stringify(payload)),
   );
-  return b64Text(JSON.stringify({ v: 1, iv: b64(iv), ct: b64(ct) }));
+  const gen = typeof generation === 'string' && generation ? { gen: generation } : {};
+  return b64Text(JSON.stringify({ v: 1, iv: b64(iv), ct: b64(ct), ...gen }));
+}
+
+/**
+ * The pairing generation an envelope was sealed under, read without the
+ * key: the clear `gen` tag, or null for an envelope that carries none (a
+ * writer predating the tag) or is not an envelope at all.
+ */
+export function readBridgeEnvelopeGeneration(text) {
+  try {
+    const envelope = JSON.parse(unb64Text(text));
+    if (!envelope || envelope.v !== 1) return null;
+    return typeof envelope.gen === 'string' && envelope.gen ? envelope.gen : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

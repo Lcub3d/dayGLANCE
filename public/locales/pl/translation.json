@@ -269,7 +269,11 @@
     "apply": "Zastosuj",
     "minutesShort": "{{count}} min",
     "nextWeek": "Następny tydzień",
-    "taskProgress": "{{done}}/{{total}} zadań"
+    "taskProgress": "{{done}}/{{total}} zadań",
+    "undone": "Cofnięto",
+    "redone": "Przywrócono",
+    "undoFailed": "Nie udało się cofnąć",
+    "redoFailed": "Nie udało się przywrócić"
   },
   "errorBoundary": {
     "title": "Coś poszło nie tak",
@@ -560,7 +564,14 @@
     "obsidianBridgeTokenHint": "Wstępnie wypełniony tokenem GLANCEvault tego urządzenia. Na serwerze ze wspólnym tokenem mostek używa tego samego. Zmień go tylko wtedy, gdy dla mostka używasz osobnych danych uwierzytelniających.",
     "obsidianBridgeStart": "Rozpocznij parowanie",
     "obsidianBridgeCancel": "Anuluj parowanie",
-    "obsidianBridgeCodeHint": "W Obsidian uruchom polecenie „dayGLANCE Bridge: Enter pairing code” i wpisz ten kod. Oferta wygasa po 10 minutach.",
+    "obsidianBridgeCodeHint": "W Obsidian uruchom polecenie „dayGLANCE Bridge: Enter pairing code” i wpisz ten kod. Oferta wygasa po 10 minutach. Wpisz go tylko w jednej kopii sejfu: synchronizacja ustawień wtyczek społeczności w Obsidian przenosi parowanie do pozostałych kopii.",
+    "obsidianBridgeStalePairing": "Wtyczka w tej kopii sejfu ma starsze parowanie niż sejf, więc nie stosuje tu Twoich zmian ani nie zgłasza swoich notatek; zajmuje się tym inna kopia sejfu. Uruchom ponownie Obsidian na tym urządzeniu, aby wczytał zsynchronizowane parowanie. Jeśli komunikat nie zniknie, włącz w Obsidian synchronizację ustawień wtyczek społeczności albo rozpocznij parowanie ponownie i wpisz kod w tej kopii.",
+    "obsidianBridgeCopiesTitle": "Kopie tego sejfu",
+    "obsidianBridgeCopyCurrent": "{{name}}: aktualna",
+    "obsidianBridgeCopyBehind": "{{name}}: na starszym parowaniu od {{date}}",
+    "obsidianBridgeCopyHeld": "Wstrzymane zmiany: {{count}}",
+    "obsidianBridgeFleetBehind": "{{names}}: te kopie Twojego sejfu mają starsze parowanie niż sejf i nie stosują zmian. Twoje zmiany nadal są stosowane przez aktualne kopie. Na tych komputerach uruchom ponownie Obsidian, aby wczytał zsynchronizowane parowanie, albo rozpocznij parowanie ponownie i wpisz tam kod.",
+    "obsidianBridgeDeliveryWaiting": "{{count}} Twoich zmian czeka ponad 10 minut na dotarcie do sejfu, mimo że jedna z jego kopii stosuje zmiany. Sprawdź wymienione tu kopie oraz konsolę Obsidian na kopii, która stosuje zmiany.",
     "obsidianBridgeCopyCode": "Kopiuj kod",
     "obsidianBridgePairedOnce": "Parowanie odbywa się raz, z komputera z bezpośrednim dostępem do magazynu, i obejmuje każde urządzenie otwierające ten magazyn, w tym to.",
     "obsidianBridgeUnpairedHere": "Wtyczka Bridge działa tutaj, ale nie jest sparowana na tym urządzeniu. Zadania na tym urządzeniu używają bezpośredniego dostępu do magazynu.",
@@ -2143,8 +2154,32 @@
     "comingSoon": "Wkrótce"
   },
   "jobo": {
+    "stats": {
+      "title": "Statystyki dnia",
+      "native": "Zaplanowane zadania",
+      "recorded": "Zapisany czas",
+      "lateStart": "Późne rozpoczęcia",
+      "lateFinish": "Późne zakończenia",
+      "longer": "Trwało dłużej",
+      "nativeScope": "Odhaczone dziś zadania z godziną, spośród wszystkich dzisiejszych zadań z godziną.",
+      "timeScope": "Czas zapisany dziś we wpisach Do. Nakładające się okresy liczą się raz; bez szacunków i Do bez godzin.",
+      "timeDetails": "Plan: {{planned}} · Bez godzin: {{untimed}} · Szacowane: {{inferred}}.",
+      "comparisonScope": "Spośród dzisiejszych zaplanowanych zadań z Do z godzinami. Zadanie wykonane w kilku sesjach lub dniach liczy się raz.",
+      "scope": "Cały dzień · Porównane: {{comparable}} z {{total}} zaplanowanych zadań · Bez godzin: {{untimed}}",
+      "breakdownTiming": "Wcześniej: {{early}} · Na czas: {{on}}",
+      "breakdownDuration": "Krócej: {{early}} · Zgodnie z planem: {{on}}",
+      "notCompared": "Nieporównane (brak godzin): {{excluded}}",
+      "secondary": "Późne zakończenia: {{finish}} · Trwało dłużej: {{longer}}"
+    },
     "title": "JOBO",
     "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
+    "undo": {
+      "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
+      "completionBlocked": "Jego zadanie nie jest już ukończone, więc Do nie może wrócić do stanu Ukończone. Pozostał bez zmian.",
+      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie.",
+      "undone": "Cofnięto zmianę Do",
+      "redone": "Przywrócono zmianę Do"
+    },
     "view": {
       "activeLabel": "Czas aktywny",
       "addDo": "Add Do",
@@ -2166,8 +2201,11 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Wprowadź pełny przedział początku i końca.",
       "completedAt": "Oznaczono jako ukończone o {{time}}",
-      "completedByCompletion": "Stan Ukończone powstaje przez zdarzenie ukończenia. Ponowna ocena Do może mieć stan Rozpoczęte, Częściowe lub Prawie.",
+      "completionUnavailable": "Do powiązanego z zadaniem nie można ukończyć samodzielnie. Wybierz inny postęp albo ukończ zadanie.",
       "completedStays": "Pozostaje ukończone. Dostosuj godziny i zapisz.",
+      "completeTask": "Ukończ zadanie",
+      "completeTaskHint": "Odhacza powiązane zadanie, tak jak jego pole wyboru. Ukończenie pojawia się jako osobny Do.",
+      "completeTaskSaveFirst": "Najpierw zapisz lub anuluj zmiany.",
       "completionAxis": "Ukończenie",
       "do": "Wykonanie",
       "elapsedLabel": "Czas, który upłynął",
@@ -2201,7 +2239,7 @@
       },
       "progressLabel": "Postęp",
       "readOnly": "JOBO jest na tym urządzeniu tylko do odczytu. Edycja wpisów Do jest wyłączona.",
-      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordChanged": "Ten wpis się zmienił. Zamknij go i otwórz ponownie przed edycją.",
       "recordedLabel": "Zmierzony czas",
       "recordedMinutes": "{{minutes}} min zarejestrowano",
       "retryLoad": "Spróbuj wczytać ponownie",
@@ -2215,37 +2253,46 @@
       "summary": {
         "withinPlan": "Zgodnie z planem",
         "late": "Późno",
-        "longer": "Dłużej",
-        "split": "Podzielone",
+        "longer": "Trwało dłużej",
+        "split": "Kilka sesji",
         "notStarted": "Brak zapisu wykonania",
-        "unplanned": "Nieplanowane"
+        "unplanned": "Nieplanowane",
+        "startedLate": "Późny start",
+        "finishedLate": "Późne zakończenie"
       },
       "timeAxis": "Wykorzystanie czasu",
       "timeDuration": {
-        "shorter": "{{minutes}} min krócej",
+        "shorter": "{{amount}} krócej",
         "onEstimate": "Zgodnie z szacunkiem",
-        "longer": "{{minutes}} min dłużej"
+        "longer": "{{amount}} dłużej"
       },
       "timeDurationLabel": "Czas trwania",
       "timeFinish": {
-        "early": "Zakończono {{minutes}} min wcześniej",
+        "early": "Zakończono {{amount}} wcześniej",
         "onTime": "Zakończono na czas",
-        "late": "Zakończono {{minutes}} min później"
+        "late": "Zakończono {{amount}} później"
       },
       "timeFinishLabel": "Koniec",
       "timeIncomplete": "Rzeczywisty początek i koniec nie są w pełni zapisane.",
       "timeIncompleteShort": "Uzupełnij czas",
       "timeStart": {
-        "early": "Rozpoczęto {{minutes}} min wcześniej",
+        "early": "Rozpoczęto {{amount}} wcześniej",
         "onTime": "Rozpoczęto na czas",
-        "late": "Rozpoczęto {{minutes}} min później"
+        "late": "Rozpoczęto {{amount}} później"
       },
       "timeStartLabel": "Początek",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "Nie udało się zapisać zmiany Do.",
       "setInterval": "Ustaw rzeczywisty przedział",
       "dragCompletion": "Przeciągnij, aby ustawić przedział; Enter otwiera edycję.",
-      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział."
+      "completionPoint": "Zapisano o {{time}}. Dodaj rzeczywisty początek, aby zapisać przedział.",
+      "offsetMinutes": "{{minutes}} min",
+      "offsetDays": "{{days}} d.",
+      "offsetDaysHours": "{{days}} d. {{hours}} godz.",
+      "completeTaskInstead": "Tego Do nie można ukończyć samodzielnie. Ukończ zadanie poniżej; jego ukończenie zostanie zapisane jako osobny Do.",
+      "taskAlreadyDone": "Zadanie jest już wykonane. Jego ukończenie jest zapisane jako osobny Do.",
+      "linkedNoCompletion": "Do powiązanego z zadaniem nie można ukończyć samodzielnie.",
+      "checkTaskAgain": "Odhacz zadanie ponownie, aby ukończyć ten Do."
     }
   },
   "todoist": {

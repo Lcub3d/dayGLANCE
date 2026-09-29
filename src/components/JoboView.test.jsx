@@ -380,12 +380,62 @@ describe('the notes sidebar', () => {
     }
   });
 
-  // The Daily Note is edited only through the Daily Notes modal, which owns
-  // the vault read-fresh and write-back rules.
-  it('never edits the Daily Note in place', () => {
-    const source = readFileSync(new URL('./jobo/JoboNotesSidebar.jsx', import.meta.url), 'utf8');
-    expect(source).not.toMatch(/setDailyNotes\(|<textarea|saveDailyNote/);
-    expect(source).toContain('setDailyNotesModalDate');
+  // The Daily Note edits in place, but only through useDailyNoteDraft, the
+  // Daily Notes modal's own read-fresh and write-back rules, fed the app's
+  // vault reader. MUTATION: write the note directly, or drop the reader, and
+  // the sidebar could overwrite a vault note with its older copy.
+  it('edits the Daily Note only through the modal\'s rules', () => {
+    const sidebar = readFileSync(new URL('./jobo/JoboNotesSidebar.jsx', import.meta.url), 'utf8');
+    expect(sidebar).not.toMatch(/setDailyNotes\(|saveDailyNote|readDailyNote/);
+    expect(sidebar).toContain('useDailyNoteDraft(');
+    expect(sidebar).toMatch(/loadFresh=\{loadDailyNoteFresh\}/);
+    const modal = readFileSync(new URL('./DailyNotesModal.jsx', import.meta.url), 'utf8');
+    expect(modal).toContain('useDailyNoteDraft(');
+  });
+});
+
+// Multi-user: the Do side shows only this member's completions. The filter
+// lives in the features context; the planner context has none, which is how
+// the view once looked in the wrong place and filtered nothing.
+describe('a short card still says its status', () => {
+  // MUTATION: drop the tooltip and a 15-minute Do shows no progress at all.
+  it('puts the status line in the tooltip when there is no room to show it', () => {
+    const html = render({ joboRecords: [timed({ startTime: '10:00', endTime: '10:15', progress: 'partial' })] });
+    expect(html).toMatch(/data-jobo-record="manual:1"[^>]*title="10:00–10:15 · jobo\.view\.progress\.partial/);
+    const tall = render({ joboRecords: [timed({ progress: 'partial' })] });
+    expect(tall).not.toMatch(/data-jobo-record="manual:1"[^>]*title=/);
+  });
+});
+
+describe('a card\'s details close on a second click', () => {
+  // MUTATION: always open (the old behaviour) and a second click on the card
+  // leaves the details up, with only Esc to close them.
+  it('toggles on the same card, and moves to another card', async () => {
+    const { toggleDetails } = await import('./JoboView.jsx');
+    const a = { id: 'a' }, b = { id: 'b' };
+    const open = toggleDetails(null, a, 'anchor-a');
+    expect(open).toEqual({ item: a, anchor: 'anchor-a' });
+    expect(toggleDetails(open, a, 'anchor-a')).toBeNull();
+    expect(toggleDetails(open, b, 'anchor-b')).toEqual({ item: b, anchor: 'anchor-b' });
+  });
+});
+
+describe('a household member sees only their own Do', () => {
+  const partner = { ...task, id: 't2', title: 'Partner task', assignedUserSyncIds: ['partner'] };
+  const mine = (candidate) => { const ids = candidate.assignedUserSyncIds ?? []; return ids.length === 0 || ids.includes('me'); };
+  const theirs = point({ id: 'do:t2:x', taskId: 't2', title: 'Partner task' });
+
+  // MUTATION: read isVisibleForUser from the planner context again and the
+  // partner's completion is drawn.
+  it('hides completions of tasks assigned to someone else, and keeps shared ones', () => {
+    const html = render({ joboRecords: [point(), theirs], isVisibleForUser: mine }, { tasks: [task, partner] });
+    expect(html).toContain('data-jobo-record="do:t1:x"');
+    expect(html).not.toContain('data-jobo-record="do:t2:x"');
+  });
+
+  it('shows everything with multi-user off', () => {
+    const html = render({ joboRecords: [point(), theirs], isVisibleForUser: () => true }, { tasks: [task, partner] });
+    expect(html).toContain('data-jobo-record="do:t2:x"');
   });
 });
 

@@ -257,7 +257,11 @@
     "apply": "Übernehmen",
     "minutesShort": "{{count}} Min.",
     "nextWeek": "Nächste Woche",
-    "taskProgress": "{{done}}/{{total}} Aufgaben"
+    "taskProgress": "{{done}}/{{total}} Aufgaben",
+    "undone": "Rückgängig gemacht",
+    "redone": "Wiederhergestellt",
+    "undoFailed": "Rückgängig nicht möglich",
+    "redoFailed": "Wiederholen nicht möglich"
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",
@@ -538,7 +542,14 @@
     "obsidianBridgeTokenHint": "Mit dem GLANCEvault-Token dieses Geräts vorausgefüllt. Auf einem Server mit gemeinsamem Token verwendet die Bridge denselben. Nur ersetzen, wenn Sie ein separates Zugangstoken für die Bridge verwenden.",
     "obsidianBridgeStart": "Kopplung starten",
     "obsidianBridgeCancel": "Kopplung abbrechen",
-    "obsidianBridgeCodeHint": "Führen Sie in Obsidian den Befehl „dayGLANCE Bridge: Enter pairing code“ aus und geben Sie diesen Code ein. Das Angebot läuft nach 10 Minuten ab.",
+    "obsidianBridgeCodeHint": "Führen Sie in Obsidian den Befehl „dayGLANCE Bridge: Enter pairing code“ aus und geben Sie diesen Code ein. Das Angebot läuft nach 10 Minuten ab. Geben Sie ihn nur in einer Kopie des Vaults ein: Die Synchronisierung der Community-Plugin-Einstellungen von Obsidian überträgt die Kopplung auf alle anderen Kopien.",
+    "obsidianBridgeStalePairing": "Das Plugin in dieser Kopie des Vaults hat eine ältere Kopplung als der Vault, daher wendet es Ihre Änderungen hier nicht an und meldet seine Notizen nicht; eine andere Kopie des Vaults übernimmt beides. Starten Sie Obsidian auf diesem Gerät neu, damit es die synchronisierte Kopplung lädt. Bleibt die Meldung bestehen, aktivieren Sie in Obsidian die Synchronisierung der Community-Plugin-Einstellungen oder starten Sie die Kopplung erneut und geben Sie den Code in dieser Kopie ein.",
+    "obsidianBridgeCopiesTitle": "Kopien dieses Vaults",
+    "obsidianBridgeCopyCurrent": "{{name}}: aktuell",
+    "obsidianBridgeCopyBehind": "{{name}}: seit {{date}} auf einer älteren Kopplung",
+    "obsidianBridgeCopyHeld": "Zurückgehaltene Änderungen: {{count}}",
+    "obsidianBridgeFleetBehind": "{{names}}: Diese Kopien Ihres Vaults haben eine ältere Kopplung als der Vault und wenden keine Änderungen an. Ihre Änderungen werden weiterhin über die aktuellen Kopien angewendet. Starten Sie Obsidian auf diesen Rechnern neu, damit es die synchronisierte Kopplung lädt, oder starten Sie die Kopplung erneut und geben Sie den Code dort ein.",
+    "obsidianBridgeDeliveryWaiting": "{{count}} Ihrer Änderungen warten seit mehr als 10 Minuten darauf, den Vault zu erreichen, während eine Kopie davon anwendet. Prüfen Sie die hier aufgeführten Kopien und die Obsidian-Konsole der anwendenden Kopie.",
     "obsidianBridgeCopyCode": "Code kopieren",
     "obsidianBridgePairedOnce": "Die Kopplung erfolgt einmalig von einem Desktop mit direktem Tresor-Zugriff und gilt für jedes Gerät, das diesen Tresor öffnet, auch für dieses.",
     "obsidianBridgeUnpairedHere": "Das Bridge-Plugin läuft hier, ist auf diesem Gerät aber nicht gekoppelt. Aufgaben auf diesem Gerät verwenden direkten Tresor-Zugriff.",
@@ -2056,8 +2067,32 @@
     "comingSoon": "Demnächst"
   },
   "jobo": {
+    "stats": {
+      "title": "Tagesstatistik",
+      "native": "Geplante Aufgaben",
+      "recorded": "Erfasste Zeit",
+      "lateStart": "Später Beginn",
+      "lateFinish": "Spätes Ende",
+      "longer": "Länger gedauert",
+      "nativeScope": "Heute abgehakte Aufgaben mit Uhrzeit, von allen heutigen Aufgaben mit Uhrzeit.",
+      "timeScope": "Heute in Do-Einträgen erfasste Zeit. Überschneidungen zählen einmal; Schätzungen und Do ohne Zeiten sind nicht enthalten.",
+      "timeDetails": "Geplant: {{planned}} · Ohne Zeiten: {{untimed}} · Geschätzt: {{inferred}}.",
+      "comparisonScope": "Von den heute geplanten Aufgaben mit zeitlich erfasstem Do. Eine Aufgabe über mehrere Sitzungen oder Tage zählt einmal.",
+      "scope": "Ganzer Tag · Verglichen: {{comparable}} von {{total}} geplanten Aufgaben · Ohne Zeiten: {{untimed}}",
+      "breakdownTiming": "Früher: {{early}} · Pünktlich: {{on}}",
+      "breakdownDuration": "Kürzer: {{early}} · Wie geplant: {{on}}",
+      "notCompared": "Nicht verglichen (Zeiten fehlen): {{excluded}}",
+      "secondary": "Späte Enden: {{finish}} · Länger gedauert: {{longer}}"
+    },
     "title": "JOBO",
     "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
+    "undo": {
+      "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
+      "completionBlocked": "Die Aufgabe ist nicht mehr abgeschlossen, daher kann das Do nicht wieder „Abgeschlossen“ werden. Es bleibt, wie es ist.",
+      "failed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "undone": "Do-Änderung rückgängig gemacht",
+      "redone": "Do-Änderung wiederhergestellt"
+    },
     "view": {
       "activeLabel": "Aktive Zeit",
       "addDo": "Add Do",
@@ -2079,8 +2114,11 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Bitte vollständige Start- und Endzeit eingeben.",
       "completedAt": "Als erledigt markiert um {{time}}",
-      "completedByCompletion": "„Abgeschlossen“ entsteht durch ein Abschlussereignis. Eine Neubewertung kann Gestartet, Teilweise oder Größtenteils sein.",
+      "completionUnavailable": "Ein mit einer Aufgabe verknüpftes Do kann nicht allein abgeschlossen werden. Wähle einen anderen Fortschritt oder schließe die Aufgabe ab.",
       "completedStays": "Bleibt erledigt. Passe die Zeiten an und speichere.",
+      "completeTask": "Aufgabe abschließen",
+      "completeTaskHint": "Hakt die verknüpfte Aufgabe ab, wie ihr Kontrollkästchen. Der Abschluss erscheint als eigenes Do.",
+      "completeTaskSaveFirst": "Speichere oder verwirf zuerst deine Änderungen.",
       "completionAxis": "Erledigung",
       "do": "Ausführung",
       "elapsedLabel": "Verstrichene Zeit",
@@ -2114,7 +2152,7 @@
       },
       "progressLabel": "Fortschritt",
       "readOnly": "JOBO ist auf diesem Gerät schreibgeschützt. Änderungen an Do-Einträgen sind deaktiviert.",
-      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordChanged": "Dieser Eintrag wurde geändert. Schließe ihn und öffne ihn erneut, bevor du ihn bearbeitest.",
       "recordedLabel": "Gemessene Zeit",
       "recordedMinutes": "{{minutes}} Min. erfasst",
       "retryLoad": "Erneut laden",
@@ -2128,37 +2166,46 @@
       "summary": {
         "withinPlan": "Im Plan",
         "late": "Spät",
-        "longer": "Länger",
-        "split": "Geteilt",
+        "longer": "Länger gedauert",
+        "split": "Mehrere Sitzungen",
         "notStarted": "Kein Do erfasst",
-        "unplanned": "Ungeplant"
+        "unplanned": "Ungeplant",
+        "startedLate": "Später gestartet",
+        "finishedLate": "Später beendet"
       },
       "timeAxis": "Zeitverlauf",
       "timeDuration": {
-        "shorter": "{{minutes}} Min. kürzer",
+        "shorter": "{{amount}} kürzer",
         "onEstimate": "Wie geschätzt",
-        "longer": "{{minutes}} Min. länger"
+        "longer": "{{amount}} länger"
       },
       "timeDurationLabel": "Dauer",
       "timeFinish": {
-        "early": "{{minutes}} Min. früher beendet",
+        "early": "{{amount}} früher beendet",
         "onTime": "Pünktlich beendet",
-        "late": "{{minutes}} Min. später beendet"
+        "late": "{{amount}} später beendet"
       },
       "timeFinishLabel": "Ende",
       "timeIncomplete": "Tatsächlicher Beginn/Ende nicht vollständig erfasst.",
       "timeIncompleteShort": "Zeit ergänzen",
       "timeStart": {
-        "early": "{{minutes}} Min. früher gestartet",
+        "early": "{{amount}} früher gestartet",
         "onTime": "Pünktlich gestartet",
-        "late": "{{minutes}} Min. später gestartet"
+        "late": "{{amount}} später gestartet"
       },
       "timeStartLabel": "Start",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "Die Do-Änderung konnte nicht gespeichert werden.",
       "setInterval": "Tatsächlichen Zeitraum festlegen",
       "dragCompletion": "Ziehen, um den Zeitraum festzulegen; mit Enter bearbeiten.",
-      "completionPoint": "Erfasst um {{time}}. Für einen Zeitraum den tatsächlichen Beginn ergänzen."
+      "completionPoint": "Erfasst um {{time}}. Für einen Zeitraum den tatsächlichen Beginn ergänzen.",
+      "offsetMinutes": "{{minutes}} Min.",
+      "offsetDays": "{{days}} T.",
+      "offsetDaysHours": "{{days}} T. {{hours}} Std.",
+      "completeTaskInstead": "Dieses Do kann nicht allein abgeschlossen werden. Schließe unten die Aufgabe ab; ihr Abschluss wird als eigenes Do erfasst.",
+      "taskAlreadyDone": "Die Aufgabe ist bereits erledigt. Ihr Abschluss wird als eigenes Do erfasst.",
+      "linkedNoCompletion": "Ein mit einer Aufgabe verknüpftes Do kann nicht allein abgeschlossen werden.",
+      "checkTaskAgain": "Hake die Aufgabe erneut ab, um dieses Do abzuschließen."
     }
   },
   "todoist": {

@@ -109,6 +109,7 @@ import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
+import useJoboUndo from './hooks/useJoboUndo.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -1309,10 +1310,10 @@ const DayPlanner = () => {
     trmnlSyncInProgressRef,
     performTrmnlSyncRef,
   } = useTrmnlSync();
-  const { undoToast, setUndoToast, pushUndo, performUndo, performRedo } = useUndo({
+  const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
-    playUISound,
+    playUISound, t,
   });
 
   // Kept updated every render so the URL action handler reads the latest task state,
@@ -6598,6 +6599,12 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthViewRange, recurringTasks, visibleDates, weekViewDates, selectedDate, schedDaysShown, weekStartDay, expansionDayKey]);
   expandedRecurringTasksRef.current = expandedRecurringTasks;
+  // Do edits in the JOBO view join the same history; see useJoboUndo. It
+  // reads the live task lists to apply core's rule for restoring Completed.
+  const recordJoboUndo = useJoboUndo({
+    joboRecords, readJoboWorkingSet, recordJobo, pushUndoAction, t,
+    taskSources: { tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks },
+  });
 
   // Build today's non-overdue HG sessions for the reminder engine.
   // Only sessions with an explicit scheduled time are included (skips time-unset sessions).
@@ -8492,6 +8499,17 @@ const DayPlanner = () => {
   // Provider so they receive fresh values on every state update automatically.
   // Expose every component-scope binding so Phase 8 layout files can consume
   // any variable via useDayPlannerCtx() without prop-drilling.
+  // Reads a daily note fresh from the vault, or null without Obsidian. Every
+  // editor of a daily note (the modal, JOBO's sidebar) loads through this so
+  // it writes back only a change to what the vault held.
+  const loadDailyNoteFresh = obsidianConfig?.enabled && obsidianVaultHandleRef.current
+    ? obsidianVaultHandleRef.current === 'native'
+      // Defer the synchronous native SAF read by one frame so the loading
+      // spinner renders before the JS thread is blocked.
+      ? (d) => new Promise(resolve => setTimeout(() => resolve(readDailyNoteNative(d)), 0))
+      : (d) => readDailyNoteFresh(obsidianVaultHandleRef.current, obsidianConfig.dailyNotesPath || '', d, obsidianConfig?.dailyNotePattern || 'yyyy-MM-dd')
+    : null;
+
   const ctx = {
     // ── Device & layout ──────────────────────────────────────────────────────
     isPhone, isMobile, isTablet, isLandscape,
@@ -8777,7 +8795,7 @@ const DayPlanner = () => {
     timeToMinutes, minutesToTime,
     selectAllTags, clearTagFilter, toggleTag,
     handleSpotlightSelect,
-    updateDailyNote,
+    updateDailyNote, loadDailyNoteFresh,
     setTaskRef,
 
     reorderUnscheduledTasks,
@@ -8978,7 +8996,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo, recordJoboUndo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,
@@ -9286,13 +9304,7 @@ const DayPlanner = () => {
           darkMode={darkMode}
           isMobile={isMobile}
           template={dailyNoteTemplate}
-          loadFresh={obsidianConfig?.enabled && obsidianVaultHandleRef.current
-            ? obsidianVaultHandleRef.current === 'native'
-              // Defer the synchronous native SAF read by one frame so the loading
-              // spinner renders before the JS thread is blocked.
-              ? (d) => new Promise(resolve => setTimeout(() => resolve(readDailyNoteNative(d)), 0))
-              : (d) => readDailyNoteFresh(obsidianVaultHandleRef.current, obsidianConfig.dailyNotesPath || '', d, obsidianConfig?.dailyNotePattern || 'yyyy-MM-dd')
-            : null}
+          loadFresh={loadDailyNoteFresh}
         />
       )}
 

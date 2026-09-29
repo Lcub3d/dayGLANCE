@@ -257,7 +257,11 @@
     "apply": "应用",
     "minutesShort": "{{count}} 分钟",
     "nextWeek": "下周",
-    "taskProgress": "{{done}}/{{total}} 个任务"
+    "taskProgress": "{{done}}/{{total}} 个任务",
+    "undone": "已撤销",
+    "redone": "已重做",
+    "undoFailed": "无法撤销",
+    "redoFailed": "无法重做"
   },
   "errorBoundary": {
     "title": "出了点问题",
@@ -541,7 +545,14 @@
     "obsidianBridgeTokenHint": "默认使用此设备的 GLANCEvault 令牌；共享令牌服务器上的桥接插件也使用同一令牌。仅当桥接插件使用单独凭据时才替换。",
     "obsidianBridgeStart": "开始配对",
     "obsidianBridgeCancel": "取消配对",
-    "obsidianBridgeCodeHint": "在 Obsidian 中运行“dayGLANCE Bridge: Enter pairing code”命令并输入此代码。代码将在 10 分钟后过期。",
+    "obsidianBridgeCodeHint": "在 Obsidian 中运行“dayGLANCE Bridge: Enter pairing code”命令并输入此代码。代码将在 10 分钟后过期。只需在一份仓库副本中输入：Obsidian 的社区插件设置同步会把配对带到其他所有副本。",
+    "obsidianBridgeStalePairing": "此仓库副本中的插件持有的配对比仓库的更旧，因此它不会在这里应用你的更改，也不会上报自己的笔记；由仓库的另一份副本处理这两项。请在此设备上重启 Obsidian，以加载同步过来的配对。如果提示仍在，请在 Obsidian 中开启社区插件设置同步，或重新开始配对并在此副本中输入代码。",
+    "obsidianBridgeCopiesTitle": "此仓库的副本",
+    "obsidianBridgeCopyCurrent": "{{name}}：最新",
+    "obsidianBridgeCopyBehind": "{{name}}：自 {{date}} 起使用旧配对",
+    "obsidianBridgeCopyHeld": "被搁置的更改：{{count}}",
+    "obsidianBridgeFleetBehind": "{{names}}：这些仓库副本持有的配对比仓库的更旧，不会应用更改。你的更改仍会通过最新的副本应用。请在那些机器上重启 Obsidian 以加载同步过来的配对，或重新开始配对并在那里输入代码。",
+    "obsidianBridgeDeliveryWaiting": "你有 {{count}} 项更改已等待超过 10 分钟仍未到达仓库，而此时仓库的某个副本正在应用更改。请检查此处列出的副本以及正在应用更改的副本上的 Obsidian 控制台。",
     "obsidianBridgeCopyCode": "复制代码",
     "obsidianBridgePairedOnce": "只需在可直接访问库的桌面设备上配对一次，即可覆盖所有打开此库的设备，包括当前设备。",
     "obsidianBridgeUnpairedHere": "桥接插件正在运行，但此设备尚未配对；当前任务仍使用直接库访问。",
@@ -2056,8 +2067,32 @@
     "comingSoon": "即将推出"
   },
   "jobo": {
+    "stats": {
+      "title": "当日统计",
+      "native": "排程任务",
+      "recorded": "已记录时长",
+      "lateStart": "开始偏晚",
+      "lateFinish": "结束偏晚",
+      "longer": "超时",
+      "nativeScope": "今天已勾选的定时任务，占今天全部定时任务。",
+      "timeScope": "今天执行记录中记下的时间。重叠部分只计一次；不含估算和无时间的执行记录。",
+      "timeDetails": "计划：{{planned}} · 无时间：{{untimed}} · 估算：{{inferred}}。",
+      "comparisonScope": "统计今天有定时执行记录的计划任务。分多次或多天完成的任务只计一次。",
+      "scope": "全天 · 已比较：{{comparable}} / {{total}} 项计划任务 · 无时间：{{untimed}}",
+      "breakdownTiming": "提前：{{early}} · 准时：{{on}}",
+      "breakdownDuration": "较短：{{early}} · 符合计划：{{on}}",
+      "notCompared": "未比较（缺少时间）：{{excluded}}",
+      "secondary": "结束偏晚：{{finish}} · 超时：{{longer}}"
+    },
     "title": "JOBO",
     "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
+    "undo": {
+      "changed": "这条执行记录之后已被修改，因此保持不变。",
+      "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
+      "failed": "无法保存此修改，请重试。",
+      "undone": "已撤销执行记录的修改",
+      "redone": "已重做执行记录的修改"
+    },
     "view": {
       "activeLabel": "实际活动时间",
       "addDo": "新增 Do",
@@ -2079,8 +2114,11 @@
       "capturedTitle": "标题保留为创建这条 Do 时的记录。",
       "completeInterval": "请填写完整的开始和结束时间。",
       "completedAt": "完成标记时间：{{time}}",
-      "completedByCompletion": "“已完成”由任务完成事件创建；重新评估执行记录时只能设为“已开始 / 部分完成 / 大部分完成”。",
+      "completionUnavailable": "关联任务的执行记录不能单独标记为已完成。请选择其他进度，或完成该任务。",
       "completedStays": "保持已完成。调整时间后保存。",
+      "completeTask": "完成任务",
+      "completeTaskHint": "勾选关联的任务，与其复选框相同。完成情况会作为一条单独的执行记录显示。",
+      "completeTaskSaveFirst": "请先保存或取消你的修改。",
       "completionAxis": "完成度",
       "do": "执行",
       "elapsedLabel": "首尾跨度",
@@ -2128,37 +2166,46 @@
       "summary": {
         "withinPlan": "按计划",
         "late": "较晚",
-        "longer": "更久",
-        "split": "分段",
+        "longer": "超时",
+        "split": "多次进行",
         "notStarted": "未记录执行",
-        "unplanned": "计划外"
+        "unplanned": "计划外",
+        "startedLate": "晚开始",
+        "finishedLate": "晚结束"
       },
       "timeAxis": "时间表现",
       "timeDuration": {
-        "shorter": "用时少于计划 {{minutes}} 分钟",
+        "shorter": "用时少于计划 {{amount}}",
         "onEstimate": "符合预计时长",
-        "longer": "用时超出 {{minutes}} 分钟"
+        "longer": "用时超出 {{amount}}"
       },
       "timeDurationLabel": "用时",
       "timeFinish": {
-        "early": "提前 {{minutes}} 分钟结束",
+        "early": "提前 {{amount}}结束",
         "onTime": "按时结束",
-        "late": "晚结束 {{minutes}} 分钟"
+        "late": "晚结束 {{amount}}"
       },
       "timeFinishLabel": "结束",
       "timeIncomplete": "实际起止时间尚未完整记录。",
       "timeIncompleteShort": "待补时间",
       "timeStart": {
-        "early": "提前 {{minutes}} 分钟开始",
+        "early": "提前 {{amount}}开始",
         "onTime": "按时开始",
-        "late": "晚开始 {{minutes}} 分钟"
+        "late": "晚开始 {{amount}}"
       },
       "timeStartLabel": "开始",
       "titleRequired": "请输入这条 Do 的标题。",
       "updateFailed": "无法保存执行记录的修改。",
       "setInterval": "补充实际时段",
       "dragCompletion": "拖动设置实际时段；按回车可编辑。",
-      "completionPoint": "记录于 {{time}}。填写实际开始时间即可补充执行时段。"
+      "completionPoint": "记录于 {{time}}。填写实际开始时间即可补充执行时段。",
+      "offsetMinutes": "{{minutes}} 分钟",
+      "offsetDays": "{{days}} 天",
+      "offsetDaysHours": "{{days}} 天 {{hours}} 小时",
+      "completeTaskInstead": "此执行记录不能单独标记为已完成。请在下方完成任务；完成情况会作为一条单独的执行记录保存。",
+      "taskAlreadyDone": "该任务已完成，其完成情况已作为一条单独的执行记录保存。",
+      "linkedNoCompletion": "关联任务的执行记录不能单独标记为已完成。",
+      "checkTaskAgain": "再次勾选该任务，即可将此记录标记为已完成。"
     }
   },
   "todoist": {

@@ -257,7 +257,11 @@
     "apply": "Aplicar",
     "minutesShort": "{{count}} min",
     "nextWeek": "Próxima semana",
-    "taskProgress": "{{done}}/{{total}} tareas"
+    "taskProgress": "{{done}}/{{total}} tareas",
+    "undone": "Deshecho",
+    "redone": "Rehecho",
+    "undoFailed": "No se pudo deshacer",
+    "redoFailed": "No se pudo rehacer"
   },
   "errorBoundary": {
     "title": "Algo salió mal",
@@ -538,7 +542,14 @@
     "obsidianBridgeTokenHint": "Rellenado con el token de GLANCEvault de este dispositivo. En un servidor de token compartido el bridge usa el mismo. Sustitúyelo solo si usas una credencial separada para el bridge.",
     "obsidianBridgeStart": "Iniciar emparejamiento",
     "obsidianBridgeCancel": "Cancelar emparejamiento",
-    "obsidianBridgeCodeHint": "En Obsidian, ejecuta el comando “dayGLANCE Bridge: Enter pairing code” e introduce este código. La oferta caduca a los 10 minutos.",
+    "obsidianBridgeCodeHint": "En Obsidian, ejecuta el comando “dayGLANCE Bridge: Enter pairing code” e introduce este código. La oferta caduca a los 10 minutos. Introdúcelo en una sola copia de la bóveda: la sincronización de ajustes de plugins de la comunidad de Obsidian lleva el emparejamiento a las demás copias.",
+    "obsidianBridgeStalePairing": "El plugin de esta copia de la bóveda tiene un emparejamiento más antiguo que el de la bóveda, así que no aplica tus cambios aquí ni informa de sus notas; otra copia de la bóveda se encarga de ambas cosas. Reinicia Obsidian en este dispositivo para que cargue el emparejamiento sincronizado. Si el aviso persiste, activa en Obsidian la sincronización de ajustes de plugins de la comunidad, o vuelve a iniciar el emparejamiento e introduce el código en esta copia.",
+    "obsidianBridgeCopiesTitle": "Copias de esta bóveda",
+    "obsidianBridgeCopyCurrent": "{{name}}: al día",
+    "obsidianBridgeCopyBehind": "{{name}}: con un emparejamiento antiguo desde {{date}}",
+    "obsidianBridgeCopyHeld": "Cambios que retiene: {{count}}",
+    "obsidianBridgeFleetBehind": "{{names}}: estas copias de tu bóveda tienen un emparejamiento más antiguo que el de la bóveda y no aplican cambios. Tus cambios se siguen aplicando a través de las copias al día. En esos equipos, reinicia Obsidian para que cargue el emparejamiento sincronizado, o vuelve a iniciar el emparejamiento e introduce el código allí.",
+    "obsidianBridgeDeliveryWaiting": "{{count}} de tus cambios llevan más de 10 minutos esperando para llegar a la bóveda mientras una copia de ella está aplicando. Revisa las copias listadas aquí y la consola de Obsidian en la copia que aplica.",
     "obsidianBridgeCopyCode": "Copiar código",
     "obsidianBridgePairedOnce": "El emparejamiento se hace una sola vez, desde un escritorio con acceso directo al vault, y cubre todos los dispositivos que abren este vault, incluido este.",
     "obsidianBridgeUnpairedHere": "El plugin bridge está en ejecución aquí pero no está emparejado en este dispositivo. Las tareas de este dispositivo usan acceso directo al vault.",
@@ -2056,8 +2067,32 @@
     "comingSoon": "Próximamente"
   },
   "jobo": {
+    "stats": {
+      "title": "Estadísticas del día",
+      "native": "Tareas programadas",
+      "recorded": "Tiempo registrado",
+      "lateStart": "Inicio tardío",
+      "lateFinish": "Fin tardío",
+      "longer": "Duró más",
+      "nativeScope": "Tareas con hora de hoy marcadas, de todas las tareas con hora de hoy.",
+      "timeScope": "Tiempo registrado hoy en entradas Do. Los solapamientos cuentan una vez; no se incluyen estimaciones ni Do sin horas.",
+      "timeDetails": "Planificado: {{planned}} · Sin horas: {{untimed}} · Estimado: {{inferred}}.",
+      "comparisonScope": "De las tareas planificadas hoy con Do con horas. Una tarea hecha en varias sesiones o días cuenta una vez.",
+      "scope": "Día completo · Comparadas: {{comparable}} de {{total}} tareas planificadas · Sin horas: {{untimed}}",
+      "breakdownTiming": "Antes: {{early}} · A tiempo: {{on}}",
+      "breakdownDuration": "Más corto: {{early}} · Según el plan: {{on}}",
+      "notCompared": "Sin comparar (faltan horas): {{excluded}}",
+      "secondary": "Fin tardío: {{finish}} · Duró más: {{longer}}"
+    },
     "title": "JOBO",
     "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
+    "undo": {
+      "changed": "Este Do cambió desde entonces, así que se dejó como está.",
+      "completionBlocked": "Su tarea ya no está completada, así que el Do no puede volver a Completado. Se dejó como está.",
+      "failed": "No se pudo guardar el cambio. Inténtalo de nuevo.",
+      "undone": "Cambio de Do deshecho",
+      "redone": "Cambio de Do rehecho"
+    },
     "view": {
       "activeLabel": "Tiempo activo",
       "addDo": "Add Do",
@@ -2079,8 +2114,11 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Introduce un intervalo completo de inicio y fin.",
       "completedAt": "Marcado como completado a las {{time}}",
-      "completedByCompletion": "Completado se crea mediante un evento de finalización. Un Do reevaluado puede quedar en Iniciado, Parcial o Casi.",
+      "completionUnavailable": "Un Do vinculado a una tarea no puede completarse por sí solo. Elige otro progreso o completa la tarea.",
       "completedStays": "Sigue completado. Ajusta las horas y guarda.",
+      "completeTask": "Completar tarea",
+      "completeTaskHint": "Marca la tarea vinculada, como su casilla. La finalización aparece como un Do propio.",
+      "completeTaskSaveFirst": "Guarda o cancela tus cambios primero.",
       "completionAxis": "Completado",
       "do": "Ejecución",
       "elapsedLabel": "Tiempo transcurrido",
@@ -2114,7 +2152,7 @@
       },
       "progressLabel": "Progreso",
       "readOnly": "JOBO es de solo lectura en este dispositivo. La edición de Do está desactivada.",
-      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordChanged": "Este registro ha cambiado. Ciérralo y vuelve a abrirlo antes de editarlo.",
       "recordedLabel": "Tiempo medido",
       "recordedMinutes": "{{minutes}} min registrados",
       "retryLoad": "Reintentar carga",
@@ -2128,37 +2166,46 @@
       "summary": {
         "withinPlan": "Según el plan",
         "late": "Tarde",
-        "longer": "Más largo",
-        "split": "Dividido",
+        "longer": "Duró más",
+        "split": "Varias sesiones",
         "notStarted": "Sin ejecución registrada",
-        "unplanned": "No planificado"
+        "unplanned": "No planificado",
+        "startedLate": "Inicio tarde",
+        "finishedLate": "Fin tarde"
       },
       "timeAxis": "Rendimiento del tiempo",
       "timeDuration": {
-        "shorter": "{{minutes}} min menos",
+        "shorter": "{{amount}} menos",
         "onEstimate": "Según estimación",
-        "longer": "{{minutes}} min más"
+        "longer": "{{amount}} más"
       },
       "timeDurationLabel": "Duración",
       "timeFinish": {
-        "early": "Fin {{minutes}} min antes",
+        "early": "Fin {{amount}} antes",
         "onTime": "Fin a tiempo",
-        "late": "Fin {{minutes}} min tarde"
+        "late": "Fin {{amount}} tarde"
       },
       "timeFinishLabel": "Fin",
       "timeIncomplete": "Inicio y fin reales no registrados por completo.",
       "timeIncompleteShort": "Añadir tiempo",
       "timeStart": {
-        "early": "Inicio {{minutes}} min antes",
+        "early": "Inicio {{amount}} antes",
         "onTime": "Inicio a tiempo",
-        "late": "Inicio {{minutes}} min tarde"
+        "late": "Inicio {{amount}} tarde"
       },
       "timeStartLabel": "Inicio",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "No se pudo guardar el cambio de Do.",
       "setInterval": "Definir intervalo real",
       "dragCompletion": "Arrastra para definir el intervalo; pulsa Intro para editar.",
-      "completionPoint": "Registrado a las {{time}}. Añade el inicio real para registrar un intervalo."
+      "completionPoint": "Registrado a las {{time}}. Añade el inicio real para registrar un intervalo.",
+      "offsetMinutes": "{{minutes}} min",
+      "offsetDays": "{{days}} d",
+      "offsetDaysHours": "{{days}} d {{hours}} h",
+      "completeTaskInstead": "Este Do no puede completarse por sí solo. Completa la tarea abajo; su finalización se registra como un Do propio.",
+      "taskAlreadyDone": "La tarea ya está hecha. Su finalización se registra como un Do propio.",
+      "linkedNoCompletion": "Un Do vinculado a una tarea no puede completarse por sí solo.",
+      "checkTaskAgain": "Vuelve a marcar la tarea para completar este Do."
     }
   },
   "todoist": {

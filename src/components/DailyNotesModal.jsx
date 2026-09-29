@@ -1,27 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { renderNoteTemplateSubset } from '@glance-apps/obsidian-format';
 import { NotebookPen, X, Loader } from 'lucide-react';
 import { renderFormattedText } from '../utils/textFormatting.jsx';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
-import { localizeEmptyDailyNote } from '../utils/dailyNoteTemplate.js';
-import { seedDailyNoteText, shouldPersistDailyNote } from '../utils/dailyNoteModalSeed.js';
+import useDailyNoteDraft from '../hooks/useDailyNoteDraft.js';
 
 // Daily Notes Modal — popover for adding/editing notes on a specific date
 const DailyNotesModal = ({ dateStr, note, onSave, onClose, darkMode, isMobile, template, loadFresh }) => {
   const { t } = useTranslation();
-  // The template's `{{date}}` / `{{title}}` are filled for this date, the
-  // same subset every daily-note creation point renders (companion §4.4).
-  const seededTemplate = template ? renderNoteTemplateSubset(template, { title: dateStr, date: dateStr }) : template;
-  const defaultText = localizeEmptyDailyNote(note?.text || '', seededTemplate);
-  const [localText, setLocalText] = useState(defaultText);
-  // What the modal last loaded or saved, and whether the date had real
-  // content on open: a close writes back only a change to that baseline
-  // (utils/dailyNoteModalSeed.js). An untouched seed is never persisted.
-  const baselineRef = useRef(defaultText);
-  const hadContentRef = useRef(!!(note?.text && note.text.trim()));
-  const [isEditing, setIsEditing] = useState(!note?.text);
-  const [loading, setLoading] = useState(!!loadFresh);
+  // Loading, seeding and every save rule live in useDailyNoteDraft, shared
+  // with the JOBO sidebar's inline editor.
+  const {
+    text: localText, setText: setLocalText, isEditing, setIsEditing, loading, persist, savedOnCloseRef,
+  } = useDailyNoteDraft({ dateStr, note, onSave, template, loadFresh });
+  const backdropRef = useRef(null);
 
   // With windowSoftInputMode="adjustNothing" the layout viewport is never resized.
   // Track the software keyboard height via visualViewport so the bottom sheet
@@ -40,85 +32,10 @@ const DailyNotesModal = ({ dateStr, note, onSave, onClose, darkMode, isMobile, t
       window.visualViewport.removeEventListener('scroll', update);
     };
   }, [isMobile]);
-  // Tracks whether loadFresh resolved; save-on-unmount is skipped until it does
-  // so a close during loading never overwrites vault content with stale/empty state.
-  const freshLoadedRef = useRef(!loadFresh);
-  // Set to true when handleSaveAndClose (or keyboard shortcuts) explicitly save,
-  // so the unmount effect doesn't trigger a redundant second setDailyNotes re-render.
-  const savedOnCloseRef = useRef(false);
-
-  // If an async loadFresh callback is provided (Obsidian), read fresh content on mount
-  useEffect(() => {
-    if (!loadFresh) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const fresh = await loadFresh(dateStr);
-        if (cancelled) return;
-        // Vault text first; an empty or absent read falls back to the app's
-        // own copy of the date; the template seeds only when neither holds
-        // content (utils/dailyNoteModalSeed.js).
-        const seed = seedDailyNoteText({ fresh: fresh?.text ?? null, known: note?.text ?? null, template: seededTemplate });
-        const text = seed.fromTemplate ? seed.text : localizeEmptyDailyNote(seed.text, seededTemplate);
-        baselineRef.current = text;
-        hadContentRef.current = seed.hadContent;
-        setLocalText(text);
-        setIsEditing(!seed.hadContent);
-      } catch (err) {
-        console.error('Failed to load fresh note from vault:', err);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          freshLoadedRef.current = true;
-        }
-      }
-    })();
-    return () => { cancelled = true; };
-    // Mount-once: load this date's note. The modal is remounted per date.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // For non-Obsidian: apply template on mount when note is empty
-  useEffect(() => {
-    if (loadFresh) return; // Obsidian path handles this above
-    if (!defaultText && seededTemplate) {
-      baselineRef.current = seededTemplate;
-      setLocalText(seededTemplate);
-    }
-    // Mount-once: seed the template only on open, not on later prop changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const localTextRef = useRef(localText);
-  const onSaveRef = useRef(onSave);
-  const dateStrRef = useRef(dateStr);
-  const backdropRef = useRef(null);
-
-  useEffect(() => { localTextRef.current = localText; }, [localText]);
-  useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
-  useEffect(() => { dateStrRef.current = dateStr; }, [dateStr]);
-  // Every save path funnels through here: nothing is written unless the
-  // text differs from the baseline, and a write moves the baseline.
-  const persist = (text) => {
-    if (!shouldPersistDailyNote(text, baselineRef.current, hadContentRef.current)) return;
-    baselineRef.current = text;
-    onSaveRef.current(dateStrRef.current, text);
-  };
-
   // Focus backdrop when in preview mode (for Escape key) — on mount and after Shift+Enter
   useEffect(() => {
     if (!isEditing && backdropRef.current) backdropRef.current.focus();
   }, [isEditing]);
-
-  // Save on unmount — skip if loadFresh never resolved to avoid overwriting vault
-  // content with the stale initial empty state, and skip if already saved on close
-  // to avoid a redundant setDailyNotes re-render after the modal has dismissed.
-  useEffect(() => {
-    return () => {
-      if (freshLoadedRef.current && !savedOnCloseRef.current) {
-        persist(localTextRef.current);
-      }
-    };
-  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && e.shiftKey) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { doLinkCandidates, matchDoLinks, linkFor, projectPath } from './linkCandidates.js';
+import { doLinkCandidates, matchDoLinks, linkFor, projectPath, doTagSuggestions, completeDoTag } from './linkCandidates.js';
 import { createManualDo } from './viewActions.js';
 import { buildJoboRecords } from './detector.js';
 import { buildJoboDayModel } from './viewModel.js';
@@ -85,5 +85,32 @@ describe('a project task is named by its goal and project', () => {
     const task = { id: 'i9', title: 'Write the JOBO docs', projectId: 'p1' };
     expect(doLinkCandidates({ inboxTasks: [task], projects, goals })[0].path).toEqual({ project: 'dayGLANCE', goal: 'Ship JOBO' });
     expect(doLinkCandidates({ inboxTasks: [task] })[0].path).toBeNull();
+  });
+});
+
+// An unlinked Do takes #tags the way a new task does (#1726): typing # offers
+// the app's existing tags, and a pick completes the tag with a space.
+describe('#tags in an unlinked Do\'s title', () => {
+  const tags = ['work', 'writing', 'home', 'health/sleep'];
+
+  it('offers the tags that start with what is typed after #', () => {
+    expect(doTagSuggestions('Draft the post #wr', 18, tags)).toEqual(['writing']);
+    expect(doTagSuggestions('Draft the post #w', 17, tags)).toEqual(['work', 'writing']);
+    expect(doTagSuggestions('Sleep log #health/', 18, tags)).toEqual(['health/sleep']);
+    expect(doTagSuggestions('#', 1, tags)).toEqual(['health/sleep', 'home', 'work', 'writing']);
+  });
+
+  // MUTATION: offer tags whenever a # appears anywhere and the list follows
+  // the user through the rest of the title.
+  it('offers nothing outside a tag, or before the cursor is known', () => {
+    expect(doTagSuggestions('Draft #work the post', 20, tags)).toEqual([]);
+    expect(doTagSuggestions('Draft the post', 14, tags)).toEqual([]);
+    expect(doTagSuggestions('Draft #wr', null, tags)).toEqual([]);
+  });
+
+  it('completes the tag at the cursor with one space, keeping the rest', () => {
+    expect(completeDoTag('Draft #wr', 9, 'writing')).toEqual({ title: 'Draft #writing ', cursor: 15 });
+    // MUTATION: always add the space and this reads "#writing  post".
+    expect(completeDoTag('Draft #wr post', 9, 'writing')).toEqual({ title: 'Draft #writing post', cursor: 15 });
   });
 });

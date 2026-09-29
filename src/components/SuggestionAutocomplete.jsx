@@ -35,7 +35,16 @@ const SuggestionAutocomplete = ({ suggestions, selectedIndex, onSelect, cardBg, 
           }`}
         >
           {suggestion.icon ?? getIcon(suggestion.type)}
-          <span className="truncate">{suggestion.display}</span>
+          {/* An optional second line (where a task sits: its time, goal and
+              project) wraps in full rather than being cut off. */}
+          {suggestion.detail ? (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{suggestion.display}</span>
+              <span data-suggestion-detail className="block text-xs opacity-75 break-words">{suggestion.detail}</span>
+            </span>
+          ) : (
+            <span className="truncate">{suggestion.display}</span>
+          )}
         </button>
       ))}
     </div>

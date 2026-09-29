@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { completionMarker } from '../../jobo/completionMarker.js';
-import { Link2, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Link2, Trash2, X } from 'lucide-react';
 import ClockTimePicker from '../ClockTimePicker.jsx';
 import DatePicker from '../DatePicker.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
-import { DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
+import { canCompleteDo, DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
 import { doIntervalAt, prepareDoDelete, commitDoEdit } from '../../jobo/viewActions.js';
 import { createManualDo, prepareDoEdit } from '../../jobo/viewActions.js';
 import { receiptState } from '../../hooks/useJoboViewWriter.js';
 import SuggestionAutocomplete from '../SuggestionAutocomplete.jsx';
-import { matchDoLinks, linkFor } from '../../jobo/linkCandidates.js';
+import { matchDoLinks, linkFor, doTagSuggestions, completeDoTag } from '../../jobo/linkCandidates.js';
 import { stripWikilinks, stripWikilinksAndTags } from '../../utils/taskUtils.js';
 
 const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY, DO_PROGRESS.COMPLETED];
@@ -31,7 +31,7 @@ export const endDateFor = (date, startTime, endTime) => {
 // and keyboard hint, and the app's own DatePicker and ClockTimePicker opened
 // from buttons exactly as the new-task modal opens them, so adding a Do reads
 // like adding a task.
-export default function DoEditor({ record, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
+export default function DoEditor({ record, taskCompleted = false, onCompleteTask, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
   const [id] = useState(() => record?.id || `manual:${crypto.randomUUID()}`);
   const marker = completionMarker(record);
   const [draft, setDraft] = useState(() => ({
@@ -43,9 +43,11 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
     } : doIntervalAt(initial.date, initial.startMinute, initial.duration || 30)),
     ...initial?.patch,
   }));
+  // What the form opened with, so "Complete task" can tell unsaved changes.
+  const openedDraft = useRef(draft);
   const [saving, setSaving] = useState(false);
   const [picker, setPicker] = useState(null); // 'date' | 'startTime' | 'endTime'
-  const { formatTime, use24HourClock, isTablet } = useDayPlannerCtx() || {};
+  const { formatTime, use24HourClock, isTablet, allTags = [] } = useDayPlannerCtx() || {};
   const showTime = (value) => (value ? (formatTime ? formatTime(value) : value) : '—');
   const [error, setError] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -66,7 +68,25 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestIndex, setSuggestIndex] = useState(-1);
   const canLink = !record && !link?.fixed;
-  const matches = canLink && suggestOpen ? matchDoLinks(linkCandidates, draft.title) : [];
+  // An unlinked new Do takes #tags in its title the way a new task does:
+  // typing # offers the app's existing tags, and Tab or Space completes one.
+  // A linked Do carries its task's title, tags included, so it offers none.
+  const titleRef = useRef(null);
+  const [cursor, setCursor] = useState(null);
+  const [tagIndex, setTagIndex] = useState(0);
+  const tagMatches = !record && !link && suggestOpen ? doTagSuggestions(draft.title, cursor, allTags) : [];
+  const applyTag = (tag) => {
+    const next = completeDoTag(draft.title, cursor ?? draft.title.length, tag);
+    setDraft((prev) => ({ ...prev, title: next.title }));
+    setCursor(next.cursor);
+    setTagIndex(0);
+    setTimeout(() => {
+      titleRef.current?.focus();
+      titleRef.current?.setSelectionRange(next.cursor, next.cursor);
+    }, 0);
+  };
+  // While a tag is being typed, its suggestions replace the task ones.
+  const matches = canLink && suggestOpen && !tagMatches.length ? matchDoLinks(linkCandidates, draft.title) : [];
   // Where the task sits: its time on the day (or all day), then its goal and
   // project. A project task in the Inbox is named by its project, not "Inbox".
   const where = ({ task, where: place, path }) => {
@@ -83,6 +103,19 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
     setSuggestIndex(-1);
   };
   const onTitleKeyDown = (event) => {
+    if (tagMatches.length) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setTagIndex((i) => (event.key === 'ArrowDown' ? Math.min(tagMatches.length - 1, i + 1) : Math.max(0, i - 1)));
+      } else if (event.key === 'Tab' || event.key === ' ') {
+        event.preventDefault();
+        applyTag(tagMatches[Math.min(tagIndex, tagMatches.length - 1)]);
+      } else if (event.key === 'Escape') {
+        event.stopPropagation();
+        setSuggestOpen(false);
+      }
+      return;
+    }
     if (!matches.length) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -113,6 +146,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
 
   const save = async (remove = false) => {
     if (!writable || waiting || savingRef.current) return;
+    if (!remove && completionUnavailable) { setError(t('jobo.view.completionUnavailable')); return; }
     if (!remove && !draft.title.trim()) { setError(t('jobo.view.titleRequired')); return; }
     savingRef.current = true;
     setSaving(true);
@@ -128,7 +162,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
         : {};
       let next;
       if (remove) next = prepareDoDelete({ records: latestRecords.current, record, now });
-      else if (record) next = prepareDoEdit({ records: latestRecords.current, record, patch, progress: draft.progress, now });
+      else if (record) next = prepareDoEdit({ records: latestRecords.current, record, patch, progress: draft.progress, now, taskCompleted });
       else {
         const duration = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${draft.date}T00:00:00Z`)) / 60000
           + minute(draft.endTime) - minute(draft.startTime);
@@ -141,7 +175,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
       if (result.held && !result.ok) setAccepted(true);
       else onClose();
     } catch (err) {
-      setError(t(err.code === 'readOnly' ? 'jobo.view.readOnly' : err.code === 'notLoaded' ? 'jobo.view.loadError' : err instanceof TypeError || err instanceof RangeError ? 'jobo.view.completeInterval' : 'jobo.view.updateFailed'));
+      setError(t(err.code === 'completionUnavailable' ? 'jobo.view.completionUnavailable' : err.code === 'readOnly' ? 'jobo.view.readOnly' : err.code === 'notLoaded' ? 'jobo.view.loadError' : err instanceof TypeError || err instanceof RangeError ? 'jobo.view.completeInterval' : 'jobo.view.updateFailed'));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -157,7 +191,27 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
       event.preventDefault(); target?.focus();
     }
   };
-  const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED || record?.progress === DO_PROGRESS.COMPLETED);
+  const completionAllowed = canCompleteDo(record || {
+    source: 'manual', taskId: link?.task?.recurringTemplateId ?? link?.task?.id ?? null,
+  }, { taskCompleted });
+  // Linking a new manual Do may invalidate a previously chosen Completed.
+  // Keep the choice visible, explain it, and require an explicit new choice;
+  // neither silently downgrade the draft nor defer the error until save.
+  const completionUnavailable = draft.progress === DO_PROGRESS.COMPLETED
+    && record?.progress !== DO_PROGRESS.COMPLETED && !completionAllowed;
+  // The hint under Progress appears only when Completed is out of reach, and
+  // says what to do instead. A Completed record keeps its own reassurance.
+  const progressHint = (() => {
+    if (!record) return null;
+    if (record.progress === DO_PROGRESS.COMPLETED) return 'jobo.view.completedStays';
+    if (completionAllowed) return null;
+    if (record.source === 'completion') return 'jobo.view.checkTaskAgain';
+    if (record.taskId == null) return null;
+    if (onCompleteTask) return 'jobo.view.completeTaskInstead';
+    return taskCompleted ? 'jobo.view.taskAlreadyDone' : 'jobo.view.linkedNoCompletion';
+  })();
+  const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED
+    || record?.progress === DO_PROGRESS.COMPLETED || completionAllowed || draft.progress === DO_PROGRESS.COMPLETED);
 
   const input = `w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`;
   const label = `block text-sm ${textSecondary} mb-1`;
@@ -177,21 +231,35 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
             <div className="relative">
               {/* A linked title is the task's own and is saved as written;
                   the field shows it as it reads, and Unlink makes it editable. */}
-              <input id="jobo-do-title" className={input} required autoComplete="off"
+              <input id="jobo-do-title" ref={titleRef} className={input} required autoComplete="off"
                 value={link && !record ? stripWikilinks(draft.title) : draft.title}
                 readOnly={!!link && !record}
-                onChange={(event) => { set('title')(event); setSuggestOpen(true); setSuggestIndex(-1); }}
+                onChange={(event) => { set('title')(event); setCursor(event.target.selectionStart); setSuggestOpen(true); setSuggestIndex(-1); setTagIndex(0); }}
+                onSelect={(event) => setCursor(event.target.selectionStart)}
                 onKeyDown={onTitleKeyDown}
                 onBlur={() => setSuggestOpen(false)}
                 aria-autocomplete={canLink ? 'list' : undefined}
                 aria-expanded={canLink ? matches.length > 0 : undefined}
                 disabled={!!record || saving} />
+              {tagMatches.length > 0 && (
+                <SuggestionAutocomplete
+                  suggestions={tagMatches.map((tag) => ({ type: 'tag', value: tag, display: `#${tag}` }))}
+                  selectedIndex={Math.min(tagIndex, tagMatches.length - 1)}
+                  onSelect={(suggestion) => applyTag(suggestion.value)}
+                  cardBg={cardBg}
+                  borderClass={borderClass}
+                  textPrimary={textPrimary}
+                  hoverBg={darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'}
+                  fullWidth
+                />
+              )}
               {matches.length > 0 && (
                 <SuggestionAutocomplete
                   suggestions={matches.map((candidate) => ({
                     type: 'task',
                     value: candidate.task.id,
-                    display: `${stripWikilinksAndTags(candidate.task.title)} · ${where(candidate)}`,
+                    display: stripWikilinksAndTags(candidate.task.title),
+                    detail: where(candidate),
                     icon: <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${candidate.task.color || 'bg-blue-500'}`} aria-hidden="true" />,
                   }))}
                   selectedIndex={suggestIndex}
@@ -206,9 +274,11 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
             </div>
             {record && <p className={`mt-1 text-xs ${textSecondary}`}>{t('jobo.view.capturedTitle')}</p>}
             {!record && link && (
-              <p data-jobo-link className={`mt-1.5 text-xs ${textSecondary} flex items-center gap-1 min-w-0`}>
-                <Link2 size={12} className="flex-shrink-0" aria-hidden="true" />
-                <span className="truncate">{t('jobo.view.linkedTo', { title: stripWikilinksAndTags(link.title) })}{link.where ? ` · ${link.where}` : ''}</span>
+              <p data-jobo-link className={`mt-1.5 text-xs ${textSecondary} flex items-start gap-1 min-w-0`}>
+                <Link2 size={12} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                {/* Wraps rather than truncating, so a long goal and project
+                    path stays readable. */}
+                <span className="min-w-0 break-words">{t('jobo.view.linkedTo', { title: stripWikilinksAndTags(link.title) })}{link.where ? ` · ${link.where}` : ''}</span>
                 {!link.fixed && (
                   <button type="button" className={`ml-1 underline flex-shrink-0 ${darkMode ? 'hover:text-white' : 'hover:text-stone-900'}`}
                     onClick={() => { setDraft((prev) => ({ ...prev, title: link.typed ?? prev.title })); setLink(null); }}>{t('jobo.view.unlink')}</button>
@@ -251,17 +321,36 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
           <div>
             <label className={label} htmlFor="jobo-do-progress">{t('jobo.view.progressLabel')}</label>
             <select id="jobo-do-progress" className={input} value={draft.progress} onChange={set('progress')} disabled={saving}>
-              {progressOptions.map((value) => <option key={value} value={value}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
+              {progressOptions.map((value) => <option key={value} value={value} disabled={value === DO_PROGRESS.COMPLETED && completionUnavailable}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
             </select>
             {/* On a Completed record the rule reads as a limit it is not:
                 saving new times keeps it Completed. */}
-            {record && <p className={`mt-1 text-xs ${textSecondary}`}>{t(record.progress === DO_PROGRESS.COMPLETED ? 'jobo.view.completedStays' : 'jobo.view.completedByCompletion')}</p>}
+            {completionUnavailable
+              ? <p className={`mt-1 text-xs ${textSecondary}`} role="status">{t('jobo.view.completionUnavailable')}</p>
+              : progressHint && <p data-jobo-progress-hint className={`mt-1 text-xs ${textSecondary}`}>{t(progressHint)}</p>}
           </div>
+          {/* The linked task's own checkbox, placed here. It checks the task off
+              through the app's handler and closes; the completion then arrives
+              as its own Do, and this one stays as recorded. Unsaved changes
+              would be lost, so they come first. */}
+          {onCompleteTask && (() => {
+            const unsaved = JSON.stringify(draft) !== JSON.stringify(openedDraft.current);
+            return (
+              <div data-jobo-complete-task>
+                <button type="button" disabled={unsaved}
+                  className={`w-full px-4 py-2 border ${borderClass} rounded-lg flex items-center justify-center gap-2 ${textPrimary} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} disabled:opacity-50 transition-colors`}
+                  onClick={() => { onCompleteTask(); onClose(); }}>
+                  <CheckCircle2 size={16} className="text-green-500" aria-hidden="true" />{t('jobo.view.completeTask')}
+                </button>
+                <p className={`mt-1 text-xs ${textSecondary}`}>{t(unsaved ? 'jobo.view.completeTaskSaveFirst' : 'jobo.view.completeTaskHint')}</p>
+              </div>
+            );
+          })()}
         </fieldset>
         {waiting && <p className={`mt-3 text-xs ${textSecondary}`} role="status">{t('jobo.view.pendingSave')}</p>}
         {error && <p className={`mt-3 p-2 rounded-lg text-sm ${darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-700'}`} role="alert">{error}</p>}
         <div className="flex gap-2 pt-4">
-          <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={busy}>
+          <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={busy || completionUnavailable}>
             {saving ? t('common.loading') : record ? t('common.save') : t('jobo.view.addDo')}
           </button>
           {record && (

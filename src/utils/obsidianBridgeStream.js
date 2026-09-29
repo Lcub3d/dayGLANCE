@@ -27,6 +27,7 @@
 // outbound observations, refreshed whenever the values change.
 
 import { getVaultConfig } from '../sync/vaultConfig.js';
+import { SENT_INTENTS_KEY, DELIVERY_STATE_KEY, recordSentIntents, pruneSentIntents, selectDeliveryProbes, deliveryVerdict } from './bridgeDelivery.js';
 import { recordOwnWriteSeq } from '../sync/ownWrites.js';
 import { hasDbRootKey } from '@glance-apps/sync';
 // Sanctioned deep imports (see obsidianBridgePairing.js for the root-key
@@ -45,6 +46,7 @@ import {
   BRIDGE_CONFIG_META_ID,
   BRIDGE_INTENT_PREFIX,
   bridgeCalendarProjectionId,
+  BRIDGE_APPLIER_META_ID,
 } from '@glance-apps/obsidian-format';
 
 const OUTBOX_KEY = 'dayglance-bridge-outbox';
@@ -288,7 +290,10 @@ async function doFlush() {
       for (const intent of chunk) {
         rows.push({
           entityId: `${BRIDGE_INTENT_PREFIX}${intent.intentId}`,
-          envelope: await sealBridgeEnvelope(subkey, intent),
+          // Tagged with the generation it is sealed under (the pairing
+          // split, 2026-09-29): a plugin copy that cannot open it holds it
+          // and names the pairing it needs, instead of deleting it.
+          envelope: await sealBridgeEnvelope(subkey, intent, meta?.generation ?? null),
           createdAt: Date.parse(intent.createdAt) || Date.now(),
         });
       }
@@ -299,6 +304,9 @@ async function doFlush() {
       const sent = new Set(chunk.map((i) => i.intentId));
       const remaining = readJson(OUTBOX_KEY, []).filter((i) => !sent.has(i.intentId));
       writeJson(OUTBOX_KEY, remaining);
+      // The delivery check's memory (bridgeDelivery.js): what this device
+      // sent, so a later cycle can ask the vault whether it was consumed.
+      writeJson(SENT_INTENTS_KEY, recordSentIntents(readJson(SENT_INTENTS_KEY, {}), [...sent]));
     }
     return readJson(OUTBOX_KEY, []).length === 0;
   } catch {
@@ -306,6 +314,54 @@ async function doFlush() {
     // before the wire) or unreachable — queued intents survive either way.
     return false;
   }
+}
+
+/**
+ * THE DELIVERY CHECK (bridgeDelivery.js, the safety net of the pairing
+ * split): probe this device's oldest unconsumed intents, on a schedule, and
+ * say whether some copy is applying while leaving them. Returns the verdict
+ * with the ids still waiting, or null when no check was due. The verdict is
+ * also kept in storage for the settings panels.
+ */
+export async function checkBridgeDelivery({ nowMs = Date.now() } = {}) {
+  try {
+    const sent = pruneSentIntents(readJson(SENT_INTENTS_KEY, {}), nowMs);
+    const state = readJson(DELIVERY_STATE_KEY, {});
+    const probes = selectDeliveryProbes(sent, nowMs, Number(state.checkedAt) || 0);
+    if (!probes.due) {
+      // Nothing old enough to ask about: whatever was said is over.
+      if (Object.keys(sent).length === 0 && state.waiting) writeJson(DELIVERY_STATE_KEY, { checkedAt: state.checkedAt || 0, waiting: 0 });
+      writeJson(SENT_INTENTS_KEY, sent);
+      return null;
+    }
+    if (bridgeRateLimited()) return null;
+    const ctx = vaultClientOrNull();
+    if (!ctx) return null;
+    const present = [];
+    for (const id of probes.ids) {
+      const row = await ctx.client.getRow(BRIDGE_VAULT_APP, `${BRIDGE_INTENT_PREFIX}${id}`, ctx.accountId);
+      if (row && !row.deleted && row.envelope) present.push(id);
+      else delete sent[id]; // consumed (or never there): forget it
+    }
+    let leaseUntilMs = null;
+    const lease = await ctx.client.getRow(BRIDGE_VAULT_APP, BRIDGE_APPLIER_META_ID, ctx.accountId);
+    if (lease && !lease.deleted && lease.envelope) {
+      const p = decodePlainBridgeRow(lease.envelope);
+      const until = Date.parse(String(p?.until ?? ''));
+      if (Number.isFinite(until)) leaseUntilMs = until;
+    }
+    const verdict = deliveryVerdict({ present, leaseUntilMs, nowMs });
+    writeJson(SENT_INTENTS_KEY, sent);
+    writeJson(DELIVERY_STATE_KEY, { checkedAt: nowMs, waiting: verdict.alarm ? verdict.waiting : 0, leaseLive: verdict.leaseLive });
+    return { ...verdict, ids: present };
+  } catch {
+    return null; // unreachable or rate-limited: the next due check retries
+  }
+}
+
+/** The last delivery verdict kept for the panels: {checkedAt, waiting, leaseLive}. */
+export function readBridgeDeliveryState() {
+  return readJson(DELIVERY_STATE_KEY, {});
 }
 
 /**
@@ -343,7 +399,7 @@ export async function publishBridgeConfig({ dailyNotesPath, dailyNotePattern, ta
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,
-      rows: [{ entityId: BRIDGE_CONFIG_META_ID, envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+      rows: [{ entityId: BRIDGE_CONFIG_META_ID, envelope: await sealBridgeEnvelope(subkey, payload, meta?.generation ?? null), createdAt: Date.now() }],
     });
     recordOwnWriteSeq(ack?.maxSeq);
     publishedConfigHash = hash;
@@ -380,7 +436,7 @@ export async function publishBridgeCalendarProjection(payload, contentHash) {
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,
-      rows: [{ entityId: bridgeCalendarProjectionId(payload.deviceId), envelope: await sealBridgeEnvelope(subkey, payload), createdAt: Date.now() }],
+      rows: [{ entityId: bridgeCalendarProjectionId(payload.deviceId), envelope: await sealBridgeEnvelope(subkey, payload, meta?.generation ?? null), createdAt: Date.now() }],
     });
     recordOwnWriteSeq(ack?.maxSeq);
     publishedProjectionHash = hash;

@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { pickJoboRecord, validateDoRecord } from '../jobo/core.js';
 
 // This is a UI receipt, not another writer/queue. Only recordJobo owns the
-// mutation and its retry. No task completion, task field, storage, or undo is
-// coupled to a Do edit. Pending receipts must never be reported as durable.
+// mutation and its retry. No task completion, task field or storage is coupled
+// to a Do edit. Pending receipts must never be reported as durable. An accepted
+// write (saved, or held for retry) is reported to `onWritten` with the version
+// it replaced, which is how it becomes an undo step; a superseded one is not.
 export function sameDoValue(a, b) {
   if (a === b) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
@@ -21,9 +23,9 @@ export function receiptState(expected, records) {
   catch { return 'superseded'; }
 }
 
-export default function useJoboViewWriter({ records, recordJobo }) {
-  const live = useRef({ records, recordJobo });
-  live.current = { records, recordJobo };
+export default function useJoboViewWriter({ records, recordJobo, onWritten }) {
+  const live = useRef({ records, recordJobo, onWritten });
+  live.current = { records, recordJobo, onWritten };
   const receipts = useRef(new Map());
   const mounted = useRef(true);
   const [pendingIds, setPendingIds] = useState([]);
@@ -51,7 +53,12 @@ export default function useJoboViewWriter({ records, recordJobo }) {
     }
     const record = input[0];
     if (receipts.current.has(record.id)) return { ok: false, error: 'pending' };
-    if (sameDoValue(live.current.records?.find(row => row?.id === record.id), record)) return { ok: true };
+    const before = live.current.records?.find(row => row?.id === record.id) ?? null;
+    if (sameDoValue(before, record)) return { ok: true };
+    // Recording the undo step must never turn a saved write into a failure.
+    const accepted = () => {
+      try { live.current.onWritten?.(before, record); } catch (err) { console.error('[jobo] undo step not recorded:', err); }
+    };
     const receipt = { record, accepted: false };
     receipts.current.set(record.id, receipt);
     publish();
@@ -67,6 +74,7 @@ export default function useJoboViewWriter({ records, recordJobo }) {
           if (mounted.current) setConflict(true);
           return { ok: false, error: 'recordChanged' };
         }
+        accepted();
       } else if (result?.held) {
         receipt.accepted = true;
         const state = receiptState(record, live.current.records);
@@ -74,6 +82,7 @@ export default function useJoboViewWriter({ records, recordJobo }) {
           receipts.current.delete(record.id);
           if (state === 'superseded' && mounted.current) setConflict(true);
         }
+        if (state !== 'superseded') accepted();
       } else receipts.current.delete(record.id);
       return result;
     } catch (error) {

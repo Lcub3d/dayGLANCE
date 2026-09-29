@@ -68,8 +68,10 @@ export interface PluginSide {
   shutdown(): void;
   /** A SECOND copy of this vault's plugin (another desktop): its own device
    *  id and device-local state, the same files, the same GLANCEvault. It
-   *  wires no vault events (it reports nothing); it drains. */
-  second(deviceId: string): { transport: BridgeTransport; data: PluginSide['data']; shutdown(): void };
+   *  wires no vault events (it reports nothing); it drains. `pairing`
+   *  overrides the copy's stored pairing (the pairing split: a copy still
+   *  on an older one). */
+  second(deviceId: string, pairing?: BridgePairing): { transport: BridgeTransport; data: PluginSide['data']; shutdown(): void };
 }
 
 export interface Scenario {
@@ -93,6 +95,20 @@ function wireVaultEvents(app: App, transport: BridgeTransport): void {
   app.vault.on('delete', (f: unknown) => { if (f instanceof TFile) transport.reportDeleted(f.path); });
   app.vault.on('rename', (f: unknown, oldPath: string) => { if (f instanceof TFile) transport.noteRenamed(oldPath, f); });
   app.metadataCache.on('changed', (f: unknown) => { if (f instanceof TFile) transport.noteMetaChanged(f.path); });
+}
+
+/**
+ * A pairing of this vault other than the scenario's: a different salt (so a
+ * different subkey), its own generation and date. The pairing split's stale
+ * copy holds one of these; a revoked pairing's rows are sealed under one.
+ */
+export async function makePairing({ generation, pairedAt, saltByte }: { generation: string; pairedAt: string; saltByte: number }): Promise<BridgePairing> {
+  const pairingSalt = new Uint8Array(16).fill(saltByte);
+  const subkey = await deriveBridgeSubkey(getDbRootKey(), pairingSalt);
+  return {
+    vaultUrl: VAULT_URL, accountId: ACCOUNT_ID, deviceToken: 'device-token',
+    subkeyB64: await exportBridgeSubkey(subkey), pairingSalt: b64(pairingSalt), generation, pairedAt,
+  };
 }
 
 export async function createScenario(): Promise<Scenario> {
@@ -141,8 +157,8 @@ export async function createScenario(): Promise<Scenario> {
     },
     reload: () => { transport.shutdown(); boot(); },
     shutdown: () => transport.shutdown(),
-    second: (deviceId) => {
-      const other: PluginSide['data'] = { pairing, bridge: { appliedIds: [], hwm: 0 }, saves: 0, deviceId };
+    second: (deviceId, ownPairing = pairing) => {
+      const other: PluginSide['data'] = { pairing: ownPairing, bridge: { appliedIds: [], hwm: 0 }, saves: 0, deviceId };
       const t = new BridgeTransport({
         app,
         getPairing: () => other.pairing,

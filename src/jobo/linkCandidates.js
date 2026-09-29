@@ -1,5 +1,6 @@
 import { stripWikilinksAndTags } from '../utils/taskUtils.js';
 import { planSnapshotOf } from './detector.js';
+import { getPartialTag, getFilteredTags, applyTagCompletion } from '../utils/suggestionParser.js';
 
 // Linking a new Do to a task from the editor's Title field. Pure: the view
 // hands in the day's tasks and the Inbox, the editor shows the matches, and
@@ -70,3 +71,25 @@ export function matchDoLinks(candidates, query, limit = 6) {
 
 /** What createManualDo takes to link a Do to `task`. */
 export const linkFor = (task) => ({ task, planSnapshot: planSnapshotOf(task) });
+
+/**
+ * The app's tags to offer while a `#tag` is being typed at `cursor` in an
+ * unlinked Do's title, as the new-task dialog offers them. Empty when the
+ * cursor is not inside a tag.
+ */
+export function doTagSuggestions(title, cursor, allTags = [], limit = 8) {
+  if (typeof title !== 'string' || !Number.isInteger(cursor)) return [];
+  const partial = getPartialTag(title, cursor);
+  return partial ? getFilteredTags(partial.tag, allTags).slice(0, limit) : [];
+}
+
+/**
+ * Completes the tag at `cursor` with `tag`, then a space: added when none
+ * follows, stepped over when one does, so completing mid-title never
+ * leaves a double space.
+ */
+export function completeDoTag(title, cursor, tag) {
+  const { text, newCursorPos } = applyTagCompletion(title, cursor, tag);
+  if (/\s/.test(text[newCursorPos] ?? '')) return { title: text, cursor: newCursorPos + 1 };
+  return { title: `${text.slice(0, newCursorPos)} ${text.slice(newCursorPos)}`, cursor: newCursorPos + 1 };
+}

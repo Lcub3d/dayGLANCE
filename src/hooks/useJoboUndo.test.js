@@ -31,7 +31,7 @@ const row = (over = {}) => createDoRecord({
   planSnapshot: null, createdAt: stamp, observedAt: stamp, updatedAt: stamp, ...over,
 });
 
-async function setup(records) {
+async function setup(records, taskSources) {
   const ledger = createLedger({ store: memoryStore(records) });
   await ledger.load();
   const steps = [];
@@ -41,6 +41,7 @@ async function setup(records) {
     readJoboWorkingSet: ledger.workingSet,
     recordJobo: ledger.commit,
     pushUndoAction: (action) => steps.push(action),
+    taskSources,
     t: (key) => key,
   });
   const current = (id = 'manual:1') => ledger.workingSet().find((r) => r.id === id);
@@ -101,5 +102,26 @@ describe('a Do edit in the undo history', () => {
       recordJobo: async () => ({ ok: false, error: 'readOnly' }), pushUndoAction: (a) => steps.push(a), t: (k) => k });
     record(row(), current());
     expect(await steps[1].undo()).toEqual({ ok: false, message: 'jobo.undo.failed' });
+  });
+
+  // MUTATION: resolve the task from a snapshot taken when the step was
+  // recorded, or skip recurring occurrences, and these read the wrong state.
+  it('restores Completed while the task is completed now, recurring occurrences included', async () => {
+    const done = row({ id: 'do:t1:x', source: 'completion', progress: 'completed' });
+    const sources = { tasks: [{ id: 't1', title: 'Deep work', completed: false }] };
+    const { steps, current, edit } = await setup([done], sources);
+    await edit(prepareDoEdit({ records: [current('do:t1:x')], record: current('do:t1:x'), progress: 'partial', now: Date.now() }));
+    expect(await steps[0].undo()).toEqual({ ok: false, message: 'jobo.undo.completionBlocked' });
+    sources.tasks = [{ id: 't1', title: 'Deep work', completed: true }];   // checked again since
+    expect(await steps[0].undo()).toEqual({ ok: true });
+    expect(current('do:t1:x').progress).toBe('completed');
+
+    const occurrence = row({ id: 'do:tmpl:2026-09-28:2026-09-28T10:00:00Z', taskId: 'tmpl', source: 'completion', progress: 'completed',
+      planSnapshot: { date: '2026-09-28', startTime: '09:00', duration: 60 } });
+    const template = { id: 'tmpl', title: 'Standup', startTime: '09:00', duration: 60, recurrence: { type: 'daily' }, completedDates: ['2026-09-28'] };
+    const r = await setup([occurrence], { recurringTasks: [template] });
+    await r.edit(prepareDoEdit({ records: [r.current(occurrence.id)], record: r.current(occurrence.id), progress: 'partial', now: Date.now() }));
+    expect(await r.steps[0].undo()).toEqual({ ok: true });
+    expect(r.current(occurrence.id).progress).toBe('completed');
   });
 });

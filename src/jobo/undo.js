@@ -12,10 +12,11 @@
 //   - The current winner must still be the version the step left behind.
 //     Anything newer (another device, a detector write, a later edit) means
 //     the step is stale, and it reports a conflict instead of overwriting.
-//   - It never moves a record into Completed. Restoring Completed needs the
-//     eligibility rules of the completion change (#1867); until those land,
-//     such a step is refused rather than written.
-import { createDoRecord, pickJoboRecord, DO_PROGRESS } from './core.js';
+//   - It moves a record into Completed only where core allows Completed
+//     (#1867's canCompleteDo): an unlinked manual Do, or a completion record
+//     whose task or occurrence is still completed. Anything else is refused
+//     rather than written.
+import { canCompleteDo, createDoRecord, pickJoboRecord, DO_PROGRESS } from './core.js';
 
 // Same content, key order aside. The view writer has the same check; this
 // module stays free of React.
@@ -43,10 +44,12 @@ export function movesIntoCompleted(current, target) {
 /**
  * What an undo (or redo) of `entry` should write, given the records as they
  * stand. Returns `{ record }`, or `{ conflict: true }` when the record has
- * moved on, or `{ blocked: 'completion' }` when the step would restore
- * Completed.
+ * moved on, or `{ blocked: 'completion' }` when the step would make it
+ * Completed where core does not allow it. `isTaskCompleted(record)` reports
+ * whether the record's task or occurrence is completed now; it is asked only
+ * when the step would restore Completed.
  */
-export function planJoboUndo(entry, direction, records, now) {
+export function planJoboUndo(entry, direction, records, now, { isTaskCompleted = () => false } = {}) {
   if (direction !== 'undo' && direction !== 'redo') throw new TypeError('direction must be undo or redo');
   const copies = (Array.isArray(records) ? records : []).filter((row) => row?.id === entry.id);
   const current = copies.reduce((winner, row) => pickJoboRecord(winner, row), null);
@@ -56,7 +59,8 @@ export function planJoboUndo(entry, direction, records, now) {
   const target = direction === 'undo'
     ? (entry.before ?? { ...entry.after, deleted: true })
     : entry.after;
-  if (movesIntoCompleted(current, target)) return { blocked: 'completion' };
+  if (movesIntoCompleted(current, target)
+    && !canCompleteDo(target, { taskCompleted: isTaskCompleted(target) === true })) return { blocked: 'completion' };
   const version = Math.max(now, Date.parse(current.updatedAt) + 1);
   return { record: createDoRecord({ ...target, updatedAt: new Date(version).toISOString() }) };
 }

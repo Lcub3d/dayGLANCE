@@ -350,24 +350,21 @@ export function projectJoboRecords(records) {
   return { liveRecords, invalidRecordCount };
 }
 
-export function buildJoboDayModel({
-  date,
-  tasks = [],
-  taskLookup = tasks,
-  recurringTasks = [],
-  records = [],
-  now,
-  scale,
-  isVisibleForUser,
-}) {
+/**
+ * The task (or recurring occurrence) each record belongs to, as it stands
+ * now. The day model resolves with this; so does anything outside the view
+ * that has to ask about a record's task, such as undo checking whether a
+ * completion record's task is still completed. `records` names the recurring
+ * dates worth expanding.
+ */
+export function buildJoboTaskResolver({ records = [], taskLookup = [], recurringTasks = [] } = {}) {
   const lookupTasks = Array.isArray(taskLookup) ? taskLookup : [];
-  const { liveRecords, invalidRecordCount } = projectJoboRecords(records);
   // Resolve only the historical dates actually referenced by each template.
   // Expanding every template across every ledger date grows quadratically.
   const datesByTask = new Map();
-  for (const record of liveRecords) {
+  for (const record of Array.isArray(records) ? records : []) {
     const occurrenceDate = occurrenceDateForRecord(record);
-    if (!occurrenceDate || record.taskId == null) continue;
+    if (!occurrenceDate || record?.taskId == null) continue;
     const id = String(record.taskId);
     if (!datesByTask.has(id)) datesByTask.set(id, new Set());
     datesByTask.get(id).add(occurrenceDate);
@@ -378,8 +375,21 @@ export function buildJoboDayModel({
   // Existing expanded objects carry live exception/completion fields. Template
   // expansion fills only dates outside the current scheduler window; lookup
   // objects therefore win deterministicly when both represent the same day.
-  const sourceTasks = [...expandedFromTemplates, ...lookupTasks];
-  const resolveRecordTask = buildTaskResolver(sourceTasks);
+  return buildTaskResolver([...expandedFromTemplates, ...lookupTasks]);
+}
+
+export function buildJoboDayModel({
+  date,
+  tasks = [],
+  taskLookup = tasks,
+  recurringTasks = [],
+  records = [],
+  now,
+  scale,
+  isVisibleForUser,
+}) {
+  const { liveRecords, invalidRecordCount } = projectJoboRecords(records);
+  const resolveRecordTask = buildJoboTaskResolver({ records: liveRecords, taskLookup, recurringTasks });
 
   const visibleTask = task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task);
   const validLiveRecords = liveRecords.filter(record => {

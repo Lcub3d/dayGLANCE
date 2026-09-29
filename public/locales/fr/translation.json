@@ -2074,7 +2074,7 @@
     "placeholder": "Prévu contre réalisé. Cette vue se construit par étapes ; la première est l'interrupteur qui l'affiche.",
     "undo": {
       "changed": "Ce Do a changé depuis ; il est laissé tel quel.",
-      "completionBlocked": "L’annulation ne peut pas encore rétablir Terminé ; le Do est laissé tel quel.",
+      "completionBlocked": "Sa tâche n’est plus terminée, le Do ne peut donc pas redevenir Terminé. Il est laissé tel quel.",
       "failed": "Impossible d’enregistrer la modification. Réessayez."
     },
     "view": {
@@ -2100,6 +2100,9 @@
       "completedAt": "Marqué comme terminé à {{time}}",
       "completionUnavailable": "Terminé est disponible pour un travail manuel sans tâche liée, ou un enregistrement de fin dont la tâche reste terminée.",
       "completedStays": "Reste terminé. Ajustez les heures et enregistrez.",
+      "completeTask": "Terminer la tâche",
+      "completeTaskHint": "Coche la tâche liée, comme sa case. L’achèvement apparaît comme un Do à part entière.",
+      "completeTaskSaveFirst": "Enregistrez ou annulez d’abord vos modifications.",
       "completionAxis": "Achèvement",
       "do": "Exécution",
       "elapsedLabel": "Temps écoulé",

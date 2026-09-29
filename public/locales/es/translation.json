@@ -2074,7 +2074,7 @@
     "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
     "undo": {
       "changed": "Este Do cambió desde entonces, así que se dejó como está.",
-      "completionBlocked": "Deshacer aún no puede restaurar Completado, así que el Do se dejó como está.",
+      "completionBlocked": "Su tarea ya no está completada, así que el Do no puede volver a Completado. Se dejó como está.",
       "failed": "No se pudo guardar el cambio. Inténtalo de nuevo."
     },
     "view": {
@@ -2100,6 +2100,9 @@
       "completedAt": "Marcado como completado a las {{time}}",
       "completionUnavailable": "Completado está disponible para registros manuales sin tarea o registros de finalización cuya tarea sigue completada.",
       "completedStays": "Sigue completado. Ajusta las horas y guarda.",
+      "completeTask": "Completar tarea",
+      "completeTaskHint": "Marca la tarea vinculada, como su casilla. La finalización aparece como un Do propio.",
+      "completeTaskSaveFirst": "Guarda o cancela tus cambios primero.",
       "completionAxis": "Completado",
       "do": "Ejecución",
       "elapsedLabel": "Tiempo transcurrido",

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createDoRecord, pickJoboRecord } from './core.js';
-import { createManualDo, doIntervalAt, prepareDoEdit, prepareDoDelete, commitDoEdit } from './viewActions.js';
+import { createManualDo, doIntervalAt, prepareDoEdit, prepareDoDelete, commitDoEdit, offersCompleteTask } from './viewActions.js';
 const stamp = '2026-09-24T09:00:00.000Z';
 const base = () => createDoRecord({ id: 'do:t1:x', taskId: 't1', title: 'Captured', source: 'completion',
   timing: 'untimed', date: '2026-09-24', startTime: null, endDate: null, endTime: null,
@@ -55,5 +55,29 @@ describe('minimal Do form adapters', () => {
     const writer = vi.fn().mockResolvedValue({ ok: false, held: true, error: 'storageWrite' });
     expect(await commitDoEdit(writer, record)).toEqual({ ok: false, held: true, error: 'storageWrite' });
     expect(writer).toHaveBeenCalledExactlyOnceWith([record]);
+  });
+});
+
+// Lcub3d agreed on #1726: "Complete task" for a linked manual Do, as the
+// task's checkbox. Only a manual Do linked to a task that can still be
+// checked off gets it.
+describe('offersCompleteTask', () => {
+  const manual = (over = {}) => createDoRecord({ ...base(), id: 'manual:1', source: 'manual', progress: 'partial',
+    timing: 'timed', startTime: '09:00', endDate: '2026-09-24', endTime: '09:20', ...over });
+  const task = { id: 't1', title: 'Task', completed: false };
+  it('offers it for a linked manual Do whose task is open', () => {
+    expect(offersCompleteTask(manual(), task)).toBe(true);
+    expect(offersCompleteTask(manual(), { ...task, imported: true, isTaskCalendar: true })).toBe(true);
+  });
+  // MUTATION: drop any condition and the action appears where it would
+  // either do nothing or complete something the user cannot complete.
+  it('does not offer it otherwise', () => {
+    expect(offersCompleteTask(manual(), { ...task, completed: true })).toBe(false);
+    expect(offersCompleteTask(manual(), null)).toBe(false);
+    expect(offersCompleteTask(manual({ taskId: null }), task)).toBe(false);
+    expect(offersCompleteTask(base(), task)).toBe(false);                                   // a completion record
+    expect(offersCompleteTask(manual({ deleted: true }), task)).toBe(false);
+    expect(offersCompleteTask(manual(), { ...task, imported: true })).toBe(false);         // a read-only calendar event
+    expect(offersCompleteTask(null, task)).toBe(false);
   });
 });

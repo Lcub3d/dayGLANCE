@@ -198,3 +198,14 @@ export async function commitDoEdit(recordJobo, record) {
   if (!error.code && result?.error && typeof result.error.code === 'string') error.code = result.error.code;
   throw error;
 }
+
+/**
+ * Whether the editor offers "Complete task" for `record`, whose linked task
+ * resolves to `task`: a manual Do linked to a task that is not done yet and
+ * that the user can check off, so not a read-only imported calendar event.
+ * The action is the task's own checkbox; it never writes the Do record.
+ */
+export function offersCompleteTask(record, task) {
+  return !!record && !record.deleted && record.source === 'manual' && record.taskId != null
+    && !!task && task.completed !== true && !(task.imported && !task.isTaskCalendar);
+}

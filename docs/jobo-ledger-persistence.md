@@ -432,8 +432,10 @@ weakening deletion anywhere else:
 - The current winner must still be the version the step left behind. If
   anything newer landed since (another device, the detector, a later edit),
   the step reports a conflict and writes nothing.
-- It never moves a record into Completed. Restoring Completed waits for the
-  completion rules in #1867, and until then such a step is refused.
+- It moves a record into Completed only where core allows Completed
+  (`canCompleteDo`, #1867): an unlinked manual Do, or a completion record
+  whose task or occurrence is completed at the moment of the undo. Otherwise
+  the step is refused.
 
 A stale device returning with an old live copy still loses to the tombstone:
 nothing but an explicit undo writes a newer version.

@@ -2143,6 +2143,20 @@
     "comingSoon": "Wkrótce"
   },
   "jobo": {
+    "stats": {
+      "title": "Statystyki dnia",
+      "native": "Zaplanowane zadania",
+      "recorded": "Zapisany czas",
+      "lateStart": "Późne rozpoczęcia",
+      "lateFinish": "Późne zakończenia",
+      "longer": "Dłuższy czas",
+      "nativeScope": "Ukończone / wszystkie bieżące zadania z godziną. Stan zadania, nie postęp Do.",
+      "timeScope": "Suma przedziałów zmierzonego i zapisanego czasu tego dnia bez nakładania. Bez szacunków i nieznanych czasów.",
+      "timeDetails": "Plan: {{planned}} · Bez czasu: {{untimed}} · Wywnioskowane: {{inferred}}.",
+      "comparisonScope": "Każdy zapisany plan z tego dnia liczy się raz z całym wykonaniem, także z późniejszych dni.",
+      "breakdown": "Wcześniej/krócej: {{early}} · O czasie/według szacunku: {{on}} · Wykluczone grupy: {{excluded}}.",
+      "scope": "Cały dzień · Bez czasu: {{untimed}} · Porównywalne zapisane plany: {{comparable}} / {{total}}."
+    },
     "title": "JOBO",
     "placeholder": "Plan kontra rzeczywistość. Ten widok powstaje etapami; pierwszy to przełącznik, który go pokazuje.",
     "view": {

@@ -2056,6 +2056,20 @@
     "comingSoon": "Demnächst"
   },
   "jobo": {
+    "stats": {
+      "title": "Tagesstatistik",
+      "native": "Geplante Aufgaben",
+      "recorded": "Erfasste Zeit",
+      "lateStart": "Später Beginn",
+      "lateFinish": "Spätes Ende",
+      "longer": "Längere Dauer",
+      "nativeScope": "Abgeschlossen / alle aktuellen Aufgaben mit Uhrzeit. Aufgabenstatus, nicht Do-Fortschritt.",
+      "timeScope": "Vereinigung der gespeicherten gemessenen Intervalle dieses Tages. Schätzungen und unbekannte Dauer ausgeschlossen.",
+      "timeDetails": "Geplant: {{planned}} · Ohne Zeit: {{untimed}} · Abgeleitet: {{inferred}}.",
+      "comparisonScope": "Jeder erfasste Plan dieses Datums zählt einmal mit seiner gesamten Ausführung, auch an späteren Tagen.",
+      "breakdown": "Früh/kürzer: {{early}} · Pünktlich/wie geschätzt: {{on}} · Ausgeschlossene Gruppen: {{excluded}}.",
+      "scope": "Ganzer Tag · Ohne Zeit: {{untimed}} · Vergleichbare erfasste Pläne: {{comparable}} / {{total}}."
+    },
     "title": "JOBO",
     "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
     "view": {

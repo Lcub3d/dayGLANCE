@@ -10,6 +10,7 @@ import ViewCycler from './ViewCycler.jsx';
 import MobileViewToggle from './MobileViewToggle.jsx';
 import DayHeaderCell, { DayHeaderActions, DayHabitRings } from './DayHeader.jsx';
 import MonthStats from './month/MonthStats.jsx';
+import JoboStatsHeader from './jobo/JoboStatsHeader.jsx';
 import DayViewAllDaySection from './DayViewAllDaySection.jsx';
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
@@ -279,17 +280,14 @@ const CalendarHeader = () => {
   })}
     </>
   ) : effectiveViewMode === 'jobo' ? (
-    /* JOBO: one day, the selected one, at its natural width with room either
-       side, and nothing to its right. The empty stretch is not unfinished: it
-       is where JOBO's own controls will go, and the header should not fill it
-       with a second day that the view does not show. Same shape as MONTH's
-       single-day cell above. */
+    /* JOBO: the selected date and read-only statistics share this row,
+       like MONTH. The Plan/Do header and timeline keep their full height. */
     <>
     <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
       {isTablet && !isLandscape ? <MobileViewToggle /> : ((canShowViewCycler || schedOnlyCycler) && <ViewCycler />)}
     </div>
     <DayHeaderCell date={selectedDate} className="flex-none px-6" />
-    <div className="flex-1" />
+    <JoboStatsHeader className="flex-1" />
     </>
   ) : (() => {
     // Day mode: build date groups from dayViewColumns — start at x=0 so column

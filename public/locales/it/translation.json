@@ -2058,6 +2058,20 @@
     "comingSoon": "Prossimamente"
   },
   "jobo": {
+    "stats": {
+      "title": "Statistiche del giorno",
+      "native": "Compiti pianificati",
+      "recorded": "Tempo registrato",
+      "lateStart": "Inizi in ritardo",
+      "lateFinish": "Fini in ritardo",
+      "longer": "Durata maggiore",
+      "nativeScope": "Completati / tutti i compiti attuali con orario. Stato del compito, non avanzamento del Do.",
+      "timeScope": "Unione degli intervalli misurati e salvati di questo giorno. Stime e durate sconosciute escluse.",
+      "timeDetails": "Pianificato: {{planned}} · Senza tempo: {{untimed}} · Dedotto: {{inferred}}.",
+      "comparisonScope": "Ogni piano acquisito con questa data conta una volta con tutta la sua esecuzione, inclusi i giorni successivi.",
+      "breakdown": "Prima/più breve: {{early}} · Puntuale/stimato: {{on}} · Gruppi esclusi: {{excluded}}.",
+      "scope": "Intera giornata · Senza tempo: {{untimed}} · Piani acquisiti confrontabili: {{comparable}} / {{total}}."
+    },
     "title": "JOBO",
     "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
     "view": {

@@ -2056,6 +2056,20 @@
     "comingSoon": "即将推出"
   },
   "jobo": {
+    "stats": {
+      "title": "当日统计",
+      "native": "排程任务",
+      "recorded": "已记录时长",
+      "lateStart": "开始偏晚",
+      "lateFinish": "结束偏晚",
+      "longer": "耗时偏长",
+      "nativeScope": "已完成／当前全部定时任务。按原生任务勾选状态统计，不按执行记录的进度统计。",
+      "timeScope": "当天已提交且已计时的执行区间并集；不包含估算区间或未知时长。",
+      "timeDetails": "计划：{{planned}} · 未计时：{{untimed}} · 推算：{{inferred}}。",
+      "comparisonScope": "按计划日期属于当天的冻结计划分组，每组只统计一次，使用包含后续日期执行在内的完整执行组。",
+      "breakdown": "提前／较短：{{early}} · 准时／符合预估：{{on}} · 排除组数：{{excluded}}。",
+      "scope": "全天记录 · 未计时：{{untimed}} · 可比较的冻结计划：{{comparable}}／{{total}}。"
+    },
     "title": "JOBO",
     "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "view": {

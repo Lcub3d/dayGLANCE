@@ -2056,6 +2056,20 @@
     "comingSoon": "Em breve"
   },
   "jobo": {
+    "stats": {
+      "title": "Estatísticas do dia",
+      "native": "Tarefas agendadas",
+      "recorded": "Tempo registrado",
+      "lateStart": "Inícios tardios",
+      "lateFinish": "Finais tardios",
+      "longer": "Maior duração",
+      "nativeScope": "Concluídas / todas as tarefas atuais com horário. Estado da tarefa, não progresso do Do.",
+      "timeScope": "União dos intervalos medidos e salvos deste dia. Exclui estimativas e durações desconhecidas.",
+      "timeDetails": "Planejado: {{planned}} · Sem tempo: {{untimed}} · Inferido: {{inferred}}.",
+      "comparisonScope": "Cada plano capturado nesta data conta uma vez com toda a execução, incluindo dias posteriores.",
+      "breakdown": "Antes/mais curto: {{early}} · Pontual/estimado: {{on}} · Grupos excluídos: {{excluded}}.",
+      "scope": "Dia inteiro · Sem tempo: {{untimed}} · Planos capturados comparáveis: {{comparable}} / {{total}}."
+    },
     "title": "JOBO",
     "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "view": {

@@ -50,6 +50,7 @@ import {
   BRIDGE_CONFIG_META_ID,
   BRIDGE_INTENT_PREFIX,
   BRIDGE_APPLIER_META_ID,
+  bridgeCopyStatusId,
   decodePlainBridgeRow,
   noteKeyForPath,
   noteInScope,
@@ -178,6 +179,10 @@ interface ApplierLease { deviceId: string; claimedAt: number; until: number }
 // running copy without a restart.
 const UNREADABLE_INTENT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export interface StalePairing { generation: string; pairedAt: string | null }
+// The COPY STATUS row (the fleet-wide half): what this copy tells every
+// dayGLANCE device about itself. Renewed hourly so readers can age out a
+// copy that is gone; rewritten at once when its content changes.
+const COPY_STATUS_RENEW_MS = 60 * 60 * 1000;
 // Intent types that rewrite one note's text and can share a single write
 // (coalesced per note per drain: a burst of four is one edit and one
 // editor reload, the other half of the incident's fix).
@@ -265,6 +270,12 @@ export interface BridgeHost {
   onLinkedNotesChanged?(): void;
   /** This vault copy's device id (the heartbeat's wire key). Names the applier lease. */
   getDeviceId?(): string;
+  /** How the copy status row names this copy to the fleet (a hostname on desktop, the platform elsewhere). */
+  getCopyName?(): string | null;
+  /** 'mac' | 'windows' | 'linux' | 'ios' | 'android' | 'unknown', for the copy status row. */
+  getPlatform?(): string | null;
+  /** The plugin build this copy runs, for the copy status row. */
+  getPluginVersion?(): string | null;
 }
 
 /** The intents that CREATE a daily note when it is missing (the template ladder's daily creation point). */
@@ -413,6 +424,11 @@ export class BridgeTransport {
   private stalePairingSaidFor: string | null = null;
   private unreadableFirstSeen = new Map<string, number>();
   private unreadableSaidCount = 0;
+  // The last drain's held count (the copy status row carries it).
+  private unreadableCount = 0;
+  // The copy status row as last written: its content key and the time, so a
+  // drain rewrites it only on change or for the hourly renewal.
+  private copyStatusWritten: { key: string; at: number } | null = null;
   private linkScanAt = 0;
   private adopted = new Set<string>();
   private adoptQueue: string[] = [];
@@ -554,6 +570,58 @@ export class BridgeTransport {
 
   /** True while this copy's pairing is older than the vault's: it applies and reports nothing (the heartbeat's `pairingStale`). */
   pairingStale(): boolean { return this.stalePairing !== null; }
+  /** The intents this copy held unreadable on its last drain. */
+  heldIntents(): number { return this.unreadableCount; }
+
+  /** The copy status row's content (the fleet-wide half, see bridgeStream.js). */
+  private copyStatusPayload(pairing: BridgePairing): Record<string, unknown> {
+    return {
+      v: 1, kind: 'copy',
+      deviceId: this.host.getDeviceId?.() ?? '',
+      name: this.host.getCopyName?.() ?? null,
+      platform: this.host.getPlatform?.() ?? null,
+      pluginVersion: this.host.getPluginVersion?.() ?? null,
+      generation: pairing.generation, pairedAt: pairing.pairedAt,
+      stale: this.stalePairing !== null,
+      ...(this.stalePairing ? { staleAgainst: this.stalePairing } : {}),
+      held: this.unreadableCount,
+    };
+  }
+
+  /** Write the copy status row when its content changed or the renewal is due. Never throws. */
+  private async publishCopyStatus(client: VaultClient, pairing: BridgePairing): Promise<void> {
+    const deviceId = this.host.getDeviceId?.() ?? '';
+    if (!deviceId || this.disposed) return;
+    const payload = this.copyStatusPayload(pairing);
+    const key = JSON.stringify(payload);
+    const now = Date.now();
+    if (this.copyStatusWritten && this.copyStatusWritten.key === key && now - this.copyStatusWritten.at < COPY_STATUS_RENEW_MS) return;
+    try {
+      const ack = await client.batch(BRIDGE_VAULT_APP, {
+        accountId: pairing.accountId,
+        rows: [{ entityId: bridgeCopyStatusId(deviceId), envelope: encodePlainBridgeRow({ ...payload, ts: new Date(now).toISOString() }), createdAt: now }],
+      }) as { maxSeq?: unknown } | null;
+      this.recordOwnSeq(Number(ack?.maxSeq));
+      this.copyStatusWritten = { key, at: now };
+    } catch (e) {
+      if (isRateLimitError(e)) this.noteRateLimit();
+      else console.error('dayGLANCE bridge: copy status write failed', e);
+    }
+  }
+
+  /** Unpairing: this copy's status row goes with its credentials. Never throws. */
+  async retireCopyStatus(pairing: BridgePairing): Promise<void> {
+    const deviceId = this.host.getDeviceId?.() ?? '';
+    if (!deviceId) return;
+    try {
+      const res = await this.client(pairing).deleteRow(BRIDGE_VAULT_APP, bridgeCopyStatusId(deviceId), pairing.accountId) as { seq?: unknown } | null;
+      this.recordOwnSeq(Number(res?.seq));
+    } catch (e) {
+      if (isRateLimitError(e)) this.noteRateLimit();
+      else console.error('dayGLANCE bridge: copy status cleanup failed', e);
+    }
+    this.copyStatusWritten = null;
+  }
   /** The vault's pairing this copy is behind, or null. */
   stalePairingInfo(): StalePairing | null { return this.stalePairing; }
 
@@ -1195,6 +1263,7 @@ export class BridgeTransport {
         }
         since = batchMax;
       }
+      this.unreadableCount = unreadable.length;
       if (unreadable.length !== this.unreadableSaidCount) {
         // Said when the count changes, not every 30 seconds: the held rows
         // re-list on every drain by design (the cursor floor).
@@ -1237,6 +1306,9 @@ export class BridgeTransport {
           }
         }
       }
+      // The fleet-wide half: tell every dayGLANCE device what this copy
+      // holds and what it is holding back (on change, else hourly).
+      await this.publishCopyStatus(client, pairing);
       // THE CURSOR FLOOR: `since` keeps advancing so pagination works, but
       // neither the in-memory nor the persisted cursor may pass an intent
       // row that is still unconsumed (deferred on a dirty buffer, failed, or

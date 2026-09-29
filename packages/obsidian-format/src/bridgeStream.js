@@ -124,6 +124,19 @@ export const BRIDGE_ACTION_PREFIX = 'act:';
 // deviceId, from, to, publishedAt, events:[…]}`. Readers union the rows and
 // prefer the freshest copy of an event id. Never deleted by the reader.
 export const BRIDGE_PROJECTION_PREFIX = 'proj:';
+// COPY STATUS rows (2026-09-29, the fleet-wide half of the pairing split):
+// one PLAINTEXT row per plugin copy, `meta:copy:<deviceId>`, written by that
+// copy on load, on every pairing verdict or held-count change, and renewed
+// hourly. Payload `{v:1, kind:'copy', deviceId, name, platform,
+// pluginVersion, generation, pairedAt, stale, staleAgainst?, held, ts}`.
+// Every dayGLANCE device reads the stream, so every app instance can say
+// which copies of the vault are current and which are behind, whichever
+// machine the user is sitting at. Plaintext because it carries nothing the
+// meta:pairing row does not already publish plus a hostname the owner
+// chose to share with their own server. A copy deletes its row on unpair;
+// readers age out a row not renewed for a week.
+export const BRIDGE_COPY_PREFIX = 'meta:copy:';
+export const bridgeCopyStatusId = (deviceId) => `${BRIDGE_COPY_PREFIX}${String(deviceId)}`;
 // Project and goal notes (companion §4.3, ruling A): the frontmatter key that
 // holds the entity's dayGLANCE id — the durable identity of the link; the
 // path on the entity record is only the cached locator.

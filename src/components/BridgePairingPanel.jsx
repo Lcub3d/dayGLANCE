@@ -3,7 +3,10 @@ import { Check, Copy, Link2, Loader } from 'lucide-react';
 import { readVaultHeartbeat } from '../obsidian.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
 import { startBridgePairing, cancelBridgePairing } from '../utils/obsidianBridgePairing.js';
-import { getBridgePairingMeta } from '../utils/obsidianBridgeStream.js';
+import { getBridgePairingMeta, readBridgeDeliveryState } from '../utils/obsidianBridgeStream.js';
+import { readBridgeCopies } from '../utils/obsidianBridgeInbound.js';
+import { deriveBridgeFleet } from '../utils/bridgeFleet.js';
+import BridgeFleetList from './BridgeFleetList.jsx';
 import { getVaultConfig } from '../sync/vaultConfig.js';
 import { deriveBridgeStatus, describeAgo } from '../utils/bridgeStatus.js';
 import { activeLocale } from '../utils/localeFormatting.js';
@@ -45,6 +48,11 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
   // closed here: the 2026-09-06 posture ruling's normal resting state) and
   // no plugin at all.
   const [meta, setMeta] = useState(null);
+  // The fleet (utils/bridgeFleet.js): the copy status rows every plugin copy
+  // publishes, and the delivery check's last verdict. Read from this
+  // device's storage on the same poll; the sync cycle keeps both current.
+  const [fleet, setFleet] = useState({ copies: [], behind: [], current: [] });
+  const [delivery, setDelivery] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +76,8 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
           ?? (await getBridgePairingMeta({ force: true }));
         if (cancelled) return;
         setMeta(m ?? null);
+        setFleet(deriveBridgeFleet(readBridgeCopies(), m ?? null));
+        setDelivery(readBridgeDeliveryState());
         const t = m?.pairedAt ? Date.parse(m.pairedAt) : NaN;
         setPairedDays(Number.isFinite(t) ? Math.max(0, Math.floor((Date.now() - t) / 86400000)) : null);
       } catch { /* a liveness probe must never break the settings UI */ }
@@ -166,6 +176,7 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
       {status.state === 'active' && hb.stamping === 'off' && (
         <p className={`text-xs ${textSecondary}`}>{t('settings.obsidianBridgeStampingOff')}</p>
       )}
+      <BridgeFleetList fleet={fleet} delivery={delivery} textSecondary={textSecondary} />
       {code ? (
         <div className="space-y-2">
           <div className={`flex items-center justify-center gap-2 py-2 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-stone-100'}`}>

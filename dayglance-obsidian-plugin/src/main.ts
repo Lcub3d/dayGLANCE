@@ -34,7 +34,7 @@
 // offer at `.dayglance/pairing`, the user types the displayed code here,
 // the credentials are verified against GLANCEvault and stored in data.json.
 
-import { Notice, Plugin, normalizePath } from 'obsidian';
+import { Notice, Platform, Plugin, normalizePath } from 'obsidian';
 // The shared vault-format core — the SAME package dayGLANCE consumes, so the
 // heartbeat's writer and its readers can never drift apart (the first proof
 // the format-package boundary works in both directions). Bundled into
@@ -107,6 +107,27 @@ const mintDeviceId = (): string => {
   return `dgb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
+// The copy status row's name for this copy: the machine's hostname where
+// Obsidian runs on Electron (the owner's own server sees it; it is what
+// makes "Windows-desktop is behind" readable), else the platform.
+const platformLabel = (): string => {
+  if (Platform.isIosApp) return 'ios';
+  if (Platform.isAndroidApp) return 'android';
+  if (Platform.isMacOS) return 'mac';
+  if (Platform.isWin) return 'windows';
+  if (Platform.isLinux) return 'linux';
+  return 'unknown';
+};
+const copyName = (): string | null => {
+  try {
+    const req = (window as unknown as { require?: (m: string) => { hostname?: () => string } }).require;
+    const host = Platform.isDesktopApp && typeof req === 'function' ? req('os')?.hostname?.() : null;
+    if (typeof host === 'string' && host.trim()) return host.trim();
+  } catch { /* no Node here */ }
+  const label = platformLabel();
+  return label === 'unknown' ? null : { ios: 'iPhone or iPad', android: 'Android', mac: 'Mac', windows: 'Windows', linux: 'Linux' }[label] ?? null;
+};
+
 export default class DayGlanceBridgePlugin extends Plugin {
   private deviceId = '';
   private data: BridgeData = {};
@@ -163,6 +184,11 @@ export default class DayGlanceBridgePlugin extends Plugin {
       getProjectNotes: () => normalizeProjectNoteSettings(this.data.projectNotes),
       getViewer: () => this.viewer(),
       getDeviceId: () => this.deviceId,
+      // The copy status row (the fleet-wide half of the pairing split):
+      // how this copy is named to every dayGLANCE device.
+      getCopyName: () => copyName(),
+      getPlatform: () => platformLabel(),
+      getPluginVersion: () => String((this.manifest as { version?: unknown })?.version ?? ''),
       // A note linked or unlinked while open: its completed-line hiding
       // follows the map without waiting for the next edit.
       onLinkedNotesChanged: () => refreshEditorHiding(this.app),
@@ -426,6 +452,8 @@ export default class DayGlanceBridgePlugin extends Plugin {
   private async unpair(): Promise<void> {
     const previous = this.data.pairing;
     if (!previous) return;
+    // This copy's status row goes with its credentials (best-effort).
+    await this.transport.retireCopyStatus(previous);
     delete this.data.pairing;
     this.clearBridgeState();
     delete this.data.viewer;

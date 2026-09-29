@@ -37,6 +37,8 @@ import {
   BRIDGE_ACTION_PREFIX,
   completedSinceFor,
   noteKeyForPath,
+  BRIDGE_COPY_PREFIX,
+  decodePlainBridgeRow,
 } from '@glance-apps/obsidian-format';
 import {
   buildExistingObsidianTaskContext,
@@ -44,6 +46,7 @@ import {
   parseTasksFromMarkdown,
 } from '../obsidian.js';
 import { getBridgePairingMeta, bridgeRateLimited, bridgeVaultClientFor } from './obsidianBridgeStream.js';
+import { BRIDGE_COPIES_KEY, rememberBridgeCopies } from './bridgeFleet.js';
 import { resolveProjectRef } from './obsidianProjectNotes.js';
 
 const OBS_HWM_KEY = 'dayglance-bridge-obs-hwm';
@@ -91,6 +94,10 @@ export async function fetchBridgeObservations() {
     let since = 0;
     try { since = Number(localStorage.getItem(OBS_HWM_KEY)) || 0; } catch { /* fresh cursor */ }
     const byPath = new Map();
+    // Copy status rows (bridgeFleet.js): plaintext, one per plugin copy,
+    // remembered here as they pass so every app instance can show the
+    // fleet. A tombstone (the copy unpaired) forgets the copy.
+    const copyUpdates = [];
     let maxSeq = since;
     let hasMore = true;
     while (hasMore) {
@@ -100,7 +107,13 @@ export async function fetchBridgeObservations() {
         const seq = Number(row.seq) || 0;
         if (seq > maxSeq) maxSeq = seq;
         if (seq > since) since = seq;
-        if (!String(row.entityId || '').startsWith(BRIDGE_OBSERVATION_PREFIX)) continue;
+        const entityId = String(row.entityId || '');
+        if (entityId.startsWith(BRIDGE_COPY_PREFIX)) {
+          const deviceId = entityId.slice(BRIDGE_COPY_PREFIX.length);
+          copyUpdates.push({ deviceId, row: row.deleted || !row.envelope ? null : decodePlainBridgeRow(row.envelope) });
+          continue;
+        }
+        if (!entityId.startsWith(BRIDGE_OBSERVATION_PREFIX)) continue;
         const payload = await openBridgeEnvelope(subkey, row.envelope);
         // Unreadable rows (rotated-away generation, tamper) are skipped, not
         // fatal — the cursor still advances past them.
@@ -111,12 +124,25 @@ export async function fetchBridgeObservations() {
       }
       if (!page.rows?.length) break;
     }
+    if (copyUpdates.length) {
+      try { localStorage.setItem(BRIDGE_COPIES_KEY, JSON.stringify(rememberBridgeCopies(readBridgeCopies(), copyUpdates))); } catch { /* storage unavailable */ }
+    }
     lastInboundFailure = null;
     return { observations: [...byPath.values()], maxSeq };
   } catch {
     // Rate-limited (the client armed the brake itself) or unreachable —
     // the unadvanced cursor retries next cycle either way.
     return fail(bridgeRateLimited() ? 'rate-limited' : 'unreachable');
+  }
+}
+
+/** The copy status rows this device has seen: {deviceId → row}. */
+export function readBridgeCopies() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(BRIDGE_COPIES_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
   }
 }
 

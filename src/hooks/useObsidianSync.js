@@ -27,6 +27,7 @@ import { reattachTasksMetadata } from '../utils/obsidianTasksMetadata.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
 import { vaultPosture, isStreamPosture } from '../utils/obsidianVaultPosture.js';
 import { isStalePairing } from '../utils/bridgeStatus.js';
+import { deriveBridgeFleet } from '../utils/bridgeFleet.js';
 import { inboundFailureNotice } from '../utils/bridgeInboundPolicy.js';
 import { planNoteLinkUpdates, normalizeNotePath, projectByNotePath, projectRefFor } from '../utils/obsidianProjectNotes.js';
 import {
@@ -45,7 +46,7 @@ import { blockIdWritesEnabled, completionMarkerWritesEnabled } from '../utils/ob
 import { titleConflictNoticeText } from '../utils/obsidianTitleConflict.js';
 import { withCreationFrontmatter } from '../utils/obsidianFrontmatter.js';
 import { writebackSnapshotEntry } from '../utils/obsidianWritebackSnapshot.js';
-import { emitBridgeIntent, flushBridgeOutbox, publishBridgeConfig, publishBridgeCalendarProjection, getBridgePairingMeta, cachedBridgePairingMeta } from '../utils/obsidianBridgeStream.js';
+import { emitBridgeIntent, flushBridgeOutbox, publishBridgeConfig, publishBridgeCalendarProjection, getBridgePairingMeta, cachedBridgePairingMeta, checkBridgeDelivery, readBridgeDeliveryState } from '../utils/obsidianBridgeStream.js';
 import { vaultViewerFor, visibleToViewer, assignVaultViewer, knownTaskIds } from '../utils/obsidianUserScope.js';
 import { writebackTargetFor } from '../utils/obsidianWritebackTarget.js';
 
@@ -55,7 +56,7 @@ import { writebackTargetFor } from '../utils/obsidianWritebackTarget.js';
 // that has started wars (the declined-backfill cost record).
 const PLACEMENT_PER_PASS = 25;
 import { noteTaskId, withScheduledMetadata, withProjectMetadata } from '@glance-apps/obsidian-format';
-import { fetchBridgeObservations, applyBridgeObservations, commitBridgeObservationCursor, pendingBridgeObservations, lastBridgeInboundFailure } from '../utils/obsidianBridgeInbound.js';
+import { fetchBridgeObservations, applyBridgeObservations, commitBridgeObservationCursor, pendingBridgeObservations, lastBridgeInboundFailure, readBridgeCopies } from '../utils/obsidianBridgeInbound.js';
 import {
   fetchBridgeActions, planBridgeActions, applyActionsToTasks, applyActionsToRecurring,
   deleteBridgeActions, commitBridgeActionCursor,
@@ -406,17 +407,55 @@ export default function useObsidianSync({
         try { meta = (await getBridgePairingMeta({ force: true })) ?? meta; } catch { /* keep what we have */ }
       }
       const stale = isStalePairing(state, meta);
-      if (stale && stalePairingSaidRef.current !== (state.generation ?? 'unknown')) {
-        stalePairingSaidRef.current = state.generation ?? 'unknown';
-        setObsidianSyncError(i18n.t('settings.obsidianBridgeStalePairing'));
-        setObsidianSyncStatus('error');
-      }
-      if (!stale) stalePairingSaidRef.current = null;
+      // Said at the end of the cycle with the other bridge alarms (see
+      // finishObsidianCycle): once per change, then quiet, never "Synced".
+      bridgeAlarmsRef.current.stale = stale
+        ? bridgeAlarmText('settings.obsidianBridgeStalePairing', {},
+          'The plugin in this copy of the vault holds an older pairing than the vault, so it is not applying your changes here or reporting its notes; another copy of the vault handles both. Restart Obsidian on this device so it loads the synced pairing.')
+        : null;
       bridgeHeartbeatRef.current = { ...state, pairingStale: stale, vaultPosture: vaultPosture({ heartbeat: state, vaultPaired: !!meta }) };
     } catch { /* a liveness probe must never fail a sync */ }
   };
   const metaRefreshedForRef = useRef(null);
-  const stalePairingSaidRef = useRef(null);
+  // THE BRIDGE ALARMS (2026-09-29, the fleet-wide half of the pairing
+  // split). Three conditions that mean "your changes are not reaching the
+  // vault the way the panel implies", each computed during the cycle and
+  // said together at its end: this device's own plugin copy on a stale
+  // pairing (stale), another copy of the vault behind or holding changes
+  // (fleet, from the copy status rows every plugin copy publishes), and
+  // this device's own intents left unconsumed while a copy is applying
+  // (delivery, the safety net that watches the effect whatever the cause).
+  // The vault-lost pattern: said once as an error per change of the set,
+  // then the cycle ends idle rather than "Synced" while any holds, and the
+  // settings panels stay red on every device that reads the stream.
+  const bridgeAlarmsRef = useRef({ stale: null, fleet: null, delivery: null });
+  const bridgeAlarmsSaidRef = useRef(null);
+  // English when i18next has nothing to give (not yet initialised), like
+  // vaultLostText: an alarm must never be an empty string.
+  const bridgeAlarmText = (key, vars, fallback) => {
+    let text = null;
+    try { text = i18n.t(key, vars); } catch { text = null; }
+    if (typeof text === 'string' && text && text !== key) return text;
+    return Object.entries(vars || {}).reduce((acc, [k, v]) => acc.split(`{{${k}}}`).join(String(v)), fallback);
+  };
+  const surfaceBridgeFleet = async () => {
+    try {
+      const fleet = deriveBridgeFleet(readBridgeCopies(), cachedBridgePairingMeta());
+      bridgeAlarmsRef.current.fleet = fleet.behind.length
+        ? bridgeAlarmText('settings.obsidianBridgeFleetBehind', { names: fleet.behind.map((c) => c.name).join(', ') },
+          '{{names}}: these copies of your vault hold an older pairing than the vault and are not applying changes. Your changes still apply through the current copies. On those machines, restart Obsidian so it loads the synced pairing, or start pairing again and enter the code there.')
+        : null;
+      const verdict = await checkBridgeDelivery();
+      if (verdict) {
+        bridgeAlarmsRef.current.delivery = verdict.alarm
+          ? bridgeAlarmText('settings.obsidianBridgeDeliveryWaiting', { count: verdict.waiting },
+            '{{count}} of your changes have been waiting more than 10 minutes to reach the vault while a copy of it is applying. Check the copies listed here and the Obsidian console on the applying copy.')
+          : null;
+      } else if (!readBridgeDeliveryState().waiting) {
+        bridgeAlarmsRef.current.delivery = null;
+      }
+    } catch { /* a status read must never fail a sync */ }
+  };
 
   const refreshTasksPluginDetection = async (handle) => {
     try {
@@ -553,6 +592,18 @@ export default function useObsidianSync({
       // with the header and Settings still showing it.
       if (vaultLostUnsaidRef.current) sayVaultLost();
       else setObsidianSyncStatus(s => (s === 'syncing' ? 'idle' : s));
+    } else if (Object.values(bridgeAlarmsRef.current).some(Boolean)) {
+      // A bridge alarm holds (see bridgeAlarmsRef): said once per change of
+      // the set, as an error; quiet afterwards, never "Synced".
+      const texts = ['stale', 'fleet', 'delivery'].map((k) => bridgeAlarmsRef.current[k]).filter(Boolean);
+      const key = texts.join('\n');
+      if (bridgeAlarmsSaidRef.current !== key) {
+        bridgeAlarmsSaidRef.current = key;
+        setObsidianSyncError(texts.join(' '));
+        setObsidianSyncStatus('error');
+      } else {
+        setObsidianSyncStatus(s => (s === 'syncing' ? 'idle' : s));
+      }
     } else if (restoreErrorRef.current) {
       // …but a MISSING-NOTE condition outlives a successful cycle (it
       // legitimately completes without the missing file). Keep it showing;
@@ -560,6 +611,7 @@ export default function useObsidianSync({
       setObsidianSyncError(restoreErrorRef.current);
       setObsidianSyncStatus('error');
     } else {
+      bridgeAlarmsSaidRef.current = null;
       setObsidianSyncError(null);
       setObsidianSyncStatus('success');
       setTimeout(() => setObsidianSyncStatus(s => s === 'success' ? 'idle' : s), 3000);
@@ -789,6 +841,9 @@ export default function useObsidianSync({
         // The cursor commits only after the merges are dispatched, so a
         // crash mid-cycle replays the batch — application is idempotent.
         const fetched = await fetchBridgeObservations();
+        // The copy status rows passed in that fetch; the delivery probe runs
+        // on its own schedule. Both feed the alarms said at cycle end.
+        await surfaceBridgeFleet();
         if (fetched) {
           inboundFailuresRef.current = 0;
           const applied = fetched.observations.length

@@ -173,6 +173,8 @@ export const BRIDGE_INTENT_PREFIX: string;
 export const BRIDGE_OBSERVATION_PREFIX: string;
 export const BRIDGE_ACTION_PREFIX: string;
 export const BRIDGE_PROJECTION_PREFIX: string;
+export const BRIDGE_COPY_PREFIX: string;
+export function bridgeCopyStatusId(deviceId: string): string;
 export function bridgeCalendarProjectionId(deviceId: string): string;
 export function bridgeConfigAllowsStamping(config: { blockIdWrites?: unknown } | null | undefined): boolean;
 

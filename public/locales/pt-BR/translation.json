@@ -257,7 +257,11 @@
     "apply": "Aplicar",
     "minutesShort": "{{count}} min",
     "nextWeek": "Próxima semana",
-    "taskProgress": "{{done}}/{{total}} tarefas"
+    "taskProgress": "{{done}}/{{total}} tarefas",
+    "undone": "Desfeito",
+    "redone": "Refeito",
+    "undoFailed": "Não foi possível desfazer",
+    "redoFailed": "Não foi possível refazer"
   },
   "errorBoundary": {
     "title": "Algo correu mal",
@@ -2063,20 +2067,25 @@
       "recorded": "Tempo registrado",
       "lateStart": "Inícios tardios",
       "lateFinish": "Finais tardios",
-      "longer": "Maior duração",
-      "nativeScope": "Concluídas / todas as tarefas atuais com horário. Estado da tarefa, não progresso do Do.",
-      "timeScope": "União dos intervalos medidos e salvos deste dia. Exclui estimativas e durações desconhecidas.",
-      "timeDetails": "Planejado: {{planned}} · Sem tempo: {{untimed}} · Inferido: {{inferred}}.",
-      "comparisonScope": "Cada plano capturado nesta data conta uma vez com toda a execução, incluindo dias posteriores.",
-      "breakdown": "Antes/mais curto: {{early}} · Pontual/estimado: {{on}} · Grupos excluídos: {{excluded}}.",
-      "scope": "Dia inteiro · Sem tempo: {{untimed}} · Planos capturados comparáveis: {{comparable}} / {{total}}."
+      "longer": "Demorou mais",
+      "nativeScope": "Tarefas com horário marcadas hoje, de todas as tarefas com horário de hoje.",
+      "timeScope": "Tempo registrado hoje em entradas Do. Sobreposições contam uma vez; estimativas e Do sem horários não entram.",
+      "timeDetails": "Planejado: {{planned}} · Sem horários: {{untimed}} · Estimado: {{inferred}}.",
+      "comparisonScope": "Entre as tarefas planejadas hoje com Do com horários. Uma tarefa feita em várias sessões ou dias conta uma vez.",
+      "scope": "Dia inteiro · Comparadas: {{comparable}} de {{total}} tarefas planejadas · Sem horários: {{untimed}}",
+      "breakdownTiming": "Antes: {{early}} · No horário: {{on}}",
+      "breakdownDuration": "Mais curto: {{early}} · Conforme o plano: {{on}}",
+      "notCompared": "Não comparadas (sem horários): {{excluded}}",
+      "secondary": "Finais tardios: {{finish}} · Demorou mais: {{longer}}"
     },
     "title": "JOBO",
     "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "undo": {
       "changed": "Este Do mudou desde então, então foi mantido como está.",
       "completionBlocked": "A tarefa não está mais concluída, então o Do não pode voltar a Concluído. Foi mantido como está.",
-      "failed": "Não foi possível salvar a alteração. Tente novamente."
+      "failed": "Não foi possível salvar a alteração. Tente novamente.",
+      "undone": "Alteração do Do desfeita",
+      "redone": "Alteração do Do refeita"
     },
     "view": {
       "activeLabel": "Tempo ativo",
@@ -2099,7 +2108,7 @@
       "capturedTitle": "The recorded title is kept as it was when this Do was created.",
       "completeInterval": "Informe um intervalo completo de início e fim.",
       "completedAt": "Marcado como concluído às {{time}}",
-      "completionUnavailable": "Concluído está disponível para registros manuais sem tarefa vinculada ou registros de conclusão cuja tarefa continua concluída.",
+      "completionUnavailable": "Um Do vinculado a uma tarefa não pode ser concluído sozinho. Escolha outro progresso ou conclua a tarefa.",
       "completedStays": "Continua concluído. Ajuste os horários e salve.",
       "completeTask": "Concluir tarefa",
       "completeTaskHint": "Marca a tarefa vinculada, como sua caixa de seleção. A conclusão aparece como um Do próprio.",
@@ -2137,7 +2146,7 @@
       },
       "progressLabel": "Progresso",
       "readOnly": "O JOBO está somente leitura neste dispositivo. A edição de Do está desativada.",
-      "recordChanged": "This record has changed. Close and reopen it before editing.",
+      "recordChanged": "Este registro foi alterado. Feche e abra-o novamente antes de editar.",
       "recordedLabel": "Tempo medido",
       "recordedMinutes": "{{minutes}} min registrados",
       "retryLoad": "Tentar carregar novamente",
@@ -2151,37 +2160,46 @@
       "summary": {
         "withinPlan": "No plano",
         "late": "Atrasado",
-        "longer": "Mais longo",
-        "split": "Dividido",
+        "longer": "Demorou mais",
+        "split": "Várias sessões",
         "notStarted": "Nenhuma execução registrada",
-        "unplanned": "Não planejado"
+        "unplanned": "Não planejado",
+        "startedLate": "Começou atrasado",
+        "finishedLate": "Terminou atrasado"
       },
       "timeAxis": "Desempenho do tempo",
       "timeDuration": {
-        "shorter": "{{minutes}} min a menos",
+        "shorter": "{{amount}} a menos",
         "onEstimate": "Dentro da estimativa",
-        "longer": "{{minutes}} min a mais"
+        "longer": "{{amount}} a mais"
       },
       "timeDurationLabel": "Duração",
       "timeFinish": {
-        "early": "Terminou {{minutes}} min mais cedo",
+        "early": "Terminou {{amount}} mais cedo",
         "onTime": "Terminou no horário",
-        "late": "Terminou {{minutes}} min atrasado"
+        "late": "Terminou {{amount}} atrasado"
       },
       "timeFinishLabel": "Fim",
       "timeIncomplete": "Início e fim reais não registrados por completo.",
       "timeIncompleteShort": "Adicionar tempo",
       "timeStart": {
-        "early": "Começou {{minutes}} min mais cedo",
+        "early": "Começou {{amount}} mais cedo",
         "onTime": "Começou no horário",
-        "late": "Começou {{minutes}} min atrasado"
+        "late": "Começou {{amount}} atrasado"
       },
       "timeStartLabel": "Início",
       "titleRequired": "Enter a title for this Do.",
       "updateFailed": "Não foi possível salvar a alteração do Do.",
       "setInterval": "Definir intervalo real",
       "dragCompletion": "Arraste para definir o intervalo; Enter para editar.",
-      "completionPoint": "Registrado às {{time}}. Adicione o início real para registrar um intervalo."
+      "completionPoint": "Registrado às {{time}}. Adicione o início real para registrar um intervalo.",
+      "offsetMinutes": "{{minutes}} min",
+      "offsetDays": "{{days}} d",
+      "offsetDaysHours": "{{days}} d {{hours}} h",
+      "completeTaskInstead": "Este Do não pode ser concluído sozinho. Conclua a tarefa abaixo; a conclusão é registrada como um Do próprio.",
+      "taskAlreadyDone": "A tarefa já está feita. A conclusão é registrada como um Do próprio.",
+      "linkedNoCompletion": "Um Do vinculado a uma tarefa não pode ser concluído sozinho.",
+      "checkTaskAgain": "Marque a tarefa novamente para concluir este Do."
     }
   },
   "todoist": {

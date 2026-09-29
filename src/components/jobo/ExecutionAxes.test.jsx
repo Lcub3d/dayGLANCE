@@ -55,3 +55,48 @@ describe('ExecutionAxes', () => {
     expect(summaryRows([], unknown, t)).toEqual([]);
   });
 });
+
+// Wording pass (#1726 polish): the summary label says which end was late,
+// and offsets read in the units people use.
+describe('timing wording', () => {
+  const en = (key, values = {}) => {
+    const strings = {
+      'jobo.view.offsetMinutes': `${values.minutes} min`,
+      'jobo.view.offsetDays': `${values.days}d`,
+      'jobo.view.offsetDaysHours': `${values.days}d ${values.hours}h`,
+      'common.durationMinutes': `${values.minutes}m`,
+      'common.durationHours': `${values.hours}h`,
+      'common.durationHoursMinutes': `${values.hours}h ${values.minutes}m`,
+      'jobo.view.timeStart.late': `Started ${values.amount} late`,
+    };
+    return strings[key] ?? key;
+  };
+
+  it('formats offsets as minutes, then hours, then days', async () => {
+    const { formatOffset } = await import('./ExecutionAxes.jsx');
+    expect(formatOffset(45, en)).toBe('45 min');
+    expect(formatOffset(-45, en)).toBe('45 min');
+    expect(formatOffset(135, en)).toBe('2h 15m');
+    expect(formatOffset(180, en)).toBe('3h');
+    // MUTATION: drop the day step and this reads "46h 1m".
+    expect(formatOffset(2761, en)).toBe('1d 22h');
+    expect(formatOffset(2880, en)).toBe('2d');
+  });
+
+  it('puts the formatted offset into the timing line', () => {
+    const late = compareExecutionToPlan(plan, [record({ date: '2026-09-28', endDate: '2026-09-28', startTime: '07:01', endTime: '08:00' })]);
+    expect(timingRows(late, en).find((row) => row.key === 'start').text).toBe('Started 1d 22h late');
+  });
+
+  // MUTATION: show core's bare "late" and a card that started on time reads
+  // "Late" right above "Started on time".
+  it('names the late end: a late start, or a finish that ran late', () => {
+    const startedLate = compareExecutionToPlan(plan, [record()]);
+    expect(summaryRows(null, startedLate, (key) => key).map((row) => row.text)).toContain('jobo.view.summary.startedLate');
+    const finishedLate = compareExecutionToPlan(plan, [record({ startTime: '09:00', endTime: '10:30' })]);
+    const labels = summaryRows(null, finishedLate, (key) => key).map((row) => row.text);
+    expect(labels).toContain('jobo.view.summary.finishedLate');
+    expect(labels).not.toContain('jobo.view.summary.startedLate');
+    expect(labels).toContain('jobo.view.summary.longer');
+  });
+});

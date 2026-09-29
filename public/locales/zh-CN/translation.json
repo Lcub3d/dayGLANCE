@@ -257,7 +257,11 @@
     "apply": "应用",
     "minutesShort": "{{count}} 分钟",
     "nextWeek": "下周",
-    "taskProgress": "{{done}}/{{total}} 个任务"
+    "taskProgress": "{{done}}/{{total}} 个任务",
+    "undone": "已撤销",
+    "redone": "已重做",
+    "undoFailed": "无法撤销",
+    "redoFailed": "无法重做"
   },
   "errorBoundary": {
     "title": "出了点问题",
@@ -2063,20 +2067,25 @@
       "recorded": "已记录时长",
       "lateStart": "开始偏晚",
       "lateFinish": "结束偏晚",
-      "longer": "耗时偏长",
-      "nativeScope": "已完成／当前全部定时任务。按原生任务勾选状态统计，不按执行记录的进度统计。",
-      "timeScope": "当天已提交且已计时的执行区间并集；不包含估算区间或未知时长。",
-      "timeDetails": "计划：{{planned}} · 未计时：{{untimed}} · 推算：{{inferred}}。",
-      "comparisonScope": "按计划日期属于当天的冻结计划分组，每组只统计一次，使用包含后续日期执行在内的完整执行组。",
-      "breakdown": "提前／较短：{{early}} · 准时／符合预估：{{on}} · 排除组数：{{excluded}}。",
-      "scope": "全天记录 · 未计时：{{untimed}} · 可比较的冻结计划：{{comparable}}／{{total}}。"
+      "longer": "超时",
+      "nativeScope": "今天已勾选的定时任务，占今天全部定时任务。",
+      "timeScope": "今天执行记录中记下的时间。重叠部分只计一次；不含估算和无时间的执行记录。",
+      "timeDetails": "计划：{{planned}} · 无时间：{{untimed}} · 估算：{{inferred}}。",
+      "comparisonScope": "统计今天有定时执行记录的计划任务。分多次或多天完成的任务只计一次。",
+      "scope": "全天 · 已比较：{{comparable}} / {{total}} 项计划任务 · 无时间：{{untimed}}",
+      "breakdownTiming": "提前：{{early}} · 准时：{{on}}",
+      "breakdownDuration": "较短：{{early}} · 符合计划：{{on}}",
+      "notCompared": "未比较（缺少时间）：{{excluded}}",
+      "secondary": "结束偏晚：{{finish}} · 超时：{{longer}}"
     },
     "title": "JOBO",
     "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
       "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
-      "failed": "无法保存此修改，请重试。"
+      "failed": "无法保存此修改，请重试。",
+      "undone": "已撤销执行记录的修改",
+      "redone": "已重做执行记录的修改"
     },
     "view": {
       "activeLabel": "实际活动时间",
@@ -2099,7 +2108,7 @@
       "capturedTitle": "标题保留为创建这条 Do 时的记录。",
       "completeInterval": "请填写完整的开始和结束时间。",
       "completedAt": "完成标记时间：{{time}}",
-      "completionUnavailable": "未关联任务的手动执行可以标为已完成；任务完成产生的执行记录仅在对应任务仍已完成时可以恢复为已完成。",
+      "completionUnavailable": "关联任务的执行记录不能单独标记为已完成。请选择其他进度，或完成该任务。",
       "completedStays": "保持已完成。调整时间后保存。",
       "completeTask": "完成任务",
       "completeTaskHint": "勾选关联的任务，与其复选框相同。完成情况会作为一条单独的执行记录显示。",
@@ -2151,37 +2160,46 @@
       "summary": {
         "withinPlan": "按计划",
         "late": "较晚",
-        "longer": "更久",
-        "split": "分段",
+        "longer": "超时",
+        "split": "多次进行",
         "notStarted": "未记录执行",
-        "unplanned": "计划外"
+        "unplanned": "计划外",
+        "startedLate": "晚开始",
+        "finishedLate": "晚结束"
       },
       "timeAxis": "时间表现",
       "timeDuration": {
-        "shorter": "用时少于计划 {{minutes}} 分钟",
+        "shorter": "用时少于计划 {{amount}}",
         "onEstimate": "符合预计时长",
-        "longer": "用时超出 {{minutes}} 分钟"
+        "longer": "用时超出 {{amount}}"
       },
       "timeDurationLabel": "用时",
       "timeFinish": {
-        "early": "提前 {{minutes}} 分钟结束",
+        "early": "提前 {{amount}}结束",
         "onTime": "按时结束",
-        "late": "晚结束 {{minutes}} 分钟"
+        "late": "晚结束 {{amount}}"
       },
       "timeFinishLabel": "结束",
       "timeIncomplete": "实际起止时间尚未完整记录。",
       "timeIncompleteShort": "待补时间",
       "timeStart": {
-        "early": "提前 {{minutes}} 分钟开始",
+        "early": "提前 {{amount}}开始",
         "onTime": "按时开始",
-        "late": "晚开始 {{minutes}} 分钟"
+        "late": "晚开始 {{amount}}"
       },
       "timeStartLabel": "开始",
       "titleRequired": "请输入这条 Do 的标题。",
       "updateFailed": "无法保存执行记录的修改。",
       "setInterval": "补充实际时段",
       "dragCompletion": "拖动设置实际时段；按回车可编辑。",
-      "completionPoint": "记录于 {{time}}。填写实际开始时间即可补充执行时段。"
+      "completionPoint": "记录于 {{time}}。填写实际开始时间即可补充执行时段。",
+      "offsetMinutes": "{{minutes}} 分钟",
+      "offsetDays": "{{days}} 天",
+      "offsetDaysHours": "{{days}} 天 {{hours}} 小时",
+      "completeTaskInstead": "此执行记录不能单独标记为已完成。请在下方完成任务；完成情况会作为一条单独的执行记录保存。",
+      "taskAlreadyDone": "该任务已完成，其完成情况已作为一条单独的执行记录保存。",
+      "linkedNoCompletion": "关联任务的执行记录不能单独标记为已完成。",
+      "checkTaskAgain": "再次勾选该任务，即可将此记录标记为已完成。"
     }
   },
   "todoist": {

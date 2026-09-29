@@ -2074,6 +2074,11 @@
     },
     "title": "JOBO",
     "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
+    "undo": {
+      "changed": "Questo Do è cambiato nel frattempo, quindi è stato lasciato com'è.",
+      "completionBlocked": "Annulla non può ancora ripristinare Completato, quindi il Do è stato lasciato com'è.",
+      "failed": "Impossibile salvare la modifica. Riprova."
+    },
     "view": {
       "activeLabel": "Tempo attivo",
       "addDo": "Add Do",

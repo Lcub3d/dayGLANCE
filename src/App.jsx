@@ -109,6 +109,7 @@ import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
+import useJoboUndo from './hooks/useJoboUndo.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -1309,11 +1310,13 @@ const DayPlanner = () => {
     trmnlSyncInProgressRef,
     performTrmnlSyncRef,
   } = useTrmnlSync();
-  const { undoToast, setUndoToast, pushUndo, performUndo, performRedo } = useUndo({
+  const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
     tasks, unscheduledTasks, recycleBin, recurringTasks,
     setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
     playUISound,
   });
+  // Do edits in the JOBO view join the same history; see useJoboUndo.
+  const recordJoboUndo = useJoboUndo({ joboRecords, readJoboWorkingSet, recordJobo, pushUndoAction, t });
 
   // Kept updated every render so the URL action handler reads the latest task state,
   // including tasks that loaded from persistence after the initial render.
@@ -8978,7 +8981,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
-    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo,
+    joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo, recordJoboUndo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,
     draggedHabitIdx, setDraggedHabitIdx,

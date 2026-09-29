@@ -18,7 +18,7 @@ const row = (over = {}) => createDoRecord({ id: 'manual:one', taskId: 't1', titl
   timing: 'timed', date: '2026-09-27', startTime: '10:00', endDate: '2026-09-27', endTime: '10:30',
   planSnapshot: null, createdAt: stamp, observedAt: stamp, updatedAt: stamp, ...over });
 function harness(result) {
-  const props = { records: [], recordJobo: vi.fn(async () => result), setJoboTaskCompletion: vi.fn(), pushUndoAction: vi.fn() };
+  const props = { records: [], recordJobo: vi.fn(async () => result), setJoboTaskCompletion: vi.fn(), pushUndoAction: vi.fn(), onWritten: vi.fn() };
   let state;
   const render = () => { runtime.cursor = 0; runtime.effects = [];
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -85,5 +85,59 @@ describe('view receipts over the unchanged ledger writer', () => {
     expect(receiptState(expected, [])).toBe('pending');
     expect(receiptState(expected, [{ ...expected, title: 'Earlier capture', observedAt: '2026-09-27T09:59:59.000Z' }])).toBe('superseded');
     expect(receiptState(expected, [{ ...expected, observedAt: '2026-09-27T10:00:01.000Z' }])).toBe('pending');
+  });
+});
+
+// An accepted write becomes one undo step, carrying the version it replaced.
+describe('reporting accepted writes for undo', () => {
+  it('reports a saved write with the version it replaced, or null for a new Do', async () => {
+    const before = row();
+    const after = row({ startTime: '10:15', updatedAt: '2026-09-27T10:05:00.000Z' });
+    const h = harness({ ok: true, value: [after] });
+    h.publish([before]);
+    await h.write([after]);
+    expect(h.props.onWritten).toHaveBeenCalledWith(before, after);
+    const added = row({ id: 'manual:two' });
+    const n = harness({ ok: true, value: [added] });
+    await n.write([added]);
+    expect(n.props.onWritten).toHaveBeenCalledWith(null, added);
+  });
+
+  it('reports a write held for retry, since the ledger owns it now', async () => {
+    const record = row();
+    const h = harness({ ok: false, held: true, error: 'storageWrite' });
+    await h.write([record]);
+    expect(h.props.onWritten).toHaveBeenCalledTimes(1);
+  });
+
+  // MUTATION: report before checking for a newer winner and undo would
+  // target a version that never became the record.
+  it('does not report a refused, superseded or no-op write', async () => {
+    const record = row();
+    const refused = harness({ ok: false, error: 'readOnly' });
+    await refused.write([record]);
+    expect(refused.props.onWritten).not.toHaveBeenCalled();
+    const newer = row({ updatedAt: '2026-09-27T11:00:00.000Z', progress: 'mostly' });
+    const superseded = harness({ ok: true, value: [newer] });
+    await superseded.write([record]);
+    expect(superseded.props.onWritten).not.toHaveBeenCalled();
+    const heldBehind = harness({ ok: false, held: true, error: 'storageWrite' });
+    heldBehind.publish([newer]);
+    await heldBehind.write([record]);
+    expect(heldBehind.props.onWritten).not.toHaveBeenCalled();
+    const same = harness({ ok: true });
+    same.publish([record]);
+    await same.write([record]);
+    expect(same.props.onWritten).not.toHaveBeenCalled();
+  });
+
+  it('a failure to record the step never fails the write', async () => {
+    const record = row();
+    const h = harness({ ok: true, value: [record] });
+    h.props.onWritten.mockImplementation(() => { throw new Error('boom'); });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(await h.write([record])).toMatchObject({ ok: true });
+    expect(h.render().pendingIds).toEqual([]);
+    error.mockRestore();
   });
 });

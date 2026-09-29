@@ -2072,6 +2072,11 @@
     },
     "title": "JOBO",
     "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
+    "undo": {
+      "changed": "This Do has changed since, so it was left as it is.",
+      "completionBlocked": "Undo can't restore Completed yet, so the Do was left as it is.",
+      "failed": "Could not save that change. Try again."
+    },
     "view": {
       "activeLabel": "Active time",
       "addDo": "Add Do",

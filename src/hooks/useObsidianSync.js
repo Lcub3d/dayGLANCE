@@ -26,6 +26,7 @@ import { detectObsidianDeletions, addObsidianTombstones, commitObsidianTombstone
 import { reattachTasksMetadata } from '../utils/obsidianTasksMetadata.js';
 import { obsidianHeartbeatState } from '../utils/obsidianHeartbeat.js';
 import { vaultPosture, isStreamPosture } from '../utils/obsidianVaultPosture.js';
+import { isStalePairing } from '../utils/bridgeStatus.js';
 import { inboundFailureNotice } from '../utils/bridgeInboundPolicy.js';
 import { planNoteLinkUpdates, normalizeNotePath, projectByNotePath, projectRefFor } from '../utils/obsidianProjectNotes.js';
 import {
@@ -391,9 +392,31 @@ export default function useObsidianSync({
       // negatives inside the TTL return at once; failures read as unpaired.
       let meta = cachedBridgePairingMeta();
       if (meta == null) { try { meta = await getBridgePairingMeta(); } catch { meta = null; } }
-      bridgeHeartbeatRef.current = { ...state, vaultPosture: vaultPosture({ heartbeat: state, vaultPaired: !!meta }) };
+      // THE PAIRING SPLIT (2026-09-29): the beat names the pairing the local
+      // plugin holds. When it differs from the row this device seals under,
+      // one of the two is behind. Refresh the row past its TTL, once per
+      // beat generation, so a re-pair done on THIS copy is sealed under
+      // within a cycle rather than five minutes (the window in which an
+      // intent sealed under the superseded pairing is readable by nobody
+      // current). If the row still differs, the plugin here is the stale
+      // one: it applies nothing, another copy does, and this device says
+      // so once, as an error, and keeps the panel red (bridgeStatus.js).
+      if (state.generation && meta?.generation && state.generation !== meta.generation && metaRefreshedForRef.current !== state.generation) {
+        metaRefreshedForRef.current = state.generation;
+        try { meta = (await getBridgePairingMeta({ force: true })) ?? meta; } catch { /* keep what we have */ }
+      }
+      const stale = isStalePairing(state, meta);
+      if (stale && stalePairingSaidRef.current !== (state.generation ?? 'unknown')) {
+        stalePairingSaidRef.current = state.generation ?? 'unknown';
+        setObsidianSyncError(i18n.t('settings.obsidianBridgeStalePairing'));
+        setObsidianSyncStatus('error');
+      }
+      if (!stale) stalePairingSaidRef.current = null;
+      bridgeHeartbeatRef.current = { ...state, pairingStale: stale, vaultPosture: vaultPosture({ heartbeat: state, vaultPaired: !!meta }) };
     } catch { /* a liveness probe must never fail a sync */ }
   };
+  const metaRefreshedForRef = useRef(null);
+  const stalePairingSaidRef = useRef(null);
 
   const refreshTasksPluginDetection = async (handle) => {
     try {

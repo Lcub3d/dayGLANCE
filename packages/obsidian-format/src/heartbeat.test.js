@@ -20,6 +20,8 @@ describe('parseObsidianHeartbeat', () => {
       paired: false, accountId: null, deviceId: 'dev-1',
       tsMs: Date.parse('2026-08-29T11:59:00.000Z'),
       stamping: null,
+      generation: null,
+      pairingStale: false,
     });
   });
 
@@ -36,13 +38,13 @@ describe('parseObsidianHeartbeat', () => {
 describe('obsidianHeartbeatState', () => {
   it('fresh → running; missing/stale/far-future are identical (not running)', () => {
     expect(obsidianHeartbeatState(parseObsidianHeartbeat(beat('2026-08-29T11:58:00.000Z')), NOW))
-      .toEqual({ obsidianRunning: true, pluginAuthoritative: false, stamping: null });
+      .toEqual({ obsidianRunning: true, pluginAuthoritative: false, stamping: null, generation: null, pairingStale: false });
     const stale = obsidianHeartbeatState(parseObsidianHeartbeat(beat('2026-08-29T11:50:00.000Z')), NOW);
     const missing = obsidianHeartbeatState(null, NOW);
     const farFuture = obsidianHeartbeatState(parseObsidianHeartbeat(beat('2026-08-29T14:00:00.000Z')), NOW);
     expect(stale).toEqual(missing);
     expect(farFuture).toEqual(missing);
-    expect(missing).toEqual({ obsidianRunning: false, pluginAuthoritative: false, stamping: null });
+    expect(missing).toEqual({ obsidianRunning: false, pluginAuthoritative: false, stamping: null, generation: null, pairingStale: false });
   });
 
   it('exactly at the threshold is stale (strict <), and the threshold is minutes not seconds', () => {
@@ -56,7 +58,7 @@ describe('obsidianHeartbeatState', () => {
   it('pluginAuthoritative = fresh AND paired — the Phase 6 gate, wired now', () => {
     const pairedFresh = parseObsidianHeartbeat(beat('2026-08-29T11:59:00.000Z', { paired: true, accountId: 'acct' }));
     expect(obsidianHeartbeatState(pairedFresh, NOW))
-      .toEqual({ obsidianRunning: true, pluginAuthoritative: true, stamping: null });
+      .toEqual({ obsidianRunning: true, pluginAuthoritative: true, stamping: null, generation: null, pairingStale: false });
     // A stale paired beat authorizes nothing — §3.3's revert path.
     const pairedStale = parseObsidianHeartbeat(beat('2026-08-29T11:00:00.000Z', { paired: true }));
     expect(obsidianHeartbeatState(pairedStale, NOW).pluginAuthoritative).toBe(false);
@@ -68,15 +70,15 @@ describe('heartbeatPayload — the writer and the readers share one shape', () =
     const now = new Date('2026-08-29T12:00:00.000Z');
     const text = JSON.stringify(heartbeatPayload({ deviceId: 'dev-1', now }));
     const hb = parseObsidianHeartbeat(text);
-    expect(hb).toEqual({ paired: false, accountId: null, deviceId: 'dev-1', tsMs: now.getTime(), stamping: null });
-    expect(obsidianHeartbeatState(hb, now.getTime())).toEqual({ obsidianRunning: true, pluginAuthoritative: false, stamping: null });
+    expect(hb).toEqual({ paired: false, accountId: null, deviceId: 'dev-1', tsMs: now.getTime(), stamping: null, generation: null, pairingStale: false });
+    expect(obsidianHeartbeatState(hb, now.getTime())).toEqual({ obsidianRunning: true, pluginAuthoritative: false, stamping: null, generation: null, pairingStale: false });
   });
 
   it('a future paired payload flips pluginAuthoritative through the same shape', () => {
     const now = new Date('2026-08-29T12:00:00.000Z');
     const text = JSON.stringify(heartbeatPayload({ deviceId: 'dev-1', paired: true, accountId: 'acct', now }));
     expect(obsidianHeartbeatState(parseObsidianHeartbeat(text), now.getTime()))
-      .toEqual({ obsidianRunning: true, pluginAuthoritative: true, stamping: null });
+      .toEqual({ obsidianRunning: true, pluginAuthoritative: true, stamping: null, generation: null, pairingStale: false });
   });
 });
 
@@ -112,5 +114,36 @@ describe('the stamping tri-state (2026-08-31 config-null incident diagnosability
     const hb = parseObsidianHeartbeat(beat('2026-08-29T11:00:00.000Z', { paired: true, stamping: 'armed' }));
     expect(hb.stamping).toBe('armed'); // the parse keeps the raw fact...
     expect(obsidianHeartbeatState(hb, NOW).stamping).toBe(null); // ...the decision refuses it
+  });
+});
+
+describe('the pairing generation and the stale verdict (2026-09-29, the pairing split)', () => {
+  const NOW = new Date('2026-09-29T02:00:00Z');
+  it('ride the payload writer → parser → state round trip, and only from a fresh, paired beat', () => {
+    const text = JSON.stringify(heartbeatPayload({ deviceId: 'd', paired: true, accountId: 'a', generation: 'gen-old', pairingStale: true, now: NOW }));
+    const parsed = parseObsidianHeartbeat(text);
+    expect(parsed.generation).toBe('gen-old');
+    expect(parsed.pairingStale).toBe(true);
+    const fresh = obsidianHeartbeatState(parsed, NOW.getTime() + 1000);
+    expect(fresh.pluginAuthoritative).toBe(true);
+    expect(fresh.generation).toBe('gen-old');
+    expect(fresh.pairingStale).toBe(true);
+    // Stale beat: the copy is dead, its pairing is nobody's concern.
+    const stale = obsidianHeartbeatState(parsed, NOW.getTime() + OBSIDIAN_HEARTBEAT_STALE_MS + 1);
+    expect(stale.generation).toBe(null);
+    expect(stale.pairingStale).toBe(false);
+  });
+  it('absent on a pre-field build and when unpaired: null and false, never a claim', () => {
+    const bare = JSON.stringify({ paired: true, accountId: 'a', deviceId: 'd', ts: NOW.toISOString() });
+    const parsed = parseObsidianHeartbeat(bare);
+    expect(parsed.generation).toBe(null);
+    expect(parsed.pairingStale).toBe(false);
+    // Not written at all unless supplied (pre-field readers see the old shape).
+    const payload = heartbeatPayload({ deviceId: 'd', paired: false, now: NOW });
+    expect('generation' in payload).toBe(false);
+    expect('pairingStale' in payload).toBe(false);
+    // A stale flag on an UNPAIRED beat is meaningless and reads false.
+    const odd = parseObsidianHeartbeat(JSON.stringify(heartbeatPayload({ deviceId: 'd', paired: false, generation: 'g', pairingStale: true, now: NOW })));
+    expect(obsidianHeartbeatState(odd, NOW.getTime()).pairingStale).toBe(false);
   });
 });

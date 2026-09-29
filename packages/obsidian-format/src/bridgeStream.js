@@ -191,13 +191,40 @@ export async function observationEntityId(path) {
 // trip is then byte-exact identity (pinned in the tests against the
 // server's exact Buffer semantics).
 
-/** Seal a payload into a row envelope under the bridge subkey. */
-export async function sealBridgeEnvelope(subkey, payload) {
+/**
+ * Seal a payload into a row envelope under the bridge subkey.
+ *
+ * THE GENERATION TAG (2026-09-29, the pairing split). `generation` is the
+ * pairing generation the subkey was derived from, carried in the CLEAR
+ * beside the ciphertext (it is the pairing salt, which the plaintext
+ * meta:pairing row already publishes: not a secret). A reader that cannot
+ * open the envelope can then tell "sealed under a pairing I do not hold"
+ * from "corrupt", and the plugin's drain holds the first instead of
+ * deleting it as garbage. Optional and additive: an envelope without the
+ * tag reads exactly as before.
+ */
+export async function sealBridgeEnvelope(subkey, payload, generation = null) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv }, subkey, enc.encode(JSON.stringify(payload)),
   );
-  return b64Text(JSON.stringify({ v: 1, iv: b64(iv), ct: b64(ct) }));
+  const gen = typeof generation === 'string' && generation ? { gen: generation } : {};
+  return b64Text(JSON.stringify({ v: 1, iv: b64(iv), ct: b64(ct), ...gen }));
+}
+
+/**
+ * The pairing generation an envelope was sealed under, read without the
+ * key: the clear `gen` tag, or null for an envelope that carries none (a
+ * writer predating the tag) or is not an envelope at all.
+ */
+export function readBridgeEnvelopeGeneration(text) {
+  try {
+    const envelope = JSON.parse(unb64Text(text));
+    if (!envelope || envelope.v !== 1) return null;
+    return typeof envelope.gen === 'string' && envelope.gen ? envelope.gen : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

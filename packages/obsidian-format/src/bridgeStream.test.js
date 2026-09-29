@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  sealBridgeEnvelope,
+  sealBridgeEnvelope, readBridgeEnvelopeGeneration,
   openBridgeEnvelope,
   encodePlainBridgeRow,
   decodePlainBridgeRow,
@@ -57,6 +57,20 @@ describe('row envelopes', () => {
     // The OLD wire format (raw JSON) does NOT survive — pinned so nobody
     // reintroduces it: the server mangles it rather than rejecting it.
     expect(serverRoundTrip('{"v":1,"iv":"aa","ct":"bb"}')).not.toBe('{"v":1,"iv":"aa","ct":"bb"}');
+  });
+
+  it('THE GENERATION TAG (2026-09-29): sealed in the clear beside the ciphertext, readable without the key, absent when not supplied', async () => {
+    const key = await subkey();
+    const tagged = await sealBridgeEnvelope(key, { kind: 'intent', type: 'task_state' }, 'gen-A');
+    expect(readBridgeEnvelopeGeneration(tagged)).toBe('gen-A');
+    // The tag changes nothing about opening: right key opens, wrong key does not.
+    expect(await openBridgeEnvelope(key, tagged)).toEqual({ kind: 'intent', type: 'task_state' });
+    expect(await openBridgeEnvelope(await otherKey(), tagged)).toBe(null);
+    // A writer that predates the tag, an empty tag, and junk all read as "unknown".
+    expect(readBridgeEnvelopeGeneration(await sealBridgeEnvelope(key, { kind: 'intent' }))).toBe(null);
+    expect(readBridgeEnvelopeGeneration(await sealBridgeEnvelope(key, { kind: 'intent' }, ''))).toBe(null);
+    expect(readBridgeEnvelopeGeneration('junk')).toBe(null);
+    expect(serverRoundTrip(tagged)).toBe(tagged);
   });
 
   it('a whole-note-sized payload seals without blowing the argument limit (chunked base64)', async () => {

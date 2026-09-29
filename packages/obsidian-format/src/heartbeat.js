@@ -70,6 +70,13 @@ export function parseObsidianHeartbeat(text) {
       // instead of the state being invisible until fragments appear. Absent
       // (a pre-field plugin build) parses to null = unknown.
       stamping: STAMPING_STATES.has(hb.stamping) ? hb.stamping : null,
+      // THE PAIRING GENERATION (2026-09-29, the pairing split): which pairing
+      // this copy's plugin holds, so dayGLANCE can compare it with the
+      // vault's meta:pairing row; and the plugin's own verdict that its
+      // pairing is older than the vault's (it then applies nothing). Absent
+      // on a pre-field build: null and false, meaning unknown.
+      generation: typeof hb.generation === 'string' && hb.generation ? hb.generation : null,
+      pairingStale: hb.pairingStale === true,
     };
   } catch {
     return null;
@@ -93,6 +100,10 @@ export function obsidianHeartbeatState(heartbeat, nowMs = Date.now()) {
     // is as dead as its pairing claim. null = unknown (stale, missing, or a
     // pre-field plugin build).
     stamping: fresh ? (heartbeat.stamping ?? null) : null,
+    // The pairing generation and the plugin's stale verdict ride only from a
+    // FRESH beat too: a dead copy's pairing is nobody's concern.
+    generation: fresh ? (heartbeat.generation ?? null) : null,
+    pairingStale: fresh && heartbeat.paired === true && heartbeat.pairingStale === true,
   };
 }
 
@@ -102,10 +113,14 @@ export function obsidianHeartbeatState(heartbeat, nowMs = Date.now()) {
  * package boundary works in both directions). Phase 5 values: paired is
  * false and accountId null until Phase 6 pairing exists; the SHAPE is final.
  */
-export function heartbeatPayload({ deviceId, paired = false, accountId = null, stamping = null, now = new Date() } = {}) {
+export function heartbeatPayload({ deviceId, paired = false, accountId = null, stamping = null, generation = null, pairingStale = false, now = new Date() } = {}) {
   const payload = { paired, accountId, deviceId: deviceId ?? null, ts: now.toISOString() };
   // Additive, never breaking: the field appears only when the writer supplies
   // a known state, so pre-field readers see exactly the shape they always did.
   if (STAMPING_STATES.has(stamping)) payload.stamping = stamping;
+  // The pairing generation and the stale verdict (2026-09-29): same rule,
+  // present only when the writer has a pairing to describe.
+  if (typeof generation === 'string' && generation) payload.generation = generation;
+  if (pairingStale === true) payload.pairingStale = true;
   return payload;
 }

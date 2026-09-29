@@ -125,15 +125,18 @@ export type BridgeStampingState = 'armed' | 'off' | 'no-config';
 export interface ObsidianHeartbeat {
   paired: boolean; accountId: string | null; deviceId: string | null; tsMs: number;
   stamping: BridgeStampingState | null;
+  /** The pairing generation the plugin holds, and its verdict that it is older than the vault's (2026-09-29). */
+  generation: string | null;
+  pairingStale: boolean;
 }
 export function parseObsidianHeartbeat(text: string | null | undefined): ObsidianHeartbeat | null;
 export function obsidianHeartbeatState(
   heartbeat: ObsidianHeartbeat | null, nowMs?: number,
-): { obsidianRunning: boolean; pluginAuthoritative: boolean; stamping: BridgeStampingState | null };
+): { obsidianRunning: boolean; pluginAuthoritative: boolean; stamping: BridgeStampingState | null; generation: string | null; pairingStale: boolean };
 export function heartbeatPayload(opts?: {
   deviceId?: string | null; paired?: boolean; accountId?: string | null;
-  stamping?: BridgeStampingState | null; now?: Date;
-}): { paired: boolean; accountId: string | null; deviceId: string | null; ts: string; stamping?: BridgeStampingState };
+  stamping?: BridgeStampingState | null; generation?: string | null; pairingStale?: boolean; now?: Date;
+}): { paired: boolean; accountId: string | null; deviceId: string | null; ts: string; stamping?: BridgeStampingState; generation?: string; pairingStale?: true };
 
 // ── bridge pairing (vault dead-drop) ────────────────────────────────────────
 export const PAIRING_DIR: string;
@@ -211,8 +214,11 @@ export function mintIntentId(): string;
 export function observationEntityId(path: string): Promise<string>;
 export const PROJECT_NOTE_ID_KEY: string;
 export function linkObservationEntityId(targetId: string): string;
-export function sealBridgeEnvelope(subkey: CryptoKey, payload: unknown): Promise<string>;
+/** `generation` (the pairing generation the subkey derives from) rides in the clear as the envelope's `gen` tag. */
+export function sealBridgeEnvelope(subkey: CryptoKey, payload: unknown, generation?: string | null): Promise<string>;
 export function openBridgeEnvelope(subkey: CryptoKey, text: string): Promise<unknown | null>;
+/** The clear `gen` tag of an envelope, or null (untagged writer, or not an envelope). Needs no key. */
+export function readBridgeEnvelopeGeneration(text: string): string | null;
 export function encodePlainBridgeRow(payload: unknown): string;
 export function decodePlainBridgeRow(text: string): unknown | null;
 export function noteContainsBlock(text: string, body: string): boolean;

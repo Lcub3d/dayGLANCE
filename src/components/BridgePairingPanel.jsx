@@ -121,6 +121,15 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
       {vaultLost ? (
         <p data-bridge-vault-unreachable className="text-xs text-red-500">{t('settings.obsidianBridgeVaultUnreachable')}</p>
       ) : (<>
+      {/* THE STALE-PAIRING STATE (2026-09-29, the pairing split): running
+          and paired here, but on an older pairing than the vault's. Red,
+          and instead of the green line: "active" is what this panel said
+          for two days while this copy deleted every write it could not
+          read. utils/bridgeStatus.js decides; the plugin's verdict or a
+          generation mismatch. */}
+      {status.state === 'stalePairing' ? (
+        <p data-bridge-stale-pairing className="text-xs text-red-500">{t('settings.obsidianBridgeStalePairing')}</p>
+      ) : (
       <p className={`text-xs ${hb.pluginAuthoritative ? 'text-green-500' : textSecondary}`}>
         {hb.pluginAuthoritative
           ? (pairedDays === null
@@ -134,6 +143,7 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
               ? t('settings.obsidianBridgeWaiting')
               : t('settings.obsidianBridgeNotDetected')}
       </p>
+      )}
       {status.state === 'waiting' && (
         <p className={`text-xs ${textSecondary}`}>
           {status.lastBeatMs === null
@@ -147,13 +157,13 @@ const BridgePairingPanel = ({ vaultHandleRef, darkMode, textPrimary, textSeconda
           holding daily-note reporting, fail closed, until its config row
           arrives (dayGLANCE republishes it each session). 'armed'/'off' are
           quiet confirmations; absent (old plugin build) renders nothing. */}
-      {hb.pluginAuthoritative && hb.stamping === 'no-config' && (
+      {status.state === 'active' && hb.stamping === 'no-config' && (
         <p className="text-xs text-amber-500">{t('settings.obsidianBridgeStampingNoConfig')}</p>
       )}
-      {hb.pluginAuthoritative && hb.stamping === 'armed' && (
+      {status.state === 'active' && hb.stamping === 'armed' && (
         <p className={`text-xs ${textSecondary}`}>{t('settings.obsidianBridgeStampingArmed')}</p>
       )}
-      {hb.pluginAuthoritative && hb.stamping === 'off' && (
+      {status.state === 'active' && hb.stamping === 'off' && (
         <p className={`text-xs ${textSecondary}`}>{t('settings.obsidianBridgeStampingOff')}</p>
       )}
       {code ? (

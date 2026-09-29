@@ -15,6 +15,7 @@ import {
   type BridgePairing,
 } from './pairing';
 import type { AgendaKeyState, AgendaUser } from './agenda';
+import type { StalePairing } from './bridge';
 import type { EditorHidingSettings } from './editorHidingRules';
 import { normalizeScope, SCOPE_WINDOW_MIN_DAYS, SCOPE_WINDOW_MAX_DAYS, SCOPE_WINDOW_DEFAULT_DAYS, type VaultScope, normalizeProjectNoteSettings, PROJECT_NOTE_LAYOUTS, type ProjectNoteSettings } from '@glance-apps/obsidian-format';
 
@@ -59,6 +60,8 @@ export interface BridgeSettingsHost extends PairingHost {
   setProjectNotes(s: ProjectNoteSettings): Promise<void>;
   /** The last template problem (companion §4.4): a missing note, a refused interactive template, a failed render. Null when none. */
   templateStatus?(): string | null;
+  /** The vault's pairing this copy is behind (the pairing split, 2026-09-29), or null while current. */
+  stalePairing?(): StalePairing | null;
   /** Editor hiding (display only, editorHiding.ts). */
   getEditorHiding(): EditorHidingSettings;
   setEditorHiding(s: EditorHidingSettings): Promise<void>;
@@ -99,6 +102,19 @@ export class BridgeSettingTab extends PluginSettingTab {
     new Setting(this.containerEl)
       .setName('Paired with GLANCEvault')
       .setDesc(`Since ${pairedSince(pairing)} · ${pairing.vaultUrl}. dayGLANCE syncs with this vault through the plugin; to pair again with fresh keys, unpair and start pairing in dayGLANCE.`);
+
+    // THE PAIRING SPLIT (2026-09-29): this copy holds an older pairing than
+    // the vault. Loud, and above everything else: nothing this copy does
+    // reaches dayGLANCE until it is fixed.
+    const stale = this.host.stalePairing?.() ?? null;
+    if (stale) {
+      const theirs = stale.pairedAt ? Date.parse(stale.pairedAt) : NaN;
+      const when = Number.isFinite(theirs) ? new Date(theirs).toLocaleDateString() : 'a later date';
+      new Setting(this.containerEl)
+        .setName('This copy is behind the vault\'s pairing')
+        .setDesc(`The vault was paired again on ${when}, and this copy still holds the pairing from ${pairedSince(pairing)}. Until it catches up it applies no dayGLANCE changes and reports none of its own; another copy of the vault handles both. Restart Obsidian here if plugin settings sync is on (the pairing arrives with it), or start pairing again in dayGLANCE and enter the code here.`)
+        .setClass('mod-warning');
+    }
 
     new Setting(this.containerEl)
       .setName('Sync now')

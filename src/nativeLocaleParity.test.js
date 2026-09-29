@@ -30,6 +30,11 @@ const ANDROID_RES = join(ROOT, 'dayglance-android/app/src/main/res');
 const ANDROID_QUALIFIER = { 'zh-CN': 'zh-rCN', 'pt-BR': 'pt', 'pt-PT': 'pt' };
 const androidDirFor = (tag) => `values-${ANDROID_QUALIFIER[tag] ?? tag}`;
 
+// Apple string catalogs use zh-Hans for Simplified Chinese while the web
+// bundle uses zh-CN.
+const IOS_LOCALE_NAME = { 'zh-CN': 'zh-Hans' };
+const iosLocaleFor = (tag) => IOS_LOCALE_NAME[tag] ?? tag;
+
 // The same mapping for the <locale> entries in locales_config.xml, which use
 // BCP-47 rather than resource qualifiers.
 const ANDROID_LOCALE_NAME = { 'pt-BR': 'pt', 'pt-PT': 'pt' };
@@ -46,7 +51,6 @@ const NATIVE_TRANSLATION_PENDING = {
     uk: 'Web bundle only, as pl.',
   },
   ios: {
-    'zh-CN': 'Never reached the string catalogs: #1555 covered the web, Electron and Android sides only.',
     pl: 'Web bundle only.',
     uk: 'Web bundle only.',
   },
@@ -99,11 +103,11 @@ describe('native locales track the shipped web locales', () => {
   });
 
   it.each(translatable)('%s has iOS string catalog entries, or is listed as pending', (lng) => {
-    const present = iosLanguages().has(lng);
+    const present = iosLanguages().has(iosLocaleFor(lng));
     const pending = lng in NATIVE_TRANSLATION_PENDING.ios;
     expect(present || pending, present
       ? ''
-      : `${lng} is absent from the .xcstrings catalogs. Translate it, or record it in NATIVE_TRANSLATION_PENDING.ios with a reason.`).toBe(true);
+      : `${lng} (${iosLocaleFor(lng)}) is absent from the .xcstrings catalogs. Translate it, or record it in NATIVE_TRANSLATION_PENDING.ios with a reason.`).toBe(true);
     expect(present && pending, `${lng} is translated; drop it from NATIVE_TRANSLATION_PENDING.ios`).toBe(false);
   });
 

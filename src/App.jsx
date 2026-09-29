@@ -8499,6 +8499,17 @@ const DayPlanner = () => {
   // Provider so they receive fresh values on every state update automatically.
   // Expose every component-scope binding so Phase 8 layout files can consume
   // any variable via useDayPlannerCtx() without prop-drilling.
+  // Reads a daily note fresh from the vault, or null without Obsidian. Every
+  // editor of a daily note (the modal, JOBO's sidebar) loads through this so
+  // it writes back only a change to what the vault held.
+  const loadDailyNoteFresh = obsidianConfig?.enabled && obsidianVaultHandleRef.current
+    ? obsidianVaultHandleRef.current === 'native'
+      // Defer the synchronous native SAF read by one frame so the loading
+      // spinner renders before the JS thread is blocked.
+      ? (d) => new Promise(resolve => setTimeout(() => resolve(readDailyNoteNative(d)), 0))
+      : (d) => readDailyNoteFresh(obsidianVaultHandleRef.current, obsidianConfig.dailyNotesPath || '', d, obsidianConfig?.dailyNotePattern || 'yyyy-MM-dd')
+    : null;
+
   const ctx = {
     // ── Device & layout ──────────────────────────────────────────────────────
     isPhone, isMobile, isTablet, isLandscape,
@@ -8784,7 +8795,7 @@ const DayPlanner = () => {
     timeToMinutes, minutesToTime,
     selectAllTags, clearTagFilter, toggleTag,
     handleSpotlightSelect,
-    updateDailyNote,
+    updateDailyNote, loadDailyNoteFresh,
     setTaskRef,
 
     reorderUnscheduledTasks,
@@ -9293,13 +9304,7 @@ const DayPlanner = () => {
           darkMode={darkMode}
           isMobile={isMobile}
           template={dailyNoteTemplate}
-          loadFresh={obsidianConfig?.enabled && obsidianVaultHandleRef.current
-            ? obsidianVaultHandleRef.current === 'native'
-              // Defer the synchronous native SAF read by one frame so the loading
-              // spinner renders before the JS thread is blocked.
-              ? (d) => new Promise(resolve => setTimeout(() => resolve(readDailyNoteNative(d)), 0))
-              : (d) => readDailyNoteFresh(obsidianVaultHandleRef.current, obsidianConfig.dailyNotesPath || '', d, obsidianConfig?.dailyNotePattern || 'yyyy-MM-dd')
-            : null}
+          loadFresh={loadDailyNoteFresh}
         />
       )}
 

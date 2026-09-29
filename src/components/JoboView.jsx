@@ -492,6 +492,7 @@ export default function JoboView() {
       {editor && (
         <DoEditor
           {...editor}
+          taskCompleted={model.resolveRecordTask(editor.record)?.completed === true}
           linkCandidates={editor.record ? undefined : linkCandidates}
           records={joboRecords || []}
           writable={joboWritable}

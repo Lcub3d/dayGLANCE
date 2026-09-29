@@ -6,7 +6,7 @@ import ClockTimePicker from '../ClockTimePicker.jsx';
 import DatePicker from '../DatePicker.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
-import { DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
+import { canCompleteDo, DO_PROGRESS, DO_TIMING } from '../../jobo/core.js';
 import { doIntervalAt, prepareDoDelete, commitDoEdit } from '../../jobo/viewActions.js';
 import { createManualDo, prepareDoEdit } from '../../jobo/viewActions.js';
 import { receiptState } from '../../hooks/useJoboViewWriter.js';
@@ -31,7 +31,7 @@ export const endDateFor = (date, startTime, endTime) => {
 // and keyboard hint, and the app's own DatePicker and ClockTimePicker opened
 // from buttons exactly as the new-task modal opens them, so adding a Do reads
 // like adding a task.
-export default function DoEditor({ record, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
+export default function DoEditor({ record, taskCompleted = false, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
   const [id] = useState(() => record?.id || `manual:${crypto.randomUUID()}`);
   const marker = completionMarker(record);
   const [draft, setDraft] = useState(() => ({
@@ -113,6 +113,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
 
   const save = async (remove = false) => {
     if (!writable || waiting || savingRef.current) return;
+    if (!remove && completionUnavailable) { setError(t('jobo.view.completionUnavailable')); return; }
     if (!remove && !draft.title.trim()) { setError(t('jobo.view.titleRequired')); return; }
     savingRef.current = true;
     setSaving(true);
@@ -128,7 +129,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
         : {};
       let next;
       if (remove) next = prepareDoDelete({ records: latestRecords.current, record, now });
-      else if (record) next = prepareDoEdit({ records: latestRecords.current, record, patch, progress: draft.progress, now });
+      else if (record) next = prepareDoEdit({ records: latestRecords.current, record, patch, progress: draft.progress, now, taskCompleted });
       else {
         const duration = (Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${draft.date}T00:00:00Z`)) / 60000
           + minute(draft.endTime) - minute(draft.startTime);
@@ -141,7 +142,7 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
       if (result.held && !result.ok) setAccepted(true);
       else onClose();
     } catch (err) {
-      setError(t(err.code === 'readOnly' ? 'jobo.view.readOnly' : err.code === 'notLoaded' ? 'jobo.view.loadError' : err instanceof TypeError || err instanceof RangeError ? 'jobo.view.completeInterval' : 'jobo.view.updateFailed'));
+      setError(t(err.code === 'completionUnavailable' ? 'jobo.view.completionUnavailable' : err.code === 'readOnly' ? 'jobo.view.readOnly' : err.code === 'notLoaded' ? 'jobo.view.loadError' : err instanceof TypeError || err instanceof RangeError ? 'jobo.view.completeInterval' : 'jobo.view.updateFailed'));
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -157,7 +158,16 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
       event.preventDefault(); target?.focus();
     }
   };
-  const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED || record?.progress === DO_PROGRESS.COMPLETED);
+  const completionAllowed = canCompleteDo(record || {
+    source: 'manual', taskId: link?.task?.recurringTemplateId ?? link?.task?.id ?? null,
+  }, { taskCompleted });
+  // Linking a new manual Do may invalidate a previously chosen Completed.
+  // Keep the choice visible, explain it, and require an explicit new choice;
+  // neither silently downgrade the draft nor defer the error until save.
+  const completionUnavailable = draft.progress === DO_PROGRESS.COMPLETED
+    && record?.progress !== DO_PROGRESS.COMPLETED && !completionAllowed;
+  const progressOptions = PROGRESS.filter(value => value !== DO_PROGRESS.COMPLETED
+    || record?.progress === DO_PROGRESS.COMPLETED || completionAllowed || draft.progress === DO_PROGRESS.COMPLETED);
 
   const input = `w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`;
   const label = `block text-sm ${textSecondary} mb-1`;
@@ -251,17 +261,19 @@ export default function DoEditor({ record, initial, linkCandidates = [], records
           <div>
             <label className={label} htmlFor="jobo-do-progress">{t('jobo.view.progressLabel')}</label>
             <select id="jobo-do-progress" className={input} value={draft.progress} onChange={set('progress')} disabled={saving}>
-              {progressOptions.map((value) => <option key={value} value={value}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
+              {progressOptions.map((value) => <option key={value} value={value} disabled={value === DO_PROGRESS.COMPLETED && completionUnavailable}>{value === DO_PROGRESS.COMPLETED ? t('common.completed') : t(`jobo.view.progress.${value}`)}</option>)}
             </select>
             {/* On a Completed record the rule reads as a limit it is not:
                 saving new times keeps it Completed. */}
-            {record && <p className={`mt-1 text-xs ${textSecondary}`}>{t(record.progress === DO_PROGRESS.COMPLETED ? 'jobo.view.completedStays' : 'jobo.view.completedByCompletion')}</p>}
+            {completionUnavailable
+              ? <p className={`mt-1 text-xs ${textSecondary}`} role="status">{t('jobo.view.completionUnavailable')}</p>
+              : record && <p className={`mt-1 text-xs ${textSecondary}`}>{t(record.progress === DO_PROGRESS.COMPLETED ? 'jobo.view.completedStays' : 'jobo.view.completionUnavailable')}</p>}
           </div>
         </fieldset>
         {waiting && <p className={`mt-3 text-xs ${textSecondary}`} role="status">{t('jobo.view.pendingSave')}</p>}
         {error && <p className={`mt-3 p-2 rounded-lg text-sm ${darkMode ? 'bg-red-900/30 text-red-300' : 'bg-red-50 text-red-700'}`} role="alert">{error}</p>}
         <div className="flex gap-2 pt-4">
-          <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={busy}>
+          <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" disabled={busy || completionUnavailable}>
             {saving ? t('common.loading') : record ? t('common.save') : t('jobo.view.addDo')}
           </button>
           {record && (

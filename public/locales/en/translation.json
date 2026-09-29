@@ -3127,5 +3127,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "LifeMap view",
+    "canvas": "Canvas",
+    "title": "Gantt",
+    "previous": "Previous period",
+    "next": "Next period",
+    "overview": "Locate plans",
+    "expandAll": "Expand all",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "legend": "Bars: node dates · Dashed: child range · Diamond: milestone",
+    "empty": "No matching nodes",
+    "name": "Node / hierarchy",
+    "scroll": "Gantt chart, scroll to explore",
+    "unset": "No dates set",
+    "invalidDate": "Use valid dates; the target cannot precede the start.",
+    "openEnded": "No target date",
+    "summary": "Child date range (read-only)",
+    "parents": "Additional parents: {{total}}",
+    "outside": "Outside this period · locate",
+    "hint": "Edit dates in the existing node editor. Undated does not mean unfinished; links never reschedule other nodes.",
+    "dates": "Planning dates",
+    "editNotebook": "Edit these dates in the notebook",
+    "clearStart": "Clear start date",
+    "clearTarget": "Clear target date",
+    "source": {
+      "schedule": "This node’s dates",
+      "goal": "Native goal dates",
+      "project": "Native project dates",
+      "vision": "Notebook vision period",
+      "stage": "Notebook stage period",
+      "task": "Native task date (read-only)"
+    }
   }
 }

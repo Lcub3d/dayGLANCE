@@ -3127,5 +3127,39 @@
       "labelName": "请输入 1–128 个字符的标签名称。",
       "labelDuplicate": "此名称已被其他标签或其历史名称占用。"
     }
+  },
+  "lifeGantt": {
+    "view": "LifeMap 视图",
+    "canvas": "画布",
+    "title": "甘特图",
+    "previous": "上一时段",
+    "next": "下一时段",
+    "overview": "定位计划",
+    "expandAll": "全部展开",
+    "expand": "展开",
+    "collapse": "折叠",
+    "legend": "色条：节点日期 · 虚线：子项范围 · 菱形：里程碑",
+    "empty": "没有匹配的节点",
+    "name": "节点 / 层级",
+    "scroll": "甘特图，可滚动查看",
+    "unset": "未设日期",
+    "invalidDate": "请填写有效日期，截止日期不能早于开始日期。",
+    "openEnded": "未设截止日期",
+    "summary": "子项日期范围（只读）",
+    "parents": "其他上级：{{total}}",
+    "outside": "范围之外 · 点击定位",
+    "hint": "日期修改复用节点编辑器；未设日期不代表未完成，关系连线不会自动调整其他节点的日期。",
+    "dates": "计划日期",
+    "editNotebook": "请在笔记本中修改这些日期",
+    "clearStart": "清除开始日期",
+    "clearTarget": "清除截止日期",
+    "source": {
+      "schedule": "此节点的计划日期",
+      "goal": "原生目标日期",
+      "project": "原生项目日期",
+      "vision": "笔记本愿景周期",
+      "stage": "笔记本阶段周期",
+      "task": "原生任务日期（只读）"
+    }
   }
 }

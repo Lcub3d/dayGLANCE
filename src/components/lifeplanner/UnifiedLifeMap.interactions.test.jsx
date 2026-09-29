@@ -13,6 +13,7 @@ vi.mock('@xyflow/react',()=>({ReactFlow:'flow',ReactFlowProvider:'provider',Back
 vi.mock('./useLifeNetwork.js',()=>({default:()=>({pending:false,state:{edges:[]}})}));
 import UnifiedLifeMap from './UnifiedLifeMap.jsx';
 import LifeNodeEditor from './LifeNodeEditor.jsx';
+import LifeMapGantt from './LifeMapGantt.jsx';
 import { createJobuData } from '../../jobu/data.js';
 import { migrateLifeNodes, saveLifeNode, readLifeNodes } from '../../jobu/lifeNodeStore.js';
 import { createLifeNode } from '../../lifeplanner/entities.js';
@@ -50,5 +51,22 @@ describe('selected inbox editor after durable placement',()=>{
     const f=await fixture(),before=f.editor();before.props.onDirty(true);window.confirm.mockReturnValue(false);
     await f.tree.find(e=>e.props?.className==='lb-spread').props.onClick();expect(f.editor().key).toBe(before.key);
     expect(readLifeNodes(f.data.get().records).nodes[0].onCanvas).toBe(false);f.data.dispose();
+  });
+});
+
+
+describe('Gantt and canvas keep one selection and draft guard', () => {
+  const switchButton = f => f.render().find(e => e.type === 'button' && elements(e).some(c => c.props?.children?.includes?.('lifeGantt.title')));
+  it('switches without a data write and preserves the same selected node', async () => {
+    const f = await fixture(), records = f.data.get().records;
+    switchButton(f).props.onClick();
+    expect(f.render().find(e => e.type === LifeMapGantt).props.active).toBe(true);
+    expect(f.editor().props.row.entityId).toBe('idea');expect(f.data.get().records).toEqual(records);f.data.dispose();
+  });
+  it('does not lose a dirty node draft when switching is declined', async () => {
+    const f = await fixture(), editor = f.editor();editor.props.onDirty(true);window.confirm.mockReturnValue(false);
+    switchButton(f).props.onClick();
+    expect(f.render().find(e => e.type === LifeMapGantt).props.active).toBe(false);
+    expect(f.editor().key).toBe(editor.key);f.data.dispose();
   });
 });

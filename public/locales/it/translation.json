@@ -3129,5 +3129,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "Vista LifeMap",
+    "canvas": "Tela",
+    "title": "Gantt",
+    "previous": "Periodo precedente",
+    "next": "Periodo successivo",
+    "overview": "Individua i piani",
+    "expandAll": "Espandi tutto",
+    "expand": "Espandi",
+    "collapse": "Comprimi",
+    "legend": "Barre: date del nodo · Tratteggio: figli · Rombo: traguardo",
+    "empty": "Nessun nodo corrispondente",
+    "name": "Nodo / gerarchia",
+    "scroll": "Diagramma di Gantt, scorri per esplorare",
+    "unset": "Nessuna data",
+    "invalidDate": "Usa date valide; la data obiettivo non può precedere l’inizio.",
+    "openEnded": "Nessuna data obiettivo",
+    "summary": "Intervallo dei figli (sola lettura)",
+    "parents": "Altri genitori: {{total}}",
+    "outside": "Fuori periodo · individua",
+    "hint": "Modifica le date nell’editor dei nodi esistente. Senza data non significa incompleto; i collegamenti non riprogrammano altri nodi.",
+    "dates": "Date pianificate",
+    "editNotebook": "Modifica queste date nel quaderno",
+    "clearStart": "Cancella data di inizio",
+    "clearTarget": "Cancella data obiettivo",
+    "source": {
+      "schedule": "Date di questo nodo",
+      "goal": "Date dell’obiettivo nativo",
+      "project": "Date del progetto nativo",
+      "vision": "Periodo della visione nel quaderno",
+      "stage": "Periodo della fase nel quaderno",
+      "task": "Data del compito nativo (sola lettura)"
+    }
   }
 }

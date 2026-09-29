@@ -1,3 +1,4 @@
+import { scheduleOwner } from '../lifeplanner/schedule.js';
 import { materializeJobu, stable } from './data.js';
 import { defaultDocument, validateDocument } from '../lifeplanner/model.js';
 import { STORAGE_KEY } from '../lifeplanner/store.js';
@@ -145,8 +146,17 @@ function typeBinding(value, candidateId) {
   // Existing planned stages acquire a native goal only through the measured
   // notebook's explicit handoff, not merely by opening the map.
   if (value.type === 'goal' && value.details.stage) return value;
+  // A free-form date range follows the node into its first native role. Move
+  // it instead of keeping a stale second copy beside the native date fields.
+  const details = { ...value.details };
+  const owner = scheduleOwner(value);
+  const schedule = owner === 'schedule' ? (details.schedule || {}) : {};
+  // Reclassifying a node can add another native binding. Retain its original
+  // date owner, not a copied range that would drift between two native facets.
+  if (owner === 'schedule') delete details.schedule;
+  else details.schedule = { owner };
   return { ...value, bindings: { ...value.bindings, [`${value.type}Id`]: candidateId },
-    details: { ...value.details, [value.type]: { id: candidateId, status: value.completed ? 'completed' : 'active' } } };
+    details: { ...details, [value.type]: { ...schedule, id: candidateId, status: value.completed ? 'completed' : 'active' } } };
 }
 function validateStructure(value, heads, beforeHeads = heads) {
   validateLifeValue('lifeNode', value);

@@ -3127,5 +3127,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "Vista de LifeMap",
+    "canvas": "Lienzo",
+    "title": "Gantt",
+    "previous": "Periodo anterior",
+    "next": "Periodo siguiente",
+    "overview": "Localizar planes",
+    "expandAll": "Expandir todo",
+    "expand": "Expandir",
+    "collapse": "Contraer",
+    "legend": "Barras: fechas del nodo · Guiones: rango de hijos · Rombo: hito",
+    "empty": "No hay nodos coincidentes",
+    "name": "Nodo / jerarquía",
+    "scroll": "Diagrama de Gantt, desplázate para explorar",
+    "unset": "Sin fechas",
+    "invalidDate": "Usa fechas válidas; el objetivo no puede ser anterior al inicio.",
+    "openEnded": "Sin fecha objetivo",
+    "summary": "Rango de fechas de hijos (solo lectura)",
+    "parents": "Otros padres: {{total}}",
+    "outside": "Fuera del periodo · localizar",
+    "hint": "Edita las fechas en el editor de nodos existente. Sin fecha no significa incompleto; los enlaces no reprograman otros nodos.",
+    "dates": "Fechas planificadas",
+    "editNotebook": "Edita estas fechas en el cuaderno",
+    "clearStart": "Borrar fecha de inicio",
+    "clearTarget": "Borrar fecha objetivo",
+    "source": {
+      "schedule": "Fechas de este nodo",
+      "goal": "Fechas del objetivo nativo",
+      "project": "Fechas del proyecto nativo",
+      "vision": "Periodo de visión del cuaderno",
+      "stage": "Periodo de etapa del cuaderno",
+      "task": "Fecha de tarea nativa (solo lectura)"
+    }
   }
 }

@@ -4,6 +4,7 @@
  */
 import { defaultDocument, validateDocument, measureText } from './model.js';
 import { buildLifeMap } from './lifeMap.js';
+import { validSchedule } from './schedule.js';
 
 export const LIFE_TYPES = Object.freeze(['wish', 'vision', 'goal', 'project']);
 export const LIFE_NODE_SCHEMA = 'jobu:life-nodes:v1';
@@ -31,6 +32,13 @@ export function validateLifeValue(kind, v) {
       || Math.abs(v.position.x) > 100000 || Math.abs(v.position.y) > 100000))) throw new Error('format');
   for (const value of Object.values(v.bindings)) if (value !== null && !id(value)) throw new Error('format');
   for (const value of Object.values(v.details)) if (!object(value)) throw new Error('format');
+  if (v.details.schedule) {
+    const schedule = v.details.schedule;
+    if (!validSchedule(schedule)) throw new Error('format');
+    if (schedule.owner !== undefined && (!['goal', 'project', 'vision', 'stage'].includes(schedule.owner)
+      || !v.details[schedule.owner] || (['goal', 'project'].includes(schedule.owner) && !v.bindings[`${schedule.owner}Id`])
+      || schedule.startDate != null || schedule.targetDate != null)) throw new Error('format');
+  }
   // Nested planning collections would create a second owner for the same node.
   if (v.details.wish?.visions || v.details.vision?.steps) throw new Error('format');
 }

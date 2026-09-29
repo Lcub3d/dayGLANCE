@@ -3127,5 +3127,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "LifeMap-Ansicht",
+    "canvas": "Zeichenfläche",
+    "title": "Gantt",
+    "previous": "Vorheriger Zeitraum",
+    "next": "Nächster Zeitraum",
+    "overview": "Pläne finden",
+    "expandAll": "Alle ausklappen",
+    "expand": "Ausklappen",
+    "collapse": "Einklappen",
+    "legend": "Balken: Knotendaten · Gestrichelt: Unterpunkte · Raute: Meilenstein",
+    "empty": "Keine passenden Knoten",
+    "name": "Knoten / Hierarchie",
+    "scroll": "Gantt-Diagramm, zum Erkunden scrollen",
+    "unset": "Keine Daten festgelegt",
+    "invalidDate": "Gültige Daten verwenden; das Ziel darf nicht vor dem Start liegen.",
+    "openEnded": "Kein Zieldatum",
+    "summary": "Zeitraum der Unterpunkte (nur lesbar)",
+    "parents": "Weitere Elternknoten: {{total}}",
+    "outside": "Außerhalb des Zeitraums · anzeigen",
+    "hint": "Daten im vorhandenen Knoteneditor ändern. Ohne Datum heißt nicht unerledigt; Verknüpfungen verschieben keine anderen Knoten.",
+    "dates": "Planungsdaten",
+    "editNotebook": "Diese Daten im Notizbuch ändern",
+    "clearStart": "Startdatum löschen",
+    "clearTarget": "Zieldatum löschen",
+    "source": {
+      "schedule": "Daten dieses Knotens",
+      "goal": "Daten des nativen Ziels",
+      "project": "Daten des nativen Projekts",
+      "vision": "Visionszeitraum im Notizbuch",
+      "stage": "Etappenzeitraum im Notizbuch",
+      "task": "Natives Aufgabendatum (nur lesbar)"
+    }
   }
 }

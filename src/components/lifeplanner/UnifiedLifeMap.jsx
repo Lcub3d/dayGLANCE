@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ReactFlow, ReactFlowProvider, Background, Handle, Position, MarkerType, useReactFlow, ViewportPortal } from '@xyflow/react';
-import { BookOpen, Check, Compass, Download, Expand, Focus, GitBranch, Inbox, Minus, Plus, Search, Star, Target, Layers, X } from 'lucide-react';
+import { BookOpen, CalendarDays, Check, Compass, Download, Expand, Focus, GitBranch, Inbox, Minus, Plus, Search, Star, Target, Layers, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { createLifeNode, LIFE_TYPES, lifeKey, lifeHierarchyCycles, visibleLifeNodes } from '../../lifeplanner/entities.js';
 import { readLifeNodes, lifeNodesGraph, saveLifeNode, patchLifeNode, placeLifeNodes, connectLifeNodes, migrateLifeNodes, LIFE_SOURCE_BACKUP } from '../../jobu/lifeNodeStore.js';
@@ -9,6 +9,7 @@ import { flowIdentity, domainIdentity } from '../../lifeplanner/flowIdentity.js'
 import useLifeNetwork from './useLifeNetwork.js';
 import LifeNetworkPanel from './LifeNetworkPanel.jsx';
 import LifeNodeEditor from './LifeNodeEditor.jsx';
+import LifeMapGantt from './LifeMapGantt.jsx';
 import SupportEdge from './SupportEdge.jsx';
 import '@xyflow/react/dist/style.css';
 import './lifeMap.css';
@@ -36,6 +37,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
     return { ...all, nodes: visibleLifeNodes(all.nodes, goals, projects) };
   }, [status.records, goals, projects]);
   const graph = useMemo(() => lifeNodesGraph(data.nodes, { tasks, unscheduledTasks, recurringTasks }), [data.nodes, tasks, unscheduledTasks, recurringTasks]);
+  const [view, setView] = useState('canvas'), [ganttInbox, setGanttInbox] = useState(false);
   const [query, setQuery] = useState(''), [showTasks, setShowTasks] = useState(false), [selection, select] = useState(null), [editorVersion, refreshEditor] = useState(0);
   const [stack, setStack] = useState([]), [preview, setPreview] = useState({}), [measured, setMeasured] = useState({});
   const [pending, setPending] = useState(false), [error, setError] = useState(''), [newTitle, setNewTitle] = useState('');
@@ -43,7 +45,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
   const [selectedEdge, selectEdge] = useState(null), [viewport, setBoardViewport] = useState({x:0,y:0,zoom:1}), [fitRevision, fit] = useState(0);
   const zoom = viewport.zoom;
   const captureDraft = useRef(newTitle); captureDraft.current = newTitle;
-  const busy = useRef(false), dirty = useRef(false), networkDirty = useRef(false), dragHeads = useRef(new Map()), createId = useRef(null), host = useRef(null);
+  const busy = useRef(false), dirty = useRef(false), networkDirty = useRef(false), dragHeads = useRef(new Map()), createId = useRef(null), host = useRef(null), inboxRef = useRef(null);
   const onDirty = useCallback(value => { dirty.current = value; }, []), onNetworkDirty = useCallback(value => { networkDirty.current = value; }, []);
   const { screenToFlowPosition, setViewport, getViewport, fitView, setCenter, zoomIn, zoomOut, viewportInitialized } = useReactFlow();
   const snapshot = useRef(data); snapshot.current = data;
@@ -108,7 +110,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
       markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12 } }))];
   }, [filtered, networkOpen, network.state.edges, selectedEdge, t]);
   // Only explicit navigation fits the viewport; normal writes never jump it.
-  useEffect(() => { if (!viewportInitialized) return; const timer = setTimeout(() => {
+  useEffect(() => { if (!viewportInitialized || view !== 'canvas') return; const timer = setTimeout(() => {
     if (nodes.length) fitView({ nodes: nodes.map(n => ({ id: n.id })), padding: .25, minZoom: .3, maxZoom: .95, duration: 0 });
     else setViewport({ x: 180, y: 40, zoom: .75 });
   }, 80); return () => clearTimeout(timer); /* nodes handled via explicit fit trigger */
@@ -156,7 +158,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
   const cycleCount = lifeHierarchyCycles(data.nodes).length;
   const orphanCount = data.nodes.filter(n => n.parentIds.some(id => !data.nodes.some(parent => parent.id === id))).length;
   const networkEdgeCount = edges.filter(e => e.data?.networkEntityId).length;
-  return <section className="life-map life-board" data-life-map data-life-board data-inline-edit="" aria-label={B('title')}
+  return <section className="life-map life-board" data-life-map data-life-board data-map-view={view} data-gantt-inbox={ganttInbox} data-inline-edit="" aria-label={B('title')}
     onKeyDownCapture={e => {
       if (!e.target.classList.contains('react-flow__node')) return;
       const id = domainIdentity(e.target.dataset.id), row = data.heads.get(id);
@@ -174,7 +176,13 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
       if (!canLeave()) return;
       if (networkOpen) setNetworkOpen(false); else if (selection) select(null); else if (stack.length) back(stack.length - 1);
     }}>
-    <div className="lm-toolbar lb-toolbar"><label className="lm-search"><Search size={14} /><input aria-label={B('search')} placeholder={B('search')} value={query} onChange={e => { setQuery(e.target.value); fit(n => n + 1); }} /></label>
+    <div className="lm-toolbar lb-toolbar"><div className="flex items-center gap-1" role="group" aria-label={t('lifeGantt.view')}>
+      {['canvas', 'gantt'].map(mode => <button key={mode} type="button" aria-pressed={view === mode}
+        className={`flex items-center gap-1 rounded px-2 py-1 text-xs ${view === mode ? 'bg-accent-600 text-white' : ''}`}
+        onClick={() => { if (view !== mode && canLeave()) { setView(mode); refreshEditor(v => v + 1); selectEdge(null); setNetworkOpen(false); } }}>
+        {mode === 'canvas' ? <GitBranch size={14} /> : <CalendarDays size={14} />}{t(mode === 'canvas' ? 'lifeGantt.canvas' : 'lifeGantt.title')}
+      </button>)}
+    </div>{view === 'gantt' && <button type="button" className="lb-gantt-inbox-toggle" aria-expanded={ganttInbox} onClick={() => setGanttInbox(v => !v)}><Inbox size={14} />{B('inbox')} ({inbox.length})</button>}<label className="lm-search"><Search size={14} /><input aria-label={B('search')} placeholder={B('search')} value={query} onChange={e => { setQuery(e.target.value); fit(n => n + 1); }} /></label>
       <label className="lm-unlinked"><input type="checkbox" checked={showTasks} onChange={e => { setShowTasks(e.target.checked); fit(n => n + 1); }} />{B('showTasks')}</label>
       <button type="button" aria-pressed={networkOpen} onClick={() => { if (canLeave()) { select(null); setNetworkOpen(x => !x); } }}><GitBranch size={14} />{t('lifeNetwork.title')}</button>
       <button type="button" onClick={() => { if (canLeave()) onNotebook(); }}><BookOpen size={14} />{B('notebook')}</button></div>
@@ -183,7 +191,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
       <span className="lm-count">{B('count', { count: filtered.nodes.length })}{root ? ` · ${B('externalLinks', { count: filtered.externalEdges.length })}` : ''}</span></nav>
     {(cycleCount > 0 || orphanCount > 0) && <p className="lb-diagnostics" role="status">{cycleCount > 0 ? B('cycleWarning', {count:cycleCount}) : ''} {orphanCount > 0 ? B('orphanWarning', {count:orphanCount}) : ''}</p>}
     <div className="lb-body">
-      <aside className="lb-inbox" aria-label={B('inbox')} onDragOver={e => { if (e.dataTransfer.types.includes(MIME)) e.preventDefault(); }} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData(MIME); if (id) drop(id, { x: -270, y: 90 }, true); }}>
+      <aside ref={inboxRef} className="lb-inbox" aria-label={B('inbox')} onDragOver={e => { if (e.dataTransfer.types.includes(MIME)) e.preventDefault(); }} onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData(MIME); if (id) drop(id, { x: -270, y: 90 }, true); }}>
         <h3><Inbox size={16} />{B('inbox')}<span>{inbox.length}</span></h3>
         <p>{B('inboxHint')}</p>
         <form onSubmit={e => { e.preventDefault(); if (newTitle.trim()) create(); }}><input aria-label={B('quickAdd')} placeholder={B('quickAdd')} value={newTitle} maxLength={2000} disabled={!writable} onChange={e => { setNewTitle(e.target.value); createId.current = null; }} /><button type="submit" disabled={!writable || !newTitle.trim()} aria-label={B('add')}><Plus size={16} /></button></form>
@@ -194,7 +202,9 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
           <button type="button" disabled={!writable} aria-label={`${B('place')} · ${n.title}`} onClick={async () => { if (!canLeave()) return; if (await run(() => placeLifeNodes(jobuData, [{ id: n.id, expectedHead: data.heads.get(n.id).id, position: positions.get(n.id) }]))) { select(n.id); refreshEditor(x => x + 1); fit(x => x + 1); } }}><Plus size={13} /></button>
         </div>)}</div>
       </aside>
-      <div className="lm-canvas lb-canvas" ref={host} data-life-map-canvas onDragOver={e => { if (e.dataTransfer.types.includes(MIME)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+      <LifeMapGantt graph={filtered} nodes={data.nodes} tasks={tasks} unscheduledTasks={unscheduledTasks} recurringTasks={recurringTasks}
+        goals={goals} projects={projects} selectedId={selection} onSelect={choose} onFocus={focus} root={root} ready={status.loaded && data.ready} active={view === 'gantt'} />
+      <div className="lm-canvas lb-canvas" style={view === 'gantt' ? { display: 'none' } : undefined} ref={host} data-life-map-canvas onDragOver={e => { if (e.dataTransfer.types.includes(MIME)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
         onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData(MIME); if (id) { const p = screenToFlowPosition({ x: e.clientX, y: e.clientY }); drop(id, { x: p.x - CARD_WIDTH / 2, y: p.y - 35 }); } }}>
         <ReactFlow nodes={nodes} edges={edges} nodeTypes={NODE_TYPES} edgeTypes={EDGE_TYPES}
           onNodeClick={(_e, node) => { const id = domainIdentity(node.id); if (networkOpen) requestNetwork({ mode: 'node', nodeId: id }); else choose(id); }}
@@ -207,7 +217,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
             if (moves.length) setPreview(prev => ({ ...prev, ...Object.fromEntries(moves.map(c => [domainIdentity(c.id), c.position])) }));
           }}
           onNodeDragStart={(_e, node) => { const id = domainIdentity(node.id); dragHeads.current.set(id, data.heads.get(id)?.id); }}
-          onNodeDragStop={(event, node) => { const id = domainIdentity(node.id); const sidebar = host.current?.previousElementSibling?.getBoundingClientRect();
+          onNodeDragStop={(event, node) => { const id = domainIdentity(node.id); const sidebar = inboxRef.current?.getBoundingClientRect();
             const isInbox = sidebar && event.clientX < sidebar.right && event.clientX >= sidebar.left && event.clientY >= sidebar.top && event.clientY <= sidebar.bottom; drop(id, node.position, isInbox); }}
           onConnect={connect} isValidConnection={c => c.source !== c.target && c.sourceHandle === 'out' && c.targetHandle === 'in'}
           onEdgeClick={(_e, edge) => { if (edge.data?.networkEntityId) requestNetwork({ mode: 'edge', entityId: edge.data.networkEntityId }); else if (canLeave()) { select(null); selectEdge(edge.data?.hierarchy || null); } }}
@@ -238,7 +248,7 @@ function Canvas({ jobuData, onLeaveGuard, onNotebook, darkMode, readOnly = false
           const p = positions.get(id); if (p) setCenter(p.x + CARD_WIDTH / 2, p.y + CARD_HEIGHT / 2, { zoom: .9 }); }} />}
     </div>
     {(error || status.error) && <p className="lm-error" role="alert">{B(`errors.${error || status.error}`, { defaultValue: B('errors.storageWrite') })}<button onClick={() => { setError(''); jobuData.load(); }}>{B('retry')}</button></p>}
-    <div className="lb-footer"><p className="lm-footnote">{pending ? B('saving') : B('hint')}</p><button type="button" onClick={() => {
+    <div className="lb-footer"><p className="lm-footnote">{pending ? B('saving') : view === 'gantt' ? t('lifeGantt.hint') : B('hint')}</p><button type="button" onClick={() => {
       try { const raw = localStorage.getItem(LIFE_SOURCE_BACKUP); if (!raw) throw Error('storageRead');
         const url = URL.createObjectURL(new Blob([raw], {type:'application/json'})), a = document.createElement('a');
         a.href = url; a.download = 'jobu-life-sources-before-upgrade.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);

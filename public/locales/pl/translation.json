@@ -3216,5 +3216,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "Widok LifeMap",
+    "canvas": "Płótno",
+    "title": "Gantt",
+    "previous": "Poprzedni okres",
+    "next": "Następny okres",
+    "overview": "Znajdź plany",
+    "expandAll": "Rozwiń wszystko",
+    "expand": "Rozwiń",
+    "collapse": "Zwiń",
+    "legend": "Paski: daty węzła · Kreski: zakres dzieci · Romb: kamień milowy",
+    "empty": "Brak pasujących węzłów",
+    "name": "Węzeł / hierarchia",
+    "scroll": "Wykres Gantta, przewiń, aby przeglądać",
+    "unset": "Brak dat",
+    "invalidDate": "Podaj poprawne daty; termin nie może poprzedzać początku.",
+    "openEnded": "Brak terminu",
+    "summary": "Zakres dat dzieci (tylko odczyt)",
+    "parents": "Inni rodzice: {{total}}",
+    "outside": "Poza okresem · pokaż",
+    "hint": "Edytuj daty w istniejącym edytorze węzłów. Brak daty nie oznacza braku ukończenia; powiązania nie zmieniają dat innych węzłów.",
+    "dates": "Planowane daty",
+    "editNotebook": "Edytuj te daty w notatniku",
+    "clearStart": "Wyczyść datę rozpoczęcia",
+    "clearTarget": "Wyczyść termin",
+    "source": {
+      "schedule": "Daty tego węzła",
+      "goal": "Daty rodzimego celu",
+      "project": "Daty rodzimego projektu",
+      "vision": "Okres wizji w notatniku",
+      "stage": "Okres etapu w notatniku",
+      "task": "Data rodzimego zadania (tylko odczyt)"
+    }
   }
 }

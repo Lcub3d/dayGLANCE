@@ -3127,5 +3127,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "Visualização do LifeMap",
+    "canvas": "Tela",
+    "title": "Gantt",
+    "previous": "Período anterior",
+    "next": "Próximo período",
+    "overview": "Localizar planos",
+    "expandAll": "Expandir tudo",
+    "expand": "Expandir",
+    "collapse": "Recolher",
+    "legend": "Barras: datas do nó · Tracejado: filhos · Losango: marco",
+    "empty": "Nenhum nó correspondente",
+    "name": "Nó / hierarquia",
+    "scroll": "Gráfico de Gantt, role para explorar",
+    "unset": "Sem datas",
+    "invalidDate": "Use datas válidas; a meta não pode ser anterior ao início.",
+    "openEnded": "Sem data-alvo",
+    "summary": "Intervalo dos filhos (somente leitura)",
+    "parents": "Outros pais: {{total}}",
+    "outside": "Fora do período · localizar",
+    "hint": "Edite as datas no editor de nós existente. Sem data não significa incompleto; os vínculos não reagendam outros nós.",
+    "dates": "Datas planejadas",
+    "editNotebook": "Edite estas datas no caderno",
+    "clearStart": "Limpar data de início",
+    "clearTarget": "Limpar data-alvo",
+    "source": {
+      "schedule": "Datas deste nó",
+      "goal": "Datas da meta nativa",
+      "project": "Datas do projeto nativo",
+      "vision": "Período da visão no caderno",
+      "stage": "Período da etapa no caderno",
+      "task": "Data da tarefa nativa (somente leitura)"
+    }
   }
 }

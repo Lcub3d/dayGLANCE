@@ -1,0 +1,135 @@
+name: Check PR33 scope and evidence review
+on:
+  push:
+    branches: [work/review-check33-20260929]
+    paths: [.github/review-check33.py, .github/review-check33-fixture.jsx, .github/review-check33-browser.py, .github/workflows/check-review-33.yml]
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.repository == 'Lcub3d/dayGLANCE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      CHECK_RESULTS: /tmp/check33-results
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: workbench
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 830061687045814148231ad11f30bec7816c4575
+          path: product
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - name: Install locked dependencies
+        working-directory: product
+        run: npm ci
+      - name: Reproduce review findings on the unchanged product
+        run: |
+          mkdir -p "$CHECK_RESULTS"
+          python3 workbench/.github/review-check33.py product tests
+          cd product
+          set +e
+          TZ=UTC npx vitest run src/jobo/checkJournal.test.js src/components/jobo/JoboCheckPanel.test.jsx --reporter=json --outputFile="$CHECK_RESULTS/before.json" > "$CHECK_RESULTS/before.log" 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          python3 - <<'PY'
+          import json, os, pathlib
+          report=json.loads((pathlib.Path(os.environ['CHECK_RESULTS'])/'before.json').read_text())
+          failed=[a['fullName'] for t in report['testResults'] for a in t['assertionResults'] if a['status']=='failed']
+          assert failed, report
+          assert all('regressions' in name for name in failed), failed
+          print('Reproduced findings:', json.dumps(failed, ensure_ascii=False, indent=2))
+          PY
+      - name: Apply product fixes and enforce Slice 7 boundary
+        run: |
+          python3 workbench/.github/review-check33.py product source
+          python3 - <<'PY'
+          import pathlib, subprocess
+          root=pathlib.Path('product')
+          changed=subprocess.check_output(['git','diff','--name-only'],cwd=root,text=True).splitlines()
+          allowed={'src/jobo/checkJournal.js','src/jobo/checkJournal.test.js','src/components/jobo/JoboCheckPanel.jsx','src/components/jobo/JoboCheckPanel.test.jsx','src/components/JoboView.jsx','docs/jobo-check-journal.md'}
+          assert set(changed)==allowed, changed
+          subprocess.run(['git','diff','--check'],cwd=root,check=True)
+          for p in ['src/jobo/core.js','src/jobo/ledger.js','src/jobo/store.js','src/jobo/detector.js','src/jobo/viewModel.js','src/mergeSync.js','src/sync/dbAdapter.js','src/hooks/useTaskActions.js','package.json','package-lock.json']:
+              assert not subprocess.check_output(['git','diff','0a7632a2c87f1b138dfbdc84156bee7355ea3338','--',p],cwd=root), p
+          PY
+          git -C product add src/jobo/checkJournal.js src/jobo/checkJournal.test.js src/components/jobo/JoboCheckPanel.jsx src/components/jobo/JoboCheckPanel.test.jsx src/components/JoboView.jsx docs/jobo-check-journal.md
+          git -C product -c user.name=Lcub3d -c user.email=46134215+Lcub3d@users.noreply.github.com commit -m 'fix(jobo): keep Check chronology and measurement evidence honest'
+          git -C product rev-parse HEAD > "$CHECK_RESULTS/product-head.txt"
+          git -C product diff 830061687045814148231ad11f30bec7816c4575 HEAD > "$CHECK_RESULTS/review.patch"
+          git -C product diff --stat 0a7632a2c87f1b138dfbdc84156bee7355ea3338 HEAD > "$CHECK_RESULTS/scope.txt"
+      - name: Audit lint and complete UTC suite
+        working-directory: product
+        run: |
+          set -o pipefail
+          npm run audit 2>&1 | tee "$CHECK_RESULTS/audit.log"
+          npm run lint 2>&1 | tee "$CHECK_RESULTS/lint.log"
+          TZ=UTC npm test -- --reporter=json --outputFile="$CHECK_RESULTS/after.json" 2>&1 | tee "$CHECK_RESULTS/tests.log"
+      - name: Timezone and locale regression suites
+        working-directory: product
+        run: |
+          set -o pipefail
+          for zone in Asia/Singapore America/Chicago; do
+            TZ="$zone" npx vitest run src/jobo/checkJournal.test.js src/components/jobo/JoboCheckPanel.test.jsx src/locales.test.js 2>&1 | tee -a "$CHECK_RESULTS/timezones.log"
+          done
+      - name: Web and iOS WebView builds
+        working-directory: product
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$CHECK_RESULTS/build.log"
+          npm run build:ios 2>&1 | tee "$CHECK_RESULTS/webview.log"
+      - name: Prepare original and review browser fixtures
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,json,lzma,pathlib
+          raw=lzma.decompress(base64.b64decode(''.join(pathlib.Path(f'workbench/.github/check-journal-payload.{n}.b64').read_text().strip() for n in range(1,5))))
+          assert hashlib.sha256(raw).hexdigest()=='e91518e98268d73bce2ee1ec86ffc3f49013891dc9c88e1fee63d28b0f4a94f9'
+          data=json.loads(raw)
+          pathlib.Path('/tmp/check-browser.py').write_text(data['browser'])
+          for name,text in data['fixture'].items():
+              assert name in {'check-fixture.html','check-fixture.jsx'}
+              pathlib.Path('product',name).write_text(text)
+          pathlib.Path('product/review33.html').write_text('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/review33.jsx"></script></body></html>')
+          pathlib.Path('product/review33.jsx').write_text(pathlib.Path('workbench/.github/review-check33-fixture.jsx').read_text())
+          PY
+          python3 -m venv "$RUNNER_TEMP/check-venv"
+          "$RUNNER_TEMP/check-venv/bin/pip" install playwright
+          "$RUNNER_TEMP/check-venv/bin/python" -m playwright install --with-deps chromium
+      - name: Original browser acceptance and new evidence regressions
+        working-directory: product
+        run: |
+          set -o pipefail
+          ./node_modules/.bin/vite --host 127.0.0.1 --port 5178 > "$CHECK_RESULTS/vite.log" 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" || true' EXIT
+          for n in $(seq 1 30); do curl -fsS http://127.0.0.1:5178/check-fixture.html >/dev/null && break || sleep 1; done
+          "$RUNNER_TEMP/check-venv/bin/python" /tmp/check-browser.py 2>&1 | tee "$CHECK_RESULTS/browser.log"
+          "$RUNNER_TEMP/check-venv/bin/python" ../workbench/.github/review-check33-browser.py 2>&1 | tee "$CHECK_RESULTS/review-browser.log"
+      - name: Publish only the verified candidate to an isolated result branch
+        working-directory: product
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(git rev-parse HEAD^)" = '830061687045814148231ad11f30bec7816c4575'
+          test -z "$(git diff --name-only)"
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH" push origin HEAD:refs/heads/work/check33-reviewed-result-20260929
+          git archive HEAD src/jobo/checkJournal.js src/jobo/checkJournal.test.js src/components/jobo/JoboCheckPanel.jsx src/components/jobo/JoboCheckPanel.test.jsx src/components/JoboView.jsx docs/jobo-check-journal.md | gzip > "$CHECK_RESULTS/changed-source.tar.gz"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check33-review-validation
+          path: /tmp/check33-results
+          retention-days: 7

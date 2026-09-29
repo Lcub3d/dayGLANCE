@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "The task is already done. Its completion is recorded as a Do of its own.",
       "linkedNoCompletion": "A Do linked to a task can't be Completed on its own.",
       "checkTaskAgain": "Check the task off again to make this Completed."
+    },
+    "check": {
+      "open": "Check",
+      "title": "Daily check",
+      "intro": "Recorded executions for the whole day, in time order. Missing records are not proof of no work.",
+      "empty": "No Do recorded for this day.",
+      "group": "Complete execution group",
+      "groupScope": "All attempts in this execution group, including other days.",
+      "measuredSessions": "Measured sessions",
+      "unmeasured": "Unmeasured attempts",
+      "inDay": "Recorded on this day: {{duration}}",
+      "untimed": "Execution recorded; duration not measured.",
+      "completionTime": "Completion recorded at {{time}}",
+      "recordTime": "Record created at {{time}}",
+      "notes": "Task notes",
+      "currentNotes": "Current task notes, not a captured snapshot.",
+      "notesUnavailable": "The linked task is no longer available.",
+      "noTaskNotes": "No task notes.",
+      "openNote": "Open {{name}} in Obsidian"
     }
   },
   "todoist": {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
+import { AlertTriangle, BookOpen, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -14,6 +14,7 @@ import useMinWidth from '../hooks/useMinWidth.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
+import JoboCheckPanel from './jobo/JoboCheckPanel.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
@@ -70,6 +71,8 @@ export default function JoboView() {
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
+  const [checkOpen, setCheckOpen] = useState(false);
+  const closeCheck = useCallback(() => setCheckOpen(false), []);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -373,6 +376,11 @@ export default function JoboView() {
     },
   }));
 
+  const checkPanel = checkOpen && <JoboCheckPanel key={date} date={date} model={model}
+    loaded={joboLoaded} error={joboError} onClose={closeCheck}
+    ctx={{ darkMode: ctx.darkMode, cardBg: ctx.cardBg, textPrimary: ctx.textPrimary,
+      textSecondary: ctx.textSecondary, borderClass: ctx.borderClass, formatTime: ctx.formatTime }} t={t} />;
+
   if (!joboLoaded) {
     return (
       <div data-jobo-view className={`h-full flex items-center justify-center gap-2 p-6 ${ctx.textSecondary}`} role={joboError ? 'alert' : 'status'}>
@@ -382,6 +390,7 @@ export default function JoboView() {
             {reloadJobo && <button type="button" className="underline" onClick={() => reloadJobo()}>{t('jobo.view.retryLoad')}</button>}
           </>
         ) : t('common.loading')}
+        {checkPanel}
       </div>
     );
   }
@@ -418,7 +427,14 @@ export default function JoboView() {
                 </button>
               )}
             </div>
-            <div className="flex-1 min-w-0 px-3 py-1.5 flex items-center">{t('jobo.view.plan')}</div>
+            <div className="flex-1 min-w-0 px-3 py-1 flex items-center justify-between gap-2">
+              <span>{t('jobo.view.plan')}</span>
+              <button type="button" data-jobo-check-open aria-haspopup="dialog" aria-expanded={checkOpen}
+                onClick={() => { closeDetails(); setCheckOpen(true); }}
+                className={`h-7 px-2 flex items-center gap-1 rounded-lg text-xs font-medium ${ctx.darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
+                <BookOpen size={14} aria-hidden="true" />{t('jobo.check.open')}
+              </button>
+            </div>
           </div>
           <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
@@ -495,6 +511,7 @@ export default function JoboView() {
       )}
       </div>
       {refocus.scrolledAway && <RefocusTimelineToast onRefocus={refocus.refocus} isMobile={!!ctx.isMobile} />}
+      {checkPanel}
       {liveDetail && (
         <ExecutionDetails
           item={liveDetail}

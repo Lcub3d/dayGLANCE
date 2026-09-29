@@ -2206,6 +2206,25 @@
       "taskAlreadyDone": "该任务已完成，其完成情况已作为一条单独的执行记录保存。",
       "linkedNoCompletion": "关联任务的执行记录不能单独标记为已完成。",
       "checkTaskAgain": "再次勾选该任务，即可将此记录标记为已完成。"
+    },
+    "check": {
+      "open": "复盘",
+      "title": "每日复盘",
+      "intro": "按时间顺序回顾全天已记录的执行。没有记录，不代表没有做过。",
+      "empty": "当天没有记录到执行。",
+      "group": "完整执行组",
+      "groupScope": "此执行组的全部尝试，包括其他日期的记录。",
+      "measuredSessions": "已计时片段",
+      "unmeasured": "未计时尝试",
+      "inDay": "当天记录时长：{{duration}}",
+      "untimed": "已记录执行，但未测量时长。",
+      "completionTime": "完成记录时间：{{time}}",
+      "recordTime": "记录创建时间：{{time}}",
+      "notes": "任务笔记",
+      "currentNotes": "当前任务笔记，并非当时保存的快照。",
+      "notesUnavailable": "关联的任务已不可用。",
+      "noTaskNotes": "暂无任务笔记。",
+      "openNote": "在 Obsidian 中打开 {{name}}"
     }
   },
   "todoist": {

@@ -2,28 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { TAILWIND_TO_HEX } from '../../utils/colorUtils.js';
+import { RoadmapBar, RoadmapGrid } from './RoadmapChart.jsx';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
-/** Hex value for a Tailwind bg-* class, falling back to blue. */
-const toHex = (bgClass) => TAILWIND_TO_HEX[bgClass] || '#3b82f6';
-
-/** Blend a #rrggbb hex toward white by `amt` (0..1); returns an rgb() string. */
-const lighten = (hex, amt) => {
-  const c = (i) => { const v = parseInt(hex.slice(i, i + 2), 16); return Math.round(v + (255 - v) * amt); };
-  return `rgb(${c(1)}, ${c(3)}, ${c(5)})`;
-};
-/** Blend a #rrggbb hex toward black by `amt` (0..1); returns an rgb() string.
- *  Used for the text-pill backgrounds so labels keep contrast on any bar. */
-const darken = (hex, amt) => {
-  const f = 1 - amt;
-  const c = (i) => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * f)));
-  return `rgb(${c(1)}, ${c(3)}, ${c(5)})`;
-};
-
-// Fade applied to open-ended (no target) bars: the bar dissolves into the page
-// background instead of fading to a hardcoded colour, so it works in any theme.
-const OPEN_ENDED_MASK = 'linear-gradient(to right, #000 0%, #000 55%, transparent 100%)';
+/** Native grouping/date policy; chart primitives are shared with LifeMap. */
+const toHex = bgClass => TAILWIND_TO_HEX[bgClass] || '#3b82f6';
 
 const PERIODS = [
   { key: '1m', months: 1 },
@@ -35,10 +19,7 @@ const PERIODS = [
 
 const TOP_PAD = 12;     // space above the first row
 const BOTTOM_PAD = 30;  // space for the month labels below the last row
-const ROW_H = 44;       // per-goal row height (px)
-const BAR_H = 28;       // bar height (px)
 const HEADER_H = 30;    // area group header height (px)
-const CHAR_PX = 5.7;    // rough width of a pill character, for label-fit estimates
 
 const goalStartMs = (goal) => {
   if (goal.startDate) return new Date(goal.startDate + 'T00:00:00').getTime();
@@ -158,16 +139,11 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
   }, [rows, areas]);
 
   const hiddenCount = goals.length - rows.length;
-  const gridColor = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 
   const renderBar = (row) => {
     const { goal, leftPct, widthPct, clippedLeft, clippedRight, openEnded, progress, projCount } = row;
-    const hex = toHex(goal.color);
     const selected = goal.id === selectedGoalId;
     const pct = Math.round(progress * 100);
-    const trackColor = lighten(hex, 0.5);   // remaining portion: light tint of swatch
-    const fillColor = hex;                    // completed portion: true swatch colour
-    const pillBg = darken(hex, 0.45);         // darker same-family bg → white text reads
 
     const dLabel = daysLabel(goal);
     const projLabel = t('goals.projectCount', { count: projCount });
@@ -180,34 +156,6 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
       ? [goal.title, projLabel, pctLabel].filter(Boolean).join('  ·  ')
       : [leftText, rightText].filter(Boolean).join('  ·  ');
 
-    const barWpx = (widthPct / 100) * chartW;
-    const barLeftPx = (leftPct / 100) * chartW;
-    const est = (s) => s.length * CHAR_PX + 18;
-    const estL = est(leftText), estR = est(rightText), estC = est(combinedText);
-
-    // Placement: split (two pills inside) → combined inside → combined outside.
-    let mode, outLeft = 0, outAlign = 'left';
-    if (!openEnded && chartW > 0 && barWpx >= estL + estR + 12) {
-      mode = 'split';
-    } else if (chartW === 0 || barWpx >= estC + 6) {
-      mode = 'inside';
-    } else {
-      mode = 'outside';
-      const rightPos = barLeftPx + barWpx + 6;
-      if (rightPos + estC <= chartW) { outLeft = rightPos; outAlign = 'left'; }
-      else if (barLeftPx - estC - 6 >= 0) { outLeft = barLeftPx - 6; outAlign = 'right'; }
-      else { mode = 'inside'; } // nowhere to go — clip inside
-    }
-
-    const Pill = ({ children, className = '' }) => (
-      <span
-        className={`relative z-10 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium text-white whitespace-nowrap ${className}`}
-        style={{ background: pillBg }}
-      >
-        {children}
-      </span>
-    );
-
     const tooltip = [
       goal.title,
       goal.startDate ? `${t('goals.start')}: ${fmtDate(goal.startDate)}` : null,
@@ -217,53 +165,11 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
       t('goals.completePct', { pct }),
     ].filter(Boolean).join('\n');
 
-    const dimmed = selectedGoalId && !selected;
-    return (
-      <div
-        key={goal.id}
-        className="relative w-full flex items-center transition-opacity duration-200"
-        style={{ height: ROW_H, opacity: dimmed ? 0.32 : 1 }}
-      >
-        <button
-          onClick={() => onSelectGoal?.(goal.id)}
-          className="absolute flex items-center px-1.5"
-          style={{
-            left: `${leftPct}%`,
-            width: `${widthPct}%`,
-            height: BAR_H,
-            justifyContent: mode === 'split' ? 'space-between' : 'flex-start',
-            background: trackColor,
-            borderTopLeftRadius: clippedLeft ? 0 : 8,
-            borderBottomLeftRadius: clippedLeft ? 0 : 8,
-            borderTopRightRadius: clippedRight || openEnded ? 0 : 8,
-            borderBottomRightRadius: clippedRight || openEnded ? 0 : 8,
-            borderLeft: clippedLeft ? `2px dotted ${fillColor}` : 'none',
-            overflow: 'hidden',
-            boxShadow: selected ? `0 0 0 2px ${darkMode ? '#0f172a' : '#ffffff'}, 0 0 0 4px ${fillColor}` : 'none',
-            ...(openEnded ? { maskImage: OPEN_ENDED_MASK, WebkitMaskImage: OPEN_ENDED_MASK } : {}),
-          }}
-          title={tooltip}
-        >
-          {/* Completion fill (fuel gauge) */}
-          <div className="absolute inset-y-0 left-0 pointer-events-none" style={{ width: `${pct}%`, background: fillColor }} />
-          {mode === 'split' && (<><Pill>{leftText}</Pill><Pill>{rightText}</Pill></>)}
-          {mode === 'inside' && (<Pill className="max-w-full overflow-hidden"><span className="truncate">{combinedText}</span></Pill>)}
-        </button>
-
-        {mode === 'outside' && chartW > 0 && (
-          <button
-            onClick={() => onSelectGoal?.(goal.id)}
-            className="absolute z-10"
-            style={outAlign === 'left'
-              ? { left: outLeft, top: '50%', transform: 'translateY(-50%)' }
-              : { left: outLeft, top: '50%', transform: 'translate(-100%, -50%)' }}
-            title={tooltip}
-          >
-            <Pill>{combinedText}</Pill>
-          </button>
-        )}
-      </div>
-    );
+    return <RoadmapBar key={goal.id} id={goal.id} title={goal.title} color={goal.color}
+      leftPct={leftPct} widthPct={widthPct} clippedLeft={clippedLeft} clippedRight={clippedRight}
+      openEnded={openEnded} progress={progress} chartW={chartW} darkMode={darkMode}
+      selected={selected} dimmed={!!selectedGoalId && !selected}
+      leftText={leftText} rightText={rightText} combinedText={combinedText} tooltip={tooltip} onSelect={onSelectGoal} />;
   };
 
   return (
@@ -295,26 +201,8 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
       ) : (
         <div ref={chartRef} className="relative w-full">
           {/* Month gridlines + labels (behind the bars) */}
-          <div className="pointer-events-none absolute inset-0">
-            {monthTicks.map((tick, i) => {
-              if (i % labelEvery !== 0) return null;
-              const x = frac(tick.ms) * 100;
-              const atRightEdge = x > 99;
-              return (
-                <div key={tick.ms} className="absolute" style={{ left: `${x}%`, top: TOP_PAD, bottom: BOTTOM_PAD, width: 1, background: gridColor }}>
-                  <span
-                    className={`absolute text-[10px] ${textSecondary} opacity-70 whitespace-nowrap`}
-                    style={{ bottom: -BOTTOM_PAD + 8, ...(atRightEdge ? { right: 2, textAlign: 'right' } : { left: 2 }) }}
-                  >
-                    {formatLocalizedDate(new Date(tick.ms), {
-                      month: 'short',
-                      ...(tick.month === 0 ? { year: 'numeric' } : {}),
-                    }, language)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <RoadmapGrid monthTicks={monthTicks} leftEdge={leftEdge} span={span} labelEvery={labelEvery}
+            darkMode={darkMode} textSecondary={textSecondary} topPad={TOP_PAD} bottomPad={BOTTOM_PAD} language={language} />
 
           {/* Grouped rows */}
           <div style={{ paddingTop: TOP_PAD, paddingBottom: BOTTOM_PAD }}>

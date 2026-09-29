@@ -3127,5 +3127,39 @@
       "labelName": "Enter a label name with 1–128 characters.",
       "labelDuplicate": "This label name is already in use, or reserved by a previous name."
     }
+  },
+  "lifeGantt": {
+    "view": "Vue LifeMap",
+    "canvas": "Canevas",
+    "title": "Gantt",
+    "previous": "Période précédente",
+    "next": "Période suivante",
+    "overview": "Localiser les plans",
+    "expandAll": "Tout développer",
+    "expand": "Développer",
+    "collapse": "Réduire",
+    "legend": "Barres : dates du nœud · Pointillés : enfants · Losange : jalon",
+    "empty": "Aucun nœud correspondant",
+    "name": "Nœud / hiérarchie",
+    "scroll": "Diagramme de Gantt, faire défiler pour explorer",
+    "unset": "Aucune date",
+    "invalidDate": "Utilisez des dates valides ; la cible ne peut pas précéder le début.",
+    "openEnded": "Aucune date cible",
+    "summary": "Période des enfants (lecture seule)",
+    "parents": "Autres parents : {{total}}",
+    "outside": "Hors période · localiser",
+    "hint": "Modifiez les dates dans l’éditeur de nœuds existant. Sans date ne signifie pas inachevé ; les liens ne replanifient aucun autre nœud.",
+    "dates": "Dates prévues",
+    "editNotebook": "Modifiez ces dates dans le carnet",
+    "clearStart": "Effacer la date de début",
+    "clearTarget": "Effacer la date cible",
+    "source": {
+      "schedule": "Dates de ce nœud",
+      "goal": "Dates de l’objectif natif",
+      "project": "Dates du projet natif",
+      "vision": "Période de vision du carnet",
+      "stage": "Période d’étape du carnet",
+      "task": "Date de tâche native (lecture seule)"
+    }
   }
 }

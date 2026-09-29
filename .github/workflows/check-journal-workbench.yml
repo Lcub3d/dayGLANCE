@@ -1,0 +1,34 @@
+name: Check journal workbench
+on:
+  push:
+    branches: [work/jobo-check-verify-20260929]
+    paths: [.github/workflows/check-journal-workbench.yml]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Package isolated source and test dependencies
+        run: |
+          mkdir -p /tmp/check-workbench/source
+          git archive HEAD | tar -x -C /tmp/check-workbench/source
+          cp -a node_modules /tmp/check-workbench/source/
+          tar -czf /tmp/check-workbench.tar.gz -C /tmp/check-workbench/source .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-workbench
+          path: /tmp/check-workbench.tar.gz
+          retention-days: 2

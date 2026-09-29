@@ -1,0 +1,36 @@
+name: Check aspects source
+on:
+  push:
+    branches: [work/jobo-check-aspects]
+    paths: [.github/workflows/check-aspects-source.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Export exact main source and dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: |
+          set -euo pipefail
+          git checkout --detach 0a7632a2c87f1b138dfbdc84156bee7355ea3338
+          mkdir -p /tmp/check-source
+          git bundle create /tmp/check-source/main.bundle HEAD
+          npm ci --ignore-scripts --no-audit --no-fund
+          tar -czf /tmp/check-source/node_modules.tar.gz node_modules
+          git rev-parse HEAD > /tmp/check-source/revision.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-aspects-source
+          path: /tmp/check-source/
+          retention-days: 3

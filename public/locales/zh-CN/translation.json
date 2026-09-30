@@ -2206,6 +2206,10 @@
       "taskAlreadyDone": "该任务已完成，其完成情况已作为一条单独的执行记录保存。",
       "linkedNoCompletion": "关联任务的执行记录不能单独标记为已完成。",
       "checkTaskAgain": "再次勾选该任务，即可将此记录标记为已完成。"
+    },
+    "past": {
+      "recorded": "已记录 {{range}}",
+      "open": "在 JOBO 中打开"
     }
   },
   "todoist": {

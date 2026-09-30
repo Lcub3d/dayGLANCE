@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDoRecord, tombstoneDoRecord } from './core.js';
-import { buildPastDayIndex, buildPastDaySlices, pastDayItems } from './pastDay.js';
+import { buildPastDayIndex, buildPastDaySlices, pastDayItems, pastDayDisplay } from './pastDay.js';
 
 // Slice 6 (docs/jobo-past-days.md): what a date before today shows. Only the
 // rule is under test here; the views adopt it in a later step.
@@ -134,5 +134,37 @@ describe('the index in two parts', () => {
     expect(before[0]).toMatchObject({ title: report.title, color: 'bg-blue-500' });
     expect(after[0]).toMatchObject({ title: 'Write the final report', color: 'bg-violet-500' });
     expect(after).toHaveLength(1);
+  });
+});
+
+// What the views read (App's getDayDisplayForDate): the rule for past dates
+// only, never without an index, and under the same tag filter as tasks.
+describe('pastDayDisplay', () => {
+  const index = () => buildPastDayIndex({ records: [timed()], taskLookup: [report, call] });
+  const dayTasks = [report, call];
+
+  // MUTATION: drop the date check and today's plan turns into Do while you
+  // are still working through it.
+  it('leaves today and later exactly as they are', () => {
+    expect(pastDayDisplay({ dateStr: DAY, todayStr: DAY, dayTasks, index: index() })).toBe(dayTasks);
+    expect(pastDayDisplay({ dateStr: DAY, todayStr: '2026-09-20', dayTasks, index: index() })).toBe(dayTasks);
+  });
+
+  it('changes nothing without an index: JOBO off, or the ledger not loaded', () => {
+    expect(pastDayDisplay({ dateStr: DAY, todayStr: '2026-09-30', dayTasks, index: null })).toBe(dayTasks);
+  });
+
+  it('applies the rule to a past date', () => {
+    const items = pastDayDisplay({ dateStr: DAY, todayStr: '2026-09-30', dayTasks, index: index() });
+    expect(items.map((item) => item.id)).toEqual(['t2', `jobo-do:manual:1:${DAY}`]);
+  });
+
+  // MUTATION: skip the filter and a Do shows under a tag filter its task fails.
+  it('holds a Do to the tag filter by its task\'s title', () => {
+    const onlyWork = (items) => items.filter((item) => /#work\b/.test(item.title));
+    const items = pastDayDisplay({ dateStr: DAY, todayStr: '2026-09-30', dayTasks: onlyWork(dayTasks), index: index(), tagFilter: onlyWork });
+    expect(items.map((item) => item.id)).toEqual([`jobo-do:manual:1:${DAY}`]);
+    const noWork = (items) => items.filter((item) => !/#work\b/.test(item.title));
+    expect(pastDayDisplay({ dateStr: DAY, todayStr: '2026-09-30', dayTasks: noWork(dayTasks), index: index(), tagFilter: noWork }).map((item) => item.id)).toEqual(['t2']);
   });
 });

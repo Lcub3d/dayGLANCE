@@ -2206,6 +2206,10 @@
       "taskAlreadyDone": "The task is already done. Its completion is recorded as a Do of its own.",
       "linkedNoCompletion": "A Do linked to a task can't be Completed on its own.",
       "checkTaskAgain": "Check the task off again to make this Completed."
+    },
+    "past": {
+      "recorded": "Recorded {{range}}",
+      "open": "Open in JOBO"
     }
   },
   "todoist": {

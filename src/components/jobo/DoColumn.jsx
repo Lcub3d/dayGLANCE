@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BookOpen, Check, CheckCircle2, CheckSquare, Clock, FileText, Pencil, Plus } from 'lucide-react';
 import { renderTitleWithoutTags, hasNotesOrSubtasks, hasOnlySubtasks, isObsidianNoteOnlyTask } from '../../utils/textFormatting.jsx';
 import DoNotesPanel from './DoNotesPanel.jsx';
+import { DO_STRIPES } from './PastDoCard.jsx';
 import { extractWikilinks, stripWikilinks } from '../../utils/taskUtils.js';
 import { timingRows } from './ExecutionAxes.jsx';
 import { completionMoment } from '../../jobo/completionMarker.js';
@@ -168,6 +169,9 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
         ${notesOpen ? 'overflow-visible z-30' : ''}`}
       style={{
         top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined,
+        // A recorded interval is striped, the Do look in every view (slice 6);
+        // an estimate keeps its dashed outline and a completion its marker.
+        ...(!item.point ? { backgroundImage: DO_STRIPES } : {}),
         ...(highlighted ? { outline: '2px solid rgb(59 130 246)', outlineOffset: '1px' } : {}),
       }}
       onMouseEnter={() => onHover(task?.id ?? null)}

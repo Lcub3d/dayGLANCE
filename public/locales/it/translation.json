@@ -2208,6 +2208,10 @@
       "taskAlreadyDone": "Il compito è già fatto. Il suo completamento viene registrato come un Do a sé.",
       "linkedNoCompletion": "Un Do collegato a un compito non può essere completato da solo.",
       "checkTaskAgain": "Spunta di nuovo il compito per completare questo Do."
+    },
+    "past": {
+      "recorded": "Registrato {{range}}",
+      "open": "Apri in JOBO"
     }
   },
   "todoist": {

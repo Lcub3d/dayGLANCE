@@ -4,6 +4,7 @@ import { formatHourLabel } from '../utils/timeFormatting.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import { columnTimeFromEvent } from '../utils/dragUtils.js';
 import TimelineTaskCardContent from './TimelineTaskCardContent.jsx';
+import PastDoCard from './jobo/PastDoCard.jsx';
 import DayWindowMarkers from './DayWindowMarkers.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -43,14 +44,16 @@ function getTaskSlice(task, col, hourHeight, timeToMinutes) {
 // the blue hover line, click-to-add, the timeline context menu, Frames,
 // HyperGLANCE bars, routines and the now line. DAY renders three 8-hour
 // columns; JOBO renders one 24-hour column as its Plan side.
-export const DayViewColumn = ({ col, colIdx, hourHeight }) => {
+// `planOnly` keeps the column on the plan for every date. JOBO sets it: its
+// Plan side is this column, and its Do side already shows the Do.
+export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => {
   const {
     isTablet,
     darkMode, use24HourClock,
     borderClass, textSecondary,
     expandedNotesTaskId,
     taskContextMenu, setTaskContextMenu,
-    getTasksForDate,
+    getTasksForDate, getDayDisplayForDate,
     getTaskCalendarStyle,
     taskWidths, setTaskRef,
     calculateConflictPosition,
@@ -115,7 +118,10 @@ export const DayViewColumn = ({ col, colIdx, hourHeight }) => {
     });
   };
 
-  const allDayTasks = getTasksForDate(col.date);
+  // A past date shows what was done (slice 6): its recorded Do replace the
+  // plan blocks they belong to, as read-only PastDoCards below.
+  const readDay = !planOnly && typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
+  const allDayTasks = readDay(col.date);
   const colTasks = allDayTasks.filter(t => {
     if (t.isAllDay || !t.startTime) return false;
     if (projectFilter && t.projectId !== projectFilter) return false;
@@ -355,6 +361,23 @@ export const DayViewColumn = ({ col, colIdx, hourHeight }) => {
             // clusters with first-fit columns and MULTI's 2px card margins,
             // instead of the per-task neighbour count DAY used to compute.
             const conflictPos = calculateConflictPosition(task, colTasks);
+
+            if (task.joboDo) {
+              return (
+                <PastDoCard
+                  key={`${task.id}-${col.startHour}`}
+                  item={task}
+                  showTime={height > 40}
+                  style={{
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    ...(hasBars && taskOverlapsHG(task)
+                      ? { left: '50%', right: 0, width: undefined }
+                      : { left: conflictPos.left, right: conflictPos.right, width: conflictPos.width }),
+                  }}
+                />
+              );
+            }
 
             const isImported = task.imported;
             const isCalendarEvent = isImported && !task.isTaskCalendar;

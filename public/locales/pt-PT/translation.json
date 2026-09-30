@@ -2206,6 +2206,10 @@
       "taskAlreadyDone": "A tarefa já está feita. A conclusão é registada como um Do próprio.",
       "linkedNoCompletion": "Um Do associado a uma tarefa não pode ser concluído sozinho.",
       "checkTaskAgain": "Marque novamente a tarefa para concluir este Do."
+    },
+    "past": {
+      "recorded": "Registado {{range}}",
+      "open": "Abrir no JOBO"
     }
   },
   "todoist": {

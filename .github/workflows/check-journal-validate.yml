@@ -1,0 +1,76 @@
+name: Check journal revision validation
+on:
+  push:
+    branches: [ci/check-journal-review-20260930]
+    paths:
+      - '.github/workflows/check-journal-validate.yml'
+      - '.github/scripts/check-journal/**'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+      - uses: actions/checkout@v4
+        with:
+          ref: f5f0f895edb2b7a094f61e393af24159da728648
+          fetch-depth: 0
+          path: product
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - name: Apply guarded revision
+        run: |
+          test "$(git rev-parse HEAD)" = f5f0f895edb2b7a094f61e393af24159da728648
+          python ../harness/.github/scripts/check-journal/apply.py
+          git diff --check
+          mkdir -p /tmp/check-validation
+          git diff --stat > /tmp/check-validation/scope.txt
+      - name: Install dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci
+      - name: Audit and lint
+        run: |
+          npm run audit
+          npm run lint
+      - name: Full UTC suite
+        env:
+          TZ: UTC
+        run: npx vitest run --maxWorkers=2 --reporter=json --outputFile=/tmp/check-validation/full-utc.json
+      - name: Three-zone Check and locale regressions
+        run: |
+          for ZONE in UTC Asia/Singapore America/Chicago; do
+            TZ="$ZONE" npx vitest run src/jobo/checkSummary.test.js src/components/jobo/checkJournal.test.js src/components/jobo/CheckPanel.test.jsx src/components/JoboView.test.jsx src/locales.test.js --maxWorkers=2 --reporter=json --outputFile="/tmp/check-validation/check-${ZONE//\//-}.json"
+          done
+      - name: Production builds
+        run: |
+          npm run build
+          npm run build:ios
+      - name: Publish validated object to an isolated branch only
+        run: |
+          test "$(git ls-remote origin refs/heads/contrib/jobo-check-aspects | cut -f1)" = f5f0f895edb2b7a094f61e393af24159da728648
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git add public/locales src/components/JoboView.jsx src/components/jobo/CheckPanel.jsx src/components/jobo/CheckPanel.test.jsx src/components/jobo/checkJournal.js src/components/jobo/checkJournal.test.js src/components/jobo/checkSummary.js src/components/jobo/checkSummary.test.js src/jobo/checkSummary.js src/jobo/checkSummary.test.js
+          git commit -m "fix(jobo): make Check a chronological execution journal"
+          git rev-parse HEAD > /tmp/check-validation/commit.txt
+          git diff --stat HEAD^ HEAD > /tmp/check-validation/final-scope.txt
+          git archive HEAD | gzip > /tmp/check-validation/verified-source.tar.gz
+          git push origin HEAD:refs/heads/verify/check-journal-revision-20260930
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-journal-validation
+          path: /tmp/check-validation
+          retention-days: 7

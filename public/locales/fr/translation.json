@@ -2212,6 +2212,16 @@
     "past": {
       "recorded": "Enregistré {{range}}",
       "open": "Ouvrir dans JOBO"
+    },
+    "check": {
+      "button": "Bilan",
+      "title": "Bilan",
+      "actual": "Réel",
+      "session": "Séance {{number}}",
+      "untimed": "Temps non enregistré",
+      "noRecords": "Aucune exécution enregistrée pour cette journée.",
+      "unavailable": "Impossible de charger les enregistrements d’exécution.",
+      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés."
     }
   },
   "todoist": {

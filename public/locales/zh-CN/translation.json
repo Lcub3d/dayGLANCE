@@ -2212,6 +2212,16 @@
     "past": {
       "recorded": "已记录 {{range}}",
       "open": "在 JOBO 中打开"
+    },
+    "check": {
+      "button": "复盘",
+      "title": "复盘",
+      "actual": "实际",
+      "session": "第 {{number}} 次执行",
+      "untimed": "未记录时间",
+      "noRecords": "当天暂无执行记录。",
+      "unavailable": "无法加载执行记录。",
+      "invalid": "部分执行记录无法加载。"
     }
   },
   "todoist": {

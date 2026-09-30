@@ -2301,6 +2301,16 @@
     "past": {
       "recorded": "Zapisano {{range}}",
       "open": "Otwórz w JOBO"
+    },
+    "check": {
+      "button": "Przegląd",
+      "title": "Przegląd",
+      "actual": "Rzeczywiste",
+      "session": "Sesja {{number}}",
+      "untimed": "Nie zarejestrowano czasu",
+      "noRecords": "Brak zarejestrowanych wykonań z tego dnia.",
+      "unavailable": "Nie udało się wczytać zapisów wykonania.",
+      "invalid": "Nie udało się wczytać niektórych zapisów wykonania."
     }
   },
   "todoist": {

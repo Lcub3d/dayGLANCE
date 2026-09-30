@@ -2212,6 +2212,16 @@
     "past": {
       "recorded": "Registrado {{range}}",
       "open": "Abrir no JOBO"
+    },
+    "check": {
+      "button": "Revisão",
+      "title": "Revisão",
+      "actual": "Real",
+      "session": "Sessão {{number}}",
+      "untimed": "Tempo não registrado",
+      "noRecords": "Nenhuma execução registrada neste dia.",
+      "unavailable": "Não foi possível carregar os registros de execução.",
+      "invalid": "Não foi possível carregar alguns registros de execução."
     }
   },
   "todoist": {

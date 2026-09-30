@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -14,6 +14,7 @@ import useMinWidth from '../hooks/useMinWidth.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
+import CheckPanel from './jobo/CheckPanel.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
@@ -70,6 +71,7 @@ export default function JoboView() {
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
+  const [checkOpen, setCheckOpen] = useState(false);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -161,6 +163,20 @@ export default function JoboView() {
     ),
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
+  const openCheckNotes = (task) => {
+    setCheckOpen(false);
+    if (sidebar && lookup.some(candidate => String(candidate.id) === String(task.id))) {
+      setSelectedTaskId(task.id);
+      return;
+    }
+    // Leave the read-only journal before opening native task notes. Spotlight's
+    // existing navigation handles off-day plans, Inbox and archived projects.
+    const isInbox = (ctx.unscheduledTasks || []).some(candidate => String(candidate.id) === String(task.id));
+    ctx.handleSpotlightSelect({ task, source: task.archived ? 'archived' : isInbox ? 'inbox' : 'scheduled' });
+    ctx.setExpandedNotesTaskId(task.id);
+  };
+  const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
+    && typeof ctx.setExpandedNotesTaskId === 'function';
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
   // The selected task as it is now, so the sidebar follows edits and sync.
   const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
@@ -423,6 +439,11 @@ export default function JoboView() {
           <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
             <div className="flex items-center gap-1.5">
+            <button type="button" data-jobo-check-toggle aria-haspopup="dialog" aria-expanded={checkOpen}
+              onClick={() => setCheckOpen(true)}
+              className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <ClipboardCheck size={14} /><span className="text-xs font-medium">{t('jobo.check.button')}</span>
+            </button>
             <button
               type="button"
               data-jobo-add
@@ -506,6 +527,12 @@ export default function JoboView() {
           writable={joboWritable}
           pendingIds={writer.pendingIds}
         />
+      )}
+      {checkOpen && (
+        <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
+          onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
+          onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
+          textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}
       {editor && (
         <DoEditor

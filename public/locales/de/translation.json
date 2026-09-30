@@ -2212,6 +2212,16 @@
     "past": {
       "recorded": "Erfasst {{range}}",
       "open": "In JOBO öffnen"
+    },
+    "check": {
+      "button": "Rückblick",
+      "title": "Rückblick",
+      "actual": "Tatsächlich",
+      "session": "Einheit {{number}}",
+      "untimed": "Zeit nicht erfasst",
+      "noRecords": "Für diesen Tag sind keine Ausführungen erfasst.",
+      "unavailable": "Ausführungsdaten konnten nicht geladen werden.",
+      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden."
     }
   },
   "todoist": {

@@ -2212,6 +2212,16 @@
     "past": {
       "recorded": "Recorded {{range}}",
       "open": "Open in JOBO"
+    },
+    "check": {
+      "button": "Check",
+      "title": "Check",
+      "actual": "Actual",
+      "session": "Session {{number}}",
+      "untimed": "Time not recorded",
+      "noRecords": "No executions recorded for this day.",
+      "unavailable": "Could not load execution records.",
+      "invalid": "Some execution records could not be loaded."
     }
   },
   "todoist": {

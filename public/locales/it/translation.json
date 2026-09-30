@@ -2214,6 +2214,16 @@
     "past": {
       "recorded": "Registrato {{range}}",
       "open": "Apri in JOBO"
+    },
+    "check": {
+      "button": "Riepilogo",
+      "title": "Riepilogo",
+      "actual": "Effettivo",
+      "session": "Sessione {{number}}",
+      "untimed": "Tempo non registrato",
+      "noRecords": "Nessuna esecuzione registrata per questo giorno.",
+      "unavailable": "Impossibile caricare le registrazioni di esecuzione.",
+      "invalid": "Impossibile caricare alcune registrazioni di esecuzione."
     }
   },
   "todoist": {

@@ -20,7 +20,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
 
-const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }) => {
+const CardContent = ({ task, height, isNarrowWidth, flipNotesPanel }) => {
   const { t } = useTranslation();
   const {
     isTablet,
@@ -475,5 +475,20 @@ const TimelineTaskCardContent = ({ task, height, isNarrowWidth, flipNotesPanel }
     </>
   );
 };
+
+/**
+ * A timeline card's contents. `zoom` (timeline magnification, see
+ * utils/timelineZoom.js) draws them larger while laying them out as they
+ * would be at 100%: the card's height reaches the contents divided by the
+ * zoom, so a card keeps its tier (micro, short, full) at every level. The
+ * card itself is placed by the column in real pixels and is not zoomed.
+ */
+const TimelineTaskCardContent = ({ zoom = 1, height, ...props }) => (zoom === 1
+  ? <CardContent height={height} {...props} />
+  : (
+    <div data-card-zoom={zoom} className="relative flex-1 min-w-0 h-full flex" style={{ zoom }}>
+      <CardContent height={height / zoom} {...props} />
+    </div>
+  ));
 
 export default TimelineTaskCardContent;

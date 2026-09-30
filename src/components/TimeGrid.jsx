@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useReducer, useRef } from 'react';
 import {
   BookOpen, Check, CheckSquare, Clock, ExternalLink,
   FileText, GripVertical, Inbox, MapPin, MoreHorizontal,
@@ -20,6 +20,7 @@ import { getHGBarsForDate } from '../hooks/useHyperGlance.js';
 import HyperGlanceBar from './HyperGlanceBar.jsx';
 import { useTranslation } from 'react-i18next';
 import PastDoCard from './jobo/PastDoCard.jsx';
+import useTimelineZoom from '../hooks/useTimelineZoom.js';
 
 const TimeGrid = () => {
   const {
@@ -82,6 +83,21 @@ const TimeGrid = () => {
     setFrameContextMenu,
     aiConfig, aiSubtasksLoadingForTask, generateAISubtasks,
   } = useFeaturesCtx();
+  // Timeline magnification (utils/timelineZoom.js): hour rows grow by `z`,
+  // and everything placed on them follows, since positions are read from
+  // the rows. Card contents draw at `z` and lay out as at 100%.
+  const z = useTimelineZoom('multi', { scrollRef: calendarRef, originRef: timeGridRef });
+  const zoomed = z !== 1;
+  // Positions are read from the rendered rows (useDragDrop's
+  // minutesToPosition), so the render that resizes the rows placed its cards
+  // on the old ones. Render once more, before paint, on the new rows.
+  const [, placeOnNewRows] = useReducer((n) => n + 1, 0);
+  const placedAtZoom = useRef(z);
+  useLayoutEffect(() => {
+    if (placedAtZoom.current === z) return;
+    placedAtZoom.current = z;
+    placeOnNewRows();
+  }, [z]);
 
   return (
 <div
@@ -100,14 +116,15 @@ const TimeGrid = () => {
       {/* Main hour row with solid border */}
       <div className={`flex border-b ${borderClass} ${index % 2 === 1 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`}>
         <div className={`w-16 flex-shrink-0 px-3 py-1 text-sm ${textSecondary} border-r ${borderClass}`}>
-          {formatHourLabel(hour, use24HourClock)}
+          <div style={zoomed ? { zoom: z } : undefined}>{formatHourLabel(hour, use24HourClock)}</div>
         </div>
         {visibleDates.map((date, idx) => (
           <div
             key={dateToString(date)}
             data-ctx-menu
-            className={`flex-1 relative h-40 calendar-slot ${idx > 0 ? `border-l ${borderClass}` : ''} ${dateToString(date) === dateToString(new Date()) ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
+            className={`flex-1 relative ${zoomed ? '' : 'h-40'} calendar-slot ${idx > 0 ? `border-l ${borderClass}` : ''} ${dateToString(date) === dateToString(new Date()) ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
             data-date={dateToString(date)}
+            style={zoomed ? { height: `${160 * z}px` } : undefined}
             onDragOver={(e) => handleDragOver(e, date)}
             onDrop={(e) => handleDropOnCalendar(e, date)}
             onClick={(e) => openNewTaskAtTime(e, date)}
@@ -128,7 +145,7 @@ const TimeGrid = () => {
         ))}
       </div>
       {/* Half-hour dashed line (no label) */}
-      <div className="absolute left-0 right-0 pointer-events-none" style={{ top: '80px' }}>
+      <div className="absolute left-0 right-0 pointer-events-none" style={{ top: `${80 * z}px` }}>
         <div className={`flex border-b border-dashed ${borderClass} opacity-50`}>
           <div className="w-16 flex-shrink-0"></div>
           {visibleDates.map((date, idx) => (
@@ -310,11 +327,12 @@ const TimeGrid = () => {
                 <PastDoCard
                   key={task.id}
                   item={task}
-                  showTime={height > 40}
+                  showTime={height / z > 40}
+                  zoom={z}
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
-                    minHeight: height <= 40 ? '27px' : '39px',
+                    minHeight: `${(height / z <= 40 ? 27 : 39) * z}px`,
                     ...(taskOverlapsHG(task)
                       ? { left: '50%', right: 0, width: undefined }
                       : { left: conflictPos.left, right: conflictPos.right, width: conflictPos.width }),
@@ -331,10 +349,10 @@ const TimeGrid = () => {
             const isCurrentTask = isDateToday && !task.isAllDay && !task.completed && !isCalendarEvent && _nowMinT >= _taskStartT && _nowMinT < _taskStartT + (task.duration || 0);
 
             // Layout tiers for timeline tasks
-            const isMicroHeight = height <= 40;  // 15min tasks
+            const isMicroHeight = height / z <= 40;  // 15min tasks, at any zoom
             const taskWidth = taskWidths[task.id];
             const isMeasured = taskWidth !== undefined;
-            const isNarrowWidth = taskWidth < 300;
+            const isNarrowWidth = taskWidth / z < 300;
 
             // Layout: narrow (< 300px) or wide (>= 300px), same for all heights
             // Default: wide layout (30+ min, >= 200px)
@@ -476,7 +494,7 @@ const TimeGrid = () => {
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  minHeight: isMicroHeight ? '27px' : '39px',
+                  minHeight: `${(isMicroHeight ? 27 : 39) * z}px`,
                   ...(taskOverlapsHG(task)
                     ? { left: '50%', right: 0, width: undefined }
                     : { left: conflictPos.left, right: conflictPos.right, width: conflictPos.width }),
@@ -537,7 +555,7 @@ const TimeGrid = () => {
                 className={`h-full flex text-white rounded-lg relative ${isTablet && !task.isTaskCalendar && !task.nativeCalendarColor ? task.color : ''} ${isTablet ? 'select-none' : ''}`}
                 style={{ ...(isTablet ? { touchAction: 'pan-y', ...taskCalendarStyle } : {}) }}
                 >
-                  <TimelineTaskCardContent task={task} height={height} isNarrowWidth={isNarrowWidth} />
+                  <TimelineTaskCardContent task={task} height={height} isNarrowWidth={isNarrowWidth} zoom={z} />
                   {/* Resize handle at bottom - solid white for visibility */}
                   {(!isImported || !!task.nativeEventId) && (
                     <div
@@ -632,7 +650,7 @@ const TimeGrid = () => {
                   className={`absolute pointer-events-auto ${isTablet ? 'cursor-default select-none' : 'cursor-move'} flex items-center justify-center ${isPast ? 'opacity-50' : ''}`}
                   style={{
                     top: `${top}px`,
-                    height: `${Math.max(height, 27)}px`,
+                    height: `${Math.max(height, 27 * z)}px`,
                     left: `calc(${leftPercent} + 4px)`,
                     width: `calc(${widthPercent} - 8px)`,
                     ...(isTablet ? { touchAction: 'pan-y', WebkitTouchCallout: 'none', WebkitUserSelect: 'none' } : {}),
@@ -645,8 +663,9 @@ const TimeGrid = () => {
                   <span
                     className={`relative rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${darkMode ? 'bg-teal-700 text-teal-100' : 'bg-teal-600 text-white'} ${routineCompletions[routine.id] ? 'line-through opacity-75' : ''}`}
                     onClick={() => toggleRoutineCompletion(routine.id)}
+                    style={zoomed ? { zoom: z } : undefined}
                     {...(isTablet ? {
-                      style: { touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none' },
+                      style: { touchAction: 'none', WebkitTouchCallout: 'none', WebkitUserSelect: 'none', ...(zoomed ? { zoom: z } : {}) },
                       onTouchStart: (e) => handleMobileTaskTouchStart(e, { ...routine, isRoutineDrag: true }, 'timeline'),
                       onTouchMove: (e) => handleMobileTaskTouchMove(e),
                       onTouchEnd: (e) => handleMobileTaskTouchEnd(e, routine.id, 'timeline'),
@@ -687,7 +706,7 @@ const TimeGrid = () => {
               }}
             >
               <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60"></div>
-              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
+              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2" style={zoomed ? { zoom: z } : undefined}>
                 {formatTime(hoverPreviewTime)}
               </div>
             </div>

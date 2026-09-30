@@ -2227,6 +2227,13 @@
       "invalid": "部分执行记录无法加载。"
     }
   },
+  "timelineZoom": {
+    "label": "时间轴大小",
+    "smaller": "缩小",
+    "larger": "放大",
+    "reset": "重置为 100%",
+    "hint": "也可以在时间轴上双指缩放或按住 Ctrl 滚动。按视图保存在此设备上。"
+  },
   "todoist": {
     "title": "Todoist 同步",
     "beta": "选择性同步 · 测试版",

@@ -112,6 +112,7 @@ import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay } from './jobo/pastDay.js';
 import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
+import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -905,6 +906,15 @@ const DayPlanner = () => {
     setEventNotes((prev) => {
       const next = withEventNote(prev, id, text);
       try { localStorage.setItem(EVENT_NOTES_KEY, JSON.stringify(next)); } catch { /* kept for this session */ }
+      return next;
+    });
+  }, []);
+  // Timeline magnification per view, on this device (utils/timelineZoom.js).
+  const [timelineZooms, setTimelineZooms] = useState(() => readZooms());
+  const setTimelineZoom = useCallback((view, zoom) => {
+    setTimelineZooms((prev) => {
+      const next = withZoom(prev, view, zoom);
+      try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(next)); } catch { /* kept for this session */ }
       return next;
     });
   }, []);
@@ -8613,6 +8623,7 @@ const DayPlanner = () => {
     // go through setTasks, whose rows never hold it for long.
     tasks: tasksWithEventNotes, setTasks,
     setEventNote,
+    timelineZooms, setTimelineZoom,
     unscheduledTasks, setUnscheduledTasks,
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,

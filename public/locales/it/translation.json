@@ -2229,6 +2229,13 @@
       "invalid": "Impossibile caricare alcune registrazioni di esecuzione."
     }
   },
+  "timelineZoom": {
+    "label": "Dimensione della timeline",
+    "smaller": "Più piccola",
+    "larger": "Più grande",
+    "reset": "Ripristina al 100%",
+    "hint": "Anche: pizzica o usa Ctrl+scorrimento sulla timeline. Salvato per questa vista su questo dispositivo."
+  },
   "todoist": {
     "title": "Sincronizzazione Todoist",
     "beta": "Sincronizzazione selettiva · beta",

@@ -122,15 +122,18 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   // Drawn within the visible hours: a card that runs past a trimmed edge is
   // cut at it, as DAY cuts a task at its column's edge.
   const shownStart = Math.max(item.startMinute, offsetMin);
   const shownEnd = Math.min(item.endMinute, limitMin);
   const top = (Math.min(shownStart, limitMin) - offsetMin) * hourHeight / 60;
-  const height = Math.max(MIN_CARD_PX, (shownEnd - shownStart) * hourHeight / 60 - 2);
-  const isMicro = height <= 40;
+  const height = Math.max(MIN_CARD_PX * zoom, (shownEnd - shownStart) * hourHeight / 60 - 2);
+  // The contents lay out as at 100% and draw at the timeline's zoom
+  // (utils/timelineZoom.js), so tiers are decided on the unzoomed height.
+  const laidOut = height / zoom;
+  const isMicro = laidOut <= 40;
   const color = item.task?.color || item.sourceTask?.color || 'bg-purple-500';
   const timeLabel = item.estimate
     ? `~${ctx.formatTime(clock(item.startMinute))}–${ctx.formatTime(item.time)}`
@@ -183,7 +186,7 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
       {/* A completion is a moment: the white rule marks it exactly, at the
           top of a marker and at the bottom (its end) of an estimate. */}
       {item.point && <div className={`absolute ${item.estimate ? 'bottom-0' : 'top-0'} left-0 right-0 h-0.5 bg-white pointer-events-none`} aria-hidden="true" />}
-      <div className="px-2 py-1 h-full flex flex-col min-w-0">
+      <div className="px-2 py-1 h-full flex flex-col min-w-0" style={zoom !== 1 ? { zoom } : undefined}>
         <div className="flex items-center gap-1 min-w-0">
           {item.point && <CheckCircle2 size={12} className="flex-shrink-0 opacity-90" aria-hidden="true" />}
           <div className="font-semibold text-sm leading-tight truncate flex-1 min-w-0" title={stripWikilinks(record.title)}>
@@ -256,7 +259,7 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
             </span>
           </div>
         )}
-        {!isMicro && signals.length > 0 && height > 60 && (
+        {!isMicro && signals.length > 0 && laidOut > 60 && (
           <div className="text-xs opacity-80 flex gap-1 min-w-0 overflow-hidden mt-0.5">
             {signals.map((row) => (
               <span key={row.key} data-jobo-axis={row.key} title={row.text} className="truncate border-l border-white/40 pl-1 first:border-l-0 first:pl-0">{row.text}</span>
@@ -281,7 +284,7 @@ function DoCard({ item, hourHeight, offsetMin = 0, limitMin = 1440, ctx, t, writ
 }
 
 export default function DoColumn({
-  date, hourHeight, items, ctx, t,
+  date, hourHeight, zoom = 1, items, ctx, t,
   writable, pendingIds = [], preview,
   onAddAt, onEdit, onKeep, onContinue, onDetails, onPointGesture, onResizeGesture,
   hoverTaskId = null, onHoverTask = () => {},
@@ -363,6 +366,7 @@ export default function DoColumn({
             key={item.id}
             item={item}
             hourHeight={hourHeight}
+            zoom={zoom}
             offsetMin={offsetMin}
             limitMin={limitMin}
             ctx={ctx}

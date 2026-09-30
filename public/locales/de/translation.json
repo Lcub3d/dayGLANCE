@@ -2227,6 +2227,13 @@
       "invalid": "Einige Ausführungsdaten konnten nicht geladen werden."
     }
   },
+  "timelineZoom": {
+    "label": "Zeitleistengröße",
+    "smaller": "Kleiner",
+    "larger": "Größer",
+    "reset": "Auf 100 % zurücksetzen",
+    "hint": "Auch: zusammenziehen oder Strg+Scrollen über der Zeitleiste. Für diese Ansicht auf diesem Gerät gespeichert."
+  },
   "todoist": {
     "title": "Todoist-Synchronisierung",
     "beta": "Selektive Synchronisierung · Beta",

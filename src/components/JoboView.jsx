@@ -11,6 +11,7 @@ import useJoboPreference from '../hooks/useJoboPreference.js';
 import useJoboRefocus from '../hooks/useJoboRefocus.js';
 import RefocusTimelineToast from './RefocusTimelineToast.jsx';
 import useMinWidth from '../hooks/useMinWidth.js';
+import useTimelineZoom from '../hooks/useTimelineZoom.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
@@ -69,7 +70,7 @@ export default function JoboView() {
   const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
   // Every accepted Do write becomes a step in the app's undo history.
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
-  const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
+  const baseHourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [checkOpen, setCheckOpen] = useState(false);
   const [editor, setEditor] = useState(null);
@@ -119,6 +120,12 @@ export default function JoboView() {
     </button>
   );
   const scrollRef = useRef(null);
+  const gridRef = useRef(null);
+  // Timeline magnification (utils/timelineZoom.js): one factor on the hour
+  // height, which every position here derives from, and on the cards'
+  // contents. DAY's column takes the same factor for the Plan side.
+  const zoom = useTimelineZoom('jobo', { scrollRef, originRef: gridRef });
+  const hourHeight = baseHourHeight * zoom;
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
   const live = useRef(null);
@@ -159,9 +166,9 @@ export default function JoboView() {
   const doItems = useMemo(
     () => assignOverlapColumns(
       [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
-      { scale: hourHeight, minHeightPx: 27, gapPx: 2 },
+      { scale: hourHeight, minHeightPx: 27 * zoom, gapPx: 2 },
     ),
-    [model.timedRecords, model.untimedRecords, hourHeight],
+    [model.timedRecords, model.untimedRecords, hourHeight, zoom],
   );
   const openCheckNotes = (task) => {
     setCheckOpen(false);
@@ -195,10 +202,12 @@ export default function JoboView() {
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
     el.scrollTop = scrollTopFor(anchorMinute);
-    // Only on a new day, hour height or visible range, never on an ordinary
-    // re-render.
+    // Only on a new day, screen height or visible range, never on an
+    // ordinary re-render, and never on a zoom: that keeps the time under the
+    // pointer where it was (hooks/useTimelineZoom.js), so it keys on the
+    // unzoomed hour height.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, hourHeight, windowStart]);
+  }, [date, baseHourHeight, windowStart]);
 
   // Refocus timeline, as in MULTI: on today, when the now line is out of
   // view, and on its own at every :00 and :30.
@@ -460,7 +469,7 @@ export default function JoboView() {
             </div>
           </div>
         </div>
-        <div className={GRID}>
+        <div ref={gridRef} className={GRID}>
           {/* `contents` keeps DAY's column the grid cell; the wrapper only
               listens, and scopes the outline rule to the Plan side. */}
           <div
@@ -481,11 +490,12 @@ export default function JoboView() {
             {hoverTaskId != null && (
               <style>{`[data-jobo-pairing] [data-task-id="${cssEscape(hoverTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px}`}</style>
             )}
-            <DayViewColumn planOnly col={planColumn} colIdx={0} hourHeight={hourHeight} />
+            <DayViewColumn planOnly col={planColumn} colIdx={0} hourHeight={hourHeight} zoom={zoom} />
           </div>
           <DoColumn
             date={date}
             hourHeight={hourHeight}
+            zoom={zoom}
             items={doItems}
             ctx={ctx}
             t={t}

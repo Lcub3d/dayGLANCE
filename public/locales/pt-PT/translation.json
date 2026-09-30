@@ -2227,6 +2227,13 @@
       "invalid": "Não foi possível carregar alguns registos de execução."
     }
   },
+  "timelineZoom": {
+    "label": "Tamanho da linha temporal",
+    "smaller": "Mais pequeno",
+    "larger": "Maior",
+    "reset": "Repor 100%",
+    "hint": "Também: faça o gesto de pinça ou Ctrl+deslocamento sobre a linha temporal. Guardado para esta vista neste dispositivo."
+  },
   "todoist": {
     "title": "Sincronização com o Todoist",
     "beta": "Sincronização seletiva · beta",

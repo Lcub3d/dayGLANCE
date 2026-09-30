@@ -2206,6 +2206,10 @@
       "taskAlreadyDone": "La tâche est déjà faite. Son achèvement est enregistré comme un Do à part entière.",
       "linkedNoCompletion": "Un Do lié à une tâche ne peut pas être terminé seul.",
       "checkTaskAgain": "Cochez à nouveau la tâche pour terminer ce Do."
+    },
+    "past": {
+      "recorded": "Enregistré {{range}}",
+      "open": "Ouvrir dans JOBO"
     }
   },
   "todoist": {

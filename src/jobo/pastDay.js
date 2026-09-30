@@ -109,3 +109,15 @@ export function pastDayItems({ dateStr, dayTasks = [], index, isVisibleForUser }
   doItems.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id));
   return [...shown, ...doItems];
 }
+
+/**
+ * What a view shows for a date: `dayTasks` unchanged for today and later, or
+ * with no index (JOBO off, ledger not loaded); otherwise the past-day rule.
+ * A Do carries its task's title, tags included, so `tagFilter` (the views'
+ * tag filter, when they apply one) holds it to the same rule as the task.
+ */
+export function pastDayDisplay({ dateStr, todayStr, dayTasks = [], index, isVisibleForUser, tagFilter } = {}) {
+  if (!index || !dateStr || !todayStr || dateStr >= todayStr) return dayTasks;
+  const items = pastDayItems({ dateStr, dayTasks, index, isVisibleForUser });
+  return items === dayTasks || typeof tagFilter !== 'function' ? items : tagFilter(items);
+}

@@ -74,7 +74,7 @@ const CalendarHeader = () => {
     moveToRecycleBin, moveToInbox,
     setInboxProjectFilter, setInboxPriorityFilter, setHideCompletedInbox,
     setHideProjectTasksInbox, setHideStandaloneTasksInbox,
-    getTasksForDate, getDeadlineTasksForDate,
+    getTasksForDate, getDayDisplayForDate, getDeadlineTasksForDate,
     getTaskCalendarStyle,
     setTaskRef,
     formatTime, minutesToTime,
@@ -88,6 +88,9 @@ const CalendarHeader = () => {
     openNewAllDayTask,
     addTasksFromSelection,
   } = useDayPlannerCtx();
+  // The WEEK and MULTI all-day rows read a past date as it was done (slice
+  // 6): an all-day task whose Do was recorded that day steps aside.
+  const readDay = getDayDisplayForDate || getTasksForDate;
   const { t } = useTranslation();
   const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx();
   const {
@@ -365,7 +368,7 @@ const CalendarHeader = () => {
 {effectiveViewMode === 'day' && <DayViewAllDaySection />}
 
 {/* Week view all-day count chips */}
-{effectiveViewMode === 'week' && (weekViewDates.some(d => getTasksForDate(d).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(d)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
+{effectiveViewMode === 'week' && (weekViewDates.some(d => readDay(d).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(d)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
   <div className={`flex border-b ${borderClass} ${cardBg}`}>
     <div
       className={`flex-shrink-0 border-r ${borderClass} flex items-center justify-center`}
@@ -375,7 +378,7 @@ const CalendarHeader = () => {
     </div>
     {weekViewDates.map((date, idx) => {
       const dateStr = dateToString(date);
-      const allDayTasks = getTasksForDate(date).filter(t => t.isAllDay && (!projectFilter || t.projectId === projectFilter));
+      const allDayTasks = readDay(date).filter(t => t.isAllDay && (!projectFilter || t.projectId === projectFilter));
       const weekDeadlineTasks = getDeadlineTasksForDate(dateStr).filter(t => !projectFilter || t.projectId === projectFilter);
       const isDateToday = dateStr === dateToString(new Date());
       return (
@@ -538,13 +541,13 @@ const CalendarHeader = () => {
 )}
 
 {/* Multi-mode all-day tasks section */}
-{effectiveViewMode === 'multi' && !(isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) && (visibleDates.some(date => getTasksForDate(date).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(date)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
+{effectiveViewMode === 'multi' && !(isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month')) && (visibleDates.some(date => readDay(date).some(t => t.isAllDay) || getDeadlineTasksForDate(dateToString(date)).length > 0) || (routinesEnabled && todayRoutines.some(r => r.isAllDay))) && (
   <div ref={(el) => { if (isTablet) mobileAllDaySectionRef.current = el; }} className={`flex border-b ${borderClass} ${cardBg}`}>
     <div className={`w-16 flex-shrink-0 px-3 py-2 text-xs font-semibold ${textSecondary} border-r ${borderClass}`}>
       {t('task.allDay')}
     </div>
     {visibleDates.map((date, idx) => {
-      const dayTasks = getTasksForDate(date).filter(t => t.isAllDay && (!projectFilter || t.projectId === projectFilter)).sort((a, b) => {
+      const dayTasks = readDay(date).filter(t => t.isAllDay && (!projectFilter || t.projectId === projectFilter)).sort((a, b) => {
         const order = (t) => {
           if (t.importSource === 'file') return 0;             // ICS downloads
           if (t.imported && !t.isTaskCalendar) return 1;       // Imported calendar events

@@ -2206,6 +2206,10 @@
       "taskAlreadyDone": "Die Aufgabe ist bereits erledigt. Ihr Abschluss wird als eigenes Do erfasst.",
       "linkedNoCompletion": "Ein mit einer Aufgabe verknüpftes Do kann nicht allein abgeschlossen werden.",
       "checkTaskAgain": "Hake die Aufgabe erneut ab, um dieses Do abzuschließen."
+    },
+    "past": {
+      "recorded": "Erfasst {{range}}",
+      "open": "In JOBO öffnen"
     }
   },
   "todoist": {

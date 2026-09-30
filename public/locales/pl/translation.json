@@ -2293,6 +2293,10 @@
       "taskAlreadyDone": "Zadanie jest już wykonane. Jego ukończenie jest zapisane jako osobny Do.",
       "linkedNoCompletion": "Do powiązanego z zadaniem nie można ukończyć samodzielnie.",
       "checkTaskAgain": "Odhacz zadanie ponownie, aby ukończyć ten Do."
+    },
+    "past": {
+      "recorded": "Zapisano {{range}}",
+      "open": "Otwórz w JOBO"
     }
   },
   "todoist": {

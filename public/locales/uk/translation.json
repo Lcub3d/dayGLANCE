@@ -1486,6 +1486,10 @@
     "tasks_few": "{{count}} завдання",
     "tasks_many": "{{count}} завдань",
     "tasks_other": "{{count}} завдання",
+    "recorded_one": "{{count}} записаний сеанс",
+    "recorded_few": "{{count}} записані сеанси",
+    "recorded_many": "{{count}} записаних сеансів",
+    "recorded_other": "{{count}} записані сеанси",
     "routines_one": "{{count}} рутина",
     "routines_few": "{{count}} рутини",
     "routines_many": "{{count}} рутин",
@@ -2299,6 +2303,10 @@
       "taskAlreadyDone": "Завдання вже виконано. Його завершення записано як окремий Do.",
       "linkedNoCompletion": "Do, пов’язаний із завданням, не можна завершити окремо.",
       "checkTaskAgain": "Позначте завдання знову, щоб завершити цей Do."
+    },
+    "past": {
+      "recorded": "Записано {{range}}",
+      "open": "Відкрити в JOBO"
     },
     "check": {
       "button": "Огляд",

@@ -1480,6 +1480,10 @@
     "tasks_few": "{{count}} zadania",
     "tasks_many": "{{count}} zadań",
     "tasks_other": "{{count}} zadania",
+    "recorded_one": "{{count}} zapisana sesja",
+    "recorded_few": "{{count}} zapisane sesje",
+    "recorded_many": "{{count}} zapisanych sesji",
+    "recorded_other": "{{count}} zapisane sesje",
     "routines_one": "{{count}} rutyna",
     "routines_few": "{{count}} rutyny",
     "routines_many": "{{count}} rutyn",
@@ -2293,6 +2297,10 @@
       "taskAlreadyDone": "Zadanie jest już wykonane. Jego ukończenie jest zapisane jako osobny Do.",
       "linkedNoCompletion": "Do powiązanego z zadaniem nie można ukończyć samodzielnie.",
       "checkTaskAgain": "Odhacz zadanie ponownie, aby ukończyć ten Do."
+    },
+    "past": {
+      "recorded": "Zapisano {{range}}",
+      "open": "Otwórz w JOBO"
     },
     "check": {
       "button": "Przegląd",

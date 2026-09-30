@@ -9,6 +9,7 @@ import { dateToString } from '../utils/taskUtils.js';
 import { splitChipTitleTag } from '../utils/textFormatting.jsx';
 import { columnTimeFromEvent } from '../utils/dragUtils.js';
 import TimelineTaskCardContent from './TimelineTaskCardContent.jsx';
+import { PastDoDetails, pastDoChipStyle, pastDoColor } from './jobo/PastDoCard.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import useWeekViewHourHeight from '../hooks/useWeekViewHourHeight.js';
@@ -55,7 +56,7 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
       ref={popoverRef}
       className={`fixed z-50 shadow-2xl rounded-xl border notes-panel-container text-white
         ${expandedNotesTaskId === task.id ? 'overflow-visible' : 'overflow-hidden'}
-        ${task.isTaskCalendar ? '' : task.color}
+        ${task.joboDo ? pastDoColor(task) : task.isTaskCalendar ? '' : task.color}
         ${isCalendarEvent ? '' : ''}
       `}
       style={{
@@ -64,15 +65,22 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
         width: POPOVER_W,
         minHeight: POPOVER_H,
         ...(isCalendarEvent || task.isTaskCalendar ? taskCalStyle : {}),
+        ...(task.joboDo ? pastDoChipStyle : {}),
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <TimelineTaskCardContent
-        task={task}
-        height={POPOVER_H}
-        isNarrowWidth={false}
-        flipNotesPanel={top + POPOVER_H > window.innerHeight / 2}
-      />
+      {/* A recorded Do shows what was recorded, read-only, and the way to
+          JOBO where it can be edited; a task shows its card as before. */}
+      {task.joboDo ? (
+        <PastDoDetails item={task} onClose={onClose} />
+      ) : (
+        <TimelineTaskCardContent
+          task={task}
+          height={POPOVER_H}
+          isNarrowWidth={false}
+          flipNotesPanel={top + POPOVER_H > window.innerHeight / 2}
+        />
+      )}
     </div>
   );
 };
@@ -85,7 +93,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
   const { t } = useTranslation();
   const {
     darkMode, borderClass, cardBg,
-    getTasksForDate, getTaskCalendarStyle,
+    getTasksForDate, getDayDisplayForDate, getTaskCalendarStyle,
     calculateConflictPosition,
     timeToMinutes,
     setTaskContextMenu, setTimelineContextMenu,
@@ -142,7 +150,9 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [overflowPopover]);
 
-  const colTasks = getTasksForDate(date).filter(t => {
+  // A past date shows what was done (slice 6): recorded Do replace the plan
+  // chips they belong to, as striped read-only chips.
+  const colTasks = (getDayDisplayForDate || getTasksForDate)(date).filter(t => {
     if (t.isAllDay || !t.startTime) return false;
     if (projectFilter && t.projectId !== projectFilter) return false;
     return true;
@@ -301,7 +311,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
           const isActive = activePopoverTaskId === task.id;
           const isRecurring = typeof task.id === 'string' && task.id.startsWith('recurring-');
           const [chipText, chipTag] = splitChipTitleTag(task.title);
-          const chipDraggable = (!isImported || task.isTaskCalendar || !!task.nativeEventId) && !isTablet;
+          const chipDraggable = !task.joboDo && (!isImported || task.isTaskCalendar || !!task.nativeEventId) && !isTablet;
 
           return (
             <div
@@ -312,7 +322,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
               onDragEnd={chipDraggable ? handleDragEnd : undefined}
               className={`absolute pointer-events-auto rounded-sm overflow-hidden
                 ${chipDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
-                ${task.isTaskCalendar ? '' : task.color}
+                ${task.joboDo ? pastDoColor(task) : task.isTaskCalendar ? '' : task.color}
                 ${task.completed ? 'opacity-50' : ''}
                 ${isActive ? 'ring-2 ring-white/70 z-20' : 'z-10'}
                 hover:brightness-90
@@ -324,13 +334,17 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
                   ? { left: '25%', right: '1px', width: undefined }
                   : { left: conflictPos.left, right: conflictPos.right, width: conflictPos.width }),
                 ...(isCalendarEvent || task.isTaskCalendar ? taskCalStyle : {}),
+                ...(task.joboDo ? pastDoChipStyle : {}),
               }}
+              data-jobo-past-do={task.joboDo ? task.joboRecordId : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 onTaskClick(task, e.currentTarget.getBoundingClientRect());
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
+                // A recorded Do is read-only here: no task menu.
+                if (task.joboDo) return;
                 setTaskContextMenu({
                   x: e.clientX, y: e.clientY,
                   taskId: task.id,
@@ -510,7 +524,7 @@ const WeekView = () => {
     use24HourClock,
     cardBg,
     expandedNotesTaskId, setExpandedNotesTaskId,
-    getTasksForDate,
+    getTasksForDate, getDayDisplayForDate,
     weekTimelineStartHour,
     weekTimelineEndHour,
   } = useDayPlannerCtx();
@@ -529,10 +543,10 @@ const WeekView = () => {
   // is hidden, and the counts are suppressed below instead of going stale.
   const clipped = useMemo(
     () => clippedCounts(
-      weekViewDates.flatMap((d) => getTasksForDate(d)),
+      weekViewDates.flatMap((d) => (getDayDisplayForDate || getTasksForDate)(d)),
       { startHour: weekTimelineStartHour, endHour: weekTimelineEndHour },
     ),
-    [weekViewDates, getTasksForDate, weekTimelineStartHour, weekTimelineEndHour],
+    [weekViewDates, getTasksForDate, getDayDisplayForDate, weekTimelineStartHour, weekTimelineEndHour],
   );
 
   const hourHeight = useWeekViewHourHeight(calendarRef, stickyHeaderRef, visibleHours);

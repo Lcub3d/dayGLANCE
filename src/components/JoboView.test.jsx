@@ -15,8 +15,8 @@ vi.mock('../context/FeaturesContext.jsx', () => ({ useFeaturesCtx: () => fixture
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key) => key }) }));
 vi.mock('../hooks/useDayViewHourHeight.js', () => ({ default: () => 80 }));
 vi.mock('./DayView.jsx', () => ({
-  DayViewColumn: ({ col, hourHeight }) => {
-    fixture.planColumns.push({ ...col, hourHeight });
+  DayViewColumn: ({ col, hourHeight, planOnly }) => {
+    fixture.planColumns.push({ ...col, hourHeight, planOnly });
     return <div data-plan-column={`${col.dateStr} ${col.startHour}-${col.endHour}`} />;
   },
 }));
@@ -397,6 +397,24 @@ describe('the notes sidebar', () => {
 // Multi-user: the Do side shows only this member's completions. The filter
 // lives in the features context; the planner context has none, which is how
 // the view once looked in the wrong place and filtered nothing.
+// Slice 6: other views show a past day's Do; JOBO's Plan side stays on the
+// plan (its Do side already shows the Do), and a recorded Do is striped in
+// every view, JOBO included.
+describe('past days and the Do look', () => {
+  // MUTATION: drop planOnly and a past day's Plan side fills with Do.
+  it('keeps the Plan side on the plan', () => {
+    render();
+    expect(fixture.planColumns[0].planOnly).toBe(true);
+  });
+
+  it('stripes a recorded Do, and not an estimate or a completion marker', () => {
+    const striped = (html, id) => new RegExp(`data-jobo-record="${id}"[^>]*style="[^"]*repeating-linear-gradient`).test(html);
+    expect(striped(render({ joboRecords: [timed()] }), 'manual:1')).toBe(true);
+    expect(striped(render({ joboRecords: [point({ planSnapshot: { date: '2026-09-24', startTime: '08:30', duration: 60 } })] }), 'do:t1:x')).toBe(false);
+    expect(striped(render({ joboRecords: [point()] }), 'do:t1:x')).toBe(false);
+  });
+});
+
 describe('a short card still says its status', () => {
   // MUTATION: drop the tooltip and a 15-minute Do shows no progress at all.
   it('puts the status line in the tooltip when there is no room to show it', () => {

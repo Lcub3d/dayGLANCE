@@ -1,8 +1,9 @@
 # JOBO slice 6: past days show what was done
 
-Design note for slice 6 of #1726, agreed in review on #1881. Nothing here
-is built yet. Slice 7 (the Check and Carry Forward) runs in
-parallel and does not depend on it.
+Design note for slice 6 of #1726, agreed in review on #1881. Steps 1 to 3
+of the build order are built (#1884, #1885, and MONTH after them); the
+NOW-line split within today is still to come. Slice 7 (the Check and Carry
+Forward) runs in parallel and does not depend on it.
 
 ## The rule
 
@@ -97,7 +98,9 @@ How each view draws it:
   progress, read-only.
 - **MONTH:** the cell's bars follow the Do. A task done in three one-hour
   sessions is three striped bars at the recorded times, in its colour,
-  and its plan bar is not drawn.
+  and its plan bar is not drawn. The cell has no text and is one tap
+  target, so a bar opens nothing of its own; the cell's spoken label counts
+  recorded sessions apart from tasks ("1 task, 3 recorded sessions").
 
 Slice 6 is read-only, as agreed with Lcub3d on #1726: past days show what
 was done, and no actions are added to other views. Carry Forward stays in

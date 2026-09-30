@@ -110,6 +110,7 @@ import useIsLandscape from './hooks/useIsLandscape.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
+import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay } from './jobo/pastDay.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -6905,6 +6906,34 @@ const DayPlanner = () => {
     return applyTagFilter ? filterByTags(dayTasks) : dayTasks;
   }, [filterByTags, tasksByDate]);
 
+  // JOBO slice 6: a date before today shows what was done
+  // (docs/jobo-past-days.md, src/jobo/pastDay.js). Only the views' own
+  // column and all-day reads take this; getTasksForDate stays as it is for
+  // its many other consumers (widgets, reminders, SCHED, JOBO itself). The
+  // ledger slices are memoized on the ledger alone, the resolver on the
+  // tasks, so a task edit does not re-project the ledger. With JOBO off, or
+  // for today and later, this is getTasksForDate exactly.
+  const pastDaySlices = useMemo(
+    () => (joboEnabled && Array.isArray(joboRecords) ? buildPastDaySlices(joboRecords) : null),
+    [joboEnabled, joboRecords],
+  );
+  const pastDayIndex = useMemo(
+    () => (pastDaySlices ? buildPastDayIndex({
+      slices: pastDaySlices,
+      taskLookup: [...tasks, ...unscheduledTasks, ...expandedRecurringTasks],
+      recurringTasks,
+    }) : null),
+    [pastDaySlices, tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks],
+  );
+  const getDayDisplayForDate = useCallback((date, applyTagFilter = true) => pastDayDisplay({
+    dateStr: dateToString(date),
+    todayStr: dateToString(new Date()),
+    dayTasks: getTasksForDate(date, applyTagFilter),
+    index: pastDayIndex,
+    isVisibleForUser,
+    tagFilter: applyTagFilter ? filterByTags : null,
+  }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags]);
+
   // --- GTD Frames: Instance computation + Available time calculation ---
 
   // Get frame instances for a given date (which templates apply)
@@ -8788,7 +8817,7 @@ const DayPlanner = () => {
     getAdjustedTimeForImportedConflicts,
     getConflictingTasks, calculateConflictPosition, wouldExceedMaxColumns,
     filterByTags,
-    getTasksForDate, getDateIndicators, hasTasksOnDate,
+    getTasksForDate, getDayDisplayForDate, getDateIndicators, hasTasksOnDate,
     getDayName, getMonthDays, getNextQuarterHour,
     getTodayStr, getOverdueTasks,
     getTaskCalendarStyle,

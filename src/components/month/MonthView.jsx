@@ -38,17 +38,24 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
  */
 
 /**
- * The same sources the other views read: getTasksForDate (scheduled tasks,
+ * The same sources the other views read: the day's display (scheduled tasks,
  * recurring instances, imported and device calendar events, tag filter
  * applied), the routine strip for the one day routines exist on, and the
  * planner's own deadline accessor (inbox tasks due that day).
+ *
+ * The day's display is getDayDisplayForDate, as in DAY and WEEK, so a past
+ * day's bars follow the Do (JOBO slice 6, docs/jobo-past-days.md). Only in
+ * the desktop layout: the phone and portrait tablet render this same view
+ * and stay on the plan until slice 8.
  */
 export function useMonthItemsForDate() {
-  const { getTasksForDate, getDeadlineTasksForDate } = useDayPlannerCtx();
+  const { getTasksForDate, getDayDisplayForDate, getDeadlineTasksForDate, isMobile, isTablet, isLandscape } = useDayPlannerCtx();
   const { routinesEnabled, todayRoutines, routinesDate, routineCompletions } = useFeaturesCtx();
+  const phoneLayout = !!isMobile || (!!isTablet && !isLandscape);
+  const readDay = !phoneLayout && typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
   return useMemo(() => (dateStr) => {
     const date = new Date(`${dateStr}T12:00:00`);
-    const tasks = (getTasksForDate(date) || []).filter((t) => !t.isExample);
+    const tasks = (readDay(date) || []).filter((t) => !t.isExample);
     const routines = routinesEnabled
       ? tagKind(routinesForDate({ todayRoutines, routinesDate, routineCompletions }, dateStr), 'routine')
         .map((r) => ({ ...r, id: `routine-${r.id}` }))
@@ -57,7 +64,7 @@ export function useMonthItemsForDate() {
       id: `deadline-${t.id}`, kind: 'deadline', isAllDay: true, completed: !!t.completed, date: dateStr,
     }));
     return [...tasks, ...routines, ...deadlines];
-  }, [getTasksForDate, getDeadlineTasksForDate, routinesEnabled, todayRoutines, routinesDate, routineCompletions]);
+  }, [readDay, getDeadlineTasksForDate, routinesEnabled, todayRoutines, routinesDate, routineCompletions]);
 }
 
 /** The grid range for a month: first to last drawn cell, YYYY-MM-DD. */

@@ -336,7 +336,7 @@ const DayViewAllDaySection = () => {
     darkMode,
     borderClass, textSecondary, cardBg,
     dayViewColumns,
-    getTasksForDate, getDeadlineTasksForDate,
+    getTasksForDate, getDayDisplayForDate, getDeadlineTasksForDate,
     isTablet,
     handleDragStart, handleDragEnd, handleDropOnDateHeader, updateDragAutoScroll,
     dragOverAllDay, setDragOverAllDay, setDragPreviewTime,
@@ -362,7 +362,8 @@ const DayViewAllDaySection = () => {
 
   const groupsWithTasks = dateGroups.map(group => ({
     ...group,
-    tasks: getTasksForDate(group.date)
+    // Past dates hide the all-day tasks whose Do was recorded (slice 6).
+    tasks: (getDayDisplayForDate || getTasksForDate)(group.date)
       .filter(t => t.isAllDay && (!projectFilter || t.projectId === projectFilter))
       .sort((a, b) => allDayOrder(a) - allDayOrder(b)),
     deadlineTasks: getDeadlineTasksForDate(group.dateStr).filter(t => !projectFilter || t.projectId === projectFilter),

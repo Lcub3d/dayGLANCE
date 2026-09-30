@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} Termine",
     "tasks_one": "{{count}} Aufgabe",
     "tasks_other": "{{count}} Aufgaben",
+    "recorded_one": "{{count}} erfasste Sitzung",
+    "recorded_other": "{{count}} erfasste Sitzungen",
     "routines_one": "{{count}} Routine",
     "routines_other": "{{count}} Routinen",
     "deadlines_one": "{{count}} Frist",
@@ -2206,6 +2208,10 @@
       "taskAlreadyDone": "Die Aufgabe ist bereits erledigt. Ihr Abschluss wird als eigenes Do erfasst.",
       "linkedNoCompletion": "Ein mit einer Aufgabe verknüpftes Do kann nicht allein abgeschlossen werden.",
       "checkTaskAgain": "Hake die Aufgabe erneut ab, um dieses Do abzuschließen."
+    },
+    "past": {
+      "recorded": "Erfasst {{range}}",
+      "open": "In JOBO öffnen"
     },
     "check": {
       "button": "Rückblick",

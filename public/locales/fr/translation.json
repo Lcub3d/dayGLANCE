@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} événements",
     "tasks_one": "{{count}} tâche",
     "tasks_other": "{{count}} tâches",
+    "recorded_one": "{{count}} session enregistrée",
+    "recorded_other": "{{count}} sessions enregistrées",
     "routines_one": "{{count}} routine",
     "routines_other": "{{count}} routines",
     "deadlines_one": "{{count}} échéance",
@@ -2206,6 +2208,10 @@
       "taskAlreadyDone": "La tâche est déjà faite. Son achèvement est enregistré comme un Do à part entière.",
       "linkedNoCompletion": "Un Do lié à une tâche ne peut pas être terminé seul.",
       "checkTaskAgain": "Cochez à nouveau la tâche pour terminer ce Do."
+    },
+    "past": {
+      "recorded": "Enregistré {{range}}",
+      "open": "Ouvrir dans JOBO"
     },
     "check": {
       "button": "Bilan",

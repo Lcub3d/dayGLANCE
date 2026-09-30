@@ -50,10 +50,7 @@ const NATIVE_TRANSLATION_PENDING = {
     pl: 'Web bundle only. 172 strings in values/ are untranslated; the App Languages entry gives the WebView its locale while widgets and notifications stay English.',
     uk: 'Web bundle only, as pl.',
   },
-  ios: {
-    pl: 'Web bundle only.',
-    uk: 'Web bundle only.',
-  },
+  ios: {},
 };
 
 const iosCatalogs = ['dayglance-ios/DayGlance/Localizable.xcstrings', 'dayglance-ios/DayGlanceWidget/Localizable.xcstrings']

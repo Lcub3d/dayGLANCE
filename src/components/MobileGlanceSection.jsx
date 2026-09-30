@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { nativeGetNextAlarm } from '../native.js';
 import { nextAlarmWithinTomorrow, alarmHHMM } from '../utils/nextAlarm.js';
-import { renderTitle, renderFormattedText, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask } from '../utils/textFormatting.jsx';
+import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, extractTags, extractWikilinks, formatDeadlineDate } from '../utils/taskUtils.js';
 import { calculateGoalProgress } from '../utils/goalProgress.js';
 import { calculateProjectProgress } from '../utils/projectProgress.js';
@@ -18,6 +18,7 @@ import { HabitRing } from './HabitRing.jsx';
 import GoalRing from './GoalRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
+import EventNotesPanel from './EventNotesPanel.jsx';
 import FrameNudgeCard from './FrameNudgeCard.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
@@ -1349,12 +1350,7 @@ const MobileGlanceSection = () => {
           </div>
           <div className="p-4">
             {agendaTask.imported && !agendaTask.isTaskCalendar ? (
-              <div>
-                <div className={`text-xs font-semibold ${textSecondary} mb-1`}>{t('common.description')}</div>
-                <div className={`text-sm whitespace-pre-wrap p-3 rounded-lg ${darkMode ? 'bg-white/5' : 'bg-black/5'} ${textPrimary}`}>
-                  {renderFormattedText(agendaTask.notes)}
-                </div>
-              </div>
+              <EventNotesPanel task={agendaTask} tone="themed" rows={4} />
             ) : (
               <div className={`${agendaTask.color || ''} rounded-lg`}>
               <NotesSubtasksPanel

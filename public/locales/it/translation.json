@@ -795,6 +795,8 @@
     "assignTo": "Assegna a",
     "notes": "Note",
     "localNotes": "Note in dayGLANCE",
+    "calendarDescription": "Dal calendario",
+    "yourNotes": "Le tue note (questo dispositivo)",
     "subtasks": "Sottoattività",
     "addSubtask": "Aggiungi sottoattività",
     "generateSubtasks": "Genera sottoattività",

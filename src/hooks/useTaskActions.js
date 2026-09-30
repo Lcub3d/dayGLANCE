@@ -5,6 +5,7 @@ import { stripSpans } from '../utils/quickAddParser.js';
 import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, stripWikilinks } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
+import { isCalendarEventRow } from '../utils/eventNotes.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -47,7 +48,7 @@ const recordDeletedTaskTombstone = (taskId) => {
 };
 
 export default function useTaskActions({
-  tasks, setTasks,
+  tasks, setTasks, setEventNote,
   unscheduledTasks, setUnscheduledTasks,
   recurringTasks, setRecurringTasks,
   recycleBin, setRecycleBin,
@@ -403,6 +404,10 @@ export default function useTaskActions({
       setUnscheduledTasks(prev => prev.map(t =>
         t.id === taskId ? { ...t, notes } : t
       ));
+    } else if (setEventNote && isCalendarEventRow(tasks.find(t => t.id === taskId))) {
+      // A calendar event's own notes are its description, rebuilt from the
+      // feed on every refresh: your note is kept apart (utils/eventNotes.js).
+      setEventNote(taskId, notes);
     } else {
       setTasks(prev => prev.map(t =>
         t.id === taskId ? { ...t, notes } : t

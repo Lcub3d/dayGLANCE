@@ -795,6 +795,8 @@
     "assignTo": "分配给",
     "notes": "笔记",
     "localNotes": "dayGLANCE 中的笔记",
+    "calendarDescription": "来自日历",
+    "yourNotes": "你的笔记（仅此设备）",
     "subtasks": "子任务",
     "addSubtask": "添加子任务",
     "generateSubtasks": "生成子任务",

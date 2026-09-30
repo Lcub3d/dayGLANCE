@@ -130,7 +130,7 @@ export const renderFormattedText = (text) => {
 
 // Check if task has any notes or subtasks
 export const hasNotesOrSubtasks = (task) => {
-  return (task.notes && task.notes.trim()) || (task.subtasks && task.subtasks.length > 0);
+  return (task.notes && task.notes.trim()) || (task.eventNote && task.eventNote.trim()) || (task.subtasks && task.subtasks.length > 0);
 };
 
 // Check if task's note is JUST a phone number, on a platform that can dial

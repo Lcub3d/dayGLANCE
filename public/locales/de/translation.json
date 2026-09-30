@@ -2219,10 +2219,9 @@
       "actual": "Tatsächlich",
       "session": "Einheit {{number}}",
       "untimed": "Zeit nicht erfasst",
-      "otherDays": "Enthält Einheiten an anderen Tagen.",
-      "noRecords": "Für diesen Tag sind keine Ausführungen erfasst. Das bedeutet nicht, dass nichts erledigt wurde.",
-      "unavailable": "Ausführungsdaten sind nicht verfügbar. Bitte nach dem Laden der Aufzeichnungen erneut versuchen.",
-      "invalid": "Einige Aufzeichnungen konnten nicht gelesen werden. Das Journal ist möglicherweise unvollständig; Zeitvergleiche werden ausgeblendet."
+      "noRecords": "Für diesen Tag sind keine Ausführungen erfasst.",
+      "unavailable": "Ausführungsdaten konnten nicht geladen werden.",
+      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden."
     }
   },
   "todoist": {

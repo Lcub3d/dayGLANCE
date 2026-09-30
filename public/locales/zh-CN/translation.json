@@ -2219,10 +2219,9 @@
       "actual": "实际",
       "session": "第 {{number}} 次执行",
       "untimed": "未记录时间",
-      "otherDays": "包含其他日期的执行。",
-      "noRecords": "这一天没有执行记录，但不代表没有做事。",
-      "unavailable": "执行记录暂不可用，请在记录加载后重试。",
-      "invalid": "部分记录无法读取。日志可能不完整，暂不显示时间对比。"
+      "noRecords": "当天暂无执行记录。",
+      "unavailable": "无法加载执行记录。",
+      "invalid": "部分执行记录无法加载。"
     }
   },
   "todoist": {

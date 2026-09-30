@@ -22,7 +22,7 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
   const invalid = model.invalidRecordCount > 0;
   return <article data-jobo-check-journal className="space-y-4 text-sm leading-relaxed break-words">
     {invalid && <p role="status" className="text-amber-600 dark:text-amber-400">{t('jobo.check.invalid')}</p>}
-    {!entries.length && <p role="status" className={textSecondary}>{t('jobo.check.noRecords')}</p>}
+    {!invalid && !entries.length && <p role="status" className={textSecondary}>{t('jobo.check.noRecords')}</p>}
     <ol className={`divide-y ${borderClass}`}>
       {entries.map(entry => {
         const task = entry.sourceTask;
@@ -74,7 +74,6 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
             {summaries.map(row => <span key={row.key} title={row.title}>{row.text}</span>)}
           </p>}
           {timings.length > 0 && <p className={`text-xs ${textSecondary}`} data-check-timing>{timings.map(row => row.text).join(' · ')}</p>}
-          {entry.hasOtherDays && <p className={`text-xs ${textSecondary}`}>{t('jobo.check.otherDays')}</p>}
         </li>;
       })}
     </ol>

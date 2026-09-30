@@ -18,33 +18,27 @@ const coordinate = record => {
 const compareAttempts = (a, b) => (coordinate(a) ?? Infinity) - (coordinate(b) ?? Infinity)
   || compareId(a.id, b.id);
 
-/**
- * Presentation only: use the committed day model's grouping, task resolution,
- * comparisons and latest progress. Do not re-group by task ID, reclassify time,
- * or consume the timeline's display-only completion estimates.
- *
- * A Plan group is one entry with its sessions. Unplanned groups follow the
- * same model identity (unlinked Do are already independent). The union is
- * ordered by its first execution on this day, with an off-day group's Plan
- * time as fallback. Sessions from other days retain their full dates so the
- * history and comparison cannot silently disagree.
- */
+/** Group only this day's executions, using the day model's existing anchors. */
 export function buildCheckJournal(model, date) {
   if (!model) return [];
-  const entries = new Map();
+  const plans = new Map();
   for (const item of model.plans || []) {
-    if (!item.attempts?.length) continue; // A journal is not an unchecked task list.
     const key = item.groupKey || item.id;
-    if (entries.has(key)) continue; // A renamed live Plan may repeat its capture.
-    entries.set(key, { ...item, id: key, title: item.task?.title || item.attempts[0]?.title || '', sessions: item.attempts.slice().sort(compareAttempts), visible: [] });
+    if (!plans.has(key)) plans.set(key, item);
   }
+  const entries = new Map();
   for (const item of [...(model.timedRecords || []), ...(model.untimedRecords || [])]) {
     if (!item.record) continue;
     const key = item.groupKey || item.id;
     if (!entries.has(key)) {
+      const planItem = plans.get(key);
+      const anchor = planItem || item;
       entries.set(key, {
-        ...item, id: key, title: item.record.title, plan: item.record.planSnapshot,
-        sessions: (item.attempts?.length ? item.attempts : [item.record]).slice().sort(compareAttempts),
+        ...anchor, id: key,
+        title: planItem?.task?.title || item.record.title,
+        plan: anchor.plan || item.record.planSnapshot,
+        // Keep the full group so sessions agree with the existing comparison.
+        sessions: (anchor.attempts?.length ? anchor.attempts : [item.record]).slice().sort(compareAttempts),
         visible: [],
       });
     }
@@ -53,20 +47,12 @@ export function buildCheckJournal(model, date) {
   const day = civilDayMinute(date);
   return [...entries.values()].map(entry => {
     const known = entry.visible.map(item => {
-      // Timed slices are clipped by the model; recurring Z markers were also
-      // projected there. A manual untimed row's creation stamp is not work time.
+      // The model already clips timed intervals and projects completion points.
+      // A manual save timestamp (or Plan time) is not an execution timestamp.
       if (item.record.timing !== 'timed' && item.record.source !== 'completion') return null;
       return day != null && Number.isFinite(item.startMinute) ? day + item.startMinute : null;
     }).filter(value => value != null);
-    const start = known.length ? Math.min(...known)
-      : entry.plan ? civilCoordinate(entry.plan.date, entry.plan.startTime) : null;
-    return {
-      ...entry, order: start ?? Infinity,
-      hasOtherDays: entry.sessions.some(record => {
-        const moment = journalMoment(record);
-        return (moment && moment.date !== date) || (record.timing === 'timed' && record.endDate !== date);
-      }),
-    };
+    return { ...entry, order: known.length ? Math.min(...known) : Infinity };
   }).sort((a, b) => a.order - b.order || compareId(a.id, b.id));
 }
 

@@ -27,6 +27,20 @@ describe('Check journal is a projection, not a second day model', () => {
     expect(buildCheckJournal(null, date)).toEqual([]);
     expect(journal([])).toEqual([]);
   });
+  it.each(['2026-09-27', '2026-09-29'])('excludes a plan whose only execution was on %s', executionDate => {
+    const record = row({ date: executionDate, endDate: executionDate });
+    const model = modelFor([record]);
+    // The day model retains this history for Plan comparison, not as a Do today.
+    expect(model.plans.some(item => item.attempts.length > 0)).toBe(true);
+    expect(model.timedRecords).toHaveLength(0);
+    expect(buildCheckJournal(model, date)).toEqual([]);
+  });
+  it('excludes an off-day completion marker rather than ordering it by the current plan', () => {
+    const record = untimed({ date: '2026-09-29', createdAt: '2026-09-29T10:00:00+08:00', updatedAt: '2026-09-29T10:00:00+08:00' });
+    const model = modelFor([record]);
+    expect(model.untimedRecords).toHaveLength(0);
+    expect(buildCheckJournal(model, date)).toEqual([]);
+  });
   it('combines one captured Plan with all sessions, reusing comparisons and latest progress', () => {
     const records = [row(), row({ id: 'r2', startTime: '10:00', endTime: '10:45', progress: 'mostly', createdAt: `${date}T11:00:00+08:00`, updatedAt: `${date}T11:00:00+08:00` })];
     const model = modelFor(records); const entries = buildCheckJournal(model, date);
@@ -61,6 +75,14 @@ describe('Check journal is a projection, not a second day model', () => {
       expect(entries[0].sourceTask.title).toBe('Renamed');
     }
   });
+  it('keeps captured titles for executions without a visible Plan anchor', () => {
+    const renamed = { ...task, title: 'Renamed', startTime: '14:00' };
+    const records = [row({ planSnapshot: null }), row({ id: 'off-day', planSnapshot: { ...plan, date: '2026-09-27' } })];
+    const entries = journal(records, { tasks: [renamed], taskLookup: [renamed] });
+    expect(entries).toHaveLength(2);
+    expect(entries.every(entry => entry.title === 'Report')).toBe(true);
+    expect(entries.every(entry => entry.sourceTask.title === 'Renamed')).toBe(true);
+  });
   it('shows a valid orphan capture, without inventing a notes target', () => {
     const [entry] = journal([row()], { tasks: [], taskLookup: [] });
     expect(entry.title).toBe('Report'); expect(entry.noteKey).toBeNull(); expect(entry.sourceTask).toBeNull();
@@ -68,12 +90,12 @@ describe('Check journal is a projection, not a second day model', () => {
   it('preserves full cross-midnight sessions while using the selected-day ordering', () => {
     const record = row({ date: '2026-09-27', startTime: '23:30', endTime: '00:30' });
     const [entry] = journal([record]);
-    expect(entry.sessions[0]).toBe(record); expect(entry.visible[0].startMinute).toBe(0); expect(entry.hasOtherDays).toBe(true);
+    expect(entry.sessions[0]).toBe(record); expect(entry.visible[0].startMinute).toBe(0);
   });
   it('includes off-day history once, with its existing whole-group comparison', () => {
     const second = row({ id: 'next', date: '2026-09-29', endDate: '2026-09-29', startTime: '10:00', endTime: '10:30', progress: 'completed' });
     const entries = journal([row(), second]);
-    expect(entries).toHaveLength(1); expect(entries[0].sessions).toHaveLength(2); expect(entries[0].hasOtherDays).toBe(true);
+    expect(entries).toHaveLength(1); expect(entries[0].sessions).toHaveLength(2);
     const next = journal([row(), second], { date: '2026-09-29', tasks: [] });
     expect(next).toHaveLength(1); expect(next[0].plan).toEqual(plan); expect(next[0].sessions).toHaveLength(2);
   });
@@ -87,6 +109,11 @@ describe('Check journal is a projection, not a second day model', () => {
   it('puts untimed manual work last rather than pretending its save time was work time', () => {
     const manual = untimed({ id: 'm', source: 'manual', taskId: null, planSnapshot: null });
     expect(journal([manual, row()]).at(-1).sessions[0].id).toBe('m');
+  });
+  it('does not substitute a linked manual Plan time for an unknown execution time', () => {
+    const manual = untimed({ id: 'manual', source: 'manual' });
+    const timed = row({ id: 'timed', taskId: null, source: 'manual', planSnapshot: null, startTime: '14:00', endTime: '14:30' });
+    expect(journal([manual, timed]).map(entry => entry.sessions[0].id)).toEqual(['timed', 'manual']);
   });
   it('uses the existing local projection of UTC completion stamps', () => {
     const record = untimed({ date: '2026-09-29', planSnapshot: null, createdAt: '2026-09-29T02:00:00Z', updatedAt: '2026-09-29T02:00:00Z', observedAt: '2026-09-29T02:00:00Z' });

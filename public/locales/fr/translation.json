@@ -2219,10 +2219,9 @@
       "actual": "Réel",
       "session": "Séance {{number}}",
       "untimed": "Temps non enregistré",
-      "otherDays": "Inclut des sessions sur d’autres jours.",
-      "noRecords": "Aucune exécution enregistrée pour cette journée. Cela ne signifie pas qu’aucun travail n’a été effectué.",
-      "unavailable": "Les enregistrements d’exécution sont indisponibles. Réessayez une fois leur chargement terminé.",
-      "invalid": "Certains enregistrements n’ont pas pu être lus. Le journal est peut-être incomplet ; les comparaisons de temps sont masquées."
+      "noRecords": "Aucune exécution enregistrée pour cette journée.",
+      "unavailable": "Impossible de charger les enregistrements d’exécution.",
+      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés."
     }
   },
   "todoist": {

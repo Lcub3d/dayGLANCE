@@ -2219,10 +2219,9 @@
       "actual": "Actual",
       "session": "Session {{number}}",
       "untimed": "Time not recorded",
-      "otherDays": "Includes sessions on other days.",
-      "noRecords": "No executions recorded for this day. This does not mean no work happened.",
-      "unavailable": "Execution records are unavailable. Try again after the ledger loads.",
-      "invalid": "Some records could not be read. This journal may be incomplete; timing comparisons are hidden."
+      "noRecords": "No executions recorded for this day.",
+      "unavailable": "Could not load execution records.",
+      "invalid": "Some execution records could not be loaded."
     }
   },
   "todoist": {

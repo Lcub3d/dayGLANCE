@@ -2308,10 +2308,9 @@
       "actual": "Rzeczywiste",
       "session": "Sesja {{number}}",
       "untimed": "Nie zarejestrowano czasu",
-      "otherDays": "Obejmuje sesje z innych dni.",
-      "noRecords": "Brak zarejestrowanych wykonań z tego dnia. Nie oznacza to, że nie wykonano żadnej pracy.",
-      "unavailable": "Zapisy wykonania są niedostępne. Spróbuj ponownie po ich wczytaniu.",
-      "invalid": "Nie udało się odczytać niektórych zapisów. Dziennik może być niekompletny; porównania czasu są ukryte."
+      "noRecords": "Brak zarejestrowanych wykonań z tego dnia.",
+      "unavailable": "Nie udało się wczytać zapisów wykonania.",
+      "invalid": "Nie udało się wczytać niektórych zapisów wykonania."
     }
   },
   "todoist": {

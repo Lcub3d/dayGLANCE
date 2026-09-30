@@ -2221,10 +2221,9 @@
       "actual": "Effettivo",
       "session": "Sessione {{number}}",
       "untimed": "Tempo non registrato",
-      "otherDays": "Include sessioni di altri giorni.",
-      "noRecords": "Nessuna esecuzione registrata per questo giorno. Ciò non significa che non sia stato svolto alcun lavoro.",
-      "unavailable": "I dati di esecuzione non sono disponibili. Riprova dopo il caricamento delle registrazioni.",
-      "invalid": "Alcune registrazioni non sono leggibili. Il diario potrebbe essere incompleto; i confronti temporali sono nascosti."
+      "noRecords": "Nessuna esecuzione registrata per questo giorno.",
+      "unavailable": "Impossibile caricare le registrazioni di esecuzione.",
+      "invalid": "Impossibile caricare alcune registrazioni di esecuzione."
     }
   },
   "todoist": {

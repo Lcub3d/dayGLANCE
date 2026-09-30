@@ -2219,10 +2219,9 @@
       "actual": "Real",
       "session": "Sessão {{number}}",
       "untimed": "Tempo não registado",
-      "otherDays": "Inclui sessões de outros dias.",
-      "noRecords": "Nenhuma execução registada neste dia. Isto não significa que não tenha sido realizado trabalho.",
-      "unavailable": "Os registos de execução estão indisponíveis. Tente novamente após o carregamento.",
-      "invalid": "Não foi possível ler alguns registos. O diário pode estar incompleto; as comparações de tempo estão ocultas."
+      "noRecords": "Nenhuma execução registada neste dia.",
+      "unavailable": "Não foi possível carregar os registos de execução.",
+      "invalid": "Não foi possível carregar alguns registos de execução."
     }
   },
   "todoist": {

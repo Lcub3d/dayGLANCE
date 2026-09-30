@@ -74,7 +74,7 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
   it('shows dates for off-day sessions and does not hide them behind today’s clock', async () => {
     const { html } = await render('en', { model: build([row({ date: '2026-09-27', startTime: '23:30', endTime: '00:30' })]) });
     expect(html).toContain('2026-09-27 23:30–2026-09-28 00:30');
-    expect(text(html)).toContain('Includes sessions on other days.');
+    expect(text(html)).not.toContain('Includes sessions on other days.');
   });
   it('marks inferred intervals and suppresses exact timing comparisons', async () => {
     const { html } = await render('en', { model: build([row({ timingBasis: 'planDuration' })]) });
@@ -95,8 +95,22 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
     const empty = (await render('en', { model: build([]) })).html;
     expect(text(empty)).toContain('No executions recorded'); expect(empty).not.toContain('data-check-entry');
     const broken = (await render('en', { model: build([row(), { id: 'broken' }]) })).html;
-    expect(text(broken)).toContain('journal may be incomplete'); expect(broken).toContain('Report');
+    expect(text(broken)).toContain('Some execution records could not be loaded.'); expect(broken).toContain('Report');
     expect(broken).not.toContain('data-check-timing'); expect(broken).not.toContain('data-check-summary');
+  });
+  it('does not claim an empty day when all execution records are unreadable', async () => {
+    const { html, t } = await render('en', { model: build([{ id: 'broken' }]) });
+    expect(text(html)).toContain(t('jobo.check.invalid'));
+    expect(text(html)).not.toContain(t('jobo.check.noRecords'));
+    expect(html).not.toContain('data-check-entry');
+  });
+  it('keeps copy limited to the journal and concise data states', async () => {
+    for (const lng of locales) {
+      const check = bundle(lng).jobo.check;
+      expect(Object.keys(check).sort()).toEqual(['actual', 'button', 'invalid', 'noRecords', 'session', 'title', 'unavailable', 'untimed']);
+    }
+    expect(bundle('en').jobo.check.noRecords).toBe('No executions recorded for this day.');
+    expect(bundle('zh-CN').jobo.check.noRecords).toBe('当天暂无执行记录。');
   });
   it('keeps statistics dormant, without importing their module into the panel', () => {
     const source = readFileSync(new URL('./CheckPanel.jsx', import.meta.url), 'utf8');

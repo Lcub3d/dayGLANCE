@@ -15,6 +15,7 @@ import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import CheckPanel from './jobo/CheckPanel.jsx';
+import CheckTaskNotes from './jobo/CheckTaskNotes.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
@@ -72,6 +73,7 @@ export default function JoboView() {
   const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [checkOpen, setCheckOpen] = useState(false);
+  const [checkNotesId, setCheckNotesId] = useState(null);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -164,6 +166,10 @@ export default function JoboView() {
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
+  // Resolve again from the current visible model, never a task snapshot held
+  // by the journal. Remote removal or a visibility change removes access too.
+  const checkNotesTask = checkNotesId == null ? null
+    : [...model.timedRecords, ...model.untimedRecords].find(item => item.id === checkNotesId)?.sourceTask ?? null;
   // The selected task as it is now, so the sidebar follows edits and sync.
   const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
 
@@ -516,9 +522,16 @@ export default function JoboView() {
       )}
       {checkOpen && (
         <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
-          inboxTasks={(ctx.unscheduledTasks || []).filter(task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task))}
+          formatTime={ctx.formatTime}
+          onOpenNotes={record => { setCheckOpen(false); setCheckNotesId(record.id); }}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
+      )}
+      {checkNotesId !== null && (
+        <CheckTaskNotes task={checkNotesTask}
+          onClose={() => { setCheckNotesId(null); setCheckOpen(true); }}
+          cardBg={ctx.cardBg} textPrimary={ctx.textPrimary} textSecondary={ctx.textSecondary}
+          borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}
       {editor && (
         <DoEditor

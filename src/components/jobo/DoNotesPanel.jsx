@@ -10,7 +10,7 @@ import { extractWikilinks } from '../../utils/taskUtils.js';
 // completed Plan card fades, so after the fact the Do side is where the
 // task's notes are easiest to reach. The notes are the task's, written
 // through the app's own actions; the ledger record gains nothing.
-export default function DoNotesPanel({ task, above, height }) {
+export function DoTaskNotes({ task }) {
   const {
     darkMode, unscheduledTasks,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
@@ -22,6 +22,29 @@ export default function DoNotesPanel({ task, above, height }) {
   const hasWiki = wikilinks.length > 0;
 
   return (
+    <NotesSubtasksPanel
+      task={task}
+      isInbox={isInbox}
+      darkMode={darkMode}
+      updateTaskNotes={updateTaskNotes}
+      addSubtask={addSubtask}
+      toggleSubtask={toggleSubtask}
+      deleteSubtask={deleteSubtask}
+      updateSubtaskTitle={updateSubtaskTitle}
+      compact={false}
+      aiConfig={aiConfig}
+      aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
+      onGenerateSubtasks={generateAISubtasks}
+      wikilinks={hasWiki ? wikilinks : undefined}
+      onLoadWikiNote={hasWiki ? loadWikiNote : undefined}
+      onSaveWikiNote={hasWiki ? saveWikiNote : undefined}
+      onOpenInObsidian={hasWiki ? openInObsidian : undefined}
+    />
+  );
+}
+
+export default function DoNotesPanel({ task, above, height }) {
+  return (
     <div
       data-jobo-notes
       className="absolute left-0 right-0 z-40"
@@ -30,24 +53,7 @@ export default function DoNotesPanel({ task, above, height }) {
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div className={`${task.color || 'bg-blue-500'} rounded-lg shadow-lg ${above ? 'mb-1' : 'mt-1'}`}>
-        <NotesSubtasksPanel
-          task={task}
-          isInbox={isInbox}
-          darkMode={darkMode}
-          updateTaskNotes={updateTaskNotes}
-          addSubtask={addSubtask}
-          toggleSubtask={toggleSubtask}
-          deleteSubtask={deleteSubtask}
-          updateSubtaskTitle={updateSubtaskTitle}
-          compact={false}
-          aiConfig={aiConfig}
-          aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-          onGenerateSubtasks={generateAISubtasks}
-          wikilinks={hasWiki ? wikilinks : undefined}
-          onLoadWikiNote={hasWiki ? loadWikiNote : undefined}
-          onSaveWikiNote={hasWiki ? saveWikiNote : undefined}
-          onOpenInObsidian={hasWiki ? openInObsidian : undefined}
-        />
+        <DoTaskNotes task={task} />
       </div>
     </div>
   );

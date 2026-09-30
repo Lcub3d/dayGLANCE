@@ -2,9 +2,7 @@ name: Check journal revision validation
 on:
   push:
     branches: [ci/check-journal-review-20260930]
-    paths:
-      - '.github/workflows/check-journal-validate.yml'
-      - '.github/scripts/check-journal/**'
+    paths: ['.github/workflows/check-journal-validate.yml']
 permissions:
   contents: write
 jobs:
@@ -15,6 +13,8 @@ jobs:
       run:
         shell: bash
         working-directory: product
+    env:
+      UPSTREAM: 873d8e2708847896d378fb255fdc7403f405cd5c
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,21 +29,88 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: product/package-lock.json
-      - name: Apply guarded revision
+      - name: Apply guarded revision and integrate current main
         run: |
           test "$(git rev-parse HEAD)" = f5f0f895edb2b7a094f61e393af24159da728648
           python ../harness/.github/scripts/check-journal/apply.py
           git diff --check
           mkdir -p /tmp/check-validation
-          git diff --stat > /tmp/check-validation/scope.txt
-      - name: Install dependencies
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git add public/locales src/components/JoboView.jsx src/components/jobo src/jobo/checkSummary.js src/jobo/checkSummary.test.js
+          git commit -m "fix(jobo): make Check a chronological execution journal"
+          git rev-parse HEAD > /tmp/check-validation/revision-commit.txt
+          git fetch https://github.com/krelltunez/dayGLANCE.git "$UPSTREAM"
+          git merge --no-commit --no-ff "$UPSTREAM" || true
+          python - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          upstream = os.environ['UPSTREAM']
+          conflicts = subprocess.check_output(['git', 'diff', '--name-only', '--diff-filter=U'], text=True).splitlines()
+          assert all(re.fullmatch(r'public/locales/[^/]+/translation.json', name) for name in conflicts), conflicts
+          # Preserve upstream locale text byte-for-byte, inserting only our own
+          # namespace. Concurrent slice 6 strings belong to upstream.
+          for p in Path('public/locales').glob('*/translation.json'):
+              path = str(p)
+              main = subprocess.check_output(['git', 'show', f'{upstream}:{path}'], text=True)
+              ours = json.loads(subprocess.check_output(['git', 'show', f'HEAD:{path}'], text=True))['jobo']['check']
+              original = json.loads(main)
+              assert 'check' not in original['jobo'], path
+              m = re.search(r'^  "jobo": ', main, re.M)
+              obj, length = json.JSONDecoder().raw_decode(main[m.end():])
+              assert obj == original['jobo']
+              segment = main[m.end():m.end()+length]
+              assert segment.endswith('\n  }'), path
+              addition = json.dumps(ours, ensure_ascii=False, indent=2).replace('\n', '\n    ')
+              new = segment[:-4] + ',\n    "check": ' + addition + '\n  }'
+              output = main[:m.end()] + new + main[m.end()+length:]
+              parsed = json.loads(output)
+              assert parsed['jobo'].pop('check') == ours
+              assert parsed == original
+              p.write_text(output)
+          allowed = {'src/components/JoboView.jsx', 'src/components/jobo/CheckPanel.jsx', 'src/components/jobo/CheckPanel.test.jsx', 'src/components/jobo/checkJournal.js', 'src/components/jobo/checkJournal.test.js', 'src/jobo/checkSummary.js', 'src/jobo/checkSummary.test.js'}
+          allowed.update(str(p) for p in Path('public/locales').glob('*/translation.json'))
+          changed = set(subprocess.check_output(['git', 'diff', '--name-only', upstream], text=True).splitlines())
+          assert changed == allowed, sorted(changed ^ allowed)
+          for path in ['package.json', 'package-lock.json', 'scripts/audit-check.mjs', 'src/jobo/core.js', 'src/jobo/viewModel.js', 'src/jobo/dayStats.js', 'src/jobo/detector.js', 'src/jobo/store.js', 'src/jobo/ledger.js']:
+              assert Path(path).read_bytes() == subprocess.check_output(['git', 'show', f'{upstream}:{path}']), path
+          PY
+          git add public/locales
+          git diff --check
+          git commit -m "Merge current main into Check journal review"
+          git diff --stat "$UPSTREAM" HEAD > /tmp/check-validation/final-scope.txt
+          git worktree add --detach ../audit-baseline "$UPSTREAM"
+      - name: Install locked dependencies
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
         run: npm ci
-      - name: Audit and lint
+      - name: Record original audit gate and compare unmodified main
         run: |
-          npm run audit
-          npm run lint
+          set +e
+          npm audit --json > /tmp/check-validation/audit-revision.json
+          npm run audit > /tmp/check-validation/audit-revision.log 2>&1
+          REVISION_EXIT=$?
+          ln -s "$(realpath node_modules)" ../audit-baseline/node_modules
+          (cd ../audit-baseline && npm audit --json) > /tmp/check-validation/audit-main.json
+          (cd ../audit-baseline && npm run audit) > /tmp/check-validation/audit-main.log 2>&1
+          BASELINE_EXIT=$?
+          set -e
+          export REVISION_EXIT BASELINE_EXIT
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path('/tmp/check-validation')
+          revision = json.loads((root/'audit-revision.json').read_text())
+          baseline = json.loads((root/'audit-main.json').read_text())
+          assert 'vulnerabilities' in baseline and 'vulnerabilities' in revision
+          assert revision['vulnerabilities'] == baseline['vulnerabilities'], 'New dependency/audit regression'
+          assert os.environ['REVISION_EXIT'] == os.environ['BASELINE_EXIT'], 'Audit gate differs from main'
+          status = {'upstream': os.environ['UPSTREAM'], 'revisionExit': int(os.environ['REVISION_EXIT']), 'baselineExit': int(os.environ['BASELINE_EXIT']), 'identicalVulnerabilities': True, 'dependencyFilesUnchanged': True}
+          (root/'audit-comparison.json').write_text(json.dumps(status, indent=2)+'\n')
+          print(json.dumps(status))
+          PY
+      - name: Lint
+        run: npm run lint
       - name: Full UTC suite
         env:
           TZ: UTC
@@ -57,15 +124,11 @@ jobs:
         run: |
           npm run build
           npm run build:ios
-      - name: Publish validated object to an isolated branch only
+      - name: Publish functionally verified candidate, not the PR branch
         run: |
           test "$(git ls-remote origin refs/heads/contrib/jobo-check-aspects | cut -f1)" = f5f0f895edb2b7a094f61e393af24159da728648
-          git config user.name Lcub3d
-          git config user.email 46134215+Lcub3d@users.noreply.github.com
-          git add public/locales src/components/JoboView.jsx src/components/jobo/CheckPanel.jsx src/components/jobo/CheckPanel.test.jsx src/components/jobo/checkJournal.js src/components/jobo/checkJournal.test.js src/components/jobo/checkSummary.js src/components/jobo/checkSummary.test.js src/jobo/checkSummary.js src/jobo/checkSummary.test.js
-          git commit -m "fix(jobo): make Check a chronological execution journal"
+          test -z "$(git status --porcelain)"
           git rev-parse HEAD > /tmp/check-validation/commit.txt
-          git diff --stat HEAD^ HEAD > /tmp/check-validation/final-scope.txt
           git archive HEAD | gzip > /tmp/check-validation/verified-source.tar.gz
           git push origin HEAD:refs/heads/verify/check-journal-revision-20260930
       - uses: actions/upload-artifact@v4
@@ -74,3 +137,13 @@ jobs:
           name: check-journal-validation
           path: /tmp/check-validation
           retention-days: 7
+      - name: Preserve audit failure in the workflow result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('/tmp/check-validation/audit-comparison.json').read_text())
+          if result['revisionExit']:
+              print('Audit is still failing identically on unchanged upstream main. Not waived; see artifact logs.')
+          raise SystemExit(result['revisionExit'])
+          PY

@@ -1433,6 +1433,8 @@
     "events_other": "{{count}} eventi",
     "tasks_one": "{{count}} attività",
     "tasks_other": "{{count}} attività",
+    "recorded_one": "{{count}} sessione registrata",
+    "recorded_other": "{{count}} sessioni registrate",
     "routines_one": "{{count}} routine",
     "routines_other": "{{count}} routine",
     "deadlines_one": "{{count}} scadenza",

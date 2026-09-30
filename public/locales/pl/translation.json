@@ -2190,6 +2190,7 @@
       "keepEstimate": "Zachowaj tak, jak pokazano",
       "dailyNoteEmpty": "Brak notatki dziennej. Kliknij, aby ją napisać.",
       "selectForNotes": "Kliknij zadanie lub Do, aby zobaczyć tutaj jego notatki.",
+      "resizeNotes": "Zmień rozmiar notatki dziennej i notatek zadania",
       "showNotesSidebar": "Pokaż panel notatek",
       "hideNotesSidebar": "Ukryj panel notatek",
       "showWindowOnly": "Pokaż tylko od {{start}} do {{end}}",

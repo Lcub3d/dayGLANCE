@@ -2101,6 +2101,7 @@
       "keepEstimate": "Conservar como se muestra",
       "dailyNoteEmpty": "Aún no hay nota diaria. Haz clic para escribir una.",
       "selectForNotes": "Haz clic en una tarea o un Do para ver aquí sus notas.",
+      "resizeNotes": "Cambiar el tamaño de la nota diaria y las notas de la tarea",
       "showNotesSidebar": "Mostrar barra lateral de notas",
       "hideNotesSidebar": "Ocultar barra lateral de notas",
       "showWindowOnly": "Mostrar solo de {{start}} a {{end}}",

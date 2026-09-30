@@ -633,6 +633,11 @@ export default function useObsidianSync({
     // record the vault as lost: said once as an error on the way in, then
     // shown quietly (header, Settings), never raised once per poll.
     if (!obsidianVaultHandleRef.current) {
+      // No vault was ever set up on this device: nothing is lost, so nothing
+      // is said. Every trigger is meant to be gated on enabled already; this
+      // keeps a missed gate from telling a user who never chose Obsidian
+      // that their vault is unreachable (v5.4.2, the visibility handler).
+      if (!obsidianConfig?.enabled) return;
       try {
         const handle = await getVaultAccess();
         if (!handle) { noteVaultAccess('lost'); sayVaultLost(); return; }
@@ -1486,6 +1491,9 @@ export default function useObsidianSync({
         } catch {}
         return;
       }
+      // Gated on Obsidian being turned on, as the poll is: an unconfigured
+      // device has no vault to sync or to report lost.
+      if (!obsidianConfig?.enabled) return;
       // Deliberately NOT gated on a connected handle: performObsidianSync
       // re-acquires a lost one itself (see its null-handle branch), so a vault
       // that failed restore at startup reconnects when the user comes back.

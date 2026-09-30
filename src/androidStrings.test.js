@@ -38,6 +38,12 @@ function parseStrings(dir) {
 
 const base = parseStrings('values');
 const locales = readdirSync(RES).filter((d) => /^values-[a-z]{2}(-r[A-Z]{2})?$/.test(d));
+// A plural family is the name without its quantity. Base declares only the
+// categories English uses (one, other); a locale may declare more (pl and uk
+// need few and many), and aapt accepts them. Such an item's placeholders are
+// compared against the base's `other`.
+const family = (k) => k.split('#')[0];
+const baseFor = (k) => base.get(k) ?? base.get(`${family(k)}#other`);
 const placeholders = (v) => (v.match(/%(\d\$)?[sd]/g) ?? []).sort().join(',');
 
 describe('Android string resources', () => {
@@ -48,7 +54,7 @@ describe('Android string resources', () => {
   it.each(locales)('%s carries no keys absent from the base file', (loc) => {
     const strings = parseStrings(loc);
     expect(strings.size).toBeGreaterThan(0);
-    const extra = [...strings.keys()].filter((k) => !base.has(k));
+    const extra = [...strings.keys()].filter((k) => !base.has(k) && !base.has(`${family(k)}#other`));
     expect(extra, `${loc} has keys aapt would reject`).toEqual([]);
   });
 
@@ -58,10 +64,29 @@ describe('Android string resources', () => {
     expect(missing, `${loc} would silently render these in English`).toEqual([]);
   });
 
+  // Android picks the item by the language's own plural rules, so a missing
+  // category silently falls through to another form ("5 zadania"). The
+  // categories checked are those the language selects for counts the app can
+  // produce, not every one it theoretically has: es/fr/it/pt reserve `many`
+  // for millions.
+  it.each(locales)('%s defines every plural category its rules select', (loc) => {
+    const tag = loc.replace(/^values-/, '').replace('-r', '-');
+    const rules = new Intl.PluralRules(tag);
+    const categories = new Set();
+    for (let n = 0; n <= 1000; n++) categories.add(rules.select(n));
+    const strings = parseStrings(loc);
+    const families = new Set([...base.keys()].filter((k) => k.includes('#')).map(family));
+    const missing = [];
+    for (const fam of families) {
+      for (const cat of categories) if (!strings.has(`${fam}#${cat}`)) missing.push(`${fam}#${cat}`);
+    }
+    expect(missing, `${loc} would render another form for these counts`).toEqual([]);
+  });
+
   it.each(locales)('%s keeps every format placeholder', (loc) => {
     const strings = parseStrings(loc);
     const mismatched = [...strings]
-      .filter(([k, v]) => placeholders(v) !== placeholders(base.get(k) ?? ''))
+      .filter(([k, v]) => placeholders(v) !== placeholders(baseFor(k) ?? ''))
       .map(([k]) => k);
     expect(mismatched, `${loc} placeholder mismatches crash getString at runtime`).toEqual([]);
   });

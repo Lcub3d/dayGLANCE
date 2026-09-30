@@ -126,4 +126,15 @@ describe('MonthGrid', () => {
     expect(monthCellLabel('2026-09-25', itemsForDate('2026-09-25'), false, t, 'en')).toBe('Friday, September 25: 1 task');
     expect(monthCellLabel('2026-09-25', [], false, t, 'en')).toBe('Friday, September 25: Nothing scheduled');
   });
+
+  // MUTATION: count a Do as a task and one task done in three sessions reads
+  // as three tasks.
+  it('counts recorded sessions on a past day as sessions, not tasks', async () => {
+    const { t } = await i18nFor('en');
+    const session = (id, startTime) => ({ id, title: 'Deep work', date: '2026-09-25', startTime, duration: 60, isAllDay: false, completed: false, joboDo: true });
+    const items = [session('d1', '09:00'), session('d2', '11:00'), session('d3', '14:00'), { id: 't', title: 'Call', date: '2026-09-25', startTime: '16:00', duration: 15, isAllDay: false, completed: true }];
+    expect(monthCellLabel('2026-09-25', items, false, t, 'en')).toBe('Friday, September 25: 1 task, 3 recorded sessions');
+    const pl = await i18nFor('pl');
+    expect(monthCellLabel('2026-09-25', items.slice(0, 3), false, pl.t, 'pl')).toMatch(/3 zapisane sesje$/);
+  });
 });

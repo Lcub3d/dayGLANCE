@@ -1433,6 +1433,8 @@
     "events_other": "{{count}} eventi",
     "tasks_one": "{{count}} attività",
     "tasks_other": "{{count}} attività",
+    "recorded_one": "{{count}} sessione registrata",
+    "recorded_other": "{{count}} sessioni registrate",
     "routines_one": "{{count}} routine",
     "routines_other": "{{count}} routine",
     "deadlines_one": "{{count}} scadenza",
@@ -2208,6 +2210,10 @@
       "taskAlreadyDone": "Il compito è già fatto. Il suo completamento viene registrato come un Do a sé.",
       "linkedNoCompletion": "Un Do collegato a un compito non può essere completato da solo.",
       "checkTaskAgain": "Spunta di nuovo il compito per completare questo Do."
+    },
+    "past": {
+      "recorded": "Registrato {{range}}",
+      "open": "Apri in JOBO"
     }
   },
   "todoist": {

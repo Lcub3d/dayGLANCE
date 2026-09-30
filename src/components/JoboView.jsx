@@ -460,7 +460,7 @@ export default function JoboView() {
             {hoverTaskId != null && (
               <style>{`[data-jobo-pairing] [data-task-id="${cssEscape(hoverTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px}`}</style>
             )}
-            <DayViewColumn col={planColumn} colIdx={0} hourHeight={hourHeight} />
+            <DayViewColumn planOnly col={planColumn} colIdx={0} hourHeight={hourHeight} />
           </div>
           <DoColumn
             date={date}

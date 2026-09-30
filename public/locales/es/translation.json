@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} eventos",
     "tasks_one": "{{count}} tarea",
     "tasks_other": "{{count}} tareas",
+    "recorded_one": "{{count}} sesión registrada",
+    "recorded_other": "{{count}} sesiones registradas",
     "routines_one": "{{count}} rutina",
     "routines_other": "{{count}} rutinas",
     "deadlines_one": "{{count}} fecha límite",
@@ -2206,6 +2208,10 @@
       "taskAlreadyDone": "La tarea ya está hecha. Su finalización se registra como un Do propio.",
       "linkedNoCompletion": "Un Do vinculado a una tarea no puede completarse por sí solo.",
       "checkTaskAgain": "Vuelve a marcar la tarea para completar este Do."
+    },
+    "past": {
+      "recorded": "Registrado {{range}}",
+      "open": "Abrir en JOBO"
     }
   },
   "todoist": {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { layoutDayCell } from '../../utils/monthCellLayout.js';
 import { monthCellMetrics } from '../../utils/monthCellMetrics.js';
 import { taskColorToHex } from '../../utils/colorUtils.js';
@@ -31,6 +31,10 @@ import { taskColorToHex } from '../../utils/colorUtils.js';
 //            or in a row beside the date number when there is no gutter;
 //            the gutter itself is only a hairline
 //   deadline a flag mark, app rose, all-day only
+//   Do       on a past day with JOBO on (slice 6), a recorded session is a
+//            band at its recorded time in its task's colour, striped as a
+//            Do is in every view; unlinked work, or work whose task is gone,
+//            takes a neutral gray. It is always timed, never a point
 // Bands always span the full lane width with one uniform inset from the
 // cell edges and from the gutter: horizontal position carries no meaning
 // and widths stay comparable across days. Surfaces and chrome use the app's
@@ -48,6 +52,7 @@ const ROUTINE_STROKE = 'stroke-teal-600 dark:stroke-teal-500';
 const ROUTINE_FILL = 'fill-teal-600 dark:fill-teal-500';
 const DEADLINE_FILL = 'fill-rose-500 dark:fill-rose-400';
 const DEADLINE_STROKE = 'stroke-rose-500 dark:stroke-rose-400';
+const DO_NEUTRAL_FILL = 'fill-gray-500';
 const dim = (completed) => (completed ? 'opacity-50' : '');
 
 /** A rect with only its left corners rounded: the event cap, flush with the band's edge. */
@@ -63,11 +68,32 @@ const eventHex = (item) => (item?.nativeCalendarColor || (item?.color && item.co
 const eventFillProps = (item) => { const hex = eventHex(item); return hex ? { fill: hex } : { className: EVENT_DEFAULT_FILL }; };
 const toMin = (hhmm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '')); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
 
-/** One timed band, full strength in the item's own colour; events add the cap. */
-function Band({ band, item, m }) {
+/**
+ * The Do stripes, the SVG form of PastDoCard's DO_STRIPES: the same angle
+ * and white, at a period a cell's thin bands can show.
+ */
+const DO_STRIPE_PERIOD = 6;
+function DoStripes({ id }) {
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" width={DO_STRIPE_PERIOD} height={DO_STRIPE_PERIOD} patternTransform="rotate(45)">
+      <rect width={DO_STRIPE_PERIOD / 2} height={DO_STRIPE_PERIOD} fill="white" fillOpacity={0.3} />
+    </pattern>
+  );
+}
+
+/** One timed band, full strength in the item's own colour; events add the cap, a Do its stripes. */
+function Band({ band, item, m, stripesId }) {
   const { kind, x, y, width, height, completed } = band;
   const r = Math.min(m.radius, height / 2, width / 2);
   const common = { 'data-band': band.id, 'data-kind': kind };
+  if (item?.joboDo) {
+    return (
+      <g {...common} data-jobo-do={item.joboRecordId}>
+        <rect x={x} y={y} width={width} height={height} rx={r} {...(item.color ? { fill: itemHex(item) } : { className: DO_NEUTRAL_FILL })} />
+        <rect x={x} y={y} width={width} height={height} rx={r} fill={`url(#${stripesId})`} />
+      </g>
+    );
+  }
   if (kind === 'event') {
     return (
       <g {...common} className={dim(completed)}>
@@ -172,6 +198,8 @@ export default function MonthDayCell({
   const badgeFont = Math.round(badgeH * 0.72);
   const badgeW = Math.round(badgeH * 0.5 + badgeFont * 0.62 * overflowText.length);
   const gutterX = width - m.gutterWidth;
+  const stripesId = `do-stripes-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const hasDo = bands.some((band) => byId.get(band.id)?.joboDo);
 
   return (
     <button
@@ -197,6 +225,7 @@ export default function MonthDayCell({
         aria-hidden="true"
         className="absolute inset-0 block"
       >
+        {hasDo && <defs><DoStripes id={stripesId} /></defs>}
         {m.hasGutter && (
           <g data-month-cell-gutter>
             {/* A hairline only: the track is a quiet edge, never a block of fill. */}
@@ -210,7 +239,7 @@ export default function MonthDayCell({
 
         <g data-month-cell-lanes transform={`translate(${m.timelineLeft}, ${m.timelineTop})`}>
           {timedRoutines.map((item) => <RoutineRule key={item.id} item={item} y={ruleY(toMin(item.startTime))} width={m.timelineWidth} />)}
-          {bands.map((band) => <Band key={band.id} band={band} item={byId.get(band.id)} m={m} />)}
+          {bands.map((band) => <Band key={band.id} band={band} item={byId.get(band.id)} m={m} stripesId={stripesId} />)}
           {points.map((point) => <Point key={point.id} point={point} item={byId.get(point.id)} x={m.timelineWidth - m.pointSize - 1} m={m} />)}
           {showOverflow && (
             <g data-month-cell-overflow={overflowText} transform={`translate(${Math.max(0, m.timelineWidth - badgeW)}, ${Math.max(0, m.timelineHeight - badgeH)})`}>

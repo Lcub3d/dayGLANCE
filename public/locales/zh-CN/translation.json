@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} 个日程",
     "tasks_one": "{{count}} 个任务",
     "tasks_other": "{{count}} 个任务",
+    "recorded_one": "{{count}} 段已记录的时间",
+    "recorded_other": "{{count}} 段已记录的时间",
     "routines_one": "{{count}} 个例行事项",
     "routines_other": "{{count}} 个例行事项",
     "deadlines_one": "{{count}} 个截止日期",
@@ -2206,6 +2208,10 @@
       "taskAlreadyDone": "该任务已完成，其完成情况已作为一条单独的执行记录保存。",
       "linkedNoCompletion": "关联任务的执行记录不能单独标记为已完成。",
       "checkTaskAgain": "再次勾选该任务，即可将此记录标记为已完成。"
+    },
+    "past": {
+      "recorded": "已记录 {{range}}",
+      "open": "在 JOBO 中打开"
     }
   },
   "todoist": {

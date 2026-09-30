@@ -19,6 +19,7 @@ import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getHGBarsForDate } from '../hooks/useHyperGlance.js';
 import HyperGlanceBar from './HyperGlanceBar.jsx';
 import { useTranslation } from 'react-i18next';
+import PastDoCard from './jobo/PastDoCard.jsx';
 
 const TimeGrid = () => {
   const {
@@ -60,7 +61,7 @@ const TimeGrid = () => {
     applySuggestionForEdit,
     moveToInbox, moveToRecycleBin, postponeTask,
     formatTime, timeToMinutes, minutesToTime,
-    getTasksForDate,
+    getTasksForDate, getDayDisplayForDate,
     getTaskCalendarStyle,
     minutesToPosition, positionToMinutes,
     calculateTaskPosition, calculateConflictPosition,
@@ -143,7 +144,9 @@ const TimeGrid = () => {
     {visibleDates.map((date, dayIndex) => {
       const dateStr = dateToString(date);
       const isDateToday = dateStr === dateToString(new Date());
-      const dayTasks = getTasksForDate(date).filter(t => !t.isAllDay && (!projectFilter || t.projectId === projectFilter));
+      // A past date shows what was done (slice 6): recorded Do replace the
+      // plan blocks they belong to, drawn as read-only PastDoCards.
+      const dayTasks = (getDayDisplayForDate || getTasksForDate)(date).filter(t => !t.isAllDay && (!projectFilter || t.projectId === projectFilter));
       const frameInstances = getFrameInstancesForDate(date);
       const hgBars = getHGBarsForDate(hgVisibleProjects, dateStr, isDateToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined);
       const hasBars = hgBars.length > 0;
@@ -302,6 +305,23 @@ const TimeGrid = () => {
             const { top, height } = calculateTaskPosition(task);
             const isConflicted = conflicts.some(c => c.includes(task.id));
             const conflictPos = calculateConflictPosition(task, dayTasks);
+            if (task.joboDo) {
+              return (
+                <PastDoCard
+                  key={task.id}
+                  item={task}
+                  showTime={height > 40}
+                  style={{
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    minHeight: height <= 40 ? '27px' : '39px',
+                    ...(taskOverlapsHG(task)
+                      ? { left: '50%', right: 0, width: undefined }
+                      : { left: conflictPos.left, right: conflictPos.right, width: conflictPos.width }),
+                  }}
+                />
+              );
+            }
             const isImported = task.imported;
             const isCalendarEvent = isImported && !task.isTaskCalendar;
             const taskCalendarStyle = getTaskCalendarStyle(task, darkMode);

@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} events",
     "tasks_one": "{{count}} task",
     "tasks_other": "{{count}} tasks",
+    "recorded_one": "{{count}} recorded session",
+    "recorded_other": "{{count}} recorded sessions",
     "routines_one": "{{count}} routine",
     "routines_other": "{{count}} routines",
     "deadlines_one": "{{count}} deadline",
@@ -2206,6 +2208,10 @@
       "taskAlreadyDone": "The task is already done. Its completion is recorded as a Do of its own.",
       "linkedNoCompletion": "A Do linked to a task can't be Completed on its own.",
       "checkTaskAgain": "Check the task off again to make this Completed."
+    },
+    "past": {
+      "recorded": "Recorded {{range}}",
+      "open": "Open in JOBO"
     }
   },
   "todoist": {

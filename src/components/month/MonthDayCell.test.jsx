@@ -191,4 +191,26 @@ describe('MonthDayCell', () => {
     expect(html).not.toMatch(/<a /);
     expect(render({ items: [] })).toContain('aria-label="2026-09-16"');
   });
+
+  // JOBO slice 6: a past day's bars follow the Do. A recorded session is a
+  // band at its recorded time, striped in its task's colour; work with no
+  // task takes a neutral gray.
+  it('draws a recorded Do as a striped band, in its task\'s colour or neutral gray', () => {
+    const doItem = (id, startTime, color) => task(id, startTime, 60, { joboDo: true, joboRecordId: `manual:${id}`, color });
+    const html = render({ items: [doItem('d1', '09:00', 'bg-purple-500'), doItem('d2', '11:00', null), task('t', '14:00', 60)] });
+    expect(count(html, /<pattern /g)).toBe(1);
+    const id = /<pattern id="([^"]+)"/.exec(html)[1];
+    const first = html.slice(html.indexOf('data-band="d1"'), html.indexOf('data-band="d2"'));
+    expect(first).toContain('data-jobo-do="manual:d1"');
+    expect(first).toContain('fill="#a855f7"');
+    expect(first).toContain(`fill="url(#${id})"`);
+    const second = html.slice(html.indexOf('data-band="d2"'), html.indexOf('data-band="t"'));
+    expect(second).toContain('fill-gray-500');
+    expect(second).toContain(`fill="url(#${id})"`);
+    // An ordinary task beside it is not striped.
+    expect(html.slice(html.indexOf('data-band="t"'))).not.toContain('url(#');
+    // Each Do is its own band: three sessions are three bars.
+    expect(count(html, /data-jobo-do=/g)).toBe(2);
+  });
 });
+

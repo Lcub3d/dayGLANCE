@@ -1,0 +1,166 @@
+name: Check journal verification
+on:
+  push:
+    branches: [ci/jobo-check-journal-20260930]
+    paths:
+      - '.github/workflows/check-journal-verify.yml'
+      - '.github/scripts/check-journal/**'
+permissions:
+  contents: read
+concurrency:
+  group: check-journal-verify
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+      - uses: actions/checkout@v4
+        with:
+          ref: f5f0f895edb2b7a094f61e393af24159da728648
+          path: product
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - run: npm ci
+      - name: Record the unmodified model's Singapore baseline
+        env:
+          TZ: Asia/Singapore
+        run: |
+          mkdir -p ../reports
+          set +e
+          npm test -- src/jobo/viewModel.test.js --reporter=default --reporter=json --outputFile.json=../reports/baseline-singapore.json > ../reports/baseline-singapore.log 2>&1
+          echo $? > ../reports/baseline-singapore.exit
+          exit 0
+      - name: Apply only the checksum-verified product patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, lzma, subprocess
+          folder = Path('../harness/.github/scripts/check-journal')
+          encoded = ''.join((folder / f'patch-{n}.b64').read_text().strip() for n in [1, 2])
+          patch = lzma.decompress(base64.b64decode(encoded, validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '064db9d157adff443d541324a438cf3df4c28385531b7137f5baa69a1fc82a87'
+          subprocess.run(['git', 'apply', '--index', '--whitespace=error-all', '-'], input=patch, check=True)
+          Path('../reports/changes.patch').write_bytes(patch)
+          PY
+      - name: Original audit and lint gates
+        run: |
+          npm run audit | tee ../reports/audit.log
+          npm run lint
+      - name: Full UTC suite with no exclusions
+        env:
+          TZ: UTC
+        run: npm test -- --reporter=default --reporter=json --outputFile.json=../reports/full-utc.json
+      - name: Journal, notes reuse and statistics-seed tests in all three zones
+        run: |
+          for zone in UTC Asia/Singapore America/Chicago; do
+            TZ="$zone" npm test -- src/components/jobo/CheckPanel.test.jsx src/components/jobo/checkJournal.test.js src/components/jobo/DoNotesPanel.test.jsx src/jobo/checkSummary.test.js --reporter=default --reporter=json --outputFile.json="../reports/journal-${zone//\//-}.json"
+          done
+      - name: Expanded JOBO, native notes and locale regressions in Chicago
+        env:
+          TZ: America/Chicago
+        run: npm test -- src/jobo src/components/jobo src/components/JoboView.test.jsx src/hooks/useJobo src/components/NotesSubtasksPanel.test.jsx src/locales.test.js src/nativeLocaleParity.test.js --reporter=default --reporter=json --outputFile.json=../reports/focused-chicago.json
+      - name: Expanded Singapore suite, requiring exact unchanged baseline failures
+        env:
+          TZ: Asia/Singapore
+        run: |
+          set +e
+          npm test -- src/jobo src/components/jobo src/components/JoboView.test.jsx src/hooks/useJobo src/components/NotesSubtasksPanel.test.jsx src/locales.test.js src/nativeLocaleParity.test.js --reporter=default --reporter=json --outputFile.json=../reports/focused-singapore.json > ../reports/focused-singapore.log 2>&1
+          echo $? > ../reports/focused-singapore.exit
+          set -e
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          def failed(name):
+              data = json.loads(Path(f'../reports/{name}.json').read_text())
+              assert data['numPendingTests'] == 0
+              names = sorted(a['fullName'] for f in data['testResults'] for a in f['assertionResults'] if a['status'] == 'failed')
+              assert len(names) == data['numFailedTests'], 'Unexpected suite failure'
+              return names
+          before = failed('baseline-singapore')
+          after = failed('focused-singapore')
+          assert after == before, (before, after)
+          Path('../reports/timezone-baseline-comparison.json').write_text(json.dumps({'before': before, 'after': after, 'newFailures': []}, indent=2))
+          if after:
+              print('::warning::The expanded Singapore suite retains the same two unmodified viewModel recurring-marker failures. Journal tests pass in all zones; no tests are skipped or weakened.')
+          print(json.dumps({'baselineFailures': before, 'currentFailures': after}, indent=2))
+          PY
+      - name: Production Web and iOS WebView builds
+        run: npm run build && npm run build:ios
+      - name: Confirm scope and preserved existing locale values
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          actual = set(subprocess.check_output(['git', 'diff', '--cached', '--no-renames', '--name-only'], text=True).splitlines())
+          expected = {'docs/jobo-check-journal.md', 'src/components/JoboView.jsx',
+              'src/components/jobo/CheckPanel.jsx', 'src/components/jobo/CheckPanel.test.jsx',
+              'src/components/jobo/CheckTaskNotes.jsx', 'src/components/jobo/DoNotesPanel.jsx',
+              'src/components/jobo/DoNotesPanel.test.jsx', 'src/components/jobo/checkJournal.js',
+              'src/components/jobo/checkJournal.test.js', 'src/components/jobo/checkSummary.js',
+              'src/components/jobo/checkSummary.test.js', 'src/jobo/checkSummary.js', 'src/jobo/checkSummary.test.js'}
+          expected.update(f'public/locales/{lng}/translation.json' for lng in ['en','zh-CN','de','es','fr','it','pl','pt-BR','pt-PT','uk'])
+          assert actual == expected, actual ^ expected
+          for path in Path('public/locales').glob('*/translation.json'):
+              old = json.loads(subprocess.check_output(['git','show','HEAD:'+str(path)]))
+              new = json.loads(path.read_text())
+              old['jobo'].pop('check'); new['jobo'].pop('check')
+              assert old == new, str(path)
+          hashes = {p: subprocess.check_output(['git','hash-object',p], text=True).strip() if Path(p).exists() else None for p in sorted(actual)}
+          Path('../reports/blob-hashes.json').write_text(json.dumps(hashes, indent=2))
+          PY
+          git diff --cached --check
+          git diff --exit-code
+          git diff --cached --stat > ../reports/scope.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-journal-verification
+          path: reports/
+          retention-days: 14
+  prepare:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f5f0f895edb2b7a094f61e393af24159da728648
+          path: product
+      - uses: actions/download-artifact@v4
+        with:
+          name: check-journal-verification
+          path: reports
+      - name: Prepare the exact tested commit on an isolated staging ref
+        run: |
+          target=ci/jobo-check-journal-tested-20260930
+          test -z "$(git ls-remote origin "refs/heads/$target")"
+          git apply --index --whitespace=error-all ../reports/changes.patch
+          git diff --cached --check
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git commit -m "feat(jobo): rework Check as the day's execution journal"
+          git push origin "HEAD:refs/heads/$target"
+          git rev-parse HEAD > ../reports/commit.txt
+          git rev-parse HEAD^{tree} > ../reports/tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-journal-tested-commit
+          path: reports/
+          retention-days: 14

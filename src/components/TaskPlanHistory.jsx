@@ -111,7 +111,10 @@ export function PlanHistoryPanel({ history, task, formatTime }) {
 
 // `size` matches the icon scale of whichever card row this sits in: 12 on the
 // timeline card, 10 on the denser SCHED row.
-export default function TaskPlanHistory({ task, size = 12 }) {
+// `pad` is the button's padding: a row with room for larger tap targets
+// (SCHED) passes more, with a matching negative margin so the row keeps its
+// height.
+export default function TaskPlanHistory({ task, size = 12, pad = 'p-0.5' }) {
   const { t } = useTranslation();
   // SCHED cards also render inside the project planner, which is not guaranteed
   // to sit under the day-planner provider. Falling back to the raw value keeps
@@ -170,7 +173,7 @@ export default function TaskPlanHistory({ task, size = 12 }) {
       <button
         ref={buttonRef}
         onClick={(e) => { e.stopPropagation(); toggle(); }}
-        className="hover:bg-white/20 rounded p-0.5 transition-colors opacity-75 hover:opacity-100"
+        className={`hover:bg-white/20 rounded ${pad} transition-colors opacity-75 hover:opacity-100`}
         title={t('task.planHistory')}
         aria-expanded={open}
       >

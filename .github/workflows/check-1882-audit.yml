@@ -1,0 +1,91 @@
+name: Check 1882 requirements review
+on:
+  push:
+    branches: [ci/check-journal-review-20260930]
+    paths:
+      - '.github/workflows/check-1882-audit.yml'
+      - '.github/scripts/check-1882-audit/**'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: harness
+      - uses: actions/checkout@v4
+        with:
+          ref: c5385a29c54ee3cb74ff1760dc00a5ba8c33c5c3
+          fetch-depth: 0
+          path: product
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+      - name: Apply and verify scoped changes
+        run: |
+          test "$(git rev-parse HEAD)" = c5385a29c54ee3cb74ff1760dc00a5ba8c33c5c3
+          mkdir -p /tmp/check-audit
+          python - <<'PY'
+          from pathlib import Path
+          import gzip, base64, hashlib
+          code = gzip.decompress(base64.b64decode(Path('../harness/.github/scripts/check-1882-audit/apply.b64').read_text()))
+          assert hashlib.sha256(code).hexdigest() == '9ca47da58017cff77b8c82d6c2414e239db3d9d2055e0c7c695f3afba4805fd7'
+          exec(compile(code, 'apply-check-audit.py', 'exec'))
+          PY
+          git diff --check
+          git diff --stat > /tmp/check-audit/scope.txt
+          git diff > /tmp/check-audit/revision.patch
+          git config user.name Lcub3d
+          git config user.email 46134215+Lcub3d@users.noreply.github.com
+          git add src/components/jobo/CheckPanel.jsx src/components/jobo/CheckPanel.test.jsx src/components/jobo/checkJournal.js src/components/jobo/checkJournal.test.js public/locales/*/translation.json
+          git commit -m "fix(jobo): keep Check focused on the day's executions"
+          git rev-parse HEAD > /tmp/check-audit/revision-commit.txt
+      - name: Merge current upstream dependency fixes without changing their scope
+        run: |
+          git remote add upstream https://github.com/krelltunez/dayGLANCE.git
+          git fetch upstream 83148eeac4bcebbbc3b41f3a34549a4801fb431e
+          git merge --no-edit 83148eeac4bcebbbc3b41f3a34549a4801fb431e
+          git rev-parse HEAD > /tmp/check-audit/commit.txt
+          git rev-parse HEAD^{tree} > /tmp/check-audit/tree.txt
+          git diff --name-only 83148eeac4bcebbbc3b41f3a34549a4801fb431e HEAD > /tmp/check-audit/pr-files.txt
+          test -z "$(git diff 83148eeac4bcebbbc3b41f3a34549a4801fb431e HEAD -- package.json package-lock.json src/jobo/core.js src/jobo/viewModel.js src/jobo/dayStats.js src/jobo/detector.js src/jobo/ledger.js src/jobo/store.js src/sync .github)"
+      - name: Install locked dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci
+      - name: Audit and lint
+        run: |
+          npm run audit 2>&1 | tee /tmp/check-audit/audit.log
+          npm run lint 2>&1 | tee /tmp/check-audit/lint.log
+      - name: Full UTC regression
+        env:
+          TZ: UTC
+        run: npx vitest run --maxWorkers=2 --reporter=json --outputFile=/tmp/check-audit/full-UTC.json
+      - name: Check and locale regressions in three timezones
+        run: |
+          for ZONE in UTC Asia/Singapore America/Chicago; do
+            TZ="$ZONE" npx vitest run src/jobo/checkSummary.test.js src/components/jobo/checkJournal.test.js src/components/jobo/CheckPanel.test.jsx src/components/JoboView.test.jsx src/locales.test.js --maxWorkers=2 --reporter=json --outputFile="/tmp/check-audit/check-${ZONE//\//-}.json"
+          done
+      - name: Production Web and iOS WebView builds
+        run: |
+          npm run build 2>&1 | tee /tmp/check-audit/build.log
+          npm run build:ios 2>&1 | tee /tmp/check-audit/build-ios.log
+      - name: Publish only the verified candidate
+        run: |
+          git diff --exit-code
+          test "$(git ls-remote origin refs/heads/contrib/jobo-check-aspects | cut -f1)" = c5385a29c54ee3cb74ff1760dc00a5ba8c33c5c3
+          git push origin HEAD:refs/heads/verify/check-1882-audit-20260930
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-1882-audit-results
+          path: /tmp/check-audit
+          retention-days: 7

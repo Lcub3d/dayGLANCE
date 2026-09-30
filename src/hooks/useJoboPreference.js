@@ -21,3 +21,23 @@ export default function useJoboPreference(name) {
   }, [name]);
   return [on, toggle];
 }
+
+/**
+ * A JOBO split this device remembers, as a share of the space (0 to 1):
+ * the Daily Note's part of the notes sidebar. Same storage rules as above;
+ * a missing or unreadable value starts at `fallback`.
+ */
+export function useJoboShare(name, fallback, clamp = (v) => v) {
+  const [share, setShare] = useState(() => {
+    try {
+      const stored = Number(localStorage.getItem(keyFor(name)));
+      return localStorage.getItem(keyFor(name)) !== null && Number.isFinite(stored) ? clamp(stored) : fallback;
+    } catch { return fallback; }
+  });
+  const remember = useCallback((next) => {
+    const value = clamp(next);
+    setShare(value);
+    try { localStorage.setItem(keyFor(name), String(Math.round(value * 1000) / 1000)); } catch { /* not remembered */ }
+  }, [name, clamp]);
+  return [share, remember];
+}

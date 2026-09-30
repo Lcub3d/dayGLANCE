@@ -795,6 +795,8 @@
     "assignTo": "Asignar a",
     "notes": "Notas",
     "localNotes": "Notas en dayGLANCE",
+    "calendarDescription": "Del calendario",
+    "yourNotes": "Tus notas (este dispositivo)",
     "subtasks": "Subtareas",
     "addSubtask": "Añadir subtarea",
     "generateSubtasks": "Generar subtareas",

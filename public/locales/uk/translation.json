@@ -818,6 +818,8 @@
     "assignTo": "Призначити",
     "notes": "Нотатки",
     "localNotes": "Нотатки в dayGLANCE",
+    "calendarDescription": "З календаря",
+    "yourNotes": "Ваші нотатки (цей пристрій)",
     "subtasks": "Підзавдання",
     "addSubtask": "Додати підзавдання",
     "generateSubtasks": "Згенерувати підзавдання",

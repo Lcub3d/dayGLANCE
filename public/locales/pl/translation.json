@@ -814,6 +814,8 @@
     "assignTo": "Przypisz do",
     "notes": "Notatki",
     "localNotes": "Notatki w dayGLANCE",
+    "calendarDescription": "Z kalendarza",
+    "yourNotes": "Twoje notatki (to urządzenie)",
     "subtasks": "Podzadania",
     "addSubtask": "Dodaj podzadanie",
     "generateSubtasks": "Generuj podzadania",

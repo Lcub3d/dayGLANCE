@@ -1,0 +1,48 @@
+name: Check journal review workspace
+on:
+  push:
+    branches: [ci/check-journal-review-20260930]
+    paths: ['.github/workflows/check-journal-source.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: f5f0f895edb2b7a094f61e393af24159da728648
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export exact review sources
+        run: |
+          mkdir -p /tmp/check-review
+          git fetch https://github.com/krelltunez/dayGLANCE.git 1284d4a84e3a7f3f0a22bd82475cb0fb87718f2c
+          BASE=$(git merge-base HEAD FETCH_HEAD)
+          printf '%s\n' "$BASE" > /tmp/check-review/base.txt
+          git archive HEAD | gzip > /tmp/check-review/pr.tar.gz
+          git archive 1284d4a84e3a7f3f0a22bd82475cb0fb87718f2c | gzip > /tmp/check-review/main.tar.gz
+          git archive "$BASE" | gzip > /tmp/check-review/base.tar.gz
+          git diff --name-status "$BASE" HEAD > /tmp/check-review/pr-files.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-journal-source
+          path: /tmp/check-review
+          retention-days: 7
+      - name: Prepare Linux test dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          npm ci
+          tar -czf /tmp/check-dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: check-journal-dependencies
+          path: /tmp/check-dependencies.tar.gz
+          compression-level: 0
+          retention-days: 3

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCheckJournal, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
+import { buildCheckJournal, journalDate, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
 import { createDoRecord } from '../../jobo/core.js';
 import { buildJoboDayModel } from '../../jobo/viewModel.js';
 
@@ -152,11 +152,20 @@ describe('Check journal is a projection, not a second day model', () => {
 
 describe('journal range formatting preserves civil dates', () => {
   it('shows 26 hours with both dates rather than clipping to two hours', () => {
-    expect(journalRange(date, '09:00', '2026-09-29', '11:00', date, t => t)).toBe('09:00–2026-09-29 11:00');
-    expect(journalPlanRange({ ...plan, duration: 1560 }, date, t => t)).toBe('09:00–2026-09-29 11:00');
+    expect(journalRange(date, '09:00', '2026-09-29', '11:00', date, t => t, 'en')).toBe('09:00–Tue, Sep 29 11:00');
+    expect(journalPlanRange({ ...plan, duration: 1560 }, date, t => t, 'en')).toBe('09:00–Tue, Sep 29 11:00');
   });
   it('uses the caller clock preference at both ends, including midnight', () => {
-    expect(journalPlanRange({ ...plan, startTime: '23:30' }, date, value => `clock(${value})`)).toBe('clock(23:30)–2026-09-29 clock(00:30)');
+    expect(journalPlanRange({ ...plan, startTime: '23:30' }, date, value => `clock(${value})`, 'en')).toBe('clock(23:30)–Tue, Sep 29 clock(00:30)');
+  });
+  it.each(['en', 'zh-CN', 'de', 'pl'])('uses %s dates without moving the civil day across time zones', language => {
+    const expected = new Intl.DateTimeFormat(language, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`));
+    expect(journalDate(date, language)).toBe(expected);
+    expect(journalRange(date, '23:30', '2026-09-29', '00:30', '2026-09-29', t => t, language)).toContain(expected);
+  });
+  it('retains the year when a related session is in a different year', () => {
+    expect(journalRange('2025-12-31', '23:30', '2026-01-01', '00:30', '2026-01-01', t => t, 'en'))
+      .toBe('Wed, Dec 31, 2025 23:30–Thu, Jan 1 00:30');
   });
   it('leaves a missing plan missing', () => expect(journalPlanRange(null, date, t => t)).toBeNull());
 });

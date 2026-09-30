@@ -1,13 +1,16 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
-import { CheckJournal } from './CheckPanel.jsx';
+import CheckPanel, { CheckJournal } from './CheckPanel.jsx';
 import { buildJoboDayModel } from '../../jobo/viewModel.js';
 import { createDoRecord } from '../../jobo/core.js';
 import { summaryRows, timingRows } from './ExecutionAxes.jsx';
+
+vi.mock('react-dom', async importOriginal => ({ ...await importOriginal(), createPortal: children => children }));
+afterEach(() => vi.unstubAllGlobals());
 
 const date = '2026-09-28';
 const plan = { date, startTime: '09:00', duration: 60 };
@@ -19,10 +22,10 @@ const row = (over = {}) => createDoRecord({ id: 'r1', taskId: 't1', title: task.
 const build = (records = [row()], extra = {}) => buildJoboDayModel({ date, records, tasks: [task], taskLookup: [task], ...extra });
 const locales = ['en', 'zh-CN', 'de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'];
 const bundle = lng => JSON.parse(readFileSync(new URL(`../../../public/locales/${lng}/translation.json`, import.meta.url), 'utf8'));
-async function render(lng = 'en', props = {}) {
+async function render(lng = 'en', props = {}, Component = CheckJournal) {
   const i18n = i18next.createInstance();
   await i18n.init({ lng, fallbackLng: false, resources: { [lng]: { translation: bundle(lng) } }, interpolation: { escapeValue: false } });
-  const html = renderToStaticMarkup(<I18nextProvider i18n={i18n}><CheckJournal date={date} model={build()} loaded onOpenNotes={vi.fn()} {...props} /></I18nextProvider>);
+  const html = renderToStaticMarkup(<I18nextProvider i18n={i18n}><Component date={date} model={build()} loaded onOpenNotes={vi.fn()} {...props} /></I18nextProvider>);
   return { html, t: i18n.t.bind(i18n) };
 }
 const text = html => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
@@ -31,7 +34,9 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
   it.each(locales)('renders the actual %s translations and existing card terminology', async lng => {
     const { html, t } = await render(lng);
     expect(html).toContain('Report');
-    expect(html).toContain('color:#22c55e');
+    expect(html).toContain('background-color:#22c55e');
+    expect(html).toMatch(/<span[^>]*aria-hidden="true"[^>]*data-check-swatch/);
+    expect(html).toMatch(/<h3 class="font-semibold min-w-0 break-words">Report<\/h3>/);
     expect(html).toContain('09:00–10:00');
     expect(html).toContain('09:10–10:20');
     expect(html).toContain('data-check-progress="mostly"');
@@ -73,12 +78,39 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
   });
   it('shows dates for off-day sessions and does not hide them behind today’s clock', async () => {
     const { html } = await render('en', { model: build([row({ date: '2026-09-27', startTime: '23:30', endTime: '00:30' })]) });
-    expect(html).toContain('2026-09-27 23:30–2026-09-28 00:30');
+    expect(html).toContain('Sun, Sep 27 23:30–Mon, Sep 28 00:30');
+    expect(html).not.toContain('2026-09-27');
     expect(text(html)).not.toContain('Includes sessions on other days.');
   });
   it('marks inferred intervals and suppresses exact timing comparisons', async () => {
     const { html } = await render('en', { model: build([row({ timingBasis: 'planDuration' })]) });
     expect(text(html)).toContain('Start time inferred'); expect(html).not.toContain('data-check-timing');
+  });
+  it.each(['bg-amber-500', 'bg-yellow-500'])('keeps %s on a decorative swatch, not the title', async color => {
+    const coloured = { ...task, color };
+    const { html } = await render('en', { model: build([row()], { tasks: [coloured], taskLookup: [coloured] }) });
+    expect(html).toMatch(/<span[^>]*aria-hidden="true"[^>]*data-check-swatch[^>]*style="background-color:#[0-9a-f]+"/);
+    expect(html).toMatch(/<h3 class="font-semibold min-w-0 break-words">Report<\/h3>/);
+    expect(html).not.toMatch(/<h3[^>]*style=/);
+  });
+  it.each(['en', 'zh-CN', 'de'])('localizes the panel heading and cross-day sessions in %s', async lng => {
+    vi.stubGlobal('document', { body: {} });
+    const previous = '2026-09-27';
+    const localDate = day => new Intl.DateTimeFormat(lng, { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${day}T12:00:00`));
+    const { html } = await render(lng, { model: build([row({ date: previous, startTime: '23:30', endTime: '00:30' })]) }, CheckPanel);
+    expect(html.match(/<h2[^>]*>.*?<\/h2>/)?.[0]).toContain(localDate(date));
+    expect(html).toContain(`${localDate(previous)} 23:30–${localDate(date)} 00:30`);
+    expect(text(html)).not.toContain(previous);
+    expect(text(html)).not.toContain(date);
+  });
+  it('localizes an off-day untimed completion without inventing an interval', async () => {
+    const next = '2026-09-29';
+    const record = row({ id: 'next', timing: 'untimed', date: next, startTime: null, endDate: null, endTime: null,
+      createdAt: `${next}T11:00:00+08:00`, updatedAt: `${next}T11:00:00+08:00`, observedAt: `${next}T11:00:00+08:00` });
+    const { html } = await render('en', { model: build([row(), record]), formatTime: time => `clock(${time})` });
+    expect(text(html)).toContain('Marked complete at Tue, Sep 29 clock(11:00)');
+    expect(text(html)).toContain('Time not recorded');
+    expect(html).not.toContain(`${next} 11:00`);
   });
   it('has no notes action for orphaned tasks and keeps their captured titles', async () => {
     const { html } = await render('en', { model: build([row()], { tasks: [], taskLookup: [] }) });

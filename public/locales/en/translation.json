@@ -2227,6 +2227,13 @@
       "invalid": "Some execution records could not be loaded."
     }
   },
+  "timelineZoom": {
+    "label": "Timeline size",
+    "smaller": "Smaller",
+    "larger": "Larger",
+    "reset": "Reset to 100%",
+    "hint": "Also: pinch, or Ctrl+scroll over the timeline. Saved for this view on this device."
+  },
   "todoist": {
     "title": "Todoist Sync",
     "beta": "Selective sync · beta",

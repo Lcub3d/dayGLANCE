@@ -15,8 +15,8 @@ vi.mock('../context/FeaturesContext.jsx', () => ({ useFeaturesCtx: () => fixture
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key) => key }) }));
 vi.mock('../hooks/useDayViewHourHeight.js', () => ({ default: () => 80 }));
 vi.mock('./DayView.jsx', () => ({
-  DayViewColumn: ({ col, hourHeight, planOnly }) => {
-    fixture.planColumns.push({ ...col, hourHeight, planOnly });
+  DayViewColumn: ({ col, hourHeight, planOnly, zoom }) => {
+    fixture.planColumns.push({ ...col, hourHeight, planOnly, zoom });
     return <div data-plan-column={`${col.dateStr} ${col.startHour}-${col.endHour}`} />;
   },
 }));
@@ -481,3 +481,30 @@ describe('the Do card\'s notes icon follows the timeline card', () => {
     expect(button).toContain('lucide-file-text');
   });
 });
+
+// Timeline magnification (utils/timelineZoom.js): JOBO's level multiplies
+// the hour height both sides draw at, and the Do cards' contents draw at it
+// while keeping the tier they have at 100%.
+describe('JOBO at a magnified timeline', () => {
+  const at = (zoom, records) => render({ joboRecords: records }, { timelineZooms: { jobo: zoom }, setTimelineZoom: vi.fn() });
+
+  it('draws both sides at the zoomed hour height', () => {
+    at(1.5, []);
+    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 120, zoom: 1.5 });
+  });
+
+  // MUTATION: decide the tier on the zoomed height and a 15-minute card at
+  // 150% loses its compact layout, with its text drawn half as large again.
+  it('keeps a short card short, drawing its contents larger', () => {
+    const html = at(1.5, [timed({ endTime: '10:15', progress: 'partial' })]);
+    expect(html).toMatch(/data-jobo-record="manual:1"[^>]*title="10:00–10:15 · jobo\.view\.progress\.partial/);
+    expect(html).toMatch(/data-jobo-record="manual:1"[^]*?style="zoom:1\.5"/);
+  });
+
+  it('draws at 100% where no level is stored', () => {
+    const html = render({ joboRecords: [timed()] });
+    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 80 });
+    expect(html).not.toContain('zoom:');
+  });
+});
+

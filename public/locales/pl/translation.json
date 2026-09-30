@@ -2316,6 +2316,13 @@
       "invalid": "Nie udało się wczytać niektórych zapisów wykonania."
     }
   },
+  "timelineZoom": {
+    "label": "Rozmiar osi czasu",
+    "smaller": "Mniejsza",
+    "larger": "Większa",
+    "reset": "Przywróć 100%",
+    "hint": "Także: uszczypnięcie lub Ctrl+przewijanie nad osią czasu. Zapisywane dla tego widoku na tym urządzeniu."
+  },
   "todoist": {
     "title": "Synchronizacja Todoist",
     "beta": "Selektywna synchronizacja · beta",

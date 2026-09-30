@@ -1500,7 +1500,7 @@
     "startsIn": "za {{in}}",
     "endedAgo": "zakończono {{ago}} temu",
     "effort": "Wysiłek",
-    "restore": "Regeneracja",
+    "restore": "Odpoczynek",
     "sleep": "Sen",
     "unblocked": "Wolny czas",
     "routines": "Rutyny",
@@ -2064,7 +2064,7 @@
   "strip": {
     "unblocked": "wolny czas",
     "effort": "Wysiłek",
-    "restore": "Regeneracja",
+    "restore": "Odpoczynek",
     "untagged": "bez tagu",
     "setDayWindow": "Ustaw okno dnia…",
     "dayWindow": "Okno dnia",

@@ -285,7 +285,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld у плані"
+            "value" : "заплановано: %lld"
           }
         },
         "zh-Hans" : {
@@ -521,7 +521,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "+%lld ще"
+            "value" : "ще %lld"
           }
         },
         "zh-Hans" : {
@@ -739,7 +739,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dodaje zadanie do dzisiejszego planu."
+            "value" : "Dodaj zadanie do dzisiejszego planu."
           }
         },
         "pt-BR" : {
@@ -757,7 +757,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Додає завдання до плану на сьогодні."
+            "value" : "Додайте завдання до плану на сьогодні."
           }
         },
         "zh-Hans" : {
@@ -916,7 +916,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zapisuje zadanie głosem."
+            "value" : "Zapisz zadanie głosem."
           }
         },
         "pt-BR" : {
@@ -934,7 +934,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Записує завдання голосом."
+            "value" : "Запишіть завдання голосом."
           }
         },
         "zh-Hans" : {
@@ -1170,7 +1170,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Day Dial"
+            "value" : "Циферблат дня"
           }
         },
         "zh-Hans" : {
@@ -1347,7 +1347,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Термін сьогодні"
+            "value" : "Виконати сьогодні"
           }
         },
         "zh-Hans" : {
@@ -2804,7 +2804,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Szybko zapisuje zadanie w Twojej skrzynce."
+            "value" : "Szybko zapisz zadanie w swojej skrzynce."
           }
         },
         "pt-BR" : {
@@ -2822,7 +2822,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Швидко записує завдання у ваші вхідні."
+            "value" : "Швидко запишіть завдання у ваші вхідні."
           }
         },
         "zh-Hans" : {
@@ -2863,7 +2863,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Regeneracja"
+            "value" : "Odpoczynek"
           }
         },
         "pt-BR" : {
@@ -2881,7 +2881,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Відновлення"
+            "value" : "Відпочинок"
           }
         },
         "zh-Hans" : {
@@ -3412,7 +3412,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цю ціль могли завершити або видалити. Змініть віджет, щоб вибрати іншу."
+            "value" : "Цю ціль, імовірно, завершено або видалено. Змініть віджет, щоб вибрати іншу."
           }
         },
         "zh-Hans" : {
@@ -3471,7 +3471,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цей проєкт могли архівувати або видалити. Змініть віджет, щоб вибрати інший."
+            "value" : "Цей проєкт, імовірно, архівовано або видалено. Змініть віджет, щоб вибрати інший."
           }
         },
         "zh-Hans" : {

@@ -25,11 +25,14 @@ const localDateStr = (d) =>
  * kind of item, in the user's language. The only text a cell ever has.
  */
 export function monthCellLabel(dateStr, items, isToday, t, language) {
-  const counts = { event: 0, task: 0, routine: 0, deadline: 0 };
-  for (const item of items || []) counts[dayCellItemKind(item)] += 1;
+  // A recorded Do (a past day with JOBO on) is counted as what it is, not
+  // as another task: one task done in three sessions is three sessions.
+  const counts = { event: 0, task: 0, routine: 0, deadline: 0, recorded: 0 };
+  for (const item of items || []) counts[item?.joboDo ? 'recorded' : dayCellItemKind(item)] += 1;
   const parts = [];
   if (counts.event) parts.push(t('month.events', { count: counts.event }));
   if (counts.task) parts.push(t('month.tasks', { count: counts.task }));
+  if (counts.recorded) parts.push(t('month.recorded', { count: counts.recorded }));
   if (counts.routine) parts.push(t('month.routines', { count: counts.routine }));
   if (counts.deadline) parts.push(t('month.deadlines', { count: counts.deadline }));
   const date = formatLocalizedDate(new Date(`${dateStr}T12:00:00`), { weekday: 'long', month: 'long', day: 'numeric' }, language);

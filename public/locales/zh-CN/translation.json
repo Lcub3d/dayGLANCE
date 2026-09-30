@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} 个日程",
     "tasks_one": "{{count}} 个任务",
     "tasks_other": "{{count}} 个任务",
+    "recorded_one": "{{count}} 段已记录的时间",
+    "recorded_other": "{{count}} 段已记录的时间",
     "routines_one": "{{count}} 个例行事项",
     "routines_other": "{{count}} 个例行事项",
     "deadlines_one": "{{count}} 个截止日期",

@@ -1431,6 +1431,8 @@
     "events_other": "{{count}} eventos",
     "tasks_one": "{{count}} tarefa",
     "tasks_other": "{{count}} tarefas",
+    "recorded_one": "{{count}} sessão registada",
+    "recorded_other": "{{count}} sessões registadas",
     "routines_one": "{{count}} rotina",
     "routines_other": "{{count}} rotinas",
     "deadlines_one": "{{count}} prazo",

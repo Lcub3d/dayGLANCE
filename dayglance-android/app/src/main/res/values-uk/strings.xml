@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Сьогоднішній план з першого погляду</string>
+    <string name="widget_description">Огляд плану на сьогодні</string>
     <string name="widget_upnext_description">Докладний вигляд вашого наступного запланованого завдання</string>
     <string name="widget_goal_description">Картка прогресу закріпленої цілі та її проєктів</string>
     <string name="widget_project_description">Картка прогресу закріпленого проєкту та його завдань</string>
-    <string name="widget_month_description">Шість тижнів вашого розкладу з першого погляду</string>
+    <string name="widget_month_description">Огляд вашого розкладу на шість тижнів</string>
     <string name="shortcut_voice_short">Голосове введення</string>
     <string name="shortcut_voice_long">Додавайте завдання голосом</string>
     <string name="shortcut_add_task_short">Заплановане завдання</string>
@@ -185,7 +185,7 @@
     </plurals>
     <string name="widget_month_all_day_or_due">Весь день або з терміном</string>
     <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
-    <string name="widget_month_agenda_description">Шість тижнів з першого погляду, з планом будь-якого дня</string>
+    <string name="widget_month_agenda_description">Огляд шести тижнів із планом будь-якого дня</string>
     <string name="badge_due">ТЕРМІН</string>
     <string name="widget_nothing_scheduled">Нічого не заплановано</string>
     <plurals name="widget_more_items">

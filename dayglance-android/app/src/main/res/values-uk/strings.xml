@@ -20,7 +20,7 @@
     <string name="section_scheduled">ЗАПЛАНОВАНО</string>
     <string name="section_routines">РУТИНИ</string>
     <string name="badge_overdue">ПРОТЕРМІНОВАНО</string>
-    <string name="badge_due_today">ТЕРМІН СЬОГОДНІ</string>
+    <string name="badge_due_today">ВИКОНАТИ СЬОГОДНІ</string>
     <string name="badge_in_progress">ВИКОНУЄТЬСЯ</string>
     <string name="widget_all_caught_up">Усе зроблено ✓</string>
     <string name="widget_free">вільно %1$s</string>
@@ -50,25 +50,25 @@
     <string name="widget_duration_hours_minutes">%1$d год %2$d хв</string>
     <string name="widget_duration_minutes">%1$d хв</string>
     <string name="widget_due_overdue">прострочено на %1$d дн.</string>
-    <string name="widget_due_today">Термін сьогодні</string>
+    <string name="widget_due_today">Виконати сьогодні</string>
     <string name="widget_due_left">залишилось %1$d дн.</string>
     <string name="widget_untitled">Без назви</string>
     <string name="widget_done_check">✓ Виконано</string>
     <plurals name="widget_more_projects">
-        <item quantity="one">+%d ще проєкт</item>
-        <item quantity="few">+%d ще проєкти</item>
-        <item quantity="many">+%d ще проєктів</item>
-        <item quantity="other">+%d ще проєкту</item>
+        <item quantity="one">ще %d проєкт</item>
+        <item quantity="few">ще %d проєкти</item>
+        <item quantity="many">ще %d проєктів</item>
+        <item quantity="other">ще %d проєкту</item>
     </plurals>
     <plurals name="widget_more_tasks">
-        <item quantity="one">+%d ще завдання</item>
-        <item quantity="few">+%d ще завдання</item>
-        <item quantity="many">+%d ще завдань</item>
-        <item quantity="other">+%d ще завдання</item>
+        <item quantity="one">ще %d завдання</item>
+        <item quantity="few">ще %d завдання</item>
+        <item quantity="many">ще %d завдань</item>
+        <item quantity="other">ще %d завдання</item>
     </plurals>
     <string name="widget_reconfigure">Утримуйте віджет, щоб налаштувати його заново</string>
-    <string name="widget_goal_gone">Її могли видалити або завершити</string>
-    <string name="widget_project_gone">Проєкт могли видалити або архівувати</string>
+    <string name="widget_goal_gone">Її, можливо, видалено або завершено</string>
+    <string name="widget_project_gone">Проєкт, можливо, видалено або архівовано</string>
     <string name="config_select_goal">Виберіть ціль</string>
     <string name="config_select_project">Виберіть проєкт</string>
     <string name="config_choose_goal">Виберіть, яку ціль показуватиме віджет.</string>
@@ -178,10 +178,10 @@
     <string name="widget_planned_in_advance">Заплановано наперед</string>
     <!-- Month grid widget (MonthGridWidget.kt): a cell's content description -->
     <plurals name="widget_month_scheduled">
-        <item quantity="one">%1$d у плані</item>
-        <item quantity="few">%1$d у плані</item>
-        <item quantity="many">%1$d у плані</item>
-        <item quantity="other">%1$d у плані</item>
+        <item quantity="one">заплановано: %1$d</item>
+        <item quantity="few">заплановано: %1$d</item>
+        <item quantity="many">заплановано: %1$d</item>
+        <item quantity="other">заплановано: %1$d</item>
     </plurals>
     <string name="widget_month_all_day_or_due">Весь день або з терміном</string>
     <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
@@ -189,16 +189,16 @@
     <string name="badge_due">ТЕРМІН</string>
     <string name="widget_nothing_scheduled">Нічого не заплановано</string>
     <plurals name="widget_more_items">
-        <item quantity="one">+%d ще</item>
-        <item quantity="few">+%d ще</item>
-        <item quantity="many">+%d ще</item>
-        <item quantity="other">+%d ще</item>
+        <item quantity="one">ще %d</item>
+        <item quantity="few">ще %d</item>
+        <item quantity="many">ще %d</item>
+        <item quantity="other">ще %d</item>
     </plurals>
     <string name="widget_previous_day">Попередній день</string>
     <string name="widget_next_day">Наступний день</string>
 
     <!-- Day Dial widget (widget/dial/). The hub's phrases match the iOS widget's catalog. -->
-    <string name="widget_day_dial_label">Day Dial</string>
+    <string name="widget_day_dial_label">Циферблат дня</string>
     <string name="widget_day_dial_description">Ваш день у вигляді циферблата</string>
     <string name="day_dial_until">до %1$s</string>
     <string name="day_dial_left">залишилось %1$s</string>
@@ -216,7 +216,7 @@
     <string name="day_dial_open_to_set_up">Відкрийте dayGLANCE, щоб налаштувати</string>
     <string name="day_dial_all_day">Весь день</string>
     <string name="day_dial_effort">Зусилля</string>
-    <string name="day_dial_restore">Відновлення</string>
+    <string name="day_dial_restore">Відпочинок</string>
     <string name="day_dial_legend_sleep">Сон</string>
     <string name="day_dial_unblocked">Без блокувань</string>
     <string name="day_dial_routines">Рутини</string>

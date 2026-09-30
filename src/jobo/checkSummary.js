@@ -1,20 +1,21 @@
-// Check-only presentation rollup. It reads the committed day model and the
-// existing core/statistics APIs; it owns no records, grouping rule or writer.
-import { comparePlanAnchors } from '../../jobo/core.js';
-import { summarizeJoboDayModel } from '../../jobo/dayStats.js';
-import { notBucketed } from '../../utils/bucketList.js';
+// Dormant seed for the separately proposed Statistics view (#1882 review).
+// The Check journal does not import this rollup. No records or writes owned here.
+import { comparePlanAnchors } from './core.js';
+import { summarizeJoboDayModel } from './dayStats.js';
+import { notBucketed } from '../utils/bucketList.js';
 
-export const CHECK_PRIORITIES = ['p1', 'p2', 'p3', 'p4', 'unknown'];
+export const CHECK_PRIORITIES = ['high', 'medium', 'low', 'none', 'unknown'];
 const progressCounts = () => ({ completed: 0, mostly: 0, partial: 0, started: 0 });
 const unique = (items, key) => [...new Map(items.map(item => [key(item), item])).values()];
 const sum = (items, read) => items.reduce((total, item) => total + read(item), 0);
 
-// Native priority is 3 (highest) through 0. A missing field may have been
-// stripped on scheduling; do NOT reconstruct it from a tag or call it P4.
-// Nor is today's priority a historical snapshot of a Do's priority.
+// Native priority: 0 = none, then low, medium, high. Missing task metadata
+// stays unknown; neither a title nor a tag proves the current priority.
 export function checkPriority(task) {
-  return Number.isInteger(task?.priority) && task.priority >= 0 && task.priority <= 3
-    ? `p${4 - task.priority}` : 'unknown';
+  if (!task) return 'unknown';
+  const value = task.priority;
+  return Number.isInteger(value) && value >= 0 && value <= 3
+    ? ['none', 'low', 'medium', 'high'][value] : 'unknown';
 }
 
 export function buildCheckSummary(model, { date, inboxTasks = [] } = {}) {

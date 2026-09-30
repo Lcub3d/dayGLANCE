@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createDoRecord } from '../../jobo/core.js';
-import { buildJoboDayModel } from '../../jobo/viewModel.js';
-import { summarizeJoboDayModel } from '../../jobo/dayStats.js';
+import { createDoRecord } from './core.js';
+import { buildJoboDayModel } from './viewModel.js';
+import { summarizeJoboDayModel } from './dayStats.js';
 import { buildCheckSummary, checkPriority } from './checkSummary.js';
 
 const date = '2026-09-28';
@@ -19,9 +19,9 @@ const modelFor = ({ records = [record()], tasks = [task], ...extra } = {}) => bu
 const reportFor = (input = {}, extra = {}) => buildCheckSummary(modelFor(input), { date, ...extra });
 const untimed = (patch = {}) => record({ id: 'untimed', timing: 'untimed', startTime: null, endDate: null, endTime: null, ...patch });
 
-describe('Check text projection of the existing day model', () => {
+describe('Statistics seed from the existing day model', () => {
   it('returns no report for an absent model', () => expect(buildCheckSummary(null)).toBeNull());
-  it.each([[3, 'p1'], [2, 'p2'], [1, 'p3'], [0, 'p4'], [undefined, 'unknown'], [null, 'unknown'], ['3', 'unknown'], [-1, 'unknown'], [4, 'unknown']])(
+  it.each([[3, 'high'], [2, 'medium'], [1, 'low'], [0, 'none'], [undefined, 'unknown'], [null, 'unknown'], ['3', 'unknown'], [-1, 'unknown'], [4, 'unknown']])(
     'maps native priority %s to %s without inventing missing priority', (priority, expected) => {
       expect(checkPriority({ priority })).toBe(expected);
       expect(checkPriority(null)).toBe('unknown');
@@ -37,18 +37,18 @@ describe('Check text projection of the existing day model', () => {
     expect(r.overlapMinutes).toBe(10);
     expect(r.single).toBe(0);
     expect(r.split).toBe(1);
-    expect(r.priorities.p1).toMatchObject({ total: 1, completed: 1, recordedMinutes: 60, comparable: 1 });
+    expect(r.priorities.high).toMatchObject({ total: 1, completed: 1, recordedMinutes: 60, comparable: 1 });
   });
   it('keeps task completion separate from the progress of each attempt', () => {
     const r = reportFor({ records: [record(), record({ id: 'r2', progress: 'mostly' })] });
     expect(r.stats.native.completed).toBe(1);
     expect(r.progress).toEqual({ completed: 0, mostly: 1, partial: 1, started: 0 });
-    expect(r.priorities.p1.progress).toEqual(r.progress);
+    expect(r.priorities.high.progress).toEqual(r.progress);
   });
   it('clips daily time at midnight but keeps full-group metrics for comparisons', () => {
     const r = reportFor({ records: [record({ date: '2026-09-27', startTime: '23:30', endTime: '00:30' })] });
     expect(r.stats.recordedMinutes).toBe(30);
-    expect(r.priorities.p1.recordedMinutes).toBe(30);
+    expect(r.priorities.high.recordedMinutes).toBe(30);
     expect(r.rawMinutes).toBe(30);
     expect(r.maxSpanMinutes).toBe(60);
     expect(r.stats.comparison.comparableCount).toBe(1);
@@ -66,17 +66,17 @@ describe('Check text projection of the existing day model', () => {
   it('does not add priority coverages across overlapping priorities', () => {
     const other = { ...task, id: 't2', priority: 2 };
     const r = reportFor({ tasks: [task, other], records: [record(), record({ id: 'r2', taskId: 't2', startTime: '09:40', endTime: '10:10' })] });
-    expect(r.priorities.p1.recordedMinutes).toBe(40);
-    expect(r.priorities.p2.recordedMinutes).toBe(30);
+    expect(r.priorities.high.recordedMinutes).toBe(40);
+    expect(r.priorities.medium.recordedMinutes).toBe(30);
     expect(r.stats.recordedMinutes).toBe(60);
-    expect(r.priorities.p1.recordedMinutes + r.priorities.p2.recordedMinutes).toBe(70);
+    expect(r.priorities.high.recordedMinutes + r.priorities.medium.recordedMinutes).toBe(70);
   });
   it('leaves unlinked and priority-less work unclassified, including a P1-looking title', () => {
     const { priority: ignored, ...noPriority } = task;
     void ignored;
     const r = reportFor({ tasks: [noPriority], records: [record({ title: '#p1 urgent' }), record({ id: 'manual', taskId: null, source: 'manual', planSnapshot: null })] });
-    expect(r.priorities.p1.total).toBe(0);
-    expect(r.priorities.p4.total).toBe(0);
+    expect(r.priorities.high.total).toBe(0);
+    expect(r.priorities.none.total).toBe(0);
     expect(r.priorities.unknown.total).toBe(1);
     expect(r.priorities.unknown.progress.partial).toBe(2);
   });
@@ -84,8 +84,8 @@ describe('Check text projection of the existing day model', () => {
     const row = record();
     const snapshot = JSON.stringify(row);
     const r = reportFor({ tasks: [{ ...task, title: 'Renamed', priority: 2 }], records: [row] });
-    expect(r.priorities.p2.recordedMinutes).toBe(40);
-    expect(r.priorities.p1.recordedMinutes).toBeNull();
+    expect(r.priorities.medium.recordedMinutes).toBe(40);
+    expect(r.priorities.high.recordedMinutes).toBeNull();
     expect(r.stats.native.total).toBe(1);
     expect(JSON.stringify(row)).toBe(snapshot);
   });
@@ -98,13 +98,13 @@ describe('Check text projection of the existing day model', () => {
   it('counts start/finish/budget changes independently', () => {
     const r = reportFor({ tasks: [{ ...task, originalPlan: { ...plan, startTime: '08:00', duration: 90 } }] });
     expect(r.changes).toMatchObject({ compared: 1, start: 1, finish: 1, duration: 1, unchanged: 0, unknown: 0 });
-    expect(r.priorities.p1.changed).toBe(1);
+    expect(r.priorities.high.changed).toBe(1);
   });
   it('does not double-count captured plans after a rename or a reschedule', () => {
     const r = reportFor({ tasks: [{ ...task, title: 'New name', startTime: '11:00' }] });
     expect(r.stats.comparison.groupCount).toBe(1);
     expect(r.changes.compared).toBe(1);
-    expect(r.priorities.p1.comparable).toBe(1);
+    expect(r.priorities.high.comparable).toBe(1);
   });
   it('gets independent deviations, ratios and Allen relations from core', () => {
     const r = reportFor({ records: [record({ endTime: '10:30' })] });
@@ -116,7 +116,7 @@ describe('Check text projection of the existing day model', () => {
     expect(r.insideMinutes).toBe(50);
     expect(r.outsideMinutes).toBe(30);
     expect(r.relations).toEqual({ overlappedBy: 1 });
-    expect(r.priorities.p1).toMatchObject({ lateStart: 1, lateFinish: 1, longer: 1 });
+    expect(r.priorities.high).toMatchObject({ lateStart: 1, lateFinish: 1, longer: 1 });
   });
   it('keeps timing equality distinct from the broad withinPlan summary', () => {
     const r = reportFor({ records: [record({ startTime: '08:50', endTime: '09:50' })] });
@@ -145,7 +145,7 @@ describe('Check text projection of the existing day model', () => {
     expect(r.maxSpanMinutes).toBe(40);
     expect(r.insideMinutes).toBeNull();
     expect(r.rawMinutes).toBe(40);
-    expect(r.priorities.p1.comparable).toBe(0);
+    expect(r.priorities.high.comparable).toBe(0);
   });
   it('keeps invalid evidence distinct from a clean empty ledger', () => {
     const empty = reportFor({ records: [] });
@@ -215,7 +215,7 @@ describe('Check text projection of the existing day model', () => {
     model.plans.find(item => item.id.startsWith('captured::')).comparison.startTiming = 'onTime';
     const r = buildCheckSummary(model, { date });
     expect(r.stats.comparison.start.onTime).toBe(1);
-    expect(r.priorities.p1.lateStart).toBe(0);
+    expect(r.priorities.high.lateStart).toBe(0);
   });
   it('does not mutate input models, tasks, records or arrays', () => {
     const freeze = value => {

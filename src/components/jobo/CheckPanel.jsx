@@ -1,89 +1,87 @@
 import React, { useEffect, useId, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { FileText, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { formatDuration } from '../../utils/formatDuration.js';
-import { CHECK_PRIORITIES, buildCheckSummary } from './checkSummary.js';
+import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
+import { stripWikilinks } from '../../utils/taskUtils.js';
+import { taskColorToHex } from '../../utils/colorUtils.js';
+import { summaryRows, timingRows } from './ExecutionAxes.jsx';
+import { buildCheckJournal, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
 
-const TONES = { p1: 'text-red-500', p2: 'text-orange-500', p3: 'text-blue-500', p4: '', unknown: '' };
+const clock = value => value;
+const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 
-// Plain document, not a task list, dashboard, editor or saved reflection.
-export function CheckSummary({ model, date, inboxTasks, loaded, error, textSecondary = '' }) {
-  const { t, i18n } = useTranslation();
-  const report = useMemo(() => loaded && model ? buildCheckSummary(model, { date, inboxTasks }) : null,
-    [loaded, model, date, inboxTasks]);
+// The journal reads existing executions. Its only action navigates to the
+// task's native notes, outside this panel; it never edits the task or the Do.
+export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTime = clock,
+  textSecondary = '', borderClass = '' }) {
+  const { t } = useTranslation();
+  const entries = useMemo(() => loaded && model ? buildCheckJournal(model, date) : null, [loaded, model, date]);
   if (error) return <p role="alert">{t('jobo.check.unavailable')}</p>;
-  if (!report) return <p role="status">{t('common.loading')}</p>;
-  const r = report;
-  const c = r.stats.comparison;
-  const numbers = new Intl.NumberFormat(i18n.resolvedLanguage || i18n.language, { maximumFractionDigits: 2 });
-  const count = value => value == null ? '—' : numbers.format(value);
-  const time = value => value == null ? '—' : formatDuration(value, t);
-  const fact = value => r.clean ? count(value) : '—';
-  const sentence = (key, values) => t(`jobo.check.${key}`, values);
-  const priorityLine = (render, include = () => true) => (
-    <p className={`text-xs leading-relaxed ${textSecondary}`}>
-      {CHECK_PRIORITIES.filter(key => include(r.priorities[key])).map((key, index) => (
-        <React.Fragment key={key}>
-          {index > 0 && ' · '}
-          <span data-check-priority={key}>
-            <span className={`font-semibold ${TONES[key]}`}>{key === 'unknown' ? sentence('unclassified') : key.toUpperCase()}</span>
-            {' '}{render(r.priorities[key])}
-          </span>
-        </React.Fragment>
-      ))}
-    </p>
-  );
-  const section = (key, children) => <section data-check-section={key} className="space-y-1">
-    <h3 className="font-semibold text-sm">{sentence(`sections.${key}`)}</h3>{children}
-  </section>;
-  const progressText = row => sentence('progress', Object.fromEntries(Object.entries(row).map(([key, value]) => [key, fact(value)])));
-  return <article data-jobo-check-text className="space-y-5 text-sm leading-relaxed break-words">
-    <p className={`text-xs ${textSecondary}`}>{sentence('scope')}</p>
-    {!r.doCount && r.clean && <p role="status" className={textSecondary}>{sentence('noRecords')}</p>}
-    {!r.clean && <p role="status" className="text-amber-600 dark:text-amber-400">{sentence('invalid', { count: r.stats.invalidCount })}</p>}
-    {section('completion', <>
-      <p>{sentence('completion', { done: count(r.stats.native.completed), total: count(r.stats.native.total) })}</p>
-      {priorityLine(row => `${count(row.completed)} / ${count(row.total)}`)}
-      <p>{sentence('queues', { inbox: count(r.inboxCompleted), project: count(r.projectCompleted) })}</p>
-      <p>{sentence('noDo', { value: fact(r.noDo) })}</p>
-    </>)}
-    {section('time', <>
-      <p>{sentence('time', { planned: time(r.stats.native.plannedMinutes), recorded: time(r.stats.recordedMinutes) })}</p>
-      {priorityLine(row => time(row.recordedMinutes))}
-    </>)}
-    {section('planChanges', <>
-      <p>{sentence('changes', Object.fromEntries(['start', 'finish', 'duration', 'unchanged', 'unknown'].map(key => [key, fact(r.changes[key])])))}</p>
-      {r.clean && priorityLine(row => sentence('changed', { count: row.changed }), row => row.changed > 0)}
-    </>)}
-    {section('deviations', <>
-      <p>{sentence('comparable', { value: count(c.comparableCount), total: count(c.groupCount) })}</p>
-      <p>{sentence('start', { early: fact(c.start.early), on: fact(c.start.onTime), late: fact(c.start.late) })}</p>
-      <p>{sentence('finish', { early: fact(c.finish.early), on: fact(c.finish.onTime), late: fact(c.finish.late) })}</p>
-      <p>{sentence('duration', { shorter: fact(c.duration.shorter), on: fact(c.duration.onEstimate), longer: fact(c.duration.longer) })}</p>
-      <p>{sentence('maximum', { start: time(r.maxStart), finish: time(r.maxFinish), duration: time(r.maxLonger) })}</p>
-      {r.clean && priorityLine(row => sentence('priorityDeviation', { start: row.lateStart, finish: row.lateFinish, longer: row.longer, total: row.comparable }), row => row.comparable > 0)}
-      <p>{sentence('ratio', { min: count(r.minRatio), max: count(r.maxRatio), within: fact(r.withinPlan) })}</p>
-    </>)}
-    {section('structure', <>
-      <p>{sentence('structure', { total: fact(r.doCount), single: fact(r.single), split: fact(r.split) })}</p>
-      <p>{sentence('coverage', { raw: time(r.rawMinutes), recorded: time(r.stats.recordedMinutes), overlap: time(r.overlapMinutes) })}</p>
-      <p>{sentence('groups', { gap: time(r.gapMinutes), span: time(r.maxSpanMinutes) })}</p>
-      <p>{sentence('windows', { inside: time(r.insideMinutes), outside: time(r.outsideMinutes) })}</p>
-      {r.clean && Object.keys(r.relations).length > 0 && <p>{sentence('relations')}{' '}{Object.entries(r.relations).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${sentence(`allen.${key}`)} ${count(value)}`).join(' · ')}</p>}
-    </>)}
-    {section('evidence', <>
-      <p>{progressText(r.progress)}</p>
-      {r.clean && priorityLine(row => Object.entries(row.progress).filter(([, value]) => value > 0)
-        .map(([key, value]) => sentence(`progressItem.${key}`, { value: count(value) })).join(' / '), row => Object.values(row.progress).some(Boolean))}
-      <p>{sentence('quality', { untimed: count(r.stats.untimedCount), inferred: count(r.stats.inferredCount), invalid: count(r.stats.invalidCount), excluded: count(c.excludedCount) })}</p>
-      <p>{sentence('contexts', { planned: fact(r.contexts.planned), noPlan: fact(r.contexts.noPlan), unknown: fact(r.contexts.unknown) })}</p>
-    </>)}
-    <p className={`text-xs ${textSecondary}`}>{sentence('footnote')}</p>
+  if (!entries) return <p role="status">{t('common.loading')}</p>;
+  const invalid = model.invalidRecordCount > 0;
+  return <article data-jobo-check-journal className="space-y-4 text-sm leading-relaxed break-words">
+    {invalid && <p role="status" className="text-amber-600 dark:text-amber-400">{t('jobo.check.invalid')}</p>}
+    {!entries.length && <p role="status" className={textSecondary}>{t('jobo.check.noRecords')}</p>}
+    <ol className={`divide-y ${borderClass}`}>
+      {entries.map(entry => {
+        const task = entry.sourceTask;
+        const color = taskColorToHex(task?.color || entry.task?.color || 'bg-purple-500', task?.nativeCalendarColor);
+        const planned = journalPlanRange(entry.plan, date, formatTime);
+        // Reuse the card's vocabulary, including its incomplete/estimated rules.
+        // Invalid ledger input cannot justify a complete timing comparison.
+        const summaries = invalid ? [] : summaryRows(entry.labels, entry.comparison, t);
+        const timings = invalid ? [] : timingRows(entry.comparison, t).filter(row => row.state);
+        return <li key={entry.id} data-check-entry={entry.id} className="py-3 first:pt-0 last:pb-0 space-y-2 min-w-0">
+          <div className="flex items-start justify-between gap-3 min-w-0">
+            <h3 className="font-semibold min-w-0 break-words" style={{ color }}>{renderTitleWithoutTags(entry.title)}</h3>
+            {task?.id != null && entry.noteKey && onOpenNotes && <button type="button" data-check-notes
+              onClick={() => onOpenNotes(task)} aria-label={`${t('task.notes')}: ${stripWikilinks(entry.title)}`}
+              className="inline-flex items-center gap-1 shrink-0 text-xs text-blue-600 dark:text-blue-400 underline underline-offset-2 rounded focus-visible:ring-2 focus-visible:ring-blue-500">
+              <FileText size={13} aria-hidden="true" />{t('task.notes')}
+            </button>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-x-4 gap-y-2">
+            <div className="min-w-0">
+              <p className={`text-xs ${textSecondary}`}>{t('jobo.view.plan')}</p>
+              <p data-check-plan>{planned || t('jobo.view.noTimedPlan')}</p>
+            </div>
+            <div className="min-w-0">
+              <p className={`text-xs ${textSecondary}`}>{t('jobo.check.actual')}</p>
+              <ol className="space-y-1">
+                {entry.sessions.map((record, index) => {
+                  const moment = journalMoment(record);
+                  const timed = record.timing === 'timed';
+                  return <li key={record.id} data-check-session={record.id} className="min-w-0">
+                    {entry.sessions.length > 1 && <span className={`text-xs ${textSecondary}`}>{t('jobo.check.session', { number: index + 1 })}{' · '}</span>}
+                    <span data-check-actual>{timed
+                      ? journalRange(record.date, record.startTime, record.endDate, record.endTime, date, formatTime)
+                      : t('jobo.check.untimed')}</span>
+                    <span data-check-progress={record.progress} className="text-xs">{' · '}{progressText(record.progress, t)}</span>
+                    {!timed && moment && <p className={`text-xs ${textSecondary}`} data-check-completion>
+                      {t('jobo.view.completedAt', { time: `${moment.date !== date ? `${moment.date} ` : ''}${formatTime(moment.time)}` })}
+                    </p>}
+                    {record.timingBasis === 'planDuration' && <p className={`text-xs ${textSecondary}`}>{t('jobo.view.inferredPlanDuration')}</p>}
+                  </li>;
+                })}
+              </ol>
+            </div>
+          </div>
+          {entry.sessions.length > 1 && entry.latestAttempt && <p className="text-xs" data-check-latest>
+            {t('jobo.view.latestShort')}: {progressText(entry.latestAttempt.progress, t)}
+          </p>}
+          {summaries.length > 0 && <p className="text-xs flex flex-wrap gap-x-2 gap-y-1" data-check-summary>
+            {summaries.map(row => <span key={row.key} title={row.title}>{row.text}</span>)}
+          </p>}
+          {timings.length > 0 && <p className={`text-xs ${textSecondary}`} data-check-timing>{timings.map(row => row.text).join(' · ')}</p>}
+          {entry.hasOtherDays && <p className={`text-xs ${textSecondary}`}>{t('jobo.check.otherDays')}</p>}
+        </li>;
+      })}
+    </ol>
   </article>;
 }
 
-export default function CheckPanel({ model, date, inboxTasks, loaded, error, onClose,
+export default function CheckPanel({ model, date, loaded, error, onClose, onOpenNotes, formatTime,
   cardBg = 'bg-white', textPrimary = '', textSecondary = '', borderClass = '', darkMode = false }) {
   const { t } = useTranslation();
   const titleId = useId();
@@ -123,7 +121,7 @@ export default function CheckPanel({ model, date, inboxTasks, loaded, error, onC
             className={`p-2 rounded-lg ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}><X size={18} /></button>
         </header>
         <div tabIndex={0} role="region" aria-label={t('jobo.check.title')} className="overflow-y-auto px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
-          <CheckSummary {...{ model, date, inboxTasks, loaded, error, textSecondary }} />
+          <CheckJournal {...{ model, date, loaded, error, textSecondary, borderClass, onOpenNotes, formatTime }} />
         </div>
       </div>
     </div>, document.body,

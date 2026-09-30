@@ -163,6 +163,20 @@ export default function JoboView() {
     ),
     [model.timedRecords, model.untimedRecords, hourHeight],
   );
+  const openCheckNotes = (task) => {
+    setCheckOpen(false);
+    if (sidebar && lookup.some(candidate => String(candidate.id) === String(task.id))) {
+      setSelectedTaskId(task.id);
+      return;
+    }
+    // Leave the read-only journal before opening native task notes. Spotlight's
+    // existing navigation handles off-day plans, Inbox and archived projects.
+    const isInbox = (ctx.unscheduledTasks || []).some(candidate => String(candidate.id) === String(task.id));
+    ctx.handleSpotlightSelect({ task, source: task.archived ? 'archived' : isInbox ? 'inbox' : 'scheduled' });
+    ctx.setExpandedNotesTaskId(task.id);
+  };
+  const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
+    && typeof ctx.setExpandedNotesTaskId === 'function';
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
   // The selected task as it is now, so the sidebar follows edits and sync.
   const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
@@ -516,7 +530,7 @@ export default function JoboView() {
       )}
       {checkOpen && (
         <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
-          inboxTasks={(ctx.unscheduledTasks || []).filter(task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task))}
+          onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}

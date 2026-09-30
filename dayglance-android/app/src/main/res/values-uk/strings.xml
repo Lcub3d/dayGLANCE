@@ -20,12 +20,12 @@
     <string name="section_scheduled">ЗАПЛАНОВАНО</string>
     <string name="section_routines">РУТИНИ</string>
     <string name="badge_overdue">ПРОТЕРМІНОВАНО</string>
-    <string name="badge_due_today">ВИКОНАТИ СЬОГОДНІ</string>
-    <string name="badge_in_progress">ВИКОНУЄТЬСЯ</string>
+    <string name="badge_due_today">ДЕДЛАЙН СЬОГОДНІ</string>
+    <string name="badge_in_progress">У ПРОЦЕСІ</string>
     <string name="widget_all_caught_up">Усе зроблено ✓</string>
     <string name="widget_free">вільно %1$s</string>
     <string name="widget_glanceahead_header">GLANCEahead — %1$s</string>
-    <string name="widget_day_starts_at">День починається о %1$s</string>
+    <string name="widget_day_starts_at">День починається: %1$s</string>
     <plurals name="widget_count_tasks">
         <item quantity="one">%d завдання</item>
         <item quantity="few">%d завдання</item>
@@ -49,8 +49,8 @@
     <string name="widget_duration_hours">%1$d год</string>
     <string name="widget_duration_hours_minutes">%1$d год %2$d хв</string>
     <string name="widget_duration_minutes">%1$d хв</string>
-    <string name="widget_due_overdue">прострочено на %1$d дн.</string>
-    <string name="widget_due_today">Виконати сьогодні</string>
+    <string name="widget_due_overdue">протерміновано на %1$d дн.</string>
+    <string name="widget_due_today">Дедлайн сьогодні</string>
     <string name="widget_due_left">залишилось %1$d дн.</string>
     <string name="widget_untitled">Без назви</string>
     <string name="widget_done_check">✓ Виконано</string>
@@ -80,27 +80,27 @@
         <item quantity="many">%d проєктів</item>
         <item quantity="other">%d проєкту</item>
     </plurals>
-    <string name="config_standalone">Без цілі</string>
+    <string name="config_standalone">Окремі</string>
     <string name="config_no_goals">Активних цілей не знайдено.\n\nВідкрийте dayGLANCE, щоб синхронізувати дані, а потім спробуйте додати віджет знову.</string>
     <string name="config_no_projects">Активних проєктів не знайдено.\n\nВідкрийте dayGLANCE, щоб синхронізувати дані, а потім спробуйте додати віджет знову.</string>
-    <string name="upnext_in_h">за %1$d год</string>
-    <string name="upnext_in_h_m">за %1$d год %2$d хв</string>
-    <string name="upnext_in_m">за %1$d хв</string>
-    <string name="upnext_in_progress">виконується</string>
+    <string name="upnext_in_h">через %1$d год</string>
+    <string name="upnext_in_h_m">через %1$d год %2$d хв</string>
+    <string name="upnext_in_m">через %1$d хв</string>
+    <string name="upnext_in_progress">у процесі</string>
     <string name="widget_today">Сьогодні</string>
     <string name="notif_snooze">Відкласти на 15 хв</string>
     <string name="notif_complete">Позначити виконаним</string>
     <string name="notif_up_next">Далі</string>
-    <string name="notif_starts_in_h">Початок за %1$d год</string>
-    <string name="notif_starts_in_h_m">Початок за %1$d год %2$d хв</string>
-    <string name="notif_starts_in_m">Початок за %1$d хв</string>
+    <string name="notif_starts_in_h">Початок через %1$d год</string>
+    <string name="notif_starts_in_h_m">Початок через %1$d год %2$d хв</string>
+    <string name="notif_starts_in_m">Початок через %1$d хв</string>
     <string name="notif_starting_now">Починається зараз</string>
-    <string name="notif_in_progress_ends">Виконується · завершення о %1$s</string>
+    <string name="notif_in_progress_ends">У процесі · до %1$s</string>
     <string name="focus_phase_short_break">Коротка перерва</string>
     <string name="focus_phase_long_break">Довга перерва</string>
     <string name="focus_phase_work">Робота</string>
     <string name="focus_status_paused">Призупинено</string>
-    <string name="focus_status_in_progress">Виконується</string>
+    <string name="focus_status_in_progress">У процесі</string>
     <string name="focus_status_format">%1$s · %2$s · %3$d/4</string>
     <string name="focus_action_resume">Продовжити</string>
     <string name="focus_action_pause">Призупинити</string>
@@ -183,10 +183,10 @@
         <item quantity="many">заплановано: %1$d</item>
         <item quantity="other">заплановано: %1$d</item>
     </plurals>
-    <string name="widget_month_all_day_or_due">Весь день або з терміном</string>
+    <string name="widget_month_all_day_or_due">Весь день або з дедлайном</string>
     <!-- Month + agenda widget (MonthAgendaWidget.kt) -->
     <string name="widget_month_agenda_description">Огляд шести тижнів із планом будь-якого дня</string>
-    <string name="badge_due">ТЕРМІН</string>
+    <string name="badge_due">ДЕДЛАЙН</string>
     <string name="widget_nothing_scheduled">Нічого не заплановано</string>
     <plurals name="widget_more_items">
         <item quantity="one">ще %d</item>
@@ -203,8 +203,8 @@
     <string name="day_dial_until">до %1$s</string>
     <string name="day_dial_left">залишилось %1$s</string>
     <string name="day_dial_open">вільно %1$s</string>
-    <string name="day_dial_until_sleep_at">до сну о %1$s</string>
-    <string name="day_dial_until_at">до %1$s о %2$s</string>
+    <string name="day_dial_until_sleep_at">до сну: %1$s</string>
+    <string name="day_dial_until_at">до: %1$s, %2$s</string>
     <string name="day_dial_nothing_else_today">Більше нічого сьогодні</string>
     <string name="day_dial_then_open">далі вільно %1$s</string>
     <string name="day_dial_then_until_sleep">далі %1$s до сну</string>
@@ -218,6 +218,6 @@
     <string name="day_dial_effort">Зусилля</string>
     <string name="day_dial_restore">Відпочинок</string>
     <string name="day_dial_legend_sleep">Сон</string>
-    <string name="day_dial_unblocked">Без блокувань</string>
+    <string name="day_dial_unblocked">Вільно</string>
     <string name="day_dial_routines">Рутини</string>
 </resources>

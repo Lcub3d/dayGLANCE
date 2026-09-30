@@ -7,13 +7,13 @@
     <string name="widget_month_description">Sześć tygodni Twojego harmonogramu w skrócie</string>
     <string name="shortcut_voice_short">Wprowadzanie głosowe</string>
     <string name="shortcut_voice_long">Dodawaj zadania głosem</string>
-    <string name="shortcut_add_task_short">Zadanie w planie</string>
-    <string name="shortcut_add_task_long">Dodaj zadanie w planie</string>
+    <string name="shortcut_add_task_short">Zaplanowane zadanie</string>
+    <string name="shortcut_add_task_long">Dodaj zaplanowane zadanie</string>
     <string name="shortcut_add_inbox_task_short">Zadanie do skrzynki</string>
     <string name="shortcut_add_inbox_task_long">Dodaj zadanie do skrzynki</string>
     <string name="tile_voice_label">Zadanie głosowe</string>
     <string name="tile_add_inbox_label">Zadanie do skrzynki</string>
-    <string name="tile_add_scheduled_label">Zadanie w planie</string>
+    <string name="tile_add_scheduled_label">Zaplanowane zadanie</string>
     <string name="section_goals">CELE</string>
     <string name="section_overdue">ZALEGŁE</string>
     <string name="section_all_day">CAŁODNIOWE</string>
@@ -80,7 +80,7 @@
         <item quantity="many">%d projektów</item>
         <item quantity="other">%d projektu</item>
     </plurals>
-    <string name="config_standalone">Bez celu</string>
+    <string name="config_standalone">Samodzielne</string>
     <string name="config_no_goals">Nie znaleziono aktywnych celów.\n\nOtwórz dayGLANCE, aby zsynchronizować dane, a następnie spróbuj ponownie dodać widżet.</string>
     <string name="config_no_projects">Nie znaleziono aktywnych projektów.\n\nOtwórz dayGLANCE, aby zsynchronizować dane, a następnie spróbuj ponownie dodać widżet.</string>
     <string name="upnext_in_h">za %1$d godz.</string>
@@ -122,7 +122,7 @@
     <string name="widget_no_project">Nie wybrano projektu</string>
     <string name="upnext_empty_title">Nic więcej w planie</string>
     <string name="upnext_empty_sub">Na dziś wszystko zrobione</string>
-    <string name="glanceahead_empty">Jutro masz wolne</string>
+    <string name="glanceahead_empty">Jutro nic w planie</string>
     <string name="channel_obsidian_sync">Synchronizacja Obsidiana</string>
     <string name="channel_obsidian_sync_desc">Przypomnienia o otwarciu Obsidiana, aby zmiany w sejfie zsynchronizowały się z Twoimi innymi urządzeniami</string>
     <string name="notif_obsidian_sync_title">Zmiany zapisano w Twoim sejfie</string>
@@ -204,7 +204,7 @@
     <string name="day_dial_left">zostało %1$s</string>
     <string name="day_dial_open">%1$s wolne</string>
     <string name="day_dial_until_sleep_at">do snu o %1$s</string>
-    <string name="day_dial_until_at">do %1$s o %2$s</string>
+    <string name="day_dial_until_at">do: %1$s, %2$s</string>
     <string name="day_dial_nothing_else_today">Dziś nic więcej</string>
     <string name="day_dial_then_open">potem %1$s wolne</string>
     <string name="day_dial_then_until_sleep">potem %1$s do snu</string>
@@ -218,6 +218,6 @@
     <string name="day_dial_effort">Wysiłek</string>
     <string name="day_dial_restore">Odpoczynek</string>
     <string name="day_dial_legend_sleep">Sen</string>
-    <string name="day_dial_unblocked">Bez blokad</string>
+    <string name="day_dial_unblocked">Wolny czas</string>
     <string name="day_dial_routines">Rutyny</string>
 </resources>

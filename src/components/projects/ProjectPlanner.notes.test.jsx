@@ -9,13 +9,14 @@ import { FeaturesContext } from '../../context/FeaturesContext.jsx';
 import { SyncContext } from '../../context/SyncContext.jsx';
 import ProjectPlanner from './ProjectPlanner.jsx';
 
-// The PLANNER body is a flex COLUMN with a bounded height, so a section that
-// does not opt out of shrinking is squashed when the content overflows
-// instead of the body scrolling past it. hyperGLANCE clips its own overflow,
-// which drops its automatic minimum size to zero: it collapsed to its two
-// border pixels and every setting inside it became unreachable, worst on the
-// projects with the most tasks (#1753). These assertions pin the opt-out on
-// every section, so the body scrolls and no section is silently flattened.
+// The planner's notes sidebar: opt-in from a Notes button on desktop and
+// landscape tablet, remembered on this device. Closed, nothing changes;
+// open, the planner widens and a pane beside the lists shows the selected
+// task's notes. Clicks and keys are checked in the browser; these pin what
+// renders, and where.
+
+const store = new Map();
+globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
 
 async function i18n() {
   const bundle = await loaders.en();
@@ -44,10 +45,10 @@ const unscheduled = Array.from({ length: 12 }, (_, i) => ({
   completed: false, isAllDay: false, notes: '', subtasks: [], priority: 0, projectId: 'p1',
 }));
 
-const render = async ({ isMobile = false, scheduledHidden = false } = {}) => renderToStaticMarkup(
+const render = async ({ isMobile = false, scheduledHidden = false, isTablet = false, isLandscape = true } = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
     <DayPlannerContext.Provider value={{
-      isMobile, isTablet: false, darkMode: false, use24HourClock: false,
+      isMobile, isTablet, isLandscape, darkMode: false, use24HourClock: false,
       cardBg: 'bg-white', borderClass: 'border-stone-200', textPrimary: 'text-stone-900',
       textSecondary: 'text-stone-500', hoverBg: 'hover:bg-stone-100',
       tasks: [], unscheduledTasks: unscheduled, recurringTasks: [],
@@ -95,46 +96,34 @@ function directChildren(html, openTag) {
   return children;
 }
 
-// min-w-0: the body shares a row with the notes sidebar when it is open.
-const DESKTOP_BODY = '<div class="p-4 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto min-w-0">';
+const DESKTOP_BODY = '<div class="p-4 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">';
 // The mobile body carries its own classes and a style attribute, so match the
 // opening tag rather than one fixed string.
 const bodyTag = (html) => html.match(/<div class="p-4 flex flex-col gap-4[^>]*>/)?.[0] ?? '';
 
-describe('ProjectPlanner layout', () => {
-  it('scrolls its body on desktop rather than squashing the sections inside it', async () => {
+describe('the planner notes sidebar', () => {
+  it('starts closed, with the planner as it was', async () => {
+    store.clear();
     const html = await render();
-    expect(html).toContain('max-h-[85vh]');
-    expect(html).toContain(DESKTOP_BODY);
-    const children = directChildren(html, DESKTOP_BODY);
-    expect(children.length).toBeGreaterThan(2);
-    for (const child of children) expect(child).toContain('flex-shrink-0');
+    expect(html).toContain('data-planner-notes-toggle');
+    expect(html).not.toContain('data-planner-notes=');
+    expect(html).toContain('max-w-3xl');
   });
 
-  it('keeps every section unshrinkable with the SCHEDULED list hidden too', async () => {
-    const html = await render({ scheduledHidden: true });
-    const children = directChildren(html, DESKTOP_BODY);
-    expect(children.some(c => c.includes('hover:underline'))).toBe(true); // the Show Scheduled affordance
-    for (const child of children) expect(child).toContain('flex-shrink-0');
+  // MUTATION: drop the wide check and a phone gets a sidebar it has no room for.
+  it('is offered on desktop and landscape tablet only', async () => {
+    store.set('dg-planner-notes-sidebar', '1');
+    expect(await render({ isTablet: true, isLandscape: true })).toContain('data-planner-notes=');
+    expect(await render({ isTablet: true, isLandscape: false })).not.toContain('data-planner-notes');
+    expect(await render({ isMobile: true })).not.toContain('data-planner-notes');
   });
 
-  it('gives hyperGLANCE, which clips its own overflow, an explicit shrink opt-out', async () => {
+  it('opens where this device left it, wider, with the pane waiting for a task', async () => {
+    store.set('dg-planner-notes-sidebar', '1');
     const html = await render();
-    const hg = html.match(/<div class="rounded-xl border [^"]*overflow-hidden[^"]*"/)?.[0] ?? '';
-    expect(hg).toContain('flex-shrink-0');
-    expect(html).toContain('hyperGLANCE');
-  });
-
-  it('does not let the mobile sheet shrink its header or its body either', async () => {
-    const html = await render({ isMobile: true });
-    const sheet = html.match(/<div class="relative bg-white[^>]*>/)?.[0] ?? '';
-    expect(sheet).toContain('overflow-y-auto'); // the sheet is the scroller on mobile
-    const children = directChildren(html, sheet);
-    expect(children.length).toBe(2); // header + body
-    for (const child of children) expect(child).toContain('flex-shrink-0');
-    // …and the body's own sections, which on mobile include the column tabs.
-    const sections = directChildren(html, bodyTag(html));
-    expect(sections.some(c => c.includes('p-0.5'))).toBe(true); // the Scheduled/Unscheduled tabs
-    for (const section of sections) expect(section).toContain('flex-shrink-0');
+    expect(html).toContain('data-planner-notes-sidebar="open"');
+    expect(html).toContain('max-w-[104rem]');
+    expect(html).toContain('Select a task to see its notes here.');
+    expect(html).toContain('Enter or double-click to edit');
   });
 });

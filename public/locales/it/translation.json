@@ -795,6 +795,8 @@
     "assignTo": "Assegna a",
     "notes": "Note",
     "localNotes": "Note in dayGLANCE",
+    "calendarDescription": "Dal calendario",
+    "yourNotes": "Le tue note (questo dispositivo)",
     "subtasks": "Sottoattività",
     "addSubtask": "Aggiungi sottoattività",
     "generateSubtasks": "Genera sottoattività",
@@ -1955,7 +1957,11 @@
     "addTaskPlaceholder": "Aggiungi un'attività…",
     "addTaskToProject": "Aggiungi attività al progetto",
     "hideScheduled": "Nascondi l'elenco Pianificate",
-    "showScheduled": "Mostra pianificate"
+    "showScheduled": "Mostra pianificate",
+    "showNotesSidebar": "Mostra le note dell’attività",
+    "hideNotesSidebar": "Nascondi le note dell’attività",
+    "selectForNotes": "Seleziona un’attività per vederne qui le note.",
+    "notesKeysHint": "↑ ↓ spostarsi tra le attività · ← → cambiare elenco · Invio o doppio clic per modificare"
   },
   "bucket": {
     "title": "Bucket List",
@@ -2103,6 +2109,7 @@
       "keepEstimate": "Mantieni come mostrato",
       "dailyNoteEmpty": "Ancora nessuna nota del giorno. Fai clic per scriverne una.",
       "selectForNotes": "Fai clic su un'attività o un Do per vederne qui le note.",
+      "resizeNotes": "Ridimensiona la nota giornaliera e le note dell'attività",
       "showNotesSidebar": "Mostra la barra laterale delle note",
       "hideNotesSidebar": "Nascondi la barra laterale delle note",
       "showWindowOnly": "Mostra solo da {{start}} a {{end}}",
@@ -2225,6 +2232,13 @@
       "unavailable": "Impossibile caricare le registrazioni di esecuzione.",
       "invalid": "Impossibile caricare alcune registrazioni di esecuzione."
     }
+  },
+  "timelineZoom": {
+    "label": "Dimensione della timeline",
+    "smaller": "Più piccola",
+    "larger": "Più grande",
+    "reset": "Ripristina al 100%",
+    "hint": "Anche: pizzica o usa Ctrl+scorrimento sulla timeline. Salvato per questa vista su questo dispositivo."
   },
   "todoist": {
     "title": "Sincronizzazione Todoist",

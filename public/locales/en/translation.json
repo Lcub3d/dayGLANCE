@@ -795,6 +795,8 @@
     "assignTo": "Assign to",
     "notes": "Notes",
     "localNotes": "Notes in dayGLANCE",
+    "calendarDescription": "From the calendar",
+    "yourNotes": "Your notes (this device)",
     "subtasks": "Subtasks",
     "addSubtask": "Add subtask",
     "generateSubtasks": "Generate subtasks",
@@ -1953,7 +1955,11 @@
     "addTaskPlaceholder": "Add a task…",
     "addTaskToProject": "Add task to project",
     "hideScheduled": "Hide Scheduled list",
-    "showScheduled": "Show Scheduled"
+    "showScheduled": "Show Scheduled",
+    "showNotesSidebar": "Show task notes",
+    "hideNotesSidebar": "Hide task notes",
+    "selectForNotes": "Select a task to see its notes here.",
+    "notesKeysHint": "↑ ↓ move between tasks · ← → switch lists · Enter or double-click to edit"
   },
   "bucket": {
     "title": "Bucket List",
@@ -2101,6 +2107,7 @@
       "keepEstimate": "Keep as shown",
       "dailyNoteEmpty": "No daily note yet. Click to write one.",
       "selectForNotes": "Click a task or a Do to see its notes here.",
+      "resizeNotes": "Resize the Daily Note and task notes",
       "showNotesSidebar": "Show notes sidebar",
       "hideNotesSidebar": "Hide notes sidebar",
       "showWindowOnly": "Show only {{start}} to {{end}}",
@@ -2223,6 +2230,13 @@
       "unavailable": "Could not load execution records.",
       "invalid": "Some execution records could not be loaded."
     }
+  },
+  "timelineZoom": {
+    "label": "Timeline size",
+    "smaller": "Smaller",
+    "larger": "Larger",
+    "reset": "Reset to 100%",
+    "hint": "Also: pinch, or Ctrl+scroll over the timeline. Saved for this view on this device."
   },
   "todoist": {
     "title": "Todoist Sync",

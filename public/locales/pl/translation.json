@@ -814,6 +814,8 @@
     "assignTo": "Przypisz do",
     "notes": "Notatki",
     "localNotes": "Notatki w dayGLANCE",
+    "calendarDescription": "Z kalendarza",
+    "yourNotes": "Twoje notatki (to urządzenie)",
     "subtasks": "Podzadania",
     "addSubtask": "Dodaj podzadanie",
     "generateSubtasks": "Generuj podzadania",
@@ -2042,7 +2044,11 @@
     "addTaskPlaceholder": "Dodaj zadanie…",
     "addTaskToProject": "Dodaj zadanie do projektu",
     "hideScheduled": "Ukryj listę zaplanowanych",
-    "showScheduled": "Pokaż zaplanowane"
+    "showScheduled": "Pokaż zaplanowane",
+    "showNotesSidebar": "Pokaż notatki zadania",
+    "hideNotesSidebar": "Ukryj notatki zadania",
+    "selectForNotes": "Wybierz zadanie, aby zobaczyć tu jego notatki.",
+    "notesKeysHint": "↑ ↓ przechodzenie między zadaniami · ← → zmiana listy · Enter lub dwuklik, aby edytować"
   },
   "bucket": {
     "title": "Lista marzeń",
@@ -2190,6 +2196,7 @@
       "keepEstimate": "Zachowaj tak, jak pokazano",
       "dailyNoteEmpty": "Brak notatki dziennej. Kliknij, aby ją napisać.",
       "selectForNotes": "Kliknij zadanie lub Do, aby zobaczyć tutaj jego notatki.",
+      "resizeNotes": "Zmień rozmiar notatki dziennej i notatek zadania",
       "showNotesSidebar": "Pokaż panel notatek",
       "hideNotesSidebar": "Ukryj panel notatek",
       "showWindowOnly": "Pokaż tylko od {{start}} do {{end}}",
@@ -2312,6 +2319,13 @@
       "unavailable": "Nie udało się wczytać zapisów wykonania.",
       "invalid": "Nie udało się wczytać niektórych zapisów wykonania."
     }
+  },
+  "timelineZoom": {
+    "label": "Rozmiar osi czasu",
+    "smaller": "Mniejsza",
+    "larger": "Większa",
+    "reset": "Przywróć 100%",
+    "hint": "Także: uszczypnięcie lub Ctrl+przewijanie nad osią czasu. Zapisywane dla tego widoku na tym urządzeniu."
   },
   "todoist": {
     "title": "Synchronizacja Todoist",

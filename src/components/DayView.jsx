@@ -15,7 +15,7 @@ import { frameColorBg, frameColorBorder } from '../utils/colorUtils.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getTaskSlice(task, col, hourHeight, timeToMinutes) {
+function getTaskSlice(task, col, hourHeight, timeToMinutes, zoom = 1) {
   const taskStart = timeToMinutes(task.startTime || '0:00');
   const taskEnd = taskStart + (task.duration || 0);
   const colStart = col.startHour * 60;
@@ -29,7 +29,7 @@ function getTaskSlice(task, col, hourHeight, timeToMinutes) {
 
   return {
     top: (visStart - colStart) * hourHeight / 60,
-    height: Math.max(27, rawH),
+    height: Math.max(27 * zoom, rawH),
     clippedTop: taskStart < colStart,
     clippedBottom: taskEnd > colEnd,
   };
@@ -46,7 +46,10 @@ function getTaskSlice(task, col, hourHeight, timeToMinutes) {
 // columns; JOBO renders one 24-hour column as its Plan side.
 // `planOnly` keeps the column on the plan for every date. JOBO sets it: its
 // Plan side is this column, and its Do side already shows the Do.
-export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => {
+// `zoom` is the timeline magnification of a view that zooms (JOBO, which
+// uses this column for its Plan side; utils/timelineZoom.js): `hourHeight`
+// already carries it, and card contents draw at it. DAY itself never zooms.
+export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false, zoom = 1 }) => {
   const {
     isTablet,
     darkMode, use24HourClock,
@@ -218,7 +221,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
               <div
                 className={`w-16 flex-shrink-0 px-3 py-1 text-sm ${textSecondary} border-r ${borderClass} flex items-start h-full`}
               >
-                {formatHourLabel(hour, use24HourClock)}
+                <span style={zoom !== 1 ? { zoom } : undefined}>{formatHourLabel(hour, use24HourClock)}</span>
               </div>
               <div
                 className="flex-1 h-full day-col-slot cursor-pointer"
@@ -353,7 +356,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
           )}
 
           {colTasks.map(task => {
-            const slice = getTaskSlice(task, col, hourHeight, timeToMinutes);
+            const slice = getTaskSlice(task, col, hourHeight, timeToMinutes, zoom);
             if (!slice) return null;
 
             const { top, height, clippedTop, clippedBottom } = slice;
@@ -367,7 +370,8 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
                 <PastDoCard
                   key={`${task.id}-${col.startHour}`}
                   item={task}
-                  showTime={height > 40}
+                  showTime={height / zoom > 40}
+                  zoom={zoom}
                   style={{
                     top: `${top}px`,
                     height: `${height}px`,
@@ -404,7 +408,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
             // until the first measurement so the wide layout never flashes.
             const taskWidth = taskWidths[task.id];
             const isMeasured = taskWidth !== undefined;
-            const isNarrowWidth = taskWidth < 300;
+            const isNarrowWidth = taskWidth / zoom < 300;
 
             return (
               <div
@@ -454,6 +458,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
                   task={task}
                   height={height}
                   isNarrowWidth={isNarrowWidth}
+                  zoom={zoom}
                   flipNotesPanel={(hours.length * hourHeight) - (top + height) < 200}
                 />
                 {clippedBottom && (
@@ -517,7 +522,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
             const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
 
             return timedRoutines.map(routine => {
-              const slice = getTaskSlice(routine, col, hourHeight, timeToMinutes);
+              const slice = getTaskSlice(routine, col, hourHeight, timeToMinutes, zoom);
               if (!slice) return null;
               const { top, height } = slice;
               const rci = colMap[routine.id];
@@ -535,13 +540,14 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
                   onDragOver={!isTablet ? onColDragOver : undefined}
                   onDrop={!isTablet ? onColDrop : undefined}
                   className={`absolute pointer-events-auto flex items-center justify-center ${isPast ? 'opacity-50' : ''} ${!isTablet ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                  style={{ top: `${top}px`, height: `${Math.max(height, 27)}px`, left: `calc(${lPct} + 4px)`, width: `calc(${wPct} - 8px)` }}
+                  style={{ top: `${top}px`, height: `${Math.max(height, 27 * zoom)}px`, left: `calc(${lPct} + 4px)`, width: `calc(${wPct} - 8px)` }}
                 >
                   <div className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full ${darkMode ? 'bg-teal-700/80' : 'bg-teal-600/80'}`} />
                   <div className={`absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1.5 rounded-full ${darkMode ? 'bg-teal-700/80' : 'bg-teal-600/80'}`} />
                   <span
                     className={`relative rounded-full px-3 py-1 text-xs font-medium cursor-pointer ${darkMode ? 'bg-teal-700 text-teal-100' : 'bg-teal-600 text-white'} ${routineCompletions[routine.id] ? 'line-through opacity-75' : ''}`}
                     onClick={(e) => { e.stopPropagation(); toggleRoutineCompletion(routine.id); }}
+                    style={zoom !== 1 ? { zoom } : undefined}
                   >{routine.name}</span>
                   {!isTablet && (
                     <div
@@ -578,7 +584,7 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false }) => 
               style={{ top: `${topPx}px` }}
             >
               <div className="absolute left-0 right-12 h-0.5 bg-blue-400/60" />
-              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2">
+              <div className="absolute right-1 bg-blue-500/80 text-white text-xs px-1.5 py-0.5 rounded -translate-y-1/2" style={zoom !== 1 ? { zoom } : undefined}>
                 {formatTime(hoverPreviewTime)}
               </div>
             </div>

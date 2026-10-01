@@ -13,6 +13,7 @@ import { PastDoDetails, pastDoChipStyle, pastDoColor } from './jobo/PastDoCard.j
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import useWeekViewHourHeight from '../hooks/useWeekViewHourHeight.js';
+import useTimelineZoom from '../hooks/useTimelineZoom.js';
 import { getHGBarsForDate, isHGSessionReachable } from '../hooks/useHyperGlance.js';
 import { hexToRgba, frameColorBg, frameColorBorder } from '../utils/colorUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
@@ -89,7 +90,7 @@ const WeekViewTaskPopover = ({ task, anchor, onClose }) => {
 
 const WEEK_GUTTER_W = HOUR_GUTTER_W; // the shared hour-label column (constants/timeline.js)
 
-const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour, onTaskClick, activePopoverTaskId, isToday }) => {
+const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, zoom = 1, startHour, endHour, onTaskClick, activePopoverTaskId, isToday }) => {
   const { t } = useTranslation();
   const {
     darkMode, borderClass, cardBg,
@@ -299,7 +300,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
           const taskStart = timeToMinutes(task.startTime || '0:00');
           const duration = task.duration || 0;
           const rawH = duration * hourHeight / 60;
-          const chipH = Math.max(22, rawH);
+          const chipH = Math.max(22 * zoom, rawH);
           const chipTop = (taskStart - startMinute) * hourHeight / 60;
           // Same lane packing as MULTI and DAY: transitive overlap clusters
           // with first-fit columns, from the shared interval packer.
@@ -356,7 +357,7 @@ const WeekViewColumn = ({ date, dateStr, colIdx, hourHeight, startHour, endHour,
                 });
               }}
             >
-              <div className="flex items-center gap-0.5 text-white text-[11px] font-medium leading-tight px-1 py-0.5 min-w-0 overflow-hidden">
+              <div className="flex items-center gap-0.5 text-white text-[11px] font-medium leading-tight px-1 py-0.5 min-w-0 overflow-hidden" style={zoom !== 1 ? { zoom } : undefined}>
                 {isRecurring && <Icons.RefreshCw size={8} className="shrink-0 opacity-70" />}
                 <span className="truncate min-w-0">{chipText}</span>
                 {chipTag && <span className="shrink-0 italic opacity-75">{chipTag}</span>}
@@ -549,7 +550,12 @@ const WeekView = () => {
     [weekViewDates, getTasksForDate, getDayDisplayForDate, weekTimelineStartHour, weekTimelineEndHour],
   );
 
-  const hourHeight = useWeekViewHourHeight(calendarRef, stickyHeaderRef, visibleHours);
+  const baseHourHeight = useWeekViewHourHeight(calendarRef, stickyHeaderRef, visibleHours);
+  // Timeline magnification (utils/timelineZoom.js): WEEK fits its range on
+  // screen at 100% and only grows, scrolling once it no longer fits.
+  const weekRootRef = useRef(null);
+  const zoom = useTimelineZoom('week', { scrollRef: calendarRef, originRef: weekRootRef });
+  const hourHeight = baseHourHeight * zoom;
   const [popoverTask, setPopoverTask] = useState(null);
   const [popoverAnchor, setPopoverAnchor] = useState(null);
 
@@ -588,7 +594,7 @@ const WeekView = () => {
   };
 
   return (
-    <div className="flex" style={{ height: '100%' }}>
+    <div ref={weekRootRef} className="flex" style={zoom === 1 ? { height: '100%' } : { minHeight: '100%' }}>
       {/* Hour-label gutter */}
       <div
         className={`flex-shrink-0 border-r ${borderClass} flex flex-col relative`}
@@ -634,6 +640,7 @@ const WeekView = () => {
               {!atTopEdge && hour % 3 === 0 && (
                 <span
                   className={`absolute top-0.5 right-2 text-[10px] leading-none ${textSecondary} select-none`}
+                  style={zoom !== 1 ? { zoom } : undefined}
                 >
                   {use24HourClock
                     ? `${String(hour).padStart(2, '0')}:00`
@@ -656,6 +663,7 @@ const WeekView = () => {
             dateStr={dateStr}
             colIdx={colIdx}
             hourHeight={hourHeight}
+            zoom={zoom}
             startHour={startHour}
             endHour={endHour}
             onTaskClick={handleTaskClick}

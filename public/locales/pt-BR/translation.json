@@ -795,6 +795,8 @@
     "assignTo": "Atribuir a",
     "notes": "Notas",
     "localNotes": "Notas no dayGLANCE",
+    "calendarDescription": "Do calendário",
+    "yourNotes": "Suas notas (este dispositivo)",
     "subtasks": "Subtarefas",
     "addSubtask": "Adicionar subtarefa",
     "generateSubtasks": "Gerar subtarefas",
@@ -1953,7 +1955,11 @@
     "addTaskPlaceholder": "Adicionar uma tarefa…",
     "addTaskToProject": "Adicionar tarefa ao projeto",
     "hideScheduled": "Ocultar lista Agendadas",
-    "showScheduled": "Mostrar agendadas"
+    "showScheduled": "Mostrar agendadas",
+    "showNotesSidebar": "Mostrar notas da tarefa",
+    "hideNotesSidebar": "Ocultar notas da tarefa",
+    "selectForNotes": "Selecione uma tarefa para ver as notas dela aqui.",
+    "notesKeysHint": "↑ ↓ mover entre tarefas · ← → trocar de lista · Enter ou clique duplo para editar"
   },
   "bucket": {
     "title": "Bucket List",
@@ -2101,6 +2107,7 @@
       "keepEstimate": "Manter como mostrado",
       "dailyNoteEmpty": "Ainda não há nota diária. Clique para escrever uma.",
       "selectForNotes": "Clique em uma tarefa ou um Do para ver as notas aqui.",
+      "resizeNotes": "Redimensionar a nota diária e as notas da tarefa",
       "showNotesSidebar": "Mostrar barra lateral de notas",
       "hideNotesSidebar": "Ocultar barra lateral de notas",
       "showWindowOnly": "Mostrar só de {{start}} a {{end}}",
@@ -2223,6 +2230,13 @@
       "unavailable": "Não foi possível carregar os registros de execução.",
       "invalid": "Não foi possível carregar alguns registros de execução."
     }
+  },
+  "timelineZoom": {
+    "label": "Tamanho da linha do tempo",
+    "smaller": "Menor",
+    "larger": "Maior",
+    "reset": "Voltar a 100%",
+    "hint": "Também: faça o gesto de pinça ou Ctrl+rolagem sobre a linha do tempo. Salvo para esta visualização neste dispositivo."
   },
   "todoist": {
     "title": "Sincronização com o Todoist",

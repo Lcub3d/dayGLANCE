@@ -111,6 +111,8 @@ import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay } from './jobo/pastDay.js';
+import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
+import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -896,6 +898,26 @@ const DayPlanner = () => {
   }
 
   // Daily Notes state — keyed by date string "YYYY-MM-DD" → { text, lastModified }
+  // Your notes on imported calendar events (utils/eventNotes.js): apart
+  // from the events, which each calendar refresh rebuilds, and on this
+  // device only. Written synchronously, so a note is kept the moment it is.
+  const [eventNotes, setEventNotes] = useState(() => readEventNotes());
+  const setEventNote = useCallback((id, text) => {
+    setEventNotes((prev) => {
+      const next = withEventNote(prev, id, text);
+      try { localStorage.setItem(EVENT_NOTES_KEY, JSON.stringify(next)); } catch { /* kept for this session */ }
+      return next;
+    });
+  }, []);
+  // Timeline magnification per view, on this device (utils/timelineZoom.js).
+  const [timelineZooms, setTimelineZooms] = useState(() => readZooms());
+  const setTimelineZoom = useCallback((view, zoom) => {
+    setTimelineZooms((prev) => {
+      const next = withZoom(prev, view, zoom);
+      try { localStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify(next)); } catch { /* kept for this session */ }
+      return next;
+    });
+  }, []);
   const [dailyNotes, setDailyNotes] = useState(() => {
     try {
       const saved = localStorage.getItem('day-planner-daily-notes');
@@ -3679,6 +3701,7 @@ const DayPlanner = () => {
     showSettings, showRemindersSettings, showWeeklyReview, showVoiceInput,
     showHabitModal, showFramesModal, frameAdjustModal, showRescheduleModal,
     showDayDial, setShowDayDial,
+    plannerProjectId,
     selectedDate, hoverPreviewTime, hoverPreviewDate,
     setNewTask, setShowAddTask, setHoverPreviewTime, setHoverPreviewDate,
     routinesEnabled, setRoutinesEnabled, openRoutinesDashboardRef,
@@ -4864,6 +4887,9 @@ const DayPlanner = () => {
         weatherTempUnit: localStorage.getItem('day-planner-weather-temp-unit') || 'fahrenheit',
         habits: JSON.parse(localStorage.getItem('day-planner-habits') || '[]'),
         habitLogs: JSON.parse(localStorage.getItem('day-planner-habit-logs') || '{}'),
+        // Your notes on calendar events live on this device only, so a backup
+        // is how they reach a new one (utils/eventNotes.js).
+        eventNotes: readEventNotes(),
         habitsEnabled: JSON.parse(localStorage.getItem('day-planner-habits-enabled') || 'true'),
         routinesEnabled: JSON.parse(localStorage.getItem('day-planner-routines-enabled') || 'true'),
         aiConfig: JSON.parse(localStorage.getItem('day-planner-ai-config') || 'null'),
@@ -4927,6 +4953,9 @@ const DayPlanner = () => {
       reminderSettings: JSON.parse(localStorage.getItem('day-planner-reminder-settings') || 'null'),
       habits: JSON.parse(localStorage.getItem('day-planner-habits') || '[]'),
       habitLogs: JSON.parse(localStorage.getItem('day-planner-habit-logs') || '{}'),
+      // Your notes on calendar events live on this device only, so a backup
+      // is how they reach a new one (utils/eventNotes.js).
+      eventNotes: readEventNotes(),
       aiConfig: JSON.parse(localStorage.getItem('day-planner-ai-config') || 'null'),
       obsidianConfig: JSON.parse(localStorage.getItem('day-planner-obsidian-config') || 'null'),
       obsidianCompletionDates: JSON.parse(localStorage.getItem('day-planner-obsidian-completion-dates') || 'true'),
@@ -5128,6 +5157,7 @@ const DayPlanner = () => {
     if (data.weatherTempUnit !== undefined) localStorage.setItem('day-planner-weather-temp-unit', data.weatherTempUnit);
     if (data.habits) localStorage.setItem('day-planner-habits', JSON.stringify(data.habits));
     if (data.habitLogs) localStorage.setItem('day-planner-habit-logs', JSON.stringify(data.habitLogs));
+    if (data.eventNotes && typeof data.eventNotes === 'object' && !Array.isArray(data.eventNotes)) localStorage.setItem(EVENT_NOTES_KEY, JSON.stringify(data.eventNotes));
     // If backup has habits data, always enable habits regardless of the backed-up toggle value
     // (the toggle may have been incorrectly saved as false by an earlier bug)
     const habitsEnabledVal = (data.habits && data.habits.filter(h => !h.archived).length > 0) ? true : (data.habitsEnabled ?? false);
@@ -6882,9 +6912,11 @@ const DayPlanner = () => {
   }, [tasks, recurringTasks, unscheduledTasks, isVisibleForUser]);
 
   // Group tasks + recurring by date for O(1) lookups (avoids repeated O(n) scans)
+  // The tasks as the views read them: calendar events carry your note.
+  const tasksWithEventNotes = useMemo(() => applyEventNotes(tasks, eventNotes), [tasks, eventNotes]);
   const tasksByDate = useMemo(() => {
     const map = {};
-    for (const task of tasks) {
+    for (const task of tasksWithEventNotes) {
       if (!task.date || !isVisibleForUser(task)) continue;
       if (!map[task.date]) map[task.date] = [];
       map[task.date].push(task);
@@ -6895,7 +6927,7 @@ const DayPlanner = () => {
       map[task.date].push(task);
     }
     return map;
-  }, [tasks, expandedRecurringTasks, isVisibleForUser]);
+  }, [tasksWithEventNotes, expandedRecurringTasks, isVisibleForUser]);
 
   // Helper to get tasks for a specific date (must be after filterByTags).
   // Memoized so downstream useCallback/useMemo consumers stay stable; only
@@ -7138,7 +7170,7 @@ const DayPlanner = () => {
     focusDeleteSubtask,
     focusUpdateSubtaskTitle,
   } = useTaskActions({
-    tasks, setTasks,
+    tasks, setTasks, setEventNote,
     unscheduledTasks, setUnscheduledTasks,
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,
@@ -8588,7 +8620,11 @@ const DayPlanner = () => {
 
     // ── Core data ─────────────────────────────────────────────────────────────
     selectedDate, setSelectedDate,
-    tasks, setTasks,
+    // Calendar events carry your note (utils/eventNotes.js); writers still
+    // go through setTasks, whose rows never hold it for long.
+    tasks: tasksWithEventNotes, setTasks,
+    setEventNote,
+    timelineZooms, setTimelineZoom,
     unscheduledTasks, setUnscheduledTasks,
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,

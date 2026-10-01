@@ -795,6 +795,8 @@
     "assignTo": "Attribuer à",
     "notes": "Notes",
     "localNotes": "Notes dans dayGLANCE",
+    "calendarDescription": "Du calendrier",
+    "yourNotes": "Vos notes (cet appareil)",
     "subtasks": "Sous-tâches",
     "addSubtask": "Ajouter une sous-tâche",
     "generateSubtasks": "Générer des sous-tâches",
@@ -1953,7 +1955,11 @@
     "addTaskPlaceholder": "Ajouter une tâche…",
     "addTaskToProject": "Ajouter une tâche au projet",
     "hideScheduled": "Masquer la liste Planifiées",
-    "showScheduled": "Afficher les tâches planifiées"
+    "showScheduled": "Afficher les tâches planifiées",
+    "showNotesSidebar": "Afficher les notes de la tâche",
+    "hideNotesSidebar": "Masquer les notes de la tâche",
+    "selectForNotes": "Sélectionnez une tâche pour voir ses notes ici.",
+    "notesKeysHint": "↑ ↓ passer d’une tâche à l’autre · ← → changer de liste · Entrée ou double-clic pour modifier"
   },
   "bucket": {
     "title": "Bucket List",
@@ -2101,6 +2107,7 @@
       "keepEstimate": "Garder tel quel",
       "dailyNoteEmpty": "Pas encore de note du jour. Cliquez pour en écrire une.",
       "selectForNotes": "Cliquez sur une tâche ou un Do pour voir ses notes ici.",
+      "resizeNotes": "Redimensionner la note du jour et les notes de la tâche",
       "showNotesSidebar": "Afficher le panneau des notes",
       "hideNotesSidebar": "Masquer le panneau des notes",
       "showWindowOnly": "Afficher seulement de {{start}} à {{end}}",
@@ -2223,6 +2230,13 @@
       "unavailable": "Impossible de charger les enregistrements d’exécution.",
       "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés."
     }
+  },
+  "timelineZoom": {
+    "label": "Taille de la chronologie",
+    "smaller": "Plus petit",
+    "larger": "Plus grand",
+    "reset": "Revenir à 100 %",
+    "hint": "Aussi : pincez, ou Ctrl+défilement sur la chronologie. Enregistré pour cette vue sur cet appareil."
   },
   "todoist": {
     "title": "Synchronisation Todoist",

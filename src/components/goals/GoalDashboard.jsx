@@ -2685,6 +2685,12 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
           if (next) focusProject(next.id);
         }
       },
+      // Enter: the selected project's PLANNER (Projects tab)
+      openSelected: () => {
+        if (sidebarTab !== 'projects' || !focusedProjectId) return false;
+        setPlannerProjectId(focusedProjectId);
+        return true;
+      },
   };
   useEffect(() => {
     if (!desktop || !isActive || !goalsSpaceKeysRef) return undefined;
@@ -2693,6 +2699,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       newItem: () => keysImplRef.current?.newItem(),
       focusFilter: () => keysImplRef.current?.focusFilter(),
       moveSelection: (delta) => keysImplRef.current?.moveSelection(delta),
+      openSelected: () => keysImplRef.current?.openSelected() ?? false,
     };
     return () => { goalsSpaceKeysRef.current = null; };
   }, [desktop, isActive, goalsSpaceKeysRef]);

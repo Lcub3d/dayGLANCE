@@ -28,6 +28,12 @@
             "value" : "%@ disponibili"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ dostępne"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -38,6 +44,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ disponíveis"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "доступно %@"
           }
         },
         "zh-Hans" : {
@@ -75,6 +87,12 @@
             "value" : "restano %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zostało %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -85,6 +103,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "faltam %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "залишилось %@"
           }
         },
         "zh-Hans" : {
@@ -122,6 +146,12 @@
             "value" : "%@ senza impegni"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wolne"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -132,6 +162,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ livre"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вільно %@"
           }
         },
         "zh-Hans" : {
@@ -169,6 +205,12 @@
             "value" : "%lld giorni fa"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dn. temu"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -179,6 +221,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "há %lld dias"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld дн. тому"
           }
         },
         "zh-Hans" : {
@@ -216,6 +264,12 @@
             "value" : "%lld pianificati"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld w planie"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -226,6 +280,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld agendados"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "заплановано: %lld"
           }
         },
         "zh-Hans" : {
@@ -263,6 +323,12 @@
             "value" : "%lld%% · %lld/%lld attività"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% · %lld/%lld zadań"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -273,6 +339,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld%% · %lld/%lld tarefas"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%% · %lld/%lld завдань"
           }
         },
         "zh-Hans" : {
@@ -310,6 +382,12 @@
             "value" : "restano %lld g"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zostało %lld dn."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -320,6 +398,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "faltam %lld d"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "залишилось %lld дн."
           }
         },
         "zh-Hans" : {
@@ -357,6 +441,12 @@
             "value" : "%lld g di ritardo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dn. po terminie"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -367,6 +457,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld d de atraso"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "протерміновано на %lld дн."
           }
         },
         "zh-Hans" : {
@@ -404,6 +500,12 @@
             "value" : "+%lld altri"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld więcej"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -414,6 +516,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+%lld mais"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ще %lld"
           }
         },
         "zh-Hans" : {
@@ -451,6 +559,12 @@
             "value" : "Aggiungi attività alla posta in arrivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj zadanie do skrzynki"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -461,6 +575,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar tarefa à caixa de entrada"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати завдання до вхідних"
           }
         },
         "zh-Hans" : {
@@ -498,6 +618,12 @@
             "value" : "Aggiungi attività programmata"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj zaplanowane zadanie"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -508,6 +634,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar tarefa agendada"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати заплановане завдання"
           }
         },
         "zh-Hans" : {
@@ -545,6 +677,12 @@
             "value" : "Aggiungi attività con la voce"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj zadanie głosem"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -555,6 +693,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar tarefa por voz"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додати завдання голосом"
           }
         },
         "zh-Hans" : {
@@ -592,6 +736,12 @@
             "value" : "Aggiunge un'attività al programma di oggi."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj zadanie do dzisiejszego planu."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -602,6 +752,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adiciona uma tarefa ao plano de hoje."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Додайте завдання до плану на сьогодні."
           }
         },
         "zh-Hans" : {
@@ -639,6 +795,12 @@
             "value" : "Tutto il giorno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cały dzień"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -649,6 +811,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dia inteiro"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь день"
           }
         },
         "zh-Hans" : {
@@ -686,6 +854,12 @@
             "value" : "Tutto il giorno o in scadenza"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Całodniowe lub z terminem"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -696,6 +870,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dia inteiro ou com prazo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь день або з дедлайном"
           }
         },
         "zh-Hans" : {
@@ -733,6 +913,12 @@
             "value" : "Cattura un'attività con la voce."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapisz zadanie głosem."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -743,6 +929,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Capture uma tarefa por voz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запишіть завдання голосом."
           }
         },
         "zh-Hans" : {
@@ -780,6 +972,12 @@
             "value" : "Scegli quale obiettivo mostra questo widget."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz, który cel ma wyświetlać ten widżet."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -790,6 +988,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolha qual objetivo este widget mostra."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть, яку ціль показуватиме цей віджет."
           }
         },
         "zh-Hans" : {
@@ -827,6 +1031,12 @@
             "value" : "Scegli quale progetto mostra questo widget."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz, który projekt ma wyświetlać ten widżet."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -837,6 +1047,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolha qual projeto este widget mostra."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть, який проєкт показуватиме цей віджет."
           }
         },
         "zh-Hans" : {
@@ -874,6 +1090,12 @@
             "value" : "Data"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -884,6 +1106,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Data"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дата"
           }
         },
         "zh-Hans" : {
@@ -921,6 +1149,12 @@
             "value" : "Quadrante del giorno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarcza dnia"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -931,6 +1165,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrador do dia"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Циферблат дня"
           }
         },
         "zh-Hans" : {
@@ -968,6 +1208,12 @@
             "value" : "Fatto"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zrobione"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -978,6 +1224,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feito"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виконано"
           }
         },
         "zh-Hans" : {
@@ -1015,6 +1267,12 @@
             "value" : "Scadenza"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termin"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1025,6 +1283,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prazo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дедлайн"
           }
         },
         "zh-Hans" : {
@@ -1062,6 +1326,12 @@
             "value" : "Scade oggi"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Termin dziś"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1072,6 +1342,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Termina hoje"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дедлайн сьогодні"
           }
         },
         "zh-Hans" : {
@@ -1109,6 +1385,12 @@
             "value" : "Impegno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wysiłek"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1119,6 +1401,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esforço"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зусилля"
           }
         },
         "zh-Hans" : {
@@ -1156,6 +1444,12 @@
             "value" : "Concentrazione"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skup się"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1166,6 +1460,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Foco"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фокус"
           }
         },
         "zh-Hans" : {
@@ -1203,6 +1503,12 @@
             "value" : "Blocchi"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ramki"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1213,6 +1519,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Blocos"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фрейми"
           }
         },
         "zh-Hans" : {
@@ -1250,6 +1562,12 @@
             "value" : "OBIETTIVO"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CEL"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1260,6 +1578,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OBJETIVO"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ЦІЛЬ"
           }
         },
         "zh-Hans" : {
@@ -1297,6 +1621,12 @@
             "value" : "Obiettivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cel"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1307,6 +1637,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Objetivo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ціль"
           }
         },
         "zh-Hans" : {
@@ -1344,6 +1680,12 @@
             "value" : "In arrivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadanie do skrzynki"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1354,6 +1696,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Caixa de entrada"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завдання у вхідні"
           }
         },
         "zh-Hans" : {
@@ -1391,6 +1739,12 @@
             "value" : "Mese"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miesiąc"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1401,6 +1755,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mês"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Місяць"
           }
         },
         "zh-Hans" : {
@@ -1438,6 +1798,12 @@
             "value" : "Giorno successivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Następny dzień"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1448,6 +1814,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dia seguinte"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наступний день"
           }
         },
         "zh-Hans" : {
@@ -1485,6 +1857,12 @@
             "value" : "Nessun obiettivo attivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak aktywnych celów"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1495,6 +1873,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhum objetivo ativo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає активних цілей"
           }
         },
         "zh-Hans" : {
@@ -1532,6 +1916,12 @@
             "value" : "Nessun progetto attivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak aktywnych projektów"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1542,6 +1932,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nenhum projeto ativo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає активних проєктів"
           }
         },
         "zh-Hans" : {
@@ -1579,6 +1975,12 @@
             "value" : "Nient'altro oggi"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dziś nic więcej"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1589,6 +1991,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada mais hoje"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Більше нічого сьогодні"
           }
         },
         "zh-Hans" : {
@@ -1626,6 +2034,12 @@
             "value" : "Niente in programma"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nic w planie"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1636,6 +2050,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada agendado"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нічого не заплановано"
           }
         },
         "zh-Hans" : {
@@ -1673,6 +2093,12 @@
             "value" : "Adesso: %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teraz: %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1683,6 +2109,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agora: %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зараз: %@"
           }
         },
         "zh-Hans" : {
@@ -1720,6 +2152,12 @@
             "value" : "NON AGGIORNATO"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NIEAKTUALNE"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1730,6 +2168,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "DESATUALIZADO"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ЗАСТАРІЛО"
           }
         },
         "zh-Hans" : {
@@ -1767,6 +2211,12 @@
             "value" : "Apri dayGLANCE per aggiornare"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz dayGLANCE, aby odświeżyć"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1777,6 +2227,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abra o dayGLANCE para atualizar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрийте dayGLANCE, щоб оновити"
           }
         },
         "zh-Hans" : {
@@ -1814,6 +2270,12 @@
             "value" : "Apri dayGLANCE per configurare"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz dayGLANCE, aby skonfigurować"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1824,6 +2286,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abra o dayGLANCE para configurar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкрийте dayGLANCE, щоб налаштувати"
           }
         },
         "zh-Hans" : {
@@ -1861,6 +2329,12 @@
             "value" : "Non aggiornato"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieaktualne"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1871,6 +2345,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desatualizado"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Застаріло"
           }
         },
         "zh-Hans" : {
@@ -1908,6 +2388,12 @@
             "value" : "PROGETTO"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROJEKT"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1918,6 +2404,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "PROJETO"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ПРОЄКТ"
           }
         },
         "zh-Hans" : {
@@ -1955,6 +2447,12 @@
             "value" : "Pianificato al %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaplanowano, stan na %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1965,6 +2463,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Planeado em %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заплановано станом на %@"
           }
         },
         "zh-Hans" : {
@@ -2002,6 +2506,12 @@
             "value" : "Pianificato in anticipo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaplanowano z wyprzedzeniem"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2012,6 +2522,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Planeado com antecedência"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заплановано наперед"
           }
         },
         "zh-Hans" : {
@@ -2049,6 +2565,12 @@
             "value" : "Giorno precedente"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poprzedni dzień"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2059,6 +2581,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dia anterior"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попередній день"
           }
         },
         "zh-Hans" : {
@@ -2096,6 +2624,12 @@
             "value" : "Avanzamento di un obiettivo. Tieni premuto per scegliere quale."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postęp wybranego celu. Przytrzymaj, aby go wybrać."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2106,6 +2640,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Progresso de um objetivo. Toque sem soltar para escolher qual."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогрес вибраної цілі. Утримуйте, щоб вибрати."
           }
         },
         "zh-Hans" : {
@@ -2143,6 +2683,12 @@
             "value" : "Avanzamento di un progetto. Tieni premuto per scegliere quale."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postęp wybranego projektu. Przytrzymaj, aby go wybrać."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2153,6 +2699,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Progresso de um projeto. Toque sem soltar para escolher qual."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прогрес вибраного проєкту. Утримуйте, щоб вибрати."
           }
         },
         "zh-Hans" : {
@@ -2190,6 +2742,12 @@
             "value" : "Progetto"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2200,6 +2758,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Projeto"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проєкт"
           }
         },
         "zh-Hans" : {
@@ -2237,6 +2801,12 @@
             "value" : "Cattura rapidamente un'attività nella posta in arrivo."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szybko zapisz zadanie w swojej skrzynce."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2247,6 +2817,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Capture rapidamente uma tarefa na caixa de entrada."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Швидко запишіть завдання у ваші вхідні."
           }
         },
         "zh-Hans" : {
@@ -2284,6 +2860,12 @@
             "value" : "Recupero"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odpoczynek"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2294,6 +2876,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recuperação"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відпочинок"
           }
         },
         "zh-Hans" : {
@@ -2331,6 +2919,12 @@
             "value" : "Routine"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rutyny"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2341,6 +2935,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rotinas"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рутини"
           }
         },
         "zh-Hans" : {
@@ -2378,6 +2978,12 @@
             "value" : "Attività programmata"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaplanowane zadanie"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2388,6 +2994,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tarefa agendada"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заплановане завдання"
           }
         },
         "zh-Hans" : {
@@ -2425,6 +3037,12 @@
             "value" : "Scegli obiettivo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz cel"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2435,6 +3053,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolher objetivo"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть ціль"
           }
         },
         "zh-Hans" : {
@@ -2472,6 +3096,12 @@
             "value" : "Scegli progetto"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz projekt"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2482,6 +3112,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolher projeto"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виберіть проєкт"
           }
         },
         "zh-Hans" : {
@@ -2519,6 +3155,12 @@
             "value" : "Mostra giorno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż dzień"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2529,6 +3171,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar dia"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати день"
           }
         },
         "zh-Hans" : {
@@ -2566,6 +3214,12 @@
             "value" : "Mostra oggi"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż dziś"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2576,6 +3230,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostrar hoje"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показати сьогодні"
           }
         },
         "zh-Hans" : {
@@ -2613,6 +3273,12 @@
             "value" : "Sei settimane della tua agenda a colpo d'occhio."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sześć tygodni Twojego harmonogramu w skrócie."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2623,6 +3289,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seis semanas da sua agenda num relance."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Огляд вашого розкладу на шість тижнів."
           }
         },
         "zh-Hans" : {
@@ -2660,6 +3332,12 @@
             "value" : "Sonno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2670,6 +3348,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sono"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сон"
           }
         },
         "zh-Hans" : {
@@ -2707,6 +3391,12 @@
             "value" : "Questo obiettivo potrebbe essere stato completato o eliminato. Modifica il widget per sceglierne un altro."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten cel mógł zostać ukończony lub usunięty. Edytuj widżet, aby wybrać inny."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2717,6 +3407,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este objetivo pode ter sido concluído ou eliminado. Edite o widget para escolher outro."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цю ціль, імовірно, завершено або видалено. Змініть віджет, щоб вибрати іншу."
           }
         },
         "zh-Hans" : {
@@ -2754,6 +3450,12 @@
             "value" : "Questo progetto potrebbe essere stato archiviato o eliminato. Modifica il widget per sceglierne un altro."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ten projekt mógł zostać zarchiwizowany lub usunięty. Edytuj widżet, aby wybrać inny."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2764,6 +3466,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este projeto pode ter sido arquivado ou eliminado. Edite o widget para escolher outro."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей проєкт, імовірно, архівовано або видалено. Змініть віджет, щоб вибрати інший."
           }
         },
         "zh-Hans" : {
@@ -2801,6 +3509,12 @@
             "value" : "Fuso orario cambiato"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zmieniono strefę czasową"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2811,6 +3525,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fuso horário alterado"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Часовий пояс змінено"
           }
         },
         "zh-Hans" : {
@@ -2848,6 +3568,12 @@
             "value" : "Oggi"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dziś"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2858,6 +3584,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hoje"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сьогодні"
           }
         },
         "zh-Hans" : {
@@ -2895,6 +3627,12 @@
             "value" : "A SEGUIRE"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NASTĘPNE"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2905,6 +3643,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A SEGUIR"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ДАЛІ"
           }
         },
         "zh-Hans" : {
@@ -2942,6 +3686,12 @@
             "value" : "Tempo libero"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wolny czas"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2952,6 +3702,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tempo livre"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вільно"
           }
         },
         "zh-Hans" : {
@@ -2989,6 +3745,12 @@
             "value" : "Senza titolo"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bez tytułu"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2999,6 +3761,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem título"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без назви"
           }
         },
         "zh-Hans" : {
@@ -3036,6 +3804,12 @@
             "value" : "A seguire"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Następne"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3046,6 +3820,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A seguir"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Далі"
           }
         },
         "zh-Hans" : {
@@ -3083,6 +3863,12 @@
             "value" : "Attività vocale"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadanie głosowe"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3093,6 +3879,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tarefa por voz"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Голосове завдання"
           }
         },
         "zh-Hans" : {
@@ -3130,6 +3922,12 @@
             "value" : "La tua giornata come un quadrante."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twój dzień jako tarcza."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3140,6 +3938,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O teu dia como um mostrador."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваш день у вигляді циферблата."
           }
         },
         "zh-Hans" : {
@@ -3177,6 +3981,12 @@
             "value" : "La tua prossima attività programmata."
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Twoje następne zaplanowane zadanie."
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3187,6 +3997,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sua próxima tarefa agendada."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваше наступне заплановане завдання."
           }
         },
         "zh-Hans" : {
@@ -3224,6 +4040,12 @@
             "value" : "al %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stan na %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3234,6 +4056,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "em %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "станом на %@"
           }
         },
         "zh-Hans" : {
@@ -3247,16 +4075,16 @@
     "legend.sleep" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sleep"
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Schlaf"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep"
           }
         },
         "es" : {
@@ -3277,6 +4105,12 @@
             "value" : "Sonno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sen"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3287,6 +4121,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sono"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сон"
           }
         },
         "zh-Hans" : {
@@ -3324,6 +4164,12 @@
             "value" : "poi %@ senza impegni"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "potem %@ wolne"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3334,6 +4180,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "depois %@ livre"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "далі вільно %@"
           }
         },
         "zh-Hans" : {
@@ -3371,6 +4223,12 @@
             "value" : "poi %@ fino al sonno"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "potem %@ do snu"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3381,6 +4239,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "depois %@ até dormir"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "далі %@ до сну"
           }
         },
         "zh-Hans" : {
@@ -3418,6 +4282,12 @@
             "value" : "fino alle %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "do %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3428,6 +4298,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "até às %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "до %@"
           }
         },
         "zh-Hans" : {
@@ -3465,6 +4341,12 @@
             "value" : "fino a %@ alle %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "do: %@, %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3475,6 +4357,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "até %@ às %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "до: %@, %@"
           }
         },
         "zh-Hans" : {
@@ -3512,6 +4400,12 @@
             "value" : "fino alle %@ · restano %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "do %@ · zostało %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3522,6 +4416,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "até às %@ · faltam %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "до %@ · залишилось %@"
           }
         },
         "zh-Hans" : {
@@ -3559,6 +4459,12 @@
             "value" : "fino al sonno alle %@"
           }
         },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "do snu o %@"
+          }
+        },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
@@ -3569,6 +4475,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "até dormir às %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "до сну: %@"
           }
         },
         "zh-Hans" : {

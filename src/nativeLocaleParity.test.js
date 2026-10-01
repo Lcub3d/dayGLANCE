@@ -47,10 +47,7 @@ const androidLocaleFor = (tag) => ANDROID_LOCALE_NAME[tag] ?? tag;
  */
 const NATIVE_TRANSLATION_PENDING = {
   android: {},
-  ios: {
-    pl: 'Web bundle only.',
-    uk: 'Web bundle only.',
-  },
+  ios: {},
 };
 
 const iosCatalogs = ['dayglance-ios/DayGlance/Localizable.xcstrings', 'dayglance-ios/DayGlanceWidget/Localizable.xcstrings']

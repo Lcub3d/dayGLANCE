@@ -615,3 +615,28 @@ describe('completion pin: applySetCompletion vs toggleComplete', () => {
 // already diverges from the desktop inbox-drop (it drops fields like
 // projectId and assignedUserSyncIds). That is a UI-vs-UI inconsistency, not
 // an MCP drift, and is not pinned here.
+
+// ── CONFLICT MESSAGE ─────────────────────────────────────────────────────────
+// Not a shape pin: a drop slid past an event names it. Obstacles from
+// dayOccupancy.js carry `label`; the message read `title` and said "undefined".
+
+describe('a drop slid past an event names it', () => {
+  it('desktop calendar drop', async () => {
+    const { adjustPastConflicts } = await import('./dayOccupancy.js');
+    const event = { id: 'ev', title: 'Standup', date: '2026-08-20', startTime: '11:30', duration: 30, imported: true, isAllDay: false };
+    const block = blockFixture();
+    const state = { routines: [], routinesDate: '2026-08-20', routineCompletions: {}, routinesEnabled: false, todayDate: TODAY_STR };
+    const setSyncNotification = vi.fn();
+    dragAndDrop({
+      task: block, source: 'calendar', targetDate: new Date(2026, 7, 20), overrideTime: '11:30',
+      depsOver: {
+        tasks: [block, event], setSyncNotification,
+        getAdjustedTimeForImportedConflicts: (id, startTime, duration, date) => adjustPastConflicts(state, date, {
+          startTime, duration, excludeId: id, tasks: [event].filter(t => t.date === date),
+        }),
+      },
+    });
+    expect(setSyncNotification).toHaveBeenCalledTimes(1);
+    expect(setSyncNotification.mock.calls[0][0].message).toBe('Task moved to 12:00 to avoid conflict with "Standup"');
+  });
+});

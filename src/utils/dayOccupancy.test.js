@@ -9,6 +9,8 @@ import {
   computeAvailableSlots,
   availableMinutes,
   adjustPastConflicts,
+  obstacleName,
+  describeObstacle,
 } from './dayOccupancy.js';
 
 const TODAY = '2026-09-19';
@@ -359,5 +361,25 @@ describe('routineIntervals', () => {
 
   it('carries the routine name as the label for conflict reporting', () => {
     expect(routineIntervals(routineState([R()]), TODAY)[0]).toMatchObject({ label: 'Morning pages', id: 'routine-r1' });
+  });
+});
+
+describe('obstacleName and describeObstacle', () => {
+  const slide = (state, tasks) => adjustPastConflicts(state, TODAY, { startTime: '09:00', duration: 30, tasks }).conflictingEvent;
+
+  it('names an imported event the placement hit', () => {
+    const hit = slide(routineState([]), [T({ imported: true, title: 'Standup' })]);
+    expect(obstacleName(hit)).toBe('Standup');
+    expect(describeObstacle(hit)).toBe('"Standup"');
+  });
+  it('names a routine the placement hit', () => {
+    const hit = slide(routineState([R({ startTime: '09:00', duration: 15 })]), []);
+    expect(obstacleName(hit)).toBe('Morning pages');
+  });
+  it('falls back to a generic phrase for an untitled event, never "undefined"', () => {
+    const hit = slide(routineState([]), [T({ imported: true, title: '  ' })]);
+    expect(obstacleName(hit)).toBeNull();
+    expect(describeObstacle(hit)).toBe('a calendar event');
+    expect(describeObstacle(null)).toBe('a calendar event');
   });
 });

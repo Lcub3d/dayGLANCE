@@ -7,6 +7,7 @@
 // move of a task that had come due. The other actions open the app's own
 // task form; saving there is the usual add or edit.
 import { followUpDraft } from './carryForward.js';
+import { obstacleName } from '../utils/dayOccupancy.js';
 
 const sameId = (a, b) => String(a) === String(b);
 
@@ -30,8 +31,7 @@ export function createCarryForwardActions({
       const { conflicted, conflictingEvent } = getAdjustedTimeForImportedConflicts(live.id, slot.startTime, slot.duration, slot.date) || {};
       if (conflicted) {
         playUISound?.('error');
-        // Obstacles (dayOccupancy.js) name themselves with `label`.
-        return { conflict: { title: conflictingEvent?.label || conflictingEvent?.title || '' } };
+        return { conflict: { title: obstacleName(conflictingEvent) || '' } };
       }
     }
     pushUndo();

@@ -2107,6 +2107,7 @@
       "dailyNoteEmpty": "Ainda não há nota diária. Clique para escrever uma.",
       "selectForNotes": "Clique numa tarefa ou num Do para ver aqui as notas.",
       "resizeNotes": "Redimensionar a nota diária e as notas da tarefa",
+      "resetNotesSplit": "Repor a divisão predefinida",
       "showNotesSidebar": "Mostrar barra lateral de notas",
       "hideNotesSidebar": "Ocultar barra lateral de notas",
       "showWindowOnly": "Mostrar só de {{start}} a {{end}}",

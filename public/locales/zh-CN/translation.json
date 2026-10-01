@@ -2107,6 +2107,7 @@
       "dailyNoteEmpty": "还没有每日笔记。点击撰写。",
       "selectForNotes": "点击任务或 Do 以在此查看其笔记。",
       "resizeNotes": "调整每日笔记与任务笔记的大小",
+      "resetNotesSplit": "恢复默认分隔位置",
       "showNotesSidebar": "显示笔记侧栏",
       "hideNotesSidebar": "隐藏笔记侧栏",
       "showWindowOnly": "仅显示 {{start}} 到 {{end}}",

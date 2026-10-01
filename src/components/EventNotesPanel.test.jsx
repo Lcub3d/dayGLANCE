@@ -1,50 +1,71 @@
 import React from 'react';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-// The event panel every view opens (timeline and all-day cards, the phone's
-// notes sheet and agenda). A feed event's description is rebuilt on every
-// refresh, so it shows read-only with your own note beneath it; an event
-// from the device's own calendar keeps its editable description, which is
-// written back to that calendar.
+// A calendar event's notes open in the app's own notes panel in every view,
+// as a task's do: the same editor, formatting and Shift+Enter. The separate
+// panel here is only for an event from the device's own calendar in the phone
+// app, whose description is edited and written back to that calendar.
 
 let native = false;
 vi.mock('../native.js', () => ({ isNativeApp: () => native, nativeUpdateEvent: vi.fn() }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k) => k }) }));
-vi.mock('../context/DayPlannerContext.jsx', () => ({ useDayPlannerCtx: () => ({ setTasks: vi.fn(), setEventNote: vi.fn(), timeToMinutes: () => 0, minutesToTime: () => '00:00', darkMode: false }) }));
-const { default: EventNotesPanel } = await import('./EventNotesPanel.jsx');
+vi.mock('../context/DayPlannerContext.jsx', () => ({ useDayPlannerCtx: () => ({ setTasks: vi.fn(), timeToMinutes: () => 0, minutesToTime: () => '00:00', darkMode: false }) }));
+const { default: EventNotesPanel, editsDeviceCalendar } = await import('./EventNotesPanel.jsx');
 
 const event = (over = {}) => ({ id: 'uid-1-2026-09-30', title: 'Busy', date: '2026-09-30', startTime: '13:00', duration: 45, imported: true, notes: 'Room 4B', ...over });
-const render = (task, props = {}) => renderToStaticMarkup(<EventNotesPanel task={task} {...props} />);
 
 beforeEach(() => { native = false; });
 
-describe('EventNotesPanel', () => {
-  // MUTATION: make the feed description editable again and it is lost on
-  // the next refresh; the first expectation catches it.
-  it('a feed event: the description read-only, your note editable beneath it', () => {
-    const html = render(event({ eventNote: 'Ask about the budget' }));
-    expect(html).toContain('data-event-notes="feed"');
-    expect(html).toMatch(/data-event-description="true"[^]*task\.calendarDescription[^]*Room 4B/);
-    expect(html).not.toMatch(/<textarea[^>]*>Room 4B/);
-    expect(html).toMatch(/<textarea data-event-note="true"[^>]*>Ask about the budget<\/textarea>/);
-  });
-
-  it('a feed event with no description: just your note', () => {
-    const html = render(event({ notes: undefined }));
-    expect(html).not.toContain('data-event-description');
-    expect(html).toContain('data-event-note');
-  });
-
-  it('an event from the device calendar keeps its editable description, written back to it', () => {
+describe('which notes panel an event gets', () => {
+  it('a feed event takes the app\'s notes panel, like a task', () => {
+    expect(editsDeviceCalendar(event())).toBe(false);
     native = true;
-    const html = render(event({ nativeEventId: 'dev-1' }));
+    expect(editsDeviceCalendar(event())).toBe(false);
+  });
+  it('an event from the device calendar, in the phone app, edits its description there', () => {
+    native = true;
+    expect(editsDeviceCalendar(event({ nativeEventId: 'dev-1' }))).toBe(true);
+  });
+  it('the same event on desktop, with no device calendar, takes the app\'s notes panel', () => {
+    expect(editsDeviceCalendar(event({ nativeEventId: 'dev-1' }))).toBe(false);
+  });
+
+  // MUTATION: gate a mount on `imported` again and that view goes back to a
+  // plain field with no formatting or Shift+Enter, and a task-calendar item's
+  // note is stored where nothing shows it.
+  it.each([
+    'TimelineTaskCardContent.jsx', 'AllDayTaskCard.jsx', 'MobileLayout.jsx', 'MobileGlanceSection.jsx',
+  ])('%s opens the device panel only for a device-calendar event', (file) => {
+    const source = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
+    const mounts = [...source.matchAll(/<EventNotesPanel\b/g)].map((m) => m.index);
+    expect(mounts.length).toBeGreaterThan(0);
+    // Each mount's own gate is the one decision, not negated, and nothing
+    // between that gate and the mount routes on `imported` instead.
+    for (const at of mounts) {
+      const before = source.slice(Math.max(0, at - 900), at);
+      const gate = before.lastIndexOf('editsDeviceCalendar(');
+      expect(gate, 'mount without the editsDeviceCalendar gate').toBeGreaterThan(-1);
+      expect(before[gate - 1], 'mount behind a negated gate').not.toBe('!');
+      expect(before.slice(gate)).not.toMatch(/isImported &&|\.imported &&/);
+    }
+  });
+
+  // MUTATION: gate a card's own notes panel on `!isImported` again and a
+  // calendar event on that card loses the app's notes panel altogether.
+  it.each(['TimelineTaskCardContent.jsx', 'AllDayTaskCard.jsx'])('%s gives an event the app\'s notes panel', (file) => {
+    const source = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
+    expect(source).toMatch(/expandedNotesTaskId === task\.id && !editsDeviceCalendar\(task\) && \(/);
+    expect(source).not.toMatch(/expandedNotesTaskId === task\.id && !isImported/);
+  });
+});
+
+describe('EventNotesPanel (device calendar)', () => {
+  it('edits the event\'s own description, written back to the device calendar', () => {
+    native = true;
+    const html = renderToStaticMarkup(<EventNotesPanel task={event({ nativeEventId: 'dev-1' })} />);
     expect(html).toContain('data-event-notes="device"');
     expect(html).toMatch(/<textarea[^>]*>Room 4B<\/textarea>/);
-    expect(html).not.toContain('data-event-note=');
-  });
-
-  it('the same event on desktop, with no device calendar, is a feed event', () => {
-    expect(render(event({ nativeEventId: 'dev-1' }))).toContain('data-event-notes="feed"');
   });
 });

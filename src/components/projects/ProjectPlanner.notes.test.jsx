@@ -122,7 +122,7 @@ describe('the planner notes sidebar', () => {
     store.set('dg-planner-notes-sidebar', '1');
     const html = await render();
     expect(html).toContain('data-planner-notes-sidebar="open"');
-    expect(html).toContain('max-w-6xl');
+    expect(html).toContain('max-w-[104rem]');
     expect(html).toContain('Select a task to see its notes here.');
     expect(html).toContain('Enter or double-click to edit');
   });

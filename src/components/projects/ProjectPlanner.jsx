@@ -45,7 +45,7 @@ const ProjectPlanner = ({ project, onClose }) => {
     darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg,
     tasks, unscheduledTasks, setUnscheduledTasks, reorderUnscheduledTasks,
     recurringTasks,
-    openMobileEditTask, scheduleTaskAtNextSlot,
+    openMobileEditTask, scheduleTaskAtNextSlot, showAddTask,
   } = useDayPlannerCtx();
   const { goals, updateProject, isVisibleForUser } = useFeaturesCtx();
   const { t } = useTranslation();
@@ -106,14 +106,19 @@ const ProjectPlanner = ({ project, onClose }) => {
   // put it in a different stacking context and break this ordering.
   const editTask = (task) => {
     saveNotes();
+    // The keyboard picks up from the task just edited.
+    setSelectedId(task.id);
     openMobileEditTask(task, false);
   };
 
-  // ── Notes sidebar (desktop and landscape tablet) ─────────────────────────
-  // Opt-in, and remembered on this device like a remembered tab. Closed, a
-  // card click opens the editor as it always has. Open, a click selects the
-  // task and the sidebar shows its notes; a double-click or Enter opens the
-  // editor, and the arrow keys move the selection (utils/plannerSelection.js).
+  // ── Notes sidebar and keyboard (desktop and landscape tablet) ────────────
+  // The planner takes the keyboard as it opens, however it was opened, and
+  // again when the task editor above it closes: the arrow keys move the
+  // selection (utils/plannerSelection.js) and Enter opens the selected task.
+  // The sidebar is opt-in, and remembered on this device like a remembered
+  // tab. Closed, a card click opens the editor as it always has. Open, a
+  // click selects the task and the sidebar shows its notes; a double-click
+  // or Enter opens the editor.
   const wide = !isMobile && !(isTablet && !isLandscape);
   const [notesPreferred, setNotesPreferred] = useState(() => {
     try { return localStorage.getItem(NOTES_SIDEBAR_KEY) === '1'; } catch { return false; }
@@ -125,10 +130,21 @@ const ProjectPlanner = ({ project, onClose }) => {
   const sidebar = wide && notesPreferred;
   const [selectedId, setSelectedId] = useState(null);
   const panelRef = useRef(null);
+  const takeKeyboard = () => panelRef.current?.focus({ preventScroll: true });
+  useEffect(() => {
+    if (wide) takeKeyboard();
+    // On open only; the editor effect below covers its return.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const editorWasOpen = useRef(!!showAddTask);
+  useEffect(() => {
+    if (editorWasOpen.current && !showAddTask && wide) takeKeyboard();
+    editorWasOpen.current = !!showAddTask;
+  }, [showAddTask, wide]);
   const selectTask = (task) => {
     setSelectedId(task.id);
     // The panel takes the keyboard, so the arrows move from here.
-    panelRef.current?.focus({ preventScroll: true });
+    takeKeyboard();
   };
 
   // Project tasks, split into the two columns. Completed tasks sink to the
@@ -182,7 +198,7 @@ const ProjectPlanner = ({ project, onClose }) => {
   // The selection, as the lists stand: an edit or a completion keeps it on
   // the same task, and a task that leaves the planner drops it.
   const scheduledList = scheduledDays.flatMap(group => group.tasks);
-  const selectedTask = sidebar
+  const selectedTask = wide
     ? [...scheduledList, ...unscheduled].find(task => String(task.id) === String(selectedId)) || null
     : null;
   const selectionLists = [
@@ -192,7 +208,7 @@ const ProjectPlanner = ({ project, onClose }) => {
   const onPanelKeyDown = (e) => {
     // Only with the panel itself focused: a field, or a button in the
     // planner, keeps its own keys.
-    if (!sidebar || e.target !== panelRef.current || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!wide || showAddTask || e.target !== panelRef.current || e.ctrlKey || e.metaKey || e.altKey) return;
     if (isSelectionKey(e.key)) {
       e.preventDefault();
       e.stopPropagation();
@@ -210,9 +226,10 @@ const ProjectPlanner = ({ project, onClose }) => {
     el?.scrollIntoView?.({ block: 'nearest' });
   }, [selectedId]);
   // What a card's click does: select with the sidebar open, edit without.
+  // Either way the keyboard's selection shows.
   const cardProps = (task) => (sidebar
     ? { onEdit: selectTask, onOpen: editTask, selected: selectedTask?.id === task.id }
-    : { onEdit: editTask });
+    : { onEdit: editTask, selected: selectedTask?.id === task.id });
 
   const applyReorder = (fromIdx, toIdx) => {
     const ordered = incompleteUnscheduled.map(task => task.id);
@@ -352,7 +369,7 @@ const ProjectPlanner = ({ project, onClose }) => {
             // outside it. dvh, not vh, so the sheet can't extend below the
             // visible viewport.
             ? 'rounded-t-2xl max-h-[92dvh] w-full overflow-y-auto overscroll-contain'
-            : `rounded-2xl w-full ${sidebar ? 'max-w-6xl' : 'max-w-3xl'} max-h-[85vh] overflow-hidden outline-none`
+            : `rounded-2xl w-full ${sidebar ? 'max-w-[104rem]' : 'max-w-3xl'} max-h-[85vh] overflow-hidden outline-none`
         }`}
         style={isMobile ? { WebkitOverflowScrolling: 'touch' } : undefined}
         ref={panelRef}
@@ -423,7 +440,7 @@ const ProjectPlanner = ({ project, onClose }) => {
             the sheet's two sections). */}
         {(() => { const body = (
         <div
-          className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : 'flex-1 min-h-0 overflow-y-auto min-w-0'}`}
+          className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : `flex-1 min-h-0 overflow-y-auto min-w-0${sidebar ? ' max-w-[48rem]' : ''}`}`}
           style={isMobile ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}
         >
           {/* Notes — same interaction model as task notes panels */}
@@ -603,7 +620,9 @@ const ProjectPlanner = ({ project, onClose }) => {
         </div>
         );
         const aside = sidebar && (
-          <aside data-planner-notes className={`w-[26rem] flex-shrink-0 border-l ${borderClass} overflow-y-auto p-4`} aria-label={t('task.notes', 'Notes')}>
+          // The lists keep the planner's usual width and the notes take the
+          // rest: half the row on a narrower screen, up to 56rem on a wide one.
+          <aside data-planner-notes className={`flex-1 min-w-[24rem] max-w-[56rem] border-l ${borderClass} overflow-y-auto p-4`} aria-label={t('task.notes', 'Notes')}>
             {selectedTask ? (
               <TaskNotesPane key={selectedTask.id} task={selectedTask} autoFocus={false} />
             ) : (

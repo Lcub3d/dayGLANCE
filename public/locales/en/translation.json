@@ -2107,6 +2107,7 @@
       "dailyNoteEmpty": "No daily note yet. Click to write one.",
       "selectForNotes": "Click a task or a Do to see its notes here.",
       "resizeNotes": "Resize the Daily Note and task notes",
+      "resetNotesSplit": "Restore the default split",
       "showNotesSidebar": "Show notes sidebar",
       "hideNotesSidebar": "Hide notes sidebar",
       "showWindowOnly": "Show only {{start}} to {{end}}",

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Loader, X } from 'lucide-react';
+import { Loader, RotateCcw, X } from 'lucide-react';
 import TaskNotesPane from '../TaskNotesPane.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { renderFormattedText } from '../../utils/textFormatting.jsx';
@@ -61,7 +61,7 @@ function DailyNoteEditor({ date, note, onSave, template, loadFresh, onDone, dark
 
 export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAction = null, headerInset = 0 }) {
   const {
-    darkMode, borderClass, textPrimary, textSecondary,
+    darkMode, borderClass, textPrimary, textSecondary, cardBg = darkMode ? 'bg-gray-800' : 'bg-white',
     dailyNotes, updateDailyNote, dailyNoteTemplate, loadDailyNoteFresh,
   } = useDayPlannerCtx();
   const noteText = dailyNotes?.[date]?.text || '';
@@ -72,6 +72,8 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
   const heading = `text-xs font-semibold uppercase tracking-wide ${textSecondary}`;
   const [share, setShare] = useJoboShare('daily-note-share', DAILY_NOTE_SHARE, clampShare);
   const body = useRef(null);
+  // Within half a percent of the default is the default: nothing to reset.
+  const splitAtDefault = Math.abs(share - DAILY_NOTE_SHARE) < 0.005;
   const drag = (event) => {
     if (event.button !== 0) return;
     event.preventDefault();
@@ -125,8 +127,10 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
           </div>
         )}
       </section>
-      {/* The split: drag it, or focus it and use the arrows. Double-click
-          puts it back where it started. */}
+      {/* The split: drag it, or focus it and use the arrows. Double-click,
+          or the reset button at its right end once it has moved, puts it
+          back where it started. */}
+      <div className="relative flex-shrink-0 -my-1 z-10">
       <div
         data-jobo-sidebar-split
         role="separator"
@@ -145,9 +149,24 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
           event.stopPropagation();
           setShare(next);
         }}
-        className={`group relative h-2 -my-1 flex-shrink-0 cursor-row-resize touch-none outline-none z-10 flex items-center`}
+        className={`group relative h-2 cursor-row-resize touch-none outline-none flex items-center`}
       >
         <div className={`w-full border-t ${borderClass} group-hover:border-blue-500 group-focus-visible:border-blue-500 group-focus-visible:border-t-2`} />
+      </div>
+      {!splitAtDefault && (
+        <button
+          type="button"
+          data-jobo-sidebar-split-reset
+          // Pressing it must not start a drag of the split beneath it.
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => setShare(DAILY_NOTE_SHARE)}
+          aria-label={t('jobo.view.resetNotesSplit')}
+          title={t('jobo.view.resetNotesSplit')}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full border ${borderClass} ${cardBg} ${textSecondary} hover:text-blue-500 hover:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 outline-none`}
+        >
+          <RotateCcw size={11} aria-hidden="true" />
+        </button>
+      )}
       </div>
       <section className="flex-1 min-h-0 overflow-y-auto p-3">
         <div className="flex items-center justify-between mb-2 gap-2">

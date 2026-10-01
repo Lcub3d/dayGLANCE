@@ -42,4 +42,19 @@ describe('the Daily Note in the notes sidebar', () => {
     expect(html).toMatch(/data-jobo-daily-note="true"[^>]*class="flex-1 min-h-0/);
     expect(html).toMatch(/data-jobo-sidebar-split="true"[^>]*role="separator"[^>]*aria-valuenow="55"[^>]*tabindex="0"/);
   });
+
+  // MUTATION: show the reset button at the default and there is nothing for
+  // it to do; drop the guard on its pointerdown and pressing it starts a
+  // drag of the split beneath it instead.
+  it('offers a reset at the split\'s right end only once the split has moved', () => {
+    expect(render()).not.toContain('data-jobo-sidebar-split-reset');
+    store.set('dg-jobo-daily-note-share', '0.551');
+    expect(render()).not.toContain('data-jobo-sidebar-split-reset');
+    store.set('dg-jobo-daily-note-share', '0.3');
+    const html = render();
+    expect(html).toMatch(/<button type="button" data-jobo-sidebar-split-reset="true"[^>]*aria-label="jobo.view.resetNotesSplit"/);
+    // Beside the separator, not inside it: a separator's children are presentational.
+    expect(html).not.toMatch(/role="separator"[^>]*>(?:(?!<\/div>).)*data-jobo-sidebar-split-reset/s);
+  });
 });
+

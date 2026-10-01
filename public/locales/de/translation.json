@@ -2107,6 +2107,7 @@
       "dailyNoteEmpty": "Noch keine Tagesnotiz. Klicke, um eine zu schreiben.",
       "selectForNotes": "Klicke auf eine Aufgabe oder ein Do, um hier ihre Notizen zu sehen.",
       "resizeNotes": "Größe von Tagesnotiz und Aufgabennotizen ändern",
+      "resetNotesSplit": "Standardaufteilung wiederherstellen",
       "showNotesSidebar": "Notizen-Seitenleiste anzeigen",
       "hideNotesSidebar": "Notizen-Seitenleiste ausblenden",
       "showWindowOnly": "Nur {{start}} bis {{end}} anzeigen",

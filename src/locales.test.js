@@ -196,7 +196,6 @@ describe('locale bundles', () => {
     'jobo.view.addDo': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
     'jobo.view.capturedPlan': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
     'jobo.view.capturedTitle': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
-    'jobo.view.endDate': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
     'jobo.view.titleRequired': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
   };
 
@@ -212,11 +211,16 @@ describe('locale bundles', () => {
     ).toEqual([]);
   });
 
-  // An entry that no language still carries has outlived its gap.
-  it('records no phrase that every language has since translated', () => {
+  // An entry that no language still carries has outlived its gap, whether it
+  // was translated everywhere or the key was removed from the bundles.
+  it('records no phrase that no language still carries', () => {
     const tracked = [...Object.keys(ENGLISH_ON_PURPOSE), ...Object.keys(UNTRANSLATED)];
     const stale = tracked.filter((key) => !TRANSLATED.some((lng) => isEnglishPhrase(lng, key)));
-    expect(stale, 'every language translates these now; drop them from the lists').toEqual([]);
+    expect(
+      stale,
+      'no language renders these in English any more, either translated or deleted; '
+      + 'drop them from ENGLISH_ON_PURPOSE / UNTRANSLATED',
+    ).toEqual([]);
   });
 
   // And a language listed as waiting that is not waiting any more.

@@ -2093,7 +2093,6 @@
       "secondary": "Fin tardío: {{finish}} · Duró más: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Plan frente a realidad. Esta vista se construye por partes; la primera es el interruptor que la muestra.",
     "undo": {
       "changed": "Este Do cambió desde entonces, así que se dejó como está.",
       "completionBlocked": "Su tarea ya no está completada, así que el Do no puede volver a Completado. Se dejó como está.",
@@ -2134,7 +2133,6 @@
       "elapsedMinutes": "{{minutes}} min transcurridos",
       "emptyDo": "No hay ningún Do registrado para este día.",
       "emptyPlan": "No hay ningún Plan con hora para este día.",
-      "endDate": "End date",
       "executionHistory": "Historial de ejecución ({{count}})",
       "gapLabel": "Pausas entre sesiones",
       "gapMinutes": "{{minutes}} min de pausas",

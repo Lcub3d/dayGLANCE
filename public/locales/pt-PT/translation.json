@@ -2093,7 +2093,6 @@
       "secondary": "Finais tardios: {{finish}} · Demorou mais: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Planeado versus realizado. Esta vista está a ser construída por partes; a primeira é o interruptor que a mostra.",
     "undo": {
       "changed": "Este Do mudou entretanto, por isso foi mantido como está.",
       "completionBlocked": "A tarefa já não está concluída, por isso o Do não pode voltar a Concluído. Foi mantido como está.",
@@ -2134,7 +2133,6 @@
       "elapsedMinutes": "{{minutes}} min decorridos",
       "emptyDo": "Nenhum Do registado neste dia.",
       "emptyPlan": "Nenhum Plano com horário neste dia.",
-      "endDate": "End date",
       "executionHistory": "Histórico de execução ({{count}})",
       "gapLabel": "Intervalos entre sessões",
       "gapMinutes": "{{minutes}} min de intervalo",

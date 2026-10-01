@@ -6,6 +6,7 @@ import { dateToString, extractTags, formatDeadlineDate, completionTimestamp, str
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
+import { describeObstacle } from '../utils/dayOccupancy.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -235,7 +236,7 @@ export default function useTaskActions({
             setSyncNotification({
               type: 'info',
               title: 'Task Rescheduled',
-              message: `Task moved to ${adjustedStartTime} to avoid conflict with "${conflictingEvent.title}"`
+              message: `Task moved to ${adjustedStartTime} to avoid conflict with ${describeObstacle(conflictingEvent)}`
             });
           }
           if (!onboardingProgress.hasDraggedToTimeline) {
@@ -261,7 +262,7 @@ export default function useTaskActions({
           setSyncNotification({
             type: 'info',
             title: 'Task Rescheduled',
-            message: `Task moved to ${adjustedStartTime} to avoid conflict with "${conflictingEvent.title}"`
+            message: `Task moved to ${adjustedStartTime} to avoid conflict with ${describeObstacle(conflictingEvent)}`
           });
         }
       }
@@ -568,7 +569,7 @@ export default function useTaskActions({
       setSyncNotification({
         type: 'error',
         title: "Can't Postpone",
-        message: `Time slot conflicts with "${conflictingEvent?.title || 'a calendar event'}" on ${nextDateStr}`
+        message: `Time slot conflicts with ${describeObstacle(conflictingEvent)} on ${nextDateStr}`
       });
       return;
     }

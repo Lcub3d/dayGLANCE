@@ -2233,10 +2233,7 @@
   },
   "timelineZoom": {
     "label": "Tamanho da linha do tempo",
-    "smaller": "Menor",
-    "larger": "Maior",
-    "reset": "Voltar a 100%",
-    "hint": "Também: faça o gesto de pinça ou Ctrl+rolagem sobre a linha do tempo. Salvo para esta visualização neste dispositivo."
+    "hint": "Salvo neste dispositivo. Para ajustar na hora, faça o gesto de pinça ou Ctrl+rolagem sobre a linha do tempo."
   },
   "todoist": {
     "title": "Sincronização com o Todoist",

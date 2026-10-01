@@ -2233,10 +2233,7 @@
   },
   "timelineZoom": {
     "label": "Timeline size",
-    "smaller": "Smaller",
-    "larger": "Larger",
-    "reset": "Reset to 100%",
-    "hint": "Also: pinch, or Ctrl+scroll over the timeline. Saved for this view on this device."
+    "hint": "Saved on this device. To adjust it in place, pinch or Ctrl+scroll over the timeline."
   },
   "todoist": {
     "title": "Todoist Sync",

@@ -2233,10 +2233,7 @@
   },
   "timelineZoom": {
     "label": "Taille de la chronologie",
-    "smaller": "Plus petit",
-    "larger": "Plus grand",
-    "reset": "Revenir à 100 %",
-    "hint": "Aussi : pincez, ou Ctrl+défilement sur la chronologie. Enregistré pour cette vue sur cet appareil."
+    "hint": "Enregistré sur cet appareil. Pour l’ajuster sur place, pincez ou faites Ctrl+défilement sur la chronologie."
   },
   "todoist": {
     "title": "Synchronisation Todoist",

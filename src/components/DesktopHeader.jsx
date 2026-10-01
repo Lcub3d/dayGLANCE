@@ -8,7 +8,6 @@ import { dateToString, formatDateRange } from '../utils/taskUtils.js';
 import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormatting.js';
 import { hasNativeCalendar } from '../utils/nativeCalendar.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
-import TimelineZoomControl from './TimelineZoomControl.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
 import DayDialIcon from './DayDialIcon.jsx';
 import SpaceSwitcher, { GoalsSpaceTitle } from './SpaceSwitcher.jsx';
@@ -294,7 +293,6 @@ const DesktopHeader = () => {
             </button>
           )}
           <McpBoltButton mcp={mcp} darkMode={darkMode} open={mcpOpen} onToggle={() => setMcpOpen(v => !v)} variant="cluster" />
-          <TimelineZoomControl view={effectiveViewMode} />
           <button
             onClick={() => setShowSettings(true)}
             className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg}`}

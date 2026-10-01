@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import TimelineZoomFlash from './TimelineZoomFlash.jsx';
 import {
   Bell, BookOpen, ChevronLeft, ChevronRight, Cloud,
   Eye, HelpCircle, Inbox, Moon,
@@ -495,6 +496,8 @@ const DesktopLayout = () => {
 
   return (
       <>
+      {/* The timeline size, shown for a moment while a pinch or Ctrl+scroll changes it */}
+      <TimelineZoomFlash />
       {/* macOS traffic-light drag region — the NOW bar when a task is running,
           today's summary-strip pills otherwise (TitlebarSummaryStrip). The bar
           stays a drag area; the only carve-outs are the strip's unblocked pill

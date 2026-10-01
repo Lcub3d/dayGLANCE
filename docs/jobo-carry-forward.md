@@ -2,7 +2,8 @@
 
 Design note for the rest of slice 7 of #1726: Carry Forward and successor
 tasks (#1714). The direction was agreed with Lcub3d on #1726; this note
-settles the details that touch how tasks behave. Nothing here is built yet.
+settles the details that touch how tasks behave. The decisions are pure
+helpers in `src/jobo/carryForward.js`; the buttons are not built yet.
 
 ## The rule
 
@@ -38,13 +39,13 @@ the day, so the click should leave nothing to fill in:
 
 - **When:** tomorrow, meaning the day after today, not the day after the
   entry's date. A Monday reviewed on Wednesday continues on Thursday, not on
-  Tuesday.
+  Tuesday. Today's own Check offers it too, for the end-of-day read.
 - **What time:** the task's planned start time.
 - **How long:** what is left of the plan. That is the planned duration minus
   the time recorded against it, rounded up to 15 minutes. If nothing is
   measured, or the work already ran over, it keeps its planned duration.
   Measured means timed Do only, using the same coverage the stats header
-  counts.
+  counts, over the entry's own sessions. An all-day task stays all-day.
 - **Afterwards:** a toast reads "Continued to Fri 9:00 · Undo", and the entry
   shows the new slot. Changing the slot, or anything else, is the usual edit
   on the task.
@@ -70,7 +71,7 @@ existing rules apply to it unchanged:
 | Entry | What it offers |
 |---|---|
 | A recurring occurrence | Nothing. The next occurrence continues the work, and moving one occurrence is a series exception, not a continuation. |
-| A task already moved to today or later | "Next: Fri 9:00", with no button. It has been continued already, by hand or from another device. |
+| A task already moved off the entry's day | "Next: Fri 9:00", with no button. It has been continued already, by hand or from another device. Only the day the task sits on offers Continue, so the time left is that day's. |
 | An unscheduled task (Inbox or a project's list) that has Do recorded | "Schedule…", which opens the editor on tomorrow, because there is no planned time to carry. |
 | An unlinked Do | Nothing for now. "Make a task" may follow later. |
 | A task since deleted or archived | Nothing. |

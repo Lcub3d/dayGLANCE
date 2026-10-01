@@ -19,5 +19,15 @@ export default mergeConfig(viteConfig, defineConfig({
   test: {
     include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
     exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/dist-electron/**'],
+    // The suite runs in UTC wherever it runs. src/utils/solar.test.js checks
+    // sunrise and sunset against published ephemeris times, which are UT, and
+    // getSunTimes returns minutes on the LOCAL clock, so its expectations only
+    // hold where local time is UT. That was true on CI and nowhere else: a
+    // contributor in Warsaw saw 3 failures and one in Chicago 5, on a clean
+    // checkout, with nothing to suggest the cause was their time zone.
+    //
+    // A test that genuinely needs another zone sets it on a child process, as
+    // src/jobo/core.test.js does, rather than depending on the machine's.
+    env: { TZ: 'UTC' },
   },
 }));

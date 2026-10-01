@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
+import { BookOpen, Calendar, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
 import TaskPlanHistory from '../TaskPlanHistory.jsx';
 import TaskStarButton from '../TaskStarButton.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
@@ -9,9 +9,10 @@ import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { useTranslation } from 'react-i18next';
 import { taskColorToHex, hexToRgba } from '../../utils/colorUtils.js';
 import { isObsidianNoteOnlyTask, renderTitleWithoutTags, URL_REGEX } from '../../utils/textFormatting.jsx';
-import { dateToString, extractTags, extractWikilinks } from '../../utils/taskUtils.js';
+import { dateToString, extractTags, extractWikilinks, formatDeadlineDate } from '../../utils/taskUtils.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
+import DeadlinePickerPopover from '../DeadlinePickerPopover.jsx';
 
 /**
  * Task card for the SCHED agenda and the Project Planner columns.
@@ -43,7 +44,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary,
     formatTime, toggleComplete, openMobileEditTask, currentTime,
-    postponeTask,
+    postponeTask, showDeadlinePicker, setShowDeadlinePicker,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
   const { projects, goalsProjectsEnabled, generateAISubtasks, aiSubtasksLoadingForTask, aiConfig } = useFeaturesCtx();
@@ -127,6 +128,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
   // Postpone (same action as the timeline's button): dated, editable,
   // incomplete cards only. Hidden when a schedule-for-today action is present
   // (overdue cards) — postponing an already-past date would stay in the past.
+  // The picker state is one shared id. The PLANNER opens over the project
+  // card that lists the same task, so this card keys its picker apart, or
+  // both would open.
+  const deadlinePickerKey = `sched:${task.id}`;
+
   const canPostpone = !isEvent && !task.completed && !!task.date && !isInbox && !onSchedule;
 
   return (
@@ -219,6 +225,36 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                   </span>
                 )}
               </button>
+            )}
+            {/* Deadline — the inbox's button and picker, on inbox cards
+                (the PLANNER's unscheduled column). */}
+            {isInbox && !isEvent && !task.completed && (
+              <span className="deadline-picker-container relative flex-shrink-0 flex">
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    setShowDeadlinePicker(showDeadlinePicker === deadlinePickerKey ? null : deadlinePickerKey);
+                  }}
+                  className={`flex items-center gap-1 ${META_HIT} rounded hover:opacity-100 hover:text-blue-500 ${
+                    task.deadline ? `font-medium ${darkMode ? 'text-blue-400' : 'text-blue-600'}` : 'opacity-35'
+                  }`}
+                  title={task.deadline
+                    ? t('task.deadlineWithDate', { date: formatDeadlineDate(task.deadline), defaultValue: 'Deadline: {{date}}' })
+                    : t('task.setDeadline', { defaultValue: 'Set deadline' })}
+                  aria-label={t('task.setDeadline', { defaultValue: 'Set deadline' })}
+                >
+                  <Calendar size={META_ICON} />
+                  {task.deadline && <span className="whitespace-nowrap">{formatDeadlineDate(task.deadline)}</span>}
+                </button>
+                {showDeadlinePicker === deadlinePickerKey && (
+                  <DeadlinePickerPopover
+                    portal
+                    taskId={task.id}
+                    currentDeadline={task.deadline}
+                    onClose={() => setShowDeadlinePicker(null)}
+                  />
+                )}
+              </span>
             )}
             {linkUrl && (
               <a

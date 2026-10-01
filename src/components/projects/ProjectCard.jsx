@@ -17,8 +17,9 @@ import { TAILWIND_TO_HEX, hexToRgba, getProjectColor } from '../../utils/colorUt
 import ProjectProgress from './ProjectProgress.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
 import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
+import DeadlinePickerPopover from '../DeadlinePickerPopover.jsx';
 import { renderTitle, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, getLinkUrl, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../../utils/textFormatting.jsx';
-import { dateToString, extractWikilinks, completionTimestamp } from '../../utils/taskUtils.js';
+import { dateToString, extractWikilinks, completionTimestamp, formatDeadlineDate } from '../../utils/taskUtils.js';
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
@@ -77,6 +78,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
     longPressTriggeredRef, longPressTimerRef,
     mobileActiveTab,
+    showDeadlinePicker, setShowDeadlinePicker,
   } = useDayPlannerCtx();
   const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx();
   // Project note (companion §4.3): a badge that opens the linked note, or a
@@ -635,6 +637,35 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                   >
                     {isPhoneOnlyTask(task) ? <Phone size={10} /> : isLinkOnlyTask(task) ? <ExternalLink size={10} /> : hasOnlySubtasks(task) ? <CheckSquare size={10} /> : isObsidianNoteOnlyTask(task) ? <BookOpen size={10} /> : <FileText size={10} />}
                   </button>
+                  {/* Deadline — unscheduled project tasks are inbox tasks, so
+                      this is the inbox's deadline button and picker. */}
+                  {!scheduled && !task.completed && (
+                    <div className="deadline-picker-container relative flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeadlinePicker(showDeadlinePicker === task.id ? null : task.id);
+                        }}
+                        className={`flex items-center gap-1 p-1 rounded transition-colors ${hoverBg} ${
+                          task.deadline ? (darkMode ? 'text-blue-400' : 'text-blue-600') : `${textSecondary} opacity-40`
+                        }`}
+                        title={task.deadline
+                          ? t('task.deadlineWithDate', { date: formatDeadlineDate(task.deadline), defaultValue: 'Deadline: {{date}}' })
+                          : t('task.setDeadline', { defaultValue: 'Set deadline' })}
+                      >
+                        <Calendar size={10} />
+                        {task.deadline && <span className="text-[10px] font-medium whitespace-nowrap">{formatDeadlineDate(task.deadline)}</span>}
+                      </button>
+                      {showDeadlinePicker === task.id && (
+                        <DeadlinePickerPopover
+                          portal
+                          taskId={task.id}
+                          currentDeadline={task.deadline}
+                          onClose={() => setShowDeadlinePicker(null)}
+                        />
+                      )}
+                    </div>
+                  )}
                   {/* Calendar badge for scheduled tasks — w-5 h-5 matches drag handle (p-1 + size-12) footprint exactly */}
                   {scheduled && (
                     <div className={`flex-shrink-0 w-5 h-5 flex items-center justify-center ${textSecondary} opacity-40`}>

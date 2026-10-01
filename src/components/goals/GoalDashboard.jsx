@@ -2796,6 +2796,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       // A task notes/subtasks overlay (e.g. opened from a SCHED/planner card)
       // sits above everything and closes itself — leave ESC to it.
       if (document.querySelector('.sched-notes-panel')) return;
+      // So does an open deadline picker (a project card or PLANNER row).
+      if (document.querySelector('.deadline-picker-popover')) return;
       let close = null;
       // The project filter field: Escape clears it and gives focus back.
       const filterEl = filterInputRef.current;

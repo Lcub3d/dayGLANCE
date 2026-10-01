@@ -23,12 +23,12 @@ async function i18n() {
 }
 
 const noop = () => {};
-const render = async (task, { isInbox = true } = {}) => renderToStaticMarkup(
+const render = async (task, { isInbox = true, showDeadlinePicker = null } = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
     <DayPlannerContext.Provider value={{
       darkMode: false, cardBg: 'bg-white', borderClass: 'border-stone-200', textPrimary: 'text-stone-900', textSecondary: 'text-stone-500',
       formatTime: (t) => t, toggleComplete: noop, openMobileEditTask: noop, currentTime: new Date(), postponeTask: noop,
-      showDeadlinePicker: null, setShowDeadlinePicker: noop,
+      showDeadlinePicker, setShowDeadlinePicker: noop,
       updateTaskNotes: noop, addSubtask: noop, toggleSubtask: noop, deleteSubtask: noop, updateSubtaskTitle: noop,
     }}>
       <FeaturesContext.Provider value={{ projects: [], goalsProjectsEnabled: false, generateAISubtasks: noop, aiSubtasksLoadingForTask: null, aiConfig: null }}>
@@ -62,6 +62,15 @@ describe('SchedTaskCard deadline button', () => {
   it('no button on a completed task or a dated (non-inbox) card', async () => {
     expect(deadlineButton(await render({ ...base, completed: true }))).toBe('');
     expect(deadlineButton(await render({ ...base, date: '2030-03-15', startTime: '09:00' }, { isInbox: false }))).toBe('');
+  });
+
+  // The PLANNER opens over the project card listing the same task, and the
+  // picker state is one shared id: a card keyed on the bare id would open a
+  // second menu from the card underneath.
+  it('the card keys its picker apart from the project card row', async () => {
+    const opened = (html) => /<span hidden="">/.test(html);
+    expect(opened(await render(base, { showDeadlinePicker: 'p-task' }))).toBe(false);
+    expect(opened(await render(base, { showDeadlinePicker: 'sched:p-task' }))).toBe(true);
   });
 });
 

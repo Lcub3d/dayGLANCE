@@ -128,6 +128,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
   // Postpone (same action as the timeline's button): dated, editable,
   // incomplete cards only. Hidden when a schedule-for-today action is present
   // (overdue cards) — postponing an already-past date would stay in the past.
+  // The picker state is one shared id. The PLANNER opens over the project
+  // card that lists the same task, so this card keys its picker apart, or
+  // both would open.
+  const deadlinePickerKey = `sched:${task.id}`;
+
   const canPostpone = !isEvent && !task.completed && !!task.date && !isInbox && !onSchedule;
 
   return (
@@ -228,7 +233,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                 <button
                   onClick={e => {
                     e.stopPropagation();
-                    setShowDeadlinePicker(showDeadlinePicker === task.id ? null : task.id);
+                    setShowDeadlinePicker(showDeadlinePicker === deadlinePickerKey ? null : deadlinePickerKey);
                   }}
                   className={`flex items-center gap-1 ${META_HIT} rounded hover:opacity-100 hover:text-blue-500 ${
                     task.deadline ? `font-medium ${darkMode ? 'text-blue-400' : 'text-blue-600'}` : 'opacity-35'
@@ -241,7 +246,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                   <Calendar size={META_ICON} />
                   {task.deadline && <span className="whitespace-nowrap">{formatDeadlineDate(task.deadline)}</span>}
                 </button>
-                {showDeadlinePicker === task.id && (
+                {showDeadlinePicker === deadlinePickerKey && (
                   <DeadlinePickerPopover
                     portal
                     taskId={task.id}

@@ -647,7 +647,7 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
                           setShowDeadlinePicker(showDeadlinePicker === task.id ? null : task.id);
                         }}
                         className={`flex items-center gap-1 p-1 rounded transition-colors ${hoverBg} ${
-                          task.deadline ? (darkMode ? 'text-blue-400' : 'text-blue-600') : `${textSecondary} opacity-25`
+                          task.deadline ? (darkMode ? 'text-blue-400' : 'text-blue-600') : `${textSecondary} opacity-40`
                         }`}
                         title={task.deadline
                           ? t('task.deadlineWithDate', { date: formatDeadlineDate(task.deadline), defaultValue: 'Deadline: {{date}}' })

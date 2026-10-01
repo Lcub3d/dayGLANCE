@@ -25,8 +25,21 @@ import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
  * Optional `dnd` prop wires the card into a drag-to-reorder list (the
  * planner's unscheduled column) using the same pattern as ProjectCard:
  * whole-card HTML5 drag off-iOS, grip-only touch drag on iOS.
+ *
+ * `selected` and `onOpen` serve a list where a click selects (the planner
+ * with its notes sidebar open): the card shows the selection, and a
+ * double-click opens it through `onOpen`.
  */
-const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = null, dnd = null, showOverdueDate = false, onSchedule = null }) => {
+// Sizes, shared by SCHED, the Project Planner, MONTH's panel and day sheet:
+// one step up from the old text-sm/text-xs card, with tap targets the size
+// guidance asks for. Meta-row controls keep the row's height by pairing
+// their padding with a negative margin, and the row's gap keeps two
+// neighbouring targets from overlapping.
+const META_ICON = 14;
+const META_HIT = 'p-1.5 -m-1.5';
+const ACTION_ICON = 18;
+
+const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = null, dnd = null, showOverdueDate = false, onSchedule = null, selected = false, onOpen = null }) => {
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary,
     formatTime, toggleComplete, openMobileEditTask, currentTime,
@@ -119,6 +132,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
   return (
     <div
       onClick={handleTap}
+      // Where a click selects (the planner with its notes sidebar open),
+      // a double-click opens the task.
+      onDoubleClick={onOpen && !isEvent ? (e) => { e.stopPropagation(); onOpen(task); } : undefined}
+      data-sched-task={task.id}
+      data-selected={selected ? 'true' : undefined}
       data-drag-idx={dnd ? dnd.idx : undefined}
       draggable={!!dnd?.rowDraggable}
       onDragStart={dnd?.rowDraggable ? e => dnd.onDragStart(e, dnd.idx) : undefined}
@@ -126,11 +144,13 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
       onDragOver={dnd ? e => dnd.onDragOver(e, dnd.idx) : undefined}
       onDrop={dnd ? e => dnd.onDrop(e, dnd.idx) : undefined}
       onTouchStart={dnd?.onRowTouchStart ? e => dnd.onRowTouchStart(e, dnd.idx) : undefined}
-      className={`flex items-center gap-2 rounded-xl border ${borderClass} ${cardBg} px-3 py-2 ${
+      className={`flex items-center gap-2 rounded-xl border ${borderClass} ${cardBg} px-3 py-2.5 ${
         isEvent ? '' : 'cursor-pointer active:opacity-70'
       } ${task.completed || isFinishedEvent ? 'opacity-55' : ''} ${dnd ? 'select-none dnd-no-select' : ''} ${
         dnd?.isSource ? 'opacity-40' : ''
-      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-blue-400' : 'border-t-2 border-t-blue-500') : ''}`}
+      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-blue-400' : 'border-t-2 border-t-blue-500') : ''} ${
+        selected ? 'ring-2 ring-blue-500' : ''
+      }`}
       style={{ borderLeft: `4px solid ${hex}` }}
     >
       {dnd && (
@@ -139,27 +159,27 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
           className={`flex-shrink-0 p-1.5 -m-1 cursor-grab active:cursor-grabbing touch-none select-none ${textSecondary} opacity-30`}
           aria-label={t('sched.dragToReorder', 'Drag to reorder')}
         >
-          <GripVertical size={13} />
+          <GripVertical size={16} />
         </div>
       )}
       {!isEvent && (
         <button
           onClick={e => { e.stopPropagation(); toggleComplete(task.id, isInbox); }}
-          className="flex-shrink-0 p-0.5"
+          className="flex-shrink-0 p-1 -m-0.5"
           aria-label={task.completed ? t('sched.markIncomplete', 'Mark incomplete') : t('sched.markComplete', 'Mark complete')}
         >
           {task.completed
-            ? <CheckCircle2 size={18} className="text-green-500" />
-            : <Circle size={18} className={darkMode ? 'text-gray-600' : 'text-stone-300'} />}
+            ? <CheckCircle2 size={22} className="text-green-500" />
+            : <Circle size={22} className={darkMode ? 'text-gray-600' : 'text-stone-300'} />}
         </button>
       )}
-      <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-        <span className={`text-sm font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
+      <div className="flex flex-col min-w-0 flex-1 gap-1">
+        <span className={`text-base font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
           {renderTitleWithoutTags(task.title)}
         </span>
         {/* Meta row — always rendered on editable tasks so cards stay uniform */}
         {(!isEvent || timeLabel) && (
-          <span className={`text-xs ${textSecondary} flex items-center gap-1.5 min-w-0`} style={{ minHeight: '1rem' }}>
+          <span className={`text-sm ${textSecondary} flex items-center gap-3 min-w-0`} style={{ minHeight: '1.25rem' }}>
             {showOverdueDate && task.date && (
               <span className="flex-shrink-0 font-medium text-amber-500">
                 {formatLocalizedDate(new Date(task.date + 'T00:00:00'), { month: 'short', day: 'numeric' })}
@@ -171,7 +191,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                 title={t('sched.happeningNow', 'Happening now')}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-red-500">
+                <span className="text-xs font-semibold uppercase tracking-wide text-red-500">
                   {t('sched.nowLabel', 'Now')}
                 </span>
               </span>
@@ -179,22 +199,22 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
             {timeLabel && (
               <span className={`flex-shrink-0 ${isPastDueTask ? 'text-red-400 font-medium' : ''}`}>{timeLabel}</span>
             )}
-            {isRecurring && <Repeat size={10} className="opacity-60 flex-shrink-0" />}
-            {!isEvent && <TaskPlanHistory task={task} size={10} />}
-            {!isEvent && <TaskStarButton task={task} size={10} accent />}
+            {isRecurring && <Repeat size={META_ICON} className="opacity-60 flex-shrink-0" />}
+            {!isEvent && <TaskPlanHistory task={task} size={META_ICON} pad={META_HIT} />}
+            {!isEvent && <TaskStarButton task={task} size={META_ICON} accent pad={META_HIT} />}
             {!isEvent && (
               <button
                 onClick={openNotesPanel}
-                className={`flex items-center gap-0.5 flex-shrink-0 p-0.5 -m-0.5 hover:opacity-100 hover:text-blue-500 ${
+                className={`flex items-center gap-1 flex-shrink-0 ${META_HIT} rounded hover:opacity-100 hover:text-blue-500 ${
                   hasNotesContent ? 'opacity-70' : 'opacity-35'
                 }`}
                 title={hasNotesContent ? t('sched.notesSubtasks', 'Notes & subtasks') : t('sched.addNotesSubtasks', 'Add notes or subtasks')}
                 aria-label={hasNotesContent ? t('sched.viewNotesSubtasks', 'View notes and subtasks') : t('sched.addNotesSubtasks', 'Add notes or subtasks')}
               >
-                {isObsidianNoteOnlyTask(task) ? <BookOpen size={10} /> : <FileText size={10} />}
+                {isObsidianNoteOnlyTask(task) ? <BookOpen size={META_ICON} /> : <FileText size={META_ICON} />}
                 {subtasks.length > 0 && (
                   <span className="flex items-center gap-0.5">
-                    <CheckSquare size={10} />
+                    <CheckSquare size={META_ICON} />
                     {subtasksDone}/{subtasks.length}
                   </span>
                 )}
@@ -206,10 +226,10 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="flex-shrink-0 opacity-70 hover:opacity-100 hover:text-blue-500"
+                className={`flex-shrink-0 ${META_HIT} rounded opacity-70 hover:opacity-100 hover:text-blue-500`}
                 title={linkUrl}
               >
-                <ExternalLink size={10} />
+                <ExternalLink size={META_ICON} />
               </a>
             )}
             {tags.length > 0 && (
@@ -219,7 +239,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
             )}
             {project && (
               <span
-                className="px-1.5 py-px rounded-full text-[10px] font-medium truncate flex-shrink-0 max-w-[10rem] ml-auto"
+                className="px-2 py-0.5 rounded-full text-xs font-medium truncate flex-shrink-0 max-w-[12rem] ml-auto"
                 style={{
                   backgroundColor: hexToRgba(hex, darkMode ? 0.22 : 0.12),
                   color: hex,
@@ -235,22 +255,22 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
       {onSchedule && !task.completed && !isEvent && (
         <button
           onClick={e => { e.stopPropagation(); onSchedule(task); }}
-          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
+          className={`flex-shrink-0 p-2 -my-1 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
           title={t('sched.scheduleForTodaySlot', 'Schedule for today (next open slot)')}
           aria-label={t('sched.scheduleForToday', 'Schedule for today')}
         >
-          <CalendarPlus size={14} />
+          <CalendarPlus size={ACTION_ICON} />
         </button>
       )}
       {canPostpone && (
         <button
           onClick={e => { e.stopPropagation(); postponeTask(task.id); }}
-          className={`flex-shrink-0 p-1.5 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
+          className={`flex-shrink-0 p-2 -my-1 rounded-lg opacity-60 hover:opacity-100 hover:text-blue-500 ${textSecondary}`}
           title={t('sched.postponeTomorrow', 'Postpone to tomorrow')}
           aria-label={t('sched.postponeTomorrow', 'Postpone to tomorrow')}
         >
           {/* Same icon as the timeline's postpone button — same action. */}
-          <SkipForward size={14} />
+          <SkipForward size={ACTION_ICON} />
         </button>
       )}
 

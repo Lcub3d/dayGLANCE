@@ -795,6 +795,8 @@
     "assignTo": "Asignar a",
     "notes": "Notas",
     "localNotes": "Notas en dayGLANCE",
+    "calendarDescription": "Del calendario",
+    "yourNotes": "Tus notas (este dispositivo)",
     "subtasks": "Subtareas",
     "addSubtask": "Añadir subtarea",
     "generateSubtasks": "Generar subtareas",
@@ -1953,7 +1955,11 @@
     "addTaskPlaceholder": "Añadir una tarea…",
     "addTaskToProject": "Añadir tarea al proyecto",
     "hideScheduled": "Ocultar la lista Programadas",
-    "showScheduled": "Mostrar programadas"
+    "showScheduled": "Mostrar programadas",
+    "showNotesSidebar": "Mostrar notas de la tarea",
+    "hideNotesSidebar": "Ocultar notas de la tarea",
+    "selectForNotes": "Selecciona una tarea para ver aquí sus notas.",
+    "notesKeysHint": "↑ ↓ moverse entre tareas · ← → cambiar de lista · Intro o doble clic para editar"
   },
   "bucket": {
     "title": "Bucket List",
@@ -2101,6 +2107,7 @@
       "keepEstimate": "Conservar como se muestra",
       "dailyNoteEmpty": "Aún no hay nota diaria. Haz clic para escribir una.",
       "selectForNotes": "Haz clic en una tarea o un Do para ver aquí sus notas.",
+      "resizeNotes": "Cambiar el tamaño de la nota diaria y las notas de la tarea",
       "showNotesSidebar": "Mostrar barra lateral de notas",
       "hideNotesSidebar": "Ocultar barra lateral de notas",
       "showWindowOnly": "Mostrar solo de {{start}} a {{end}}",
@@ -2212,7 +2219,24 @@
     "past": {
       "recorded": "Registrado {{range}}",
       "open": "Abrir en JOBO"
+    },
+    "check": {
+      "button": "Revisión",
+      "title": "Revisión",
+      "actual": "Real",
+      "session": "Sesión {{number}}",
+      "untimed": "Tiempo no registrado",
+      "noRecords": "No hay ejecuciones registradas para este día.",
+      "unavailable": "No se pudieron cargar los registros de ejecución.",
+      "invalid": "No se pudieron cargar algunos registros de ejecución."
     }
+  },
+  "timelineZoom": {
+    "label": "Tamaño de la línea de tiempo",
+    "smaller": "Más pequeño",
+    "larger": "Más grande",
+    "reset": "Restablecer al 100 %",
+    "hint": "También: pellizca o usa Ctrl+desplazamiento sobre la línea de tiempo. Se guarda para esta vista en este dispositivo."
   },
   "todoist": {
     "title": "Sincronización con Todoist",

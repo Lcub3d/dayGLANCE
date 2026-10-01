@@ -34,7 +34,7 @@ function useDoText(item) {
 }
 
 /** DAY and MULTI: the card, placed by the column's own layout (`style`). */
-export default function PastDoCard({ item, style, showTime = true }) {
+export default function PastDoCard({ item, style, showTime = true, zoom = 1 }) {
   const { t, range, progress, openInJobo } = useDoText(item);
   const stop = (event) => event.stopPropagation();
   return (
@@ -53,7 +53,7 @@ export default function PastDoCard({ item, style, showTime = true }) {
       className={`absolute pointer-events-auto rounded-lg shadow-md overflow-hidden text-white cursor-pointer hover:brightness-95 ${item.color || NEUTRAL}`}
       style={{ backgroundImage: DO_STRIPES, ...style }}
     >
-      <div className="px-2 py-1 h-full flex flex-col min-w-0">
+      <div className="px-2 py-1 h-full flex flex-col min-w-0" style={zoom !== 1 ? { zoom } : undefined}>
         <div className="font-semibold text-sm leading-tight truncate">{renderTitleWithoutTags(item.title)}</div>
         {showTime && (
           <div className="text-xs opacity-90 flex items-center gap-1 min-w-0 whitespace-nowrap">

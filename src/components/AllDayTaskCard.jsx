@@ -5,13 +5,14 @@ import {
   Pencil, RefreshCw, SkipForward, Trash2,
   Phone,
 } from 'lucide-react';
-import { isNativeAndroid, isNativeApp, nativeUpdateEvent, SOURCE_APPS } from '../native.js';
+import { isNativeAndroid, SOURCE_APPS } from '../native.js';
 import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import UserAssignmentBadge from './UserAssignmentBadge.jsx';
 import { extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
+import EventNotesPanel from './EventNotesPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -35,7 +36,6 @@ const AllDayTaskCard = ({ task, fillWidth = true }) => {
     startEditingTask, saveTaskTitle,
     applySuggestionForEdit,
     moveToInbox, moveToRecycleBin, postponeTask,
-    timeToMinutes, minutesToTime,
     setTasks,
     taskWidths,
     getTaskCalendarStyle,
@@ -322,29 +322,7 @@ const AllDayTaskCard = ({ task, fillWidth = true }) => {
         {expandedNotesTaskId === task.id && isImported && (
           <div className="notes-panel-container p-2">
             <div className={`p-3 rounded-lg ${darkMode ? 'bg-black/30' : 'bg-white/30'} text-white`} onClick={(e) => e.stopPropagation()}>
-              <div className="text-xs font-semibold opacity-75 mb-1">{t('common.description')}</div>
-              <textarea
-                defaultValue={task.notes || ''}
-                placeholder={t('task.descriptionPlaceholder', { defaultValue: 'Add description…' })}
-                rows={3}
-                className="w-full text-sm p-2 rounded bg-white/10 text-white placeholder:text-white/40 resize-y focus:outline-none focus:bg-white/20"
-                onBlur={async (e) => {
-                  const newNotes = e.target.value;
-                  if (newNotes === (task.notes || '')) return;
-                  setTasks(prev => prev.map(t => t.id === task.id ? { ...t, notes: newNotes, transitionId: crypto.randomUUID() } : t));
-                  if (isNativeApp() && task.nativeEventId) {
-                    await nativeUpdateEvent({
-                      id: task.nativeEventId,
-                      title: task.title,
-                      start: `${task.date}T${task.startTime || '00:00'}:00`,
-                      end: `${task.date}T${minutesToTime(timeToMinutes(task.startTime || '0:00') + (task.duration || 0))}:00`,
-                      allDay: true,
-                      notes: newNotes,
-                      location: task.location || '',
-                    });
-                  }
-                }}
-              />
+              <EventNotesPanel task={task} allDay />
             </div>
           </div>
         )}

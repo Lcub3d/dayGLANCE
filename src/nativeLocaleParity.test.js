@@ -46,10 +46,7 @@ const androidLocaleFor = (tag) => ANDROID_LOCALE_NAME[tag] ?? tag;
  * actually land.
  */
 const NATIVE_TRANSLATION_PENDING = {
-  android: {
-    pl: 'Web bundle only. 172 strings in values/ are untranslated; the App Languages entry gives the WebView its locale while widgets and notifications stay English.',
-    uk: 'Web bundle only, as pl.',
-  },
+  android: {},
   ios: {},
 };
 

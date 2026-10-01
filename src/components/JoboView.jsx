@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -11,9 +11,11 @@ import useJoboPreference from '../hooks/useJoboPreference.js';
 import useJoboRefocus from '../hooks/useJoboRefocus.js';
 import RefocusTimelineToast from './RefocusTimelineToast.jsx';
 import useMinWidth from '../hooks/useMinWidth.js';
+import useTimelineZoom from '../hooks/useTimelineZoom.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
+import CheckPanel from './jobo/CheckPanel.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
@@ -68,8 +70,9 @@ export default function JoboView() {
   const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
   // Every accepted Do write becomes a step in the app's undo history.
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
-  const hourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
+  const baseHourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
+  const [checkOpen, setCheckOpen] = useState(false);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -117,6 +120,12 @@ export default function JoboView() {
     </button>
   );
   const scrollRef = useRef(null);
+  const gridRef = useRef(null);
+  // Timeline magnification (utils/timelineZoom.js): one factor on the hour
+  // height, which every position here derives from, and on the cards'
+  // contents. DAY's column takes the same factor for the Plan side.
+  const zoom = useTimelineZoom('jobo', { scrollRef, originRef: gridRef });
+  const hourHeight = baseHourHeight * zoom;
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
   const live = useRef(null);
@@ -157,10 +166,24 @@ export default function JoboView() {
   const doItems = useMemo(
     () => assignOverlapColumns(
       [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
-      { scale: hourHeight, minHeightPx: 27, gapPx: 2 },
+      { scale: hourHeight, minHeightPx: 27 * zoom, gapPx: 2 },
     ),
-    [model.timedRecords, model.untimedRecords, hourHeight],
+    [model.timedRecords, model.untimedRecords, hourHeight, zoom],
   );
+  const openCheckNotes = (task) => {
+    setCheckOpen(false);
+    if (sidebar && lookup.some(candidate => String(candidate.id) === String(task.id))) {
+      setSelectedTaskId(task.id);
+      return;
+    }
+    // Leave the read-only journal before opening native task notes. Spotlight's
+    // existing navigation handles off-day plans, Inbox and archived projects.
+    const isInbox = (ctx.unscheduledTasks || []).some(candidate => String(candidate.id) === String(task.id));
+    ctx.handleSpotlightSelect({ task, source: task.archived ? 'archived' : isInbox ? 'inbox' : 'scheduled' });
+    ctx.setExpandedNotesTaskId(task.id);
+  };
+  const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
+    && typeof ctx.setExpandedNotesTaskId === 'function';
   const liveDetail = details && doItems.find((item) => item.id === details.item.id);
   // The selected task as it is now, so the sidebar follows edits and sync.
   const selectedTask = selectedTaskId == null ? null : lookup.find((task) => String(task.id) === String(selectedTaskId)) || null;
@@ -179,10 +202,12 @@ export default function JoboView() {
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
     el.scrollTop = scrollTopFor(anchorMinute);
-    // Only on a new day, hour height or visible range, never on an ordinary
-    // re-render.
+    // Only on a new day, screen height or visible range, never on an
+    // ordinary re-render, and never on a zoom: that keeps the time under the
+    // pointer where it was (hooks/useTimelineZoom.js), so it keys on the
+    // unzoomed hour height.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, hourHeight, windowStart]);
+  }, [date, baseHourHeight, windowStart]);
 
   // Refocus timeline, as in MULTI: on today, when the now line is out of
   // view, and on its own at every :00 and :30.
@@ -423,6 +448,11 @@ export default function JoboView() {
           <div className={`min-w-0 px-3 py-1 border-l ${ctx.borderClass} flex items-center justify-between gap-2`}>
             <span>{t('jobo.view.do')}</span>
             <div className="flex items-center gap-1.5">
+            <button type="button" data-jobo-check-toggle aria-haspopup="dialog" aria-expanded={checkOpen}
+              onClick={() => setCheckOpen(true)}
+              className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <ClipboardCheck size={14} /><span className="text-xs font-medium">{t('jobo.check.button')}</span>
+            </button>
             <button
               type="button"
               data-jobo-add
@@ -439,7 +469,7 @@ export default function JoboView() {
             </div>
           </div>
         </div>
-        <div className={GRID}>
+        <div ref={gridRef} className={GRID}>
           {/* `contents` keeps DAY's column the grid cell; the wrapper only
               listens, and scopes the outline rule to the Plan side. */}
           <div
@@ -460,11 +490,12 @@ export default function JoboView() {
             {hoverTaskId != null && (
               <style>{`[data-jobo-pairing] [data-task-id="${cssEscape(hoverTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px}`}</style>
             )}
-            <DayViewColumn planOnly col={planColumn} colIdx={0} hourHeight={hourHeight} />
+            <DayViewColumn planOnly col={planColumn} colIdx={0} hourHeight={hourHeight} zoom={zoom} />
           </div>
           <DoColumn
             date={date}
             hourHeight={hourHeight}
+            zoom={zoom}
             items={doItems}
             ctx={ctx}
             t={t}
@@ -506,6 +537,12 @@ export default function JoboView() {
           writable={joboWritable}
           pendingIds={writer.pendingIds}
         />
+      )}
+      {checkOpen && (
+        <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
+          onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
+          onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
+          textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}
       {editor && (
         <DoEditor

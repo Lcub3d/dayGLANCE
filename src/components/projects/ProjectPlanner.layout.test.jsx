@@ -95,7 +95,8 @@ function directChildren(html, openTag) {
   return children;
 }
 
-const DESKTOP_BODY = '<div class="p-4 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">';
+// min-w-0: the body shares a row with the notes sidebar when it is open.
+const DESKTOP_BODY = '<div class="p-4 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto min-w-0">';
 // The mobile body carries its own classes and a style attribute, so match the
 // opening tag rather than one fixed string.
 const bodyTag = (html) => html.match(/<div class="p-4 flex flex-col gap-4[^>]*>/)?.[0] ?? '';

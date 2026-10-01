@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Loader, X } from 'lucide-react';
-import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
+import TaskNotesPane from '../TaskNotesPane.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
-import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { useSyncCtx } from '../../context/SyncContext.jsx';
-import { renderFormattedText, renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
-import { extractWikilinks } from '../../utils/taskUtils.js';
+import { renderFormattedText } from '../../utils/textFormatting.jsx';
 import useDailyNoteDraft from '../../hooks/useDailyNoteDraft.js';
+import { useJoboShare } from '../../hooks/useJoboPreference.js';
+import { DAILY_NOTE_SHARE, clampShare, shareAtPointer, shareForKey } from './sidebarSplit.js';
 
 // JOBO's notes sidebar on wide screens: the day's Daily Note above, the
 // selected task's notes and subtasks below.
@@ -17,6 +16,10 @@ import useDailyNoteDraft from '../../hooks/useDailyNoteDraft.js';
 // when editing starts, reads the note fresh from Obsidian then, and writes
 // back only a change to what it read, so a note changed in the vault while
 // the sidebar sat open is never overwritten by the sidebar's older copy.
+//
+// The two share the sidebar's height at a split the user drags, remembered
+// on this device. Reading and editing the Daily Note fill the same space, so
+// clicking in to edit never shrinks the note.
 // The task's notes are the same panel a timeline card opens, which saves
 // through the app's own actions.
 export const SIDEBAR_WIDTH = 'w-[calc((100%-4rem)/3)] min-w-80';
@@ -50,7 +53,7 @@ function DailyNoteEditor({ date, note, onSave, template, loadFresh, onDone, dark
       }}
       placeholder={t('planner.notesPlaceholder')}
       aria-label={t('common.dailyNote')}
-      className={`w-full min-h-[8rem] flex-1 ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 resize-none`}
+      className={`w-full min-h-0 flex-1 ${darkMode ? 'bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500' : 'bg-stone-50 text-stone-900 border-stone-300 placeholder:text-stone-400'} text-sm px-3 py-2.5 rounded-lg border outline-none focus:ring-2 focus:ring-blue-500 resize-none`}
       autoFocus
     />
   );
@@ -58,20 +61,35 @@ function DailyNoteEditor({ date, note, onSave, template, loadFresh, onDone, dark
 
 export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAction = null, headerInset = 0 }) {
   const {
-    darkMode, borderClass, textPrimary, textSecondary, unscheduledTasks,
+    darkMode, borderClass, textPrimary, textSecondary,
     dailyNotes, updateDailyNote, dailyNoteTemplate, loadDailyNoteFresh,
-    updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
-  const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx() || {};
   const noteText = dailyNotes?.[date]?.text || '';
   // Editing belongs to one date: moving to another day leaves the editor,
   // which saves on its way out.
   const [editingDate, setEditingDate] = useState(null);
   const editing = editingDate === date && typeof updateDailyNote === 'function';
-  const wikilinks = task ? extractWikilinks(task.title) : [];
-  const hasWiki = wikilinks.length > 0;
   const heading = `text-xs font-semibold uppercase tracking-wide ${textSecondary}`;
+  const [share, setShare] = useJoboShare('daily-note-share', DAILY_NOTE_SHARE, clampShare);
+  const body = useRef(null);
+  const drag = (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    handle.setPointerCapture?.(event.pointerId);
+    const move = (moveEvent) => {
+      const next = shareAtPointer(moveEvent.clientY, body.current?.getBoundingClientRect());
+      if (next != null) setShare(next);
+    };
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  };
 
   return (
     // A third of the view, the same width as Plan and as Do. The view is the
@@ -87,7 +105,8 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
         style={headerInset ? { paddingRight: `calc(0.75rem + ${headerInset}px)` } : undefined}>
         {headerAction}
       </div>
-      <section className={`flex flex-col min-h-0 max-h-[50%] border-b ${borderClass} p-3`}>
+      <div ref={body} data-jobo-sidebar-body className="flex-1 min-h-0 flex flex-col">
+      <section data-jobo-daily-note-section className="flex flex-col min-h-0 flex-shrink-0 p-3" style={{ height: `${Math.round(share * 1000) / 10}%` }}>
         <h3 className={`${heading} mb-2`}>{t('common.dailyNote')}</h3>
         {editing ? (
           <DailyNoteEditor key={date} date={date} note={dailyNotes?.[date]} onSave={updateDailyNote}
@@ -100,12 +119,36 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
             tabIndex={0}
             onClick={() => setEditingDate(date)}
             onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setEditingDate(date); } }}
-            className={`text-sm whitespace-pre-wrap cursor-text overflow-y-auto p-3 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-50 hover:bg-stone-100'} ${noteText ? textPrimary : textSecondary}`}
+            className={`flex-1 min-h-0 text-sm whitespace-pre-wrap cursor-text overflow-y-auto p-3 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-50 hover:bg-stone-100'} ${noteText ? textPrimary : textSecondary}`}
           >
             {noteText ? renderFormattedText(noteText) : t('jobo.view.dailyNoteEmpty')}
           </div>
         )}
       </section>
+      {/* The split: drag it, or focus it and use the arrows. Double-click
+          puts it back where it started. */}
+      <div
+        data-jobo-sidebar-split
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={t('jobo.view.resizeNotes')}
+        aria-valuemin={20}
+        aria-valuemax={80}
+        aria-valuenow={Math.round(share * 100)}
+        tabIndex={0}
+        onPointerDown={drag}
+        onDoubleClick={() => setShare(DAILY_NOTE_SHARE)}
+        onKeyDown={(event) => {
+          const next = shareForKey(share, event.key);
+          if (next == null) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setShare(next);
+        }}
+        className={`group relative h-2 -my-1 flex-shrink-0 cursor-row-resize touch-none outline-none z-10 flex items-center`}
+      >
+        <div className={`w-full border-t ${borderClass} group-hover:border-blue-500 group-focus-visible:border-blue-500 group-focus-visible:border-t-2`} />
+      </div>
       <section className="flex-1 min-h-0 overflow-y-auto p-3">
         <div className="flex items-center justify-between mb-2 gap-2">
           <h3 className={heading}>{t('task.notes')}</h3>
@@ -119,36 +162,13 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
         </div>
         {task ? (
           <div data-jobo-sidebar-task={task.id}>
-            <div className={`flex items-center gap-2 mb-2 text-sm font-semibold ${textPrimary} min-w-0`}>
-              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${task.color || 'bg-blue-500'}`} aria-hidden="true" />
-              <span className="truncate">{renderTitleWithoutTags(task.title)}</span>
-            </div>
-            <div className={`${task.color || 'bg-blue-500'} rounded-lg`}>
-              <NotesSubtasksPanel
-                key={task.id}
-                task={task}
-                isInbox={(unscheduledTasks || []).some((candidate) => candidate.id === task.id)}
-                darkMode={darkMode}
-                updateTaskNotes={updateTaskNotes}
-                addSubtask={addSubtask}
-                toggleSubtask={toggleSubtask}
-                deleteSubtask={deleteSubtask}
-                updateSubtaskTitle={updateSubtaskTitle}
-                compact={false}
-                aiConfig={aiConfig}
-                aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-                onGenerateSubtasks={generateAISubtasks}
-                wikilinks={hasWiki ? wikilinks : undefined}
-                onLoadWikiNote={hasWiki ? loadWikiNote : undefined}
-                onSaveWikiNote={hasWiki ? saveWikiNote : undefined}
-                onOpenInObsidian={hasWiki ? openInObsidian : undefined}
-              />
-            </div>
+            <TaskNotesPane task={task} />
           </div>
         ) : (
           <p className={`text-sm ${textSecondary}`}>{t('jobo.view.selectForNotes')}</p>
         )}
       </section>
+      </div>
     </aside>
   );
 }

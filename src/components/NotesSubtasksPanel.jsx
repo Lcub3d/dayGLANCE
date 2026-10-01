@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
 import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
 import { formatDuration } from '../utils/formatDuration.js';
+import { isCalendarEventRow } from '../utils/eventNotes.js';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -66,14 +67,20 @@ const NotesSubtasksPanel = ({
   onOpenInObsidian,   // (noteName) => void — opens note in Obsidian app/desktop
 }) => {
   const { t } = useTranslation();
+  // A calendar event's `notes` are its description from the calendar, which
+  // every refresh rebuilds: shown read-only, while the note you edit is your
+  // own, kept apart (utils/eventNotes.js). Events take no subtasks, which
+  // would be lost the same way.
+  const isEvent = isCalendarEventRow(task);
+  const ownNotes = (isEvent ? task.eventNote : task.notes) || '';
   const isGeneratingSubtasks = aiSubtasksLoadingForTask === task.id;
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
   const [editingSubtaskText, setEditingSubtaskText] = useState('');
-  const [localNotes, setLocalNotes] = useState(task.notes || '');
+  const [localNotes, setLocalNotes] = useState(ownNotes);
   const [localSubtaskText, setLocalSubtaskText] = useState('');
-  const [isEditingNotes, setIsEditingNotes] = useState(!task.notes); // Edit mode when no content
+  const [isEditingNotes, setIsEditingNotes] = useState(!ownNotes); // Edit mode when no content
   const localNotesRef = useRef(localNotes);
-  const taskNotesRef = useRef(task.notes || '');
+  const taskNotesRef = useRef(ownNotes);
   const taskIdRef = useRef(task.id);
   const isInboxRef = useRef(isInbox);
   const updateTaskNotesRef = useRef(updateTaskNotes);
@@ -198,7 +205,7 @@ const NotesSubtasksPanel = ({
   // Keep refs in sync
   useEffect(() => { localNotesRef.current = localNotes; }, [localNotes]);
   useEffect(() => {
-    const next = task.notes || '';
+    const next = ownNotes;
     // An external change to the record (another device, or the vault
     // migration that moved these notes into a linked note and cleared
     // them here) is adopted when this panel holds no unsaved edit: the
@@ -212,7 +219,7 @@ const NotesSubtasksPanel = ({
       setIsEditingNotes(!next);
     }
     taskNotesRef.current = next;
-  }, [task.notes]);
+  }, [ownNotes]);
 
   // Load the linked notes: those the panel opened with, and any the title
   // gains while it is open (the vault migration adds one). A note the
@@ -246,8 +253,8 @@ const NotesSubtasksPanel = ({
 
   // Sync local notes with task notes when task changes (e.g., switching between tasks)
   useEffect(() => {
-    setLocalNotes(task.notes || '');
-    setIsEditingNotes(!task.notes);
+    setLocalNotes(ownNotes);
+    setIsEditingNotes(!ownNotes);
     // Keyed on task.id only — re-syncing on task.notes would overwrite the user's
     // in-progress edits in this panel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -267,13 +274,13 @@ const NotesSubtasksPanel = ({
   const handleNotesKeyDown = (e) => {
     if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
-      if (localNotes !== (task.notes || '')) updateTaskNotes(task.id, localNotes, isInbox);
+      if (localNotes !== ownNotes) updateTaskNotes(task.id, localNotes, isInbox);
       if (localNotes) setIsEditingNotes(false);
     }
   };
 
   const handleNotesBlur = () => {
-    if (localNotes !== (task.notes || '')) updateTaskNotes(task.id, localNotes, isInbox);
+    if (localNotes !== ownNotes) updateTaskNotes(task.id, localNotes, isInbox);
   };
 
   // Called from the add-subtask input's Enter keydown and nothing else.
@@ -310,7 +317,7 @@ const NotesSubtasksPanel = ({
 
   const showLinked = !!(wikilinks && wikilinks.length > 0 && onLoadWikiNote);
   // Keyed on the local draft too, so the block does not vanish mid-edit.
-  const hasLocalNotes = !!((localNotes || '').trim() || (task.notes || '').trim());
+  const hasLocalNotes = !!((localNotes || '').trim() || ownNotes.trim());
 
   return (
     <div
@@ -401,9 +408,15 @@ const NotesSubtasksPanel = ({
           })}
         </div>
       )}
+      {isEvent && (task.notes || '').trim() && (
+        <div className="mb-3" data-event-description>
+          <div className={`text-xs font-semibold mb-1 ${th.label}`}>{t('task.calendarDescription')}</div>
+          <div className={`text-sm whitespace-pre-wrap p-2 rounded max-h-40 overflow-y-auto ${th.preview}`}>{renderFormattedText(task.notes)}</div>
+        </div>
+      )}
       {(!showLinked || hasLocalNotes) && (
         <div className="mb-3" data-local-notes={showLinked ? 'beside-linked' : 'only'}>
-          <div className={`text-xs font-semibold mb-1 ${th.label}`}>{showLinked ? t('task.localNotes') : t('task.notes')}</div>
+          <div className={`text-xs font-semibold mb-1 ${th.label}`}>{showLinked ? t('task.localNotes') : isEvent ? t('task.yourNotes') : t('task.notes')}</div>
           {isEditingNotes ? (
             <textarea
               value={localNotes}
@@ -440,6 +453,7 @@ const NotesSubtasksPanel = ({
       )}
 
       {/* Subtasks section */}
+      {!isEvent && (
       <div>
         <div className={`text-xs font-semibold mb-1 flex items-center gap-1.5 ${th.label}`}>
           <span>{t('task.subtasks')} {task.subtasks?.length > 0 && `(${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length})`}</span>
@@ -533,6 +547,7 @@ const NotesSubtasksPanel = ({
           />
         </div>
       </div>
+      )}
 
     </div>
   );

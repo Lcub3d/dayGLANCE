@@ -11,8 +11,8 @@ import {
   Wifi, X, Zap,
   Phone,
 } from 'lucide-react';
-import { isNativeAndroid, isNativeApp, nativeUpdateEvent } from '../native.js';
-import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, renderFormattedText, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
+import { isNativeAndroid } from '../native.js';
+import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../utils/textFormatting.jsx';
 import { dateToString, extractTags, extractWikilinks, formatDate, formatDateRange, formatDeadlineDate, formatShortDate } from '../utils/taskUtils.js';
 import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormatting.js';
 import { findRunningTask } from '../utils/runningTask.js';
@@ -22,6 +22,7 @@ import { PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { HabitRing, MiniHabitRing } from './HabitRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
+import EventNotesPanel from './EventNotesPanel.jsx';
 import FrameEditor from './FrameEditor.jsx';
 import SmartSchedulePanel from './SmartSchedulePanel.jsx';
 import DailyNotesModal from './DailyNotesModal.jsx';
@@ -247,7 +248,6 @@ const MobileLayout = () => {
     weekStartDay,
     getTodayStr, getOverdueTasks,
     getTaskCalendarStyle,
-    timeToMinutes, minutesToTime,
     selectAllTags, clearTagFilter, toggleTag,
     handleSpotlightSelect,
     updateDailyNote,
@@ -742,31 +742,7 @@ const MobileLayout = () => {
                         </div>
                         <div className="p-4">
                           {noteTask.imported && !noteTask.isTaskCalendar ? (
-                            <div>
-                              <div className={`text-xs font-semibold ${textSecondary} mb-1`}>{t('common.description')}</div>
-                              <textarea
-                                defaultValue={noteTask.notes || ''}
-                                 placeholder={t('task.notesPlaceholder')}
-                                rows={4}
-                                className={`w-full text-sm p-3 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-white/5 text-white placeholder:text-white/40' : 'bg-black/5 text-stone-900 placeholder:text-stone-400'}`}
-                                onBlur={async (e) => {
-                                  const newNotes = e.target.value;
-                                  if (newNotes === (noteTask.notes || '')) return;
-                                  setTasks(prev => prev.map(t => t.id === noteTask.id ? { ...t, notes: newNotes, transitionId: crypto.randomUUID() } : t));
-                                  if (isNativeApp() && noteTask.nativeEventId) {
-                                    await nativeUpdateEvent({
-                                      id: noteTask.nativeEventId,
-                                      title: noteTask.title,
-                                      start: `${noteTask.date}T${noteTask.startTime}:00`,
-                                      end: `${noteTask.date}T${minutesToTime(timeToMinutes(noteTask.startTime || '0:00') + (noteTask.duration || 0))}:00`,
-                                      allDay: false,
-                                      notes: newNotes,
-                                      location: noteTask.location || '',
-                                    });
-                                  }
-                                }}
-                              />
-                            </div>
+                            <EventNotesPanel task={noteTask} tone="themed" rows={4} />
                           ) : (
                             <div className={`${noteTask.color || ''} rounded-lg`}>
                             <NotesSubtasksPanel

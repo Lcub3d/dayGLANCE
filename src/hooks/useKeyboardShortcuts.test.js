@@ -195,3 +195,30 @@ describe('isCalendarOnlyShortcut', () => {
     expect(isCalendarOnlyShortcut(ev('1', { ctrlKey: true }))).toBe(false);
   });
 });
+
+// The Project Planner takes its own keys (arrows move its selection, Enter
+// opens the selected task). Its keys used to reach this handler too, so an
+// arrow moved the project list behind it, or the calendar's date.
+describe('useKeyboardShortcuts — an open Project Planner', () => {
+  const spaceKeys = () => ({ setTab: vi.fn(), newItem: vi.fn(), focusFilter: vi.fn(), moveSelection: vi.fn(), openSelected: vi.fn(() => true) });
+
+  // MUTATION: drop plannerProjectId from the modal guard and these fail.
+  it('moves nothing behind it, in either space', () => {
+    const keys = spaceKeys();
+    useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: keys }, plannerProjectId: 'p1' });
+    press('ArrowDown'); press('Enter');
+    expect(keys.moveSelection).not.toHaveBeenCalled();
+    expect(keys.openSelected).not.toHaveBeenCalled();
+    const p = useMounted({ plannerProjectId: 'p1' });
+    press('ArrowRight');
+    expect(p.changeDate).not.toHaveBeenCalled();
+  });
+
+  it('Enter on the project list opens the selected project\'s planner', () => {
+    const keys = spaceKeys();
+    useMounted({ showGoalsDashboard: true, goalsSpaceKeysRef: { current: keys } });
+    const e = press('Enter');
+    expect(keys.openSelected).toHaveBeenCalledTimes(1);
+    expect(e.preventDefault).toHaveBeenCalled();
+  });
+});

@@ -54,18 +54,18 @@ vi.mock('../native.js', () => ({
 
 const { default: useObsidianSync } = await import('./useObsidianSync.js');
 
-function useMountedObsidianSync() {
+function useMountedObsidianSync({ obsidianConfig = { enabled: true, dailyNotesPath: '', dailyNotePattern: 'yyyy-MM-dd' } } = {}) {
   effects.length = 0;
   const obsidianVaultHandleRef = { current: null };
   const setObsidianSyncStatus = vi.fn();
-  useObsidianSync({
+  const hook = useObsidianSync({
     isTrayMode: false,
     dataLoaded: true,
     tasks: [], setTasks: vi.fn(),
     unscheduledTasks: [], setUnscheduledTasks: vi.fn(),
     setDailyNotes: vi.fn(),
     setWikilinkCandidates: vi.fn(),
-    obsidianConfig: { enabled: true, dailyNotesPath: '', dailyNotePattern: 'yyyy-MM-dd' },
+    obsidianConfig,
     setObsidianConfig: vi.fn(),
     setObsidianSyncStatus,
     setObsidianSyncError: vi.fn(),
@@ -87,7 +87,7 @@ function useMountedObsidianSync() {
     visibilityState: 'visible',
   });
   for (const e of effects) e.fn();
-  return { obsidianVaultHandleRef, interval, listeners, setObsidianSyncStatus };
+  return { obsidianVaultHandleRef, interval, listeners, setObsidianSyncStatus, performObsidianSync: hook.performObsidianSync };
 }
 
 beforeEach(() => {
@@ -140,5 +140,36 @@ describe('restore retry — poll and visibility ticks are not gated on a handle'
     expect(obsidianVaultHandleRef.current).toBeNull();
     expect(setObsidianSyncStatus).toHaveBeenCalledTimes(1); // said once: never 'syncing', never a second 'error'
     expect(setObsidianSyncStatus).toHaveBeenCalledWith('error');
+  });
+});
+
+// Most users never set up Obsidian. Coming back to the window used to run a
+// sync anyway, find no vault and raise "Can't reach your Obsidian vault" on
+// a device that never had one (v5.4.2). MUTATION: drop the visibility gate
+// and getVaultAccess is called; drop the null-handle gate too and the error
+// is raised.
+describe('a device with Obsidian not set up', () => {
+  it('coming back to the window does nothing: no vault lookup, no error', async () => {
+    const { listeners, setObsidianSyncStatus } = useMountedObsidianSync({ obsidianConfig: {} });
+    getVaultAccess.mockResolvedValue(null);
+    await listeners.visibilitychange?.();
+    expect(getVaultAccess).not.toHaveBeenCalled();
+    expect(setObsidianSyncStatus).not.toHaveBeenCalled();
+  });
+
+  // Turned off in Settings, with the vault still open in this session: the
+  // window coming back must not sync it.
+  it('coming back to the window after turning Obsidian off does not sync', async () => {
+    const { obsidianVaultHandleRef, listeners, setObsidianSyncStatus } = useMountedObsidianSync({ obsidianConfig: { enabled: false } });
+    obsidianVaultHandleRef.current = { kind: 'directory', name: 'Vault' };
+    await listeners.visibilitychange?.();
+    expect(setObsidianSyncStatus).not.toHaveBeenCalled();
+  });
+
+  it('a sync reached some other way says nothing either', async () => {
+    const { setObsidianSyncStatus, performObsidianSync } = useMountedObsidianSync({ obsidianConfig: { enabled: false } });
+    getVaultAccess.mockResolvedValue(null);
+    await performObsidianSync();
+    expect(setObsidianSyncStatus).not.toHaveBeenCalledWith('error');
   });
 });

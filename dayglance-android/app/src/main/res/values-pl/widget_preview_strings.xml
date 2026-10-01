@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_preview_date">wt., 10 mar</string>
+    <string name="widget_preview_updated">8:42</string>
+    <string name="widget_preview_today_allday_title">Urodziny mamy</string>
+    <string name="widget_preview_today_frame_name">Praca głęboka</string>
+    <string name="widget_preview_today_frame_times">9:00 – 11:30</string>
+    <string name="widget_preview_today_frame_free">30 min wolne</string>
+    <string name="widget_preview_today_task1_title">Przejrzeć pull requesty</string>
+    <string name="widget_preview_today_task1_time">9:00 – 10:00  #praca</string>
+    <string name="widget_preview_today_task2_title">Napisać brief projektu</string>
+    <string name="widget_preview_today_task2_project">Redesign strony</string>
+    <string name="widget_preview_today_task2_time">10:00 – 11:00</string>
+    <string name="widget_preview_today_task3_title">Lunch z Samem</string>
+    <string name="widget_preview_today_task3_time">12:30 – 13:30</string>
+    <string name="widget_preview_upnext_title">Przygotować raport kwartalny</string>
+    <string name="widget_preview_upnext_time">14:00 – 15:30</string>
+    <string name="widget_preview_upnext_time_until">za 25 min</string>
+    <string name="widget_preview_upnext_project">Finanse</string>
+    <string name="widget_preview_upnext_tags">#praca  #skupienie</string>
+    <string name="widget_preview_upnext_sub1">Pobrać dane sprzedaży</string>
+    <string name="widget_preview_upnext_sub2">Naszkicować slajdy podsumowania</string>
+    <string name="widget_preview_project_goal">Nowy dom</string>
+    <string name="widget_preview_project_title">Remont kuchni</string>
+    <string name="widget_preview_project_task1">Wybrać fronty szafek</string>
+    <string name="widget_preview_project_task2">Umówić elektryka</string>
+    <string name="widget_preview_project_task3">Zmierzyć kuchnię</string>
+    <string name="widget_preview_project_task4">Ustalić budżet</string>
+    <string name="widget_preview_goal_title">Przebiec półmaraton</string>
+    <string name="widget_preview_goal_due">zostało 42 dn.</string>
+    <string name="widget_preview_goal_project1">Zwiększyć tygodniowy kilometraż</string>
+    <string name="widget_preview_goal_project2">Zapisać się na bieg</string>
+    <string name="widget_preview_goal_project3">Kupić buty do biegania</string>
+</resources>

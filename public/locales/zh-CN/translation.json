@@ -795,6 +795,8 @@
     "assignTo": "分配给",
     "notes": "笔记",
     "localNotes": "dayGLANCE 中的笔记",
+    "calendarDescription": "来自日历",
+    "yourNotes": "你的笔记（仅此设备）",
     "subtasks": "子任务",
     "addSubtask": "添加子任务",
     "generateSubtasks": "生成子任务",
@@ -1953,7 +1955,11 @@
     "addTaskPlaceholder": "添加任务...",
     "addTaskToProject": "将任务添加到项目",
     "hideScheduled": "隐藏已排程列表",
-    "showScheduled": "显示已排程"
+    "showScheduled": "显示已排程",
+    "showNotesSidebar": "显示任务笔记",
+    "hideNotesSidebar": "隐藏任务笔记",
+    "selectForNotes": "选择一个任务，即可在此查看它的笔记。",
+    "notesKeysHint": "↑ ↓ 切换任务 · ← → 切换列表 · 按 Enter 或双击进行编辑"
   },
   "bucket": {
     "title": "心愿清单",
@@ -2101,6 +2107,7 @@
       "keepEstimate": "按显示保留",
       "dailyNoteEmpty": "还没有每日笔记。点击撰写。",
       "selectForNotes": "点击任务或 Do 以在此查看其笔记。",
+      "resizeNotes": "调整每日笔记与任务笔记的大小",
       "showNotesSidebar": "显示笔记侧栏",
       "hideNotesSidebar": "隐藏笔记侧栏",
       "showWindowOnly": "仅显示 {{start}} 到 {{end}}",
@@ -2212,7 +2219,24 @@
     "past": {
       "recorded": "已记录 {{range}}",
       "open": "在 JOBO 中打开"
+    },
+    "check": {
+      "button": "复盘",
+      "title": "复盘",
+      "actual": "实际",
+      "session": "第 {{number}} 次执行",
+      "untimed": "未记录时间",
+      "noRecords": "当天暂无执行记录。",
+      "unavailable": "无法加载执行记录。",
+      "invalid": "部分执行记录无法加载。"
     }
+  },
+  "timelineZoom": {
+    "label": "时间轴大小",
+    "smaller": "缩小",
+    "larger": "放大",
+    "reset": "重置为 100%",
+    "hint": "也可以在时间轴上双指缩放或按住 Ctrl 滚动。按视图保存在此设备上。"
   },
   "todoist": {
     "title": "Todoist 同步",

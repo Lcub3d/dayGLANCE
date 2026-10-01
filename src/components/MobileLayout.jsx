@@ -22,7 +22,7 @@ import { PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { HabitRing, MiniHabitRing } from './HabitRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import EventNotesPanel from './EventNotesPanel.jsx';
+import EventNotesPanel, { editsDeviceCalendar } from './EventNotesPanel.jsx';
 import FrameEditor from './FrameEditor.jsx';
 import SmartSchedulePanel from './SmartSchedulePanel.jsx';
 import DailyNotesModal from './DailyNotesModal.jsx';
@@ -741,7 +741,7 @@ const MobileLayout = () => {
                           </button>
                         </div>
                         <div className="p-4">
-                          {noteTask.imported && !noteTask.isTaskCalendar ? (
+                          {editsDeviceCalendar(noteTask) ? (
                             <EventNotesPanel task={noteTask} tone="themed" rows={4} />
                           ) : (
                             <div className={`${noteTask.color || ''} rounded-lg`}>

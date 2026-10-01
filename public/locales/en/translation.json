@@ -2093,7 +2093,6 @@
       "secondary": "Late finishes: {{finish}} · Ran long: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",
@@ -2108,6 +2107,7 @@
       "dailyNoteEmpty": "No daily note yet. Click to write one.",
       "selectForNotes": "Click a task or a Do to see its notes here.",
       "resizeNotes": "Resize the Daily Note and task notes",
+      "resetNotesSplit": "Restore the default split",
       "showNotesSidebar": "Show notes sidebar",
       "hideNotesSidebar": "Hide notes sidebar",
       "showWindowOnly": "Show only {{start}} to {{end}}",
@@ -2134,7 +2134,6 @@
       "elapsedMinutes": "{{minutes}} min",
       "emptyDo": "No Do recorded on this day.",
       "emptyPlan": "No timed Plan on this day.",
-      "endDate": "End date",
       "executionHistory": "Execution history ({{count}})",
       "gapLabel": "Gaps between sessions",
       "gapMinutes": "{{minutes}} min",
@@ -2228,15 +2227,20 @@
       "untimed": "Time not recorded",
       "noRecords": "No executions recorded for this day.",
       "unavailable": "Could not load execution records.",
-      "invalid": "Some execution records could not be loaded."
+      "invalid": "Some execution records could not be loaded.",
+      "continue": "Continue to {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continue to {{slot}}",
+      "continued": "Continued to {{slot}}",
+      "clash": "{{slot}} clashes with “{{event}}”.",
+      "clashUnnamed": "{{slot}} clashes with a calendar event.",
+      "next": "Next: {{slot}}",
+      "schedule": "Schedule…",
+      "followUp": "Add follow-up"
     }
   },
   "timelineZoom": {
     "label": "Timeline size",
-    "smaller": "Smaller",
-    "larger": "Larger",
-    "reset": "Reset to 100%",
-    "hint": "Also: pinch, or Ctrl+scroll over the timeline. Saved for this view on this device."
+    "hint": "Saved on this device. To adjust it in place, pinch or Ctrl+scroll over the timeline."
   },
   "todoist": {
     "title": "Todoist Sync",

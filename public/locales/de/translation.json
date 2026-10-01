@@ -2093,7 +2093,6 @@
       "secondary": "Späte Enden: {{finish}} · Länger gedauert: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
     "undo": {
       "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
       "completionBlocked": "Die Aufgabe ist nicht mehr abgeschlossen, daher kann das Do nicht wieder „Abgeschlossen“ werden. Es bleibt, wie es ist.",
@@ -2108,6 +2107,7 @@
       "dailyNoteEmpty": "Noch keine Tagesnotiz. Klicke, um eine zu schreiben.",
       "selectForNotes": "Klicke auf eine Aufgabe oder ein Do, um hier ihre Notizen zu sehen.",
       "resizeNotes": "Größe von Tagesnotiz und Aufgabennotizen ändern",
+      "resetNotesSplit": "Standardaufteilung wiederherstellen",
       "showNotesSidebar": "Notizen-Seitenleiste anzeigen",
       "hideNotesSidebar": "Notizen-Seitenleiste ausblenden",
       "showWindowOnly": "Nur {{start}} bis {{end}} anzeigen",
@@ -2134,7 +2134,6 @@
       "elapsedMinutes": "{{minutes}} Min. verstrichen",
       "emptyDo": "An diesem Tag wurde kein Do erfasst.",
       "emptyPlan": "Kein zeitlich geplanter Plan an diesem Tag.",
-      "endDate": "End date",
       "executionHistory": "Ausführungsverlauf ({{count}})",
       "gapLabel": "Lücken zwischen Sitzungen",
       "gapMinutes": "{{minutes}} Min. Lücken",
@@ -2228,15 +2227,20 @@
       "untimed": "Zeit nicht erfasst",
       "noRecords": "Für diesen Tag sind keine Ausführungen erfasst.",
       "unavailable": "Ausführungsdaten konnten nicht geladen werden.",
-      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden."
+      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden.",
+      "continue": "Fortsetzen am {{slot}} · {{minutes}} Min.",
+      "continueAllDay": "Fortsetzen am {{slot}}",
+      "continued": "Fortgesetzt am {{slot}}",
+      "clash": "{{slot}} überschneidet sich mit „{{event}}“.",
+      "clashUnnamed": "{{slot}} überschneidet sich mit einem Kalendertermin.",
+      "next": "Nächster Termin: {{slot}}",
+      "schedule": "Planen…",
+      "followUp": "Folgeaufgabe hinzufügen"
     }
   },
   "timelineZoom": {
     "label": "Zeitleistengröße",
-    "smaller": "Kleiner",
-    "larger": "Größer",
-    "reset": "Auf 100 % zurücksetzen",
-    "hint": "Auch: zusammenziehen oder Strg+Scrollen über der Zeitleiste. Für diese Ansicht auf diesem Gerät gespeichert."
+    "hint": "Auf diesem Gerät gespeichert. Zum direkten Anpassen über der Zeitleiste zusammenziehen oder Strg+Scrollen."
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { TASK_COLORS } from '../utils/colorUtils.js';
 import { nativeUpdateEvent, triggerHaptic } from '../native.js';
+import { describeObstacle } from '../utils/dayOccupancy.js';
 
 // Pure utilities used by position helpers
 const timeToMinutes = (time) => {
@@ -531,7 +532,7 @@ export default function useDragDrop({
       setSyncNotification({
         type: 'info',
         title: 'Task Rescheduled',
-        message: `Task moved to ${startTime} to avoid conflict with "${conflictingEvent.title}"`
+        message: `Task moved to ${startTime} to avoid conflict with ${describeObstacle(conflictingEvent)}`
       });
     }
 
@@ -1412,7 +1413,7 @@ export default function useDragDrop({
         setSyncNotification({
           type: 'info',
           title: 'Task Rescheduled',
-          message: `Task moved to ${finalTime} to avoid conflict with "${conflictingEvent.title}"`
+          message: `Task moved to ${finalTime} to avoid conflict with ${describeObstacle(conflictingEvent)}`
         });
       }
       if (!(fromAllDay && droppingToAllDay)) {

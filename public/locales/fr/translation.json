@@ -2093,7 +2093,6 @@
       "secondary": "Fins tardives : {{finish}} · A duré plus longtemps : {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Prévu contre réalisé. Cette vue se construit par étapes ; la première est l'interrupteur qui l'affiche.",
     "undo": {
       "changed": "Ce Do a changé depuis ; il est laissé tel quel.",
       "completionBlocked": "Sa tâche n’est plus terminée, le Do ne peut donc pas redevenir Terminé. Il est laissé tel quel.",
@@ -2108,6 +2107,7 @@
       "dailyNoteEmpty": "Pas encore de note du jour. Cliquez pour en écrire une.",
       "selectForNotes": "Cliquez sur une tâche ou un Do pour voir ses notes ici.",
       "resizeNotes": "Redimensionner la note du jour et les notes de la tâche",
+      "resetNotesSplit": "Rétablir la répartition par défaut",
       "showNotesSidebar": "Afficher le panneau des notes",
       "hideNotesSidebar": "Masquer le panneau des notes",
       "showWindowOnly": "Afficher seulement de {{start}} à {{end}}",
@@ -2134,7 +2134,6 @@
       "elapsedMinutes": "{{minutes}} min écoulées",
       "emptyDo": "Aucun Do enregistré pour ce jour.",
       "emptyPlan": "Aucun Plan horaire pour ce jour.",
-      "endDate": "End date",
       "executionHistory": "Historique d’exécution ({{count}})",
       "gapLabel": "Intervalles entre les sessions",
       "gapMinutes": "{{minutes}} min d’interruption",
@@ -2228,15 +2227,20 @@
       "untimed": "Temps non enregistré",
       "noRecords": "Aucune exécution enregistrée pour cette journée.",
       "unavailable": "Impossible de charger les enregistrements d’exécution.",
-      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés."
+      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés.",
+      "continue": "Continuer le {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continuer le {{slot}}",
+      "continued": "Continuée le {{slot}}",
+      "clash": "{{slot}} chevauche « {{event}} ».",
+      "clashUnnamed": "{{slot}} chevauche un événement du calendrier.",
+      "next": "Prochaine : {{slot}}",
+      "schedule": "Planifier…",
+      "followUp": "Ajouter une suite"
     }
   },
   "timelineZoom": {
     "label": "Taille de la chronologie",
-    "smaller": "Plus petit",
-    "larger": "Plus grand",
-    "reset": "Revenir à 100 %",
-    "hint": "Aussi : pincez, ou Ctrl+défilement sur la chronologie. Enregistré pour cette vue sur cet appareil."
+    "hint": "Enregistré sur cet appareil. Pour l’ajuster sur place, pincez ou faites Ctrl+défilement sur la chronologie."
   },
   "todoist": {
     "title": "Synchronisation Todoist",

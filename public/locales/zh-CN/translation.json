@@ -2093,7 +2093,6 @@
       "secondary": "结束偏晚：{{finish}} · 超时：{{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
       "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
@@ -2108,6 +2107,7 @@
       "dailyNoteEmpty": "还没有每日笔记。点击撰写。",
       "selectForNotes": "点击任务或 Do 以在此查看其笔记。",
       "resizeNotes": "调整每日笔记与任务笔记的大小",
+      "resetNotesSplit": "恢复默认分隔位置",
       "showNotesSidebar": "显示笔记侧栏",
       "hideNotesSidebar": "隐藏笔记侧栏",
       "showWindowOnly": "仅显示 {{start}} 到 {{end}}",
@@ -2134,7 +2134,6 @@
       "elapsedMinutes": "{{minutes}} 分钟",
       "emptyDo": "当天没有执行记录。",
       "emptyPlan": "当天没有带时间的计划。",
-      "endDate": "结束日期",
       "executionHistory": "执行历史（{{count}}）",
       "gapLabel": "执行间隔",
       "gapMinutes": "{{minutes}} 分钟",
@@ -2228,15 +2227,20 @@
       "untimed": "未记录时间",
       "noRecords": "当天暂无执行记录。",
       "unavailable": "无法加载执行记录。",
-      "invalid": "部分执行记录无法加载。"
+      "invalid": "部分执行记录无法加载。",
+      "continue": "继续于 {{slot}} · {{minutes}} 分钟",
+      "continueAllDay": "继续于 {{slot}}",
+      "continued": "已继续到 {{slot}}",
+      "clash": "{{slot}} 与“{{event}}”冲突。",
+      "clashUnnamed": "{{slot}} 与日历事件冲突。",
+      "next": "下一次：{{slot}}",
+      "schedule": "安排…",
+      "followUp": "添加后续任务"
     }
   },
   "timelineZoom": {
     "label": "时间轴大小",
-    "smaller": "缩小",
-    "larger": "放大",
-    "reset": "重置为 100%",
-    "hint": "也可以在时间轴上双指缩放或按住 Ctrl 滚动。按视图保存在此设备上。"
+    "hint": "保存在此设备上。如需即时调整，可在时间轴上双指缩放或按住 Ctrl 滚动。"
   },
   "todoist": {
     "title": "Todoist 同步",

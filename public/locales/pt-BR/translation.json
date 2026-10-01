@@ -2093,7 +2093,6 @@
       "secondary": "Finais tardios: {{finish}} · Demorou mais: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Planejado versus realizado. Esta visão está sendo construída em partes; a primeira é o interruptor que a mostra.",
     "undo": {
       "changed": "Este Do mudou desde então, então foi mantido como está.",
       "completionBlocked": "A tarefa não está mais concluída, então o Do não pode voltar a Concluído. Foi mantido como está.",
@@ -2108,6 +2107,7 @@
       "dailyNoteEmpty": "Ainda não há nota diária. Clique para escrever uma.",
       "selectForNotes": "Clique em uma tarefa ou um Do para ver as notas aqui.",
       "resizeNotes": "Redimensionar a nota diária e as notas da tarefa",
+      "resetNotesSplit": "Restaurar a divisão padrão",
       "showNotesSidebar": "Mostrar barra lateral de notas",
       "hideNotesSidebar": "Ocultar barra lateral de notas",
       "showWindowOnly": "Mostrar só de {{start}} a {{end}}",
@@ -2134,7 +2134,6 @@
       "elapsedMinutes": "{{minutes}} min decorridos",
       "emptyDo": "Nenhum Do registrado neste dia.",
       "emptyPlan": "Nenhum Plano com horário neste dia.",
-      "endDate": "End date",
       "executionHistory": "Histórico de execução ({{count}})",
       "gapLabel": "Intervalos entre sessões",
       "gapMinutes": "{{minutes}} min de intervalo",
@@ -2228,15 +2227,20 @@
       "untimed": "Tempo não registrado",
       "noRecords": "Nenhuma execução registrada neste dia.",
       "unavailable": "Não foi possível carregar os registros de execução.",
-      "invalid": "Não foi possível carregar alguns registros de execução."
+      "invalid": "Não foi possível carregar alguns registros de execução.",
+      "continue": "Continuar em {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continuar em {{slot}}",
+      "continued": "Continuada em {{slot}}",
+      "clash": "{{slot}} coincide com “{{event}}”.",
+      "clashUnnamed": "{{slot}} coincide com um evento do calendário.",
+      "next": "Próxima: {{slot}}",
+      "schedule": "Agendar…",
+      "followUp": "Adicionar continuação"
     }
   },
   "timelineZoom": {
     "label": "Tamanho da linha do tempo",
-    "smaller": "Menor",
-    "larger": "Maior",
-    "reset": "Voltar a 100%",
-    "hint": "Também: faça o gesto de pinça ou Ctrl+rolagem sobre a linha do tempo. Salvo para esta visualização neste dispositivo."
+    "hint": "Salvo neste dispositivo. Para ajustar na hora, faça o gesto de pinça ou Ctrl+rolagem sobre a linha do tempo."
   },
   "todoist": {
     "title": "Sincronização com o Todoist",

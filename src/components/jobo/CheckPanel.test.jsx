@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import CheckPanel, { CheckJournal } from './CheckPanel.jsx';
+import { journalDate } from './checkJournal.js';
 import { buildJoboDayModel } from '../../jobo/viewModel.js';
 import { createDoRecord } from '../../jobo/core.js';
 import { summaryRows, timingRows } from './ExecutionAxes.jsx';
@@ -139,16 +140,70 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
   it('keeps copy limited to the journal and concise data states', async () => {
     for (const lng of locales) {
       const check = bundle(lng).jobo.check;
-      expect(Object.keys(check).sort()).toEqual(['actual', 'button', 'invalid', 'noRecords', 'session', 'title', 'unavailable', 'untimed']);
+      expect(Object.keys(check).sort()).toEqual(['actual', 'button', 'clash', 'clashUnnamed', 'continue', 'continueAllDay', 'continued',
+        'followUp', 'invalid', 'next', 'noRecords', 'schedule', 'session', 'title', 'unavailable', 'untimed']);
     }
     expect(bundle('en').jobo.check.noRecords).toBe('No executions recorded for this day.');
     expect(bundle('zh-CN').jobo.check.noRecords).toBe('当天暂无执行记录。');
   });
   it('keeps statistics dormant, without importing their module into the panel', () => {
     const source = readFileSync(new URL('./CheckPanel.jsx', import.meta.url), 'utf8');
-    expect(source).not.toMatch(/checkSummary|summarizeJoboDayModel|recordJobo|localStorage|updateTask/);
+    expect(source).not.toMatch(/checkSummary|summarizeJoboDayModel|recordJobo|localStorage|updateTask|setTasks|pushUndo/);
     expect(source).toContain("from './ExecutionAxes.jsx'");
     expect(source).toContain('event.stopImmediatePropagation()');
     expect(source).toContain('previous.focus()');
+  });
+});
+
+describe('Check entries offer Continue or Add follow-up (docs/jobo-carry-forward.md)', () => {
+  const today = '2026-09-30';
+  const carry = { continueTask: vi.fn(), editOn: vi.fn(), openFollowUp: vi.fn() };
+  const open = { ...task, completed: false };
+  const withTask = (current, records = [row()]) => buildJoboDayModel({ date, records, tasks: current.date === date ? [current] : [], taskLookup: [current] });
+  const carryOf = html => [...html.matchAll(/data-check-carry="(\w+)"/g)].map(m => m[1]);
+
+  it('stays a read-only journal when no actions are passed in', async () => {
+    const { html } = await render('en', { model: withTask(open), today });
+    expect(carryOf(html)).toEqual([]);
+    expect(html).not.toContain('data-check-continue');
+  });
+  it.each(locales)('offers Continue to the day after today, with the time that is left, in %s', async lng => {
+    // 09:10–10:20 measured against a 60 minute plan ran over: the plan is kept.
+    const { html, t } = await render(lng, { model: withTask(open), today, carry });
+    expect(carryOf(html)).toEqual(['continue']);
+    const slot = `${journalDate('2026-10-01', lng, date)} 09:00`;
+    const label = t('jobo.check.continue', { slot, minutes: 60 });
+    expect(label).not.toContain('jobo.check');
+    expect(text(html)).toContain(label);
+  });
+  it('subtracts measured time from the continuation', async () => {
+    const { html, t } = await render('en', { model: withTask(open, [row({ endTime: '09:30' })]), today, carry });
+    expect(text(html)).toContain(t('jobo.check.continue', { slot: `${journalDate('2026-10-01', 'en', date)} 09:00`, minutes: 45 }));
+  });
+  it.each(locales)('offers a follow-up for a finished task in %s', async lng => {
+    const { html, t } = await render(lng, { model: withTask(task), today, carry });
+    expect(carryOf(html)).toEqual(['followUp']);
+    expect(text(html)).toContain(t('jobo.check.followUp'));
+  });
+  it('shows where a task already moved went, with no button', async () => {
+    const { html, t } = await render('en', { model: withTask({ ...open, date: '2026-10-02', startTime: '14:00' }), today, carry });
+    expect(carryOf(html)).toEqual(['moved']);
+    expect(text(html)).toContain(t('jobo.check.next', { slot: `${journalDate('2026-10-02', 'en', date)} 14:00` }));
+    expect(html).not.toMatch(/data-check-(continue|follow-up|schedule)/);
+  });
+  it('offers Schedule… for an unscheduled task', async () => {
+    const { html } = await render('en', { model: withTask({ ...open, date: null, startTime: null }), today, carry });
+    expect(carryOf(html)).toEqual(['schedule']);
+  });
+  it('offers nothing for a recurring occurrence or an unlinked Do', async () => {
+    const occurrence = { ...open, id: 'recurring-tpl-2026-09-28', recurringTemplateId: 'tpl', isRecurring: true };
+    const recurring = await render('en', { model: withTask(occurrence, [row({ taskId: occurrence.id })]), today, carry });
+    expect(carryOf(recurring.html)).toEqual([]);
+    const unlinked = await render('en', { model: withTask(open, [row({ taskId: null, planSnapshot: null, source: 'manual' })]), today, carry });
+    expect(carryOf(unlinked.html)).toEqual([]);
+  });
+  it('names the task on each action for assistive technology', async () => {
+    const { html, t } = await render('en', { model: withTask(task), today, carry });
+    expect(html).toContain(`aria-label="${t('jobo.check.followUp')}: Report"`);
   });
 });

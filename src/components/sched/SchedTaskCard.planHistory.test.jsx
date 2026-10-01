@@ -47,9 +47,9 @@ describe('SchedTaskCard plan history', () => {
     expect(html).toContain('lucide-history');
   });
 
-  it('sizes it to the SCHED row rather than the timeline card', async () => {
+  it("sizes it to the SCHED row's icons rather than the timeline card's", async () => {
     const html = await render({ ...base, originalPlan: PLAN });
-    expect(html).toMatch(/lucide-history[^>]*?width="10"|width="10"[^>]*lucide-history/);
+    expect(html).toMatch(/lucide-history[^>]*?width="14"|width="14"[^>]*lucide-history/);
   });
 
   it('shows nothing on a task with no baseline', async () => {

@@ -34,7 +34,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // the task is actually starred. The GLANCE sidebar wants that: it reports on the
 // day rather than being a place you edit it, and a faint unstarred outline on
 // every row there would be noise you cannot act on.
-export default function TaskStarButton({ task, size = 12, readOnly = false, accent = false }) {
+export default function TaskStarButton({ task, size = 12, readOnly = false, accent = false, pad = 'p-0.5' }) {
   const { t } = useTranslation();
   const setTasks = useDayPlannerCtx()?.setTasks;
 
@@ -69,7 +69,7 @@ export default function TaskStarButton({ task, size = 12, readOnly = false, acce
         e.stopPropagation();
         setTasks((prev) => prev.map((x) => (String(x.id) === String(task.id) ? toggleStar(x) : x)));
       }}
-      className={`rounded p-0.5 transition-colors flex-shrink-0 hover:bg-white/20 ${
+      className={`rounded ${pad} transition-colors flex-shrink-0 hover:bg-white/20 ${
         starred ? 'opacity-100' : 'opacity-30 hover:opacity-70'
       }`}
       title={starred ? t('task.unstarKeyTask') : t('task.starKeyTask')}

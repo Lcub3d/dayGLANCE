@@ -2233,10 +2233,7 @@
   },
   "timelineZoom": {
     "label": "时间轴大小",
-    "smaller": "缩小",
-    "larger": "放大",
-    "reset": "重置为 100%",
-    "hint": "也可以在时间轴上双指缩放或按住 Ctrl 滚动。按视图保存在此设备上。"
+    "hint": "保存在此设备上。如需即时调整，可在时间轴上双指缩放或按住 Ctrl 滚动。"
   },
   "todoist": {
     "title": "Todoist 同步",

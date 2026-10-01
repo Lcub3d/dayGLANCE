@@ -2235,10 +2235,7 @@
   },
   "timelineZoom": {
     "label": "Dimensione della timeline",
-    "smaller": "Più piccola",
-    "larger": "Più grande",
-    "reset": "Ripristina al 100%",
-    "hint": "Anche: pizzica o usa Ctrl+scorrimento sulla timeline. Salvato per questa vista su questo dispositivo."
+    "hint": "Salvato su questo dispositivo. Per regolarla al volo, pizzica o usa Ctrl+scorrimento sulla timeline."
   },
   "todoist": {
     "title": "Sincronizzazione Todoist",

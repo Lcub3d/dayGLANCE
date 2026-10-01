@@ -6,6 +6,7 @@ import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_
 import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import TimelineSizeSettings from './TimelineSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import LocalIntegrationsSettings from './LocalIntegrationsSettings.jsx';
 import TodoistSettings from './TodoistSettings.jsx';
@@ -539,6 +540,14 @@ const SettingsModal = () => {
                             </div>
                           )}
                         </div>
+                        <hr className={borderClass} />
+                      </>
+                    )}
+
+                    {/* Timeline size (utils/timelineZoom.js), desktop and tablet */}
+                    {!isMobile && (
+                      <>
+                        <TimelineSizeSettings joboEnabled={joboEnabled} />
                         <hr className={borderClass} />
                       </>
                     )}

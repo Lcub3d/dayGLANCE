@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { ZOOM_STEP, anchoredScrollTop, clampZoom, wheelSteps, zoomFor } from '../utils/timelineZoom.js';
+import { ZOOM_FLASH_EVENT } from '../components/TimelineZoomFlash.jsx';
 
 // A scrolling timeline's magnification (utils/timelineZoom.js), for MULTI,
 // WEEK and JOBO. Returns the level to draw at, and takes a pinch or
@@ -44,7 +45,10 @@ export default function useTimelineZoom(view, { scrollRef, originRef } = {}) {
       wheelRef.current = rest;
       if (!steps) return;
       anchorRef.current = event.clientY - el.getBoundingClientRect().top;
-      setZoomRef.current(view, clampZoom(view, zoomRef.current + steps * ZOOM_STEP));
+      const next = clampZoom(view, zoomRef.current + steps * ZOOM_STEP);
+      setZoomRef.current(view, next);
+      // Said for a moment over the timeline (TimelineZoomFlash).
+      window.dispatchEvent(new CustomEvent(ZOOM_FLASH_EVENT, { detail: next }));
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     el.addEventListener('wheel', onWheel, { passive: false });

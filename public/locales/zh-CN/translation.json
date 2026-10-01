@@ -1955,7 +1955,11 @@
     "addTaskPlaceholder": "添加任务...",
     "addTaskToProject": "将任务添加到项目",
     "hideScheduled": "隐藏已排程列表",
-    "showScheduled": "显示已排程"
+    "showScheduled": "显示已排程",
+    "showNotesSidebar": "显示任务笔记",
+    "hideNotesSidebar": "隐藏任务笔记",
+    "selectForNotes": "选择一个任务，即可在此查看它的笔记。",
+    "notesKeysHint": "↑ ↓ 切换任务 · ← → 切换列表 · 按 Enter 或双击进行编辑"
   },
   "bucket": {
     "title": "心愿清单",

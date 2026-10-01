@@ -1955,7 +1955,11 @@
     "addTaskPlaceholder": "Aufgabe hinzufügen…",
     "addTaskToProject": "Aufgabe zum Projekt hinzufügen",
     "hideScheduled": "Liste „Geplant“ ausblenden",
-    "showScheduled": "Geplante anzeigen"
+    "showScheduled": "Geplante anzeigen",
+    "showNotesSidebar": "Aufgabennotizen einblenden",
+    "hideNotesSidebar": "Aufgabennotizen ausblenden",
+    "selectForNotes": "Wähle eine Aufgabe, um hier ihre Notizen zu sehen.",
+    "notesKeysHint": "↑ ↓ zwischen Aufgaben wechseln · ← → Liste wechseln · Enter oder Doppelklick zum Bearbeiten"
   },
   "bucket": {
     "title": "Bucket List",

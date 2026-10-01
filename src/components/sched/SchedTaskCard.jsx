@@ -25,6 +25,10 @@ import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
  * Optional `dnd` prop wires the card into a drag-to-reorder list (the
  * planner's unscheduled column) using the same pattern as ProjectCard:
  * whole-card HTML5 drag off-iOS, grip-only touch drag on iOS.
+ *
+ * `selected` and `onOpen` serve a list where a click selects (the planner
+ * with its notes sidebar open): the card shows the selection, and a
+ * double-click opens it through `onOpen`.
  */
 // Sizes, shared by SCHED, the Project Planner, MONTH's panel and day sheet:
 // one step up from the old text-sm/text-xs card, with tap targets the size
@@ -35,7 +39,7 @@ const META_ICON = 14;
 const META_HIT = 'p-1.5 -m-1.5';
 const ACTION_ICON = 18;
 
-const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = null, dnd = null, showOverdueDate = false, onSchedule = null }) => {
+const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = null, dnd = null, showOverdueDate = false, onSchedule = null, selected = false, onOpen = null }) => {
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary,
     formatTime, toggleComplete, openMobileEditTask, currentTime,
@@ -128,6 +132,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
   return (
     <div
       onClick={handleTap}
+      // Where a click selects (the planner with its notes sidebar open),
+      // a double-click opens the task.
+      onDoubleClick={onOpen && !isEvent ? (e) => { e.stopPropagation(); onOpen(task); } : undefined}
+      data-sched-task={task.id}
+      data-selected={selected ? 'true' : undefined}
       data-drag-idx={dnd ? dnd.idx : undefined}
       draggable={!!dnd?.rowDraggable}
       onDragStart={dnd?.rowDraggable ? e => dnd.onDragStart(e, dnd.idx) : undefined}
@@ -139,7 +148,9 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
         isEvent ? '' : 'cursor-pointer active:opacity-70'
       } ${task.completed || isFinishedEvent ? 'opacity-55' : ''} ${dnd ? 'select-none dnd-no-select' : ''} ${
         dnd?.isSource ? 'opacity-40' : ''
-      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-blue-400' : 'border-t-2 border-t-blue-500') : ''}`}
+      } ${dnd?.isTarget ? (darkMode ? 'border-t-2 border-t-blue-400' : 'border-t-2 border-t-blue-500') : ''} ${
+        selected ? 'ring-2 ring-blue-500' : ''
+      }`}
       style={{ borderLeft: `4px solid ${hex}` }}
     >
       {dnd && (

@@ -1955,7 +1955,11 @@
     "addTaskPlaceholder": "Adicionar uma tarefa…",
     "addTaskToProject": "Adicionar tarefa ao projeto",
     "hideScheduled": "Ocultar lista Agendadas",
-    "showScheduled": "Mostrar agendadas"
+    "showScheduled": "Mostrar agendadas",
+    "showNotesSidebar": "Mostrar notas da tarefa",
+    "hideNotesSidebar": "Ocultar notas da tarefa",
+    "selectForNotes": "Selecione uma tarefa para ver as notas dela aqui.",
+    "notesKeysHint": "↑ ↓ mover entre tarefas · ← → trocar de lista · Enter ou clique duplo para editar"
   },
   "bucket": {
     "title": "Bucket List",

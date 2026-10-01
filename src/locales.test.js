@@ -142,12 +142,90 @@ describe('locale bundles', () => {
   });
 
   // A bundle can resolve and still be a stub, or be a copy of English that was
-  // never translated. This key is carried by all six languages.
+  // never translated. This key is carried by every translated language.
   it.each(TRANSLATED)('%s translates a shared key into its own text', (lng) => {
     const en = bundles.en.sync.errors.NETWORK_ERROR;
     const value = bundles[lng]?.sync?.errors?.NETWORK_ERROR;
     expect(value, `${lng} is missing sync.errors.NETWORK_ERROR`).toBeTypeOf('string');
     expect(value, `${lng} still carries the English string`).not.toBe(en);
+  });
+
+  /**
+   * The canary above catches a bundle that is wholly a copy of English. It
+   * cannot catch a handful of keys inside an otherwise translated bundle,
+   * which is how five jobo.view strings shipped to eight languages in raw
+   * English: key coverage was complete, every placeholder matched, and
+   * nothing compared a value against en's.
+   *
+   * Only multi-word values are flagged. A single word matching English is
+   * usually correct (Status, Start and Filter in German, Notifications and
+   * Effort in French, color and error in Spanish, Model in Polish), and
+   * listing those would take hundreds of entries nobody would read. A
+   * multi-word English phrase is the shape the real misses take.
+   */
+  const englishWords = (value) =>
+    [...String(value).replace(/{{[^}]*}}/g, ' ').matchAll(/[A-Za-z]{2,}/g)].map((m) => m[0]);
+  const at = (bundle, key) => key.split('.').reduce((value, part) => value?.[part], bundle);
+  const isEnglishPhrase = (lng, key) => {
+    const value = at(bundles[lng], key);
+    return typeof value === 'string' && value === at(bundles.en, key) && englishWords(value).length >= 2;
+  };
+  const phraseKeys = () => flatten(bundles.en).filter((k) => englishWords(at(bundles.en, k)).length >= 2);
+
+  // Phrases that are English in other languages on purpose.
+  const ENGLISH_ON_PURPOSE = {
+    'backup.providerNames.nextcloud': 'Product names: Nextcloud and WebDAV.',
+    'sync.form.vaultTitle': 'GLANCEvault is the product name. fr, uk and zh-CN localize the "(Beta)" part only.',
+    'settings.liveActivity': "Live Activity is Apple's name for the feature.",
+    'settings.trmnlWebhookUrl': 'TRMNL plus "Webhook URL", left technical.',
+    'settings.aiOllamaUrl': 'Ollama plus "URL", left technical.',
+    'task.obsidianNoteSource': 'Obsidian is the product name, and "In" is a preposition in de and it too.',
+    // The least certain entry here: pl, uk and zh-CN translate it (Lista
+    // marzeń, Список бажань, 心愿清单) while de, es, fr, it and pt keep the
+    // English idiom. Listed as deliberate, but a native speaker may disagree.
+    'bucket.title': 'Bucket List is carried as the borrowed English idiom.',
+  };
+
+  /**
+   * Keys that still need translating, and who is waiting. The point of the
+   * list is that it shrinks: translate one and the staleness checks below
+   * tell you to drop that language.
+   */
+  const UNTRANSLATED = {
+    // The JOBO Plan/Do view (5918cef) shipped these with only zh-CN done.
+    'jobo.view.addDo': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
+    'jobo.view.capturedPlan': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
+    'jobo.view.capturedTitle': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
+    'jobo.view.endDate': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
+    'jobo.view.titleRequired': ['de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'],
+  };
+
+  it.each(TRANSLATED)('%s carries no untracked English phrase', (lng) => {
+    const untracked = phraseKeys().filter((key) => isEnglishPhrase(lng, key)
+      && !(key in ENGLISH_ON_PURPOSE)
+      && !(UNTRANSLATED[key] ?? []).includes(lng));
+    expect(
+      untracked,
+      `${lng} renders these in English. Translate them, or record the key in `
+      + 'ENGLISH_ON_PURPOSE with a reason, or add the language to UNTRANSLATED:\n  '
+      + untracked.map((k) => `${k} = ${JSON.stringify(at(bundles.en, k))}`).join('\n  '),
+    ).toEqual([]);
+  });
+
+  // An entry that no language still carries has outlived its gap.
+  it('records no phrase that every language has since translated', () => {
+    const tracked = [...Object.keys(ENGLISH_ON_PURPOSE), ...Object.keys(UNTRANSLATED)];
+    const stale = tracked.filter((key) => !TRANSLATED.some((lng) => isEnglishPhrase(lng, key)));
+    expect(stale, 'every language translates these now; drop them from the lists').toEqual([]);
+  });
+
+  // And a language listed as waiting that is not waiting any more.
+  it('names only languages still waiting on a translation', () => {
+    const done = [];
+    for (const [key, waiting] of Object.entries(UNTRANSLATED)) {
+      for (const lng of waiting) if (!isEnglishPhrase(lng, key)) done.push(`${key}: ${lng}`);
+    }
+    expect(done, 'these are translated; drop the language from UNTRANSLATED').toEqual([]);
   });
 
   // de/es/it/pt were 61 keys behind en, having been frozen while they were

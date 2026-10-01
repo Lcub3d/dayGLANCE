@@ -2093,7 +2093,6 @@
       "secondary": "Late finishes: {{finish}} · Ran long: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Plan versus actual. This view is being built in slices; the first is the switch that shows it.",
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",
@@ -2134,7 +2133,6 @@
       "elapsedMinutes": "{{minutes}} min",
       "emptyDo": "No Do recorded on this day.",
       "emptyPlan": "No timed Plan on this day.",
-      "endDate": "End date",
       "executionHistory": "Execution history ({{count}})",
       "gapLabel": "Gaps between sessions",
       "gapMinutes": "{{minutes}} min",

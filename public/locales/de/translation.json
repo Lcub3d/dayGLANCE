@@ -2093,7 +2093,6 @@
       "secondary": "Späte Enden: {{finish}} · Länger gedauert: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Plan gegen Ist. Diese Ansicht entsteht schrittweise; der erste Schritt ist der Schalter, der sie zeigt.",
     "undo": {
       "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
       "completionBlocked": "Die Aufgabe ist nicht mehr abgeschlossen, daher kann das Do nicht wieder „Abgeschlossen“ werden. Es bleibt, wie es ist.",
@@ -2134,7 +2133,6 @@
       "elapsedMinutes": "{{minutes}} Min. verstrichen",
       "emptyDo": "An diesem Tag wurde kein Do erfasst.",
       "emptyPlan": "Kein zeitlich geplanter Plan an diesem Tag.",
-      "endDate": "End date",
       "executionHistory": "Ausführungsverlauf ({{count}})",
       "gapLabel": "Lücken zwischen Sitzungen",
       "gapMinutes": "{{minutes}} Min. Lücken",

@@ -2093,7 +2093,6 @@
       "secondary": "结束偏晚：{{finish}} · 超时：{{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "计划与实际对照。此视图正分阶段构建；第一步是显示它的开关。",
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
       "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
@@ -2134,7 +2133,6 @@
       "elapsedMinutes": "{{minutes}} 分钟",
       "emptyDo": "当天没有执行记录。",
       "emptyPlan": "当天没有带时间的计划。",
-      "endDate": "结束日期",
       "executionHistory": "执行历史（{{count}}）",
       "gapLabel": "执行间隔",
       "gapMinutes": "{{minutes}} 分钟",

@@ -2095,7 +2095,6 @@
       "secondary": "Fini in ritardo: {{finish}} · Durato di più: {{longer}}"
     },
     "title": "JOBO",
-    "placeholder": "Pianificato contro effettivo. Questa vista viene costruita a tappe; la prima è l'interruttore che la mostra.",
     "undo": {
       "changed": "Questo Do è cambiato nel frattempo, quindi è stato lasciato com'è.",
       "completionBlocked": "Il suo compito non è più completato, quindi il Do non può tornare Completato. È stato lasciato com'è.",
@@ -2136,7 +2135,6 @@
       "elapsedMinutes": "{{minutes}} min trascorsi",
       "emptyDo": "Nessun Do registrato per questo giorno.",
       "emptyPlan": "Nessun Piano con orario per questo giorno.",
-      "endDate": "End date",
       "executionHistory": "Cronologia dell’esecuzione ({{count}})",
       "gapLabel": "Intervalli tra sessioni",
       "gapMinutes": "{{minutes}} min di intervallo",

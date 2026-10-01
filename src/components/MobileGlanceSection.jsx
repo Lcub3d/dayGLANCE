@@ -18,7 +18,7 @@ import { HabitRing } from './HabitRing.jsx';
 import GoalRing from './GoalRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import EventNotesPanel from './EventNotesPanel.jsx';
+import EventNotesPanel, { editsDeviceCalendar } from './EventNotesPanel.jsx';
 import FrameNudgeCard from './FrameNudgeCard.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useMcpStatus, McpBoltButton, McpStatusModal } from './McpStatusControls.jsx';
@@ -1349,7 +1349,7 @@ const MobileGlanceSection = () => {
             </button>
           </div>
           <div className="p-4">
-            {agendaTask.imported && !agendaTask.isTaskCalendar ? (
+            {editsDeviceCalendar(agendaTask) ? (
               <EventNotesPanel task={agendaTask} tone="themed" rows={4} />
             ) : (
               <div className={`${agendaTask.color || ''} rounded-lg`}>

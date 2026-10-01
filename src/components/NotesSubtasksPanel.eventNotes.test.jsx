@@ -65,6 +65,12 @@ describe('your notes on a calendar event', () => {
     expect(html.slice(html.indexOf('data-local-notes'))).not.toContain('Room 4B');
   });
 
+  it('render with the same formatting as a task\'s notes', async () => {
+    const html = await render(event({ eventNote: 'Bring the **Q3** numbers' }));
+    expect(html).toMatch(/<strong[^>]*>Q3<\/strong>/);
+    expect(html).not.toContain('**Q3**');
+  });
+
   it('offer no subtasks on an event, which would be lost the same way', async () => {
     expect(await render(event())).not.toContain('Subtasks');
   });

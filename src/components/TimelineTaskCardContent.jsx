@@ -14,7 +14,7 @@ import TaskPlanHistory from './TaskPlanHistory.jsx';
 import TaskStarButton from './TaskStarButton.jsx';
 import UserAssignmentBadge from './UserAssignmentBadge.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import EventNotesPanel from './EventNotesPanel.jsx';
+import EventNotesPanel, { editsDeviceCalendar } from './EventNotesPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -421,8 +421,9 @@ const CardContent = ({ task, height, isNarrowWidth, flipNotesPanel }) => {
           </>
         )}
       </div>
-      {/* Notes panel - floating below task (or above if task ends after 22:00) */}
-      {expandedNotesTaskId === task.id && !isImported && (() => {
+      {/* Notes panel - floating below task (or above if task ends after 22:00).
+          A calendar event gets the same panel as a task (EventNotesPanel.jsx). */}
+      {expandedNotesTaskId === task.id && !editsDeviceCalendar(task) && (() => {
         const startMin = timeToMinutes(task.startTime || '0:00');
         const endMin = startMin + (task.duration || 0);
         const showAbove = flipNotesPanel !== undefined ? flipNotesPanel : endMin >= 22 * 60;
@@ -454,8 +455,8 @@ const CardContent = ({ task, height, isNarrowWidth, flipNotesPanel }) => {
           </div>
         );
       })()}
-      {/* Editable notes panel for imported calendar events */}
-      {expandedNotesTaskId === task.id && isImported && (() => {
+      {/* An event from the device's own calendar: its description, written back */}
+      {expandedNotesTaskId === task.id && editsDeviceCalendar(task) && (() => {
         const startMin = timeToMinutes(task.startTime || '0:00');
         const endMin = startMin + (task.duration || 0);
         const showAbove = flipNotesPanel !== undefined ? flipNotesPanel : endMin >= 22 * 60;

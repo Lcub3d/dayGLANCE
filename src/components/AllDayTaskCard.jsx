@@ -12,7 +12,7 @@ import UserAssignmentBadge from './UserAssignmentBadge.jsx';
 import { extractWikilinks, stripWikilinks } from '../utils/taskUtils.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import EventNotesPanel from './EventNotesPanel.jsx';
+import EventNotesPanel, { editsDeviceCalendar } from './EventNotesPanel.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -295,8 +295,8 @@ const AllDayTaskCard = ({ task, fillWidth = true }) => {
             );
           })()}
         </div>
-        {/* Notes panel for all-day tasks */}
-        {expandedNotesTaskId === task.id && !isImported && (
+        {/* Notes panel for all-day tasks, and calendar events (EventNotesPanel.jsx) */}
+        {expandedNotesTaskId === task.id && !editsDeviceCalendar(task) && (
           <div className="notes-panel-container">
             <NotesSubtasksPanel
               task={task}
@@ -318,8 +318,8 @@ const AllDayTaskCard = ({ task, fillWidth = true }) => {
             />
           </div>
         )}
-        {/* Editable notes panel for imported calendar events */}
-        {expandedNotesTaskId === task.id && isImported && (
+        {/* An event from the device's own calendar: its description, written back */}
+        {expandedNotesTaskId === task.id && editsDeviceCalendar(task) && (
           <div className="notes-panel-container p-2">
             <div className={`p-3 rounded-lg ${darkMode ? 'bg-black/30' : 'bg-white/30'} text-white`} onClick={(e) => e.stopPropagation()}>
               <EventNotesPanel task={task} allDay />

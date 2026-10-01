@@ -2230,7 +2230,15 @@
       "untimed": "Tempo non registrato",
       "noRecords": "Nessuna esecuzione registrata per questo giorno.",
       "unavailable": "Impossibile caricare le registrazioni di esecuzione.",
-      "invalid": "Impossibile caricare alcune registrazioni di esecuzione."
+      "invalid": "Impossibile caricare alcune registrazioni di esecuzione.",
+      "continue": "Continua il {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continua il {{slot}}",
+      "continued": "Continuata il {{slot}}",
+      "clash": "{{slot}} si sovrappone a «{{event}}».",
+      "clashUnnamed": "{{slot}} si sovrappone a un evento del calendario.",
+      "next": "Prossima: {{slot}}",
+      "schedule": "Pianifica…",
+      "followUp": "Aggiungi seguito"
     }
   },
   "timelineZoom": {

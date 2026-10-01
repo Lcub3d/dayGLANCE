@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useRef } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileText, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -7,17 +7,79 @@ import { stripWikilinks } from '../../utils/taskUtils.js';
 import { taskColorToHex } from '../../utils/colorUtils.js';
 import { summaryRows, timingRows } from './ExecutionAxes.jsx';
 import { buildCheckJournal, journalDate, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
+import { CARRY_ACTION, checkEntryAction } from '../../jobo/carryForward.js';
 
 const clock = value => value;
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
 
-// The journal reads existing executions. Its only action navigates to the
-// task's native notes, outside this panel; it never edits the task or the Do.
+const linkButton = 'inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 underline underline-offset-2 rounded focus-visible:ring-2 focus-visible:ring-blue-500';
+
+// What an entry offers once read (docs/jobo-carry-forward.md), picked by
+// carryForward.js from the task as it is now. The actions are the app's task
+// actions, passed in as `carry`; this panel never writes a task or a Do.
+function EntryCarry({ entry, date, today, carry, outcome, setOutcome, undoable, onUndo, formatTime, language, textSecondary }) {
+  const { t } = useTranslation();
+  const action = checkEntryAction(entry, { date, today });
+  const slotText = slot => slot.isAllDay ? journalDate(slot.date, language, date)
+    : `${journalDate(slot.date, language, date)} ${formatTime(slot.startTime)}`;
+  const label = title => `${title}: ${stripWikilinks(entry.title)}`;
+  // A continuation reads as one until the task is moved again, or undone.
+  const stillThere = action.kind === CARRY_ACTION.MOVED && action.slot.date === outcome?.slot?.date
+    && action.slot.startTime === outcome.slot.startTime;
+  if (outcome?.kind === 'continued' && stillThere) {
+    return <p role="status" data-check-carry="continued" className="text-xs flex flex-wrap items-center gap-x-2">
+      <span>{t('jobo.check.continued', { slot: slotText(outcome.slot) })}</span>
+      {undoable && onUndo && <button type="button" data-check-undo onClick={onUndo} className={linkButton}>{t('shortcuts.undoAction')}</button>}
+    </p>;
+  }
+  if (outcome?.kind === 'clash' && action.kind === CARRY_ACTION.CONTINUE) {
+    return <p role="alert" data-check-carry="clash" className="text-xs flex flex-wrap items-center gap-x-2 text-amber-700 dark:text-amber-400">
+      <span>{outcome.title ? t('jobo.check.clash', { slot: slotText(outcome.slot), event: outcome.title })
+        : t('jobo.check.clashUnnamed', { slot: slotText(outcome.slot) })}</span>
+      <button type="button" data-check-edit onClick={() => carry.editOn(action.task, action.slot.date)}
+        aria-label={label(t('common.edit'))} className={linkButton}>{t('common.edit')}</button>
+    </p>;
+  }
+  switch (action.kind) {
+    case CARRY_ACTION.CONTINUE: {
+      const { slot } = action;
+      const text = slot.isAllDay ? t('jobo.check.continueAllDay', { slot: slotText(slot) })
+        : t('jobo.check.continue', { slot: slotText(slot), minutes: slot.duration });
+      return <p data-check-carry="continue"><button type="button" data-check-continue
+        onClick={() => {
+          const result = carry.continueTask(action, date);
+          if (result?.moved) setOutcome({ kind: 'continued', slot });
+          else if (result?.conflict) setOutcome({ kind: 'clash', slot, title: result.conflict.title });
+        }}
+        aria-label={label(text)} className={linkButton}>{text}</button></p>;
+    }
+    case CARRY_ACTION.FOLLOW_UP:
+      return <p data-check-carry="followUp"><button type="button" data-check-follow-up
+        onClick={() => carry.openFollowUp(action.task, today)}
+        aria-label={label(t('jobo.check.followUp'))} className={linkButton}>{t('jobo.check.followUp')}</button></p>;
+    case CARRY_ACTION.SCHEDULE:
+      return <p data-check-carry="schedule"><button type="button" data-check-schedule
+        onClick={() => carry.editOn(action.task, action.date)}
+        aria-label={label(t('jobo.check.schedule'))} className={linkButton}>{t('jobo.check.schedule')}</button></p>;
+    case CARRY_ACTION.MOVED:
+      return <p data-check-carry="moved" className={`text-xs ${textSecondary}`}>{t('jobo.check.next', { slot: slotText(action.slot) })}</p>;
+    default:
+      return null;
+  }
+}
+
+// The journal reads existing executions. Its actions are navigation to the
+// task's native notes and, with `carry`, the task actions above; it never
+// edits a Do.
 export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTime = clock,
-  textSecondary = '', borderClass = '' }) {
+  textSecondary = '', borderClass = '', today, carry, onUndo }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
   const entries = useMemo(() => loaded && model ? buildCheckJournal(model, date) : null, [loaded, model, date]);
+  // What each Continue click did, by entry. Only the latest continuation can
+  // be undone from here: the app's undo takes the newest step.
+  const [outcomes, setOutcomes] = useState({});
+  const [lastContinued, setLastContinued] = useState(null);
   if (error) return <p role="alert">{t('jobo.check.unavailable')}</p>;
   if (!entries) return <p role="status">{t('common.loading')}</p>;
   const invalid = model.invalidRecordCount > 0;
@@ -78,13 +140,23 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
             {summaries.map(row => <span key={row.key} title={row.title}>{row.text}</span>)}
           </p>}
           {timings.length > 0 && <p className={`text-xs ${textSecondary}`} data-check-timing>{timings.map(row => row.text).join(' · ')}</p>}
+          {carry && today && <EntryCarry {...{ entry, date, today, carry, formatTime, language, textSecondary, onUndo: onUndo && (() => {
+            onUndo();
+            setOutcomes(({ [entry.id]: _, ...rest }) => rest);
+            setLastContinued(null);
+          }) }}
+            outcome={outcomes[entry.id]} undoable={lastContinued === entry.id}
+            setOutcome={outcome => {
+              setOutcomes(prev => ({ ...prev, [entry.id]: outcome }));
+              if (outcome.kind === 'continued') setLastContinued(entry.id);
+            }} />}
         </li>;
       })}
     </ol>
   </article>;
 }
 
-export default function CheckPanel({ model, date, loaded, error, onClose, onOpenNotes, formatTime,
+export default function CheckPanel({ model, date, loaded, error, onClose, onOpenNotes, formatTime, today, carry, onUndo,
   cardBg = 'bg-white', textPrimary = '', textSecondary = '', borderClass = '', darkMode = false }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
@@ -111,7 +183,11 @@ export default function CheckPanel({ model, date, loaded, error, onClose, onOpen
     document.addEventListener('keydown', keyboard, true);
     return () => {
       document.removeEventListener('keydown', keyboard, true);
-      if (previous?.isConnected) previous.focus();
+      // Give focus back only if nothing else took it: an action that opens
+      // the task form closes this dialog, and the form's title is focused.
+      const active = document.activeElement;
+      const unclaimed = !active || active === document.body || root?.contains(active);
+      if (previous?.isConnected && unclaimed) previous.focus();
     };
   }, []);
   return createPortal(
@@ -125,7 +201,7 @@ export default function CheckPanel({ model, date, loaded, error, onClose, onOpen
             className={`p-2 rounded-lg ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}><X size={18} /></button>
         </header>
         <div tabIndex={0} role="region" aria-label={t('jobo.check.title')} className="overflow-y-auto px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
-          <CheckJournal {...{ model, date, loaded, error, textSecondary, borderClass, onOpenNotes, formatTime }} />
+          <CheckJournal {...{ model, date, loaded, error, textSecondary, borderClass, onOpenNotes, formatTime, today, carry, onUndo }} />
         </div>
       </div>
     </div>, document.body,

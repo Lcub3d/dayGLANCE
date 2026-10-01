@@ -2317,7 +2317,15 @@
       "untimed": "Nie zarejestrowano czasu",
       "noRecords": "Brak zarejestrowanych wykonań z tego dnia.",
       "unavailable": "Nie udało się wczytać zapisów wykonania.",
-      "invalid": "Nie udało się wczytać niektórych zapisów wykonania."
+      "invalid": "Nie udało się wczytać niektórych zapisów wykonania.",
+      "continue": "Kontynuuj: {{slot}} · {{minutes}} min",
+      "continueAllDay": "Kontynuuj: {{slot}}",
+      "continued": "Kontynuowane: {{slot}}",
+      "clash": "{{slot}} koliduje z „{{event}}”.",
+      "clashUnnamed": "{{slot}} koliduje z wydarzeniem z kalendarza.",
+      "next": "Następnie: {{slot}}",
+      "schedule": "Zaplanuj…",
+      "followUp": "Dodaj zadanie następcze"
     }
   },
   "timelineZoom": {

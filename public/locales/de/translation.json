@@ -2228,7 +2228,15 @@
       "untimed": "Zeit nicht erfasst",
       "noRecords": "Für diesen Tag sind keine Ausführungen erfasst.",
       "unavailable": "Ausführungsdaten konnten nicht geladen werden.",
-      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden."
+      "invalid": "Einige Ausführungsdaten konnten nicht geladen werden.",
+      "continue": "Fortsetzen am {{slot}} · {{minutes}} Min.",
+      "continueAllDay": "Fortsetzen am {{slot}}",
+      "continued": "Fortgesetzt am {{slot}}",
+      "clash": "{{slot}} überschneidet sich mit „{{event}}“.",
+      "clashUnnamed": "{{slot}} überschneidet sich mit einem Kalendertermin.",
+      "next": "Nächster Termin: {{slot}}",
+      "schedule": "Planen…",
+      "followUp": "Folgeaufgabe hinzufügen"
     }
   },
   "timelineZoom": {

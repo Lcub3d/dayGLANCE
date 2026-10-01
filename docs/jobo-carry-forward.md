@@ -3,7 +3,8 @@
 Design note for the rest of slice 7 of #1726: Carry Forward and successor
 tasks (#1714). The direction was agreed with Lcub3d on #1726; this note
 settles the details that touch how tasks behave. The decisions are pure
-helpers in `src/jobo/carryForward.js`; the buttons are not built yet.
+helpers in `src/jobo/carryForward.js`, carried out through the app's task
+actions by `src/jobo/carryForwardActions.js`, with the buttons in `CheckPanel`.
 
 ## The rule
 
@@ -46,12 +47,14 @@ the day, so the click should leave nothing to fill in:
   measured, or the work already ran over, it keeps its planned duration.
   Measured means timed Do only, using the same coverage the stats header
   counts, over the entry's own sessions. An all-day task stays all-day.
-- **Afterwards:** a toast reads "Continued to Fri 9:00 · Undo", and the entry
-  shows the new slot. Changing the slot, or anything else, is the usual edit
-  on the task.
+- **Afterwards:** the entry itself reads "Continued to Fri 9:00 · Undo",
+  standing in for the app's toast, which the Check's dialog would cover. Only
+  the latest continuation offers Undo there, since undo takes the newest
+  step; earlier ones show "Next: Fri 9:00". Changing the slot, or anything
+  else, is the usual edit on the task.
 
-If the slot clashes with an imported calendar event, Continue does what
-Postpone does: it says so and moves nothing. The entry then offers "Edit",
+If the slot clashes with an imported calendar event (or a routine), Continue
+does what Postpone does: it says so, naming the event, and moves nothing. The entry then offers "Edit",
 which opens the task editor on tomorrow so a time can be picked.
 
 **Plan history.** Continue moves a task that has already come due, so the

@@ -2228,7 +2228,15 @@
       "untimed": "Tempo não registado",
       "noRecords": "Nenhuma execução registada neste dia.",
       "unavailable": "Não foi possível carregar os registos de execução.",
-      "invalid": "Não foi possível carregar alguns registos de execução."
+      "invalid": "Não foi possível carregar alguns registos de execução.",
+      "continue": "Continuar em {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continuar em {{slot}}",
+      "continued": "Continuada em {{slot}}",
+      "clash": "{{slot}} coincide com «{{event}}».",
+      "clashUnnamed": "{{slot}} coincide com um evento do calendário.",
+      "next": "Seguinte: {{slot}}",
+      "schedule": "Agendar…",
+      "followUp": "Adicionar continuação"
     }
   },
   "timelineZoom": {

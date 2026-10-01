@@ -2228,7 +2228,15 @@
       "untimed": "Temps non enregistré",
       "noRecords": "Aucune exécution enregistrée pour cette journée.",
       "unavailable": "Impossible de charger les enregistrements d’exécution.",
-      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés."
+      "invalid": "Certains enregistrements d’exécution n’ont pas pu être chargés.",
+      "continue": "Continuer le {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continuer le {{slot}}",
+      "continued": "Continuée le {{slot}}",
+      "clash": "{{slot}} chevauche « {{event}} ».",
+      "clashUnnamed": "{{slot}} chevauche un événement du calendrier.",
+      "next": "Prochaine : {{slot}}",
+      "schedule": "Planifier…",
+      "followUp": "Ajouter une suite"
     }
   },
   "timelineZoom": {

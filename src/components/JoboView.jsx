@@ -21,6 +21,7 @@ import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
+import { createCarryForwardActions } from '../jobo/carryForwardActions.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
 //
@@ -181,6 +182,14 @@ export default function JoboView() {
     const isInbox = (ctx.unscheduledTasks || []).some(candidate => String(candidate.id) === String(task.id));
     ctx.handleSpotlightSelect({ task, source: task.archived ? 'archived' : isInbox ? 'inbox' : 'scheduled' });
     ctx.setExpandedNotesTaskId(task.id);
+  };
+  // Continue, Schedule… and Add follow-up from the Check, through the app's
+  // own task actions. Opening a form leaves the Check first, as notes do.
+  const carryActions = createCarryForwardActions({ ...ctx, projects: goalsProjectsEnabled ? projects : [] });
+  const carry = {
+    continueTask: carryActions.continueTask,
+    editOn: (task, on) => { setCheckOpen(false); carryActions.editOn(task, on); },
+    openFollowUp: (task, on) => { setCheckOpen(false); carryActions.openFollowUp(task, on); },
   };
   const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
     && typeof ctx.setExpandedNotesTaskId === 'function';
@@ -541,6 +550,7 @@ export default function JoboView() {
       {checkOpen && (
         <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
           onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
+          today={nowDate} carry={carry} onUndo={ctx.performUndo}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}

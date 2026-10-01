@@ -2228,7 +2228,15 @@
       "untimed": "Time not recorded",
       "noRecords": "No executions recorded for this day.",
       "unavailable": "Could not load execution records.",
-      "invalid": "Some execution records could not be loaded."
+      "invalid": "Some execution records could not be loaded.",
+      "continue": "Continue to {{slot}} · {{minutes}} min",
+      "continueAllDay": "Continue to {{slot}}",
+      "continued": "Continued to {{slot}}",
+      "clash": "{{slot}} clashes with “{{event}}”.",
+      "clashUnnamed": "{{slot}} clashes with a calendar event.",
+      "next": "Next: {{slot}}",
+      "schedule": "Schedule…",
+      "followUp": "Add follow-up"
     }
   },
   "timelineZoom": {

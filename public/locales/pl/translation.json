@@ -2044,7 +2044,11 @@
     "addTaskPlaceholder": "Dodaj zadanie…",
     "addTaskToProject": "Dodaj zadanie do projektu",
     "hideScheduled": "Ukryj listę zaplanowanych",
-    "showScheduled": "Pokaż zaplanowane"
+    "showScheduled": "Pokaż zaplanowane",
+    "showNotesSidebar": "Pokaż notatki zadania",
+    "hideNotesSidebar": "Ukryj notatki zadania",
+    "selectForNotes": "Wybierz zadanie, aby zobaczyć tu jego notatki.",
+    "notesKeysHint": "↑ ↓ przechodzenie między zadaniami · ← → zmiana listy · Enter lub dwuklik, aby edytować"
   },
   "bucket": {
     "title": "Lista marzeń",

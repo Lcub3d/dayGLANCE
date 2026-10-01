@@ -1,11 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Loader, X } from 'lucide-react';
-import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
+import TaskNotesPane from '../TaskNotesPane.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
-import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { useSyncCtx } from '../../context/SyncContext.jsx';
-import { renderFormattedText, renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
-import { extractWikilinks } from '../../utils/taskUtils.js';
+import { renderFormattedText } from '../../utils/textFormatting.jsx';
 import useDailyNoteDraft from '../../hooks/useDailyNoteDraft.js';
 import { useJoboShare } from '../../hooks/useJoboPreference.js';
 import { DAILY_NOTE_SHARE, clampShare, shareAtPointer, shareForKey } from './sidebarSplit.js';
@@ -64,19 +61,14 @@ function DailyNoteEditor({ date, note, onSave, template, loadFresh, onDone, dark
 
 export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAction = null, headerInset = 0 }) {
   const {
-    darkMode, borderClass, textPrimary, textSecondary, unscheduledTasks,
+    darkMode, borderClass, textPrimary, textSecondary,
     dailyNotes, updateDailyNote, dailyNoteTemplate, loadDailyNoteFresh,
-    updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
-  const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx() || {};
   const noteText = dailyNotes?.[date]?.text || '';
   // Editing belongs to one date: moving to another day leaves the editor,
   // which saves on its way out.
   const [editingDate, setEditingDate] = useState(null);
   const editing = editingDate === date && typeof updateDailyNote === 'function';
-  const wikilinks = task ? extractWikilinks(task.title) : [];
-  const hasWiki = wikilinks.length > 0;
   const heading = `text-xs font-semibold uppercase tracking-wide ${textSecondary}`;
   const [share, setShare] = useJoboShare('daily-note-share', DAILY_NOTE_SHARE, clampShare);
   const body = useRef(null);
@@ -170,31 +162,7 @@ export default function JoboNotesSidebar({ date, task, onClearTask, t, headerAct
         </div>
         {task ? (
           <div data-jobo-sidebar-task={task.id}>
-            <div className={`flex items-center gap-2 mb-2 text-sm font-semibold ${textPrimary} min-w-0`}>
-              <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${task.color || 'bg-blue-500'}`} aria-hidden="true" />
-              <span className="truncate">{renderTitleWithoutTags(task.title)}</span>
-            </div>
-            <div className={`${task.color || 'bg-blue-500'} rounded-lg`}>
-              <NotesSubtasksPanel
-                key={task.id}
-                task={task}
-                isInbox={(unscheduledTasks || []).some((candidate) => candidate.id === task.id)}
-                darkMode={darkMode}
-                updateTaskNotes={updateTaskNotes}
-                addSubtask={addSubtask}
-                toggleSubtask={toggleSubtask}
-                deleteSubtask={deleteSubtask}
-                updateSubtaskTitle={updateSubtaskTitle}
-                compact={false}
-                aiConfig={aiConfig}
-                aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-                onGenerateSubtasks={generateAISubtasks}
-                wikilinks={hasWiki ? wikilinks : undefined}
-                onLoadWikiNote={hasWiki ? loadWikiNote : undefined}
-                onSaveWikiNote={hasWiki ? saveWikiNote : undefined}
-                onOpenInObsidian={hasWiki ? openInObsidian : undefined}
-              />
-            </div>
+            <TaskNotesPane task={task} />
           </div>
         ) : (
           <p className={`text-sm ${textSecondary}`}>{t('jobo.view.selectForNotes')}</p>

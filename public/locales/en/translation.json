@@ -1955,7 +1955,11 @@
     "addTaskPlaceholder": "Add a task…",
     "addTaskToProject": "Add task to project",
     "hideScheduled": "Hide Scheduled list",
-    "showScheduled": "Show Scheduled"
+    "showScheduled": "Show Scheduled",
+    "showNotesSidebar": "Show task notes",
+    "hideNotesSidebar": "Hide task notes",
+    "selectForNotes": "Select a task to see its notes here.",
+    "notesKeysHint": "↑ ↓ move between tasks · ← → switch lists · Enter or double-click to edit"
   },
   "bucket": {
     "title": "Bucket List",

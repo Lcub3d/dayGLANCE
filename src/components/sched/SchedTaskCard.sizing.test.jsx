@@ -64,3 +64,11 @@ describe('SchedTaskCard sizes', () => {
     expect(button(html, 'Postpone to tomorrow')).toContain('p-2');
   });
 });
+
+describe('SchedTaskCard selection', () => {
+  it('shows a selection ring only when selected', async () => {
+    const task = { id: 'a', title: 'Call', date: '2099-01-01', startTime: '09:00', duration: 30, completed: false };
+    expect(await render(task)).not.toContain('data-selected');
+  });
+});
+

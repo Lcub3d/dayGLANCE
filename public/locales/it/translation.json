@@ -1957,7 +1957,11 @@
     "addTaskPlaceholder": "Aggiungi un'attività…",
     "addTaskToProject": "Aggiungi attività al progetto",
     "hideScheduled": "Nascondi l'elenco Pianificate",
-    "showScheduled": "Mostra pianificate"
+    "showScheduled": "Mostra pianificate",
+    "showNotesSidebar": "Mostra le note dell’attività",
+    "hideNotesSidebar": "Nascondi le note dell’attività",
+    "selectForNotes": "Seleziona un’attività per vederne qui le note.",
+    "notesKeysHint": "↑ ↓ spostarsi tra le attività · ← → cambiare elenco · Invio o doppio clic per modificare"
   },
   "bucket": {
     "title": "Bucket List",

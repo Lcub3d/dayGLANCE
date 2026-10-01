@@ -1,5 +1,6 @@
 import { completionMoment } from '../../jobo/completionMarker.js';
 import { civilCoordinate, civilDayMinute } from '../../jobo/viewDates.js';
+import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
 const compareId = (a, b) => String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
 
@@ -56,17 +57,27 @@ export function buildCheckJournal(model, date) {
   }).sort((a, b) => a.order - b.order || compareId(a.id, b.id));
 }
 
+/** Format a civil date with the same locale helper as the other day headings. */
+export function journalDate(date, language, referenceDate = date) {
+  // Treat a stored civil date like the app's other date headings, not UTC
+  // midnight. Keep the year when a related session crosses a year boundary.
+  return formatLocalizedDate(new Date(`${date}T12:00:00`), {
+    weekday: 'short', month: 'short', day: 'numeric',
+    ...(date.slice(0, 4) !== referenceDate.slice(0, 4) ? { year: 'numeric' } : {}),
+  }, language);
+}
+
 /** Render a full civil interval, not the slice clipped for a calendar column. */
-export function journalRange(startDate, startTime, endDate, endTime, date, formatTime) {
-  const start = `${startDate !== date ? `${startDate} ` : ''}${formatTime(startTime)}`;
-  const end = `${endDate !== date || endDate !== startDate ? `${endDate} ` : ''}${formatTime(endTime)}`;
+export function journalRange(startDate, startTime, endDate, endTime, date, formatTime, language) {
+  const start = `${startDate !== date ? `${journalDate(startDate, language, date)} ` : ''}${formatTime(startTime)}`;
+  const end = `${endDate !== date || endDate !== startDate ? `${journalDate(endDate, language, date)} ` : ''}${formatTime(endTime)}`;
   return `${start}–${end}`;
 }
 
-export function journalPlanRange(plan, date, formatTime) {
+export function journalPlanRange(plan, date, formatTime, language) {
   if (!plan) return null;
   const start = civilCoordinate(plan.date, plan.startTime);
   if (start == null || !Number.isFinite(plan.duration) || plan.duration <= 0) return null;
   const end = new Date((start + plan.duration) * 60000).toISOString();
-  return journalRange(plan.date, plan.startTime, end.slice(0, 10), end.slice(11, 16), date, formatTime);
+  return journalRange(plan.date, plan.startTime, end.slice(0, 10), end.slice(11, 16), date, formatTime, language);
 }

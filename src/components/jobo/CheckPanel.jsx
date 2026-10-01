@@ -6,7 +6,7 @@ import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
 import { stripWikilinks } from '../../utils/taskUtils.js';
 import { taskColorToHex } from '../../utils/colorUtils.js';
 import { summaryRows, timingRows } from './ExecutionAxes.jsx';
-import { buildCheckJournal, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
+import { buildCheckJournal, journalDate, journalMoment, journalPlanRange, journalRange } from './checkJournal.js';
 
 const clock = value => value;
 const progressText = (progress, t) => t(progress === 'completed' ? 'common.completed' : `jobo.view.progress.${progress}`);
@@ -15,7 +15,8 @@ const progressText = (progress, t) => t(progress === 'completed' ? 'common.compl
 // task's native notes, outside this panel; it never edits the task or the Do.
 export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTime = clock,
   textSecondary = '', borderClass = '' }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage || i18n.language || 'en';
   const entries = useMemo(() => loaded && model ? buildCheckJournal(model, date) : null, [loaded, model, date]);
   if (error) return <p role="alert">{t('jobo.check.unavailable')}</p>;
   if (!entries) return <p role="status">{t('common.loading')}</p>;
@@ -27,14 +28,17 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
       {entries.map(entry => {
         const task = entry.sourceTask;
         const color = taskColorToHex(task?.color || entry.task?.color || 'bg-purple-500', task?.nativeCalendarColor);
-        const planned = journalPlanRange(entry.plan, date, formatTime);
+        const planned = journalPlanRange(entry.plan, date, formatTime, language);
         // Reuse the card's vocabulary, including its incomplete/estimated rules.
         // Invalid ledger input cannot justify a complete timing comparison.
         const summaries = invalid ? [] : summaryRows(entry.labels, entry.comparison, t);
         const timings = invalid ? [] : timingRows(entry.comparison, t).filter(row => row.state);
         return <li key={entry.id} data-check-entry={entry.id} className="py-3 first:pt-0 last:pb-0 space-y-2 min-w-0">
           <div className="flex items-start justify-between gap-3 min-w-0">
-            <h3 className="font-semibold min-w-0 break-words" style={{ color }}>{renderTitleWithoutTags(entry.title)}</h3>
+            <div className="flex items-start gap-2 min-w-0">
+              <span aria-hidden="true" data-check-swatch className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+              <h3 className="font-semibold min-w-0 break-words">{renderTitleWithoutTags(entry.title)}</h3>
+            </div>
             {task?.id != null && entry.noteKey && onOpenNotes && <button type="button" data-check-notes
               onClick={() => onOpenNotes(task)} aria-label={`${t('task.notes')}: ${stripWikilinks(entry.title)}`}
               className="inline-flex items-center gap-1 shrink-0 text-xs text-blue-600 dark:text-blue-400 underline underline-offset-2 rounded focus-visible:ring-2 focus-visible:ring-blue-500">
@@ -55,11 +59,11 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
                   return <li key={record.id} data-check-session={record.id} className="min-w-0">
                     {entry.sessions.length > 1 && <span className={`text-xs ${textSecondary}`}>{t('jobo.check.session', { number: index + 1 })}{' · '}</span>}
                     <span data-check-actual>{timed
-                      ? journalRange(record.date, record.startTime, record.endDate, record.endTime, date, formatTime)
+                      ? journalRange(record.date, record.startTime, record.endDate, record.endTime, date, formatTime, language)
                       : t('jobo.check.untimed')}</span>
                     <span data-check-progress={record.progress} className="text-xs">{' · '}{progressText(record.progress, t)}</span>
                     {!timed && moment && <p className={`text-xs ${textSecondary}`} data-check-completion>
-                      {t('jobo.view.completedAt', { time: `${moment.date !== date ? `${moment.date} ` : ''}${formatTime(moment.time)}` })}
+                      {t('jobo.view.completedAt', { time: `${moment.date !== date ? `${journalDate(moment.date, language, date)} ` : ''}${formatTime(moment.time)}` })}
                     </p>}
                     {record.timingBasis === 'planDuration' && <p className={`text-xs ${textSecondary}`}>{t('jobo.view.inferredPlanDuration')}</p>}
                   </li>;
@@ -82,7 +86,8 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
 
 export default function CheckPanel({ model, date, loaded, error, onClose, onOpenNotes, formatTime,
   cardBg = 'bg-white', textPrimary = '', textSecondary = '', borderClass = '', darkMode = false }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage || i18n.language || 'en';
   const titleId = useId();
   const dialog = useRef(null);
   const close = useRef(onClose);
@@ -115,7 +120,7 @@ export default function CheckPanel({ model, date, loaded, error, onClose, onOpen
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} data-jobo-check-panel
         className={`w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border shadow-xl ${cardBg} ${textPrimary} ${borderClass}`}>
         <header className={`px-5 py-3 border-b flex-shrink-0 flex items-center justify-between gap-3 ${borderClass}`}>
-          <h2 id={titleId} className="font-semibold">{t('jobo.check.title')} <span className={`text-sm font-normal ${textSecondary}`}>{date}</span></h2>
+          <h2 id={titleId} className="font-semibold">{t('jobo.check.title')} <span className={`text-sm font-normal ${textSecondary}`}>{journalDate(date, language)}</span></h2>
           <button type="button" onClick={onClose} aria-label={t('common.close')}
             className={`p-2 rounded-lg ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}><X size={18} /></button>
         </header>

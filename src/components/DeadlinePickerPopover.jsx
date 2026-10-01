@@ -1,16 +1,44 @@
 import React, { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 import { dateToString, formatDeadlineDate } from '../utils/taskUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 
-const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
+// `portal`: render to document.body at fixed coordinates, anchored to the
+// wrapper this popover is placed in. For hosts that clip or stack their
+// content (ProjectCard is overflow-hidden; the PLANNER is a z-70 overlay).
+// The wrapper must still carry `deadline-picker-container` so App's
+// click-outside handler treats the trigger button as inside.
+const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose, portal = false }) => {
   const { setDeadline, clearDeadline, cardBg, borderClass, hoverBg, textSecondary, textPrimary, darkMode } = useDayPlannerCtx();
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarPos, setCalendarPos] = useState({ x: 0, y: 0 });
   const [openAbove, setOpenAbove] = useState(false);
   const popoverRef = useRef(null);
+  const anchorRef = useRef(null);
+  const [anchorRect, setAnchorRect] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!portal) return;
+    const measure = () => {
+      const el = anchorRef.current?.parentElement;
+      if (el) setAnchorRect(el.getBoundingClientRect());
+    };
+    measure();
+    // A fixed popover can't follow its anchor through a scroll, so close.
+    const onScroll = (e) => {
+      if (e.target instanceof Node && e.target.closest?.('.deadline-picker-popover')) return;
+      onClose();
+    };
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [portal, onClose]);
   const [viewDate, setViewDate] = useState(() => {
     if (currentDeadline) {
       const parts = currentDeadline.split('-');
@@ -20,12 +48,16 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
   });
 
   useLayoutEffect(() => {
+    if (portal) {
+      if (anchorRect) setOpenAbove(anchorRect.bottom > window.innerHeight - 240);
+      return;
+    }
     if (popoverRef.current && !showCalendar) {
       const rect = popoverRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       setOpenAbove(rect.bottom > viewportHeight - 80);
     }
-  }, [showCalendar]);
+  }, [showCalendar, portal, anchorRect]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -39,8 +71,10 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
         }
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Capture phase, so an open popover takes Escape before the overlay
+    // it sits in (the PLANNER, GoalDashboard's chain) closes underneath it.
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [showCalendar, onClose]);
 
   const today = new Date();
@@ -81,6 +115,12 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
     setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + delta, 1));
   };
 
+  // React events bubble through a portal to the host row, whose touch and
+  // double-click handlers (long-press reorder, open task) must not see them.
+  const portalGuards = portal
+    ? { onTouchStart: (e) => e.stopPropagation(), onDoubleClick: (e) => e.stopPropagation() }
+    : {};
+
   if (showCalendar) {
     const days = getDaysInMonth();
     const calWidth = 260;
@@ -88,10 +128,11 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
     const pad = 8;
     const clampedLeft = Math.max(pad, Math.min(calendarPos.x - calWidth / 2, window.innerWidth - calWidth - pad));
     const clampedTop = Math.max(pad, Math.min(calendarPos.y - 150, window.innerHeight - calHeight - pad));
-    return (
+    const calendar = (
       <div
-          className="deadline-picker-container fixed z-[9999]"
+          className="deadline-picker-container deadline-picker-popover fixed z-[9999]"
           style={{ left: clampedLeft, top: clampedTop }}
+          {...portalGuards}
         >
         <div
           className={`${cardBg} rounded-lg shadow-xl border ${borderClass} p-3 w-[260px]`}
@@ -177,10 +218,29 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
         </div>
       </div>
     );
+    return portal
+      ? <><span ref={anchorRef} hidden />{createPortal(calendar, document.body)}</>
+      : calendar;
   }
 
-  return (
-    <div ref={popoverRef} className={`deadline-picker-container absolute ${openAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 z-30`}>
+  const portalStyle = portal && anchorRect
+    ? {
+        right: Math.max(8, window.innerWidth - anchorRect.right),
+        ...(openAbove
+          ? { bottom: window.innerHeight - anchorRect.top + 4 }
+          : { top: anchorRect.bottom + 4 }),
+      }
+    : undefined;
+
+  const menu = (
+    <div
+      ref={popoverRef}
+      className={portal
+        ? 'deadline-picker-container deadline-picker-popover fixed z-[9999]'
+        : `deadline-picker-container deadline-picker-popover absolute ${openAbove ? 'bottom-full mb-1' : 'top-full mt-1'} right-0 z-30`}
+      style={portalStyle}
+      {...portalGuards}
+    >
       <div
         className={`${cardBg} rounded-lg shadow-xl border ${borderClass} p-2 min-w-[160px]`}
         onClick={(e) => e.stopPropagation()}
@@ -237,6 +297,14 @@ const DeadlinePickerPopover = ({ taskId, currentDeadline, onClose }) => {
         </div>
       </div>
     </div>
+  );
+
+  if (!portal) return menu;
+  return (
+    <>
+      <span ref={anchorRef} hidden />
+      {anchorRect && createPortal(menu, document.body)}
+    </>
   );
 };
 

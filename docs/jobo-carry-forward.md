@@ -152,3 +152,93 @@ Neither touches the ledger, so Do undo is unaffected.
    - a completed task followed up;
    - a recurring occurrence and an already-moved task left alone;
    - undo of the continuation.
+
+## Addendum: tasks not started
+
+Agreed with Lcub3d on #1726 after the buttons shipped. The journal lists only
+work with a recorded Do, so a task planned for the day and never touched had
+no entry, and the Check could not review the whole plan. Planned 15, finished
+9, 6 left: some of those 6 may never have been started, and they need a
+decision as much as the rest. The Overdue panel stays, but it is not the
+end-of-day review.
+
+### What the Check adds
+
+A second group below the journal, **Not started**: each task planned for
+the day that has no Do, is not completed and still sits on that day, in
+order of its planned start.
+
+- **No Do records are made for them.** The group is read from the day's plan,
+  exactly as the journal is read from the ledger.
+- **"Not started" is the day model's own rule**: the plan has fully ended and
+  nothing was recorded against it (`comparison.notStarted`, the count the
+  dormant `checkSummary.js` already calls `noDo`). On today's Check, a task
+  still to come, or under way, is not listed yet.
+- **All-day tasks** have no planned end, so they are listed on past days only.
+- **Recurring occurrences** are listed, with no action and not counted below.
+  The next occurrence carries the work on, as in the journal.
+- **Calendar events**, other members' tasks and completed tasks are not
+  listed, as in the journal.
+
+### What each one offers
+
+Lcub3d's three decisions, each through an action the app already has:
+
+| Decision | Action | What it does |
+|---|---|---|
+| Keep it | **Continue** | To tomorrow at its planned time, with its full duration, since nothing was recorded. The same rules as the journal's Continue: the clash check, one undo step, counted in `deferrals` and `planTrail`. |
+| Postpone, no date yet | **Move to Inbox**, or **Move to project** when it has one | The app's own `moveToInbox`: the task leaves the timeline and keeps its project, so a project task lands in that project's list. |
+| Cancel | **Delete** | The app's own delete, to the Recycle Bin, where it can be restored. |
+
+A task moved off the day by any route, here or elsewhere, leaves the group
+and shows nowhere in the Check, since it has no Do on that day.
+
+### Undo
+
+Each action is one step in the app's undo history. As with Continue, the
+confirmation sits in the Check rather than the app's toast, which the dialog
+would cover: "Continued to Fri 9:00 · Undo", "Moved to the Inbox · Undo",
+"Deleted · Undo". A deleted or moved task is no longer in the group, so its
+confirmation stays in the group's place until the next action or until the
+Check closes. Only the latest action offers Undo, since undo takes the newest
+step.
+
+### The summary line
+
+At the top of the Check, worked out from the tasks as they stand, never
+stored:
+
+- **"2 tasks from this day still need a next step"** while any remain. A task
+  counts when it is unfinished and still sits on that day: a journal entry
+  that still offers Continue, or a task in Not started. Recurring occurrences
+  do not count.
+- **"Every task from this day has a next step"** once none remain.
+- Nothing, on a day with no plan and no Do.
+
+It says nothing about completion. Continuing all six unfinished tasks leaves
+the day at 9 of 15 done, and the line says each has a next step.
+
+### What stays as it is
+
+The ledger, core, detector and `viewModel.js` are unchanged, and no task
+field is added. The group and the line are pure helpers beside
+`checkEntryAction` in `carryForward.js`; the actions extend
+`carryForwardActions.js` with the app's `moveToInbox` and `moveToRecycleBin`.
+
+### Decisions to confirm
+
+1. **Today's Check lists a task once its planned end has passed.** The
+   alternative, its start, would list work that is under way.
+2. **Recurring occurrences are listed but offer nothing and do not count.**
+3. **All-day tasks are listed on past days only.**
+4. **Delete goes to the Recycle Bin**, confirmed on #1726.
+
+### Build order
+
+1. **Pure helpers, with tests:** the Not started group and the summary count,
+   covering each rule above and both lines of the summary.
+2. **The group and line in `CheckPanel`**, with the three actions, their
+   confirmations and Undo, and strings in all ten locales.
+3. **A browser check** on a seeded day: a past day with each kind of task,
+   today before and after a task's end, each action and its undo, and the
+   line reaching "Every task from this day has a next step".

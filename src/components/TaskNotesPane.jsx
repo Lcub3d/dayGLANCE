@@ -12,7 +12,8 @@ import { extractWikilinks } from '../utils/taskUtils.js';
 // and the Project Planner's both show a selected task this way.
 // `autoFocus` false keeps the keyboard where it is (the planner moves its
 // selection with the arrow keys); JOBO's sidebar focuses an empty note.
-export default function TaskNotesPane({ task, autoFocus = true }) {
+// Bumping `focusNoteRequest` puts the cursor in the note (the planner's E).
+export default function TaskNotesPane({ task, autoFocus = true, focusNoteRequest = 0 }) {
   const {
     darkMode, textPrimary, unscheduledTasks,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
@@ -40,6 +41,7 @@ export default function TaskNotesPane({ task, autoFocus = true }) {
           updateSubtaskTitle={updateSubtaskTitle}
           compact={false}
           noAutoFocus={!autoFocus}
+          focusNoteRequest={focusNoteRequest}
           aiConfig={aiConfig}
           aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
           onGenerateSubtasks={generateAISubtasks}

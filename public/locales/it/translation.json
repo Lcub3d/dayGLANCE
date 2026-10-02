@@ -1961,7 +1961,7 @@
     "showNotesSidebar": "Mostra le note dell’attività",
     "hideNotesSidebar": "Nascondi le note dell’attività",
     "selectForNotes": "Seleziona un’attività per vederne qui le note.",
-    "notesKeysHint": "↑ ↓ spostarsi tra le attività · ← → cambiare elenco · Invio o doppio clic per modificare"
+    "notesKeysHint": "↑ ↓ spostarsi tra le attività · ← → cambiare elenco · Invio o doppio clic per modificare l’attività · E per modificare la nota"
   },
   "bucket": {
     "title": "Bucket List",

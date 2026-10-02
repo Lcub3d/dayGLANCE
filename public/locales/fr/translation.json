@@ -1959,7 +1959,7 @@
     "showNotesSidebar": "Afficher les notes de la tâche",
     "hideNotesSidebar": "Masquer les notes de la tâche",
     "selectForNotes": "Sélectionnez une tâche pour voir ses notes ici.",
-    "notesKeysHint": "↑ ↓ passer d’une tâche à l’autre · ← → changer de liste · Entrée ou double-clic pour modifier"
+    "notesKeysHint": "↑ ↓ passer d’une tâche à l’autre · ← → changer de liste · Entrée ou double-clic pour modifier la tâche · E pour modifier la note"
   },
   "bucket": {
     "title": "Bucket List",

@@ -454,14 +454,31 @@ describe('applyUpdateTask — field edits with by-design guards', () => {
     }
   });
 
-  it('rejects priority/deadline on a project task, wording says by design', () => {
+  it('an unscheduled project task takes priority and deadline: set, change, clear', () => {
     const state = base();
-    state.unscheduledTasks[0].projectId = 'p1';
-    const r = applyUpdateTask(state, { taskId: 'u1', set: { priority: 2 }, clear: [] });
+    state.unscheduledTasks[0] = { id: 'u1', title: 'Project work', projectId: 'p1', priority: 0, completed: false };
+    const set = applyUpdateTask(state, { taskId: 'u1', set: { deadline: '2026-09-01', priority: 2 }, clear: [] });
+    expect(set.ok).toBe(true);
+    expect(set.task).toMatchObject({ projectId: 'p1', deadline: '2026-09-01', priority: 2 });
+    expect(set.scheduled).toBe(false);
+
+    state.unscheduledTasks = set.unscheduledTasks;
+    const changed = applyUpdateTask(state, { taskId: 'u1', set: { deadline: '2026-09-15' }, clear: [] });
+    expect(changed.task.deadline).toBe('2026-09-15');
+
+    state.unscheduledTasks = changed.unscheduledTasks;
+    const cleared = applyUpdateTask(state, { taskId: 'u1', set: {}, clear: ['deadline'] });
+    expect(cleared.ok).toBe(true);
+    expect('deadline' in cleared.task).toBe(false);
+    expect(cleared.task.projectId).toBe('p1');
+  });
+
+  it('a SCHEDULED project task still rejects priority/deadline by the scheduled rule', () => {
+    const state = base();
+    state.tasks[0].projectId = 'p1';
+    const r = applyUpdateTask(state, { taskId: 'b1', set: { deadline: '2026-09-01' }, clear: [] });
     expect(r).toMatchObject({ ok: false, error: { code: 'validation' } });
-    expect(r.error.message).toMatch(/project tasks do not carry priority or deadline by design/i);
-    // title stays editable on the same project task
-    expect(applyUpdateTask(state, { taskId: 'u1', set: { title: 'ok' }, clear: [] }).ok).toBe(true);
+    expect(r.error.message).toMatch(/Scheduled dayGLANCE tasks do not carry priority or deadline by design/);
   });
 
   it('rejects _native device calendar events', () => {

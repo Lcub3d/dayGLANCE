@@ -4,7 +4,9 @@
 // tool handler in mcpWriteTools.ts is wiring only.
 //
 // TWO CREATE SHAPES, decided by `start`:
-//   absent  → inbox task (may carry priority 0-3 and a deadline date)
+//   absent  → inbox task (may carry priority 0-3 and a deadline date, with or
+//             without project_id: an unscheduled project task is an inbox
+//             task, and the UI gives it both controls)
 //   present → scheduled task, created DIRECTLY onto the calendar in one
 //             transition (never inbox-then-schedule: applyScheduleTask strips
 //             priority and deadline by design, and §5.2 forbids the partial
@@ -15,9 +17,6 @@
 // unsupported — so a model reports the design to the user instead of retrying
 // another way:
 //   - priority/deadline with start:      scheduled tasks never carry them
-//   - priority/deadline with project_id: project tasks never carry them (the
-//     UI disables both controls for project tasks; writing one would create
-//     state the UI cannot display consistently, edit, or clear)
 //   - all_day with duration_minutes:     an all-day task has no meaningful
 //     duration (the UI disables the input)
 //   - all_day with a time in start:      all-day takes a bare date
@@ -93,12 +92,6 @@ export function planCreateTask(args: CreateTaskArgs, timeZone: string): CreatePl
     return reject(
       'Scheduled dayGLANCE tasks do not carry priority or deadline by design: those fields belong to inbox ' +
       'tasks only, and scheduling an inbox task drops them. Create the task without start to keep them.',
-    );
-  }
-  if (project_id !== undefined && (priority !== undefined || deadline !== undefined)) {
-    return reject(
-      'dayGLANCE project tasks do not carry priority or deadline by design: the app manages project work ' +
-      'through the project itself. Create the task without project_id to use priority or deadline.',
     );
   }
 

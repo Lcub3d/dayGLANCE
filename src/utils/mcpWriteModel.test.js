@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { handleMcpWrite, isWriteMethod, scheduleDroppedFields } from './mcpWriteModel.js';
+import { handleMcpWrite, isWriteMethod, scheduleDroppedFields, resolveMcpTaskId } from './mcpWriteModel.js';
 
 // Phase 5b additions to the write dispatcher: every successful non-replayed
 // write returns a §4.3 undo descriptor { summary, op } captured from the
@@ -567,5 +567,111 @@ describe('routine collisions are rejected rather than adjusted', () => {
       { method: 'schedule_task', params: { taskId: 'u1', date: DATE, startTime: '09:30' } },
     );
     expect(r.ok).toBe(true);
+  });
+});
+
+// The Obsidian placement pass re-keys a project task whose project has a
+// linked note (useObsidianSync, PLACEMENT): the UUID create_task returned
+// becomes obsidian-dg-<blockId> seconds later, and the commit records the
+// move in retiredTaskIds. Every id a write takes resolves through it.
+describe('ids retired by an Obsidian re-key resolve to their successor', () => {
+  const OLD = '948b4379-0000-4000-8000-000000000000';
+  const NEW = 'obsidian-dg-77derxbh';
+  const RETIRED = { [OLD]: { retiredAt: '2026-10-02T10:00:00.000Z', successor: NEW } };
+
+  // What the placement commit leaves behind: same task, new id, the
+  // wikilink-free title with #obsidian appended, and the retirement record.
+  const reKey = (task) => ({ ...task, id: NEW, obsidianBlockId: '77derxbh', importSource: 'obsidian', title: `${task.title} #obsidian` });
+
+  it('create a project task, the vault claims it, update with the id create returned: succeeds on the successor', () => {
+    const setters = makeSetters();
+    const created = handleMcpWrite(
+      { tasks: [], unscheduledTasks: [], projects: [{ id: 'p1', title: 'dayGLANCE' }] },
+      setters,
+      { method: 'create_task', params: { taskId: OLD, title: 'Ship it', projectId: 'p1' } },
+    );
+    expect(created.ok).toBe(true);
+    expect(created.data.task.id).toBe(OLD);
+    const createdTask = setters.setUnscheduledTasks.mock.calls[0][0][0];
+
+    const after = { tasks: [], unscheduledTasks: [reKey(createdTask)], retiredTaskIds: RETIRED };
+    const s2 = makeSetters();
+    const r = handleMcpWrite(after, s2, { method: 'update_task', params: { taskId: OLD, set: { deadline: '2026-10-09' }, clear: [] } });
+    expect(r.ok).toBe(true);
+    expect(r.data.task).toMatchObject({ id: NEW, deadline: '2026-10-09', project_id: 'p1' });
+    expect(r.data.resolved_from).toBe(OLD);
+    expect(s2.setUnscheduledTasks.mock.calls[0][0][0]).toMatchObject({ id: NEW, deadline: '2026-10-09' });
+    // The journal's undo names the live id, so a later bulk undo finds it.
+    expect(r.undo.op.taskId).toBe(NEW);
+  });
+
+  it('every write tool that takes a task or block id resolves it', () => {
+    const inbox = { id: NEW, title: 'Inbox', priority: 0, completed: false };
+    const block = B({ id: NEW });
+    const cases = [
+      [{ tasks: [], unscheduledTasks: [inbox] }, { method: 'schedule_task', params: { taskId: OLD, date: '2026-08-10', startTime: '09:00' } }],
+      [{ tasks: [], unscheduledTasks: [inbox] }, { method: 'set_completion', params: { taskId: OLD, completed: true, todayStr: '2026-08-10' } }],
+      [{ tasks: [block], unscheduledTasks: [] }, { method: 'move_block', params: { blockId: OLD, date: '2026-08-11', startTime: '10:00' } }],
+      [{ tasks: [block], unscheduledTasks: [] }, { method: 'resize_block', params: { blockId: OLD, durationMinutes: 45 } }],
+      [{ tasks: [], unscheduledTasks: [inbox] }, { method: 'update_task', params: { taskId: OLD, set: { title: 'x' }, clear: [] } }],
+    ];
+    for (const [state, request] of cases) {
+      const r = handleMcpWrite({ ...state, retiredTaskIds: RETIRED }, makeSetters(), request);
+      expect(r.ok, request.method).toBe(true);
+      expect(r.data.resolved_from, request.method).toBe(OLD);
+      expect((r.data.task ?? r.data.block).id, request.method).toBe(NEW);
+    }
+  });
+
+  it('a create replay on a re-keyed deterministic id returns the claimed task instead of creating a second', () => {
+    const setters = makeSetters();
+    const claimed = { id: NEW, title: 'Ship it #obsidian', priority: 0, completed: false, transitionId: 'k1' };
+    const r = handleMcpWrite(
+      { tasks: [], unscheduledTasks: [claimed], retiredTaskIds: RETIRED },
+      setters,
+      { method: 'create_task', params: { taskId: OLD, title: 'Ship it', transitionId: 'k1' } },
+    );
+    expect(r.ok).toBe(true);
+    expect(r.data.replayed).toBe(true);
+    expect(r.data.task.id).toBe(NEW);
+    expect(setters.setUnscheduledTasks).not.toHaveBeenCalled();
+  });
+
+  it('bulk undo resolves the ids the journal recorded before the re-key', () => {
+    const setters = makeSetters();
+    const r = handleMcpWrite(
+      { tasks: [], unscheduledTasks: [{ id: NEW, title: 'Ship it', completed: false }], recurringTasks: [], recycleBin: [], retiredTaskIds: RETIRED },
+      setters,
+      { method: 'undo_mcp_writes', params: { ops: [{ kind: 'remove_created', taskId: OLD }] } },
+    );
+    expect(r.data).toEqual({ undone: 1, skipped: 0 });
+    expect(setters.setUnscheduledTasks.mock.calls[0][0]).toEqual([]);
+  });
+
+  it('an id that is still live is never redirected, and no resolved_from is reported', () => {
+    const state = {
+      tasks: [],
+      unscheduledTasks: [{ id: OLD, title: 'not yet claimed', priority: 0, completed: false }, { id: NEW, title: 'other', priority: 0, completed: false }],
+      retiredTaskIds: RETIRED,
+    };
+    expect(resolveMcpTaskId(state, OLD)).toBe(OLD);
+    const r = handleMcpWrite(state, makeSetters(), { method: 'update_task', params: { taskId: OLD, set: { title: 'y' }, clear: [] } });
+    expect(r.data.task.id).toBe(OLD);
+    expect('resolved_from' in r.data).toBe(false);
+  });
+
+  it('a successor that is not live here keeps the original id: an honest not_found', () => {
+    const r = handleMcpWrite(
+      { tasks: [], unscheduledTasks: [], retiredTaskIds: RETIRED },
+      makeSetters(),
+      { method: 'update_task', params: { taskId: OLD, set: { title: 'y' }, clear: [] } },
+    );
+    expect(r).toMatchObject({ ok: false, error: { code: 'not_found' } });
+    expect(r.error.message).toContain(OLD);
+  });
+
+  it('without a record (or for an unknown id) behaviour is unchanged', () => {
+    const r = handleMcpWrite({ tasks: [], unscheduledTasks: [] }, makeSetters(), { method: 'update_task', params: { taskId: 'nope', set: { title: 'y' }, clear: [] } });
+    expect(r).toMatchObject({ ok: false, error: { code: 'not_found' } });
   });
 });

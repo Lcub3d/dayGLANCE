@@ -15,6 +15,14 @@
 // before-state, because this is the only place that still has it: the journal
 // in the main process records it, and bulk undo replays the ops back through
 // applyUndoOps. Replayed writes carry no descriptor (nothing changed).
+//
+// RETIRED IDS RESOLVE TO THEIR SUCCESSOR (resolveMcpTaskId). A task id an MCP
+// client holds can stop naming anything while the task lives on: the Obsidian
+// placement pass re-keys a project task to obsidian-dg-<blockId> seconds after
+// create_task returned its UUID. The commit that renames records the move in
+// retiredTaskIds (utils/retiredTaskIds.js), so every id a write takes is
+// resolved through that record before dispatch. A response for a resolved id
+// carries `resolved_from` alongside the entity, whose id is the current one.
 
 import {
   applyCreateTask,
@@ -27,6 +35,7 @@ import {
   parseRecurringInstanceId,
 } from './taskMutations.js';
 import { toBlock } from './mcpReadModel.js';
+import { resolveRetirement } from './retiredTaskIds.js';
 
 const WRITE_METHODS = new Set([
   'create_task', 'schedule_task', 'move_block', 'resize_block', 'set_completion',
@@ -49,10 +58,63 @@ const at = (date, startTime) => (startTime ? `${date} ${startTime}` : `${date}`)
  * main process journals and strips before anything reaches the MCP client.
  */
 export function handleMcpWrite(state, setters, request) {
-  const params = request?.params ?? {};
+  const { params, resolvedFrom } = resolveRequestIds(state, request?.method, request?.params ?? {});
+  const response = dispatchWrite(state, setters, request?.method, params);
+  if (!resolvedFrom || !response.ok || !response.data) return response;
+  return { ...response, data: { ...response.data, resolved_from: resolvedFrom } };
+}
+
+/**
+ * The id a write should act on. An id that is live as given is used as given,
+ * so a task the rename has not reached yet is never redirected. A retired id
+ * resolves to its successor only when that successor is live: a device that
+ * has the record but not yet the successor row keeps the original id, and the
+ * caller gets an honest not_found rather than an edit landing elsewhere.
+ * `retiredTaskIds` is the record as useMcpBridge read it for this request.
+ */
+export function resolveMcpTaskId(state, id) {
+  if (typeof id !== 'string' || !id) return id;
+  const isLive = (x) => (state.unscheduledTasks ?? []).some((t) => t.id === x)
+    || (state.tasks ?? []).some((t) => t.id === x);
+  if (isLive(id)) return id;
+  const successor = resolveRetirement(state.retiredTaskIds, id);
+  return successor && isLive(successor) ? successor : id;
+}
+
+const ID_PARAM = {
+  create_task: 'taskId', update_task: 'taskId', schedule_task: 'taskId',
+  set_completion: 'taskId', move_block: 'blockId', resize_block: 'blockId',
+};
+
+/**
+ * Resolve the one id a write takes, plus the ids inside undo ops: the journal
+ * recorded them at write time, and a create the vault has since claimed must
+ * still undo. create_task resolves too, for its replay check: a deterministic
+ * id the vault already re-keyed means the create happened, so the replay
+ * returns that task instead of creating a second one.
+ */
+function resolveRequestIds(state, method, params) {
+  if (method === 'undo_mcp_writes') {
+    const ops = (params.ops ?? []).map((op) => {
+      if (!op || typeof op !== 'object') return op;
+      const next = { ...op };
+      if (typeof op.taskId === 'string') next.taskId = resolveMcpTaskId(state, op.taskId);
+      if (typeof op.blockId === 'string') next.blockId = resolveMcpTaskId(state, op.blockId);
+      return next;
+    });
+    return { params: { ...params, ops }, resolvedFrom: null };
+  }
+  const key = ID_PARAM[method];
+  if (!key) return { params, resolvedFrom: null };
+  const resolved = resolveMcpTaskId(state, params[key]);
+  if (resolved === params[key]) return { params, resolvedFrom: null };
+  return { params: { ...params, [key]: resolved }, resolvedFrom: params[key] };
+}
+
+function dispatchWrite(state, setters, method, params) {
   const nowIso = new Date().toISOString();
 
-  switch (request?.method) {
+  switch (method) {
     case 'create_task': {
       const r = applyCreateTask(state, { ...params, nowIso });
       if (!r.ok) return r;
@@ -190,7 +252,7 @@ export function handleMcpWrite(state, setters, request) {
       return { ok: true, data: { undone: r.undone, skipped: r.skipped } };
     }
     default:
-      return { ok: false, error: { code: 'validation', message: `Unknown write method ${JSON.stringify(request?.method)}` } };
+      return { ok: false, error: { code: 'validation', message: `Unknown write method ${JSON.stringify(method)}` } };
   }
 }
 

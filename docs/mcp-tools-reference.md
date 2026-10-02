@@ -165,9 +165,16 @@ idempotency replay, rate gate (`rate_limited` / `writes_disabled`), argument val
 then the mutation — which goes through the same store layer as the app's own edits, so sync,
 Obsidian writeback, and the tray all react exactly as they would to a UI edit.
 
+**Task ids can change; the old id keeps working.** When the Obsidian integration claims a
+task (a project task whose project has a linked note), it re-keys the task to
+`obsidian-dg-<id>` shortly after creation. Every write tool that takes a task or block id
+resolves a retired id to its successor, so an id `dayglance_create_task` returned stays
+usable. A response for a resolved id carries the task's current id plus `resolved_from`,
+the id you passed.
+
 ### `dayglance_create_task`
-Two shapes, decided by `start`: **without** it, an unscheduled inbox task (may carry priority
-and deadline); **with** it, a scheduled task placed directly onto the calendar in one call.
+Two shapes, decided by `start`: **without** it, an unscheduled task, in the inbox or in a
+project via `project_id` (either may carry priority and deadline); **with** it, a scheduled task placed directly onto the calendar in one call.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
@@ -175,20 +182,19 @@ and deadline); **with** it, a scheduled task placed directly onto the calendar i
 | `notes` | string | no | |
 | `project_id` | string | no | Attach to a project (ids from `dayglance_get_goal_progress`). |
 | `assignee_id` | string | no | **Multi-user only** (absent from the schema otherwise). Ids from `dayglance_list_users`. |
-| `priority` | integer | no | **Inbox, non-project only.** 0 none (default), 1 low, 2 medium, 3 high. |
-| `deadline` | string | no | **Inbox, non-project only.** Local `YYYY-MM-DD`. |
+| `priority` | integer | no | **Unscheduled only** (inbox or project). 0 none (default), 1 low, 2 medium, 3 high. |
+| `deadline` | string | no | **Unscheduled only** (inbox or project). Local `YYYY-MM-DD`. |
 | `start` | string | no | Local `"YYYY-MM-DD HH:MM"`; with `all_day`, a bare `YYYY-MM-DD`. Presence = scheduled create. |
 | `duration_minutes` | integer | no | 1–1440. Default 30. Contradicts `all_day`. |
 | `all_day` | boolean | no | With `start` only. |
 | `repeat` | — | no | **Rejected**: recurring creation is not supported over MCP. |
 | `idempotency_key` | string | no | Also seeds a deterministic task id, so replays converge. |
 
-By-design `validation` rejections: priority/deadline with `start`; priority/deadline with
-`project_id`; `all_day` + `duration_minutes`; `all_day` with a time in `start`; any `repeat`.
+By-design `validation` rejections: priority/deadline with `start`; `all_day` + `duration_minutes`; `all_day` with a time in `start`; any `repeat`.
 Unknown `assignee_id` → `not_found`.
 
 ### `dayglance_update_task`
-Field editor for existing tasks, inbox or scheduled. **Absent leaves a field alone, present
+Field editor for existing tasks: inbox, project, or scheduled. **Absent leaves a field alone, present
 sets it, a field named in `clear_fields` is removed.** Clearing only ever happens through the
 explicit list — `null` or empty values never clear.
 
@@ -197,17 +203,19 @@ explicit list — `null` or empty values never clear.
 | `task_id` | string | yes | Recurring-instance ids are rejected (see below). |
 | `title` | string | no | Non-empty; trimmed. Can be set, never cleared. |
 | `notes` | string | no | Empty string is a valid *set*; removal goes through `clear_fields`. |
-| `priority` | integer | no | 0–3. **Inbox, non-project tasks only.** |
-| `deadline` | string | no | Local `YYYY-MM-DD`. **Inbox, non-project tasks only.** |
+| `priority` | integer | no | 0–3. **Unscheduled tasks only** (inbox or project). |
+| `deadline` | string | no | Local `YYYY-MM-DD`. **Unscheduled tasks only** (inbox or project). |
 | `assignee_id` | string | no | **Multi-user only.** Ids from `dayglance_list_users`. |
 | `clear_fields` | string[] | no | Accepts only `"notes"`, `"deadline"`, `"assignee"` (assignee: multi-user only). Naming `title` or anything else → `validation`. |
 | `idempotency_key` | string | no | |
 
 Also `validation`: setting and clearing the same field in one call; a call that neither sets
 nor clears anything. By-design rejections: priority/deadline (set **or** clear) on scheduled
-tasks and on project tasks; recurring instances (dedicated error naming the synthetic
+tasks; recurring instances (dedicated error naming the synthetic
 `recurring-<template>-<date>` id shape); CalDAV task-calendar tasks; `_native` events.
 Not editable here: `project_id`; date/time/duration/completion have their own tools.
+A `task_id` returned by `dayglance_create_task` keeps working after the Obsidian re-key to
+`obsidian-dg-…`; the response carries the current id plus `resolved_from`.
 
 ### `dayglance_schedule_task`
 Schedule an unscheduled inbox task onto a day and time.

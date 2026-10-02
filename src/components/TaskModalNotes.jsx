@@ -93,6 +93,8 @@ export default function TaskModalNotes({ newTask, setNewTask, editingTask }) {
           isInbox={isDraft ? false : target.isInbox}
           darkMode={darkMode}
           noAutoFocus
+          // The full-size editor, resizable, as in the PLANNER and JOBO sidebars.
+          compact={false}
           {...actions}
           // Generating subtasks writes to a saved task, so a draft has none.
           aiConfig={isDraft ? undefined : aiConfig}

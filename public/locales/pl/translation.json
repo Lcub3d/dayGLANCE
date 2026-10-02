@@ -2324,7 +2324,18 @@
       "clashUnnamed": "{{slot}} koliduje z wydarzeniem z kalendarza.",
       "next": "Następnie: {{slot}}",
       "schedule": "Zaplanuj…",
-      "followUp": "Dodaj zadanie następcze"
+      "followUp": "Dodaj zadanie następcze",
+      "notStarted": "Nierozpoczęte",
+      "moveToProject": "Przenieś do jego projektu",
+      "movedToInbox": "Przeniesiono do skrzynki",
+      "movedToProject": "Przeniesiono do projektu",
+      "deleted": "Usunięto do kosza",
+      "recurringNotStarted": "Powtarza się: następne wystąpienie je kontynuuje.",
+      "allHandled": "Każde zadanie z tego dnia ma kolejny krok",
+      "pending_one": "{{count}} zadanie z tego dnia wciąż czeka na kolejny krok",
+      "pending_few": "{{count}} zadania z tego dnia wciąż czekają na kolejny krok",
+      "pending_many": "{{count}} zadań z tego dnia wciąż czeka na kolejny krok",
+      "pending_other": "{{count}} zadania z tego dnia wciąż czeka na kolejny krok"
     }
   },
   "timelineZoom": {

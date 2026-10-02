@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
-import useDayViewHourHeight from '../hooks/useDayViewHourHeight.js';
 import { DayViewColumn } from './DayView.jsx';
 import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
 import useJoboPreference from '../hooks/useJoboPreference.js';
@@ -12,6 +11,7 @@ import useJoboRefocus from '../hooks/useJoboRefocus.js';
 import RefocusTimelineToast from './RefocusTimelineToast.jsx';
 import useMinWidth from '../hooks/useMinWidth.js';
 import useTimelineZoom from '../hooks/useTimelineZoom.js';
+import { SCROLLING_HOUR_PX } from '../utils/timelineZoom.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
@@ -71,7 +71,6 @@ export default function JoboView() {
   const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
   // Every accepted Do write becomes a step in the app's undo history.
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
-  const baseHourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [checkOpen, setCheckOpen] = useState(false);
   const [editor, setEditor] = useState(null);
@@ -124,9 +123,12 @@ export default function JoboView() {
   const gridRef = useRef(null);
   // Timeline magnification (utils/timelineZoom.js): one factor on the hour
   // height, which every position here derives from, and on the cards'
-  // contents. DAY's column takes the same factor for the Plan side.
+  // contents. DAY's column takes the same factor for the Plan side. The hour
+  // is MULTI's, not DAY's: JOBO scrolls, so it has no need to fit eight hours
+  // in the window, and DAY's fitted hour leaves a 15-minute card too short
+  // for its own contents.
   const zoom = useTimelineZoom('jobo', { scrollRef, originRef: gridRef });
-  const hourHeight = baseHourHeight * zoom;
+  const hourHeight = SCROLLING_HOUR_PX * zoom;
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
   const live = useRef(null);
@@ -155,6 +157,9 @@ export default function JoboView() {
     () => getTasksForDate(selectedDate, false).filter((task) => !task.isAllDay && task.startTime),
     [getTasksForDate, selectedDate],
   );
+  // The Check's Not started group also reads the day's all-day tasks, which
+  // the Plan column leaves out.
+  const checkDayTasks = useMemo(() => getTasksForDate(selectedDate, false), [getTasksForDate, selectedDate]);
   const lookup = useMemo(
     () => [...(ctx.tasks || []), ...(ctx.unscheduledTasks || []), ...(ctx.expandedRecurringTasks || []), ...dayTasks],
     [ctx.tasks, ctx.unscheduledTasks, ctx.expandedRecurringTasks, dayTasks],
@@ -190,6 +195,8 @@ export default function JoboView() {
     continueTask: carryActions.continueTask,
     editOn: (task, on) => { setCheckOpen(false); carryActions.editOn(task, on); },
     openFollowUp: (task, on) => { setCheckOpen(false); carryActions.openFollowUp(task, on); },
+    unscheduleTask: carryActions.unscheduleTask,
+    deleteTask: carryActions.deleteTask,
   };
   const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
     && typeof ctx.setExpandedNotesTaskId === 'function';
@@ -211,12 +218,11 @@ export default function JoboView() {
     );
     const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
     el.scrollTop = scrollTopFor(anchorMinute);
-    // Only on a new day, screen height or visible range, never on an
-    // ordinary re-render, and never on a zoom: that keeps the time under the
-    // pointer where it was (hooks/useTimelineZoom.js), so it keys on the
-    // unzoomed hour height.
+    // Only on a new day or visible range, never on an ordinary re-render,
+    // and never on a zoom: that keeps the time under the pointer where it was
+    // (hooks/useTimelineZoom.js).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, baseHourHeight, windowStart]);
+  }, [date, windowStart]);
 
   // Refocus timeline, as in MULTI: on today, when the now line is out of
   // view, and on its own at every :00 and :30.
@@ -550,7 +556,7 @@ export default function JoboView() {
       {checkOpen && (
         <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
           onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
-          today={nowDate} carry={carry} onUndo={ctx.performUndo}
+          today={nowDate} carry={carry} onUndo={ctx.performUndo} dayTasks={checkDayTasks}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}

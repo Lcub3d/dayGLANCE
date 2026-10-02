@@ -2235,7 +2235,16 @@
       "clashUnnamed": "{{slot}} überschneidet sich mit einem Kalendertermin.",
       "next": "Nächster Termin: {{slot}}",
       "schedule": "Planen…",
-      "followUp": "Folgeaufgabe hinzufügen"
+      "followUp": "Folgeaufgabe hinzufügen",
+      "notStarted": "Nicht begonnen",
+      "moveToProject": "In sein Projekt verschieben",
+      "movedToInbox": "In den Posteingang verschoben",
+      "movedToProject": "In sein Projekt verschoben",
+      "deleted": "Gelöscht, im Papierkorb",
+      "recurringNotStarted": "Wiederholt sich: Das nächste Vorkommen führt es fort.",
+      "allHandled": "Jede Aufgabe dieses Tages hat einen nächsten Schritt",
+      "pending_one": "{{count}} Aufgabe dieses Tages braucht noch einen nächsten Schritt",
+      "pending_other": "{{count}} Aufgaben dieses Tages brauchen noch einen nächsten Schritt"
     }
   },
   "timelineZoom": {

@@ -2235,7 +2235,16 @@
       "clashUnnamed": "{{slot}} coincide com um evento do calendário.",
       "next": "Seguinte: {{slot}}",
       "schedule": "Agendar…",
-      "followUp": "Adicionar continuação"
+      "followUp": "Adicionar continuação",
+      "notStarted": "Não iniciadas",
+      "moveToProject": "Mover para o projeto",
+      "movedToInbox": "Movida para a caixa de entrada",
+      "movedToProject": "Movida para o projeto",
+      "deleted": "Eliminada, na reciclagem",
+      "recurringNotStarted": "Repete-se: a próxima ocorrência dá continuidade.",
+      "allHandled": "Cada tarefa deste dia tem um próximo passo",
+      "pending_one": "{{count}} tarefa deste dia ainda precisa de um próximo passo",
+      "pending_other": "{{count}} tarefas deste dia ainda precisam de um próximo passo"
     }
   },
   "timelineZoom": {

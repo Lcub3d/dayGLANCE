@@ -27,6 +27,8 @@ function setup(over = {}) {
     newTaskInputRef: { current: input },
     projects: [{ id: 'p1', status: 'active' }],
     schedule: callback => callback(),
+    moveToInbox: vi.fn(),
+    moveToRecycleBin: vi.fn(),
     ...over.deps,
   };
   return { deps, actions: createCarryForwardActions(deps), tasks: () => tasks, newTask: () => newTask };
@@ -135,3 +137,29 @@ describe('openFollowUp', () => {
     expect(input.setSelectionRange).not.toHaveBeenCalled();
   });
 });
+
+// Tasks not started (the addendum in docs/jobo-carry-forward.md): moved off
+// the timeline or deleted through the app's own actions, each of which
+// pushes its own undo step.
+describe.each([
+  ['unscheduleTask', 'moveToInbox', { moved: true }],
+  ['deleteTask', 'moveToRecycleBin', { deleted: true }],
+])('%s', (name, appAction, done) => {
+  it(`goes through the app's ${appAction}`, () => {
+    const { deps, actions } = setup();
+    expect(actions[name](task, date)).toEqual(done);
+    expect(deps[appAction]).toHaveBeenCalledWith('t1');
+    expect(deps.setTasks).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['completed since', [{ ...task, completed: true }]],
+    ['moved since', [{ ...task, date: '2026-09-30' }]],
+    ['deleted since', []],
+    ['owned by its calendar', [{ ...task, imported: true, isTaskCalendar: true }]],
+  ])('does nothing for a task %s', (_, tasks) => {
+    const { deps, actions } = setup({ tasks });
+    expect(actions[name](task, date)).toEqual({ stale: true });
+    expect(deps[appAction]).not.toHaveBeenCalled();
+  });
+});
+

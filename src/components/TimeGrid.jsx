@@ -21,6 +21,7 @@ import HyperGlanceBar from './HyperGlanceBar.jsx';
 import { useTranslation } from 'react-i18next';
 import PastDoCard from './jobo/PastDoCard.jsx';
 import useTimelineZoom from '../hooks/useTimelineZoom.js';
+import { SCROLLING_HOUR_PX } from '../utils/timelineZoom.js';
 
 const TimeGrid = () => {
   const {
@@ -124,7 +125,7 @@ const TimeGrid = () => {
             data-ctx-menu
             className={`flex-1 relative ${zoomed ? '' : 'h-40'} calendar-slot ${idx > 0 ? `border-l ${borderClass}` : ''} ${dateToString(date) === dateToString(new Date()) ? (darkMode ? 'bg-blue-900/10' : 'bg-blue-50/40') : ''}`}
             data-date={dateToString(date)}
-            style={zoomed ? { height: `${160 * z}px` } : undefined}
+            style={zoomed ? { height: `${SCROLLING_HOUR_PX * z}px` } : undefined}
             onDragOver={(e) => handleDragOver(e, date)}
             onDrop={(e) => handleDropOnCalendar(e, date)}
             onClick={(e) => openNewTaskAtTime(e, date)}

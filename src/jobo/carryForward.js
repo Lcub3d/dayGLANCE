@@ -105,3 +105,82 @@ export function followUpDraft(task, { projects = [] } = {}) {
       : { openInInbox: true, deadline: null, priority: 0 }),
   };
 }
+
+// ── Tasks not started (the addendum in docs/jobo-carry-forward.md) ─────────
+
+const dayMinute = (time) => {
+  const match = /^(\d{2}):(\d{2})$/.exec(time || '');
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+};
+
+/**
+ * What a task in the Not started group offers. Nothing for a recurring
+ * occurrence, which the next one carries on. Otherwise Continue to the day
+ * after today with its full duration, since nothing was recorded, and, for a
+ * task of the app's own, moving it off the timeline or deleting it. A
+ * task-calendar item belongs to its calendar, which a move or a delete here
+ * would not reach, so it only continues.
+ */
+export function notStartedAction(task, { today } = {}) {
+  if (!task || task.id == null || recurring(task)) return NONE;
+  const tomorrow = nextCivilDate(today);
+  if (!tomorrow) return NONE;
+  const own = !task.imported;
+  return {
+    kind: CARRY_ACTION.CONTINUE,
+    task,
+    slot: { date: tomorrow, startTime: task.startTime, duration: task.duration, isAllDay: task.isAllDay === true },
+    ...(own ? { unschedule: task.projectId != null ? 'project' : 'inbox', remove: true } : {}),
+  };
+}
+
+/**
+ * The day's planned tasks that were never started: no Do recorded, not
+ * completed, still on `date`. Read from the day's plan, never from the
+ * ledger, so no Do record is made for them.
+ *
+ * A timed task counts once its plan has fully ended with nothing recorded,
+ * the day model's own rule (`comparison.notStarted`), so today's Check skips
+ * work still to come or under way. An all-day task has no planned end, so it
+ * counts on past days only; `dayTasks` supplies them. A task that appears in
+ * the journal (`entries`) has a Do, under whatever plan, and is not listed.
+ */
+export function notStartedTasks(model, { date, today, entries = [], dayTasks = [] } = {}) {
+  if (!model || !validCivilDate(date)) return [];
+  const withDo = new Set(entries.map(entry => entry?.sourceTask?.id).filter(id => id != null).map(String));
+  const eligible = task => task && task.id != null && task.date === date && !task.completed
+    && !task.archived && !calendarEvent(task) && !withDo.has(String(task.id));
+  const found = new Map();
+  for (const item of model.plans || []) {
+    const task = item.currentTask;
+    if (!eligible(task) || item.comparison?.notStarted !== true) continue;
+    found.set(String(task.id), { task, allDay: false, startMinute: dayMinute(task.startTime) });
+  }
+  if (validCivilDate(today) && date < today) {
+    for (const task of dayTasks || []) {
+      if (!eligible(task) || task.isAllDay !== true || found.has(String(task.id))) continue;
+      found.set(String(task.id), { task, allDay: true, startMinute: -1 });
+    }
+  }
+  return [...found.values()]
+    .sort((a, b) => a.startMinute - b.startMinute || String(a.task.title).localeCompare(String(b.task.title)) || (String(a.task.id) < String(b.task.id) ? -1 : 1))
+    .map(item => ({ ...item, id: String(item.task.id), recurring: recurring(item.task), action: notStartedAction(item.task, { today }) }));
+}
+
+/**
+ * The Check's summary: how many tasks from the day still need a next step.
+ * A task needs one while it is unfinished and still sits on the day: a
+ * journal entry that still offers Continue, or a task in Not started.
+ * Recurring occurrences never count. Null on a day with no plan and no Do,
+ * where there is nothing to say. Worked out from the tasks as they stand.
+ */
+export function nextStepSummary(model, { date, today, entries = [], notStarted = [] } = {}) {
+  const pending = new Set();
+  for (const entry of entries) {
+    if (checkEntryAction(entry, { date, today }).kind === CARRY_ACTION.CONTINUE) pending.add(String(entry.sourceTask.id));
+  }
+  for (const item of notStarted) if (!item.recurring) pending.add(item.id);
+  const planned = (model?.plans || []).some(item => item.currentTask && !calendarEvent(item.currentTask));
+  if (!entries.length && !notStarted.length && !planned) return null;
+  return { pending: pending.size };
+}

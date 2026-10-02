@@ -13,8 +13,8 @@ const parseDate = (value) => {
 const Metric = ({ label, value }) => <div className="min-w-0 rounded-xl border border-current/10 px-3 py-2">
   <dt className="text-xs opacity-70">{label}</dt><dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
 </div>;
-const Section = ({ title, children }) => <section className="space-y-2">
-  <h3 className="text-xs font-semibold uppercase tracking-wide opacity-70">{title}</h3>{children}
+const Section = ({ title, hint, children }) => <section className="space-y-2">
+  <h3 className="text-xs font-semibold uppercase tracking-wide opacity-70" title={hint}>{title}</h3>{children}
 </section>;
 
 function Summary({ summary, textSecondary, borderClass }) {
@@ -32,8 +32,7 @@ function Summary({ summary, textSecondary, borderClass }) {
     {!summary.clean && <p role="status" className="flex items-start gap-2 text-sm text-amber-600 dark:text-amber-400">
       <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{t('jobo.statistics.invalid')}</span>
     </p>}
-    <Section title={t('jobo.statistics.overview')}>
-      <p className={`text-xs ${textSecondary}`}>{t('jobo.statistics.taskScope')}</p>
+    <Section title={t('jobo.statistics.overview')} hint={t('jobo.statistics.taskScope')}>
       <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Metric label={t('jobo.stats.native')} value={pair(summary.stats.native.completed, summary.stats.native.total)} />
         <Metric label={t('jobo.stats.recorded')} value={mins(summary.stats.recordedMinutes)} />
@@ -109,8 +108,7 @@ function Summary({ summary, textSecondary, borderClass }) {
       </div>
     </Section>
 
-    <Section title={t('jobo.statistics.timing')}>
-      <p className={`text-xs ${textSecondary}`}>{t('jobo.statistics.timingScope')}</p>
+    <Section title={t('jobo.statistics.timing')} hint={t('jobo.statistics.timingScope')}>
       <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Metric label={t('jobo.view.overlapLabel')} value={mins(summary.overlapMinutes)} />
         <Metric label={t('jobo.statistics.insidePlan')} value={mins(summary.insideMinutes)} />
@@ -204,6 +202,7 @@ export default function StatisticsPanel({
         <div className={`px-5 pt-3 border-b flex gap-1 overflow-x-auto ${borderClass}`} role="tablist" aria-label={t('jobo.statistics.title')}>
           {STATISTICS_SCOPES.map((key) => <button key={key} type="button" role="tab"
             id={`${titleId}-${key}-tab`} aria-controls={`${titleId}-panel`} tabIndex={scope === key ? 0 : -1}
+            title={key === 'allTime' ? t('jobo.statistics.allTimeScope') : undefined}
             data-jobo-statistics-scope={key} aria-selected={scope === key} onClick={() => setScope(key)}
             className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${scope === key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent ' + textSecondary}`}>
             {t(`jobo.statistics.${key}`)}
@@ -215,7 +214,6 @@ export default function StatisticsPanel({
             : !loaded ? <p role="status">{t('common.loading')}</p>
               : summary ? <Summary summary={summary} textSecondary={textSecondary} borderClass={borderClass} />
                 : <p role="status" className={textSecondary}>{t('jobo.statistics.empty')}</p>}
-          {scope === 'allTime' && <p className={`mt-5 text-xs ${textSecondary}`}>{t('jobo.statistics.allTimeScope')}</p>}
         </div>
       </div>
     </div>, document.body,

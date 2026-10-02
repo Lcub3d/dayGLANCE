@@ -27,7 +27,7 @@ async function render(lng = 'en', overrides = {}) {
 }
 
 describe('Statistics panel with real reports', () => {
-  it.each(locales)('renders complete translated controls and scope explanations in %s', async lng => {
+  it.each(locales)('renders translated statistics with scope details available on hover in %s', async lng => {
     const { html, t, buildReports } = await render(lng);
     expect(buildReports).toHaveBeenCalledWith([date], 'day');
     expect(html.match(/data-jobo-statistics-scope=/g)).toHaveLength(4);
@@ -39,6 +39,11 @@ describe('Statistics panel with real reports', () => {
     expect(html).toContain(t('jobo.statistics.noDo'));
     expect(html).not.toContain(t('jobo.check.notStarted'));
     expect(html).toContain(t('jobo.statistics.timingScope'));
+    const visibleText = html.replace(/<[^>]+>/g, '');
+    for (const key of ['taskScope', 'timingScope', 'allTimeScope']) {
+      expect(html).toContain(t(`jobo.statistics.${key}`));
+      expect(visibleText).not.toContain(t(`jobo.statistics.${key}`));
+    }
     expect(html).not.toMatch(/jobo\.(statistics|stats)\.|\{\{|NaN|undefined|Infinity/);
     const copy = bundle(lng).jobo.statistics;
     expect(copy.noDo).toBe(bundle(lng).jobo.view.summary.notStarted);

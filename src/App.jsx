@@ -107,6 +107,7 @@ import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
 import useVisibleDays from './hooks/useVisibleDays.js';
 import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
+import { parseRecurringId } from './utils/recurringId.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
@@ -3381,15 +3382,6 @@ const DayPlanner = () => {
     ).map(t => ({ ...t, _overdueType: 'deadline' }));
 
     return [...overdueScheduled, ...todayRecurring, ...overdueRecurringAllDay, ...overdueDeadlines];
-  };
-  const parseRecurringId = (id) => {
-    if (typeof id !== 'string' || !id.startsWith('recurring-')) return null;
-    const parts = id.split('-');
-    // Date is always the last 3 segments (YYYY-MM-DD), template ID is everything between
-    const dateStr = parts.slice(-3).join('-');
-    const rawTemplateId = parts.slice(1, -3).join('-');
-    const templateId = /^\d+$/.test(rawTemplateId) ? Number(rawTemplateId) : rawTemplateId;
-    return { templateId, dateStr };
   };
 
   // Refs for functions/values defined after the useDragDrop call (TDZ-safe pattern).

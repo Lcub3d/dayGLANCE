@@ -8,8 +8,7 @@ import { SOURCE_APPS } from '../native.js';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import QuickAddChips from './QuickAddChips.jsx';
 import RecurrencePicker from './RecurrencePicker.jsx';
-import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import { extractWikilinks } from '../utils/taskUtils.js';
+import TaskModalNotes from './TaskModalNotes.jsx';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
 import { getProjectColor } from '../utils/colorUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
@@ -35,10 +34,8 @@ const MobileNewTaskModal = () => {
     sendTaskToBucket,
     handleNewTaskInputChange,
     dismissNlChip,
-    unscheduledTasks,
-    updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title
@@ -57,9 +54,6 @@ const MobileNewTaskModal = () => {
   // stored values would be inert anyway), and the editor is the only surface
   // for their notes & subtasks.
   const isBucketItem = !!mobileEditingTask?.bucketId;
-  const liveBucketTask = isBucketItem
-    ? unscheduledTasks.find(t => t.id === mobileEditingTask.id)
-    : null;
 
   return (
     <>
@@ -538,27 +532,10 @@ const MobileNewTaskModal = () => {
                 </div>
               )}
 
-              {/* Notes & subtasks for Bucket List items — their only surface,
-                  since bucket rows have no expandable panel */}
-              {isBucketItem && liveBucketTask && (
-                <div>
-                  <NotesSubtasksPanel
-                    task={liveBucketTask}
-                    isInbox={true}
-                    darkMode={darkMode}
-                    noAutoFocus
-                    updateTaskNotes={updateTaskNotes}
-                    addSubtask={addSubtask}
-                    toggleSubtask={toggleSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtaskTitle={updateSubtaskTitle}
-                    aiConfig={aiConfig}
-                    aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-                    onGenerateSubtasks={generateAISubtasks}
-                    wikilinks={extractWikilinks(liveBucketTask.title).length > 0 ? extractWikilinks(liveBucketTask.title) : undefined}
-                  />
-                </div>
-              )}
+              {/* Notes & subtasks, behind a button: the task's own, or a new
+                  task's draft saved with it (components/TaskModalNotes.jsx).
+                  The only surface for a Bucket List item's. */}
+              <TaskModalNotes newTask={newTask} setNewTask={setNewTask} editingTask={mobileEditingTask} />
 
               {/* Action buttons */}
               <div className="flex gap-2 pt-2">

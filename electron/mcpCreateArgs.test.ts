@@ -116,14 +116,24 @@ describe('planCreateTask — by-design rejections (copy must say design, not uns
     }
   });
 
-  it('priority or deadline alongside project_id → the project-task by-design error', () => {
-    for (const extra of [{ priority: 1 }, { deadline: '2026-09-01' }]) {
-      const r = plan({ title: 'T', project_id: 'p1', ...extra });
+  it('priority and deadline alongside project_id → an unscheduled project task carrying both', () => {
+    const r = plan({ title: 'T', project_id: 'p1', priority: 2, deadline: '2026-09-01' });
+    expect(r).toEqual({ ok: true, plan: { title: 'T', projectId: 'p1', priority: 2, deadline: '2026-09-01' } });
+  });
+
+  it('a project deadline gets the same strict YYYY-MM-DD validation as an inbox one', () => {
+    for (const bad of ['2026-9-1', '2026-02-30', '2026-09-01T10:00', 20260901]) {
+      const r = plan({ title: 'T', project_id: 'p1', deadline: bad });
       expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.message).toMatch(/project tasks do not carry priority or deadline by design/);
-        expect(r.message).not.toMatch(/unsupported/i);
-      }
+      if (!r.ok) expect(r.message).toMatch(/strict YYYY-MM-DD/);
+    }
+  });
+
+  it('a SCHEDULED project task still rejects priority and deadline by design', () => {
+    for (const extra of [{ priority: 1 }, { deadline: '2026-09-01' }]) {
+      const r = plan({ title: 'T', project_id: 'p1', start: '2026-08-14 09:00', ...extra });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.message).toMatch(/Scheduled dayGLANCE tasks do not carry priority or deadline by design/);
     }
   });
 

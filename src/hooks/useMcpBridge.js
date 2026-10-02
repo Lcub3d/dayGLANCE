@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { isTrayMode } from '../utils/trayMode.js';
 import { handleMcpRequest } from '../utils/mcpReadModel.js';
 import { handleMcpWrite, isWriteMethod } from '../utils/mcpWriteModel.js';
+import { readRetiredTaskIds } from '../utils/retiredTaskIds.js';
 
 // The renderer half of the MCP IPC channel (docs/mcp-server-spec.md §10
 // Phase 2), following the useTrayPopupVisible precedent from PR #1302: this
@@ -50,8 +51,11 @@ export default function useMcpBridge(state, setters) {
         // committed by React's batch in this same task, and the save pass
         // (useSaveOnChange → saveData → tray:data-changed) follows on the
         // commit. Reads stay synchronous against the current state ref.
+        // The id-retirement record is read fresh per write, not carried in
+        // state: it lives in localStorage, and the Obsidian commit that
+        // re-keys a task writes it there (useObsidianSync recordRetirements).
         response = isWriteMethod(request?.method)
-          ? handleMcpWrite(stateRef.current, settersRef.current ?? {}, request)
+          ? handleMcpWrite({ ...stateRef.current, retiredTaskIds: readRetiredTaskIds() }, settersRef.current ?? {}, request)
           : handleMcpRequest(stateRef.current, request);
       } catch (err) {
         // A throwing model must still answer — silence here would read as a

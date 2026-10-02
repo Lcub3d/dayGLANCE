@@ -2,7 +2,7 @@
 // in the mcpCreateArgs.ts style: every accept/reject decision that needs no
 // task state lives here, unit-tested and mutation-verified, so the tool
 // handler in mcpWriteTools.ts is wiring only. State-dependent rejections
-// (scheduled/project tasks, _native, recurring instances, CalDAV) live in
+// (scheduled tasks, _native, recurring instances, CalDAV) live in
 // taskMutations.js applyUpdateTask, where the task is visible.
 //
 // FIELD SEMANTICS, the tool's whole contract:

@@ -176,7 +176,9 @@ order of its planned start.
   still to come, or under way, is not listed yet.
 - **All-day tasks** have no planned end, so they are listed on past days only.
 - **Recurring occurrences** are listed, with no action and not counted below.
-  The next occurrence carries the work on, as in the journal.
+  The next occurrence carries the work on, as in the journal. On past days
+  the app already hides a timed occurrence that was not completed, so in
+  practice they appear on today's Check, and as all-day occurrences.
 - **Calendar events**, other members' tasks and completed tasks are not
   listed, as in the journal.
 

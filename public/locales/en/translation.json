@@ -2235,7 +2235,16 @@
       "clashUnnamed": "{{slot}} clashes with a calendar event.",
       "next": "Next: {{slot}}",
       "schedule": "Schedule…",
-      "followUp": "Add follow-up"
+      "followUp": "Add follow-up",
+      "notStarted": "Not started",
+      "moveToProject": "Move to its project",
+      "movedToInbox": "Moved to the Inbox",
+      "movedToProject": "Moved to its project",
+      "deleted": "Deleted, in the Recycle Bin",
+      "recurringNotStarted": "Repeats: the next occurrence carries it on.",
+      "allHandled": "Every task from this day has a next step",
+      "pending_one": "{{count}} task from this day still needs a next step",
+      "pending_other": "{{count}} tasks from this day still need a next step"
     }
   },
   "timelineZoom": {

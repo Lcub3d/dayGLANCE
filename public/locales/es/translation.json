@@ -2235,7 +2235,16 @@
       "clashUnnamed": "{{slot}} coincide con un evento del calendario.",
       "next": "Siguiente: {{slot}}",
       "schedule": "Programar…",
-      "followUp": "Añadir seguimiento"
+      "followUp": "Añadir seguimiento",
+      "notStarted": "Sin empezar",
+      "moveToProject": "Mover a su proyecto",
+      "movedToInbox": "Movida a la bandeja de entrada",
+      "movedToProject": "Movida a su proyecto",
+      "deleted": "Eliminada, en la papelera",
+      "recurringNotStarted": "Se repite: la próxima vez la continúa.",
+      "allHandled": "Cada tarea de este día tiene un siguiente paso",
+      "pending_one": "A {{count}} tarea de este día aún le falta un siguiente paso",
+      "pending_other": "A {{count}} tareas de este día aún les falta un siguiente paso"
     }
   },
   "timelineZoom": {

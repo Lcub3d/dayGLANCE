@@ -155,6 +155,9 @@ export default function JoboView() {
     () => getTasksForDate(selectedDate, false).filter((task) => !task.isAllDay && task.startTime),
     [getTasksForDate, selectedDate],
   );
+  // The Check's Not started group also reads the day's all-day tasks, which
+  // the Plan column leaves out.
+  const checkDayTasks = useMemo(() => getTasksForDate(selectedDate, false), [getTasksForDate, selectedDate]);
   const lookup = useMemo(
     () => [...(ctx.tasks || []), ...(ctx.unscheduledTasks || []), ...(ctx.expandedRecurringTasks || []), ...dayTasks],
     [ctx.tasks, ctx.unscheduledTasks, ctx.expandedRecurringTasks, dayTasks],
@@ -190,6 +193,8 @@ export default function JoboView() {
     continueTask: carryActions.continueTask,
     editOn: (task, on) => { setCheckOpen(false); carryActions.editOn(task, on); },
     openFollowUp: (task, on) => { setCheckOpen(false); carryActions.openFollowUp(task, on); },
+    unscheduleTask: carryActions.unscheduleTask,
+    deleteTask: carryActions.deleteTask,
   };
   const canOpenCheckNotes = typeof ctx.handleSpotlightSelect === 'function'
     && typeof ctx.setExpandedNotesTaskId === 'function';
@@ -550,7 +555,7 @@ export default function JoboView() {
       {checkOpen && (
         <CheckPanel model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
           onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
-          today={nowDate} carry={carry} onUndo={ctx.performUndo}
+          today={nowDate} carry={carry} onUndo={ctx.performUndo} dayTasks={checkDayTasks}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}

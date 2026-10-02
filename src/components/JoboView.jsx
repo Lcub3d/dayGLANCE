@@ -15,13 +15,17 @@ import useTimelineZoom from '../hooks/useTimelineZoom.js';
 import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
-import CheckPanel from './jobo/CheckPanel.jsx';\nimport StatisticsPanel from './jobo/StatisticsPanel.jsx';
+import CheckPanel from './jobo/CheckPanel.jsx';
+import StatisticsPanel from './jobo/StatisticsPanel.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
-import { createCarryForwardActions } from '../jobo/carryForwardActions.js';\nimport { buildCheckSummary } from '../jobo/checkSummary.js';\nimport { statisticsEvidenceDates } from '../jobo/checkStatistics.js';\nimport { weekViewDatesFor } from '../utils/weekViewDates.js';
+import { createCarryForwardActions } from '../jobo/carryForwardActions.js';
+import { buildCheckSummary } from '../jobo/checkSummary.js';
+import { statisticsEvidenceDates } from '../jobo/checkStatistics.js';
+import { weekViewDatesFor } from '../utils/weekViewDates.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
 //
@@ -166,7 +170,7 @@ export default function JoboView() {
   }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, isVisibleForUser, nowDate, nowTime]);
   const statisticsWeekDates = useMemo(() => weekViewDatesFor({
     viewMode: 'week', selectedDate, weekViewMode: ctx.weekViewMode,
-    weekStartDay: ctx.weekStartDay, today: currentTime,
+    weekStartDay: ctx.weekStartDay, today: new Date(`${nowDate}T12:00:00`),
   }), [selectedDate, ctx.weekViewMode, ctx.weekStartDay, nowDate]);
   const statisticsEvidence = useMemo(() => statisticsEvidenceDates({
     records: joboRecords || [],

@@ -2235,7 +2235,16 @@
       "clashUnnamed": "{{slot}} 与日历事件冲突。",
       "next": "下一次：{{slot}}",
       "schedule": "安排…",
-      "followUp": "添加后续任务"
+      "followUp": "添加后续任务",
+      "notStarted": "未开始",
+      "moveToProject": "移至其项目",
+      "movedToInbox": "已移至收件箱",
+      "movedToProject": "已移至其项目",
+      "deleted": "已删除，在回收站中",
+      "recurringNotStarted": "重复任务：下一次会接着进行。",
+      "allHandled": "这一天的每项任务都有了下一步",
+      "pending_one": "这一天还有 {{count}} 项任务需要安排下一步",
+      "pending_other": "这一天还有 {{count}} 项任务需要安排下一步"
     }
   },
   "timelineZoom": {

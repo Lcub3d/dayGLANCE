@@ -14,7 +14,7 @@ const sameId = (a, b) => String(a) === String(b);
 export function createCarryForwardActions({
   tasks = [], setTasks, pushUndo, getAdjustedTimeForImportedConflicts, playUISound,
   openMobileEditTask, setNewTask, setShowAddTask, setMobileEditingTask, swipeSchedulingInboxTaskId,
-  getNextQuarterHour, newTaskInputRef, projects = [],
+  getNextQuarterHour, newTaskInputRef, projects = [], moveToInbox, moveToRecycleBin,
   schedule = callback => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(callback) : setTimeout(callback, 0)),
 }) {
   /**
@@ -67,5 +67,33 @@ export function createCarryForwardActions({
     });
   }
 
-  return { continueTask, editOn, openFollowUp };
+  // A task the Check still shows on `fromDate`, as it stands now, or null
+  // when it changed since the button was drawn: completed, moved or gone,
+  // here or from another device.
+  const liveOn = (task, fromDate) => {
+    const live = tasks.find(row => sameId(row.id, task?.id));
+    return live && !live.completed && live.date === fromDate ? live : null;
+  };
+
+  /**
+   * Take a task not started off the timeline, through the app's own move: it
+   * keeps its project, so a project task lands in that project's list. One
+   * step of undo history, which the move pushes itself.
+   */
+  function unscheduleTask(task, fromDate) {
+    const live = liveOn(task, fromDate);
+    if (!live || live.imported) return { stale: true };
+    moveToInbox(live.id);
+    return { moved: true };
+  }
+
+  /** Delete a task not started, through the app's own delete: to the Recycle Bin. */
+  function deleteTask(task, fromDate) {
+    const live = liveOn(task, fromDate);
+    if (!live || live.imported) return { stale: true };
+    moveToRecycleBin(live.id);
+    return { deleted: true };
+  }
+
+  return { continueTask, editOn, openFollowUp, unscheduleTask, deleteTask };
 }

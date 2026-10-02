@@ -2237,7 +2237,16 @@
       "clashUnnamed": "{{slot}} si sovrappone a un evento del calendario.",
       "next": "Prossima: {{slot}}",
       "schedule": "Pianifica…",
-      "followUp": "Aggiungi seguito"
+      "followUp": "Aggiungi seguito",
+      "notStarted": "Non iniziate",
+      "moveToProject": "Sposta nel suo progetto",
+      "movedToInbox": "Spostata in arrivo",
+      "movedToProject": "Spostata nel suo progetto",
+      "deleted": "Eliminata, nel cestino",
+      "recurringNotStarted": "Si ripete: la prossima occorrenza la porta avanti.",
+      "allHandled": "Ogni attività di questo giorno ha un passo successivo",
+      "pending_one": "{{count}} attività di questo giorno attende ancora un passo successivo",
+      "pending_other": "{{count}} attività di questo giorno attendono ancora un passo successivo"
     }
   },
   "timelineZoom": {

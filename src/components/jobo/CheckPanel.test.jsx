@@ -50,11 +50,17 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
       expect(text(html)).toContain(r.text);
     }
     const copy = bundle(lng).jobo.check;
-    expect(Object.keys(copy).sort()).toEqual(Object.keys(bundle('en').jobo.check).sort());
+    const english = bundle('en').jobo.check;
+    // Plural forms follow each language's rules (pl and uk have four): compare
+    // their base, and read a form English lacks against its `_other`.
+    const PLURAL = /_(zero|one|two|few|many|other)$/;
+    const bases = keys => [...new Set(keys.map(key => key.replace(PLURAL, '')))].sort();
+    expect(bases(Object.keys(copy))).toEqual(bases(Object.keys(english)));
     for (const [key, value] of Object.entries(copy)) {
+      const reference = english[key] ?? english[key.replace(PLURAL, '_other')];
       expect(value).not.toContain('—');
-      expect(value.match(/\{\{\w+\}\}/g) || []).toEqual(bundle('en').jobo.check[key].match(/\{\{\w+\}\}/g) || []);
-      if (lng !== 'en') expect(value).not.toBe(bundle('en').jobo.check[key]);
+      expect(value.match(/\{\{\w+\}\}/g) || []).toEqual(reference.match(/\{\{\w+\}\}/g) || []);
+      if (lng !== 'en') expect(value).not.toBe(reference);
     }
   });
   it('lists sessions once with individual progress, without replacing it with native completion', async () => {
@@ -140,8 +146,11 @@ describe('Check reads as the execution journal from #1726 / #1882', () => {
   it('keeps copy limited to the journal and concise data states', async () => {
     for (const lng of locales) {
       const check = bundle(lng).jobo.check;
-      expect(Object.keys(check).sort()).toEqual(['actual', 'button', 'clash', 'clashUnnamed', 'continue', 'continueAllDay', 'continued',
-        'followUp', 'invalid', 'next', 'noRecords', 'schedule', 'session', 'title', 'unavailable', 'untimed']);
+      // Plural forms differ by language (pl and uk have four); compare their base.
+      const base = [...new Set(Object.keys(check).map(key => key.replace(/_(zero|one|two|few|many|other)$/, '')))].sort();
+      expect(base).toEqual(['actual', 'allHandled', 'button', 'clash', 'clashUnnamed', 'continue', 'continueAllDay', 'continued',
+        'deleted', 'followUp', 'invalid', 'moveToProject', 'movedToInbox', 'movedToProject', 'next', 'noRecords', 'notStarted',
+        'pending', 'recurringNotStarted', 'schedule', 'session', 'title', 'unavailable', 'untimed']);
     }
     expect(bundle('en').jobo.check.noRecords).toBe('No executions recorded for this day.');
     expect(bundle('zh-CN').jobo.check.noRecords).toBe('当天暂无执行记录。');
@@ -205,5 +214,74 @@ describe('Check entries offer Continue or Add follow-up (docs/jobo-carry-forward
   it('names the task on each action for assistive technology', async () => {
     const { html, t } = await render('en', { model: withTask(task), today, carry });
     expect(html).toContain(`aria-label="${t('jobo.check.followUp')}: Report"`);
+  });
+});
+
+describe('the Check reviews the whole plan: Not started and the summary line (addendum)', () => {
+  const today = '2026-09-30';
+  const carry = { continueTask: vi.fn(), editOn: vi.fn(), openFollowUp: vi.fn(), unscheduleTask: vi.fn(), deleteTask: vi.fn() };
+  const plain = (id, over = {}) => ({ ...plan, id, title: id, color: 'bg-blue-500', priority: 0, completed: false, ...over });
+  // As JoboView builds it: the day's timed tasks, read at `today` 18:00.
+  const day = (tasks, records = []) => buildJoboDayModel({
+    date, records, tasks: tasks.filter(item => !item.isAllDay), taskLookup: tasks, now: { date: today, time: '18:00' },
+  });
+  const notStartedIds = html => [...html.matchAll(/data-check-not-started="([^"]+)"/g)].map(m => m[1]);
+  const view = (tasks, records, lng = 'en', extra = {}) => render(lng, { model: day(tasks, records), today, carry, dayTasks: tasks, ...extra });
+
+  it.each(locales)('lists tasks never started, with Continue, a move off the timeline and Delete, in %s', async lng => {
+    const { html, t } = await view([plain('idle'), plain('project', { startTime: '11:00', projectId: 'p1' })], [], lng);
+    expect(notStartedIds(html)).toEqual(['idle', 'project']);
+    expect(text(html)).toContain(t('jobo.check.notStarted'));
+    expect(html.match(/data-check-continue/g)).toHaveLength(2);
+    expect(html).toMatch(/data-check-not-started="idle"[^]*data-check-unschedule="inbox"/);
+    expect(html).toMatch(/data-check-not-started="project"[^]*data-check-unschedule="project"/);
+    expect(html.match(/data-check-delete/g)).toHaveLength(2);
+    expect(text(html)).toContain(t('task.moveToInbox'));
+    expect(text(html)).toContain(t('jobo.check.moveToProject'));
+    // Continue keeps the full plan, since nothing was recorded.
+    expect(text(html)).toContain(t('jobo.check.continue', { slot: `${journalDate('2026-10-01', lng, date)} 09:00`, minutes: 60 }));
+  });
+  it('lists a recurring occurrence with nothing to offer', async () => {
+    const occurrence = plain('recurring-tpl-2026-09-28', { recurringTemplateId: 'tpl', isRecurring: true });
+    const { html, t } = await view([occurrence]);
+    expect(html).toContain('data-check-carry="recurring"');
+    expect(text(html)).toContain(t('jobo.check.recurringNotStarted'));
+    expect(html).not.toMatch(/data-check-(continue|unschedule|delete)/);
+  });
+  it('shows an all-day task on a past day as all day', async () => {
+    const { html, t } = await view([plain('offsite', { isAllDay: true, startTime: '00:00' })]);
+    expect(notStartedIds(html)).toEqual(['offsite']);
+    expect(html).toMatch(new RegExp(`data-check-plan="true"[^>]*>${t('task.allDay')}<`));
+  });
+  it('leaves the journal to tasks with a Do, and offers no actions without them', async () => {
+    const withDo = await view([plain('t1')], [row({ source: 'manual', taskId: 't1' })]);
+    expect(notStartedIds(withDo.html)).toEqual([]);
+    const readOnly = await render('en', { model: day([plain('idle')]), today, dayTasks: [plain('idle')] });
+    expect(notStartedIds(readOnly.html)).toEqual(['idle']);
+    expect(readOnly.html).not.toMatch(/data-check-(continue|unschedule|delete)/);
+  });
+
+  it.each(locales)('counts the tasks that still need a next step, in %s', async lng => {
+    const records = [row({ source: 'manual', taskId: 'partial', progress: 'partial' })];
+    const { html, t } = await view([plain('partial'), plain('idle', { startTime: '11:00' })], records, lng);
+    expect(html).toContain('data-check-next-steps="2"');
+    const line = t('jobo.check.pending', { count: 2 });
+    expect(line).not.toContain('jobo.check');
+    expect(text(html)).toContain(line);
+  });
+  it('says every task has a next step once none is left on the day', async () => {
+    const { html, t } = await view([plain('done', { completed: true })], [row({ source: 'manual', taskId: 'done', progress: 'completed' })]);
+    expect(html).toContain('data-check-next-steps="0"');
+    expect(text(html)).toContain(t('jobo.check.allHandled'));
+  });
+  it('says nothing on a day with no plan and no Do', async () => {
+    const { html } = await view([]);
+    expect(html).not.toContain('data-check-next-steps');
+    expect(html).not.toContain('data-check-not-started-group');
+  });
+  it('keeps both off a Check opened without today, as before', async () => {
+    const { html } = await render('en', { model: day([plain('idle')]), dayTasks: [plain('idle')] });
+    expect(html).not.toContain('data-check-next-steps');
+    expect(html).not.toContain('data-check-not-started');
   });
 });

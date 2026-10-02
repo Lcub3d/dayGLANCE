@@ -13,7 +13,6 @@ const fixture = vi.hoisted(() => ({ ctx: {}, features: {}, planColumns: [] }));
 vi.mock('../context/DayPlannerContext.jsx', () => ({ useDayPlannerCtx: () => fixture.ctx }));
 vi.mock('../context/FeaturesContext.jsx', () => ({ useFeaturesCtx: () => fixture.features }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key) => key }) }));
-vi.mock('../hooks/useDayViewHourHeight.js', () => ({ default: () => 80 }));
 vi.mock('./DayView.jsx', () => ({
   DayViewColumn: ({ col, hourHeight, planOnly, zoom }) => {
     fixture.planColumns.push({ ...col, hourHeight, planOnly, zoom });
@@ -21,6 +20,7 @@ vi.mock('./DayView.jsx', () => ({
   },
 }));
 import JoboView from './JoboView.jsx';
+import { SCROLLING_HOUR_PX } from '../utils/timelineZoom.js';
 
 const task = { id: 't1', title: 'Native Plan', date: '2026-09-24', startTime: '09:00', duration: 30, color: 'bg-emerald-500', completed: true };
 const stamp = '2026-09-24T09:30:00-05:00';
@@ -55,7 +55,7 @@ describe('JOBO view', () => {
   it('the Plan side is DAY\'s own column over the whole selected day', () => {
     const html = render();
     expect(fixture.planColumns).toHaveLength(1);
-    expect(fixture.planColumns[0]).toMatchObject({ dateStr: '2026-09-24', startHour: 0, endHour: 24, hourHeight: 80 });
+    expect(fixture.planColumns[0]).toMatchObject({ dateStr: '2026-09-24', startHour: 0, endHour: 24, hourHeight: 160 });
     expect(html).toContain('data-plan-column="2026-09-24 0-24"');
     expect(html).not.toContain('data-jobo-plan');
   });
@@ -71,7 +71,7 @@ describe('JOBO view', () => {
     const html = render({ joboRecords: [point()] });
     expect(html).toContain('data-jobo-point="true"');
     expect(html).toContain('Captured work');
-    expect(html).toContain('top:760px'); // 09:30 at 80px an hour
+    expect(html).toContain('top:1520px'); // 09:30 at 160px an hour
     expect(html).toContain('bg-emerald-500');
     expect(html).toContain('common.edit: Captured work');
     expect(html).not.toContain('jobo.view.untimed');
@@ -80,8 +80,8 @@ describe('JOBO view', () => {
   it('draws a timed Do as a card spanning its interval, with the resize handle a task card has', () => {
     const html = render({ joboRecords: [timed()] });
     expect(html).toContain('data-jobo-record="manual:1"');
-    expect(html).toContain('top:800px');     // 10:00
-    expect(html).toContain('height:78px');   // 60 minutes, less the 2px gap
+    expect(html).toContain('top:1600px');    // 10:00
+    expect(html).toContain('height:158px');  // 60 minutes, less the 2px gap
     expect(html).toContain('10:00–11:00');
     expect(html).toContain('w-12 h-1 bg-white rounded-full');
   });
@@ -175,7 +175,7 @@ describe('a completion with a planned duration is drawn as a dashed estimate', (
     const html = render({ joboRecords: [planned()], recordJobo });
     expect(html).toContain('data-jobo-estimate="true"');
     expect(html).toContain('border-dashed border-white/80');
-    expect(html).toContain('top:680px');   // completed 09:30, planned 60 min: from 08:30, at 80px an hour
+    expect(html).toContain('top:1360px');  // completed 09:30, planned 60 min: from 08:30, at 160px an hour
     expect(html).toContain('jobo.view.estimatedShort');
     expect(html).toContain('~08:30–09:30');
     expect(recordJobo).not.toHaveBeenCalled();
@@ -308,7 +308,7 @@ describe('START to END only', () => {
       const html = render({ getDayWindow: () => ({ start: '08:00', stop: '18:00' }), joboRecords: [timed()] });
       expect(fixture.planColumns[0]).toMatchObject({ startHour: 8, endHour: 18 });
       expect(html.match(/border-b border-dashed/g)).toHaveLength(10);
-      expect(html).toContain('top:160px'); // 10:00 is two hours after 08:00, at 80px an hour
+      expect(html).toContain('top:320px'); // 10:00 is two hours after 08:00, at 160px an hour
       expect(html).toContain('aria-pressed="true"');
     } finally {
       vi.unstubAllGlobals();
@@ -490,7 +490,7 @@ describe('JOBO at a magnified timeline', () => {
 
   it('draws both sides at the zoomed hour height', () => {
     at(1.5, []);
-    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 120, zoom: 1.5 });
+    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 240, zoom: 1.5 });
   });
 
   // MUTATION: decide the tier on the zoomed height and a 15-minute card at
@@ -501,9 +501,19 @@ describe('JOBO at a magnified timeline', () => {
     expect(html).toMatch(/data-jobo-record="manual:1"[^]*?style="zoom:1\.5"/);
   });
 
+  // MUTATION: go back to DAY's hour, which fits eight hours in the window,
+  // and on an ordinary screen a 15-minute card is too short for its own
+  // contents: the Plan card's tag line is cut off below its title.
+  it('draws at MULTI\'s hour, so a 15-minute card on either side is 40px', () => {
+    const html = render({ joboRecords: [timed({ endTime: '10:15', progress: 'partial' })] });
+    expect(fixture.planColumns[0].hourHeight).toBe(SCROLLING_HOUR_PX);
+    expect(SCROLLING_HOUR_PX / 4).toBe(40);
+    expect(html).toMatch(/data-jobo-record="manual:1"[^>]*style="top:1600px;height:38px;/);
+  });
+
   it('draws at 100% where no level is stored', () => {
     const html = render({ joboRecords: [timed()] });
-    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 80 });
+    expect(fixture.planColumns[0]).toMatchObject({ hourHeight: 160 });
     expect(html).not.toContain('zoom:');
   });
 });

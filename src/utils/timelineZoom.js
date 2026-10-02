@@ -14,6 +14,11 @@ export const ZOOM_VIEWS = Object.freeze(['multi', 'week', 'jobo']);
 export const ZOOM_MAX = 1.5;
 export const ZOOM_STEP = 0.1;
 export const ZOOM_STORAGE_KEY = 'dg-timeline-zoom';
+// The hour height MULTI and JOBO draw at 100%, before a level multiplies it.
+// A 15-minute card is then 40px, the height the cards' compact layout is
+// built for. JOBO scrolls through the day as MULTI does, so it takes MULTI's
+// hour rather than DAY's, which shrinks to fit eight hours in the window.
+export const SCROLLING_HOUR_PX = 160;
 // A Ctrl+wheel or trackpad pinch sends many small deltas: this much
 // accumulated scroll is one step.
 const WHEEL_STEP_PX = 50;

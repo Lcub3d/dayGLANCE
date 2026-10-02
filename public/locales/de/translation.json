@@ -1959,7 +1959,7 @@
     "showNotesSidebar": "Aufgabennotizen einblenden",
     "hideNotesSidebar": "Aufgabennotizen ausblenden",
     "selectForNotes": "Wähle eine Aufgabe, um hier ihre Notizen zu sehen.",
-    "notesKeysHint": "↑ ↓ zwischen Aufgaben wechseln · ← → Liste wechseln · Enter oder Doppelklick zum Bearbeiten"
+    "notesKeysHint": "↑ ↓ zwischen Aufgaben wechseln · ← → Liste wechseln · Enter oder Doppelklick zum Bearbeiten der Aufgabe · E zum Bearbeiten der Notiz"
   },
   "bucket": {
     "title": "Bucket List",

@@ -2048,7 +2048,7 @@
     "showNotesSidebar": "Pokaż notatki zadania",
     "hideNotesSidebar": "Ukryj notatki zadania",
     "selectForNotes": "Wybierz zadanie, aby zobaczyć tu jego notatki.",
-    "notesKeysHint": "↑ ↓ przechodzenie między zadaniami · ← → zmiana listy · Enter lub dwuklik, aby edytować"
+    "notesKeysHint": "↑ ↓ przechodzenie między zadaniami · ← → zmiana listy · Enter lub dwuklik, aby edytować zadanie · E, aby edytować notatkę"
   },
   "bucket": {
     "title": "Lista marzeń",

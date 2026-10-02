@@ -5,6 +5,7 @@ import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
 import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
+import { noteFocusTarget } from '../utils/noteFocusTarget.js';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -65,6 +66,8 @@ const NotesSubtasksPanel = ({
   onLoadWikiNote,     // async (noteName) => { text } | null
   onSaveWikiNote,     // async (noteName, content) => void
   onOpenInObsidian,   // (noteName) => void — opens note in Obsidian app/desktop
+  // Bump to put the cursor in the note from outside (the planner's E key).
+  focusNoteRequest = 0,
 }) => {
   const { t } = useTranslation();
   // A calendar event's `notes` are its description from the calendar, which
@@ -319,6 +322,38 @@ const NotesSubtasksPanel = ({
   // Keyed on the local draft too, so the block does not vanish mid-edit.
   const hasLocalNotes = !!((localNotes || '').trim() || ownNotes.trim());
 
+  // A request from outside to put the cursor in the note, the one
+  // noteFocusTarget picks. A note shown as a preview switches to its editor
+  // first, so the field is found once it has rendered.
+  const noteFieldsRef = useRef(new Map()); // 'own' | noteName -> textarea
+  const pendingFocusRef = useRef(null);
+  // A bump counts, not the value: a pane mounted for the next selected task
+  // inherits the count and must leave the keyboard where it is.
+  const seenFocusRequestRef = useRef(focusNoteRequest);
+  const noteFieldRef = (key) => (el) => {
+    if (el) noteFieldsRef.current.set(key, el);
+    else noteFieldsRef.current.delete(key);
+  };
+  useEffect(() => {
+    if (focusNoteRequest === seenFocusRequestRef.current) return;
+    seenFocusRequestRef.current = focusNoteRequest;
+    const target = noteFocusTarget({ wikilinks, showLinked, linkedNoteStates, hasLocalNotes });
+    if (!target) return;
+    pendingFocusRef.current = target;
+    if (target === 'own') setIsEditingNotes(true);
+    else setLinkedNoteEditing(prev => ({ ...prev, [target]: true }));
+    // Only a new request moves the cursor, never a change to the notes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNoteRequest]);
+  useEffect(() => {
+    const key = pendingFocusRef.current;
+    const field = key && noteFieldsRef.current.get(key);
+    if (!field) return;
+    pendingFocusRef.current = null;
+    field.focus({ preventScroll: true });
+    field.setSelectionRange?.(field.value.length, field.value.length);
+  });
+
   return (
     <div
       className={`mt-2 p-3 rounded-lg ${th.panel}`}
@@ -390,6 +425,7 @@ const NotesSubtasksPanel = ({
                         if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
                       }
                     }}
+                    ref={noteFieldRef(noteName)}
                     placeholder={t('task.emptyWikiNotePlaceholder')}
                     aria-label={t('task.editWikiNote', { name: noteName })}
                     className={textareaClass}
@@ -423,6 +459,7 @@ const NotesSubtasksPanel = ({
               onChange={handleNotesChange}
               onKeyDown={handleNotesKeyDown}
               onBlur={handleNotesBlur}
+              ref={noteFieldRef('own')}
               placeholder={t('task.notesFormattingPlaceholder')}
               aria-label={t('task.notes')}
               className={textareaClass}

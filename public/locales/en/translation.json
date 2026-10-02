@@ -1959,7 +1959,7 @@
     "showNotesSidebar": "Show task notes",
     "hideNotesSidebar": "Hide task notes",
     "selectForNotes": "Select a task to see its notes here.",
-    "notesKeysHint": "↑ ↓ move between tasks · ← → switch lists · Enter or double-click to edit"
+    "notesKeysHint": "↑ ↓ move between tasks · ← → switch lists · Enter or double-click to edit the task · E to edit the note"
   },
   "bucket": {
     "title": "Bucket List",

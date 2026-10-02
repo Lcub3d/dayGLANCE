@@ -111,6 +111,13 @@ const ID_MAY_CHANGE =
   'changes to obsidian-dg-... shortly after creation. The returned id keeps working on every tool that ' +
   'takes a task id; responses then carry the current id and resolved_from naming the one you passed.';
 
+// The editing side of ID_MAY_CHANGE: a client holding the id create_task
+// returned should know it still works here after the re-key.
+const OLD_ID_STILL_WORKS =
+  ' A task id returned by dayglance_create_task keeps working after the Obsidian integration re-keys the ' +
+  'task to obsidian-dg-...: the edit lands on the current task, and the response carries its current id ' +
+  'plus resolved_from naming the id you passed.';
+
 // Stated in the description for the same reason as CANNOT_MODIFY_NATIVE: the
 // model should know the rule before it spends a call discovering it. The
 // "will not shift it for you" half matters most: the app's own drag-and-drop
@@ -305,7 +312,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         'by passing null or empty values; clearing is only ever the explicit clear_fields list. ' +
         'project_id is not editable, and date, time, duration, and completion have their own tools ' +
         '(schedule_task, move_block, resize_block, set_task_completion). Returns the resulting task or block.' +
-        CANNOT_MODIFY_NATIVE,
+        OLD_ID_STILL_WORKS + CANNOT_MODIFY_NATIVE,
       inputSchema: updateTaskSchema,
     },
     async (args: Record<string, unknown>) => {

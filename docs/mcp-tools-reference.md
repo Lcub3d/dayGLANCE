@@ -214,6 +214,8 @@ nor clears anything. By-design rejections: priority/deadline (set **or** clear) 
 tasks; recurring instances (dedicated error naming the synthetic
 `recurring-<template>-<date>` id shape); CalDAV task-calendar tasks; `_native` events.
 Not editable here: `project_id`; date/time/duration/completion have their own tools.
+A `task_id` returned by `dayglance_create_task` keeps working after the Obsidian re-key to
+`obsidian-dg-…`; the response carries the current id plus `resolved_from`.
 
 ### `dayglance_schedule_task`
 Schedule an unscheduled inbox task onto a day and time.

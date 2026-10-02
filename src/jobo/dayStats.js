@@ -4,13 +4,19 @@
 // Time is committed measured coverage clipped to the selected day. Comparison
 // is per captured Plan dated that day, using its COMPLETE attempt group (which
 // can span days). These scopes must not be divided into an actual/plan ratio.
+// Native task denominators and not-started counts share this population.
+// Execution history is independent and must not be filtered by this predicate.
+export function isNativeJoboTask(task) {
+  return task?.id != null && !task.archived && !task.isJoboSyntheticOccurrence
+    && !(task.imported && !task.isTaskCalendar);
+}
+
 export function summarizeJoboDayModel(model) {
   if (!model) return null;
   const native = new Map();
   for (const item of model.plans) {
     const task = item.currentTask;
-    if (task?.id == null || task.archived || task.isJoboSyntheticOccurrence
-      || (task.imported && !task.isTaskCalendar)) continue;
+    if (!isNativeJoboTask(task)) continue;
     native.set(String(task.id), { task, minutes: Math.max(0, item.endMinute - item.startMinute) });
   }
   const current = [...native.values()];

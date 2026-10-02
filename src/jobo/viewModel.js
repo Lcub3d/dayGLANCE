@@ -388,6 +388,18 @@ export function buildJoboDayModel({
   scale,
   isVisibleForUser,
 }) {
+  return createJoboDayModelReader({ taskLookup, recurringTasks, records, isVisibleForUser })({ date, tasks, now, scale });
+}
+
+/**
+ * Prepare one committed input revision for several read-only day projections.
+ * Grouping, LWW validation and complete comparisons are the same as the single
+ * day model. Dates only index visible slices; they never truncate a group.
+ * Recreate the reader when the ledger, task lookup or visibility changes.
+ */
+export function createJoboDayModelReader({
+  taskLookup = [], recurringTasks = [], records = [], isVisibleForUser, dates = [],
+} = {}) {
   const { liveRecords, invalidRecordCount } = projectJoboRecords(records);
   const resolveRecordTask = buildJoboTaskResolver({ records: liveRecords, taskLookup, recurringTasks });
 
@@ -399,11 +411,36 @@ export function buildJoboDayModel({
     return !source || visibleTask(source);
   });
 
-  const visibleRecords = validLiveRecords.filter((record) => (
-    record.timing === DO_TIMING.UNTIMED
-      ? completionMarker(record)?.date === date
-      : timedSliceOnDate(record, date) !== null
-  ));
+  const requestedDates = [...new Set(dates.filter(validDate))].sort();
+  const recordsByDate = new Map(requestedDates.map(date => [date, []]));
+  const firstDateIndex = (date) => {
+    let left = 0, right = requestedDates.length;
+    while (left < right) {
+      const middle = Math.floor((left + right) / 2);
+      if (requestedDates[middle] < date) left = middle + 1;
+      else right = middle;
+    }
+    return left;
+  };
+  for (const record of validLiveRecords) {
+    if (record.timing === DO_TIMING.UNTIMED) {
+      recordsByDate.get(completionMarker(record)?.date)?.push(record);
+    } else {
+      for (let index = firstDateIndex(record.date);
+        index < requestedDates.length && requestedDates[index] <= record.endDate; index += 1) {
+        const date = requestedDates[index];
+        if (timedSliceOnDate(record, date)) recordsByDate.get(date).push(record);
+      }
+    }
+  }
+  const recordsOnDate = (date) => {
+    if (!recordsByDate.has(date)) recordsByDate.set(date, validLiveRecords.filter(record => (
+      record.timing === DO_TIMING.UNTIMED
+        ? completionMarker(record)?.date === date
+        : timedSliceOnDate(record, date) !== null
+    )));
+    return recordsByDate.get(date);
+  };
 
   // Rendering is date-windowed, but comparison is not: an attempt can happen
   // on a later day and still be evidence against this Plan. Group the complete
@@ -430,15 +467,50 @@ export function buildJoboDayModel({
     attemptsByGroup.set(key, metadata.attempts);
   }
 
-  const timedRecords = assignOverlapColumns(
-    visibleRecords
-      .filter((record) => record.timing === DO_TIMING.TIMED)
+  const groupsByPlanDate = new Map();
+  for (const key of groups.keys()) {
+    const date = attemptsByGroup.get(key).at(-1)?.planSnapshot?.date;
+    if (!date) continue;
+    if (!groupsByPlanDate.has(date)) groupsByPlanDate.set(date, []);
+    groupsByPlanDate.get(date).push(key);
+  }
+
+  return function readDay({ date, tasks = [], now, scale }) {
+    const visibleRecords = recordsOnDate(date);
+    const timedRecords = assignOverlapColumns(
+      visibleRecords
+        .filter((record) => record.timing === DO_TIMING.TIMED)
+        .map((record) => {
+          const slice = timedSliceOnDate(record, date);
+          const groupKey = recordGroupKey(record);
+          const metadata = metadataByGroup.get(groupKey);
+          const task = resolveRecordTask(record);
+          return {
+            id: record.id,
+            groupKey,
+            record,
+            task,
+            sourceTask: task,
+            noteKey: noteKeyForTask(task),
+            labels: summaryByGroup.get(groupKey) || [],
+            attempts: attemptsByGroup.get(groupKey) || [],
+            latestAttempt: attemptsByGroup.get(groupKey)?.[0] || null,
+            comparison: metadata?.comparison || null,
+            comparisonMeta: metadata || null,
+            ...slice,
+          };
+        }),
+      scale === undefined ? undefined : { scale },
+    );
+
+    const untimedRecords = visibleRecords
+      .filter((record) => record.timing === DO_TIMING.UNTIMED)
       .map((record) => {
-        const slice = timedSliceOnDate(record, date);
         const groupKey = recordGroupKey(record);
         const metadata = metadataByGroup.get(groupKey);
         const task = resolveRecordTask(record);
         return {
+          ...completionMarker(record),
           id: record.id,
           groupKey,
           record,
@@ -447,138 +519,114 @@ export function buildJoboDayModel({
           noteKey: noteKeyForTask(task),
           labels: summaryByGroup.get(groupKey) || [],
           attempts: attemptsByGroup.get(groupKey) || [],
-          latestAttempt: latestJoboAttempt(attemptsByGroup.get(groupKey) || []),
+          latestAttempt: attemptsByGroup.get(groupKey)?.[0] || null,
           comparison: metadata?.comparison || null,
           comparisonMeta: metadata || null,
-          ...slice,
         };
-      }),
-    scale === undefined ? undefined : { scale },
-  );
+      })
+      .sort((a, b) => String(a.record.title).localeCompare(String(b.record.title)));
 
-  const untimedRecords = visibleRecords
-    .filter((record) => record.timing === DO_TIMING.UNTIMED)
-    .map((record) => {
-      const groupKey = recordGroupKey(record);
-      const metadata = metadataByGroup.get(groupKey);
-      const task = resolveRecordTask(record);
-      return {
-        ...completionMarker(record),
-        id: record.id,
-        groupKey,
-        record,
-        task,
-        sourceTask: task,
-        noteKey: noteKeyForTask(task),
-        labels: summaryByGroup.get(groupKey) || [],
-        attempts: attemptsByGroup.get(groupKey) || [],
-        latestAttempt: latestJoboAttempt(attemptsByGroup.get(groupKey) || []),
-        comparison: metadata?.comparison || null,
-        comparisonMeta: metadata || null,
-      };
-    })
-    .sort((a, b) => String(a.record.title).localeCompare(String(b.record.title)));
+    // Final Plan is capture-once history. Render a captured Plan from the record
+    // even when the live task was later renamed, rescheduled or deleted; otherwise
+    // the card position could disagree with the very snapshot used for its badges.
+    const capturedPlanKeys = new Set();
+    const capturedPlans = [];
+    for (const key of groupsByPlanDate.get(date) || []) {
+      const representative = attemptsByGroup.get(key).at(-1);
+      const plan = representative?.planSnapshot ?? null;
+      if (!plan || plan.date !== date) continue;
 
-  // Final Plan is capture-once history. Render a captured Plan from the record
-  // even when the live task was later renamed, rescheduled or deleted; otherwise
-  // the card position could disagree with the very snapshot used for its badges.
-  const capturedPlanKeys = new Set();
-  const capturedPlans = [];
-  for (const [key, group] of groups) {
-    const representative = sortJoboAttempts(group).at(-1);
-    const plan = representative?.planSnapshot ?? null;
-    if (!plan || plan.date !== date) continue;
-
-    const linkedTask = resolveRecordTask(representative);
-    const task = linkedTask
-      ? { ...linkedTask, title: representative.title }
-      : {
-          id: representative.taskId,
-          title: representative.title,
-          color: 'bg-blue-500',
-          notes: '',
-        };
-    const startMinute = timeMinutes(plan.startTime);
-    const livePlan = planFromTask(linkedTask);
-    const currentTask = !linkedTask?.isJoboSyntheticOccurrence
-      && livePlan && planSnapshotKey(livePlan) === planSnapshotKey(plan)
-      && linkedTask.title === representative.title
-      ? linkedTask : null;
-    if (currentTask) capturedPlanKeys.add(key);
-    const metadata = metadataByGroup.get(key);
-    const attempts = attemptsByGroup.get(key) || [];
-    capturedPlans.push({
-      id: `captured::${key}`,
-      groupKey: key,
-      currentTask,
-      historical: !currentTask,
-      task,
-      sourceTask: linkedTask,
-      plan,
-      labels: summaryByGroup.get(key) || [],
-      progresses: progressesByGroup.get(key) || [],
-      attempts,
-      latestAttempt: latestJoboAttempt(attempts),
-      latestProgress: latestJoboAttempt(attempts)?.progress || null,
-      comparison: metadata?.comparison || null,
-      comparisonMeta: metadata || null,
-      noteKey: noteKeyForTask(linkedTask),
-      startMinute,
-      endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
-    });
-  }
-
-  const currentPlans = (Array.isArray(tasks) ? tasks : [])
-    .map((task) => ({ task, plan: planFromTask(task) }))
-    .filter(({ task, plan }) => task?.id != null && plan && plan.date === date && visibleTask(task))
-    // When a record already captured this exact Final Plan, the captured copy
-    // is the historical source of truth and also preserves the captured title.
-    .filter(({ task, plan }) => !capturedPlanKeys.has(taskPlanGroupKey(task, plan)))
-    .map(({ task, plan }) => {
+      const linkedTask = resolveRecordTask(representative);
+      const task = linkedTask
+        ? { ...linkedTask, title: representative.title }
+        : {
+            id: representative.taskId,
+            title: representative.title,
+            color: 'bg-blue-500',
+            notes: '',
+          };
       const startMinute = timeMinutes(plan.startTime);
-      const key = taskPlanGroupKey(task, plan);
-      const linked = key == null ? [] : (groups.get(key) || []);
-      const comparisonOptions = {
-        displayedPlan: plan,
-        ...(linked.length === 0 && now && invalidRecordCount === 0 ? { now } : {}),
-      };
-      const metadata = comparisonMetadata(plan, linked, comparisonOptions);
-      const labels = metadata.comparison && (linked.length > 0 || (now && invalidRecordCount === 0))
-        ? summarizeTiming(metadata.comparison) : [];
-      const attempts = metadata.attempts;
-      const latestAttempt = latestJoboAttempt(attempts);
-
-      return {
-        id: `current::${String(task.id)}::${planSnapshotKey(plan)}`,
+      const livePlan = planFromTask(linkedTask);
+      const currentTask = !linkedTask?.isJoboSyntheticOccurrence
+        && livePlan && planSnapshotKey(livePlan) === planSnapshotKey(plan)
+        && linkedTask.title === representative.title
+        ? linkedTask : null;
+      if (currentTask) capturedPlanKeys.add(key);
+      const metadata = metadataByGroup.get(key);
+      const attempts = attemptsByGroup.get(key) || [];
+      capturedPlans.push({
+        id: `captured::${key}`,
         groupKey: key,
-        currentTask: task,
-        historical: false,
+        currentTask,
+        historical: !currentTask,
         task,
-        sourceTask: task,
+        sourceTask: linkedTask,
         plan,
-        labels,
+        labels: summaryByGroup.get(key) || [],
         progresses: progressesByGroup.get(key) || [],
         attempts,
-        latestAttempt,
-        latestProgress: latestAttempt?.progress || null,
-        comparison: metadata.comparison,
-        comparisonMeta: metadata,
-        noteKey: noteKeyForTask(task),
+        latestAttempt: attempts[0] || null,
+        latestProgress: attempts[0]?.progress || null,
+        comparison: metadata?.comparison || null,
+        comparisonMeta: metadata || null,
+        noteKey: noteKeyForTask(linkedTask),
         startMinute,
         endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
-      };
-    });
+      });
+    }
 
-  const planned = [...capturedPlans, ...currentPlans];
+    const currentPlans = (Array.isArray(tasks) ? tasks : [])
+      .map((task) => ({ task, plan: planFromTask(task) }))
+      .filter(({ task, plan }) => task?.id != null && plan && plan.date === date && visibleTask(task))
+      // When a record already captured this exact Final Plan, the captured copy
+      // is the historical source of truth and also preserves the captured title.
+      .filter(({ task, plan }) => !capturedPlanKeys.has(taskPlanGroupKey(task, plan)))
+      .map(({ task, plan }) => {
+        const startMinute = timeMinutes(plan.startTime);
+        const key = taskPlanGroupKey(task, plan);
+        const linked = key == null ? [] : (groups.get(key) || []);
+        const comparisonOptions = {
+          displayedPlan: plan,
+          ...(linked.length === 0 && now && invalidRecordCount === 0 ? { now } : {}),
+        };
+        const metadata = comparisonMetadata(plan, linked, comparisonOptions);
+        const labels = metadata.comparison && (linked.length > 0 || (now && invalidRecordCount === 0))
+          ? summarizeTiming(metadata.comparison) : [];
+        const attempts = metadata.attempts;
+        const latestAttempt = attempts[0] || null;
 
-  return {
-    // ExecutionDetails can edit any attempt in a group, not only today's
-    // visible slices. Reuse this resolver for its current task/occurrence.
-    resolveRecordTask,
-    plans: assignOverlapColumns(planned, scale === undefined ? undefined : { scale }),
-    timedRecords,
-    untimedRecords,
-    invalidRecordCount,
+        return {
+          id: `current::${String(task.id)}::${planSnapshotKey(plan)}`,
+          groupKey: key,
+          currentTask: task,
+          historical: false,
+          task,
+          sourceTask: task,
+          plan,
+          labels,
+          progresses: progressesByGroup.get(key) || [],
+          attempts,
+          latestAttempt,
+          latestProgress: latestAttempt?.progress || null,
+          comparison: metadata.comparison,
+          comparisonMeta: metadata,
+          noteKey: noteKeyForTask(task),
+          startMinute,
+          endMinute: Math.min(DAY_MINUTES, startMinute + plan.duration),
+        };
+      });
+
+    const planned = [...capturedPlans, ...currentPlans];
+
+    return {
+      // ExecutionDetails can edit any attempt in a group, not only today's
+      // visible slices. Reuse this resolver for its current task/occurrence.
+      resolveRecordTask,
+      plans: assignOverlapColumns(planned, scale === undefined ? undefined : { scale }),
+      timedRecords,
+      untimedRecords,
+      invalidRecordCount,
+    };
   };
 }
 

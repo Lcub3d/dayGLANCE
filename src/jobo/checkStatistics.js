@@ -1,5 +1,5 @@
 import { buildCheckSummary, CHECK_PRIORITIES } from './checkSummary.js';
-import { buildJoboDayModel, buildJoboTaskResolver, projectJoboRecords, timedSliceOnDate } from './viewModel.js';
+import { createJoboDayModelReader, buildJoboTaskResolver, projectJoboRecords, timedSliceOnDate } from './viewModel.js';
 import { completionMarker } from './completionMarker.js';
 import { validCivilDate } from './viewDates.js';
 import { expandRecurringTasks, recurringTaskInstance } from '../utils/expandRecurringTasks.js';
@@ -77,33 +77,63 @@ const nextDate = (date) => new Date(Date.parse(`${date}T00:00:00.000Z`) + 864000
 
 // Statistics alone materializes saved historical occurrences. These read-only
 // task objects never enter App's live expansion or a task/ledger write path.
-export function buildStatisticsDayReport({
-  date, tasks = [], inboxTasks = [], recurringTasks = [], records = [], now, isVisibleForUser,
+export function buildStatisticsDayReport({ date, ...source } = {}) {
+  return buildStatisticsReports({ ...source, dates: [date] })[0];
+}
+
+/** Build a range with one shared day-model preparation, not one per date. */
+export function buildStatisticsReports({
+  dates = [], tasks = [], inboxTasks = [], recurringTasks = [], records = [], now, isVisibleForUser,
 } = {}) {
-  const today = dateKey(now?.date) || date;
+  if (!dates.length) return [];
   const taskLookup = [...tasks, ...inboxTasks];
   const { liveRecords } = projectJoboRecords(records);
   const resolveTask = buildJoboTaskResolver({ records: liveRecords, taskLookup, recurringTasks });
-  const recordedOccurrences = new Set(liveRecords.map(record => resolveTask(record))
-    .filter(task => task?.recurringTemplateId != null && task.date === date)
-    .map(task => String(task.recurringTemplateId)));
-  const occurrences = date < today
-    ? recurringTasks.filter(template => template && template.id != null
-      && !template.exceptions?.[date]?.deleted && !template.exceptions?.[date]?.skipped
-      && ((template.completedDates || []).includes(date)
-        || Object.hasOwn(template.exceptions || {}, date)
-        || recordedOccurrences.has(String(template.id))))
-      .map(template => recurringTaskInstance(template, date))
-    : expandRecurringTasks(recurringTasks, { rangeStart: date, rangeEnd: date, today });
-  const dayTasks = [...tasks.filter(task => task?.date === date), ...occurrences]
-    .filter(task => !task.isAllDay && task.startTime);
-  const model = buildJoboDayModel({
-    date, tasks: dayTasks, taskLookup: [...taskLookup, ...occurrences], recurringTasks,
-    // Keep the raw ledger: projecting evidence must not erase invalid rows
-    // and accidentally turn an unavailable metric into a clean zero.
-    records, now, isVisibleForUser,
+  const recordedOccurrences = new Map();
+  for (const record of liveRecords) {
+    const task = resolveTask(record);
+    if (task?.recurringTemplateId == null) continue;
+    if (!recordedOccurrences.has(task.date)) recordedOccurrences.set(task.date, new Set());
+    recordedOccurrences.get(task.date).add(String(task.recurringTemplateId));
+  }
+  const tasksByDate = new Map();
+  for (const task of tasks) {
+    if (!task) continue;
+    if (!tasksByDate.has(task.date)) tasksByDate.set(task.date, []);
+    tasksByDate.get(task.date).push(task);
+  }
+  const inboxByDate = new Map();
+  for (const task of inboxTasks) {
+    if (typeof isVisibleForUser === 'function' && !isVisibleForUser(task)) continue;
+    const date = dateKey(task?.completedAt);
+    if (!date) continue;
+    if (!inboxByDate.has(date)) inboxByDate.set(date, []);
+    inboxByDate.get(date).push(task);
+  }
+  const inputsByDate = new Map();
+  for (const date of new Set(dates)) {
+    const today = dateKey(now?.date) || date;
+    const occurrences = date < today
+      ? recurringTasks.filter(template => template && template.id != null
+        && !template.exceptions?.[date]?.deleted && !template.exceptions?.[date]?.skipped
+        && ((template.completedDates || []).includes(date)
+          || Object.hasOwn(template.exceptions || {}, date)
+          || recordedOccurrences.get(date)?.has(String(template.id))))
+        .map(template => recurringTaskInstance(template, date))
+      : expandRecurringTasks(recurringTasks, { rangeStart: date, rangeEnd: date, today });
+    const dayTasks = [...(tasksByDate.get(date) || []), ...occurrences]
+      .filter(task => !task.isAllDay && task.startTime);
+    inputsByDate.set(date, { occurrences, tasks: dayTasks });
+  }
+  // Native historical instances must precede projection preparation so the
+  // shared resolver preserves currentTask/denominator semantics for every day.
+  const readDay = createJoboDayModelReader({
+    taskLookup: [...taskLookup, ...[...inputsByDate.values()].flatMap(input => input.occurrences)],
+    recurringTasks, records, isVisibleForUser, dates,
   });
-  return statisticsReportFromModel(model, { date, inboxTasks, isVisibleForUser });
+  return dates.map(date => statisticsReportFromModel(readDay({
+    date, tasks: inputsByDate.get(date).tasks, now,
+  }), { date, inboxTasks: inboxByDate.get(date) || [] }));
 }
 
 export function statisticsReportFromModel(model, { date, inboxTasks = [], isVisibleForUser } = {}) {

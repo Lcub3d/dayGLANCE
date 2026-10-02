@@ -126,7 +126,7 @@ function Summary({ summary, textSecondary, borderClass }) {
 }
 
 export default function StatisticsPanel({
-  anchorDate, weekDates, evidenceDates, buildReport, loaded, error, onClose,
+  anchorDate, weekDates, evidenceDates, buildReports, loaded, error, onClose,
   cardBg = 'bg-white', textPrimary = '', textSecondary = '', borderClass = '', darkMode = false,
 }) {
   const { t, i18n } = useTranslation();
@@ -140,9 +140,9 @@ export default function StatisticsPanel({
   const dates = useMemo(() => statisticsDatesForScope({ scope, anchorDate, weekDates, evidenceDates }),
     [scope, anchorDate, weekDates, evidenceDates]);
   const reports = useMemo(() => {
-    if (!loaded || error || typeof buildReport !== 'function') return null;
-    return dates.map((date) => buildReport(date, scope)).filter(Boolean);
-  }, [loaded, error, buildReport, dates, scope]);
+    if (!loaded || error || typeof buildReports !== 'function') return null;
+    return buildReports(dates, scope).filter(Boolean);
+  }, [loaded, error, buildReports, dates, scope]);
   const summary = useMemo(() => reports ? aggregateCheckSummaries(reports) : null, [reports]);
   const labelDate = (value) => formatLocalizedDate(parseDate(value), {
     year: 'numeric', month: 'short', day: 'numeric',
@@ -156,8 +156,25 @@ export default function StatisticsPanel({
     const keyboard = (event) => {
       event.stopImmediatePropagation();
       if (event.key === 'Escape') { event.preventDefault(); close.current(); }
+      const tab = event.target.closest?.('[data-jobo-statistics-scope]');
+      if (tab && root.contains(tab)) {
+        const index = STATISTICS_SCOPES.indexOf(tab.dataset.joboStatisticsScope);
+        const nextIndex = event.key === 'ArrowRight' ? (index + 1) % STATISTICS_SCOPES.length
+          : event.key === 'ArrowLeft' ? (index + STATISTICS_SCOPES.length - 1) % STATISTICS_SCOPES.length
+            : event.key === 'Home' ? 0
+              : event.key === 'End' ? STATISTICS_SCOPES.length - 1 : null;
+        if (nextIndex !== null) {
+          event.preventDefault();
+          const nextScope = STATISTICS_SCOPES[nextIndex];
+          setScope(nextScope);
+          const nextTab = root.querySelector(`[data-jobo-statistics-scope="${nextScope}"]`);
+          nextTab?.focus();
+          nextTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          return;
+        }
+      }
       if (event.key !== 'Tab') return;
-      const fields = [...root.querySelectorAll('button:not(:disabled),[tabindex="0"]')];
+      const fields = [...root.querySelectorAll('button:not(:disabled):not([tabindex="-1"]),[tabindex="0"]:not(:disabled)')];
       const first = fields[0], last = fields.at(-1);
       if (!root.contains(document.activeElement) || document.activeElement === (event.shiftKey ? first : last)) {
         event.preventDefault(); (event.shiftKey ? last : first)?.focus();
@@ -173,7 +190,9 @@ export default function StatisticsPanel({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-3 sm:p-6"
-      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) { event.preventDefault(); onClose(); }
+      }}>
       <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} data-jobo-statistics-panel
         className={`w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border shadow-xl ${cardBg} ${textPrimary} ${borderClass}`}>
         <header className={`px-5 py-3 border-b flex-shrink-0 flex items-center justify-between gap-3 ${borderClass}`}>
@@ -184,12 +203,13 @@ export default function StatisticsPanel({
         </header>
         <div className={`px-5 pt-3 border-b flex gap-1 overflow-x-auto ${borderClass}`} role="tablist" aria-label={t('jobo.statistics.title')}>
           {STATISTICS_SCOPES.map((key) => <button key={key} type="button" role="tab"
+            id={`${titleId}-${key}-tab`} aria-controls={`${titleId}-panel`} tabIndex={scope === key ? 0 : -1}
             data-jobo-statistics-scope={key} aria-selected={scope === key} onClick={() => setScope(key)}
             className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${scope === key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent ' + textSecondary}`}>
             {t(`jobo.statistics.${key}`)}
           </button>)}
         </div>
-        <div tabIndex={0} role="region" aria-label={t('jobo.statistics.title')}
+        <div id={`${titleId}-panel`} tabIndex={0} role="tabpanel" aria-labelledby={`${titleId}-${scope}-tab`}
           className="overflow-y-auto px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
           {error ? <p role="alert">{t('jobo.statistics.unavailable')}</p>
             : !loaded ? <p role="status">{t('common.loading')}</p>

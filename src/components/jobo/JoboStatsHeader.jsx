@@ -7,7 +7,7 @@ import { dateToString } from '../../utils/taskUtils.js';
 import { formatDuration } from '../../utils/formatDuration.js';
 import { buildJoboDayModel } from '../../jobo/viewModel.js';
 import { summarizeJoboDayModel } from '../../jobo/dayStats.js';
-import { buildStatisticsDayReport, statisticsEvidenceDates, statisticsReportFromModel } from '../../jobo/checkStatistics.js';
+import { buildStatisticsReports, statisticsEvidenceDates, statisticsReportFromModel } from '../../jobo/checkStatistics.js';
 import { weekViewDatesFor } from '../../utils/weekViewDates.js';
 import StatisticsPanel from './StatisticsPanel.jsx';
 
@@ -47,16 +47,16 @@ export default function JoboStatsHeader({ className = '' }) {
     records: joboRecords, tasks: [...(tasks || []), ...(unscheduledTasks || [])],
     recurringTasks, anchorDate: date, throughDate: nowDate, isVisibleForUser,
   }) : [], [statisticsOpen, joboRecords, tasks, unscheduledTasks, recurringTasks, date, nowDate, isVisibleForUser]);
-  const buildReport = useCallback((reportDate, scope) => {
-    if (!joboLoaded || joboError || !Array.isArray(joboRecords)) return null;
+  const buildReports = useCallback((reportDates, scope) => {
+    if (!joboLoaded || joboError || !Array.isArray(joboRecords)) return [];
     // Day uses the selected header's actual model, including now/notStarted.
     // Wider scopes reconstruct only saved history, independently of whatever
     // recurrence dates App currently has expanded for its visible window.
-    if (scope === 'day') return statisticsReportFromModel(model, {
-      date: reportDate, inboxTasks: unscheduledTasks, isVisibleForUser,
-    });
-    return buildStatisticsDayReport({
-      date: reportDate, tasks, inboxTasks: unscheduledTasks, recurringTasks,
+    if (scope === 'day') return [statisticsReportFromModel(model, {
+      date: reportDates[0], inboxTasks: unscheduledTasks, isVisibleForUser,
+    })];
+    return buildStatisticsReports({
+      dates: reportDates, tasks, inboxTasks: unscheduledTasks, recurringTasks,
       records: joboRecords, isVisibleForUser, now: { date: nowDate, time: nowTime },
     });
   }, [joboLoaded, joboError, joboRecords, model, tasks, unscheduledTasks, recurringTasks, isVisibleForUser, nowDate, nowTime]);
@@ -120,7 +120,7 @@ export default function JoboStatsHeader({ className = '' }) {
     </button>
     </div>
     {statisticsOpen && <StatisticsPanel key={date} anchorDate={date} weekDates={weekDates} evidenceDates={evidenceDates}
-      buildReport={buildReport} loaded={joboLoaded} error={joboError} onClose={() => setStatisticsOpen(false)}
+      buildReports={buildReports} loaded={joboLoaded} error={joboError} onClose={() => setStatisticsOpen(false)}
       cardBg={planner.cardBg} textPrimary={textPrimary} textSecondary={textSecondary}
       borderClass={borderClass} darkMode={planner.darkMode} />}
     </>

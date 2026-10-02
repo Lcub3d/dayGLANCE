@@ -20,18 +20,21 @@ async function render(lng = 'en', overrides = {}) {
   vi.stubGlobal('document', { body: {} });
   const i18n = i18next.createInstance();
   await i18n.init({ lng, fallbackLng: false, resources: { [lng]: { translation: bundle(lng) } }, interpolation: { escapeValue: false } });
-  const buildReport = vi.fn(day => buildStatisticsDayReport({ date: day, records: [record] }));
+  const buildReports = vi.fn(days => days.map(day => buildStatisticsDayReport({ date: day, records: [record] })));
   const html = renderToStaticMarkup(<I18nextProvider i18n={i18n}><StatisticsPanel anchorDate={date}
-    weekDates={[date]} evidenceDates={[date]} buildReport={buildReport} loaded onClose={vi.fn()} {...overrides} /></I18nextProvider>);
-  return { html, buildReport, t: i18n.t.bind(i18n) };
+    weekDates={[date]} evidenceDates={[date]} buildReports={buildReports} loaded onClose={vi.fn()} {...overrides} /></I18nextProvider>);
+  return { html, buildReports, t: i18n.t.bind(i18n) };
 }
 
 describe('Statistics panel with real reports', () => {
   it.each(locales)('renders complete translated controls and scope explanations in %s', async lng => {
-    const { html, t, buildReport } = await render(lng);
-    expect(buildReport).toHaveBeenCalledWith(date, 'day');
+    const { html, t, buildReports } = await render(lng);
+    expect(buildReports).toHaveBeenCalledWith([date], 'day');
     expect(html.match(/data-jobo-statistics-scope=/g)).toHaveLength(4);
     expect(html).toContain('role="dialog" aria-modal="true"');
+    expect(html.match(/aria-controls=/g)).toHaveLength(4);
+    expect(html.match(/tabindex="-1"/g)).toHaveLength(3);
+    expect(html).toContain('role="tabpanel" aria-labelledby=');
     expect(html).toContain(t('jobo.statistics.taskScope'));
     expect(html).toContain(t('jobo.statistics.timingScope'));
     expect(html).not.toMatch(/jobo\.(statistics|stats)\.|\{\{|NaN|undefined|Infinity/);
@@ -46,17 +49,17 @@ describe('Statistics panel with real reports', () => {
 
   it('does not build a report while loading or after a read error', async () => {
     const loading = await render('en', { loaded: false });
-    expect(loading.buildReport).not.toHaveBeenCalled();
+    expect(loading.buildReports).not.toHaveBeenCalled();
     expect(loading.html).toContain('role="status"');
     expect(loading.html).toContain(loading.t('common.loading'));
     const failed = await render('en', { error: 'read failure' });
-    expect(failed.buildReport).not.toHaveBeenCalled();
+    expect(failed.buildReports).not.toHaveBeenCalled();
     expect(failed.html).toContain('role="alert"');
     expect(failed.html).toContain(failed.t('jobo.statistics.unavailable'));
   });
 
   it('renders invalid evidence as unavailable metrics, rather than zero recorded time', async () => {
-    const { html, t } = await render('en', { buildReport: day => buildStatisticsDayReport({ date: day, records: [record, {}] }) });
+    const { html, t } = await render('en', { buildReports: days => days.map(day => buildStatisticsDayReport({ date: day, records: [record, {}] })) });
     expect(html).toContain(t('jobo.statistics.invalid'));
     expect(html).toMatch(/Recorded time<\/dt><dd[^>]*>—<\/dd>/);
   });

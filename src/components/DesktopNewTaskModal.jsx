@@ -61,6 +61,8 @@ const DesktopNewTaskModal = () => {
   // deadline/priority consumer excludes bucket items). The notes & subtasks
   // panel below, which every task has here, is their only surface.
   const isBucketItem = !!mobileEditingTask?.bucketId;
+  // Where a key is text being typed: the title, the notes and the subtasks.
+  const isTextField = (el) => el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || !!el?.isContentEditable;
 
   if (!showAddTask || isMobile) return null;
 
@@ -102,11 +104,18 @@ const DesktopNewTaskModal = () => {
                   setShowAddTask(false);
                   setMobileEditingTask(null);
                 }
+              } else if (isTextField(e.target)) {
+                // Typing: a note's spaces and carets are text, not shortcuts.
+                // ('^' in the title still toggles Full Day, as it always has.)
+                if (e.key === '^' && e.target === newTaskInputRef.current && !newTask.openInInbox) {
+                  e.preventDefault();
+                  setNewTask({ ...newTask, isAllDay: !newTask.isAllDay });
+                }
               } else if (e.key === '^' && !newTask.openInInbox) {
                 // '^' toggles Full Day for scheduled tasks
                 e.preventDefault();
                 setNewTask({ ...newTask, isAllDay: !newTask.isAllDay });
-              } else if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+              } else if (e.key === ' ') {
                 // Prevent SPACE from activating buttons
                 e.preventDefault();
               }

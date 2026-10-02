@@ -357,6 +357,14 @@ const NotesSubtasksPanel = ({
     field.focus({ preventScroll: true });
     field.setSelectionRange?.(field.value.length, field.value.length);
   });
+  // A click on a note's preview opens its editor with the cursor in it. Where
+  // the panel does not take focus as it opens (noAutoFocus: the task modals,
+  // the sidebars), the editor appeared without it, and took a second click.
+  const editNote = (key) => {
+    pendingFocusRef.current = key;
+    if (key === 'own') setIsEditingNotes(true);
+    else setLinkedNoteEditing(prev => ({ ...prev, [key]: true }));
+  };
 
   return (
     <div
@@ -438,7 +446,7 @@ const NotesSubtasksPanel = ({
                   />
                 ) : (
                   <div
-                    onClick={() => setLinkedNoteEditing(prev => ({ ...prev, [noteName]: true }))}
+                    onClick={() => editNote(noteName)}
                     className={`text-sm cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
                   >
                     {renderNoteContent(state.text, handleContentWikilinkClick, darkMode, t)}
@@ -472,7 +480,7 @@ const NotesSubtasksPanel = ({
             />
           ) : (
             <div
-              onClick={() => setIsEditingNotes(true)}
+              onClick={() => editNote('own')}
               className={`text-sm whitespace-pre-wrap cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
             >
               {urlOnlyNote ? (
@@ -537,8 +545,10 @@ const NotesSubtasksPanel = ({
                     onChange={(e) => setEditingSubtaskText(e.target.value)}
                     onBlur={saveSubtaskEdit}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveSubtaskEdit();
-                      if (e.key === 'Escape') { setEditingSubtaskId(null); setEditingSubtaskText(''); }
+                      // Both stay in the field: inside the task editor's
+                      // <form>, Enter would submit it and Escape close it.
+                      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); saveSubtaskEdit(); }
+                      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setEditingSubtaskId(null); setEditingSubtaskText(''); }
                     }}
                     autoFocus
                     className={`flex-1 text-sm px-1 py-0.5 rounded border outline-none ${th.subtaskInput}`}

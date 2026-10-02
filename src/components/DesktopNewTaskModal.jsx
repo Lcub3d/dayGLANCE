@@ -9,8 +9,7 @@ import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import QuickAddChips from './QuickAddChips.jsx';
 import RecurrencePicker from './RecurrencePicker.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
-import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import { extractWikilinks } from '../utils/taskUtils.js';
+import TaskModalNotes from './TaskModalNotes.jsx';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
 import { getProjectColor } from '../utils/colorUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
@@ -40,10 +39,8 @@ const DesktopNewTaskModal = () => {
     applySuggestionForNewTask,
     handleNewTaskInputChange, handleNewTaskInputKeyDown,
     dismissNlChip,
-    unscheduledTasks,
-    updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title
@@ -61,20 +58,16 @@ const DesktopNewTaskModal = () => {
   // Bucket List items use this editor in inbox flavor, but the Bucket is
   // deliberately pressure-free: no deadline, no priority, no project. Those
   // controls are hidden (a stored deadline would be inert anyway — every
-  // deadline/priority consumer excludes bucket items), and the freed space
-  // hosts the notes & subtasks panel, which has no other surface in the
-  // Bucket List UI.
+  // deadline/priority consumer excludes bucket items). The notes & subtasks
+  // panel below, which every task has here, is their only surface.
   const isBucketItem = !!mobileEditingTask?.bucketId;
-  const liveBucketTask = isBucketItem
-    ? unscheduledTasks.find(t => t.id === mobileEditingTask.id)
-    : null;
 
   if (!showAddTask || isMobile) return null;
 
   return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]" onClick={() => { setShowAddTask(false); setShowNewTaskDeadlinePicker(false); setMobileEditingTask(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex justify-center overflow-y-auto py-6 z-[80]" onClick={() => { setShowAddTask(false); setShowNewTaskDeadlinePicker(false); setMobileEditingTask(null); }}>
           <form
-            className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4`}
+            className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 my-auto`}
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault();
@@ -683,27 +676,10 @@ const DesktopNewTaskModal = () => {
                   </>
                 )}
               </div>
-              {/* Notes & subtasks for Bucket List items — their only surface,
-                  since bucket rows have no expandable panel */}
-              {isBucketItem && liveBucketTask && (
-                <div>
-                  <NotesSubtasksPanel
-                    task={liveBucketTask}
-                    isInbox={true}
-                    darkMode={darkMode}
-                    noAutoFocus
-                    updateTaskNotes={updateTaskNotes}
-                    addSubtask={addSubtask}
-                    toggleSubtask={toggleSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtaskTitle={updateSubtaskTitle}
-                    aiConfig={aiConfig}
-                    aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-                    onGenerateSubtasks={generateAISubtasks}
-                    wikilinks={extractWikilinks(liveBucketTask.title).length > 0 ? extractWikilinks(liveBucketTask.title) : undefined}
-                  />
-                </div>
-              )}
+              {/* Notes & subtasks, behind a button: the task's own, or a new
+                  task's draft saved with it (components/TaskModalNotes.jsx).
+                  The only surface for a Bucket List item's. */}
+              <TaskModalNotes newTask={newTask} setNewTask={setNewTask} editingTask={mobileEditingTask} />
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"

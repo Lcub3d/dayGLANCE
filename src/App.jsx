@@ -41,6 +41,7 @@ import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
 import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
+import { parseRecurringId } from './utils/recurringId.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
 import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
@@ -3362,15 +3363,6 @@ const DayPlanner = () => {
     ).map(t => ({ ...t, _overdueType: 'deadline' }));
 
     return [...overdueScheduled, ...todayRecurring, ...overdueRecurringAllDay, ...overdueDeadlines];
-  };
-  const parseRecurringId = (id) => {
-    if (typeof id !== 'string' || !id.startsWith('recurring-')) return null;
-    const parts = id.split('-');
-    // Date is always the last 3 segments (YYYY-MM-DD), template ID is everything between
-    const dateStr = parts.slice(-3).join('-');
-    const rawTemplateId = parts.slice(1, -3).join('-');
-    const templateId = /^\d+$/.test(rawTemplateId) ? Number(rawTemplateId) : rawTemplateId;
-    return { templateId, dateStr };
   };
 
   // Refs for functions/values defined after the useDragDrop call (TDZ-safe pattern).

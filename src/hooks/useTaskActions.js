@@ -160,6 +160,10 @@ export default function useTaskActions({
       // Tracks the conflict-adjusted start time set by the scheduled branch so the
       // vault write uses the same time that ends up in DG state, not the raw input.
       let scheduledAdjustedStartTime = newTask.startTime || null;
+      // Notes and subtasks written in the modal before the task existed
+      // (components/TaskModalNotes.jsx).
+      const draftNotes = newTask.notes || '';
+      const draftSubtasks = newTask.subtasks || [];
       const task = {
         id: taskId,
         title: savedTitle,
@@ -167,8 +171,8 @@ export default function useTaskActions({
         color: newTask.color || colors[0].class,
         completed: false,
         isAllDay: newTask.isAllDay || false,
-        notes: '',
-        subtasks: [],
+        notes: draftNotes,
+        subtasks: draftSubtasks,
         ...(obsidianMeta ?? {}),
         ...(newTask.projectId ? { projectId: newTask.projectId } : {}),
         ...(newTask.assignedUserSyncIds?.length ? { assignedUserSyncIds: newTask.assignedUserSyncIds } : {}),
@@ -193,8 +197,8 @@ export default function useTaskActions({
           duration: newTask.duration,
           color: newTask.color || colors[0].class,
           isAllDay: newTask.isAllDay || false,
-          notes: '',
-          subtasks: [],
+          notes: draftNotes,
+          subtasks: draftSubtasks,
           recurrence: { ...newTask.recurrence, startDate: taskDate },
           completedDates: [],
           exceptions: {},

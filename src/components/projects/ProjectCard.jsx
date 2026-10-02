@@ -18,6 +18,7 @@ import ProjectProgress from './ProjectProgress.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
 import NotesSubtasksPanel from '../NotesSubtasksPanel.jsx';
 import DeadlinePickerPopover from '../DeadlinePickerPopover.jsx';
+import AddFromInbox from './AddFromInbox.jsx';
 import { renderTitle, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySubtasks, getLinkUrl, isObsidianNoteOnlyTask, openNoteAction, isPhoneOnlyTask } from '../../utils/textFormatting.jsx';
 import { dateToString, extractWikilinks, completionTimestamp, formatDeadlineDate } from '../../utils/taskUtils.js';
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
@@ -486,6 +487,13 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
               );
             })()}
           <div className="flex items-center gap-1 flex-shrink-0">
+            {project.status !== 'completed' && (
+              <AddFromInbox
+                project={project}
+                parentGoal={parentGoal}
+                buttonClass={`p-1 rounded-lg transition-colors ${darkMode ? 'text-gray-600 hover:text-gray-300 hover:bg-gray-700' : 'text-stone-300 hover:text-stone-600 hover:bg-stone-100'}`}
+              />
+            )}
             {onMoveToClick && (
               <button
                 onClick={() => onMoveToClick(project)}

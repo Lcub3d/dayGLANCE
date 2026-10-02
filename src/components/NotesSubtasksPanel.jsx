@@ -68,6 +68,9 @@ const NotesSubtasksPanel = ({
   onOpenInObsidian,   // (noteName) => void — opens note in Obsidian app/desktop
   // Bump to put the cursor in the note from outside (the planner's E key).
   focusNoteRequest = 0,
+  // Called after Shift+Enter saves a note, so the host can take the keyboard
+  // back (the planner returns it to its list).
+  onNoteSaved,
 }) => {
   const { t } = useTranslation();
   // A calendar event's `notes` are its description from the calendar, which
@@ -279,6 +282,7 @@ const NotesSubtasksPanel = ({
       e.preventDefault();
       if (localNotes !== ownNotes) updateTaskNotes(task.id, localNotes, isInbox);
       if (localNotes) setIsEditingNotes(false);
+      onNoteSaved?.();
     }
   };
 
@@ -423,6 +427,7 @@ const NotesSubtasksPanel = ({
                           linkedNoteOriginalRef.current[noteName] = text;
                         }
                         if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
+                        onNoteSaved?.();
                       }
                     }}
                     ref={noteFieldRef(noteName)}

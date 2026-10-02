@@ -632,7 +632,14 @@ const ProjectPlanner = ({ project, onClose }) => {
           // rest: half the row on a narrower screen, up to 56rem on a wide one.
           <aside data-planner-notes className={`flex-1 min-w-[24rem] max-w-[56rem] border-l ${borderClass} overflow-y-auto p-4`} aria-label={t('task.notes', 'Notes')}>
             {selectedTask ? (
-              <TaskNotesPane key={selectedTask.id} task={selectedTask} autoFocus={false} focusNoteRequest={noteFocusRequest} />
+              <TaskNotesPane
+                key={selectedTask.id}
+                task={selectedTask}
+                autoFocus={false}
+                focusNoteRequest={noteFocusRequest}
+                // Saved with Shift+Enter: the arrows move the selection again.
+                onNoteSaved={() => requestAnimationFrame(takeKeyboard)}
+              />
             ) : (
               <p className={`text-sm ${textSecondary}`}>{t('planner.selectForNotes')}</p>
             )}

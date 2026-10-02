@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { aiComplete } from '../ai.js';
 import {
   morningSummarySystemPrompt, morningSummaryUserPrompt,
@@ -31,6 +31,13 @@ export default function useDailyBriefings({
   setMorningGlanceText, setMorningGlanceLoading, setMorningGlanceError, setMorningGlanceDismissed,
   setEveningGlanceText, setEveningGlanceLoading, setEveningGlanceError, setEveningGlanceDismissed,
 }) {
+  // One request per briefing at a time. The refresh buttons stay clickable
+  // while a briefing loads, and repeated clicks would otherwise send parallel
+  // requests that race to set the text. A ref, not the loading state, so the
+  // guard holds between clicks that land before a re-render.
+  const morningInFlight = useRef(false);
+  const eveningInFlight = useRef(false);
+
   // --- Morning dayGLANCE (AI morning summary) ---
   const generateMorningSummary = useCallback(async (force = false) => {
     if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.morningSummary) return;
@@ -43,6 +50,8 @@ export default function useDailyBriefings({
       if (cachedText !== null) { setMorningGlanceText(cachedText); return; }
     }
 
+    if (morningInFlight.current) return;
+    morningInFlight.current = true;
     setMorningGlanceLoading(true);
     setMorningGlanceError('');
     try {
@@ -98,6 +107,8 @@ export default function useDailyBriefings({
       writeBriefingCache(localStorage, MORNING_KEY, todayStr, language, cleaned);
     } catch (err) {
       setMorningGlanceError(err.message);
+    } finally {
+      morningInFlight.current = false;
     }
     setMorningGlanceLoading(false);
     // Curated deps: the inputs that should regenerate the briefing. getOverdueTasks
@@ -141,6 +152,8 @@ export default function useDailyBriefings({
       if (cachedText !== null) { setEveningGlanceText(cachedText); return; }
     }
 
+    if (eveningInFlight.current) return;
+    eveningInFlight.current = true;
     setEveningGlanceLoading(true);
     setEveningGlanceError('');
     try {
@@ -180,6 +193,8 @@ export default function useDailyBriefings({
       writeBriefingCache(localStorage, EVENING_KEY, todayStr, language, cleaned);
     } catch (err) {
       setEveningGlanceError(err.message);
+    } finally {
+      eveningInFlight.current = false;
     }
     setEveningGlanceLoading(false);
     // Curated deps (see generateMorningSummary): getOverdueTasks/isVisibleForUser

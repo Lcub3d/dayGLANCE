@@ -43,7 +43,7 @@ const DesktopNewTaskModal = () => {
     unscheduledTasks,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title

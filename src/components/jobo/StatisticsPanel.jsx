@@ -33,6 +33,7 @@ function Summary({ summary, textSecondary, borderClass }) {
       <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" /><span>{t('jobo.statistics.invalid')}</span>
     </p>}
     <Section title={t('jobo.statistics.overview')}>
+      <p className={`text-xs ${textSecondary}`}>{t('jobo.statistics.taskScope')}</p>
       <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Metric label={t('jobo.stats.native')} value={pair(summary.stats.native.completed, summary.stats.native.total)} />
         <Metric label={t('jobo.stats.recorded')} value={mins(summary.stats.recordedMinutes)} />
@@ -109,6 +110,7 @@ function Summary({ summary, textSecondary, borderClass }) {
     </Section>
 
     <Section title={t('jobo.statistics.timing')}>
+      <p className={`text-xs ${textSecondary}`}>{t('jobo.statistics.timingScope')}</p>
       <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Metric label={t('jobo.view.overlapLabel')} value={mins(summary.overlapMinutes)} />
         <Metric label={t('jobo.statistics.insidePlan')} value={mins(summary.insideMinutes)} />
@@ -139,8 +141,8 @@ export default function StatisticsPanel({
     [scope, anchorDate, weekDates, evidenceDates]);
   const reports = useMemo(() => {
     if (!loaded || error || typeof buildReport !== 'function') return null;
-    return dates.map((date) => buildReport(date)).filter(Boolean);
-  }, [loaded, error, buildReport, dates]);
+    return dates.map((date) => buildReport(date, scope)).filter(Boolean);
+  }, [loaded, error, buildReport, dates, scope]);
   const summary = useMemo(() => reports ? aggregateCheckSummaries(reports) : null, [reports]);
   const labelDate = (value) => formatLocalizedDate(parseDate(value), {
     year: 'numeric', month: 'short', day: 'numeric',

@@ -2277,6 +2277,8 @@
       "invalid": "Alguns registros JOBO neste período são inválidos. Métricas que exigem evidência completa não estão disponíveis.",
       "unavailable": "Não foi possível carregar as estatísticas JOBO.",
       "empty": "Não há estatísticas disponíveis para este período.",
+      "taskScope": "As contagens e prioridades das tarefas usam o estado atual, não um retrato histórico.",
+      "timingScope": "O tempo registrado abrange as datas selecionadas. As comparações com o plano, o tempo dentro e fora do plano e o maior intervalo usam execuções completas, que podem ir além dessas datas.",
       "allTimeScope": "Tudo usa somente datas com evidência salva no histórico atual de tarefas e do JOBO. Ocorrências recorrentes históricas sem conclusão, exceção ou Do não são reconstruídas."
     }
   },

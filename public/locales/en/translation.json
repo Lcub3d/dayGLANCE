@@ -2277,6 +2277,8 @@
       "invalid": "Some JOBO records in this range are invalid. Metrics that require complete evidence are unavailable.",
       "unavailable": "Could not load JOBO statistics.",
       "empty": "No statistics are available for this range.",
+      "taskScope": "Task counts and priorities use current task state, not a historical snapshot.",
+      "timingScope": "Recorded time covers the selected dates. Plan comparisons, inside/outside-plan time and longest span use full executions, which can extend beyond these dates.",
       "allTimeScope": "All time uses dates represented in the current task and JOBO history. Recurring occurrences with no saved completion, exception or Do are not reconstructed as historical facts."
     }
   },

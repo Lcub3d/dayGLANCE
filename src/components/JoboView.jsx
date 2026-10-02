@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, ClipboardCheck, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, FoldVertical, PanelRightClose, PanelRightOpen, Plus, UnfoldVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -16,16 +16,12 @@ import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import CheckPanel from './jobo/CheckPanel.jsx';
-import StatisticsPanel from './jobo/StatisticsPanel.jsx';
 import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
 import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
 import { createCarryForwardActions } from '../jobo/carryForwardActions.js';
-import { buildCheckSummary } from '../jobo/checkSummary.js';
-import { statisticsEvidenceDates } from '../jobo/checkStatistics.js';
-import { weekViewDatesFor } from '../utils/weekViewDates.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
 //
@@ -78,7 +74,6 @@ export default function JoboView() {
   const baseHourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
   const [checkOpen, setCheckOpen] = useState(false);
-  const [statisticsOpen, setStatisticsOpen] = useState(false);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -169,34 +164,6 @@ export default function JoboView() {
     records: joboRecords || [], scale: hourHeight, isVisibleForUser,
     now: { date: nowDate, time: nowTime },
   }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, isVisibleForUser, nowDate, nowTime]);
-  const statisticsWeekDates = useMemo(() => weekViewDatesFor({
-    viewMode: 'week', selectedDate, weekViewMode: ctx.weekViewMode,
-    weekStartDay: ctx.weekStartDay, today: new Date(`${nowDate}T12:00:00`),
-  }), [selectedDate, ctx.weekViewMode, ctx.weekStartDay, nowDate]);
-  const statisticsEvidence = useMemo(() => statisticsEvidenceDates({
-    records: joboRecords || [],
-    tasks: [...(ctx.tasks || []), ...(ctx.unscheduledTasks || [])],
-    recurringTasks: ctx.recurringTasks || [],
-    anchorDate: date, throughDate: nowDate,
-  }), [joboRecords, ctx.tasks, ctx.unscheduledTasks, ctx.recurringTasks, date, nowDate]);
-  const buildStatisticsReport = useCallback((reportDate) => {
-    if (!joboLoaded || !Array.isArray(joboRecords)) return null;
-    const selected = new Date(`${reportDate}T12:00:00`);
-    const reportTasks = getTasksForDate(selected, false).filter((task) => !task.isAllDay && task.startTime);
-    const reportLookup = [
-      ...(ctx.tasks || []), ...(ctx.unscheduledTasks || []),
-      ...(ctx.expandedRecurringTasks || []), ...reportTasks,
-    ];
-    const reportModel = buildJoboDayModel({
-      date: reportDate, tasks: reportTasks, taskLookup: reportLookup,
-      recurringTasks: ctx.recurringTasks, records: joboRecords, isVisibleForUser,
-      now: { date: nowDate, time: nowTime },
-    });
-    return buildCheckSummary(reportModel, { date: reportDate, inboxTasks: ctx.unscheduledTasks || [] });
-  }, [
-    joboLoaded, joboRecords, getTasksForDate, ctx.tasks, ctx.unscheduledTasks,
-    ctx.expandedRecurringTasks, ctx.recurringTasks, isVisibleForUser, nowDate, nowTime,
-  ]);
   const doItems = useMemo(
     () => assignOverlapColumns(
       [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
@@ -491,14 +458,9 @@ export default function JoboView() {
             <span>{t('jobo.view.do')}</span>
             <div className="flex items-center gap-1.5">
             <button type="button" data-jobo-check-toggle aria-haspopup="dialog" aria-expanded={checkOpen}
-              onClick={() => { setStatisticsOpen(false); setCheckOpen(true); }}
+              onClick={() => setCheckOpen(true)}
               className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
               <ClipboardCheck size={14} /><span className="text-xs font-medium">{t('jobo.check.button')}</span>
-            </button>
-            <button type="button" data-jobo-statistics-toggle aria-haspopup="dialog" aria-expanded={statisticsOpen}
-              onClick={() => { setCheckOpen(false); setStatisticsOpen(true); }}
-              className="h-7 px-2.5 flex items-center justify-center gap-1 whitespace-nowrap border border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
-              <BarChart3 size={14} /><span className="text-xs font-medium">{t('jobo.statistics.button')}</span>
             </button>
             <button
               type="button"
@@ -590,12 +552,6 @@ export default function JoboView() {
           onOpenNotes={canOpenCheckNotes ? openCheckNotes : undefined} formatTime={ctx.formatTime}
           today={nowDate} carry={carry} onUndo={ctx.performUndo}
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
-          textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
-      )}
-      {statisticsOpen && (
-        <StatisticsPanel anchorDate={date} weekDates={statisticsWeekDates} evidenceDates={statisticsEvidence}
-          buildReport={buildStatisticsReport} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
-          onClose={() => setStatisticsOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}
       {editor && (

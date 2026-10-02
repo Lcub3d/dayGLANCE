@@ -1,10 +1,13 @@
-import { CHECK_PRIORITIES } from './checkSummary.js';
+import { buildCheckSummary, CHECK_PRIORITIES } from './checkSummary.js';
+import { buildJoboDayModel, buildJoboTaskResolver, projectJoboRecords, timedSliceOnDate } from './viewModel.js';
+import { completionMarker } from './completionMarker.js';
+import { validCivilDate } from './viewDates.js';
+import { expandRecurringTasks, recurringTaskInstance } from '../utils/expandRecurringTasks.js';
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const dateKey = (value) => {
   if (typeof value !== 'string') return null;
   const key = value.slice(0, 10);
-  return ISO_DATE.test(key) ? key : null;
+  return validCivilDate(key) ? key : null;
 };
 const toDateKey = (value) => {
   if (!(value instanceof Date)) return dateKey(value);
@@ -22,7 +25,7 @@ export const STATISTICS_SCOPES = ['day', 'week', 'month', 'allTime'];
  * an untouched recurring occurrence is not historical evidence in the ledger.
  */
 export function statisticsEvidenceDates({
-  records = [], tasks = [], recurringTasks = [], anchorDate, throughDate,
+  records = [], tasks = [], recurringTasks = [], anchorDate, throughDate, isVisibleForUser,
 } = {}) {
   const through = dateKey(throughDate);
   const dates = new Set();
@@ -30,25 +33,91 @@ export function statisticsEvidenceDates({
     const key = dateKey(value);
     if (key && (!through || key <= through)) dates.add(key);
   };
-  for (const record of Array.isArray(records) ? records : []) {
-    add(record?.date);
-    add(record?.endDate);
-    add(record?.planSnapshot?.date);
-    add(record?.observedAt);
-    add(record?.createdAt);
+  const visible = (task) => typeof isVisibleForUser !== 'function' || isVisibleForUser(task);
+  const { liveRecords } = projectJoboRecords(records);
+  const resolveTask = buildJoboTaskResolver({ records: liveRecords, taskLookup: tasks, recurringTasks });
+  for (const record of liveRecords) {
+    const task = resolveTask(record);
+    if (task && !visible(task)) continue;
+    add(record.date);
+    add(record.planSnapshot?.date);
+    // UTC completion stamps are displayed in the viewer's local civil day.
+    // Use the same marker as the day model rather than the UTC date prefix.
+    add(completionMarker(record)?.date);
+    if (record.timing === 'timed') {
+      // A positive slice, not just its endpoints, proves activity on a date.
+      // Civil UTC iteration is timezone/DST independent; an end at midnight
+      // contributes no slice to the following day.
+      const limit = through && through < record.endDate ? through : record.endDate;
+      for (let day = record.date; day <= limit; day = nextDate(day)) {
+        if (timedSliceOnDate(record, day)) add(day);
+        if (day === limit) break;
+      }
+    }
   }
   for (const task of Array.isArray(tasks) ? tasks : []) {
-    add(task?.date);
+    if (!task || !visible(task)) continue;
+    add(task.date);
     add(task?.originalPlan?.date);
     add(task?.completedAt);
   }
   for (const template of Array.isArray(recurringTasks) ? recurringTasks : []) {
-    for (const completed of template?.completedDates || []) add(completed);
-    for (const exception of Object.keys(template?.exceptions || {})) add(exception);
+    if (!template || template.id == null) continue;
+    const saved = new Set([...(template.completedDates || []), ...Object.keys(template.exceptions || {})]);
+    for (const day of saved) {
+      if (dateKey(day) && visible(recurringTaskInstance(template, day))) add(day);
+    }
   }
   add(anchorDate);
   if (!dates.size) add(throughDate || anchorDate);
   return [...dates].sort();
+}
+
+const nextDate = (date) => new Date(Date.parse(`${date}T00:00:00.000Z`) + 86400000).toISOString().slice(0, 10);
+
+// Statistics alone materializes saved historical occurrences. These read-only
+// task objects never enter App's live expansion or a task/ledger write path.
+export function buildStatisticsDayReport({
+  date, tasks = [], inboxTasks = [], recurringTasks = [], records = [], now, isVisibleForUser,
+} = {}) {
+  const today = dateKey(now?.date) || date;
+  const taskLookup = [...tasks, ...inboxTasks];
+  const { liveRecords } = projectJoboRecords(records);
+  const resolveTask = buildJoboTaskResolver({ records: liveRecords, taskLookup, recurringTasks });
+  const recordedOccurrences = new Set(liveRecords.map(record => resolveTask(record))
+    .filter(task => task?.recurringTemplateId != null && task.date === date)
+    .map(task => String(task.recurringTemplateId)));
+  const occurrences = date < today
+    ? recurringTasks.filter(template => template && template.id != null
+      && !template.exceptions?.[date]?.deleted && !template.exceptions?.[date]?.skipped
+      && ((template.completedDates || []).includes(date)
+        || Object.hasOwn(template.exceptions || {}, date)
+        || recordedOccurrences.has(String(template.id))))
+      .map(template => recurringTaskInstance(template, date))
+    : expandRecurringTasks(recurringTasks, { rangeStart: date, rangeEnd: date, today });
+  const dayTasks = [...tasks.filter(task => task?.date === date), ...occurrences]
+    .filter(task => !task.isAllDay && task.startTime);
+  const model = buildJoboDayModel({
+    date, tasks: dayTasks, taskLookup: [...taskLookup, ...occurrences], recurringTasks,
+    // Keep the raw ledger: projecting evidence must not erase invalid rows
+    // and accidentally turn an unavailable metric into a clean zero.
+    records, now, isVisibleForUser,
+  });
+  return statisticsReportFromModel(model, { date, inboxTasks, isVisibleForUser });
+}
+
+export function statisticsReportFromModel(model, { date, inboxTasks = [], isVisibleForUser } = {}) {
+  const summary = buildCheckSummary(model, {
+    date, inboxTasks: inboxTasks.filter(task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task)),
+  });
+  if (!summary) return null;
+  return {
+    ...summary,
+    // Only validated winning records from the real day model get identities.
+    // A missing id remains invalid evidence; there is no synthetic fallback.
+    inferredRecordIds: model.timedRecords.filter(item => item.record.timingBasis === 'planDuration')
+      .map(item => item.id),
+  };
 }
 
 const monthDates = (anchor) => {
@@ -150,7 +219,8 @@ export function aggregateCheckSummaries(input = []) {
       },
       recordedMinutes: exactSum(reports.map((report) => report.stats?.recordedMinutes)),
       untimedCount: sum(reports.map((report) => report.stats?.untimedCount)),
-      inferredCount: sum(reports.map((report) => report.stats?.inferredCount)),
+      inferredCount: reports.every(report => Array.isArray(report.inferredRecordIds))
+        ? new Set(reports.flatMap(report => report.inferredRecordIds)).size : null,
       invalidCount: sum(reports.map((report) => report.stats?.invalidCount)),
       comparison,
     },

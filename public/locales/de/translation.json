@@ -2277,6 +2277,8 @@
       "invalid": "Einige JOBO-Einträge in diesem Zeitraum sind ungültig. Kennzahlen mit vollständiger Evidenz sind nicht verfügbar.",
       "unavailable": "JOBO-Statistik konnte nicht geladen werden.",
       "empty": "Für diesen Zeitraum sind keine Statistiken verfügbar.",
+      "taskScope": "Aufgabenzahlen und Prioritäten beruhen auf dem aktuellen Aufgabenstand, nicht auf einem historischen Abbild.",
+      "timingScope": "Die erfasste Zeit umfasst die ausgewählten Tage. Planvergleiche, Zeit innerhalb und außerhalb des Plans sowie die längste Spanne berücksichtigen vollständige Ausführungen, auch über diese Tage hinaus.",
       "allTimeScope": "Gesamt verwendet nur Daten mit gespeichertem Nachweis in der aktuellen Aufgaben- und JOBO-Historie. Wiederholungen ohne Abschluss, Ausnahme oder Do werden nicht rückwirkend rekonstruiert."
     }
   },

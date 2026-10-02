@@ -2279,6 +2279,8 @@
       "invalid": "Alcuni record JOBO in questo intervallo non sono validi. Le metriche che richiedono evidenze complete non sono disponibili.",
       "unavailable": "Impossibile caricare le statistiche JOBO.",
       "empty": "Nessuna statistica disponibile per questo intervallo.",
+      "taskScope": "I conteggi e le priorità delle attività si basano sul loro stato attuale, non su uno storico.",
+      "timingScope": "Il tempo registrato copre le date selezionate. I confronti con il piano, il tempo dentro e fuori dal piano e la durata massima considerano le esecuzioni complete, che possono estendersi oltre queste date.",
       "allTimeScope": "Tutto usa solo date con evidenze salvate nella cronologia corrente delle attività e di JOBO. Le ricorrenze storiche senza completamento, eccezione o Do non vengono ricostruite."
     }
   },

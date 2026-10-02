@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createDoRecord } from './core.js';
 import { aggregateCheckSummaries, statisticsDatesForScope, statisticsEvidenceDates } from './checkStatistics.js';
 
 const priority = (total = 0, completed = 0, recordedMinutes = null) => ({
@@ -52,9 +53,13 @@ describe('statistics date scopes', () => {
   it('collects durable all-time evidence and excludes future dates', () => {
     expect(statisticsEvidenceDates({
       anchorDate: '2026-09-16', throughDate: '2026-10-02',
-      records: [{ date: '2026-09-01', endDate: '2026-09-02', planSnapshot: { date: '2026-08-31' } }],
+      records: [createDoRecord({ id: 'r1', taskId: null, title: 'Work', source: 'manual', progress: 'partial',
+        timing: 'timed', date: '2026-09-01', startTime: '23:00', endDate: '2026-09-02', endTime: '01:00',
+        planSnapshot: { date: '2026-08-31', startTime: '23:00', duration: 120 },
+        createdAt: '2026-09-02T02:00:00Z', updatedAt: '2026-09-02T02:00:00Z', observedAt: '2026-09-02T02:00:00Z',
+      })],
       tasks: [{ date: '2026-09-20', originalPlan: { date: '2026-09-18' }, completedAt: '2026-09-20T10:00:00Z' }],
-      recurringTasks: [{ completedDates: ['2026-09-03', '2026-10-03'], exceptions: { '2026-09-04': {}, '2026-10-04': {} } }],
+      recurringTasks: [{ id: 'recurring', completedDates: ['2026-09-03', '2026-10-03'], exceptions: { '2026-09-04': {}, '2026-10-04': {} } }],
     })).toEqual(['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-16', '2026-09-18', '2026-09-20']);
   });
 

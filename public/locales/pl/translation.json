@@ -2366,6 +2366,8 @@
       "invalid": "Niektóre wpisy JOBO w tym zakresie są nieprawidłowe. Metryki wymagające pełnych danych są niedostępne.",
       "unavailable": "Nie udało się wczytać statystyk JOBO.",
       "empty": "Brak statystyk dla tego zakresu.",
+      "taskScope": "Liczby zadań i priorytety odzwierciedlają bieżący stan zadań, a nie stan historyczny.",
+      "timingScope": "Zarejestrowany czas obejmuje wybrane daty. Porównania z planem, czas w planie i poza nim oraz najdłuższy zakres uwzględniają całe wykonania, które mogą wykraczać poza te daty.",
       "allTimeScope": "Całość używa tylko dat z zapisanymi danymi w bieżącej historii zadań i JOBO. Historyczne wystąpienia cykliczne bez ukończenia, wyjątku ani Do nie są odtwarzane."
     }
   },

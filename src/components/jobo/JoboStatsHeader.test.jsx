@@ -42,7 +42,7 @@ async function render({ lng = 'en', header = false, planner = {}, features = {},
 }
 
 describe('read-only JOBO date-header tiles', () => {
-  it.each(['en', 'zh-CN', 'de', 'pl', 'uk'])('renders all five tiles with the real %s bundle', async lng => {
+  it.each(['en', 'zh-CN', 'de', 'es', 'fr', 'it', 'pl', 'pt-BR', 'pt-PT', 'uk'])('renders all five tiles with the real %s bundle', async lng => {
     const { html, resource } = await render({ lng, props: { className: 'flex-1' } });
     expect(html.match(/data-jobo-stat=/g)).toHaveLength(5);
     expect(html).toContain(resource.jobo.stats.native);
@@ -54,7 +54,9 @@ describe('read-only JOBO date-header tiles', () => {
     expect(html).toContain('overflow-x-auto');
     expect(html).toContain('flex-1');
     expect(html).not.toContain('flex-wrap');
-    expect(html).not.toContain('<button');
+    expect(html.match(/data-jobo-statistics-toggle=/g)).toHaveLength(1);
+    expect(html).toContain(`aria-label="${resource.jobo.statistics.button}"`);
+    expect(html).toContain('aria-haspopup="dialog" aria-expanded="false"');
     expect(html).not.toMatch(/<p(?:\s|>)/);
     expect(text(html)).not.toContain(resource.jobo.stats.scope.split(' · ')[0]);
   });
@@ -76,6 +78,9 @@ describe('read-only JOBO date-header tiles', () => {
     expect(html).toContain('data-day-header-actions');
     const view = readFileSync(new URL('../JoboView.jsx', import.meta.url), 'utf8');
     expect(view).not.toContain('JoboStatsHeader');
+    expect(view).not.toContain('StatisticsPanel');
+    expect(view).not.toContain('data-jobo-statistics-toggle');
+    expect(html.indexOf('data-jobo-stats=')).toBeLessThan(html.indexOf('data-jobo-statistics-toggle'));
   });
 
   it.each([

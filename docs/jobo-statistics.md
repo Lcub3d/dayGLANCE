@@ -64,7 +64,4 @@ a date outside the index. A new batch is built when committed inputs change.
 
 The existing `buildJoboDayModel` API is retained as a one-day wrapper with the
 same rules. This pure preparation extraction is the only shared-model change;
-core, detector, ledger, storage, sync and write paths are unchanged. The shared
-read-model API and the range-counting choices above should be discussed on
-upstream #1726 before opening an upstream PR, as requested in the #1882 review.
-This document prepares that discussion; it is not upstream acceptance.
+core, detector, ledger, storage, sync and write paths are unchanged.

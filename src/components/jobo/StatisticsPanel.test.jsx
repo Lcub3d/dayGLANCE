@@ -36,9 +36,13 @@ describe('Statistics panel with real reports', () => {
     expect(html.match(/tabindex="-1"/g)).toHaveLength(3);
     expect(html).toContain('role="tabpanel" aria-labelledby=');
     expect(html).toContain(t('jobo.statistics.taskScope'));
+    expect(html).toContain(t('jobo.statistics.noDo'));
+    expect(html).not.toContain(t('jobo.check.notStarted'));
     expect(html).toContain(t('jobo.statistics.timingScope'));
     expect(html).not.toMatch(/jobo\.(statistics|stats)\.|\{\{|NaN|undefined|Infinity/);
     const copy = bundle(lng).jobo.statistics;
+    expect(copy.noDo).toBe(bundle(lng).jobo.view.summary.notStarted);
+    expect(copy).not.toHaveProperty('notStarted');
     expect(Object.keys(copy).sort()).toEqual(Object.keys(bundle('en').jobo.statistics).sort());
     for (const [key, value] of Object.entries(copy)) {
       expect(value).not.toContain('—');
@@ -62,5 +66,14 @@ describe('Statistics panel with real reports', () => {
     const { html, t } = await render('en', { buildReports: days => days.map(day => buildStatisticsDayReport({ date: day, records: [record, {}] })) });
     expect(html).toContain(t('jobo.statistics.invalid'));
     expect(html).toMatch(/Recorded time<\/dt><dd[^>]*>—<\/dd>/);
+  });
+
+  it('calls a completed elapsed plan without Do missing evidence, not an unstarted task', async () => {
+    const { html } = await render('en', { buildReports: days => days.map(day => buildStatisticsDayReport({
+      date: day, records: [], now: { date, time: '12:00' },
+      tasks: [{ id: 'completed-without-do', title: 'Finished', date, startTime: '09:00', duration: 60, completed: true }],
+    })) });
+    expect(html).toMatch(/No Do recorded<\/dt><dd[^>]*>1<\/dd>/);
+    expect(html).not.toContain('Not started');
   });
 });

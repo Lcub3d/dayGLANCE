@@ -34,13 +34,18 @@ group therefore contributes once to a Week/Month/All time comparison rather
 than once for each date it touched. Inside/outside-plan time and longest span
 also use those full executions, as the panel's scope text explains.
 
-Task completion, priorities and Not started use current native task state,
+Task completion and priorities use current native task state,
 not an immutable historical task inventory. Ordinary calendar events, archived
-tasks and synthetic identity-only occurrences are excluded from all three task
-populations; imported task calendars remain included. Their independent Do
+tasks and synthetic identity-only occurrences are excluded from these native
+task populations; imported task calendars remain included. Their independent Do
 history is not removed. Completed Inbox/project work stays separate from the
 timed-plan denominator. Moving or deleting a task can change its historical
 native count without changing the captured execution history.
+
+"No Do recorded" counts current timed plans whose planned end has passed and
+which have no Do associated with that plan. Task completion and work recorded
+for a different plan do not change this evidence metric. It differs from the
+Check's list of tasks needing a next step, which also covers all-day tasks.
 
 Attempt/progress/context/single/split/gap diagnostics are not summed across
 days: the same attempt or group can appear on several dates. They remain Day

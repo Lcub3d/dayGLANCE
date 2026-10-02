@@ -2250,7 +2250,7 @@
       "planChanges": "Cambios del plan",
       "priority": "Prioridad",
       "timing": "Detalle temporal",
-      "notStarted": "No iniciado",
+      "noDo": "Sin ejecución registrada",
       "compared": "Comparado",
       "withinPlan": "Dentro del plan",
       "doRecords": "Registros Do",
@@ -2277,7 +2277,7 @@
       "invalid": "Hay registros JOBO no válidos en este periodo. Las métricas que requieren evidencia completa no están disponibles.",
       "unavailable": "No se pudieron cargar las estadísticas JOBO.",
       "empty": "No hay estadísticas disponibles para este periodo.",
-      "taskScope": "Los recuentos y las prioridades usan el estado actual de las tareas, no una instantánea histórica.",
+      "taskScope": "Los recuentos y las prioridades usan el estado actual de las tareas, no una instantánea histórica. «Sin ejecución registrada» cuenta los planes actuales con horario cuyo fin previsto ya pasó y que no tienen un Do asociado, independientemente de la finalización de la tarea o del trabajo registrado para otro plan.",
       "timingScope": "El tiempo registrado abarca las fechas seleccionadas. Las comparaciones con el plan, el tiempo dentro y fuera del plan y el intervalo más largo usan ejecuciones completas, que pueden extenderse fuera de esas fechas.",
       "allTimeScope": "Todo usa solo fechas con evidencia guardada en el historial actual de tareas y JOBO. Las repeticiones históricas sin finalización, excepción ni Do no se reconstruyen."
     }

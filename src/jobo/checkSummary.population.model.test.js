@@ -88,6 +88,13 @@ describe('Check native and not-started populations use the same real day model',
     expect(summary.stats.recordedMinutes).toBe(60);
   });
 
+  it('keeps missing plan evidence separate from native task completion', () => {
+    const { summary } = summarize({ tasks: [task({ completed: true })] });
+    expect(summary.stats.native).toEqual({ completed: 1, total: 1, plannedMinutes: 60 });
+    expect(summary.noDo).toBe(1);
+    expect(summary.doCount).toBe(0);
+  });
+
   it('keeps not-started unavailable when the ledger has invalid evidence', () => {
     const { summary } = summarize({ tasks: [task()], records: [{ ...record(), startTime: 'invalid' }] });
     expect(summary.stats.native.total).toBe(1);

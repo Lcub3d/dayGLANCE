@@ -37,7 +37,7 @@ function Summary({ summary, textSecondary, borderClass }) {
       <dl className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <Metric label={t('jobo.stats.native')} value={pair(summary.stats.native.completed, summary.stats.native.total)} />
         <Metric label={t('jobo.stats.recorded')} value={mins(summary.stats.recordedMinutes)} />
-        <Metric label={t('jobo.statistics.notStarted')} value={n(summary.noDo)} />
+        <Metric label={t('jobo.statistics.noDo')} value={n(summary.noDo)} />
         <Metric label={t('jobo.statistics.compared')} value={pair(comparison.comparableCount, comparison.groupCount)} />
       </dl>
       <p className={`text-xs ${textSecondary}`}>{t('jobo.stats.timeDetails', {

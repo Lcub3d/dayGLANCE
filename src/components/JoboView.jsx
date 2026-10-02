@@ -77,7 +77,8 @@ export default function JoboView() {
   const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
   const baseHourHeight = useDayViewHourHeight(ctx.calendarRef, ctx.stickyHeaderRef);
 
-  const [checkOpen, setCheckOpen] = useState(false);\n  const [statisticsOpen, setStatisticsOpen] = useState(false);
+  const [checkOpen, setCheckOpen] = useState(false);
+  const [statisticsOpen, setStatisticsOpen] = useState(false);
   const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);

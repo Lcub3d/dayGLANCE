@@ -102,6 +102,15 @@ const CANNOT_MODIFY_NATIVE =
   ' Cannot target device calendar events (type "device_calendar_event"): dayGLANCE has read-only ' +
   'access to the device calendar, and such calls return a device_calendar_readonly error.';
 
+// Why an id can change under a client, and that the old one keeps working:
+// the Obsidian placement pass re-keys a project task whose project has a
+// linked note, seconds after create_task returned. The renderer resolves the
+// old id through the id-retirement record (src/utils/mcpWriteModel.js).
+const ID_MAY_CHANGE =
+  ' If the Obsidian integration claims the task (a project task whose project has a linked note), its id ' +
+  'changes to obsidian-dg-... shortly after creation. The returned id keeps working on every tool that ' +
+  'takes a task id; responses then carry the current id and resolved_from naming the one you passed.';
+
 // Stated in the description for the same reason as CANNOT_MODIFY_NATIVE: the
 // model should know the rule before it spends a call discovering it. The
 // "will not shift it for you" half matters most: the app's own drag-and-drop
@@ -218,15 +227,15 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     title: z.string().describe('Task title. Required, non-empty.'),
     notes: z.string().optional(),
     project_id: z.string().optional().describe(
-      'Attach to a project (see dayglance_get_goal_progress). Project tasks do not carry priority or deadline by design.'),
+      'Attach to a project (see dayglance_get_goal_progress). An unscheduled project task may carry priority and deadline like any inbox task.'),
     ...(multiUser ? {
       assignee_id: z.string().optional().describe(
         'Assign to one household member by their user id. Ids come from dayglance_list_users. Never guess from a name.'),
     } : {}),
     priority: z.number().int().optional().describe(
-      'Inbox tasks only: 0 none (default), 1 low, 2 medium, 3 high. Scheduled and project tasks do not carry priority by design.'),
+      'Unscheduled tasks only (inbox or project): 0 none (default), 1 low, 2 medium, 3 high. Scheduled tasks do not carry priority by design.'),
     deadline: z.string().optional().describe(
-      'Inbox tasks only: local calendar date, strict YYYY-MM-DD. Scheduled and project tasks do not carry a deadline by design.'),
+      'Unscheduled tasks only (inbox or project): local calendar date, strict YYYY-MM-DD. Scheduled tasks do not carry a deadline by design.'),
     start: z.string().optional().describe(
       'Presence makes this a SCHEDULED create, placed directly on the calendar in one call. ' +
       'Timed: local "YYYY-MM-DD HH:MM" (DST gap/repeat times rejected). With all_day: a bare "YYYY-MM-DD".'),
@@ -243,9 +252,10 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     'dayglance_create_task',
     {
       description:
-        'Create a new dayGLANCE task. Without start: an unscheduled inbox task (may carry priority and ' +
-        'deadline). With start: a scheduled task placed directly onto the calendar in one call, with no separate ' +
-        'scheduling step. Returns the created task or block.' + ROUTINE_TIME_IS_OCCUPIED,
+        'Create a new dayGLANCE task. Without start: an unscheduled task, in the inbox or in a project via ' +
+        'project_id (either may carry priority and deadline). With start: a scheduled task placed directly onto ' +
+        'the calendar in one call, with no separate scheduling step. Returns the created task or block.' +
+        ID_MAY_CHANGE + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: createTaskSchema,
     },
     async (args: Record<string, unknown>) => {
@@ -272,9 +282,9 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     title: z.string().optional().describe('New title. Required on every task, so it can be set but never cleared.'),
     notes: z.string().optional().describe('New notes text. To remove notes entirely, name "notes" in clear_fields instead.'),
     priority: z.number().int().optional().describe(
-      'Inbox tasks without a project only: 0 none, 1 low, 2 medium, 3 high. Scheduled and project tasks do not carry priority by design.'),
+      'Unscheduled tasks only (inbox or project): 0 none, 1 low, 2 medium, 3 high. Scheduled tasks do not carry priority by design.'),
     deadline: z.string().optional().describe(
-      'Inbox tasks without a project only: local calendar date, strict YYYY-MM-DD. Scheduled and project tasks do not carry a deadline by design.'),
+      'Unscheduled tasks only (inbox or project): local calendar date, strict YYYY-MM-DD. Scheduled tasks do not carry a deadline by design.'),
     ...(multiUser ? {
       assignee_id: z.string().optional().describe(
         'Reassign to one household member by their user id. Ids come from dayglance_list_users. Never guess from a name.'),
@@ -290,7 +300,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
     'dayglance_update_task',
     {
       description:
-        'Edit fields of an existing dayGLANCE task, inbox or scheduled. An absent argument leaves that field ' +
+        'Edit fields of an existing dayGLANCE task: inbox, project, or scheduled. An absent argument leaves that field ' +
         'alone. A present argument sets it. A field named in clear_fields is removed. Fields are never cleared ' +
         'by passing null or empty values; clearing is only ever the explicit clear_fields list. ' +
         'project_id is not editable, and date, time, duration, and completion have their own tools ' +

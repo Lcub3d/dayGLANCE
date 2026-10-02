@@ -322,9 +322,11 @@ export function applyScheduleTask(state, { taskId, date, startTime, durationMinu
  * would be state the caller never requested. create_task set this precedent.
  *
  * FIELD RULES, all typed and by-design in wording (§5.2):
- *  - priority/deadline (set OR clear) rejected on scheduled tasks and on
- *    project tasks: the UI disables both controls there, so writing them
- *    would create state the UI cannot display, edit, or clear.
+ *  - priority/deadline (set OR clear) rejected on scheduled tasks: the UI
+ *    disables both controls there, and scheduling strips them. Unscheduled
+ *    PROJECT tasks are inbox tasks and take both, as in the UI (the Inbox's
+ *    priority and deadline controls, and the deadline button on project
+ *    card rows and the PLANNER's unscheduled cards).
  *  - _native (module header), recurring instances (synthetic per-instance
  *    ids, dedicated error), and CalDAV task-calendar tasks (a local-only
  *    edit desyncs the user's CalDAV server; the set_task_completion
@@ -372,13 +374,6 @@ export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitio
       WRITE_ERROR_CODES.VALIDATION,
       'Scheduled dayGLANCE tasks do not carry priority or deadline by design: those fields belong to inbox ' +
       'tasks only. Edit the other fields, or work with the task before scheduling it.',
-    );
-  }
-  if (touchesPressure && task.projectId) {
-    return err(
-      WRITE_ERROR_CODES.VALIDATION,
-      'dayGLANCE project tasks do not carry priority or deadline by design: the app manages project work ' +
-      'through the project itself, and the UI disables both controls for them.',
     );
   }
 

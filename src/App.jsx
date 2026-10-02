@@ -107,6 +107,7 @@ import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
 import useVisibleDays from './hooks/useVisibleDays.js';
 import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
+import useMobileTabBack from './hooks/useMobileTabBack.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
@@ -2073,27 +2074,7 @@ const DayPlanner = () => {
   }, [routinesEnabled, mobileActiveTab, handleRoutinesDone, setMobileActiveTab]);
 
   // Android back button: navigate to dayglance tab from other screens
-  useEffect(() => {
-    if (!isMobile) return;
-    if (mobileActiveTab === 'dayglance') return;
-    // Don't interfere with settings sub-view back navigation
-    if (mobileActiveTab === 'settings' && mobileSettingsView !== 'main') return;
-
-    // Only push if there isn't already an app-tab history entry
-    if (!window.history.state?.appTab) {
-      window.history.pushState({ appTab: mobileActiveTab }, '');
-    }
-
-    const onPopState = (e) => {
-      // An entry that still carries appTab belongs to something opened inside
-      // the tab (the month view's day sheet pushes one on top of ours); popping
-      // it closes that thing and the tab stays. Only the tab's own entry
-      // going away returns to GLANCE.
-      setMobileActiveTab(e.state?.appTab || 'dayglance');
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, [mobileActiveTab, mobileSettingsView, isMobile]);
+  useMobileTabBack({ isMobile, mobileActiveTab, mobileSettingsView, setMobileActiveTab });
 
 
   // Track for onboarding when sync is set up

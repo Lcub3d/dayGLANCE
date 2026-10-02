@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
-import { formatDuration } from '../../utils/taskUtils.js';
+import { formatDuration } from '../../utils/formatDuration.js';
 import { aggregateCheckSummaries, STATISTICS_SCOPES, statisticsDatesForScope } from '../../jobo/checkStatistics.js';
 
 const parseDate = (value) => {

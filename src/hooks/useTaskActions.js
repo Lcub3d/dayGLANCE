@@ -7,6 +7,7 @@ import { TASK_COLORS } from '../utils/colorUtils.js';
 import { triggerHaptic } from '../native.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { describeObstacle } from '../utils/dayOccupancy.js';
+import { createPendingProject } from '../utils/pendingProject.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -85,6 +86,9 @@ export default function useTaskActions({
   // ID from the start, letting the next periodic sync de-duplicate instead of cloning.
   getObsidianTaskMeta,
   onWriteObsidianTask,
+  // A project named in the task modal is created as the task is saved.
+  addProject,
+  goals,
 }) {
   const colors = TASK_COLORS;
 
@@ -133,7 +137,15 @@ export default function useTaskActions({
 
   // ── Task creation ────────────────────────────────────────────────────────
 
+  // A project named in the modal ("New project…") is created as the task is
+  // saved, and the rest reads newTask with its real id (utils/pendingProject.js).
   const addTask = (toInbox = false) => {
+    if (!newTask.title.trim()) return;
+    const ready = createPendingProject(newTask, { addProject, goals });
+    addTaskFrom(ready.newTask, toInbox, ready.project);
+  };
+
+  const addTaskFrom = (newTask, toInbox, createdProject) => {
     if (newTask.title.trim()) {
       pushUndo();
 
@@ -153,7 +165,7 @@ export default function useTaskActions({
       const rawObsidianTitle = hasObsidianTag ? stripTag(savedTitle, 'obsidian') : null;
       // Skip if stripping the tag leaves an empty title (e.g. task titled only "#obsidian")
       const obsidianMeta = (hasObsidianTag && rawObsidianTitle && !isRecurring && !isSwipeSchedule && getObsidianTaskMeta)
-        ? getObsidianTaskMeta(rawObsidianTitle, newTask.projectId)
+        ? getObsidianTaskMeta(rawObsidianTitle, newTask.projectId, createdProject)
         : null;
 
       const taskId = obsidianMeta?.id ?? crypto.randomUUID();

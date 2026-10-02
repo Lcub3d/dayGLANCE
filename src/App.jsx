@@ -107,6 +107,7 @@ import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
 import useVisibleDays from './hooks/useVisibleDays.js';
 import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
+import { createPendingProject } from './utils/pendingProject.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
@@ -3949,7 +3950,13 @@ const DayPlanner = () => {
     setNativeCalendarKey(k => k + 1);
   };
 
+  // A project named in the modal ("New project…") is created as the task is
+  // saved, and the rest reads newTask with its real id (utils/pendingProject.js).
   const saveMobileEditTask = () => {
+    if (!mobileEditingTask || !newTask.title.trim()) return;
+    saveMobileEditTaskFrom(createPendingProject(newTask, { addProject, goals }).newTask);
+  };
+  const saveMobileEditTaskFrom = (newTask) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
     pushUndo();
     const taskId = mobileEditingTask.id;
@@ -7208,8 +7215,11 @@ const DayPlanner = () => {
       // A task created under a project carries `[project:: …]` on its line
       // from the first write (companion §4.3, ruling G as amended); the
       // identity derives from the line as written.
-      ? (rawTitle, projectId) => {
-          const project = projectId ? projects.find(pr => pr.id === projectId) : null;
+      ? (rawTitle, projectId, createdProject = null) => {
+          // A project created with the task is not in `projects` until the
+          // next render, so addTask hands it over.
+          const project = createdProject?.id === projectId ? createdProject
+            : projectId ? projects.find(pr => pr.id === projectId) : null;
           // A task born under a LINKED project is placed in the project
           // note by the writeback's placement step (companion §4.3, project
           // routing); the tagged daily-note line would only be moved a
@@ -7264,6 +7274,7 @@ const DayPlanner = () => {
           });
         }
       : null,
+    addProject, goals,
   });
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.

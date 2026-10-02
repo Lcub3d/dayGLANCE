@@ -7,12 +7,12 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { SOURCE_APPS } from '../native.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import QuickAddChips from './QuickAddChips.jsx';
+import TaskProjectField from './TaskProjectField.jsx';
 import RecurrencePicker from './RecurrencePicker.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import { extractWikilinks } from '../utils/taskUtils.js';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
-import { getProjectColor } from '../utils/colorUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 
 const DesktopNewTaskModal = () => {
@@ -43,7 +43,7 @@ const DesktopNewTaskModal = () => {
     unscheduledTasks,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title
@@ -226,55 +226,7 @@ const DesktopNewTaskModal = () => {
               {/* Project assignment (only when Goals & Projects is enabled;
                   never for Bucket List items — a PLANNER without a project) */}
               {goalsProjectsEnabled && !isBucketItem && (
-                <div>
-                  <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.project')}</label>
-                  <select
-                    value={newTask.projectId || ''}
-                    onChange={(e) => {
-                      const pid = e.target.value || null;
-                      const proj = pid ? projects.find(p => p.id === pid) : null;
-                      const parentGoal = proj?.goalId ? goals.find(g => g.id === proj.goalId) : null;
-                      // Copy-at-creation inheritance: adopting a project stamps its
-                      // effective color and assigned users onto the draft task
-                      // (deselecting clears the inherited users).
-                      setNewTask({
-                        ...newTask,
-                        projectId: pid,
-                        ...(proj ? { color: getProjectColor(proj, parentGoal) } : {}),
-                        assignedUserSyncIds: proj?.assignedUserSyncIds || [],
-                      });
-                    }}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                  >
-                    <option value="">{t('task.noProject')}</option>
-                    {(() => {
-                      const activeProjects = projects.filter(p => p.status !== 'archived' && p.status !== 'completed');
-                      const withGoal = activeProjects.filter(p => p.goalId);
-                      const standalone = activeProjects.filter(p => !p.goalId);
-                      const goalGroups = goals
-                        .filter(g => g.status !== 'archived' && withGoal.some(p => p.goalId === g.id))
-                        .map(g => ({ goal: g, projs: withGoal.filter(p => p.goalId === g.id) }));
-                      return (
-                        <>
-                          {goalGroups.map(({ goal, projs }) => (
-                            <optgroup key={goal.id} label={goal.title}>
-                              {projs.map(p => (
-                                <option key={p.id} value={p.id}>{p.title}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                          {standalone.length > 0 && (
-                            <optgroup label={t('goals.standalone')}>
-                              {standalone.map(p => (
-                                <option key={p.id} value={p.id}>{p.title}</option>
-                              ))}
-                            </optgroup>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </select>
-                </div>
+                <TaskProjectField newTask={newTask} setNewTask={setNewTask} />
               )}
               {multiUserEnabled && users.filter(u => !u.deleted).length > 0 && (
                 <div>

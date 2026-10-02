@@ -1,0 +1,188 @@
+import { CHECK_PRIORITIES } from './checkSummary.js';
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const dateKey = (value) => {
+  if (typeof value !== 'string') return null;
+  const key = value.slice(0, 10);
+  return ISO_DATE.test(key) ? key : null;
+};
+const toDateKey = (value) => {
+  if (!(value instanceof Date)) return dateKey(value);
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+};
+const localDate = (value) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+};
+
+export const STATISTICS_SCOPES = ['day', 'week', 'month', 'allTime'];
+
+/**
+ * Dates backed by persisted task/JOBO evidence. This is intentionally sparse:
+ * an untouched recurring occurrence is not historical evidence in the ledger.
+ */
+export function statisticsEvidenceDates({
+  records = [], tasks = [], recurringTasks = [], anchorDate, throughDate,
+} = {}) {
+  const through = dateKey(throughDate);
+  const dates = new Set();
+  const add = (value) => {
+    const key = dateKey(value);
+    if (key && (!through || key <= through)) dates.add(key);
+  };
+  for (const record of Array.isArray(records) ? records : []) {
+    add(record?.date);
+    add(record?.endDate);
+    add(record?.planSnapshot?.date);
+    add(record?.observedAt);
+    add(record?.createdAt);
+  }
+  for (const task of Array.isArray(tasks) ? tasks : []) {
+    add(task?.date);
+    add(task?.originalPlan?.date);
+    add(task?.completedAt);
+  }
+  for (const template of Array.isArray(recurringTasks) ? recurringTasks : []) {
+    for (const completed of template?.completedDates || []) add(completed);
+    for (const exception of Object.keys(template?.exceptions || {})) add(exception);
+  }
+  add(anchorDate);
+  if (!dates.size) add(throughDate || anchorDate);
+  return [...dates].sort();
+}
+
+const monthDates = (anchor) => {
+  const base = localDate(anchor);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const last = new Date(year, month + 1, 0, 12).getDate();
+  return Array.from({ length: last }, (_, index) =>
+    toDateKey(new Date(year, month, index + 1, 12)));
+};
+
+export function statisticsDatesForScope({
+  scope, anchorDate, weekDates = [], evidenceDates = [],
+} = {}) {
+  if (!STATISTICS_SCOPES.includes(scope)) throw new TypeError('Unknown statistics scope');
+  const anchor = dateKey(anchorDate);
+  if (!anchor) throw new TypeError('anchorDate must be YYYY-MM-DD');
+  if (scope === 'day') return [anchor];
+  if (scope === 'week') {
+    const dates = weekDates.map(toDateKey).filter(Boolean);
+    return dates.length ? [...new Set(dates)] : [anchor];
+  }
+  if (scope === 'month') return monthDates(anchor);
+  const dates = [...new Set(evidenceDates.map(toDateKey).filter(Boolean))].sort();
+  return dates.length ? dates : [anchor];
+}
+
+const sum = (values) => values.reduce((total, value) => total + (Number(value) || 0), 0);
+const nullableSum = (values) => {
+  const known = values.filter(Number.isFinite);
+  return known.length ? sum(known) : null;
+};
+const nullableMax = (values) => {
+  const known = values.filter(Number.isFinite);
+  return known.length ? Math.max(...known) : null;
+};
+const nullableMin = (values) => {
+  const known = values.filter(Number.isFinite);
+  return known.length ? Math.min(...known) : null;
+};
+const sumBuckets = (reports, pick, keys, clean) => Object.fromEntries(keys.map((key) => [
+  key, clean ? sum(reports.map((report) => pick(report)?.[key])) : null,
+]));
+const sumMap = (reports, pick) => {
+  const result = {};
+  for (const report of reports) {
+    for (const [key, value] of Object.entries(pick(report) || {})) {
+      result[key] = (result[key] || 0) + (Number(value) || 0);
+    }
+  }
+  return result;
+};
+
+/**
+ * Aggregate per-day checkSummary reports. Coverage/time and captured-plan
+ * comparisons partition by day and are additive. Attempt/session diagnostics
+ * do not: an interval or execution group may cross midnight. Those fields are
+ * kept for Day and intentionally become null for wider ranges.
+ */
+export function aggregateCheckSummaries(input = []) {
+  const reports = (Array.isArray(input) ? input : []).filter(Boolean);
+  if (!reports.length) return null;
+  if (reports.length === 1) return { ...reports[0], days: 1 };
+
+  const clean = reports.every((report) => report.clean === true);
+  const exactSum = (values) => clean ? nullableSum(values) : null;
+  const comparison = {
+    comparableCount: clean ? sum(reports.map((report) => report.stats?.comparison?.comparableCount)) : null,
+    groupCount: sum(reports.map((report) => report.stats?.comparison?.groupCount)),
+    excludedCount: clean ? sum(reports.map((report) => report.stats?.comparison?.excludedCount)) : null,
+    start: sumBuckets(reports, (report) => report.stats?.comparison?.start, ['early', 'onTime', 'late'], clean),
+    finish: sumBuckets(reports, (report) => report.stats?.comparison?.finish, ['early', 'onTime', 'late'], clean),
+    duration: sumBuckets(reports, (report) => report.stats?.comparison?.duration, ['shorter', 'onEstimate', 'longer'], clean),
+  };
+
+  const priorities = Object.fromEntries(CHECK_PRIORITIES.map((key) => {
+    const rows = reports.map((report) => report.priorities?.[key]).filter(Boolean);
+    return [key, {
+      total: sum(rows.map((row) => row.total)),
+      completed: sum(rows.map((row) => row.completed)),
+      recordedMinutes: clean ? nullableSum(rows.map((row) => row.recordedMinutes)) : null,
+      progress: null,
+      changed: clean ? sum(rows.map((row) => row.changed)) : null,
+      comparable: clean ? sum(rows.map((row) => row.comparable)) : null,
+      lateStart: clean ? sum(rows.map((row) => row.lateStart)) : null,
+      lateFinish: clean ? sum(rows.map((row) => row.lateFinish)) : null,
+      longer: clean ? sum(rows.map((row) => row.longer)) : null,
+    }];
+  }));
+
+  return {
+    days: reports.length,
+    clean,
+    stats: {
+      native: {
+        completed: sum(reports.map((report) => report.stats?.native?.completed)),
+        total: sum(reports.map((report) => report.stats?.native?.total)),
+        plannedMinutes: sum(reports.map((report) => report.stats?.native?.plannedMinutes)),
+      },
+      recordedMinutes: exactSum(reports.map((report) => report.stats?.recordedMinutes)),
+      untimedCount: sum(reports.map((report) => report.stats?.untimedCount)),
+      inferredCount: sum(reports.map((report) => report.stats?.inferredCount)),
+      invalidCount: sum(reports.map((report) => report.stats?.invalidCount)),
+      comparison,
+    },
+    priorities,
+    changes: clean ? {
+      compared: sum(reports.map((report) => report.changes?.compared)),
+      start: sum(reports.map((report) => report.changes?.start)),
+      finish: sum(reports.map((report) => report.changes?.finish)),
+      duration: sum(reports.map((report) => report.changes?.duration)),
+      unchanged: sum(reports.map((report) => report.changes?.unchanged)),
+      unknown: sum(reports.map((report) => report.changes?.unknown)),
+    } : null,
+    progress: null,
+    contexts: null,
+    relations: clean ? sumMap(reports, (report) => report.relations) : null,
+    inboxCompleted: sum(reports.map((report) => report.inboxCompleted)),
+    projectCompleted: sum(reports.map((report) => report.projectCompleted)),
+    doCount: null,
+    single: null,
+    split: null,
+    rawMinutes: exactSum(reports.map((report) => report.rawMinutes)),
+    overlapMinutes: exactSum(reports.map((report) => report.overlapMinutes)),
+    gapMinutes: null,
+    maxSpanMinutes: clean ? nullableMax(reports.map((report) => report.maxSpanMinutes)) : null,
+    insideMinutes: exactSum(reports.map((report) => report.insideMinutes)),
+    outsideMinutes: exactSum(reports.map((report) => report.outsideMinutes)),
+    maxStart: clean ? nullableMax(reports.map((report) => report.maxStart)) : null,
+    maxFinish: clean ? nullableMax(reports.map((report) => report.maxFinish)) : null,
+    maxLonger: clean ? nullableMax(reports.map((report) => report.maxLonger)) : null,
+    minRatio: clean ? nullableMin(reports.map((report) => report.minRatio)) : null,
+    maxRatio: clean ? nullableMax(reports.map((report) => report.maxRatio)) : null,
+    withinPlan: clean ? sum(reports.map((report) => report.withinPlan)) : null,
+    noDo: clean ? sum(reports.map((report) => report.noDo)) : null,
+  };
+}

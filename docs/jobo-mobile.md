@@ -80,7 +80,8 @@ lane always matches what the wide one would show.
   scrolling it into view if needed. The narrow lane is navigation, not
   decoration.
 - **No swipe.** Horizontal swipes on the phone timeline's cards are already
-  their actions (complete, edit), so a swipe would mean two things.
+  their actions (right to the Inbox, left to edit), so a swipe would mean
+  two things.
 - **The swap slides.** The wide side narrows as the other widens and the
   divider glides across, in about 250ms with an ease-out; cards fade in as
   their side reaches full width, so text never reflows mid-slide. With
@@ -99,7 +100,8 @@ on its own default.
 Tapping a card in the wide side selects it, and its counterparts in the
 narrow lane light up: a task's Do bars when a Plan card is selected, its
 Plan bar when a Do card is. Desktop JOBO pairs a task's Plan and Do cards
-the same way, so "which bar is this task" never needs reading.
+the same way on hover; a phone has no hover, so a tap selects. Either way,
+"which bar is this task" never needs reading.
 
 ## The header
 

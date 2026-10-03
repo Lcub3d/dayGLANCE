@@ -2234,6 +2234,12 @@
       "recorded": "已记录 {{range}}",
       "open": "在 JOBO 中打开"
     },
+    "sched": {
+      "badge_one": "执行：{{count}} 次记录，共 {{duration}}",
+      "badge_other": "执行：{{count}} 次记录，共 {{duration}}",
+      "heading": "当天的记录",
+      "total": "总计 {{duration}}"
+    },
     "check": {
       "button": "复盘",
       "title": "复盘",

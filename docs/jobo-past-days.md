@@ -113,7 +113,12 @@ the Check panel (slice 7).
   plan, since its Do side already shows the Do.
 - **SCHED, and MONTH's day sheet and docked panel**, which render SCHED.
   SCHED is an agenda of what is planned and due, with its own past-date
-  handling; changing it would change the SCHED view too. Left for later.
+  handling, so its cards stay plan cards. Since slice 7b a card carries a
+  Do badge instead: a striped pill in the task's colour with the time
+  recorded against the task on its date, opening each session and "Open in
+  JOBO" (`DoSessionsBadge`, read from the same index as the past-day cards
+  by `doSessionsByTask`). Timed Do only; none with JOBO off; no JOBO link on
+  the phone until slice 8.
 - **Mobile.** Phone and portrait-tablet views are unchanged until slice 8.
   The phone renders the same `MonthView`, so MONTH's adoption is gated to
   the desktop layout.
@@ -142,8 +147,9 @@ Settled in review on #1881:
    plan and Do sit side by side.
 3. **A striped fill in the task's colour** for recorded Do, in every view
    including JOBO (above). To be seen in the build and adjusted there.
-4. **SCHED and MONTH's day sheet unchanged.** SCHED is an agenda and has no
-   need for Do.
+4. **SCHED and MONTH's day sheet keep their plan cards.** SCHED is an
+   agenda. Revised after slice 7b: its cards carry a Do badge (above), so
+   the agenda can still say what was done without becoming a timeline.
 5. **Mobile unchanged** until slice 8.
 
 ## Build order

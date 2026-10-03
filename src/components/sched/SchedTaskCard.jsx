@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, Calendar, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
 import TaskPlanHistory from '../TaskPlanHistory.jsx';
+import DoSessionsBadge from '../jobo/DoSessionsBadge.jsx';
 import TaskStarButton from '../TaskStarButton.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
@@ -206,6 +207,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
               <span className={`flex-shrink-0 ${isPastDueTask ? 'text-red-400 font-medium' : ''}`}>{timeLabel}</span>
             )}
             {isRecurring && <Repeat size={META_ICON} className="opacity-60 flex-shrink-0" />}
+            {!isEvent && !isInbox && <DoSessionsBadge task={task} />}
             {!isEvent && <TaskPlanHistory task={task} size={META_ICON} pad={META_HIT} />}
             {!isEvent && <TaskStarButton task={task} size={META_ICON} accent pad={META_HIT} />}
             {!isEvent && (

@@ -2234,6 +2234,12 @@
       "recorded": "Enregistré {{range}}",
       "open": "Ouvrir dans JOBO"
     },
+    "sched": {
+      "badge_one": "Exécution : {{duration}} enregistrées en {{count}} session",
+      "badge_other": "Exécution : {{duration}} enregistrées en {{count}} sessions",
+      "heading": "Enregistré ce jour-là",
+      "total": "Total {{duration}}"
+    },
     "check": {
       "button": "Bilan",
       "title": "Bilan",

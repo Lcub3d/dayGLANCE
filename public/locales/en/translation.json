@@ -1968,6 +1968,7 @@
     "notesInVault": "Notes live in the linked note in Obsidian.",
     "notesLoading": "Loading from the linked note…",
     "notesLoadFailed": "Could not read the linked note: {{error}}",
+    "notesNoteMissing": "The linked note was not found in the vault. Check the note name, or create the note in Obsidian.",
     "notesChanged": "The note changed in Obsidian since you opened it. The newer text is loaded, with your unsaved text below it; check it and save again.",
     "scheduled": "Scheduled",
     "nothingScheduledYet": "Nothing scheduled yet.",

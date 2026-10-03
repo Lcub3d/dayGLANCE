@@ -4747,7 +4747,7 @@ const DayPlanner = () => {
     setHgContextMenu(null);
   };
 
-  const saveEditProjectFromBar = (fields) => {
+  const saveEditProjectFromBar = ({ linkNotePath, createNote: _createNote, ...fields }) => {
     if (!pendingEditProjectId) return;
     const projectId = pendingEditProjectId;
     const project = projects.find(p => p.id === projectId);
@@ -4765,6 +4765,7 @@ const DayPlanner = () => {
         setUnscheduledTasks(prev => prev.map(cascadeTask));
       }
       updateProject(projectId, fields);
+      if (linkNotePath) linkProjectNote?.('project', projectId, linkNotePath);
     }
     setPendingEditProjectId(null);
   };

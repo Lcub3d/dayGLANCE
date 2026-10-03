@@ -1,9 +1,12 @@
-// Slice 6: past days show what was done (docs/jobo-past-days.md).
+// Slice 6: past days show what was done (docs/jobo-past-days.md), and its
+// addendum: today too, split at the NOW line.
 //
-// Pure. The rule decides what a date before today shows in DAY, MULTI,
-// WEEK and MONTH: a task with timed Do on that date shows its Do instead of
-// its plan block; a task without shows as it stood; unlinked Do, and Do
-// whose task is gone, show too. Only measured facts leave JOBO, so records
+// Pure. The rule decides what a date shows in DAY, MULTI, WEEK and MONTH: a
+// task's timed Do on that date are drawn, and a COMPLETED task's plan block
+// gives way to them once the block has ended (on a past day, every block
+// has); an unfinished task keeps its block beside its Do, so what is still
+// owed stays in sight (Lcub3d on #1726). A task without Do shows as it
+// stood; unlinked Do, and Do whose task is gone, show too. Only measured facts leave JOBO, so records
 // whose interval was inferred from a plan duration stay out, as do JOBO's
 // display-only estimates, which are never stored.
 //
@@ -66,14 +69,57 @@ export function buildPastDayIndex({ records = [], slices = buildPastDaySlices(re
   return { slicesByDate: slices.slicesByDate, resolveTask };
 }
 
+// The tasks with Do on the date that the viewer may see, by id.
+function coveredIds({ dateStr, index, isVisibleForUser }) {
+  const visible = (task) => !task || typeof isVisibleForUser !== 'function' || isVisibleForUser(task);
+  const covered = new Set();
+  for (const slice of index?.slicesByDate?.get(dateStr) || []) {
+    const task = index.resolveTask(slice.record);
+    if (task && visible(task)) covered.add(String(task.id));
+  }
+  return covered;
+}
+
+const planEndMinute = (task) => {
+  const match = /^(\d{1,2}):(\d{2})/.exec(task?.startTime || '');
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]) + (Number(task.duration) || 0);
+};
+
 /**
- * What a date before today shows: the day's tasks, less those whose Do was
- * recorded that day, plus a task-shaped, read-only item for each timed Do
- * slice. The caller decides that the date is past and the JOBO flag is on;
- * this only applies the rule. `dayTasks` is what the view would otherwise
- * show for the date, unchanged in order.
+ * Today's tasks whose plan block has given way to their Do: completed, with
+ * timed Do today, and the block over (its planned end at or before
+ * `nowMinute`). All-day tasks have no end before midnight and are never in
+ * it. The views read today through this set rather than the clock, so they
+ * recompute only when it changes, at a block's end or a completion, not on
+ * every tick. Returns the ids, and a `key` that changes only with them.
+ *
+ * @returns {{ ids: Set<string>, key: string }}
  */
-export function pastDayItems({ dateStr, dayTasks = [], index, isVisibleForUser } = {}) {
+export function todayEndedTasks({ dateStr, dayTasks = [], index, isVisibleForUser, nowMinute } = {}) {
+  const covered = coveredIds({ dateStr, index, isVisibleForUser });
+  const ids = new Set();
+  if (covered.size && Number.isFinite(nowMinute)) {
+    for (const task of dayTasks) {
+      if (!task || task.isAllDay || !task.completed || !covered.has(String(task.id))) continue;
+      const end = planEndMinute(task);
+      if (end !== null && end <= nowMinute) ids.add(String(task.id));
+    }
+  }
+  return { ids, key: [...ids].sort().join('|') };
+}
+
+/**
+ * What a date shows: the day's tasks, less the completed ones whose Do was
+ * recorded that day, plus a task-shaped, read-only item for each timed Do
+ * slice. An unfinished task keeps its plan block beside its Do. On today,
+ * `replaceIds` (todayEndedTasks) further limits the blocks that give way to
+ * those that have ended; on a past day it is left out, since every block
+ * has. The caller decides the date and that the JOBO flag is on; this only
+ * applies the rule. `dayTasks` is what the view would otherwise show for
+ * the date, unchanged in order.
+ */
+export function pastDayItems({ dateStr, dayTasks = [], index, isVisibleForUser, replaceIds = null } = {}) {
   const slices = index?.slicesByDate?.get(dateStr) || [];
   if (!slices.length) return dayTasks;
   const visible = (task) => !task || typeof isVisibleForUser !== 'function' || isVisibleForUser(task);
@@ -105,20 +151,27 @@ export function pastDayItems({ dateStr, dayTasks = [], index, isVisibleForUser }
       joboClippedEnd: slice.clippedEnd,
     });
   }
-  const shown = dayTasks.filter((task) => !covered.has(String(task?.id)));
+  // A plan block gives way to its Do only once the task is done, and on
+  // today only once the block is over too.
+  const givesWay = (task) => covered.has(String(task?.id)) && !!task.completed
+    && (!replaceIds || replaceIds.has(String(task.id)));
+  const shown = dayTasks.filter((task) => !givesWay(task));
   doItems.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id));
   return [...shown, ...doItems];
 }
 
 /**
- * What a view shows for a date: `dayTasks` unchanged for today and later, or
- * with no index (JOBO off, ledger not loaded); otherwise the past-day rule.
- * A Do carries its task's title, tags included, so `tagFilter` (the views'
- * tag filter, when they apply one) holds it to the same rule as the task.
+ * What a view shows for a date: `dayTasks` unchanged for later days, or with
+ * no index (JOBO off, ledger not loaded); otherwise the rule. Today takes it
+ * only with `todayEnded` (todayEndedTasks' ids), which the caller derives
+ * from the clock; without it, today is unchanged. A Do carries its task's
+ * title, tags included, so `tagFilter` (the views' tag filter, when they
+ * apply one) holds it to the same rule as the task.
  */
-export function pastDayDisplay({ dateStr, todayStr, dayTasks = [], index, isVisibleForUser, tagFilter } = {}) {
-  if (!index || !dateStr || !todayStr || dateStr >= todayStr) return dayTasks;
-  const items = pastDayItems({ dateStr, dayTasks, index, isVisibleForUser });
+export function pastDayDisplay({ dateStr, todayStr, dayTasks = [], index, isVisibleForUser, tagFilter, todayEnded = null } = {}) {
+  if (!index || !dateStr || !todayStr || dateStr > todayStr) return dayTasks;
+  if (dateStr === todayStr && !todayEnded) return dayTasks;
+  const items = pastDayItems({ dateStr, dayTasks, index, isVisibleForUser, replaceIds: dateStr === todayStr ? todayEnded : null });
   return items === dayTasks || typeof tagFilter !== 'function' ? items : tagFilter(items);
 }
 

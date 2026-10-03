@@ -696,6 +696,8 @@
     "obsidianDailyNoteTemplateHint": "Pre-filled when creating a new daily note",
     "obsidianDailyNoteTemplatePlaceholder": "Template for new daily notes...",
     "obsidianDailyNotesFolderHint": "Leave empty for vault root. Common: \"Daily Notes\" or \"journals\"",
+    "obsidianDailyNotesResolved": "Daily notes are written to {{path}}",
+    "obsidianDailyNotesNested": "The folder you picked is itself named “{{name}}”, so this setting would create another “{{name}}” folder inside it and a second copy of each day's note. If you picked the daily notes folder, pick the vault's root folder instead, or leave this setting empty.",
     "obsidianFilenamePatternHint": "Date pattern for daily note filenames (without .md). e.g. \"yyyy-MM-dd\", \"dd-MM-yyyy\", \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault access and daily note settings are configured in the app settings.",
     "obsidianNewNotesFolderHint": "Where new notes created in dayGLANCE are saved. Leave empty for vault root.",

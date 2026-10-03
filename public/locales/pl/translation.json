@@ -715,6 +715,8 @@
     "obsidianDailyNoteTemplateHint": "Wstępnie wypełniany przy tworzeniu nowej notatki dnia",
     "obsidianDailyNoteTemplatePlaceholder": "Szablon nowych notatek dnia...",
     "obsidianDailyNotesFolderHint": "Pozostaw puste dla katalogu głównego magazynu. Popularne: „Daily Notes” lub „journals”",
+    "obsidianDailyNotesResolved": "Notatki dzienne są zapisywane w {{path}}",
+    "obsidianDailyNotesNested": "Wybrany folder sam nazywa się „{{name}}”, więc to ustawienie utworzyłoby w nim kolejny folder „{{name}}” i drugą kopię notatki z każdego dnia. Jeśli wybrano folder notatek dziennych, wybierz zamiast tego katalog główny magazynu albo pozostaw to ustawienie puste.",
     "obsidianFilenamePatternHint": "Wzorzec daty dla nazw plików notatek dnia (bez .md). np. „yyyy-MM-dd”, „dd-MM-yyyy”, „MMMM dd, yyyy”",
     "obsidianNativeSettingsHint": "Dostęp do magazynu i ustawienia notatek dnia konfiguruje się w ustawieniach aplikacji.",
     "obsidianNewNotesFolderHint": "Miejsce zapisu nowych notatek utworzonych w dayGLANCE. Pozostaw puste dla katalogu głównego magazynu.",

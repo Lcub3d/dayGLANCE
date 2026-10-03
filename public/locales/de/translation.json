@@ -696,6 +696,8 @@
     "obsidianDailyNoteTemplateHint": "Wird beim Erstellen einer neuen Tagesnotiz vorausgefüllt",
     "obsidianDailyNoteTemplatePlaceholder": "Vorlage für neue Tagesnotizen...",
     "obsidianDailyNotesFolderHint": "Leer lassen für das Vault-Stammverzeichnis. Häufig: \"Daily Notes\" oder \"journals\"",
+    "obsidianDailyNotesResolved": "Tägliche Notizen werden nach {{path}} geschrieben",
+    "obsidianDailyNotesNested": "Der ausgewählte Ordner heißt selbst „{{name}}“. Mit dieser Einstellung würde darin ein weiterer Ordner „{{name}}“ angelegt und jede Tagesnotiz ein zweites Mal geschrieben. Wenn Sie den Ordner der täglichen Notizen gewählt haben, wählen Sie stattdessen das Stammverzeichnis des Vaults oder lassen Sie diese Einstellung leer.",
     "obsidianFilenamePatternHint": "Datumsformat für Dateinamen von Tagesnotizen (ohne .md), z. B. \"yyyy-MM-dd\", \"dd-MM-yyyy\", \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault-Zugriff und Einstellungen für Tagesnotizen werden in den App-Einstellungen konfiguriert.",
     "obsidianNewNotesFolderHint": "Hier werden neue, in dayGLANCE erstellte Notizen gespeichert. Leer lassen für das Vault-Stammverzeichnis.",

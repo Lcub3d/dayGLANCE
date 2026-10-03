@@ -14,7 +14,7 @@ import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import CalendarList from './CalendarList.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
-import { testConnection, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
+import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
 import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars } from '../utils/nativeCalendar.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, formatDatePattern } from '../obsidian.js';
@@ -132,6 +132,9 @@ const SettingsModal = () => {
     users, setUsers,
     meUserSyncId, setMeUserSyncId,
   } = useFeaturesCtx();
+  // The live model list fetch (see the model selector below).
+  const [aiModelsStatus, setAiModelsStatus] = useState(null);
+  const [aiModelsMessage, setAiModelsMessage] = useState('');
   // Multi-user only matters across synced devices; gate the toggle when sync is
   // unconfigured. Never trap: an already-on toggle stays enabled so it can be
   // turned off.
@@ -1509,28 +1512,76 @@ const SettingsModal = () => {
                             </div>
                           )}
 
-                          {/* Model selector */}
+                          {/* Model selector. The built-in list is a starting
+                              point: a provider's ids retire (the 2026-10-03
+                              Gemini report), so the list can be refreshed from
+                              the provider and any id can be typed. A model not
+                              in the list shows as "Other" with the id editable. */}
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiModel')}</label>
-                            {(PROVIDER_MODELS[aiConfig.provider] || []).length > 0 ? (
-                              <select
-                                value={aiConfig.model}
-                                onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              >
-                                {(PROVIDER_MODELS[aiConfig.provider] || []).map(m => (
-                                  <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
-                                value={aiConfig.model}
-                                onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              />
-                            )}
+                            {(() => {
+                              const listed = (aiConfig.modelLists?.[aiConfig.provider]?.length ? aiConfig.modelLists[aiConfig.provider] : PROVIDER_MODELS[aiConfig.provider]) || [];
+                              const inList = listed.some((m) => m.id === aiConfig.model);
+                              const canFetch = aiConfig.provider !== 'anthropic';
+                              return (
+                                <div className="space-y-2">
+                                  {listed.length > 0 && (
+                                    <select
+                                      data-ai-model-select
+                                      value={inList ? aiConfig.model : '__other__'}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setAiConfig(prev => ({ ...prev, model: v === '__other__' ? '' : v }));
+                                      }}
+                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                    >
+                                      {listed.map(m => (
+                                        <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
+                                      ))}
+                                      <option value="__other__">{t('settings.aiModelOther', { defaultValue: 'Other (type a model id)' })}</option>
+                                    </select>
+                                  )}
+                                  {(!inList || listed.length === 0) && (
+                                    <input
+                                      type="text"
+                                      data-ai-model-input
+                                      placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
+                                      value={aiConfig.model}
+                                      onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
+                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                    />
+                                  )}
+                                  {canFetch && (
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        data-ai-fetch-models
+                                        disabled={aiModelsStatus === 'loading'}
+                                        onClick={async () => {
+                                          setAiModelsStatus('loading');
+                                          setAiModelsMessage('');
+                                          try {
+                                            const models = await fetchProviderModels(aiConfig);
+                                            setAiConfig(prev => ({ ...prev, modelLists: { ...(prev.modelLists || {}), [prev.provider]: models } }));
+                                            setAiModelsStatus('ok');
+                                            setAiModelsMessage(t('settings.aiFetchModelsOk', { defaultValue: '{{count}} models available', count: models.length }));
+                                          } catch (err) {
+                                            setAiModelsStatus('error');
+                                            setAiModelsMessage(t('settings.aiFetchModelsFailed', { defaultValue: 'Could not fetch models: {{error}}', error: err?.message || String(err) }));
+                                          }
+                                        }}
+                                        className={`px-3 py-1.5 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-xs transition-colors disabled:opacity-50`}
+                                      >
+                                        {t('settings.aiFetchModels', { defaultValue: 'Fetch model list' })}
+                                      </button>
+                                      {aiModelsMessage && (
+                                        <span className={`text-xs ${aiModelsStatus === 'error' ? 'text-red-500' : textSecondary}`}>{aiModelsMessage}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* Test Connection */}

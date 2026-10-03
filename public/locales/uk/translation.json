@@ -2333,6 +2333,14 @@
       "recorded": "Записано {{range}}",
       "open": "Відкрити в JOBO"
     },
+    "sched": {
+      "badge_one": "Виконання: {{duration}} записано за {{count}} сесію",
+      "badge_few": "Виконання: {{duration}} записано за {{count}} сесії",
+      "badge_many": "Виконання: {{duration}} записано за {{count}} сесій",
+      "badge_other": "Виконання: {{duration}} записано за {{count}} сесії",
+      "heading": "Записано цього дня",
+      "total": "Разом {{duration}}"
+    },
     "check": {
       "button": "Огляд",
       "title": "Огляд",

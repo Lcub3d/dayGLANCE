@@ -2327,6 +2327,14 @@
       "recorded": "Zapisano {{range}}",
       "open": "Otwórz w JOBO"
     },
+    "sched": {
+      "badge_one": "Wykonanie: {{duration}} zapisane w {{count}} sesji",
+      "badge_few": "Wykonanie: {{duration}} zapisane w {{count}} sesjach",
+      "badge_many": "Wykonanie: {{duration}} zapisane w {{count}} sesjach",
+      "badge_other": "Wykonanie: {{duration}} zapisane w {{count}} sesji",
+      "heading": "Zapisano tego dnia",
+      "total": "Łącznie {{duration}}"
+    },
     "check": {
       "button": "Przegląd",
       "title": "Przegląd",

@@ -2234,6 +2234,12 @@
       "recorded": "Recorded {{range}}",
       "open": "Open in JOBO"
     },
+    "sched": {
+      "badge_one": "Do: {{duration}} recorded in {{count}} session",
+      "badge_other": "Do: {{duration}} recorded in {{count}} sessions",
+      "heading": "Recorded this day",
+      "total": "Total {{duration}}"
+    },
     "check": {
       "button": "Check",
       "title": "Check",

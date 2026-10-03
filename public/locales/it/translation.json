@@ -2236,6 +2236,12 @@
       "recorded": "Registrato {{range}}",
       "open": "Apri in JOBO"
     },
+    "sched": {
+      "badge_one": "Esecuzione: {{duration}} registrati in {{count}} sessione",
+      "badge_other": "Esecuzione: {{duration}} registrati in {{count}} sessioni",
+      "heading": "Registrato in questo giorno",
+      "total": "Totale {{duration}}"
+    },
     "check": {
       "button": "Riepilogo",
       "title": "Riepilogo",

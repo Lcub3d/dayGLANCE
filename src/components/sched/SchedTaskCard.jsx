@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, Calendar, CalendarPlus, CheckCircle2, CheckSquare, Circle, ExternalLink, FileText, GripVertical, Repeat, SkipForward } from 'lucide-react';
 import TaskPlanHistory from '../TaskPlanHistory.jsx';
+import DoSessionsBadge from '../jobo/DoSessionsBadge.jsx';
 import TaskStarButton from '../TaskStarButton.jsx';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
@@ -46,6 +47,7 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
     formatTime, toggleComplete, openMobileEditTask, currentTime,
     postponeTask, showDeadlinePicker, setShowDeadlinePicker,
     updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
+    getDoSessionsForTask,
   } = useDayPlannerCtx();
   const { projects, goalsProjectsEnabled, generateAISubtasks, aiSubtasksLoadingForTask, aiConfig } = useFeaturesCtx();
   const { loadWikiNote, saveWikiNote, openInObsidian } = useSyncCtx();
@@ -69,6 +71,11 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
 
   const hex = taskColorToHex(task.color, task.nativeCalendarColor);
   const isEvent = task.imported && !task.isTaskCalendar;
+  // A finished task with a Do badge tells one story, planned then done, so
+  // its plan history moves into the badge's panel and the separate icon goes
+  // (components/jobo/DoSessionsBadge.jsx). Every other card keeps the icon.
+  const planHistoryInDoBadge = !!task.completed && !isEvent && !isInbox
+    && typeof getDoSessionsForTask === 'function' && getDoSessionsForTask(task).length > 0;
   const isRecurring = typeof task.id === 'string' && task.id.startsWith('recurring-');
 
   const timeLabel = task.isAllDay
@@ -180,8 +187,12 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
         </button>
       )}
       <div className="flex flex-col min-w-0 flex-1 gap-1">
-        <span className={`text-base font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
-          {renderTitleWithoutTags(task.title)}
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className={`text-base font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
+            {renderTitleWithoutTags(task.title)}
+          </span>
+          {/* On a phone the Do badge is a dot here; elsewhere, the pill below. */}
+          {!isEvent && !isInbox && <DoSessionsBadge task={task} placement="title" pad="" withPlanHistory={planHistoryInDoBadge} />}
         </span>
         {/* Meta row — always rendered on editable tasks so cards stay uniform */}
         {(!isEvent || timeLabel) && (
@@ -206,7 +217,8 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
               <span className={`flex-shrink-0 ${isPastDueTask ? 'text-red-400 font-medium' : ''}`}>{timeLabel}</span>
             )}
             {isRecurring && <Repeat size={META_ICON} className="opacity-60 flex-shrink-0" />}
-            {!isEvent && <TaskPlanHistory task={task} size={META_ICON} pad={META_HIT} />}
+            {!isEvent && !isInbox && <DoSessionsBadge task={task} withPlanHistory={planHistoryInDoBadge} />}
+            {!isEvent && !planHistoryInDoBadge && <TaskPlanHistory task={task} size={META_ICON} pad={META_HIT} />}
             {!isEvent && <TaskStarButton task={task} size={META_ICON} accent pad={META_HIT} />}
             {!isEvent && (
               <button

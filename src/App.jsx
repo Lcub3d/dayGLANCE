@@ -113,7 +113,7 @@ import useMobileTabBack from './hooks/useMobileTabBack.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
-import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay } from './jobo/pastDay.js';
+import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
 import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
 import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
 import useWeather from './hooks/useWeather.js';
@@ -287,6 +287,9 @@ const TimePicker = ({ value, onChange, use24HourClock, borderClass, darkMode }) 
 // when the search opens so device-calendar events elsewhere are still searchable.
 const SPOTLIGHT_NATIVE_PAST_DAYS = 90;
 const SPOTLIGHT_NATIVE_FUTURE_DAYS = 365;
+
+// A shared empty list, so a card with no Do keeps the same props each render.
+const NO_DO_SESSIONS = Object.freeze([]);
 
 const DayPlanner = () => {
   const { t } = useTranslation();
@@ -6945,6 +6948,23 @@ const DayPlanner = () => {
     isVisibleForUser,
     tagFilter: applyTagFilter ? filterByTags : null,
   }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags]);
+  // SCHED's Do badge: a task's timed Do on its own date, from the same index
+  // (src/jobo/pastDay.js, doSessionsByTask). Cached per date for as long as
+  // the index stands, so a day's cards share one pass over its slices. Empty
+  // with JOBO off or the ledger not loaded, so the badge never shows then.
+  // A fresh cache whenever the index or the visibility rule changes: the
+  // dependencies are what invalidates it, not values read inside.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const doSessionsCache = useMemo(() => new Map(), [pastDayIndex, isVisibleForUser]);
+  const getDoSessionsForTask = useCallback((task) => {
+    if (!pastDayIndex || !task?.date || task.imported) return NO_DO_SESSIONS;
+    let byTask = doSessionsCache.get(task.date);
+    if (!byTask) {
+      byTask = doSessionsByTask({ dateStr: task.date, index: pastDayIndex, isVisibleForUser });
+      doSessionsCache.set(task.date, byTask);
+    }
+    return byTask.get(String(task.id)) || NO_DO_SESSIONS;
+  }, [pastDayIndex, doSessionsCache, isVisibleForUser]);
 
   // --- GTD Frames: Instance computation + Available time calculation ---
 
@@ -8837,7 +8857,7 @@ const DayPlanner = () => {
     getAdjustedTimeForImportedConflicts,
     getConflictingTasks, calculateConflictPosition, wouldExceedMaxColumns,
     filterByTags,
-    getTasksForDate, getDayDisplayForDate, getDateIndicators, hasTasksOnDate,
+    getTasksForDate, getDayDisplayForDate, getDoSessionsForTask, getDateIndicators, hasTasksOnDate,
     getDayName, getMonthDays, getNextQuarterHour,
     getTodayStr, getOverdueTasks,
     getTaskCalendarStyle,

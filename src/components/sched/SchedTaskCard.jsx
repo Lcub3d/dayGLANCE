@@ -181,8 +181,12 @@ const SchedTaskCard = ({ task, isInbox = false, showProject = false, onEdit = nu
         </button>
       )}
       <div className="flex flex-col min-w-0 flex-1 gap-1">
-        <span className={`text-base font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
-          {renderTitleWithoutTags(task.title)}
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className={`text-base font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
+            {renderTitleWithoutTags(task.title)}
+          </span>
+          {/* On a phone the Do badge is a dot here; elsewhere, the pill below. */}
+          {!isEvent && !isInbox && <DoSessionsBadge task={task} placement="title" pad="" />}
         </span>
         {/* Meta row — always rendered on editable tasks so cards stay uniform */}
         {(!isEvent || timeLabel) && (

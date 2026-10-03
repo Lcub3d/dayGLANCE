@@ -55,7 +55,12 @@ export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo })
   );
 }
 
-export default function DoSessionsBadge({ task, pad = 'p-0.5' }) {
+// `placement`: a card puts the badge in two places and each draws only on
+// its kind of screen. On a phone, a card's details row has no room to spare
+// (Lcub3d on #1726: at 360px a busy row already fills it), so the badge is a
+// striped dot at the end of the title line, where the title gives way to it
+// by truncating. Elsewhere it is the pill with the time, in the details row.
+export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta' }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx() || {};
   const { getDoSessionsForTask, formatTime, isMobile, setViewMode, setSelectedDate } = ctx;
@@ -92,6 +97,7 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5' }) {
   }, [open]);
 
   if (!sessions.length) return null;
+  if ((placement === 'title') !== !!isMobile) return null;
   const total = formatDuration(sessionsTotal(sessions), t);
   const toggle = () => {
     if (open) { setOpen(false); return; }
@@ -115,10 +121,10 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5' }) {
         aria-expanded={open}
         aria-label={t('jobo.sched.badge', { count: sessions.length, duration: total })}
         title={t('jobo.sched.badge', { count: sessions.length, duration: total })}
-        className={`${task.color || 'bg-gray-500'} text-white text-[11px] font-semibold leading-none px-1.5 py-1 rounded-full hover:brightness-110`}
+        className={`${task.color || 'bg-gray-500'} text-white text-[11px] font-semibold leading-none rounded-full hover:brightness-110 ${isMobile ? 'w-3.5 h-3.5' : 'px-1.5 py-1'}`}
         style={{ backgroundImage: DO_STRIPES }}
       >
-        {total}
+        {isMobile ? null : total}
       </button>
       {open && pos && createPortal(
         <div

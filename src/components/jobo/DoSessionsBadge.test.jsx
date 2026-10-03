@@ -37,6 +37,32 @@ describe('SCHED\'s Do badge', () => {
   });
 });
 
+// Lcub3d on #1726: watch the room it takes on narrow screens. A phone
+// card's details row is already full when busy, so there the badge is a dot
+// on the title line, which truncates to make room.
+describe('where it sits', () => {
+  const at = (placement, isMobile) => {
+    fixture.ctx = { getDoSessionsForTask: () => two, formatTime: (v) => v, isMobile };
+    return renderToStaticMarkup(<DoSessionsBadge task={task} placement={placement} />);
+  };
+
+  it('is the pill with the time in the details row, off a phone', () => {
+    expect(at('meta', false)).toContain('px-1.5 py-1');
+    expect(at('title', false)).toBe('');
+  });
+
+  // MUTATION: draw the meta placement on a phone and a busy card's details
+  // row overflows at 360 and 390px, hiding its tags.
+  it('is a dot with no text on the title line, on a phone', () => {
+    expect(at('meta', true)).toBe('');
+    const dot = at('title', true);
+    expect(dot).toContain('w-3.5 h-3.5');
+    expect(dot).not.toContain('px-1.5');
+    expect(dot).toMatch(/<button[^>]*><\/button>/);
+    expect(dot).toMatch(/aria-label="jobo\.sched\.badge/);
+  });
+});
+
 describe('its panel', () => {
   const panel = (sessions, onOpenJobo) => renderToStaticMarkup(<DoSessionsPanel sessions={sessions} formatTime={(v) => v} onOpenJobo={onOpenJobo} />);
 

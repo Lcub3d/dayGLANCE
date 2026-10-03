@@ -117,8 +117,9 @@ the Check panel (slice 7).
   Do badge instead: a striped pill in the task's colour with the time
   recorded against the task on its date, opening each session and "Open in
   JOBO" (`DoSessionsBadge`, read from the same index as the past-day cards
-  by `doSessionsByTask`). Timed Do only; none with JOBO off; no JOBO link on
-  the phone until slice 8.
+  by `doSessionsByTask`). Timed Do only; none with JOBO off. On a phone, whose
+  card details row has no room to spare, it is a striped dot at the end of
+  the title line instead, with no JOBO link until slice 8.
 - **Mobile.** Phone and portrait-tablet views are unchanged until slice 8.
   The phone renders the same `MonthView`, so MONTH's adoption is gated to
   the desktop layout.

@@ -140,6 +140,15 @@ manually or via BRAT, not submitted to the community directory.
   "trigger on new file creation" on, a template that asks for input is not
   applied at all (the trigger would run that prompt unattended); the
   settings tab says so.
+  **A project's notes box is its note's description** (companion §4.3,
+  owner ruling 2026-10-03): the paragraph under the note's title. The
+  plugin puts the box into that slot at creation (`{{description}}` in a
+  template), merges an existing box below whatever the note already says on
+  link, and applies the planner's edits as a section replace
+  (`project_note_description`). A save that carries a `base` the section no
+  longer matches keeps the vault's text and appends the dayGLANCE text as a
+  dated callout; a `wiki_note_write` whose `base` the note no longer matches
+  is left alone.
   **A project's tasks live in its note** (companion §4.3, project routing):
   a task assigned to a linked project in dayGLANCE is written into the
   note's `## Tasks` section (created there, moved there on reassignment,

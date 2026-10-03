@@ -40,6 +40,7 @@ const { default: useObsidianSync } = await import('../../src/hooks/useObsidianSy
 const { flushBridgeOutbox, emitBridgeIntent, __resetBridgeStreamForTests } = await import('../../src/utils/obsidianBridgeStream.js');
 const { NoteBlockWriter } = await import('../src/noteBlocks');
 const { parseYaml } = await import('obsidian');
+const { noteTextHash } = await import('@glance-apps/obsidian-format');
 
 type Row = Record<string, any>;
 
@@ -642,6 +643,72 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.settle();
     await A.sync();
     expect(A.all().find((t) => t.id === id)!.title).toBe('Lawn trimmed #obsidian');
+  });
+
+  it('22. THE NOTES BOX AT CREATION (owner ruling 2026-10-03): the box rides the create intent into the description slot; the record empties on enqueue; the journal holds the text', async () => {
+    const project = { id: 'p1', title: 'House', status: 'active', description: 'Dry roof by spring.' };
+    await boot({ projects: [project] });
+    expect(A.api.createProjectNote('project', 'p1', { title: 'House', description: project.description })).toBe(true);
+    expect(project.description).toBe('');
+    expect(JSON.parse(A.store.get('day-planner-obsidian-notes-sent')!)['project:p1']).toMatchObject({ body: 'Dry roof by spring.' });
+    await A.flush();
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    expect(project.obsidianNotePath).toBe(NOTE);
+    const text = s.text(NOTE)!;
+    expect(text).toContain('# House\nDry roof by spring.\n\n## Tasks\n');
+    expect(text).not.toContain('One line on what done looks like.');
+  });
+
+  it('23. THE MIGRATION ON LINK: a box filled on a linked project moves into the section below the note\'s own text, once; the record empties; a second pass writes nothing', async () => {
+    const project = await bootLinked();
+    // The user wrote their own hub paragraph in Obsidian, and typed a summary in the box.
+    await s.write(NOTE, s.text(NOTE)!.replace('One line on what done looks like.', 'My own hub paragraph.'));
+    await s.settle();
+    project.description = 'Purpose: keep the house dry.';
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toContain('# House\nMy own hub paragraph.\n\nPurpose: keep the house dry.\n\n## Tasks\n');
+    expect(project.description).toBe('');
+    expect(JSON.parse(A.store.get('day-planner-obsidian-notes-sent')!)['project:p1']).toMatchObject({ target: NOTE, body: 'Purpose: keep the house dry.' });
+    // MUTATION: drop the record clear and every pass re-sends the box; drop
+    // the block guard in mergeNoteDescription and a re-send doubles it.
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    expect(s.text(NOTE)!.split('Purpose: keep the house dry.').length).toBe(2);
+  });
+
+  it('24. THE EDITOR OVER THE SECTION: a save with the section\'s base replaces exactly the section; one whose base the section no longer matches keeps the vault\'s text and adds the dayGLANCE text as a dated callout; the task list is never touched', async () => {
+    await bootLinked();
+    A.add({ title: 'Fix the gutter', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    const line = s.text(NOTE)!.match(lineFor('Fix the gutter'))![0];
+    const base = noteTextHash('One line on what done looks like.');
+    // This device cannot read the vault (no handle in the harness), so the
+    // app-side re-read is inconclusive and the intent goes out with the base;
+    // the applier's check decides.
+    await A.api.saveNoteDescription('project', 'p1', NOTE, 'Dry roof, and gutters.', { base });
+    await A.flush();
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toContain('# House\nDry roof, and gutters.\n\n## Tasks\n');
+    expect(s.text(NOTE)).toContain(line);
+    // Obsidian edits the section; dayGLANCE saves against the old base.
+    await s.write(NOTE, s.text(NOTE)!.replace('Dry roof, and gutters.', 'Edited in Obsidian.'));
+    await s.settle();
+    await A.api.saveNoteDescription('project', 'p1', NOTE, 'Typed in dayGLANCE.', { base: noteTextHash('Dry roof, and gutters.') });
+    await A.flush();
+    await s.plugin.transport.drain();
+    const text = s.text(NOTE)!;
+    expect(text).toContain('# House\nEdited in Obsidian.\n\n> [!note] Edited in dayGLANCE ');
+    expect(text).toContain('\n> Typed in dayGLANCE.\n\n## Tasks\n');
+    expect(text).not.toContain('Dry roof, and gutters.');
+    expect(text).toContain(line);
+    // MUTATION: drop the base check in the applier and 'Edited in Obsidian.'
+    // is overwritten; drop the callout and the dayGLANCE text is gone.
   });
 });
 

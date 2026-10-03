@@ -101,11 +101,15 @@ export function templateNeedsUser(text) {
  * `<% %>` included, stays visible verbatim, which is Templater's own
  * on-create behavior and what lets a user notice and fix it.
  */
-export function renderNoteTemplateSubset(text, { title = '', date = '', goal = '' } = {}) {
+export function renderNoteTemplateSubset(text, { title = '', date = '', goal = '', description = '' } = {}) {
   return String(text ?? '')
     .replace(/\{\{\s*title\s*\}\}/gi, title)
     .replace(/\{\{\s*date\s*\}\}/gi, date)
-    .replace(/\{\{\s*goal\s*\}\}/gi, goal);
+    .replace(/\{\{\s*goal\s*\}\}/gi, goal)
+    // The entity's notes box at creation (owner ruling 2026-10-03): the
+    // description section of noteDescription.js, where the default notes put
+    // their placeholder line.
+    .replace(/\{\{\s*description\s*\}\}/gi, description);
 }
 
 // ── Default note bodies (companion §4.3, templates ruling of 2026-09-04) ────
@@ -142,13 +146,15 @@ export const goalProgressQuery = (dailyFolder = '') =>
  * The default body of a new PROJECT note (no frontmatter; the caller adds
  * dayGLANCE's creation frontmatter and the plugin the id key and the map).
  */
-export function defaultProjectNote({ title, date, hasDataview = false, dailyFolder = '' }) {
+export function defaultProjectNote({ title, date, hasDataview = false, dailyFolder = '', description = '' }) {
   const done = hasDataview
     ? fence(projectCompletionsQuery(dailyFolder))
     : 'With the Dataview plugin installed, this section lists every completion logged for this project in the daily notes, newest first.';
   return [
     `# ${title}`,
-    'One line on what done looks like.',
+    // The description slot (noteDescription.js): the notes box at creation,
+    // else the placeholder the panel shows until it is written.
+    String(description ?? '').trim() || 'One line on what done looks like.',
     '',
     '## Tasks',
     '- [ ] ',
@@ -167,7 +173,7 @@ export function defaultProjectNote({ title, date, hasDataview = false, dailyFold
 }
 
 /** The default body of a new GOAL note. */
-export function defaultGoalNote({ title, date, hasDataview = false, dailyFolder = '' }) {
+export function defaultGoalNote({ title, date, hasDataview = false, dailyFolder = '', description = '' }) {
   const projects = hasDataview
     ? fence(goalProjectsQuery())
     : 'With the Dataview plugin installed, this section lists the projects under this goal with their status and open task counts.';
@@ -176,7 +182,7 @@ export function defaultGoalNote({ title, date, hasDataview = false, dailyFolder 
     : 'With the Dataview plugin installed, this section shows completions across this goal\'s projects by month.';
   return [
     `# ${title}`,
-    'Why this matters, and what finished looks like.',
+    String(description ?? '').trim() || 'Why this matters, and what finished looks like.',
     '',
     '## Projects',
     projects,

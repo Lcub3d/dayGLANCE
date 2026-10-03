@@ -46,10 +46,24 @@
 //   project_note_unlink {path, targetId} — remove that key when it names
 //                     targetId
 //   project_note_create {targetId, kind:'project'|'goal', title, goalId?,
-//                     goalTitle?} — create the entity's note where the
-//                     plugin's layout setting says (projectNotes.js), from
-//                     its template through the §4.4 ladder, and link it;
-//                     idempotent (an already-linked target is a no-op)
+//                     goalTitle?, description?} — create the entity's note
+//                     where the plugin's layout setting says
+//                     (projectNotes.js), from its template through the §4.4
+//                     ladder, with the notes box in the description slot,
+//                     and link it; idempotent (an already-linked target is a
+//                     no-op)
+//   project_note_description {path, targetId, content, mode, base?, at?} —
+//                     the entity's notes box IS the section under its
+//                     note's title (noteDescription.js, owner ruling
+//                     2026-10-03). mode 'replace' is the panel's save and
+//                     carries `base`, the section's hash as loaded: a
+//                     section that moved since is kept and the dayGLANCE
+//                     text appended as a dated callout. mode 'merge' is the
+//                     one-time migration of an existing notes box: a blank
+//                     or placeholder section is replaced, text the user has
+//                     stays with the box below it.
+// wiki_note_write may carry `base` too (the whole note's hash as loaded):
+// a note that moved since is left as it is, and said so in the console.
 // `path` is always vault-root-relative and resolved BY THE EMITTER (the
 // emitter owns the dailyNotesPath/pattern config; the applier needs no
 // dayGLANCE settings). wiki_note_write is the one type without a resolved
@@ -72,6 +86,7 @@
 // persisting its applied-ID set simply re-applies as no-ops.
 
 import { updateTaskLines, sortTaskLinesInSection, buildObsidianTaskLine, splitNoteLines } from './taskLines.js';
+import { noteTextHash, extractNoteDescription, replaceNoteDescription, mergeNoteDescription, appendDescriptionConflict } from './noteDescription.js';
 import { splitBlockId } from './identity.js';
 import { withCreationFrontmatter } from './frontmatter.js';
 import { renderNoteTemplateSubset } from './projectNotes.js';
@@ -533,8 +548,30 @@ export function applyBridgeIntent(currentText, intent) {
         }
         return { text: `${currentText.replace(/\s+$/, '')}\n\n${body}\n`, changed: true };
       }
+      if (currentText !== null && typeof intent.base === 'string' && intent.base && noteTextHash(currentText) !== intent.base) {
+        // REFUSE ON CHANGE (owner ruling 2026-10-03): the note moved since
+        // dayGLANCE loaded it. dayGLANCE re-reads before sending, so this is
+        // a race of seconds or a sync lag; the vault's text stands.
+        console.info(`dayGLANCE bridge: ${String(intent.noteName ?? '')} changed since dayGLANCE loaded it; not overwritten`);
+        return { text: currentText, changed: false };
+      }
       const text = intent.content;
       return { text, changed: text !== currentText };
+    }
+
+    case 'project_note_description': {
+      // The description section (noteDescription.js). A missing note is the
+      // benign nothing-to-update case: the link observation reconciles it.
+      if (currentText === null) return { text: null, changed: false };
+      const content = String(intent.content ?? '');
+      if (intent.mode === 'merge') return mergeNoteDescription(currentText, content);
+      const base = typeof intent.base === 'string' && intent.base ? intent.base : null;
+      if (base && noteTextHash(extractNoteDescription(currentText)) !== base) {
+        console.info(`dayGLANCE bridge: the description of ${String(intent.path ?? '')} changed since dayGLANCE loaded it; the vault's text kept, the dayGLANCE text added below it`);
+        return appendDescriptionConflict(currentText, content, String(intent.at ?? ''));
+      }
+      const text = replaceNoteDescription(currentText, content);
+      return { text, changed: text !== currentText.replace(/\r\n?/g, '\n') };
     }
 
     default:

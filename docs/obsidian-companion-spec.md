@@ -951,6 +951,20 @@ project's index note. Pinned by `projectNotes.scenarios.test.ts` 12
 round trip, the same-title suffix, the quiet second pass), the
 `taskNoteName` unit tests and the applier's append tests.
 
+#### The notes box of a project or goal is its note's description (owner, 2026-10-03)
+
+**Ruling.** A project's or goal's notes box in dayGLANCE and the paragraph under its linked note's title (the text between the H1 and the first heading below it, where the default templates put "One line on what done looks like." and "Why this matters, and what finished looks like.") are one thing. The field report behind it: a user kept project hub notes in Obsidian and a structured summary in each project's notes box, and the two had no connection.
+
+**Shape, as built.** An editor over the file, exactly as the task panel edits a wikilinked note; not a sync, and nothing is merged.
+
+- **At creation**, `project_note_create` carries the notes box as `description`; the plugin puts it in the description slot of the default note, and a user template may place it with `{{description}}` beside `{{title}}`, `{{date}}` and `{{goal}}`. The record empties on enqueue, the body journaled (the sent-notes journal, keyed `project:<id>` or `goal:<id>`).
+- **On link**, and on the first authoritative pass for an entity linked before this ruling, the notes box is merged into the section by a `project_note_description` intent in `merge` mode: a blank or placeholder section is replaced; text the user already has stays, the dayGLANCE text goes below it; a body already present as whole blocks changes nothing. The record empties on enqueue, journaled.
+- **From then on the box is the section.** Opening the project planner, or the goal form, loads the section from the vault through the same reader the task panel uses; the user edits it in place; saving writes it back by `project_note_description` in `replace` mode. The rest of the note is never touched by this write. Beside the box: the note's name and Open in Obsidian. A device that cannot read the vault shows "Notes live in the linked note in Obsidian" and leaves the record alone.
+- **Refuse on change** (ruled with the shape, and extended to task notes). The save carries `base`, the hash of the section (for task notes, of the whole note) as loaded. dayGLANCE reads the note again before sending and, when the text moved, writes nothing: the newer text is loaded into the editor with the unsaved text below it, and the panel says so. The applier checks the same hash at apply time; a section that moved since is kept and the dayGLANCE text appended beneath it as a dated `[!note]` callout, never overwritten and never dropped; a whole task note that moved is left as it is, said in the console. The unmount flush writes without a base, as the task panel always has.
+- **Direct access** gets the same editor over the file where a link exists (the write replaces the section in a whole-note write), but links are plugin-made, so in practice this is plugin mode.
+
+Pure halves in `noteDescription.js` (split, extract, replace, merge, the conflict callout, the hash); pinned by its unit tests, the applier tests in `bridgeStream.test.js`, the hook tests in `useObsidianSync.noteDescription.test.js`, and `projectNotes.scenarios.test.ts` 22 to 24.
+
 #### Linked-task notes and the record's note target (owner, 2026-09-17, option B)
 
 The 2026-09-14 migration converted notes only for a task with no link in

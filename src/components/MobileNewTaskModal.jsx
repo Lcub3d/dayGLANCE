@@ -35,7 +35,7 @@ const MobileNewTaskModal = () => {
     handleNewTaskInputChange,
     dismissNlChip,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goalsProjectsEnabled, multiUserEnabled, users } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title

@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { formatDuration } from '../../utils/formatDuration.js';
 import { DO_STRIPES } from './PastDoCard.jsx';
+import { PlanHistoryPanel } from '../TaskPlanHistory.jsx';
+import { planHistory } from '../../utils/originalPlan.js';
 
 // A SCHED card's Do badge: the timed Do recorded against this task on its
 // date (App's getDoSessionsForTask, from the past-day index in
@@ -19,9 +21,15 @@ import { DO_STRIPES } from './PastDoCard.jsx';
 const clock = (minute) => `${String(Math.floor((minute % 1440) / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
 export const sessionsTotal = (sessions) => sessions.reduce((sum, s) => sum + (s.endMinute - s.startMinute), 0);
 
-/** The popover body, exported so a test can render it open. */
-export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo }) {
+/**
+ * The popover body, exported so a test can render it open. `planTask` is a
+ * finished task whose plan history the card folds in here: the plan, then
+ * the work, in one place (SchedTaskCard).
+ */
+export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo, planTask = null }) {
   const { t } = useTranslation();
+  const history = planTask ? planHistory(planTask) : null;
+  const hasPlanStory = !!history || (Number(planTask?.deferrals) || 0) > 0;
   const progress = (value) => (value === 'completed' ? t('common.completed') : t(`jobo.view.progress.${value}`));
   return (
     <>
@@ -40,6 +48,12 @@ export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo })
       </div>
       {sessions.length > 1 && (
         <div className="opacity-60 mt-1.5">{t('jobo.sched.total', { duration: formatDuration(sessionsTotal(sessions), t) })}</div>
+      )}
+      {hasPlanStory && (
+        <div data-do-plan-history className="mt-2 pt-2 border-t border-stone-200 dark:border-gray-700">
+          <div className="font-semibold mb-1">{t('task.planHistory')}</div>
+          <PlanHistoryPanel history={history} task={planTask} formatTime={formatTime} />
+        </div>
       )}
       {onOpenJobo && (
         <button
@@ -60,7 +74,7 @@ export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo })
 // (Lcub3d on #1726: at 360px a busy row already fills it), so the badge is a
 // striped dot at the end of the title line, where the title gives way to it
 // by truncating. Elsewhere it is the pill with the time, in the details row.
-export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta' }) {
+export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta', withPlanHistory = false }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx() || {};
   const { getDoSessionsForTask, formatTime, isMobile, setViewMode, setSelectedDate } = ctx;
@@ -75,7 +89,7 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta
   const ref = useRef(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
-  const PANEL_WIDTH = 220;
+  const PANEL_WIDTH = 240;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -136,7 +150,7 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta
                      bg-white dark:bg-gray-800 text-gray-800 dark:text-white
                      border-stone-300 dark:border-gray-700"
         >
-          <DoSessionsPanel sessions={sessions} formatTime={formatTime || ((v) => v)} onOpenJobo={openJobo} />
+          <DoSessionsPanel sessions={sessions} formatTime={formatTime || ((v) => v)} onOpenJobo={openJobo} planTask={withPlanHistory ? task : null} />
         </div>,
         document.body,
       )}

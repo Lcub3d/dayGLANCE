@@ -22,12 +22,13 @@ async function i18n() {
 }
 
 const noop = () => {};
-const render = async (task) => renderToStaticMarkup(
+const render = async (task, { doSessions = [] } = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
     <DayPlannerContext.Provider value={{
       darkMode: false, cardBg: 'bg-white', borderClass: 'border-stone-200', textPrimary: 'text-stone-900', textSecondary: 'text-stone-500',
       formatTime: (t) => t, toggleComplete: noop, openMobileEditTask: noop, currentTime: new Date(), postponeTask: noop,
       updateTaskNotes: noop, addSubtask: noop, toggleSubtask: noop, deleteSubtask: noop, updateSubtaskTitle: noop,
+      getDoSessionsForTask: () => doSessions,
     }}>
       <FeaturesContext.Provider value={{ projects: [], goalsProjectsEnabled: false, generateAISubtasks: noop, aiSubtasksLoadingForTask: null, aiConfig: null }}>
         <SyncContext.Provider value={{ loadWikiNote: null, saveWikiNote: null, openInObsidian: null }}>
@@ -68,3 +69,31 @@ describe('SchedTaskCard plan history', () => {
     expect(html).not.toContain('lucide-history');
   });
 });
+
+// JOBO (#1932): a finished task with a Do badge tells one story, so its plan
+// history moves into the badge's panel and the separate icon goes. Only
+// there: an unfinished card, or one without timed Do, keeps the icon.
+describe('SchedTaskCard plan history beside a Do badge', () => {
+  const session = { recordId: 'r1', startMinute: 600, endMinute: 660, progress: 'completed', clippedStart: false, clippedEnd: false };
+
+  // MUTATION: drop the completed condition and an unfinished task loses the
+  // icon its planning still needs.
+  it('keeps the icon on an unfinished task with Do', async () => {
+    const html = await render({ ...base, originalPlan: PLAN }, { doSessions: [session] });
+    expect(html).toContain('lucide-history');
+    expect(html).toContain('data-do-badge');
+  });
+
+  it('keeps the icon on a finished task with no timed Do', async () => {
+    expect(await render({ ...base, completed: true, originalPlan: PLAN })).toContain('lucide-history');
+  });
+
+  // MUTATION: keep the icon here and a full card carries two badges telling
+  // halves of one story.
+  it('folds it into the Do badge on a finished task with Do', async () => {
+    const html = await render({ ...base, completed: true, originalPlan: PLAN }, { doSessions: [session] });
+    expect(html).not.toContain('lucide-history');
+    expect(html).toContain('data-do-badge');
+  });
+});
+

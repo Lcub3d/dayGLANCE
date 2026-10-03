@@ -82,6 +82,25 @@ describe('its panel', () => {
     expect(html).not.toContain('jobo.sched.total');
   });
 
+  it('carries the plan history of a finished task the card folds in, under its own heading', () => {
+    const planTask = { id: 't1', date: '2026-10-02', startTime: '14:00', duration: 60, completed: true, deferrals: 2,
+      originalPlan: { date: '2026-09-29', startTime: '09:00', duration: 60 } };
+    const html = panel(two, () => {});
+    expect(html).not.toContain('data-do-plan-history');
+    const folded = renderToStaticMarkup(<DoSessionsPanel sessions={two} formatTime={(v) => v} onOpenJobo={() => {}} planTask={planTask} />);
+    expect(folded).toContain('data-do-plan-history');
+    expect(folded).toContain('task.planHistory');
+    expect(folded).toContain('task.originallyPlanned');
+    expect(folded).toContain('task.deferredTimes');
+    // the way to JOBO stays last
+    expect(folded.indexOf('data-do-plan-history')).toBeLessThan(folded.indexOf('data-do-open-jobo'));
+  });
+
+  it('has no plan section for a folded task with nothing to tell', () => {
+    const still = { id: 't1', date: '2026-10-02', startTime: '14:00', duration: 60, completed: true };
+    expect(renderToStaticMarkup(<DoSessionsPanel sessions={two} planTask={still} />)).not.toContain('data-do-plan-history');
+  });
+
   // JOBO has no phone layout until slice 8.
   it('has no way to JOBO where there is none', () => {
     expect(panel(two, null)).not.toContain('data-do-open-jobo');

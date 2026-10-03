@@ -35,18 +35,22 @@ const PROVIDER_MODELS = {
     { id: 'openai/gpt-4o', label: 'GPT-4o' },
     { id: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5' },
     { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-    { id: 'google/gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
   ],
   anthropic: [
     { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', recommended: true },
     { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
   ],
+  // STALE LISTS ARE A BUG CLASS (2026-10-03, field report): the 2.0 and the
+  // 2.5 preview ids here were retired by Google and every Gemini feature
+  // failed with "model not found" until a code change. The list is a
+  // starting point only: Settings can fetch the provider's live model list
+  // (fetchProviderModels) and any id can be typed by hand.
   gemini: [
-    { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', recommended: true },
-    { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
-    { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash' },
-    { id: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', recommended: true },
+    { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
   ],
   ollama: [
     { id: 'llama3.2', label: 'Llama 3.2', recommended: true },
@@ -345,6 +349,73 @@ async function _aiTranscribe(audioBlob, config) {
 }
 
 // Test connection to the configured provider
+/**
+ * The model ids a provider's list endpoint reports, as the picker shows
+ * them. Pure: `data` is the endpoint's JSON body.
+ *   gemini   → {models:[{name:'models/x', displayName, supportedGenerationMethods}]}
+ *   openai-shaped (openai, custom, openrouter) → {data:[{id}]}
+ *   ollama   → {models:[{name}]}
+ * Anthropic has no browser-reachable list; its ids are typed or chosen.
+ */
+export function parseModelList(provider, data) {
+  const out = [];
+  if (provider === 'gemini') {
+    for (const m of data?.models || []) {
+      const name = String(m?.name || '');
+      if (!name) continue;
+      const methods = Array.isArray(m.supportedGenerationMethods) ? m.supportedGenerationMethods : [];
+      if (methods.length && !methods.includes('generateContent')) continue;
+      const id = name.replace(/^models\//, '');
+      out.push({ id, label: typeof m.displayName === 'string' && m.displayName ? `${m.displayName} (${id})` : id });
+    }
+  } else if (provider === 'ollama') {
+    for (const m of data?.models || []) if (typeof m?.name === 'string' && m.name) out.push({ id: m.name, label: m.name });
+  } else {
+    for (const m of data?.data || []) if (typeof m?.id === 'string' && m.id) out.push({ id: m.id, label: m.id });
+  }
+  const seen = new Set();
+  return out.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true))).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Ask the configured provider which models it offers. Throws on failure. */
+export async function fetchProviderModels(config) {
+  const provider = config?.provider;
+  let url;
+  const headers = {};
+  switch (provider) {
+    case 'gemini':
+      url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
+      headers['x-goog-api-key'] = config.apiKey;
+      break;
+    case 'openai':
+      url = 'https://api.openai.com/v1/models';
+      headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'openrouter':
+      url = 'https://openrouter.ai/api/v1/models';
+      headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'custom':
+      url = `${String(config.baseUrl || '').replace(/\/+$/, '')}/models`;
+      if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'ollama':
+      url = `${String(config.baseUrl || 'http://localhost:11434').replace(/\/+$/, '')}/api/tags`;
+      break;
+    default:
+      throw new Error(`No model list for ${PROVIDER_LABELS[provider] || provider}`);
+  }
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json())?.error?.message || ''; } catch { /* no body */ }
+    throw new Error(detail || `HTTP ${res.status}`);
+  }
+  const models = parseModelList(provider, await res.json());
+  if (!models.length) throw new Error('The provider returned no models');
+  return models;
+}
+
 export async function testConnection(config) {
   try {
     const result = await aiComplete(

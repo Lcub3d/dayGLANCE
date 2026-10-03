@@ -44,6 +44,19 @@ describe('TaskStarButton', () => {
     expect(html).toContain('aria-pressed="false"');
   });
 
+  // A finished task has answered the question the star asks. MUTATION: drop
+  // the completed check and finished cards keep a toggle and a faint outline.
+  it('on a completed task, is a plain star if it was starred, with no toggle', async () => {
+    const html = await render(task({ completed: true, starredDate: DAY }));
+    expect(html).toContain('lucide-star');
+    expect(html).toContain('fill="currentColor"');
+    expect(html).not.toContain('<button');
+  });
+
+  it('on a completed task never starred, is nothing at all', async () => {
+    expect(await render(task({ completed: true }))).toBe('');
+  });
+
   it('renders nothing for an undated task', async () => {
     // The star is a statement about a particular day; an inbox item is not on one.
     expect(await render({ id: 't1', title: 'Someday' })).toBe('');

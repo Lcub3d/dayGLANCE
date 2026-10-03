@@ -31,7 +31,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 // Deliberately NOT tied to priority. A star is a property of today; priority is
 // a property of the task. See utils/starredTasks.js.
 // `readOnly` renders the star as a plain indicator with no toggle, and only when
-// the task is actually starred. The GLANCE sidebar wants that: it reports on the
+// the task is actually starred; a completed task always renders that way. The GLANCE sidebar wants that: it reports on the
 // day rather than being a place you edit it, and a faint unstarred outline on
 // every row there would be noise you cannot act on.
 export default function TaskStarButton({ task, size = 12, readOnly = false, accent = false, pad = 'p-0.5' }) {
@@ -53,8 +53,12 @@ export default function TaskStarButton({ task, size = 12, readOnly = false, acce
   // on white.
   const tone = starred && accent ? 'text-amber-500 dark:text-amber-400' : '';
 
-  // Read-only surfaces show the star only when there is one to show.
-  if (readOnly) {
+  // Read-only surfaces show the star only when there is one to show. So does
+  // a completed task: the star asked "which of these will I move today?",
+  // and a finished task has answered it. A star it carried stays, plainly, as
+  // the record that the task you meant to move got done; a faint outline
+  // inviting you to star finished work is clutter, and so is unstarring it.
+  if (readOnly || task.completed) {
     return starred
       ? <Star size={size} fill="currentColor" className={`flex-shrink-0 ${tone}`} aria-label={t('task.starKeyTask')} />
       : null;

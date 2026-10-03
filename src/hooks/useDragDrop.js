@@ -1531,6 +1531,8 @@ export default function useDragDrop({
                 isAllDay: false,
                 color: task.color || TASK_COLORS[0].class,
                 recurrence: null,
+                // The modal's notes panel edits this task, not a new draft.
+                schedulingFromInboxId: taskId,
               });
               setShowAddTask(true);
             }

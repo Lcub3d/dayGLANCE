@@ -129,6 +129,8 @@ const ProjectPlanner = ({ project, onClose }) => {
   });
   const sidebar = wide && notesPreferred;
   const [selectedId, setSelectedId] = useState(null);
+  // E puts the cursor in the selected task's note in the sidebar.
+  const [noteFocusRequest, setNoteFocusRequest] = useState(0);
   const panelRef = useRef(null);
   const takeKeyboard = () => panelRef.current?.focus({ preventScroll: true });
   useEffect(() => {
@@ -218,6 +220,12 @@ const ProjectPlanner = ({ project, onClose }) => {
       e.preventDefault();
       e.stopPropagation();
       editTask(selectedTask);
+    } else if ((e.key === 'e' || e.key === 'E') && sidebar && selectedTask) {
+      // The app's own E (end-of-day reschedule) already stands down while
+      // the planner is open; stopping it here keeps it that way.
+      e.preventDefault();
+      e.stopPropagation();
+      setNoteFocusRequest((n) => n + 1);
     }
   };
   useEffect(() => {
@@ -624,7 +632,14 @@ const ProjectPlanner = ({ project, onClose }) => {
           // rest: half the row on a narrower screen, up to 56rem on a wide one.
           <aside data-planner-notes className={`flex-1 min-w-[24rem] max-w-[56rem] border-l ${borderClass} overflow-y-auto p-4`} aria-label={t('task.notes', 'Notes')}>
             {selectedTask ? (
-              <TaskNotesPane key={selectedTask.id} task={selectedTask} autoFocus={false} />
+              <TaskNotesPane
+                key={selectedTask.id}
+                task={selectedTask}
+                autoFocus={false}
+                focusNoteRequest={noteFocusRequest}
+                // Saved with Shift+Enter: the arrows move the selection again.
+                onNoteSaved={() => requestAnimationFrame(takeKeyboard)}
+              />
             ) : (
               <p className={`text-sm ${textSecondary}`}>{t('planner.selectForNotes')}</p>
             )}

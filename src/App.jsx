@@ -19,6 +19,7 @@ import { preserveStickyFields } from './utils/preserveStickyFields.js';
 import { rescueUnsyncedTasks } from './utils/rescueUnsyncedTasks.js';
 import { withProjectMetadata } from '@glance-apps/obsidian-format';
 import { projectRefFor } from './utils/obsidianProjectNotes.js';
+import { createPendingProject } from './utils/pendingProject.js';
 import { readRetiredTaskIds, applyTaskRetirements, RETIRED_TASK_IDS_STORAGE_KEY } from './utils/retiredTaskIds.js';
 import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from './utils/obsidianDeletions.js';
 import { containObsidianGhostRows, persistDerivedGhostRetirements } from './utils/obsidianGhostRows.js';
@@ -41,6 +42,7 @@ import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
 import { buildProjectedDay, buildScheduleSections, serializeWidgetTask, projectionDates, guardSnapshotSize } from './utils/widgetDayProjection.js';
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
+import { parseRecurringId } from './utils/recurringId.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
 import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
@@ -107,6 +109,7 @@ import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
 import useVisibleDays from './hooks/useVisibleDays.js';
 import useDeviceType from './hooks/useDeviceType.js';
 import useIsLandscape from './hooks/useIsLandscape.js';
+import useMobileTabBack from './hooks/useMobileTabBack.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
@@ -2073,27 +2076,7 @@ const DayPlanner = () => {
   }, [routinesEnabled, mobileActiveTab, handleRoutinesDone, setMobileActiveTab]);
 
   // Android back button: navigate to dayglance tab from other screens
-  useEffect(() => {
-    if (!isMobile) return;
-    if (mobileActiveTab === 'dayglance') return;
-    // Don't interfere with settings sub-view back navigation
-    if (mobileActiveTab === 'settings' && mobileSettingsView !== 'main') return;
-
-    // Only push if there isn't already an app-tab history entry
-    if (!window.history.state?.appTab) {
-      window.history.pushState({ appTab: mobileActiveTab }, '');
-    }
-
-    const onPopState = (e) => {
-      // An entry that still carries appTab belongs to something opened inside
-      // the tab (the month view's day sheet pushes one on top of ours); popping
-      // it closes that thing and the tab stays. Only the tab's own entry
-      // going away returns to GLANCE.
-      setMobileActiveTab(e.state?.appTab || 'dayglance');
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, [mobileActiveTab, mobileSettingsView, isMobile]);
+  useMobileTabBack({ isMobile, mobileActiveTab, mobileSettingsView, setMobileActiveTab });
 
 
   // Track for onboarding when sync is set up
@@ -3382,15 +3365,6 @@ const DayPlanner = () => {
 
     return [...overdueScheduled, ...todayRecurring, ...overdueRecurringAllDay, ...overdueDeadlines];
   };
-  const parseRecurringId = (id) => {
-    if (typeof id !== 'string' || !id.startsWith('recurring-')) return null;
-    const parts = id.split('-');
-    // Date is always the last 3 segments (YYYY-MM-DD), template ID is everything between
-    const dateStr = parts.slice(-3).join('-');
-    const rawTemplateId = parts.slice(1, -3).join('-');
-    const templateId = /^\d+$/.test(rawTemplateId) ? Number(rawTemplateId) : rawTemplateId;
-    return { templateId, dateStr };
-  };
 
   // Refs for functions/values defined after the useDragDrop call (TDZ-safe pattern).
   // moveToRecycleBin/clearDeadline: circular dep with useTaskActions (wired after useTaskActions).
@@ -3949,7 +3923,13 @@ const DayPlanner = () => {
     setNativeCalendarKey(k => k + 1);
   };
 
+  // A project named in the modal ("New project…") is created as the task is
+  // saved, and the rest reads newTask with its real id (utils/pendingProject.js).
   const saveMobileEditTask = () => {
+    if (!mobileEditingTask || !newTask.title.trim()) return;
+    saveMobileEditTaskFrom(createPendingProject(newTask, { addProject, goals }).newTask);
+  };
+  const saveMobileEditTaskFrom = (newTask) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
     pushUndo();
     const taskId = mobileEditingTask.id;
@@ -7208,8 +7188,11 @@ const DayPlanner = () => {
       // A task created under a project carries `[project:: …]` on its line
       // from the first write (companion §4.3, ruling G as amended); the
       // identity derives from the line as written.
-      ? (rawTitle, projectId) => {
-          const project = projectId ? projects.find(pr => pr.id === projectId) : null;
+      ? (rawTitle, projectId, createdProject = null) => {
+          // A project created with the task is not in `projects` until the
+          // next render, so addTask hands it over.
+          const project = createdProject?.id === projectId ? createdProject
+            : projectId ? projects.find(pr => pr.id === projectId) : null;
           // A task born under a LINKED project is placed in the project
           // note by the writeback's placement step (companion §4.3, project
           // routing); the tagged daily-note line would only be moved a
@@ -7264,6 +7247,7 @@ const DayPlanner = () => {
           });
         }
       : null,
+    addProject, goals,
   });
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.

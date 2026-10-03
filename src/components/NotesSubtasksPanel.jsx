@@ -5,6 +5,7 @@ import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
 import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
+import { noteFocusTarget } from '../utils/noteFocusTarget.js';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -65,6 +66,11 @@ const NotesSubtasksPanel = ({
   onLoadWikiNote,     // async (noteName) => { text } | null
   onSaveWikiNote,     // async (noteName, content) => void
   onOpenInObsidian,   // (noteName) => void — opens note in Obsidian app/desktop
+  // Bump to put the cursor in the note from outside (the planner's E key).
+  focusNoteRequest = 0,
+  // Called after Shift+Enter saves a note, so the host can take the keyboard
+  // back (the planner returns it to its list).
+  onNoteSaved,
 }) => {
   const { t } = useTranslation();
   // A calendar event's `notes` are its description from the calendar, which
@@ -276,6 +282,7 @@ const NotesSubtasksPanel = ({
       e.preventDefault();
       if (localNotes !== ownNotes) updateTaskNotes(task.id, localNotes, isInbox);
       if (localNotes) setIsEditingNotes(false);
+      onNoteSaved?.();
     }
   };
 
@@ -318,6 +325,46 @@ const NotesSubtasksPanel = ({
   const showLinked = !!(wikilinks && wikilinks.length > 0 && onLoadWikiNote);
   // Keyed on the local draft too, so the block does not vanish mid-edit.
   const hasLocalNotes = !!((localNotes || '').trim() || ownNotes.trim());
+
+  // A request from outside to put the cursor in the note, the one
+  // noteFocusTarget picks. A note shown as a preview switches to its editor
+  // first, so the field is found once it has rendered.
+  const noteFieldsRef = useRef(new Map()); // 'own' | noteName -> textarea
+  const pendingFocusRef = useRef(null);
+  // A bump counts, not the value: a pane mounted for the next selected task
+  // inherits the count and must leave the keyboard where it is.
+  const seenFocusRequestRef = useRef(focusNoteRequest);
+  const noteFieldRef = (key) => (el) => {
+    if (el) noteFieldsRef.current.set(key, el);
+    else noteFieldsRef.current.delete(key);
+  };
+  useEffect(() => {
+    if (focusNoteRequest === seenFocusRequestRef.current) return;
+    seenFocusRequestRef.current = focusNoteRequest;
+    const target = noteFocusTarget({ wikilinks, showLinked, linkedNoteStates, hasLocalNotes });
+    if (!target) return;
+    pendingFocusRef.current = target;
+    if (target === 'own') setIsEditingNotes(true);
+    else setLinkedNoteEditing(prev => ({ ...prev, [target]: true }));
+    // Only a new request moves the cursor, never a change to the notes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNoteRequest]);
+  useEffect(() => {
+    const key = pendingFocusRef.current;
+    const field = key && noteFieldsRef.current.get(key);
+    if (!field) return;
+    pendingFocusRef.current = null;
+    field.focus({ preventScroll: true });
+    field.setSelectionRange?.(field.value.length, field.value.length);
+  });
+  // A click on a note's preview opens its editor with the cursor in it. Where
+  // the panel does not take focus as it opens (noAutoFocus: the task modals,
+  // the sidebars), the editor appeared without it, and took a second click.
+  const editNote = (key) => {
+    pendingFocusRef.current = key;
+    if (key === 'own') setIsEditingNotes(true);
+    else setLinkedNoteEditing(prev => ({ ...prev, [key]: true }));
+  };
 
   return (
     <div
@@ -388,8 +435,10 @@ const NotesSubtasksPanel = ({
                           linkedNoteOriginalRef.current[noteName] = text;
                         }
                         if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
+                        onNoteSaved?.();
                       }
                     }}
+                    ref={noteFieldRef(noteName)}
                     placeholder={t('task.emptyWikiNotePlaceholder')}
                     aria-label={t('task.editWikiNote', { name: noteName })}
                     className={textareaClass}
@@ -397,7 +446,7 @@ const NotesSubtasksPanel = ({
                   />
                 ) : (
                   <div
-                    onClick={() => setLinkedNoteEditing(prev => ({ ...prev, [noteName]: true }))}
+                    onClick={() => editNote(noteName)}
                     className={`text-sm cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
                   >
                     {renderNoteContent(state.text, handleContentWikilinkClick, darkMode, t)}
@@ -423,6 +472,7 @@ const NotesSubtasksPanel = ({
               onChange={handleNotesChange}
               onKeyDown={handleNotesKeyDown}
               onBlur={handleNotesBlur}
+              ref={noteFieldRef('own')}
               placeholder={t('task.notesFormattingPlaceholder')}
               aria-label={t('task.notes')}
               className={textareaClass}
@@ -430,7 +480,7 @@ const NotesSubtasksPanel = ({
             />
           ) : (
             <div
-              onClick={() => setIsEditingNotes(true)}
+              onClick={() => editNote('own')}
               className={`text-sm whitespace-pre-wrap cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
             >
               {urlOnlyNote ? (
@@ -495,8 +545,10 @@ const NotesSubtasksPanel = ({
                     onChange={(e) => setEditingSubtaskText(e.target.value)}
                     onBlur={saveSubtaskEdit}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveSubtaskEdit();
-                      if (e.key === 'Escape') { setEditingSubtaskId(null); setEditingSubtaskText(''); }
+                      // Both stay in the field: inside the task editor's
+                      // <form>, Enter would submit it and Escape close it.
+                      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); saveSubtaskEdit(); }
+                      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setEditingSubtaskId(null); setEditingSubtaskText(''); }
                     }}
                     autoFocus
                     className={`flex-1 text-sm px-1 py-0.5 rounded border outline-none ${th.subtaskInput}`}

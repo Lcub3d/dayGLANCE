@@ -7,12 +7,11 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { SOURCE_APPS } from '../native.js';
 import SuggestionAutocomplete from './SuggestionAutocomplete.jsx';
 import QuickAddChips from './QuickAddChips.jsx';
+import TaskProjectField from './TaskProjectField.jsx';
 import RecurrencePicker from './RecurrencePicker.jsx';
 import LastGlanceBadge from './LastGlanceBadge.jsx';
-import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
-import { extractWikilinks } from '../utils/taskUtils.js';
+import TaskModalNotes from './TaskModalNotes.jsx';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
-import { getProjectColor } from '../utils/colorUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 
 const DesktopNewTaskModal = () => {
@@ -40,10 +39,8 @@ const DesktopNewTaskModal = () => {
     applySuggestionForNewTask,
     handleNewTaskInputChange, handleNewTaskInputKeyDown,
     dismissNlChip,
-    unscheduledTasks,
-    updateTaskNotes, addSubtask, toggleSubtask, deleteSubtask, updateSubtaskTitle,
   } = useDayPlannerCtx();
-  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goals, projects, goalsProjectsEnabled, multiUserEnabled, users, aiSubtasksLoadingForTask, generateAISubtasks } = useFeaturesCtx();
+  const { aiConfig, taskAISuggestion, setTaskAISuggestion, taskAISuggestionLoading, triggerTaskAISuggestion, goalsProjectsEnabled, multiUserEnabled, users } = useFeaturesCtx();
   const { wikilinkCandidates = [] } = useSyncCtx() || {};
 
   // Wikilink autocomplete: detect [[partial at end of title
@@ -61,20 +58,18 @@ const DesktopNewTaskModal = () => {
   // Bucket List items use this editor in inbox flavor, but the Bucket is
   // deliberately pressure-free: no deadline, no priority, no project. Those
   // controls are hidden (a stored deadline would be inert anyway — every
-  // deadline/priority consumer excludes bucket items), and the freed space
-  // hosts the notes & subtasks panel, which has no other surface in the
-  // Bucket List UI.
+  // deadline/priority consumer excludes bucket items). The notes & subtasks
+  // panel below, which every task has here, is their only surface.
   const isBucketItem = !!mobileEditingTask?.bucketId;
-  const liveBucketTask = isBucketItem
-    ? unscheduledTasks.find(t => t.id === mobileEditingTask.id)
-    : null;
+  // Where a key is text being typed: the title, the notes and the subtasks.
+  const isTextField = (el) => el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || !!el?.isContentEditable;
 
   if (!showAddTask || isMobile) return null;
 
   return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]" onClick={() => { setShowAddTask(false); setShowNewTaskDeadlinePicker(false); setMobileEditingTask(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex justify-center overflow-y-auto py-6 z-[80]" onClick={() => { setShowAddTask(false); setShowNewTaskDeadlinePicker(false); setMobileEditingTask(null); }}>
           <form
-            className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4`}
+            className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 my-auto`}
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault();
@@ -109,11 +104,18 @@ const DesktopNewTaskModal = () => {
                   setShowAddTask(false);
                   setMobileEditingTask(null);
                 }
+              } else if (isTextField(e.target)) {
+                // Typing: a note's spaces and carets are text, not shortcuts.
+                // ('^' in the title still toggles Full Day, as it always has.)
+                if (e.key === '^' && e.target === newTaskInputRef.current && !newTask.openInInbox) {
+                  e.preventDefault();
+                  setNewTask({ ...newTask, isAllDay: !newTask.isAllDay });
+                }
               } else if (e.key === '^' && !newTask.openInInbox) {
                 // '^' toggles Full Day for scheduled tasks
                 e.preventDefault();
                 setNewTask({ ...newTask, isAllDay: !newTask.isAllDay });
-              } else if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+              } else if (e.key === ' ') {
                 // Prevent SPACE from activating buttons
                 e.preventDefault();
               }
@@ -226,55 +228,7 @@ const DesktopNewTaskModal = () => {
               {/* Project assignment (only when Goals & Projects is enabled;
                   never for Bucket List items — a PLANNER without a project) */}
               {goalsProjectsEnabled && !isBucketItem && (
-                <div>
-                  <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.project')}</label>
-                  <select
-                    value={newTask.projectId || ''}
-                    onChange={(e) => {
-                      const pid = e.target.value || null;
-                      const proj = pid ? projects.find(p => p.id === pid) : null;
-                      const parentGoal = proj?.goalId ? goals.find(g => g.id === proj.goalId) : null;
-                      // Copy-at-creation inheritance: adopting a project stamps its
-                      // effective color and assigned users onto the draft task
-                      // (deselecting clears the inherited users).
-                      setNewTask({
-                        ...newTask,
-                        projectId: pid,
-                        ...(proj ? { color: getProjectColor(proj, parentGoal) } : {}),
-                        assignedUserSyncIds: proj?.assignedUserSyncIds || [],
-                      });
-                    }}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                  >
-                    <option value="">{t('task.noProject')}</option>
-                    {(() => {
-                      const activeProjects = projects.filter(p => p.status !== 'archived' && p.status !== 'completed');
-                      const withGoal = activeProjects.filter(p => p.goalId);
-                      const standalone = activeProjects.filter(p => !p.goalId);
-                      const goalGroups = goals
-                        .filter(g => g.status !== 'archived' && withGoal.some(p => p.goalId === g.id))
-                        .map(g => ({ goal: g, projs: withGoal.filter(p => p.goalId === g.id) }));
-                      return (
-                        <>
-                          {goalGroups.map(({ goal, projs }) => (
-                            <optgroup key={goal.id} label={goal.title}>
-                              {projs.map(p => (
-                                <option key={p.id} value={p.id}>{p.title}</option>
-                              ))}
-                            </optgroup>
-                          ))}
-                          {standalone.length > 0 && (
-                            <optgroup label={t('goals.standalone')}>
-                              {standalone.map(p => (
-                                <option key={p.id} value={p.id}>{p.title}</option>
-                              ))}
-                            </optgroup>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </select>
-                </div>
+                <TaskProjectField newTask={newTask} setNewTask={setNewTask} />
               )}
               {multiUserEnabled && users.filter(u => !u.deleted).length > 0 && (
                 <div>
@@ -683,27 +637,10 @@ const DesktopNewTaskModal = () => {
                   </>
                 )}
               </div>
-              {/* Notes & subtasks for Bucket List items — their only surface,
-                  since bucket rows have no expandable panel */}
-              {isBucketItem && liveBucketTask && (
-                <div>
-                  <NotesSubtasksPanel
-                    task={liveBucketTask}
-                    isInbox={true}
-                    darkMode={darkMode}
-                    noAutoFocus
-                    updateTaskNotes={updateTaskNotes}
-                    addSubtask={addSubtask}
-                    toggleSubtask={toggleSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtaskTitle={updateSubtaskTitle}
-                    aiConfig={aiConfig}
-                    aiSubtasksLoadingForTask={aiSubtasksLoadingForTask}
-                    onGenerateSubtasks={generateAISubtasks}
-                    wikilinks={extractWikilinks(liveBucketTask.title).length > 0 ? extractWikilinks(liveBucketTask.title) : undefined}
-                  />
-                </div>
-              )}
+              {/* Notes & subtasks, behind a button: the task's own, or a new
+                  task's draft saved with it (components/TaskModalNotes.jsx).
+                  The only surface for a Bucket List item's. */}
+              <TaskModalNotes newTask={newTask} setNewTask={setNewTask} editingTask={mobileEditingTask} />
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"

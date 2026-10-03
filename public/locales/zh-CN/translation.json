@@ -700,6 +700,8 @@
     "obsidianDailyNoteTemplateHint": "创建新日记时会预先填入",
     "obsidianDailyNoteTemplatePlaceholder": "新日记模板…",
     "obsidianDailyNotesFolderHint": "留空表示 vault 根目录。常用目录：\"Daily Notes\" 或 \"journals\"",
+    "obsidianDailyNotesResolved": "每日笔记写入 {{path}}",
+    "obsidianDailyNotesNested": "你选择的文件夹本身就叫“{{name}}”，这个设置会在其中再创建一个“{{name}}”文件夹，并为每天的笔记写入第二份副本。如果你选择的是每日笔记文件夹，请改为选择 vault 的根目录，或将此设置留空。",
     "obsidianFilenamePatternHint": "日记文件名的日期格式（不含 .md），例如 \"yyyy-MM-dd\"、\"dd-MM-yyyy\"、\"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault 访问权限和日记设置在应用设置中配置。",
     "obsidianNewNotesFolderHint": "dayGLANCE 创建的新笔记会保存在此处。留空表示 vault 根目录。",

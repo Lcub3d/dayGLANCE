@@ -723,6 +723,8 @@
     "obsidianDailyNoteTemplateHint": "Заповнюється під час створення нової щоденної нотатки",
     "obsidianDailyNoteTemplatePlaceholder": "Шаблон для нових щоденних нотаток...",
     "obsidianDailyNotesFolderHint": "Залиште порожнім для кореня сховища. Поширені: «Daily Notes» або «journals»",
+    "obsidianDailyNotesResolved": "Щоденні нотатки записуються до {{path}}",
+    "obsidianDailyNotesNested": "Вибрана тека сама називається «{{name}}», тож це налаштування створить у ній ще одну теку «{{name}}» і другу копію нотатки кожного дня. Якщо ви вибрали теку щоденних нотаток, виберіть натомість корінь сховища або залиште це налаштування порожнім.",
     "obsidianFilenamePatternHint": "Шаблон дати для імен файлів щоденних нотаток (без .md). напр. «yyyy-MM-dd», «dd-MM-yyyy», «MMMM dd, yyyy»",
     "obsidianNativeSettingsHint": "Доступ до сховища й налаштування щоденних нотаток задаються в налаштуваннях застосунку.",
     "obsidianNewNotesFolderHint": "Де зберігаються нові нотатки, створені в dayGLANCE. Залиште порожнім для кореня сховища.",

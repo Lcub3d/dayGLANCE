@@ -700,6 +700,8 @@
     "obsidianDailyNoteTemplateHint": "Prérempli lors de la création d'une nouvelle note quotidienne",
     "obsidianDailyNoteTemplatePlaceholder": "Modèle pour les nouvelles notes quotidiennes...",
     "obsidianDailyNotesFolderHint": "Laissez vide pour utiliser la racine du vault. Noms courants : \"Daily Notes\" ou \"journals\"",
+    "obsidianDailyNotesResolved": "Les notes quotidiennes sont écrites dans {{path}}",
+    "obsidianDailyNotesNested": "Le dossier choisi s'appelle lui-même « {{name}} » : ce réglage créerait un autre dossier « {{name}} » à l'intérieur et une seconde copie de chaque note du jour. Si vous avez choisi le dossier des notes quotidiennes, choisissez plutôt la racine du vault, ou laissez ce réglage vide.",
     "obsidianFilenamePatternHint": "Format de date des noms de fichiers des notes quotidiennes (sans .md), par exemple \"yyyy-MM-dd\", \"dd-MM-yyyy\" ou \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "L'accès au vault et les réglages des notes quotidiennes se configurent dans les réglages de l'application.",
     "obsidianNewNotesFolderHint": "Les nouvelles notes créées dans dayGLANCE sont enregistrées ici. Laissez vide pour utiliser la racine du vault.",

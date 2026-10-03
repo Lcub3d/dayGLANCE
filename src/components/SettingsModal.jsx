@@ -19,6 +19,7 @@ import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nati
 import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars } from '../utils/nativeCalendar.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, formatDatePattern } from '../obsidian.js';
 import { validateDailyNotePattern, validateVaultFolderSetting } from '../utils/obsidianFilename.js';
+import { describeDailyNotePath } from '../utils/obsidianFolderCheck.js';
 import { effectiveLaunchOnWrite } from '../utils/obsidianLaunchOnWrite.js';
 import UnportableVaultNamesPanel from './UnportableVaultNamesPanel.jsx';
 import BridgePairingPanel from './BridgePairingPanel.jsx';
@@ -1807,6 +1808,29 @@ const SettingsModal = () => {
                             <p className={`text-xs ${textSecondary} mt-1`}>
                               {t('settings.obsidianDailyNotesFolderHint', { defaultValue: 'Leave empty for vault root. Common: "Daily Notes" or "journals"' })}
                             </p>
+                            {/* Where a daily note lands, and the nesting trap
+                                (utils/obsidianFolderCheck.js): the picked folder
+                                named like the setting means a second folder of
+                                the same name inside it, and two copies of each
+                                day's note. Said here, before the first write. */}
+                            {(() => {
+                              const resolved = describeDailyNotePath({
+                                vaultName: obsidianConfig.vaultName, dailyNotesPath: obsidianConfig.dailyNotesPath,
+                                dailyNotePattern: obsidianConfig.dailyNotePattern, formatDatePattern,
+                              });
+                              return (
+                                <>
+                                  <p data-obsidian-daily-path className={`text-xs ${textSecondary} mt-1`}>
+                                    {t('settings.obsidianDailyNotesResolved', { path: resolved.path })}
+                                  </p>
+                                  {resolved.nested && (
+                                    <p data-obsidian-daily-nested className="text-xs text-amber-500 mt-1">
+                                      {t('settings.obsidianDailyNotesNested', { name: obsidianConfig.vaultName })}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>

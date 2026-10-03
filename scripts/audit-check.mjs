@@ -59,6 +59,19 @@ const ACK = {
     reason: 'Dev-server request/response exposure to any website. Fix with the vite 5->8 upgrade.',
     review: '2026-12-31',
   },
+  // Both published 2026-10 with no patched release (every version affected),
+  // so there is nothing to upgrade or override to yet. Both are build-time
+  // only: `npm ls --omit=dev` finds neither. Revisit when a fix ships.
+  'GHSA-vfj7-8cjw-p6xm': {
+    disposition: 'accept', pkg: 'braces (via tailwindcss: chokidar, micromatch)',
+    reason: 'Stack-exhaustion DoS from deeply nested patterns. Tailwind runs at build time on the glob patterns in our own config, never on outside input. No patched version (all <=3.0.3).',
+    review: '2026-11-30',
+  },
+  'GHSA-ch52-4w7c-c8xp': {
+    disposition: 'accept', pkg: 'http-cache-semantics (via electron-builder: @electron/get, got, cacheable-request)',
+    reason: 'max-stale handling can serve one user\'s cached response to another. Only the desktop packager uses it, to download Electron on the build machine: a single user, no shared cache. No patched version (all <=4.2.0).',
+    review: '2026-11-30',
+  },
 };
 
 const res = spawnSync('npm', ['audit', '--json'], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });

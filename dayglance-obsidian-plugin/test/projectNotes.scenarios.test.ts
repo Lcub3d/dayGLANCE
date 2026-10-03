@@ -710,6 +710,45 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     // MUTATION: drop the base check in the applier and 'Edited in Obsidian.'
     // is overwritten; drop the callout and the dayGLANCE text is gone.
   });
+
+  it('25. THE LINK TAKEN WITHOUT THE PLUGIN (owner 2026-10-03: a wikilink in the title): the record names its note, marked pending; the first authoritative pass asks for the key, the note gains it, the mark clears, the box moves in; a pending link to a note that is not there comes back as missing', async () => {
+    // Daniel's case: a hub note he wrote himself, a project linked to it by
+    // typing its wikilink into the title on a device with no plugin, and a
+    // summary in the notes box. Then he installs the plugin.
+    await s.write(NOTE, '---\ntags: [hub]\n---\n# House\nMy own hub paragraph.\n\n## Links\n- [[Roof quotes]]\n');
+    const house = { id: 'p1', title: 'House', status: 'active', obsidianNotePath: NOTE, obsidianNoteLinkPending: '2026-10-01T09:00:00.000Z', description: 'Purpose: keep the house dry.' };
+    const attic = { id: 'p2', title: 'Attic', status: 'active', obsidianNotePath: 'Projects/Attic.md', obsidianNoteLinkPending: '2026-10-01T09:00:00.000Z' };
+    await boot({ projects: [house, attic] });
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBeUndefined();
+    await A.writeback();
+    // The mark clears on enqueue, before any word comes back from the vault.
+    expect(house.obsidianNoteLinkPending).toBe(null);
+    expect(attic.obsidianNoteLinkPending).toBe(null);
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    // The key is in the note; the user's own frontmatter and text survive; the box sits below the paragraph.
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBe('p1');
+    expect(frontmatterOf(NOTE).tags).toEqual(['hub']);
+    expect(s.text(NOTE)).toContain('# House\nMy own hub paragraph.\n\nPurpose: keep the house dry.\n\n## Links\n- [[Roof quotes]]\n');
+    expect(s.plugin.transport.linkedNotes().get(NOTE)).toBe('p1');
+    expect(house.obsidianNoteLinkPending).toBe(null);
+    expect(house.obsidianNotePath).toBe(NOTE);
+    expect(house.description).toBe('');
+    // The note Attic named does not exist: ruling F, the record learns it is missing and keeps the path for a relink.
+    expect(attic.obsidianNoteLinkPending).toBe(null);
+    expect(attic.obsidianNotePath).toBe('Projects/Attic.md');
+    expect(attic.obsidianNoteMissingAt).toBeTruthy();
+    // A second pass asks for nothing again.
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    // MUTATION: drop the pending branch and the key never arrives; drop the
+    // clear on enqueue and the mark outlives the enqueue (the plugin's own
+    // report clears it later, so the second-pass check alone would not see
+    // it).
+  });
 });
 
 // ── Daily-note templates (companion §4.4 build record, 2026-09-06) ──────────

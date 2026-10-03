@@ -1968,6 +1968,7 @@
     "notesInVault": "Les notes vivent dans la note liée dans Obsidian.",
     "notesLoading": "Chargement depuis la note liée…",
     "notesLoadFailed": "Impossible de lire la note liée : {{error}}",
+    "notesNoteMissing": "La note liée n'a pas été trouvée dans le coffre. Vérifiez le nom de la note, ou créez la note dans Obsidian.",
     "notesChanged": "La note a changé dans Obsidian depuis son ouverture. Le texte le plus récent est chargé, votre texte non enregistré en dessous ; vérifiez et enregistrez à nouveau.",
     "scheduled": "Planifiées",
     "nothingScheduledYet": "Rien de planifié pour l'instant.",

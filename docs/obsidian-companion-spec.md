@@ -574,7 +574,8 @@ this section is built ahead of them.
   differs from the one in the file, with a wall-clock floor of five minutes
   between writes to the same note. No new row type on the bridge stream, no
   per-change write from the app; the dirty-buffer and cursor gates apply.
-  Direct access does not get project notes at all (§2; §6 ruling F).
+  Direct access does not get the block or the routing (§2; §6 ruling F); it
+  does get the link and the section editor (the 2026-10-03 amendment below).
 - **D. What "create the workspace" produces.** ONE NOTE by default. A project
   born in dayGLANCE can create its note in a configured projects folder
   (default `Projects`), named after the project, from an optional user
@@ -961,9 +962,21 @@ round trip, the same-title suffix, the quiet second pass), the
 - **On link**, and on the first authoritative pass for an entity linked before this ruling, the notes box is merged into the section by a `project_note_description` intent in `merge` mode: a blank or placeholder section is replaced; text the user already has stays, the dayGLANCE text goes below it; a body already present as whole blocks changes nothing. The record empties on enqueue, journaled.
 - **From then on the box is the section.** Opening the project planner, or the goal form, loads the section from the vault through the same reader the task panel uses; the user edits it in place; saving writes it back by `project_note_description` in `replace` mode. The rest of the note is never touched by this write. Beside the box: the note's name and Open in Obsidian. A device that cannot read the vault shows "Notes live in the linked note in Obsidian" and leaves the record alone.
 - **Refuse on change** (ruled with the shape, and extended to task notes). The save carries `base`, the hash of the section (for task notes, of the whole note) as loaded. dayGLANCE reads the note again before sending and, when the text moved, writes nothing: the newer text is loaded into the editor with the unsaved text below it, and the panel says so. The applier checks the same hash at apply time; a section that moved since is kept and the dayGLANCE text appended beneath it as a dated `[!note]` callout, never overwritten and never dropped; a whole task note that moved is left as it is, said in the console. The unmount flush writes without a base, as the task panel always has.
-- **Direct access** gets the same editor over the file where a link exists (the write replaces the section in a whole-note write), but links are plugin-made, so in practice this is plugin mode.
+- **Direct access** gets the same editor over the file where a link exists (the write replaces the section in a whole-note write). Links on direct access are made by the user, per the next section.
 
 Pure halves in `noteDescription.js` (split, extract, replace, merge, the conflict callout, the hash); pinned by its unit tests, the applier tests in `bridgeStream.test.js`, the hook tests in `useObsidianSync.noteDescription.test.js`, and `projectNotes.scenarios.test.ts` 22 to 24.
+
+#### A wikilink in the title is the link, and the record may hold a link alone (owner, 2026-10-03)
+
+**Ruling.** Typing a note's `[[wikilink]]` into a project's or goal's title tells dayGLANCE that is its note. The link leaves the title (a title that was nothing but the link keeps the note's name) and the entity is linked to the note the link names, exactly as the note row would link it. Linking an existing note never creates one: when a new entity has both the title link and "Create a note in Obsidian", the link wins. The idea came from the direct-access case (a user whose vault is a folder, with no plugin, has notes for their projects and no way to say so); it is the §2 clause in action, a Phase 8 feature extended to direct access because the cost was one rule and one field.
+
+**The field.** Without a stream to carry the id key, `linkProjectNote` sets the locator on the record alone and marks it `obsidianNoteLinkPending` (an ISO time). Every reader treats the entity as linked: the section editor over the note (through the device's own reader and writer), the open-book badge, Open in Obsidian, the project field on completion-log entries, the planner's notes box. What a pending link does not have is the key, so a rename in Obsidian breaks it until the plugin comes; the note row says so. The notes box moves into the section on link here too, through a direct whole-note write where the device can read and write the note, and otherwise waits on the record for the first pass that can.
+
+**Promotion.** On the first authoritative pass with a stream, the writeback asks the plugin for the key (`project_note_link`) for every pending entity and clears the mark on enqueue. From there the plugin's own report settles it: the key lands and the link observation confirms the path; a note that is not there comes back as missing (ruling F), path kept for a relink. `planNoteLinkUpdates` clears the mark on any report about the entity, so a key the plugin finds on its own (the same note linked from another device) ends the pending state too. Unlinking a pending link sends no unlink: the vault never carried the key. The mark is a project field like the locator, synced whole with the record.
+
+**Where a missing note shows.** The planner's notes box and the goal form distinguish a note the reader could not find ("The linked note was not found in the vault") from a vault the device cannot read ("Notes live in the linked note in Obsidian"), since a typed link's main failure is a typo.
+
+Pinned by `obsidianProjectNotes.test.js` (the title rule, the pending mark and its clearing), `useObsidianSync.noteDescription.test.js` and `useObsidianSync.projectNotes.test.js` (the stream-less link, the direct merge, the unlink), and `projectNotes.scenarios.test.ts` 25 (the promotion, the missing case, the second pass writing nothing).
 
 #### Linked-task notes and the record's note target (owner, 2026-09-17, option B)
 

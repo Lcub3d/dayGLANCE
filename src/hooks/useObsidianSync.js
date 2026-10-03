@@ -55,7 +55,7 @@ import { writebackTargetFor } from '../utils/obsidianWritebackTarget.js';
 // note over a few passes; a vault-wide burst of line writes is the shape
 // that has started wars (the declined-backfill cost record).
 const PLACEMENT_PER_PASS = 25;
-import { noteTaskId, withScheduledMetadata, withProjectMetadata, noteTextHash, extractNoteDescription, replaceNoteDescription } from '@glance-apps/obsidian-format';
+import { noteTaskId, withScheduledMetadata, withProjectMetadata, noteTextHash, extractNoteDescription, replaceNoteDescription, mergeNoteDescription } from '@glance-apps/obsidian-format';
 import { fetchBridgeObservations, applyBridgeObservations, commitBridgeObservationCursor, pendingBridgeObservations, lastBridgeInboundFailure, readBridgeCopies } from '../utils/obsidianBridgeInbound.js';
 import {
   fetchBridgeActions, planBridgeActions, applyActionsToTasks, applyActionsToRecurring,
@@ -353,6 +353,35 @@ export default function useObsidianSync({
       return { ok: false };
     }
   }, [obsidianConfig?.newNotesFolder, obsidianVaultHandleRef, setObsidianSyncError, setObsidianSyncStatus, loadWikiNote]);
+
+  // The one-time move of the notes box into the section, on direct access
+  // (the stream's twin is the `merge` intent): the note as this device
+  // reads it, the box merged below its own text, written back whole; the
+  // record empties and the body is journaled only once the write landed.
+  // A note this device cannot read or write leaves the box on the record
+  // for the first authoritative pass to move.
+  const mergeNoteDescriptionDirect = useCallback(async (kind, id, path, body) => {
+    const handle = obsidianVaultHandleRef.current;
+    if (!handle || !body) return false;
+    const current = await loadWikiNote(path);
+    if (!current || current.notFound || typeof current.text !== 'string') return false;
+    const merged = mergeNoteDescription(current.text, body);
+    try {
+      if (merged.changed) {
+        if (handle === 'native') {
+          if (!nativeWriteNote(path, merged.text)) return false;
+        } else {
+          await writeWikiNote(handle, path, merged.text, obsidianConfig?.newNotesFolder ?? 'dayGLANCE');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to move the notes box into the note:', err);
+      return false;
+    }
+    recordSentNotes({ id: `${kind}:${id}`, target: path, body });
+    (kind === 'goal' ? updateGoal : updateProject)?.(id, { description: '' });
+    return true;
+  }, [loadWikiNote, obsidianVaultHandleRef, obsidianConfig?.newNotesFolder, updateProject, updateGoal]);
 
   // ── Task-write / restore failure surfacing ────────────────────────────────
   //
@@ -1891,8 +1920,18 @@ export default function useObsidianSync({
       for (const [kind, list, update] of [['project', projectsForNotes, updateProject], ['goal', goalsRef.current || [], updateGoal]]) {
         for (const entity of list) {
           const link = noteLinkOf(entity);
+          if (!link || link.missing || !update) continue;
+          // A link the record took alone (a wikilink in the title, or the
+          // note row, with no stream to carry the key): the plugin is asked
+          // for the key now; the mark clears on enqueue, and the plugin's
+          // own report settles the rest (a note that is not there comes
+          // back as missing, ruling F).
+          if (link.pending) {
+            if (!emitBridgeIntent('project_note_link', { path: link.path, targetId: String(entity.id) })) continue;
+            update(entity.id, { obsidianNoteLinkPending: null });
+          }
           const body = typeof entity?.description === 'string' ? entity.description.trim() : '';
-          if (!link || link.missing || !body || !update) continue;
+          if (!body) continue;
           if (!emitBridgeIntent('project_note_description', { path: link.path, targetId: String(entity.id), content: body, mode: 'merge' })) continue;
           recordSentNotes({ id: `${kind}:${entity.id}`, target: link.path, body });
           update(entity.id, { description: '' });
@@ -2403,32 +2442,51 @@ export default function useObsidianSync({
   // frontmatter, or removes it); the record updates only once the intent is
   // durably queued, so an unpaired vault never shows a link the vault does
   // not carry. Returns whether the link was queued.
-  const linkProjectNote = useCallback((kind, id, rawPath) => {
+  //
+  // WITHOUT A STREAM (owner, 2026-10-03: the wikilink in the title, and
+  // this row, on direct access): the record takes the link on its own,
+  // marked `obsidianNoteLinkPending`. Every reader treats it as linked (the
+  // section editor, the badge, Open in Obsidian, the project field); the
+  // first authoritative pass with a stream asks the plugin for the key,
+  // and a note that is not there comes back as missing (ruling F).
+  // `description` travels with the call for an entity created a moment ago,
+  // not yet in the lists.
+  const linkProjectNote = useCallback((kind, id, rawPath, { description } = {}) => {
     const path = normalizeNotePath(rawPath);
     const update = kind === 'goal' ? updateGoal : updateProject;
     if (!path || !update) return false;
-    if (!emitBridgeIntent('project_note_link', { path, targetId: String(id) })) return false;
-    update(id, { obsidianNotePath: path, obsidianNoteMissingAt: null });
+    const list = kind === 'goal' ? goalsRef.current : projectsRef.current;
+    const entity = (list || []).find((e) => e && String(e.id) === String(id));
+    const body = String(entity?.description ?? description ?? '').trim();
+    if (!emitBridgeIntent('project_note_link', { path, targetId: String(id) })) {
+      if (!obsidianConfig?.enabled) return false;
+      update(id, { obsidianNotePath: path, obsidianNoteMissingAt: null, obsidianNoteLinkPending: new Date().toISOString() });
+      // The notes box goes into the section here too, where this device can
+      // read and write the note; otherwise it waits on the record for the
+      // first pass that can (the writeback's migration).
+      if (body) void mergeNoteDescriptionDirect(kind, id, path, body);
+      return true;
+    }
+    update(id, { obsidianNotePath: path, obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
     // The notes box moves into the note's description section (owner ruling
     // 2026-10-03): merged below whatever the note already says, journaled,
     // and the record empties on enqueue, as task notes do.
-    const list = kind === 'goal' ? goalsRef.current : projectsRef.current;
-    const entity = (list || []).find((e) => e && String(e.id) === String(id));
-    const body = typeof entity?.description === 'string' ? entity.description.trim() : '';
     if (body && emitBridgeIntent('project_note_description', { path, targetId: String(id), content: body, mode: 'merge' })) {
       recordSentNotes({ id: `${kind}:${id}`, target: path, body });
       update(id, { description: '' });
     }
     return true;
-  }, [updateProject, updateGoal]);
+  }, [updateProject, updateGoal, obsidianConfig?.enabled, mergeNoteDescriptionDirect]);
   const unlinkProjectNote = useCallback((kind, id) => {
     const list = kind === 'goal' ? goalsRef.current : projectsRef.current;
     const update = kind === 'goal' ? updateGoal : updateProject;
     const entity = (list || []).find((e) => e && String(e.id) === String(id));
     if (!update) return false;
     const path = entity?.obsidianNotePath; // read before the update (the record may be mutated in place)
-    update(id, { obsidianNotePath: null, obsidianNoteMissingAt: null });
-    if (path) emitBridgeIntent('project_note_unlink', { path, targetId: String(id) });
+    const pending = !!entity?.obsidianNoteLinkPending;
+    update(id, { obsidianNotePath: null, obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
+    // A link the vault never carried has no key to remove.
+    if (path && !pending) emitBridgeIntent('project_note_unlink', { path, targetId: String(id) });
     return true;
   }, [updateProject, updateGoal]);
 

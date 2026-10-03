@@ -14,9 +14,16 @@
 //                          the project keeps its path so a relink can prefill,
 //                          but everything that reads the link treats it as
 //                          absent while this is set)
+//   obsidianNoteLinkPending ISO time the record took the link on its own,
+//                          with no stream to carry the id key into the note
+//                          (direct access, or a vault not yet paired; owner,
+//                          2026-10-03). The link is live for every reader;
+//                          the first authoritative pass with a stream asks
+//                          the plugin for the key and clears the mark.
 
 import { noteKeyForPath } from '@glance-apps/obsidian-format';
 import { noteWikilink } from '@glance-apps/agenda-core';
+import { extractWikilinks, stripWikilinks } from './taskUtils.js';
 
 /** A user-typed note reference → a normalized vault path ending in .md, or ''. */
 export function normalizeNotePath(input) {
@@ -36,13 +43,31 @@ export function noteDisplayName(path) {
 }
 
 /**
- * The entity's link for display, or null when unlinked.
- * @returns {{ path: string, name: string, missing: boolean } | null}
+ * The entity's link for display, or null when unlinked. `pending` is a link
+ * the record holds alone, the note not yet carrying the key.
+ * @returns {{ path: string, name: string, missing: boolean, pending: boolean } | null}
  */
 export function noteLinkOf(entity) {
   const path = typeof entity?.obsidianNotePath === 'string' ? entity.obsidianNotePath : '';
   if (!path) return null;
-  return { path, name: noteDisplayName(path), missing: !!entity.obsidianNoteMissingAt };
+  return { path, name: noteDisplayName(path), missing: !!entity.obsidianNoteMissingAt, pending: !!entity.obsidianNoteLinkPending };
+}
+
+/**
+ * A [[wikilink]] typed into a project's or goal's TITLE names its note
+ * (owner, 2026-10-03): the way a user without the plugin tells dayGLANCE
+ * where the note lives, and a shortcut for everyone else. The first link
+ * is the note (a heading suffix and an alias are dropped); the title is
+ * what remains without the links, or the note's own name when the title
+ * was nothing but the link. Null when the title carries no link.
+ * @returns {{ title: string, path: string } | null}
+ */
+export function noteLinkFromTitle(title) {
+  const links = extractWikilinks(title);
+  if (links.length === 0) return null;
+  const path = normalizeNotePath(links[0]);
+  if (!path) return null;
+  return { title: stripWikilinks(title), path };
 }
 
 /**
@@ -146,16 +171,19 @@ export function planNoteLinkUpdates(links, { projects = [], goals = [] } = {}) {
     if (!slot) continue;
     const cur = slot.entity;
     let updates = null;
+    // A pending mark (the record linked alone) ends with the first word
+    // from the vault about this entity's key, whichever way it goes.
+    const pending = cur.obsidianNoteLinkPending ? { obsidianNoteLinkPending: null } : {};
     if (link.unlinked) {
       if (cur.obsidianNotePath && cur.obsidianNotePath === link.path) {
-        updates = { obsidianNotePath: null, obsidianNoteMissingAt: null };
+        updates = { obsidianNotePath: null, obsidianNoteMissingAt: null, ...pending };
       }
     } else if (link.deleted) {
       if (cur.obsidianNotePath === link.path && !cur.obsidianNoteMissingAt) {
-        updates = { obsidianNoteMissingAt: link.observedAt || new Date().toISOString() };
+        updates = { obsidianNoteMissingAt: link.observedAt || new Date().toISOString(), ...pending };
       }
-    } else if (cur.obsidianNotePath !== link.path || cur.obsidianNoteMissingAt) {
-      updates = { obsidianNotePath: link.path, obsidianNoteMissingAt: null };
+    } else if (cur.obsidianNotePath !== link.path || cur.obsidianNoteMissingAt || cur.obsidianNoteLinkPending) {
+      updates = { obsidianNotePath: link.path, obsidianNoteMissingAt: null, ...pending };
     }
     if (!updates) continue;
     slot.entity = { ...cur, ...updates };

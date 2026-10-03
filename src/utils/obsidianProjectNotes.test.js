@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeNotePath, noteDisplayName, noteLinkOf, planNoteLinkUpdates, projectLogName, projectByNotePath } from './obsidianProjectNotes.js';
+import { normalizeNotePath, noteDisplayName, noteLinkOf, noteLinkFromTitle, planNoteLinkUpdates, projectLogName, projectByNotePath } from './obsidianProjectNotes.js';
 
 describe('normalizeNotePath / noteDisplayName / noteLinkOf', () => {
   it('accepts a bare name, a wikilink, a heading suffix, and a path; adds .md; normalizes slashes', () => {
@@ -10,10 +10,29 @@ describe('normalizeNotePath / noteDisplayName / noteLinkOf', () => {
     expect(normalizeNotePath('   ')).toBe('');
     expect(noteDisplayName('Projects/House.md')).toBe('Projects/House');
   });
-  it('noteLinkOf reads the locator and the missing mark', () => {
+  it('noteLinkOf reads the locator, the missing mark and the pending mark', () => {
     expect(noteLinkOf({})).toBe(null);
-    expect(noteLinkOf({ obsidianNotePath: 'Projects/House.md' })).toEqual({ path: 'Projects/House.md', name: 'Projects/House', missing: false });
+    expect(noteLinkOf({ obsidianNotePath: 'Projects/House.md' })).toEqual({ path: 'Projects/House.md', name: 'Projects/House', missing: false, pending: false });
     expect(noteLinkOf({ obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: '2026-09-03T10:00:00.000Z' }).missing).toBe(true);
+    expect(noteLinkOf({ obsidianNotePath: 'Projects/House.md', obsidianNoteLinkPending: '2026-10-03T10:00:00.000Z' }).pending).toBe(true);
+  });
+});
+
+describe('noteLinkFromTitle (a wikilink in the title names the note, owner 2026-10-03)', () => {
+  it('takes the first link as the note and leaves the title without it; a heading suffix and an alias are dropped', () => {
+    expect(noteLinkFromTitle('Fix the roof [[Projects/House]]')).toEqual({ title: 'Fix the roof', path: 'Projects/House.md' });
+    expect(noteLinkFromTitle('[[Projects/House#Plan|the house]] this autumn')).toEqual({ title: 'this autumn', path: 'Projects/House.md' });
+    expect(noteLinkFromTitle('[[A]] and [[B]]')).toEqual({ title: 'and', path: 'A.md' });
+  });
+  it('a title that is nothing but the link keeps the note\'s name as the title', () => {
+    expect(noteLinkFromTitle('[[Projects/House]]')).toEqual({ title: 'House', path: 'Projects/House.md' });
+    expect(noteLinkFromTitle('[[Projects/House|Our house]]')).toEqual({ title: 'Our house', path: 'Projects/House.md' });
+  });
+  it('no link, no result', () => {
+    expect(noteLinkFromTitle('House')).toBe(null);
+    expect(noteLinkFromTitle('')).toBe(null);
+    expect(noteLinkFromTitle(null)).toBe(null);
+    expect(noteLinkFromTitle('[[ ]]')).toBe(null);
   });
 });
 
@@ -54,6 +73,18 @@ describe('planNoteLinkUpdates (rulings A and F)', () => {
     expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Projects/House.md', unlinked: true }], { projects: [linked] }).projects)
       .toEqual([{ id: 'p1', updates: { obsidianNotePath: null, obsidianNoteMissingAt: null } }]);
     expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Elsewhere.md', unlinked: true }], { projects: [linked] }).projects).toEqual([]);
+  });
+
+  it('a pending mark (the record linked alone) clears on the first word from the vault: a link for the same path, a delete, an unlink', () => {
+    const pending = { ...P, obsidianNotePath: 'Projects/House.md', obsidianNoteLinkPending: '2026-10-03T10:00:00.000Z' };
+    expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Projects/House.md' }], { projects: [pending] }).projects)
+      .toEqual([{ id: 'p1', updates: { obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: null, obsidianNoteLinkPending: null } }]);
+    expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Projects/House.md', deleted: true, observedAt: 'T' }], { projects: [pending] }).projects)
+      .toEqual([{ id: 'p1', updates: { obsidianNoteMissingAt: 'T', obsidianNoteLinkPending: null } }]);
+    expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Projects/House.md', unlinked: true }], { projects: [pending] }).projects)
+      .toEqual([{ id: 'p1', updates: { obsidianNotePath: null, obsidianNoteMissingAt: null, obsidianNoteLinkPending: null } }]);
+    // Without the mark, the update shapes are as before.
+    expect(planNoteLinkUpdates([{ targetId: 'p1', path: 'Projects/House.md' }], { projects: [{ ...P, obsidianNotePath: 'Projects/House.md' }] }).projects).toEqual([]);
   });
 
   it('applies in observedAt order and folds updates per entity', () => {

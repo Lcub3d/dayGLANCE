@@ -531,10 +531,12 @@ const ProjectPlanner = ({ project, onClose }) => {
             {vaultNotes && vault.loading ? (
               <p className={`text-xs italic ${textSecondary}`}>{t('planner.notesLoading', 'Loading from the linked note…')}</p>
             ) : vaultNotes && vault.unavailable ? (
-              <p data-notes-in-vault className={`text-xs italic ${textSecondary}`}>
-                {vault.error && vault.error !== 'not_found'
-                  ? t('planner.notesLoadFailed', { error: vault.error })
-                  : t('planner.notesInVault', 'Notes live in the linked note in Obsidian.')}
+              <p data-notes-in-vault={vault.error === 'not_found' ? 'missing' : 'unreadable'} className={`text-xs italic ${vault.error === 'not_found' ? 'text-amber-500' : textSecondary}`}>
+                {vault.error === 'not_found'
+                  ? t('planner.notesNoteMissing', 'The linked note was not found in the vault. Check the note name, or create the note in Obsidian.')
+                  : vault.error
+                    ? t('planner.notesLoadFailed', { error: vault.error })
+                    : t('planner.notesInVault', 'Notes live in the linked note in Obsidian.')}
               </p>
             ) : editingNotes ? (
               <textarea

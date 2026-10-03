@@ -59,7 +59,7 @@ const { noteTextHash } = await import('@glance-apps/obsidian-format');
 
 const NOTE = '---\ncreated: 2026-10-03\nsource: dayGLANCE\n---\n# House\nDry roof by spring.\n\n## Tasks\n- [ ] Fix the gutter ^dg-abc12345\n';
 
-function useMountedSync({ stream = true, projects = [] } = {}) {
+function useMountedSync({ stream = true, projects = [], enabled = true } = {}) {
   effects.length = 0;
   vi.stubGlobal('setTimeout', () => 1);
   vi.stubGlobal('setInterval', () => 1);
@@ -73,7 +73,7 @@ function useMountedSync({ stream = true, projects = [] } = {}) {
     isTrayMode: false, dataLoaded: true,
     tasks: [], setTasks: vi.fn(), unscheduledTasks: [], setUnscheduledTasks: vi.fn(),
     setDailyNotes: vi.fn(), setWikilinkCandidates: vi.fn(), setUnportableVaultFiles: vi.fn(),
-    obsidianConfig: { enabled: true, dailyNotesPath: '', dailyNotePattern: 'yyyy-MM-dd', newNotesFolder: 'dayGLANCE' },
+    obsidianConfig: { enabled, dailyNotesPath: '', dailyNotePattern: 'yyyy-MM-dd', newNotesFolder: 'dayGLANCE' },
     setObsidianConfig: vi.fn(), obsidianLaunchOnWrite: null, obsidianSyncError: null,
     setObsidianSyncStatus: vi.fn(), setObsidianSyncError: vi.fn(), setObsidianLastSynced: vi.fn(), setObsidianSyncNotice: vi.fn(),
     obsidianVaultHandleRef: { current: { kind: 'directory' } },
@@ -84,6 +84,7 @@ function useMountedSync({ stream = true, projects = [] } = {}) {
   api.bridgeHeartbeatRef.current = { obsidianRunning: stream, pluginAuthoritative: stream, vaultPosture: stream ? 'plugin' : 'direct' };
   return { ...api, updateProject, store };
 }
+const flushMicrotasks = () => new Promise((r) => setImmediate(r));
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); readWikiNote.mockReset(); writeWikiNote.mockClear(); emitBridgeIntent.mockReset(); emitBridgeIntent.mockReturnValue(true); });
 
@@ -151,6 +152,12 @@ describe('the notes box moves into the note', () => {
     expect(updateProject).toHaveBeenCalledWith('p1', { description: '' });
     expect(JSON.parse(store.get('day-planner-obsidian-notes-sent'))['project:p1']).toMatchObject({ target: 'Projects/House.md', body: 'Purpose: keep it dry.' });
   });
+  it('on link of an entity not yet in the lists: the body travels with the call', () => {
+    const { linkProjectNote, updateProject } = useMountedSync({ projects: [] });
+    expect(linkProjectNote('project', 'p9', 'Projects/New.md', { description: 'Fresh.' })).toBe(true);
+    expect(emitBridgeIntent).toHaveBeenCalledWith('project_note_description', { path: 'Projects/New.md', targetId: 'p9', content: 'Fresh.', mode: 'merge' });
+    expect(updateProject).toHaveBeenCalledWith('p9', { description: '' });
+  });
   it('at creation: rides the create intent as description, journaled, the record emptied', () => {
     const projects = [{ id: 'p2', title: 'Garden', description: 'Grow food.' }];
     const { createProjectNote, updateProject } = useMountedSync({ projects });
@@ -162,5 +169,57 @@ describe('the notes box moves into the note', () => {
     updateProject.mockClear();
     expect(createProjectNote('project', 'p2', { title: 'Garden', description: 'Grow food.' })).toBe(false);
     expect(updateProject).not.toHaveBeenCalled();
+  });
+});
+
+describe('the link without a stream (owner 2026-10-03: the wikilink in the title, and the note row, on direct access)', () => {
+  it('a refused enqueue with the vault enabled links the record alone, marked pending; the stream path clears the mark', () => {
+    emitBridgeIntent.mockReturnValue(false);
+    const projects = [{ id: 'p1', title: 'House' }];
+    const { linkProjectNote, updateProject } = useMountedSync({ stream: false, projects });
+    expect(linkProjectNote('project', 'p1', '[[Projects/House]]')).toBe(true);
+    expect(updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: null, obsidianNoteLinkPending: expect.stringMatching(/^\d{4}-/) });
+    // With the stream the key goes out and the record carries no mark.
+    emitBridgeIntent.mockReturnValue(true);
+    updateProject.mockClear();
+    expect(linkProjectNote('project', 'p1', 'Projects/House.md')).toBe(true);
+    expect(emitBridgeIntent).toHaveBeenCalledWith('project_note_link', { path: 'Projects/House.md', targetId: 'p1' });
+    expect(updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
+  });
+  it('with the vault disabled a refused enqueue is a refusal, as before', () => {
+    emitBridgeIntent.mockReturnValue(false);
+    const projects = [{ id: 'p1', title: 'House' }];
+    const { linkProjectNote, updateProject } = useMountedSync({ stream: false, projects, enabled: false });
+    expect(linkProjectNote('project', 'p1', 'Projects/House.md')).toBe(false);
+    expect(updateProject).not.toHaveBeenCalled();
+  });
+  it('the notes box moves into the section through the direct write: merged below the note\'s text, journaled, the record emptied once the write landed', async () => {
+    emitBridgeIntent.mockReturnValue(false);
+    readWikiNote.mockResolvedValue({ text: NOTE, lastModified: 'L' });
+    const projects = [{ id: 'p1', title: 'House', description: 'Purpose: keep it dry.' }];
+    const { linkProjectNote, updateProject, store } = useMountedSync({ stream: false, projects });
+    expect(linkProjectNote('project', 'p1', 'Projects/House.md')).toBe(true);
+    await flushMicrotasks();
+    expect(writeWikiNote).toHaveBeenCalledWith({ kind: 'directory' }, 'Projects/House.md', NOTE.replace('Dry roof by spring.', 'Dry roof by spring.\n\nPurpose: keep it dry.'), 'dayGLANCE');
+    expect(updateProject).toHaveBeenCalledWith('p1', { description: '' });
+    expect(JSON.parse(store.get('day-planner-obsidian-notes-sent'))['project:p1']).toMatchObject({ target: 'Projects/House.md', body: 'Purpose: keep it dry.' });
+  });
+  it('a note this device cannot find leaves the box on the record for the first pass that can move it', async () => {
+    emitBridgeIntent.mockReturnValue(false);
+    readWikiNote.mockResolvedValue(null);
+    const projects = [{ id: 'p1', title: 'House', description: 'Purpose: keep it dry.' }];
+    const { linkProjectNote, updateProject } = useMountedSync({ stream: false, projects });
+    expect(linkProjectNote('project', 'p1', 'Projects/Typo.md')).toBe(true);
+    await flushMicrotasks();
+    expect(writeWikiNote).not.toHaveBeenCalled();
+    expect(updateProject).not.toHaveBeenCalledWith('p1', { description: '' });
+    expect(projects[0].description).toBe('Purpose: keep it dry.');
+  });
+  it('unlinking a pending link clears the record and sends no unlink: the vault never carried the key', () => {
+    const projects = [{ id: 'p1', title: 'House', obsidianNotePath: 'Projects/House.md', obsidianNoteLinkPending: '2026-10-03T10:00:00.000Z' }];
+    const { unlinkProjectNote, updateProject } = useMountedSync({ projects });
+    expect(unlinkProjectNote('project', 'p1')).toBe(true);
+    expect(updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: null, obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
+    expect(emitBridgeIntent).not.toHaveBeenCalledWith('project_note_unlink', expect.anything());
   });
 });

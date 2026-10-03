@@ -2234,6 +2234,12 @@
       "recorded": "Registrado {{range}}",
       "open": "Abrir no JOBO"
     },
+    "sched": {
+      "badge_one": "Execução: {{duration}} registrados em {{count}} sessão",
+      "badge_other": "Execução: {{duration}} registrados em {{count}} sessões",
+      "heading": "Registrado neste dia",
+      "total": "Total {{duration}}"
+    },
     "check": {
       "button": "Revisão",
       "title": "Revisão",

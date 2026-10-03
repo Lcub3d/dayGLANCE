@@ -121,3 +121,33 @@ export function pastDayDisplay({ dateStr, todayStr, dayTasks = [], index, isVisi
   const items = pastDayItems({ dateStr, dayTasks, index, isVisibleForUser });
   return items === dayTasks || typeof tagFilter !== 'function' ? items : tagFilter(items);
 }
+
+/**
+ * Each task's timed Do on one date, by task id: what SCHED's Do badge shows
+ * on a task's card. The same slices, resolution and visibility as the
+ * past-day rule, so a badge and the striped cards in DAY, MULTI and WEEK
+ * always agree. Unlinked Do, and Do whose task is gone, have no card to sit
+ * on and are left out. Sessions run in time order.
+ *
+ * @returns {Map<string, { recordId: string, startMinute: number, endMinute: number, progress: string, clippedStart: boolean, clippedEnd: boolean }[]>}
+ */
+export function doSessionsByTask({ dateStr, index, isVisibleForUser } = {}) {
+  const byTask = new Map();
+  for (const slice of index?.slicesByDate?.get(dateStr) || []) {
+    const task = index.resolveTask(slice.record);
+    if (!task) continue;
+    if (typeof isVisibleForUser === 'function' && !isVisibleForUser(task)) continue;
+    const key = String(task.id);
+    if (!byTask.has(key)) byTask.set(key, []);
+    byTask.get(key).push({
+      recordId: slice.record.id,
+      startMinute: slice.startMinute,
+      endMinute: slice.endMinute,
+      progress: slice.record.progress,
+      clippedStart: !!slice.clippedStart,
+      clippedEnd: !!slice.clippedEnd,
+    });
+  }
+  for (const sessions of byTask.values()) sessions.sort((a, b) => a.startMinute - b.startMinute || a.endMinute - b.endMinute);
+  return byTask;
+}

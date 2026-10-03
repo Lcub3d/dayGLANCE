@@ -2234,6 +2234,12 @@
       "recorded": "Erfasst {{range}}",
       "open": "In JOBO öffnen"
     },
+    "sched": {
+      "badge_one": "Ausführung: {{duration}} erfasst in {{count}} Sitzung",
+      "badge_other": "Ausführung: {{duration}} erfasst in {{count}} Sitzungen",
+      "heading": "An diesem Tag erfasst",
+      "total": "Gesamt {{duration}}"
+    },
     "check": {
       "button": "Rückblick",
       "title": "Rückblick",

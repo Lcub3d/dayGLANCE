@@ -11,12 +11,41 @@ import { PROJECT_FALLBACK_COLOR } from './colorUtils.js';
 
 export const NEW_PROJECT_ID = '__new-project__';
 
-/** The project fields a new project gets from its goal, as the project form defaults them. */
-export function newProjectFields({ title, goal }) {
+/**
+ * The fields a new project is created with. Its colour is the one the task
+ * shows in the modal, so a colour picked there is the project's too;
+ * without one, its goal's, as the project form defaults it, then blue.
+ */
+export function newProjectFields({ title, goal, color = null }) {
   return {
     title: title.trim(),
     ...(goal ? { goalId: goal.id } : {}),
-    color: goal?.color || PROJECT_FALLBACK_COLOR,
+    color: color || goal?.color || PROJECT_FALLBACK_COLOR,
+    assignedUserSyncIds: goal?.assignedUserSyncIds || [],
+  };
+}
+
+/**
+ * newTask with `newProject` pending, as the picker sets it: on choosing
+ * "New project…" and on each change of its goal.
+ *
+ * A colour the user picked, before choosing "New project…" or after, is
+ * kept: it becomes the project's as well as the task's. A goal's colour
+ * fills in only where none was picked, and follows the goal while it is the
+ * goal's (newProject.goalColor remembers which colour that was, so a
+ * colour picked since is told apart from it). The goal's assigned users
+ * stamp the task, as choosing an existing project's do.
+ */
+export function withPendingProject(newTask, newProject, goals = []) {
+  const goal = newProject.goalId ? goals.find((g) => g.id === newProject.goalId) || null : null;
+  const picked = newTask.color && newTask.color !== newTask.newProject?.goalColor ? newTask.color : null;
+  const goalColor = picked ? null : (goal?.color || null);
+  const { color: _shown, ...rest } = newTask;
+  return {
+    ...rest,
+    ...(picked || goalColor ? { color: picked || goalColor } : {}),
+    projectId: NEW_PROJECT_ID,
+    newProject: { ...newProject, goalColor },
     assignedUserSyncIds: goal?.assignedUserSyncIds || [],
   };
 }
@@ -39,6 +68,8 @@ export function createPendingProject(newTask, { addProject, goals = [] }) {
   const title = (newProject?.title || '').trim();
   if (!title) return { newTask: rest, project: null };
   const goal = newProject.goalId ? goals.find((g) => g.id === newProject.goalId) || null : null;
-  const project = addProject(newProjectFields({ title, goal }));
-  return { newTask: { ...rest, projectId: project.id }, project };
+  const project = addProject(newProjectFields({ title, goal, color: rest.color }));
+  // The task takes the project's colour, which is the one it showed, or the
+  // project's default where it showed the default.
+  return { newTask: { ...rest, projectId: project.id, color: project.color }, project };
 }

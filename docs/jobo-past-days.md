@@ -1,9 +1,10 @@
 # JOBO slice 6: past days show what was done
 
 Design note for slice 6 of #1726, agreed in review on #1881. Steps 1 to 3
-of the build order are built (#1884, #1885, and MONTH after them); the
-NOW-line split within today is still to come. Slice 7 (the Check and Carry
-Forward) runs in parallel and does not depend on it.
+of the build order are built (#1884, #1885, and MONTH after them). The
+NOW-line split within today, step 4, is designed in the addendum at the
+end. Slice 7 (the Check and Carry Forward) runs in parallel and does not
+depend on it.
 
 ## The rule
 
@@ -130,7 +131,7 @@ Within today, split at the NOW line rather than at midnight: before now
 shows Do, after now shows the plan. That is the original framing in #1623,
 and it is where the rule earns most, but it changes today's views while
 you are working in them, so it follows once the past-day version has been
-lived with.
+lived with. It has been, since 5.5.0: see the addendum below.
 
 ## Decisions
 
@@ -155,4 +156,98 @@ Settled in review on #1881:
    Do card, WEEK's popover, JOBO's opt-out, and the striped fill on JOBO's
    recorded Do.
 3. **MONTH cells**, bars following the Do.
-4. Later: the NOW-line split within today.
+4. The NOW-line split within today: see the addendum.
+
+## Addendum: today, split at the NOW line
+
+Step 4 of the build order. Since 5.5.0 a past day shows what was done, but
+today shows only the plan until midnight, so a morning's recorded work
+appears in DAY, MULTI, WEEK and MONTH only tomorrow. This addendum brings
+the rule into today, at the NOW line.
+
+### The rule for today
+
+Today is split per task, at the end of its plan block, not by cutting the
+timeline at NOW:
+
+1. **A task whose plan block has ended and that has timed Do today shows
+   its Do instead of its plan block.** This is the past-day rule, applied
+   as soon as the planned time is over. A block has ended when its planned
+   end is at or before now.
+2. **A task whose plan block has not ended keeps it**, whether the block is
+   under way or still to come. Its Do recorded today are drawn too. A task
+   worked on this morning and planned again for this afternoon shows both:
+   the striped Do where the work happened, and the plan block ahead. Where
+   a Do overlaps a block still under way (worked 09:10 to 10:00 on a task
+   planned 09:00 to 11:00, seen at 10:30), the two sit side by side, as
+   overlapping tasks do, until the block ends at 11:00 and the Do alone
+   remains. This is the task's real block, not the plan outline slice 6
+   decided against: it goes as soon as its time is over.
+3. **A task with no Do today shows as planned**, ended or not, as on a past
+   day. A plan that ended untouched stays where it was, which is also where
+   the Check lists it under Not started.
+4. **Unlinked Do, and Do whose task is gone**, are drawn today as on a past
+   day, in the neutral colour.
+5. **Only measured facts leave JOBO**, as before: timed Do only, never an
+   estimate or a comparison.
+
+All-day tasks have no planned end before midnight, so on today they keep
+their place in the all-day row, and any timed Do recorded against them is
+drawn in the timeline. Tomorrow they follow the past-day rule.
+
+### Why per task, not a cut at NOW
+
+Cutting every plan block at NOW would draw a block that no longer matches
+its task: a card from 09:00 to 10:30 for a task planned until 11:00, which
+moves wrongly when dragged and hides the planned end. It would also erase
+the morning's untouched plans, which are exactly what the Check asks about.
+Keying on each block's own end keeps every drawn plan block a real,
+editable task, and only ever takes one away when the planned time is over
+and the Do says what happened instead.
+
+### What moves while you watch
+
+The split follows the clock, so a view open on today changes as plan
+blocks end: at 11:00 a task planned until then, with Do recorded, swaps its
+plan block for its Do cards. Nothing else moves.
+
+- **It changes only when a swap happens.** The app's clock ticks every 15
+  seconds, but the views read today through a set: the tasks with Do today
+  whose plan block has ended. That set changes only at a block's end, so a
+  view, and MONTH's 42 memoized cells, recompute only then, not on every
+  tick.
+- **A card being dragged or resized is never taken away mid-gesture.** The
+  set is held while a drag or resize is in progress, and catches up when
+  the gesture ends.
+- **A Do recorded into the future**, by hand, is drawn as recorded. Timed Do
+  always have both ends, so there is no running Do to draw up to NOW.
+
+### Where it lives
+
+`pastDayDisplay` returns today's tasks unchanged at present. For today it
+will apply the same `pastDayItems` with one change: a task's plan block is
+replaced only if the task is in the set of ended tasks above, which
+`getDayDisplayForDate` derives from the current minute. The index,
+the striped read-only Do card, the views that take it and the views that
+do not (JOBO's own Plan side, SCHED, MONTH's day sheet, mobile) are all as
+in slice 6. No task field is added and nothing is written.
+
+### Decisions to confirm
+
+1. **Split per task, at the end of each plan block**, not by cutting at
+   NOW.
+2. **An unfinished plan keeps its block** beside today's Do for the same
+   task.
+3. **A plan that ended with no Do stays drawn**, as on a past day.
+4. **All-day tasks keep their row today.**
+5. **The swap happens live**, when a block ends, never under a drag.
+
+### Build order
+
+1. **The rule, with tests:** each case above, the boundary at exactly NOW,
+   an all-day task, a recurring occurrence, a Do crossing midnight from
+   yesterday, and the flag off.
+2. **The views:** the ended set through `getDayDisplayForDate`, the
+   gesture guard, and a browser check of DAY, MULTI, WEEK and MONTH on a
+   seeded today, before and after a plan block ends, including that the
+   views do not recompute between swaps.

@@ -119,17 +119,14 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta
     if (r) setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - PANEL_WIDTH - 8)) });
     setOpen(true);
   };
-  // JOBO has no phone layout until slice 8, so the phone gets the sessions
-  // without the way there.
-  // At the first session's time, not at now (App's openJoboAt).
-  const openJobo = !isMobile && typeof setViewMode === 'function'
-    ? () => {
-      setOpen(false);
-      if (typeof openJoboAt === 'function') { openJoboAt({ date: task.date, minute: sessions[0].startMinute }); return; }
-      setSelectedDate?.(new Date(`${task.date}T12:00:00`));
-      setViewMode('jobo');
-    }
-    : null;
+  // At the first session's time, not at now, on whichever JOBO this layout
+  // has (App's openJoboAt; the phone's since slice 8). Without it, the
+  // desktop view on the date, where there is one.
+  const openJobo = typeof openJoboAt === 'function'
+    ? () => { setOpen(false); openJoboAt({ date: task.date, minute: sessions[0].startMinute }); }
+    : !isMobile && typeof setViewMode === 'function'
+      ? () => { setOpen(false); setSelectedDate?.(new Date(`${task.date}T12:00:00`)); setViewMode('jobo'); }
+      : null;
 
   return (
     <span ref={ref} className={`relative flex-shrink-0 inline-flex ${pad}`}>

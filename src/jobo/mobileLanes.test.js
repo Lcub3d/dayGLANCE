@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  NARROW_LANE_PX, HOUR_GUTTER_PX,
+  NARROW_LANE_PX, HOUR_GUTTER_PX, DIVIDER_PX,
   planWideByDefault, planIsWide, swapped, laneWidths, doBar, tappedTaskId,
 } from './mobileLanes.js';
 
@@ -36,9 +36,9 @@ describe('which side opens wide', () => {
 });
 
 describe('laneWidths', () => {
-  it('the wide side takes all but the gutter and the narrow lane', () => {
-    expect(laneWidths(390, true)).toEqual({ wide: 390 - HOUR_GUTTER_PX - NARROW_LANE_PX, plan: 298, do: NARROW_LANE_PX });
-    expect(laneWidths(390, false)).toEqual({ wide: 298, plan: NARROW_LANE_PX, do: 298 });
+  it('the wide side takes all but the gutter, the divider and the narrow lane', () => {
+    expect(laneWidths(390, true)).toEqual({ wide: 390 - HOUR_GUTTER_PX - DIVIDER_PX - NARROW_LANE_PX, plan: 296, do: NARROW_LANE_PX });
+    expect(laneWidths(390, false)).toEqual({ wide: 296, plan: NARROW_LANE_PX, do: 296 });
   });
   it('never goes negative before the view is measured', () => {
     expect(laneWidths(0, true).wide).toBe(0);

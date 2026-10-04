@@ -51,7 +51,7 @@ function getTaskSlice(task, col, hourHeight, timeToMinutes, zoom = 1) {
 // already carries it, and card contents draw at it. DAY itself never zooms.
 export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false, zoom = 1 }) => {
   const {
-    isTablet,
+    isTablet, currentTime,
     darkMode, use24HourClock,
     borderClass, textSecondary,
     expandedNotesTaskId,
@@ -136,7 +136,10 @@ export const DayViewColumn = ({ col, colIdx, hourHeight, planOnly = false, zoom 
   const hours = Array.from({ length: col.endHour - col.startHour }, (_, i) => col.startHour + i);
   const altRow = darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50';
 
-  const now = new Date();
+  // The app's clock, not a fresh Date: every now line reads the same minute.
+  // A render between its 15s ticks (a hover, say) would otherwise put this
+  // one a minute ahead of JOBO's Do side, which reads the clock.
+  const now = currentTime instanceof Date ? currentTime : new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const showNowLine = col.dateStr === dateToString(now) && nowMinutes >= colStartMin && nowMinutes < colEndMin;
   const nowY = showNowLine ? (nowMinutes - colStartMin) * hourHeight / 60 : 0;

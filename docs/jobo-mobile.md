@@ -174,4 +174,52 @@ phone's view toggle, where JOBO joins as a view behind the same flag.
    390 and 430px and on a portrait tablet.
 2. **Do on the phone**: add by tap, the editor as a sheet, undo.
 3. **The header's sheets**: the Check and the statistics.
-4. **Later, if agreed**: the past-day rule on the phone's timeline.
+4. **The past-day rule on the phone's timeline**: done before step 2, see below.
+
+## Step 1, as built
+
+- **The phone's views gain JOBO** behind `joboEnabled`, as on desktop: the
+  flag hides it from the toggle, the default-view picker and Views on this
+  device (`gateExperimentalViews` now gates both switchers), and a phone
+  showing JOBO when the flag goes off lands on its first view still on.
+- **The phone gets its own JOBO switch** (App Settings, under the views):
+  the flag is per device, and phones had no Experimental section, so a
+  phone could not turn JOBO on at all.
+- **One component, `components/jobo/MobileJoboView.jsx`,** for the phone
+  (MobileLayout) and the tablet held upright (DesktopLayout). It renders in
+  the timeline's own scroll area, which MobileTimeGrid's touch handling
+  measures against. The day model comes from `hooks/useJoboDay.js`, now
+  shared with the desktop view, so the two cannot read a day differently.
+- **A Plan/Do row** sticks under the date header: the wide side's name and
+  the swap button on the divider. The narrow lane carries no name, since
+  neither word fits 44px in every language.
+- **Pairing** works both ways: a tapped Plan card outlines itself and lights
+  its Do bars; a tapped Do card is outlined and lights its Plan bar. The Do
+  card outline now matches ids as text, which also fixes desktop hover
+  pairing for tasks with numeric ids.
+- **Not yet:** adding and editing Do (step 2), the Check and statistics
+  sheets (step 3). On a portrait tablet the date header is the desktop
+  one, whose hour gutter is 16px wider than the phone timeline's.
+
+## The phone's other views
+
+Built before step 2, so the phone shows Do wherever the desktop does:
+
+- **GRID** (the phone timeline, MULTI's counterpart) reads the day's display,
+  as DAY's column does: past days, and today up to the NOW line, show the
+  recorded Do as the striped read-only card, with its details and "Open in
+  JOBO" on a tap. JOBO's own Plan side keeps to the plan (`planOnly`).
+- **MONTH** reads the display on every layout, so its cells' bars follow the
+  Do on the phone and portrait tablet too.
+- **"Open in JOBO"** (a Do card, SCHED's Do badge) opens the phone's JOBO on
+  the timeline tab, at the Do's time.
+- **LIST** stays on the plan for now, as an agenda, like SCHED before its
+  badge.
+
+Also from testing step 1: the divider is a 2px blue line through the Plan/Do
+row and the grid, with the swap button on it in a blue ring; the Do side
+draws to the timeline's measured hour rather than a fixed 161px, since a
+1px border can render thinner on a screen with a fractional pixel ratio and
+a fixed hour would then drift from the NOW line; and DAY's NOW line reads the
+app's clock, as the Do side does, so a render between the clock's 15-second
+ticks no longer puts the Plan side's line a minute ahead on desktop.

@@ -47,3 +47,14 @@ describe('a lost vault is shown, not passed off as connected', () => {
     expect(source).toMatch(/vaultLost \? \(\s*<p data-bridge-vault-unreachable/);
   });
 });
+
+// The daily-note path preview (2026-10-03 field report): the folder a note
+// lands in is shown, and the nesting trap is named before the first write.
+describe('the daily-note path is previewed, and the nesting shape is called out', () => {
+  const source = readFileSync(new URL('./SettingsModal.jsx', import.meta.url), 'utf8');
+  it('renders the resolved path under the folder setting and the warning when nested', () => {
+    expect(source).toContain('describeDailyNotePath({');
+    expect(source).toMatch(/data-obsidian-daily-path[^>]*>\s*\{t\('settings\.obsidianDailyNotesResolved', \{ path: resolved\.path \}\)\}/);
+    expect(source).toMatch(/resolved\.nested && \(\s*<p data-obsidian-daily-nested className="text-xs text-amber-500/);
+  });
+});

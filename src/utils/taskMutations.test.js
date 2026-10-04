@@ -9,6 +9,8 @@ import {
   applyUpdateTask,
   applyUndoOps,
   WRITE_ERROR_CODES,
+  applyAddSubtask,
+  applyUpdateSubtask,
 } from './taskMutations.js';
 
 // The §3.1 (r5) shared pure module under test. Load-bearing assertions:
@@ -722,5 +724,88 @@ describe('applyUndoOps — the §4.3 bulk undo (Phase 5b)', () => {
     expect(r.undone).toBe(0);
     expect(r.skipped).toBe(6);
     expect(r.tasks).toEqual([NATIVE]); // native untouched — fields AND completion
+  });
+});
+
+describe('update_task project assignment (2026-10-04)', () => {
+  const state = () => ({
+    tasks: [T({ id: 'b1', projectId: 'p1' })],
+    unscheduledTasks: [{ id: 'u1', title: 'Inbox', completed: false }],
+    projects: [{ id: 'p1', title: 'A' }, { id: 'p2', title: 'B' }],
+  });
+  it('moves a task into an existing project, on either list, and detaches it with clear project', () => {
+    const r = applyUpdateTask(state(), { taskId: 'u1', set: { projectId: 'p2' } });
+    expect(r.ok).toBe(true);
+    expect(r.task.projectId).toBe('p2');
+    expect(r.touched).toEqual(['projectId']);
+    const moved = applyUpdateTask(state(), { taskId: 'b1', set: { projectId: 'p2' } });
+    expect(moved.task.projectId).toBe('p2');
+    const cleared = applyUpdateTask(state(), { taskId: 'b1', clear: ['project'] });
+    expect('projectId' in cleared.task).toBe(false);
+    expect(cleared.touched).toEqual(['projectId']);
+  });
+  it('an unknown project is not_found and changes nothing', () => {
+    expect(applyUpdateTask(state(), { taskId: 'u1', set: { projectId: 'nope' } })).toMatchObject({ ok: false, error: { code: 'not_found' } });
+  });
+});
+
+describe('subtasks (2026-10-04): add, edit, and their undo', () => {
+  const host = (over = {}) => T({ id: 'b1', subtasks: [{ id: 's1', title: 'Buy nails', completed: false }], ...over });
+  const state = (over = {}) => ({ tasks: [host()], unscheduledTasks: [{ id: 'u1', title: 'Inbox', completed: false }], ...over });
+
+  it('add appends the UI shape to a scheduled or an inbox task; replay on the same subtask id returns it unchanged', () => {
+    const r = applyAddSubtask(state(), { taskId: 'b1', subtaskId: 's2', title: ' Hang door ', nowIso: NOW });
+    expect(r.ok).toBe(true);
+    expect(r.scheduled).toBe(true);
+    expect(r.subtask).toEqual({ id: 's2', title: 'Hang door', completed: false });
+    expect(r.tasks[0].subtasks).toHaveLength(2);
+    expect(r.tasks[0].lastModified).toBe(NOW);
+    const inbox = applyAddSubtask(state(), { taskId: 'u1', subtaskId: 's9', title: 'First', nowIso: NOW });
+    expect(inbox.scheduled).toBe(false);
+    expect(inbox.unscheduledTasks[0].subtasks).toEqual([{ id: 's9', title: 'First', completed: false }]);
+    const again = applyAddSubtask({ tasks: r.tasks, unscheduledTasks: [] }, { taskId: 'b1', subtaskId: 's2', title: 'Other', nowIso: NOW });
+    expect(again).toMatchObject({ ok: true, replayed: true, subtask: { id: 's2', title: 'Hang door' } });
+  });
+  it('update sets title and completion as setters, reports touched keys, and is a replay when nothing changes', () => {
+    const r = applyUpdateSubtask(state(), { taskId: 'b1', subtaskId: 's1', set: { title: 'Buy screws', completed: true }, nowIso: NOW });
+    expect(r.subtask).toEqual({ id: 's1', title: 'Buy screws', completed: true });
+    expect(r.touched).toEqual(['title', 'completed']);
+    expect(applyUpdateSubtask(state(), { taskId: 'b1', subtaskId: 's1', set: { completed: false }, nowIso: NOW })).toMatchObject({ replayed: true, touched: [] });
+  });
+  it('guards: unknown task or subtask, blank title, recurring instance, device event', () => {
+    expect(applyAddSubtask(state(), { taskId: 'nope', subtaskId: 'x', title: 'T', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'not_found' } });
+    expect(applyUpdateSubtask(state(), { taskId: 'b1', subtaskId: 'nope', set: { completed: true }, nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'not_found' } });
+    expect(applyAddSubtask(state(), { taskId: 'b1', subtaskId: 'x', title: '  ', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'validation' } });
+    expect(applyAddSubtask(state(), { taskId: 'recurring-7-2026-08-10', subtaskId: 'x', title: 'T', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'validation' } });
+    expect(applyAddSubtask({ tasks: [NATIVE], unscheduledTasks: [] }, { taskId: NATIVE.id, subtaskId: 'x', title: 'T', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'device_calendar_readonly' } });
+  });
+  it('undo: remove_created_subtask drops it, restore_subtask_fields puts fields back; a missing subtask is skipped', () => {
+    const s = state({ tasks: [host({ subtasks: [{ id: 's1', title: 'Renamed', completed: true }, { id: 's2', title: 'Added', completed: false }] })] });
+    const r = applyUndoOps(s, [
+      { kind: 'remove_created_subtask', taskId: 'b1', subtaskId: 's2' },
+      { kind: 'restore_subtask_fields', taskId: 'b1', subtaskId: 's1', before: { title: 'Buy nails', completed: false } },
+      { kind: 'remove_created_subtask', taskId: 'b1', subtaskId: 'gone' },
+    ], { nowIso: NOW });
+    expect(r.tasks[0].subtasks).toEqual([{ id: 's1', title: 'Buy nails', completed: false }]);
+    expect(r.tasks[0].lastModified).toBe(NOW);
+    expect(r.undone).toBe(2);
+    expect(r.skipped).toBe(1);
+  });
+});
+
+describe('imported calendar events are read-only over MCP (2026-10-04)', () => {
+  const EVENT = T({ id: 'ics-1', imported: true, icalUid: 'u', importSource: 'f', title: 'Dentist' });
+  const CALDAV_TASK = T({ id: 'cal-t', imported: true, isTaskCalendar: true, icalUid: 'u' });
+  const state = { tasks: [EVENT, CALDAV_TASK], unscheduledTasks: [] };
+  it('move, resize, update, completion and subtasks all refuse with calendar_event_readonly', () => {
+    expect(applyMoveBlock(state, { blockId: 'ics-1', date: '2026-08-11', startTime: '10:00' })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyResizeBlock(state, { blockId: 'ics-1', durationMinutes: 90 })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyUpdateTask(state, { taskId: 'ics-1', set: { title: 'x' } })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applySetCompletion(state, { taskId: 'ics-1', completed: true, nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyAddSubtask(state, { taskId: 'ics-1', subtaskId: 's', title: 'x', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+  });
+  it('a CalDAV task-calendar task is not an event: it still moves, and keeps its own edit and completion rules', () => {
+    expect(applyMoveBlock(state, { blockId: 'cal-t', date: '2026-08-11', startTime: '10:00' }).ok).toBe(true);
+    expect(applyUpdateTask(state, { taskId: 'cal-t', set: { title: 'x' } })).toMatchObject({ ok: false, error: { code: 'validation' } });
   });
 });

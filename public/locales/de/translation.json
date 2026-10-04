@@ -457,6 +457,7 @@
     "experimentalHint": "Funktionen, die noch in Arbeit sind und schrittweise eintreffen. Standardmäßig aus; ohne Einschalten ändert sich nichts.",
     "enableJobo": "JOBO-Ansicht",
     "enableJoboHint": "Plan gegen Ist. Eine sechste Ansicht auf Taste 6, die festhält, was gegenüber dem Plan tatsächlich getan wurde.",
+    "enableJoboHintPhone": "Plan gegen Ist. Eine Ansicht im Ansichtsumschalter der Zeitleiste, die festhält, was gegenüber dem Plan erledigt wurde.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Lebensplanung: eine Wunschliste fürs Leben, eine Fünfjahresvision und Leitsätze. Vorerst ein Platzhalter, erreichbar aus dem Bereich Ziele & Projekte.",
     "inbox": "Posteingang",
@@ -663,6 +664,10 @@
     "aiProviderCustom": "Benutzerdefiniert (OpenAI-kompatibel)",
     "aiProviderOllama": "Ollama (lokal)",
     "aiRecommended": "Empfohlen",
+    "aiModelOther": "Andere (Modell-ID eingeben)",
+    "aiFetchModels": "Modellliste abrufen",
+    "aiFetchModelsOk": "{{count}} Modelle verfügbar",
+    "aiFetchModelsFailed": "Modelle konnten nicht abgerufen werden: {{error}}",
     "beta": "Beta",
     "calDAVSyncHint": "Zum Zurücksynchronisieren abgeschlossener Aufgaben: die URL der CalDAV-Kalendersammlung (ohne ?export). In Nextcloud kann die Kalender-ID in der URL vom Anzeigenamen abweichen.",
     "deviceCalendarDescription": "Kalenderereignisse werden aus den Konten Ihres Geräts gelesen. Wählen Sie unten im Bereich „Gerätekalender“ aus, welche Kalender angezeigt werden sollen.",
@@ -696,6 +701,8 @@
     "obsidianDailyNoteTemplateHint": "Wird beim Erstellen einer neuen Tagesnotiz vorausgefüllt",
     "obsidianDailyNoteTemplatePlaceholder": "Vorlage für neue Tagesnotizen...",
     "obsidianDailyNotesFolderHint": "Leer lassen für das Vault-Stammverzeichnis. Häufig: \"Daily Notes\" oder \"journals\"",
+    "obsidianDailyNotesResolved": "Tägliche Notizen werden nach {{path}} geschrieben",
+    "obsidianDailyNotesNested": "Der ausgewählte Ordner heißt selbst „{{name}}“. Mit dieser Einstellung würde darin ein weiterer Ordner „{{name}}“ angelegt und jede Tagesnotiz ein zweites Mal geschrieben. Wenn Sie den Ordner der täglichen Notizen gewählt haben, wählen Sie stattdessen das Stammverzeichnis des Vaults oder lassen Sie diese Einstellung leer.",
     "obsidianFilenamePatternHint": "Datumsformat für Dateinamen von Tagesnotizen (ohne .md), z. B. \"yyyy-MM-dd\", \"dd-MM-yyyy\", \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault-Zugriff und Einstellungen für Tagesnotizen werden in den App-Einstellungen konfiguriert.",
     "obsidianNewNotesFolderHint": "Hier werden neue, in dayGLANCE erstellte Notizen gespeichert. Leer lassen für das Vault-Stammverzeichnis.",
@@ -735,6 +742,7 @@
     "openInObsidian": "In Obsidian öffnen",
     "wikiNoteNotFound": "Notiz im Vault nicht gefunden – prüfe, ob dein Vault eingerichtet ist und die Notiz existiert.",
     "wikiNoteLoadFailed": "Notiz konnte nicht geladen werden: {{error}}",
+    "wikiNoteChanged": "Diese Notiz wurde in Obsidian geändert, seit Sie sie geöffnet haben. Der neuere Text ist geladen, Ihr ungespeicherter Text steht darunter; prüfen Sie ihn und speichern Sie erneut.",
     "emptyWikiNotePlaceholder": "Leere Notiz – beginne zu tippen, um sie in deinem Vault zu erstellen",
     "editWikiNote": "„{{name}}“ bearbeiten",
     "notesFormattingPlaceholder": "Notizen hinzufügen... (**fett**, *kursiv*, __unterstrichen__, URLs) – Umschalt+Enter für Vorschau",
@@ -795,6 +803,7 @@
     "assignTo": "Zuweisen an",
     "notes": "Notizen",
     "localNotes": "Notizen in dayGLANCE",
+    "wikilinkHint": "Tipp: Schreiben Sie [[Notizname]] in den Titel, um eine Obsidian-Notiz zu verknüpfen, vorhanden oder neu. Die Notiz öffnet sich dann hier.",
     "calendarDescription": "Aus dem Kalender",
     "yourNotes": "Deine Notizen (dieses Gerät)",
     "subtasks": "Unteraufgaben",
@@ -1964,11 +1973,21 @@
     "close": "Planer schließen",
     "notesPlaceholder": "Notizen hinzufügen... (**fett**, *kursiv*, __unterstrichen__, URLs) - Umschalt+Eingabe zum Speichern",
     "clickToEditNotes": "Zum Bearbeiten der Notizen klicken",
+    "notesInVault": "Die Notizen liegen in der verknüpften Notiz in Obsidian.",
+    "notesLoading": "Wird aus der verknüpften Notiz geladen…",
+    "notesLoadFailed": "Die verknüpfte Notiz konnte nicht gelesen werden: {{error}}",
+    "notesNoteMissing": "Die verknüpfte Notiz wurde im Vault nicht gefunden. Prüfen Sie den Namen der Notiz, oder erstellen Sie die Notiz in Obsidian.",
+    "notesChanged": "Die Notiz wurde in Obsidian geändert, seit Sie sie geöffnet haben. Der neuere Text ist geladen, Ihr ungespeicherter Text steht darunter; prüfen Sie ihn und speichern Sie erneut.",
     "scheduled": "Geplant",
     "nothingScheduledYet": "Noch nichts geplant.",
     "noUnscheduledTasks": "Keine ungeplanten Aufgaben.",
     "addTaskPlaceholder": "Aufgabe hinzufügen…",
     "addTaskToProject": "Aufgabe zum Projekt hinzufügen",
+    "addedToTop": "„{{title}}“ oben hinzugefügt.",
+    "sendToBottom": "Nach unten schieben",
+    "showHyperglance": "hyperGLANCE-Einstellungen anzeigen",
+    "hideHyperglance": "hyperGLANCE-Einstellungen ausblenden",
+    "backToTasks": "Zurück zu den Aufgaben",
     "hideScheduled": "Liste „Geplant“ ausblenden",
     "showScheduled": "Geplante anzeigen",
     "showNotesSidebar": "Aufgabennotizen einblenden",
@@ -2310,11 +2329,23 @@
       "taskScope": "Aufgabenzahlen und Prioritäten beruhen auf dem aktuellen Aufgabenstand, nicht auf einem historischen Abbild. „Kein Do erfasst“ zählt aktuelle Pläne mit Zeitangaben, deren geplantes Ende verstrichen ist und denen kein Do zugeordnet ist, unabhängig vom Aufgabenabschluss oder für einen anderen Plan erfasster Arbeit.",
       "timingScope": "Die erfasste Zeit umfasst die ausgewählten Tage. Planvergleiche, Zeit innerhalb und außerhalb des Plans sowie die längste Spanne berücksichtigen vollständige Ausführungen, auch über diese Tage hinaus.",
       "allTimeScope": "Gesamt verwendet nur Daten mit gespeichertem Nachweis in der aktuellen Aufgaben- und JOBO-Historie. Wiederholungen ohne Abschluss, Ausnahme oder Do werden nicht rückwirkend rekonstruiert."
+    },
+    "mobile": {
+      "showDo": "Ausführung breit zeigen",
+      "showPlan": "Plan breit zeigen"
     }
   },
   "timelineZoom": {
     "label": "Zeitleistengröße",
     "hint": "Auf diesem Gerät gespeichert. Zum direkten Anpassen über der Zeitleiste zusammenziehen oder Strg+Scrollen."
+  },
+  "cardSize": {
+    "label": "Kartengröße für Ziele & Projekte",
+    "small": "Klein",
+    "normal": "Normal",
+    "large": "Groß",
+    "larger": "Größer",
+    "hint": "Auf diesem Gerät gespeichert. Größere Karten passen seltener nebeneinander."
   },
   "todoist": {
     "title": "Todoist-Synchronisierung",
@@ -2427,5 +2458,22 @@
     "unknownWarning": "Einige verknüpfte Aufgaben fehlen im Quell-Snapshot. Ihr Abschluss oder ihre Löschung lässt sich nicht zuverlässig bestimmen, daher wurden ihre lokalen Kopien beibehalten.",
     "writeOptions": "Optionales Zurückschreiben von Abschlüssen (erweitert)",
     "securityTitle": "Zugangsdaten, Datenschutz und Einschränkungen"
+  },
+  "followUp": {
+    "action": "Folgeaufgabe planen",
+    "titlePrefix": "Nachfassen:",
+    "noteLine": "Folgt auf {{link}}, erledigt am {{date}}.",
+    "settingTitle": "Folgeaufgaben",
+    "settingLabel": "Tag für Folgeaufgaben",
+    "settingHint": "„Folgeaufgabe planen“ bei einer erledigten Aufgabe fügt diesen Tag hinzu, zum Beispiel #wartenauf. Leer lassen für keinen. Auf diesem Gerät gespeichert.",
+    "settingPlaceholder": "#wartenauf",
+    "peekTitle": "Vorherige Aufgabe",
+    "peekDone": "Erledigt am {{date}}",
+    "peekNotDone": "Nicht erledigt",
+    "peekInbox": "Im Posteingang",
+    "peekOn": "Geplant für {{date}}",
+    "peekDeleted": "Im Papierkorb",
+    "peekGone": "Diese Aufgabe gibt es in dayGLANCE nicht mehr.",
+    "peekShow": "Zur Aufgabe"
   }
 }

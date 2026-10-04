@@ -6,7 +6,7 @@ export default function useTimelineScroll({
   selectedDate,
   isMobile, isTablet,
   mobileActiveTab,
-  mobileViewMode, tabletListView,
+  mobileViewMode, tabletListView, tabletJoboView = false,
   viewMode = 'multi',
 }) {
   const [timelineScrolledAway, setTimelineScrolledAway] = useState(false);
@@ -55,13 +55,14 @@ export default function useTimelineScroll({
     // whenever a non-grid mode (list, sched) is active, and on tablets in
     // portrait list mode. Without this, switching to SCHED schedules a
     // scroll-to-now that lands after SchedView's own scroll-to-top.
-    if ((isMobile && mobileViewMode !== 'grid') || tabletListView) return;
+    // JOBO (phone and portrait tablet) opens at its own place, as on desktop.
+    if ((isMobile && mobileViewMode !== 'grid') || tabletListView || tabletJoboView) return;
     const isToday = dateToString(selectedDate) === dateToString(new Date());
     if (isToday && calendarRef.current && (!isMobile || mobileActiveTab === 'timeline')) {
       const timerId = setTimeout(() => scrollToCurrentHour(false), 100);
       return () => clearTimeout(timerId);
     }
-  }, [selectedDate, isMobile, mobileActiveTab, mobileViewMode, tabletListView, scrollToCurrentHour, viewMode, calendarRef]);
+  }, [selectedDate, isMobile, mobileActiveTab, mobileViewMode, tabletListView, tabletJoboView, scrollToCurrentHour, viewMode, calendarRef]);
 
   // Detect when user scrolls away from current time (all form factors)
   useEffect(() => {

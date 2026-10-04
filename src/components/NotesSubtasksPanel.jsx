@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Loader, Sparkles, X, Check, Plus, ExternalLink } from 'lucide-react';
+import { noteTextHash } from '@glance-apps/obsidian-format';
 import { useTranslation } from 'react-i18next';
 import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
 import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { noteFocusTarget } from '../utils/noteFocusTarget.js';
+import { useSyncCtx } from '../context/SyncContext.jsx';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -78,6 +80,12 @@ const NotesSubtasksPanel = ({
   // own, kept apart (utils/eventNotes.js). Events take no subtasks, which
   // would be lost the same way.
   const isEvent = isCalendarEventRow(task);
+  // The wikilink hint (2026-10-04, a field report: a user kept notes in his
+  // vault and never found that [[Note]] in the title brings the note here).
+  // Shown under a task's own notes while no note is linked, only where the
+  // Obsidian vault is enabled; every surface that mounts this panel wires
+  // the linked-note editor, so the promise holds wherever it shows.
+  const obsidianEnabled = !!useSyncCtx()?.obsidianConfig?.enabled;
   const ownNotes = (isEvent ? task.eventNote : task.notes) || '';
   const isGeneratingSubtasks = aiSubtasksLoadingForTask === task.id;
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
@@ -181,6 +189,24 @@ const NotesSubtasksPanel = ({
       if (seeded) return;
       setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: false, error: err.message } }));
     });
+  };
+
+  // REFUSE ON CHANGE (owner ruling 2026-10-03): the save carries the hash of
+  // the text as loaded; a note that moved in Obsidian meanwhile is not
+  // overwritten. The newer text is loaded, the unsaved text kept below it
+  // for the user to settle, and the panel says so.
+  const saveLinkedNote = (noteName, text) => {
+    const original = linkedNoteOriginalRef.current[noteName] ?? '';
+    if (text === original || !onSaveWikiNote) return;
+    linkedNoteOriginalRef.current[noteName] = text;
+    Promise.resolve(onSaveWikiNote(noteName, text, { base: noteTextHash(original) })).then((r) => {
+      if (!r?.refused) return;
+      const merged = `${r.text}\n\n${text}`.trim();
+      linkedNoteOriginalRef.current[noteName] = r.text;
+      linkedNoteTextsRef.current[noteName] = merged;
+      setLinkedNoteStates(prev => ({ ...prev, [noteName]: { ...(prev[noteName] || {}), text: merged, lastModified: r.lastModified ?? null, loading: false, error: null, conflict: true } }));
+      setLinkedNoteEditing(prev => ({ ...prev, [noteName]: true }));
+    }).catch(() => {});
   };
 
   const handleContentWikilinkClick = (noteName) => {
@@ -399,6 +425,9 @@ const NotesSubtasksPanel = ({
                     </button>
                   )}
                 </div>
+                {state.conflict && (
+                  <p data-linked-note-conflict className="text-xs text-amber-500 mb-1">{t('task.wikiNoteChanged')}</p>
+                )}
                 {state.loading ? (
                   <div className={`flex items-center gap-1.5 py-2 text-xs opacity-60 ${noteMinH} ${th.label}`}>
                     <Loader size={12} className="animate-spin" />
@@ -420,20 +449,14 @@ const NotesSubtasksPanel = ({
                     }}
                     onBlur={() => {
                       const text = linkedNoteTextsRef.current[noteName] ?? '';
-                      if (text !== (linkedNoteOriginalRef.current[noteName] ?? '') && onSaveWikiNote) {
-                        onSaveWikiNote(noteName, text);
-                        linkedNoteOriginalRef.current[noteName] = text;
-                      }
+                      saveLinkedNote(noteName, text);
                       if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.shiftKey) {
                         e.preventDefault();
                         const text = linkedNoteTextsRef.current[noteName] ?? '';
-                        if (text !== (linkedNoteOriginalRef.current[noteName] ?? '') && onSaveWikiNote) {
-                          onSaveWikiNote(noteName, text);
-                          linkedNoteOriginalRef.current[noteName] = text;
-                        }
+                        saveLinkedNote(noteName, text);
                         if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
                         onNoteSaved?.();
                       }
@@ -498,6 +521,12 @@ const NotesSubtasksPanel = ({
                 renderFormattedText(localNotes)
               )}
             </div>
+          )}
+          {/* Only while the task has nothing of its own yet: a user who has
+              typed notes or subtasks here has chosen this panel, and a nudge
+              to move to a vault note would read as "replace what you did". */}
+          {obsidianEnabled && !showLinked && !isEvent && !hasLocalNotes && !(task.subtasks?.length > 0) && (
+            <p data-wikilink-hint className={`text-[11px] italic mt-1 ${th.label}`}>{t('task.wikilinkHint')}</p>
           )}
         </div>
       )}

@@ -102,6 +102,8 @@ import EmptyBinConfirmModal from './components/EmptyBinConfirmModal.jsx';
 import RecurringDeleteModal from './components/RecurringDeleteModal.jsx';
 import EditRecurrenceModal from './components/EditRecurrenceModal.jsx';
 import ReminderToasts from './components/ReminderToasts.jsx';
+import TaskPeek from './components/TaskPeek.jsx';
+import { FOLLOW_UP_TAG_KEY, PEEK_TASK_EVENT, canFollowUp, completionFollowUpDraft, doneDateOf, normalizeFollowUpTag, resolveTaskRef, taskLink } from './utils/followUp.js';
 import ObsidianSyncToast from './components/ObsidianSyncToast.jsx';
 import MobileNewTaskModal from './components/MobileNewTaskModal.jsx';
 import ProjectPlanner from './components/projects/ProjectPlanner.jsx';
@@ -114,8 +116,10 @@ import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
+import useTodayEnded from './hooks/useTodayEnded.js';
 import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
 import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
+import { readCardSize, writeCardSize } from './utils/cardSize.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -468,6 +472,14 @@ const DayPlanner = () => {
       if (mobileDefaultView === view) setMobileDefaultView(homeView(MOBILE_VIEW_MODES, next.mobile));
     }
   };
+  // A phone view turned off by its flag while on screen (JOBO, switched off
+  // in Settings) lands on the first view still on, as the desktop's
+  // effectiveViewMode does; the default falls back when next read.
+  const hiddenMobileKey = hiddenViews.mobile.join('|');
+  useEffect(() => {
+    if (hiddenViews.mobile.includes(mobileViewMode)) setMobileViewMode(homeView(MOBILE_VIEW_MODES, hiddenViews.mobile));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenMobileKey, mobileViewMode]);
   // SCHED agenda rolling-window length (days). Lives here, not in
   // useSchedAgendaState, because expandedRecurringTasks must expand recurring
   // occurrences across the agenda's whole window — the hook's consumers all
@@ -478,6 +490,9 @@ const DayPlanner = () => {
   // how wider Android tablets behave, where landscape drops out of tablet mode
   // entirely. (On phones, list view is independent of orientation.)
   const tabletListView = isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month');
+  // JOBO on a tablet held upright takes the phone's JOBO (slice 8): its own
+  // timeline in the calendar area, and its own opening scroll.
+  const tabletJoboView = isTablet && !isLandscape && mobileViewMode === 'jobo';
   // MONTH on screen, whichever switcher put it there: the desktop cycler
   // (effectiveViewMode) or the phone / portrait-tablet toggle (mobileViewMode).
   // Drives the chrome's month-long stride and month-name date display.
@@ -765,6 +780,42 @@ const DayPlanner = () => {
   const [inboxTagFilter, setInboxTagFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('inboxTagFilter') || '[]'); } catch { return []; }
   });
+  // The tag "Schedule follow-up task" adds (utils/followUp.js), on this
+  // device, as the Inbox filter it pairs with is.
+  const [followUpTag, setFollowUpTagState] = useState(() => {
+    try { return normalizeFollowUpTag(localStorage.getItem(FOLLOW_UP_TAG_KEY)); } catch { return ''; }
+  });
+  const setFollowUpTag = useCallback((raw) => {
+    const tag = normalizeFollowUpTag(raw);
+    setFollowUpTagState(tag);
+    try { if (tag) localStorage.setItem(FOLLOW_UP_TAG_KEY, tag); else localStorage.removeItem(FOLLOW_UP_TAG_KEY); } catch { /* this session only */ }
+  }, []);
+  // "Open in JOBO" from a Do elsewhere (a Do card, SCHED's Do badge): the
+  // JOBO view on that date, opened at the Do's time rather than at now.
+  // JoboView takes the request once, for that date.
+  const [joboFocus, setJoboFocus] = useState(null);
+  // The phone and the portrait tablet open their own JOBO (slice 8), on the
+  // timeline tab.
+  const joboOnPhoneLayout = isMobile || (isTablet && !isLandscape);
+  const openJoboAt = useCallback(({ date, minute }) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return;
+    setJoboFocus(Number.isFinite(minute) ? { date, minute } : null);
+    setSelectedDate(new Date(`${date}T12:00:00`));
+    if (joboOnPhoneLayout) {
+      setMobileViewMode('jobo');
+      setMobileActiveTab('timeline');
+    } else {
+      setViewMode('jobo');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joboOnPhoneLayout]);
+  // A task a note links to, shown read-only over whatever is open.
+  const [peekTaskId, setPeekTaskId] = useState(null);
+  useEffect(() => {
+    const onPeek = (e) => { if (e.detail?.id != null) setPeekTaskId(String(e.detail.id)); };
+    window.addEventListener(PEEK_TASK_EVENT, onPeek);
+    return () => window.removeEventListener(PEEK_TASK_EVENT, onPeek);
+  }, []);
   const [inboxProjectFilter, setInboxProjectFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('inboxProjectFilter') || '[]'); } catch { return []; }
   });
@@ -924,6 +975,9 @@ const DayPlanner = () => {
       return next;
     });
   }, []);
+  // Goals & Projects card size, on this device (utils/cardSize.js).
+  const [spaceCardSize, setSpaceCardSizeState] = useState(() => readCardSize());
+  const setSpaceCardSize = useCallback((id) => setSpaceCardSizeState(writeCardSize(id)), []);
   const [dailyNotes, setDailyNotes] = useState(() => {
     try {
       const saved = localStorage.getItem('day-planner-daily-notes');
@@ -1895,7 +1949,7 @@ const DayPlanner = () => {
     selectedDate,
     isMobile, isTablet,
     mobileActiveTab,
-    mobileViewMode, tabletListView,
+    mobileViewMode, tabletListView, tabletJoboView,
     viewMode: effectiveViewMode,
   });
 
@@ -3082,7 +3136,7 @@ const DayPlanner = () => {
   // re-sync, 5-minute poll, task writeback, iOS vault-settings persistence)
   // lives in useObsidianSync; state/refs stay owned by useObsidian above.
   const {
-    performObsidianSync, nudgeObsidianObservations, loadWikiNote, saveWikiNote, openInObsidian, bridgeHeartbeatRef,
+    performObsidianSync, nudgeObsidianObservations, loadWikiNote, saveWikiNote, loadNoteDescription, saveNoteDescription, openInObsidian, bridgeHeartbeatRef,
     linkProjectNote, unlinkProjectNote, createProjectNote,
   } = useObsidianSync({
     defaultTaskHeading: localizedTaskHeading,
@@ -3834,6 +3888,33 @@ const DayPlanner = () => {
     setShowAddTask(true);
   };
   openMobileEditTaskRef.current = openMobileEditTask;
+
+  // "Schedule follow-up task" from a finished task (the completion toast, the
+  // context menu): the new-task form, in the Inbox, pre-filled by
+  // utils/followUp.js with a note that links back. The prefix is selected so
+  // what is typed replaces it.
+  const openFollowUp = (task) => {
+    if (!canFollowUp(task)) return;
+    const done = doneDateOf(task, dateToString(new Date()));
+    const { selection, ...draft } = completionFollowUpDraft(task, {
+      projects: goalsProjectsEnabled ? projects : [],
+      prefix: t('followUp.titlePrefix'),
+      tag: followUpTag,
+      note: t('followUp.noteLine', { link: taskLink(task), date: formatShortDate(new Date(done + 'T12:00:00')) }),
+    });
+    if (swipeSchedulingInboxTaskId) swipeSchedulingInboxTaskId.current = null;
+    setMobileEditingTask(null);
+    setNewTask({
+      startTime: getNextQuarterHour(), duration: 30, date: dateToString(selectedDate), isAllDay: false, recurrence: null,
+      ...draft,
+    });
+    setShowAddTask(true);
+    // The form focuses its title on mount; select the prefix only if it did.
+    requestAnimationFrame(() => {
+      const input = newTaskInputRef?.current;
+      if (input && input === document.activeElement) input.setSelectionRange(selection[0], selection[1]);
+    });
+  };
 
   const openMobileEditNativeEvent = (task) => {
     const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
@@ -4747,7 +4828,7 @@ const DayPlanner = () => {
     setHgContextMenu(null);
   };
 
-  const saveEditProjectFromBar = (fields) => {
+  const saveEditProjectFromBar = ({ linkNotePath, createNote: _createNote, ...fields }) => {
     if (!pendingEditProjectId) return;
     const projectId = pendingEditProjectId;
     const project = projects.find(p => p.id === projectId);
@@ -4765,6 +4846,7 @@ const DayPlanner = () => {
         setUnscheduledTasks(prev => prev.map(cascadeTask));
       }
       updateProject(projectId, fields);
+      if (linkNotePath) linkProjectNote?.('project', projectId, linkNotePath);
     }
     setPendingEditProjectId(null);
   };
@@ -6926,8 +7008,9 @@ const DayPlanner = () => {
   // column and all-day reads take this; getTasksForDate stays as it is for
   // its many other consumers (widgets, reminders, SCHED, JOBO itself). The
   // ledger slices are memoized on the ledger alone, the resolver on the
-  // tasks, so a task edit does not re-project the ledger. With JOBO off, or
-  // for today and later, this is getTasksForDate exactly.
+  // tasks, so a task edit does not re-project the ledger. Today takes the
+  // rule split at the NOW line. With JOBO off, or for later days, this is
+  // getTasksForDate exactly.
   const pastDaySlices = useMemo(
     () => (joboEnabled && Array.isArray(joboRecords) ? buildPastDaySlices(joboRecords) : null),
     [joboEnabled, joboRecords],
@@ -6940,14 +7023,21 @@ const DayPlanner = () => {
     }) : null),
     [pastDaySlices, tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks],
   );
+  // Today, split at the NOW line (hooks/useTodayEnded.js): recomputed only
+  // when a block ends or a task is completed, and held under a drag.
+  const { todayStr: nowTodayStr, todayEnded } = useTodayEnded({
+    pastDayIndex, currentTime, getTasksForDate, isVisibleForUser,
+    gestureActive: !!draggedTask || isResizing,
+  });
   const getDayDisplayForDate = useCallback((date, applyTagFilter = true) => pastDayDisplay({
     dateStr: dateToString(date),
-    todayStr: dateToString(new Date()),
+    todayStr: nowTodayStr,
     dayTasks: getTasksForDate(date, applyTagFilter),
     index: pastDayIndex,
     isVisibleForUser,
     tagFilter: applyTagFilter ? filterByTags : null,
-  }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags]);
+    todayEnded,
+  }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags, nowTodayStr, todayEnded]);
   // SCHED's Do badge: a task's timed Do on its own date, from the same index
   // (src/jobo/pastDay.js, doSessionsByTask). Cached per date for as long as
   // the index stands, so a day's cards share one pass over its slices. Empty
@@ -7429,6 +7519,11 @@ const DayPlanner = () => {
     recycleBin,
     goals,
     projects,
+    // Areas back dayglance_list_areas and the area fields on goals (2026-10-04).
+    areas,
+    // Read-only: the day's note rides get_day; the Bucket List has its own tool.
+    dailyNotes,
+    bucketConfig,
     isVisibleForUser,
     // Phase 4 week resource honors the user's week-start setting (0=Sunday).
     weekStartDay,
@@ -7445,6 +7540,21 @@ const DayPlanner = () => {
     setUnscheduledTasks,
     setRecurringTasks,
     setRecycleBin,
+    // Goals and projects (2026-10-04): the list setters for creates and field
+    // edits, and the hook's deletes for undoing an MCP create, so the sync
+    // tombstone the UI's delete writes is written here too.
+    setGoals,
+    setProjects,
+    deleteGoal,
+    deleteProject,
+  }, {
+    // A linked goal's or project's description lives in its Obsidian note
+    // (2026-10-04): the MCP reads and writes it through the planner's own
+    // section loader and save, and says whether a write landed in the file
+    // or was queued for the plugin.
+    loadNoteDescription,
+    saveNoteDescription,
+    noteWriteMode: () => (isStreamPosture(bridgeHeartbeatRef.current) ? 'queued' : 'written'),
   });
 
   useElectronBridge({
@@ -8629,6 +8739,7 @@ const DayPlanner = () => {
     tasks: tasksWithEventNotes, setTasks,
     setEventNote,
     timelineZooms, setTimelineZoom,
+    spaceCardSize, setSpaceCardSize,
     unscheduledTasks, setUnscheduledTasks,
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,
@@ -8643,7 +8754,7 @@ const DayPlanner = () => {
     // ── Layout / navigation ───────────────────────────────────────────────────
     tabletActiveTab, setTabletActiveTab,
     mobileActiveTab, setMobileActiveTab,
-    mobileViewMode, setMobileViewMode, tabletListView,
+    mobileViewMode, setMobileViewMode, tabletListView, tabletJoboView,
     mobileDefaultView, setMobileDefaultView,
     schedDaysShown, setSchedDaysShown,
     listEndOfDayTime, setListEndOfDayTime,
@@ -8764,6 +8875,8 @@ const DayPlanner = () => {
 
     // ── Undo / redo ───────────────────────────────────────────────────────────
     undoToast, setUndoToast,
+    followUpTag, setFollowUpTag, openFollowUp,
+    joboFocus, setJoboFocus, openJoboAt,
 
     // ── Mobile editing ────────────────────────────────────────────────────────
     mobileEditingTask, setMobileEditingTask,
@@ -9021,7 +9134,7 @@ const DayPlanner = () => {
     // always reloads the app (CloudSyncSettingsForm), so a render-time read is current.
     vaultEnabled: isVaultEnabled(),
     syncAll,
-    performObsidianSync, loadWikiNote, saveWikiNote, openInObsidian, nativeClearVault,
+    performObsidianSync, loadWikiNote, saveWikiNote, loadNoteDescription, saveNoteDescription, openInObsidian, nativeClearVault,
     linkProjectNote, unlinkProjectNote, createProjectNote,
     performTrmnlSync,
     performLocalBackup, performRemoteBackup,
@@ -9657,10 +9770,20 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Undo/Redo Toast */}
+      {/* Undo/Redo Toast. Above the Refocus timeline pill, which sits in the
+          same place while the timeline is scrolled away from now and would
+          otherwise cover its buttons. */}
       {undoToast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-50 ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
-          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[55] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
+          <div
+            data-undo-toast
+            // Pointer or focus on the toast holds it (hooks/useUndo.js).
+            onMouseEnter={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
+            onMouseLeave={() => setUndoToast(prev => (prev ? { ...prev, held: false } : prev))}
+            onFocus={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setUndoToast(prev => (prev ? { ...prev, held: false } : prev)); }}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}
+          >
             <span>{undoToast.message}</span>
             {undoToast.actionable && (
               <button
@@ -9670,8 +9793,38 @@ const DayPlanner = () => {
                 {t('shortcuts.undoAction')}
               </button>
             )}
+            {undoToast.followUp && (
+              <button
+                data-follow-up-action
+                onClick={() => { const task = undoToast.followUp; setUndoToast(null); openFollowUp(task); }}
+                className="font-semibold text-blue-400 hover:text-blue-300 whitespace-nowrap"
+              >
+                {t('followUp.action')}
+              </button>
+            )}
           </div>
         </div>
+      )}
+
+      {peekTaskId != null && (
+        <TaskPeek
+          found={resolveTaskRef(peekTaskId, { tasks, unscheduledTasks, recurringTasks, recycleBin })}
+          darkMode={darkMode}
+          onClose={() => setPeekTaskId(null)}
+          // Going to the task leaves the form behind: offered only without one.
+          onShow={showAddTask ? null : () => {
+            const found = resolveTaskRef(peekTaskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+            setPeekTaskId(null);
+            if (!found) return;
+            if (found.task.date) {
+              setDesktopSpace('calendar');
+              setSelectedDate(new Date(found.task.date + 'T12:00:00'));
+              if (isMobile || isTablet) setMobileActiveTab('timeline');
+            } else if (isMobile || isTablet) {
+              setMobileActiveTab('inbox');
+            }
+          }}
+        />
       )}
 
       {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
@@ -10398,7 +10551,8 @@ const DayPlanner = () => {
         // Clamp menu position to stay within viewport
         const menuWidth = 180;
         const menuItemHeight = 36;
-        const menuItems = [hasEdit, hasNotes, hasEnergy, hasMoveTomorrow, hasMoveInbox, hasComplete, hasDelete].filter(Boolean).length;
+        const hasFollowUp = isCompleted && canFollowUp(ctxTask);
+        const menuItems = [hasEdit, hasNotes, hasEnergy, hasMoveTomorrow, hasMoveInbox, hasComplete, hasFollowUp, hasDelete].filter(Boolean).length;
         const menuHeight = menuItems * menuItemHeight + 8;
         const clampedX = Math.min(x, window.innerWidth - menuWidth - 8);
         const clampedY = Math.min(y, window.innerHeight - menuHeight - 8);
@@ -10513,6 +10667,19 @@ const DayPlanner = () => {
                 >
                   {isCompleted ? <RotateCcw size={14} /> : <Check size={14} />}
                   {isCompleted ? t('voice.actions.uncomplete') : t('focus.complete')}
+                </button>
+              )}
+              {hasFollowUp && (
+                <button
+                  data-follow-up-action
+                  className={`w-full text-left px-3 py-2 text-sm ${textPrimary} ${hoverBg} transition-colors flex items-center gap-2`}
+                  onClick={() => {
+                    openFollowUp(ctxTask);
+                    setTaskContextMenu(null);
+                  }}
+                >
+                  <SkipForward size={14} />
+                  {t('followUp.action')}
                 </button>
               )}
               {!isImported && (

@@ -14,9 +14,22 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getHGBarsForDate } from '../hooks/useHyperGlance.js';
 import HyperGlanceBar from './HyperGlanceBar.jsx';
+import PastDoCard from './jobo/PastDoCard.jsx';
 import { useTranslation } from 'react-i18next';
 
-const MobileTimeGrid = () => {
+/**
+ * The phone's timeline. JOBO on the phone (slice 8, docs/jobo-mobile.md)
+ * draws its Plan side with it: the full timeline when Plan is the wide side,
+ * and with `barsMode` when it is the narrow lane. Then the hour rows and the
+ * now line stay, and `barsOverlay` (each task as a bar at its time) takes the
+ * place of the cards; the lane is one tap target, `onLaneTap`, and nothing in
+ * it adds, drags or opens a task.
+ *
+ * Like DAY's column, it reads the day's display (JOBO slice 6): a past day,
+ * and today up to the NOW line, show the recorded Do as striped read-only
+ * cards. `planOnly` keeps to the plan, for JOBO's own Plan side.
+ */
+const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap, planOnly = false }) => {
   const { t } = useTranslation();
   const {
     visibleDates, hours,
@@ -44,7 +57,7 @@ const MobileTimeGrid = () => {
     toggleComplete,
     postponeTask,
     formatTime, timeToMinutes,
-    getTasksForDate,
+    getTasksForDate, getDayDisplayForDate,
     getTaskCalendarStyle,
     minutesToPosition, positionToMinutes,
     calculateTaskPosition, calculateConflictPosition,
@@ -86,6 +99,7 @@ const MobileTimeGrid = () => {
             className={`flex-1 relative h-40 calendar-slot ${idx > 0 ? `border-l ${borderClass}` : ''}`}
             data-date={dateToString(date)}
             onClick={(e) => {
+              if (barsMode) return;
               if (e.target.classList.contains('calendar-slot')) {
                 const time = getTimeFromCursorPosition(e);
                 setHoverPreviewTime(time);
@@ -93,7 +107,7 @@ const MobileTimeGrid = () => {
               }
             }}
             onContextMenu={(e) => {
-              if (!e.target.classList.contains('calendar-slot')) return;
+              if (barsMode || !e.target.classList.contains('calendar-slot')) return;
               e.preventDefault();
               if (!calendarRef.current || !timeGridRef.current) return;
               const rect = calendarRef.current.getBoundingClientRect();
@@ -123,7 +137,31 @@ const MobileTimeGrid = () => {
     {visibleDates.map((date, dayIndex) => {
       const dateStr = dateToString(date);
       const isDateToday = dateStr === dateToString(new Date());
-      const dayTasks = getTasksForDate(date).filter(t => !t.isAllDay && !t.isExample && (!projectFilter || t.projectId === projectFilter));
+      if (barsMode) {
+        return (
+          <div
+            key={dateStr}
+            data-date-column={dateStr}
+            data-jobo-bars-lane="plan"
+            role="button"
+            tabIndex={0}
+            className={`flex-1 relative pointer-events-auto cursor-pointer ${dayIndex > 0 ? `border-l ${borderClass}` : ''}`}
+            onClick={onLaneTap}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onLaneTap?.(e); } }}
+          >
+            {isDateToday && (
+              <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${currentTimeTop}px` }}>
+                {/* The cards' now line without its dot, centred the same way,
+                    so the two sides' lines meet. */}
+                <div className="flex items-center"><div className="w-2 h-2 -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
+              </div>
+            )}
+            {barsOverlay}
+          </div>
+        );
+      }
+      const readDay = !planOnly && typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
+      const dayTasks = readDay(date).filter(t => !t.isAllDay && !t.isExample && (!projectFilter || t.projectId === projectFilter));
       const frameInstances = getFrameInstancesForDate(date);
       const hgBars = getHGBarsForDate(hgVisibleProjects, dateStr, isDateToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined);
       const hasBars = hgBars.length > 0;
@@ -303,6 +341,22 @@ const MobileTimeGrid = () => {
           {/* Task blocks */}
           {dayTasks.map(task => {
             const { top, height } = calculateTaskPosition(task);
+            // A recorded Do: the striped read-only card, which shows its
+            // details and "Open in JOBO" on a tap. No drag, swipe or menu.
+            if (task.joboDo) {
+              const pos = calculateConflictPosition(task, dayTasks);
+              return (
+                <PastDoCard
+                  key={task.id}
+                  item={task}
+                  showTime={height > 40}
+                  style={{
+                    top: `${top}px`, height: `${height}px`, minHeight: '27px',
+                    left: pos.left, right: pos.right, width: pos.width ?? undefined,
+                  }}
+                />
+              );
+            }
             const taskCalendarStyle = getTaskCalendarStyle(task, darkMode);
             const mobileCalendarStyle = taskCalendarStyle;
             const isRecurring = typeof task.id === 'string' && task.id.startsWith('recurring-');

@@ -479,6 +479,7 @@
     "experimentalHint": "Funkcje w trakcie tworzenia, wprowadzane etapami. Domyślnie wyłączone; nic się nie zmieni, dopóki którejś nie włączysz.",
     "enableJobo": "Widok JOBO",
     "enableJoboHint": "Plan kontra rzeczywistość. Szósty widok, pod klawiszem 6, który będzie rejestrować, co faktycznie wykonano, na tle planu.",
+    "enableJoboHintPhone": "Plan kontra rzeczywistość. Widok w przełączniku widoków osi czasu, który zapisuje, co zrobiono względem planu.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planowanie życia: lista życzeń, pięcioletnia wizja i motta. Na razie zaślepka, otwierana z przestrzeni Cele i projekty.",
     "inbox": "Skrzynka",
@@ -682,6 +683,10 @@
     "aiProviderCustom": "Własny (zgodny z OpenAI)",
     "aiProviderOllama": "Ollama (lokalnie)",
     "aiRecommended": "Zalecane",
+    "aiModelOther": "Inny (wpisz identyfikator modelu)",
+    "aiFetchModels": "Pobierz listę modeli",
+    "aiFetchModelsOk": "Dostępne modele: {{count}}",
+    "aiFetchModelsFailed": "Nie udało się pobrać modeli: {{error}}",
     "beta": "Beta",
     "calDAVSyncHint": "Do zwrotnej synchronizacji ukończeń: adres URL kolekcji CalDAV (bez ?export). W Nextcloud identyfikator kalendarza w adresie może różnić się od wyświetlanej nazwy.",
     "deviceCalendarDescription": "Wydarzenia kalendarza są odczytywane z kont Twojego urządzenia. W sekcji Kalendarze urządzenia poniżej wybierz, które kalendarze pokazywać.",
@@ -715,6 +720,8 @@
     "obsidianDailyNoteTemplateHint": "Wstępnie wypełniany przy tworzeniu nowej notatki dnia",
     "obsidianDailyNoteTemplatePlaceholder": "Szablon nowych notatek dnia...",
     "obsidianDailyNotesFolderHint": "Pozostaw puste dla katalogu głównego magazynu. Popularne: „Daily Notes” lub „journals”",
+    "obsidianDailyNotesResolved": "Notatki dzienne są zapisywane w {{path}}",
+    "obsidianDailyNotesNested": "Wybrany folder sam nazywa się „{{name}}”, więc to ustawienie utworzyłoby w nim kolejny folder „{{name}}” i drugą kopię notatki z każdego dnia. Jeśli wybrano folder notatek dziennych, wybierz zamiast tego katalog główny magazynu albo pozostaw to ustawienie puste.",
     "obsidianFilenamePatternHint": "Wzorzec daty dla nazw plików notatek dnia (bez .md). np. „yyyy-MM-dd”, „dd-MM-yyyy”, „MMMM dd, yyyy”",
     "obsidianNativeSettingsHint": "Dostęp do magazynu i ustawienia notatek dnia konfiguruje się w ustawieniach aplikacji.",
     "obsidianNewNotesFolderHint": "Miejsce zapisu nowych notatek utworzonych w dayGLANCE. Pozostaw puste dla katalogu głównego magazynu.",
@@ -754,6 +761,7 @@
     "openInObsidian": "Otwórz w Obsidian",
     "wikiNoteNotFound": "Nie znaleziono notatki w magazynie: sprawdź, czy Twój magazyn jest skonfigurowany, a notatka istnieje.",
     "wikiNoteLoadFailed": "Nie udało się wczytać notatki: {{error}}",
+    "wikiNoteChanged": "Ta notatka zmieniła się w Obsidian od czasu jej otwarcia. Wczytano nowszy tekst, a Twój niezapisany tekst znajduje się poniżej; sprawdź go i zapisz ponownie.",
     "emptyWikiNotePlaceholder": "Pusta notatka: zacznij pisać, aby utworzyć ją w swoim magazynie",
     "editWikiNote": "Edytuj „{{name}}”",
     "notesFormattingPlaceholder": "Dodaj notatki... (**pogrubienie**, *kursywa*, __podkreślenie__, adresy URL) — Shift+Enter dla podglądu",
@@ -814,6 +822,7 @@
     "assignTo": "Przypisz do",
     "notes": "Notatki",
     "localNotes": "Notatki w dayGLANCE",
+    "wikilinkHint": "Wskazówka: wpisz [[Nazwa notatki]] w tytule, aby powiązać notatkę Obsidian, istniejącą lub nową. Notatka otworzy się wtedy tutaj.",
     "calendarDescription": "Z kalendarza",
     "yourNotes": "Twoje notatki (to urządzenie)",
     "subtasks": "Podzadania",
@@ -2057,11 +2066,21 @@
     "close": "Zamknij planer",
     "notesPlaceholder": "Dodaj notatki... (**pogrubienie**, *kursywa*, __podkreślenie__, adresy URL) - Shift+Enter, aby zapisać",
     "clickToEditNotes": "Kliknij, aby edytować notatki",
+    "notesInVault": "Notatki znajdują się w powiązanej notatce w Obsidian.",
+    "notesLoading": "Wczytywanie z powiązanej notatki…",
+    "notesLoadFailed": "Nie udało się odczytać powiązanej notatki: {{error}}",
+    "notesNoteMissing": "Nie znaleziono powiązanej notatki w skarbcu. Sprawdź nazwę notatki lub utwórz notatkę w Obsidian.",
+    "notesChanged": "Notatka zmieniła się w Obsidian od czasu jej otwarcia. Wczytano nowszy tekst, a Twój niezapisany tekst znajduje się poniżej; sprawdź go i zapisz ponownie.",
     "scheduled": "Zaplanowane",
     "nothingScheduledYet": "Nic jeszcze nie zaplanowano.",
     "noUnscheduledTasks": "Brak niezaplanowanych zadań.",
     "addTaskPlaceholder": "Dodaj zadanie…",
     "addTaskToProject": "Dodaj zadanie do projektu",
+    "addedToTop": "Dodano „{{title}}” na górze.",
+    "sendToBottom": "Przenieś na dół",
+    "showHyperglance": "Pokaż ustawienia hyperGLANCE",
+    "hideHyperglance": "Ukryj ustawienia hyperGLANCE",
+    "backToTasks": "Wróć do zadań",
     "hideScheduled": "Ukryj listę zaplanowanych",
     "showScheduled": "Pokaż zaplanowane",
     "showNotesSidebar": "Pokaż notatki zadania",
@@ -2407,11 +2426,23 @@
       "taskScope": "Liczby zadań i priorytety odzwierciedlają bieżący stan zadań, a nie stan historyczny. „Brak zapisu wykonania” zlicza bieżące plany z godzinami, których planowany koniec już minął i które nie mają przypisanego Do, niezależnie od ukończenia zadania lub pracy zapisanej dla innego planu.",
       "timingScope": "Zarejestrowany czas obejmuje wybrane daty. Porównania z planem, czas w planie i poza nim oraz najdłuższy zakres uwzględniają całe wykonania, które mogą wykraczać poza te daty.",
       "allTimeScope": "Całość używa tylko dat z zapisanymi danymi w bieżącej historii zadań i JOBO. Historyczne wystąpienia cykliczne bez ukończenia, wyjątku ani Do nie są odtwarzane."
+    },
+    "mobile": {
+      "showDo": "Poszerz Wykonanie",
+      "showPlan": "Poszerz Plan"
     }
   },
   "timelineZoom": {
     "label": "Rozmiar osi czasu",
     "hint": "Zapisywane na tym urządzeniu. Aby dostosować na miejscu, uszczypnij lub użyj Ctrl+przewijania nad osią czasu."
+  },
+  "cardSize": {
+    "label": "Rozmiar kart celów i projektów",
+    "small": "Mały",
+    "normal": "Normalny",
+    "large": "Duży",
+    "larger": "Większy",
+    "hint": "Zapisane na tym urządzeniu. Większe karty mieszczą się w mniejszej liczbie w rzędzie."
   },
   "todoist": {
     "title": "Synchronizacja Todoist",
@@ -2524,5 +2555,22 @@
     "unknownWarning": "Niektóre powiązane zadania nie występują w migawce źródła. Nie można wiarygodnie ustalić ich ukończenia/usunięcia, więc ich lokalne kopie zachowano.",
     "writeOptions": "Opcjonalny zapis zwrotny ukończeń (zaawansowane)",
     "securityTitle": "Dane uwierzytelniające, prywatność i ograniczenia"
+  },
+  "followUp": {
+    "action": "Zaplanuj zadanie następcze",
+    "titlePrefix": "Przypomnij:",
+    "noteLine": "Następuje po {{link}}, ukończone {{date}}.",
+    "settingTitle": "Zadania następcze",
+    "settingLabel": "Tag dodawany do zadań następczych",
+    "settingHint": "„Zaplanuj zadanie następcze” przy ukończonym zadaniu dodaje ten tag, na przykład #czekam. Zostaw puste, by nie dodawać żadnego. Zapisywane na tym urządzeniu.",
+    "settingPlaceholder": "#czekam",
+    "peekTitle": "Wcześniejsze zadanie",
+    "peekDone": "Ukończone {{date}}",
+    "peekNotDone": "Nieukończone",
+    "peekInbox": "W skrzynce",
+    "peekOn": "Zaplanowane na {{date}}",
+    "peekDeleted": "W koszu",
+    "peekGone": "Tego zadania nie ma już w dayGLANCE.",
+    "peekShow": "Przejdź do zadania"
   }
 }

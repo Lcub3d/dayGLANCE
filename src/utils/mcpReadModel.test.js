@@ -36,8 +36,10 @@ describe('blockType / toBlock — the §5.1 distinct type flag', () => {
     expect(b).not.toHaveProperty('read_only');
   });
 
-  it('imported alone does NOT mark a device event (CalDAV/ICS also set imported)', () => {
-    expect(blockType(T({ imported: true }))).toBe('task');
+  it('imported alone does NOT mark a device event: a feed event is calendar_event, a CalDAV task-calendar task a task (2026-10-04)', () => {
+    expect(blockType(T({ imported: true }))).toBe('calendar_event');
+    expect(blockType(T({ imported: true, isTaskCalendar: true }))).toBe('task');
+    expect(blockType(T({ imported: true, nativeEventId: 'n', _native: true }))).toBe('device_calendar_event');
   });
 
   it('all-day blocks have a null start_time (no fake midnight)', () => {
@@ -393,5 +395,92 @@ describe('buildUsers — the assignment roster (multi-user)', () => {
 
   it('missing state → empty roster, never a throw', () => {
     expect(buildUsers({})).toEqual({ users: [] });
+  });
+});
+
+describe('the 2026-10-04 read additions: subtasks and notes on blocks, goal and project fields, areas', () => {
+  it('toBlock carries notes and subtasks for tasks, omits them when empty, and never for device events', () => {
+    const b = toBlock(T({ notes: 'Bring ladder', subtasks: [{ id: 1, title: 'Nails', completed: true }] }));
+    expect(b.notes).toBe('Bring ladder');
+    expect(b.subtasks).toEqual([{ id: '1', title: 'Nails', completed: true }]);
+    expect('subtasks' in toBlock(T({ subtasks: [] }))).toBe(false);
+    expect('notes' in toBlock(T({ notes: '' }))).toBe(false);
+    const native = toBlock(T({ _native: true, id: 'native-1', notes: 'x', subtasks: [{ id: 's', title: 't' }] }));
+    expect('notes' in native).toBe(false);
+    expect('subtasks' in native).toBe(false);
+  });
+  it('inbox items carry subtasks too', () => {
+    const { items } = buildUnscheduledItems({ unscheduledTasks: [{ id: 'u1', title: 'x', subtasks: [{ id: 's1', title: 'a', completed: false }] }] });
+    expect(items[0].subtasks).toEqual([{ id: 's1', title: 'a', completed: false }]);
+  });
+  it('goals report description, dates, area (id and name), assignees and the linked note; projects report description, goal, assignees, note', () => {
+    const r = buildGoalProgress({
+      goals: [{ id: 'g1', title: 'Home', status: 'active', description: 'Dry roof.', startDate: '2026-01-01', targetDate: '2026-12-31', areaId: 'a1', assignedUserSyncIds: ['u1'], obsidianNotePath: 'Goals/Home.md' }],
+      projects: [{ id: 'p1', title: 'Roof', status: 'active', goalId: 'g1', description: '', assignedUserSyncIds: ['u1'], obsidianNotePath: 'Projects/Roof.md', obsidianNoteMissingAt: '2026-10-01T00:00:00Z' }],
+      areas: [{ id: 'a1', name: 'House' }],
+      tasks: [], unscheduledTasks: [],
+    }, {});
+    expect(r.goals[0]).toMatchObject({
+      id: 'g1', description: 'Dry roof.', start_date: '2026-01-01', target_date: '2026-12-31', area_id: 'a1', area_name: 'House',
+      assignee_ids: ['u1'], obsidian_note: { path: 'Goals/Home.md', name: 'Goals/Home', missing: false },
+    });
+    expect(r.goals[0].projects[0]).toMatchObject({
+      id: 'p1', description: '', goal_id: 'g1', assignee_ids: ['u1'], obsidian_note: { path: 'Projects/Roof.md', name: 'Projects/Roof', missing: true },
+    });
+    // Unlinked, unassigned, area-less: the optional keys are absent, the always-present ones are null or ''.
+    const plain = buildGoalProgress({ goals: [{ id: 'g2', title: 'X', status: 'active' }], projects: [], tasks: [], unscheduledTasks: [] }, {}).goals[0];
+    expect(plain).toMatchObject({ description: '', start_date: null, target_date: null });
+    for (const key of ['area_id', 'area_name', 'assignee_ids', 'obsidian_note']) expect(key in plain).toBe(false);
+  });
+  it('list_areas returns id and name in order', () => {
+    const r = handleMcpRequest({ areas: [{ id: 'b', name: 'Second', order: 10 }, { id: 'a', name: 'First', order: 0 }] }, { method: 'list_areas' });
+    expect(r).toEqual({ ok: true, data: { areas: [{ id: 'a', name: 'First' }, { id: 'b', name: 'Second' }] } });
+  });
+});
+
+describe('the read gaps closed 2026-10-04: imported events, assignees, inbox duration, daily notes, the Bucket List', () => {
+  it('an imported feed event is type calendar_event and read_only; a CalDAV task-calendar task stays a task with its source', () => {
+    const ev = toBlock(T({ id: 'ics-1', imported: true, icalUid: 'u', importSource: 'f' }));
+    expect(ev).toMatchObject({ type: 'calendar_event', read_only: true });
+    const caldav = toBlock(T({ id: 'cal-t', imported: true, isTaskCalendar: true, icalUid: 'u' }));
+    expect(caldav.type).toBe('task');
+    expect(caldav.source).toBe('caldav_tasks');
+    expect('read_only' in caldav).toBe(false);
+    // Device events keep their own type even though they are imported.
+    expect(toBlock(T({ _native: true, imported: true, nativeEventId: 'n' })).type).toBe('device_calendar_event');
+  });
+  it('blocks and inbox items say whose task it is; inbox items carry the duration', () => {
+    expect(toBlock(T({ assignedUserSyncIds: ['u1', 'u2'] })).assignee_id).toBe('u1');
+    expect('assignee_id' in toBlock(T({}))).toBe(false);
+    const { items } = buildUnscheduledItems({ unscheduledTasks: [{ id: 'u1', title: 'x', duration: 45, assignedUserSyncIds: ['u2'] }, { id: 'u2', title: 'y' }] });
+    expect(items[0]).toMatchObject({ duration_minutes: 45, assignee_id: 'u2' });
+    expect('duration_minutes' in items[1]).toBe(false);
+  });
+  it('get_day carries the day\'s note as the app shows it, null for none, empty or deleted', () => {
+    const state = { tasks: [], recurringTasks: [], dailyNotes: {
+      '2026-08-10': { text: 'Dentist at noon.', lastModified: 'L' },
+      '2026-08-11': { text: '   ' },
+      '2026-08-12': { text: 'Gone', deleted: true },
+    } };
+    expect(buildDayBlocks(state, { date: '2026-08-10' }).daily_note).toEqual({ text: 'Dentist at noon.', last_modified: 'L' });
+    expect(buildDayBlocks(state, { date: '2026-08-11' }).daily_note).toBeNull();
+    expect(buildDayBlocks(state, { date: '2026-08-12' }).daily_note).toBeNull();
+    expect(buildDayBlocks(state, { date: '2026-08-13' }).daily_note).toBeNull();
+  });
+  it('list_bucket_list: two lists with the user\'s headings, archived left out, priority and deadline never on the wire', () => {
+    const r = handleMcpRequest({
+      bucketConfig: { headings: { b1: 'Anytime', b2: 'Maybe later' } },
+      unscheduledTasks: [
+        { id: 'k1', title: 'Learn Welsh', bucketId: 'b1', priority: 2, deadline: '2026-01-01', duration: 30 },
+        { id: 'k2', title: 'Old', bucketId: 'b1', archived: true },
+        { id: 'k3', title: 'Sail', bucketId: 'b2', completed: true },
+        { id: 'u1', title: 'Inbox task' },
+      ],
+    }, { method: 'list_bucket_list' });
+    expect(r.ok).toBe(true);
+    expect(r.data.lists.map((l) => [l.id, l.heading, l.items.map((i) => i.id)])).toEqual([['b1', 'Anytime', ['k1']], ['b2', 'Maybe later', ['k3']]]);
+    expect(r.data.lists[0].items[0]).toEqual({ id: 'k1', type: 'task', title: 'Learn Welsh', completed: false, duration_minutes: 30, bucket_id: 'b1' });
+    // Default headings stand in when the config has none.
+    expect(handleMcpRequest({ unscheduledTasks: [] }, { method: 'list_bucket_list' }).data.lists.map((l) => l.heading)).toEqual(['Anytime', 'Someday']);
   });
 });

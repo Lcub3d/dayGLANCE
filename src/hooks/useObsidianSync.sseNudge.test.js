@@ -194,6 +194,6 @@ describe('nudgeObsidianObservations (SSE → Obsidian cycle pacing)', () => {
     h.api.nudgeObsidianObservations();
     await settle();
     expect(probeMock).not.toHaveBeenCalled(); // deferred, not raced
-    expect(scheduledTimers).toEqual([5000]); // one retry armed at the gap
+    expect(scheduledTimers).toEqual([20000]); // one retry armed at the gap
   });
 });

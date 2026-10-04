@@ -44,7 +44,7 @@ const unscheduled = Array.from({ length: 12 }, (_, i) => ({
   completed: false, isAllDay: false, notes: '', subtasks: [], priority: 0, projectId: 'p1',
 }));
 
-const render = async ({ isMobile = false, scheduledHidden = false } = {}) => renderToStaticMarkup(
+const render = async ({ isMobile = false, scheduledHidden = false, hyperglanceOpen = false } = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
     <DayPlannerContext.Provider value={{
       isMobile, isTablet: false, darkMode: false, use24HourClock: false,
@@ -62,7 +62,7 @@ const render = async ({ isMobile = false, scheduledHidden = false } = {}) => ren
         generateAISubtasks: noop, aiSubtasksLoadingForTask: null, aiConfig: null,
       }}>
         <SyncContext.Provider value={{ loadWikiNote: null, saveWikiNote: null, openInObsidian: null }}>
-          <ProjectPlanner project={{ ...project, plannerScheduledHidden: scheduledHidden }} onClose={noop} />
+          <ProjectPlanner project={{ ...project, plannerScheduledHidden: scheduledHidden }} onClose={noop} initialHyperglanceOpen={hyperglanceOpen} />
         </SyncContext.Provider>
       </FeaturesContext.Provider>
     </DayPlannerContext.Provider>
@@ -114,15 +114,41 @@ describe('ProjectPlanner layout', () => {
   it('keeps every section unshrinkable with the SCHEDULED list hidden too', async () => {
     const html = await render({ scheduledHidden: true });
     const children = directChildren(html, DESKTOP_BODY);
-    expect(children.some(c => c.includes('hover:underline'))).toBe(true); // the Show Scheduled affordance
     for (const child of children) expect(child).toContain('flex-shrink-0');
   });
 
-  it('gives hyperGLANCE, which clips its own overflow, an explicit shrink opt-out', async () => {
+  it('keeps hyperGLANCE out of the planning body: a header button with ON opens it', async () => {
     const html = await render();
-    const hg = html.match(/<div class="rounded-xl border [^"]*overflow-hidden[^"]*"/)?.[0] ?? '';
+    const header = html.slice(0, html.indexOf('data-notes-source'));
+    expect(header).toMatch(/data-planner-hyperglance-toggle[^]*?data-planner-hyperglance-on/);
+    // Scheduled · Completed · hyperGLANCE · Notes · close
+    expect(header.indexOf('data-planner-scheduled-toggle')).toBeLessThan(header.indexOf('data-planner-hyperglance-toggle'));
+    expect(header.indexOf('data-planner-hyperglance-toggle')).toBeLessThan(header.indexOf('data-planner-notes-toggle'));
+    expect(html).not.toContain('rounded-xl border border-stone-200 overflow-hidden');
+  });
+
+  it('opens hyperGLANCE in the notes panel on a wide screen, with the lists still there', async () => {
+    const html = await render({ hyperglanceOpen: true });
+    expect(html).toContain('data-planner-hyperglance="panel"');
+    expect(html).not.toContain('data-planner-notes-sidebar');
+    const panel = html.slice(html.indexOf('data-planner-hyperglance-panel'));
+    // one column in the panel, and the editor (which clips its own overflow) never shrinks
+    const hg = panel.match(/<div class="rounded-xl border [^"]*overflow-hidden[^"]*"/)?.[0] ?? '';
     expect(hg).toContain('flex-shrink-0');
+    expect(panel).not.toContain('grid-cols-2 gap-x-6');
+    expect(html.indexOf('TASK 0')).toBeGreaterThan(-1);
+    expect(html.indexOf('TASK 0')).toBeLessThan(html.indexOf('data-planner-hyperglance-panel'));
+  });
+
+  it('opens hyperGLANCE as the sheet\'s other page on a phone, with a way back', async () => {
+    const html = await render({ isMobile: true, hyperglanceOpen: true });
+    expect(html).toContain('data-planner-hyperglance="page"');
+    expect(html).toContain('Back to tasks');
     expect(html).toContain('hyperGLANCE');
+    expect(html).not.toContain('TASK 0');
+    expect(html).not.toContain('data-planner-quick-add');
+    const page = html.slice(html.indexOf('data-planner-hyperglance-page'));
+    expect(page.match(/<div class="rounded-xl border [^"]*overflow-hidden[^"]*"/)?.[0] ?? '').toContain('flex-shrink-0');
   });
 
   it('does not let the mobile sheet shrink its header or its body either', async () => {
@@ -136,5 +162,41 @@ describe('ProjectPlanner layout', () => {
     const sections = directChildren(html, bodyTag(html));
     expect(sections.some(c => c.includes('p-0.5'))).toBe(true); // the Scheduled/Unscheduled tabs
     for (const section of sections) expect(section).toContain('flex-shrink-0');
+  });
+
+  it('puts the quick-add under the notes and above every task, however long the list', async () => {
+    for (const scheduledHidden of [false, true]) {
+      const html = await render({ scheduledHidden });
+      const add = html.indexOf('data-planner-quick-add');
+      expect(add).toBeGreaterThan(html.indexOf('data-notes-source'));
+      expect(add).toBeLessThan(html.indexOf('TASK 0'));
+    }
+  });
+
+  it('toggles Scheduled from the header: Scheduled, Completed, then Notes on the right, then close', async () => {
+    const html = await render({ scheduledHidden: true });
+    const header = html.slice(0, html.indexOf('data-notes-source'));
+    const scheduled = header.indexOf('data-planner-scheduled-toggle');
+    const notes = header.indexOf('data-planner-notes-toggle');
+    const close = header.indexOf('aria-label="Close planner"');
+    expect(scheduled).toBeGreaterThan(-1);
+    expect(scheduled).toBeLessThan(close);
+    expect(notes).toBeGreaterThan(scheduled);
+    expect(notes).toBeLessThan(close);
+    expect(header).toMatch(/data-planner-scheduled-toggle[^>]*title="Show Scheduled"/);
+    // no second copy of the toggle down in the body
+    expect(html).not.toContain('Hide Scheduled list');
+    expect(html.slice(html.indexOf('data-notes-source'))).not.toContain('Show Scheduled');
+  });
+
+  it('gives the header toggles their own row on a phone, so the title keeps its width', async () => {
+    const phone = await render({ isMobile: true });
+    expect(phone).toMatch(/data-planner-header-toggles="true" class="[^"]*order-last w-full/);
+    // the close button is outside the toggles, so it stays beside the title
+    const toggles = directChildren(phone, phone.match(/<div data-planner-header-toggles[^>]*>/)[0]).join('');
+    expect(toggles).not.toContain('Close planner');
+    expect(phone).toContain('aria-label="Close planner"');
+    const desktop = await render();
+    expect(desktop).not.toMatch(/data-planner-header-toggles="true" class="[^"]*order-last/);
   });
 });

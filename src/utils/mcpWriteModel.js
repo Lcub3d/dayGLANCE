@@ -31,15 +31,23 @@ import {
   applyResizeBlock,
   applySetCompletion,
   applyUpdateTask,
+  applyAddSubtask,
+  applyUpdateSubtask,
   applyUndoOps,
   parseRecurringInstanceId,
 } from './taskMutations.js';
-import { toBlock } from './mcpReadModel.js';
+import {
+  applyCreateGoal, applyUpdateGoal, applyCreateProject, applyUpdateProject,
+  applyGoalProjectUndoOps, GOAL_PROJECT_UNDO_KINDS,
+} from './goalProjectMutations.js';
+import { toBlock, inboxItem, goalItem, projectItem } from './mcpReadModel.js';
 import { resolveRetirement } from './retiredTaskIds.js';
 
 const WRITE_METHODS = new Set([
   'create_task', 'schedule_task', 'move_block', 'resize_block', 'set_completion',
-  'update_task', 'undo_mcp_writes',
+  'update_task', 'add_subtask', 'update_subtask',
+  'create_goal', 'update_goal', 'create_project', 'update_project',
+  'undo_mcp_writes',
 ]);
 
 export function isWriteMethod(method) {
@@ -50,8 +58,9 @@ const q = (title) => `“${title ?? ''}”`;
 const at = (date, startTime) => (startTime ? `${date} ${startTime}` : `${date}`);
 
 /**
- * @param state   live slices: { tasks, unscheduledTasks, recurringTasks }
- * @param setters { setTasks, setUnscheduledTasks, setRecurringTasks }
+ * @param state   live slices: { tasks, unscheduledTasks, recurringTasks, goals, projects, areas, users }
+ * @param setters { setTasks, setUnscheduledTasks, setRecurringTasks, setRecycleBin,
+ *                  setGoals, setProjects, deleteGoal, deleteProject }
  * @param request { method, params }
  * Returns { ok:true, data, undo? } | { ok:false, error:{ code, message } } —
  * same envelope as handleMcpRequest plus the §4.3 undo descriptor, which the
@@ -84,6 +93,7 @@ export function resolveMcpTaskId(state, id) {
 const ID_PARAM = {
   create_task: 'taskId', update_task: 'taskId', schedule_task: 'taskId',
   set_completion: 'taskId', move_block: 'blockId', resize_block: 'blockId',
+  add_subtask: 'taskId', update_subtask: 'taskId',
 };
 
 /**
@@ -237,6 +247,79 @@ function dispatchWrite(state, setters, method, params) {
       if (r.task.assignedUserSyncIds?.length) entity.assignee_id = r.task.assignedUserSyncIds[0];
       return { ok: true, data: { ...entity, replayed: r.replayed }, ...(undo ? { undo } : {}) };
     }
+    case 'add_subtask': {
+      const r = applyAddSubtask(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.replayed) {
+        if (r.scheduled) setters.setTasks(r.tasks);
+        else setters.setUnscheduledTasks(r.unscheduledTasks);
+      }
+      const undo = r.replayed ? undefined : {
+        summary: `Added subtask to ${q(r.task.title)}`,
+        op: { kind: 'remove_created_subtask', taskId: params.taskId, subtaskId: r.subtask.id },
+      };
+      return { ok: true, data: { ...taskEntity(r), subtask: wireSubtask(r.subtask), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
+    case 'update_subtask': {
+      const before = subtaskBefore(state, params.taskId, params.subtaskId);
+      const r = applyUpdateSubtask(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.replayed) {
+        if (r.scheduled) setters.setTasks(r.tasks);
+        else setters.setUnscheduledTasks(r.unscheduledTasks);
+      }
+      const undo = r.replayed || !before ? undefined : {
+        summary: `Edited a subtask of ${q(r.task.title)} (${r.touched.join(', ')})`,
+        op: {
+          kind: 'restore_subtask_fields', taskId: params.taskId, subtaskId: params.subtaskId,
+          before: Object.fromEntries(r.touched.map((k) => [k, before[k]])),
+        },
+      };
+      return { ok: true, data: { ...taskEntity(r), subtask: wireSubtask(r.subtask), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
+    case 'create_goal': {
+      const r = applyCreateGoal(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.replayed) setters.setGoals((prev) => [...(prev ?? []), r.goal]);
+      const undo = r.replayed ? undefined : {
+        summary: `Created goal ${q(r.goal.title)}`,
+        op: { kind: 'remove_created_goal', goalId: r.goal.id },
+      };
+      return { ok: true, data: { goal: goalItem(r.goal, stateWith(state, { goals: [...(state.goals ?? []), r.goal] })), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
+    case 'update_goal': {
+      const beforeGoal = (state.goals ?? []).find((g) => g && g.id === params.goalId);
+      const r = applyUpdateGoal(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      const nextGoals = (state.goals ?? []).map((g) => (g.id === params.goalId ? r.goal : g));
+      if (!r.replayed) setters.setGoals(() => nextGoals);
+      const undo = r.replayed || !beforeGoal ? undefined : {
+        summary: `Edited goal ${q(r.goal.title)} (${entityFieldNames(r.touched).join(', ')})`,
+        op: { kind: 'restore_goal_fields', goalId: params.goalId, ...beforeFields(beforeGoal, r.touched) },
+      };
+      return { ok: true, data: { goal: goalItem(r.goal, stateWith(state, { goals: nextGoals })), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
+    case 'create_project': {
+      const r = applyCreateProject(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.replayed) setters.setProjects((prev) => [...(prev ?? []), r.project]);
+      const undo = r.replayed ? undefined : {
+        summary: `Created project ${q(r.project.title)}`,
+        op: { kind: 'remove_created_project', projectId: r.project.id },
+      };
+      return { ok: true, data: { project: projectItem(r.project, progressTasksOf(state)), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
+    case 'update_project': {
+      const beforeProject = (state.projects ?? []).find((p) => p && p.id === params.projectId);
+      const r = applyUpdateProject(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.replayed) setters.setProjects((prev) => (prev ?? []).map((p) => (p.id === params.projectId ? r.project : p)));
+      const undo = r.replayed || !beforeProject ? undefined : {
+        summary: `Edited project ${q(r.project.title)} (${entityFieldNames(r.touched).join(', ')})`,
+        op: { kind: 'restore_project_fields', projectId: params.projectId, ...beforeFields(beforeProject, r.touched) },
+      };
+      return { ok: true, data: { project: projectItem(r.project, progressTasksOf(state)), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+    }
     case 'undo_mcp_writes': {
       // The §4.3 bulk undo. Not itself journaled (the main process clears the
       // journal on success), and applied through the same store layer as every
@@ -244,12 +327,29 @@ function dispatchWrite(state, setters, method, params) {
       // Undone creates land in the recycle bin (cross-list move, the UI's own
       // delete shape) so the vault propagates a legitimate delete instead of
       // healing back a fingerprint-less vanish — see applyUndoOps.
-      const r = applyUndoOps(state, params.ops, { nowIso });
+      const ops = params.ops ?? [];
+      const taskOps = ops.filter((op) => !GOAL_PROJECT_UNDO_KINDS.includes(op?.kind));
+      const entityOps = ops.filter((op) => GOAL_PROJECT_UNDO_KINDS.includes(op?.kind));
+      const r = applyUndoOps(state, taskOps, { nowIso });
       setters.setTasks(r.tasks);
       setters.setUnscheduledTasks(r.unscheduledTasks);
       setters.setRecurringTasks(r.recurringTasks);
       setters.setRecycleBin(r.recycleBin);
-      return { ok: true, data: { undone: r.undone, skipped: r.skipped } };
+      let undone = r.undone;
+      let skipped = r.skipped;
+      if (entityOps.length) {
+        // Goal and project reversals (2026-10-04): field restores go through
+        // the list setters; an undone create goes through the hook's own
+        // delete, which writes the sync tombstone the UI's delete writes.
+        const e = applyGoalProjectUndoOps(state, entityOps, { nowIso });
+        if (setters.setGoals) setters.setGoals(() => e.goals);
+        if (setters.setProjects) setters.setProjects(() => e.projects);
+        for (const id of e.removedGoals) setters.deleteGoal?.(id);
+        for (const id of e.removedProjects) setters.deleteProject?.(id);
+        undone += e.undone;
+        skipped += e.skipped;
+      }
+      return { ok: true, data: { undone, skipped } };
     }
     default:
       return { ok: false, error: { code: 'validation', message: `Unknown write method ${JSON.stringify(method)}` } };
@@ -320,17 +420,42 @@ function completionUndo(state, { taskId, completed }) {
   };
 }
 
-/** Inbox-item wire shape, matching buildUnscheduledItems in mcpReadModel.js. */
-function inboxItem(t) {
-  const item = {
-    id: t.id,
-    type: 'task',
-    title: t.title ?? '',
-    priority: typeof t.priority === 'number' ? t.priority : 0,
-    completed: !!t.completed,
-  };
-  if (t.deadline) item.deadline = t.deadline;
-  if (t.projectId) item.project_id = t.projectId;
-  if (t.notes) item.notes = t.notes;
-  return item;
+/** The task entity of a subtask write's response: block or inbox item, as update_task shapes it. */
+function taskEntity(r) {
+  return r.scheduled ? { block: toBlock(r.task) } : { task: inboxItem(r.task) };
+}
+
+function wireSubtask(st) {
+  return { id: String(st.id), title: st.title ?? '', completed: !!st.completed };
+}
+
+function subtaskBefore(state, taskId, subtaskId) {
+  const task = (state.unscheduledTasks ?? []).find((t) => t.id === taskId) ?? (state.tasks ?? []).find((t) => t.id === taskId);
+  const st = (task?.subtasks || []).find((s) => s.id === subtaskId);
+  return st ? { title: st.title ?? '', completed: !!st.completed } : null;
+}
+
+/** before / absentBefore for a goal or project edit, the updateUndoOp split. */
+function beforeFields(entity, touched) {
+  const before = {};
+  const absentBefore = [];
+  for (const key of touched ?? []) {
+    if (Object.prototype.hasOwnProperty.call(entity, key)) before[key] = entity[key];
+    else absentBefore.push(key);
+  }
+  return { before, ...(absentBefore.length ? { absentBefore } : {}) };
+}
+
+/** Storage keys → wire names for goal and project summaries. */
+export function entityFieldNames(touched) {
+  const names = { assignedUserSyncIds: 'assignees', areaId: 'area', goalId: 'goal', startDate: 'start_date', targetDate: 'target_date' };
+  return (touched ?? []).map((key) => names[key] ?? key);
+}
+
+const stateWith = (state, patch) => ({ ...state, ...patch });
+
+/** The denominator the read surface uses: every visible task that is not a device event. */
+export function progressTasksOf(state) {
+  const visible = typeof state.isVisibleForUser === 'function' ? state.isVisibleForUser : () => true;
+  return [...(state.tasks ?? []), ...(state.unscheduledTasks ?? [])].filter(visible).filter((t) => !t._native);
 }

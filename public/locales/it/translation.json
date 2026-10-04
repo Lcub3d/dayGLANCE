@@ -457,6 +457,7 @@
     "experimentalHint": "Funzioni ancora in costruzione, in arrivo a tappe. Disattivate per impostazione predefinita; nulla cambia finché non ne attivi una.",
     "enableJobo": "Vista JOBO",
     "enableJoboHint": "Pianificato contro effettivo. Una sesta vista, sul tasto 6, che registrerà ciò che è stato fatto rispetto a quanto pianificato.",
+    "enableJoboHintPhone": "Piano contro realtà. Una vista nel selettore di viste della timeline che registra ciò che è stato fatto rispetto al piano.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Pianificazione della vita: una lista dei desideri, una visione a cinque anni e motti. Per ora un segnaposto, aperto dallo spazio Obiettivi e progetti.",
     "inbox": "In arrivo",
@@ -663,6 +664,10 @@
     "aiProviderCustom": "Personalizzato (compatibile con OpenAI)",
     "aiProviderOllama": "Ollama (locale)",
     "aiRecommended": "Consigliato",
+    "aiModelOther": "Altro (digita un id modello)",
+    "aiFetchModels": "Recupera l'elenco dei modelli",
+    "aiFetchModelsOk": "{{count}} modelli disponibili",
+    "aiFetchModelsFailed": "Impossibile recuperare i modelli: {{error}}",
     "beta": "Beta",
     "calDAVSyncHint": "Per sincronizzare le attività completate sul server: l'URL della raccolta CalDAV (senza ?export). In Nextcloud, l'ID del calendario nell'URL può essere diverso dal nome visualizzato.",
     "deviceCalendarDescription": "Gli eventi vengono letti dagli account del dispositivo. Usa la sezione Calendari del dispositivo qui sotto per scegliere quali mostrare.",
@@ -696,6 +701,8 @@
     "obsidianDailyNoteTemplateHint": "Precompilato durante la creazione di una nuova nota giornaliera",
     "obsidianDailyNoteTemplatePlaceholder": "Modello per nuove note giornaliere...",
     "obsidianDailyNotesFolderHint": "Lascia vuoto per usare la radice del vault. Nomi comuni: \"Daily Notes\" o \"journals\"",
+    "obsidianDailyNotesResolved": "Le note giornaliere vengono scritte in {{path}}",
+    "obsidianDailyNotesNested": "La cartella scelta si chiama essa stessa “{{name}}”: con questa impostazione verrebbe creata un'altra cartella “{{name}}” al suo interno e una seconda copia della nota di ogni giorno. Se hai scelto la cartella delle note giornaliere, scegli invece la radice del vault, oppure lascia vuota questa impostazione.",
     "obsidianFilenamePatternHint": "Formato della data per i nomi dei file delle note giornaliere (senza .md), ad esempio \"yyyy-MM-dd\", \"dd-MM-yyyy\" o \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "L'accesso al vault e le impostazioni delle note giornaliere si configurano nelle impostazioni dell'app.",
     "obsidianNewNotesFolderHint": "Qui vengono salvate le nuove note create in dayGLANCE. Lascia vuoto per usare la radice del vault.",
@@ -735,6 +742,7 @@
     "openInObsidian": "Apri in Obsidian",
     "wikiNoteNotFound": "Nota non trovata nel vault. Verifica che il vault sia configurato e che la nota esista.",
     "wikiNoteLoadFailed": "Impossibile caricare la nota: {{error}}",
+    "wikiNoteChanged": "Questa nota è cambiata in Obsidian da quando l'hai aperta. È stato caricato il testo più recente, con il tuo testo non salvato sotto; controlla e salva di nuovo.",
     "emptyWikiNotePlaceholder": "Nota vuota: inizia a scrivere per crearla nel vault",
     "editWikiNote": "Modifica “{{name}}”",
     "notesFormattingPlaceholder": "Aggiungi note... (**grassetto**, *corsivo*, __sottolineato__, URL) — Maiusc+Invio per l’anteprima",
@@ -795,6 +803,7 @@
     "assignTo": "Assegna a",
     "notes": "Note",
     "localNotes": "Note in dayGLANCE",
+    "wikilinkHint": "Suggerimento: scrivi [[Nome della nota]] nel titolo per collegare una nota di Obsidian, esistente o nuova. La nota si apre poi qui.",
     "calendarDescription": "Dal calendario",
     "yourNotes": "Le tue note (questo dispositivo)",
     "subtasks": "Sottoattività",
@@ -1966,11 +1975,21 @@
     "close": "Chiudi pianificatore",
     "notesPlaceholder": "Aggiungi note... (**grassetto**, *corsivo*, __sottolineato__, URL) - Maiusc+Invio per salvare",
     "clickToEditNotes": "Fai clic per modificare le note",
+    "notesInVault": "Le note vivono nella nota collegata in Obsidian.",
+    "notesLoading": "Caricamento dalla nota collegata…",
+    "notesLoadFailed": "Impossibile leggere la nota collegata: {{error}}",
+    "notesNoteMissing": "La nota collegata non è stata trovata nel vault. Controlla il nome della nota o crea la nota in Obsidian.",
+    "notesChanged": "La nota è cambiata in Obsidian da quando l'hai aperta. È stato caricato il testo più recente, con il tuo testo non salvato sotto; controlla e salva di nuovo.",
     "scheduled": "Programmate",
     "nothingScheduledYet": "Ancora niente in programma.",
     "noUnscheduledTasks": "Nessuna attività non programmata.",
     "addTaskPlaceholder": "Aggiungi un'attività…",
     "addTaskToProject": "Aggiungi attività al progetto",
+    "addedToTop": "«{{title}}» aggiunta in cima.",
+    "sendToBottom": "Sposta in fondo",
+    "showHyperglance": "Mostra impostazioni hyperGLANCE",
+    "hideHyperglance": "Nascondi impostazioni hyperGLANCE",
+    "backToTasks": "Torna alle attività",
     "hideScheduled": "Nascondi l'elenco Pianificate",
     "showScheduled": "Mostra pianificate",
     "showNotesSidebar": "Mostra le note dell’attività",
@@ -2312,11 +2331,23 @@
       "taskScope": "I conteggi e le priorità delle attività si basano sul loro stato attuale, non su uno storico. «Nessuna esecuzione registrata» conta i piani attuali con orari la cui fine prevista è trascorsa e che non hanno un Do associato, indipendentemente dal completamento dell’attività o dal lavoro registrato per un altro piano.",
       "timingScope": "Il tempo registrato copre le date selezionate. I confronti con il piano, il tempo dentro e fuori dal piano e la durata massima considerano le esecuzioni complete, che possono estendersi oltre queste date.",
       "allTimeScope": "Tutto usa solo date con evidenze salvate nella cronologia corrente delle attività e di JOBO. Le ricorrenze storiche senza completamento, eccezione o Do non vengono ricostruite."
+    },
+    "mobile": {
+      "showDo": "Allarga Esecuzione",
+      "showPlan": "Allarga Piano"
     }
   },
   "timelineZoom": {
     "label": "Dimensione della timeline",
     "hint": "Salvato su questo dispositivo. Per regolarla al volo, pizzica o usa Ctrl+scorrimento sulla timeline."
+  },
+  "cardSize": {
+    "label": "Dimensione schede Obiettivi e progetti",
+    "small": "Piccola",
+    "normal": "Normale",
+    "large": "Grande",
+    "larger": "Più grande",
+    "hint": "Salvato su questo dispositivo. Le schede più grandi ne mostrano meno per riga."
   },
   "todoist": {
     "title": "Sincronizzazione Todoist",
@@ -2429,5 +2460,22 @@
     "unknownWarning": "Alcune attività collegate non compaiono nello snapshot di origine. Non è possibile stabilire con certezza se siano state completate o eliminate, quindi le copie locali sono state conservate.",
     "writeOptions": "Riscrittura facoltativa dei completamenti (avanzate)",
     "securityTitle": "Credenziali, privacy e limiti"
+  },
+  "followUp": {
+    "action": "Pianifica attività di follow-up",
+    "titlePrefix": "Follow-up:",
+    "noteLine": "Segue {{link}}, completata il {{date}}.",
+    "settingTitle": "Follow-up",
+    "settingLabel": "Tag per le attività di follow-up",
+    "settingHint": "«Pianifica attività di follow-up» su un'attività completata aggiunge questo tag, ad esempio #inattesa. Lascialo vuoto per nessuno. Salvato su questo dispositivo.",
+    "settingPlaceholder": "#inattesa",
+    "peekTitle": "Attività precedente",
+    "peekDone": "Completata il {{date}}",
+    "peekNotDone": "Non completata",
+    "peekInbox": "Nella posta in arrivo",
+    "peekOn": "Pianificata per il {{date}}",
+    "peekDeleted": "Nel cestino",
+    "peekGone": "Questa attività non è più in dayGLANCE.",
+    "peekShow": "Vai all'attività"
   }
 }

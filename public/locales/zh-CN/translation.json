@@ -464,6 +464,7 @@
     "experimentalHint": "仍在构建中、分阶段推出的功能。默认关闭；不开启则一切照旧。",
     "enableJobo": "JOBO 视图",
     "enableJoboHint": "计划与实际对照。第六个视图（按键 6），用于记录实际完成情况与计划的差异。",
+    "enableJoboHintPhone": "计划与实际对比。时间轴视图切换中的一个视图，记录实际完成的内容与计划的对比。",
     "enableAspire": "Aspire",
     "enableAspireHint": "人生规划：人生愿望清单、五年愿景和座右铭。目前为占位页面，从“目标与项目”空间打开。",
     "inbox": "收件箱",
@@ -663,6 +664,10 @@
     "aiProviderCustom": "自定义（兼容 OpenAI）",
     "aiProviderOllama": "Ollama（本地）",
     "aiRecommended": "推荐",
+    "aiModelOther": "其他（输入模型 ID）",
+    "aiFetchModels": "获取模型列表",
+    "aiFetchModelsOk": "{{count}} 个可用模型",
+    "aiFetchModelsFailed": "无法获取模型：{{error}}",
     "beta": "测试版",
     "calDAVSyncHint": "如需同步完成状态，请填写 CalDAV 日历集合 URL（不含 ?export）。在 Nextcloud 中，URL 里的日历 ID 可能与显示名称不同。",
     "deviceCalendarDescription": "日历事件来自此设备上的账户。请在下方“设备日历”中选择要显示的日历。",
@@ -696,6 +701,8 @@
     "obsidianDailyNoteTemplateHint": "创建新日记时会预先填入",
     "obsidianDailyNoteTemplatePlaceholder": "新日记模板…",
     "obsidianDailyNotesFolderHint": "留空表示 vault 根目录。常用目录：\"Daily Notes\" 或 \"journals\"",
+    "obsidianDailyNotesResolved": "每日笔记写入 {{path}}",
+    "obsidianDailyNotesNested": "你选择的文件夹本身就叫“{{name}}”，这个设置会在其中再创建一个“{{name}}”文件夹，并为每天的笔记写入第二份副本。如果你选择的是每日笔记文件夹，请改为选择 vault 的根目录，或将此设置留空。",
     "obsidianFilenamePatternHint": "日记文件名的日期格式（不含 .md），例如 \"yyyy-MM-dd\"、\"dd-MM-yyyy\"、\"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault 访问权限和日记设置在应用设置中配置。",
     "obsidianNewNotesFolderHint": "dayGLANCE 创建的新笔记会保存在此处。留空表示 vault 根目录。",
@@ -735,6 +742,7 @@
     "openInObsidian": "在 Obsidian 中打开",
     "wikiNoteNotFound": "仓库中未找到该笔记。请检查是否已配置仓库且笔记确实存在。",
     "wikiNoteLoadFailed": "无法加载笔记：{{error}}",
+    "wikiNoteChanged": "自你打开以来，这条笔记已在 Obsidian 中被修改。已加载较新的文本，你未保存的文本在其下方；请检查后重新保存。",
     "emptyWikiNotePlaceholder": "空笔记，请开始输入以在仓库中创建",
     "editWikiNote": "编辑“{{name}}”",
     "notesFormattingPlaceholder": "添加笔记……（**粗体**、*斜体*、__下划线__、网址）；按 Shift+Enter 预览",
@@ -795,6 +803,7 @@
     "assignTo": "分配给",
     "notes": "笔记",
     "localNotes": "dayGLANCE 中的笔记",
+    "wikilinkHint": "提示：在标题中输入 [[笔记名]] 即可关联一条 Obsidian 笔记，已有或新建均可。之后该笔记会在此处打开。",
     "calendarDescription": "来自日历",
     "yourNotes": "你的笔记（仅此设备）",
     "subtasks": "子任务",
@@ -1964,11 +1973,21 @@
     "close": "关闭规划器",
     "notesPlaceholder": "添加备注…（**粗体**、*斜体*、__下划线__、URL）；按 Shift+Enter 保存",
     "clickToEditNotes": "点击编辑笔记",
+    "notesInVault": "笔记保存在 Obsidian 中关联的笔记里。",
+    "notesLoading": "正在从关联的笔记加载…",
+    "notesLoadFailed": "无法读取关联的笔记：{{error}}",
+    "notesNoteMissing": "在仓库中找不到关联的笔记。请检查笔记名称，或在 Obsidian 中创建该笔记。",
+    "notesChanged": "自你打开以来，这条笔记已在 Obsidian 中被修改。已加载较新的文本，你未保存的文本在其下方；请检查后重新保存。",
     "scheduled": "已排程",
     "nothingScheduledYet": "还没有排程任务。",
     "noUnscheduledTasks": "没有未排程任务。",
     "addTaskPlaceholder": "添加任务...",
     "addTaskToProject": "将任务添加到项目",
+    "addedToTop": "已将“{{title}}”添加到顶部。",
+    "sendToBottom": "移到底部",
+    "showHyperglance": "显示 hyperGLANCE 设置",
+    "hideHyperglance": "隐藏 hyperGLANCE 设置",
+    "backToTasks": "返回任务",
     "hideScheduled": "隐藏已排程列表",
     "showScheduled": "显示已排程",
     "showNotesSidebar": "显示任务笔记",
@@ -2310,11 +2329,23 @@
       "taskScope": "任务数量和优先级依据任务的当前状态，并非历史快照。 “未记录执行”统计计划结束时间已过、且无关联执行记录的当前定时计划，与任务是否完成或其他计划是否有执行记录无关。",
       "timingScope": "记录时间仅涵盖所选日期。计划对比、计划内外用时和最长跨度基于完整执行过程，可能超出所选日期。",
       "allTimeScope": "“全部”仅使用当前任务与 JOBO 历史中有持久化证据的日期；没有完成记录、例外或 Do 的历史重复任务，不会被反推为既成事实。"
+    },
+    "mobile": {
+      "showDo": "展开执行",
+      "showPlan": "展开计划"
     }
   },
   "timelineZoom": {
     "label": "时间轴大小",
     "hint": "保存在此设备上。如需即时调整，可在时间轴上双指缩放或按住 Ctrl 滚动。"
+  },
+  "cardSize": {
+    "label": "目标和项目卡片大小",
+    "small": "小",
+    "normal": "标准",
+    "large": "大",
+    "larger": "更大",
+    "hint": "保存在此设备上。卡片越大，每行显示越少。"
   },
   "todoist": {
     "title": "Todoist 同步",
@@ -2427,5 +2458,22 @@
     "unknownWarning": "部分关联任务未出现在来源快照，不能可靠判断其是否完成或删除，因此保留本地副本。",
     "writeOptions": "可选完成状态回写（高级）",
     "securityTitle": "凭据、隐私与功能边界"
+  },
+  "followUp": {
+    "action": "安排后续任务",
+    "titlePrefix": "跟进：",
+    "noteLine": "跟进 {{link}}，完成于 {{date}}。",
+    "settingTitle": "后续任务",
+    "settingLabel": "后续任务添加的标签",
+    "settingHint": "对已完成的任务使用“安排后续任务”时添加此标签，例如 #等待中。留空则不添加。仅保存在此设备上。",
+    "settingPlaceholder": "#等待中",
+    "peekTitle": "之前的任务",
+    "peekDone": "完成于 {{date}}",
+    "peekNotDone": "未完成",
+    "peekInbox": "在收件箱中",
+    "peekOn": "计划于 {{date}}",
+    "peekDeleted": "在回收站中",
+    "peekGone": "此任务已不在 dayGLANCE 中。",
+    "peekShow": "前往任务"
   }
 }

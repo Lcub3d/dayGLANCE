@@ -6,7 +6,9 @@ import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_
 import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import FollowUpTagSetting from './FollowUpTagSetting.jsx';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
+import CardSizeSettings from './CardSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import LocalIntegrationsSettings from './LocalIntegrationsSettings.jsx';
 import TodoistSettings from './TodoistSettings.jsx';
@@ -14,11 +16,12 @@ import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import CalendarList from './CalendarList.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
-import { testConnection, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
+import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
 import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars } from '../utils/nativeCalendar.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, formatDatePattern } from '../obsidian.js';
 import { validateDailyNotePattern, validateVaultFolderSetting } from '../utils/obsidianFilename.js';
+import { describeDailyNotePath } from '../utils/obsidianFolderCheck.js';
 import { effectiveLaunchOnWrite } from '../utils/obsidianLaunchOnWrite.js';
 import UnportableVaultNamesPanel from './UnportableVaultNamesPanel.jsx';
 import BridgePairingPanel from './BridgePairingPanel.jsx';
@@ -78,7 +81,7 @@ const SettingsModal = () => {
   } = useDayPlannerCtx();
   // The pickers name the views the way the cycler does, from the one shared map.
   const desktopViewLabel = (v) => t(VIEW_LABEL_KEYS[v]);
-  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
+  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : mode === 'jobo' ? t('sched.viewJoboShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
   const formatHour = (hour) => new Intl.DateTimeFormat(locale, {
     hour: 'numeric', hour12: !use24HourClock, timeZone: 'UTC',
   }).format(new Date(Date.UTC(2020, 0, 1, hour)));
@@ -132,6 +135,9 @@ const SettingsModal = () => {
     users, setUsers,
     meUserSyncId, setMeUserSyncId,
   } = useFeaturesCtx();
+  // The live model list fetch (see the model selector below).
+  const [aiModelsStatus, setAiModelsStatus] = useState(null);
+  const [aiModelsMessage, setAiModelsMessage] = useState('');
   // Multi-user only matters across synced devices; gate the toggle when sync is
   // unconfigured. Never trap: an already-on toggle stays enabled so it can be
   // turned off.
@@ -507,7 +513,7 @@ const SettingsModal = () => {
                           </div>
                           {/* One group per orientation, as with the defaults above: the phone
                               toggle's views for portrait, the narrow cycler's for landscape. */}
-                          <ViewToggles scope="mobile" views={MOBILE_VIEW_MODES} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
+                          <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
                           <ViewToggles scope="desktop" views={NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} heading={t('settings.viewsInLandscape')} hint={false} />
                           {mobileViewMode === 'list' && (
                             <div className="mt-3 space-y-1.5">
@@ -548,6 +554,14 @@ const SettingsModal = () => {
                     {!isMobile && (
                       <>
                         <TimelineSizeSettings joboEnabled={joboEnabled} />
+                        <hr className={borderClass} />
+                      </>
+                    )}
+
+                    {/* Goals & Projects card size (utils/cardSize.js), desktop and tablet */}
+                    {!isMobile && goalsProjectsEnabled && (
+                      <>
+                        <CardSizeSettings />
                         <hr className={borderClass} />
                       </>
                     )}
@@ -707,6 +721,9 @@ const SettingsModal = () => {
                         <span className={`text-sm ${textPrimary}`}>{t('settings.enableUISounds')}</span>
                       </label>
                     </div>
+
+                    <hr className={borderClass} />
+                    <FollowUpTagSetting />
 
                     {!isMobile && (<>
                     <hr className={borderClass} />
@@ -1509,28 +1526,75 @@ const SettingsModal = () => {
                             </div>
                           )}
 
-                          {/* Model selector */}
+                          {/* Model selector. The built-in list is a starting
+                              point: a provider's ids retire (the 2026-10-03
+                              Gemini report), so the list can be refreshed from
+                              the provider and any id can be typed. A model not
+                              in the list shows as "Other" with the id editable. */}
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiModel')}</label>
-                            {(PROVIDER_MODELS[aiConfig.provider] || []).length > 0 ? (
-                              <select
-                                value={aiConfig.model}
-                                onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              >
-                                {(PROVIDER_MODELS[aiConfig.provider] || []).map(m => (
-                                  <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                type="text"
-                                placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
-                                value={aiConfig.model}
-                                onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              />
-                            )}
+                            {(() => {
+                              const listed = (aiConfig.modelLists?.[aiConfig.provider]?.length ? aiConfig.modelLists[aiConfig.provider] : PROVIDER_MODELS[aiConfig.provider]) || [];
+                              const inList = listed.some((m) => m.id === aiConfig.model);
+                              return (
+                                <div className="space-y-2">
+                                  {listed.length > 0 && (
+                                    <select
+                                      data-ai-model-select
+                                      value={inList ? aiConfig.model : '__other__'}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setAiConfig(prev => ({ ...prev, model: v === '__other__' ? '' : v }));
+                                      }}
+                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                    >
+                                      {listed.map(m => (
+                                        <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
+                                      ))}
+                                      <option value="__other__">{t('settings.aiModelOther', { defaultValue: 'Other (type a model id)' })}</option>
+                                    </select>
+                                  )}
+                                  {(!inList || listed.length === 0) && (
+                                    <input
+                                      type="text"
+                                      data-ai-model-input
+                                      placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
+                                      value={aiConfig.model}
+                                      onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
+                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                                    />
+                                  )}
+                                  {(
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        data-ai-fetch-models
+                                        disabled={aiModelsStatus === 'loading'}
+                                        onClick={async () => {
+                                          setAiModelsStatus('loading');
+                                          setAiModelsMessage('');
+                                          try {
+                                            const models = await fetchProviderModels(aiConfig);
+                                            setAiConfig(prev => ({ ...prev, modelLists: { ...(prev.modelLists || {}), [prev.provider]: models } }));
+                                            setAiModelsStatus('ok');
+                                            setAiModelsMessage(t('settings.aiFetchModelsOk', { defaultValue: '{{count}} models available', count: models.length }));
+                                          } catch (err) {
+                                            setAiModelsStatus('error');
+                                            setAiModelsMessage(t('settings.aiFetchModelsFailed', { defaultValue: 'Could not fetch models: {{error}}', error: err?.message || String(err) }));
+                                          }
+                                        }}
+                                        className={`px-3 py-1.5 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-xs transition-colors disabled:opacity-50`}
+                                      >
+                                        {t('settings.aiFetchModels', { defaultValue: 'Fetch model list' })}
+                                      </button>
+                                      {aiModelsMessage && (
+                                        <span className={`text-xs ${aiModelsStatus === 'error' ? 'text-red-500' : textSecondary}`}>{aiModelsMessage}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           {/* Test Connection */}
@@ -1756,6 +1820,29 @@ const SettingsModal = () => {
                             <p className={`text-xs ${textSecondary} mt-1`}>
                               {t('settings.obsidianDailyNotesFolderHint', { defaultValue: 'Leave empty for vault root. Common: "Daily Notes" or "journals"' })}
                             </p>
+                            {/* Where a daily note lands, and the nesting trap
+                                (utils/obsidianFolderCheck.js): the picked folder
+                                named like the setting means a second folder of
+                                the same name inside it, and two copies of each
+                                day's note. Said here, before the first write. */}
+                            {(() => {
+                              const resolved = describeDailyNotePath({
+                                vaultName: obsidianConfig.vaultName, dailyNotesPath: obsidianConfig.dailyNotesPath,
+                                dailyNotePattern: obsidianConfig.dailyNotePattern, formatDatePattern,
+                              });
+                              return (
+                                <>
+                                  <p data-obsidian-daily-path className={`text-xs ${textSecondary} mt-1`}>
+                                    {t('settings.obsidianDailyNotesResolved', { path: resolved.path })}
+                                  </p>
+                                  {resolved.nested && (
+                                    <p data-obsidian-daily-nested className="text-xs text-amber-500 mt-1">
+                                      {t('settings.obsidianDailyNotesNested', { name: obsidianConfig.vaultName })}
+                                    </p>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                           <div>
                             <label className={`block text-sm ${textSecondary} mb-1`}>

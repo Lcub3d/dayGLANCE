@@ -2,6 +2,7 @@ import React from 'react';
 import { BookOpen } from 'lucide-react';
 import { isOnlyPhoneNumber, phoneTelUrl, canDialHere } from './phoneNumber.js';
 import { splitTitleNoteLinks, splitTitleLinks, stripTags, stripWikilinks, stripWikilinksAndTags } from './taskUtils.js';
+import { PEEK_TASK_EVENT } from './followUp.js';
 
 // URL detection regex for notes
 export const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g;
@@ -14,7 +15,16 @@ export const isOnlyUrl = (text) => {
   return match && match.length === 1 && match[0] === trimmed;
 };
 
-// Render formatted text with URLs, **bold**, *italic*, __underline__
+// A link to another task (utils/followUp.js) asks the app to show it, rather
+// than leaving the page: the app is already where the task lives.
+const peekTask = (e, id) => {
+  e.preventDefault();
+  e.stopPropagation();
+  window.dispatchEvent(new CustomEvent(PEEK_TASK_EVENT, { detail: { id } }));
+};
+
+// Render formatted text with URLs, **bold**, *italic*, __underline__, and
+// [links](dayglance://task?id=…) to other tasks
 export const renderFormattedText = (text) => {
   if (!text) return null;
 
@@ -25,7 +35,7 @@ export const renderFormattedText = (text) => {
     if (!str) return null;
     const parts = [];
     let last = 0;
-    const re = /(`([^`]+)`)|\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
+    const re = /(`([^`]+)`)|\[([^\]\n]+)\]\(dayglance:\/\/task\?id=([^)\s]+)\)|\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|(https?:\/\/[^\s<>"{}|\\^`[\]]+)/g;
     let m;
     while ((m = re.exec(str)) !== null) {
       if (m.index > last) parts.push(str.slice(last, m.index));
@@ -33,17 +43,26 @@ export const renderFormattedText = (text) => {
         // `inline code`
         parts.push(<code key={gk++} className="px-1 py-0.5 rounded text-[0.85em] font-mono" style={{ background: 'rgba(128,128,128,0.18)' }}>{m[2]}</code>);
       } else if (m[3]) {
-        parts.push(<strong key={gk++}>{m[3]}</strong>);
-      } else if (m[4]) {
-        parts.push(<em key={gk++}>{m[4]}</em>);
+        let id = null;
+        try { id = decodeURIComponent(m[4]); } catch { /* shown as typed */ }
+        parts.push(id === null ? m[0] : (
+          <a key={gk++} href={`dayglance://task?id=${m[4]}`} data-task-link={id}
+            className="text-blue-400 hover:text-blue-300 underline"
+            onClick={(e) => peekTask(e, id)}
+          >{m[3]}</a>
+        ));
       } else if (m[5]) {
-        parts.push(<span key={gk++} className="underline">{m[5]}</span>);
+        parts.push(<strong key={gk++}>{m[5]}</strong>);
       } else if (m[6]) {
+        parts.push(<em key={gk++}>{m[6]}</em>);
+      } else if (m[7]) {
+        parts.push(<span key={gk++} className="underline">{m[7]}</span>);
+      } else if (m[8]) {
         parts.push(
-          <a key={gk++} href={m[6]} target="_blank" rel="noopener noreferrer"
+          <a key={gk++} href={m[8]} target="_blank" rel="noopener noreferrer"
             className="text-blue-400 hover:text-blue-300 underline break-all"
             onClick={(e) => e.stopPropagation()}
-          >{m[6]}</a>
+          >{m[8]}</a>
         );
       }
       last = m.index + m[0].length;

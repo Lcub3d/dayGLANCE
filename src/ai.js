@@ -34,19 +34,27 @@ const PROVIDER_MODELS = {
     { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini', recommended: true },
     { id: 'openai/gpt-4o', label: 'GPT-4o' },
     { id: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5' },
-    { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-    { id: 'google/gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { id: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
+    { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
   ],
+  // Anthropic's list is fetchable too (GET /v1/models); these are the
+  // starting point, current as of 2026-10-04.
   anthropic: [
-    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', recommended: true },
-    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', recommended: true },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+    { id: 'claude-fable-5-1', label: 'Claude Fable 5.1' },
   ],
+  // STALE LISTS ARE A BUG CLASS (2026-10-03, field report): the 2.0 and the
+  // 2.5 preview ids here were retired by Google and every Gemini feature
+  // failed with "model not found" until a code change. The list is a
+  // starting point only: Settings can fetch the provider's live model list
+  // (fetchProviderModels) and any id can be typed by hand.
   gemini: [
-    { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', recommended: true },
-    { id: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
-    { id: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash' },
-    { id: 'gemini-2.5-pro-preview-05-06', label: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', recommended: true },
+    { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
   ],
   ollama: [
     { id: 'llama3.2', label: 'Llama 3.2', recommended: true },
@@ -345,6 +353,99 @@ async function _aiTranscribe(audioBlob, config) {
 }
 
 // Test connection to the configured provider
+/**
+ * The model ids a provider's list endpoint reports, as the picker shows
+ * them. Pure: `data` is the endpoint's JSON body.
+ *   gemini   → {models:[{name:'models/x', displayName, supportedGenerationMethods}]}
+ *   openai-shaped (openai, custom, openrouter) → {data:[{id}]}
+ *   ollama   → {models:[{name}]}
+ * Anthropic has no browser-reachable list; its ids are typed or chosen.
+ */
+export function parseModelList(provider, data) {
+  const out = [];
+  if (provider === 'gemini') {
+    for (const m of data?.models || []) {
+      const name = String(m?.name || '');
+      if (!name) continue;
+      const methods = Array.isArray(m.supportedGenerationMethods) ? m.supportedGenerationMethods : [];
+      if (methods.length && !methods.includes('generateContent')) continue;
+      const id = name.replace(/^models\//, '');
+      out.push({ id, label: typeof m.displayName === 'string' && m.displayName ? `${m.displayName} (${id})` : id });
+    }
+  } else if (provider === 'ollama') {
+    for (const m of data?.models || []) if (typeof m?.name === 'string' && m.name) out.push({ id: m.name, label: m.name });
+  } else if (provider === 'anthropic') {
+    for (const m of data?.data || []) {
+      if (typeof m?.id !== 'string' || !m.id) continue;
+      out.push({ id: m.id, label: typeof m.display_name === 'string' && m.display_name ? `${m.display_name} (${m.id})` : m.id });
+    }
+  } else {
+    for (const m of data?.data || []) if (typeof m?.id === 'string' && m.id) out.push({ id: m.id, label: m.id });
+  }
+  const seen = new Set();
+  return out.filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true))).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Ask the configured provider which models it offers. Throws on failure. */
+export async function fetchProviderModels(config) {
+  const provider = config?.provider;
+  let url;
+  const headers = {};
+  switch (provider) {
+    case 'gemini':
+      url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
+      headers['x-goog-api-key'] = config.apiKey;
+      break;
+    case 'anthropic':
+      // The same direct-from-browser headers the messages call uses. The
+      // list is paged (has_more / last_id); pages are followed below.
+      url = 'https://api.anthropic.com/v1/models?limit=1000';
+      headers['x-api-key'] = config.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+      break;
+    case 'openai':
+      url = 'https://api.openai.com/v1/models';
+      headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'openrouter':
+      url = 'https://openrouter.ai/api/v1/models';
+      headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'custom':
+      url = `${String(config.baseUrl || '').replace(/\/+$/, '')}/models`;
+      if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+      break;
+    case 'ollama':
+      url = `${String(config.baseUrl || 'http://localhost:11434').replace(/\/+$/, '')}/api/tags`;
+      break;
+    default:
+      throw new Error(`No model list for ${PROVIDER_LABELS[provider] || provider}`);
+  }
+  const page = async (pageUrl) => {
+    const res = await fetch(pageUrl, { headers });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json())?.error?.message || ''; } catch { /* no body */ }
+      throw new Error(detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  };
+  let data = await page(url);
+  if (provider === 'anthropic') {
+    // Follow the cursor, bounded, folding every page into one data array.
+    const all = [...(data?.data || [])];
+    for (let i = 0; i < 10 && data?.has_more && data?.last_id; i++) {
+      data = await page(`${url}&after_id=${encodeURIComponent(data.last_id)}`);
+      all.push(...(data?.data || []));
+    }
+    data = { data: all };
+  }
+  const models = parseModelList(provider, data);
+  if (!models.length) throw new Error('The provider returned no models');
+  return models;
+}
+
 export async function testConnection(config) {
   try {
     const result = await aiComplete(

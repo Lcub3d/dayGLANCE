@@ -1,4 +1,5 @@
 import React from 'react';
+import JoboViewIcon from './JoboViewIcon.jsx';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { mobileToggleStates, nextState } from '../constants/views.js';
@@ -45,10 +46,12 @@ const MonthIcon = () => (
   </svg>
 );
 
-const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon };
-const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort' };
+const JoboIcon = () => <JoboViewIcon size={18} />;
 
-// GRID → LIST → MONTH → SCHED → GRID (MONTH steps out while the Day Dial is up; views turned off on this device are out altogether)
+const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon };
+const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort', jobo: 'sched.viewJoboShort' };
+
+// GRID → LIST → MONTH → SCHED → JOBO → GRID (JOBO only with its flag on; MONTH steps out while the Day Dial is up; views turned off on this device are out altogether)
 const MobileViewToggle = () => {
   const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();

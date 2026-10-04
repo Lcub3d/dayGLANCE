@@ -14,6 +14,10 @@ const makeSetters = () => ({
   setUnscheduledTasks: vi.fn(),
   setRecurringTasks: vi.fn(),
   setRecycleBin: vi.fn(),
+  setGoals: vi.fn(),
+  setProjects: vi.fn(),
+  deleteGoal: vi.fn(),
+  deleteProject: vi.fn(),
 });
 
 const B = (over = {}) => ({
@@ -23,7 +27,8 @@ const B = (over = {}) => ({
 
 describe('isWriteMethod', () => {
   it('routes the write tools plus undo_mcp_writes', () => {
-    for (const m of ['create_task', 'schedule_task', 'move_block', 'resize_block', 'set_completion', 'update_task', 'undo_mcp_writes']) {
+    for (const m of ['create_task', 'schedule_task', 'move_block', 'resize_block', 'set_completion', 'update_task', 'undo_mcp_writes',
+      'add_subtask', 'update_subtask', 'create_goal', 'update_goal', 'create_project', 'update_project']) {
       expect(isWriteMethod(m)).toBe(true);
     }
     expect(isWriteMethod('get_day')).toBe(false);
@@ -673,5 +678,81 @@ describe('ids retired by an Obsidian re-key resolve to their successor', () => {
   it('without a record (or for an unknown id) behaviour is unchanged', () => {
     const r = handleMcpWrite({ tasks: [], unscheduledTasks: [] }, makeSetters(), { method: 'update_task', params: { taskId: 'nope', set: { title: 'y' }, clear: [] } });
     expect(r).toMatchObject({ ok: false, error: { code: 'not_found' } });
+  });
+});
+
+describe('goals, projects and subtasks over MCP (2026-10-04)', () => {
+  const state = () => ({
+    tasks: [B({ id: 'b1', projectId: 'p1', subtasks: [{ id: 's1', title: 'Nails', completed: false }] })],
+    unscheduledTasks: [{ id: 'u1', title: 'Inbox', completed: false }],
+    goals: [{ id: 'g1', title: 'Ship v5', status: 'active', color: 'bg-blue-500' }],
+    projects: [{ id: 'p1', title: 'Backend', status: 'active', goalId: 'g1', description: 'API first.' }],
+    areas: [{ id: 'a1', name: 'Work', color: 'bg-orange-500' }],
+    users: [],
+    isVisibleForUser: () => true,
+  });
+
+  it('create_goal appends through setGoals, answers with the read shape, and reverses as remove_created_goal', () => {
+    const setters = makeSetters();
+    const r = handleMcpWrite(state(), setters, { method: 'create_goal', params: { goalId: 'g-new', title: 'Learn piano', areaId: 'a1', targetDate: '2027-01-01' } });
+    expect(r.ok).toBe(true);
+    expect(r.data.goal).toMatchObject({ id: 'g-new', title: 'Learn piano', status: 'active', area_id: 'a1', area_name: 'Work', target_date: '2027-01-01', progress_percent: 0 });
+    expect(setters.setGoals).toHaveBeenCalledTimes(1);
+    expect(setters.setGoals.mock.calls[0][0]([{ id: 'g1' }]).map((g) => g.id)).toEqual(['g1', 'g-new']);
+    expect(r.undo).toEqual({ summary: 'Created goal “Learn piano”', op: { kind: 'remove_created_goal', goalId: 'g-new' } });
+  });
+  it('update_goal captures before-fields (absent ones named), quotes one title, replays without a descriptor', () => {
+    const setters = makeSetters();
+    const r = handleMcpWrite(state(), setters, { method: 'update_goal', params: { goalId: 'g1', set: { title: 'Ship v6', targetDate: '2027-01-01' } } });
+    expect(r.data.goal).toMatchObject({ title: 'Ship v6', target_date: '2027-01-01' });
+    expect(r.undo).toEqual({
+      summary: 'Edited goal “Ship v6” (title, target_date)',
+      op: { kind: 'restore_goal_fields', goalId: 'g1', before: { title: 'Ship v5' }, absentBefore: ['targetDate'] },
+    });
+    const noop = handleMcpWrite(state(), makeSetters(), { method: 'update_goal', params: { goalId: 'g1', set: {}, clear: [] } });
+    expect(noop.data.replayed).toBe(true);
+    expect(noop.undo).toBeUndefined();
+  });
+  it('create_project and update_project route through setProjects; archiving is a typed refusal with no setter call', () => {
+    const setters = makeSetters();
+    const c = handleMcpWrite(state(), setters, { method: 'create_project', params: { projectId: 'p-new', title: 'Mobile', goalId: 'g1' } });
+    expect(c.data.project).toMatchObject({ id: 'p-new', goal_id: 'g1', progress_percent: null, tasks_total: 0 });
+    expect(c.undo.op).toEqual({ kind: 'remove_created_project', projectId: 'p-new' });
+    const u = handleMcpWrite(state(), setters, { method: 'update_project', params: { projectId: 'p1', clear: ['goal'] } });
+    expect('goal_id' in u.data.project).toBe(false);
+    expect(u.undo.op).toEqual({ kind: 'restore_project_fields', projectId: 'p1', before: { goalId: 'g1' } });
+    const a = handleMcpWrite(state(), makeSetters(), { method: 'update_project', params: { projectId: 'p1', set: { status: 'archived' } } });
+    expect(a).toMatchObject({ ok: false, error: { code: 'validation' } });
+  });
+  it('add_subtask and update_subtask answer with the host entity plus the subtask, and reverse per subtask', () => {
+    const setters = makeSetters();
+    const a = handleMcpWrite(state(), setters, { method: 'add_subtask', params: { taskId: 'b1', subtaskId: 's2', title: 'Hang door' } });
+    expect(a.data.block.subtasks).toHaveLength(2);
+    expect(a.data.subtask).toEqual({ id: 's2', title: 'Hang door', completed: false });
+    expect(a.undo).toEqual({ summary: 'Added subtask to “Block”', op: { kind: 'remove_created_subtask', taskId: 'b1', subtaskId: 's2' } });
+    expect(setters.setTasks).toHaveBeenCalledTimes(1);
+    const u = handleMcpWrite(state(), makeSetters(), { method: 'update_subtask', params: { taskId: 'b1', subtaskId: 's1', set: { completed: true } } });
+    expect(u.data.subtask).toEqual({ id: 's1', title: 'Nails', completed: true });
+    expect(u.undo).toEqual({ summary: 'Edited a subtask of “Block” (completed)', op: { kind: 'restore_subtask_fields', taskId: 'b1', subtaskId: 's1', before: { completed: false } } });
+  });
+  it('update_task moves a task into a project and the response carries project_id', () => {
+    const s = { ...state(), projects: [...state().projects, { id: 'p2', title: 'Docs', status: 'active' }] };
+    const r = handleMcpWrite(s, makeSetters(), { method: 'update_task', params: { taskId: 'u1', set: { projectId: 'p2' }, clear: [] } });
+    expect(r.data.task.project_id).toBe('p2');
+    expect(r.undo.op).toEqual({ kind: 'restore_task_fields', taskId: 'u1', before: {}, absentBefore: ['projectId'] });
+  });
+  it('undo_mcp_writes routes goal and project ops to their setters and the hook deletes, task ops as before', () => {
+    const setters = makeSetters();
+    const s = { ...state(), goals: [...state().goals, { id: 'g-new', title: 'Made', status: 'active' }] };
+    const r = handleMcpWrite(s, setters, { method: 'undo_mcp_writes', params: { ops: [
+      { kind: 'remove_created_goal', goalId: 'g-new' },
+      { kind: 'restore_project_fields', projectId: 'p1', before: { title: 'Back end' } },
+      { kind: 'remove_created_subtask', taskId: 'b1', subtaskId: 's1' },
+    ] } });
+    expect(r).toEqual({ ok: true, data: { undone: 3, skipped: 0 } });
+    expect(setters.setGoals.mock.calls[0][0]().map((g) => g.id)).toEqual(['g1']);
+    expect(setters.deleteGoal).toHaveBeenCalledWith('g-new');
+    expect(setters.setProjects.mock.calls[0][0]()[0].title).toBe('Back end');
+    expect(setters.setTasks.mock.calls[0][0][0].subtasks).toEqual([]);
   });
 });

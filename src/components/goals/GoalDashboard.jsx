@@ -34,12 +34,14 @@ import {
   BookOpen, GraduationCap, Brain, Calculator, FlaskConical, Pencil, Globe, Microscope, BookMarked,
   Briefcase, Code2, LineChart, Target, LayoutDashboard, Clipboard, Users, Mail, Rocket,
   Dumbbell, Heart, Activity, Apple, Moon, Bike, Leaf, Trophy, Flame,
-  Music, Camera, Palette, Lightbulb, Wand2, Headphones, Mic, Film, Star,
+  Music, Camera, Palette, Lightbulb, Wand2, Headphones, Mic, Film, Star, LayoutGrid,
 } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
-import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
+import { noteLinkOf, noteLinkFromTitle } from '../../utils/obsidianProjectNotes.js';
+import { isStreamPosture } from '../../utils/obsidianVaultPosture.js';
+import { noteTextHash } from '@glance-apps/obsidian-format';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
@@ -47,7 +49,7 @@ import { calculateProjectProgress } from '../../utils/projectProgress.js';
 import { hasStalledChild, isProjectFlaggedStalled } from '../../utils/stalledBadge.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import GoalCard from './GoalCard.jsx';
-import GoalTimeline from './GoalTimeline.jsx';
+import GoalTimeline, { DEFAULT_PERIOD, GoalRangeToggle } from './GoalTimeline.jsx';
 import useProjectDrag from './useProjectDrag.js';
 import { useTranslation } from 'react-i18next';
 import GoalProgress from './GoalProgress.jsx';
@@ -60,6 +62,7 @@ import { INTENT_CONFIG_KEY } from '../../intents/useIntentPoller.js';
 import { enabledIntentTargets } from '../../intents/emitTargets.js';
 import { sortProjectsByOrder } from '../../utils/projectOrder.js';
 import { projectFocusTarget } from '../../utils/goalsLink.js';
+import { CARD_SIZES, cardColumns, cardScale, clampCardSize } from '../../utils/cardSize.js';
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
@@ -128,6 +131,28 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
 
   const [title, setTitle] = useState(initial?.title || '');
   const [description, setDescription] = useState(initial?.description || '');
+  // THE LINKED NOTE'S DESCRIPTION (owner ruling 2026-10-03): a goal linked
+  // to an Obsidian note edits the section under its note's title here, the
+  // same way the project planner does; refused and reloaded when the section
+  // moved in Obsidian meanwhile. Without a vault read on this device the
+  // field says where the notes live and the record's value is left alone.
+  const { loadNoteDescription, saveNoteDescription } = useSyncCtx() || {};
+  const goalNoteLink = initial ? noteLinkOf(initial) : null;
+  const vaultNotes = !!goalNoteLink && !goalNoteLink.missing;
+  const [vault, setVault] = useState({ base: null, text: '', loading: vaultNotes, unavailable: false, missing: false, conflict: false });
+  useEffect(() => {
+    if (!vaultNotes) return undefined;
+    if (!loadNoteDescription) { setVault((v) => ({ ...v, loading: false, unavailable: true })); return undefined; }
+    let cancelled = false;
+    loadNoteDescription(goalNoteLink.path).then((r) => {
+      if (cancelled) return;
+      if (!r || r.notFound) { setVault({ base: null, text: '', loading: false, unavailable: true, missing: !!r?.notFound, conflict: false }); return; }
+      setVault({ base: r.base, text: r.text, loading: false, unavailable: false, conflict: false });
+      setDescription(r.text);
+    }).catch(() => { if (!cancelled) setVault({ base: null, text: '', loading: false, unavailable: true, conflict: false }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalNoteLink?.path, loadNoteDescription]);
   const [areaId, setAreaId] = useState(initial?.areaId || '');
   // New goals default their start date to today; existing goals keep whatever
   // they have (blank for goals created before this field existed).
@@ -157,10 +182,29 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
   const sortedAreas = [...areas].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const startAfterTarget = !!(startDate && targetDate && startDate > targetDate);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote });
+    // A [[wikilink]] typed into the title names the goal's note (owner,
+    // 2026-10-03): the link leaves the title and rides the save as the
+    // path to link. Linking an existing note never creates one.
+    const fromTitle = noteLinkFromTitle(title);
+    const savedTitle = fromTitle ? fromTitle.title : title.trim();
+    const linkNotePath = fromTitle?.path;
+    if (vaultNotes) {
+      // The section is the note's: written there, never onto the record.
+      if (!vault.loading && !vault.unavailable && saveNoteDescription && description !== vault.text) {
+        const r = await saveNoteDescription('goal', initial.id, goalNoteLink.path, description, { base: vault.base });
+        if (r?.refused) {
+          setVault({ base: noteTextHash(r.text), text: r.text, loading: false, unavailable: false, conflict: true });
+          setDescription(`${r.text}\n\n${description}`.trim());
+          return;
+        }
+      }
+      onSave({ title: savedTitle, description: vault.unavailable ? (initial?.description || '') : '', areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote && !linkNotePath, linkNotePath });
+      return;
+    }
+    onSave({ title: savedTitle, description: description.trim(), areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote && !linkNotePath, linkNotePath });
   };
 
   return (
@@ -190,15 +234,27 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
       {/* Description */}
       <div className="flex flex-col gap-1">
         <label className={`text-xs font-medium ${textSecondary}`}>{t('common.description')}</label>
+        {vaultNotes && vault.unavailable ? (
+          <p data-goal-notes-in-vault={vault.missing ? 'missing' : 'unreadable'} className={`text-xs italic ${vault.missing ? 'text-amber-500' : textSecondary}`}>
+            {vault.missing
+              ? t('planner.notesNoteMissing', 'The linked note was not found in the vault. Check the note name, or create the note in Obsidian.')
+              : t('planner.notesInVault', 'Notes live in the linked note in Obsidian.')}
+          </p>
+        ) : (
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder={t('goals.optionalDescription')}
+          placeholder={vaultNotes && vault.loading ? t('planner.notesLoading', 'Loading from the linked note…') : t('goals.optionalDescription')}
+          disabled={vaultNotes && vault.loading}
           rows={2}
           className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
+        )}
+        {vaultNotes && vault.conflict && (
+          <p data-goal-notes-conflict className="text-xs text-amber-500">{t('planner.notesChanged')}</p>
+        )}
       </div>
 
       {/* Area */}
@@ -429,18 +485,25 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
   const submit = () => {
     setError('');
     if (!linkProjectNote?.(kind, project.id, path)) {
-      setError('Could not link. Enter a vault path and make sure the dayGLANCE bridge plugin is paired.');
+      setError('Could not link. Enter the vault path of an existing note, with the Obsidian vault enabled in Settings.');
     }
   };
   return (
     <div className="flex flex-col gap-1">
       <label className={`text-xs font-medium ${textSecondary}`}>Obsidian note</label>
       {link && !link.missing ? (
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`${textPrimary} truncate flex-1 min-w-0`} title={link.path}>{link.name}</span>
-          <button type="button" className={btnCls} onClick={() => openInObsidian?.(link.name)}>Open</button>
-          <button type="button" className={btnCls} onClick={() => unlinkProjectNote?.(kind, project.id)}>Unlink</button>
-        </div>
+        <>
+          <div className="flex items-center gap-2 text-sm">
+            <span className={`${textPrimary} truncate flex-1 min-w-0`} title={link.path}>{link.name}</span>
+            <button type="button" className={btnCls} onClick={() => openInObsidian?.(link.name)}>Open</button>
+            <button type="button" className={btnCls} onClick={() => unlinkProjectNote?.(kind, project.id)}>Unlink</button>
+          </div>
+          {link.pending && (
+            <div data-note-link-pending className={`text-[11px] ${textSecondary}`}>
+              Linked here. The dayGLANCE bridge plugin writes the link into the note once it is paired; until then, renaming the note in Obsidian breaks it.
+            </div>
+          )}
+        </>
       ) : (
         <>
           {link?.missing && (
@@ -462,7 +525,7 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
             )}
           </div>
           <div className={`text-[11px] ${textSecondary}`}>
-            Vault path of an existing note. The dayGLANCE bridge plugin writes the link into the note.
+            Vault path of an existing note, or type its [[wikilink]] into the title above. With the dayGLANCE bridge plugin paired, the link is written into the note.
           </div>
           {error && <div className="text-xs text-red-500">{error}</div>}
         </>
@@ -471,16 +534,29 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
   );
 };
 
-/** "Create a note in Obsidian" for a NEW project or goal (rulings D and E); shown only with the vault enabled. */
+/**
+ * "Create a note in Obsidian" for a NEW project or goal (rulings D and E);
+ * shown only with the vault enabled. The creation is the plugin's (the
+ * intent needs a stream), so without one the box is disabled and says why
+ * rather than accepting a tick that would do nothing (owner, 2026-10-04).
+ */
 const CreateNoteCheckbox = ({ checked, onChange }) => {
   const { textSecondary } = useDayPlannerCtx();
-  const { obsidianConfig, createProjectNote } = useSyncCtx();
+  const { obsidianConfig, createProjectNote, bridgeHeartbeatRef } = useSyncCtx();
   if (!obsidianConfig?.enabled || !createProjectNote) return null;
+  const pluginInUse = isStreamPosture(bridgeHeartbeatRef?.current);
   return (
-    <label className={`flex items-center gap-2 text-xs ${textSecondary} cursor-pointer select-none`}>
-      <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} className="rounded" />
-      Create a note in Obsidian (where the bridge plugin's layout puts it)
-    </label>
+    <div className="flex flex-col gap-0.5">
+      <label className={`flex items-center gap-2 text-xs ${textSecondary} ${pluginInUse ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'} select-none`} data-create-note={pluginInUse ? 'available' : 'needs-plugin'}>
+        <input type="checkbox" checked={pluginInUse && !!checked} disabled={!pluginInUse} onChange={e => onChange(e.target.checked)} className="rounded" />
+        Create a note in Obsidian (where the bridge plugin's layout puts it)
+      </label>
+      {!pluginInUse && (
+        <span className={`text-[11px] ${textSecondary}`}>
+          Needs the dayGLANCE bridge plugin paired with this vault. Without it, create the note in Obsidian and link it by typing its [[wikilink]] into the title.
+        </span>
+      )}
+    </div>
   );
 };
 
@@ -519,7 +595,14 @@ export const ProjectForm = ({ initial, goals, defaultGoalId, onSave, onCancel, m
     if (!title.trim()) return;
     // description and hyperglance are managed in the Project Planner now;
     // omitting them here preserves existing values on save (updateProject merges).
-    onSave({ title: title.trim(), goalId: goalId || undefined, status, color, assignedUserSyncIds, createNote: !initial && createNote });
+    // A [[wikilink]] typed into the title names the project's note (owner,
+    // 2026-10-03): the link leaves the title and rides the save as the
+    // path to link. Linking an existing note never creates one.
+    const fromTitle = noteLinkFromTitle(title);
+    onSave({
+      title: fromTitle ? fromTitle.title : title.trim(), goalId: goalId || undefined, status, color, assignedUserSyncIds,
+      createNote: !initial && createNote && !fromTitle, linkNotePath: fromTitle?.path,
+    });
   };
 
   const activeGoals = goals.filter(g => g.status !== 'archived');
@@ -809,21 +892,27 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
 // Measured in JS rather than `repeat(auto-fit, minmax(min, max))` because with
 // a fixed max the browser counts columns by the MAX (CSS Grid §7.2.3.2), which
 // gave two 420px columns and dead space at laptop widths.
+//
+// The card size (Settings, utils/cardSize.js) scales the whole grid with CSS
+// zoom: the columns are counted from the real width at the scaled card and
+// gap, and the grid inside the zoom is laid out exactly as at Normal.
 const SPACE_CARD_MIN = 300;
 const SPACE_CARD_MAX = 560;
 const SPACE_CARD_GAP = 16;
 const SPACE_VISIBLE_TASKS = 6;
-const useGridColumns = (ref) => {
+const GOAL_CARD_WIDTH = 420;
+const useSpaceCardScale = () => cardScale(useDayPlannerCtx().spaceCardSize);
+const useGridColumns = (ref, scale = 1) => {
   const [cols, setCols] = useState(3);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const update = () => setCols(Math.max(1, Math.floor((el.clientWidth + SPACE_CARD_GAP) / (SPACE_CARD_MIN + SPACE_CARD_GAP))));
+    const update = () => setCols(cardColumns(el.clientWidth, { min: SPACE_CARD_MIN, gap: SPACE_CARD_GAP, scale }));
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [ref]);
+  }, [ref, scale]);
   return cols;
 };
 const cardGridStyle = (cols, count, justify = 'center') => ({
@@ -847,13 +936,15 @@ const dealIntoColumns = (items, cols) => {
   items.forEach((item, i) => columns[i % n].push(item));
   return columns;
 };
-const CardColumns = ({ items, cols, justify, renderItem, className = '' }) => (
-  <div style={cardGridStyle(cols, items.length, justify)} className={className} data-card-grid data-columns={Math.max(1, Math.min(cols, items.length))}>
-    {dealIntoColumns(items, cols).map((column, c) => (
-      <div key={c} className="flex flex-col min-w-0" style={{ gap: `${SPACE_CARD_GAP}px` }} data-card-column>
-        {column.map(renderItem)}
-      </div>
-    ))}
+const CardColumns = ({ items, cols, justify, renderItem, scale = 1, className = '' }) => (
+  <div style={scale === 1 ? undefined : { zoom: scale }} className={className} data-card-scale={scale}>
+    <div style={cardGridStyle(cols, items.length, justify)} data-card-grid data-columns={Math.max(1, Math.min(cols, items.length))}>
+      {dealIntoColumns(items, cols).map((column, c) => (
+        <div key={c} className="flex flex-col min-w-0" style={{ gap: `${SPACE_CARD_GAP}px` }} data-card-column>
+          {column.map(renderItem)}
+        </div>
+      ))}
+    </div>
   </div>
 );
 
@@ -869,7 +960,8 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
   const activeProjs = projects.filter(p => p.status !== 'completed');
   const doneProjs = projects.filter(p => p.status === 'completed');
   const groupRef = useRef(null);
-  const cols = useGridColumns(groupRef);
+  const scale = useSpaceCardScale();
+  const cols = useGridColumns(groupRef, scale);
 
   const wrapCard = (proj, compact) => (
     <div
@@ -923,10 +1015,10 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       }}
     >
       {activeProjs.length > 0 && (
-        <CardColumns items={activeProjs} cols={cols} justify={justify} className="mb-3" renderItem={proj => wrapCard(proj, false)} />
+        <CardColumns items={activeProjs} cols={cols} justify={justify} scale={scale} className="mb-3" renderItem={proj => wrapCard(proj, false)} />
       )}
       {doneProjs.length > 0 && (
-        <CardColumns items={doneProjs} cols={cols} justify={justify} renderItem={proj => wrapCard(proj, true)} />
+        <CardColumns items={doneProjs} cols={cols} justify={justify} scale={scale} renderItem={proj => wrapCard(proj, true)} />
       )}
     </div>
   );
@@ -940,6 +1032,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
 
 const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs, onEditGoal, onEditProject, onNewProject, onMoveToClick, focusedProjectId = null }) => {
   const { textSecondary, borderClass } = useDayPlannerCtx();
+  const scale = useSpaceCardScale();
   const { t } = useTranslation();
   const containerRef = useRef(null);
   const [svgLines, setSvgLines] = useState([]);
@@ -1012,15 +1105,17 @@ const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs,
       </svg>
 
       {/* Selected goal card, centred */}
-      <div className="relative z-10 w-[420px] max-w-full mx-auto mb-10">
-        <GoalCard
-          ref={el => { goalCardRefs.current[goal.id] = el; }}
-          goal={goal}
-          projects={goalProjects}
-          onEdit={() => onEditGoal(goal)}
-          onNewProject={() => onNewProject(goal.id)}
-          compactEmpty
-        />
+      <div className="relative z-10 max-w-full mx-auto mb-10" style={{ width: `${Math.round(GOAL_CARD_WIDTH * scale)}px` }}>
+        <div style={scale === 1 ? undefined : { zoom: scale }}>
+          <GoalCard
+            ref={el => { goalCardRefs.current[goal.id] = el; }}
+            goal={goal}
+            projects={goalProjects}
+            onEdit={() => onEditGoal(goal)}
+            onNewProject={() => onNewProject(goal.id)}
+            compactEmpty
+          />
+        </div>
       </div>
 
       {goalProjects.length > 0 ? (
@@ -1302,6 +1397,28 @@ const GoalSpaceSidebar = ({
 // toolbar's control, and the phone's Projects tab's.
 // `compact` drops the icons (the words and counts stay): the phone's Projects
 // row, while the filter field shares it.
+// The card size in the space's toolbar: the same device setting Settings
+// offers (utils/cardSize.js), in reach where the cards are.
+export const CardSizeToggle = () => {
+  const { spaceCardSize, setSpaceCardSize, darkMode, borderClass, textSecondary } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  if (typeof setSpaceCardSize !== 'function') return null;
+  return (
+    <label className={`shrink-0 flex items-center gap-1.5 text-xs ${textSecondary}`} title={t('cardSize.label')}>
+      <LayoutGrid size={13} aria-hidden="true" />
+      <select
+        data-card-size-toggle
+        aria-label={t('cardSize.label')}
+        value={clampCardSize(spaceCardSize)}
+        onChange={e => setSpaceCardSize(e.target.value)}
+        className={`px-2 py-1 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+      >
+        {CARD_SIZES.map(({ id }) => <option key={id} value={id}>{t(`cardSize.${id}`)}</option>)}
+      </select>
+    </label>
+  );
+};
+
 export const ProjectsStatusToggle = ({ value, onChange, openCount, completedCount, className = '', compact = false }) => {
   const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
   const { t } = useTranslation();
@@ -2370,7 +2487,8 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
 
   const listClass = 'flex flex-col gap-4';
   const listRef = useRef(null);
-  const cols = useGridColumns(listRef);
+  const scale = useSpaceCardScale();
+  const cols = useGridColumns(listRef, scale);
 
   return (
     <div className={`mt-5 border-t ${borderClass} pt-4`}>
@@ -2422,8 +2540,8 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
           }
           return (
             <>
-              {activeProjs.length > 0 && <CardColumns items={activeProjs} cols={cols} justify="center" className="mb-3" renderItem={activeCard} />}
-              {doneProjs.length > 0 && <CardColumns items={doneProjs} cols={cols} justify="center" renderItem={doneCard} />}
+              {activeProjs.length > 0 && <CardColumns items={activeProjs} cols={cols} justify="center" scale={scale} className="mb-3" renderItem={activeCard} />}
+              {doneProjs.length > 0 && <CardColumns items={doneProjs} cols={cols} justify="center" scale={scale} renderItem={doneCard} />}
             </>
           );
         })()}
@@ -2474,7 +2592,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     aspireEnabled = false,
   } = useFeaturesCtx();
   // Workspace creation (companion §4.3, rulings D and E): the plugin creates and links the note.
-  const { createProjectNote } = useSyncCtx();
+  const { createProjectNote, linkProjectNote } = useSyncCtx();
   const { t } = useTranslation();
 
   const [goalForm, setGoalForm] = useState(null);
@@ -2483,6 +2601,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, onConfirm }
   const [showManageAreas, setShowManageAreas] = useState(false);
   const [selectedRoadmapGoalId, setSelectedRoadmapGoalId] = useState(null); // roadmap detail panel
+  const [roadmapPeriod, setRoadmapPeriod] = useState(DEFAULT_PERIOD); // Range: the toolbar's on desktop
   // Desktop space: which sidebar tab is up, which goal is selected, and the
   // project a "Move to…" picker is open for.
   const [sidebarTab, setSidebarTab] = useState(initialSidebarTab);
@@ -2705,7 +2824,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   }, [desktop, isActive, goalsSpaceKeysRef]);
 
   const handleSaveGoal = (fields) => {
-    const { trackInLifeGlance, createNote, ...goalFields } = fields;
+    const { trackInLifeGlance, createNote, linkNotePath, ...goalFields } = fields;
     if (goalForm.editing) {
       const wasArchived = goalForm.editing.status === 'archived';
       const nowArchived = goalFields.status === 'archived';
@@ -2732,10 +2851,13 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         && goalForm.editing.source_app !== 'app.lifeglance';
       updateGoal(goalForm.editing.id, { ...goalFields, ...(shareNow ? { synced_to_lifeglance: true } : {}) });
       if (shareNow) emitGoalCreate({ ...goalForm.editing, ...goalFields, synced_to_lifeglance: true });
+      if (linkNotePath) linkProjectNote?.('goal', goalForm.editing.id, linkNotePath);
     } else {
       const newGoal = addGoal({ ...goalFields, ...(trackInLifeGlance ? { synced_to_lifeglance: true } : {}) });
       if (trackInLifeGlance) emitGoalCreate(newGoal);
-      if (createNote && newGoal?.id) createProjectNote?.('goal', newGoal.id, { title: newGoal.title });
+      // The title's wikilink links the note it names; the checkbox creates one. The link wins when both are set.
+      if (linkNotePath && newGoal?.id) linkProjectNote?.('goal', newGoal.id, linkNotePath, { description: newGoal.description });
+      else if (createNote && newGoal?.id) createProjectNote?.('goal', newGoal.id, { title: newGoal.title, description: newGoal.description });
       // A goal created from the space is the one to look at next.
       if (newGoal?.id) setSelectedGoalId(newGoal.id);
     }
@@ -2758,7 +2880,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   };
 
   const handleSaveProject = (allFields) => {
-    const { createNote, ...fields } = allFields;
+    const { createNote, linkNotePath, ...fields } = allFields;
     if (projectForm.editing) {
       const wasArchived = projectForm.editing.status === 'archived';
       const nowArchived = fields.status === 'archived';
@@ -2776,9 +2898,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         setUnscheduledTasks(prev => prev.map(cascadeTask));
       }
       updateProject(projectForm.editing.id, fields);
+      if (linkNotePath) linkProjectNote?.('project', projectForm.editing.id, linkNotePath);
     } else {
       const created = addProject(fields);
-      if (createNote && created?.id) createProjectNote?.('project', created.id, { title: created.title, goalId: created.goalId });
+      if (linkNotePath && created?.id) linkProjectNote?.('project', created.id, linkNotePath);
+      else if (createNote && created?.id) createProjectNote?.('project', created.id, { title: created.title, goalId: created.goalId, description: created.description });
     }
     setProjectForm(null);
   };
@@ -2843,6 +2967,9 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         areas={areas}
         selectedGoalId={selectedRoadmapGoalId}
         onSelectGoal={toggleRoadmapGoal}
+        periodKey={roadmapPeriod}
+        onPeriodChange={setRoadmapPeriod}
+        showRange={!desktop}
       />
       {selectedRoadmapGoal && (
         <GoalDetailPanel
@@ -3052,6 +3179,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
             />
           )}
           <div className="flex-1" />
+          {/* Right side: the Roadmap's Range, or the card size where there
+              are cards to size (List and Projects). */}
+          {goalsTab && goalsViewMode === 'timeline'
+            ? <GoalRangeToggle value={roadmapPeriod} onChange={setRoadmapPeriod} />
+            : <CardSizeToggle />}
         </div>
 
         {/* The main area scrolls on its own; the sidebar, header and the

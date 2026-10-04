@@ -460,6 +460,7 @@
     "experimentalHint": "Features still being built, landing in slices. Off by default; nothing changes unless you turn one on.",
     "enableJobo": "JOBO view",
     "enableJoboHint": "Plan versus actual. A sixth view, on key 6, that will record what was done against what was planned.",
+    "enableJoboHintPhone": "Plan versus actual. A view in the timeline's view switcher that records what was done against what was planned.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Life planning: a life wish list, a five-year vision and mottos. A placeholder for now, opened from the Goals & Projects space.",
     "inbox": "Inbox",
@@ -663,6 +664,10 @@
     "aiProviderCustom": "Custom (OpenAI-compatible)",
     "aiProviderOllama": "Ollama (Local)",
     "aiRecommended": "Recommended",
+    "aiModelOther": "Other (type a model id)",
+    "aiFetchModels": "Fetch model list",
+    "aiFetchModelsOk": "{{count}} models available",
+    "aiFetchModelsFailed": "Could not fetch models: {{error}}",
     "beta": "Beta",
     "calDAVSyncHint": "For syncing completions back: the CalDAV collection URL (without ?export). In Nextcloud, the calendar ID in the URL may differ from the display name.",
     "deviceCalendarDescription": "Calendar events are read from your device accounts. Use the Device Calendars section below to choose which calendars to show.",
@@ -696,6 +701,8 @@
     "obsidianDailyNoteTemplateHint": "Pre-filled when creating a new daily note",
     "obsidianDailyNoteTemplatePlaceholder": "Template for new daily notes...",
     "obsidianDailyNotesFolderHint": "Leave empty for vault root. Common: \"Daily Notes\" or \"journals\"",
+    "obsidianDailyNotesResolved": "Daily notes are written to {{path}}",
+    "obsidianDailyNotesNested": "The folder you picked is itself named “{{name}}”, so this setting would create another “{{name}}” folder inside it and a second copy of each day's note. If you picked the daily notes folder, pick the vault's root folder instead, or leave this setting empty.",
     "obsidianFilenamePatternHint": "Date pattern for daily note filenames (without .md). e.g. \"yyyy-MM-dd\", \"dd-MM-yyyy\", \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "Vault access and daily note settings are configured in the app settings.",
     "obsidianNewNotesFolderHint": "Where new notes created in dayGLANCE are saved. Leave empty for vault root.",
@@ -735,6 +742,7 @@
     "openInObsidian": "Open in Obsidian",
     "wikiNoteNotFound": "Note not found in vault: check that your vault is configured and the note exists.",
     "wikiNoteLoadFailed": "Could not load note: {{error}}",
+    "wikiNoteChanged": "This note changed in Obsidian since you opened it. The newer text is loaded, with your unsaved text below it; check it and save again.",
     "emptyWikiNotePlaceholder": "Empty note: start typing to create it in your vault",
     "editWikiNote": "Edit “{{name}}”",
     "notesFormattingPlaceholder": "Add notes... (**bold**, *italic*, __underline__, URLs) — Shift+Enter for preview",
@@ -795,6 +803,7 @@
     "assignTo": "Assign to",
     "notes": "Notes",
     "localNotes": "Notes in dayGLANCE",
+    "wikilinkHint": "Tip: put [[Note name]] in the title to link an Obsidian note, existing or new. The note then opens here.",
     "calendarDescription": "From the calendar",
     "yourNotes": "Your notes (this device)",
     "subtasks": "Subtasks",
@@ -1964,11 +1973,21 @@
     "close": "Close planner",
     "notesPlaceholder": "Add notes... (**bold**, *italic*, __underline__, URLs) - Shift+Enter to save",
     "clickToEditNotes": "Click to edit notes",
+    "notesInVault": "Notes live in the linked note in Obsidian.",
+    "notesLoading": "Loading from the linked note…",
+    "notesLoadFailed": "Could not read the linked note: {{error}}",
+    "notesNoteMissing": "The linked note was not found in the vault. Check the note name, or create the note in Obsidian.",
+    "notesChanged": "The note changed in Obsidian since you opened it. The newer text is loaded, with your unsaved text below it; check it and save again.",
     "scheduled": "Scheduled",
     "nothingScheduledYet": "Nothing scheduled yet.",
     "noUnscheduledTasks": "No unscheduled tasks.",
     "addTaskPlaceholder": "Add a task…",
     "addTaskToProject": "Add task to project",
+    "addedToTop": "Added “{{title}}” to the top.",
+    "sendToBottom": "Send to bottom",
+    "showHyperglance": "Show hyperGLANCE settings",
+    "hideHyperglance": "Hide hyperGLANCE settings",
+    "backToTasks": "Back to tasks",
     "hideScheduled": "Hide Scheduled list",
     "showScheduled": "Show Scheduled",
     "showNotesSidebar": "Show task notes",
@@ -2310,11 +2329,23 @@
       "taskScope": "Task counts and priorities use current task state, not a historical snapshot. No Do recorded counts current timed plans whose planned end has passed and which have no associated Do, independently of task completion or work recorded for another plan.",
       "timingScope": "Recorded time covers the selected dates. Plan comparisons, inside/outside-plan time and longest span use full executions, which can extend beyond these dates.",
       "allTimeScope": "All time uses dates represented in the current task and JOBO history. Recurring occurrences with no saved completion, exception or Do are not reconstructed as historical facts."
+    },
+    "mobile": {
+      "showDo": "Widen Do",
+      "showPlan": "Widen Plan"
     }
   },
   "timelineZoom": {
     "label": "Timeline size",
     "hint": "Saved on this device. To adjust it in place, pinch or Ctrl+scroll over the timeline."
+  },
+  "cardSize": {
+    "label": "Goals & Projects card size",
+    "small": "Small",
+    "normal": "Normal",
+    "large": "Large",
+    "larger": "Larger",
+    "hint": "Saved on this device. Larger cards fit fewer across."
   },
   "todoist": {
     "title": "Todoist Sync",
@@ -2427,5 +2458,22 @@
     "unknownWarning": "Some linked tasks are absent from the source snapshot. Their completion/deletion cannot be determined reliably, so their local copies were retained.",
     "writeOptions": "Optional completion writeback (advanced)",
     "securityTitle": "Credentials, privacy and limitations"
+  },
+  "followUp": {
+    "action": "Schedule follow-up task",
+    "titlePrefix": "Follow up:",
+    "noteLine": "Follows up on {{link}}, done {{date}}.",
+    "settingTitle": "Follow-ups",
+    "settingLabel": "Tag to add to follow-up tasks",
+    "settingHint": "\"Schedule follow-up task\" on a completed task adds this tag, for example #waitingfor. Leave it empty for none. Saved on this device.",
+    "settingPlaceholder": "#waitingfor",
+    "peekTitle": "Earlier task",
+    "peekDone": "Done {{date}}",
+    "peekNotDone": "Not done",
+    "peekInbox": "In the Inbox",
+    "peekOn": "Planned for {{date}}",
+    "peekDeleted": "In the Recycle Bin",
+    "peekGone": "This task is no longer in dayGLANCE.",
+    "peekShow": "Go to task"
   }
 }

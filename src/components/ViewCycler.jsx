@@ -1,4 +1,5 @@
 import React from 'react';
+import JoboViewIcon from './JoboViewIcon.jsx';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { cyclerStates, nextState, VIEW_LABEL_KEYS, VIEW_SHORTCUT_KEYS } from '../constants/views.js';
@@ -62,13 +63,8 @@ const MonthIcon = () => (
 // happened. It is DayIcon run backwards on purpose. DAY fades from today into
 // the days ahead; JOBO fills from the plan into the record. The two views are
 // the same three-bar family, so the two glyphs should rhyme rather than differ.
-const JoboIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-    <rect x="1"   y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="0.28" />
-    <rect x="7.5" y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="0.55" />
-    <rect x="14"  y="2" width="5" height="16" rx="1" fill={ORANGE} fillOpacity="1"    />
-  </svg>
-);
+// JOBO's icon is shared with the phone toggle.
+const JoboIcon = () => <JoboViewIcon size={20} />;
 
 const ICONS = { multi: MultiIcon, day: DayIcon, week: WeekIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon };
 

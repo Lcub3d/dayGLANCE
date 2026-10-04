@@ -33,6 +33,40 @@ const PERIODS = [
   { key: '2y', months: 24 },
 ];
 
+export const DEFAULT_PERIOD = '6m';
+
+/**
+ * The Range buttons (1M–2Y). The roadmap draws them above the chart on the
+ * phone; on desktop the space's toolbar holds them, so the chart is told the
+ * period instead (GoalTimeline's `periodKey` / `showRange`).
+ */
+export const GoalRangeToggle = ({ value, onChange }) => {
+  const { darkMode, textSecondary } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap" data-goal-range>
+      <span className={`text-xs font-medium ${textSecondary} mr-1`}>{t('goals.range')}</span>
+      {PERIODS.map(p => (
+        <button
+          key={p.key}
+          type="button"
+          aria-pressed={p.key === value}
+          onClick={() => onChange(p.key)}
+          className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
+            p.key === value
+              ? 'bg-blue-600 text-white'
+              : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+          }`}
+        >
+          {t(p.months < 12 ? 'goals.rangeMonthsShort' : 'goals.rangeYearsShort', {
+            count: p.months < 12 ? p.months : p.months / 12,
+          })}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 const TOP_PAD = 12;     // space above the first row
 const BOTTOM_PAD = 30;  // space for the month labels below the last row
 const ROW_H = 44;       // per-goal row height (px)
@@ -54,11 +88,14 @@ const goalEndMs = (goal) => (goal.targetDate ? new Date(goal.targetDate + 'T00:0
  * gauge). Labels ride in darker pills so they stay legible on any bar. The left
  * edge is fixed at the current month; the period selector zooms out (1M–2Y).
  */
-const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoal }) => {
+const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoal, periodKey: periodProp, onPeriodChange, showRange = true }) => {
   const { darkMode, textPrimary, textSecondary, tasks, unscheduledTasks, isMobile } = useDayPlannerCtx();
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
-  const [periodKey, setPeriodKey] = useState('6m');
+  // Controlled when the caller holds the period (the desktop toolbar).
+  const [periodState, setPeriodState] = useState(DEFAULT_PERIOD);
+  const periodKey = periodProp ?? periodState;
+  const setPeriodKey = onPeriodChange ?? setPeriodState;
   const period = PERIODS.find(p => p.key === periodKey) || PERIODS[2];
 
   const chartRef = useRef(null);
@@ -268,25 +305,8 @@ const GoalTimeline = ({ goals, projects, areas = [], selectedGoalId, onSelectGoa
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Period selector */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className={`text-xs font-medium ${textSecondary} mr-1`}>{t('goals.range')}</span>
-        {PERIODS.map(p => (
-          <button
-            key={p.key}
-            onClick={() => setPeriodKey(p.key)}
-            className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${
-              p.key === periodKey
-                ? 'bg-blue-600 text-white'
-                : darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            {t(p.months < 12 ? 'goals.rangeMonthsShort' : 'goals.rangeYearsShort', {
-              count: p.months < 12 ? p.months : p.months / 12,
-            })}
-          </button>
-        ))}
-      </div>
+      {/* Period selector — in the space's toolbar on desktop */}
+      {showRange && <GoalRangeToggle value={periodKey} onChange={setPeriodKey} />}
 
       {rows.length === 0 ? (
         <div className={`text-sm ${textSecondary} opacity-60 py-8 text-center`}>

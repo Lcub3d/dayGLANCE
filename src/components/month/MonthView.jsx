@@ -44,15 +44,14 @@ import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
  * planner's own deadline accessor (inbox tasks due that day).
  *
  * The day's display is getDayDisplayForDate, as in DAY and WEEK, so a past
- * day's bars follow the Do (JOBO slice 6, docs/jobo-past-days.md). Only in
- * the desktop layout: the phone and portrait tablet render this same view
- * and stay on the plan until slice 8.
+ * day's bars follow the Do (JOBO slice 6, docs/jobo-past-days.md), on every
+ * layout: the phone and portrait tablet render this same view, and since
+ * slice 8 they show the Do as the desktop does.
  */
 export function useMonthItemsForDate() {
-  const { getTasksForDate, getDayDisplayForDate, getDeadlineTasksForDate, isMobile, isTablet, isLandscape } = useDayPlannerCtx();
+  const { getTasksForDate, getDayDisplayForDate, getDeadlineTasksForDate } = useDayPlannerCtx();
   const { routinesEnabled, todayRoutines, routinesDate, routineCompletions } = useFeaturesCtx();
-  const phoneLayout = !!isMobile || (!!isTablet && !isLandscape);
-  const readDay = !phoneLayout && typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
+  const readDay = typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
   return useMemo(() => (dateStr) => {
     const date = new Date(`${dateStr}T12:00:00`);
     const tasks = (readDay(date) || []).filter((t) => !t.isExample);

@@ -457,6 +457,7 @@
     "experimentalHint": "Funciones aún en construcción, que llegan por partes. Desactivadas por defecto; nada cambia si no activas una.",
     "enableJobo": "Vista JOBO",
     "enableJoboHint": "Plan frente a realidad. Una sexta vista, en la tecla 6, que registrará lo hecho frente a lo planificado.",
+    "enableJoboHintPhone": "Plan frente a realidad. Una vista en el selector de vistas de la línea de tiempo que registra lo hecho frente a lo planificado.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planificación de vida: una lista de deseos, una visión a cinco años y lemas. Por ahora un marcador de posición, abierto desde el espacio Objetivos y proyectos.",
     "inbox": "Bandeja de entrada",
@@ -663,6 +664,10 @@
     "aiProviderCustom": "Personalizado (compatible con OpenAI)",
     "aiProviderOllama": "Ollama (local)",
     "aiRecommended": "Recomendado",
+    "aiModelOther": "Otro (escribe un id de modelo)",
+    "aiFetchModels": "Obtener lista de modelos",
+    "aiFetchModelsOk": "{{count}} modelos disponibles",
+    "aiFetchModelsFailed": "No se pudieron obtener los modelos: {{error}}",
     "beta": "Beta",
     "calDAVSyncHint": "Para devolver las tareas completadas: la URL de la colección CalDAV (sin ?export). En Nextcloud, el ID del calendario en la URL puede ser distinto del nombre mostrado.",
     "deviceCalendarDescription": "Los eventos se leen de las cuentas del dispositivo. Usa la sección Calendarios del dispositivo que aparece abajo para elegir cuáles quieres mostrar.",
@@ -696,6 +701,8 @@
     "obsidianDailyNoteTemplateHint": "Se rellena previamente al crear una nota diaria nueva",
     "obsidianDailyNoteTemplatePlaceholder": "Plantilla para notas diarias nuevas...",
     "obsidianDailyNotesFolderHint": "Déjalo vacío para usar la raíz del vault. Nombres habituales: \"Daily Notes\" o \"journals\"",
+    "obsidianDailyNotesResolved": "Las notas diarias se escriben en {{path}}",
+    "obsidianDailyNotesNested": "La carpeta que elegiste se llama también “{{name}}”, así que este ajuste crearía otra carpeta “{{name}}” dentro de ella y una segunda copia de la nota de cada día. Si elegiste la carpeta de notas diarias, elige en su lugar la raíz del vault, o deja este ajuste vacío.",
     "obsidianFilenamePatternHint": "Patrón de fecha para los nombres de archivo de las notas diarias (sin .md), por ejemplo, \"yyyy-MM-dd\", \"dd-MM-yyyy\" o \"MMMM dd, yyyy\"",
     "obsidianNativeSettingsHint": "El acceso al vault y los ajustes de las notas diarias se configuran en los ajustes de la aplicación.",
     "obsidianNewNotesFolderHint": "Aquí se guardan las notas nuevas creadas en dayGLANCE. Déjalo vacío para usar la raíz del vault.",
@@ -735,6 +742,7 @@
     "openInObsidian": "Abrir en Obsidian",
     "wikiNoteNotFound": "No se encontró la nota en la bóveda. Comprueba que la bóveda esté configurada y que la nota exista.",
     "wikiNoteLoadFailed": "No se pudo cargar la nota: {{error}}",
+    "wikiNoteChanged": "Esta nota cambió en Obsidian desde que la abriste. Se ha cargado el texto más reciente, con tu texto sin guardar debajo; revísalo y guarda de nuevo.",
     "emptyWikiNotePlaceholder": "Nota vacía: empieza a escribir para crearla en tu bóveda",
     "editWikiNote": "Editar «{{name}}»",
     "notesFormattingPlaceholder": "Añade notas... (**negrita**, *cursiva*, __subrayado__, URL) — Mayús+Enter para previsualizar",
@@ -795,6 +803,7 @@
     "assignTo": "Asignar a",
     "notes": "Notas",
     "localNotes": "Notas en dayGLANCE",
+    "wikilinkHint": "Consejo: escribe [[Nombre de la nota]] en el título para vincular una nota de Obsidian, existente o nueva. La nota se abre entonces aquí.",
     "calendarDescription": "Del calendario",
     "yourNotes": "Tus notas (este dispositivo)",
     "subtasks": "Subtareas",
@@ -1964,11 +1973,21 @@
     "close": "Cerrar el planificador",
     "notesPlaceholder": "Añadir notas... (**negrita**, *cursiva*, __subrayado__, URLs) - Mayús+Intro para guardar",
     "clickToEditNotes": "Haz clic para editar las notas",
+    "notesInVault": "Las notas viven en la nota vinculada en Obsidian.",
+    "notesLoading": "Cargando desde la nota vinculada…",
+    "notesLoadFailed": "No se pudo leer la nota vinculada: {{error}}",
+    "notesNoteMissing": "La nota vinculada no se encontró en el vault. Comprueba el nombre de la nota o crea la nota en Obsidian.",
+    "notesChanged": "La nota cambió en Obsidian desde que la abriste. Se ha cargado el texto más reciente, con tu texto sin guardar debajo; revísalo y guarda de nuevo.",
     "scheduled": "Programadas",
     "nothingScheduledYet": "Nada programado todavía.",
     "noUnscheduledTasks": "No hay tareas sin programar.",
     "addTaskPlaceholder": "Añadir una tarea…",
     "addTaskToProject": "Añadir tarea al proyecto",
+    "addedToTop": "Se añadió «{{title}}» arriba.",
+    "sendToBottom": "Enviar al final",
+    "showHyperglance": "Mostrar ajustes de hyperGLANCE",
+    "hideHyperglance": "Ocultar ajustes de hyperGLANCE",
+    "backToTasks": "Volver a las tareas",
     "hideScheduled": "Ocultar la lista Programadas",
     "showScheduled": "Mostrar programadas",
     "showNotesSidebar": "Mostrar notas de la tarea",
@@ -2310,11 +2329,23 @@
       "taskScope": "Los recuentos y las prioridades usan el estado actual de las tareas, no una instantánea histórica. «Sin ejecución registrada» cuenta los planes actuales con horario cuyo fin previsto ya pasó y que no tienen un Do asociado, independientemente de la finalización de la tarea o del trabajo registrado para otro plan.",
       "timingScope": "El tiempo registrado abarca las fechas seleccionadas. Las comparaciones con el plan, el tiempo dentro y fuera del plan y el intervalo más largo usan ejecuciones completas, que pueden extenderse fuera de esas fechas.",
       "allTimeScope": "Todo usa solo fechas con evidencia guardada en el historial actual de tareas y JOBO. Las repeticiones históricas sin finalización, excepción ni Do no se reconstruyen."
+    },
+    "mobile": {
+      "showDo": "Ampliar Ejecución",
+      "showPlan": "Ampliar Plan"
     }
   },
   "timelineZoom": {
     "label": "Tamaño de la línea de tiempo",
     "hint": "Se guarda en este dispositivo. Para ajustarlo en el momento, pellizca o usa Ctrl+desplazamiento sobre la línea de tiempo."
+  },
+  "cardSize": {
+    "label": "Tamaño de tarjetas de Objetivos y proyectos",
+    "small": "Pequeño",
+    "normal": "Normal",
+    "large": "Grande",
+    "larger": "Más grande",
+    "hint": "Se guarda en este dispositivo. Las tarjetas más grandes caben menos por fila."
   },
   "todoist": {
     "title": "Sincronización con Todoist",
@@ -2427,5 +2458,22 @@
     "unknownWarning": "Algunas tareas vinculadas no aparecen en la instantánea de origen. No se puede determinar de forma fiable si se han completado o eliminado, por lo que se han conservado sus copias locales.",
     "writeOptions": "Escritura opcional de finalizaciones (avanzado)",
     "securityTitle": "Credenciales, privacidad y limitaciones"
+  },
+  "followUp": {
+    "action": "Programar tarea de seguimiento",
+    "titlePrefix": "Seguimiento:",
+    "noteLine": "Sigue a {{link}}, completada el {{date}}.",
+    "settingTitle": "Seguimientos",
+    "settingLabel": "Etiqueta para las tareas de seguimiento",
+    "settingHint": "«Programar tarea de seguimiento» en una tarea completada añade esta etiqueta, por ejemplo #esperando. Déjala vacía para ninguna. Se guarda en este dispositivo.",
+    "settingPlaceholder": "#esperando",
+    "peekTitle": "Tarea anterior",
+    "peekDone": "Completada el {{date}}",
+    "peekNotDone": "Sin completar",
+    "peekInbox": "En la bandeja de entrada",
+    "peekOn": "Planificada para el {{date}}",
+    "peekDeleted": "En la papelera",
+    "peekGone": "Esta tarea ya no está en dayGLANCE.",
+    "peekShow": "Ir a la tarea"
   }
 }

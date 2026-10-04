@@ -17,7 +17,11 @@ vi.mock('../projects/ProjectCard.jsx', () => ({
   )),
 }));
 vi.mock('./GoalTimeline.jsx', () => ({
-  default: ({ goals }) => <div data-goal-timeline={goals.map(g => g.id).join(',')} />,
+  DEFAULT_PERIOD: '6m',
+  default: ({ goals, periodKey, showRange = true }) => (
+    <div data-goal-timeline={goals.map(g => g.id).join(',')} data-period={periodKey} data-show-range={showRange ? '1' : '0'} />
+  ),
+  GoalRangeToggle: ({ value }) => <div data-goal-range={value} />,
 }));
 
 async function i18nFor(language) {
@@ -48,6 +52,7 @@ const planner = () => ({
   isMobile: false, isTablet: false, darkMode: false, use24HourClock: false,
   cardBg: 'bg-white', borderClass: 'border-stone-200', textPrimary: 'text-stone-900', textSecondary: 'text-stone-500', hoverBg: 'hover:bg-stone-100',
   expandedNotesTaskId: null, setExpandedNotesTaskId: vi.fn(),
+  spaceCardSize: 'normal', setSpaceCardSize: vi.fn(),
 });
 const features = (overrides = {}) => ({
   goals: GOALS, projects: PROJECTS, setProjects: vi.fn(),
@@ -64,9 +69,9 @@ const features = (overrides = {}) => ({
 let i18n;
 beforeEach(async () => { i18n = i18n || await i18nFor('en'); });
 
-const render = (props, feat = {}) => renderToStaticMarkup(
+const render = (props, feat = {}, plan = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={i18n}>
-    <DayPlannerContext.Provider value={planner()}>
+    <DayPlannerContext.Provider value={{ ...planner(), ...plan }}>
       <FeaturesContext.Provider value={features(feat)}>
         <SyncContext.Provider value={{ createProjectNote: vi.fn(), openInObsidian: vi.fn() }}>
           <GoalDashboard {...props} />
@@ -132,6 +137,21 @@ describe('GoalDashboard desktop space', () => {
     // 46px plus its border like the sidebar tab row, so the lines meet
     expect(main).toContain('border-x border-stone-200');
     expect(main).toContain('height:var(--header-row-h);box-sizing:content-box');
+  });
+
+  it('puts the card size on the right of the toolbar on List and Projects, and Range there on Roadmap', () => {
+    const toolbar = (html) => { const main = section(html, 'data-goals-main'); return main.slice(0, main.indexOf('overflow-y-auto')); };
+    const list = toolbar(render({ desktop: true, isActive: true }, {}, { spaceCardSize: 'large' }));
+    expect(list).toMatch(/data-card-size-toggle[^>]*>[^]*?<option value="large" selected="">Large<\/option>/);
+    expect(list).not.toContain('data-goal-range');
+    const projectsTab = toolbar(render({ desktop: true, isActive: true, initialSidebarTab: 'projects' }));
+    expect(projectsTab).toContain('data-card-size-toggle');
+    const roadmapHtml = render({ desktop: true, isActive: true }, { goalsViewMode: 'timeline' });
+    const roadmap = toolbar(roadmapHtml);
+    expect(roadmap).toContain('data-goal-range="6m"');
+    expect(roadmap).not.toContain('data-card-size-toggle');
+    // the chart takes the toolbar's period and drops its own buttons
+    expect(roadmapHtml).toContain('data-period="6m" data-show-range="0"');
   });
 
   it('stacks the FABs bottom-right over the main scroll area, contextual to the tab, above the Archived footer', () => {
@@ -249,6 +269,17 @@ describe('GoalDashboard desktop space', () => {
     const order = cards(main);
     // column 1 holds a and d, column 2 b and e, column 3 c: DOM order is column-major
     expect(order).toEqual(['a', 'd', 'b', 'e', 'c']);
+  });
+
+  it('draws the cards at the card size from Settings, and at Normal unzoomed', () => {
+    const normal = section(render({ desktop: true, isActive: true }), 'data-goals-main');
+    expect(normal).not.toContain('zoom:');
+    expect(normal).toContain('width:420px');
+    const large = section(render({ desktop: true, isActive: true }, {}, { spaceCardSize: 'large' }), 'data-goals-main');
+    // the goal card's slot grows with it, and the project grids zoom as a whole
+    expect(large).toContain('width:483px');
+    expect(large).toMatch(/data-card-scale="1.15"/);
+    expect(large.match(/zoom:1\.15/g)?.length).toBe(3);
   });
 
   it('lists the archived goals and projects under the main area', () => {
@@ -402,6 +433,9 @@ describe('GoalDashboard embedded (phone) mode', () => {
     const html = phone({}, { goalsViewMode: 'timeline' });
     expect(html.indexOf('data-goals-tabs')).toBeLessThan(html.indexOf('data-goal-timeline'));
     expect(html).not.toContain('goal-carousel');
+    // the phone has no toolbar: the chart keeps its own Range buttons
+    expect(html).toContain('data-show-range="1"');
+    expect(html).not.toContain('data-card-size-toggle');
     const projects = phone({ initialSidebarTab: 'projects' }, { goalsViewMode: 'timeline' });
     expect(projects).not.toContain('data-goal-timeline');
     expect(projects).toContain('data-standalone-list');

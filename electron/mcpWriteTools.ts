@@ -36,6 +36,10 @@ import {
 } from './mcpIdempotency.js';
 import { planCreateTask } from './mcpCreateArgs.js';
 import { planUpdateTask } from './mcpUpdateArgs.js';
+import {
+  planCreateGoal, planUpdateGoal, planCreateProject, planUpdateProject, planAddSubtask, planUpdateSubtask,
+  GOAL_CLEARABLE, PROJECT_CLEARABLE,
+} from './mcpGoalArgs.js';
 import type { JournalRecord } from './mcpJournal.js';
 
 /** Renderer-captured undo descriptor, diverted to the §4.3 journal. */
@@ -296,9 +300,11 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       assignee_id: z.string().optional().describe(
         'Reassign to one household member by their user id. Ids come from dayglance_list_users. Never guess from a name.'),
     } : {}),
+    project_id: z.string().optional().describe(
+      'Move the task into a project by its id (see dayglance_get_goal_progress). To detach it from its project, name "project" in clear_fields.'),
     clear_fields: z.array(z.string()).optional().describe(
       'Field names to REMOVE from the task. Accepts only fields that can meaningfully be empty: ' +
-      `"notes", "deadline"${multiUser ? ', "assignee"' : ''}. ` +
+      `"notes", "deadline", "project"${multiUser ? ', "assignee"' : ''}. ` +
       'Naming a required field like title, or any other field, is a validation error.'),
     idempotency_key: IDEMPOTENCY_ARG,
   });
@@ -310,8 +316,9 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         'Edit fields of an existing dayGLANCE task: inbox, project, or scheduled. An absent argument leaves that field ' +
         'alone. A present argument sets it. A field named in clear_fields is removed. Fields are never cleared ' +
         'by passing null or empty values; clearing is only ever the explicit clear_fields list. ' +
-        'project_id is not editable, and date, time, duration, and completion have their own tools ' +
-        '(schedule_task, move_block, resize_block, set_task_completion). Returns the resulting task or block.' +
+        'project_id moves the task into a project ("project" in clear_fields detaches it); date, time, duration, and ' +
+        'completion have their own tools (schedule_task, move_block, resize_block, set_task_completion), and subtasks ' +
+        'have dayglance_add_subtask and dayglance_update_subtask. Returns the resulting task or block.' +
         OLD_ID_STILL_WORKS + CANNOT_MODIFY_NATIVE,
       inputSchema: updateTaskSchema,
     },
@@ -423,5 +430,214 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         });
         return fromRenderer(r, { timezone: deps.timeZone() }, capture);
       }),
+  );
+
+  // ── Subtasks (2026-10-04) ───────────────────────────────────────────────────
+  // The two shapes the UI has: add, and edit title or completion. There is no
+  // delete: the agent's own additions reverse through the write journal.
+
+  server.registerTool(
+    'dayglance_add_subtask',
+    {
+      description:
+        'Add a subtask to an existing dayGLANCE task (inbox, project, or scheduled). Subtasks are the task\'s own ' +
+        'checklist, reported as "subtasks" on tasks and blocks. Returns the resulting task or block and the new ' +
+        'subtask. Subtasks cannot be deleted over MCP; undo in dayGLANCE removes ones an assistant added.' +
+        OLD_ID_STILL_WORKS + CANNOT_MODIFY_NATIVE,
+      inputSchema: z.object({
+        task_id: z.string().describe('The host task. Recurring-instance ids (recurring-...) are not editable.'),
+        title: z.string().describe('Subtask title. Required, non-empty.'),
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('add_subtask', idempotency_key, async (transitionId, capture) => {
+        const planned = planAddSubtask(args);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const subtaskId = idempotency_key !== undefined
+          ? deterministicTaskIdFromSeed(makeStoreKey(deps.token(), 'add_subtask', idempotency_key as string))
+          : randomUUID();
+        const r = await deps.bridge.request('add_subtask', { ...planned.plan, subtaskId, transitionId });
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  server.registerTool(
+    'dayglance_update_subtask',
+    {
+      description:
+        'Edit a subtask of a dayGLANCE task: its title, its completion (a setter, not a toggle, so a retry is safe), ' +
+        'or both. An absent argument leaves that field alone. Returns the resulting task or block and the subtask.' +
+        OLD_ID_STILL_WORKS + CANNOT_MODIFY_NATIVE,
+      inputSchema: z.object({
+        task_id: z.string(),
+        subtask_id: z.string().describe('From the task\'s "subtasks" list.'),
+        title: z.string().optional().describe('New title. Required on every subtask, so it can be set but never cleared.'),
+        completed: z.boolean().optional(),
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('update_subtask', idempotency_key, async (transitionId, capture) => {
+        const planned = planUpdateSubtask(args);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const r = await deps.bridge.request('update_subtask', { ...planned.plan, transitionId });
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  // ── Goals and projects (2026-10-04) ─────────────────────────────────────────
+  // Everything the read surface shows can be written, with two deliberate
+  // holes: no deletes and no archiving (both stay the user's own step in
+  // dayGLANCE), and no description on an entity whose description lives in a
+  // linked Obsidian note. Completion mirrors the forms: a goal completes only
+  // when every active child project is completed, a project only when every
+  // one of its tasks is.
+
+  const NO_ARCHIVE =
+    ' Status may be "active" or "completed"; archiving is not available over MCP by design and returns a ' +
+    'validation error, as deleting does not exist.';
+  // A linked entity's description is the opening section of its Obsidian
+  // note (companion spec §4.3). The write goes through the app's own section
+  // save, which re-reads the note and refuses when it changed since the text
+  // was read; the main process waits longer for it than for a state write.
+  const LINKED_DESCRIPTION =
+    'For an entity with obsidian_note, description is the opening section of that note: the write goes into the ' +
+    'note itself (the rest of the note is never touched) and the response says note_write "written" or "queued" ' +
+    '(queued: the bridge plugin applies it when Obsidian is open). Pass description_base from the last read to be ' +
+    'refused with note_changed if the note moved since, rather than overwriting an edit made in Obsidian. ';
+  const DESCRIPTION_ARG = 'The notes box; on an entity with obsidian_note, the opening section of that note.';
+  const DESCRIPTION_BASE_ARG = 'The description_base a read returned. With it, the write is refused (note_changed) if the note changed since; without it the write is unconditional.';
+  const NOTE_WRITE_TIMEOUT_MS = 8000;
+  const assigneeIdsArg = multiUser ? {
+    assignee_ids: z.array(z.string()).optional().describe(
+      'Assign to household members by user id (ids from dayglance_list_users). Replaces the whole list. Never guess from a name.'),
+  } : {};
+
+  server.registerTool(
+    'dayglance_create_goal',
+    {
+      description:
+        'Create a dayGLANCE goal. Returns the goal as dayglance_get_goal_progress reports it. A new goal is active; ' +
+        'its colour comes from its area when one is given.' + NO_ARCHIVE,
+      inputSchema: z.object({
+        title: z.string().describe('Goal title. Required, non-empty.'),
+        description: z.string().optional().describe('The notes box of the goal.'),
+        start_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
+        target_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD. Must not precede start_date.'),
+        area_id: z.string().optional().describe('An area id from dayglance_list_areas.'),
+        ...assigneeIdsArg,
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('create_goal', idempotency_key, async (transitionId, capture) => {
+        const planned = planCreateGoal(args, multiUser);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const goalId = idempotency_key !== undefined
+          ? deterministicTaskIdFromSeed(makeStoreKey(deps.token(), 'create_goal', idempotency_key as string))
+          : randomUUID();
+        const r = await deps.bridge.request('create_goal', { goalId, ...planned.plan, transitionId });
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  server.registerTool(
+    'dayglance_update_goal',
+    {
+      description:
+        'Edit a dayGLANCE goal. Absent leaves a field alone, present sets it, a name in clear_fields removes it. ' +
+        'Completing a goal is allowed only once every active child project is completed (the app\'s own rule). ' +
+        LINKED_DESCRIPTION + 'Returns the resulting goal.' + NO_ARCHIVE,
+      inputSchema: z.object({
+        goal_id: z.string(),
+        title: z.string().optional().describe('New title. Can be set, never cleared.'),
+        description: z.string().optional().describe(DESCRIPTION_ARG),
+        description_base: z.string().optional().describe(DESCRIPTION_BASE_ARG),
+        start_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
+        target_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
+        area_id: z.string().optional().describe('An area id from dayglance_list_areas.'),
+        status: z.enum(['active', 'completed']).optional(),
+        ...assigneeIdsArg,
+        clear_fields: z.array(z.string()).optional().describe(
+          `Field names to REMOVE: ${GOAL_CLEARABLE.filter((f) => multiUser || f !== 'assignees').map((f) => `"${f}"`).join(', ')}.`),
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('update_goal', idempotency_key, async (transitionId, capture) => {
+        const planned = planUpdateGoal(args, multiUser);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const r = await deps.bridge.request('update_goal', { ...planned.plan, transitionId }, NOTE_WRITE_TIMEOUT_MS);
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  server.registerTool(
+    'dayglance_create_project',
+    {
+      description:
+        'Create a dayGLANCE project, standalone or under a goal (goal_id). A project under a goal takes the goal\'s ' +
+        'colour and assignees at creation. Returns the project as dayglance_get_goal_progress reports it.' + NO_ARCHIVE,
+      inputSchema: z.object({
+        title: z.string().describe('Project title. Required, non-empty.'),
+        goal_id: z.string().optional().describe('The parent goal. Omit for a standalone project.'),
+        description: z.string().optional().describe('The notes box of the project.'),
+        ...assigneeIdsArg,
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('create_project', idempotency_key, async (transitionId, capture) => {
+        const planned = planCreateProject(args, multiUser);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const projectId = idempotency_key !== undefined
+          ? deterministicTaskIdFromSeed(makeStoreKey(deps.token(), 'create_project', idempotency_key as string))
+          : randomUUID();
+        const r = await deps.bridge.request('create_project', { projectId, ...planned.plan, transitionId });
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  server.registerTool(
+    'dayglance_update_project',
+    {
+      description:
+        'Edit a dayGLANCE project. Absent leaves a field alone, present sets it, a name in clear_fields removes it ' +
+        '("goal" detaches the project from its goal, making it standalone). Completing a project is allowed only once ' +
+        'every one of its tasks is completed (the app\'s own rule). ' + LINKED_DESCRIPTION +
+        'Returns the resulting project.' + NO_ARCHIVE,
+      inputSchema: z.object({
+        project_id: z.string(),
+        title: z.string().optional().describe('New title. Can be set, never cleared.'),
+        description: z.string().optional().describe(DESCRIPTION_ARG),
+        description_base: z.string().optional().describe(DESCRIPTION_BASE_ARG),
+        goal_id: z.string().optional().describe('Move the project under this goal.'),
+        status: z.enum(['active', 'completed']).optional(),
+        ...assigneeIdsArg,
+        clear_fields: z.array(z.string()).optional().describe(
+          `Field names to REMOVE: ${PROJECT_CLEARABLE.filter((f) => multiUser || f !== 'assignees').map((f) => `"${f}"`).join(', ')}.`),
+        idempotency_key: IDEMPOTENCY_ARG,
+      }),
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('update_project', idempotency_key, async (transitionId, capture) => {
+        const planned = planUpdateProject(args, multiUser);
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const r = await deps.bridge.request('update_project', { ...planned.plan, transitionId }, NOTE_WRITE_TIMEOUT_MS);
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
   );
 }

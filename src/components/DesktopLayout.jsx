@@ -26,6 +26,7 @@ import SchedDashboard from './sched/SchedDashboard.jsx';
 import SchedView from './sched/SchedView.jsx';
 import MonthView from './month/MonthView.jsx';
 import JoboView from './JoboView.jsx';
+import MobileJoboView from './jobo/MobileJoboView.jsx';
 import InboxArchivedBar from './InboxArchivedBar.jsx';
 import GlanceSidebar from './GlanceSidebar.jsx';
 import InboxSidebar from './InboxSidebar.jsx';
@@ -72,7 +73,7 @@ const DesktopLayout = () => {
     hours, firstHour,
     tabletActiveTab, setTabletActiveTab,
     mobileActiveTab, setMobileActiveTab,
-    tabletListView, mobileViewMode,
+    tabletListView, tabletJoboView, mobileViewMode,
     mobileWelcomeStep, setMobileWelcomeStep,
     desktopWelcomeStep, setDesktopWelcomeStep,
     showMonthView, setShowMonthView,
@@ -871,7 +872,11 @@ const DesktopLayout = () => {
                   list/sched view on tablet (portrait only; landscape uses the
                   two-column timeline). tabletListView covers both LIST and
                   SCHED; the toggle's mode picks which one renders. */}
-              {tabletListView
+              {/* JOBO on a tablet held upright: the phone's layout (slice 8),
+                  since the timeline is phone-width beside the sidebar. */}
+              {tabletJoboView
+                ? <MobileJoboView stickyHeaderRef={stickyHeaderRef} />
+                : tabletListView
                 ? (mobileViewMode === 'sched' ? <SchedView /> : mobileViewMode === 'month' ? <MonthView /> : (
                     <>
                       <MobileListView hideInboxHandle />
@@ -927,7 +932,8 @@ const DesktopLayout = () => {
       </div>
 
       {/* Notes panel overlay for tablet LIST view */}
-      {tabletListView && expandedNotesTaskId && (() => {
+      {/* JOBO's Plan side is the phone timeline, whose notes open here too. */}
+      {(tabletListView || tabletJoboView) && expandedNotesTaskId && (() => {
         const scheduledTask = visibleDates.reduce((found, date) => {
           if (found) return found;
           return getTasksForDate(date).find(t => t.id === expandedNotesTaskId);

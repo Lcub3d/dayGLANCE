@@ -24,7 +24,22 @@ export type UndoOp =
    * that did not exist pre-edit, so undo deletes them (a spread cannot
    * un-set a deadline the edit added).
    */
-  | { kind: 'restore_task_fields'; taskId: string; before: Record<string, unknown>; absentBefore?: string[] };
+  | { kind: 'restore_task_fields'; taskId: string; before: Record<string, unknown>; absentBefore?: string[] }
+  /** Subtask writes (2026-10-04) touch their host task only, so they group with it. */
+  | { kind: 'remove_created_subtask'; taskId: string; subtaskId: string }
+  | { kind: 'restore_subtask_fields'; taskId: string; subtaskId: string; before: Record<string, unknown> }
+  /** Goal and project writes (2026-10-04): each op touches exactly one goal or one project. */
+  | { kind: 'remove_created_goal'; goalId: string }
+  | { kind: 'restore_goal_fields'; goalId: string; before: Record<string, unknown>; absentBefore?: string[] }
+  | { kind: 'remove_created_project'; projectId: string }
+  | { kind: 'restore_project_fields'; projectId: string; before: Record<string, unknown>; absentBefore?: string[] }
+  /**
+   * A description written into a linked Obsidian note (2026-10-04): the
+   * previous section goes back through the same refuse-on-change save, under
+   * the hash of what was written; `fields` carries the record half of the
+   * same call, when it had one.
+   */
+  | { kind: 'restore_note_description'; entityKind: 'goal' | 'project'; entityId: string; path: string; before: string; afterBase?: string; fields?: UndoOp };
 
 export interface JournalEntry {
   seq: number;
@@ -84,9 +99,21 @@ export function undoGroupKey(op: UndoOp): string {
     case 'restore_unscheduled':
     case 'restore_completion':
     case 'restore_task_fields':
+    case 'remove_created_subtask':
+    case 'restore_subtask_fields':
       return String(op.taskId);
     case 'restore_block_fields':
       return String(op.blockId);
+    // Goals and projects are their own entities; the prefix keeps a goal and a
+    // task that happen to share an id apart.
+    case 'remove_created_goal':
+    case 'restore_goal_fields':
+      return `goal:${op.goalId}`;
+    case 'remove_created_project':
+    case 'restore_project_fields':
+      return `project:${op.projectId}`;
+    case 'restore_note_description':
+      return `${op.entityKind}:${op.entityId}`;
     case 'restore_recurring_completion':
       return `${op.templateId}::${op.dateStr}`;
     default: {

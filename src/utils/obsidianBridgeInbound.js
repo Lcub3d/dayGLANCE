@@ -51,6 +51,26 @@ import { resolveProjectRef } from './obsidianProjectNotes.js';
 
 const OBS_HWM_KEY = 'dayglance-bridge-obs-hwm';
 
+// THE PROBE'S PAGE IS THE CYCLE'S FIRST PAGE (2026-10-04, the per-IP budget
+// report). The SSE-nudge probe lists the bridge namespace from the cursor to
+// decide whether a cycle is worth running; the cycle then listed the same
+// page again from the same cursor. On a household fleet behind one address
+// those doubled lists were a measurable share of the server's per-IP
+// budget. A positive probe now keeps its page, and the next fetch from the
+// same cursor consumes it instead of asking the server again. Short-lived
+// on purpose: a page older than this is re-fetched, and any cursor mismatch
+// (a cycle ran in between) discards it.
+const PROBED_PAGE_TTL_MS = 30_000;
+let probedPage = null;
+function takeProbedPage(since) {
+  const held = probedPage;
+  probedPage = null;
+  if (!held || held.since !== since || Date.now() - held.at > PROBED_PAGE_TTL_MS) return null;
+  return held.page;
+}
+/** For tests: forget a held probe page. */
+export function __resetProbedPageForTests() { probedPage = null; }
+
 /**
  * Fetch observation rows newer than the persisted cursor and decrypt them.
  * Returns { observations, maxSeq } (per-path latest, oldest cursor wins the
@@ -100,8 +120,10 @@ export async function fetchBridgeObservations() {
     const copyUpdates = [];
     let maxSeq = since;
     let hasMore = true;
+    let firstPage = takeProbedPage(since);
     while (hasMore) {
-      const page = await client.list(BRIDGE_VAULT_APP, { accountId: cfg.accountId, since });
+      const page = firstPage ?? await client.list(BRIDGE_VAULT_APP, { accountId: cfg.accountId, since });
+      firstPage = null;
       hasMore = !!page.hasMore;
       for (const row of page.rows || []) {
         const seq = Number(row.seq) || 0;
@@ -193,12 +215,15 @@ export async function pendingBridgeObservations() {
     try { since = Number(localStorage.getItem(OBS_HWM_KEY)) || 0; } catch { /* fresh cursor */ }
     const client = bridgeVaultClientFor(cfg);
     const page = await client.list(BRIDGE_VAULT_APP, { accountId: cfg.accountId, since });
-    if (page.hasMore) return true; // rows beyond page 1 — wake conservatively
-    return (page.rows || []).some((row) => {
-      if (row.deleted) return false;
-      const id = String(row.entityId || '');
-      return id.startsWith(BRIDGE_OBSERVATION_PREFIX) || id.startsWith(BRIDGE_ACTION_PREFIX);
-    });
+    const pending = !!page.hasMore // rows beyond page 1 — wake conservatively
+      || (page.rows || []).some((row) => {
+        if (row.deleted) return false;
+        const id = String(row.entityId || '');
+        return id.startsWith(BRIDGE_OBSERVATION_PREFIX) || id.startsWith(BRIDGE_ACTION_PREFIX);
+      });
+    // A positive probe hands its page to the cycle it wakes (takeProbedPage).
+    probedPage = pending ? { since, page, at: Date.now() } : null;
+    return pending;
   } catch {
     return false; // rate-limited/unreachable — the poll floor covers
   }

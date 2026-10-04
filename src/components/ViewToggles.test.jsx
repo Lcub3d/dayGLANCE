@@ -44,7 +44,8 @@ describe('ViewToggles', () => {
   });
 
   it("reads the other switcher's list for scope mobile, and disables the last switch still on", async () => {
-    const html = await render('en', { hiddenViews: { desktop: ['month'], mobile: ['grid', 'list', 'sched'] } }, { scope: 'mobile', views: MOBILE_VIEW_MODES, label: (v) => v });
+    // As Settings passes them: JOBO is offered only with its flag on.
+    const html = await render('en', { hiddenViews: { desktop: ['month'], mobile: ['grid', 'list', 'sched'] } }, { scope: 'mobile', views: offeredViews(MOBILE_VIEW_MODES, {}), label: (v) => v });
     expect(toggles(html)).toEqual(['grid:false', 'list:false', 'month:true', 'sched:false']);
     expect(html).toMatch(/data-view-toggle="month"[^>]*>[\s\S]*?<input[^>]*disabled/);
     expect(html).not.toMatch(/data-view-toggle="grid"[^>]*>[\s\S]*?<input[^>]*disabled[\s\S]*?data-view-toggle="list"/);

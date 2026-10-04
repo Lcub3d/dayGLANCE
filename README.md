@@ -522,12 +522,12 @@ Folder sync above needs no plugin and never will. The **dayGLANCE Bridge** plugi
 
 - **An agenda in the sidebar.** A mini month calendar over the selected day's scheduled tasks, recurring instances and imported calendar events, with the day's routines as a pill strip underneath. Tags render faded and `[[wikilinks]]` click through. Tick a task's box and a running dayGLANCE applies the completion, so its log, vault writeback and sync all fire properly rather than the box being flipped behind its back.
 - **Task sources beyond daily notes.** Point the plugin at folders or tags and the open tasks in those notes become dayGLANCE tasks, with completions tracked for a window you choose.
-- **Project and goal notes.** Link a note to a dayGLANCE project or goal. The link lives in a `dayglance-id` frontmatter key, so it survives renames and moves, and a `dayglance:` frontmatter map keeps status in sync for Dataview queries.
+- **Project and goal notes.** Link a note to a dayGLANCE project or goal (type its `[[wikilink]]` into the title, or enter its path in the project form; this part works with folder sync too). With the plugin the link lives in a `dayglance-id` frontmatter key, so it survives renames and moves, and a `dayglance:` frontmatter map keeps status in sync for Dataview queries.
 - **No double writes.** One copy of a vault applies changes at a time, via a short lease, so a second desktop running the same vault through Obsidian Sync receives the result instead of racing to write it.
 
 Pairing is a code shown in dayGLANCE and entered in the plugin's settings tab. The agenda additionally needs your dayGLANCE sync passphrase entered once per device; the derived key is kept in that device's local storage and never written to the plugin's synced settings.
 
-**Setup:** The plugin is **unlisted** rather than in Obsidian's community directory: install it manually or through BRAT from [`dayglance-obsidian-plugin/`](dayglance-obsidian-plugin/). Then pair from **Settings → Obsidian → Bridge plugin**.
+**Setup:** The plugin is not in Obsidian's community directory yet. Each dayGLANCE [release](https://github.com/krelltunez/dayGLANCE/releases) carries the plugin's `main.js` and `manifest.json` as assets: copy them into `<vault>/.obsidian/plugins/dayglance-bridge/` and enable the plugin under Community plugins, or add this repository in [BRAT](https://github.com/TfTHacker/obsidian42-brat), which installs and updates from those same release assets. Then pair from **Settings → Obsidian → Bridge plugin**. Source is in [`dayglance-obsidian-plugin/`](dayglance-obsidian-plugin/).
 
 ---
 
@@ -556,7 +556,7 @@ Let an AI assistant on the same computer read your day and manage your tasks. da
 
 - **Local only.** The listener binds to `127.0.0.1` and is never reachable from the network. Nothing is sent anywhere by dayGLANCE.
 - **Three separate opt-ins.** Reading dayGLANCE data, writing changes, and reading your device calendar are each their own consent
-- **12 tools and 3 read-only resources** covering the schedule, inbox, goals, projects, today's routines, and your frames: the windows you set aside for a kind of work, each reported with the time still free inside it and the tags it is meant for
+- **20 tools and 3 read-only resources** covering the schedule, daily notes, inbox, Bucket List, subtasks, goals, projects and areas, today's routines, and your frames: the windows you set aside for a kind of work, each reported with the time still free inside it and the tags it is meant for. Anything an assistant can read it can also write, except that nothing can be deleted or archived: those stay your own step in the app
 - **Every change is undoable.** Writes land in a session journal you can reverse per task or in bulk, from the app or the macOS tray. A kill switch stops the server outright
 - **Routines and frames are visible but untouchable.** An assistant can see them so it schedules around them, never through them: a write that would land on a routine is refused outright rather than quietly moved to the next free slot
 - Device calendar events are always read-only, and writes to them are refused

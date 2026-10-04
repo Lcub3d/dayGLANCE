@@ -163,6 +163,7 @@ and confirming a test fails.
 - **Morning summary / evening reflection** → `src/hooks/useDailyBriefings.js`
 - **Obsidian sync handlers** → `src/hooks/useObsidianSync.js`
 - **Native calendar integration** → `src/utils/nativeCalendar.js` (with tests)
+- **iCloud snapshot sync loop** → `src/hooks/useSnapshotFileSync.js` + `src/sync/snapshotFileSync.js` (with tests); iCloud is one transport (`src/sync/icloudSnapshotTransport.js`), Direct Access the next (`docs/direct-access-sync.md`)
 
 ## Guidance
 

@@ -522,7 +522,10 @@ const NotesSubtasksPanel = ({
               )}
             </div>
           )}
-          {obsidianEnabled && !showLinked && !isEvent && (
+          {/* Only while the task has nothing of its own yet: a user who has
+              typed notes or subtasks here has chosen this panel, and a nudge
+              to move to a vault note would read as "replace what you did". */}
+          {obsidianEnabled && !showLinked && !isEvent && !hasLocalNotes && !(task.subtasks?.length > 0) && (
             <p data-wikilink-hint className={`text-[11px] italic mt-1 ${th.label}`}>{t('task.wikilinkHint')}</p>
           )}
         </div>

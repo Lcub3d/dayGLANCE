@@ -66,6 +66,10 @@ describe('NotesSubtasksPanel: the wikilink hint', () => {
     expect(html).toContain('data-wikilink-hint');
     expect(html).toContain('[[Note name]] in the title');
   });
+  it('is absent once the task has notes or subtasks of its own (owner, 2026-10-04): the panel is already the user\'s choice', async () => {
+    expect(await render({ ...plain, notes: 'Bring the ladder.' }, { wikilinks: [] }, vault)).not.toContain('data-wikilink-hint');
+    expect(await render({ ...plain, subtasks: [{ id: 's1', title: 'Nails', completed: false }] }, { wikilinks: [] }, vault)).not.toContain('data-wikilink-hint');
+  });
   it('is absent without the vault, and absent once a note is linked', async () => {
     expect(await render(plain, { wikilinks: [] })).not.toContain('data-wikilink-hint');
     expect(await render(plain, { wikilinks: [] }, { obsidianConfig: { enabled: false } })).not.toContain('data-wikilink-hint');

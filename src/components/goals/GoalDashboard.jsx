@@ -34,7 +34,7 @@ import {
   BookOpen, GraduationCap, Brain, Calculator, FlaskConical, Pencil, Globe, Microscope, BookMarked,
   Briefcase, Code2, LineChart, Target, LayoutDashboard, Clipboard, Users, Mail, Rocket,
   Dumbbell, Heart, Activity, Apple, Moon, Bike, Leaf, Trophy, Flame,
-  Music, Camera, Palette, Lightbulb, Wand2, Headphones, Mic, Film, Star,
+  Music, Camera, Palette, Lightbulb, Wand2, Headphones, Mic, Film, Star, LayoutGrid,
 } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
@@ -49,7 +49,7 @@ import { calculateProjectProgress } from '../../utils/projectProgress.js';
 import { hasStalledChild, isProjectFlaggedStalled } from '../../utils/stalledBadge.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import GoalCard from './GoalCard.jsx';
-import GoalTimeline from './GoalTimeline.jsx';
+import GoalTimeline, { DEFAULT_PERIOD, GoalRangeToggle } from './GoalTimeline.jsx';
 import useProjectDrag from './useProjectDrag.js';
 import { useTranslation } from 'react-i18next';
 import GoalProgress from './GoalProgress.jsx';
@@ -62,7 +62,7 @@ import { INTENT_CONFIG_KEY } from '../../intents/useIntentPoller.js';
 import { enabledIntentTargets } from '../../intents/emitTargets.js';
 import { sortProjectsByOrder } from '../../utils/projectOrder.js';
 import { projectFocusTarget } from '../../utils/goalsLink.js';
-import { cardColumns, cardScale } from '../../utils/cardSize.js';
+import { CARD_SIZES, cardColumns, cardScale, clampCardSize } from '../../utils/cardSize.js';
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
@@ -1397,6 +1397,28 @@ const GoalSpaceSidebar = ({
 // toolbar's control, and the phone's Projects tab's.
 // `compact` drops the icons (the words and counts stay): the phone's Projects
 // row, while the filter field shares it.
+// The card size in the space's toolbar: the same device setting Settings
+// offers (utils/cardSize.js), in reach where the cards are.
+export const CardSizeToggle = () => {
+  const { spaceCardSize, setSpaceCardSize, darkMode, borderClass, textSecondary } = useDayPlannerCtx();
+  const { t } = useTranslation();
+  if (typeof setSpaceCardSize !== 'function') return null;
+  return (
+    <label className={`shrink-0 flex items-center gap-1.5 text-xs ${textSecondary}`} title={t('cardSize.label')}>
+      <LayoutGrid size={13} aria-hidden="true" />
+      <select
+        data-card-size-toggle
+        aria-label={t('cardSize.label')}
+        value={clampCardSize(spaceCardSize)}
+        onChange={e => setSpaceCardSize(e.target.value)}
+        className={`px-2 py-1 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+      >
+        {CARD_SIZES.map(({ id }) => <option key={id} value={id}>{t(`cardSize.${id}`)}</option>)}
+      </select>
+    </label>
+  );
+};
+
 export const ProjectsStatusToggle = ({ value, onChange, openCount, completedCount, className = '', compact = false }) => {
   const { darkMode, textSecondary, borderClass } = useDayPlannerCtx();
   const { t } = useTranslation();
@@ -2579,6 +2601,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, onConfirm }
   const [showManageAreas, setShowManageAreas] = useState(false);
   const [selectedRoadmapGoalId, setSelectedRoadmapGoalId] = useState(null); // roadmap detail panel
+  const [roadmapPeriod, setRoadmapPeriod] = useState(DEFAULT_PERIOD); // Range: the toolbar's on desktop
   // Desktop space: which sidebar tab is up, which goal is selected, and the
   // project a "Move to…" picker is open for.
   const [sidebarTab, setSidebarTab] = useState(initialSidebarTab);
@@ -2944,6 +2967,9 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         areas={areas}
         selectedGoalId={selectedRoadmapGoalId}
         onSelectGoal={toggleRoadmapGoal}
+        periodKey={roadmapPeriod}
+        onPeriodChange={setRoadmapPeriod}
+        showRange={!desktop}
       />
       {selectedRoadmapGoal && (
         <GoalDetailPanel
@@ -3153,6 +3179,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
             />
           )}
           <div className="flex-1" />
+          {/* Right side: the Roadmap's Range, or the card size where there
+              are cards to size (List and Projects). */}
+          {goalsTab && goalsViewMode === 'timeline'
+            ? <GoalRangeToggle value={roadmapPeriod} onChange={setRoadmapPeriod} />
+            : <CardSizeToggle />}
         </div>
 
         {/* The main area scrolls on its own; the sidebar, header and the

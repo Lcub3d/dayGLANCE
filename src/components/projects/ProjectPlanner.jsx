@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownToLine, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, X, Zap } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
@@ -46,7 +46,7 @@ import { sortByProjectOrder, applyProjectReorder, projectReorderIds, topProjectO
  * notes and hyperGLANCE settings (both moved here from the Edit Project form)
  * plus scheduled/unscheduled task columns with a quick-add.
  */
-const ProjectPlanner = ({ project, onClose }) => {
+const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) => {
   const {
     isMobile, isTablet, isLandscape,
     darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg,
@@ -192,11 +192,27 @@ const ProjectPlanner = ({ project, onClose }) => {
   const [notesPreferred, setNotesPreferred] = useState(() => {
     try { return localStorage.getItem(NOTES_SIDEBAR_KEY) === '1'; } catch { return false; }
   });
-  const toggleNotesSidebar = () => setNotesPreferred((open) => {
-    try { localStorage.setItem(NOTES_SIDEBAR_KEY, open ? '0' : '1'); } catch { /* not remembered */ }
-    return !open;
-  });
-  const sidebar = wide && notesPreferred;
+  const rememberNotes = (open) => {
+    try { localStorage.setItem(NOTES_SIDEBAR_KEY, open ? '1' : '0'); } catch { /* not remembered */ }
+    setNotesPreferred(open);
+  };
+  // hyperGLANCE is set up once and rarely touched, so it is not a section of
+  // the planner but a place the header opens: on a wide screen it takes the
+  // notes panel's place (the lists stay), on a phone or portrait tablet it
+  // is the sheet's other page, with a way back to the tasks. Not
+  // remembered: the planner opens on its tasks.
+  const [hyperOpen, setHyperOpen] = useState(initialHyperglanceOpen);
+  // Notes and hyperGLANCE share the panel: Notes from hyperGLANCE switches
+  // back to the notes (opening them if they were closed).
+  const toggleNotesSidebar = () => {
+    if (wide && hyperOpen) { setHyperOpen(false); if (!notesPreferred) rememberNotes(true); return; }
+    rememberNotes(!notesPreferred);
+  };
+  const sidebar = wide && notesPreferred && !hyperOpen;
+  const hyperPanel = wide && hyperOpen;
+  const hyperPage = !wide && hyperOpen;
+  const panelOpen = sidebar || hyperPanel;
+  const hyperOn = !!project.hyperglance?.enabled;
   const [selectedId, setSelectedId] = useState(null);
   // E puts the cursor in the selected task's note in the sidebar.
   const [noteFocusRequest, setNoteFocusRequest] = useState(0);
@@ -466,13 +482,14 @@ const ProjectPlanner = ({ project, onClose }) => {
             // outside it. dvh, not vh, so the sheet can't extend below the
             // visible viewport.
             ? 'rounded-t-2xl max-h-[92dvh] w-full overflow-y-auto overscroll-contain'
-            : `rounded-2xl w-full ${sidebar ? 'max-w-[104rem]' : 'max-w-3xl'} max-h-[85vh] overflow-hidden outline-none`
+            : `rounded-2xl w-full ${panelOpen ? 'max-w-[104rem]' : 'max-w-3xl'} max-h-[85vh] overflow-hidden outline-none`
         }`}
         style={isMobile ? { WebkitOverflowScrolling: 'touch' } : undefined}
         ref={panelRef}
         tabIndex={-1}
         onKeyDown={onPanelKeyDown}
         data-planner-notes-sidebar={sidebar ? 'open' : undefined}
+        data-planner-hyperglance={hyperPanel ? 'panel' : hyperPage ? 'page' : undefined}
       >
         {/* Project color bar + header — sticky while the mobile sheet scrolls.
             The tint goes on backgroundImage so cardBg keeps the header opaque
@@ -512,17 +529,36 @@ const ProjectPlanner = ({ project, onClose }) => {
                 {t('common.completed', 'Completed')}
               </button>
             )}
+            {/* hyperGLANCE: its settings in the panel (wide) or as the
+                sheet's other page; ON says whether the project has one. */}
+            <button
+              type="button"
+              onClick={() => setHyperOpen(open => !open)}
+              aria-pressed={hyperOpen}
+              aria-label="hyperGLANCE"
+              data-planner-hyperglance-toggle
+              className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg transition-colors ${
+                hyperOpen ? (darkMode ? 'bg-gray-700' : 'bg-stone-200') : hoverBg
+              } ${hyperOn ? textPrimary : textSecondary}`}
+              title={hyperOpen ? t('planner.hideHyperglance') : t('planner.showHyperglance')}
+            >
+              <Zap size={13} className={hyperOn ? 'text-yellow-400' : undefined} />
+              {!isMobile && 'hyperGLANCE'}
+              {hyperOn && (
+                <span data-planner-hyperglance-on className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 font-semibold">ON</span>
+              )}
+            </button>
             {/* Notes opens the panel on the right, so it sits on the right */}
             {wide && (
               <button
                 type="button"
                 onClick={toggleNotesSidebar}
-                aria-pressed={notesPreferred}
+                aria-pressed={sidebar}
                 data-planner-notes-toggle
                 className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg ${hoverBg} ${textSecondary} transition-colors`}
-                title={notesPreferred ? t('planner.hideNotesSidebar') : t('planner.showNotesSidebar')}
+                title={sidebar ? t('planner.hideNotesSidebar') : t('planner.showNotesSidebar')}
               >
-                {notesPreferred ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
+                {sidebar ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
                 {t('task.notes', 'Notes')}
               </button>
             )}
@@ -542,15 +578,15 @@ const ProjectPlanner = ({ project, onClose }) => {
             Every section below carries flex-shrink-0: this is a flex COLUMN
             with a bounded height, so a section that doesn't opt out is
             SQUASHED when the content overflows instead of the body scrolling
-            past it. hyperGLANCE clips its own overflow, which drops its
-            automatic minimum size to zero — it collapsed to its two border
-            pixels and its settings became unreachable. */}
+            past it. (hyperGLANCE, which once sat here, clips its own overflow
+            and collapsed to its two border pixels; it now opens from the
+            header, below, and keeps the same opt-out.) */}
         {/* On desktop the body shares a row with the notes sidebar; the
             phone sheet holds the body directly (its header and body are
             the sheet's two sections). */}
         {(() => { const body = (
         <div
-          className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : `flex-1 min-h-0 overflow-y-auto min-w-0${sidebar ? ' max-w-[48rem]' : ''}`}`}
+          className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : `flex-1 min-h-0 overflow-y-auto min-w-0${panelOpen ? ' max-w-[48rem]' : ''}`}`}
           style={isMobile ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}
         >
           {/* Notes — same interaction model as task notes panels; for a
@@ -746,16 +782,41 @@ const ProjectPlanner = ({ project, onClose }) => {
             </div>
             )}
           </div>
-
-          {/* hyperGLANCE settings (moved here from the Edit Project form) */}
+        </div>
+        );
+        // hyperGLANCE's settings, wherever the header opened them. The editor
+        // writes every change to the project as it is made, so closing it
+        // needs no save.
+        const hyperEditor = (twoColumns) => (
           <HyperGlanceEditor
             value={project.hyperglance}
             onChange={hg => updateProject(project.id, { hyperglance: hg })}
-            wide={!isMobile}
+            wide={twoColumns}
           />
-        </div>
         );
-        const aside = sidebar && (
+        // Phone and portrait tablet: the sheet's other page, in the body's place.
+        const hyperPageBody = hyperPage && (
+          <div
+            data-planner-hyperglance-page
+            className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : 'flex-1 min-h-0 overflow-y-auto min-w-0'}`}
+            style={isMobile ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+          >
+            <button
+              type="button"
+              onClick={() => setHyperOpen(false)}
+              className={`self-start flex-shrink-0 flex items-center gap-1 text-xs font-medium px-1.5 py-1 -ml-1.5 rounded-lg ${hoverBg} ${textSecondary}`}
+            >
+              <ArrowLeft size={13} />
+              {t('planner.backToTasks')}
+            </button>
+            {hyperEditor(!isMobile)}
+          </div>
+        );
+        const aside = hyperPanel ? (
+          <aside data-planner-hyperglance-panel className={`flex-1 min-w-[24rem] max-w-[56rem] border-l ${borderClass} overflow-y-auto p-4`} aria-label="hyperGLANCE">
+            {hyperEditor(false)}
+          </aside>
+        ) : sidebar && (
           // The lists keep the planner's usual width and the notes take the
           // rest: half the row on a narrower screen, up to 56rem on a wide one.
           <aside data-planner-notes className={`flex-1 min-w-[24rem] max-w-[56rem] border-l ${borderClass} overflow-y-auto p-4`} aria-label={t('task.notes', 'Notes')}>
@@ -774,6 +835,7 @@ const ProjectPlanner = ({ project, onClose }) => {
             <p className={`mt-4 text-xs ${textSecondary} opacity-80`}>{t('planner.notesKeysHint')}</p>
           </aside>
         );
+        if (hyperPage) return isMobile ? hyperPageBody : <div className="flex-1 min-h-0 flex">{hyperPageBody}</div>;
         return isMobile ? body : <div className="flex-1 min-h-0 flex">{body}{aside}</div>;
         })()}
       </div>

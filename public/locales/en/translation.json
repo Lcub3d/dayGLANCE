@@ -41,7 +41,9 @@
       "passphraseNeeded": "Enter your sync passphrase above to enable GLANCEvault.",
       "vaultUnreachable": "Couldn't reach GLANCEvault. Check the vault URL and device token. ({{detail}})",
       "requestFailed": "request failed",
-      "iCloudUnavailable": "iCloud unavailable: {{error}}"
+      "iCloudUnavailable": "iCloud unavailable: {{error}}",
+      "directAccessUnavailable": "Direct Access folder unavailable: {{error}}",
+      "directAccessEncrypted": "The file in the Direct Access folder is encrypted and this device cannot read it. Nothing was written to it."
     },
     "vaultUrl": {
       "invalid": "Enter a valid vault URL.",
@@ -2047,7 +2049,13 @@
     "confirm": "Erase everything",
     "working": "Erasing…",
     "partialFailure": "Some data could not be cleared:",
-    "otherDevices": "Other devices keep their own copy and will restore it. Reset them one at a time: quit dayGLANCE everywhere, then open a single device, reset it, and quit again before moving to the next."
+    "otherDevices": "Other devices keep their own copy and will restore it. Reset them one at a time: quit dayGLANCE everywhere, then open a single device, reset it, and quit again before moving to the next.",
+    "scopeDeviceHintDirectAccess": "The copy in the Direct Access folder is kept, and this device can read it straight back even if syncing is off. Use this only to fix a bad local state, not to start over.",
+    "scopeEverywhereDirectAccess": "This device and the Direct Access folder",
+    "scopeEverywhereDirectAccessHint": "Also deletes the copy in the Direct Access folder, so nothing restores it here.",
+    "scopeDeviceHintBoth": "The copies in iCloud and the Direct Access folder are kept, and this device can read them straight back even if syncing is off. Use this only to fix a bad local state, not to start over.",
+    "scopeEverywhereBoth": "This device, iCloud and the Direct Access folder",
+    "scopeEverywhereBothHint": "Also deletes the copies in iCloud and the Direct Access folder, so nothing restores them here or on a reinstall."
   },
   "icloudDiag": {
     "title": "iCloud diagnostics",
@@ -2102,6 +2110,19 @@
     "title": "iCloud sync",
     "onHint": "On. This device syncs with your other Apple devices automatically.",
     "offHint": "Off on this device. The iCloud copy and your other devices are unaffected."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sync through a folder another app already keeps in step across your devices: Google Drive, Dropbox, OneDrive, Syncthing or a network share. dayGLANCE reads and writes one file there; that app moves it.",
+    "chooseFolder": "Choose folder…",
+    "changeFolder": "Change folder",
+    "disconnect": "Disconnect",
+    "notConnected": "No folder connected on this device.",
+    "connectedTo": "Syncing through",
+    "unreachable": "The folder is not available right now. Syncing resumes when it is back.",
+    "onHint": "On. This device syncs through the folder.",
+    "offHint": "Off on this device. The copy in the folder and your other devices are unaffected.",
+    "neverSynced": "Not synced yet"
   },
   "aspire": {
     "title": "Aspire",

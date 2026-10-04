@@ -15,6 +15,8 @@ import TodoistSettings from './TodoistSettings.jsx';
 import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import CalendarList from './CalendarList.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
+import DirectAccessSyncCard from './DirectAccessSyncCard.jsx';
+import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
 import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
@@ -991,6 +993,16 @@ const SettingsModal = () => {
                             borderClass={borderClass}
                           />
                         </>
+                      )}
+                      {/* Desktop only — the Electron main process holds the folder
+                          (docs/direct-access-sync.md). */}
+                      {isDirectAccessSupported() && (
+                        <DirectAccessSyncCard
+                          darkMode={darkMode}
+                          textPrimary={textPrimary}
+                          textSecondary={textSecondary}
+                          borderClass={borderClass}
+                        />
                       )}
                       </>)}
                     </div>

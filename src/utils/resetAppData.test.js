@@ -7,6 +7,7 @@ import {
   clearWebStorage,
   clearCacheStorage,
   clearICloudSnapshot,
+  clearDirectAccessSnapshot,
   deleteIndexedDbDatabases,
   isResetInProgress,
   __resetGuardForTests,
@@ -300,5 +301,52 @@ describe('resetAppData', () => {
       },
     });
     await resetAppData({ scope: 'everywhere' }, d);
+  });
+});
+
+// ── clearDirectAccessSnapshot ──────────────────────────────────────────────
+
+const fakeDirectAccess = ({ connected = true, ok = true, throws = false } = {}) => ({
+  isConnected: () => connected,
+  deleteSnapshot: vi.fn(async () => {
+    if (throws) throw new Error('ipc failed');
+    return ok;
+  }),
+});
+
+describe('clearDirectAccessSnapshot', () => {
+  it('deletes the snapshot in the connected folder', async () => {
+    const directAccess = fakeDirectAccess();
+    const errors = [];
+    expect(await clearDirectAccessSnapshot({ directAccess }, errors)).toEqual({ attempted: true, ok: true });
+    expect(directAccess.deleteSnapshot).toHaveBeenCalledTimes(1);
+    expect(errors).toEqual([]);
+  });
+
+  it('is not attempted with no folder connected, or with no transport at all', async () => {
+    const directAccess = fakeDirectAccess({ connected: false });
+    expect(await clearDirectAccessSnapshot({ directAccess }, [])).toEqual({ attempted: false, ok: false });
+    expect(directAccess.deleteSnapshot).not.toHaveBeenCalled();
+    expect(await clearDirectAccessSnapshot({}, [])).toEqual({ attempted: false, ok: false });
+  });
+
+  it('records a refused or failed delete', async () => {
+    const errors = [];
+    expect(await clearDirectAccessSnapshot({ directAccess: fakeDirectAccess({ ok: false }) }, errors)).toEqual({ attempted: true, ok: false });
+    expect(await clearDirectAccessSnapshot({ directAccess: fakeDirectAccess({ throws: true }) }, errors)).toEqual({ attempted: true, ok: false });
+    expect(errors).toHaveLength(2);
+  });
+
+  it('everywhere scope deletes the Direct Access snapshot; device scope keeps it', async () => {
+    const everywhere = deps({ directAccess: fakeDirectAccess() });
+    const r1 = await resetAppData({ scope: 'everywhere' }, everywhere);
+    expect(everywhere.directAccess.deleteSnapshot).toHaveBeenCalledTimes(1);
+    expect(r1.directAccess).toEqual({ attempted: true, ok: true });
+
+    __resetGuardForTests();
+    const device = deps({ directAccess: fakeDirectAccess() });
+    const r2 = await resetAppData({ scope: 'device' }, device);
+    expect(device.directAccess.deleteSnapshot).not.toHaveBeenCalled();
+    expect(r2.directAccess).toEqual({ attempted: false, ok: false });
   });
 });

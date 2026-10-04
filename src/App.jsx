@@ -33,6 +33,8 @@ import { collectDeviceSettings, applyDeviceSettings } from './utils/deviceSettin
 import { isResetInProgress } from './utils/resetAppData.js';
 import useSnapshotFileSync from './hooks/useSnapshotFileSync.js';
 import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js';
+import { directAccessTransport } from './sync/directAccessTransport.js';
+import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
@@ -2166,7 +2168,7 @@ const DayPlanner = () => {
       suppressTimestampRef.current = false;
       suppressClearPendingRef.current = false;
       if (cloudSyncInProgressRef.current &&
-          Date.now() - iCloudSyncStartedAtRef.current > STALE_ICLOUD_LOCK_MS) {
+          Date.now() - snapshotSyncStartedAtRef.current > STALE_ICLOUD_LOCK_MS) {
         cloudSyncInProgressRef.current = false;
       }
     };
@@ -2488,11 +2490,12 @@ const DayPlanner = () => {
   // applyingRemoteDataRef is declared earlier (near the cloud-sync refs) so the
   // intent emitters, which mount above this point, can read it as their
   // remote-apply guard.
-  // Timestamp (ms) when the iCloud mutex was taken, so a foreground resume can
-  // tell a genuinely in-flight cycle from one stranded by iOS suspending the app
-  // mid-sync (the in-flight promise never settles, so its finally never clears
-  // the lock). Used by clearStrandedSyncGuards on resume.
-  const iCloudSyncStartedAtRef  = useRef(0);
+  // Timestamp (ms) when the snapshot-transport mutex (iCloud, Direct Access)
+  // was taken, so a foreground resume can tell a genuinely in-flight cycle from
+  // one stranded by iOS suspending the app mid-sync (the in-flight promise
+  // never settles, so its finally never clears the lock). Used by
+  // clearStrandedSyncGuards on resume.
+  const snapshotSyncStartedAtRef  = useRef(0);
 
   useEffect(() => {
     if (dataLoaded) {
@@ -2761,7 +2764,7 @@ const DayPlanner = () => {
   // cloudSyncInProgressRef is the snapshot-transport mutex: it serialises
   // snapshot transports with each other, NOT with the WebDAV engine, which has
   // its own lock (a WebDAV retry loop must never block iCloud).
-  // iCloudSyncStartedAtRef lets clearStrandedSyncGuards release a lock that
+  // snapshotSyncStartedAtRef lets clearStrandedSyncGuards release a lock that
   // iOS stranded by suspending the app mid-cycle.
   const openNewInboxTaskRef = useRef(null);
   const openNewTaskFormRef = useRef(null);
@@ -2772,7 +2775,7 @@ const DayPlanner = () => {
     dataLoaded,
     cloudSyncInProgressRef,
     pendingRef: iCloudPendingRef,
-    startedAtRef: iCloudSyncStartedAtRef,
+    startedAtRef: snapshotSyncStartedAtRef,
     io: {
       // Thunks: buildSyncPayload/applyEngineData are declared further down this
       // component; engineCallbacksRef is refreshed with them every render.
@@ -2788,6 +2791,39 @@ const DayPlanner = () => {
         setCloudSyncStatus('error');
         setTimeout(() => setCloudSyncStatus((s) => s === 'error' ? 'idle' : s), 5000);
       },
+    },
+  });
+
+  // ── Direct Access sync ───────────────────────────────────────────────────
+  // The second snapshot transport (docs/direct-access-sync.md): the same cycle
+  // and hook as iCloud, over a folder a third-party tool (Drive, Dropbox,
+  // OneDrive, Syncthing) keeps in step across devices. Desktop only;
+  // isSupported() is false everywhere else, so nothing is scheduled there. The
+  // mutex and its timestamp are shared with iCloud so the two never merge into
+  // state at once, and a stranded lock is released whichever transport held it.
+  // No first-run prompt: picking the folder is the decision.
+  const directAccessStatus = useDirectAccessStatus();
+  const flashDirectAccessError = (message) => {
+    setCloudSyncError(message);
+    setCloudSyncStatus('error');
+    setTimeout(() => setCloudSyncStatus((s) => s === 'error' ? 'idle' : s), 5000);
+  };
+  useSnapshotFileSync({
+    transport: directAccessTransport,
+    active: !isTrayMode,
+    dataLoaded,
+    cloudSyncInProgressRef,
+    startedAtRef: snapshotSyncStartedAtRef,
+    io: {
+      buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
+      applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      habits,
+      syncRetentionDays,
+      isResetInProgress,
+      onUnavailable: (error) => flashDirectAccessError(t('sync.errors.directAccessUnavailable', { error })),
+      // The folder holds an encrypted file this device cannot read, and Direct
+      // Access never writes plaintext over someone else's cloud copy.
+      onEncryptedUnreadable: () => flashDirectAccessError(t('sync.errors.directAccessEncrypted')),
     },
   });
 
@@ -9070,6 +9106,9 @@ const DayPlanner = () => {
     cloudSyncConfigured: canEnableMultiUser({
       cloudSyncEnabled: cloudSyncConfig?.enabled,
       vaultEnabled: isVaultEnabled(),
+      // Reactive too: useDirectAccessStatus re-renders on connect, disconnect
+      // and the per-device switch.
+      directAccessEnabled: directAccessStatus.connected && directAccessStatus.enabled,
     }),
     users, setUsers,
     meUserSyncId, setMeUserSyncId,

@@ -51,7 +51,9 @@
       "passphraseNeeded": "Podaj powyżej swoje hasło synchronizacji, aby włączyć GLANCEvault.",
       "vaultUnreachable": "Nie można połączyć się z GLANCEvault. Sprawdź adres URL magazynu GLANCEvault i token urządzenia. ({{detail}})",
       "requestFailed": "żądanie nie powiodło się",
-      "iCloudUnavailable": "iCloud niedostępny: {{error}}"
+      "iCloudUnavailable": "iCloud niedostępny: {{error}}",
+      "directAccessUnavailable": "Folder Direct Access niedostępny: {{error}}",
+      "directAccessEncrypted": "Plik w folderze Direct Access jest zaszyfrowany i to urządzenie nie może go odczytać. Nic do niego nie zapisano."
     },
     "vaultUrl": {
       "invalid": "Podaj prawidłowy adres URL magazynu GLANCEvault.",
@@ -2140,7 +2142,13 @@
     "confirm": "Usuń wszystko",
     "working": "Usuwanie…",
     "partialFailure": "Nie udało się wyczyścić niektórych danych:",
-    "otherDevices": "Pozostałe urządzenia zachowują własną kopię i ją przywrócą. Resetuj je pojedynczo: zamknij dayGLANCE wszędzie, następnie otwórz jedno urządzenie, zresetuj je i zamknij ponownie przed przejściem do następnego."
+    "otherDevices": "Pozostałe urządzenia zachowują własną kopię i ją przywrócą. Resetuj je pojedynczo: zamknij dayGLANCE wszędzie, następnie otwórz jedno urządzenie, zresetuj je i zamknij ponownie przed przejściem do następnego.",
+    "scopeDeviceHintDirectAccess": "Kopia w folderze Direct Access zostaje zachowana, a to urządzenie może ją od razu odczytać ponownie, nawet gdy synchronizacja jest wyłączona. Używaj tego tylko do naprawy błędnego stanu lokalnego, nie do rozpoczęcia od nowa.",
+    "scopeEverywhereDirectAccess": "To urządzenie i folder Direct Access",
+    "scopeEverywhereDirectAccessHint": "Usuwa także kopię w folderze Direct Access, więc nic jej tu nie przywróci.",
+    "scopeDeviceHintBoth": "Kopie w iCloud i w folderze Direct Access zostają zachowane, a to urządzenie może je od razu odczytać ponownie, nawet gdy synchronizacja jest wyłączona. Używaj tego tylko do naprawy błędnego stanu lokalnego, nie do rozpoczęcia od nowa.",
+    "scopeEverywhereBoth": "To urządzenie, iCloud i folder Direct Access",
+    "scopeEverywhereBothHint": "Usuwa także kopie w iCloud i w folderze Direct Access, więc nic ich nie przywróci ani tutaj, ani po ponownej instalacji."
   },
   "icloudDiag": {
     "title": "Diagnostyka iCloud",
@@ -2195,6 +2203,19 @@
     "title": "Synchronizacja iCloud",
     "onHint": "Włączona. To urządzenie synchronizuje się automatycznie z Twoimi innymi urządzeniami Apple.",
     "offHint": "Wyłączona na tym urządzeniu. Kopia w iCloud i Twoje inne urządzenia pozostają bez zmian."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Synchronizuj przez folder, który inna aplikacja już utrzymuje w zgodzie między Twoimi urządzeniami: Google Drive, Dropbox, OneDrive, Syncthing lub udział sieciowy. dayGLANCE odczytuje i zapisuje tam jeden plik; ta aplikacja go przenosi.",
+    "chooseFolder": "Wybierz folder…",
+    "changeFolder": "Zmień folder",
+    "disconnect": "Odłącz",
+    "notConnected": "Na tym urządzeniu nie połączono żadnego folderu.",
+    "connectedTo": "Synchronizacja przez",
+    "unreachable": "Folder jest teraz niedostępny. Synchronizacja wznowi się, gdy znów będzie dostępny.",
+    "onHint": "Włączona. To urządzenie synchronizuje się przez folder.",
+    "offHint": "Wyłączona na tym urządzeniu. Kopia w folderze i Twoje inne urządzenia pozostają bez zmian.",
+    "neverSynced": "Jeszcze nie zsynchronizowano"
   },
   "aspire": {
     "title": "Aspire",

@@ -41,7 +41,9 @@
       "requestFailed": "Anfrage fehlgeschlagen",
       "iCloudUnavailable": "iCloud nicht verfügbar: {{error}}",
       "CREDENTIAL_INVALID": "Der Sync-Server akzeptiert den Sync-Zugriff dieses Geräts nicht mehr. Ihre Änderungen sind auf diesem Gerät gespeichert. Bitten Sie die Person, die Ihren Sync-Server betreibt, den Zugriff für dieses Gerät wiederherzustellen.",
-      "QUOTA_EXCEEDED": "Der Sync-Server hat das Limit für dieses Konto erreicht. Ihre Änderungen sind auf diesem Gerät gespeichert und die Synchronisierung versucht es automatisch erneut. Bitten Sie die Person, die Ihren Sync-Server betreibt, das Limit zu erhöhen."
+      "QUOTA_EXCEEDED": "Der Sync-Server hat das Limit für dieses Konto erreicht. Ihre Änderungen sind auf diesem Gerät gespeichert und die Synchronisierung versucht es automatisch erneut. Bitten Sie die Person, die Ihren Sync-Server betreibt, das Limit zu erhöhen.",
+      "directAccessUnavailable": "Direct-Access-Ordner nicht verfügbar: {{error}}",
+      "directAccessEncrypted": "Die Datei im Direct-Access-Ordner ist verschlüsselt und kann auf diesem Gerät nicht gelesen werden. Es wurde nichts hineingeschrieben."
     },
     "vaultUrl": {
       "invalid": "Geben Sie eine gültige Vault-URL ein.",
@@ -2047,7 +2049,13 @@
     "confirm": "Alles löschen",
     "working": "Wird gelöscht…",
     "partialFailure": "Einige Daten konnten nicht gelöscht werden:",
-    "otherDevices": "Andere Geräte behalten ihre eigene Kopie und stellen sie wieder her. Setzen Sie sie nacheinander zurück: Beenden Sie dayGLANCE überall, öffnen Sie dann ein einzelnes Gerät, setzen Sie es zurück und beenden Sie es wieder, bevor Sie zum nächsten übergehen."
+    "otherDevices": "Andere Geräte behalten ihre eigene Kopie und stellen sie wieder her. Setzen Sie sie nacheinander zurück: Beenden Sie dayGLANCE überall, öffnen Sie dann ein einzelnes Gerät, setzen Sie es zurück und beenden Sie es wieder, bevor Sie zum nächsten übergehen.",
+    "scopeDeviceHintDirectAccess": "Die Kopie im Direct-Access-Ordner bleibt erhalten, und dieses Gerät kann sie auch bei ausgeschalteter Synchronisierung sofort wieder einlesen. Nur zum Beheben eines fehlerhaften lokalen Zustands verwenden, nicht für einen Neuanfang.",
+    "scopeEverywhereDirectAccess": "Dieses Gerät und der Direct-Access-Ordner",
+    "scopeEverywhereDirectAccessHint": "Löscht auch die Kopie im Direct-Access-Ordner, sodass hier nichts wiederhergestellt wird.",
+    "scopeDeviceHintBoth": "Die Kopien in iCloud und im Direct-Access-Ordner bleiben erhalten, und dieses Gerät kann sie auch bei ausgeschalteter Synchronisierung sofort wieder einlesen. Nur zum Beheben eines fehlerhaften lokalen Zustands verwenden, nicht für einen Neuanfang.",
+    "scopeEverywhereBoth": "Dieses Gerät, iCloud und der Direct-Access-Ordner",
+    "scopeEverywhereBothHint": "Löscht auch die Kopien in iCloud und im Direct-Access-Ordner, sodass weder hier noch nach einer Neuinstallation etwas wiederhergestellt wird."
   },
   "icloudDiag": {
     "title": "iCloud-Diagnose",
@@ -2102,6 +2110,19 @@
     "title": "iCloud-Synchronisierung",
     "onHint": "Ein. Dieses Gerät synchronisiert automatisch mit Ihren anderen Apple-Geräten.",
     "offHint": "Auf diesem Gerät aus. Die iCloud-Kopie und Ihre anderen Geräte sind nicht betroffen."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Synchronisieren Sie über einen Ordner, den eine andere App bereits zwischen Ihren Geräten abgleicht: Google Drive, Dropbox, OneDrive, Syncthing oder eine Netzwerkfreigabe. dayGLANCE liest und schreibt dort eine Datei; diese App überträgt sie.",
+    "chooseFolder": "Ordner wählen…",
+    "changeFolder": "Ordner ändern",
+    "disconnect": "Trennen",
+    "notConnected": "Auf diesem Gerät ist kein Ordner verbunden.",
+    "connectedTo": "Synchronisiert über",
+    "unreachable": "Der Ordner ist gerade nicht verfügbar. Die Synchronisierung läuft weiter, sobald er wieder da ist.",
+    "onHint": "Ein. Dieses Gerät synchronisiert über den Ordner.",
+    "offHint": "Auf diesem Gerät aus. Die Kopie im Ordner und Ihre anderen Geräte sind nicht betroffen.",
+    "neverSynced": "Noch nicht synchronisiert"
   },
   "aspire": {
     "title": "Aspire",

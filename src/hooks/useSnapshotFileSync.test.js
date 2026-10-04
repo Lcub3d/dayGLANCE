@@ -224,6 +224,23 @@ describe('useSnapshotFileSync: synchronous guards', () => {
     expect(d.mutex.current).toBe(false);
   });
 
+  it('an encrypted file the transport may not overwrite is surfaced through onEncryptedUnreadable, untouched', async () => {
+    const folder = makeFolder();
+    // The real envelope shape (@glance-apps/sync isEncryptedEnvelope); no key is cached here.
+    folder.text = JSON.stringify({ v: 1, enc: 'AES-GCM-256', salt: 'abc', iv: 'def', data: 'ghi' });
+    const d = mountDevice('F2', folder, { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')] });
+    d.transport.allowsPlaintextReseed = false;
+    const encrypted = vi.fn();
+    d.io.onEncryptedUnreadable = encrypted;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await d.sync();
+    warn.mockRestore();
+    expect(encrypted).toHaveBeenCalledTimes(1);
+    expect(folder.writes).toBe(0);
+    expect(d.applied).toEqual([]);
+    expect(d.mutex.current).toBe(false);
+  });
+
   it('a throwing transport is logged, not left as an unhandled rejection, and releases the mutex', async () => {
     const folder = makeFolder();
     const d = mountDevice('G', folder);

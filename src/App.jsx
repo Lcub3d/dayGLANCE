@@ -116,6 +116,7 @@ import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
+import useTodayEnded from './hooks/useTodayEnded.js';
 import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
 import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
 import useWeather from './hooks/useWeather.js';
@@ -6973,8 +6974,9 @@ const DayPlanner = () => {
   // column and all-day reads take this; getTasksForDate stays as it is for
   // its many other consumers (widgets, reminders, SCHED, JOBO itself). The
   // ledger slices are memoized on the ledger alone, the resolver on the
-  // tasks, so a task edit does not re-project the ledger. With JOBO off, or
-  // for today and later, this is getTasksForDate exactly.
+  // tasks, so a task edit does not re-project the ledger. Today takes the
+  // rule split at the NOW line. With JOBO off, or for later days, this is
+  // getTasksForDate exactly.
   const pastDaySlices = useMemo(
     () => (joboEnabled && Array.isArray(joboRecords) ? buildPastDaySlices(joboRecords) : null),
     [joboEnabled, joboRecords],
@@ -6987,14 +6989,21 @@ const DayPlanner = () => {
     }) : null),
     [pastDaySlices, tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks],
   );
+  // Today, split at the NOW line (hooks/useTodayEnded.js): recomputed only
+  // when a block ends or a task is completed, and held under a drag.
+  const { todayStr: nowTodayStr, todayEnded } = useTodayEnded({
+    pastDayIndex, currentTime, getTasksForDate, isVisibleForUser,
+    gestureActive: !!draggedTask || isResizing,
+  });
   const getDayDisplayForDate = useCallback((date, applyTagFilter = true) => pastDayDisplay({
     dateStr: dateToString(date),
-    todayStr: dateToString(new Date()),
+    todayStr: nowTodayStr,
     dayTasks: getTasksForDate(date, applyTagFilter),
     index: pastDayIndex,
     isVisibleForUser,
     tagFilter: applyTagFilter ? filterByTags : null,
-  }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags]);
+    todayEnded,
+  }), [getTasksForDate, pastDayIndex, isVisibleForUser, filterByTags, nowTodayStr, todayEnded]);
   // SCHED's Do badge: a task's timed Do on its own date, from the same index
   // (src/jobo/pastDay.js, doSessionsByTask). Cached per date for as long as
   // the index stands, so a day's cards share one pass over its slices. Empty

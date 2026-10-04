@@ -29,7 +29,7 @@ import { vaultPosture, isStreamPosture } from '../utils/obsidianVaultPosture.js'
 import { isStalePairing } from '../utils/bridgeStatus.js';
 import { deriveBridgeFleet } from '../utils/bridgeFleet.js';
 import { inboundFailureNotice } from '../utils/bridgeInboundPolicy.js';
-import { planNoteLinkUpdates, normalizeNotePath, projectByNotePath, projectRefFor, noteLinkOf } from '../utils/obsidianProjectNotes.js';
+import { planNoteLinkUpdates, normalizeNotePath, noteDisplayName, projectByNotePath, projectRefFor, noteLinkOf } from '../utils/obsidianProjectNotes.js';
 import {
   readRetiredTaskIds,
   recordRetirements as recordRetirementEntries,
@@ -313,8 +313,14 @@ export default function useObsidianSync({
   // task panel's over a wikilinked note; nothing lives in the record once
   // the note exists. The pure halves are noteDescription.js in the format
   // package; the refuse-on-change rule is saveWikiNote's.
+  // THE LINK IS A PATH, THE READER TAKES A NAME. A project's locator ends in
+  // .md (normalizeNotePath); the wiki note reader and writer take the note as
+  // a wikilink names it and append .md themselves, so the path has to lose
+  // its extension on the way in or the file looked for is "Note.md.md" (the
+  // 2026-10-04 field report: a linked project's planner said its note was
+  // not found).
   const loadNoteDescription = useCallback(async (path) => {
-    const note = await loadWikiNote(path);
+    const note = await loadWikiNote(noteDisplayName(normalizeNotePath(path)));
     if (!note) return null;
     if (note.notFound) return { notFound: true };
     const text = extractNoteDescription(note.text ?? '');
@@ -323,7 +329,8 @@ export default function useObsidianSync({
   const saveNoteDescription = useCallback(async (kind, id, path, content, { base = null } = {}) => {
     const notePath = normalizeNotePath(path);
     if (!notePath) return { ok: false };
-    const current = await loadWikiNote(notePath);
+    const noteName = noteDisplayName(notePath);
+    const current = await loadWikiNote(noteName);
     if (current && !current.notFound && typeof current.text === 'string') {
       const section = extractNoteDescription(current.text);
       if (base && noteTextHash(section) !== base) return { refused: 'changed', text: section, lastModified: current.lastModified ?? null };
@@ -345,7 +352,7 @@ export default function useObsidianSync({
     const handle = obsidianVaultHandleRef.current;
     if (!handle || handle === 'native' || !current || current.notFound) return { ok: false };
     try {
-      await writeWikiNote(handle, notePath, replaceNoteDescription(current.text, content), obsidianConfig?.newNotesFolder ?? 'dayGLANCE');
+      await writeWikiNote(handle, noteName, replaceNoteDescription(current.text, content), obsidianConfig?.newNotesFolder ?? 'dayGLANCE');
       return { ok: true };
     } catch (err) {
       setObsidianSyncError(err.message);
@@ -363,15 +370,16 @@ export default function useObsidianSync({
   const mergeNoteDescriptionDirect = useCallback(async (kind, id, path, body) => {
     const handle = obsidianVaultHandleRef.current;
     if (!handle || !body) return false;
-    const current = await loadWikiNote(path);
+    const noteName = noteDisplayName(normalizeNotePath(path));
+    const current = await loadWikiNote(noteName);
     if (!current || current.notFound || typeof current.text !== 'string') return false;
     const merged = mergeNoteDescription(current.text, body);
     try {
       if (merged.changed) {
         if (handle === 'native') {
-          if (!nativeWriteNote(path, merged.text)) return false;
+          if (!nativeWriteNote(noteName, merged.text)) return false;
         } else {
-          await writeWikiNote(handle, path, merged.text, obsidianConfig?.newNotesFolder ?? 'dayGLANCE');
+          await writeWikiNote(handle, noteName, merged.text, obsidianConfig?.newNotesFolder ?? 'dayGLANCE');
         }
       }
     } catch (err) {

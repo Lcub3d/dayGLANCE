@@ -479,6 +479,7 @@
     "experimentalHint": "Funkcje w trakcie tworzenia, wprowadzane etapami. Domyślnie wyłączone; nic się nie zmieni, dopóki którejś nie włączysz.",
     "enableJobo": "Widok JOBO",
     "enableJoboHint": "Plan kontra rzeczywistość. Szósty widok, pod klawiszem 6, który będzie rejestrować, co faktycznie wykonano, na tle planu.",
+    "enableJoboHintPhone": "Plan kontra rzeczywistość. Widok w przełączniku widoków osi czasu, który zapisuje, co zrobiono względem planu.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planowanie życia: lista życzeń, pięcioletnia wizja i motta. Na razie zaślepka, otwierana z przestrzeni Cele i projekty.",
     "inbox": "Skrzynka",
@@ -2422,6 +2423,10 @@
       "taskScope": "Liczby zadań i priorytety odzwierciedlają bieżący stan zadań, a nie stan historyczny. „Brak zapisu wykonania” zlicza bieżące plany z godzinami, których planowany koniec już minął i które nie mają przypisanego Do, niezależnie od ukończenia zadania lub pracy zapisanej dla innego planu.",
       "timingScope": "Zarejestrowany czas obejmuje wybrane daty. Porównania z planem, czas w planie i poza nim oraz najdłuższy zakres uwzględniają całe wykonania, które mogą wykraczać poza te daty.",
       "allTimeScope": "Całość używa tylko dat z zapisanymi danymi w bieżącej historii zadań i JOBO. Historyczne wystąpienia cykliczne bez ukończenia, wyjątku ani Do nie są odtwarzane."
+    },
+    "mobile": {
+      "showDo": "Poszerz Wykonanie",
+      "showPlan": "Poszerz Plan"
     }
   },
   "timelineZoom": {

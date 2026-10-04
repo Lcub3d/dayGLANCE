@@ -376,7 +376,9 @@ export default function DoColumn({
             onEdit={onEdit}
             onKeep={onKeep}
             onContinue={onContinue}
-            highlighted={hoverTaskId != null && item.sourceTask?.id === hoverTaskId}
+            // By text: the id under the pointer is read from an attribute,
+            // and a task's own id can be a number.
+            highlighted={hoverTaskId != null && item.sourceTask?.id != null && String(item.sourceTask.id) === String(hoverTaskId)}
             notesOpen={notesFor === item.id}
             // With the notes sidebar open, a card's Notes shows its task there.
             onNotes={onNotesInSidebar ? () => onNotesInSidebar(item.sourceTask) : setNotesFor}

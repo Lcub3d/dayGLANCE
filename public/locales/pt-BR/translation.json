@@ -457,6 +457,7 @@
     "experimentalHint": "Recursos ainda em construção, chegando em partes. Desativados por padrão; nada muda a menos que você ative um.",
     "enableJobo": "Visão JOBO",
     "enableJoboHint": "Planejado versus realizado. Uma sexta visão, na tecla 6, que registrará o que foi feito em relação ao planejado.",
+    "enableJoboHintPhone": "Plano versus realidade. Uma visão no seletor de visões da linha do tempo que registra o que foi feito em relação ao planejado.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planejamento de vida: uma lista de desejos, uma visão de cinco anos e lemas. Por enquanto um espaço reservado, aberto a partir do espaço Objetivos e projetos.",
     "inbox": "Caixa de entrada",
@@ -2325,6 +2326,10 @@
       "taskScope": "As contagens e prioridades das tarefas usam o estado atual, não um retrato histórico. “Nenhuma execução registrada” conta os planos atuais com horários cujo término previsto já passou e que não têm Do associado, independentemente da conclusão da tarefa ou do trabalho registrado para outro plano.",
       "timingScope": "O tempo registrado abrange as datas selecionadas. As comparações com o plano, o tempo dentro e fora do plano e o maior intervalo usam execuções completas, que podem ir além dessas datas.",
       "allTimeScope": "Tudo usa somente datas com evidência salva no histórico atual de tarefas e do JOBO. Ocorrências recorrentes históricas sem conclusão, exceção ou Do não são reconstruídas."
+    },
+    "mobile": {
+      "showDo": "Ampliar Execução",
+      "showPlan": "Ampliar Plano"
     }
   },
   "timelineZoom": {

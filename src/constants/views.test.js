@@ -19,7 +19,7 @@ describe('view modes', () => {
     }
     expect(DESKTOP_VIEW_MODES).toEqual(['multi', 'day', 'week', 'month', 'sched', 'jobo']);
     expect(NARROW_DESKTOP_VIEW_MODES.at(-1)).toBe('jobo');
-    expect(MOBILE_VIEW_MODES.at(-1)).toBe('sched');
+    expect(MOBILE_VIEW_MODES.at(-1)).toBe('jobo');
   });
 
   it('falls back sanely on a persisted value from another build', () => {
@@ -35,8 +35,8 @@ describe('view modes', () => {
     expect(cyclerStates(false, false, gated())).toEqual(['multi', 'month', 'sched']);
     expect(cyclerStates(true, true, gated())).toEqual(['multi', 'day', 'week', 'sched']);
     expect(cyclerStates(false, true, gated())).toEqual(['multi', 'sched']);
-    expect(mobileToggleStates()).toEqual(['grid', 'list', 'month', 'sched']);
-    expect(mobileToggleStates(true)).toEqual(['grid', 'list', 'sched']);
+    expect(mobileToggleStates()).toEqual(['grid', 'list', 'month', 'sched', 'jobo']);
+    expect(mobileToggleStates(true)).toEqual(['grid', 'list', 'sched', 'jobo']);
   });
 
   it('cycles with wrap-around and recovers from an unknown current state', () => {
@@ -47,7 +47,8 @@ describe('view modes', () => {
     // With JOBO on, SCHED cycles into it before wrapping.
     expect(nextState(DESKTOP_VIEW_MODES, 'sched')).toBe('jobo');
     expect(nextState(DESKTOP_VIEW_MODES, 'jobo')).toBe('multi');
-    expect(nextState(MOBILE_VIEW_MODES, 'sched')).toBe('grid');
+    expect(nextState(MOBILE_VIEW_MODES, 'sched')).toBe('jobo');
+    expect(nextState(MOBILE_VIEW_MODES, 'jobo')).toBe('grid');
     expect(nextState(MOBILE_VIEW_MODES, 'nope')).toBe('grid');
     // A stored MONTH while the dial is up cycles on from MULTI rather than crashing.
     expect(nextState(cyclerStates(true, true, gated()), 'month')).toBe('multi');
@@ -68,12 +69,12 @@ describe('views turned off per device', () => {
   it('drops hidden views from every switcher, the home view included', () => {
     expect(enabledViews(DESKTOP_VIEW_MODES, gated(['day', 'week']))).toEqual(['multi', 'month', 'sched']);
     expect(enabledViews(DESKTOP_VIEW_MODES, gated(['multi']))).toEqual(['day', 'week', 'month', 'sched']);
-    expect(enabledViews(MOBILE_VIEW_MODES, ['grid', 'list', 'month'])).toEqual(['sched']);
+    expect(enabledViews(MOBILE_VIEW_MODES, ['grid', 'list', 'month', 'jobo'])).toEqual(['sched']);
     expect(cyclerStates(true, false, gated(['multi', 'sched']))).toEqual(['day', 'week', 'month']);
     expect(cyclerStates(false, false, gated(['month']))).toEqual(['multi', 'sched']);
     expect(cyclerStates(true, true, gated(['day']))).toEqual(['multi', 'week', 'sched']);
-    expect(mobileToggleStates(false, ['grid'])).toEqual(['list', 'month', 'sched']);
-    expect(mobileToggleStates(true, ['sched'])).toEqual(['grid', 'list']);
+    expect(mobileToggleStates(false, ['grid', 'jobo'])).toEqual(['list', 'month', 'sched']);
+    expect(mobileToggleStates(true, ['sched', 'jobo'])).toEqual(['grid', 'list']);
   });
 
   it('lands on the first view still on, and on the first view regardless when a width leaves none', () => {
@@ -111,7 +112,9 @@ describe('experimental views behind a flag', () => {
   it('folds an off view into the hidden list without touching the stored one', () => {
     const gated = gateExperimentalViews(stored, { joboEnabled: false });
     expect(gated.desktop).toEqual(['month', 'jobo']);
-    expect(gated.mobile).toBe(stored.mobile);
+    // The phone toggle has JOBO too since slice 8.
+    expect(gated.mobile).toEqual(['jobo']);
+    expect(stored.mobile).toEqual([]); // untouched
     expect(stored.desktop).toEqual(['month']); // untouched
   });
 
@@ -143,12 +146,17 @@ describe('experimental views behind a flag', () => {
     expect(offeredViews(NARROW_DESKTOP_VIEW_MODES, {})).toEqual(['multi', 'month', 'sched']);
   });
 
-  it('offers JOBO on narrow desktops/landscape, but not the phone/portrait toggle', () => {
+  it('offers JOBO on narrow desktops/landscape, and on the phone/portrait toggle since slice 8', () => {
     const hidden = gated([], { joboEnabled: true });
     expect(NARROW_DESKTOP_VIEW_MODES).toContain('jobo');
     expect(cyclerStates(false, false, hidden)).toContain('jobo');
     expect(cyclerStates(false, false, gated())).not.toContain('jobo');
     expect(resolveStoredView('jobo', enabledViews(NARROW_DESKTOP_VIEW_MODES, hidden), 'multi')).toBe('jobo');
-    expect(MOBILE_VIEW_MODES).not.toContain('jobo');
+    const phoneOn = gateExperimentalViews({ desktop: [], mobile: [] }, { joboEnabled: true }).mobile;
+    const phoneOff = gateExperimentalViews({ desktop: [], mobile: [] }, {}).mobile;
+    expect(mobileToggleStates(false, phoneOn)).toContain('jobo');
+    // MUTATION: gate only the desktop list and an off flag leaves JOBO on the phone.
+    expect(mobileToggleStates(false, phoneOff)).not.toContain('jobo');
+    expect(resolveStoredView('jobo', enabledViews(MOBILE_VIEW_MODES, phoneOff), 'grid')).toBe('grid');
   });
 });

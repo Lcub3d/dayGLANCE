@@ -53,7 +53,7 @@ import LanguagePicker from './LanguagePicker.jsx';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatDuration } from '../utils/formatDuration.js';
 import CalendarList from './CalendarList.jsx';
-import { MOBILE_VIEW_MODES, enabledViews } from '../constants/views.js';
+import { MOBILE_VIEW_MODES, enabledViews, offeredViews } from '../constants/views.js';
 import ViewToggles from './ViewToggles.jsx';
 
 const MobileSettingsPanel = () => {
@@ -162,6 +162,7 @@ const MobileSettingsPanel = () => {
     users, setUsers, meUserSyncId, setMeUserSyncId,
     multiUserEnabled, setMultiUserEnabled,
     cloudSyncConfigured,
+    joboEnabled, setJoboEnabled,
   } = useFeaturesCtx();
   // Gate multi-user when sync is unconfigured; never trap an already-on toggle.
   const multiUserLocked = multiUserToggleLocked({ cloudSyncConfigured, multiUserEnabled });
@@ -233,7 +234,7 @@ const MobileSettingsPanel = () => {
   });
   const [muSyncStatus, setMuSyncStatus] = useState(null);
   const { t } = useTranslation(); // null | 'syncing' | 'ok' | 'error'
-  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched');
+  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : mode === 'jobo' ? t('sched.viewJoboShort') : t('settings.viewSched');
 
   // Commit staged routines on unmount (e.g. user switches tabs while in routines view)
   // For the Local Integrations row card only: Electron presence + on/off dot.
@@ -583,7 +584,23 @@ const MobileSettingsPanel = () => {
           ))}
         </div>
         <div className="pt-2">
-          <ViewToggles scope="mobile" views={MOBILE_VIEW_MODES} label={mobileViewLabel} />
+          <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} />
+        </div>
+
+        {/* Experimental, as on desktop: the flag is this device's own, so the
+            phone needs its own switch to reach JOBO at all. */}
+        <div className="pt-2 space-y-1.5" data-mobile-experimental>
+          <div className={`text-xs ${textSecondary}`}>{t('settings.experimental')}</div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input type="checkbox" checked={!!joboEnabled} onChange={(e) => setJoboEnabled?.(e.target.checked)} className="sr-only" data-mobile-jobo-toggle />
+              <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
+            <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
+          </label>
+          <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHintPhone')}</p>
         </div>
 
         {/* End of day (LIST view only) */}

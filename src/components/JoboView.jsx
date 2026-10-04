@@ -5,7 +5,8 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { dateToString } from '../utils/taskUtils.js';
 import { DayViewColumn } from './DayView.jsx';
-import DoColumn, { snapMinute, estimateCompletion, windowRange } from './jobo/DoColumn.jsx';
+import DoColumn, { snapMinute, windowRange } from './jobo/DoColumn.jsx';
+import useJoboDay from '../hooks/useJoboDay.js';
 import useJoboPreference from '../hooks/useJoboPreference.js';
 import useJoboRefocus from '../hooks/useJoboRefocus.js';
 import RefocusTimelineToast from './RefocusTimelineToast.jsx';
@@ -16,7 +17,6 @@ import JoboNotesSidebar from './jobo/JoboNotesSidebar.jsx';
 import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import CheckPanel from './jobo/CheckPanel.jsx';
-import { assignOverlapColumns, buildJoboDayModel } from '../jobo/viewModel.js';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
 import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
@@ -149,33 +149,11 @@ export default function JoboView() {
   const { startHour, endHour } = windowOnly && canTrim ? windowHours : fullDay;
   const windowStart = startHour * 60;
   const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour, endHour }), [dayStart, date, startHour, endHour]);
-  const currentTime = ctx.currentTime instanceof Date ? ctx.currentTime : new Date();
-  const nowDate = dateToString(currentTime);
-  const nowTime = clock(currentTime.getHours() * 60 + currentTime.getMinutes());
-
-  const dayTasks = useMemo(
-    () => getTasksForDate(selectedDate, false).filter((task) => !task.isAllDay && task.startTime),
-    [getTasksForDate, selectedDate],
-  );
+  // The day's plan, model and Do items, as the phone's JOBO reads them too.
+  const { lookup, model, doItems, currentTime, nowDate } = useJoboDay({ hourHeight, zoom });
   // The Check's Not started group also reads the day's all-day tasks, which
   // the Plan column leaves out.
   const checkDayTasks = useMemo(() => getTasksForDate(selectedDate, false), [getTasksForDate, selectedDate]);
-  const lookup = useMemo(
-    () => [...(ctx.tasks || []), ...(ctx.unscheduledTasks || []), ...(ctx.expandedRecurringTasks || []), ...dayTasks],
-    [ctx.tasks, ctx.unscheduledTasks, ctx.expandedRecurringTasks, dayTasks],
-  );
-  const model = useMemo(() => buildJoboDayModel({
-    date, tasks: dayTasks, taskLookup: lookup, recurringTasks: ctx.recurringTasks,
-    records: joboRecords || [], scale: hourHeight, isVisibleForUser,
-    now: { date: nowDate, time: nowTime },
-  }), [date, dayTasks, lookup, ctx.recurringTasks, joboRecords, hourHeight, isVisibleForUser, nowDate, nowTime]);
-  const doItems = useMemo(
-    () => assignOverlapColumns(
-      [...model.timedRecords, ...model.untimedRecords.map(estimateCompletion)],
-      { scale: hourHeight, minHeightPx: 27 * zoom, gapPx: 2 },
-    ),
-    [model.timedRecords, model.untimedRecords, hourHeight, zoom],
-  );
   const openCheckNotes = (task) => {
     setCheckOpen(false);
     if (sidebar && lookup.some(candidate => String(candidate.id) === String(task.id))) {

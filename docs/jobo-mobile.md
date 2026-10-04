@@ -175,3 +175,28 @@ phone's view toggle, where JOBO joins as a view behind the same flag.
 2. **Do on the phone**: add by tap, the editor as a sheet, undo.
 3. **The header's sheets**: the Check and the statistics.
 4. **Later, if agreed**: the past-day rule on the phone's timeline.
+
+## Step 1, as built
+
+- **The phone's views gain JOBO** behind `joboEnabled`, as on desktop: the
+  flag hides it from the toggle, the default-view picker and Views on this
+  device (`gateExperimentalViews` now gates both switchers), and a phone
+  showing JOBO when the flag goes off lands on its first view still on.
+- **The phone gets its own JOBO switch** (App Settings, under the views):
+  the flag is per device, and phones had no Experimental section, so a
+  phone could not turn JOBO on at all.
+- **One component, `components/jobo/MobileJoboView.jsx`,** for the phone
+  (MobileLayout) and the tablet held upright (DesktopLayout). It renders in
+  the timeline's own scroll area, which MobileTimeGrid's touch handling
+  measures against. The day model comes from `hooks/useJoboDay.js`, now
+  shared with the desktop view, so the two cannot read a day differently.
+- **A Plan/Do row** sticks under the date header: the wide side's name and
+  the swap button on the divider. The narrow lane carries no name, since
+  neither word fits 44px in every language.
+- **Pairing** works both ways: a tapped Plan card outlines itself and lights
+  its Do bars; a tapped Do card is outlined and lights its Plan bar. The Do
+  card outline now matches ids as text, which also fixes desktop hover
+  pairing for tasks with numeric ids.
+- **Not yet:** adding and editing Do (step 2), the Check and statistics
+  sheets (step 3). On a portrait tablet the date header is the desktop
+  one, whose hour gutter is 16px wider than the phone timeline's.

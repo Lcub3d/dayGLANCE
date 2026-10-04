@@ -81,7 +81,7 @@ const SettingsModal = () => {
   } = useDayPlannerCtx();
   // The pickers name the views the way the cycler does, from the one shared map.
   const desktopViewLabel = (v) => t(VIEW_LABEL_KEYS[v]);
-  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
+  const mobileViewLabel = (mode) => mode === 'grid' ? t('settings.viewGrid') : mode === 'list' ? t('settings.viewList') : mode === 'month' ? t('sched.viewMonthShort') : mode === 'jobo' ? t('sched.viewJoboShort') : t('settings.viewSched', { defaultValue: 'SCHED' });
   const formatHour = (hour) => new Intl.DateTimeFormat(locale, {
     hour: 'numeric', hour12: !use24HourClock, timeZone: 'UTC',
   }).format(new Date(Date.UTC(2020, 0, 1, hour)));
@@ -513,7 +513,7 @@ const SettingsModal = () => {
                           </div>
                           {/* One group per orientation, as with the defaults above: the phone
                               toggle's views for portrait, the narrow cycler's for landscape. */}
-                          <ViewToggles scope="mobile" views={MOBILE_VIEW_MODES} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
+                          <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
                           <ViewToggles scope="desktop" views={NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} heading={t('settings.viewsInLandscape')} hint={false} />
                           {mobileViewMode === 'list' && (
                             <div className="mt-3 space-y-1.5">

@@ -83,8 +83,9 @@ items carry `duration_minutes`, the duration scheduling will default to.
 
 **`daily_note` rides every day read.** `dayglance_get_today`, `dayglance_get_day` and the
 schedule resources return `daily_note`: `{ text, last_modified }` for the user's note on that
-date as dayGLANCE shows it, or `null`. Where an Obsidian vault is connected, the app's copy is
-kept in step with the vault's daily note, so this is the same text. Read-only over MCP.
+date as dayGLANCE shows it, or `null` when the date has no note. `last_modified` is present only
+when the app knows it. Where an Obsidian vault is connected, the app's copy is kept in step with the
+vault's daily note, so this is the same text. Read-only over MCP.
 
 **Frames are not blocks.** `dayglance_get_today`, `dayglance_get_day`, and the schedule resources
 also return a `frames` array beside `blocks`. A block is work ON the day; a frame is a window the
@@ -117,12 +118,13 @@ No parameters. Returns `{ ok: true, server: "dayGLANCE MCP" }`.
 ### `dayglance_get_today`
 Today's schedule; resolves the current **local** calendar date on the user's machine — use
 this instead of guessing the date.
-No parameters. Returns blocks with local times, completion state, the resolved date, and the
-IANA timezone. Includes `routine` blocks (today only) and, under the calendar consent tier,
-`device_calendar_event` items.
+No parameters. Returns `blocks`, `frames` and `daily_note` with local times, completion state, the
+resolved date, and the IANA timezone. Blocks include `routine` blocks (today only), imported
+`calendar_event` items, and, under the calendar consent tier, `device_calendar_event` items.
 
 ### `dayglance_get_day`
-One local calendar date's schedule. For the current date prefer `dayglance_get_today`.
+One local calendar date's schedule, in the same shape as `dayglance_get_today`: `blocks`, `frames`
+and `daily_note`. For the current date prefer `dayglance_get_today`.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
@@ -411,9 +413,9 @@ skipped. Other fields in the same call are applied to the record as usual.
 
 | URI | Content |
 |---|---|
-| `dayglance://schedule/today` | Today's blocks and completion state, local date + timezone echoed. Includes `routine` blocks. |
-| `dayglance://schedule/week/current` | The week containing today, starting on the configured week-start day (`week_start_day`, 0 = Sunday). Only the day that is today can carry `routine` blocks; the other six showing none is expected. |
-| `dayglance://goals/tree` | Goal/project hierarchy with duration-weighted progress — same data as `dayglance_get_goal_progress`. |
+| `dayglance://schedule/today` | Today's `blocks`, `frames` and `daily_note`, local date + timezone echoed. Includes `routine` blocks. |
+| `dayglance://schedule/week/current` | The week containing today, starting on the configured week-start day (`week_start_day`, 0 = Sunday). Each day carries its own `blocks`, `frames` and `daily_note`. Only the day that is today can carry `routine` blocks; the other six showing none is expected. |
+| `dayglance://goals/tree` | Goal/project hierarchy with duration-weighted progress — same data as `dayglance_get_goal_progress`, descriptions read from linked Obsidian notes included. |
 
 All three read over the same renderer path as the tools and respect the same consent tiers;
 failures throw with the same code + message text a tool error would carry.

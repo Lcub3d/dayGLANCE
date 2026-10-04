@@ -2333,6 +2333,7 @@
     "mobile": {
       "showDo": "Widen Do",
       "showPlan": "Widen Plan",
+      "balanced": "Side by side",
       "doAdded": "Do added",
       "doSaved": "Do saved",
       "doDeleted": "Do deleted"

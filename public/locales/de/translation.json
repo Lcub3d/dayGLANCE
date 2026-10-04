@@ -2333,6 +2333,7 @@
     "mobile": {
       "showDo": "Ausführung breit zeigen",
       "showPlan": "Plan breit zeigen",
+      "balanced": "Nebeneinander",
       "doAdded": "Ausführung hinzugefügt",
       "doSaved": "Ausführung gespeichert",
       "doDeleted": "Ausführung gelöscht"

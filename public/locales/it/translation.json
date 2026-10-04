@@ -2335,6 +2335,7 @@
     "mobile": {
       "showDo": "Allarga Esecuzione",
       "showPlan": "Allarga Piano",
+      "balanced": "Affiancati",
       "doAdded": "Esecuzione aggiunta",
       "doSaved": "Esecuzione salvata",
       "doDeleted": "Esecuzione eliminata"

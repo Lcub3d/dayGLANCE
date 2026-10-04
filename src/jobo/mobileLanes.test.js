@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   NARROW_LANE_PX, HOUR_GUTTER_PX, DIVIDER_PX,
-  planWideByDefault, planIsWide, swapped, laneWidths, doBar, tappedTaskId,
+  planWideByDefault, planIsWide, swapped, laneWidths, balancedWidths, doBar, tappedTaskId,
 } from './mobileLanes.js';
 
 // JOBO on the phone (slice 8): one side wide, the other a narrow lane of
@@ -32,6 +32,19 @@ describe('which side opens wide', () => {
 
   it('swapping twice comes back', () => {
     expect(swapped(swapped(null, TODAY, TODAY), TODAY, TODAY).planWide).toBe(true);
+  });
+});
+
+describe('balancedWidths', () => {
+  it('half each of what the gutter and the divider leave, the odd pixel to Do', () => {
+    expect(balancedWidths(390)).toEqual({ plan: 170, do: 170 });
+    expect(balancedWidths(391)).toEqual({ plan: 170, do: 171 });
+    const { plan, do: doWidth } = balancedWidths(320);
+    expect(HOUR_GUTTER_PX + plan + DIVIDER_PX + doWidth).toBe(320);
+  });
+
+  it('never negative on a tiny screen', () => {
+    expect(balancedWidths(10)).toEqual({ plan: 0, do: 0 });
   });
 });
 

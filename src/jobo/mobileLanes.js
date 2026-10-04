@@ -1,7 +1,8 @@
 // JOBO on the phone (slice 8, docs/jobo-mobile.md): the rules behind the two
 // lanes, kept pure. One side is wide with full cards, the other a narrow lane
 // of bars; Plan stays on the left and Do on the right, and a swap changes
-// their widths, never their order.
+// their widths, never their order. The balanced view, a choice in the date
+// header, gives each side half, both as cards, for comparing them.
 
 /** The narrow lane's width, and the phone timeline's hour gutter (MOBILE_HOUR_GUTTER_W). */
 export const NARROW_LANE_PX = 44;
@@ -42,6 +43,16 @@ export function laneWidths(total, planWide) {
     plan: planWide ? wide : NARROW_LANE_PX,
     do: planWide ? NARROW_LANE_PX : wide,
   };
+}
+
+/**
+ * The two sides' widths in the balanced view: half each of what the gutter
+ * and the divider leave, Plan taking the smaller half of an odd pixel.
+ */
+export function balancedWidths(total) {
+  const room = Math.max(0, Math.round(total) - HOUR_GUTTER_PX - DIVIDER_PX);
+  const plan = Math.floor(room / 2);
+  return { plan, do: room - plan };
 }
 
 /**

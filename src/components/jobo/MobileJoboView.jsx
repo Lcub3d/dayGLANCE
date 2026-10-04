@@ -107,10 +107,10 @@ function DoBars({ items, date, hourPx, selectedTaskId, onTap, ctx, t }) {
         <div key={hour} className={`border-b ${borderClass} ${hour % 2 === 1 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`} style={{ height: `${hourPx}px` }} />
       ))}
       {isToday && (
-        // The timeline's now line structure (an 8px row, the line centred),
-        // so it meets the Plan side's at the same height.
+        // The timeline's now line (its dot, then the line, centred), so it
+        // meets the Plan side's at the same height.
         <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${nowY}px` }}>
-          <div className="flex items-center"><div className="w-2 h-2 -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
+          <div className="flex items-center"><div className="w-2 h-2 bg-red-500 rounded-full -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
         </div>
       )}
       {items.map((item) => {
@@ -341,7 +341,22 @@ export default function MobileJoboView({ stickyHeaderRef }) {
         </div>
       </div>
 
-      <div className="flex items-start">
+      <div className="relative flex items-start">
+        {/* The Do side's now dot, drawn from here because that side clips
+            its content (it slides): on the divider, over the dot the Do
+            side draws itself, at the Do side's 1px top border below. */}
+        {date === nowDate && (
+          <div
+            data-jobo-now-dot
+            aria-hidden="true"
+            className="absolute w-2 h-2 bg-red-500 rounded-full pointer-events-none z-20"
+            style={{
+              top: `${1 + (currentTime.getHours() * 60 + currentTime.getMinutes()) * hourPx / 60}px`,
+              left: `${HOUR_GUTTER_PX + sides.plan + DIVIDER_PX - 4}px`,
+              transition: motion === 'none' ? 'none' : `left ${SWAP_MS}ms ease-out`,
+            }}
+          />
+        )}
         {/* Plan: the phone timeline (hour gutter included), as cards or bars. */}
         <div
           data-jobo-plan

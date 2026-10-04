@@ -26,6 +26,7 @@ export interface UpdateTaskArgs {
   priority?: unknown;
   deadline?: unknown;
   assignee_id?: unknown;
+  project_id?: unknown;
   clear_fields?: unknown;
 }
 
@@ -38,8 +39,9 @@ export interface UpdatePlan {
     priority?: number;
     deadline?: string;
     assigneeSyncId?: string;
+    projectId?: string;
   };
-  clear: Array<'notes' | 'deadline' | 'assignee'>;
+  clear: Array<'notes' | 'deadline' | 'assignee' | 'project'>;
 }
 
 export type UpdatePlanResult =
@@ -48,7 +50,7 @@ export type UpdatePlanResult =
 
 const reject = (message: string): UpdatePlanResult => ({ ok: false, code: 'validation', message });
 
-const CLEARABLE = ['notes', 'deadline', 'assignee'] as const;
+const CLEARABLE = ['notes', 'deadline', 'assignee', 'project'] as const;
 type Clearable = (typeof CLEARABLE)[number];
 
 /**
@@ -59,7 +61,7 @@ type Clearable = (typeof CLEARABLE)[number];
  * the two halves of the field never diverge.
  */
 export function planUpdateTask(args: UpdateTaskArgs, multiUser: boolean): UpdatePlanResult {
-  const { task_id, title, notes, priority, deadline, assignee_id, clear_fields } = args;
+  const { task_id, title, notes, priority, deadline, assignee_id, project_id, clear_fields } = args;
 
   if (typeof task_id !== 'string' || !task_id.trim()) {
     return reject('task_id must be a non-empty string');
@@ -77,7 +79,7 @@ export function planUpdateTask(args: UpdateTaskArgs, multiUser: boolean): Update
       if (typeof field !== 'string' || !(CLEARABLE as readonly string[]).includes(field)) {
         return reject(
           `${JSON.stringify(field)} is not a clearable field. clear_fields accepts only fields that can ` +
-          'meaningfully be empty: notes, deadline, assignee.',
+          'meaningfully be empty: notes, deadline, assignee, project.',
         );
       }
       if (field === 'assignee' && !multiUser) {
@@ -97,6 +99,9 @@ export function planUpdateTask(args: UpdateTaskArgs, multiUser: boolean): Update
   }
   if (assignee_id !== undefined && clear.includes('assignee')) {
     return reject('assignee_id is set while clear_fields names assignee. Set the assignee or clear it, not both.');
+  }
+  if (project_id !== undefined && clear.includes('project')) {
+    return reject('project_id is set while clear_fields names project. Set the project or clear it, not both.');
   }
 
   const set: UpdatePlan['set'] = {};
@@ -130,10 +135,16 @@ export function planUpdateTask(args: UpdateTaskArgs, multiUser: boolean): Update
     }
     set.assigneeSyncId = assignee_id;
   }
+  if (project_id !== undefined) {
+    if (typeof project_id !== 'string' || !project_id.trim()) {
+      return reject(`project_id must be a non-empty project id string, got ${JSON.stringify(project_id)}`);
+    }
+    set.projectId = project_id;
+  }
 
   if (Object.keys(set).length === 0 && clear.length === 0) {
     return reject(
-      'Nothing to change: pass at least one field to set (title, notes, priority, deadline, assignee_id) ' +
+      'Nothing to change: pass at least one field to set (title, notes, priority, deadline, assignee_id, project_id) ' +
       'or name one in clear_fields.',
     );
   }

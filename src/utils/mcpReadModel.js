@@ -20,6 +20,43 @@ import { calculateProjectProgress } from './projectProgress.js';
 import { notBucketed } from './bucketList.js';
 import { buildRoutineBlocks } from './mcpRoutines.js';
 import { buildFrames } from './mcpFrames.js';
+import { noteLinkOf } from './obsidianProjectNotes.js';
+
+/**
+ * Subtasks on the wire (2026-10-04): the task's own checklist, in order,
+ * omitted when the task has none so unchanged consumers see no new key.
+ */
+export function wireSubtasks(task) {
+  const list = Array.isArray(task?.subtasks) ? task.subtasks : [];
+  if (list.length === 0) return undefined;
+  return list.filter((st) => st && typeof st.id !== 'undefined').map((st) => ({
+    id: String(st.id), title: st.title ?? '', completed: !!st.completed,
+  }));
+}
+
+/** A goal's or project's linked Obsidian note, when it has one. */
+function wireNote(entity) {
+  const link = noteLinkOf(entity);
+  if (!link) return undefined;
+  return { path: link.path, name: link.name, missing: link.missing };
+}
+
+/** Inbox-item wire shape, shared by the inbox read and the write responses. */
+export function inboxItem(t) {
+  const item = {
+    id: t.id,
+    type: 'task',
+    title: t.title ?? '',
+    priority: typeof t.priority === 'number' ? t.priority : 0,
+    completed: !!t.completed,
+  };
+  if (t.deadline) item.deadline = t.deadline;
+  if (t.projectId) item.project_id = t.projectId;
+  if (t.notes) item.notes = t.notes;
+  const subtasks = wireSubtasks(t);
+  if (subtasks) item.subtasks = subtasks;
+  return item;
+}
 
 /**
  * The §5.1 distinct type flag. 'device_calendar_event' marks data that came
@@ -46,6 +83,14 @@ export function toBlock(task) {
     completed: !!task.completed,
   };
   if (task.projectId) block.project_id = task.projectId;
+  // Notes and subtasks ride the block too (2026-10-04): the inbox shape has
+  // carried notes since Phase 2, and a scheduled task's notes are no less
+  // the task's. Neither is a device event's.
+  if (type !== 'device_calendar_event') {
+    if (task.notes) block.notes = task.notes;
+    const subtasks = wireSubtasks(task);
+    if (subtasks) block.subtasks = subtasks;
+  }
   // Device calendar events cannot be modified through dayGLANCE (EventKit
   // read access only) — carried on every item, not just in tool descriptions.
   if (type === 'device_calendar_event') block.read_only = true;
@@ -180,19 +225,67 @@ export function buildUnscheduledItems(state, filter = {}) {
       .filter(isVisibleForUser)
       .filter((t) => (scope === 'standalone' ? !t.projectId : scope === 'project' ? !!t.projectId : true))
       .filter((t) => includeCompleted || !t.completed)
-      .map((t) => {
-      const item = {
-        id: t.id,
-        type: 'task',
-        title: t.title ?? '',
-        priority: typeof t.priority === 'number' ? t.priority : 0,
-        completed: !!t.completed,
-      };
-      if (t.deadline) item.deadline = t.deadline;
-      if (t.projectId) item.project_id = t.projectId;
-      if (t.notes) item.notes = t.notes;
-      return item;
-    }),
+      .map(inboxItem),
+  };
+}
+
+/**
+ * A project as the goal tree reports it (2026-10-04: the record's own fields
+ * beside the progress). `description` is the record's notes box; for a
+ * project linked to an Obsidian note the box lives in that note's opening
+ * section and the record is empty, which `obsidian_note` tells the reader.
+ */
+export function projectItem(p, progressTasks = []) {
+  const projectTasks = progressTasks.filter((t) => t.projectId === p.id && !t.archived);
+  const progress = calculateProjectProgress(p.id, progressTasks);
+  const item = {
+    id: p.id,
+    title: p.title,
+    status: p.status,
+    description: typeof p.description === 'string' ? p.description : '',
+    // null, not 0, when the project has nothing to measure — a reader that
+    // cannot tell those apart will report "no progress" on a project that is
+    // simply not measurable in tasks.
+    progress_percent: progress === null ? null : Math.round(progress * 100),
+    tasks_done: projectTasks.filter((t) => t.completed).length,
+    tasks_total: projectTasks.length,
+  };
+  if (p.goalId) item.goal_id = p.goalId;
+  if (p.assignedUserSyncIds?.length) item.assignee_ids = [...p.assignedUserSyncIds];
+  const note = wireNote(p);
+  if (note) item.obsidian_note = note;
+  return item;
+}
+
+/** A goal as the goal tree reports it, without its projects. */
+export function goalItem(g, state, progressTasks = []) {
+  const item = {
+    id: g.id,
+    title: g.title,
+    status: g.status,
+    description: typeof g.description === 'string' ? g.description : '',
+    start_date: g.startDate ?? null,
+    target_date: g.targetDate ?? null,
+    progress_percent: Math.round(calculateGoalProgress(g.id, state.projects ?? [], progressTasks) * 100),
+  };
+  if (g.areaId) {
+    const area = (state.areas ?? []).find((a) => a && a.id === g.areaId);
+    item.area_id = g.areaId;
+    if (area) item.area_name = area.name ?? '';
+  }
+  if (g.assignedUserSyncIds?.length) item.assignee_ids = [...g.assignedUserSyncIds];
+  const note = wireNote(g);
+  if (note) item.obsidian_note = note;
+  return item;
+}
+
+/** The areas goals can belong to, for dayglance_list_areas and create/update goal. */
+export function buildAreas(state) {
+  return {
+    areas: [...(state.areas ?? [])]
+      .filter((a) => a && a.id !== undefined)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((a) => ({ id: a.id, name: a.name ?? '' })),
   };
 }
 
@@ -233,32 +326,10 @@ export function buildGoalProgress(state, params) {
     return { notFound: true, invalid: null };
   }
 
-  const projectProgressPercent = (id, tasks) => {
-    const progress = calculateProjectProgress(id, tasks);
-    return progress === null ? null : Math.round(progress * 100);
-  };
-
-  const mapProject = (p) => {
-    const projectTasks = progressTasks.filter((t) => t.projectId === p.id && !t.archived);
-    return {
-      id: p.id,
-      title: p.title,
-      status: p.status,
-      // null, not 0, when the project has nothing to measure — a reader that
-      // cannot tell those apart will report "no progress" on a project that is
-      // simply not measurable in tasks.
-      progress_percent: projectProgressPercent(p.id, progressTasks),
-      tasks_done: projectTasks.filter((t) => t.completed).length,
-      tasks_total: projectTasks.length,
-    };
-  };
+  const mapProject = (p) => projectItem(p, progressTasks);
 
   const result = selected.map((g) => ({
-    id: g.id,
-    title: g.title,
-    status: g.status,
-    target_date: g.targetDate ?? null,
-    progress_percent: Math.round(calculateGoalProgress(g.id, projects, progressTasks) * 100),
+    ...goalItem(g, state, progressTasks),
     projects: projects
       .filter((p) => p.goalId === g.id && isVisibleForUser(p) && inScope(p))
       .map(mapProject),
@@ -312,6 +383,8 @@ export function handleMcpRequest(state, request) {
       return { ok: true, data: buildUnscheduledItems(state, params?.filter) };
     case 'list_users':
       return { ok: true, data: buildUsers(state) };
+    case 'list_areas':
+      return { ok: true, data: buildAreas(state) };
     case 'goal_progress': {
       const r = buildGoalProgress(state, params);
       if (r.invalid) return { ok: false, error: { code: 'validation', message: r.invalid } };

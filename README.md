@@ -556,7 +556,7 @@ Let an AI assistant on the same computer read your day and manage your tasks. da
 
 - **Local only.** The listener binds to `127.0.0.1` and is never reachable from the network. Nothing is sent anywhere by dayGLANCE.
 - **Three separate opt-ins.** Reading dayGLANCE data, writing changes, and reading your device calendar are each their own consent
-- **12 tools and 3 read-only resources** covering the schedule, inbox, goals, projects, today's routines, and your frames: the windows you set aside for a kind of work, each reported with the time still free inside it and the tags it is meant for
+- **19 tools and 3 read-only resources** covering the schedule, inbox, subtasks, goals, projects and areas, today's routines, and your frames: the windows you set aside for a kind of work, each reported with the time still free inside it and the tags it is meant for. Anything an assistant can read it can also write, except that nothing can be deleted or archived: those stay your own step in the app
 - **Every change is undoable.** Writes land in a session journal you can reverse per task or in bulk, from the app or the macOS tray. A kill switch stops the server outright
 - **Routines and frames are visible but untouchable.** An assistant can see them so it schedules around them, never through them: a write that would land on a routine is refused outright rather than quietly moved to the next free slot
 - Device calendar events are always read-only, and writes to them are refused

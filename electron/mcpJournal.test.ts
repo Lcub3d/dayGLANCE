@@ -92,6 +92,17 @@ describe('undoGroupKey — the per-task partition', () => {
     expect(undoGroupKey({ kind: 'restore_task_fields', taskId: 't1', before: {}, absentBefore: ['deadline'] })).toBe('t1');
   });
 
+  it('subtask ops group with their host task; goal and project ops group per entity under a prefix (2026-10-04)', () => {
+    expect(undoGroupKey({ kind: 'remove_created_subtask', taskId: 't1', subtaskId: 's1' })).toBe('t1');
+    expect(undoGroupKey({ kind: 'restore_subtask_fields', taskId: 't1', subtaskId: 's1', before: { title: 'x' } })).toBe('t1');
+    expect(undoGroupKey({ kind: 'remove_created_goal', goalId: 'g1' })).toBe('goal:g1');
+    expect(undoGroupKey({ kind: 'restore_goal_fields', goalId: 'g1', before: { title: 'x' } })).toBe('goal:g1');
+    expect(undoGroupKey({ kind: 'remove_created_project', projectId: 'p1' })).toBe('project:p1');
+    expect(undoGroupKey({ kind: 'restore_project_fields', projectId: 'p1', before: {} })).toBe('project:p1');
+    // A goal and a task sharing an id never share a group.
+    expect(undoGroupKey({ kind: 'remove_created_goal', goalId: 't1' })).not.toBe(undoGroupKey({ kind: 'remove_created', taskId: 't1' }));
+  });
+
   it('recurring completions group per INSTANCE (template::date), never per template', () => {
     const tue = undoGroupKey({ kind: 'restore_recurring_completion', templateId: 42, dateStr: '2026-08-11', wasCompleted: false });
     const wed = undoGroupKey({ kind: 'restore_recurring_completion', templateId: 42, dateStr: '2026-08-12', wasCompleted: false });

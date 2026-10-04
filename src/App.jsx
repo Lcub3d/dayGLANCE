@@ -7489,6 +7489,8 @@ const DayPlanner = () => {
     recycleBin,
     goals,
     projects,
+    // Areas back dayglance_list_areas and the area fields on goals (2026-10-04).
+    areas,
     isVisibleForUser,
     // Phase 4 week resource honors the user's week-start setting (0=Sunday).
     weekStartDay,
@@ -7505,6 +7507,13 @@ const DayPlanner = () => {
     setUnscheduledTasks,
     setRecurringTasks,
     setRecycleBin,
+    // Goals and projects (2026-10-04): the list setters for creates and field
+    // edits, and the hook's deletes for undoing an MCP create, so the sync
+    // tombstone the UI's delete writes is written here too.
+    setGoals,
+    setProjects,
+    deleteGoal,
+    deleteProject,
   });
 
   useElectronBridge({

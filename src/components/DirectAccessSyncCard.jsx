@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
-import { isNativeAndroid } from '../native.js';
+import { isNativeAndroid, isNativeIOS } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
 
 /**
@@ -56,6 +56,9 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
               Android picker; only an app that mirrors to local storage works. */}
           {isNativeAndroid() && (
             <p className={`text-xs ${textSecondary} mt-1`}>{t('directAccess.androidHint')}</p>
+          )}
+          {isNativeIOS() && (
+            <p className={`text-xs ${textSecondary} mt-1`}>{t('directAccess.iosHint')}</p>
           )}
         </div>
         {status.connected && (

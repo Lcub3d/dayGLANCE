@@ -5,6 +5,7 @@ import WebKit
 /// URL format:  dgbridge://<namespace>_<method>?args=<JSON-encoded-array>
 ///   namespace: "native" → window.DayGlanceNative methods
 ///   namespace: "obsidian" → window.DayGlanceObsidian methods
+///   namespace: "directaccess" → window.DayGlanceDirectAccess methods
 ///
 /// Returns a JSON string (or "null") as the response body.
 /// Each bridge phase adds cases to dispatch(namespace:method:args:).
@@ -45,6 +46,8 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
             return dispatchNative(method: method, args: args)
         case "obsidian":
             return dispatchObsidian(method: method, args: args)
+        case "directaccess":
+            return dispatchDirectAccess(method: method, args: args)
         default:
             return "null"
         }
@@ -384,6 +387,30 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
             guard let name = args.first as? String else { return "null" }
             ObsidianBridge.shared.openNote(noteName: name)
             return "null"
+        default:
+            return "null"
+        }
+    }
+
+    // Direct Access sync (docs/direct-access-sync.md). Same method names and
+    // JSON shapes as Android's DirectAccessBridge.kt; booleans travel as the
+    // strings "true"/"false" because every answer here is text.
+    private func dispatchDirectAccess(method: String, args: [Any]) -> String? {
+        switch method {
+        case "pickFolder":
+            DirectAccessBridge.shared.pickFolder()
+            return "null"
+        case "status":
+            return DirectAccessBridge.shared.status()
+        case "read":
+            return DirectAccessBridge.shared.read()
+        case "write":
+            guard let text = args.first as? String else { return "false" }
+            return DirectAccessBridge.shared.write(text)
+        case "deleteSnapshot":
+            return DirectAccessBridge.shared.deleteSnapshot()
+        case "disconnect":
+            return DirectAccessBridge.shared.disconnect()
         default:
             return "null"
         }

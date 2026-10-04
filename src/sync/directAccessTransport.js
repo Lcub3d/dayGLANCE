@@ -24,11 +24,12 @@
  *     re-probes the folder so sync resumes by itself when it is back.
  *
  * The folder path and the macOS bookmark live in the main process only (on
- * Android, the SAF tree URI lives in the app's preferences). The renderer sees
- * a folder name for the settings card and nothing else.
+ * Android the SAF tree URI, and on iOS the security-scoped bookmark, live in
+ * the app's preferences). The renderer sees a folder name for the settings
+ * card and nothing else.
  */
 
-import { createAndroidDirectAccessBridge, isAndroidDirectAccessAvailable } from './directAccessAndroidBridge.js';
+import { createNativeDirectAccessBridge, isNativeDirectAccessAvailable } from './directAccessNativeBridge.js';
 
 /** Poll cadence: the tool does the network work; we read the local file. */
 export const DIRECT_ACCESS_POLL_MS = 15 * 1000;
@@ -40,22 +41,23 @@ export const DIRECT_ACCESS_LAST_SYNCED_KEY = 'dayglance-direct-access-last-synce
 export const DIRECT_ACCESS_PREF_KEY = 'dayglance-direct-access-enabled';
 
 // Electron (every desktop platform) exposes the bridge directly; the Android
-// WebView exposes synchronous Kotlin methods that the adapter wraps into the
-// same shape. iOS has neither (phase 4), and the web has no folder access.
-let androidBridge = null;
+// WebView and the iOS shell expose synchronous native methods as
+// window.DayGlanceDirectAccess, which the adapter wraps into the same shape.
+// The web has no folder access a page could hold across sessions.
+let nativeBridge = null;
 const defaultBridge = () => {
   if (typeof window === 'undefined') return null;
   if (window.electronAPI?.directAccess) return window.electronAPI.directAccess;
-  if (isAndroidDirectAccessAvailable()) {
-    androidBridge ??= createAndroidDirectAccessBridge();
-    return androidBridge;
+  if (isNativeDirectAccessAvailable()) {
+    nativeBridge ??= createNativeDirectAccessBridge();
+    return nativeBridge;
   }
   return null;
 };
 const defaultStorage = () =>
   (typeof window !== 'undefined' ? window.localStorage : null);
 
-/** Desktop Electron and the Android app. Decides whether the poll even starts. */
+/** Desktop Electron and the Android and iOS apps. Decides whether the poll even starts. */
 export const isDirectAccessSupported = () => !!defaultBridge();
 
 /**

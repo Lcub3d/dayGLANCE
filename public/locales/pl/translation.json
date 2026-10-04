@@ -2216,7 +2216,8 @@
     "onHint": "Włączona. To urządzenie synchronizuje się przez folder.",
     "offHint": "Wyłączona na tym urządzeniu. Kopia w folderze i Twoje inne urządzenia pozostają bez zmian.",
     "neverSynced": "Jeszcze nie zsynchronizowano",
-    "androidHint": "Na Androidzie wybierz folder, który jakaś aplikacja odzwierciedla w pamięci tego urządzenia, np. Syncthing, FolderSync lub Autosync. Aplikacje Google Drive i Dropbox nie udostępniają tutaj swoich folderów."
+    "androidHint": "Na Androidzie wybierz folder, który jakaś aplikacja odzwierciedla w pamięci tego urządzenia, np. Syncthing, FolderSync lub Autosync. Aplikacje Google Drive i Dropbox nie udostępniają tutaj swoich folderów.",
+    "iosHint": "Na iPhonie i iPadzie wybierz folder z lokalizacji w aplikacji Pliki, np. iCloud Drive, Google Drive lub Dropbox."
   },
   "aspire": {
     "title": "Aspire",

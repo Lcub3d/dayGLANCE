@@ -2195,9 +2195,12 @@ const DayPlanner = () => {
     const handleNativeForeground = () => {
       clearStrandedSyncGuards();
       setCurrentTime(new Date());
-      // iCloud runs first (fast local file I/O), then WebDAV (network).
-      // engine.download() bypasses its own backoff for these foreground kicks.
+      // The snapshot transports run first (fast local file I/O; they share a
+      // mutex, so the second is deferred to its next tick if the first is still
+      // running), then WebDAV (network). engine.download() bypasses its own
+      // backoff for these foreground kicks.
       iCloudSync.runSync();
+      directAccessSync.runSync();
       cloudSyncDownloadRef.current?.();
       requestAnimationFrame(() => setTimeout(() => {
         refreshHealthPermsRef.current?.();
@@ -2808,7 +2811,7 @@ const DayPlanner = () => {
     setCloudSyncStatus('error');
     setTimeout(() => setCloudSyncStatus((s) => s === 'error' ? 'idle' : s), 5000);
   };
-  useSnapshotFileSync({
+  const directAccessSync = useSnapshotFileSync({
     transport: directAccessTransport,
     active: !isTrayMode,
     dataLoaded,

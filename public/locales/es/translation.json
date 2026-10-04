@@ -2123,7 +2123,8 @@
     "onHint": "Activada. Este dispositivo se sincroniza a través de la carpeta.",
     "offHint": "Desactivada en este dispositivo. La copia en la carpeta y tus otros dispositivos no se ven afectados.",
     "neverSynced": "Aún no sincronizado",
-    "androidHint": "En Android, elige una carpeta que una app refleje en el almacenamiento de este dispositivo, como Syncthing, FolderSync o Autosync. Las apps de Google Drive y Dropbox no ofrecen sus carpetas aquí."
+    "androidHint": "En Android, elige una carpeta que una app refleje en el almacenamiento de este dispositivo, como Syncthing, FolderSync o Autosync. Las apps de Google Drive y Dropbox no ofrecen sus carpetas aquí.",
+    "iosHint": "En iPhone y iPad, elige una carpeta de una ubicación de la app Archivos, como iCloud Drive, Google Drive o Dropbox."
   },
   "aspire": {
     "title": "Aspire",

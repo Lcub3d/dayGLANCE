@@ -24,7 +24,7 @@ import { dateToString, extractWikilinks, completionTimestamp, formatDeadlineDate
 import { getNextOccurrence } from '../../utils/recurrenceEngine.js';
 import { getActiveHGInstance } from '../../hooks/useHyperGlance.js';
 import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
-import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, projectReorderIds } from '../../utils/projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, projectReorderIds, topProjectOrder } from '../../utils/projectOrder.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../../utils/longPressReorder.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 
@@ -304,12 +304,15 @@ const ProjectCard = forwardRef(({ project, onEditClick, compact, dragHandleProps
   };
 
   // ── Quick-add ──────────────────────────────────────────────────────────────
+  // Lands at the top of the project's unscheduled tasks, as in PLANNER
+  // (utils/projectOrder.js topProjectOrder).
   const handleQuickAdd = (e) => {
     e.preventDefault();
     const title = quickAddTitle.trim();
     if (!title) return;
     const newTask = {
       id: crypto.randomUUID(),
+      projectOrder: topProjectOrder(projectUnscheduled),
       title,
       duration: 30,
       color: projectColor,

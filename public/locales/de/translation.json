@@ -1982,6 +1982,8 @@
     "noUnscheduledTasks": "Keine ungeplanten Aufgaben.",
     "addTaskPlaceholder": "Aufgabe hinzufügen…",
     "addTaskToProject": "Aufgabe zum Projekt hinzufügen",
+    "addedToTop": "„{{title}}“ oben hinzugefügt.",
+    "sendToBottom": "Nach unten schieben",
     "hideScheduled": "Liste „Geplant“ ausblenden",
     "showScheduled": "Geplante anzeigen",
     "showNotesSidebar": "Aufgabennotizen einblenden",

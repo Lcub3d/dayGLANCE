@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, sortProjectsByOrder, projectReorderIds } from './projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, orderProjectTasks, sortProjectsByOrder, projectReorderIds, topProjectOrder, sendToBottomIds } from './projectOrder.js';
 import { mergeTaskArrays } from '../mergeSync.js';
 
 const t = (id, extra = {}) => ({ id, title: id, projectId: 'p1', lastModified: '2026-09-01T00:00:00.000Z', ...extra });
@@ -109,5 +109,34 @@ describe('sortProjectsByOrder', () => {
   it('orders by sortOrder with unordered projects after, in array order', () => {
     const projects = [{ id: 'x' }, { id: 'b', sortOrder: 2 }, { id: 'y' }, { id: 'a', sortOrder: 1 }];
     expect(sortProjectsByOrder(projects).map((p) => p.id)).toEqual(['a', 'b', 'x', 'y']);
+  });
+});
+
+describe('topProjectOrder', () => {
+  it('puts a new task above the lowest number, so it sorts first', () => {
+    const inbox = [t('a', { projectOrder: 0 }), t('b', { projectOrder: 10 }), t('c')];
+    const order = topProjectOrder(inbox);
+    expect(order).toBe(-10);
+    expect(sortByProjectOrder([...inbox, t('new', { projectOrder: order })]).map((x) => x.id)).toEqual(['new', 'a', 'b', 'c']);
+  });
+
+  it('tops a list with no numbers, and an empty one', () => {
+    const inbox = [t('a'), t('b')];
+    expect(sortByProjectOrder([...inbox, t('new', { projectOrder: topProjectOrder(inbox) })]).map((x) => x.id)).toEqual(['new', 'a', 'b']);
+    expect(topProjectOrder([])).toBe(0);
+  });
+});
+
+describe('sendToBottomIds', () => {
+  it('moves the task below the other open tasks, completed ones still last', () => {
+    const inbox = [t('a', { projectOrder: 10 }), t('new', { projectOrder: 0 }), t('b'), t('done', { completed: true, projectOrder: 20 })];
+    const ids = sendToBottomIds(inbox, 'new');
+    expect(ids).toEqual(['a', 'b', 'new', 'done']);
+    expect(sortByProjectOrder(applyProjectReorder(inbox, ids, 'now')).map((x) => x.id)).toEqual(['a', 'b', 'new', 'done']);
+  });
+
+  it('does nothing for a task that is no longer open in this inbox', () => {
+    expect(sendToBottomIds([t('a'), t('x', { completed: true })], 'x')).toBeNull();
+    expect(sendToBottomIds([t('a')], 'gone')).toBeNull();
   });
 });

@@ -87,6 +87,29 @@ export function projectReorderIds(openIdsInNewOrder, projectInbox) {
   return [...(openIdsInNewOrder || []), ...done];
 }
 
+/**
+ * The projectOrder that puts a new task at the top of a project's inbox: one
+ * step above the lowest number it holds. Tasks with no number already sort
+ * after every numbered one, so any number tops a list that has none. Only
+ * the new task is written, so adding never restamps the rest of the group.
+ */
+export function topProjectOrder(projectInbox) {
+  const orders = (projectInbox || []).filter(hasOrder).map((t) => t.projectOrder);
+  return orders.length ? Math.min(...orders) - PROJECT_ORDER_STEP : 0;
+}
+
+/**
+ * The applyProjectReorder ids that move one open task to the bottom of its
+ * project's open tasks, the rest keeping their order. Null when the task is
+ * not an open task of this inbox (completed, scheduled or gone since).
+ */
+export function sendToBottomIds(projectInbox, id) {
+  const open = sortByProjectOrder((projectInbox || []).filter((t) => t && !t.completed)).map((t) => t.id);
+  if (!open.some((x) => String(x) === String(id))) return null;
+  const rest = open.filter((x) => String(x) !== String(id));
+  return projectReorderIds([...rest, id], projectInbox);
+}
+
 export function orderProjectTasks(scheduled, unscheduled) {
   const sched = [...(Array.isArray(scheduled) ? scheduled : [])]
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));

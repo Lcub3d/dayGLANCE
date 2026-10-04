@@ -1982,6 +1982,8 @@
     "noUnscheduledTasks": "No hay tareas sin programar.",
     "addTaskPlaceholder": "Añadir una tarea…",
     "addTaskToProject": "Añadir tarea al proyecto",
+    "addedToTop": "Se añadió «{{title}}» arriba.",
+    "sendToBottom": "Enviar al final",
     "hideScheduled": "Ocultar la lista Programadas",
     "showScheduled": "Mostrar programadas",
     "showNotesSidebar": "Mostrar notas de la tarea",

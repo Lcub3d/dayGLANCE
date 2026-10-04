@@ -114,7 +114,6 @@ describe('ProjectPlanner layout', () => {
   it('keeps every section unshrinkable with the SCHEDULED list hidden too', async () => {
     const html = await render({ scheduledHidden: true });
     const children = directChildren(html, DESKTOP_BODY);
-    expect(children.some(c => c.includes('hover:underline'))).toBe(true); // the Show Scheduled affordance
     for (const child of children) expect(child).toContain('flex-shrink-0');
   });
 
@@ -136,5 +135,30 @@ describe('ProjectPlanner layout', () => {
     const sections = directChildren(html, bodyTag(html));
     expect(sections.some(c => c.includes('p-0.5'))).toBe(true); // the Scheduled/Unscheduled tabs
     for (const section of sections) expect(section).toContain('flex-shrink-0');
+  });
+
+  it('puts the quick-add under the notes and above every task, however long the list', async () => {
+    for (const scheduledHidden of [false, true]) {
+      const html = await render({ scheduledHidden });
+      const add = html.indexOf('data-planner-quick-add');
+      expect(add).toBeGreaterThan(html.indexOf('data-notes-source'));
+      expect(add).toBeLessThan(html.indexOf('TASK 0'));
+    }
+  });
+
+  it('toggles Scheduled from the header: Scheduled, Completed, then Notes on the right, then close', async () => {
+    const html = await render({ scheduledHidden: true });
+    const header = html.slice(0, html.indexOf('data-notes-source'));
+    const scheduled = header.indexOf('data-planner-scheduled-toggle');
+    const notes = header.indexOf('data-planner-notes-toggle');
+    const close = header.indexOf('aria-label="Close planner"');
+    expect(scheduled).toBeGreaterThan(-1);
+    expect(scheduled).toBeLessThan(close);
+    expect(notes).toBeGreaterThan(scheduled);
+    expect(notes).toBeLessThan(close);
+    expect(header).toMatch(/data-planner-scheduled-toggle[^>]*title="Show Scheduled"/);
+    // no second copy of the toggle down in the body
+    expect(html).not.toContain('Hide Scheduled list');
+    expect(html.slice(html.indexOf('data-notes-source'))).not.toContain('Show Scheduled');
   });
 });

@@ -25,18 +25,14 @@ import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from './util
 import { containObsidianGhostRows, persistDerivedGhostRetirements } from './utils/obsidianGhostRows.js';
 import { dropResurrectedTasks } from './utils/dropResurrectedTasks.js';
 import { partitionExpiredSingleDayFrames } from './utils/expiredFrames.js';
-import { stripHealthSourcedLogs } from './utils/healthLogFilter.js';
 import { webdavFetch } from './utils/cloudSyncProviders.js';
 import { normalizeEtag } from '@glance-apps/sync';
 import { autoBackupDB, createAutoBackupProvidersForFolder, AUTO_BACKUP_RETENTION, AUTO_BACKUP_INTERVALS } from './utils/autoBackup.js';
 import { LIVE_BACKUP_FILENAME } from './utils/folderBackup.js';
 import { collectDeviceSettings, applyDeviceSettings } from './utils/deviceSettings.js';
 import { isResetInProgress } from './utils/resetAppData.js';
-import {
-  isICloudSyncEnabled, setICloudSyncEnabled, getICloudSyncPref,
-  shouldPromptFirstRun, payloadHasData,
-} from './utils/icloudSyncPref.js';
-import { evaluateMissingSnapshot, ICLOUD_LAST_SYNCED_KEY } from './utils/icloudSeedGuard.js';
+import useSnapshotFileSync from './hooks/useSnapshotFileSync.js';
+import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
@@ -147,7 +143,7 @@ import { registerDbEngine } from './sync/dirtyTracker.js';
 import { isVaultEnabled } from './sync/vaultConfig.js';
 import { keepImportedTask } from './sync/payloadExclusions.js';
 import { canEnableMultiUser } from './utils/multiUserGate.js';
-import { encryptData, decryptData, isEncryptedEnvelope, hasEncryptionReady } from './utils/crypto.js';
+import { encryptData, hasEncryptionReady } from './utils/crypto.js';
 import useCalendarSync from './hooks/useCalendarSync.js';
 import useBackup from './hooks/useBackup.js';
 import useGTDFrames from './hooks/useGTDFrames.js';
@@ -2199,7 +2195,7 @@ const DayPlanner = () => {
       setCurrentTime(new Date());
       // iCloud runs first (fast local file I/O), then WebDAV (network).
       // engine.download() bypasses its own backoff for these foreground kicks.
-      iCloudSyncRef.current?.();
+      iCloudSync.runSync();
       cloudSyncDownloadRef.current?.();
       requestAnimationFrame(() => setTimeout(() => {
         refreshHealthPermsRef.current?.();
@@ -2755,273 +2751,45 @@ const DayPlanner = () => {
   // Runs independently alongside any configured WebDAV/Nextcloud sync so that
   // Apple-only users (Mac + iPhone/iPad) get zero-config sync, while
   // cross-platform users (+ Android) keep WebDAV for that leg.
-  // Uses the same cloudSyncInProgressRef lock to serialise with WebDAV.
-  const iCloudSyncRef = useRef(null);
+  //
+  // The cycle (read, merge, apply, write, with every data-safety guard) lives
+  // in src/sync/snapshotFileSync.js and the scheduling in
+  // src/hooks/useSnapshotFileSync.js; iCloud is one TRANSPORT of that hook
+  // (src/sync/icloudSnapshotTransport.js) so Direct Access can be the second
+  // without a second copy of the loop (docs/direct-access-sync.md).
+  //
+  // cloudSyncInProgressRef is the snapshot-transport mutex: it serialises
+  // snapshot transports with each other, NOT with the WebDAV engine, which has
+  // its own lock (a WebDAV retry loop must never block iCloud).
+  // iCloudSyncStartedAtRef lets clearStrandedSyncGuards release a lock that
+  // iOS stranded by suspending the app mid-cycle.
   const openNewInboxTaskRef = useRef(null);
   const openNewTaskFormRef = useRef(null);
-  const iCloudLastWriteAtRef = useRef(0);
-  // First-run restore choice. The ref gates the sync loop synchronously (state
-  // lands a render too late to stop the next 15-second tick); the state drives the
-  // modal. Null when nothing is pending.
-  const icloudFirstRunPromptRef = useRef(false);
-  // Epoch ms of the first consecutive cycle that found the snapshot absent, or 0
-  // when it was last seen present. Distinguishes a transient iCloud eviction from
-  // a file that is really gone (utils/icloudSeedGuard.js).
-  const iCloudMissingSinceRef = useRef(0);
-  const [icloudFirstRun, setICloudFirstRun] = useState(null);
-
-  const isElectronMac = () =>
-    !!(window.electronAPI?.isElectron && window.electronAPI?.platform === 'darwin');
-
-  // Bird's full round-trip (local write → CloudKit upload → server-truth sync-down)
-  // takes ~5-10 s on a healthy link. Writing faster than that piles new conflict
-  // versions onto the CloudKit document zone, because each upload races bird's
-  // pending sync-down ACK. Skip writes inside this window — the 15 s poll
-  // re-runs the merge and writes any genuinely-deferred changes on the next tick.
-  const ICLOUD_WRITE_THROTTLE_MS = 5000;
-
-  const iCloudWriteSync = async (onIOS, payloadStr) => {
-    if (Date.now() - iCloudLastWriteAtRef.current < ICLOUD_WRITE_THROTTLE_MS) return;
-    iCloudLastWriteAtRef.current = Date.now();
-    if (onIOS) {
-      try {
-        const r = JSON.parse(window.DayGlanceNative.writeICloudSync(payloadStr));
-        if (!r.ok) console.error('iCloud write failed:', r.error);
-      } catch { console.error('iCloud write failed'); }
-    } else {
-      const ok = await window.electronAPI.writeICloud(payloadStr);
-      if (!ok) console.error('iCloud write failed');
-    }
-  };
-
-  const iCloudSync = async () => {
-    const onIOS = isNativeIOS();
-    const onMac = !onIOS && isElectronMac();
-    if (!onIOS && !onMac) return;
-    if (!dataLoaded) return;
-    // A reset in flight has already deleted the snapshot (scope 'everywhere') or
-    // deliberately left it alone (scope 'device'). Either way this cycle must not
-    // run: React state still holds the pre-reset data, so seeding or merging from
-    // it would write every task straight back into iCloud. Cleared by the reload.
-    if (isResetInProgress()) return;
-    // The user chose "start fresh on this device" at first run (or switched iCloud
-    // off in settings). Fully inert: nothing read is applied, nothing is written,
-    // so the container copy and every other device are untouched. Absence of a
-    // decision still means ON — zero-config stays the default for everyone.
-    if (!isICloudSyncEnabled()) return;
-    // A pending first-run choice must not be pre-empted by the 15-second poll:
-    // merging now is precisely the silent restore the prompt exists to offer a way
-    // out of.
-    if (icloudFirstRunPromptRef.current) return;
-    // iCloud and WebDAV are independent transports — don't gate iCloud on the
-    // WebDAV engine's isSyncing() state. If WebDAV is stuck in a retry loop
-    // (e.g. persistent 412), iCloud sync would be permanently blocked.
-    // cloudSyncInProgressRef is the iCloud-only mutex; it's sufficient here.
-    if (cloudSyncInProgressRef.current) {
-      iCloudPendingRef.current = true;
-      return;
-    }
-
-    // iCloud Drive is already encrypted by Apple at rest and in transit — app-level
-    // encryption is WebDAV-only. iCloud sync always reads and writes plaintext.
-    // If the file happens to be an encrypted envelope (written by an older build),
-    // we attempt to decrypt it once and write it back as plaintext below.
-
-    // iOS: re-probe iCloud availability every cycle rather than caching a sticky
-    // result. A sticky cache meant disabling iCloud Drive mid-session left the value
-    // at `true`, so every 15s poll still read the container, got an "iCloud not
-    // available" error, and flashed a transient sync error until the app was
-    // relaunched. Re-probing is cheap (a nil-container check) and self-healing: we
-    // bail silently while iCloud is off and resume automatically when it returns.
-    if (onIOS) {
-      let available = false;
-      try {
-        available = JSON.parse(window.DayGlanceNative.iCloudAvailable()).available === true;
-      } catch { available = false; }
-      if (!available) return;
-    }
-
-    cloudSyncInProgressRef.current = true;
-    iCloudSyncStartedAtRef.current = Date.now();
-    try {
-      const str = onIOS
-        ? window.DayGlanceNative.readICloudSync()
-        : await window.electronAPI.readICloud();
-
-      if (!str || str === 'null') {
-        // No remote file yet — seed it with local data, but only if state is hydrated.
-        // If React state is empty but localStorage has tasks, we'd wipe the cloud file.
-        //
-        // iCloud can temporarily evict the file and report it absent without leaving
-        // a .icloud placeholder, so an absent file is only treated as first run when
-        // this device has never read a real snapshot, or has been seeing it absent
-        // for long enough that eviction no longer explains it. See
-        // utils/icloudSeedGuard.js — including why the previous version of this
-        // guard, keyed on day-planner-cloud-sync-last-synced, never fired for the
-        // iCloud-only devices it was written for.
-        const missing = evaluateMissingSnapshot({
-          hasSyncedBefore: !!localStorage.getItem(ICLOUD_LAST_SYNCED_KEY),
-          missingSince: iCloudMissingSinceRef.current,
-          now: Date.now(),
-        });
-        iCloudMissingSinceRef.current = missing.missingSince;
-        if (missing.skip) return;
-        const localTaskCount = JSON.parse(localStorage.getItem('day-planner-tasks') || '[]').length;
-        const localInboxCount = JSON.parse(localStorage.getItem('day-planner-unscheduled') || '[]').length;
-        const payload = buildSyncPayload();
-        const payloadTaskCount = (payload.data?.tasks?.length || 0) + (payload.data?.unscheduledTasks?.length || 0);
-        if (localTaskCount + localInboxCount > 0 && payloadTaskCount === 0) return;
-        // Guideline 5.1.3: never write HealthKit-derived counts to iCloud.
-        await iCloudWriteSync(onIOS, JSON.stringify(stripHealthSourcedLogs(payload, habits)));
-        return;
-      }
-
-      // iCloud file exists but is still downloading from the cloud — skip this
-      // cycle and let the 15-second poll retry once it's available locally.
-      let remote;
-      try { remote = JSON.parse(str); } catch { return; }
-      if (remote?.downloading) return;
-      if (remote?.error) {
-        console.error('iCloud unavailable:', remote.error);
-        setCloudSyncError(t('sync.errors.iCloudUnavailable', { error: remote.error }));
+  const iCloudTransport = useMemo(() => createICloudSnapshotTransport(), []);
+  const iCloudSync = useSnapshotFileSync({
+    transport: iCloudTransport,
+    active: !isTrayMode,
+    dataLoaded,
+    cloudSyncInProgressRef,
+    pendingRef: iCloudPendingRef,
+    startedAtRef: iCloudSyncStartedAtRef,
+    io: {
+      // Thunks: buildSyncPayload/applyEngineData are declared further down this
+      // component; engineCallbacksRef is refreshed with them every render.
+      buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
+      applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      habits,
+      syncRetentionDays,
+      isResetInProgress,
+      // The bridge returned an {error} object (iCloud not signed in, container
+      // unavailable): show it on the cloud-sync status line, briefly.
+      onUnavailable: (error) => {
+        setCloudSyncError(t('sync.errors.iCloudUnavailable', { error }));
         setCloudSyncStatus('error');
         setTimeout(() => setCloudSyncStatus((s) => s === 'error' ? 'idle' : s), 5000);
-        return;
-      }
-
-      // If the file is an encrypted envelope (written by an older build that
-      // incorrectly applied WebDAV encryption to iCloud), attempt to decrypt
-      // it once using the cached key and write it back as plaintext. If
-      // decryption fails, treat it as a first-sync and overwrite with local data.
-      if (isEncryptedEnvelope(remote)) {
-        try { remote = await decryptData(remote); }
-        catch (decErr) {
-          console.warn('[iCloudSync] encrypted iCloud file could not be decrypted — reseeding from local data:', decErr?.message ?? decErr);
-          remote = null;
-        }
-        if (!remote?.data) {
-          const payload = buildSyncPayload();
-          // Guideline 5.1.3: never write HealthKit-derived counts to iCloud.
-          await iCloudWriteSync(onIOS, JSON.stringify(stripHealthSourcedLogs(payload, habits)));
-          return;
-        }
-      }
-      if (!remote?.data) return;
-
-      // A real snapshot came back, so the container demonstrably works from this
-      // device. Record that — it is what a later absence is measured against, and
-      // it is iCloud's OWN record: the WebDAV key this used to rely on is written
-      // by a tier an iCloud-only device never runs. Stamped before the first-run
-      // prompt below, because reading the snapshot is what proves the container
-      // works, regardless of what the user then chooses to do with it.
-      localStorage.setItem(ICLOUD_LAST_SYNCED_KEY, new Date().toISOString());
-      iCloudMissingSinceRef.current = 0;
-
-      // First launch on a device with no data of its own, facing a cloud copy that
-      // survived an uninstall. Ask instead of restoring silently — see
-      // utils/icloudSyncPref.js for why the toggle cannot be remembered across a
-      // reinstall. Returning here leaves the snapshot untouched; the choice
-      // handler resumes or disables sync.
-      const localDataForPrompt = buildSyncPayload().data;
-      if (shouldPromptFirstRun({
-        decided: getICloudSyncPref() !== null,
-        remoteHasData: payloadHasData(remote.data),
-        localHasData: payloadHasData(localDataForPrompt),
-        icloudAvailable: true,
-      })) {
-        icloudFirstRunPromptRef.current = true;
-        setICloudFirstRun({
-          taskCount: remote.data.tasks?.length ?? 0,
-          inboxCount: remote.data.unscheduledTasks?.length ?? 0,
-          lastModified: remote.lastModified ?? null,
-        });
-        return;
-      }
-
-      const localData = buildSyncPayload().data;
-      const { data: mergedData, localChanged, remoteChanged } = mergeSyncData(localData, remote.data, syncRetentionDays);
-
-      if (localChanged) {
-        // Apply the FULL merged data locally (health-sourced counts stay on-device).
-        applyEngineData(mergedData, { allowEmpty: !!remote.lastModified });
-        localStorage.setItem('day-planner-cloud-sync-local-modified', new Date().toISOString());
-      }
-      if (remoteChanged || localChanged) {
-        // Guideline 5.1.3: strip HealthKit-derived counts from the copy written to
-        // iCloud only — the local application above keeps them (re-derived per device).
-        const outPayload = stripHealthSourcedLogs(
-          { version: 2, lastModified: new Date().toISOString(), data: mergedData },
-          habits,
-        );
-        await iCloudWriteSync(onIOS, JSON.stringify(outPayload));
-      }
-    } finally {
-      cloudSyncInProgressRef.current = false;
-    }
-  };
-
-  // Keep ref fresh so interval and event listeners always call the latest closure.
-  iCloudSyncRef.current = iCloudSync;
-
-  // First-run choice handlers. Both record a decision so the prompt never returns;
-  // that is what setICloudSyncEnabled(true) is for on the restore path, where the
-  // sync behaviour itself is unchanged.
-  const acceptICloudRestore = () => {
-    setICloudSyncEnabled(true);
-    setICloudFirstRun(null);
-    icloudFirstRunPromptRef.current = false;
-    // Run immediately rather than waiting up to 15 seconds for the next tick.
-    iCloudSyncRef.current?.();
-  };
-
-  const declineICloudRestore = () => {
-    setICloudSyncEnabled(false);
-    setICloudFirstRun(null);
-    icloudFirstRunPromptRef.current = false;
-    // Nothing else to do: the gate at the top of iCloudSync now returns early, so
-    // the container copy is never read or written from this device. Other devices
-    // keep theirs. Reversible from Settings → Cloud Sync.
-  };
-
-  // Run once on startup after data is loaded.
-  useEffect(() => {
-    if (isTrayMode || !dataLoaded || (!isNativeIOS() && !isElectronMac())) return;
-    iCloudSyncRef.current?.();
-  }, [dataLoaded]);
-
-  // Poll every 15 seconds — iCloud daemon handles actual network sync;
-  // we just read/write the local container file. 15s ensures changes appear
-  // promptly even when the real-time watchers (NSMetadataQuery / fs.watch)
-  // don't fire, which is common for iCloud-daemon-managed files.
-  useEffect(() => {
-    if (isTrayMode || (!isNativeIOS() && !isElectronMac())) return;
-    const timer = setInterval(() => iCloudSyncRef.current?.(), 15 * 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // On Electron/macOS, also sync when the window comes back to the foreground.
-  useEffect(() => {
-    if (isTrayMode || !isElectronMac()) return;
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') iCloudSyncRef.current?.();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, []);
-
-  // On Electron/macOS, sync immediately when the main process detects the iCloud
-  // file was changed by the iOS app (fs.watch → icloud:changed IPC event).
-  // If a sync is already in progress, schedule a retry so the change isn't lost.
-  useEffect(() => {
-    if (isTrayMode || !isElectronMac()) return;
-    return window.electronAPI.onICloudChanged?.(() => {
-      if (cloudSyncInProgressRef.current) {
-        setTimeout(() => iCloudSyncRef.current?.(), 2000);
-      } else {
-        iCloudSyncRef.current?.();
-      }
-    });
-  }, [cloudSyncInProgressRef]);
+      },
+    },
+  });
 
   // Cloud sync: download on app load or when sync is first enabled.
   // One-time check: if existing sync user is still on the legacy 'dayglance'
@@ -9623,9 +9391,9 @@ const DayPlanner = () => {
       {/* First-run iCloud restore choice. Sits alongside the WebDAV conflict
           dialog below, which covers the same moment for the file tier. */}
       <ICloudFirstRunModal
-        info={icloudFirstRun}
-        onRestore={acceptICloudRestore}
-        onStartFresh={declineICloudRestore}
+        info={iCloudSync.firstRun}
+        onRestore={iCloudSync.acceptFirstRun}
+        onStartFresh={iCloudSync.declineFirstRun}
         cardBg={cardBg}
         borderClass={borderClass}
         textPrimary={textPrimary}

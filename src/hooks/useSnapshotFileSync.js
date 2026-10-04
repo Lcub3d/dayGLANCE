@@ -1,0 +1,195 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { runSnapshotFileCycle } from '../sync/snapshotFileSync.js';
+import { mergeSyncData } from '../mergeSync.js';
+import { stripHealthSourcedLogs } from '../utils/healthLogFilter.js';
+import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
+
+/**
+ * Schedules snapshot-file sync (sync/snapshotFileSync.js) for one transport.
+ *
+ * One instance per transport: iCloud today (sync/icloudSnapshotTransport.js),
+ * Direct Access next (docs/direct-access-sync.md). The hook owns what needs
+ * React — the poll, the foreground and change-event kicks, the first-run
+ * prompt state — and the guards that must be synchronous:
+ *
+ *   • `cloudSyncInProgressRef` is the file-transport mutex. It is shared
+ *     across instances so two snapshot transports never merge into state at
+ *     once; the WebDAV engine has its own lock and is NOT gated on this one,
+ *     so a WebDAV retry loop (a persistent 412) can never block iCloud.
+ *   • `startedAtRef` records when the mutex was taken, so a foreground resume
+ *     can tell a live cycle from one iOS stranded by suspending the app
+ *     mid-sync (App.jsx clearStrandedSyncGuards releases a stale lock).
+ *   • `pendingRef` is raised when a cycle is skipped under the lock.
+ *   • the first-run prompt gates the loop through a ref, because state lands a
+ *     render too late to stop the next poll tick, and merging then is exactly
+ *     the silent restore the prompt exists to offer a way out of.
+ *
+ * `io` is read through a latest-value ref, so the callbacks App passes may
+ * close over state freely; `buildSyncPayload`/`applyEngineData` should still be
+ * thunks when they are declared later in the component than the hook call.
+ *
+ * @param {object} args
+ * @param {object}  args.transport           see sync/snapshotFileSync.js and icloudSnapshotTransport.js
+ * @param {boolean} args.active              false in the tray popup, which never syncs
+ * @param {boolean} args.dataLoaded
+ * @param {{current: boolean}} args.cloudSyncInProgressRef
+ * @param {{current: boolean}} [args.pendingRef]
+ * @param {{current: number}}  [args.startedAtRef]
+ * @param {object}  args.io
+ * @param {() => object} args.io.buildSyncPayload
+ * @param {(data: object, opts: object) => void} args.io.applyEngineData
+ * @param {Array}   args.io.habits
+ * @param {number}  args.io.syncRetentionDays
+ * @param {() => boolean} [args.io.isResetInProgress]
+ * @param {(error: string) => void} [args.io.onUnavailable]  transport reported an error object
+ * @param {() => number} [args.io.now]
+ * @returns {{
+ *   runSync: () => Promise<void>,
+ *   firstRun: null | {taskCount: number, inboxCount: number, lastModified: string|null},
+ *   acceptFirstRun: () => void,
+ *   declineFirstRun: () => void,
+ * }}
+ */
+export default function useSnapshotFileSync({
+  transport, active, dataLoaded,
+  cloudSyncInProgressRef, pendingRef, startedAtRef,
+  io,
+}) {
+  const enabled = !!active && transport.isSupported();
+
+  const ioRef = useRef(io);
+  ioRef.current = io;
+  const dataLoadedRef = useRef(dataLoaded);
+  dataLoadedRef.current = dataLoaded;
+
+  const internalPendingRef = useRef(false);
+  const internalStartedAtRef = useRef(0);
+  const pending = pendingRef ?? internalPendingRef;
+  const startedAt = startedAtRef ?? internalStartedAtRef;
+
+  // Carried between cycles: the eviction clock and the write throttle stamp.
+  const cycleStateRef = useRef({ missingSince: 0, lastWriteAt: 0 });
+  // Ref gates the loop synchronously; state drives the modal.
+  const firstRunPendingRef = useRef(false);
+  const [firstRun, setFirstRun] = useState(null);
+
+  const runCycle = async () => {
+    if (!enabled) return;
+    if (!dataLoadedRef.current) return;
+    // A reset in flight has already deleted the snapshot (scope 'everywhere')
+    // or deliberately left it alone (scope 'device'). React state still holds
+    // the pre-reset data, so seeding or merging now would write every task
+    // straight back. Cleared by the reload.
+    if (ioRef.current.isResetInProgress?.()) return;
+    // Switched off on this device: fully inert, nothing read is applied and
+    // nothing is written, so the remote copy and other devices are untouched.
+    if (!transport.isEnabled()) return;
+    if (firstRunPendingRef.current) return;
+    if (cloudSyncInProgressRef.current) {
+      pending.current = true;
+      return;
+    }
+    if (!transport.isAvailable()) return;
+
+    cloudSyncInProgressRef.current = true;
+    startedAt.current = Date.now();
+    try {
+      const { state, outcome } = await runSnapshotFileCycle({
+        transport,
+        io: {
+          buildSyncPayload: ioRef.current.buildSyncPayload,
+          applyEngineData: ioRef.current.applyEngineData,
+          habits: ioRef.current.habits,
+          syncRetentionDays: ioRef.current.syncRetentionDays,
+          mergeSyncData,
+          stripHealthSourcedLogs,
+          isEncryptedEnvelope,
+          decryptData,
+          storage: localStorage,
+          now: ioRef.current.now,
+        },
+        state: cycleStateRef.current,
+      });
+      cycleStateRef.current = state;
+      if (outcome.kind === 'prompted') {
+        firstRunPendingRef.current = true;
+        setFirstRun(outcome.info);
+      } else if (outcome.kind === 'error') {
+        console.error(`[${transport.id}] unavailable:`, outcome.error);
+        ioRef.current.onUnavailable?.(outcome.error);
+      }
+    } catch (err) {
+      // A transport that throws (rather than returning an error object) must
+      // not surface as an unhandled rejection from a timer; the next poll
+      // retries exactly as it does for a skipped cycle.
+      console.error(`[${transport.id}] sync cycle failed:`, err?.message ?? err);
+    } finally {
+      cloudSyncInProgressRef.current = false;
+    }
+  };
+
+  // Stable entry point: timers and the foreground listeners in App.jsx call
+  // through it and always reach the latest closure.
+  const runCycleRef = useRef(runCycle);
+  runCycleRef.current = runCycle;
+  const runSync = useCallback(() => runCycleRef.current(), []);
+
+  // Both choices record a decision so the prompt never returns; recording
+  // `true` on the restore path is what marks it answered.
+  const acceptFirstRun = useCallback(() => {
+    transport.setEnabled(true);
+    setFirstRun(null);
+    firstRunPendingRef.current = false;
+    // Run now rather than waiting up to a poll interval.
+    runCycleRef.current();
+  }, [transport]);
+
+  const declineFirstRun = useCallback(() => {
+    transport.setEnabled(false);
+    setFirstRun(null);
+    firstRunPendingRef.current = false;
+    // Nothing else to do: the isEnabled gate now returns early, so the remote
+    // copy is never read or written from this device. Reversible in Settings.
+  }, [transport]);
+
+  // Once on startup, after data is loaded.
+  useEffect(() => {
+    if (!enabled || !dataLoaded) return;
+    runSync();
+  }, [enabled, dataLoaded, runSync]);
+
+  // Poll. The daemon handles the network; we read and write the local file.
+  // The cadence keeps changes prompt even when the real-time watchers don't
+  // fire, which is common for daemon-managed files.
+  useEffect(() => {
+    if (!enabled) return;
+    const timer = setInterval(runSync, transport.pollMs);
+    return () => clearInterval(timer);
+  }, [enabled, transport, runSync]);
+
+  // Re-sync when the window comes back to the foreground, where the transport
+  // asks for it (desktop; iOS routes its foreground event through App.jsx).
+  useEffect(() => {
+    if (!enabled || !transport.kicksOnVisibility?.()) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') runSync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [enabled, transport, runSync]);
+
+  // Push signal from the native side (the file changed under us). If a cycle
+  // is already running, retry shortly so the change isn't lost.
+  useEffect(() => {
+    if (!enabled || !transport.onChanged) return;
+    return transport.onChanged(() => {
+      if (cloudSyncInProgressRef.current) {
+        setTimeout(runSync, 2000);
+      } else {
+        runSync();
+      }
+    });
+  }, [enabled, transport, cloudSyncInProgressRef, runSync]);
+
+  return { runSync, firstRun, acceptFirstRun, declineFirstRun };
+}

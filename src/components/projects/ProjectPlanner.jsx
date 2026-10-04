@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
+import { useSyncCtx } from '../../context/SyncContext.jsx';
+import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
+import { noteTextHash } from '@glance-apps/obsidian-format';
+import { BookOpen, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { dateToString } from '../../utils/taskUtils.js';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
@@ -59,6 +63,34 @@ const ProjectPlanner = ({ project, onClose }) => {
   // away) saves and switches to the formatted preview; clicking the preview
   // returns to editing. Starts in preview when notes already exist.
   const [editingNotes, setEditingNotes] = useState(!(project.description || '').trim());
+  // THE LINKED NOTE'S DESCRIPTION (owner ruling 2026-10-03): for a project
+  // linked to an Obsidian note, this box IS the section under the note's
+  // title. Loaded from the vault when the planner opens, edited here, written
+  // back as that section; refused and reloaded when the section moved in
+  // Obsidian meanwhile. The record's description is empty for such a
+  // project (it migrated into the note). Where this device cannot read the
+  // vault, the box says where the notes live instead of offering an editor.
+  const { loadNoteDescription, saveNoteDescription, openInObsidian } = useSyncCtx() || {};
+  const noteLink = noteLinkOf(project);
+  const vaultNotes = !!noteLink && !noteLink.missing;
+  const [vault, setVault] = useState({ text: '', base: null, loading: vaultNotes, unavailable: false, error: null, conflict: false });
+  const vaultRef = useRef(vault);
+  vaultRef.current = vault;
+  useEffect(() => {
+    if (!vaultNotes) return undefined;
+    if (!loadNoteDescription) { setVault((v) => ({ ...v, loading: false, unavailable: true })); return undefined; }
+    let cancelled = false;
+    loadNoteDescription(noteLink.path).then((r) => {
+      if (cancelled) return;
+      if (!r || r.notFound) { setVault({ text: '', base: null, loading: false, unavailable: true, error: r ? 'not_found' : null, conflict: false }); return; }
+      setVault({ text: r.text, base: r.base, loading: false, unavailable: false, error: null, conflict: false });
+      setNotes(r.text);
+      setEditingNotes(!r.text.trim());
+    }).catch((err) => { if (!cancelled) setVault({ text: '', base: null, loading: false, unavailable: true, error: err?.message || String(err), conflict: false }); });
+    return () => { cancelled = true; };
+    // The link's path is the identity of what is loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteLink?.path, loadNoteDescription]);
   const [quickAddTitle, setQuickAddTitle] = useState('');
   // Persisted on the project record like plannerScheduledHidden below, so
   // each planner remembers its own choice and it syncs with the project.
@@ -77,6 +109,23 @@ const ProjectPlanner = ({ project, onClose }) => {
   const touchDragRef = useRef({ active: false, fromIdx: null, overIdx: null });
 
   const saveNotes = () => {
+    if (vaultNotes) {
+      const v = vaultRef.current;
+      if (v.loading || v.unavailable || !saveNoteDescription || notes === v.text) return;
+      saveNoteDescription('project', project.id, noteLink.path, notes, { base: v.base }).then((r) => {
+        if (r?.refused) {
+          // The section moved in Obsidian: reload it, keep the unsaved text
+          // below it for the user to settle, and say so.
+          const merged = `${r.text}\n\n${notes}`.trim();
+          setVault({ text: r.text, base: noteTextHash(r.text), loading: false, unavailable: false, error: null, conflict: true });
+          setNotes(merged);
+          setEditingNotes(true);
+          return;
+        }
+        if (r?.ok) setVault((prev) => ({ ...prev, text: notes, base: noteTextHash(notes), conflict: false }));
+      }).catch(() => {});
+      return;
+    }
     if ((project.description || '') !== notes) {
       updateProject(project.id, { description: notes.trim() });
     }
@@ -91,6 +140,15 @@ const ProjectPlanner = ({ project, onClose }) => {
   const notesRef = useRef(notes);
   notesRef.current = notes;
   useEffect(() => () => {
+    if (vaultNotes) {
+      // The unmount flush writes without a base, as the task panel's does:
+      // nothing can be shown or reloaded on the way out.
+      const v = vaultRef.current;
+      if (!v.loading && !v.unavailable && saveNoteDescription && notesRef.current !== v.text) {
+        saveNoteDescription('project', project.id, noteLink.path, notesRef.current).catch(() => {});
+      }
+      return;
+    }
     if ((project.description || '') !== notesRef.current) {
       updateProject(project.id, { description: notesRef.current.trim() });
     }
@@ -451,10 +509,36 @@ const ProjectPlanner = ({ project, onClose }) => {
           className={`p-4 flex flex-col gap-4 ${isMobile ? 'flex-shrink-0' : `flex-1 min-h-0 overflow-y-auto min-w-0${sidebar ? ' max-w-[48rem]' : ''}`}`}
           style={isMobile ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}
         >
-          {/* Notes — same interaction model as task notes panels */}
-          <div className="flex flex-col gap-1 flex-shrink-0">
-            <label className={`text-xs font-medium ${textSecondary}`}>{t('task.notes', 'Notes')}</label>
-            {editingNotes ? (
+          {/* Notes — same interaction model as task notes panels; for a
+              linked project, the linked note's description section. */}
+          <div className="flex flex-col gap-1 flex-shrink-0" data-notes-source={vaultNotes ? 'vault' : 'record'}>
+            <label className={`text-xs font-medium ${textSecondary} flex items-center gap-1.5`}>
+              {vaultNotes && <BookOpen size={11} />}
+              <span className="flex-1">{vaultNotes ? noteLink.name : t('task.notes', 'Notes')}</span>
+              {vaultNotes && openInObsidian && (
+                <button
+                  type="button"
+                  onClick={() => openInObsidian(noteLink.name)}
+                  title={t('task.openWikiNoteInObsidian', { name: noteLink.name })}
+                  aria-label={t('task.openWikiNoteInObsidian', { name: noteLink.name })}
+                  className={`flex items-center gap-1 px-1 py-0.5 rounded font-normal ${textSecondary} ${hoverBg}`}
+                >
+                  <ExternalLink size={11} />
+                  <span>{t('task.openInObsidian')}</span>
+                </button>
+              )}
+            </label>
+            {vaultNotes && vault.loading ? (
+              <p className={`text-xs italic ${textSecondary}`}>{t('planner.notesLoading', 'Loading from the linked note…')}</p>
+            ) : vaultNotes && vault.unavailable ? (
+              <p data-notes-in-vault={vault.error === 'not_found' ? 'missing' : 'unreadable'} className={`text-xs italic ${vault.error === 'not_found' ? 'text-amber-500' : textSecondary}`}>
+                {vault.error === 'not_found'
+                  ? t('planner.notesNoteMissing', 'The linked note was not found in the vault. Check the note name, or create the note in Obsidian.')
+                  : vault.error
+                    ? t('planner.notesLoadFailed', { error: vault.error })
+                    : t('planner.notesInVault', 'Notes live in the linked note in Obsidian.')}
+              </p>
+            ) : editingNotes ? (
               <textarea
                 autoFocus={!!(project.description || '').trim()}
                 value={notes}
@@ -482,6 +566,9 @@ const ProjectPlanner = ({ project, onClose }) => {
               >
                 {renderFormattedText(notes)}
               </div>
+            )}
+            {vaultNotes && vault.conflict && (
+              <p data-notes-conflict className="text-xs text-amber-500">{t('planner.notesChanged')}</p>
             )}
           </div>
 

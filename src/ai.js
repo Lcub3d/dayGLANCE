@@ -34,13 +34,17 @@ const PROVIDER_MODELS = {
     { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini', recommended: true },
     { id: 'openai/gpt-4o', label: 'GPT-4o' },
     { id: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5' },
-    { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { id: 'anthropic/claude-sonnet-5-5', label: 'Claude Sonnet 5.5' },
     { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
     { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B' },
   ],
+  // Anthropic's list is fetchable too (GET /v1/models); these are the
+  // starting point, current as of 2026-10-04.
   anthropic: [
-    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', recommended: true },
-    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', recommended: true },
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5' },
+    { id: 'claude-fable-5-1', label: 'Claude Fable 5.1' },
   ],
   // STALE LISTS ARE A BUG CLASS (2026-10-03, field report): the 2.0 and the
   // 2.5 preview ids here were retired by Google and every Gemini feature
@@ -370,6 +374,11 @@ export function parseModelList(provider, data) {
     }
   } else if (provider === 'ollama') {
     for (const m of data?.models || []) if (typeof m?.name === 'string' && m.name) out.push({ id: m.name, label: m.name });
+  } else if (provider === 'anthropic') {
+    for (const m of data?.data || []) {
+      if (typeof m?.id !== 'string' || !m.id) continue;
+      out.push({ id: m.id, label: typeof m.display_name === 'string' && m.display_name ? `${m.display_name} (${m.id})` : m.id });
+    }
   } else {
     for (const m of data?.data || []) if (typeof m?.id === 'string' && m.id) out.push({ id: m.id, label: m.id });
   }
@@ -386,6 +395,14 @@ export async function fetchProviderModels(config) {
     case 'gemini':
       url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
       headers['x-goog-api-key'] = config.apiKey;
+      break;
+    case 'anthropic':
+      // The same direct-from-browser headers the messages call uses. The
+      // list is paged (has_more / last_id); pages are followed below.
+      url = 'https://api.anthropic.com/v1/models?limit=1000';
+      headers['x-api-key'] = config.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
       break;
     case 'openai':
       url = 'https://api.openai.com/v1/models';
@@ -405,13 +422,26 @@ export async function fetchProviderModels(config) {
     default:
       throw new Error(`No model list for ${PROVIDER_LABELS[provider] || provider}`);
   }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    let detail = '';
-    try { detail = (await res.json())?.error?.message || ''; } catch { /* no body */ }
-    throw new Error(detail || `HTTP ${res.status}`);
+  const page = async (pageUrl) => {
+    const res = await fetch(pageUrl, { headers });
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json())?.error?.message || ''; } catch { /* no body */ }
+      throw new Error(detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  };
+  let data = await page(url);
+  if (provider === 'anthropic') {
+    // Follow the cursor, bounded, folding every page into one data array.
+    const all = [...(data?.data || [])];
+    for (let i = 0; i < 10 && data?.has_more && data?.last_id; i++) {
+      data = await page(`${url}&after_id=${encodeURIComponent(data.last_id)}`);
+      all.push(...(data?.data || []));
+    }
+    data = { data: all };
   }
-  const models = parseModelList(provider, await res.json());
+  const models = parseModelList(provider, data);
   if (!models.length) throw new Error('The provider returned no models');
   return models;
 }

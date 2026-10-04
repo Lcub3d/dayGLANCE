@@ -115,7 +115,8 @@ manually or via BRAT, not submitted to the community directory.
   removes the key. The plugin follows renames, reports a deleted note as
   missing (dayGLANCE keeps the project and offers a relink), re-finds a
   note by its key on a periodic walk, and applies link and unlink requests
-  made from dayGLANCE. A linked note also carries a `dayglance:` frontmatter
+  made from dayGLANCE (a bare note name on a request resolves as Obsidian
+  resolves a link, and the record learns the note's real path). A linked note also carries a `dayglance:` frontmatter
   map the plugin maintains from its mirror: `kind`, `status`, and on a
   project note `goal` (a wikilink to the goal's note when it is linked).
   Counts and dates are deliberately not in it, so it is rewritten only when
@@ -140,6 +141,15 @@ manually or via BRAT, not submitted to the community directory.
   "trigger on new file creation" on, a template that asks for input is not
   applied at all (the trigger would run that prompt unattended); the
   settings tab says so.
+  **A project's notes box is its note's description** (companion §4.3,
+  owner ruling 2026-10-03): the paragraph under the note's title. The
+  plugin puts the box into that slot at creation (`{{description}}` in a
+  template), merges an existing box below whatever the note already says on
+  link, and applies the planner's edits as a section replace
+  (`project_note_description`). A save that carries a `base` the section no
+  longer matches keeps the vault's text and appends the dayGLANCE text as a
+  dated callout; a `wiki_note_write` whose `base` the note no longer matches
+  is left alone.
   **A project's tasks live in its note** (companion §4.3, project routing):
   a task assigned to a linked project in dayGLANCE is written into the
   note's `## Tasks` section (created there, moved there on reassignment,

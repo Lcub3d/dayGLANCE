@@ -143,23 +143,25 @@ describe('project notes: link observations → the project record', () => {
 });
 
 describe('project notes: link and unlink from dayGLANCE', () => {
-  it('linkProjectNote queues the frontmatter intent FIRST and updates the record only when it queued', () => {
+  it('linkProjectNote queues the frontmatter intent FIRST; with no stream to carry the key the record links alone, marked pending (owner 2026-10-03)', () => {
     const h = useMountedHook({ projects: [{ id: 'p1', title: 'House' }] });
     expect(h.api.linkProjectNote('project', 'p1', '[[Projects/House]]')).toBe(true);
     expect(emitBridgeIntent).toHaveBeenCalledWith('project_note_link', { path: 'Projects/House.md', targetId: 'p1' });
-    expect(h.updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: null });
+    expect(h.updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: 'Projects/House.md', obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
 
     emitBridgeIntent.mockReturnValue(false); // unpaired vault: nothing durable to write the key
     h.updateProject.mockClear();
-    expect(h.api.linkProjectNote('project', 'p1', 'Elsewhere')).toBe(false);
-    expect(h.updateProject).not.toHaveBeenCalled();
+    expect(h.api.linkProjectNote('project', 'p1', 'Elsewhere')).toBe(true);
+    expect(h.updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: 'Elsewhere.md', obsidianNoteMissingAt: null, obsidianNoteLinkPending: expect.any(String) });
+    h.updateProject.mockClear();
     expect(h.api.linkProjectNote('project', 'p1', '   ')).toBe(false);
+    expect(h.updateProject).not.toHaveBeenCalled();
   });
 
   it('unlinkProjectNote clears the record and asks the plugin to remove the key from the note it pointed at', () => {
     const h = useMountedHook({ projects: [{ id: 'p1', title: 'House', obsidianNotePath: 'Projects/House.md' }] });
     expect(h.api.unlinkProjectNote('project', 'p1')).toBe(true);
-    expect(h.updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: null, obsidianNoteMissingAt: null });
+    expect(h.updateProject).toHaveBeenCalledWith('p1', { obsidianNotePath: null, obsidianNoteMissingAt: null, obsidianNoteLinkPending: null });
     expect(emitBridgeIntent).toHaveBeenCalledWith('project_note_unlink', { path: 'Projects/House.md', targetId: 'p1' });
   });
 });

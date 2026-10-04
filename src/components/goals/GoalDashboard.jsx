@@ -39,8 +39,9 @@ import {
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
-import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
+import { noteLinkOf, noteLinkFromTitle } from '../../utils/obsidianProjectNotes.js';
 import { isStreamPosture } from '../../utils/obsidianVaultPosture.js';
+import { noteTextHash } from '@glance-apps/obsidian-format';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
@@ -129,6 +130,28 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
 
   const [title, setTitle] = useState(initial?.title || '');
   const [description, setDescription] = useState(initial?.description || '');
+  // THE LINKED NOTE'S DESCRIPTION (owner ruling 2026-10-03): a goal linked
+  // to an Obsidian note edits the section under its note's title here, the
+  // same way the project planner does; refused and reloaded when the section
+  // moved in Obsidian meanwhile. Without a vault read on this device the
+  // field says where the notes live and the record's value is left alone.
+  const { loadNoteDescription, saveNoteDescription } = useSyncCtx() || {};
+  const goalNoteLink = initial ? noteLinkOf(initial) : null;
+  const vaultNotes = !!goalNoteLink && !goalNoteLink.missing;
+  const [vault, setVault] = useState({ base: null, text: '', loading: vaultNotes, unavailable: false, missing: false, conflict: false });
+  useEffect(() => {
+    if (!vaultNotes) return undefined;
+    if (!loadNoteDescription) { setVault((v) => ({ ...v, loading: false, unavailable: true })); return undefined; }
+    let cancelled = false;
+    loadNoteDescription(goalNoteLink.path).then((r) => {
+      if (cancelled) return;
+      if (!r || r.notFound) { setVault({ base: null, text: '', loading: false, unavailable: true, missing: !!r?.notFound, conflict: false }); return; }
+      setVault({ base: r.base, text: r.text, loading: false, unavailable: false, conflict: false });
+      setDescription(r.text);
+    }).catch(() => { if (!cancelled) setVault({ base: null, text: '', loading: false, unavailable: true, conflict: false }); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalNoteLink?.path, loadNoteDescription]);
   const [areaId, setAreaId] = useState(initial?.areaId || '');
   // New goals default their start date to today; existing goals keep whatever
   // they have (blank for goals created before this field existed).
@@ -158,10 +181,29 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
   const sortedAreas = [...areas].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const startAfterTarget = !!(startDate && targetDate && startDate > targetDate);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote });
+    // A [[wikilink]] typed into the title names the goal's note (owner,
+    // 2026-10-03): the link leaves the title and rides the save as the
+    // path to link. Linking an existing note never creates one.
+    const fromTitle = noteLinkFromTitle(title);
+    const savedTitle = fromTitle ? fromTitle.title : title.trim();
+    const linkNotePath = fromTitle?.path;
+    if (vaultNotes) {
+      // The section is the note's: written there, never onto the record.
+      if (!vault.loading && !vault.unavailable && saveNoteDescription && description !== vault.text) {
+        const r = await saveNoteDescription('goal', initial.id, goalNoteLink.path, description, { base: vault.base });
+        if (r?.refused) {
+          setVault({ base: noteTextHash(r.text), text: r.text, loading: false, unavailable: false, conflict: true });
+          setDescription(`${r.text}\n\n${description}`.trim());
+          return;
+        }
+      }
+      onSave({ title: savedTitle, description: vault.unavailable ? (initial?.description || '') : '', areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote && !linkNotePath, linkNotePath });
+      return;
+    }
+    onSave({ title: savedTitle, description: description.trim(), areaId: areaId || undefined, startDate: startDate || undefined, targetDate: targetDate || undefined, color, status, assignedUserSyncIds, hideStalled, trackInLifeGlance: showLifeGlanceCheckbox && !alreadyShared && trackInLifeGlance, createNote: !initial && createNote && !linkNotePath, linkNotePath });
   };
 
   return (
@@ -191,15 +233,27 @@ const GoalForm = ({ initial, childProjects = [], onSave, onCancel, onDelete, mob
       {/* Description */}
       <div className="flex flex-col gap-1">
         <label className={`text-xs font-medium ${textSecondary}`}>{t('common.description')}</label>
+        {vaultNotes && vault.unavailable ? (
+          <p data-goal-notes-in-vault={vault.missing ? 'missing' : 'unreadable'} className={`text-xs italic ${vault.missing ? 'text-amber-500' : textSecondary}`}>
+            {vault.missing
+              ? t('planner.notesNoteMissing', 'The linked note was not found in the vault. Check the note name, or create the note in Obsidian.')
+              : t('planner.notesInVault', 'Notes live in the linked note in Obsidian.')}
+          </p>
+        ) : (
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
-          placeholder={t('goals.optionalDescription')}
+          placeholder={vaultNotes && vault.loading ? t('planner.notesLoading', 'Loading from the linked note…') : t('goals.optionalDescription')}
+          disabled={vaultNotes && vault.loading}
           rows={2}
           className={`px-3 py-2 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
             darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
           }`}
         />
+        )}
+        {vaultNotes && vault.conflict && (
+          <p data-goal-notes-conflict className="text-xs text-amber-500">{t('planner.notesChanged')}</p>
+        )}
       </div>
 
       {/* Area */}
@@ -430,18 +484,25 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
   const submit = () => {
     setError('');
     if (!linkProjectNote?.(kind, project.id, path)) {
-      setError('Could not link. Enter a vault path and make sure the dayGLANCE bridge plugin is paired.');
+      setError('Could not link. Enter the vault path of an existing note, with the Obsidian vault enabled in Settings.');
     }
   };
   return (
     <div className="flex flex-col gap-1">
       <label className={`text-xs font-medium ${textSecondary}`}>Obsidian note</label>
       {link && !link.missing ? (
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`${textPrimary} truncate flex-1 min-w-0`} title={link.path}>{link.name}</span>
-          <button type="button" className={btnCls} onClick={() => openInObsidian?.(link.name)}>Open</button>
-          <button type="button" className={btnCls} onClick={() => unlinkProjectNote?.(kind, project.id)}>Unlink</button>
-        </div>
+        <>
+          <div className="flex items-center gap-2 text-sm">
+            <span className={`${textPrimary} truncate flex-1 min-w-0`} title={link.path}>{link.name}</span>
+            <button type="button" className={btnCls} onClick={() => openInObsidian?.(link.name)}>Open</button>
+            <button type="button" className={btnCls} onClick={() => unlinkProjectNote?.(kind, project.id)}>Unlink</button>
+          </div>
+          {link.pending && (
+            <div data-note-link-pending className={`text-[11px] ${textSecondary}`}>
+              Linked here. The dayGLANCE bridge plugin writes the link into the note once it is paired; until then, renaming the note in Obsidian breaks it.
+            </div>
+          )}
+        </>
       ) : (
         <>
           {link?.missing && (
@@ -463,7 +524,7 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
             )}
           </div>
           <div className={`text-[11px] ${textSecondary}`}>
-            Vault path of an existing note. The dayGLANCE bridge plugin writes the link into the note.
+            Vault path of an existing note, or type its [[wikilink]] into the title above. With the dayGLANCE bridge plugin paired, the link is written into the note.
           </div>
           {error && <div className="text-xs text-red-500">{error}</div>}
         </>
@@ -533,7 +594,14 @@ export const ProjectForm = ({ initial, goals, defaultGoalId, onSave, onCancel, m
     if (!title.trim()) return;
     // description and hyperglance are managed in the Project Planner now;
     // omitting them here preserves existing values on save (updateProject merges).
-    onSave({ title: title.trim(), goalId: goalId || undefined, status, color, assignedUserSyncIds, createNote: !initial && createNote });
+    // A [[wikilink]] typed into the title names the project's note (owner,
+    // 2026-10-03): the link leaves the title and rides the save as the
+    // path to link. Linking an existing note never creates one.
+    const fromTitle = noteLinkFromTitle(title);
+    onSave({
+      title: fromTitle ? fromTitle.title : title.trim(), goalId: goalId || undefined, status, color, assignedUserSyncIds,
+      createNote: !initial && createNote && !fromTitle, linkNotePath: fromTitle?.path,
+    });
   };
 
   const activeGoals = goals.filter(g => g.status !== 'archived');
@@ -2488,7 +2556,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     aspireEnabled = false,
   } = useFeaturesCtx();
   // Workspace creation (companion §4.3, rulings D and E): the plugin creates and links the note.
-  const { createProjectNote } = useSyncCtx();
+  const { createProjectNote, linkProjectNote } = useSyncCtx();
   const { t } = useTranslation();
 
   const [goalForm, setGoalForm] = useState(null);
@@ -2719,7 +2787,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   }, [desktop, isActive, goalsSpaceKeysRef]);
 
   const handleSaveGoal = (fields) => {
-    const { trackInLifeGlance, createNote, ...goalFields } = fields;
+    const { trackInLifeGlance, createNote, linkNotePath, ...goalFields } = fields;
     if (goalForm.editing) {
       const wasArchived = goalForm.editing.status === 'archived';
       const nowArchived = goalFields.status === 'archived';
@@ -2746,10 +2814,13 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         && goalForm.editing.source_app !== 'app.lifeglance';
       updateGoal(goalForm.editing.id, { ...goalFields, ...(shareNow ? { synced_to_lifeglance: true } : {}) });
       if (shareNow) emitGoalCreate({ ...goalForm.editing, ...goalFields, synced_to_lifeglance: true });
+      if (linkNotePath) linkProjectNote?.('goal', goalForm.editing.id, linkNotePath);
     } else {
       const newGoal = addGoal({ ...goalFields, ...(trackInLifeGlance ? { synced_to_lifeglance: true } : {}) });
       if (trackInLifeGlance) emitGoalCreate(newGoal);
-      if (createNote && newGoal?.id) createProjectNote?.('goal', newGoal.id, { title: newGoal.title });
+      // The title's wikilink links the note it names; the checkbox creates one. The link wins when both are set.
+      if (linkNotePath && newGoal?.id) linkProjectNote?.('goal', newGoal.id, linkNotePath, { description: newGoal.description });
+      else if (createNote && newGoal?.id) createProjectNote?.('goal', newGoal.id, { title: newGoal.title, description: newGoal.description });
       // A goal created from the space is the one to look at next.
       if (newGoal?.id) setSelectedGoalId(newGoal.id);
     }
@@ -2772,7 +2843,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   };
 
   const handleSaveProject = (allFields) => {
-    const { createNote, ...fields } = allFields;
+    const { createNote, linkNotePath, ...fields } = allFields;
     if (projectForm.editing) {
       const wasArchived = projectForm.editing.status === 'archived';
       const nowArchived = fields.status === 'archived';
@@ -2790,9 +2861,11 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
         setUnscheduledTasks(prev => prev.map(cascadeTask));
       }
       updateProject(projectForm.editing.id, fields);
+      if (linkNotePath) linkProjectNote?.('project', projectForm.editing.id, linkNotePath);
     } else {
       const created = addProject(fields);
-      if (createNote && created?.id) createProjectNote?.('project', created.id, { title: created.title, goalId: created.goalId });
+      if (linkNotePath && created?.id) linkProjectNote?.('project', created.id, linkNotePath);
+      else if (createNote && created?.id) createProjectNote?.('project', created.id, { title: created.title, goalId: created.goalId, description: created.description });
     }
     setProjectForm(null);
   };

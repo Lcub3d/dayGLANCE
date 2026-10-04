@@ -3082,7 +3082,7 @@ const DayPlanner = () => {
   // re-sync, 5-minute poll, task writeback, iOS vault-settings persistence)
   // lives in useObsidianSync; state/refs stay owned by useObsidian above.
   const {
-    performObsidianSync, nudgeObsidianObservations, loadWikiNote, saveWikiNote, openInObsidian, bridgeHeartbeatRef,
+    performObsidianSync, nudgeObsidianObservations, loadWikiNote, saveWikiNote, loadNoteDescription, saveNoteDescription, openInObsidian, bridgeHeartbeatRef,
     linkProjectNote, unlinkProjectNote, createProjectNote,
   } = useObsidianSync({
     defaultTaskHeading: localizedTaskHeading,
@@ -4747,7 +4747,7 @@ const DayPlanner = () => {
     setHgContextMenu(null);
   };
 
-  const saveEditProjectFromBar = (fields) => {
+  const saveEditProjectFromBar = ({ linkNotePath, createNote: _createNote, ...fields }) => {
     if (!pendingEditProjectId) return;
     const projectId = pendingEditProjectId;
     const project = projects.find(p => p.id === projectId);
@@ -4765,6 +4765,7 @@ const DayPlanner = () => {
         setUnscheduledTasks(prev => prev.map(cascadeTask));
       }
       updateProject(projectId, fields);
+      if (linkNotePath) linkProjectNote?.('project', projectId, linkNotePath);
     }
     setPendingEditProjectId(null);
   };
@@ -9021,7 +9022,7 @@ const DayPlanner = () => {
     // always reloads the app (CloudSyncSettingsForm), so a render-time read is current.
     vaultEnabled: isVaultEnabled(),
     syncAll,
-    performObsidianSync, loadWikiNote, saveWikiNote, openInObsidian, nativeClearVault,
+    performObsidianSync, loadWikiNote, saveWikiNote, loadNoteDescription, saveNoteDescription, openInObsidian, nativeClearVault,
     linkProjectNote, unlinkProjectNote, createProjectNote,
     performTrmnlSync,
     performLocalBackup, performRemoteBackup,

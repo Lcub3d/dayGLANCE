@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen, Loader, Sparkles, X, Check, Plus, ExternalLink } from 'lucide-react';
+import { noteTextHash } from '@glance-apps/obsidian-format';
 import { useTranslation } from 'react-i18next';
 import { isOnlyUrl, renderFormattedText } from '../utils/textFormatting.jsx';
 import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js';
@@ -181,6 +182,24 @@ const NotesSubtasksPanel = ({
       if (seeded) return;
       setLinkedNoteStates(prev => ({ ...prev, [noteName]: { text: '', lastModified: null, loading: false, error: err.message } }));
     });
+  };
+
+  // REFUSE ON CHANGE (owner ruling 2026-10-03): the save carries the hash of
+  // the text as loaded; a note that moved in Obsidian meanwhile is not
+  // overwritten. The newer text is loaded, the unsaved text kept below it
+  // for the user to settle, and the panel says so.
+  const saveLinkedNote = (noteName, text) => {
+    const original = linkedNoteOriginalRef.current[noteName] ?? '';
+    if (text === original || !onSaveWikiNote) return;
+    linkedNoteOriginalRef.current[noteName] = text;
+    Promise.resolve(onSaveWikiNote(noteName, text, { base: noteTextHash(original) })).then((r) => {
+      if (!r?.refused) return;
+      const merged = `${r.text}\n\n${text}`.trim();
+      linkedNoteOriginalRef.current[noteName] = r.text;
+      linkedNoteTextsRef.current[noteName] = merged;
+      setLinkedNoteStates(prev => ({ ...prev, [noteName]: { ...(prev[noteName] || {}), text: merged, lastModified: r.lastModified ?? null, loading: false, error: null, conflict: true } }));
+      setLinkedNoteEditing(prev => ({ ...prev, [noteName]: true }));
+    }).catch(() => {});
   };
 
   const handleContentWikilinkClick = (noteName) => {
@@ -399,6 +418,9 @@ const NotesSubtasksPanel = ({
                     </button>
                   )}
                 </div>
+                {state.conflict && (
+                  <p data-linked-note-conflict className="text-xs text-amber-500 mb-1">{t('task.wikiNoteChanged')}</p>
+                )}
                 {state.loading ? (
                   <div className={`flex items-center gap-1.5 py-2 text-xs opacity-60 ${noteMinH} ${th.label}`}>
                     <Loader size={12} className="animate-spin" />
@@ -420,20 +442,14 @@ const NotesSubtasksPanel = ({
                     }}
                     onBlur={() => {
                       const text = linkedNoteTextsRef.current[noteName] ?? '';
-                      if (text !== (linkedNoteOriginalRef.current[noteName] ?? '') && onSaveWikiNote) {
-                        onSaveWikiNote(noteName, text);
-                        linkedNoteOriginalRef.current[noteName] = text;
-                      }
+                      saveLinkedNote(noteName, text);
                       if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && e.shiftKey) {
                         e.preventDefault();
                         const text = linkedNoteTextsRef.current[noteName] ?? '';
-                        if (text !== (linkedNoteOriginalRef.current[noteName] ?? '') && onSaveWikiNote) {
-                          onSaveWikiNote(noteName, text);
-                          linkedNoteOriginalRef.current[noteName] = text;
-                        }
+                        saveLinkedNote(noteName, text);
                         if (text) setLinkedNoteEditing(prev => ({ ...prev, [noteName]: false }));
                         onNoteSaved?.();
                       }

@@ -239,9 +239,18 @@ export function noteNameFromTitle(title: string): string;
 export function projectNotePath(a: { kind: 'project' | 'goal'; title: string; layout?: string; projectsFolder?: string; goalsFolder?: string; goalFolder?: string | null }): string;
 export function uniqueNotePath(path: string, exists: (path: string) => boolean): string;
 export function templateNeedsUser(text: string): boolean;
-export function renderNoteTemplateSubset(text: string, vars?: { title?: string; date?: string; goal?: string }): string;
+export function renderNoteTemplateSubset(text: string, vars?: { title?: string; date?: string; goal?: string; description?: string }): string;
 export function projectCompletionsQuery(dailyFolder?: string): string;
 export function goalProjectsQuery(): string;
 export function goalProgressQuery(dailyFolder?: string): string;
-export function defaultProjectNote(a: { title: string; date: string; hasDataview?: boolean; dailyFolder?: string }): string;
-export function defaultGoalNote(a: { title: string; date: string; hasDataview?: boolean; dailyFolder?: string }): string;
+export function defaultProjectNote(a: { title: string; date: string; hasDataview?: boolean; dailyFolder?: string; description?: string }): string;
+export function defaultGoalNote(a: { title: string; date: string; hasDataview?: boolean; dailyFolder?: string; description?: string }): string;
+
+// ── the description section (noteDescription.js, owner ruling 2026-10-03) ──
+export const DESCRIPTION_PLACEHOLDERS: readonly string[];
+export function noteTextHash(text: string): string;
+export function splitNoteDescription(text: string): { head: string; section: string; tail: string };
+export function extractNoteDescription(text: string): string;
+export function replaceNoteDescription(text: string, content: string): string;
+export function mergeNoteDescription(text: string, content: string): { text: string; changed: boolean };
+export function appendDescriptionConflict(text: string, content: string, at: string): { text: string; changed: boolean };

@@ -40,6 +40,7 @@ const { default: useObsidianSync } = await import('../../src/hooks/useObsidianSy
 const { flushBridgeOutbox, emitBridgeIntent, __resetBridgeStreamForTests } = await import('../../src/utils/obsidianBridgeStream.js');
 const { NoteBlockWriter } = await import('../src/noteBlocks');
 const { parseYaml } = await import('obsidian');
+const { noteTextHash } = await import('@glance-apps/obsidian-format');
 
 type Row = Record<string, any>;
 
@@ -377,6 +378,36 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.plugin.transport.drain();
     expect((s.text(NOTE)!.match(/- \[ \] Chore /g) ?? []).length).toBe(30);
   });
+  it('8b. A BARE NAME ON A LINK REQUEST (2026-10-04): [[House]] typed on a device without the plugin is stored folder-less; the plugin resolves it as Obsidian resolves a link, keys the note in its folder, and the report moves the locator to the real path; a bare name nothing matches, and a folder path to nothing, come back as missing', async () => {
+    const house = { id: 'p1', title: 'House', status: 'active' };
+    const attic = { id: 'p2', title: 'Attic', status: 'active' };
+    const shed = { id: 'p3', title: 'Shed', status: 'active' };
+    await boot({ projects: [house, attic, shed] });
+    await s.write(NOTE, '---\ntags: [hub]\n---\n# House\nMy own hub paragraph.\n');
+    await s.settle();
+    expect(A.api.linkProjectNote('project', 'p1', '[[House]]')).toBe(true);
+    expect(house.obsidianNotePath).toBe('House.md');
+    expect(A.api.linkProjectNote('project', 'p2', '[[Attic]]')).toBe(true);
+    expect(A.api.linkProjectNote('project', 'p3', '[[Projects/Shed]]')).toBe(true);
+    await A.flush();
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBe('p1');
+    expect(frontmatterOf(NOTE).tags).toEqual(['hub']);
+    expect(s.text('House.md')).toBeNull();
+    expect(s.plugin.transport.linkedNotes().get(NOTE)).toBe('p1');
+    expect(house.obsidianNotePath).toBe(NOTE);
+    expect(house.obsidianNoteMissingAt ?? null).toBeNull();
+    // Nothing anywhere is called Attic; Projects/Shed does not exist: ruling F for both, paths kept for a relink.
+    expect(attic.obsidianNotePath).toBe('Attic.md');
+    expect(attic.obsidianNoteMissingAt).toBeTruthy();
+    expect(shed.obsidianNotePath).toBe('Projects/Shed.md');
+    expect(shed.obsidianNoteMissingAt).toBeTruthy();
+    // MUTATION: drop the resolution in applyLinkIntent and House is marked
+    // missing like the others, the key written nowhere.
+  });
+
   it('12. notes typed on a placed project task become a note in the project folder, linked from the line; the record empties; a same-title task gets its own suffixed note; a second pass writes nothing', async () => {
     await bootLinked();
     A.add({ title: 'Fix the gutter', projectId: 'p1' });
@@ -642,6 +673,111 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.settle();
     await A.sync();
     expect(A.all().find((t) => t.id === id)!.title).toBe('Lawn trimmed #obsidian');
+  });
+
+  it('22. THE NOTES BOX AT CREATION (owner ruling 2026-10-03): the box rides the create intent into the description slot; the record empties on enqueue; the journal holds the text', async () => {
+    const project = { id: 'p1', title: 'House', status: 'active', description: 'Dry roof by spring.' };
+    await boot({ projects: [project] });
+    expect(A.api.createProjectNote('project', 'p1', { title: 'House', description: project.description })).toBe(true);
+    expect(project.description).toBe('');
+    expect(JSON.parse(A.store.get('day-planner-obsidian-notes-sent')!)['project:p1']).toMatchObject({ body: 'Dry roof by spring.' });
+    await A.flush();
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    expect(project.obsidianNotePath).toBe(NOTE);
+    const text = s.text(NOTE)!;
+    expect(text).toContain('# House\nDry roof by spring.\n\n## Tasks\n');
+    expect(text).not.toContain('One line on what done looks like.');
+  });
+
+  it('23. THE MIGRATION ON LINK: a box filled on a linked project moves into the section below the note\'s own text, once; the record empties; a second pass writes nothing', async () => {
+    const project = await bootLinked();
+    // The user wrote their own hub paragraph in Obsidian, and typed a summary in the box.
+    await s.write(NOTE, s.text(NOTE)!.replace('One line on what done looks like.', 'My own hub paragraph.'));
+    await s.settle();
+    project.description = 'Purpose: keep the house dry.';
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toContain('# House\nMy own hub paragraph.\n\nPurpose: keep the house dry.\n\n## Tasks\n');
+    expect(project.description).toBe('');
+    expect(JSON.parse(A.store.get('day-planner-obsidian-notes-sent')!)['project:p1']).toMatchObject({ target: NOTE, body: 'Purpose: keep the house dry.' });
+    // MUTATION: drop the record clear and every pass re-sends the box; drop
+    // the block guard in mergeNoteDescription and a re-send doubles it.
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    expect(s.text(NOTE)!.split('Purpose: keep the house dry.').length).toBe(2);
+  });
+
+  it('24. THE EDITOR OVER THE SECTION: a save with the section\'s base replaces exactly the section; one whose base the section no longer matches keeps the vault\'s text and adds the dayGLANCE text as a dated callout; the task list is never touched', async () => {
+    await bootLinked();
+    A.add({ title: 'Fix the gutter', projectId: 'p1' });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    const line = s.text(NOTE)!.match(lineFor('Fix the gutter'))![0];
+    const base = noteTextHash('One line on what done looks like.');
+    // This device cannot read the vault (no handle in the harness), so the
+    // app-side re-read is inconclusive and the intent goes out with the base;
+    // the applier's check decides.
+    await A.api.saveNoteDescription('project', 'p1', NOTE, 'Dry roof, and gutters.', { base });
+    await A.flush();
+    await s.plugin.transport.drain();
+    expect(s.text(NOTE)).toContain('# House\nDry roof, and gutters.\n\n## Tasks\n');
+    expect(s.text(NOTE)).toContain(line);
+    // Obsidian edits the section; dayGLANCE saves against the old base.
+    await s.write(NOTE, s.text(NOTE)!.replace('Dry roof, and gutters.', 'Edited in Obsidian.'));
+    await s.settle();
+    await A.api.saveNoteDescription('project', 'p1', NOTE, 'Typed in dayGLANCE.', { base: noteTextHash('Dry roof, and gutters.') });
+    await A.flush();
+    await s.plugin.transport.drain();
+    const text = s.text(NOTE)!;
+    expect(text).toContain('# House\nEdited in Obsidian.\n\n> [!note] Edited in dayGLANCE ');
+    expect(text).toContain('\n> Typed in dayGLANCE.\n\n## Tasks\n');
+    expect(text).not.toContain('Dry roof, and gutters.');
+    expect(text).toContain(line);
+    // MUTATION: drop the base check in the applier and 'Edited in Obsidian.'
+    // is overwritten; drop the callout and the dayGLANCE text is gone.
+  });
+
+  it('25. THE LINK TAKEN WITHOUT THE PLUGIN (owner 2026-10-03: a wikilink in the title): the record names its note, marked pending; the first authoritative pass asks for the key, the note gains it, the mark clears, the box moves in; a pending link to a note that is not there comes back as missing', async () => {
+    // Daniel's case: a hub note he wrote himself, a project linked to it by
+    // typing its wikilink into the title on a device with no plugin, and a
+    // summary in the notes box. Then he installs the plugin.
+    await s.write(NOTE, '---\ntags: [hub]\n---\n# House\nMy own hub paragraph.\n\n## Links\n- [[Roof quotes]]\n');
+    const house = { id: 'p1', title: 'House', status: 'active', obsidianNotePath: NOTE, obsidianNoteLinkPending: '2026-10-01T09:00:00.000Z', description: 'Purpose: keep the house dry.' };
+    const attic = { id: 'p2', title: 'Attic', status: 'active', obsidianNotePath: 'Projects/Attic.md', obsidianNoteLinkPending: '2026-10-01T09:00:00.000Z' };
+    await boot({ projects: [house, attic] });
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBeUndefined();
+    await A.writeback();
+    // The mark clears on enqueue, before any word comes back from the vault.
+    expect(house.obsidianNoteLinkPending).toBe(null);
+    expect(attic.obsidianNoteLinkPending).toBe(null);
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    // The key is in the note; the user's own frontmatter and text survive; the box sits below the paragraph.
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBe('p1');
+    expect(frontmatterOf(NOTE).tags).toEqual(['hub']);
+    expect(s.text(NOTE)).toContain('# House\nMy own hub paragraph.\n\nPurpose: keep the house dry.\n\n## Links\n- [[Roof quotes]]\n');
+    expect(s.plugin.transport.linkedNotes().get(NOTE)).toBe('p1');
+    expect(house.obsidianNoteLinkPending).toBe(null);
+    expect(house.obsidianNotePath).toBe(NOTE);
+    expect(house.description).toBe('');
+    // The note Attic named does not exist: ruling F, the record learns it is missing and keeps the path for a relink.
+    expect(attic.obsidianNoteLinkPending).toBe(null);
+    expect(attic.obsidianNotePath).toBe('Projects/Attic.md');
+    expect(attic.obsidianNoteMissingAt).toBeTruthy();
+    // A second pass asks for nothing again.
+    const writes = s.plugin.app.vault.writes;
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(s.plugin.app.vault.writes).toBe(writes);
+    // MUTATION: drop the pending branch and the key never arrives; drop the
+    // clear on enqueue and the mark outlives the enqueue (the plugin's own
+    // report clears it later, so the second-pass check alone would not see
+    // it).
   });
 });
 

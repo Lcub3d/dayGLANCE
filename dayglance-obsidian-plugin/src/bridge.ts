@@ -186,7 +186,7 @@ const COPY_STATUS_RENEW_MS = 60 * 60 * 1000;
 // Intent types that rewrite one note's text and can share a single write
 // (coalesced per note per drain: a burst of four is one edit and one
 // editor reload, the other half of the incident's fix).
-const COALESCED_INTENT_TYPES = new Set(['task_state', 'task_retitle', 'task_append', 'task_remove', 'completion_log_append', 'daily_note_write']);
+const COALESCED_INTENT_TYPES = new Set(['task_state', 'task_retitle', 'task_append', 'task_remove', 'completion_log_append', 'daily_note_write', 'project_note_description']);
 type ApplyOutcome = 'applied' | 'unsupported' | 'deferred' | 'failed';
 interface PendingIntent { intent: Record<string, unknown>; intentId: string; entityId: string; seq: number }
 // The full link rescan (every markdown file's frontmatter, from the
@@ -1698,15 +1698,26 @@ export class BridgeTransport {
     const path = normalizePath(String(intent.path ?? ''));
     const targetId = String(intent.targetId ?? '').trim();
     if (!path || !targetId) return 'applied';
-    const file = this.host.app.vault.getAbstractFileByPath(path);
+    let file = this.host.app.vault.getAbstractFileByPath(path);
     const link = intent.type === 'project_note_link';
+    if (!(file instanceof TFile) && !path.includes('/')) {
+      // A folder-less path: a bare [[Name]] typed into a project's title on
+      // a device without the plugin, or into the note row. dayGLANCE's own
+      // reader finds such a note anywhere in the vault, so the plugin
+      // resolves it the same way, as Obsidian resolves a link. The link
+      // report carries the note's real path and the record's locator
+      // follows it (the rename path). A path WITH a folder is explicit and
+      // stays missing when nothing is there.
+      const resolved = this.host.app.metadataCache.getFirstLinkpathDest(path.replace(/\.md$/i, ''), '');
+      if (resolved instanceof TFile) file = resolved;
+    }
     if (!(file instanceof TFile) || file.extension !== 'md') {
       // The note dayGLANCE named does not exist here: ruling F, the record
       // learns its note is missing (a relink or an unlink resolves it).
       if (link) await this.emitLink({ targetId, path, deleted: true });
       return 'applied';
     }
-    if (!link && this.noteLinkId(path) !== targetId) return 'applied'; // not ours to remove
+    if (!link && this.noteLinkId(file.path) !== targetId) return 'applied'; // not ours to remove
     return this.setNoteLink(file, link ? targetId : null);
   }
 
@@ -1885,15 +1896,18 @@ export class BridgeTransport {
     }
     await this.ensureParentDirs(path);
     const today = new Date().toISOString().slice(0, 10);
-    const vars = { title, date: today, goal: goalTitle };
+    // The notes box at creation (owner ruling 2026-10-03): the description
+    // slot of the default notes, and {{description}} in a template.
+    const description = typeof intent.description === 'string' ? intent.description : '';
+    const vars = { title, date: today, goal: goalTitle, description };
     // The default body (companion §4.3, templates ruling): chosen ONCE, at
     // creation, by whether Dataview is installed; never maintained after.
     const plugins = (this.host.app as unknown as { plugins?: { plugins?: Record<string, unknown> } }).plugins?.plugins ?? {};
     const hasDataview = !!plugins['dataview'];
     const dailyFolder = this.config?.dailyNotesPath ?? '';
     const defaultBody = kind === 'goal'
-      ? defaultGoalNote({ title, date: today, hasDataview, dailyFolder })
-      : defaultProjectNote({ title, date: today, hasDataview, dailyFolder });
+      ? defaultGoalNote({ title, date: today, hasDataview, dailyFolder, description })
+      : defaultProjectNote({ title, date: today, hasDataview, dailyFolder, description });
     let created: TFile;
     try {
       created = await this.host.app.vault.create(path, withCreationFrontmatter(defaultBody, today));

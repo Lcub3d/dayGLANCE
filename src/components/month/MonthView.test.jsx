@@ -143,23 +143,21 @@ describe('MonthView — a month grid widget link', () => {
 
 // JOBO slice 6: MONTH reads the day's display, as DAY and WEEK do, so a past
 // day's bars follow the Do. The phone and portrait tablet render this same
-// view and stay on the plan until slice 8.
+// view, and since slice 8 they follow the Do too.
 describe('MonthView — past days follow the Do', () => {
   const display = (date) => (date.getDate() === 15 && date.getMonth() === 8
     ? [{ id: 'jobo-do:manual:1:2026-09-15', title: 'Deep work', color: 'bg-blue-500', date: '2026-09-15', startTime: '09:30', duration: 45, isAllDay: false, completed: false, joboDo: true, joboRecordId: 'manual:1' }]
     : []);
   const drawn = (html) => html.includes('data-jobo-do="manual:1"');
 
-  // MUTATION: drop the phone-layout check and the phone's MONTH changes with it.
-  it('draws the Do in the desktop layout, tablet landscape included, and not on the phone or a portrait tablet', async () => {
+  // MUTATION: bring back a phone-layout check and the phone's MONTH loses the Do.
+  it('draws the Do on every layout: desktop, tablets either way up, and the phone', async () => {
     const i18n = await i18nFor('en');
     const at = (extra) => render(i18n, new Date(2026, 8, 16, 12), 0, { getDayDisplayForDate: display, ...extra });
     expect(drawn(at({}))).toBe(true);
     expect(drawn(at({ isTablet: true, isLandscape: true }))).toBe(true);
-    expect(drawn(at({ isMobile: true }))).toBe(false);
-    expect(drawn(at({ isTablet: true, isLandscape: false }))).toBe(false);
-    // The phone still shows the plan.
-    expect(at({ isMobile: true })).toContain('data-band="t1"');
+    expect(drawn(at({ isMobile: true }))).toBe(true);
+    expect(drawn(at({ isTablet: true, isLandscape: false }))).toBe(true);
   });
 
   it('shows the plan where the app offers no display accessor', async () => {

@@ -6,6 +6,8 @@
 /** The narrow lane's width, and the phone timeline's hour gutter (MOBILE_HOUR_GUTTER_W). */
 export const NARROW_LANE_PX = 44;
 export const HOUR_GUTTER_PX = 48;
+/** The divider between the sides: a blue line, wider than the hour lines. */
+export const DIVIDER_PX = 2;
 /** The swap's slide, in ms; instant with reduced motion. */
 export const SWAP_MS = 250;
 
@@ -30,10 +32,11 @@ export const swapped = (swap, date, today) => ({ date, planWide: !planIsWide(swa
 
 /**
  * The two sides' widths for a view `total` px wide: the wide side takes all
- * but the hour gutter and the narrow lane. Never negative on a tiny screen.
+ * but the hour gutter, the divider and the narrow lane. Never negative on a
+ * tiny screen.
  */
 export function laneWidths(total, planWide) {
-  const wide = Math.max(0, Math.round(total) - HOUR_GUTTER_PX - NARROW_LANE_PX);
+  const wide = Math.max(0, Math.round(total) - HOUR_GUTTER_PX - DIVIDER_PX - NARROW_LANE_PX);
   return {
     wide,
     plan: planWide ? wide : NARROW_LANE_PX,

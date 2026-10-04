@@ -794,12 +794,21 @@ const DayPlanner = () => {
   // JOBO view on that date, opened at the Do's time rather than at now.
   // JoboView takes the request once, for that date.
   const [joboFocus, setJoboFocus] = useState(null);
+  // The phone and the portrait tablet open their own JOBO (slice 8), on the
+  // timeline tab.
+  const joboOnPhoneLayout = isMobile || (isTablet && !isLandscape);
   const openJoboAt = useCallback(({ date, minute }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return;
     setJoboFocus(Number.isFinite(minute) ? { date, minute } : null);
     setSelectedDate(new Date(`${date}T12:00:00`));
-    setViewMode('jobo');
-  }, []);
+    if (joboOnPhoneLayout) {
+      setMobileViewMode('jobo');
+      setMobileActiveTab('timeline');
+    } else {
+      setViewMode('jobo');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [joboOnPhoneLayout]);
   // A task a note links to, shown read-only over whatever is open.
   const [peekTaskId, setPeekTaskId] = useState(null);
   useEffect(() => {

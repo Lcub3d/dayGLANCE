@@ -8,7 +8,7 @@ import DoColumn from './DoColumn.jsx';
 import { DO_STRIPES } from './PastDoCard.jsx';
 import useJoboDay from '../../hooks/useJoboDay.js';
 import {
-  HOUR_GUTTER_PX, NARROW_LANE_PX, SWAP_MS,
+  DIVIDER_PX, HOUR_GUTTER_PX, NARROW_LANE_PX, SWAP_MS,
   doBar, laneWidths, planIsWide, swapped, tappedTaskId,
 } from '../../jobo/mobileLanes.js';
 
@@ -28,8 +28,15 @@ import {
 // header, whose element `stickyHeaderRef` names.
 
 // The phone timeline's hour: 160px rows plus their 1px border
-// (hooks/useDragDrop.js). The Do side draws to the same.
+// (hooks/useDragDrop.js), until the real rows are measured. On a screen with
+// a fractional pixel ratio the border can draw thinner than 1px, an hour then
+// a little under 161px, and a fixed 161 would drift from the timeline
+// through the day; the Do side draws to the measured height instead.
 const PHONE_HOUR_PX = 161;
+
+// The divider between the sides, blue (the app's accent, Tailwind blue-500)
+// so the boundary between Plan and Do reads at a glance.
+const DIVIDER_COLOR = 'rgb(59 130 246)';
 
 const reducedMotion = () => typeof window !== 'undefined'
   && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -63,23 +70,23 @@ function PlanBars({ tasks, selectedTaskId, ctx }) {
 }
 
 /** The narrow Do lane: the Do items as striped bars, on the Do column's hour rows. */
-function DoBars({ items, date, selectedTaskId, onTap, ctx, t }) {
+function DoBars({ items, date, hourPx, selectedTaskId, onTap, ctx, t }) {
   const { darkMode, borderClass, currentTime } = ctx;
   const now = currentTime instanceof Date ? currentTime : new Date();
   const isToday = date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const nowY = (now.getHours() * 60 + now.getMinutes()) * PHONE_HOUR_PX / 60;
+  const nowY = (now.getHours() * 60 + now.getMinutes()) * hourPx / 60;
   return (
     <div
       data-jobo-bars-lane="do"
       role="button"
       tabIndex={0}
       aria-label={t('jobo.mobile.showDo')}
-      className={`relative cursor-pointer border-l ${borderClass}`}
+      className="relative cursor-pointer"
       onClick={onTap}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(e); } }}
     >
       {Array.from({ length: 24 }, (_, hour) => (
-        <div key={hour} className={`border-b ${borderClass} ${hour % 2 === 1 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`} style={{ height: `${PHONE_HOUR_PX}px` }} />
+        <div key={hour} className={`border-b ${borderClass} ${hour % 2 === 1 ? (darkMode ? 'bg-white/[0.04]' : 'bg-stone-100/50') : ''}`} style={{ height: `${hourPx}px` }} />
       ))}
       {isToday && (
         // The timeline's now line structure (an 8px row, the line centred),
@@ -89,7 +96,7 @@ function DoBars({ items, date, selectedTaskId, onTap, ctx, t }) {
         </div>
       )}
       {items.map((item) => {
-        const bar = doBar(item, PHONE_HOUR_PX);
+        const bar = doBar(item, hourPx);
         const selected = selectedTaskId != null && bar.taskId != null && String(bar.taskId) === String(selectedTaskId);
         return (
           <div
@@ -114,7 +121,10 @@ export default function MobileJoboView({ stickyHeaderRef }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
   const { joboLoaded, joboError, reloadJobo } = useFeaturesCtx();
-  const { date, dayTasks, model, doItems, currentTime, nowDate } = useJoboDay({ hourHeight: PHONE_HOUR_PX });
+  // The timeline's hour as drawn (see PHONE_HOUR_PX), measured from its
+  // second row: the first carries the grid's top border as well.
+  const [hourPx, setHourPx] = useState(PHONE_HOUR_PX);
+  const { date, dayTasks, model, doItems, currentTime, nowDate } = useJoboDay({ hourHeight: hourPx });
 
   // Which side is wide: the default for the date until a swap, which holds
   // while the date does.
@@ -140,6 +150,12 @@ export default function MobileJoboView({ stickyHeaderRef }) {
     return () => observer.disconnect();
   }, [joboLoaded]);
   const widths = laneWidths(width, planWide);
+  const { timeGridRef } = ctx;
+  useLayoutEffect(() => {
+    const row = timeGridRef?.current?.children?.[1];
+    const measured = row?.getBoundingClientRect().height;
+    if (measured > 0 && Math.abs(measured - hourPx) > 0.01) setHourPx(measured);
+  }, [timeGridRef, hourPx, width, joboLoaded]);
 
   // The layout's sticky date header: the Plan/Do row sticks just under it.
   const [stickyTop, setStickyTop] = useState(0);
@@ -195,7 +211,7 @@ export default function MobileJoboView({ stickyHeaderRef }) {
     const anchor = focus ? focus.minute : date === nowDate ? currentTime.getHours() * 60 : firstMinute;
     // The timeline's own rule (useTimelineScroll): the hour's top at the
     // scroll top lands it just under the sticky headers.
-    scroller.scrollTop = Math.max(0, Math.floor(anchor / 60 - 1) * PHONE_HOUR_PX);
+    scroller.scrollTop = Math.max(0, Math.floor(anchor / 60 - 1) * hourPx);
     // Only on a new day, or once the ledger has loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, joboLoaded]);
@@ -228,14 +244,15 @@ export default function MobileJoboView({ stickyHeaderRef }) {
         <div data-jobo-side-label="plan" className="flex-shrink-0 min-w-0 flex items-center px-2 overflow-hidden whitespace-nowrap" style={{ width: `${widths.plan}px`, transition: motion }}>
           {planWide && t('jobo.view.plan')}
         </div>
-        <div className="relative w-0">
+        {/* The divider, carried up through this row: the swap button sits on it. */}
+        <div className="relative flex-shrink-0" style={{ width: `${DIVIDER_PX}px`, background: DIVIDER_COLOR }}>
           <button
             type="button"
             data-jobo-swap
             onClick={() => doSwap()}
             aria-label={t(planWide ? 'jobo.mobile.showDo' : 'jobo.mobile.showPlan')}
             title={t(planWide ? 'jobo.mobile.showDo' : 'jobo.mobile.showPlan')}
-            className={`absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border flex items-center justify-center shadow-sm ${ctx.cardBg} ${ctx.borderClass} text-blue-500 active:scale-95`}
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full border-2 border-blue-500 flex items-center justify-center shadow-sm ${ctx.cardBg} text-blue-500 active:scale-95`}
             style={{ transition: 'none' }}
           >
             <ArrowLeftRight size={14} />
@@ -263,6 +280,7 @@ export default function MobileJoboView({ stickyHeaderRef }) {
               Bars: the lane's own width as it slides, bars have no text. */}
           <div style={{ width: planWide ? `${HOUR_GUTTER_PX + widths.wide}px` : '100%' }}>
             <MobileTimeGrid
+              planOnly
               barsMode={!planWide}
               onLaneTap={onLaneTap}
               barsOverlay={planWide ? null : <PlanBars tasks={dayTasks} selectedTaskId={selectedTaskId} ctx={ctx} />}
@@ -272,14 +290,15 @@ export default function MobileJoboView({ stickyHeaderRef }) {
 
         {/* Do: the Do column, wide and read only, or as bars. The 1px top
             border matches the timeline's first row. */}
-        <div data-jobo-do className={`flex-1 min-w-0 overflow-hidden border-t ${ctx.borderClass}`}>
+        <div data-jobo-do className={`flex-1 min-w-0 overflow-hidden border-t ${ctx.borderClass}`} style={{ borderLeft: `${DIVIDER_PX}px solid ${DIVIDER_COLOR}` }}>
           <div style={planWide ? { width: '100%' } : { width: `${widths.wide}px`, ...fadeIn('do') }}>
             {planWide ? (
-              <DoBars items={doItems} date={date} selectedTaskId={selectedTaskId} onTap={onLaneTap} ctx={ctx} t={t} />
+              <DoBars items={doItems} date={date} hourPx={hourPx} selectedTaskId={selectedTaskId} onTap={onLaneTap} ctx={ctx} t={t} />
             ) : (
               <DoColumn
                 date={date}
-                hourHeight={PHONE_HOUR_PX}
+                hourHeight={hourPx}
+                edge={false}
                 items={doItems}
                 ctx={ctx}
                 t={t}

@@ -14,6 +14,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getHGBarsForDate } from '../hooks/useHyperGlance.js';
 import HyperGlanceBar from './HyperGlanceBar.jsx';
+import PastDoCard from './jobo/PastDoCard.jsx';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -23,8 +24,12 @@ import { useTranslation } from 'react-i18next';
  * now line stay, and `barsOverlay` (each task as a bar at its time) takes the
  * place of the cards; the lane is one tap target, `onLaneTap`, and nothing in
  * it adds, drags or opens a task.
+ *
+ * Like DAY's column, it reads the day's display (JOBO slice 6): a past day,
+ * and today up to the NOW line, show the recorded Do as striped read-only
+ * cards. `planOnly` keeps to the plan, for JOBO's own Plan side.
  */
-const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap }) => {
+const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap, planOnly = false }) => {
   const { t } = useTranslation();
   const {
     visibleDates, hours,
@@ -52,7 +57,7 @@ const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap }) => 
     toggleComplete,
     postponeTask,
     formatTime, timeToMinutes,
-    getTasksForDate,
+    getTasksForDate, getDayDisplayForDate,
     getTaskCalendarStyle,
     minutesToPosition, positionToMinutes,
     calculateTaskPosition, calculateConflictPosition,
@@ -155,7 +160,8 @@ const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap }) => 
           </div>
         );
       }
-      const dayTasks = getTasksForDate(date).filter(t => !t.isAllDay && !t.isExample && (!projectFilter || t.projectId === projectFilter));
+      const readDay = !planOnly && typeof getDayDisplayForDate === 'function' ? getDayDisplayForDate : getTasksForDate;
+      const dayTasks = readDay(date).filter(t => !t.isAllDay && !t.isExample && (!projectFilter || t.projectId === projectFilter));
       const frameInstances = getFrameInstancesForDate(date);
       const hgBars = getHGBarsForDate(hgVisibleProjects, dateStr, isDateToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined);
       const hasBars = hgBars.length > 0;
@@ -335,6 +341,22 @@ const MobileTimeGrid = ({ barsMode = false, barsOverlay = null, onLaneTap }) => 
           {/* Task blocks */}
           {dayTasks.map(task => {
             const { top, height } = calculateTaskPosition(task);
+            // A recorded Do: the striped read-only card, which shows its
+            // details and "Open in JOBO" on a tap. No drag, swipe or menu.
+            if (task.joboDo) {
+              const pos = calculateConflictPosition(task, dayTasks);
+              return (
+                <PastDoCard
+                  key={task.id}
+                  item={task}
+                  showTime={height > 40}
+                  style={{
+                    top: `${top}px`, height: `${height}px`, minHeight: '27px',
+                    left: pos.left, right: pos.right, width: pos.width ?? undefined,
+                  }}
+                />
+              );
+            }
             const taskCalendarStyle = getTaskCalendarStyle(task, darkMode);
             const mobileCalendarStyle = taskCalendarStyle;
             const isRecurring = typeof task.id === 'string' && task.id.startsWith('recurring-');

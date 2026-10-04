@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react';
+import { ArrowDownToLine, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, X } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
@@ -30,12 +30,15 @@ const IS_IOS = typeof navigator !== 'undefined' && (
 // draggable, so hold-anywhere-on-the-row no longer depends on the WebView
 // starting a drag from a long press.
 const IS_LONG_PRESS_ROW = isLongPressRowDevice();
+
+// How long "Send to bottom" stays offered after a quick-add.
+const SEND_TO_BOTTOM_MS = 15000;
 // This device's choice of the notes sidebar (desktop and landscape tablet).
 const NOTES_SIDEBAR_KEY = 'dg-planner-notes-sidebar';
 import SchedTaskCard from '../sched/SchedTaskCard.jsx';
 import HyperGlanceEditor from './HyperGlanceEditor.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
-import { sortByProjectOrder, applyProjectReorder, projectReorderIds } from '../../utils/projectOrder.js';
+import { sortByProjectOrder, applyProjectReorder, projectReorderIds, topProjectOrder, sendToBottomIds } from '../../utils/projectOrder.js';
 
 /**
  * PLANNER — a per-project planning dashboard, themed to the project's color.
@@ -92,6 +95,14 @@ const ProjectPlanner = ({ project, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteLink?.path, loadNoteDescription]);
   const [quickAddTitle, setQuickAddTitle] = useState('');
+  // The task just quick-added (to the top), offering "Send to bottom" for a
+  // short while after; cleared by the timer or a newer add.
+  const [justAdded, setJustAdded] = useState(null);
+  useEffect(() => {
+    if (!justAdded) return undefined;
+    const timer = setTimeout(() => setJustAdded(null), SEND_TO_BOTTOM_MS);
+    return () => clearTimeout(timer);
+  }, [justAdded]);
   // Persisted on the project record like plannerScheduledHidden below, so
   // each planner remembers its own choice and it syncs with the project.
   const showCompleted = !project.plannerCompletedHidden;
@@ -395,14 +406,25 @@ const ProjectPlanner = ({ project, onClose }) => {
     });
   };
 
+  // The project's whole inbox (open and completed, whatever the Completed
+  // toggle shows), which the order helpers number against.
+  const projectInbox = () => unscheduledTasks.filter(task =>
+    task.projectId === project.id && !task.archived && isVisibleForUser(task));
+
   // Quick-add an unscheduled project task — same inheritance as the card
-  // quick-add: effective project color + the project's assigned users.
+  // quick-add: effective project color + the project's assigned users. It
+  // lands at the TOP of the list (utils/projectOrder.js topProjectOrder), so
+  // it is seen beside the field it was typed in; "Send to bottom" undoes that
+  // for a while.
   const handleQuickAdd = (e) => {
     e.preventDefault();
     const title = quickAddTitle.trim();
     if (!title) return;
+    const id = crypto.randomUUID();
+    const projectOrder = topProjectOrder(projectInbox());
     setUnscheduledTasks(prev => [...prev, {
-      id: crypto.randomUUID(),
+      id,
+      projectOrder,
       title,
       duration: 30,
       color: projectColor,
@@ -416,6 +438,15 @@ const ProjectPlanner = ({ project, onClose }) => {
       lastModified: new Date().toISOString(),
     }]);
     setQuickAddTitle('');
+    setJustAdded({ id, title });
+    // On the phone the new task is on the Unscheduled tab: show it.
+    if (showTabs) setActiveTab('unscheduled');
+  };
+
+  const sendToBottom = () => {
+    const ids = justAdded && sendToBottomIds(projectInbox(), justAdded.id);
+    if (ids) reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, ids));
+    setJustAdded(null);
   };
 
   return (
@@ -459,6 +490,29 @@ const ProjectPlanner = ({ project, onClose }) => {
             </span>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => updateProject(project.id, { plannerScheduledHidden: !scheduledHidden })}
+              aria-pressed={!scheduledHidden}
+              data-planner-scheduled-toggle
+              className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg ${hoverBg} ${textSecondary} transition-colors`}
+              title={scheduledHidden ? t('planner.showScheduled', 'Show Scheduled') : t('planner.hideScheduled', 'Hide Scheduled list')}
+            >
+              {scheduledHidden ? <EyeOff size={13} /> : <Eye size={13} />}
+              {t('planner.scheduled', 'Scheduled')}
+              {scheduledHidden && incompleteScheduledCount > 0 && <span className="opacity-70">{incompleteScheduledCount}</span>}
+            </button>
+            {hasAnyCompleted && (
+              <button
+                onClick={() => updateProject(project.id, { plannerCompletedHidden: showCompleted })}
+                className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg ${hoverBg} ${textSecondary} transition-colors`}
+                title={showCompleted ? t('planner.hideCompleted', 'Hide completed tasks') : t('planner.showCompleted', 'Show completed tasks')}
+              >
+                {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
+                {t('common.completed', 'Completed')}
+              </button>
+            )}
+            {/* Notes opens the panel on the right, so it sits on the right */}
             {wide && (
               <button
                 type="button"
@@ -470,16 +524,6 @@ const ProjectPlanner = ({ project, onClose }) => {
               >
                 {notesPreferred ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
                 {t('task.notes', 'Notes')}
-              </button>
-            )}
-            {hasAnyCompleted && (
-              <button
-                onClick={() => updateProject(project.id, { plannerCompletedHidden: showCompleted })}
-                className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg ${hoverBg} ${textSecondary} transition-colors`}
-                title={showCompleted ? t('planner.hideCompleted', 'Hide completed tasks') : t('planner.showCompleted', 'Show completed tasks')}
-              >
-                {showCompleted ? <Eye size={13} /> : <EyeOff size={13} />}
-                {t('common.completed', 'Completed')}
               </button>
             )}
             <button
@@ -572,6 +616,43 @@ const ProjectPlanner = ({ project, onClose }) => {
             )}
           </div>
 
+          {/* Quick-add — under the notes, above the lists, so it is in reach
+              however long the lists are. New tasks go to the top of Unscheduled. */}
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <form onSubmit={handleQuickAdd} className="flex gap-2" data-planner-quick-add>
+              <input
+                value={quickAddTitle}
+                onChange={e => setQuickAddTitle(e.target.value)}
+                placeholder={t('planner.addTaskPlaceholder', 'Add a task…')}
+                className={`flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
+                }`}
+              />
+              <button
+                type="submit"
+                disabled={!quickAddTitle.trim()}
+                className="px-2.5 py-1.5 rounded-lg text-white disabled:opacity-40 transition-opacity"
+                style={{ background: projectHex }}
+                aria-label={t('planner.addTaskToProject', 'Add task to project')}
+              >
+                <Plus size={14} />
+              </button>
+            </form>
+            {justAdded && (
+              <div data-planner-just-added className={`flex items-center gap-2 text-xs ${textSecondary}`} role="status">
+                <span className="truncate min-w-0">{t('planner.addedToTop', { title: justAdded.title })}</span>
+                <button
+                  type="button"
+                  onClick={sendToBottom}
+                  className="flex-shrink-0 flex items-center gap-1 font-medium text-blue-500 hover:text-blue-600 px-1 rounded"
+                >
+                  <ArrowDownToLine size={12} />
+                  {t('planner.sendToBottom')}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Task columns — tabbed on mobile, side by side on desktop */}
           {showTabs && (
             <div className={`flex rounded-lg border ${borderClass} p-0.5 gap-0.5 flex-shrink-0`}>
@@ -597,21 +678,11 @@ const ProjectPlanner = ({ project, onClose }) => {
             {/* Scheduled */}
             {showScheduled && (
             <div className="flex flex-col gap-2 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                {!isMobile ? (
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>
-                    {t('planner.scheduled', 'Scheduled')}
-                  </span>
-                ) : <span />}
-                <button
-                  type="button"
-                  onClick={() => updateProject(project.id, { plannerScheduledHidden: true })}
-                  title={t('planner.hideScheduled', 'Hide Scheduled list')}
-                  className={`p-1 rounded ${hoverBg} flex-shrink-0`}
-                >
-                  <EyeOff size={14} className={textSecondary} />
-                </button>
-              </div>
+              {!isMobile && (
+                <span className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>
+                  {t('planner.scheduled', 'Scheduled')}
+                </span>
+              )}
               {projectRecurring.length > 0 && (
                 <div className="flex flex-col gap-1">
                   <span className={`text-[11px] font-semibold ${textSecondary}`}>
@@ -672,39 +743,9 @@ const ProjectPlanner = ({ project, onClose }) => {
               ) : (
                 <p className={`text-xs ${textSecondary} opacity-70 py-2`}>{t('planner.noUnscheduledTasks', 'No unscheduled tasks.')}</p>
               )}
-              <form onSubmit={handleQuickAdd} className="flex gap-2">
-                <input
-                  value={quickAddTitle}
-                  onChange={e => setQuickAddTitle(e.target.value)}
-                  placeholder={t('planner.addTaskPlaceholder', 'Add a task…')}
-                  className={`flex-1 min-w-0 px-2.5 py-1.5 text-sm rounded-lg border ${borderClass} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    darkMode ? 'bg-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'
-                  }`}
-                />
-                <button
-                  type="submit"
-                  disabled={!quickAddTitle.trim()}
-                  className="px-2.5 py-1.5 rounded-lg text-white disabled:opacity-40 transition-opacity"
-                  style={{ background: projectHex }}
-                  aria-label={t('planner.addTaskToProject', 'Add task to project')}
-                >
-                  <Plus size={14} />
-                </button>
-              </form>
             </div>
             )}
           </div>
-
-          {scheduledHidden && (
-            <button
-              type="button"
-              onClick={() => updateProject(project.id, { plannerScheduledHidden: false })}
-              className={`self-start flex-shrink-0 text-xs ${textSecondary} hover:underline flex items-center gap-1`}
-            >
-              <Eye size={12} />
-              {t('planner.showScheduled', 'Show Scheduled')}{incompleteScheduledCount > 0 ? ` (${incompleteScheduledCount})` : ''}
-            </button>
-          )}
 
           {/* hyperGLANCE settings (moved here from the Edit Project form) */}
           <HyperGlanceEditor

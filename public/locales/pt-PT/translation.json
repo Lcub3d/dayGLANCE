@@ -1982,6 +1982,8 @@
     "noUnscheduledTasks": "Sem tarefas não agendadas.",
     "addTaskPlaceholder": "Adicionar uma tarefa…",
     "addTaskToProject": "Adicionar tarefa ao projeto",
+    "addedToTop": "“{{title}}” adicionada no topo.",
+    "sendToBottom": "Mover para o fim",
     "hideScheduled": "Ocultar lista Agendadas",
     "showScheduled": "Mostrar agendadas",
     "showNotesSidebar": "Mostrar notas da tarefa",

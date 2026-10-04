@@ -1982,6 +1982,8 @@
     "noUnscheduledTasks": "Aucune tâche non planifiée.",
     "addTaskPlaceholder": "Ajouter une tâche…",
     "addTaskToProject": "Ajouter une tâche au projet",
+    "addedToTop": "« {{title}} » ajoutée en haut.",
+    "sendToBottom": "Envoyer en bas",
     "hideScheduled": "Masquer la liste Planifiées",
     "showScheduled": "Afficher les tâches planifiées",
     "showNotesSidebar": "Afficher les notes de la tâche",

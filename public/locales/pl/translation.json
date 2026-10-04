@@ -2075,6 +2075,8 @@
     "noUnscheduledTasks": "Brak niezaplanowanych zadań.",
     "addTaskPlaceholder": "Dodaj zadanie…",
     "addTaskToProject": "Dodaj zadanie do projektu",
+    "addedToTop": "Dodano „{{title}}” na górze.",
+    "sendToBottom": "Przenieś na dół",
     "hideScheduled": "Ukryj listę zaplanowanych",
     "showScheduled": "Pokaż zaplanowane",
     "showNotesSidebar": "Pokaż notatki zadania",

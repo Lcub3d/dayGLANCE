@@ -1982,6 +1982,8 @@
     "noUnscheduledTasks": "没有未排程任务。",
     "addTaskPlaceholder": "添加任务...",
     "addTaskToProject": "将任务添加到项目",
+    "addedToTop": "已将“{{title}}”添加到顶部。",
+    "sendToBottom": "移到底部",
     "hideScheduled": "隐藏已排程列表",
     "showScheduled": "显示已排程",
     "showNotesSidebar": "显示任务笔记",

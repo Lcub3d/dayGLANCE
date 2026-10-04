@@ -1984,6 +1984,8 @@
     "noUnscheduledTasks": "Nessuna attività non programmata.",
     "addTaskPlaceholder": "Aggiungi un'attività…",
     "addTaskToProject": "Aggiungi attività al progetto",
+    "addedToTop": "«{{title}}» aggiunta in cima.",
+    "sendToBottom": "Sposta in fondo",
     "hideScheduled": "Nascondi l'elenco Pianificate",
     "showScheduled": "Mostra pianificate",
     "showNotesSidebar": "Mostra le note dell’attività",

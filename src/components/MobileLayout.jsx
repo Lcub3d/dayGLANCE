@@ -35,6 +35,7 @@ import MobileSettingsPanel from './MobileSettingsPanel.jsx';
 import GoalDashboard from './goals/GoalDashboard.jsx';
 import MobileTimeGrid from './MobileTimeGrid.jsx';
 import MobileJoboView from './jobo/MobileJoboView.jsx';
+import MobileJoboHeaderActions from './jobo/MobileJoboHeaderActions.jsx';
 import SummaryStrip from './SummaryStrip.jsx';
 import { MOBILE_HOUR_GUTTER_W } from '../constants/timeline.js';
 import MobileAllDaySection from './MobileAllDaySection.jsx';
@@ -699,6 +700,7 @@ const MobileLayout = () => {
                       );
                     })}
                     {mobileViewMode === 'month' && <MonthStats compact />}
+                    {mobileViewMode === 'jobo' && <MobileJoboHeaderActions className="pr-2" />}
                   </div>
 
                   {mobileViewMode === 'grid' && <MobileAllDaySection />}

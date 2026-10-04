@@ -82,3 +82,18 @@ describe('Statistics panel with real reports', () => {
     expect(html).not.toContain('Not started');
   });
 });
+
+// The phone's form (JOBO slice 8, step 3): the same tabs and figures, in a
+// sheet that owns dismissal, with no dialog of its own around them.
+describe('Statistics panel as a sheet', () => {
+  it('renders the tabs and figures in the sheet, titled with the range', async () => {
+    const { html, t } = await render('en', { sheet: true });
+    expect(html).toContain('data-jobo-statistics-panel="sheet"');
+    expect(html).toContain('data-jobo-sheet-handle');
+    expect(html.match(/data-jobo-statistics-scope=/g)).toHaveLength(4);
+    expect(html).toContain(t('jobo.statistics.noDo'));
+    // One dialog: the sheet's, not the desktop frame inside it.
+    expect(html.match(/role="dialog"/g)).toHaveLength(1);
+    expect(html).not.toContain('max-w-4xl');
+  });
+});

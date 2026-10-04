@@ -11,6 +11,7 @@ import MobileViewToggle from './MobileViewToggle.jsx';
 import DayHeaderCell, { DayHeaderActions, DayHabitRings } from './DayHeader.jsx';
 import MonthStats from './month/MonthStats.jsx';
 import JoboStatsHeader from './jobo/JoboStatsHeader.jsx';
+import MobileJoboHeaderActions from './jobo/MobileJoboHeaderActions.jsx';
 import DayViewAllDaySection from './DayViewAllDaySection.jsx';
 import AllDayTaskCard from './AllDayTaskCard.jsx';
 import { WEEK_GUTTER_W } from './WeekView.jsx';
@@ -87,6 +88,7 @@ const CalendarHeader = () => {
     setDragPreviewTime,
     openNewAllDayTask,
     addTasksFromSelection,
+    tabletJoboView,
   } = useDayPlannerCtx();
   // The WEEK and MULTI all-day rows read a past date as it was done (slice
   // 6): an all-day task whose Do was recorded that day steps aside.
@@ -281,6 +283,9 @@ const CalendarHeader = () => {
       />
     );
   })}
+    {/* JOBO on a tablet held upright (the phone's JOBO, slice 8): its
+        header buttons, as on the phone. */}
+    {tabletJoboView && <MobileJoboHeaderActions className="pr-3" />}
     </>
   ) : effectiveViewMode === 'jobo' ? (
     /* JOBO: the selected date and read-only statistics share this row,

@@ -223,3 +223,64 @@ draws to the timeline's measured hour rather than a fixed 161px, since a
 a fixed hour would then drift from the NOW line; and DAY's NOW line reads the
 app's clock, as the Do side does, so a render between the clock's 15-second
 ticks no longer puts the Plan side's line a minute ahead on desktop.
+
+## Step 2, as built
+
+- **Add:** tap an empty slot in the wide Do side; the Do editor opens as a
+  sheet at that time, 30 minutes long, as a click does on desktop.
+- **Edit:** tap a Do. It pairs with its plan, as in step 1, and opens in
+  the editor sheet, with Delete. Keep (an estimate) and Continue (an
+  unfinished attempt) work from the card's own buttons, as on desktop.
+- **The sheet** rises from the bottom, takes focus itself so the keyboard
+  comes up only on a tap, and closes with the phone's back
+  (`useBackClose`), Cancel or the backdrop. It is `DoEditor` with `sheet`.
+- **Undo:** each accepted write shows the app's toast, "Do added", "Do
+  saved" or "Do deleted", with Undo: a phone has no keyboard for the undo
+  history every Do write already joins. Desktop keeps Ctrl+Z, unchanged.
+- **No dragging:** the Do column's `gestures={false}` drops the resize
+  handle and lets a completion marker scroll under a finger.
+- **One set of actions:** add, edit, continue and keep moved from JoboView
+  into `hooks/useJoboDoActions.js`, which both views use; the desktop view
+  keeps its drag gestures on top, saving through the same `saveEdit`.
+
+## Step 3, as built
+
+- **The date header gains Check, Statistics and Add Do**
+  (`MobileJoboHeaderActions`), on the phone and on a portrait tablet's
+  header. The header is the layout's and the sheets are the JOBO view's, so
+  the buttons send a window event the view listens for. Add Do opens the
+  editor at now on today, 09:00 on another day, as on desktop.
+- **Both sheets are `JoboSheet`,** near full height, with MONTH's day
+  sheet's dismissal (`useSheetDismissal`): back, a pull down, the left-edge
+  swipe, Escape, the X and the backdrop, each leaving through the sheet's
+  history entry so no stale one swallows a later back.
+- **The Check** is the same journal (`CheckJournal`), with its next steps.
+  The sheet stays open under the task form a next step may open, so closing
+  the form comes back to the Check.
+- **The statistics** are the same panel with `sheet`: the four tabs and the
+  figures in the sheet, without the desktop dialog's focus trap. Its inputs
+  moved from the desktop's date-row tiles into `hooks/useJoboStatistics.js`,
+  which both now use.
+
+## Side by side, as built
+
+Asked for after the first phone build: with one side wide, the narrow lane
+shows when and how long but not what, so comparing plan and actual meant
+swapping back and forth.
+
+- **A toggle in the date header,** first of JOBO's buttons, turns on the
+  side-by-side view: Plan and Do at half the width each (`balancedWidths`),
+  both as cards. There is nothing to swap, so the divider has no button.
+- **Off, nothing changes.** The wide side and the narrow lane, the divider's
+  swap button and the lane tap work exactly as before. Turning it off comes
+  back to the side that was wide.
+- **Remembered on the device** (`dg-jobo-mobile-balanced`), like JOBO's
+  other view preferences. `useJoboPreference` now tells every user of a
+  preference about a change, so the header's button and the view stay in
+  step.
+- **Compact Do cards:** at half width a Do card keeps its title, time and
+  status, and drops the edit button (a tap edits) and the timing row (the
+  editor shows it). The Plan cards are the timeline's own, which already
+  fold their buttons into a menu when narrow.
+- **Pairs still light up:** a tap on a card on either side outlines its
+  counterparts on the other.

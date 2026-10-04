@@ -498,6 +498,12 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
   // when every active child project is completed, a project only when every
   // one of its tasks is.
 
+  // A string, not an enum: the SDK validates the schema BEFORE the handler
+  // runs and answers a bad enum value with its own generic text, so an enum
+  // here would mean a client asking for "archived" never sees the by-design
+  // message the planner carries (mcpGoalArgs.ts optionalStatus). The planner
+  // still rejects every value but the two.
+  const STATUS_ARG = '"active" or "completed". Archiving is not available over MCP by design and is refused with a validation error naming that.';
   const NO_ARCHIVE =
     ' Status may be "active" or "completed"; archiving is not available over MCP by design and returns a ' +
     'validation error, as deleting does not exist.';
@@ -563,7 +569,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         start_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
         target_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
         area_id: z.string().optional().describe('An area id from dayglance_list_areas.'),
-        status: z.enum(['active', 'completed']).optional(),
+        status: z.string().optional().describe(STATUS_ARG),
         ...assigneeIdsArg,
         clear_fields: z.array(z.string()).optional().describe(
           `Field names to REMOVE: ${GOAL_CLEARABLE.filter((f) => multiUser || f !== 'assignees').map((f) => `"${f}"`).join(', ')}.`),
@@ -623,7 +629,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         description: z.string().optional().describe(DESCRIPTION_ARG),
         description_base: z.string().optional().describe(DESCRIPTION_BASE_ARG),
         goal_id: z.string().optional().describe('Move the project under this goal.'),
-        status: z.enum(['active', 'completed']).optional(),
+        status: z.string().optional().describe(STATUS_ARG),
         ...assigneeIdsArg,
         clear_fields: z.array(z.string()).optional().describe(
           `Field names to REMOVE: ${PROJECT_CLEARABLE.filter((f) => multiUser || f !== 'assignees').map((f) => `"${f}"`).join(', ')}.`),

@@ -108,7 +108,7 @@ describe('range aggregation', () => {
     expect(value.noDo).toBe(3);
   });
 
-  it('does not add diagnostics that can double-count a cross-day attempt', () => {
+  it('does not infer range Execution from bare summaries without record/group identities', () => {
     const value = aggregateCheckSummaries([report(), report()]);
     expect(value.doCount).toBeNull();
     expect(value.progress).toBeNull();

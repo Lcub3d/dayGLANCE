@@ -1,15 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { BarChart3, CheckCircle, Clock, LogIn, LogOut, Hourglass } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
-import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
-import { dateToString } from '../../utils/taskUtils.js';
 import { formatDuration } from '../../utils/formatDuration.js';
-import { buildJoboDayModel } from '../../jobo/viewModel.js';
-import { summarizeJoboDayModel } from '../../jobo/dayStats.js';
-import { buildStatisticsReports, statisticsEvidenceDates, statisticsReportFromModel } from '../../jobo/checkStatistics.js';
-import { weekViewDatesFor } from '../../utils/weekViewDates.js';
 import StatisticsPanel from './StatisticsPanel.jsx';
+import useJoboStatistics from '../../hooks/useJoboStatistics.js';
 
 // CalendarHeader's date-row tiles, in MonthStats' label-over-value treatment.
 // Reuse the same pure day model as the view, without estimates, drag previews,
@@ -17,49 +12,10 @@ import StatisticsPanel from './StatisticsPanel.jsx';
 export default function JoboStatsHeader({ className = '' }) {
   const { t, i18n } = useTranslation();
   const planner = useDayPlannerCtx();
-  const features = useFeaturesCtx();
-  const { selectedDate, getTasksForDate, tasks, unscheduledTasks, expandedRecurringTasks,
-    recurringTasks, textPrimary, textSecondary, borderClass } = planner;
-  const { joboLoaded, joboRecords, joboError } = features;
+  const { textPrimary, textSecondary, borderClass } = planner;
   const [statisticsOpen, setStatisticsOpen] = useState(false);
-  const isVisibleForUser = planner.isVisibleForUser || features.isVisibleForUser;
-  const date = dateToString(selectedDate);
-  const currentTime = planner.currentTime instanceof Date ? planner.currentTime : new Date();
-  const nowDate = dateToString(currentTime);
-  const nowTime = `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
-  const model = useMemo(() => {
-    if (!joboLoaded || !Array.isArray(joboRecords)) return null;
-    const dayTasks = getTasksForDate(selectedDate, false).filter(task => !task.isAllDay && task.startTime);
-    const model = buildJoboDayModel({
-      date, tasks: dayTasks,
-      taskLookup: [...(tasks || []), ...(unscheduledTasks || []), ...(expandedRecurringTasks || []), ...dayTasks],
-      recurringTasks, records: joboRecords, isVisibleForUser, now: { date: nowDate, time: nowTime },
-    });
-    return model;
-  }, [date, selectedDate, getTasksForDate, tasks, unscheduledTasks, expandedRecurringTasks, recurringTasks,
-    joboLoaded, joboRecords, isVisibleForUser, nowDate, nowTime]);
-  const stats = useMemo(() => summarizeJoboDayModel(model), [model]);
-  const weekDates = useMemo(() => weekViewDatesFor({
-    viewMode: 'week', selectedDate, weekViewMode: planner.weekViewMode,
-    weekStartDay: planner.weekStartDay, today: new Date(`${nowDate}T12:00:00`),
-  }), [selectedDate, planner.weekViewMode, planner.weekStartDay, nowDate]);
-  const evidenceDates = useMemo(() => statisticsOpen ? statisticsEvidenceDates({
-    records: joboRecords, tasks: [...(tasks || []), ...(unscheduledTasks || [])],
-    recurringTasks, anchorDate: date, throughDate: nowDate, isVisibleForUser,
-  }) : [], [statisticsOpen, joboRecords, tasks, unscheduledTasks, recurringTasks, date, nowDate, isVisibleForUser]);
-  const buildReports = useCallback((reportDates, scope) => {
-    if (!joboLoaded || joboError || !Array.isArray(joboRecords)) return [];
-    // Day uses the selected header's actual model, including now/notStarted.
-    // Wider scopes reconstruct only saved history, independently of whatever
-    // recurrence dates App currently has expanded for its visible window.
-    if (scope === 'day') return [statisticsReportFromModel(model, {
-      date: reportDates[0], inboxTasks: unscheduledTasks, isVisibleForUser,
-    })];
-    return buildStatisticsReports({
-      dates: reportDates, tasks, inboxTasks: unscheduledTasks, recurringTasks,
-      records: joboRecords, isVisibleForUser, now: { date: nowDate, time: nowTime },
-    });
-  }, [joboLoaded, joboError, joboRecords, model, tasks, unscheduledTasks, recurringTasks, isVisibleForUser, nowDate, nowTime]);
+  // The day's model and the panel's inputs, shared with the phone's sheet.
+  const { date, stats, weekDates, evidenceDates, buildReports, loaded: joboLoaded, error: joboError } = useJoboStatistics({ open: statisticsOpen });
   if (!stats) return null;
 
   const number = new Intl.NumberFormat(i18n?.resolvedLanguage || i18n?.language);

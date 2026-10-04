@@ -6,7 +6,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import StatisticsPanel from './StatisticsPanel.jsx';
 import { createDoRecord } from '../../jobo/core.js';
-import { buildStatisticsDayReport } from '../../jobo/checkStatistics.js';
+import { buildStatisticsDayReport, buildStatisticsReports } from '../../jobo/checkStatistics.js';
 
 vi.mock('react-dom', async original => ({ ...await original(), createPortal: children => children }));
 afterEach(() => vi.unstubAllGlobals());
@@ -73,6 +73,24 @@ describe('Statistics panel with real reports', () => {
     expect(html).toMatch(/Recorded time<\/dt><dd[^>]*>—<\/dd>/);
   });
 
+  it('renders Execution from real multi-day reports without counting overnight slices twice', async () => {
+    const nextDate = '2026-09-29';
+    const planSnapshot = { date, startTime: '23:00', duration: 60 };
+    const records = [
+      createDoRecord({ ...record, taskId: 'task', planSnapshot, startTime: '23:00', endDate: nextDate, endTime: '01:00' }),
+      createDoRecord({ ...record, id: 'continued', taskId: 'task', planSnapshot, date: nextDate, endDate: nextDate }),
+    ];
+    const { html, t } = await render('en', {
+      buildReports: () => buildStatisticsReports({ dates: [date, nextDate], records }),
+    });
+    expect(html).toContain(t('jobo.statistics.execution'));
+    for (const [key, value] of [['doRecords', 2], ['single', 0], ['split', 1]]) {
+      expect(html).toContain(`${t(`jobo.statistics.${key}`)}</dt><dd class="mt-0.5 text-lg font-semibold tabular-nums">${value}</dd>`);
+    }
+    expect(html).toContain(`${t('jobo.view.progress.partial')}: 2`);
+    expect(html).toContain(`${t('jobo.statistics.noPlan')}: 0`);
+  });
+
   it('calls a completed elapsed plan without Do missing evidence, not an unstarted task', async () => {
     const { html } = await render('en', { buildReports: days => days.map(day => buildStatisticsDayReport({
       date: day, records: [], now: { date, time: '12:00' },
@@ -80,5 +98,20 @@ describe('Statistics panel with real reports', () => {
     })) });
     expect(html).toMatch(/No Do recorded<\/dt><dd[^>]*>1<\/dd>/);
     expect(html).not.toContain('Not started');
+  });
+});
+
+// The phone's form (JOBO slice 8, step 3): the same tabs and figures, in a
+// sheet that owns dismissal, with no dialog of its own around them.
+describe('Statistics panel as a sheet', () => {
+  it('renders the tabs and figures in the sheet, titled with the range', async () => {
+    const { html, t } = await render('en', { sheet: true });
+    expect(html).toContain('data-jobo-statistics-panel="sheet"');
+    expect(html).toContain('data-jobo-sheet-handle');
+    expect(html.match(/data-jobo-statistics-scope=/g)).toHaveLength(4);
+    expect(html).toContain(t('jobo.statistics.noDo'));
+    // One dialog: the sheet's, not the desktop frame inside it.
+    expect(html.match(/role="dialog"/g)).toHaveLength(1);
+    expect(html).not.toContain('max-w-4xl');
   });
 });

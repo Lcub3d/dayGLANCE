@@ -199,4 +199,20 @@ describe('ProjectPlanner layout', () => {
     const desktop = await render();
     expect(desktop).not.toMatch(/data-planner-header-toggles="true" class="[^"]*order-last/);
   });
+
+  it('shows hyperGLANCE on as a switch in the settings row, not an ON pill', async () => {
+    const html = await render({ hyperglanceOpen: true });
+    const panel = html.slice(html.indexOf('data-planner-hyperglance-panel'));
+    expect(panel).toMatch(/role="switch" aria-checked="true" data-hyperglance-switch/);
+    expect(panel).toContain('bg-yellow-500');
+    expect(panel).not.toContain('>ON<');
+  });
+
+  it('spells out hyperGLANCE in the phone header where the row has room', async () => {
+    const phone = await render({ isMobile: true });
+    // shown from 400px wide (the three toggles need about 360px of row); below, the icon and ON
+    expect(phone).toMatch(/data-planner-hyperglance-label="true" class="hidden min-\[400px\]:inline">hyperGLANCE</);
+    const desktop = await render();
+    expect(desktop).toMatch(/<span data-planner-hyperglance-label="true">hyperGLANCE<\/span>/);
+  });
 });

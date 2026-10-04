@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Activity, Apple, Bike, BookMarked, BookOpen, Brain, Briefcase, Calculator,
-  Camera, ChevronDown, Clipboard, Code2, Dumbbell, Film, FlaskConical, Flame,
+  Camera, Clipboard, Code2, Dumbbell, Film, FlaskConical, Flame,
   Globe, GraduationCap, Headphones, Heart, LayoutDashboard, Leaf, Lightbulb,
   LineChart, Mail, Mic, Microscope, Moon, Music, Palette, Pencil, Plus, Rocket,
   Star, Target, Trash2, Trophy, Users, Wand2, Zap,
@@ -106,9 +106,13 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
   // squash it to its borders and silently hide every setting inside it.
   return (
     <div className={`rounded-xl border ${borderClass} overflow-hidden flex-shrink-0`}>
-      {/* Toggle row */}
+      {/* Toggle row — the whole row turns hyperGLANCE on and off; the
+          switch on the right says so. */}
       <button
         type="button"
+        role="switch"
+        aria-checked={hgEnabled}
+        data-hyperglance-switch
         onClick={() => setHgEnabled(v => !v)}
         className={`w-full flex items-center justify-between px-3 py-2.5 ${hoverBg} transition-colors`}
       >
@@ -117,11 +121,15 @@ const HyperGlanceEditor = ({ value, onChange, wide = false }) => {
           <span className={`text-sm font-medium ${hgEnabled ? textPrimary : textSecondary}`}>
             hyperGLANCE
           </span>
-          {hgEnabled && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 font-semibold">ON</span>
-          )}
         </div>
-        <ChevronDown size={14} className={`${textSecondary} transition-transform ${hgEnabled ? 'rotate-180' : ''}`} />
+        <span
+          aria-hidden="true"
+          className={`relative block flex-shrink-0 w-10 h-6 rounded-full transition-colors ${
+            hgEnabled ? 'bg-yellow-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'
+          }`}
+        >
+          <span className={`absolute top-1 left-0 w-4 h-4 rounded-full bg-white transition-transform ${hgEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+        </span>
       </button>
 
       {hgEnabled && (

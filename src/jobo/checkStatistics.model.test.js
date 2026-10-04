@@ -176,10 +176,14 @@ describe('statistics civil dates across timezones', () => {
         createdAt: stamp, updatedAt: stamp, observedAt: stamp });
       const dates = statisticsEvidenceDates({ records: [row], anchorDate: '2026-09-30', throughDate: '2026-09-30' });
       const summary = aggregateCheckSummaries(dates.map(date => buildStatisticsDayReport({ date, records: [row] })));
-      console.log(JSON.stringify({ dates, marker: completionMarker(row).date, untimed: summary.stats.untimedCount }));
+      console.log(JSON.stringify({ dates, marker: completionMarker(row).date, untimed: summary.stats.untimedCount,
+        doCount: summary.doCount, completed: summary.progress.completed, noPlan: summary.contexts.noPlan }));
     `;
     const result = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], { cwd: process.cwd(), env: { ...process.env, TZ }, encoding: 'utf8' }));
     expect(result.dates).toContain(result.marker);
     expect(result.untimed).toBe(1);
+    expect(result.doCount).toBe(1);
+    expect(result.completed).toBe(1);
+    expect(result.noPlan).toBe(1);
   });
 });

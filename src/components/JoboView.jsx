@@ -18,9 +18,7 @@ import DoEditor from './jobo/DoEditor.jsx';
 import ExecutionDetails from './jobo/ExecutionDetails.jsx';
 import CheckPanel from './jobo/CheckPanel.jsx';
 import { intervalFromMarker } from '../jobo/completionMarker.js';
-import { doLinkCandidates } from '../jobo/linkCandidates.js';
-import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
-import useJoboViewWriter from '../hooks/useJoboViewWriter.js';
+import useJoboDoActions, { continueInitial, timedPatch } from '../hooks/useJoboDoActions.js';
 import { createCarryForwardActions } from '../jobo/carryForwardActions.js';
 
 // JOBO: Plan and Do for one day, side by side on one hour axis.
@@ -47,18 +45,9 @@ const cssEscape = (value) => (typeof CSS !== 'undefined' && CSS.escape
   ? CSS.escape(String(value))
   : String(value).replace(/["\\]/g, '\\$&'));
 
-/**
- * The editor's opening state for continuing `record`: its title, its task and
- * its captured plan. createManualDo derives the taskId from `task`, so passing
- * the record's own taskId keeps a recurring template id as it is.
- */
-export const continueInitial = (record, date, startMinute) => ({
-  date, startMinute, duration: 30,
-  title: record.title,
-  task: { id: record.taskId },
-  planSnapshot: record.planSnapshot ?? null,
-  continuing: true,
-});
+// Continue's opening state lives with the shared Do actions; exported here
+// as before.
+export { continueInitial };
 
 // A card's details open on click and close on a second click of the same
 // card. ExecutionDetails closes on a click anywhere else, but leaves its own
@@ -68,15 +57,11 @@ export const toggleDetails = (open, item, anchor) => (open?.item?.id === item.id
 export default function JoboView() {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, recordJobo, recordJoboUndo, goalsProjectsEnabled, projects, goals, isVisibleForUser } = useFeaturesCtx();
-  // Every accepted Do write becomes a step in the app's undo history.
-  const writer = useJoboViewWriter({ records: joboRecords, recordJobo, onWritten: recordJoboUndo });
+  const { joboRecords, joboLoaded, joboWritable, joboError, reloadJobo, goalsProjectsEnabled, projects } = useFeaturesCtx();
 
   const [checkOpen, setCheckOpen] = useState(false);
-  const [editor, setEditor] = useState(null);
   const [details, setDetails] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [gestureError, setGestureError] = useState('');
   // Hover pairing: the task under the pointer on either side. Its Plan card
   // and every Do card that belongs to it are outlined together, which reads
   // where colour alone cannot (two tasks can share a colour).
@@ -131,8 +116,6 @@ export default function JoboView() {
   const hourHeight = SCROLLING_HOUR_PX * zoom;
   const doLane = useRef(null);
   const gestureCleanup = useRef(null);
-  const live = useRef(null);
-  live.current = { joboRecords, joboWritable, joboLoaded, pendingIds: writer.pendingIds };
 
   const { selectedDate, getTasksForDate } = ctx;
   const date = dateToString(selectedDate);
@@ -151,6 +134,14 @@ export default function JoboView() {
   const planColumn = useMemo(() => ({ date: dayStart, dateStr: date, startHour, endHour }), [dayStart, date, startHour, endHour]);
   // The day's plan, model and Do items, as the phone's JOBO reads them too.
   const { lookup, model, doItems, currentTime, nowDate } = useJoboDay({ hourHeight, zoom });
+  // Add, edit, continue and keep, shared with the phone's JOBO; every accepted
+  // write becomes a step in the app's undo history. A gesture saves through
+  // the same `saveEdit`.
+  const closeDetails = useCallback(() => setDetails(null), []);
+  const {
+    writer, editorProps, error: gestureError,
+    openAdd, openEdit, openContinue, keepEstimate, saveEdit,
+  } = useJoboDoActions({ date, model, doItems, currentTime, nowDate, beforeOpen: closeDetails });
   // The Check's Not started group also reads the day's all-day tasks, which
   // the Plan column leaves out.
   const checkDayTasks = useMemo(() => getTasksForDate(selectedDate, false), [getTasksForDate, selectedDate]);
@@ -226,65 +217,6 @@ export default function JoboView() {
   useEffect(() => () => gestureCleanup.current?.(), []);
   useEffect(() => { gestureCleanup.current?.(); }, [date]);
 
-  // What a new Do can link to, built only while an editor is open.
-  const linkCandidates = useMemo(
-    () => (editor && !editor.record
-      ? doLinkCandidates({
-        // The day's tasks arrive filtered for this household member; the
-        // Inbox is filtered here the same way.
-        dayTasks: getTasksForDate(selectedDate, false),
-        inboxTasks: (ctx.unscheduledTasks || []).filter((task) => typeof isVisibleForUser !== 'function' || isVisibleForUser(task)),
-        ...(goalsProjectsEnabled ? { projects: projects || [], goals: goals || [] } : {}),
-      })
-      : []),
-    [editor, getTasksForDate, selectedDate, ctx.unscheduledTasks, goalsProjectsEnabled, projects, goals, isVisibleForUser],
-  );
-  const closeEditor = useCallback(() => setEditor(null), []);
-  // "Complete task" in the editor is the linked task's checkbox: the same
-  // handler, with the Inbox flag the Inbox's own checkbox passes. The Do
-  // record is never written by it; the detector records the completion.
-  const completeTaskFor = (record) => {
-    const task = record ? model.resolveRecordTask(record) : null;
-    if (!offersCompleteTask(record, task) || typeof ctx.toggleComplete !== 'function') return undefined;
-    const fromInbox = (ctx.unscheduledTasks || []).some((inboxTask) => inboxTask.id === task.id);
-    return () => ctx.toggleComplete(task.id, fromInbox);
-  };
-  const closeDetails = useCallback(() => setDetails(null), []);
-  // Editing an estimate opens with the estimated times filled in, so saving
-  // it is the explicit "keep as shown"; clearing the start keeps the marker.
-  const openEdit = (record) => {
-    closeDetails();
-    const shown = doItems.find((item) => item.record?.id === record.id && item.estimate);
-    setEditor(shown
-      ? { record, initial: { patch: { startTime: clock(shown.startMinute), endTime: shown.time, date: shown.date } } }
-      : { record });
-  };
-  const openAdd = (startMinute) => { closeDetails(); setEditor({ initial: { date, startMinute, duration: 30 } }); };
-  // Continue an unfinished attempt: a new Do on the same task and captured
-  // plan, so it joins the original as another session of one execution. It
-  // starts where the attempt ended, or now if that has already passed today.
-  const openContinue = (item) => {
-    closeDetails();
-    const { record } = item;
-    const ended = snapMinute(item.markerMinute ?? item.endMinute);
-    const nowMinute = snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes());
-    const startMinute = Math.min(1410, date === nowDate ? Math.max(ended, nowMinute) : ended);
-    setEditor({ initial: continueInitial(record, date, startMinute) });
-  };
-
-  const saveEdit = async (record, patch) => {
-    const current = live.current;
-    if (!current.joboLoaded || !current.joboWritable || current.pendingIds.includes(record.id)) return;
-    setGestureError('');
-    try {
-      const next = prepareDoEdit({ records: current.joboRecords, record, patch, now: Date.now() });
-      if (!next) { setGestureError(t('jobo.view.recordChanged')); return; }
-      await commitDoEdit(writer.write, next);
-    } catch (error) {
-      setGestureError(t(error.code === 'recordChanged' ? 'jobo.view.recordChanged' : 'jobo.view.updateFailed'));
-    }
-  };
-
   // One pointer gesture on the Do column, with a live preview. `toRange`
   // turns the snapped minute under the pointer (and the one it went down on)
   // into { start, end } or null; `toPatch` turns the final range into the
@@ -335,24 +267,6 @@ export default function JoboView() {
     window.addEventListener('pointerup', finish, { once: true });
     window.addEventListener('pointercancel', cleanup, { once: true });
     window.addEventListener('keydown', escape, true);
-  };
-
-  // The timed patch for an interval of the item's day. Midnight is the next
-  // day's 00:00, the shape core expects.
-  const timedPatch = (date, start, end) => {
-    const next = new Date(`${date}T00:00:00Z`);
-    next.setUTCDate(next.getUTCDate() + 1);
-    return {
-      timing: 'timed', date, startTime: clock(start),
-      endDate: end >= 1440 ? next.toISOString().slice(0, 10) : date, endTime: clock(end % 1440),
-    };
-  };
-
-  // Keep an estimate as shown: the same timed write a move or an editor save
-  // makes, under the same id, with the times the card displays.
-  const keepEstimate = (item) => {
-    if (!item.estimate) return;
-    saveEdit(item.record, timedPatch(item.date, item.startMinute, item.endMinute));
   };
 
   // Drag an estimate to where the work really was: it moves whole, its start
@@ -547,17 +461,9 @@ export default function JoboView() {
           onClose={() => setCheckOpen(false)} cardBg={ctx.cardBg} textPrimary={ctx.textPrimary}
           textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
       )}
-      {editor && (
+      {editorProps && (
         <DoEditor
-          {...editor}
-          taskCompleted={model.resolveRecordTask(editor.record)?.completed === true}
-          onCompleteTask={completeTaskFor(editor.record)}
-          linkCandidates={editor.record ? undefined : linkCandidates}
-          records={joboRecords || []}
-          writable={joboWritable}
-          recordJobo={writer.write}
-          onClose={closeEditor}
-          pendingIds={writer.pendingIds}
+          {...editorProps}
           t={t}
           cardBg={ctx.cardBg}
           textPrimary={ctx.textPrimary}

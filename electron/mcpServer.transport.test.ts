@@ -1,0 +1,416 @@
+// @vitest-environment node
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import net from 'node:net';
+import type http from 'node:http';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
+import { startMcpServer, MCP_ENDPOINT_PATH } from './mcpServer.js';
+import type { RendererBridge, RendererResult } from './mcpRendererBridge.js';
+import type { ReadToolDeps } from './mcpReadTools.js';
+import type { WriteToolDeps } from './mcpWriteTools.js';
+import { createWriteGate } from './mcpWriteGate.js';
+import { createIdempotencyStore } from './mcpIdempotency.js';
+import { generateMcpToken } from './mcpAuth.js';
+
+// The seam the unit tests cannot see (2026-10-04). Every layer below the
+// listener has its own tests: argument parsers, the write gate, the replay
+// store, the pure read and write models in the renderer. None of them starts
+// the real server, registers the real tools, and talks to it the way Claude
+// Desktop does. This suite does exactly that: the listener on a free loopback
+// port, the official client over real HTTP with the real bearer token, and a
+// scripted renderer bridge standing in for the dayGLANCE window.
+//
+// What it pins is the wiring, not the logic: that the tool and resource names
+// are the ones docs/mcp-tools-reference.md documents, that a tool call reaches
+// the bridge as the method the renderer answers, with the timeout the slower
+// calls need, that a bridge failure comes back as the typed tool error and
+// never as an empty result, and that the guards in front (token, path,
+// consent, replay, rate gate) all run on the real request path.
+
+const TOKEN = generateMcpToken();
+const NOW = Date.parse('2026-10-04T12:00:00Z');
+const TZ = 'UTC';
+const TODAY = '2026-10-04';
+
+type Call = { method: string; params: unknown; timeoutMs: number | undefined };
+type Script = Record<string, (params: unknown) => RendererResult>;
+
+const UNAVAILABLE: RendererResult = {
+  ok: false,
+  error: { code: 'renderer_unavailable', message: 'The dayGLANCE window is not responding. This is NOT an empty schedule.' },
+};
+
+/** A renderer bridge that answers from a script and records every request. */
+function fakeBridge(script: Script) {
+  const calls: Call[] = [];
+  const bridge: RendererBridge = {
+    async request(method, params, timeoutMs) {
+      calls.push({ method, params, timeoutMs });
+      const answer = script[method];
+      return answer ? answer(params) : { ok: false, error: { code: 'validation', message: `unscripted method ${method}` } };
+    },
+    async ping() { return true; },
+    dispose() {},
+  };
+  return { bridge, calls };
+}
+
+const DAY = { blocks: [{ id: 't1', type: 'task', title: 'Write tests', start_time: '09:00', duration_minutes: 60, completed: false }], frames: [], daily_note: { text: 'Quiet day.', last_modified: '2026-10-04T08:00:00Z' } };
+const TREE = { goals: [{ id: 'g1', title: 'Home', status: 'active', description: '', progress_percent: 0, projects: [] }], standalone_projects: [] };
+
+const okScript: Script = {
+  get_day: () => ({ ok: true, data: DAY }),
+  get_week: () => ({ ok: true, data: { week_start_day: 0, days: [{ date: TODAY, ...DAY }] } }),
+  goal_progress: () => ({ ok: true, data: TREE }),
+  list_unscheduled: () => ({ ok: true, data: { items: [] } }),
+  list_users: () => ({ ok: true, data: { users: [{ id: 'u1', name: 'Alex' }] } }),
+  list_areas: () => ({ ok: true, data: { areas: [] } }),
+  list_bucket_list: () => ({ ok: true, data: { lists: [] } }),
+  create_task: (p) => ({ ok: true, data: { task: { id: (p as { taskId: string }).taskId, title: (p as { title: string }).title } }, undo: { summary: `Created task “${(p as { title: string }).title}”`, op: { kind: 'remove_created_task', taskId: (p as { taskId: string }).taskId } } }),
+};
+
+/** The OS picks a free port; the listener refuses port 0 by design (mcpPort.ts), so we hand it the number. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address() as net.AddressInfo;
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+interface Harness {
+  port: number;
+  url: string;
+  server: http.Server;
+  connect(token?: string): Promise<Client>;
+  close(): Promise<void>;
+}
+
+async function start(opts: { readDeps?: ReadToolDeps; writeDeps?: WriteToolDeps; token?: string }): Promise<Harness> {
+  const port = await freePort();
+  const quiet = () => {};
+  const server = startMcpServer({ token: opts.token ?? TOKEN, portOverride: port, readDeps: opts.readDeps, writeDeps: opts.writeDeps, log: quiet, logError: quiet });
+  if (!server) throw new Error('listener refused to start');
+  await new Promise<void>((resolve) => server.once('listening', () => resolve()));
+  const url = `http://127.0.0.1:${port}${MCP_ENDPOINT_PATH}`;
+  const clients: Client[] = [];
+  return {
+    port,
+    url,
+    server,
+    async connect(token = TOKEN) {
+      const client = new Client({ name: 'dayglance-transport-test', version: '0.0.0' });
+      const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } });
+      await client.connect(transport);
+      clients.push(client);
+      return client;
+    },
+    async close() {
+      await Promise.all(clients.map((c) => c.close().catch(() => {})));
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+}
+
+function readDeps(bridge: RendererBridge, over: Partial<ReadToolDeps> = {}): ReadToolDeps {
+  return { bridge, now: () => NOW, timeZone: () => TZ, includeNativeEvents: () => false, multiUserEnabled: () => false, ...over };
+}
+
+function writeDeps(bridge: RendererBridge, over: Partial<WriteToolDeps> = {}): WriteToolDeps {
+  return {
+    bridge,
+    gate: createWriteGate({ now: () => NOW }),
+    store: createIdempotencyStore({ now: () => NOW }),
+    token: () => TOKEN,
+    includeWrites: () => true,
+    noteMcpWrite: () => {},
+    onWritesDisabled: () => {},
+    multiUserEnabled: () => false,
+    now: () => NOW,
+    timeZone: () => TZ,
+    ...over,
+  };
+}
+
+/** A tool result's JSON body, whichever side of isError it is on. */
+function body(result: { content: unknown }): Record<string, unknown> {
+  const [first] = result.content as Array<{ type: string; text: string }>;
+  return JSON.parse(first.text) as Record<string, unknown>;
+}
+
+/** The names docs/mcp-tools-reference.md documents, so the doc is the contract the server is held to. */
+const reference = readFileSync(fileURLToPath(new URL('../docs/mcp-tools-reference.md', import.meta.url)), 'utf8');
+const documentedTools = [...reference.matchAll(/^### `(dayglance_[a-z_]+)`/gm)].map((m) => m[1]!).sort();
+const documentedResources = [...reference.matchAll(/^\| `(dayglance:\/\/[a-z/]+)` \|/gm)].map((m) => m[1]!).sort();
+
+describe('the registered surface, read over the wire', () => {
+  let multiUser = false;
+  let h: Harness;
+  let bridge: ReturnType<typeof fakeBridge>;
+  beforeAll(async () => {
+    bridge = fakeBridge(okScript);
+    h = await start({
+      readDeps: readDeps(bridge.bridge, { multiUserEnabled: () => multiUser }),
+      writeDeps: writeDeps(bridge.bridge, { multiUserEnabled: () => multiUser }),
+    });
+  });
+  afterAll(() => h.close());
+  afterEach(() => { multiUser = false; bridge.calls.length = 0; });
+
+  it('lists exactly the tools the reference documents: 19 without multi-user, 20 with', async () => {
+    const client = await h.connect();
+    const without = (await client.listTools()).tools.map((t) => t.name).sort();
+    expect(without).toEqual(documentedTools.filter((n) => n !== 'dayglance_list_users'));
+    expect(without).toHaveLength(19);
+
+    multiUser = true;
+    const withUsers = (await client.listTools()).tools.map((t) => t.name).sort();
+    expect(withUsers).toEqual(documentedTools);
+    expect(withUsers).toHaveLength(20);
+  });
+
+  it('a multi-user toggle changes the schema on the SAME connection\'s next request, no reconnect', async () => {
+    const client = await h.connect();
+    const before = (await client.listTools()).tools.find((t) => t.name === 'dayglance_create_task')!;
+    expect(Object.keys(before.inputSchema.properties ?? {})).not.toContain('assignee_id');
+    multiUser = true;
+    const after = (await client.listTools()).tools.find((t) => t.name === 'dayglance_create_task')!;
+    expect(Object.keys(after.inputSchema.properties ?? {})).toContain('assignee_id');
+    const goal = (await client.listTools()).tools.find((t) => t.name === 'dayglance_update_goal')!;
+    expect(Object.keys(goal.inputSchema.properties ?? {})).toContain('assignee_ids');
+  });
+
+  it('lists exactly the resources the reference documents', async () => {
+    const client = await h.connect();
+    const uris = (await client.listResources()).resources.map((r) => r.uri).sort();
+    expect(uris).toEqual(documentedResources);
+    expect(uris).toHaveLength(3);
+  });
+
+  it('every tool and resource description is non-empty, so a model never meets a bare name', async () => {
+    const client = await h.connect();
+    for (const t of (await client.listTools()).tools) expect(t.description, t.name).toMatch(/\S/);
+    for (const r of (await client.listResources()).resources) expect(r.description, r.uri).toMatch(/\S/);
+  });
+});
+
+describe('a read call travels client → listener → bridge → client', () => {
+  let h: Harness;
+  let bridge: ReturnType<typeof fakeBridge>;
+  beforeAll(async () => {
+    bridge = fakeBridge(okScript);
+    h = await start({ readDeps: readDeps(bridge.bridge) });
+  });
+  afterAll(() => h.close());
+  afterEach(() => { bridge.calls.length = 0; });
+
+  it('ping answers without touching the bridge', async () => {
+    const client = await h.connect();
+    const r = await client.callTool({ name: 'dayglance_ping', arguments: {} });
+    expect(body(r)).toEqual({ ok: true, server: 'dayGLANCE MCP' });
+    expect(bridge.calls).toEqual([]);
+  });
+
+  it('get_today resolves the local date on the server clock and asks the renderer for get_day with the default timeout', async () => {
+    const client = await h.connect();
+    const r = await client.callTool({ name: 'dayglance_get_today', arguments: {} });
+    expect(r.isError).toBeFalsy();
+    expect(bridge.calls).toEqual([{ method: 'get_day', params: { date: TODAY, include_native: false }, timeoutMs: undefined }]);
+    const data = body(r);
+    expect(data).toMatchObject({ date: TODAY, timezone: TZ, daily_note: { text: 'Quiet day.' } });
+    expect(data.blocks).toEqual(DAY.blocks);
+    expect(data.frames).toEqual([]);
+    // structuredContent carries the same object, for clients that read it instead of the text.
+    expect(r.structuredContent).toEqual(data);
+  });
+
+  it('get_day validates before it asks: a bad date is a typed validation error and the bridge is never called', async () => {
+    const client = await h.connect();
+    const r = await client.callTool({ name: 'dayglance_get_day', arguments: { date: '2026-10-4' } });
+    expect(r.isError).toBe(true);
+    expect(body(r)).toMatchObject({ error: { code: 'validation' } });
+    expect(bridge.calls).toEqual([]);
+  });
+
+  it('get_goal_progress and the goals resource ask with the 8 s note-reading timeout', async () => {
+    const client = await h.connect();
+    await client.callTool({ name: 'dayglance_get_goal_progress', arguments: {} });
+    await client.readResource({ uri: 'dayglance://goals/tree' });
+    expect(bridge.calls.map((c) => [c.method, c.timeoutMs])).toEqual([['goal_progress', 8000], ['goal_progress', 8000]]);
+  });
+
+  it('each read tool reaches the bridge as the method the renderer answers', async () => {
+    const client = await h.connect();
+    await client.callTool({ name: 'dayglance_list_unscheduled_tasks', arguments: {} });
+    await client.callTool({ name: 'dayglance_list_areas', arguments: {} });
+    await client.callTool({ name: 'dayglance_list_bucket_list', arguments: {} });
+    expect(bridge.calls.map((c) => c.method)).toEqual(['list_unscheduled', 'list_areas', 'list_bucket_list']);
+  });
+
+  it('the schedule resources carry the day shape, with frames and daily_note, as JSON text', async () => {
+    const client = await h.connect();
+    const today = await client.readResource({ uri: 'dayglance://schedule/today' });
+    const [contents] = today.contents as Array<{ uri: string; mimeType?: string; text: string }>;
+    expect(contents.uri).toBe('dayglance://schedule/today');
+    expect(contents.mimeType).toBe('application/json');
+    expect(JSON.parse(contents.text)).toMatchObject({ date: TODAY, timezone: TZ, blocks: DAY.blocks, frames: [], daily_note: { text: 'Quiet day.' } });
+
+    const week = await client.readResource({ uri: 'dayglance://schedule/week/current' });
+    const parsed = JSON.parse((week.contents[0] as { text: string }).text) as { week_start_day: number; days: Array<{ date: string; daily_note: unknown }> };
+    expect(parsed.week_start_day).toBe(0);
+    expect(parsed.days[0]).toMatchObject({ date: TODAY, daily_note: { text: 'Quiet day.' } });
+    expect(bridge.calls.map((c) => c.method)).toEqual(['get_day', 'get_week']);
+  });
+});
+
+describe('a renderer that cannot answer', () => {
+  let h: Harness;
+  beforeAll(async () => {
+    const down = fakeBridge({ get_day: () => UNAVAILABLE, goal_progress: () => UNAVAILABLE, create_task: () => UNAVAILABLE });
+    h = await start({ readDeps: readDeps(down.bridge), writeDeps: writeDeps(down.bridge) });
+  });
+  afterAll(() => h.close());
+
+  it('is a typed renderer_unavailable tool error whose text says it is not an empty schedule', async () => {
+    const client = await h.connect();
+    const r = await client.callTool({ name: 'dayglance_get_today', arguments: {} });
+    expect(r.isError).toBe(true);
+    const err = body(r).error as { code: string; message: string };
+    expect(err.code).toBe('renderer_unavailable');
+    expect(err.message).toMatch(/NOT an empty schedule/);
+  });
+
+  it('fails a resource read with the same code in the thrown message, never empty contents', async () => {
+    const client = await h.connect();
+    await expect(client.readResource({ uri: 'dayglance://goals/tree' })).rejects.toThrow(/renderer_unavailable/);
+  });
+
+  it('fails a write the same way, after the guards admitted it', async () => {
+    const client = await h.connect();
+    const r = await client.callTool({ name: 'dayglance_create_task', arguments: { title: 'x' } });
+    expect(r.isError).toBe(true);
+    expect(body(r)).toMatchObject({ error: { code: 'renderer_unavailable' } });
+  });
+});
+
+describe('the guards in front of a write, on the real request path', () => {
+  it('writes off: read_only_mode, and the bridge is never asked', async () => {
+    const bridge = fakeBridge(okScript);
+    const h = await start({ readDeps: readDeps(bridge.bridge), writeDeps: writeDeps(bridge.bridge, { includeWrites: () => false }) });
+    try {
+      const client = await h.connect();
+      const r = await client.callTool({ name: 'dayglance_create_task', arguments: { title: 'Nope' } });
+      expect(r.isError).toBe(true);
+      expect(body(r)).toMatchObject({ error: { code: 'read_only_mode' } });
+      expect(bridge.calls).toEqual([]);
+      // Reads keep working in read-only mode.
+      const today = await client.callTool({ name: 'dayglance_get_today', arguments: {} });
+      expect(today.isError).toBeFalsy();
+    } finally {
+      await h.close();
+    }
+  });
+
+  it('writes on: create_task reaches the bridge, is journaled, and a replay of the same key answers from the store', async () => {
+    const bridge = fakeBridge(okScript);
+    const journal: unknown[] = [];
+    const h = await start({ writeDeps: writeDeps(bridge.bridge, { journal: (rec) => journal.push(rec) }) });
+    try {
+      const client = await h.connect();
+      const args = { title: 'Order shingles', idempotency_key: 'order-shingles-1' };
+      const first = await client.callTool({ name: 'dayglance_create_task', arguments: args });
+      expect(first.isError).toBeFalsy();
+      expect(bridge.calls).toHaveLength(1);
+      expect(bridge.calls[0]).toMatchObject({ method: 'create_task', params: { title: 'Order shingles' } });
+      expect(body(first)).toMatchObject({ task: { title: 'Order shingles' } });
+      expect(body(first).replayed).toBeUndefined();
+      expect(journal).toHaveLength(1);
+      expect(journal[0]).toMatchObject({ tool: 'dayglance_create_task', idempotencyKey: 'order-shingles-1', summary: 'Created task “Order shingles”', op: { kind: 'remove_created_task' } });
+      // The undo descriptor is main-process metadata and never reaches the client.
+      expect(body(first).undo).toBeUndefined();
+
+      const again = await client.callTool({ name: 'dayglance_create_task', arguments: args });
+      expect(body(again)).toMatchObject({ task: { title: 'Order shingles' }, replayed: true });
+      expect(bridge.calls).toHaveLength(1);
+      expect(journal).toHaveLength(1);
+    } finally {
+      await h.close();
+    }
+  });
+
+  it('the rate gate refuses the write past the limit with rate_limited', async () => {
+    const bridge = fakeBridge(okScript);
+    const h = await start({ writeDeps: writeDeps(bridge.bridge, { gate: createWriteGate({ limit: 2, now: () => NOW }) }) });
+    try {
+      const client = await h.connect();
+      for (const title of ['one', 'two']) {
+        const r = await client.callTool({ name: 'dayglance_create_task', arguments: { title } });
+        expect(r.isError, title).toBeFalsy();
+      }
+      const third = await client.callTool({ name: 'dayglance_create_task', arguments: { title: 'three' } });
+      expect(third.isError).toBe(true);
+      expect(body(third)).toMatchObject({ error: { code: 'rate_limited' } });
+      expect(bridge.calls).toHaveLength(2);
+    } finally {
+      await h.close();
+    }
+  });
+
+  it('a by-design rejection is a validation error decided before the bridge: archiving a goal', async () => {
+    const bridge = fakeBridge(okScript);
+    const h = await start({ writeDeps: writeDeps(bridge.bridge) });
+    try {
+      const client = await h.connect();
+      const r = await client.callTool({ name: 'dayglance_update_goal', arguments: { goal_id: 'g1', status: 'archived' } });
+      expect(r.isError).toBe(true);
+      const err = body(r).error as { code: string; message: string };
+      expect(err.code).toBe('validation');
+      expect(err.message).toMatch(/not available over MCP/);
+      expect(bridge.calls).toEqual([]);
+    } finally {
+      await h.close();
+    }
+  });
+});
+
+describe('the listener itself', () => {
+  let h: Harness;
+  beforeAll(async () => {
+    const bridge = fakeBridge(okScript);
+    h = await start({ readDeps: readDeps(bridge.bridge) });
+  });
+  afterAll(() => h.close());
+
+  it('a wrong token is one 401 with the bearer challenge, and the client cannot even initialize', async () => {
+    const res = await fetch(h.url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: 'Bearer nope' }, body: '{}' });
+    expect(res.status).toBe(401);
+    expect(res.headers.get('www-authenticate')).toMatch(/Bearer/);
+    const missing = await fetch(h.url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: '{}' });
+    expect(missing.status).toBe(401);
+    await expect(h.connect('wrong-token')).rejects.toThrow();
+  });
+
+  it('any path but /mcp is 404 before auth runs', async () => {
+    const res = await fetch(`http://127.0.0.1:${h.port}/`, { headers: { authorization: `Bearer ${TOKEN}` } });
+    expect(res.status).toBe(404);
+  });
+
+  it('a browser origin is refused by the DNS-rebinding guard', async () => {
+    const res = await fetch(h.url, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${TOKEN}`, origin: 'https://evil.example' }, body: '{}' });
+    expect(res.status).toBe(403);
+  });
+
+  it('refuses to start without a token or with port 0, loudly', async () => {
+    const errors: string[] = [];
+    const port = await freePort();
+    expect(startMcpServer({ token: '', portOverride: port, log: () => {}, logError: (m) => errors.push(m) })).toBeNull();
+    expect(startMcpServer({ token: TOKEN, portOverride: 0, log: () => {}, logError: (m) => errors.push(m) })).toBeNull();
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatch(/no bearer token/);
+    expect(errors[1]).toMatch(/port 0/);
+  });
+});

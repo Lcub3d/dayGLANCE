@@ -122,7 +122,7 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ctx, t, writable, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ctx, t, writable, gestures = true, compact = false, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   // Drawn within the visible hours: a card that runs past a trimmed edge is
   // cut at it, as DAY cuts a task at its column's edge.
@@ -146,8 +146,8 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
   const continuable = writable && !pending && !item.estimate && canContinue(record);
   // An interval that ends on another day is clipped here; resizing it from
   // this column would move an end the column cannot show.
-  const canResize = writable && !pending && (item.estimate || (!item.point && record.endDate === record.date));
-  const movable = writable && !pending && item.point;
+  const canResize = gestures && writable && !pending && (item.estimate || (!item.point && record.endDate === record.date));
+  const movable = gestures && writable && !pending && item.point;
   const startsGesture = (event) => !event.target.closest('button');
   // The task this attempt belongs to, as the Plan side shows it: the key for
   // hover pairing and whose notes the Notes button opens.
@@ -171,7 +171,7 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
         ${pending ? 'opacity-60' : ''}
         ${notesOpen ? 'overflow-visible z-30' : ''}`}
       style={{
-        top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: item.point ? 'none' : undefined,
+        top, height, left: `calc(${item.leftPct}% + 2px)`, width: `calc(${item.widthPct}% - 4px)`, touchAction: movable ? 'none' : undefined,
         // A recorded interval is striped, the Do look in every view (slice 6);
         // an estimate keeps its dashed outline and a completion its marker.
         ...(!item.point ? { backgroundImage: DO_STRIPES } : {}),
@@ -233,7 +233,7 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
               <Plus size={12} />
             </button>
           )}
-          {writable && !pending && (
+          {writable && !pending && !compact && (
             <button
               type="button"
               onClick={(event) => { event.stopPropagation(); onEdit(record); }}
@@ -259,7 +259,7 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
             </span>
           </div>
         )}
-        {!isMicro && signals.length > 0 && laidOut > 60 && (
+        {!isMicro && !compact && signals.length > 0 && laidOut > 60 && (
           <div className="text-xs opacity-80 flex gap-1 min-w-0 overflow-hidden mt-0.5">
             {signals.map((row) => (
               <span key={row.key} data-jobo-axis={row.key} title={row.text} className="truncate border-l border-white/40 pl-1 first:border-l-0 first:pl-0">{row.text}</span>
@@ -294,6 +294,13 @@ export default function DoColumn({
   // The hour-line border on its left, against the Plan side. The phone draws
   // its own divider there instead (MobileJoboView).
   edge = true,
+  // Dragging a Do to move or resize it. The phone has none in its first
+  // build (slice 8): it competes with scrolling, and the editor covers it.
+  gestures = true,
+  // Cards at half a phone's width (the balanced view): the title and its
+  // status line keep the room. The edit button goes, since a tap on the
+  // card edits it there, and so does the timing row, which the editor shows.
+  compact = false,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
   // One notes panel at a time, JOBO's own: the global expanded-notes id
@@ -358,9 +365,9 @@ export default function DoColumn({
 
         {isToday && nowMinute >= offsetMin && nowMinute <= limitMin && (
           <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${nowY}px` }}>
-            {/* Same structure as DAY's now line (dot, then line, centred), so
-                the two sides meet at exactly the same height. */}
-            <div className="flex items-center"><div className="w-2 h-2 -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
+            {/* DAY's now line (dot, then line, centred), so the two sides
+                meet at exactly the same height and each starts at its dot. */}
+            <div className="flex items-center"><div className="w-2 h-2 bg-red-500 rounded-full -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
           </div>
         )}
 
@@ -375,6 +382,8 @@ export default function DoColumn({
             ctx={ctx}
             t={t}
             writable={writable}
+            gestures={gestures}
+            compact={compact}
             pending={pendingIds.includes(item.id)}
             onEdit={onEdit}
             onKeep={onKeep}

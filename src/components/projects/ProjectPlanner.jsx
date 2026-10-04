@@ -550,7 +550,7 @@ const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) =>
               title={hyperOpen ? t('planner.hideHyperglance') : t('planner.showHyperglance')}
             >
               <Zap size={13} className={hyperOn ? 'text-yellow-400' : undefined} />
-              {!isMobile && 'hyperGLANCE'}
+              <span data-planner-hyperglance-label className={isMobile ? 'hidden min-[400px]:inline' : undefined}>hyperGLANCE</span>
               {hyperOn && (
                 <span data-planner-hyperglance-on className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 font-semibold">ON</span>
               )}

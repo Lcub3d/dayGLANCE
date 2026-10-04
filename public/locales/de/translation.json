@@ -2329,6 +2329,14 @@
     "label": "Zeitleistengröße",
     "hint": "Auf diesem Gerät gespeichert. Zum direkten Anpassen über der Zeitleiste zusammenziehen oder Strg+Scrollen."
   },
+  "cardSize": {
+    "label": "Kartengröße für Ziele & Projekte",
+    "small": "Klein",
+    "normal": "Normal",
+    "large": "Groß",
+    "larger": "Größer",
+    "hint": "Auf diesem Gerät gespeichert. Größere Karten passen seltener nebeneinander."
+  },
   "todoist": {
     "title": "Todoist-Synchronisierung",
     "beta": "Selektive Synchronisierung · Beta",

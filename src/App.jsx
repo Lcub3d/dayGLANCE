@@ -118,6 +118,7 @@ import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
 import { EVENT_NOTES_KEY, applyEventNotes, readEventNotes, withEventNote } from './utils/eventNotes.js';
 import { ZOOM_STORAGE_KEY, readZooms, withZoom } from './utils/timelineZoom.js';
+import { readCardSize, writeCardSize } from './utils/cardSize.js';
 import useWeather from './hooks/useWeather.js';
 import useTagFilter from './hooks/useTagFilter.js';
 import useOnboarding from './hooks/useOnboarding.js';
@@ -943,6 +944,9 @@ const DayPlanner = () => {
       return next;
     });
   }, []);
+  // Goals & Projects card size, on this device (utils/cardSize.js).
+  const [spaceCardSize, setSpaceCardSizeState] = useState(() => readCardSize());
+  const setSpaceCardSize = useCallback((id) => setSpaceCardSizeState(writeCardSize(id)), []);
   const [dailyNotes, setDailyNotes] = useState(() => {
     try {
       const saved = localStorage.getItem('day-planner-daily-notes');
@@ -8676,6 +8680,7 @@ const DayPlanner = () => {
     tasks: tasksWithEventNotes, setTasks,
     setEventNote,
     timelineZooms, setTimelineZoom,
+    spaceCardSize, setSpaceCardSize,
     unscheduledTasks, setUnscheduledTasks,
     recurringTasks, setRecurringTasks,
     recycleBin, setRecycleBin,

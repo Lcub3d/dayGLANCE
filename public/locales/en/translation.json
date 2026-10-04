@@ -2329,6 +2329,14 @@
     "label": "Timeline size",
     "hint": "Saved on this device. To adjust it in place, pinch or Ctrl+scroll over the timeline."
   },
+  "cardSize": {
+    "label": "Goals & Projects card size",
+    "small": "Small",
+    "normal": "Normal",
+    "large": "Large",
+    "larger": "Larger",
+    "hint": "Saved on this device. Larger cards fit fewer across."
+  },
   "todoist": {
     "title": "Todoist Sync",
     "beta": "Selective sync · beta",

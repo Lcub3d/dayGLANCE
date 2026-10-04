@@ -8,6 +8,7 @@ import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import FollowUpTagSetting from './FollowUpTagSetting.jsx';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
+import CardSizeSettings from './CardSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import LocalIntegrationsSettings from './LocalIntegrationsSettings.jsx';
 import TodoistSettings from './TodoistSettings.jsx';
@@ -553,6 +554,14 @@ const SettingsModal = () => {
                     {!isMobile && (
                       <>
                         <TimelineSizeSettings joboEnabled={joboEnabled} />
+                        <hr className={borderClass} />
+                      </>
+                    )}
+
+                    {/* Goals & Projects card size (utils/cardSize.js), desktop and tablet */}
+                    {!isMobile && goalsProjectsEnabled && (
+                      <>
+                        <CardSizeSettings />
                         <hr className={borderClass} />
                       </>
                     )}

@@ -40,6 +40,7 @@ import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useSyncCtx } from '../../context/SyncContext.jsx';
 import { noteLinkOf, noteLinkFromTitle } from '../../utils/obsidianProjectNotes.js';
+import { isStreamPosture } from '../../utils/obsidianVaultPosture.js';
 import { noteTextHash } from '@glance-apps/obsidian-format';
 import { TASK_COLORS, TAILWIND_TO_HEX, hexToRgba, PROJECT_FALLBACK_COLOR, getProjectColor } from '../../utils/colorUtils.js';
 import { dateToString } from '../../utils/taskUtils.js';
@@ -532,16 +533,29 @@ const NoteLinkRow = ({ kind = 'project', id }) => {
   );
 };
 
-/** "Create a note in Obsidian" for a NEW project or goal (rulings D and E); shown only with the vault enabled. */
+/**
+ * "Create a note in Obsidian" for a NEW project or goal (rulings D and E);
+ * shown only with the vault enabled. The creation is the plugin's (the
+ * intent needs a stream), so without one the box is disabled and says why
+ * rather than accepting a tick that would do nothing (owner, 2026-10-04).
+ */
 const CreateNoteCheckbox = ({ checked, onChange }) => {
   const { textSecondary } = useDayPlannerCtx();
-  const { obsidianConfig, createProjectNote } = useSyncCtx();
+  const { obsidianConfig, createProjectNote, bridgeHeartbeatRef } = useSyncCtx();
   if (!obsidianConfig?.enabled || !createProjectNote) return null;
+  const pluginInUse = isStreamPosture(bridgeHeartbeatRef?.current);
   return (
-    <label className={`flex items-center gap-2 text-xs ${textSecondary} cursor-pointer select-none`}>
-      <input type="checkbox" checked={!!checked} onChange={e => onChange(e.target.checked)} className="rounded" />
-      Create a note in Obsidian (where the bridge plugin's layout puts it)
-    </label>
+    <div className="flex flex-col gap-0.5">
+      <label className={`flex items-center gap-2 text-xs ${textSecondary} ${pluginInUse ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'} select-none`} data-create-note={pluginInUse ? 'available' : 'needs-plugin'}>
+        <input type="checkbox" checked={pluginInUse && !!checked} disabled={!pluginInUse} onChange={e => onChange(e.target.checked)} className="rounded" />
+        Create a note in Obsidian (where the bridge plugin's layout puts it)
+      </label>
+      {!pluginInUse && (
+        <span className={`text-[11px] ${textSecondary}`}>
+          Needs the dayGLANCE bridge plugin paired with this vault. Without it, create the note in Obsidian and link it by typing its [[wikilink]] into the title.
+        </span>
+      )}
+    </div>
   );
 };
 

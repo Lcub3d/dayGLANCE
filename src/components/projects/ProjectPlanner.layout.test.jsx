@@ -188,4 +188,15 @@ describe('ProjectPlanner layout', () => {
     expect(html).not.toContain('Hide Scheduled list');
     expect(html.slice(html.indexOf('data-notes-source'))).not.toContain('Show Scheduled');
   });
+
+  it('gives the header toggles their own row on a phone, so the title keeps its width', async () => {
+    const phone = await render({ isMobile: true });
+    expect(phone).toMatch(/data-planner-header-toggles="true" class="[^"]*order-last w-full/);
+    // the close button is outside the toggles, so it stays beside the title
+    const toggles = directChildren(phone, phone.match(/<div data-planner-header-toggles[^>]*>/)[0]).join('');
+    expect(toggles).not.toContain('Close planner');
+    expect(phone).toContain('aria-label="Close planner"');
+    const desktop = await render();
+    expect(desktop).not.toMatch(/data-planner-header-toggles="true" class="[^"]*order-last/);
+  });
 });

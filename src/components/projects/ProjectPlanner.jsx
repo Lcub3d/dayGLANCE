@@ -497,16 +497,18 @@ const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) =>
         <div className={`flex-shrink-0 ${isMobile ? 'sticky top-0 z-10' : ''}`}>
         <div className="h-1.5" style={{ background: projectHex }} />
         <div
-          className={`flex items-center justify-between px-4 py-3 border-b ${borderClass} ${cardBg}`}
+          // On a phone the toggles take their own row under the title, which
+          // they would otherwise squeeze to a few letters.
+          className={`flex items-center gap-x-2 px-4 py-3 border-b ${borderClass} ${cardBg} ${isMobile ? 'flex-wrap gap-y-2' : ''}`}
           style={{ backgroundImage: `linear-gradient(${hexToRgba(projectHex, darkMode ? 0.12 : 0.07)}, ${hexToRgba(projectHex, darkMode ? 0.12 : 0.07)})` }}
         >
-          <div className="flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0">
             <span className={`text-base font-semibold ${textPrimary} truncate`}>{project.title}</span>
             <span className={`text-xs ${textSecondary}`}>
               {parentGoal ? parentGoal.title : t('planner.standaloneProject', 'Standalone project')} · Planner
             </span>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div data-planner-header-toggles className={`flex items-center gap-1 ${isMobile ? 'order-last w-full -ml-2 flex-wrap' : 'flex-shrink-0'}`}>
             <button
               type="button"
               onClick={() => updateProject(project.id, { plannerScheduledHidden: !scheduledHidden })}
@@ -562,14 +564,14 @@ const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) =>
                 {t('task.notes', 'Notes')}
               </button>
             )}
-            <button
-              onClick={closePlanner}
-              className={`p-1.5 rounded-lg ${hoverBg}`}
-              aria-label={t('planner.close', 'Close planner')}
-            >
-              <X size={16} className={textSecondary} />
-            </button>
           </div>
+          <button
+            onClick={closePlanner}
+            className={`flex-shrink-0 p-1.5 rounded-lg ${hoverBg}`}
+            aria-label={t('planner.close', 'Close planner')}
+          >
+            <X size={16} className={textSecondary} />
+          </button>
         </div>
         </div>
 

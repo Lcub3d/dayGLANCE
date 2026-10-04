@@ -2332,7 +2332,10 @@
     },
     "mobile": {
       "showDo": "Ampliar Execução",
-      "showPlan": "Ampliar Plano"
+      "showPlan": "Ampliar Plano",
+      "doAdded": "Execução adicionada",
+      "doSaved": "Execução salva",
+      "doDeleted": "Execução excluída"
     }
   },
   "timelineZoom": {

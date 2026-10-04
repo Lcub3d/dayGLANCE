@@ -2332,7 +2332,10 @@
     },
     "mobile": {
       "showDo": "Widen Do",
-      "showPlan": "Widen Plan"
+      "showPlan": "Widen Plan",
+      "doAdded": "Do added",
+      "doSaved": "Do saved",
+      "doDeleted": "Do deleted"
     }
   },
   "timelineZoom": {

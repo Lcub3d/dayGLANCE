@@ -36,3 +36,20 @@ describe('DoColumn pairing highlight', () => {
     expect(outlined(render(undefined, 'undefined'))).toBe(false);
   });
 });
+
+// The phone has no dragging in slice 8: no resize handle, and a completion
+// marker lets the page scroll under a finger instead of capturing it.
+describe('DoColumn without gestures', () => {
+  const html = (gestures) => renderToStaticMarkup(
+    <DoColumn date="2026-10-04" hourHeight={60} items={[item('call')]} ctx={ctx} t={(k) => k} writable gestures={gestures}
+      pendingIds={[]} preview={null} hoverTaskId={null} startHour={0} endHour={24}
+      onAddAt={() => {}} onEdit={() => {}} onKeep={() => {}} onContinue={() => {}} onHoverTask={() => {}}
+      onDetails={() => {}} onPointGesture={() => {}} onResizeGesture={() => {}} />,
+  );
+  // MUTATION: ignore `gestures` and the phone shows a handle that does nothing.
+  it('drops the resize handle', () => {
+    const handle = /touch-action:none/;
+    expect(handle.test(html(true))).toBe(true);
+    expect(handle.test(html(false))).toBe(false);
+  });
+});

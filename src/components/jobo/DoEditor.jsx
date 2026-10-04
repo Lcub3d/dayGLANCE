@@ -13,6 +13,7 @@ import { receiptState } from '../../hooks/useJoboViewWriter.js';
 import SuggestionAutocomplete from '../SuggestionAutocomplete.jsx';
 import { matchDoLinks, linkFor, doTagSuggestions, completeDoTag } from '../../jobo/linkCandidates.js';
 import { stripWikilinks, stripWikilinksAndTags } from '../../utils/taskUtils.js';
+import useBackClose, { ABOVE_EDITORS } from '../../hooks/useBackClose.js';
 
 const PROGRESS = [DO_PROGRESS.STARTED, DO_PROGRESS.PARTIAL, DO_PROGRESS.MOSTLY, DO_PROGRESS.COMPLETED];
 const minute = (time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
@@ -31,7 +32,12 @@ export const endDateFor = (date, startTime, endTime) => {
 // and keyboard hint, and the app's own DatePicker and ClockTimePicker opened
 // from buttons exactly as the new-task modal opens them, so adding a Do reads
 // like adding a task.
-export default function DoEditor({ record, taskCompleted = false, onCompleteTask, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false }) {
+/**
+ * `sheet`: the phone's form of the editor (JOBO slice 8, step 2), a sheet
+ * from the bottom of the screen that the phone's back closes, and that opens
+ * without bringing up the keyboard.
+ */
+export default function DoEditor({ record, taskCompleted = false, onCompleteTask, initial, linkCandidates = [], records, writable, recordJobo, onClose, pendingIds = [], t, cardBg, textPrimary, textSecondary = '', borderClass, darkMode = false, sheet = false }) {
   const [id] = useState(() => record?.id || `manual:${crypto.randomUUID()}`);
   const marker = completionMarker(record);
   const [draft, setDraft] = useState(() => ({
@@ -46,6 +52,9 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
   // What the form opened with, so "Complete task" can tell unsaved changes.
   const openedDraft = useRef(draft);
   const [saving, setSaving] = useState(false);
+  // The phone's back closes the sheet, as it does any sheet; a picker open
+  // above it (z-[90]) takes back first.
+  useBackClose({ open: sheet, key: 'joboDoEditor', onClose: () => { if (!saving) onClose(); }, coveredBy: ABOVE_EDITORS });
   const [picker, setPicker] = useState(null); // 'date' | 'startTime' | 'endTime'
   const { formatTime, use24HourClock, isTablet, allTags = [] } = useDayPlannerCtx() || {};
   const showTime = (value) => (value ? (formatTime ? formatTime(value) : value) : '—');
@@ -134,8 +143,11 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
 
   useEffect(() => {
     const previous = document.activeElement;
-    dialogRef.current?.querySelector('input:not(:disabled),select,button')?.focus();
+    // A sheet takes focus itself, so the keyboard comes up only on a tap.
+    if (sheet) dialogRef.current?.focus();
+    else dialogRef.current?.querySelector('input:not(:disabled),select,button')?.focus();
     return () => previous?.isConnected && previous.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!accepted || pendingIds.includes(id) || !submitted.current) return;
@@ -218,11 +230,16 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
   const kbd = `px-1.5 py-0.5 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded`;
   const busy = saving || waiting || !writable;
 
-  return createPortal(<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80]" onMouseDown={(event) => {
+  return createPortal(<div className={`fixed inset-0 bg-black/50 flex justify-center z-[80] ${sheet ? 'items-end' : 'items-center'}`} onMouseDown={(event) => {
     if (event.target === event.currentTarget && !saving) onClose();
   }}>
     <section ref={dialogRef} onKeyDown={onKeyDown} role="dialog" aria-modal="true" aria-labelledby="jobo-do-editor-title"
-      className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto`}>
+      tabIndex={sheet ? -1 : undefined} data-jobo-do-editor={sheet ? 'sheet' : 'dialog'}
+      className={sheet
+        ? `${cardBg} rounded-t-2xl shadow-xl px-5 pt-3 ${borderClass} border-t w-full max-h-[88vh] overflow-y-auto outline-none`
+        : `${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto`}
+      style={sheet ? { paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' } : undefined}>
+      {sheet && <div className={`mx-auto mb-3 h-1 w-10 rounded-full ${darkMode ? 'bg-gray-600' : 'bg-stone-300'}`} aria-hidden="true" />}
       <h3 id="jobo-do-editor-title" className={`font-semibold ${textPrimary} mb-4 text-lg`}>{record ? t('common.edit') : initial?.continuing ? t('jobo.view.continueDo') : t('jobo.view.addDo')}</h3>
       <form onSubmit={(event) => { event.preventDefault(); save(); }}>
         <fieldset disabled={busy} className="space-y-4">
@@ -364,9 +381,11 @@ export default function DoEditor({ record, taskCompleted = false, onCompleteTask
             {t(waiting ? 'common.close' : 'common.cancel')}
           </button>
         </div>
-        <div className={`mt-3 text-xs ${textSecondary} text-center`}>
-          <kbd className={kbd}>Enter</kbd> {t('common.save')} • <kbd className={kbd}>Esc</kbd> {t('common.cancel')}
-        </div>
+        {!sheet && (
+          <div className={`mt-3 text-xs ${textSecondary} text-center`}>
+            <kbd className={kbd}>Enter</kbd> {t('common.save')} • <kbd className={kbd}>Esc</kbd> {t('common.cancel')}
+          </div>
+        )}
       </form>
       {picker === 'date' && (
         <DatePicker value={draft.date} onChange={(date) => setDraft((prev) => ({ ...prev, date }))} onClose={() => setPicker(null)} />

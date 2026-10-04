@@ -17,7 +17,7 @@
 import { getOccurrencesInRange } from './recurrenceEngine.js';
 import { calculateGoalProgress } from './goalProgress.js';
 import { calculateProjectProgress } from './projectProgress.js';
-import { notBucketed } from './bucketList.js';
+import { notBucketed, BUCKET_LIST_IDS, DEFAULT_BUCKET_CONFIG } from './bucketList.js';
 import { buildRoutineBlocks } from './mcpRoutines.js';
 import { buildFrames } from './mcpFrames.js';
 import { noteLinkOf } from './obsidianProjectNotes.js';
@@ -53,9 +53,48 @@ export function inboxItem(t) {
   if (t.deadline) item.deadline = t.deadline;
   if (t.projectId) item.project_id = t.projectId;
   if (t.notes) item.notes = t.notes;
+  // The duration scheduling will default to (applyScheduleTask), so a reader
+  // can plan a slot before it schedules.
+  if (typeof t.duration === 'number') item.duration_minutes = t.duration;
+  if (t.assignedUserSyncIds?.length) item.assignee_id = t.assignedUserSyncIds[0];
   const subtasks = wireSubtasks(t);
   if (subtasks) item.subtasks = subtasks;
   return item;
+}
+
+/**
+ * The day's note (2026-10-04), read-only: the app's own record for the date,
+ * which the Obsidian sync fills from the vault's daily note where one is
+ * connected, so what the app shows is what this returns. Null when the date
+ * has no note, an empty one, or a deleted one.
+ */
+export function dailyNoteFor(state, date) {
+  const note = state.dailyNotes?.[date];
+  if (!note || note.deleted || typeof note.text !== 'string' || !note.text.trim()) return null;
+  return { text: note.text, ...(note.lastModified ? { last_modified: note.lastModified } : {}) };
+}
+
+/**
+ * The Bucket List (someday/maybe): the two lists with the user's headings and
+ * their open and completed items, archived ones left out as the modal leaves
+ * them out. Items are inbox-shaped minus priority and deadline, which
+ * demotion strips, plus bucket_id.
+ */
+export function buildBucketList(state) {
+  const { unscheduledTasks = [], isVisibleForUser = () => true } = state;
+  const headings = { ...DEFAULT_BUCKET_CONFIG.headings, ...(state.bucketConfig?.headings ?? {}) };
+  return {
+    lists: BUCKET_LIST_IDS.map((id) => ({
+      id,
+      heading: headings[id] ?? id,
+      items: unscheduledTasks
+        .filter((t) => t && t.bucketId === id && !t.archived && isVisibleForUser(t))
+        .map((t) => {
+          const { priority: _p, deadline: _d, ...item } = inboxItem(t);
+          return { ...item, bucket_id: id };
+        }),
+    })),
+  };
 }
 
 /**
@@ -65,8 +104,19 @@ export function inboxItem(t) {
  */
 export function blockType(task) {
   if (task._native) return 'device_calendar_event';
+  if (isImportedEvent(task)) return 'calendar_event';
   if (task.isRecurring) return 'recurring_task';
   return 'task';
+}
+
+/**
+ * An event imported from an ICS or CalDAV calendar feed (2026-10-04): not a
+ * dayGLANCE task, and not movable even in the app (useDragDrop refuses the
+ * drag). A CalDAV task-calendar task is a task with a calendar behind it and
+ * stays type 'task' with `source: 'caldav_tasks'`.
+ */
+export function isImportedEvent(task) {
+  return !!task?.imported && !task.nativeEventId && !task.isTaskCalendar;
 }
 
 /** One scheduled block in tool output. Field names are snake_case wire names. */
@@ -91,9 +141,14 @@ export function toBlock(task) {
     const subtasks = wireSubtasks(task);
     if (subtasks) block.subtasks = subtasks;
   }
+  // Whose task it is, when assigned (multi-user). The write responses have
+  // always said; the reads now say too.
+  if (task.assignedUserSyncIds?.length) block.assignee_id = task.assignedUserSyncIds[0];
+  if (task.isTaskCalendar) block.source = 'caldav_tasks';
   // Device calendar events cannot be modified through dayGLANCE (EventKit
   // read access only) — carried on every item, not just in tool descriptions.
-  if (type === 'device_calendar_event') block.read_only = true;
+  // An imported calendar event is read-only the same way: the feed owns it.
+  if (type === 'device_calendar_event' || type === 'calendar_event') block.read_only = true;
   return block;
 }
 
@@ -166,7 +221,7 @@ export function buildDayBlocks(state, params) {
   // what is still empty. Putting frames in `blocks` would make every existing
   // caller that iterates blocks start seeing windows as if they were work.
   const frames = buildFrames(state, date, { includeNative });
-  return { blocks, frames };
+  return { blocks, frames, daily_note: dailyNoteFor(state, date) };
 }
 
 /**
@@ -385,6 +440,8 @@ export function handleMcpRequest(state, request) {
       return { ok: true, data: buildUsers(state) };
     case 'list_areas':
       return { ok: true, data: buildAreas(state) };
+    case 'list_bucket_list':
+      return { ok: true, data: buildBucketList(state) };
     case 'goal_progress': {
       const r = buildGoalProgress(state, params);
       if (r.invalid) return { ok: false, error: { code: 'validation', message: r.invalid } };

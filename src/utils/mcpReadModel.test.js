@@ -36,8 +36,10 @@ describe('blockType / toBlock — the §5.1 distinct type flag', () => {
     expect(b).not.toHaveProperty('read_only');
   });
 
-  it('imported alone does NOT mark a device event (CalDAV/ICS also set imported)', () => {
-    expect(blockType(T({ imported: true }))).toBe('task');
+  it('imported alone does NOT mark a device event: a feed event is calendar_event, a CalDAV task-calendar task a task (2026-10-04)', () => {
+    expect(blockType(T({ imported: true }))).toBe('calendar_event');
+    expect(blockType(T({ imported: true, isTaskCalendar: true }))).toBe('task');
+    expect(blockType(T({ imported: true, nativeEventId: 'n', _native: true }))).toBe('device_calendar_event');
   });
 
   it('all-day blocks have a null start_time (no fake midnight)', () => {
@@ -433,5 +435,52 @@ describe('the 2026-10-04 read additions: subtasks and notes on blocks, goal and 
   it('list_areas returns id and name in order', () => {
     const r = handleMcpRequest({ areas: [{ id: 'b', name: 'Second', order: 10 }, { id: 'a', name: 'First', order: 0 }] }, { method: 'list_areas' });
     expect(r).toEqual({ ok: true, data: { areas: [{ id: 'a', name: 'First' }, { id: 'b', name: 'Second' }] } });
+  });
+});
+
+describe('the read gaps closed 2026-10-04: imported events, assignees, inbox duration, daily notes, the Bucket List', () => {
+  it('an imported feed event is type calendar_event and read_only; a CalDAV task-calendar task stays a task with its source', () => {
+    const ev = toBlock(T({ id: 'ics-1', imported: true, icalUid: 'u', importSource: 'f' }));
+    expect(ev).toMatchObject({ type: 'calendar_event', read_only: true });
+    const caldav = toBlock(T({ id: 'cal-t', imported: true, isTaskCalendar: true, icalUid: 'u' }));
+    expect(caldav.type).toBe('task');
+    expect(caldav.source).toBe('caldav_tasks');
+    expect('read_only' in caldav).toBe(false);
+    // Device events keep their own type even though they are imported.
+    expect(toBlock(T({ _native: true, imported: true, nativeEventId: 'n' })).type).toBe('device_calendar_event');
+  });
+  it('blocks and inbox items say whose task it is; inbox items carry the duration', () => {
+    expect(toBlock(T({ assignedUserSyncIds: ['u1', 'u2'] })).assignee_id).toBe('u1');
+    expect('assignee_id' in toBlock(T({}))).toBe(false);
+    const { items } = buildUnscheduledItems({ unscheduledTasks: [{ id: 'u1', title: 'x', duration: 45, assignedUserSyncIds: ['u2'] }, { id: 'u2', title: 'y' }] });
+    expect(items[0]).toMatchObject({ duration_minutes: 45, assignee_id: 'u2' });
+    expect('duration_minutes' in items[1]).toBe(false);
+  });
+  it('get_day carries the day\'s note as the app shows it, null for none, empty or deleted', () => {
+    const state = { tasks: [], recurringTasks: [], dailyNotes: {
+      '2026-08-10': { text: 'Dentist at noon.', lastModified: 'L' },
+      '2026-08-11': { text: '   ' },
+      '2026-08-12': { text: 'Gone', deleted: true },
+    } };
+    expect(buildDayBlocks(state, { date: '2026-08-10' }).daily_note).toEqual({ text: 'Dentist at noon.', last_modified: 'L' });
+    expect(buildDayBlocks(state, { date: '2026-08-11' }).daily_note).toBeNull();
+    expect(buildDayBlocks(state, { date: '2026-08-12' }).daily_note).toBeNull();
+    expect(buildDayBlocks(state, { date: '2026-08-13' }).daily_note).toBeNull();
+  });
+  it('list_bucket_list: two lists with the user\'s headings, archived left out, priority and deadline never on the wire', () => {
+    const r = handleMcpRequest({
+      bucketConfig: { headings: { b1: 'Anytime', b2: 'Maybe later' } },
+      unscheduledTasks: [
+        { id: 'k1', title: 'Learn Welsh', bucketId: 'b1', priority: 2, deadline: '2026-01-01', duration: 30 },
+        { id: 'k2', title: 'Old', bucketId: 'b1', archived: true },
+        { id: 'k3', title: 'Sail', bucketId: 'b2', completed: true },
+        { id: 'u1', title: 'Inbox task' },
+      ],
+    }, { method: 'list_bucket_list' });
+    expect(r.ok).toBe(true);
+    expect(r.data.lists.map((l) => [l.id, l.heading, l.items.map((i) => i.id)])).toEqual([['b1', 'Anytime', ['k1']], ['b2', 'Maybe later', ['k3']]]);
+    expect(r.data.lists[0].items[0]).toEqual({ id: 'k1', type: 'task', title: 'Learn Welsh', completed: false, duration_minutes: 30, bucket_id: 'b1' });
+    // Default headings stand in when the config has none.
+    expect(handleMcpRequest({ unscheduledTasks: [] }, { method: 'list_bucket_list' }).data.lists.map((l) => l.heading)).toEqual(['Anytime', 'Someday']);
   });
 });

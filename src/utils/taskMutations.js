@@ -31,6 +31,7 @@ export const WRITE_ERROR_CODES = Object.freeze({
   NOT_FOUND: 'not_found',
   VALIDATION: 'validation',
   NATIVE_READONLY: 'device_calendar_readonly',
+  CALENDAR_EVENT_READONLY: 'calendar_event_readonly',
   ROUTINE_READONLY: 'routine_readonly',
   ROUTINE_CONFLICT: 'routine_conflict',
 });
@@ -39,6 +40,23 @@ const err = (code, message) => ({ ok: false, error: { code, message } });
 
 const NATIVE_MSG = (id) =>
   `${id} is a device calendar event. dayGLANCE has read-only access to the device calendar and cannot modify, move, resize, or complete its events.`;
+
+/**
+ * An event imported from an ICS or CalDAV calendar feed (2026-10-04): the
+ * feed owns it, the app itself refuses to drag it, and a store-layer edit
+ * would be overwritten by the next fetch. Rejected like a device event, with
+ * its own code so a model can tell the two apart. CalDAV task-calendar tasks
+ * are not events and keep their own rules below.
+ */
+const isImportedEvent = (task) => !!task?.imported && !task.nativeEventId && !task.isTaskCalendar;
+const IMPORTED_MSG = (id) =>
+  `${id} is a calendar event imported from a calendar feed. dayGLANCE shows it so you can schedule around it, but it belongs to the feed and cannot be modified, moved, resized, or completed here.`;
+/** The read-only guards every task write shares: device events, then imported events. */
+const readOnlyGuard = (task, id) => {
+  if (task?._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(id));
+  if (isImportedEvent(task)) return err(WRITE_ERROR_CODES.CALENDAR_EVENT_READONLY, IMPORTED_MSG(id));
+  return null;
+};
 
 /**
  * Routines are read-only over MCP BY DESIGN, not by omission (spec §5.2).
@@ -360,7 +378,8 @@ export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitio
   const scheduled = tasks.find((t) => t.id === taskId);
   const task = inInbox ?? scheduled;
   if (!task) return err(WRITE_ERROR_CODES.NOT_FOUND, `No task with id ${taskId}`);
-  if (task._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(taskId));
+  const readOnly = readOnlyGuard(task, taskId);
+  if (readOnly) return readOnly;
   if (task.isTaskCalendar && task.icalUid) {
     return err(
       WRITE_ERROR_CODES.VALIDATION,
@@ -445,7 +464,8 @@ function findWritableBlock(state, tasks, blockId, { operation }) {
   }
   const task = tasks.find((t) => t.id === blockId);
   if (!task) return err(WRITE_ERROR_CODES.NOT_FOUND, `No scheduled block with id ${blockId}`);
-  if (task._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(blockId));
+  const readOnly = readOnlyGuard(task, blockId);
+  if (readOnly) return readOnly;
   return { ok: true, task };
 }
 
@@ -543,7 +563,8 @@ function findSubtaskHost(state, taskId, operation) {
   const scheduled = (state.tasks ?? []).find((t) => t.id === taskId);
   const task = inInbox ?? scheduled;
   if (!task) return err(WRITE_ERROR_CODES.NOT_FOUND, `No task with id ${taskId}`);
-  if (task._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(taskId));
+  const readOnly = readOnlyGuard(task, taskId);
+  if (readOnly) return readOnly;
   return { ok: true, task, inInbox: !!inInbox };
 }
 
@@ -794,7 +815,8 @@ export function applySetCompletion(state, { taskId, completed, transitionId, now
   const scheduled = tasks.find((t) => t.id === taskId);
   const task = inInbox ?? scheduled;
   if (!task) return err(WRITE_ERROR_CODES.NOT_FOUND, `No task with id ${taskId}`);
-  if (task._native) return err(WRITE_ERROR_CODES.NATIVE_READONLY, NATIVE_MSG(taskId));
+  const readOnly = readOnlyGuard(task, taskId);
+  if (readOnly) return readOnly;
   if (task.isTaskCalendar && task.icalUid) {
     return err(
       WRITE_ERROR_CODES.VALIDATION,

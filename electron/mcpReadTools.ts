@@ -60,7 +60,11 @@ const bridgeError = (r: { ok: false; error: { code: string; message: string } })
 
 const NATIVE_NOTE =
   ' Items with type "device_calendar_event" are read-only device calendar events: ' +
-  'dayGLANCE cannot modify, move, resize, or complete them.';
+  'dayGLANCE cannot modify, move, resize, or complete them. Items with type "calendar_event" ' +
+  'are events imported from a calendar feed (ICS or CalDAV), read-only the same way; a task with ' +
+  'source "caldav_tasks" comes from a CalDAV task calendar and cannot be edited or completed here. ' +
+  'Blocks carry assignee_id when assigned (multi-user). The response also carries daily_note, the ' +
+  "user's note for that day as dayGLANCE shows it (text and last_modified), or null; it is read-only over MCP.";
 
 // Same reasoning as NATIVE_NOTE: state the limit in the description so the
 // model knows it before it spends a call finding out. A routine is occupied
@@ -139,7 +143,8 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
         'counts as the inbox), "project" only project-attached tasks; include_completed defaults ' +
         'to true, pass false for open tasks only. total, truncated, and next_cursor always ' +
         'describe the FILTERED set. Bucket List (someday/maybe) items are never returned by this ' +
-        'tool. A cursor is bound to the filters it was issued under: changing scope or ' +
+        'tool; see dayglance_list_bucket_list. Items carry duration_minutes and, when assigned, ' +
+        'assignee_id. A cursor is bound to the filters it was issued under: changing scope or ' +
         'include_completed mid-pagination is a validation error, so to change filters, restart ' +
         'with a fresh call and no cursor.',
       inputSchema: z.object({
@@ -197,6 +202,23 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
       },
     );
   }
+
+  server.registerTool(
+    'dayglance_list_bucket_list',
+    {
+      description:
+        'The dayGLANCE Bucket List: someday/maybe items kept out of the inbox on purpose, in two lists with ' +
+        "the user's own headings (by default Anytime and Someday). Items are inbox-shaped (id, title, completed, " +
+        'and notes, project_id, duration_minutes, assignee_id, subtasks when present) plus bucket_id; they carry ' +
+        'no priority or deadline. These items never appear in dayglance_list_unscheduled_tasks. Read-only over ' +
+        'MCP: moving an item between the Bucket List and the inbox is done in dayGLANCE.',
+    },
+    async () => {
+      const r = await deps.bridge.request('list_bucket_list', {});
+      if (!r.ok) return bridgeError(r);
+      return ok({ ...(r.data as Record<string, unknown>), timezone: deps.timeZone() });
+    },
+  );
 
   server.registerTool(
     'dayglance_list_areas',

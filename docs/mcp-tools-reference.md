@@ -49,6 +49,7 @@ directly (`claude mcp add --transport http`).
 | `validation` | Malformed argument, or a by-design rejection (message says which). |
 | `not_found` | No task/block/user/goal/project/area/subtask with that id. |
 | `device_calendar_readonly` | Target is a device calendar event (EventKit read-only). |
+| `calendar_event_readonly` | Target is an event imported from a calendar feed; the feed owns it. |
 | `routine_readonly` | Target is a routine block. Routines are read-only over MCP by design. |
 | `routine_conflict` | The requested time overlaps a routine block. dayGLANCE will not shift the task for you; pick a non-overlapping time. |
 | `read_only_mode` | Writes are not enabled in Settings → Local Integrations. |
@@ -69,9 +70,20 @@ carries a `type`. All of them occupy the time they cover.
 | `task` | An ordinary dayGLANCE task placed on the calendar. | yes |
 | `recurring_task` | One instance of a recurring series, with a synthetic `recurring-<id>-<date>` id. | move/resize/complete rejected; edit the series in the app |
 | `device_calendar_event` | An event from the device calendar (EventKit). Carries `read_only: true`. Only under the calendar consent tier. | no |
+| `calendar_event` | An event imported from an ICS or CalDAV calendar feed. Carries `read_only: true`; the feed owns it. Every write tool rejects it with `calendar_event_readonly`. | no |
 | `routine` | A routine block placed on today's timeline, id `routine-<id>`. Carries `read_only: true`. | no |
 
 Branch on `read_only` rather than on `type`: more than one type carries it, and more may later.
+A `task` with `source: "caldav_tasks"` comes from a CalDAV task calendar: it is a task, but
+editing and completing it need a CalDAV write MCP does not perform, so those are rejected.
+
+Blocks and inbox items carry `assignee_id` when the task is assigned (multi-user), and inbox
+items carry `duration_minutes`, the duration scheduling will default to.
+
+**`daily_note` rides every day read.** `dayglance_get_today`, `dayglance_get_day` and the
+schedule resources return `daily_note`: `{ text, last_modified }` for the user's note on that
+date as dayGLANCE shows it, or `null`. Where an Obsidian vault is connected, the app's copy is
+kept in step with the vault's daily note, so this is the same text. Read-only over MCP.
 
 **Frames are not blocks.** `dayglance_get_today`, `dayglance_get_day`, and the schedule resources
 also return a `frames` array beside `blocks`. A block is work ON the day; a frame is a window the
@@ -128,7 +140,8 @@ exclusion applies here, not a filter argument, and `bucketId` never appears on t
 | `include_completed` | boolean | no | Default `true`. Pass `false` for open tasks only. |
 
 Returns `{ items, truncated, next_cursor, total, timezone }`. Items carry `id`, `title`,
-`priority` (0–3), `completed`, and `deadline` / `project_id` / `notes` when set.
+`priority` (0–3), `completed`, `duration_minutes`, and `deadline` / `project_id` / `notes` /
+`assignee_id` / `subtasks` when set.
 
 Filtering happens before pagination: `total`, `truncated`, and `next_cursor` always describe
 the **filtered** set. A filter matching nothing returns an empty list with `total: 0`, not an
@@ -138,6 +151,14 @@ call (no cursor) to change filters. Defaults are resolved before comparison, so 
 `include_completed` on one page and passing `include_completed: true` on the next never
 mismatches. `scope: 'standalone'` with `include_completed: false` is the app's own inbox
 count (the same predicate the TRMNL integration uses).
+
+### `dayglance_list_bucket_list`
+The Bucket List: someday/maybe items kept out of the inbox on purpose, in two lists with the
+user's own headings (by default Anytime and Someday). No parameters. Returns
+`{ lists: [{ id, heading, items }], timezone }`; items are inbox-shaped plus `bucket_id` and
+carry no priority or deadline (demotion strips them). Archived items are left out, as the app
+leaves them out. Read-only over MCP: moving an item between the Bucket List and the inbox is
+done in dayGLANCE.
 
 ### `dayglance_list_users` *(exists only while multi-user mode is on)*
 The household members tasks can be assigned to. Returns active users as `{ id, name }`;

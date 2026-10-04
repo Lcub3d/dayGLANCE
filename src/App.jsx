@@ -7501,6 +7501,9 @@ const DayPlanner = () => {
     projects,
     // Areas back dayglance_list_areas and the area fields on goals (2026-10-04).
     areas,
+    // Read-only: the day's note rides get_day; the Bucket List has its own tool.
+    dailyNotes,
+    bucketConfig,
     isVisibleForUser,
     // Phase 4 week resource honors the user's week-start setting (0=Sunday).
     weekStartDay,

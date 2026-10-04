@@ -244,7 +244,9 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
         'Obsidian note when there is one, duration-weighted progress matching what the app shows, and its ' +
         'projects; each project carries title, status, description, goal_id, assignee_ids, obsidian_note, ' +
         'progress and task counts. A goal or project with obsidian_note keeps its description in that ' +
-        "note's opening section, so description is empty here and is edited in Obsidian. Scope with goal_id " +
+        "note's opening section: it is read from the note here (description_source \"obsidian_note\", with " +
+        'description_base for a safe write through dayglance_update_goal or dayglance_update_project), or left ' +
+        'empty when this computer cannot read the vault. Scope with goal_id ' +
         "for one goal's tree; window is 'active' (default) or 'all' (includes archived/completed goals and " +
         'projects). Tasks carry project_id, so dayglance_get_day and dayglance_list_unscheduled_tasks give a ' +
         "project's tasks.",
@@ -257,7 +259,8 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
       const params: Record<string, unknown> = {};
       if (goal_id !== undefined) params['goal_id'] = goal_id;
       if (window !== undefined) params['window'] = window;
-      const r = await deps.bridge.request('goal_progress', params);
+      // Opens the linked notes for their descriptions, so it gets longer than a state read.
+      const r = await deps.bridge.request('goal_progress', params, 8000);
       if (!r.ok) return bridgeError(r);
       return ok({ ...(r.data as Record<string, unknown>), timezone: deps.timeZone() });
     },

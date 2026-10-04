@@ -106,8 +106,17 @@ export const GOAL_CLEARABLE = ['description', 'start_date', 'target_date', 'area
 
 export interface UpdateGoalPlan {
   goalId: string;
-  set: { title?: string; description?: string; startDate?: string; targetDate?: string; areaId?: string; status?: 'active' | 'completed'; assigneeSyncIds?: string[] };
+  set: { title?: string; description?: string; descriptionBase?: string; startDate?: string; targetDate?: string; areaId?: string; status?: 'active' | 'completed'; assigneeSyncIds?: string[] };
   clear: string[];
+}
+
+/** description_base rides only with a description; alone it changes nothing and says so. */
+function descriptionBase(args: Record<string, unknown>, set: { description?: string }): string | undefined | Reject {
+  const base = args['description_base'];
+  if (base === undefined) return undefined;
+  if (typeof base !== 'string' || !base.trim()) return reject(`description_base must be the non-empty hash a read returned, got ${JSON.stringify(base)}`);
+  if (set.description === undefined) return reject('description_base is only meaningful together with description.');
+  return base;
 }
 
 export function planUpdateGoal(args: Record<string, unknown>, multiUser: boolean): { ok: true; plan: UpdateGoalPlan } | Reject {
@@ -117,6 +126,8 @@ export function planUpdateGoal(args: Record<string, unknown>, multiUser: boolean
   if (args['title'] !== undefined) { const t = nonEmpty(args['title'], 'title'); if (isReject(t)) return t; set.title = t; }
   const description = optionalString(args['description'], 'description'); if (isReject(description)) return description;
   if (description !== undefined) set.description = description;
+  const base = descriptionBase(args, set); if (isReject(base)) return base;
+  if (base) set.descriptionBase = base;
   const startDate = optionalDate(args['start_date'], 'start_date'); if (isReject(startDate)) return startDate;
   if (startDate) set.startDate = startDate;
   const targetDate = optionalDate(args['target_date'], 'target_date'); if (isReject(targetDate)) return targetDate;
@@ -168,7 +179,7 @@ export const PROJECT_CLEARABLE = ['description', 'goal', 'assignees'] as const;
 
 export interface UpdateProjectPlan {
   projectId: string;
-  set: { title?: string; description?: string; goalId?: string; status?: 'active' | 'completed'; assigneeSyncIds?: string[] };
+  set: { title?: string; description?: string; descriptionBase?: string; goalId?: string; status?: 'active' | 'completed'; assigneeSyncIds?: string[] };
   clear: string[];
 }
 
@@ -179,6 +190,8 @@ export function planUpdateProject(args: Record<string, unknown>, multiUser: bool
   if (args['title'] !== undefined) { const t = nonEmpty(args['title'], 'title'); if (isReject(t)) return t; set.title = t; }
   const description = optionalString(args['description'], 'description'); if (isReject(description)) return description;
   if (description !== undefined) set.description = description;
+  const base = descriptionBase(args, set); if (isReject(base)) return base;
+  if (base) set.descriptionBase = base;
   if (args['goal_id'] !== undefined) { const g = nonEmpty(args['goal_id'], 'goal_id'); if (isReject(g)) return g; set.goalId = g; }
   const status = optionalStatus(args['status']); if (isReject(status)) return status;
   if (status) set.status = status;

@@ -50,6 +50,7 @@ directly (`claude mcp add --transport http`).
 | `not_found` | No task/block/user/goal/project/area/subtask with that id. |
 | `device_calendar_readonly` | Target is a device calendar event (EventKit read-only). |
 | `calendar_event_readonly` | Target is an event imported from a calendar feed; the feed owns it. |
+| `note_changed` | A description write into a linked Obsidian note was refused because the note changed since `description_base` was read. Nothing was written. |
 | `routine_readonly` | Target is a routine block. Routines are read-only over MCP by design. |
 | `routine_conflict` | The requested time overlaps a routine block. dayGLANCE will not shift the task for you; pick a non-overlapping time. |
 | `read_only_mode` | Writes are not enabled in Settings → Local Integrations. |
@@ -181,8 +182,11 @@ Each goal: `id`, `title`, `status`, `description`, `start_date`, `target_date` (
 are listed under `standalone_projects`.
 
 **A goal or project with `obsidian_note` keeps its description in that note's opening section**
-(companion spec §4.3), so `description` reads empty here and the update tools refuse to set it;
-edit the note. Tasks carry `project_id`, so `dayglance_get_day` and
+(companion spec §4.3). This tool reads it from the note: such an entity carries
+`description_source: "obsidian_note"` and `description_base`, the hash of the section as read, to
+pass back on a write. When this computer cannot read the vault (the vault folder was never chosen
+here), the pointer alone is returned and `description` is empty. Reads open the linked notes, at
+most 40 per call. Tasks carry `project_id`, so `dayglance_get_day` and
 `dayglance_list_unscheduled_tasks` give a project's tasks.
 
 ### `dayglance_list_areas`
@@ -354,7 +358,8 @@ in `clear_fields` removes.
 |---|---|---|---|
 | `goal_id` | string | yes | |
 | `title` | string | no | Can be set, never cleared. |
-| `description` | string | no | Refused with `validation` when the goal has `obsidian_note`: the note holds it. |
+| `description` | string | no | On a goal with `obsidian_note`, the opening section of that note (see below). |
+| `description_base` | string | no | The `description_base` a read returned. With it, a note write is refused with `note_changed` if the note changed since; without it the write is unconditional. Only with `description`. |
 | `start_date` / `target_date` | string | no | Local `YYYY-MM-DD`. |
 | `area_id` | string | no | |
 | `status` | `'active'` \| `'completed'` | no | `'archived'` → `validation` (by design). Completing requires every active child project to be completed, the form's own rule. |
@@ -381,12 +386,24 @@ Field editor for projects, same contract.
 |---|---|---|---|
 | `project_id` | string | yes | |
 | `title` | string | no | |
-| `description` | string | no | Refused when the project has `obsidian_note`. |
+| `description` | string | no | On a project with `obsidian_note`, the opening section of that note (see below). |
+| `description_base` | string | no | As on `dayglance_update_goal`. |
 | `goal_id` | string | no | Move under another goal. `"goal"` in `clear_fields` makes it standalone. |
 | `status` | `'active'` \| `'completed'` | no | `'archived'` → `validation`. Completing requires every task in the project to be completed. |
 | `assignee_ids` | string[] | no | **Multi-user only.** |
 | `clear_fields` | string[] | no | `"description"`, `"goal"`, `"assignees"` (multi-user). |
 | `idempotency_key` | string | no | |
+
+**Descriptions in linked notes.** For a goal or project with `obsidian_note`, `description` on
+the update tools writes the opening section of that note through the app's own section save: the
+note is read again first and, when `description_base` was given and the section moved, nothing is
+written and the call fails with `note_changed` (read the entity again and retry with the new base).
+The rest of the note is never touched. The response carries `description_source`, the new
+`description_base`, and `note_write`: `"written"` when the file was written directly, `"queued"`
+when the bridge plugin will apply it the next time Obsidian is open, during which a read can still
+return the old text. The write journal reverses it by putting the previous section back under the
+same rule, so an undo never overwrites an edit made in Obsidian meanwhile; such an undo reports as
+skipped. Other fields in the same call are applied to the record as usual.
 
 ---
 

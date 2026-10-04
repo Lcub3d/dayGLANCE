@@ -13,6 +13,9 @@ import { useEffect, useRef } from 'react';
 // page inside PLANNER pushes its own key on top, and back closes that page
 // while PLANNER's key is still on the entry below.
 //
+// The task editor has its own entry too, so back from an editor opened in
+// PLANNER closes the editor and leaves PLANNER open.
+//
 // Closed any other way (its X, Escape, the backdrop), the overlay's entry
 // is popped for it, so a later back press is never swallowed by a stale one.
 // The pop is deferred a tick and cancelled by a re-open with the same key:
@@ -56,8 +59,19 @@ export function attachBackClose({ key, onClose, isCovered, win }) {
   };
 }
 
-/** Back closes the overlay while `open`; `onClose` may change between renders. */
-export default function useBackClose({ open = true, key, onClose }) {
+// Layers that sit above an overlay without a back entry of their own: the
+// z-[80] modals (InboxFilterPopover, DoEditor) over the z-[70] sheets, and
+// the z-[90] pickers and panels (date, time, a card's notes) over both.
+export const ABOVE_SHEETS = '[class*="z-[80]"], [class*="z-[90]"]';
+export const ABOVE_EDITORS = '[class*="z-[90]"]';
+
+/**
+ * Back closes the overlay while `open`; `onClose` may change between renders.
+ * `coveredBy` selects the layers above it: back does nothing while one is
+ * open. An overlay at z-[80] (a task editor) passes ABOVE_EDITORS, or it
+ * would count itself.
+ */
+export default function useBackClose({ open = true, key, onClose, coveredBy = ABOVE_SHEETS }) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   useEffect(() => {
@@ -65,8 +79,7 @@ export default function useBackClose({ open = true, key, onClose }) {
     return attachBackClose({
       key,
       onClose: () => onCloseRef.current?.(),
-      // The task editors and other z-[80] modals sit above these overlays.
-      isCovered: () => !!document.querySelector('[class*="z-[80]"]'),
+      isCovered: () => !!coveredBy && !!document.querySelector(coveredBy),
       win: {
         history: window.history,
         addEventListener: (type, fn) => window.addEventListener(type, fn),
@@ -75,5 +88,5 @@ export default function useBackClose({ open = true, key, onClose }) {
         clearTimeout: (id) => window.clearTimeout(id),
       },
     });
-  }, [open, key]);
+  }, [open, key, coveredBy]);
 }

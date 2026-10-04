@@ -116,4 +116,23 @@ describe('attachBackClose', () => {
     flush();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('an editor over PLANNER: back closes the editor, and saving it leaves PLANNER open', () => {
+    const { win, flush, depth } = fakeWindow({ appTab: 'goals' });
+    const closePlanner = vi.fn();
+    const closeEditor = vi.fn();
+    attachBackClose({ key: 'dgPlannerSheet', onClose: closePlanner, win });
+    attachBackClose({ key: 'dgTaskEditor', onClose: closeEditor, win });
+    win.history.back();
+    flush();
+    expect(closeEditor).toHaveBeenCalledTimes(1);
+    expect(closePlanner).not.toHaveBeenCalled();
+    // reopen the editor, then close it with Save: its own entry is popped for it
+    const detachEditor = attachBackClose({ key: 'dgTaskEditor', onClose: closeEditor, win });
+    expect(depth()).toBe(2);
+    detachEditor();
+    flush();
+    expect(depth()).toBe(1);
+    expect(closePlanner).not.toHaveBeenCalled();
+  });
 });

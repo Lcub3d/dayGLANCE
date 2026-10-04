@@ -102,6 +102,8 @@ import EmptyBinConfirmModal from './components/EmptyBinConfirmModal.jsx';
 import RecurringDeleteModal from './components/RecurringDeleteModal.jsx';
 import EditRecurrenceModal from './components/EditRecurrenceModal.jsx';
 import ReminderToasts from './components/ReminderToasts.jsx';
+import TaskPeek from './components/TaskPeek.jsx';
+import { FOLLOW_UP_TAG_KEY, PEEK_TASK_EVENT, canFollowUp, completionFollowUpDraft, doneDateOf, normalizeFollowUpTag, resolveTaskRef, taskLink } from './utils/followUp.js';
 import ObsidianSyncToast from './components/ObsidianSyncToast.jsx';
 import MobileNewTaskModal from './components/MobileNewTaskModal.jsx';
 import ProjectPlanner from './components/projects/ProjectPlanner.jsx';
@@ -765,6 +767,23 @@ const DayPlanner = () => {
   const [inboxTagFilter, setInboxTagFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('inboxTagFilter') || '[]'); } catch { return []; }
   });
+  // The tag "Schedule follow-up task" adds (utils/followUp.js), on this
+  // device, as the Inbox filter it pairs with is.
+  const [followUpTag, setFollowUpTagState] = useState(() => {
+    try { return normalizeFollowUpTag(localStorage.getItem(FOLLOW_UP_TAG_KEY)); } catch { return ''; }
+  });
+  const setFollowUpTag = useCallback((raw) => {
+    const tag = normalizeFollowUpTag(raw);
+    setFollowUpTagState(tag);
+    try { if (tag) localStorage.setItem(FOLLOW_UP_TAG_KEY, tag); else localStorage.removeItem(FOLLOW_UP_TAG_KEY); } catch { /* this session only */ }
+  }, []);
+  // A task a note links to, shown read-only over whatever is open.
+  const [peekTaskId, setPeekTaskId] = useState(null);
+  useEffect(() => {
+    const onPeek = (e) => { if (e.detail?.id != null) setPeekTaskId(String(e.detail.id)); };
+    window.addEventListener(PEEK_TASK_EVENT, onPeek);
+    return () => window.removeEventListener(PEEK_TASK_EVENT, onPeek);
+  }, []);
   const [inboxProjectFilter, setInboxProjectFilter] = useState(() => {
     try { return JSON.parse(localStorage.getItem('inboxProjectFilter') || '[]'); } catch { return []; }
   });
@@ -3834,6 +3853,33 @@ const DayPlanner = () => {
     setShowAddTask(true);
   };
   openMobileEditTaskRef.current = openMobileEditTask;
+
+  // "Schedule follow-up task" from a finished task (the completion toast, the
+  // context menu): the new-task form, in the Inbox, pre-filled by
+  // utils/followUp.js with a note that links back. The prefix is selected so
+  // what is typed replaces it.
+  const openFollowUp = (task) => {
+    if (!canFollowUp(task)) return;
+    const done = doneDateOf(task, dateToString(new Date()));
+    const { selection, ...draft } = completionFollowUpDraft(task, {
+      projects: goalsProjectsEnabled ? projects : [],
+      prefix: t('followUp.titlePrefix'),
+      tag: followUpTag,
+      note: t('followUp.noteLine', { link: taskLink(task), date: formatShortDate(new Date(done + 'T12:00:00')) }),
+    });
+    if (swipeSchedulingInboxTaskId) swipeSchedulingInboxTaskId.current = null;
+    setMobileEditingTask(null);
+    setNewTask({
+      startTime: getNextQuarterHour(), duration: 30, date: dateToString(selectedDate), isAllDay: false, recurrence: null,
+      ...draft,
+    });
+    setShowAddTask(true);
+    // The form focuses its title on mount; select the prefix only if it did.
+    requestAnimationFrame(() => {
+      const input = newTaskInputRef?.current;
+      if (input && input === document.activeElement) input.setSelectionRange(selection[0], selection[1]);
+    });
+  };
 
   const openMobileEditNativeEvent = (task) => {
     const overrides = JSON.parse(localStorage.getItem('day-planner-native-time-overrides') || '{}');
@@ -8765,6 +8811,7 @@ const DayPlanner = () => {
 
     // ── Undo / redo ───────────────────────────────────────────────────────────
     undoToast, setUndoToast,
+    followUpTag, setFollowUpTag, openFollowUp,
 
     // ── Mobile editing ────────────────────────────────────────────────────────
     mobileEditingTask, setMobileEditingTask,
@@ -9658,10 +9705,20 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Undo/Redo Toast */}
+      {/* Undo/Redo Toast. Above the Refocus timeline pill, which sits in the
+          same place while the timeline is scrolled away from now and would
+          otherwise cover its buttons. */}
       {undoToast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-50 ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
-          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[55] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
+          <div
+            data-undo-toast
+            // Pointer or focus on the toast holds it (hooks/useUndo.js).
+            onMouseEnter={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
+            onMouseLeave={() => setUndoToast(prev => (prev ? { ...prev, held: false } : prev))}
+            onFocus={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
+            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setUndoToast(prev => (prev ? { ...prev, held: false } : prev)); }}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}
+          >
             <span>{undoToast.message}</span>
             {undoToast.actionable && (
               <button
@@ -9671,8 +9728,38 @@ const DayPlanner = () => {
                 {t('shortcuts.undoAction')}
               </button>
             )}
+            {undoToast.followUp && (
+              <button
+                data-follow-up-action
+                onClick={() => { const task = undoToast.followUp; setUndoToast(null); openFollowUp(task); }}
+                className="font-semibold text-blue-400 hover:text-blue-300 whitespace-nowrap"
+              >
+                {t('followUp.action')}
+              </button>
+            )}
           </div>
         </div>
+      )}
+
+      {peekTaskId != null && (
+        <TaskPeek
+          found={resolveTaskRef(peekTaskId, { tasks, unscheduledTasks, recurringTasks, recycleBin })}
+          darkMode={darkMode}
+          onClose={() => setPeekTaskId(null)}
+          // Going to the task leaves the form behind: offered only without one.
+          onShow={showAddTask ? null : () => {
+            const found = resolveTaskRef(peekTaskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+            setPeekTaskId(null);
+            if (!found) return;
+            if (found.task.date) {
+              setDesktopSpace('calendar');
+              setSelectedDate(new Date(found.task.date + 'T12:00:00'));
+              if (isMobile || isTablet) setMobileActiveTab('timeline');
+            } else if (isMobile || isTablet) {
+              setMobileActiveTab('inbox');
+            }
+          }}
+        />
       )}
 
       {/* Tablet: Timeline FABs — + (new task), Frames. They belong to the
@@ -10399,7 +10486,8 @@ const DayPlanner = () => {
         // Clamp menu position to stay within viewport
         const menuWidth = 180;
         const menuItemHeight = 36;
-        const menuItems = [hasEdit, hasNotes, hasEnergy, hasMoveTomorrow, hasMoveInbox, hasComplete, hasDelete].filter(Boolean).length;
+        const hasFollowUp = isCompleted && canFollowUp(ctxTask);
+        const menuItems = [hasEdit, hasNotes, hasEnergy, hasMoveTomorrow, hasMoveInbox, hasComplete, hasFollowUp, hasDelete].filter(Boolean).length;
         const menuHeight = menuItems * menuItemHeight + 8;
         const clampedX = Math.min(x, window.innerWidth - menuWidth - 8);
         const clampedY = Math.min(y, window.innerHeight - menuHeight - 8);
@@ -10514,6 +10602,19 @@ const DayPlanner = () => {
                 >
                   {isCompleted ? <RotateCcw size={14} /> : <Check size={14} />}
                   {isCompleted ? t('voice.actions.uncomplete') : t('focus.complete')}
+                </button>
+              )}
+              {hasFollowUp && (
+                <button
+                  data-follow-up-action
+                  className={`w-full text-left px-3 py-2 text-sm ${textPrimary} ${hoverBg} transition-colors flex items-center gap-2`}
+                  onClick={() => {
+                    openFollowUp(ctxTask);
+                    setTaskContextMenu(null);
+                  }}
+                >
+                  <SkipForward size={14} />
+                  {t('followUp.action')}
                 </button>
               )}
               {!isImported && (

@@ -2440,5 +2440,22 @@
     "unknownWarning": "Algunas tareas vinculadas no aparecen en la instantánea de origen. No se puede determinar de forma fiable si se han completado o eliminado, por lo que se han conservado sus copias locales.",
     "writeOptions": "Escritura opcional de finalizaciones (avanzado)",
     "securityTitle": "Credenciales, privacidad y limitaciones"
+  },
+  "followUp": {
+    "action": "Programar tarea de seguimiento",
+    "titlePrefix": "Seguimiento:",
+    "noteLine": "Sigue a {{link}}, completada el {{date}}.",
+    "settingTitle": "Seguimientos",
+    "settingLabel": "Etiqueta para las tareas de seguimiento",
+    "settingHint": "«Programar tarea de seguimiento» en una tarea completada añade esta etiqueta, por ejemplo #esperando. Déjala vacía para ninguna. Se guarda en este dispositivo.",
+    "settingPlaceholder": "#esperando",
+    "peekTitle": "Tarea anterior",
+    "peekDone": "Completada el {{date}}",
+    "peekNotDone": "Sin completar",
+    "peekInbox": "En la bandeja de entrada",
+    "peekOn": "Planificada para el {{date}}",
+    "peekDeleted": "En la papelera",
+    "peekGone": "Esta tarea ya no está en dayGLANCE.",
+    "peekShow": "Ir a la tarea"
   }
 }

@@ -8,6 +8,7 @@ import { triggerHaptic } from '../native.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { describeObstacle } from '../utils/dayOccupancy.js';
 import { createPendingProject } from '../utils/pendingProject.js';
+import { canFollowUp, resolveTaskRef } from '../utils/followUp.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -485,7 +486,9 @@ export default function useTaskActions({
       }
       const wasCompleted = recurringTasks.find(t => t.id === templateId)?.completedDates?.includes(dateStr);
       if (!wasCompleted) {
-        setUndoToast({ message: 'Task completed', actionable: true });
+        // The occurrence as that day showed it, for "Schedule follow-up task".
+        const occurrence = resolveTaskRef(id, { recurringTasks })?.task;
+        setUndoToast({ message: 'Task completed', actionable: true, ...(occurrence ? { followUp: occurrence } : {}) });
       }
       return;
     }
@@ -531,7 +534,7 @@ export default function useTaskActions({
       ));
     }
     if (taskToToggle && !taskToToggle.completed) {
-      setUndoToast({ message: 'Task completed', actionable: true });
+      setUndoToast({ message: 'Task completed', actionable: true, ...(canFollowUp(taskToToggle) ? { followUp: taskToToggle } : {}) });
     }
   };
 

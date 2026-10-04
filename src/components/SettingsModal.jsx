@@ -6,6 +6,7 @@ import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_
 import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
+import FollowUpTagSetting from './FollowUpTagSetting.jsx';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import LocalIntegrationsSettings from './LocalIntegrationsSettings.jsx';
@@ -711,6 +712,9 @@ const SettingsModal = () => {
                         <span className={`text-sm ${textPrimary}`}>{t('settings.enableUISounds')}</span>
                       </label>
                     </div>
+
+                    <hr className={borderClass} />
+                    <FollowUpTagSetting />
 
                     {!isMobile && (<>
                     <hr className={borderClass} />

@@ -20,10 +20,13 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, setTasks
   useEffect(() => { recycleBinRef.current = recycleBin; }, [recycleBin]);
   useEffect(() => { recurringTasksRef.current = recurringTasks; }, [recurringTasks]);
 
-  // Auto-dismiss undo/redo toast — 4s for actionable (with Undo button), 2s for passive
+  // Auto-dismiss undo/redo toast — 4s for actionable (with Undo button), 2s
+  // for passive, 10s when it also offers a follow-up: that one is a decision
+  // about what comes next, not a reflex. A toast the pointer or keyboard is
+  // on (`held`) stays until it is left, then gets its full time again.
   useEffect(() => {
-    if (!undoToast) return;
-    const delay = undoToast.actionable ? 4000 : 2000;
+    if (!undoToast || undoToast.held) return;
+    const delay = undoToast.followUp ? 10000 : undoToast.actionable ? 4000 : 2000;
     const timer = setTimeout(() => setUndoToast(null), delay);
     return () => clearTimeout(timer);
   }, [undoToast]);

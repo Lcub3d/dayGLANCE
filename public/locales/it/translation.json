@@ -2442,5 +2442,22 @@
     "unknownWarning": "Alcune attività collegate non compaiono nello snapshot di origine. Non è possibile stabilire con certezza se siano state completate o eliminate, quindi le copie locali sono state conservate.",
     "writeOptions": "Riscrittura facoltativa dei completamenti (avanzate)",
     "securityTitle": "Credenziali, privacy e limiti"
+  },
+  "followUp": {
+    "action": "Pianifica attività di follow-up",
+    "titlePrefix": "Follow-up:",
+    "noteLine": "Segue {{link}}, completata il {{date}}.",
+    "settingTitle": "Follow-up",
+    "settingLabel": "Tag per le attività di follow-up",
+    "settingHint": "«Pianifica attività di follow-up» su un'attività completata aggiunge questo tag, ad esempio #inattesa. Lascialo vuoto per nessuno. Salvato su questo dispositivo.",
+    "settingPlaceholder": "#inattesa",
+    "peekTitle": "Attività precedente",
+    "peekDone": "Completata il {{date}}",
+    "peekNotDone": "Non completata",
+    "peekInbox": "Nella posta in arrivo",
+    "peekOn": "Pianificata per il {{date}}",
+    "peekDeleted": "Nel cestino",
+    "peekGone": "Questa attività non è più in dayGLANCE.",
+    "peekShow": "Vai all'attività"
   }
 }

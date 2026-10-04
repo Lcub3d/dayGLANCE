@@ -558,7 +558,12 @@ this section is built ahead of them.
   observation; dayGLANCE updates the locator. A rename that happens with the
   plugin off is recovered by scanning the metadata cache for the id key. The
   project analogue of the block-id stamp: the id lives in the vault, the path
-  is only a hint.
+  is only a hint. *Amendment (2026-10-04):* a link request naming a
+  folder-less path (a bare `[[Name]]`, as typed on a device without the
+  plugin, whose own reader finds such a note anywhere in the vault) is
+  resolved by the plugin as Obsidian resolves a link; the report carries the
+  note's real path and the locator follows it, the rename way. A path with a
+  folder is explicit and stays missing when nothing is there.
 - **B. Frontmatter ownership.** Namespace and reassert. Every maintained key
   lives under ONE map key, `dayglance:` (status, open task count, next
   scheduled date, completion percentage, updated-at). dayGLANCE wins inside

@@ -1698,15 +1698,26 @@ export class BridgeTransport {
     const path = normalizePath(String(intent.path ?? ''));
     const targetId = String(intent.targetId ?? '').trim();
     if (!path || !targetId) return 'applied';
-    const file = this.host.app.vault.getAbstractFileByPath(path);
+    let file = this.host.app.vault.getAbstractFileByPath(path);
     const link = intent.type === 'project_note_link';
+    if (!(file instanceof TFile) && !path.includes('/')) {
+      // A folder-less path: a bare [[Name]] typed into a project's title on
+      // a device without the plugin, or into the note row. dayGLANCE's own
+      // reader finds such a note anywhere in the vault, so the plugin
+      // resolves it the same way, as Obsidian resolves a link. The link
+      // report carries the note's real path and the record's locator
+      // follows it (the rename path). A path WITH a folder is explicit and
+      // stays missing when nothing is there.
+      const resolved = this.host.app.metadataCache.getFirstLinkpathDest(path.replace(/\.md$/i, ''), '');
+      if (resolved instanceof TFile) file = resolved;
+    }
     if (!(file instanceof TFile) || file.extension !== 'md') {
       // The note dayGLANCE named does not exist here: ruling F, the record
       // learns its note is missing (a relink or an unlink resolves it).
       if (link) await this.emitLink({ targetId, path, deleted: true });
       return 'applied';
     }
-    if (!link && this.noteLinkId(path) !== targetId) return 'applied'; // not ours to remove
+    if (!link && this.noteLinkId(file.path) !== targetId) return 'applied'; // not ours to remove
     return this.setNoteLink(file, link ? targetId : null);
   }
 

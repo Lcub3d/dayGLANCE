@@ -2429,7 +2429,10 @@
     },
     "mobile": {
       "showDo": "Poszerz Wykonanie",
-      "showPlan": "Poszerz Plan"
+      "showPlan": "Poszerz Plan",
+      "doAdded": "Dodano wykonanie",
+      "doSaved": "Zapisano wykonanie",
+      "doDeleted": "Usunięto wykonanie"
     }
   },
   "timelineZoom": {

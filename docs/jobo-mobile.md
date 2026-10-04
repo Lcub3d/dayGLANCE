@@ -223,3 +223,22 @@ draws to the timeline's measured hour rather than a fixed 161px, since a
 a fixed hour would then drift from the NOW line; and DAY's NOW line reads the
 app's clock, as the Do side does, so a render between the clock's 15-second
 ticks no longer puts the Plan side's line a minute ahead on desktop.
+
+## Step 2, as built
+
+- **Add:** tap an empty slot in the wide Do side; the Do editor opens as a
+  sheet at that time, 30 minutes long, as a click does on desktop.
+- **Edit:** tap a Do. It pairs with its plan, as in step 1, and opens in
+  the editor sheet, with Delete. Keep (an estimate) and Continue (an
+  unfinished attempt) work from the card's own buttons, as on desktop.
+- **The sheet** rises from the bottom, takes focus itself so the keyboard
+  comes up only on a tap, and closes with the phone's back
+  (`useBackClose`), Cancel or the backdrop. It is `DoEditor` with `sheet`.
+- **Undo:** each accepted write shows the app's toast, "Do added", "Do
+  saved" or "Do deleted", with Undo: a phone has no keyboard for the undo
+  history every Do write already joins. Desktop keeps Ctrl+Z, unchanged.
+- **No dragging:** the Do column's `gestures={false}` drops the resize
+  handle and lets a completion marker scroll under a finger.
+- **One set of actions:** add, edit, continue and keep moved from JoboView
+  into `hooks/useJoboDoActions.js`, which both views use; the desktop view
+  keeps its drag gestures on top, saving through the same `saveEdit`.

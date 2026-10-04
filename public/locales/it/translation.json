@@ -2334,7 +2334,10 @@
     },
     "mobile": {
       "showDo": "Allarga Esecuzione",
-      "showPlan": "Allarga Piano"
+      "showPlan": "Allarga Piano",
+      "doAdded": "Esecuzione aggiunta",
+      "doSaved": "Esecuzione salvata",
+      "doDeleted": "Esecuzione eliminata"
     }
   },
   "timelineZoom": {

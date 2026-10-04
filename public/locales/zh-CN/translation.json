@@ -2332,7 +2332,10 @@
     },
     "mobile": {
       "showDo": "展开执行",
-      "showPlan": "展开计划"
+      "showPlan": "展开计划",
+      "doAdded": "已添加执行记录",
+      "doSaved": "已保存执行记录",
+      "doDeleted": "已删除执行记录"
     }
   },
   "timelineZoom": {

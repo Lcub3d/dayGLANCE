@@ -7,6 +7,8 @@ import MobileTimeGrid from '../MobileTimeGrid.jsx';
 import DoColumn from './DoColumn.jsx';
 import { DO_STRIPES } from './PastDoCard.jsx';
 import useJoboDay from '../../hooks/useJoboDay.js';
+import useJoboDoActions from '../../hooks/useJoboDoActions.js';
+import DoEditor from './DoEditor.jsx';
 import {
   DIVIDER_PX, HOUR_GUTTER_PX, NARROW_LANE_PX, SWAP_MS,
   doBar, laneWidths, planIsWide, swapped, tappedTaskId,
@@ -20,8 +22,10 @@ import {
 //
 // The wide Plan side IS the phone timeline (MobileTimeGrid), so its cards,
 // tap-to-add, long-press, card swipes and notes come with it, and its bars
-// mode draws the narrow Plan lane. The wide Do side is the Do column, read
-// only in this first build: adding and editing Do on the phone follow.
+// mode draws the narrow Plan lane. The wide Do side is the Do column: tap an
+// empty slot to add a Do there, tap a Do to edit it, both in the Do editor
+// as a sheet (step 2). Keep and Continue work as on desktop; nothing drags,
+// since dragging competes with scrolling the day.
 //
 // It renders inside the timeline's own scroll area (the layout's
 // calendarRef), as MobileTimeGrid needs, under the layout's sticky date
@@ -120,11 +124,17 @@ function DoBars({ items, date, hourPx, selectedTaskId, onTap, ctx, t }) {
 export default function MobileJoboView({ stickyHeaderRef }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboLoaded, joboError, reloadJobo } = useFeaturesCtx();
+  const { joboLoaded, joboError, joboWritable, reloadJobo } = useFeaturesCtx();
   // The timeline's hour as drawn (see PHONE_HOUR_PX), measured from its
   // second row: the first carries the grid's top border as well.
   const [hourPx, setHourPx] = useState(PHONE_HOUR_PX);
   const { date, dayTasks, model, doItems, currentTime, nowDate } = useJoboDay({ hourHeight: hourPx });
+  // Add, edit, continue and keep: the desktop view's own actions, so a Do is
+  // written the same way from either, every write a step of the undo history.
+  const {
+    writer, editorProps, error: actionError,
+    openAdd, openEdit, openContinue, keepEstimate,
+  } = useJoboDoActions({ date, model, doItems, currentTime, nowDate, announce: true });
 
   // Which side is wide: the default for the date until a swap, which holds
   // while the date does.
@@ -229,6 +239,10 @@ export default function MobileJoboView({ stickyHeaderRef }) {
     );
   }
 
+  const status = actionError
+    || (writer.conflict ? t('jobo.view.recordChanged')
+      : joboError ? t('jobo.view.storageError')
+        : !joboWritable ? t('jobo.view.readOnly') : '');
   const fadeIn = (side) => ({
     opacity: arriving === side ? 0 : 1,
     transition: arriving === side ? 'none' : `opacity ${reducedMotion() ? 0 : 150}ms ease-out`,
@@ -236,6 +250,9 @@ export default function MobileJoboView({ stickyHeaderRef }) {
 
   return (
     <div ref={rootRef} data-jobo-mobile data-plan-wide={planWide ? 'true' : 'false'} className={ctx.textPrimary}>
+      {status && (
+        <div data-jobo-status className="flex items-center gap-2 px-3 py-1 text-xs" role="status"><AlertTriangle size={14} />{status}</div>
+      )}
       {/* The Plan/Do row: the wide side's name (the narrow lane has no room
           for one in every language) and the swap button on the divider,
           sticking under the date header. */}
@@ -302,20 +319,24 @@ export default function MobileJoboView({ stickyHeaderRef }) {
                 items={doItems}
                 ctx={ctx}
                 t={t}
-                writable={false}
-                pendingIds={[]}
+                writable={joboWritable}
+                gestures={false}
+                pendingIds={writer.pendingIds}
                 preview={null}
-                onAddAt={() => {}}
-                onEdit={() => {}}
-                onKeep={() => {}}
-                onContinue={() => {}}
+                onAddAt={openAdd}
+                onEdit={openEdit}
+                onKeep={keepEstimate}
+                onContinue={openContinue}
                 hoverTaskId={selectedTaskId}
                 onHoverTask={() => {}}
                 startHour={0}
                 endHour={24}
+                // A tap on a Do pairs it with its plan and opens it in the
+                // editor; read only, it pairs alone.
                 onDetails={(item) => {
                   const id = item.sourceTask?.id;
-                  select(id == null || String(id) === selectedTaskId ? null : id);
+                  if (id != null) select(id);
+                  if (joboWritable && item.record) openEdit(item.record);
                 }}
                 onPointGesture={() => {}}
                 onResizeGesture={() => {}}
@@ -324,6 +345,18 @@ export default function MobileJoboView({ stickyHeaderRef }) {
           </div>
         </div>
       </div>
+      {editorProps && (
+        <DoEditor
+          {...editorProps}
+          sheet
+          t={t}
+          cardBg={ctx.cardBg}
+          textPrimary={ctx.textPrimary}
+          textSecondary={ctx.textSecondary}
+          borderClass={ctx.borderClass}
+          darkMode={ctx.darkMode}
+        />
+      )}
     </div>
   );
 }

@@ -100,3 +100,21 @@ describe('Complete task in the Do editor', () => {
     expect(html).toMatch(/<fieldset disabled=""[\s\S]*data-jobo-complete-task[\s\S]*<\/fieldset>/);
   });
 });
+
+// The phone's form (JOBO slice 8, step 2): a sheet from the bottom, with no
+// keyboard hints, since a phone has no Enter or Escape keys to point at.
+describe('Do editor as a sheet', () => {
+  it('rises from the bottom with a grabber, and drops the keyboard hints', () => {
+    const html = render({ sheet: true });
+    expect(html).toContain('data-jobo-do-editor="sheet"');
+    expect(html).toContain('items-end');
+    expect(html).toContain('rounded-t-2xl');
+    expect(html).not.toContain('<kbd');
+  });
+  it('stays the centred dialog elsewhere', () => {
+    const html = render();
+    expect(html).toContain('data-jobo-do-editor="dialog"');
+    expect(html).toContain('items-center');
+    expect(html).toContain('<kbd');
+  });
+});

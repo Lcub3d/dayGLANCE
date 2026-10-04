@@ -47,11 +47,28 @@ which have no Do associated with that plan. Task completion and work recorded
 for a different plan do not change this evidence metric. It differs from the
 Check's list of tasks needing a next step, which also covers all-day tasks.
 
-Attempt/progress/context/single/split/gap diagnostics are not summed across
-days: the same attempt or group can appear on several dates. They remain Day
-diagnostics. Priority coverages can overlap and are not additive shares of the
-total. Any invalid ledger evidence preserves basic task counts while making
-exact time and comparison metrics unavailable.
+Execution appears on every range. It counts distinct winning Do record ids
+that have a positive timed slice on an included date, or an untimed completion
+marker on that date. Progress counts each of those records as it stands now,
+not just the latest attempt in its group. Estimated intervals remain execution
+evidence without adding measured time.
+
+Single, split and no plan count distinct execution groups represented by those
+records. They retain the day model's complete-group classification, including
+sessions outside the selected dates, so a split execution does not become
+single merely because only one of its sessions is in the range. Other sessions
+do not add to the range's Do or progress counts. Different captured plans and
+recurring occurrences remain separate groups, and unlinked records stay
+independent. A captured plan without Do on the included dates contributes to
+plan comparison only, not to Execution.
+
+These counts use identities from one prepared input revision, never a sum of
+per-day Execution counters. Bare Check summaries without those identities keep
+range Execution unavailable. Gap and per-priority progress remain Day-only.
+Priority coverages can overlap and are not additive shares of the total. Any
+invalid ledger evidence preserves basic counts of valid visible records while
+making exact time and comparison metrics unavailable. Winning tombstones and
+household-hidden records do not contribute; orphan Do history remains visible.
 
 ## Read-model preparation
 

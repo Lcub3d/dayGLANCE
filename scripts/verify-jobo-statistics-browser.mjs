@@ -34,8 +34,9 @@ const i18n = i18next.createInstance();
 await i18n.init({ lng: language, fallbackLng: false, resources: ${JSON.stringify(locales)}, interpolation: { escapeValue: false } });
 const rows = [['2026-09-28', '10:00'], ['2026-09-29', '11:00'], ['2026-10-02', '09:30']];
 const records = rows.map(([date, endTime], index) => createDoRecord({
-  id: 'record-' + index, taskId: null, title: 'Work', source: 'manual', progress: 'partial',
-  timing: 'timed', date, startTime: '09:00', endDate: date, endTime, planSnapshot: null,
+  id: 'record-' + index, taskId: index < 2 ? 'split-task' : null, title: 'Work', source: 'manual', progress: 'partial',
+  timing: 'timed', date, startTime: '09:00', endDate: date, endTime,
+  planSnapshot: index < 2 ? { date: rows[0][0], startTime: '09:00', duration: 60 } : null,
   createdAt: date + 'T09:00:00Z', updatedAt: date + 'T09:00:00Z', observedAt: date + 'T09:00:00Z',
 }));
 window.statisticsShortcutLeaks = 0;
@@ -43,6 +44,12 @@ document.addEventListener('keydown', () => { window.statisticsShortcutLeaks += 1
 window.statisticsText = {
   recorded: i18n.t('jobo.stats.recorded'),
   close: i18n.t('common.close'),
+  execution: i18n.t('jobo.statistics.execution'),
+  doRecords: i18n.t('jobo.statistics.doRecords'),
+  single: i18n.t('jobo.statistics.single'),
+  split: i18n.t('jobo.statistics.split'),
+  partial: i18n.t('jobo.view.progress.partial'),
+  noPlan: i18n.t('jobo.statistics.noPlan'),
   durations: Object.fromEntries([60, 90, 180, 210, 240].map(minutes => [minutes, formatDuration(minutes, i18n.t.bind(i18n))])),
 };
 function Fixture() {
@@ -118,6 +125,19 @@ try {
       { label: text.recorded, value: text.durations[minutes] });
       const metric = panel.locator('dl > div').filter({ has: page.locator('dt', { hasText: text.recorded }) }).first();
       assert.equal(await metric.locator('dd').innerText(), text.durations[minutes]);
+      // Execution stays present on every tab, with unique records and full
+      // groups rather than a sum of each day's single/split counters.
+      const execution = panel.locator('section').filter({ has: page.locator('h3', { hasText: text.execution }) });
+      assert.equal(await execution.count(), 1);
+      const [doCount, single, noPlan] = ({
+        60: [1, 0, 0], 90: [2, 1, 1], 180: [2, 0, 0], 210: [3, 1, 1], 240: [4, 2, 2],
+      })[minutes];
+      for (const [label, value] of [[text.doRecords, doCount], [text.single, single], [text.split, 1]]) {
+        assert.equal(await execution.locator('dl > div').filter({ has: page.locator('dt', { hasText: label }) })
+          .locator('dd').innerText(), String(value));
+      }
+      assert.ok((await execution.locator('p').innerText()).includes(text.partial + ': ' + doCount));
+      assert.ok((await execution.locator('p').innerText()).includes(text.noPlan + ': ' + noPlan));
     };
 
     await assertFocused(close);

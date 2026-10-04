@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import JoboSheet from './JoboSheet.jsx';
 import { formatLocalizedDate } from '../../utils/localeFormatting.js';
 import { formatDuration } from '../../utils/formatDuration.js';
 import { aggregateCheckSummaries, STATISTICS_SCOPES, statisticsDatesForScope } from '../../jobo/checkStatistics.js';
@@ -126,6 +127,10 @@ function Summary({ summary, textSecondary, borderClass }) {
 export default function StatisticsPanel({
   anchorDate, weekDates, evidenceDates, buildReports, loaded, error, onClose,
   cardBg = 'bg-white', textPrimary = '', textSecondary = '', borderClass = '', darkMode = false,
+  // The phone's form (JOBO slice 8): the same tabs and figures in a sheet
+  // (JoboSheet), which owns dismissal; no focus trap, since a phone has no
+  // Tab key to trap.
+  sheet = false,
 }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage || i18n.language || 'en';
@@ -148,6 +153,7 @@ export default function StatisticsPanel({
   const rangeLabel = dates.length > 1 ? `${labelDate(dates[0])} – ${labelDate(dates.at(-1))}` : labelDate(dates[0]);
 
   useEffect(() => {
+    if (sheet) return undefined;
     const previous = document.activeElement;
     const root = dialog.current;
     root?.querySelector('button')?.focus();
@@ -184,8 +190,37 @@ export default function StatisticsPanel({
       const active = document.activeElement;
       if (previous?.isConnected && (!active || active === document.body || root?.contains(active))) previous.focus();
     };
-  }, []);
+  }, [sheet]);
 
+  // The tabs and the figures, framed as a dialog on desktop and a sheet on
+  // the phone.
+  const body = (
+    <>
+      <div className={`px-5 pt-3 border-b flex gap-1 overflow-x-auto ${borderClass}`} role="tablist" aria-label={t('jobo.statistics.title')}>
+        {STATISTICS_SCOPES.map((key) => <button key={key} type="button" role="tab"
+          id={`${titleId}-${key}-tab`} aria-controls={`${titleId}-panel`} tabIndex={scope === key ? 0 : -1}
+          title={key === 'allTime' ? t('jobo.statistics.allTimeScope') : undefined}
+          data-jobo-statistics-scope={key} aria-selected={scope === key} onClick={() => setScope(key)}
+          className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${scope === key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent ' + textSecondary}`}>
+          {t(`jobo.statistics.${key}`)}
+        </button>)}
+      </div>
+      <div id={`${titleId}-panel`} tabIndex={0} role="tabpanel" aria-labelledby={`${titleId}-${scope}-tab`}
+        className="overflow-y-auto px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
+        {error ? <p role="alert">{t('jobo.statistics.unavailable')}</p>
+          : !loaded ? <p role="status">{t('common.loading')}</p>
+            : summary ? <Summary summary={summary} textSecondary={textSecondary} borderClass={borderClass} />
+              : <p role="status" className={textSecondary}>{t('jobo.statistics.empty')}</p>}
+      </div>
+    </>
+  );
+  if (sheet) {
+    return (
+      <JoboSheet historyKey="joboStatisticsSheet" title={t('jobo.statistics.title')} subtitle={rangeLabel} onClose={onClose} data-jobo-statistics-panel="sheet">
+        {body}
+      </JoboSheet>
+    );
+  }
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-3 sm:p-6"
       onMouseDown={(event) => {
@@ -199,22 +234,7 @@ export default function StatisticsPanel({
           <button type="button" onClick={onClose} aria-label={t('common.close')}
             className={`p-2 rounded-lg ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}><X size={18} /></button>
         </header>
-        <div className={`px-5 pt-3 border-b flex gap-1 overflow-x-auto ${borderClass}`} role="tablist" aria-label={t('jobo.statistics.title')}>
-          {STATISTICS_SCOPES.map((key) => <button key={key} type="button" role="tab"
-            id={`${titleId}-${key}-tab`} aria-controls={`${titleId}-panel`} tabIndex={scope === key ? 0 : -1}
-            title={key === 'allTime' ? t('jobo.statistics.allTimeScope') : undefined}
-            data-jobo-statistics-scope={key} aria-selected={scope === key} onClick={() => setScope(key)}
-            className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${scope === key ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent ' + textSecondary}`}>
-            {t(`jobo.statistics.${key}`)}
-          </button>)}
-        </div>
-        <div id={`${titleId}-panel`} tabIndex={0} role="tabpanel" aria-labelledby={`${titleId}-${scope}-tab`}
-          className="overflow-y-auto px-5 py-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500">
-          {error ? <p role="alert">{t('jobo.statistics.unavailable')}</p>
-            : !loaded ? <p role="status">{t('common.loading')}</p>
-              : summary ? <Summary summary={summary} textSecondary={textSecondary} borderClass={borderClass} />
-                : <p role="status" className={textSecondary}>{t('jobo.statistics.empty')}</p>}
-        </div>
+        {body}
       </div>
     </div>, document.body,
   );

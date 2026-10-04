@@ -9,6 +9,14 @@ import { DO_STRIPES } from './PastDoCard.jsx';
 import useJoboDay from '../../hooks/useJoboDay.js';
 import useJoboDoActions from '../../hooks/useJoboDoActions.js';
 import DoEditor from './DoEditor.jsx';
+import JoboSheet from './JoboSheet.jsx';
+import StatisticsPanel from './StatisticsPanel.jsx';
+import { CheckJournal } from './CheckPanel.jsx';
+import { journalDate } from './checkJournal.js';
+import { JOBO_MOBILE_ACTION_EVENT } from './MobileJoboHeaderActions.jsx';
+import useJoboStatistics from '../../hooks/useJoboStatistics.js';
+import { createCarryForwardActions } from '../../jobo/carryForwardActions.js';
+import { snapMinute } from './DoColumn.jsx';
 import {
   DIVIDER_PX, HOUR_GUTTER_PX, NARROW_LANE_PX, SWAP_MS,
   doBar, laneWidths, planIsWide, swapped, tappedTaskId,
@@ -122,9 +130,9 @@ function DoBars({ items, date, hourPx, selectedTaskId, onTap, ctx, t }) {
 }
 
 export default function MobileJoboView({ stickyHeaderRef }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const ctx = useDayPlannerCtx();
-  const { joboLoaded, joboError, joboWritable, reloadJobo } = useFeaturesCtx();
+  const { joboLoaded, joboError, joboWritable, joboRecords, reloadJobo, goalsProjectsEnabled, projects } = useFeaturesCtx();
   // The timeline's hour as drawn (see PHONE_HOUR_PX), measured from its
   // second row: the first carries the grid's top border as well.
   const [hourPx, setHourPx] = useState(PHONE_HOUR_PX);
@@ -135,6 +143,31 @@ export default function MobileJoboView({ stickyHeaderRef }) {
     writer, editorProps, error: actionError,
     openAdd, openEdit, openContinue, keepEstimate,
   } = useJoboDoActions({ date, model, doItems, currentTime, nowDate, announce: true });
+
+  // The date header's buttons (MobileJoboHeaderActions, step 3): the Check
+  // and the statistics as sheets, and Add Do at now on today, 09:00 on
+  // another day, as on desktop.
+  const [sheet, setSheet] = useState(null);
+  const closeSheet = useCallback(() => setSheet(null), []);
+  const addNowOr9 = () => openAdd(date === nowDate
+    ? Math.min(1410, snapMinute(currentTime.getHours() * 60 + currentTime.getMinutes()))
+    : 9 * 60);
+  const addRef = useRef(addNowOr9);
+  addRef.current = addNowOr9;
+  useEffect(() => {
+    const onAction = (event) => {
+      const action = event.detail?.action;
+      if (action === 'check' || action === 'statistics') setSheet(action);
+      else if (action === 'add') addRef.current();
+    };
+    window.addEventListener(JOBO_MOBILE_ACTION_EVENT, onAction);
+    return () => window.removeEventListener(JOBO_MOBILE_ACTION_EVENT, onAction);
+  }, []);
+  const statistics = useJoboStatistics({ open: sheet === 'statistics' });
+  // The Check's next steps, through the app's own task actions. The sheet
+  // stays open under the task form they may open, so closing the form comes
+  // back to the Check.
+  const carry = createCarryForwardActions({ ...ctx, projects: goalsProjectsEnabled ? projects : [] });
 
   // Which side is wide: the default for the date until a swap, which holds
   // while the date does.
@@ -345,6 +378,23 @@ export default function MobileJoboView({ stickyHeaderRef }) {
           </div>
         </div>
       </div>
+      {sheet === 'check' && (
+        <JoboSheet historyKey="joboCheckSheet" title={t('jobo.check.title')}
+          subtitle={journalDate(date, i18n.resolvedLanguage || i18n.language || 'en')} onClose={closeSheet} data-jobo-check-panel="sheet">
+          <div className="px-4 py-3">
+            <CheckJournal model={model} date={date} loaded={joboLoaded && Array.isArray(joboRecords)} error={joboError}
+              formatTime={ctx.formatTime} today={nowDate} carry={carry} onUndo={ctx.performUndo}
+              dayTasks={ctx.getTasksForDate(ctx.selectedDate, false)}
+              textSecondary={ctx.textSecondary} borderClass={ctx.borderClass} />
+          </div>
+        </JoboSheet>
+      )}
+      {sheet === 'statistics' && (
+        <StatisticsPanel sheet key={date} anchorDate={date} weekDates={statistics.weekDates} evidenceDates={statistics.evidenceDates}
+          buildReports={statistics.buildReports} loaded={statistics.loaded} error={statistics.error} onClose={closeSheet}
+          cardBg={ctx.cardBg} textPrimary={ctx.textPrimary} textSecondary={ctx.textSecondary}
+          borderClass={ctx.borderClass} darkMode={ctx.darkMode} />
+      )}
       {editorProps && (
         <DoEditor
           {...editorProps}

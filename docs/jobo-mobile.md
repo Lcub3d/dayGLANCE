@@ -242,3 +242,22 @@ ticks no longer puts the Plan side's line a minute ahead on desktop.
 - **One set of actions:** add, edit, continue and keep moved from JoboView
   into `hooks/useJoboDoActions.js`, which both views use; the desktop view
   keeps its drag gestures on top, saving through the same `saveEdit`.
+
+## Step 3, as built
+
+- **The date header gains Check, Statistics and Add Do**
+  (`MobileJoboHeaderActions`), on the phone and on a portrait tablet's
+  header. The header is the layout's and the sheets are the JOBO view's, so
+  the buttons send a window event the view listens for. Add Do opens the
+  editor at now on today, 09:00 on another day, as on desktop.
+- **Both sheets are `JoboSheet`,** near full height, with MONTH's day
+  sheet's dismissal (`useSheetDismissal`): back, a pull down, the left-edge
+  swipe, Escape, the X and the backdrop, each leaving through the sheet's
+  history entry so no stale one swallows a later back.
+- **The Check** is the same journal (`CheckJournal`), with its next steps.
+  The sheet stays open under the task form a next step may open, so closing
+  the form comes back to the Check.
+- **The statistics** are the same panel with `sheet`: the four tabs and the
+  figures in the sheet, without the desktop dialog's focus trap. Its inputs
+  moved from the desktop's date-row tiles into `hooks/useJoboStatistics.js`,
+  which both now use.

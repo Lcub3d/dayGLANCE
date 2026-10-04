@@ -77,7 +77,7 @@ export function DoSessionsPanel({ sessions, formatTime = (v) => v, onOpenJobo, p
 export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta', withPlanHistory = false }) {
   const { t } = useTranslation();
   const ctx = useDayPlannerCtx() || {};
-  const { getDoSessionsForTask, formatTime, isMobile, setViewMode, setSelectedDate } = ctx;
+  const { getDoSessionsForTask, formatTime, isMobile, setViewMode, setSelectedDate, openJoboAt } = ctx;
   const sessions = typeof getDoSessionsForTask === 'function' ? getDoSessionsForTask(task) : [];
   const [open, setOpen] = useState(false);
   // Fixed coordinates, measured from the badge, and drawn at the document's
@@ -121,8 +121,14 @@ export default function DoSessionsBadge({ task, pad = 'p-0.5', placement = 'meta
   };
   // JOBO has no phone layout until slice 8, so the phone gets the sessions
   // without the way there.
+  // At the first session's time, not at now (App's openJoboAt).
   const openJobo = !isMobile && typeof setViewMode === 'function'
-    ? () => { setOpen(false); setSelectedDate?.(new Date(`${task.date}T12:00:00`)); setViewMode('jobo'); }
+    ? () => {
+      setOpen(false);
+      if (typeof openJoboAt === 'function') { openJoboAt({ date: task.date, minute: sessions[0].startMinute }); return; }
+      setSelectedDate?.(new Date(`${task.date}T12:00:00`));
+      setViewMode('jobo');
+    }
     : null;
 
   return (

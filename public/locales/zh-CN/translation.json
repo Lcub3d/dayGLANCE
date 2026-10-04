@@ -2122,7 +2122,8 @@
     "unreachable": "该文件夹当前不可用。待其恢复后同步将自动继续。",
     "onHint": "已开启。此设备通过该文件夹同步。",
     "offHint": "此设备已关闭。文件夹中的副本和其他设备不会受到影响。",
-    "neverSynced": "尚未同步"
+    "neverSynced": "尚未同步",
+    "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。"
   },
   "aspire": {
     "title": "Aspire",

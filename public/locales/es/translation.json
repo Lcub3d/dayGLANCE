@@ -2122,7 +2122,8 @@
     "unreachable": "La carpeta no está disponible ahora mismo. La sincronización se reanuda cuando vuelva a estarlo.",
     "onHint": "Activada. Este dispositivo se sincroniza a través de la carpeta.",
     "offHint": "Desactivada en este dispositivo. La copia en la carpeta y tus otros dispositivos no se ven afectados.",
-    "neverSynced": "Aún no sincronizado"
+    "neverSynced": "Aún no sincronizado",
+    "androidHint": "En Android, elige una carpeta que una app refleje en el almacenamiento de este dispositivo, como Syncthing, FolderSync o Autosync. Las apps de Google Drive y Dropbox no ofrecen sus carpetas aquí."
   },
   "aspire": {
     "title": "Aspire",

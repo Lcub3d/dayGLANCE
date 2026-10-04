@@ -2122,7 +2122,8 @@
     "unreachable": "Der Ordner ist gerade nicht verfügbar. Die Synchronisierung läuft weiter, sobald er wieder da ist.",
     "onHint": "Ein. Dieses Gerät synchronisiert über den Ordner.",
     "offHint": "Auf diesem Gerät aus. Die Kopie im Ordner und Ihre anderen Geräte sind nicht betroffen.",
-    "neverSynced": "Noch nicht synchronisiert"
+    "neverSynced": "Noch nicht synchronisiert",
+    "androidHint": "Wählen Sie unter Android einen Ordner, den eine App in den Speicher dieses Geräts spiegelt, etwa Syncthing, FolderSync oder Autosync. Die Apps von Google Drive und Dropbox bieten ihre Ordner hier nicht an."
   },
   "aspire": {
     "title": "Aspire",

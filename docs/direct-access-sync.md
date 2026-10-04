@@ -167,7 +167,7 @@ iCloud users see the same cycles, the same prompt, the same keys.
   per-device switch (`dayglance-direct-access-enabled`) and the last-synced
   stamp (`dayglance-direct-access-last-synced`).
 
-### Phase 3: Android
+### Phase 3: Android — done
 
 - A `DirectAccessBridge` on the Storage Access Framework, reusing the
   persistable tree permission flow and `SafeReplace` from the Obsidian
@@ -177,6 +177,27 @@ iCloud users see the same cycles, the same prompt, the same keys.
 - Caveat to document: the Google Drive and Dropbox Android apps do not expose a
   folder tree to the picker. Android users need a tool that mirrors to a real
   local folder (Syncthing, FolderSync, Autosync).
+
+#### What Phase 3 shipped
+
+- `DirectAccessRead.kt` classifies a read exactly as the desktop store does
+  (zero-length is a placeholder, a revoked grant or vanished tree is an error,
+  a thrown read is retried, a refused open is an error), pure over a `Source`
+  seam and JVM-tested in `DirectAccessReadTest.kt`.
+- `DirectAccessRepository.kt` binds it to DocumentFile: the tree URI lives in
+  `SharedDataStore.directAccessPath`, writes go through `SafeReplace`, every
+  read heals a crashed write first, and an unchanged file is served from a
+  lastModified-and-length cache.
+- `DirectAccessBridge.kt` is `window.DayGlanceDirectAccess`; MainActivity owns
+  the SAF tree picker and takes the persistable grant, and the result reaches
+  the page through `window.__dgDirectAccessPicked`.
+- `src/sync/directAccessAndroidBridge.js` adapts those synchronous calls to the
+  promise shape the Electron preload offers, so the transport, hook, cycle and
+  settings card are unchanged. There is no folder watcher on SAF, so the poll
+  and the foreground kick carry remote changes.
+- The settings card shows an Android-only hint: the Google Drive and Dropbox
+  apps do not offer a folder tree to the picker, so the folder has to come from
+  an app that mirrors to local storage (Syncthing, FolderSync, Autosync).
 
 ### Phase 4: iOS
 
@@ -194,7 +215,7 @@ iCloud users see the same cycles, the same prompt, the same keys.
 - A diagnostics card like `ICloudDiagnostics`, and a web/PWA transport via the
   File System Access API that `folderBackup.js` already demonstrates.
 
-## Using it (desktop)
+## Using it (desktop and Android)
 
 Settings → Cloud Sync → **Direct Access** → *Choose folder…* on each machine,
 picking the same folder inside whatever the syncing tool mirrors (for example
@@ -203,6 +224,12 @@ was read, and a switch that pauses syncing on that device without touching the
 folder copy. *Change folder* re-picks; *Disconnect* forgets the folder on that
 device and leaves the file where it is. Reset App Data → *This device and the
 Direct Access folder* deletes the file too.
+
+On Android the card is the same, under Settings → Cloud Sync. Pick a folder
+that an app mirrors to the phone's storage (Syncthing, FolderSync, Autosync);
+the Google Drive and Dropbox apps do not offer their folders to Android's
+folder picker. Remote changes land on the 15 second poll or when the app comes
+to the foreground.
 
 The file is plain JSON, the same `dayglance-sync.json` the WebDAV tier writes.
 If the folder already holds an encrypted copy from a WebDAV setup, Direct

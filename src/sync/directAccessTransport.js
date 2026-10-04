@@ -23,9 +23,12 @@
  *     marks itself unreachable, the hook stops cycling, and each poll tick
  *     re-probes the folder so sync resumes by itself when it is back.
  *
- * The folder path and the macOS bookmark live in the main process only. The
- * renderer sees a folder name for the settings card and nothing else.
+ * The folder path and the macOS bookmark live in the main process only (on
+ * Android, the SAF tree URI lives in the app's preferences). The renderer sees
+ * a folder name for the settings card and nothing else.
  */
+
+import { createAndroidDirectAccessBridge, isAndroidDirectAccessAvailable } from './directAccessAndroidBridge.js';
 
 /** Poll cadence: the tool does the network work; we read the local file. */
 export const DIRECT_ACCESS_POLL_MS = 15 * 1000;
@@ -36,12 +39,23 @@ export const DIRECT_ACCESS_LAST_SYNCED_KEY = 'dayglance-direct-access-last-synce
 /** 'true' | 'false' | absent. Absent means ON once a folder is connected. */
 export const DIRECT_ACCESS_PREF_KEY = 'dayglance-direct-access-enabled';
 
-const defaultBridge = () =>
-  (typeof window !== 'undefined' ? window.electronAPI?.directAccess ?? null : null);
+// Electron (every desktop platform) exposes the bridge directly; the Android
+// WebView exposes synchronous Kotlin methods that the adapter wraps into the
+// same shape. iOS has neither (phase 4), and the web has no folder access.
+let androidBridge = null;
+const defaultBridge = () => {
+  if (typeof window === 'undefined') return null;
+  if (window.electronAPI?.directAccess) return window.electronAPI.directAccess;
+  if (isAndroidDirectAccessAvailable()) {
+    androidBridge ??= createAndroidDirectAccessBridge();
+    return androidBridge;
+  }
+  return null;
+};
 const defaultStorage = () =>
   (typeof window !== 'undefined' ? window.localStorage : null);
 
-/** Electron only, every desktop platform. Decides whether the poll even starts. */
+/** Desktop Electron and the Android app. Decides whether the poll even starts. */
 export const isDirectAccessSupported = () => !!defaultBridge();
 
 /**

@@ -4,6 +4,7 @@ import App from './App.jsx'
 import './index.css'
 import i18n, { ready as i18nReady } from './i18n.js'
 import { buildApplicationMenuLabels } from './utils/applicationMenuLabels.js'
+import { installSubtleDigestShim } from './utils/sha256.js'
 
 function syncApplicationMenuLabels() {
   const setLabels = window.electronAPI?.setApplicationMenuLabels
@@ -24,6 +25,15 @@ if (typeof crypto.randomUUID !== 'function') {
       .map(s => Array.from(s).map(x => x.toString(16).padStart(2,'0')).join('')).join('-');
   };
 }
+
+// crypto.subtle is gone in the same insecure contexts. The GLANCE integration
+// hashes on every inbound create (createKey in @glance-apps/intents, then
+// deterministicTaskId), so without it a chore from lastGLANCE lands in the
+// activity log as "Cannot read properties of undefined (reading 'digest')"
+// (#1968). The shim provides a SHA-256 digest that is bit-identical to
+// WebCrypto's, so the ids it derives match a secure-context device's; nothing
+// else (encryption, key derivation) is pretended. No-op when WebCrypto exists.
+installSubtleDigestShim();
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

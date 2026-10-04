@@ -115,7 +115,8 @@ manually or via BRAT, not submitted to the community directory.
   removes the key. The plugin follows renames, reports a deleted note as
   missing (dayGLANCE keeps the project and offers a relink), re-finds a
   note by its key on a periodic walk, and applies link and unlink requests
-  made from dayGLANCE. A linked note also carries a `dayglance:` frontmatter
+  made from dayGLANCE (a bare note name on a request resolves as Obsidian
+  resolves a link, and the record learns the note's real path). A linked note also carries a `dayglance:` frontmatter
   map the plugin maintains from its mirror: `kind`, `status`, and on a
   project note `goal` (a wikilink to the goal's note when it is linked).
   Counts and dates are deliberately not in it, so it is rewritten only when

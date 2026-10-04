@@ -378,6 +378,36 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await s.plugin.transport.drain();
     expect((s.text(NOTE)!.match(/- \[ \] Chore /g) ?? []).length).toBe(30);
   });
+  it('8b. A BARE NAME ON A LINK REQUEST (2026-10-04): [[House]] typed on a device without the plugin is stored folder-less; the plugin resolves it as Obsidian resolves a link, keys the note in its folder, and the report moves the locator to the real path; a bare name nothing matches, and a folder path to nothing, come back as missing', async () => {
+    const house = { id: 'p1', title: 'House', status: 'active' };
+    const attic = { id: 'p2', title: 'Attic', status: 'active' };
+    const shed = { id: 'p3', title: 'Shed', status: 'active' };
+    await boot({ projects: [house, attic, shed] });
+    await s.write(NOTE, '---\ntags: [hub]\n---\n# House\nMy own hub paragraph.\n');
+    await s.settle();
+    expect(A.api.linkProjectNote('project', 'p1', '[[House]]')).toBe(true);
+    expect(house.obsidianNotePath).toBe('House.md');
+    expect(A.api.linkProjectNote('project', 'p2', '[[Attic]]')).toBe(true);
+    expect(A.api.linkProjectNote('project', 'p3', '[[Projects/Shed]]')).toBe(true);
+    await A.flush();
+    await s.plugin.transport.drain();
+    await s.advance(3000);
+    await A.sync();
+    expect(frontmatterOf(NOTE)['dayglance-id']).toBe('p1');
+    expect(frontmatterOf(NOTE).tags).toEqual(['hub']);
+    expect(s.text('House.md')).toBeNull();
+    expect(s.plugin.transport.linkedNotes().get(NOTE)).toBe('p1');
+    expect(house.obsidianNotePath).toBe(NOTE);
+    expect(house.obsidianNoteMissingAt ?? null).toBeNull();
+    // Nothing anywhere is called Attic; Projects/Shed does not exist: ruling F for both, paths kept for a relink.
+    expect(attic.obsidianNotePath).toBe('Attic.md');
+    expect(attic.obsidianNoteMissingAt).toBeTruthy();
+    expect(shed.obsidianNotePath).toBe('Projects/Shed.md');
+    expect(shed.obsidianNoteMissingAt).toBeTruthy();
+    // MUTATION: drop the resolution in applyLinkIntent and House is marked
+    // missing like the others, the key written nowhere.
+  });
+
   it('12. notes typed on a placed project task become a note in the project folder, linked from the line; the record empties; a same-title task gets its own suffixed note; a second pass writes nothing', async () => {
     await bootLinked();
     A.add({ title: 'Fix the gutter', projectId: 'p1' });

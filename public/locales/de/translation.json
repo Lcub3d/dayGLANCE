@@ -457,6 +457,7 @@
     "experimentalHint": "Funktionen, die noch in Arbeit sind und schrittweise eintreffen. Standardmäßig aus; ohne Einschalten ändert sich nichts.",
     "enableJobo": "JOBO-Ansicht",
     "enableJoboHint": "Plan gegen Ist. Eine sechste Ansicht auf Taste 6, die festhält, was gegenüber dem Plan tatsächlich getan wurde.",
+    "enableJoboHintPhone": "Plan gegen Ist. Eine Ansicht im Ansichtsumschalter der Zeitleiste, die festhält, was gegenüber dem Plan erledigt wurde.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Lebensplanung: eine Wunschliste fürs Leben, eine Fünfjahresvision und Leitsätze. Vorerst ein Platzhalter, erreichbar aus dem Bereich Ziele & Projekte.",
     "inbox": "Posteingang",
@@ -2328,6 +2329,10 @@
       "taskScope": "Aufgabenzahlen und Prioritäten beruhen auf dem aktuellen Aufgabenstand, nicht auf einem historischen Abbild. „Kein Do erfasst“ zählt aktuelle Pläne mit Zeitangaben, deren geplantes Ende verstrichen ist und denen kein Do zugeordnet ist, unabhängig vom Aufgabenabschluss oder für einen anderen Plan erfasster Arbeit.",
       "timingScope": "Die erfasste Zeit umfasst die ausgewählten Tage. Planvergleiche, Zeit innerhalb und außerhalb des Plans sowie die längste Spanne berücksichtigen vollständige Ausführungen, auch über diese Tage hinaus.",
       "allTimeScope": "Gesamt verwendet nur Daten mit gespeichertem Nachweis in der aktuellen Aufgaben- und JOBO-Historie. Wiederholungen ohne Abschluss, Ausnahme oder Do werden nicht rückwirkend rekonstruiert."
+    },
+    "mobile": {
+      "showDo": "Ausführung breit zeigen",
+      "showPlan": "Plan breit zeigen"
     }
   },
   "timelineZoom": {

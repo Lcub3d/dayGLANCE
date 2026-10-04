@@ -34,6 +34,7 @@ import MobileTabBar from './MobileTabBar.jsx';
 import MobileSettingsPanel from './MobileSettingsPanel.jsx';
 import GoalDashboard from './goals/GoalDashboard.jsx';
 import MobileTimeGrid from './MobileTimeGrid.jsx';
+import MobileJoboView from './jobo/MobileJoboView.jsx';
 import SummaryStrip from './SummaryStrip.jsx';
 import { MOBILE_HOUR_GUTTER_W } from '../constants/timeline.js';
 import MobileAllDaySection from './MobileAllDaySection.jsx';
@@ -707,6 +708,7 @@ const MobileLayout = () => {
                   {mobileViewMode === 'list' && <MobileListView />}
                   {mobileViewMode === 'sched' && <SchedView />}
                   {mobileViewMode === 'month' && <MonthView />}
+                  {mobileViewMode === 'jobo' && <MobileJoboView stickyHeaderRef={mobileDateHeaderRef} />}
                   {/* Summary strip. Compact (touch) variant plus the phone-only
                       FAB clearance. GRID floats it sticky over the timeline;
                       LIST places it statically after the day's content — a

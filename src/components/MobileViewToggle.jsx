@@ -45,10 +45,20 @@ const MonthIcon = () => (
   </svg>
 );
 
-const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon };
-const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort' };
+const JoboIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    {/* Plan and Do side by side: solid plan blocks, a narrow lane of Do bars */}
+    <rect x="1" y="1" width="10" height="5" rx="1" fill={ORANGE} />
+    <rect x="1" y="8" width="10" height="5" rx="1" fill={ORANGE} fillOpacity="0.7" />
+    <rect x="13" y="2" width="4" height="4" rx="1" fill={ORANGE} fillOpacity="0.55" />
+    <rect x="13" y="8" width="4" height="9" rx="1" fill={ORANGE} fillOpacity="0.55" />
+  </svg>
+);
 
-// GRID → LIST → MONTH → SCHED → GRID (MONTH steps out while the Day Dial is up; views turned off on this device are out altogether)
+const ICONS = { grid: GridIcon, list: ListIcon, sched: SchedIcon, month: MonthIcon, jobo: JoboIcon };
+const LABEL_KEYS = { grid: 'settings.viewGrid', list: 'settings.viewList', sched: 'settings.viewSched', month: 'sched.viewMonthShort', jobo: 'sched.viewJoboShort' };
+
+// GRID → LIST → MONTH → SCHED → JOBO → GRID (JOBO only with its flag on; MONTH steps out while the Day Dial is up; views turned off on this device are out altogether)
 const MobileViewToggle = () => {
   const { mobileViewMode, setMobileViewMode, textSecondary, showDayDial, hiddenViews } = useDayPlannerCtx();
   const { t } = useTranslation();

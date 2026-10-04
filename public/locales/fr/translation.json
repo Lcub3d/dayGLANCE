@@ -457,6 +457,7 @@
     "experimentalHint": "Fonctions encore en construction, livrées par étapes. Désactivées par défaut ; rien ne change tant que vous n'en activez pas une.",
     "enableJobo": "Vue JOBO",
     "enableJoboHint": "Prévu contre réalisé. Une sixième vue, sur la touche 6, qui enregistrera ce qui a été fait par rapport à ce qui était prévu.",
+    "enableJoboHintPhone": "Prévu contre réalisé. Une vue du sélecteur de vues de la chronologie, qui enregistre ce qui a été fait par rapport au plan.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planification de vie : une liste de souhaits, une vision à cinq ans et des devises. Un simple espace réservé pour l'instant, ouvert depuis l'espace Objectifs et projets.",
     "inbox": "Boîte de réception",
@@ -2328,6 +2329,10 @@
       "taskScope": "Les nombres de tâches et les priorités reflètent leur état actuel, pas un instantané historique. « Aucune exécution enregistrée » compte les plans horaires actuels dont la fin prévue est passée et qui n’ont aucun Do associé, indépendamment de l’achèvement de la tâche ou du travail enregistré pour un autre plan.",
       "timingScope": "Le temps enregistré couvre les dates sélectionnées. Les comparaisons au plan, le temps dans et hors du plan et la plus longue plage utilisent les exécutions complètes, qui peuvent dépasser ces dates.",
       "allTimeScope": "Tout utilise uniquement les dates appuyées par des données enregistrées dans l’historique actuel des tâches et de JOBO. Les occurrences récurrentes sans achèvement, exception ni Do ne sont pas reconstruites."
+    },
+    "mobile": {
+      "showDo": "Élargir Exécution",
+      "showPlan": "Élargir Plan"
     }
   },
   "timelineZoom": {

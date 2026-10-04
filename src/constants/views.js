@@ -23,10 +23,11 @@
 export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jobo'];
 
 /**
- * Desktop views that exist behind an experimental flag, keyed by the flag that
- * turns them on. JOBO (plan versus actual, #1673) is being landed in slices
- * behind `joboEnabled`; with the flag off the view has to be as absent as if it
- * were not in the registry at all. Rather than thread the flag through every
+ * Views that exist behind an experimental flag, keyed by the flag that turns
+ * them on, in both switchers. JOBO (plan versus actual, #1673) is being landed
+ * in slices behind `joboEnabled`, on the phone and portrait tablet since slice
+ * 8; with the flag off the view has to be as absent as if it were not in the
+ * registry at all. Rather than thread the flag through every
  * consumer of DESKTOP_VIEW_MODES, an off flag is expressed as the view being
  * HIDDEN on this device (gateExperimentalViews), which every switcher, the
  * number keys, the shortcut sheet and the stored-view fallbacks already honour.
@@ -34,7 +35,7 @@ export const DESKTOP_VIEW_MODES = ['multi', 'day', 'week', 'month', 'sched', 'jo
 export const EXPERIMENTAL_DESKTOP_VIEWS = { jobo: 'joboEnabled' };
 /** Narrow desktop and landscape tablet: DAY and WEEK need the 3-column grid. */
 export const NARROW_DESKTOP_VIEW_MODES = ['multi', 'month', 'sched', 'jobo'];
-export const MOBILE_VIEW_MODES = ['grid', 'list', 'month', 'sched'];
+export const MOBILE_VIEW_MODES = ['grid', 'list', 'month', 'sched', 'jobo'];
 
 /** The two switchers hidden views are kept for: the desktop cycler and the phone toggle. */
 export const VIEW_SCOPES = { desktop: DESKTOP_VIEW_MODES, mobile: MOBILE_VIEW_MODES };
@@ -54,19 +55,22 @@ export const VIEW_LABEL_KEYS = {
 };
 
 /**
- * `hidden` with every experimental view whose flag is off added to the desktop
- * list. The result is what the app treats as "hidden on this device"; the
- * persisted list stays the user's own choices, so turning a flag off does not
- * write anything into it, and turning it back on restores the view without a
- * trip through Settings.
+ * `hidden` with every experimental view whose flag is off added to each
+ * switcher's list that has it. The result is what the app treats as "hidden
+ * on this device"; the persisted list stays the user's own choices, so
+ * turning a flag off does not write anything into it, and turning it back on
+ * restores the view without a trip through Settings.
  */
 export function gateExperimentalViews(hidden, flags = {}) {
-  const desktop = hidden?.desktop || [];
-  const off = Object.entries(EXPERIMENTAL_DESKTOP_VIEWS)
-    .filter(([view, flag]) => !flags[flag] && !desktop.includes(view))
-    .map(([view]) => view);
-  if (off.length === 0) return hidden;
-  return { ...hidden, desktop: [...desktop, ...off] };
+  let next = hidden;
+  for (const [scope, views] of Object.entries(VIEW_SCOPES)) {
+    const list = hidden?.[scope] || [];
+    const off = Object.entries(EXPERIMENTAL_DESKTOP_VIEWS)
+      .filter(([view, flag]) => views.includes(view) && !flags[flag] && !list.includes(view))
+      .map(([view]) => view);
+    if (off.length) next = { ...next, [scope]: [...list, ...off] };
+  }
+  return next;
 }
 
 /** `views` minus the experimental ones whose flag is off, for a picker that lists what a device can turn on or off. */

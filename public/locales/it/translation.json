@@ -457,6 +457,7 @@
     "experimentalHint": "Funzioni ancora in costruzione, in arrivo a tappe. Disattivate per impostazione predefinita; nulla cambia finché non ne attivi una.",
     "enableJobo": "Vista JOBO",
     "enableJoboHint": "Pianificato contro effettivo. Una sesta vista, sul tasto 6, che registrerà ciò che è stato fatto rispetto a quanto pianificato.",
+    "enableJoboHintPhone": "Piano contro realtà. Una vista nel selettore di viste della timeline che registra ciò che è stato fatto rispetto al piano.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Pianificazione della vita: una lista dei desideri, una visione a cinque anni e motti. Per ora un segnaposto, aperto dallo spazio Obiettivi e progetti.",
     "inbox": "In arrivo",
@@ -2330,6 +2331,10 @@
       "taskScope": "I conteggi e le priorità delle attività si basano sul loro stato attuale, non su uno storico. «Nessuna esecuzione registrata» conta i piani attuali con orari la cui fine prevista è trascorsa e che non hanno un Do associato, indipendentemente dal completamento dell’attività o dal lavoro registrato per un altro piano.",
       "timingScope": "Il tempo registrato copre le date selezionate. I confronti con il piano, il tempo dentro e fuori dal piano e la durata massima considerano le esecuzioni complete, che possono estendersi oltre queste date.",
       "allTimeScope": "Tutto usa solo date con evidenze salvate nella cronologia corrente delle attività e di JOBO. Le ricorrenze storiche senza completamento, eccezione o Do non vengono ricostruite."
+    },
+    "mobile": {
+      "showDo": "Allarga Esecuzione",
+      "showPlan": "Allarga Piano"
     }
   },
   "timelineZoom": {

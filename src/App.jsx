@@ -472,6 +472,14 @@ const DayPlanner = () => {
       if (mobileDefaultView === view) setMobileDefaultView(homeView(MOBILE_VIEW_MODES, next.mobile));
     }
   };
+  // A phone view turned off by its flag while on screen (JOBO, switched off
+  // in Settings) lands on the first view still on, as the desktop's
+  // effectiveViewMode does; the default falls back when next read.
+  const hiddenMobileKey = hiddenViews.mobile.join('|');
+  useEffect(() => {
+    if (hiddenViews.mobile.includes(mobileViewMode)) setMobileViewMode(homeView(MOBILE_VIEW_MODES, hiddenViews.mobile));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenMobileKey, mobileViewMode]);
   // SCHED agenda rolling-window length (days). Lives here, not in
   // useSchedAgendaState, because expandedRecurringTasks must expand recurring
   // occurrences across the agenda's whole window — the hook's consumers all
@@ -482,6 +490,9 @@ const DayPlanner = () => {
   // how wider Android tablets behave, where landscape drops out of tablet mode
   // entirely. (On phones, list view is independent of orientation.)
   const tabletListView = isTablet && !isLandscape && (mobileViewMode === 'list' || mobileViewMode === 'sched' || mobileViewMode === 'month');
+  // JOBO on a tablet held upright takes the phone's JOBO (slice 8): its own
+  // timeline in the calendar area, and its own opening scroll.
+  const tabletJoboView = isTablet && !isLandscape && mobileViewMode === 'jobo';
   // MONTH on screen, whichever switcher put it there: the desktop cycler
   // (effectiveViewMode) or the phone / portrait-tablet toggle (mobileViewMode).
   // Drives the chrome's month-long stride and month-name date display.
@@ -1929,7 +1940,7 @@ const DayPlanner = () => {
     selectedDate,
     isMobile, isTablet,
     mobileActiveTab,
-    mobileViewMode, tabletListView,
+    mobileViewMode, tabletListView, tabletJoboView,
     viewMode: effectiveViewMode,
   });
 
@@ -8734,7 +8745,7 @@ const DayPlanner = () => {
     // ── Layout / navigation ───────────────────────────────────────────────────
     tabletActiveTab, setTabletActiveTab,
     mobileActiveTab, setMobileActiveTab,
-    mobileViewMode, setMobileViewMode, tabletListView,
+    mobileViewMode, setMobileViewMode, tabletListView, tabletJoboView,
     mobileDefaultView, setMobileDefaultView,
     schedDaysShown, setSchedDaysShown,
     listEndOfDayTime, setListEndOfDayTime,

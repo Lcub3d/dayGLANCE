@@ -93,6 +93,10 @@ describe('loadNoteDescription', () => {
     readWikiNote.mockResolvedValue({ text: NOTE, lastModified: 'L' });
     const { loadNoteDescription } = useMountedSync();
     await expect(loadNoteDescription('Projects/House.md')).resolves.toEqual({ text: 'Dry roof by spring.', base: noteTextHash('Dry roof by spring.'), lastModified: 'L' });
+    // THE PATH LOSES ITS EXTENSION on the way to the reader, which appends
+    // .md itself (the 2026-10-04 report: "Note.md.md" was looked for, and a
+    // linked project's planner said its note was not found).
+    expect(readWikiNote).toHaveBeenLastCalledWith({ kind: 'directory' }, 'Projects/House');
     readWikiNote.mockResolvedValue(null);
     await expect(loadNoteDescription('Projects/House.md')).resolves.toEqual({ notFound: true });
     readWikiNote.mockRejectedValue(new Error('boom'));
@@ -123,7 +127,7 @@ describe('saveNoteDescription (the editor over the section)', () => {
     const { saveNoteDescription } = useMountedSync({ stream: false });
     await expect(saveNoteDescription('project', 'p1', 'Projects/House.md', 'New text.')).resolves.toEqual({ ok: true });
     expect(emitBridgeIntent).not.toHaveBeenCalled();
-    expect(writeWikiNote).toHaveBeenCalledWith({ kind: 'directory' }, 'Projects/House.md', NOTE.replace('Dry roof by spring.', 'New text.'), 'dayGLANCE');
+    expect(writeWikiNote).toHaveBeenCalledWith({ kind: 'directory' }, 'Projects/House', NOTE.replace('Dry roof by spring.', 'New text.'), 'dayGLANCE');
   });
 });
 
@@ -200,7 +204,7 @@ describe('the link without a stream (owner 2026-10-03: the wikilink in the title
     const { linkProjectNote, updateProject, store } = useMountedSync({ stream: false, projects });
     expect(linkProjectNote('project', 'p1', 'Projects/House.md')).toBe(true);
     await flushMicrotasks();
-    expect(writeWikiNote).toHaveBeenCalledWith({ kind: 'directory' }, 'Projects/House.md', NOTE.replace('Dry roof by spring.', 'Dry roof by spring.\n\nPurpose: keep it dry.'), 'dayGLANCE');
+    expect(writeWikiNote).toHaveBeenCalledWith({ kind: 'directory' }, 'Projects/House', NOTE.replace('Dry roof by spring.', 'Dry roof by spring.\n\nPurpose: keep it dry.'), 'dayGLANCE');
     expect(updateProject).toHaveBeenCalledWith('p1', { description: '' });
     expect(JSON.parse(store.get('day-planner-obsidian-notes-sent'))['project:p1']).toMatchObject({ target: 'Projects/House.md', body: 'Purpose: keep it dry.' });
   });

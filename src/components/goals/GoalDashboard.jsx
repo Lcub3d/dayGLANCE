@@ -62,6 +62,7 @@ import { INTENT_CONFIG_KEY } from '../../intents/useIntentPoller.js';
 import { enabledIntentTargets } from '../../intents/emitTargets.js';
 import { sortProjectsByOrder } from '../../utils/projectOrder.js';
 import { projectFocusTarget } from '../../utils/goalsLink.js';
+import { cardColumns, cardScale } from '../../utils/cardSize.js';
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 
@@ -891,21 +892,27 @@ const GoalSidebarRow = ({ goal, selected, onSelect, dropActive, onDragOver, onDr
 // Measured in JS rather than `repeat(auto-fit, minmax(min, max))` because with
 // a fixed max the browser counts columns by the MAX (CSS Grid §7.2.3.2), which
 // gave two 420px columns and dead space at laptop widths.
+//
+// The card size (Settings, utils/cardSize.js) scales the whole grid with CSS
+// zoom: the columns are counted from the real width at the scaled card and
+// gap, and the grid inside the zoom is laid out exactly as at Normal.
 const SPACE_CARD_MIN = 300;
 const SPACE_CARD_MAX = 560;
 const SPACE_CARD_GAP = 16;
 const SPACE_VISIBLE_TASKS = 6;
-const useGridColumns = (ref) => {
+const GOAL_CARD_WIDTH = 420;
+const useSpaceCardScale = () => cardScale(useDayPlannerCtx().spaceCardSize);
+const useGridColumns = (ref, scale = 1) => {
   const [cols, setCols] = useState(3);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const update = () => setCols(Math.max(1, Math.floor((el.clientWidth + SPACE_CARD_GAP) / (SPACE_CARD_MIN + SPACE_CARD_GAP))));
+    const update = () => setCols(cardColumns(el.clientWidth, { min: SPACE_CARD_MIN, gap: SPACE_CARD_GAP, scale }));
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [ref]);
+  }, [ref, scale]);
   return cols;
 };
 const cardGridStyle = (cols, count, justify = 'center') => ({
@@ -929,13 +936,15 @@ const dealIntoColumns = (items, cols) => {
   items.forEach((item, i) => columns[i % n].push(item));
   return columns;
 };
-const CardColumns = ({ items, cols, justify, renderItem, className = '' }) => (
-  <div style={cardGridStyle(cols, items.length, justify)} className={className} data-card-grid data-columns={Math.max(1, Math.min(cols, items.length))}>
-    {dealIntoColumns(items, cols).map((column, c) => (
-      <div key={c} className="flex flex-col min-w-0" style={{ gap: `${SPACE_CARD_GAP}px` }} data-card-column>
-        {column.map(renderItem)}
-      </div>
-    ))}
+const CardColumns = ({ items, cols, justify, renderItem, scale = 1, className = '' }) => (
+  <div style={scale === 1 ? undefined : { zoom: scale }} className={className} data-card-scale={scale}>
+    <div style={cardGridStyle(cols, items.length, justify)} data-card-grid data-columns={Math.max(1, Math.min(cols, items.length))}>
+      {dealIntoColumns(items, cols).map((column, c) => (
+        <div key={c} className="flex flex-col min-w-0" style={{ gap: `${SPACE_CARD_GAP}px` }} data-card-column>
+          {column.map(renderItem)}
+        </div>
+      ))}
+    </div>
   </div>
 );
 
@@ -951,7 +960,8 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
   const activeProjs = projects.filter(p => p.status !== 'completed');
   const doneProjs = projects.filter(p => p.status === 'completed');
   const groupRef = useRef(null);
-  const cols = useGridColumns(groupRef);
+  const scale = useSpaceCardScale();
+  const cols = useGridColumns(groupRef, scale);
 
   const wrapCard = (proj, compact) => (
     <div
@@ -1005,10 +1015,10 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
       }}
     >
       {activeProjs.length > 0 && (
-        <CardColumns items={activeProjs} cols={cols} justify={justify} className="mb-3" renderItem={proj => wrapCard(proj, false)} />
+        <CardColumns items={activeProjs} cols={cols} justify={justify} scale={scale} className="mb-3" renderItem={proj => wrapCard(proj, false)} />
       )}
       {doneProjs.length > 0 && (
-        <CardColumns items={doneProjs} cols={cols} justify={justify} renderItem={proj => wrapCard(proj, true)} />
+        <CardColumns items={doneProjs} cols={cols} justify={justify} scale={scale} renderItem={proj => wrapCard(proj, true)} />
       )}
     </div>
   );
@@ -1022,6 +1032,7 @@ const ProjectCardGroup = ({ projects, goalId, drag, projectCardRefs, onEditProje
 
 const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs, onEditGoal, onEditProject, onNewProject, onMoveToClick, focusedProjectId = null }) => {
   const { textSecondary, borderClass } = useDayPlannerCtx();
+  const scale = useSpaceCardScale();
   const { t } = useTranslation();
   const containerRef = useRef(null);
   const [svgLines, setSvgLines] = useState([]);
@@ -1094,15 +1105,17 @@ const GoalListView = ({ goal, goalProjects, drag, goalCardRefs, projectCardRefs,
       </svg>
 
       {/* Selected goal card, centred */}
-      <div className="relative z-10 w-[420px] max-w-full mx-auto mb-10">
-        <GoalCard
-          ref={el => { goalCardRefs.current[goal.id] = el; }}
-          goal={goal}
-          projects={goalProjects}
-          onEdit={() => onEditGoal(goal)}
-          onNewProject={() => onNewProject(goal.id)}
-          compactEmpty
-        />
+      <div className="relative z-10 max-w-full mx-auto mb-10" style={{ width: `${Math.round(GOAL_CARD_WIDTH * scale)}px` }}>
+        <div style={scale === 1 ? undefined : { zoom: scale }}>
+          <GoalCard
+            ref={el => { goalCardRefs.current[goal.id] = el; }}
+            goal={goal}
+            projects={goalProjects}
+            onEdit={() => onEditGoal(goal)}
+            onNewProject={() => onNewProject(goal.id)}
+            compactEmpty
+          />
+        </div>
       </div>
 
       {goalProjects.length > 0 ? (
@@ -2452,7 +2465,8 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
 
   const listClass = 'flex flex-col gap-4';
   const listRef = useRef(null);
-  const cols = useGridColumns(listRef);
+  const scale = useSpaceCardScale();
+  const cols = useGridColumns(listRef, scale);
 
   return (
     <div className={`mt-5 border-t ${borderClass} pt-4`}>
@@ -2504,8 +2518,8 @@ const GoalDetailPanel = ({ goal, projects, onEditGoal, onEditProject, onNewProje
           }
           return (
             <>
-              {activeProjs.length > 0 && <CardColumns items={activeProjs} cols={cols} justify="center" className="mb-3" renderItem={activeCard} />}
-              {doneProjs.length > 0 && <CardColumns items={doneProjs} cols={cols} justify="center" renderItem={doneCard} />}
+              {activeProjs.length > 0 && <CardColumns items={activeProjs} cols={cols} justify="center" scale={scale} className="mb-3" renderItem={activeCard} />}
+              {doneProjs.length > 0 && <CardColumns items={doneProjs} cols={cols} justify="center" scale={scale} renderItem={doneCard} />}
             </>
           );
         })()}

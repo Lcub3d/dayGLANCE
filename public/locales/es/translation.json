@@ -2329,6 +2329,14 @@
     "label": "Tamaño de la línea de tiempo",
     "hint": "Se guarda en este dispositivo. Para ajustarlo en el momento, pellizca o usa Ctrl+desplazamiento sobre la línea de tiempo."
   },
+  "cardSize": {
+    "label": "Tamaño de tarjetas de Objetivos y proyectos",
+    "small": "Pequeño",
+    "normal": "Normal",
+    "large": "Grande",
+    "larger": "Más grande",
+    "hint": "Se guarda en este dispositivo. Las tarjetas más grandes caben menos por fila."
+  },
   "todoist": {
     "title": "Sincronización con Todoist",
     "beta": "Sincronización selectiva · beta",

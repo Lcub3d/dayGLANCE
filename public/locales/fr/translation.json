@@ -2329,6 +2329,14 @@
     "label": "Taille de la chronologie",
     "hint": "Enregistré sur cet appareil. Pour l’ajuster sur place, pincez ou faites Ctrl+défilement sur la chronologie."
   },
+  "cardSize": {
+    "label": "Taille des cartes Objectifs & Projets",
+    "small": "Petite",
+    "normal": "Normale",
+    "large": "Grande",
+    "larger": "Plus grande",
+    "hint": "Enregistré sur cet appareil. Plus les cartes sont grandes, moins il en tient par ligne."
+  },
   "todoist": {
     "title": "Synchronisation Todoist",
     "beta": "Synchronisation sélective · bêta",

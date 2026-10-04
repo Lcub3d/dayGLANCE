@@ -64,9 +64,9 @@ const features = (overrides = {}) => ({
 let i18n;
 beforeEach(async () => { i18n = i18n || await i18nFor('en'); });
 
-const render = (props, feat = {}) => renderToStaticMarkup(
+const render = (props, feat = {}, plan = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={i18n}>
-    <DayPlannerContext.Provider value={planner()}>
+    <DayPlannerContext.Provider value={{ ...planner(), ...plan }}>
       <FeaturesContext.Provider value={features(feat)}>
         <SyncContext.Provider value={{ createProjectNote: vi.fn(), openInObsidian: vi.fn() }}>
           <GoalDashboard {...props} />
@@ -249,6 +249,17 @@ describe('GoalDashboard desktop space', () => {
     const order = cards(main);
     // column 1 holds a and d, column 2 b and e, column 3 c: DOM order is column-major
     expect(order).toEqual(['a', 'd', 'b', 'e', 'c']);
+  });
+
+  it('draws the cards at the card size from Settings, and at Normal unzoomed', () => {
+    const normal = section(render({ desktop: true, isActive: true }), 'data-goals-main');
+    expect(normal).not.toContain('zoom:');
+    expect(normal).toContain('width:420px');
+    const large = section(render({ desktop: true, isActive: true }, {}, { spaceCardSize: 'large' }), 'data-goals-main');
+    // the goal card's slot grows with it, and the project grids zoom as a whole
+    expect(large).toContain('width:483px');
+    expect(large).toMatch(/data-card-scale="1.15"/);
+    expect(large.match(/zoom:1\.15/g)?.length).toBe(3);
   });
 
   it('lists the archived goals and projects under the main area', () => {

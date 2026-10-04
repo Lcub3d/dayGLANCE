@@ -2426,6 +2426,14 @@
     "label": "Rozmiar osi czasu",
     "hint": "Zapisywane na tym urządzeniu. Aby dostosować na miejscu, uszczypnij lub użyj Ctrl+przewijania nad osią czasu."
   },
+  "cardSize": {
+    "label": "Rozmiar kart celów i projektów",
+    "small": "Mały",
+    "normal": "Normalny",
+    "large": "Duży",
+    "larger": "Większy",
+    "hint": "Zapisane na tym urządzeniu. Większe karty mieszczą się w mniejszej liczbie w rzędzie."
+  },
   "todoist": {
     "title": "Synchronizacja Todoist",
     "beta": "Selektywna synchronizacja · beta",

@@ -2331,6 +2331,14 @@
     "label": "Dimensione della timeline",
     "hint": "Salvato su questo dispositivo. Per regolarla al volo, pizzica o usa Ctrl+scorrimento sulla timeline."
   },
+  "cardSize": {
+    "label": "Dimensione schede Obiettivi e progetti",
+    "small": "Piccola",
+    "normal": "Normale",
+    "large": "Grande",
+    "larger": "Più grande",
+    "hint": "Salvato su questo dispositivo. Le schede più grandi ne mostrano meno per riga."
+  },
   "todoist": {
     "title": "Sincronizzazione Todoist",
     "beta": "Sincronizzazione selettiva · beta",

@@ -54,7 +54,8 @@ export function registerResources(server: McpServer, deps: ReadToolDeps): void {
       description:
         "Today's dayGLANCE blocks and completion state. The date is resolved on the user's machine " +
         '(local calendar date, §5.3) and echoed with the IANA timezone. Items with type ' +
-        '"device_calendar_event" are read-only device calendar events. Items with type "routine" ' +
+        '"device_calendar_event" or "calendar_event" are read-only calendar events. daily_note is the ' +
+        "user's note for the day, read-only. Items with type \"routine\" " +
         'are routine blocks: they occupy the time they cover and are read-only over MCP. The ' +
         '"frames" array carries the day\'s set-aside windows with their free slots, already net of ' +
         'tasks, routines and elapsed time.',

@@ -792,3 +792,20 @@ describe('subtasks (2026-10-04): add, edit, and their undo', () => {
     expect(r.skipped).toBe(1);
   });
 });
+
+describe('imported calendar events are read-only over MCP (2026-10-04)', () => {
+  const EVENT = T({ id: 'ics-1', imported: true, icalUid: 'u', importSource: 'f', title: 'Dentist' });
+  const CALDAV_TASK = T({ id: 'cal-t', imported: true, isTaskCalendar: true, icalUid: 'u' });
+  const state = { tasks: [EVENT, CALDAV_TASK], unscheduledTasks: [] };
+  it('move, resize, update, completion and subtasks all refuse with calendar_event_readonly', () => {
+    expect(applyMoveBlock(state, { blockId: 'ics-1', date: '2026-08-11', startTime: '10:00' })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyResizeBlock(state, { blockId: 'ics-1', durationMinutes: 90 })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyUpdateTask(state, { taskId: 'ics-1', set: { title: 'x' } })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applySetCompletion(state, { taskId: 'ics-1', completed: true, nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+    expect(applyAddSubtask(state, { taskId: 'ics-1', subtaskId: 's', title: 'x', nowIso: NOW })).toMatchObject({ ok: false, error: { code: 'calendar_event_readonly' } });
+  });
+  it('a CalDAV task-calendar task is not an event: it still moves, and keeps its own edit and completion rules', () => {
+    expect(applyMoveBlock(state, { blockId: 'cal-t', date: '2026-08-11', startTime: '10:00' }).ok).toBe(true);
+    expect(applyUpdateTask(state, { taskId: 'cal-t', set: { title: 'x' } })).toMatchObject({ ok: false, error: { code: 'validation' } });
+  });
+});

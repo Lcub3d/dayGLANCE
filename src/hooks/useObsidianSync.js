@@ -1470,7 +1470,11 @@ export default function useObsidianSync({
   // on the enabled flag. The 5-minute poll and visibility flips stay
   // untouched as the correctness floor — SSE here is additive, exactly as
   // it is for the DB drains.
-  const OBSIDIAN_NUDGE_MIN_GAP_MS = 5000;
+  // 20 s, up from 5 s (2026-10-04): on a household fleet behind one address
+  // the probe-per-nudge was a measurable share of the server's per-IP
+  // budget. The first nudge after quiet still runs at once; only the
+  // trailing runs of a burst space out, and the poll floor stands beneath.
+  const OBSIDIAN_NUDGE_MIN_GAP_MS = 20_000;
   const obsidianNudgeRef = useRef({ timer: null, lastRunAt: 0 });
   const runNudgedObservationCycle = async () => {
     const st = obsidianNudgeRef.current;

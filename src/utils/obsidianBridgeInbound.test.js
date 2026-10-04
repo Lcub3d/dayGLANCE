@@ -156,6 +156,46 @@ describe('pendingBridgeObservations (the SSE-nudge probe)', () => {
   });
 });
 
+describe('the probe hands its page to the cycle (2026-10-04, the per-IP budget)', () => {
+  it('a positive probe followed by a fetch from the same cursor costs ONE list; a cursor that moved, or a stale page, re-fetches', async () => {
+    const { __resetProbedPageForTests } = await import('./obsidianBridgeInbound.js');
+    __resetProbedPageForTests();
+    localStorage.setItem(OBS_HWM_KEY, '41');
+    const calls = [];
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      if (url.includes('/meta')) return { ok: true, status: 200, json: async () => ({ entityId: 'meta:pairing', envelope: encodePlainBridgeRow(META) }) };
+      if (url.includes('/list')) return { ok: true, status: 200, json: async () => ({ rows: [{ entityId: 'obs:deadbeef', seq: 42, envelope: 'junk' }], hasMore: false }) };
+      return { ok: false, status: 404, json: async () => ({}) };
+    };
+    expect(await pendingBridgeObservations()).toBe(true);
+    expect(calls.filter((u) => u.includes('/list'))).toHaveLength(1);
+    // The cycle's fetch consumes the held page: no second list. (The row is
+    // undecryptable junk here, which the fetch skips; the count is the point.)
+    const r = await fetchBridgeObservations();
+    expect(r).toBeTruthy();
+    expect(calls.filter((u) => u.includes('/list'))).toHaveLength(1);
+    // The page is consumed once: a second fetch lists again.
+    await fetchBridgeObservations();
+    expect(calls.filter((u) => u.includes('/list'))).toHaveLength(2);
+    // A cursor that moved between probe and fetch discards the held page.
+    expect(await pendingBridgeObservations()).toBe(true);
+    localStorage.setItem(OBS_HWM_KEY, '99');
+    await fetchBridgeObservations();
+    expect(calls.filter((u) => u.includes('/list'))).toHaveLength(4);
+    // A negative probe holds nothing.
+    __resetProbedPageForTests();
+    globalThis.fetch = async (url) => {
+      calls.push(url);
+      if (url.includes('/meta')) return { ok: true, status: 200, json: async () => ({ entityId: 'meta:pairing', envelope: encodePlainBridgeRow(META) }) };
+      return { ok: true, status: 200, json: async () => ({ rows: [{ entityId: 'int:x', seq: 100 }], hasMore: false }) };
+    };
+    expect(await pendingBridgeObservations()).toBe(false);
+    await fetchBridgeObservations();
+    expect(calls.filter((u) => u.includes('/list'))).toHaveLength(6);
+  });
+});
+
 describe('applyBridgeObservations', () => {
   const NOTE = '## Tasks\n- [ ] 09:00 Vault task #obsidian ^dg-abc12345\n';
 

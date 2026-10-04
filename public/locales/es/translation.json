@@ -802,6 +802,7 @@
     "assignTo": "Asignar a",
     "notes": "Notas",
     "localNotes": "Notas en dayGLANCE",
+    "wikilinkHint": "Consejo: escribe [[Nombre de la nota]] en el título para vincular una nota de Obsidian, existente o nueva. La nota se abre entonces aquí.",
     "calendarDescription": "Del calendario",
     "yourNotes": "Tus notas (este dispositivo)",
     "subtasks": "Subtareas",

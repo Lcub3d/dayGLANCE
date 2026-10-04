@@ -5,6 +5,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { loaders } from '../locales.js';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
+import { SyncContext } from '../context/SyncContext.jsx';
 
 // A linked task can hold notes in two places (the report in PR #1690,
 // F4): the panel shows the
@@ -21,14 +22,16 @@ async function i18n() {
 
 const noop = () => {};
 const linkedTask = (notes) => ({ id: 't1', title: 'Prepare [[Projects/dayGLANCE/NEXT- Prepare]] #obsidian', notes, subtasks: [] });
-const render = async (task, extra = {}) => renderToStaticMarkup(
+const render = async (task, extra = {}, sync = null) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
-    <NotesSubtasksPanel
-      task={task} isInbox darkMode={false} noAutoFocus
-      updateTaskNotes={noop} addSubtask={noop} toggleSubtask={noop} deleteSubtask={noop} updateSubtaskTitle={noop}
-      wikilinks={['Projects/dayGLANCE/NEXT- Prepare']}
-      {...extra}
-    />
+    <SyncContext.Provider value={sync}>
+      <NotesSubtasksPanel
+        task={task} isInbox darkMode={false} noAutoFocus
+        updateTaskNotes={noop} addSubtask={noop} toggleSubtask={noop} deleteSubtask={noop} updateSubtaskTitle={noop}
+        wikilinks={['Projects/dayGLANCE/NEXT- Prepare']}
+        {...extra}
+      />
+    </SyncContext.Provider>
   </I18nextProvider>,
 );
 
@@ -50,5 +53,24 @@ describe('NotesSubtasksPanel: local notes on a linked task', () => {
     expect(html).toContain('data-local-notes="only"');
     expect(html).toContain('stranded text');
     expect(html).not.toContain('Notes in dayGLANCE');
+  });
+});
+
+// The wikilink hint (2026-10-04): under a task's own notes while no note is
+// linked, only with the Obsidian vault enabled; never beside a linked note.
+describe('NotesSubtasksPanel: the wikilink hint', () => {
+  const plain = { id: 't2', title: 'Call the plumber', notes: '', subtasks: [] };
+  const vault = { obsidianConfig: { enabled: true } };
+  it('shows under the notes of an unlinked task when the vault is enabled', async () => {
+    const html = await render(plain, { wikilinks: [] }, vault);
+    expect(html).toContain('data-wikilink-hint');
+    expect(html).toContain('[[Note name]] in the title');
+  });
+  it('is absent without the vault, and absent once a note is linked', async () => {
+    expect(await render(plain, { wikilinks: [] })).not.toContain('data-wikilink-hint');
+    expect(await render(plain, { wikilinks: [] }, { obsidianConfig: { enabled: false } })).not.toContain('data-wikilink-hint');
+    const linked = await render(linkedTask('stranded text'), { onLoadWikiNote: async () => ({ text: '' }), onSaveWikiNote: noop }, vault);
+    expect(linked).toContain('data-local-notes="beside-linked"');
+    expect(linked).not.toContain('data-wikilink-hint');
   });
 });

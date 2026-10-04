@@ -199,4 +199,12 @@ describe('ProjectPlanner layout', () => {
     const desktop = await render();
     expect(desktop).not.toMatch(/data-planner-header-toggles="true" class="[^"]*order-last/);
   });
+
+  it('shows hyperGLANCE on as a switch in the settings row, not an ON pill', async () => {
+    const html = await render({ hyperglanceOpen: true });
+    const panel = html.slice(html.indexOf('data-planner-hyperglance-panel'));
+    expect(panel).toMatch(/role="switch" aria-checked="true" data-hyperglance-switch/);
+    expect(panel).toContain('bg-yellow-500');
+    expect(panel).not.toContain('>ON<');
+  });
 });

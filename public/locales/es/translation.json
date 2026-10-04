@@ -2333,6 +2333,7 @@
     "mobile": {
       "showDo": "Ampliar Ejecución",
       "showPlan": "Ampliar Plan",
+      "balanced": "Lado a lado",
       "doAdded": "Ejecución añadida",
       "doSaved": "Ejecución guardada",
       "doDeleted": "Ejecución eliminada"

@@ -13,13 +13,14 @@ import JoboSheet from './JoboSheet.jsx';
 import StatisticsPanel from './StatisticsPanel.jsx';
 import { CheckJournal } from './CheckPanel.jsx';
 import { journalDate } from './checkJournal.js';
-import { JOBO_MOBILE_ACTION_EVENT } from './MobileJoboHeaderActions.jsx';
+import { JOBO_BALANCED_PREFERENCE, JOBO_MOBILE_ACTION_EVENT } from './MobileJoboHeaderActions.jsx';
+import useJoboPreference from '../../hooks/useJoboPreference.js';
 import useJoboStatistics from '../../hooks/useJoboStatistics.js';
 import { createCarryForwardActions } from '../../jobo/carryForwardActions.js';
 import { snapMinute } from './DoColumn.jsx';
 import {
   DIVIDER_PX, HOUR_GUTTER_PX, NARROW_LANE_PX, SWAP_MS,
-  doBar, laneWidths, planIsWide, swapped, tappedTaskId,
+  balancedWidths, doBar, laneWidths, planIsWide, swapped, tappedTaskId,
 } from '../../jobo/mobileLanes.js';
 
 // JOBO on the phone and on a tablet held upright (slice 8,
@@ -34,6 +35,11 @@ import {
 // empty slot to add a Do there, tap a Do to edit it, both in the Do editor
 // as a sheet (step 2). Keep and Continue work as on desktop; nothing drags,
 // since dragging competes with scrolling the day.
+//
+// The balanced view (the date header's toggle, remembered on the device)
+// gives each side half the width, both as cards, to compare plan and actual
+// without swapping; there is nothing to swap, so the divider has no button.
+// Off, it is the wide side and the narrow lane exactly as above.
 //
 // It renders inside the timeline's own scroll area (the layout's
 // calendarRef), as MobileTimeGrid needs, under the layout's sticky date
@@ -173,6 +179,11 @@ export default function MobileJoboView({ stickyHeaderRef }) {
   // while the date does.
   const [swap, setSwap] = useState(null);
   const planWide = planIsWide(swap, date, nowDate);
+  // The balanced view: both sides as cards. Leaving it comes back to the
+  // side that was wide.
+  const [balanced] = useJoboPreference(JOBO_BALANCED_PREFERENCE);
+  const planCards = balanced || planWide;
+  const doCards = balanced || !planWide;
   // The task tapped on either side: its counterparts in the narrow lane
   // light up (the phone's version of desktop's hover pairing). Per date.
   const [selection, setSelection] = useState(null);
@@ -193,6 +204,11 @@ export default function MobileJoboView({ stickyHeaderRef }) {
     return () => observer.disconnect();
   }, [joboLoaded]);
   const widths = laneWidths(width, planWide);
+  const sides = balanced ? balancedWidths(width) : widths;
+  // Each side's content is laid out at its final width from the start of a
+  // slide, so card text never reflows mid-slide.
+  const planInner = !planCards ? '100%' : `${HOUR_GUTTER_PX + (balanced ? sides.plan : widths.wide)}px`;
+  const doInner = !doCards ? '100%' : `${balanced ? sides.do : widths.wide}px`;
   const { timeGridRef } = ctx;
   useLayoutEffect(() => {
     const row = timeGridRef?.current?.children?.[1];
@@ -231,6 +247,18 @@ export default function MobileJoboView({ stickyHeaderRef }) {
   }, [swap, date, nowDate, select]);
   // A tap on the narrow lane swaps; on a bar, it highlights that item too.
   const onLaneTap = useCallback((event) => doSwap(tappedTaskId(event.target)), [doSwap]);
+  // Into the balanced view, the side that was bars becomes cards and fades
+  // in as a swap's arriving side does; out of it, the wide side is already
+  // cards. Before paint, so the cards never flash in ahead of the fade.
+  const shownBalanced = useRef(balanced);
+  useLayoutEffect(() => {
+    if (shownBalanced.current === balanced) return;
+    shownBalanced.current = balanced;
+    clearTimeout(arrivingTimer.current);
+    if (!balanced || reducedMotion()) { setArriving(null); return; }
+    setArriving(planWide ? 'do' : 'plan');
+    arrivingTimer.current = setTimeout(() => setArriving(null), SWAP_MS);
+  }, [balanced, planWide]);
   const motion = reducedMotion() ? 'none' : `width ${SWAP_MS}ms ease-out`;
 
   // Open on the part of the day that matters, as JOBO does on desktop: an
@@ -282,21 +310,21 @@ export default function MobileJoboView({ stickyHeaderRef }) {
   });
 
   return (
-    <div ref={rootRef} data-jobo-mobile data-plan-wide={planWide ? 'true' : 'false'} className={ctx.textPrimary}>
+    <div ref={rootRef} data-jobo-mobile data-plan-wide={planWide ? 'true' : 'false'} data-balanced={balanced ? 'true' : undefined} className={ctx.textPrimary}>
       {status && (
         <div data-jobo-status className="flex items-center gap-2 px-3 py-1 text-xs" role="status"><AlertTriangle size={14} />{status}</div>
       )}
-      {/* The Plan/Do row: the wide side's name (the narrow lane has no room
-          for one in every language) and the swap button on the divider,
-          sticking under the date header. */}
+      {/* The Plan/Do row: the name of each side drawn as cards (the narrow
+          lane has no room for one in every language) and, unless balanced,
+          the swap button on the divider, sticking under the date header. */}
       <div className={`sticky z-30 flex items-stretch h-7 border-b text-[11px] font-semibold uppercase tracking-wide ${ctx.cardBg} ${ctx.borderClass}`} style={{ top: `${stickyTop}px` }}>
         <div className={`flex-shrink-0 border-r ${ctx.borderClass}`} style={{ width: `${HOUR_GUTTER_PX}px` }} />
-        <div data-jobo-side-label="plan" className="flex-shrink-0 min-w-0 flex items-center px-2 overflow-hidden whitespace-nowrap" style={{ width: `${widths.plan}px`, transition: motion }}>
-          {planWide && t('jobo.view.plan')}
+        <div data-jobo-side-label="plan" className="flex-shrink-0 min-w-0 flex items-center px-2 overflow-hidden whitespace-nowrap" style={{ width: `${sides.plan}px`, transition: motion }}>
+          {planCards && t('jobo.view.plan')}
         </div>
         {/* The divider, carried up through this row: the swap button sits on it. */}
         <div className="relative flex-shrink-0" style={{ width: `${DIVIDER_PX}px`, background: DIVIDER_COLOR }}>
-          <button
+          {!balanced && <button
             type="button"
             data-jobo-swap
             onClick={() => doSwap()}
@@ -306,43 +334,43 @@ export default function MobileJoboView({ stickyHeaderRef }) {
             style={{ transition: 'none' }}
           >
             <ArrowLeftRight size={14} />
-          </button>
+          </button>}
         </div>
-        <div data-jobo-side-label="do" className="flex-1 min-w-0 flex items-center pl-5 pr-2 overflow-hidden whitespace-nowrap">
-          {!planWide && t('jobo.view.do')}
+        <div data-jobo-side-label="do" className={`flex-1 min-w-0 flex items-center ${balanced ? 'px-2' : 'pl-5 pr-2'} overflow-hidden whitespace-nowrap`}>
+          {doCards && t('jobo.view.do')}
         </div>
       </div>
 
       <div className="flex items-start">
-        {/* Plan: the phone timeline (hour gutter included), wide or as bars. */}
+        {/* Plan: the phone timeline (hour gutter included), as cards or bars. */}
         <div
           data-jobo-plan
           className="flex-shrink-0 overflow-hidden"
-          style={{ width: `${HOUR_GUTTER_PX + widths.plan}px`, transition: motion }}
+          style={{ width: `${HOUR_GUTTER_PX + sides.plan}px`, transition: motion }}
           // Capture: the timeline's cards stop their own clicks.
-          onClickCapture={planWide ? (event) => {
+          onClickCapture={planCards ? (event) => {
             const id = event.target.closest?.('[data-task-id]')?.getAttribute('data-task-id');
             if (id != null) select(selectedTaskId === id ? null : id);
           } : undefined}
         >
-          <style>{`[data-jobo-plan] [data-date-column]{transition:opacity 150ms ease-out}${arriving === 'plan' ? '[data-jobo-plan] [data-date-column]{opacity:0;transition:none}' : ''}${planWide && selectedTaskId != null ? `[data-jobo-plan] [data-task-id="${cssEscape(selectedTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px;border-radius:0.5rem}` : ''}`}</style>
-          {/* Wide: laid out at its full width from the start of a slide.
+          <style>{`[data-jobo-plan] [data-date-column]{transition:opacity 150ms ease-out}${arriving === 'plan' ? '[data-jobo-plan] [data-date-column]{opacity:0;transition:none}' : ''}${planCards && selectedTaskId != null ? `[data-jobo-plan] [data-task-id="${cssEscape(selectedTaskId)}"]{outline:2px solid rgb(59 130 246);outline-offset:1px;border-radius:0.5rem}` : ''}`}</style>
+          {/* Cards: laid out at their final width from the start of a slide.
               Bars: the lane's own width as it slides, bars have no text. */}
-          <div style={{ width: planWide ? `${HOUR_GUTTER_PX + widths.wide}px` : '100%' }}>
+          <div style={{ width: planInner }}>
             <MobileTimeGrid
               planOnly
-              barsMode={!planWide}
+              barsMode={!planCards}
               onLaneTap={onLaneTap}
-              barsOverlay={planWide ? null : <PlanBars tasks={dayTasks} selectedTaskId={selectedTaskId} ctx={ctx} />}
+              barsOverlay={planCards ? null : <PlanBars tasks={dayTasks} selectedTaskId={selectedTaskId} ctx={ctx} />}
             />
           </div>
         </div>
 
-        {/* Do: the Do column, wide and read only, or as bars. The 1px top
-            border matches the timeline's first row. */}
+        {/* Do: the Do column as cards, or as bars. The 1px top border
+            matches the timeline's first row. */}
         <div data-jobo-do className={`flex-1 min-w-0 overflow-hidden border-t ${ctx.borderClass}`} style={{ borderLeft: `${DIVIDER_PX}px solid ${DIVIDER_COLOR}` }}>
-          <div style={planWide ? { width: '100%' } : { width: `${widths.wide}px`, ...fadeIn('do') }}>
-            {planWide ? (
+          <div style={doCards ? { width: doInner, ...fadeIn('do') } : { width: doInner }}>
+            {!doCards ? (
               <DoBars items={doItems} date={date} hourPx={hourPx} selectedTaskId={selectedTaskId} onTap={onLaneTap} ctx={ctx} t={t} />
             ) : (
               <DoColumn
@@ -354,6 +382,7 @@ export default function MobileJoboView({ stickyHeaderRef }) {
                 t={t}
                 writable={joboWritable}
                 gestures={false}
+                compact={balanced}
                 pendingIds={writer.pendingIds}
                 preview={null}
                 onAddAt={openAdd}

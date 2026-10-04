@@ -261,3 +261,26 @@ ticks no longer puts the Plan side's line a minute ahead on desktop.
   figures in the sheet, without the desktop dialog's focus trap. Its inputs
   moved from the desktop's date-row tiles into `hooks/useJoboStatistics.js`,
   which both now use.
+
+## Side by side, as built
+
+Asked for after the first phone build: with one side wide, the narrow lane
+shows when and how long but not what, so comparing plan and actual meant
+swapping back and forth.
+
+- **A toggle in the date header,** first of JOBO's buttons, turns on the
+  side-by-side view: Plan and Do at half the width each (`balancedWidths`),
+  both as cards. There is nothing to swap, so the divider has no button.
+- **Off, nothing changes.** The wide side and the narrow lane, the divider's
+  swap button and the lane tap work exactly as before. Turning it off comes
+  back to the side that was wide.
+- **Remembered on the device** (`dg-jobo-mobile-balanced`), like JOBO's
+  other view preferences. `useJoboPreference` now tells every user of a
+  preference about a change, so the header's button and the view stay in
+  step.
+- **Compact Do cards:** at half width a Do card keeps its title, time and
+  status, and drops the edit button (a tap edits) and the timing row (the
+  editor shows it). The Plan cards are the timeline's own, which already
+  fold their buttons into a menu when narrow.
+- **Pairs still light up:** a tap on a card on either side outlines its
+  counterparts on the other.

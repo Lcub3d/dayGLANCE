@@ -2430,6 +2430,7 @@
     "mobile": {
       "showDo": "Poszerz Wykonanie",
       "showPlan": "Poszerz Plan",
+      "balanced": "Obok siebie",
       "doAdded": "Dodano wykonanie",
       "doSaved": "Zapisano wykonanie",
       "doDeleted": "Usunięto wykonanie"

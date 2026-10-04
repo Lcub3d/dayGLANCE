@@ -122,7 +122,7 @@ export function cardSignals(comparison, t) {
 // unlinked Do has nothing to tie a follow-up to.
 export const canContinue = (record) => !!record && record.taskId != null && record.progress !== 'completed';
 
-function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ctx, t, writable, gestures = true, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
+function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ctx, t, writable, gestures = true, compact = false, pending, highlighted, notesOpen, onEdit, onKeep, onContinue, onNotes, onHover, onDetails, onPointGesture, onResizeGesture }) {
   const { record } = item;
   // Drawn within the visible hours: a card that runs past a trimmed edge is
   // cut at it, as DAY cuts a task at its column's edge.
@@ -233,7 +233,7 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
               <Plus size={12} />
             </button>
           )}
-          {writable && !pending && (
+          {writable && !pending && !compact && (
             <button
               type="button"
               onClick={(event) => { event.stopPropagation(); onEdit(record); }}
@@ -259,7 +259,7 @@ function DoCard({ item, hourHeight, zoom = 1, offsetMin = 0, limitMin = 1440, ct
             </span>
           </div>
         )}
-        {!isMicro && signals.length > 0 && laidOut > 60 && (
+        {!isMicro && !compact && signals.length > 0 && laidOut > 60 && (
           <div className="text-xs opacity-80 flex gap-1 min-w-0 overflow-hidden mt-0.5">
             {signals.map((row) => (
               <span key={row.key} data-jobo-axis={row.key} title={row.text} className="truncate border-l border-white/40 pl-1 first:border-l-0 first:pl-0">{row.text}</span>
@@ -297,6 +297,10 @@ export default function DoColumn({
   // Dragging a Do to move or resize it. The phone has none in its first
   // build (slice 8): it competes with scrolling, and the editor covers it.
   gestures = true,
+  // Cards at half a phone's width (the balanced view): the title and its
+  // status line keep the room. The edit button goes, since a tap on the
+  // card edits it there, and so does the timing row, which the editor shows.
+  compact = false,
 }) {
   const [hoverMinute, setHoverMinute] = useState(null);
   // One notes panel at a time, JOBO's own: the global expanded-notes id
@@ -379,6 +383,7 @@ export default function DoColumn({
             t={t}
             writable={writable}
             gestures={gestures}
+            compact={compact}
             pending={pendingIds.includes(item.id)}
             onEdit={onEdit}
             onKeep={onKeep}

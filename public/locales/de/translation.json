@@ -802,6 +802,7 @@
     "assignTo": "Zuweisen an",
     "notes": "Notizen",
     "localNotes": "Notizen in dayGLANCE",
+    "wikilinkHint": "Tipp: Schreiben Sie [[Notizname]] in den Titel, um eine Obsidian-Notiz zu verknüpfen, vorhanden oder neu. Die Notiz öffnet sich dann hier.",
     "calendarDescription": "Aus dem Kalender",
     "yourNotes": "Deine Notizen (dieses Gerät)",
     "subtasks": "Unteraufgaben",

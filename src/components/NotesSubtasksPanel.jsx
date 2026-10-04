@@ -7,6 +7,7 @@ import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js'
 import { formatDuration } from '../utils/formatDuration.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { noteFocusTarget } from '../utils/noteFocusTarget.js';
+import { useSyncCtx } from '../context/SyncContext.jsx';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -79,6 +80,12 @@ const NotesSubtasksPanel = ({
   // own, kept apart (utils/eventNotes.js). Events take no subtasks, which
   // would be lost the same way.
   const isEvent = isCalendarEventRow(task);
+  // The wikilink hint (2026-10-04, a field report: a user kept notes in his
+  // vault and never found that [[Note]] in the title brings the note here).
+  // Shown under a task's own notes while no note is linked, only where the
+  // Obsidian vault is enabled; every surface that mounts this panel wires
+  // the linked-note editor, so the promise holds wherever it shows.
+  const obsidianEnabled = !!useSyncCtx()?.obsidianConfig?.enabled;
   const ownNotes = (isEvent ? task.eventNote : task.notes) || '';
   const isGeneratingSubtasks = aiSubtasksLoadingForTask === task.id;
   const [editingSubtaskId, setEditingSubtaskId] = useState(null);
@@ -514,6 +521,9 @@ const NotesSubtasksPanel = ({
                 renderFormattedText(localNotes)
               )}
             </div>
+          )}
+          {obsidianEnabled && !showLinked && !isEvent && (
+            <p data-wikilink-hint className={`text-[11px] italic mt-1 ${th.label}`}>{t('task.wikilinkHint')}</p>
           )}
         </div>
       )}

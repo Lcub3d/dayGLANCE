@@ -821,6 +821,7 @@
     "assignTo": "Przypisz do",
     "notes": "Notatki",
     "localNotes": "Notatki w dayGLANCE",
+    "wikilinkHint": "Wskazówka: wpisz [[Nazwa notatki]] w tytule, aby powiązać notatkę Obsidian, istniejącą lub nową. Notatka otworzy się wtedy tutaj.",
     "calendarDescription": "Z kalendarza",
     "yourNotes": "Twoje notatki (to urządzenie)",
     "subtasks": "Podzadania",

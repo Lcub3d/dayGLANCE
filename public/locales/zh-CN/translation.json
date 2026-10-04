@@ -802,6 +802,7 @@
     "assignTo": "分配给",
     "notes": "笔记",
     "localNotes": "dayGLANCE 中的笔记",
+    "wikilinkHint": "提示：在标题中输入 [[笔记名]] 即可关联一条 Obsidian 笔记，已有或新建均可。之后该笔记会在此处打开。",
     "calendarDescription": "来自日历",
     "yourNotes": "你的笔记（仅此设备）",
     "subtasks": "子任务",

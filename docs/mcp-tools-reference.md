@@ -33,16 +33,21 @@ directly (`claude mcp add --transport http`).
 - **Consent gating**: the read surface exists only while the MCP server is enabled; device
   calendar events appear in reads only under the calendar tier; write tools return
   `read_only_mode` unless writes are enabled — all in Settings → Local Integrations.
-- **Undo**: every successful write lands in the session write journal, reversible per task or
-  in bulk from the bolt button in the app (and the macOS tray). Undone creates go to the
-  recycle bin.
+- **Undo**: every successful write lands in the session write journal, reversible per entity
+  (task, goal or project) or in bulk from the bolt button in the app (and the macOS tray). Undone
+  task creates go to the recycle bin; an undone goal or project create is removed with the same
+  sync tombstone the app's own delete writes.
+- **No deletes, no archiving** (owner, 2026-10-04): the surface has no delete tool for anything,
+  and `status` on goals and projects accepts `active` or `completed` only. Archiving and deleting
+  stay the user's own step in dayGLANCE. The one way an assistant's creation leaves the store is
+  the user's undo.
 
 ## Error codes
 
 | Code | Meaning |
 |---|---|
 | `validation` | Malformed argument, or a by-design rejection (message says which). |
-| `not_found` | No task/block/user with that id. |
+| `not_found` | No task/block/user/goal/project/area/subtask with that id. |
 | `device_calendar_readonly` | Target is a device calendar event (EventKit read-only). |
 | `routine_readonly` | Target is a routine block. Routines are read-only over MCP by design. |
 | `routine_conflict` | The requested time overlaps a routine block. dayGLANCE will not shift the task for you; pick a non-overlapping time. |
@@ -140,12 +145,29 @@ the `id` is what `assignee_id` accepts. Resolve names through this list, never g
 No parameters.
 
 ### `dayglance_get_goal_progress`
-Goal and project progress, duration-weighted, matching what the app shows.
+Goals and projects with their fields and duration-weighted progress, matching what the app shows.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
 | `goal_id` | string | no | Narrow to one goal's tree. Unknown id → `not_found`. |
 | `window` | `'active'` \| `'all'` | no | Default `'active'`; `'all'` includes archived/completed. |
+
+Each goal: `id`, `title`, `status`, `description`, `start_date`, `target_date` (null when unset),
+`progress_percent`, `projects`, plus when present `area_id` and `area_name`, `assignee_ids`
+(multi-user), and `obsidian_note` (`{ path, name, missing }`). Each project: `id`, `title`,
+`status`, `description`, `progress_percent` (null when nothing is measurable), `tasks_done`,
+`tasks_total`, plus when present `goal_id`, `assignee_ids`, `obsidian_note`. Standalone projects
+are listed under `standalone_projects`.
+
+**A goal or project with `obsidian_note` keeps its description in that note's opening section**
+(companion spec §4.3), so `description` reads empty here and the update tools refuse to set it;
+edit the note. Tasks carry `project_id`, so `dayglance_get_day` and
+`dayglance_list_unscheduled_tasks` give a project's tasks.
+
+### `dayglance_list_areas`
+The areas of life a goal can belong to, as `{ id, name }`, in the user's order. Use the id as
+`area_id` on `dayglance_create_goal` and `dayglance_update_goal`. Areas are managed in dayGLANCE
+and cannot be created over MCP.
 
 ---
 
@@ -206,14 +228,16 @@ explicit list — `null` or empty values never clear.
 | `priority` | integer | no | 0–3. **Unscheduled tasks only** (inbox or project). |
 | `deadline` | string | no | Local `YYYY-MM-DD`. **Unscheduled tasks only** (inbox or project). |
 | `assignee_id` | string | no | **Multi-user only.** Ids from `dayglance_list_users`. |
-| `clear_fields` | string[] | no | Accepts only `"notes"`, `"deadline"`, `"assignee"` (assignee: multi-user only). Naming `title` or anything else → `validation`. |
+| `project_id` | string | no | Move the task into a project (ids from `dayglance_get_goal_progress`). Unknown id → `not_found`. |
+| `clear_fields` | string[] | no | Accepts only `"notes"`, `"deadline"`, `"project"`, `"assignee"` (assignee: multi-user only). Naming `title` or anything else → `validation`. |
 | `idempotency_key` | string | no | |
 
 Also `validation`: setting and clearing the same field in one call; a call that neither sets
 nor clears anything. By-design rejections: priority/deadline (set **or** clear) on scheduled
 tasks; recurring instances (dedicated error naming the synthetic
 `recurring-<template>-<date>` id shape); CalDAV task-calendar tasks; `_native` events.
-Not editable here: `project_id`; date/time/duration/completion have their own tools.
+Date/time/duration/completion have their own tools, and subtasks have
+`dayglance_add_subtask` and `dayglance_update_subtask`.
 A `task_id` returned by `dayglance_create_task` keeps working after the Obsidian re-key to
 `obsidian-dg-…`; the response carries the current id plus `resolved_from`.
 
@@ -263,6 +287,86 @@ Works for scheduled blocks, inbox tasks, and recurring-task instances
 CalDAV task-calendar tasks are rejected (`validation`): completing one requires a CalDAV
 write MCP does not perform.
 
+### `dayglance_add_subtask`
+Add a subtask to a task (inbox, project, or scheduled). Subtasks are the task's own checklist,
+reported as `subtasks` (`{ id, title, completed }`) on tasks and blocks.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `task_id` | string | yes | Recurring instances → `validation`. |
+| `title` | string | yes | Non-empty; trimmed. |
+| `idempotency_key` | string | no | A replay returns the same subtask. |
+
+Returns the resulting task or block and the new `subtask`. **There is no subtask delete**; the
+user's undo removes subtasks an assistant added.
+
+### `dayglance_update_subtask`
+Edit a subtask's title, its completion (a setter, not a toggle), or both.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `task_id` | string | yes | |
+| `subtask_id` | string | yes | From the task's `subtasks`. Unknown → `not_found`. |
+| `title` | string | no | Non-empty; can be set, never cleared. |
+| `completed` | boolean | no | |
+| `idempotency_key` | string | no | |
+
+### `dayglance_create_goal`
+Create a goal. New goals are active; the colour is copied from the area at creation, as the form
+does.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `title` | string | yes | |
+| `description` | string | no | The goal's notes box. |
+| `start_date` | string | no | Local `YYYY-MM-DD`. |
+| `target_date` | string | no | Local `YYYY-MM-DD`; must not precede `start_date`. |
+| `area_id` | string | no | From `dayglance_list_areas`. Unknown → `not_found`. |
+| `assignee_ids` | string[] | no | **Multi-user only.** Ids from `dayglance_list_users`. |
+| `idempotency_key` | string | no | A replay returns the same goal. |
+
+### `dayglance_update_goal`
+Field editor for goals, with the `update_task` contract: absent leaves alone, present sets, a name
+in `clear_fields` removes.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `goal_id` | string | yes | |
+| `title` | string | no | Can be set, never cleared. |
+| `description` | string | no | Refused with `validation` when the goal has `obsidian_note`: the note holds it. |
+| `start_date` / `target_date` | string | no | Local `YYYY-MM-DD`. |
+| `area_id` | string | no | |
+| `status` | `'active'` \| `'completed'` | no | `'archived'` → `validation` (by design). Completing requires every active child project to be completed, the form's own rule. |
+| `assignee_ids` | string[] | no | **Multi-user only.** Replaces the list. |
+| `clear_fields` | string[] | no | `"description"`, `"start_date"`, `"target_date"`, `"area"`, `"assignees"` (multi-user). |
+| `idempotency_key` | string | no | |
+
+### `dayglance_create_project`
+Create a project, standalone or under a goal. A project under a goal takes the goal's colour and
+assignees at creation and follows neither afterwards (the form's inheritance).
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `title` | string | yes | |
+| `goal_id` | string | no | Omit for standalone. Unknown → `not_found`. |
+| `description` | string | no | The project's notes box. |
+| `assignee_ids` | string[] | no | **Multi-user only.** Overrides the inheritance. |
+| `idempotency_key` | string | no | |
+
+### `dayglance_update_project`
+Field editor for projects, same contract.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `project_id` | string | yes | |
+| `title` | string | no | |
+| `description` | string | no | Refused when the project has `obsidian_note`. |
+| `goal_id` | string | no | Move under another goal. `"goal"` in `clear_fields` makes it standalone. |
+| `status` | `'active'` \| `'completed'` | no | `'archived'` → `validation`. Completing requires every task in the project to be completed. |
+| `assignee_ids` | string[] | no | **Multi-user only.** |
+| `clear_fields` | string[] | no | `"description"`, `"goal"`, `"assignees"` (multi-user). |
+| `idempotency_key` | string | no | |
+
 ---
 
 ## Resources (read-only)
@@ -278,7 +382,8 @@ failures throw with the same code + message text a tool error would carry.
 
 ---
 
-*Schema gating recap: `dayglance_list_users`, `assignee_id` (both write tools), and
-`"assignee"` in `clear_fields` exist only while multi-user mode is on. The tool list is
+*Schema gating recap: `dayglance_list_users`, `assignee_id` (task write tools), `assignee_ids`
+(goal and project tools), and `"assignee"` / `"assignees"` in `clear_fields` exist only while
+multi-user mode is on. The tool list is
 rebuilt per request, so toggling multi-user or a consent tier updates what a connected
 client sees on its very next request.*

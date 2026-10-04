@@ -395,3 +395,43 @@ describe('buildUsers — the assignment roster (multi-user)', () => {
     expect(buildUsers({})).toEqual({ users: [] });
   });
 });
+
+describe('the 2026-10-04 read additions: subtasks and notes on blocks, goal and project fields, areas', () => {
+  it('toBlock carries notes and subtasks for tasks, omits them when empty, and never for device events', () => {
+    const b = toBlock(T({ notes: 'Bring ladder', subtasks: [{ id: 1, title: 'Nails', completed: true }] }));
+    expect(b.notes).toBe('Bring ladder');
+    expect(b.subtasks).toEqual([{ id: '1', title: 'Nails', completed: true }]);
+    expect('subtasks' in toBlock(T({ subtasks: [] }))).toBe(false);
+    expect('notes' in toBlock(T({ notes: '' }))).toBe(false);
+    const native = toBlock(T({ _native: true, id: 'native-1', notes: 'x', subtasks: [{ id: 's', title: 't' }] }));
+    expect('notes' in native).toBe(false);
+    expect('subtasks' in native).toBe(false);
+  });
+  it('inbox items carry subtasks too', () => {
+    const { items } = buildUnscheduledItems({ unscheduledTasks: [{ id: 'u1', title: 'x', subtasks: [{ id: 's1', title: 'a', completed: false }] }] });
+    expect(items[0].subtasks).toEqual([{ id: 's1', title: 'a', completed: false }]);
+  });
+  it('goals report description, dates, area (id and name), assignees and the linked note; projects report description, goal, assignees, note', () => {
+    const r = buildGoalProgress({
+      goals: [{ id: 'g1', title: 'Home', status: 'active', description: 'Dry roof.', startDate: '2026-01-01', targetDate: '2026-12-31', areaId: 'a1', assignedUserSyncIds: ['u1'], obsidianNotePath: 'Goals/Home.md' }],
+      projects: [{ id: 'p1', title: 'Roof', status: 'active', goalId: 'g1', description: '', assignedUserSyncIds: ['u1'], obsidianNotePath: 'Projects/Roof.md', obsidianNoteMissingAt: '2026-10-01T00:00:00Z' }],
+      areas: [{ id: 'a1', name: 'House' }],
+      tasks: [], unscheduledTasks: [],
+    }, {});
+    expect(r.goals[0]).toMatchObject({
+      id: 'g1', description: 'Dry roof.', start_date: '2026-01-01', target_date: '2026-12-31', area_id: 'a1', area_name: 'House',
+      assignee_ids: ['u1'], obsidian_note: { path: 'Goals/Home.md', name: 'Goals/Home', missing: false },
+    });
+    expect(r.goals[0].projects[0]).toMatchObject({
+      id: 'p1', description: '', goal_id: 'g1', assignee_ids: ['u1'], obsidian_note: { path: 'Projects/Roof.md', name: 'Projects/Roof', missing: true },
+    });
+    // Unlinked, unassigned, area-less: the optional keys are absent, the always-present ones are null or ''.
+    const plain = buildGoalProgress({ goals: [{ id: 'g2', title: 'X', status: 'active' }], projects: [], tasks: [], unscheduledTasks: [] }, {}).goals[0];
+    expect(plain).toMatchObject({ description: '', start_date: null, target_date: null });
+    for (const key of ['area_id', 'area_name', 'assignee_ids', 'obsidian_note']) expect(key in plain).toBe(false);
+  });
+  it('list_areas returns id and name in order', () => {
+    const r = handleMcpRequest({ areas: [{ id: 'b', name: 'Second', order: 10 }, { id: 'a', name: 'First', order: 0 }] }, { method: 'list_areas' });
+    expect(r).toEqual({ ok: true, data: { areas: [{ id: 'a', name: 'First' }, { id: 'b', name: 'Second' }] } });
+  });
+});

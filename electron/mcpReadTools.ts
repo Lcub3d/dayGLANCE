@@ -199,12 +199,33 @@ export function registerReadTools(server: McpServer, deps: ReadToolDeps): void {
   }
 
   server.registerTool(
+    'dayglance_list_areas',
+    {
+      description:
+        'The areas of life a dayGLANCE goal can belong to, as { id, name }. Use the id as area_id on ' +
+        'dayglance_create_goal and dayglance_update_goal; goals report area_id and area_name. Areas are ' +
+        'managed in dayGLANCE and cannot be created over MCP.',
+    },
+    async () => {
+      const r = await deps.bridge.request('list_areas', {});
+      if (!r.ok) return bridgeError(r);
+      return ok({ ...(r.data as Record<string, unknown>) });
+    },
+  );
+
+  server.registerTool(
     'dayglance_get_goal_progress',
     {
       description:
-        'Goal and project progress from dayGLANCE. Progress is duration-weighted, matching ' +
-        "what the app itself shows. Scope with goal_id for one goal's tree; window is " +
-        "'active' (default) or 'all' (includes archived/completed goals and projects).",
+        'Goals and projects from dayGLANCE with their fields and progress. Each goal carries title, status, ' +
+        'description, start_date, target_date, area_id and area_name, assignee_ids (multi-user), the linked ' +
+        'Obsidian note when there is one, duration-weighted progress matching what the app shows, and its ' +
+        'projects; each project carries title, status, description, goal_id, assignee_ids, obsidian_note, ' +
+        'progress and task counts. A goal or project with obsidian_note keeps its description in that ' +
+        "note's opening section, so description is empty here and is edited in Obsidian. Scope with goal_id " +
+        "for one goal's tree; window is 'active' (default) or 'all' (includes archived/completed goals and " +
+        'projects). Tasks carry project_id, so dayglance_get_day and dayglance_list_unscheduled_tasks give a ' +
+        "project's tasks.",
       inputSchema: z.object({
         goal_id: z.string().optional().describe('Narrow to one goal by id.'),
         window: z.enum(['active', 'all']).optional().describe("Status scope. Default 'active'."),

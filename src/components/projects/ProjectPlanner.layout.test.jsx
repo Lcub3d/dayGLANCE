@@ -207,4 +207,12 @@ describe('ProjectPlanner layout', () => {
     expect(panel).toContain('bg-yellow-500');
     expect(panel).not.toContain('>ON<');
   });
+
+  it('spells out hyperGLANCE in the phone header where the row has room', async () => {
+    const phone = await render({ isMobile: true });
+    // shown from 400px wide (the three toggles need about 360px of row); below, the icon and ON
+    expect(phone).toMatch(/data-planner-hyperglance-label="true" class="hidden min-\[400px\]:inline">hyperGLANCE</);
+    const desktop = await render();
+    expect(desktop).toMatch(/<span data-planner-hyperglance-label="true">hyperGLANCE<\/span>/);
+  });
 });

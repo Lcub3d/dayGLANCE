@@ -1523,7 +1523,6 @@ const SettingsModal = () => {
                             {(() => {
                               const listed = (aiConfig.modelLists?.[aiConfig.provider]?.length ? aiConfig.modelLists[aiConfig.provider] : PROVIDER_MODELS[aiConfig.provider]) || [];
                               const inList = listed.some((m) => m.id === aiConfig.model);
-                              const canFetch = aiConfig.provider !== 'anthropic';
                               return (
                                 <div className="space-y-2">
                                   {listed.length > 0 && (
@@ -1552,7 +1551,7 @@ const SettingsModal = () => {
                                       className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
                                     />
                                   )}
-                                  {canFetch && (
+                                  {(
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <button
                                         type="button"

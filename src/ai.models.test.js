@@ -11,6 +11,10 @@ describe('the built-in model lists', () => {
     expect(PROVIDER_MODELS.gemini.find((m) => m.recommended).id).toBe('gemini-2.5-flash');
     expect(PROVIDER_MODELS.openrouter.some((m) => m.id.includes('gemini-2.0'))).toBe(false);
   });
+  it('anthropic: no Claude 3 ids, the default is the current Sonnet, and the list is fetchable like the others', () => {
+    for (const m of PROVIDER_MODELS.anthropic) expect(m.id).not.toMatch(/claude-3/);
+    expect(PROVIDER_MODELS.anthropic.find((m) => m.recommended).id).toBe('claude-sonnet-5-5');
+  });
 });
 
 describe('parseModelList (the live list, per provider shape)', () => {
@@ -47,6 +51,32 @@ describe('fetchProviderModels', () => {
     expect(calls[0].init.headers['x-goog-api-key']).toBe('k');
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: { message: 'API key not valid' } }) })));
     await expect(fetchProviderModels({ provider: 'gemini', apiKey: 'bad' })).rejects.toThrow('API key not valid');
-    await expect(fetchProviderModels({ provider: 'anthropic', apiKey: 'k' })).rejects.toThrow(/No model list/);
+    await expect(fetchProviderModels({ provider: 'nope', apiKey: 'k' })).rejects.toThrow(/No model list/);
+  });
+  it('asks Anthropic with the direct-from-browser headers, follows the page cursor, and labels with the display name', async () => {
+    const calls = [];
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => {
+      calls.push({ url, init });
+      if (url.includes('after_id=')) {
+        return { ok: true, json: async () => ({ data: [{ id: 'claude-haiku-4-5', display_name: 'Claude Haiku 4.5', type: 'model' }], has_more: false }) };
+      }
+      return { ok: true, json: async () => ({ data: [{ id: 'claude-sonnet-5-5', display_name: 'Claude Sonnet 5.5', type: 'model' }, { id: 'claude-opus-5-5' }], has_more: true, last_id: 'claude-opus-5-5' }) };
+    }));
+    const models = await fetchProviderModels({ provider: 'anthropic', apiKey: 'sk' });
+    expect(models).toEqual([
+      { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 (claude-haiku-4-5)' },
+      { id: 'claude-opus-5-5', label: 'claude-opus-5-5' },
+      { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (claude-sonnet-5-5)' },
+    ]);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].url).toBe('https://api.anthropic.com/v1/models?limit=1000');
+    expect(calls[1].url).toBe('https://api.anthropic.com/v1/models?limit=1000&after_id=claude-opus-5-5');
+    for (const c of calls) {
+      expect(c.init.headers['x-api-key']).toBe('sk');
+      expect(c.init.headers['anthropic-version']).toBe('2023-06-01');
+      expect(c.init.headers['anthropic-dangerous-direct-browser-access']).toBe('true');
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, json: async () => ({ error: { message: 'invalid x-api-key' } }) })));
+    await expect(fetchProviderModels({ provider: 'anthropic', apiKey: 'bad' })).rejects.toThrow('invalid x-api-key');
   });
 });

@@ -199,11 +199,14 @@ npm install
 npm run build      # type-checks, then bundles src/main.ts → main.js
 ```
 
-## Manual install
+## Install
 
-Copy `manifest.json` and the built `main.js` into
+Each dayGLANCE GitHub release carries this plugin's `main.js` and
+`manifest.json` as assets. Copy them (or your own build) into
 `<vault>/.obsidian/plugins/dayglance-bridge/` and enable the plugin in
-Settings → Community plugins.
+Settings → Community plugins. BRAT users can add the dayGLANCE repository;
+BRAT installs and updates from those release assets. Community-directory
+submission comes later.
 
 ## Repo shape
 

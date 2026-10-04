@@ -527,7 +527,7 @@ Folder sync above needs no plugin and never will. The **dayGLANCE Bridge** plugi
 
 Pairing is a code shown in dayGLANCE and entered in the plugin's settings tab. The agenda additionally needs your dayGLANCE sync passphrase entered once per device; the derived key is kept in that device's local storage and never written to the plugin's synced settings.
 
-**Setup:** The plugin is **unlisted** rather than in Obsidian's community directory: install it manually or through BRAT from [`dayglance-obsidian-plugin/`](dayglance-obsidian-plugin/). Then pair from **Settings → Obsidian → Bridge plugin**.
+**Setup:** The plugin is not in Obsidian's community directory yet. Each dayGLANCE [release](https://github.com/krelltunez/dayGLANCE/releases) carries the plugin's `main.js` and `manifest.json` as assets: copy them into `<vault>/.obsidian/plugins/dayglance-bridge/` and enable the plugin under Community plugins, or add this repository in [BRAT](https://github.com/TfTHacker/obsidian42-brat), which installs and updates from those same release assets. Then pair from **Settings → Obsidian → Bridge plugin**. Source is in [`dayglance-obsidian-plugin/`](dayglance-obsidian-plugin/).
 
 ---
 

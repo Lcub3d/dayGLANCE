@@ -101,6 +101,9 @@ describe('undoGroupKey — the per-task partition', () => {
     expect(undoGroupKey({ kind: 'restore_project_fields', projectId: 'p1', before: {} })).toBe('project:p1');
     // A goal and a task sharing an id never share a group.
     expect(undoGroupKey({ kind: 'remove_created_goal', goalId: 't1' })).not.toBe(undoGroupKey({ kind: 'remove_created', taskId: 't1' }));
+    // A description written into a linked note groups with its entity.
+    expect(undoGroupKey({ kind: 'restore_note_description', entityKind: 'goal', entityId: 'g1', path: 'Goals/Home.md', before: '' })).toBe('goal:g1');
+    expect(undoGroupKey({ kind: 'restore_note_description', entityKind: 'project', entityId: 'p1', path: 'P.md', before: 'x', afterBase: 'h' })).toBe('project:p1');
   });
 
   it('recurring completions group per INSTANCE (template::date), never per template', () => {

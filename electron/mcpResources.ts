@@ -34,8 +34,9 @@ export function registerResources(server: McpServer, deps: ReadToolDeps): void {
     method: string,
     params: Record<string, unknown>,
     envelope: Record<string, unknown>,
+    timeoutMs?: number,
   ) => {
-    const r = await deps.bridge.request(method, params);
+    const r = await deps.bridge.request(method, params, timeoutMs);
     if (!r.ok) throw resourceError(r.error.code, r.error.message);
     return {
       contents: [{
@@ -105,6 +106,7 @@ export function registerResources(server: McpServer, deps: ReadToolDeps): void {
         'projects, matching what the app shows). Same data as the dayglance_get_goal_progress tool.',
       mimeType: MIME,
     },
-    async (uri) => read(uri.href, 'goal_progress', {}, { timezone: deps.timeZone() }),
+    // Opens the linked notes for their descriptions, so it gets the longer timeout the tool gets.
+    async (uri) => read(uri.href, 'goal_progress', {}, { timezone: deps.timeZone() }, 8000),
   );
 }

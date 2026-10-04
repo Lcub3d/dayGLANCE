@@ -7527,6 +7527,14 @@ const DayPlanner = () => {
     setProjects,
     deleteGoal,
     deleteProject,
+  }, {
+    // A linked goal's or project's description lives in its Obsidian note
+    // (2026-10-04): the MCP reads and writes it through the planner's own
+    // section loader and save, and says whether a write landed in the file
+    // or was queued for the plugin.
+    loadNoteDescription,
+    saveNoteDescription,
+    noteWriteMode: () => (isStreamPosture(bridgeHeartbeatRef.current) ? 'queued' : 'written'),
   });
 
   useElectronBridge({

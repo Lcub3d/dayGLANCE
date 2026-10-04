@@ -455,7 +455,7 @@ export function entityFieldNames(touched) {
 const stateWith = (state, patch) => ({ ...state, ...patch });
 
 /** The denominator the read surface uses: every visible task that is not a device event. */
-function progressTasksOf(state) {
+export function progressTasksOf(state) {
   const visible = typeof state.isVisibleForUser === 'function' ? state.isVisibleForUser : () => true;
   return [...(state.tasks ?? []), ...(state.unscheduledTasks ?? [])].filter(visible).filter((t) => !t._native);
 }

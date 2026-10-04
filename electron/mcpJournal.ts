@@ -32,7 +32,14 @@ export type UndoOp =
   | { kind: 'remove_created_goal'; goalId: string }
   | { kind: 'restore_goal_fields'; goalId: string; before: Record<string, unknown>; absentBefore?: string[] }
   | { kind: 'remove_created_project'; projectId: string }
-  | { kind: 'restore_project_fields'; projectId: string; before: Record<string, unknown>; absentBefore?: string[] };
+  | { kind: 'restore_project_fields'; projectId: string; before: Record<string, unknown>; absentBefore?: string[] }
+  /**
+   * A description written into a linked Obsidian note (2026-10-04): the
+   * previous section goes back through the same refuse-on-change save, under
+   * the hash of what was written; `fields` carries the record half of the
+   * same call, when it had one.
+   */
+  | { kind: 'restore_note_description'; entityKind: 'goal' | 'project'; entityId: string; path: string; before: string; afterBase?: string; fields?: UndoOp };
 
 export interface JournalEntry {
   seq: number;
@@ -105,6 +112,8 @@ export function undoGroupKey(op: UndoOp): string {
     case 'remove_created_project':
     case 'restore_project_fields':
       return `project:${op.projectId}`;
+    case 'restore_note_description':
+      return `${op.entityKind}:${op.entityId}`;
     case 'restore_recurring_completion':
       return `${op.templateId}::${op.dateStr}`;
     default: {

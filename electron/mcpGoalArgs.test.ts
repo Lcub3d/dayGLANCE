@@ -31,6 +31,15 @@ describe('planUpdateGoal', () => {
     expect(archived).toMatchObject({ ok: false, code: 'validation' });
     expect((archived as { message: string }).message).toMatch(/not available over MCP/);
   });
+  it('description_base rides with a description and is rejected alone or blank', () => {
+    expect(planUpdateGoal({ goal_id: 'g1', description: 'New', description_base: 'h1' }, false))
+      .toEqual({ ok: true, plan: { goalId: 'g1', set: { description: 'New', descriptionBase: 'h1' }, clear: [] } });
+    expect(planUpdateGoal({ goal_id: 'g1', description_base: 'h1' }, false)).toMatchObject({ ok: false });
+    expect(planUpdateGoal({ goal_id: 'g1', description: 'New', description_base: ' ' }, false)).toMatchObject({ ok: false });
+    expect(planUpdateProject({ project_id: 'p1', description: 'New', description_base: 'h1' }, false))
+      .toMatchObject({ ok: true, plan: { set: { description: 'New', descriptionBase: 'h1' } } });
+  });
+
   it('rejects set-and-clear of one field, clearing title, an unknown clearable, assignees outside multi-user, and an empty call', () => {
     expect(planUpdateGoal({ goal_id: 'g1', description: 'x', clear_fields: ['description'] }, false)).toMatchObject({ ok: false });
     expect(planUpdateGoal({ goal_id: 'g1', clear_fields: ['title'] }, false)).toMatchObject({ ok: false });

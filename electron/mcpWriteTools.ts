@@ -501,6 +501,18 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
   const NO_ARCHIVE =
     ' Status may be "active" or "completed"; archiving is not available over MCP by design and returns a ' +
     'validation error, as deleting does not exist.';
+  // A linked entity's description is the opening section of its Obsidian
+  // note (companion spec §4.3). The write goes through the app's own section
+  // save, which re-reads the note and refuses when it changed since the text
+  // was read; the main process waits longer for it than for a state write.
+  const LINKED_DESCRIPTION =
+    'For an entity with obsidian_note, description is the opening section of that note: the write goes into the ' +
+    'note itself (the rest of the note is never touched) and the response says note_write "written" or "queued" ' +
+    '(queued: the bridge plugin applies it when Obsidian is open). Pass description_base from the last read to be ' +
+    'refused with note_changed if the note moved since, rather than overwriting an edit made in Obsidian. ';
+  const DESCRIPTION_ARG = 'The notes box; on an entity with obsidian_note, the opening section of that note.';
+  const DESCRIPTION_BASE_ARG = 'The description_base a read returned. With it, the write is refused (note_changed) if the note changed since; without it the write is unconditional.';
+  const NOTE_WRITE_TIMEOUT_MS = 8000;
   const assigneeIdsArg = multiUser ? {
     assignee_ids: z.array(z.string()).optional().describe(
       'Assign to household members by user id (ids from dayglance_list_users). Replaces the whole list. Never guess from a name.'),
@@ -542,12 +554,12 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       description:
         'Edit a dayGLANCE goal. Absent leaves a field alone, present sets it, a name in clear_fields removes it. ' +
         'Completing a goal is allowed only once every active child project is completed (the app\'s own rule). ' +
-        'A goal with obsidian_note keeps its description in that note, so description is not editable here. ' +
-        'Returns the resulting goal.' + NO_ARCHIVE,
+        LINKED_DESCRIPTION + 'Returns the resulting goal.' + NO_ARCHIVE,
       inputSchema: z.object({
         goal_id: z.string(),
         title: z.string().optional().describe('New title. Can be set, never cleared.'),
-        description: z.string().optional(),
+        description: z.string().optional().describe(DESCRIPTION_ARG),
+        description_base: z.string().optional().describe(DESCRIPTION_BASE_ARG),
         start_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
         target_date: z.string().optional().describe('Local calendar date, strict YYYY-MM-DD.'),
         area_id: z.string().optional().describe('An area id from dayglance_list_areas.'),
@@ -563,7 +575,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       return write('update_goal', idempotency_key, async (transitionId, capture) => {
         const planned = planUpdateGoal(args, multiUser);
         if (!planned.ok) return toolError(planned.code, planned.message);
-        const r = await deps.bridge.request('update_goal', { ...planned.plan, transitionId });
+        const r = await deps.bridge.request('update_goal', { ...planned.plan, transitionId }, NOTE_WRITE_TIMEOUT_MS);
         return fromRenderer(r, { timezone: deps.timeZone() }, capture);
       });
     },
@@ -603,12 +615,13 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       description:
         'Edit a dayGLANCE project. Absent leaves a field alone, present sets it, a name in clear_fields removes it ' +
         '("goal" detaches the project from its goal, making it standalone). Completing a project is allowed only once ' +
-        'every one of its tasks is completed (the app\'s own rule). A project with obsidian_note keeps its description ' +
-        'in that note, so description is not editable here. Returns the resulting project.' + NO_ARCHIVE,
+        'every one of its tasks is completed (the app\'s own rule). ' + LINKED_DESCRIPTION +
+        'Returns the resulting project.' + NO_ARCHIVE,
       inputSchema: z.object({
         project_id: z.string(),
         title: z.string().optional().describe('New title. Can be set, never cleared.'),
-        description: z.string().optional(),
+        description: z.string().optional().describe(DESCRIPTION_ARG),
+        description_base: z.string().optional().describe(DESCRIPTION_BASE_ARG),
         goal_id: z.string().optional().describe('Move the project under this goal.'),
         status: z.enum(['active', 'completed']).optional(),
         ...assigneeIdsArg,
@@ -622,7 +635,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       return write('update_project', idempotency_key, async (transitionId, capture) => {
         const planned = planUpdateProject(args, multiUser);
         if (!planned.ok) return toolError(planned.code, planned.message);
-        const r = await deps.bridge.request('update_project', { ...planned.plan, transitionId });
+        const r = await deps.bridge.request('update_project', { ...planned.plan, transitionId }, NOTE_WRITE_TIMEOUT_MS);
         return fromRenderer(r, { timezone: deps.timeZone() }, capture);
       });
     },

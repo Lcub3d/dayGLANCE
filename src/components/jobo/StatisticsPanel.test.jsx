@@ -6,7 +6,7 @@ import i18next from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import StatisticsPanel from './StatisticsPanel.jsx';
 import { createDoRecord } from '../../jobo/core.js';
-import { buildStatisticsDayReport } from '../../jobo/checkStatistics.js';
+import { buildStatisticsDayReport, buildStatisticsReports } from '../../jobo/checkStatistics.js';
 
 vi.mock('react-dom', async original => ({ ...await original(), createPortal: children => children }));
 afterEach(() => vi.unstubAllGlobals());
@@ -71,6 +71,24 @@ describe('Statistics panel with real reports', () => {
     const { html, t } = await render('en', { buildReports: days => days.map(day => buildStatisticsDayReport({ date: day, records: [record, {}] })) });
     expect(html).toContain(t('jobo.statistics.invalid'));
     expect(html).toMatch(/Recorded time<\/dt><dd[^>]*>—<\/dd>/);
+  });
+
+  it('renders Execution from real multi-day reports without counting overnight slices twice', async () => {
+    const nextDate = '2026-09-29';
+    const planSnapshot = { date, startTime: '23:00', duration: 60 };
+    const records = [
+      createDoRecord({ ...record, taskId: 'task', planSnapshot, startTime: '23:00', endDate: nextDate, endTime: '01:00' }),
+      createDoRecord({ ...record, id: 'continued', taskId: 'task', planSnapshot, date: nextDate, endDate: nextDate }),
+    ];
+    const { html, t } = await render('en', {
+      buildReports: () => buildStatisticsReports({ dates: [date, nextDate], records }),
+    });
+    expect(html).toContain(t('jobo.statistics.execution'));
+    for (const [key, value] of [['doRecords', 2], ['single', 0], ['split', 1]]) {
+      expect(html).toContain(`${t(`jobo.statistics.${key}`)}</dt><dd class="mt-0.5 text-lg font-semibold tabular-nums">${value}</dd>`);
+    }
+    expect(html).toContain(`${t('jobo.view.progress.partial')}: 2`);
+    expect(html).toContain(`${t('jobo.statistics.noPlan')}: 0`);
   });
 
   it('calls a completed elapsed plan without Do missing evidence, not an unstarted task', async () => {

@@ -141,12 +141,24 @@ export function statisticsReportFromModel(model, { date, inboxTasks = [], isVisi
     date, inboxTasks: inboxTasks.filter(task => typeof isVisibleForUser !== 'function' || isVisibleForUser(task)),
   });
   if (!summary) return null;
+  const items = [...new Map([...model.timedRecords, ...model.untimedRecords]
+    .map(item => [item.id, item])).values()];
+  const groups = [...new Map(items.map(item => [item.groupKey, item])).values()];
   return {
     ...summary,
     // Only validated winning records from the real day model get identities.
     // A missing id remains invalid evidence; there is no synthetic fallback.
     inferredRecordIds: model.timedRecords.filter(item => item.record.timingBasis === 'planDuration')
       .map(item => item.id),
+    // Keep identities from the prepared model, not additive day counters.
+    // Membership is a positive day slice or the model's untimed marker date;
+    // classification still sees the full group, including sessions outside it.
+    executionRecords: items.map(item => ({ id: item.id, progress: item.record.progress })),
+    executionGroups: groups.map(item => ({
+      id: item.groupKey,
+      attemptCount: item.attempts.length,
+      context: item.comparison?.planContext ?? item.comparisonMeta?.measuredComparison?.planContext ?? 'unknown',
+    })),
   };
 }
 
@@ -201,11 +213,37 @@ const sumMap = (reports, pick) => {
   return result;
 };
 
+function rangeExecution(reports) {
+  // A bare checkSummary has no identities and cannot prove a range count.
+  // Never fall back to summing its per-day Execution counters.
+  if (!reports.every(report => Array.isArray(report.executionRecords) && Array.isArray(report.executionGroups))) {
+    return { doCount: null, single: null, split: null, progress: null, contexts: null };
+  }
+  const records = new Map();
+  const groups = new Map();
+  for (const report of reports) {
+    for (const record of report.executionRecords) records.set(record.id, record);
+    for (const group of report.executionGroups) groups.set(group.id, group);
+  }
+  const progress = { completed: 0, mostly: 0, partial: 0, started: 0 };
+  const contexts = { planned: 0, noPlan: 0, unknown: 0 };
+  let single = 0, split = 0;
+  for (const record of records.values()) {
+    if (Object.hasOwn(progress, record.progress)) progress[record.progress] += 1;
+  }
+  for (const group of groups.values()) {
+    single += Number(group.attemptCount === 1);
+    split += Number(group.attemptCount > 1);
+    contexts[group.context] += 1;
+  }
+  return { doCount: records.size, single, split, progress, contexts };
+}
+
 /**
  * Aggregate per-day checkSummary reports. Coverage/time and captured-plan
- * comparisons partition by day and are additive. Attempt/session diagnostics
- * do not: an interval or execution group may cross midnight. Those fields are
- * kept for Day and intentionally become null for wider ranges.
+ * comparisons partition by day and are additive. Execution is deduplicated by
+ * the prepared model's record/group identities across the selected dates.
+ * Full-group gap and priority progress diagnostics remain Day-only.
  */
 export function aggregateCheckSummaries(input = []) {
   const reports = (Array.isArray(input) ? input : []).filter(Boolean);
@@ -263,14 +301,10 @@ export function aggregateCheckSummaries(input = []) {
       unchanged: sum(reports.map((report) => report.changes?.unchanged)),
       unknown: sum(reports.map((report) => report.changes?.unknown)),
     } : null,
-    progress: null,
-    contexts: null,
+    ...rangeExecution(reports),
     relations: clean ? sumMap(reports, (report) => report.relations) : null,
     inboxCompleted: sum(reports.map((report) => report.inboxCompleted)),
     projectCompleted: sum(reports.map((report) => report.projectCompleted)),
-    doCount: null,
-    single: null,
-    split: null,
     rawMinutes: exactSum(reports.map((report) => report.rawMinutes)),
     overlapMinutes: exactSum(reports.map((report) => report.overlapMinutes)),
     gapMinutes: null,

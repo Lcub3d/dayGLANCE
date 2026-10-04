@@ -206,8 +206,15 @@ export default function JoboView() {
 
   // Open on the part of the day that matters: an hour before now on today,
   // otherwise an hour before the first Plan or Do. Today's opening is also
-  // where Refocus timeline returns to.
+  // where Refocus timeline returns to. Opened from a Do elsewhere ("Open in
+  // JOBO"), an hour before that Do instead: the request is taken once and
+  // kept for its date, so a later re-run (the visible range settling as the
+  // ledger loads) still opens there.
   const scrollTopFor = (anchorMinute) => Math.max(0, (anchorMinute - 60 - windowStart) * hourHeight / 60);
+  const focusRef = useRef(null);
+  if (ctx.joboFocus) focusRef.current = ctx.joboFocus;
+  const { setJoboFocus } = ctx;
+  useEffect(() => { if (ctx.joboFocus) setJoboFocus?.(null); }, [ctx.joboFocus, setJoboFocus]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -216,7 +223,9 @@ export default function JoboView() {
       ...doItems.map((item) => item.startMinute),
       8 * 60,
     );
-    const anchorMinute = date === nowDate ? currentTime.getHours() * 60 : firstMinute;
+    const focus = focusRef.current?.date === date ? focusRef.current : null;
+    if (!focus) focusRef.current = null;
+    const anchorMinute = focus ? focus.minute : date === nowDate ? currentTime.getHours() * 60 : firstMinute;
     el.scrollTop = scrollTopFor(anchorMinute);
     // Only on a new day or visible range, never on an ordinary re-render,
     // and never on a zoom: that keeps the time under the pointer where it was

@@ -84,7 +84,8 @@ A timed Do item is task-shaped so the existing layout takes it: the task's
 title and colour, `startTime` and `duration` from the actual interval, and
 `joboDo: true` with the record id. It is **read-only**: no drag, resize,
 checkbox or context-menu actions, the way imported calendar events already
-are. Clicking it opens the JOBO view on that date, where the record can be
+are. Clicking it shows what was recorded, with "Open in JOBO", which opens
+the JOBO view on that date at the Do's time, where the record can be
 edited.
 
 **It is drawn with a striped fill in the task's colour**, so it never
@@ -95,10 +96,11 @@ estimates keep their dashed outline, which stays distinct from the stripes.
 
 How each view draws it:
 
-- **DAY and MULTI:** the full card, striped.
+- **DAY and MULTI:** the full card, striped. A click shows the same
+  popover as WEEK's, beside the card.
 - **WEEK:** WEEK's compact chip, striped. Its click popover, which shows
   a plan card today, shows the Do instead: the recorded interval and
-  progress, read-only.
+  progress, read-only, and "Open in JOBO".
 - **MONTH:** the cell's bars follow the Do. A task done in three one-hour
   sessions is three striped bars at the recorded times, in its colour,
   and its plan bar is not drawn. The cell has no text and is one tap

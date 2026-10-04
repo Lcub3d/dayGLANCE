@@ -779,6 +779,16 @@ const DayPlanner = () => {
     setFollowUpTagState(tag);
     try { if (tag) localStorage.setItem(FOLLOW_UP_TAG_KEY, tag); else localStorage.removeItem(FOLLOW_UP_TAG_KEY); } catch { /* this session only */ }
   }, []);
+  // "Open in JOBO" from a Do elsewhere (a Do card, SCHED's Do badge): the
+  // JOBO view on that date, opened at the Do's time rather than at now.
+  // JoboView takes the request once, for that date.
+  const [joboFocus, setJoboFocus] = useState(null);
+  const openJoboAt = useCallback(({ date, minute }) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return;
+    setJoboFocus(Number.isFinite(minute) ? { date, minute } : null);
+    setSelectedDate(new Date(`${date}T12:00:00`));
+    setViewMode('jobo');
+  }, []);
   // A task a note links to, shown read-only over whatever is open.
   const [peekTaskId, setPeekTaskId] = useState(null);
   useEffect(() => {
@@ -8826,6 +8836,7 @@ const DayPlanner = () => {
     // ── Undo / redo ───────────────────────────────────────────────────────────
     undoToast, setUndoToast,
     followUpTag, setFollowUpTag, openFollowUp,
+    joboFocus, setJoboFocus, openJoboAt,
 
     // ── Mobile editing ────────────────────────────────────────────────────────
     mobileEditingTask, setMobileEditingTask,

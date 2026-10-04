@@ -36,23 +36,43 @@ describe('PastDoCard', () => {
     expect(html).not.toContain('lucide-clock');
   });
 
-  // MUTATION: open the task editor instead and a past record becomes an
-  // edit target outside JOBO.
-  it('opens JOBO on the Do\'s date when clicked', () => {
+  // A click shows the details first, as WEEK's chip does; it never jumps
+  // to JOBO, and never opens the task editor (a past record is no edit
+  // target outside JOBO).
+  it('a click opens its details, not JOBO', () => {
     const setViewMode = vi.fn();
-    const setSelectedDate = vi.fn();
-    clickCard({ setViewMode, setSelectedDate });
-    expect(setSelectedDate).toHaveBeenCalledWith(new Date('2026-09-24T12:00:00'));
-    expect(setViewMode).toHaveBeenCalledWith('jobo');
+    const openJoboAt = vi.fn();
+    const stopPropagation = vi.fn();
+    clickCard({ setViewMode, openJoboAt }, { stopPropagation });
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(openJoboAt).not.toHaveBeenCalled();
+    expect(setViewMode).not.toHaveBeenCalled();
   });
 });
 
-describe('PastDoDetails, WEEK\'s popup', () => {
+describe('PastDoDetails, the popup in DAY, MULTI and WEEK', () => {
   it('shows what was recorded and a button into JOBO', () => {
     const html = render(<PastDoDetails item={item} onClose={() => {}} />);
     expect(html).toContain('jobo.past.recorded:09:30–10:15');
     expect(html).toContain('jobo.view.progress.partial');
     expect(html).toContain('jobo.past.open');
+  });
+
+  // MUTATION: drop the minute and JOBO opens at now, not at the Do.
+  it('opens JOBO on the Do\'s date, at its time', () => {
+    const openJoboAt = vi.fn();
+    const onClose = vi.fn();
+    clickOpen({ openJoboAt }, onClose);
+    expect(onClose).toHaveBeenCalled();
+    expect(openJoboAt).toHaveBeenCalledWith({ date: '2026-09-24', minute: 9 * 60 + 30 });
+  });
+
+  it('still opens JOBO on the date where the app offers no time request', () => {
+    const setViewMode = vi.fn();
+    const setSelectedDate = vi.fn();
+    clickOpen({ setViewMode, setSelectedDate }, () => {});
+    expect(setSelectedDate).toHaveBeenCalledWith(new Date('2026-09-24T12:00:00'));
+    expect(setViewMode).toHaveBeenCalledWith('jobo');
   });
 });
 
@@ -60,14 +80,27 @@ it('exports the stripes JOBO\'s own cards use', () => {
   expect(DO_STRIPES).toMatch(/^repeating-linear-gradient/);
 });
 
-// Server rendering has no events, so a probe component calls the card as a
-// function (its hooks run inside the probe's render) and fires its onClick.
-function clickCard(ctx) {
-  const Probe = () => {
-    PastDoCard({ item, style: {} }).props.onClick({ stopPropagation() {} });
-    return null;
-  };
+// Server rendering has no events, so a probe component calls the component
+// as a function (its hooks run inside the probe's render) and fires the
+// handler on the element it returns.
+// Fired once: a state change during the render renders the probe again.
+function probe(ctx, fire) {
+  let fired = false;
+  const Probe = () => { if (!fired) { fired = true; fire(); } return null; };
   renderToStaticMarkup(
     <DayPlannerContext.Provider value={{ formatTime: (v) => v, ...ctx }}><Probe /></DayPlannerContext.Provider>,
   );
+}
+// The card is the first child of what PastDoCard returns (its popup follows).
+function clickCard(ctx, event = { stopPropagation() {} }) {
+  probe(ctx, () => PastDoCard({ item, style: {} }).props.children[0].props.onClick(event));
+}
+function clickOpen(ctx, onClose) {
+  const findButton = (node) => {
+    if (!node || typeof node !== 'object') return null;
+    if (Array.isArray(node)) return node.map(findButton).find(Boolean) || null;
+    if (node.type === 'button') return node;
+    return findButton(node.props?.children);
+  };
+  probe(ctx, () => findButton(PastDoDetails({ item, onClose })).props.onClick({ stopPropagation() {} }));
 }

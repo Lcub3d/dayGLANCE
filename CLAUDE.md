@@ -41,6 +41,19 @@ consumes the observation stream, add or extend a scenario in
 `scope.scenarios.test.ts` rather than relying on a manual vault test. Obsidian
 Sync timing, real editor buffers, and Templater stay manual.
 
+# MCP transport suite
+
+`electron/mcpServer.transport.test.ts` starts the real MCP listener on a free
+loopback port and drives it with the official client over HTTP, against a
+scripted renderer bridge. It holds the server to `docs/mcp-tools-reference.md`:
+the tool and resource names are parsed from that file, so a tool added or
+renamed has to land in both. When a change touches what is registered (a tool,
+its schema or description, a timeout, a guard in front of a write), extend a
+scenario there; the per-module unit tests cannot see that seam. Keep argument
+schemas permissive where the planner carries a by-design message: the SDK
+validates the schema before the handler runs and answers with its own generic
+text, so a strict enum would hide the message the client is meant to read.
+
 # Todoist integration
 
 `src/todoist/` is a read-source integration: Todoist supplies tasks, dayGLANCE

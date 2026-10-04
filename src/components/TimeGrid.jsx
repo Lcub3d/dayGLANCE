@@ -162,8 +162,9 @@ const TimeGrid = () => {
     {visibleDates.map((date, dayIndex) => {
       const dateStr = dateToString(date);
       const isDateToday = dateStr === dateToString(new Date());
-      // A past date shows what was done (slice 6): recorded Do replace the
-      // plan blocks they belong to, drawn as read-only PastDoCards.
+      // A past date shows what was done (slice 6), and today does up to the
+      // NOW line: recorded Do drawn as read-only PastDoCards, in place of a
+      // completed task's ended block.
       const dayTasks = (getDayDisplayForDate || getTasksForDate)(date).filter(t => !t.isAllDay && (!projectFilter || t.projectId === projectFilter));
       const frameInstances = getFrameInstancesForDate(date);
       const hgBars = getHGBarsForDate(hgVisibleProjects, dateStr, isDateToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined);

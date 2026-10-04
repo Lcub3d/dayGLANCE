@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { noteTextHash, extractNoteDescription } from './noteDescription.js';
 import {
   sealBridgeEnvelope, readBridgeEnvelopeGeneration,
   openBridgeEnvelope,
@@ -442,5 +443,28 @@ describe('create_or_append block guard (report F1)', () => {
     expect(noteContainsBlock('a\n\nb\n\nc\n', 'a\n\nb')).toBe(true);
     expect(noteContainsBlock('a\n\nx\n\nb\n', 'a\n\nb')).toBe(false);
     expect(noteContainsBlock('a\r\n\r\nb\r\n', 'a\n\nb')).toBe(true);
+  });
+});
+
+describe('REFUSE ON CHANGE at the applier (owner ruling 2026-10-03)', () => {
+  const NOTE = '# House\nDry roof by spring.\n\n## Tasks\n- [ ] Fix the gutter ^dg-abc12345\n';
+  it('wiki_note_write with a base the note no longer matches is left alone; a matching base writes; no base writes as before', () => {
+    const stale = noteTextHash('something else');
+    expect(applyBridgeIntent(NOTE, { type: 'wiki_note_write', noteName: 'House', content: 'mine', base: stale })).toEqual({ text: NOTE, changed: false });
+    expect(applyBridgeIntent(NOTE, { type: 'wiki_note_write', noteName: 'House', content: 'mine', base: noteTextHash(NOTE) })).toEqual({ text: 'mine', changed: true });
+    expect(applyBridgeIntent(NOTE, { type: 'wiki_note_write', noteName: 'House', content: 'mine' })).toEqual({ text: 'mine', changed: true });
+  });
+  it('project_note_description: replace with a matching base rewrites only the section; a stale base keeps the section and adds a dated callout; merge keeps existing text', () => {
+    const base = noteTextHash('Dry roof by spring.');
+    const replaced = applyBridgeIntent(NOTE, { type: 'project_note_description', path: 'Projects/House.md', content: 'Dry roof, and gutters.', mode: 'replace', base });
+    expect(replaced.changed).toBe(true);
+    expect(replaced.text).toBe('# House\nDry roof, and gutters.\n\n## Tasks\n- [ ] Fix the gutter ^dg-abc12345\n');
+    const conflicted = applyBridgeIntent(NOTE, { type: 'project_note_description', path: 'Projects/House.md', content: 'Typed in dayGLANCE.', mode: 'replace', base: noteTextHash('older'), at: '2026-10-03 09:00' });
+    expect(conflicted.changed).toBe(true);
+    expect(extractNoteDescription(conflicted.text)).toBe('Dry roof by spring.\n\n> [!note] Edited in dayGLANCE 2026-10-03 09:00\n> Typed in dayGLANCE.');
+    expect(conflicted.text).toContain('## Tasks\n- [ ] Fix the gutter ^dg-abc12345\n');
+    const merged = applyBridgeIntent(NOTE, { type: 'project_note_description', path: 'Projects/House.md', content: 'Purpose: ship.', mode: 'merge' });
+    expect(extractNoteDescription(merged.text)).toBe('Dry roof by spring.\n\nPurpose: ship.');
+    expect(applyBridgeIntent(null, { type: 'project_note_description', path: 'x.md', content: 'x', mode: 'replace' })).toEqual({ text: null, changed: false });
   });
 });

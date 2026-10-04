@@ -186,7 +186,7 @@ const COPY_STATUS_RENEW_MS = 60 * 60 * 1000;
 // Intent types that rewrite one note's text and can share a single write
 // (coalesced per note per drain: a burst of four is one edit and one
 // editor reload, the other half of the incident's fix).
-const COALESCED_INTENT_TYPES = new Set(['task_state', 'task_retitle', 'task_append', 'task_remove', 'completion_log_append', 'daily_note_write']);
+const COALESCED_INTENT_TYPES = new Set(['task_state', 'task_retitle', 'task_append', 'task_remove', 'completion_log_append', 'daily_note_write', 'project_note_description']);
 type ApplyOutcome = 'applied' | 'unsupported' | 'deferred' | 'failed';
 interface PendingIntent { intent: Record<string, unknown>; intentId: string; entityId: string; seq: number }
 // The full link rescan (every markdown file's frontmatter, from the
@@ -1885,15 +1885,18 @@ export class BridgeTransport {
     }
     await this.ensureParentDirs(path);
     const today = new Date().toISOString().slice(0, 10);
-    const vars = { title, date: today, goal: goalTitle };
+    // The notes box at creation (owner ruling 2026-10-03): the description
+    // slot of the default notes, and {{description}} in a template.
+    const description = typeof intent.description === 'string' ? intent.description : '';
+    const vars = { title, date: today, goal: goalTitle, description };
     // The default body (companion §4.3, templates ruling): chosen ONCE, at
     // creation, by whether Dataview is installed; never maintained after.
     const plugins = (this.host.app as unknown as { plugins?: { plugins?: Record<string, unknown> } }).plugins?.plugins ?? {};
     const hasDataview = !!plugins['dataview'];
     const dailyFolder = this.config?.dailyNotesPath ?? '';
     const defaultBody = kind === 'goal'
-      ? defaultGoalNote({ title, date: today, hasDataview, dailyFolder })
-      : defaultProjectNote({ title, date: today, hasDataview, dailyFolder });
+      ? defaultGoalNote({ title, date: today, hasDataview, dailyFolder, description })
+      : defaultProjectNote({ title, date: today, hasDataview, dailyFolder, description });
     let created: TFile;
     try {
       created = await this.host.app.vault.create(path, withCreationFrontmatter(defaultBody, today));

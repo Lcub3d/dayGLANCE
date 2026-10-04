@@ -2536,5 +2536,22 @@
     "unknownWarning": "Niektóre powiązane zadania nie występują w migawce źródła. Nie można wiarygodnie ustalić ich ukończenia/usunięcia, więc ich lokalne kopie zachowano.",
     "writeOptions": "Opcjonalny zapis zwrotny ukończeń (zaawansowane)",
     "securityTitle": "Dane uwierzytelniające, prywatność i ograniczenia"
+  },
+  "followUp": {
+    "action": "Zaplanuj zadanie następcze",
+    "titlePrefix": "Przypomnij:",
+    "noteLine": "Następuje po {{link}}, ukończone {{date}}.",
+    "settingTitle": "Zadania następcze",
+    "settingLabel": "Tag dodawany do zadań następczych",
+    "settingHint": "„Zaplanuj zadanie następcze” przy ukończonym zadaniu dodaje ten tag, na przykład #czekam. Zostaw puste, by nie dodawać żadnego. Zapisywane na tym urządzeniu.",
+    "settingPlaceholder": "#czekam",
+    "peekTitle": "Wcześniejsze zadanie",
+    "peekDone": "Ukończone {{date}}",
+    "peekNotDone": "Nieukończone",
+    "peekInbox": "W skrzynce",
+    "peekOn": "Zaplanowane na {{date}}",
+    "peekDeleted": "W koszu",
+    "peekGone": "Tego zadania nie ma już w dayGLANCE.",
+    "peekShow": "Przejdź do zadania"
   }
 }

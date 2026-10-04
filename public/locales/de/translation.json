@@ -2439,5 +2439,22 @@
     "unknownWarning": "Einige verknüpfte Aufgaben fehlen im Quell-Snapshot. Ihr Abschluss oder ihre Löschung lässt sich nicht zuverlässig bestimmen, daher wurden ihre lokalen Kopien beibehalten.",
     "writeOptions": "Optionales Zurückschreiben von Abschlüssen (erweitert)",
     "securityTitle": "Zugangsdaten, Datenschutz und Einschränkungen"
+  },
+  "followUp": {
+    "action": "Folgeaufgabe planen",
+    "titlePrefix": "Nachfassen:",
+    "noteLine": "Folgt auf {{link}}, erledigt am {{date}}.",
+    "settingTitle": "Folgeaufgaben",
+    "settingLabel": "Tag für Folgeaufgaben",
+    "settingHint": "„Folgeaufgabe planen“ bei einer erledigten Aufgabe fügt diesen Tag hinzu, zum Beispiel #wartenauf. Leer lassen für keinen. Auf diesem Gerät gespeichert.",
+    "settingPlaceholder": "#wartenauf",
+    "peekTitle": "Vorherige Aufgabe",
+    "peekDone": "Erledigt am {{date}}",
+    "peekNotDone": "Nicht erledigt",
+    "peekInbox": "Im Posteingang",
+    "peekOn": "Geplant für {{date}}",
+    "peekDeleted": "Im Papierkorb",
+    "peekGone": "Diese Aufgabe gibt es in dayGLANCE nicht mehr.",
+    "peekShow": "Zur Aufgabe"
   }
 }

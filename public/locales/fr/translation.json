@@ -2439,5 +2439,22 @@
     "unknownWarning": "Certaines tâches liées sont absentes de l’instantané source. Leur finalisation ou leur suppression ne peut pas être déterminée de façon fiable, leurs copies locales ont donc été conservées.",
     "writeOptions": "Réécriture facultative des finalisations (avancé)",
     "securityTitle": "Identifiants, confidentialité et limites"
+  },
+  "followUp": {
+    "action": "Planifier une tâche de suivi",
+    "titlePrefix": "Relancer :",
+    "noteLine": "Fait suite à {{link}}, terminée le {{date}}.",
+    "settingTitle": "Suivis",
+    "settingLabel": "Étiquette des tâches de suivi",
+    "settingHint": "« Planifier une tâche de suivi » sur une tâche terminée ajoute cette étiquette, par exemple #enattente. Laissez vide pour aucune. Enregistré sur cet appareil.",
+    "settingPlaceholder": "#enattente",
+    "peekTitle": "Tâche précédente",
+    "peekDone": "Terminée le {{date}}",
+    "peekNotDone": "Non terminée",
+    "peekInbox": "Dans la boîte de réception",
+    "peekOn": "Prévue le {{date}}",
+    "peekDeleted": "Dans la corbeille",
+    "peekGone": "Cette tâche n’est plus dans dayGLANCE.",
+    "peekShow": "Aller à la tâche"
   }
 }

@@ -2439,5 +2439,22 @@
     "unknownWarning": "Some linked tasks are absent from the source snapshot. Their completion/deletion cannot be determined reliably, so their local copies were retained.",
     "writeOptions": "Optional completion writeback (advanced)",
     "securityTitle": "Credentials, privacy and limitations"
+  },
+  "followUp": {
+    "action": "Schedule follow-up task",
+    "titlePrefix": "Follow up:",
+    "noteLine": "Follows up on {{link}}, done {{date}}.",
+    "settingTitle": "Follow-ups",
+    "settingLabel": "Tag to add to follow-up tasks",
+    "settingHint": "\"Schedule follow-up task\" on a completed task adds this tag, for example #waitingfor. Leave it empty for none. Saved on this device.",
+    "settingPlaceholder": "#waitingfor",
+    "peekTitle": "Earlier task",
+    "peekDone": "Done {{date}}",
+    "peekNotDone": "Not done",
+    "peekInbox": "In the Inbox",
+    "peekOn": "Planned for {{date}}",
+    "peekDeleted": "In the Recycle Bin",
+    "peekGone": "This task is no longer in dayGLANCE.",
+    "peekShow": "Go to task"
   }
 }

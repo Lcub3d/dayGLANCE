@@ -2439,5 +2439,22 @@
     "unknownWarning": "部分关联任务未出现在来源快照，不能可靠判断其是否完成或删除，因此保留本地副本。",
     "writeOptions": "可选完成状态回写（高级）",
     "securityTitle": "凭据、隐私与功能边界"
+  },
+  "followUp": {
+    "action": "安排后续任务",
+    "titlePrefix": "跟进：",
+    "noteLine": "跟进 {{link}}，完成于 {{date}}。",
+    "settingTitle": "后续任务",
+    "settingLabel": "后续任务添加的标签",
+    "settingHint": "对已完成的任务使用“安排后续任务”时添加此标签，例如 #等待中。留空则不添加。仅保存在此设备上。",
+    "settingPlaceholder": "#等待中",
+    "peekTitle": "之前的任务",
+    "peekDone": "完成于 {{date}}",
+    "peekNotDone": "未完成",
+    "peekInbox": "在收件箱中",
+    "peekOn": "计划于 {{date}}",
+    "peekDeleted": "在回收站中",
+    "peekGone": "此任务已不在 dayGLANCE 中。",
+    "peekShow": "前往任务"
   }
 }

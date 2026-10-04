@@ -29,6 +29,7 @@ import SmartSchedulePanel from './SmartSchedulePanel.jsx';
 import MobileRoutinesTab from './MobileRoutinesTab.jsx';
 import UserOwnerSwitcher from './UserOwnerSwitcher.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
+import FollowUpTagSetting from './FollowUpTagSetting.jsx';
 import LocalIntegrationsSettings from './LocalIntegrationsSettings.jsx';
 import TodoistSettings from './TodoistSettings.jsx';
 import { useMcpStatus } from './McpStatusControls.jsx';
@@ -690,6 +691,9 @@ const MobileSettingsPanel = () => {
           ))}
         </div>
       </div>
+
+      <hr className={borderClass} />
+      <FollowUpTagSetting idSuffix="-mobile" />
 
       {/* GLANCE default */}
       {habitsEnabled && goalsProjectsEnabled && (

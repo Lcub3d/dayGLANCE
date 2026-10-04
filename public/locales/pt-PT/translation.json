@@ -2439,5 +2439,22 @@
     "unknownWarning": "Algumas tarefas ligadas não constam do instantâneo de origem. Não é possível determinar com fiabilidade se foram concluídas ou eliminadas, pelo que as cópias locais foram mantidas.",
     "writeOptions": "Escrita opcional de conclusões (avançado)",
     "securityTitle": "Credenciais, privacidade e limitações"
+  },
+  "followUp": {
+    "action": "Agendar tarefa de acompanhamento",
+    "titlePrefix": "Acompanhar:",
+    "noteLine": "Dá seguimento a {{link}}, concluída a {{date}}.",
+    "settingTitle": "Acompanhamentos",
+    "settingLabel": "Etiqueta para tarefas de acompanhamento",
+    "settingHint": "\"Agendar tarefa de acompanhamento\" numa tarefa concluída adiciona esta etiqueta, por exemplo #emespera. Deixe vazio para nenhuma. Guardado neste dispositivo.",
+    "settingPlaceholder": "#emespera",
+    "peekTitle": "Tarefa anterior",
+    "peekDone": "Concluída a {{date}}",
+    "peekNotDone": "Por concluir",
+    "peekInbox": "Na caixa de entrada",
+    "peekOn": "Planeada para {{date}}",
+    "peekDeleted": "Na reciclagem",
+    "peekGone": "Esta tarefa já não está no dayGLANCE.",
+    "peekShow": "Ir para a tarefa"
   }
 }

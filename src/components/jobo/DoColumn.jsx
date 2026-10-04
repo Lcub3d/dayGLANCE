@@ -365,9 +365,9 @@ export default function DoColumn({
 
         {isToday && nowMinute >= offsetMin && nowMinute <= limitMin && (
           <div className="absolute left-0 right-0 pointer-events-none z-10" style={{ top: `${nowY}px` }}>
-            {/* Same structure as DAY's now line (dot, then line, centred), so
-                the two sides meet at exactly the same height. */}
-            <div className="flex items-center"><div className="w-2 h-2 -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
+            {/* DAY's now line (dot, then line, centred), so the two sides
+                meet at exactly the same height and each starts at its dot. */}
+            <div className="flex items-center"><div className="w-2 h-2 bg-red-500 rounded-full -ml-1" /><div className="flex-1 h-0.5 bg-red-500" /></div>
           </div>
         )}
 

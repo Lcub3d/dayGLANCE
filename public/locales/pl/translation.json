@@ -2188,7 +2188,8 @@
     "yes": "TAK",
     "no": "nie",
     "mergeError": "Błąd próbnego scalania",
-    "flagWithoutDiff": "Zapis jest oznaczony, choć w pliku nic by się nie zmieniło. To błąd wykrywania zmian w scalaniu; skopiuj ten raport do zgłoszenia."
+    "flagWithoutDiff": "Scalanie oznaczyło zapis, choć w pliku nic by się nie zmieniło. Zapis jest pomijany.",
+    "mergeFlags": "Flagi scalania (zapis / zastosowanie)"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",

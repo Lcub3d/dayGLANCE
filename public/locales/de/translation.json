@@ -2095,7 +2095,8 @@
     "yes": "JA",
     "no": "nein",
     "mergeError": "Fehler beim Merge-Testlauf",
-    "flagWithoutDiff": "Ein Schreibvorgang ist markiert, obwohl sich in der Datei nichts ändern würde. Das ist ein Fehler in der Änderungserkennung des Merge; bitte kopieren Sie diesen Bericht in ein Issue."
+    "flagWithoutDiff": "Der Merge hat einen Schreibvorgang markiert, obwohl sich in der Datei nichts ändern würde. Der Schreibvorgang wird übersprungen.",
+    "mergeFlags": "Merge-Flags (Schreiben / Anwenden)"
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",

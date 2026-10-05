@@ -2095,7 +2095,8 @@
     "yes": "YES",
     "no": "no",
     "mergeError": "Merge dry-run error",
-    "flagWithoutDiff": "A write is flagged although nothing would change in the file. That is a change-flag bug in the merge; please copy this report into an issue."
+    "flagWithoutDiff": "The merge flagged a write although nothing would change in the file. The write is skipped.",
+    "mergeFlags": "Merge flags (write / apply)"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",

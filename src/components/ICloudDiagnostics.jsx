@@ -163,21 +163,27 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
             />
 
             {/* The cycle's merge, run against the file without applying or
-                writing. "Would write" is the flag the cycle acts on; the two
-                lists are what the result really differs in. A write flagged with
-                nothing differing is a change-flag bug; a slice that differs on
-                every run with nothing edited is a value that cannot converge.
-                This is how an idle Mac rewriting the file every 15 s gets named. */}
+                writing, through the same comparison the cycle decides by
+                (sync/snapshotMergeExplain.js). "Would write" and "would apply"
+                are what the cycle would do; the merge flags are what the merge
+                said; the two lists are what the result really differs in. A
+                slice that differs on every run with nothing edited is a value
+                that cannot converge. This is how an idle Mac rewriting the file
+                every 15 s got named (2026-10-05). */}
             {report.merge && !report.merge.error && (
               <>
                 <Row
                   label={t('icloudDiag.wouldWrite')}
-                  value={report.merge.remoteChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}
-                  tone={report.merge.remoteChanged ? 'text-amber-600 dark:text-amber-400' : undefined}
+                  value={report.merge.wouldWrite ? t('icloudDiag.yes') : t('icloudDiag.no')}
+                  tone={report.merge.wouldWrite ? 'text-amber-600 dark:text-amber-400' : undefined}
                 />
                 <Row
                   label={t('icloudDiag.wouldApply')}
-                  value={report.merge.localChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}
+                  value={report.merge.wouldApply ? t('icloudDiag.yes') : t('icloudDiag.no')}
+                />
+                <Row
+                  label={t('icloudDiag.mergeFlags')}
+                  value={`${report.merge.remoteChanged ? t('icloudDiag.yes') : t('icloudDiag.no')} / ${report.merge.localChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}`}
                 />
                 <Row
                   label={t('icloudDiag.fileDiffers')}

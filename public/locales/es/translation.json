@@ -2095,7 +2095,8 @@
     "yes": "SÍ",
     "no": "no",
     "mergeError": "Error en la simulación de fusión",
-    "flagWithoutDiff": "Hay una escritura marcada aunque nada cambiaría en el archivo. Es un error en la detección de cambios de la fusión; copia este informe en un issue."
+    "flagWithoutDiff": "La fusión marcó una escritura aunque nada cambiaría en el archivo. La escritura se omite.",
+    "mergeFlags": "Indicadores de fusión (escribir / aplicar)"
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",

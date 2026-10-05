@@ -166,7 +166,9 @@ describe('a real snapshot', () => {
     const transport = makeTransport({ read: async () => envelope(remote) });
     const io = makeIo();
     const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
-    expect(outcome).toMatchObject({ kind: 'merged', localChanged: true, remoteChanged: false, wrote: true });
+    // The merged copy IS the file's copy, so there is nothing to write back.
+    expect(outcome).toMatchObject({ kind: 'merged', localChanged: true, remoteChanged: false, applied: true, wrote: false });
+    expect(transport.write).not.toHaveBeenCalled();
     expect(io.mergeSyncData).toHaveBeenCalledWith(data(), remote, 90);
     expect(io.applyEngineData).toHaveBeenCalledWith(remote, { allowEmpty: true });
     expect(io.storage.getItem(LOCAL_MODIFIED_KEY)).toBe(new Date(T0).toISOString());
@@ -201,13 +203,14 @@ describe('a real snapshot', () => {
     const remote = data([task('r')]);
     const transport = makeTransport({ read: async () => envelope(remote) });
     const habits = [{ id: 'h', source: 'health' }];
+    const merged = data([task('r'), task('l')]);
     const io = makeIo({
       habits,
-      mergeSyncData: () => ({ data: remote, localChanged: true, remoteChanged: true }),
+      mergeSyncData: () => ({ data: merged, localChanged: true, remoteChanged: true }),
       stripHealthSourcedLogs: vi.fn((p) => ({ ...p, stripped: true })),
     });
     await runSnapshotFileCycle({ transport, io, state: fresh });
-    expect(io.stripHealthSourcedLogs).toHaveBeenCalledWith(expect.objectContaining({ data: remote }), habits);
+    expect(io.stripHealthSourcedLogs).toHaveBeenCalledWith(expect.objectContaining({ data: merged }), habits);
     expect(written(transport).stripped).toBe(true);
     expect(io.applyEngineData.mock.calls[0][0].stripped).toBeUndefined();
 
@@ -302,7 +305,8 @@ describe('write throttle', () => {
   it('guard: skips writes inside the transport\'s window and resumes after it', async () => {
     const remote = data([task('r')]);
     const transport = makeTransport({ read: async () => envelope(remote) });
-    const io = makeIo({ mergeSyncData: () => ({ data: remote, localChanged: false, remoteChanged: true }) });
+    const merged = data([task('r'), task('l')]);
+    const io = makeIo({ mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }) });
 
     const a = await runSnapshotFileCycle({ transport, io, state: fresh });
     expect(a.outcome.wrote).toBe(true);
@@ -327,5 +331,72 @@ describe('write throttle', () => {
     expect(outcome).toEqual({ kind: 'seeded', wrote: false });
     expect(state.lastWriteAt).toBe(T0);
     expect(io.log.error).toHaveBeenCalled();
+  });
+});
+
+describe('guard: the merge flags are necessary, not sufficient', () => {
+  const remote = data([task('r')]);
+  const flagsOnly = () => makeIo({
+    // The merge says both sides changed, and hands back exactly the file's data.
+    mergeSyncData: () => ({ data: remote, localChanged: true, remoteChanged: true }),
+    buildSyncPayload: () => ({ version: 2, data: remote }),
+  });
+
+  it('a write flag with nothing differing from the file writes nothing', async () => {
+    const transport = makeTransport({ read: async () => envelope(remote) });
+    const io = flagsOnly();
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', remoteChanged: true, wrote: false, applied: false });
+    expect(transport.write).not.toHaveBeenCalled();
+    expect(io.applyEngineData).not.toHaveBeenCalled();
+  });
+
+  it('the 2026-10-05 case: health counts the file never carries do not cause a rewrite', async () => {
+    // A Mac holds HealthKit-derived counts (arrived through GLANCEvault); the
+    // iCloud file is kept free of them by the strip. The merge keeps the counts
+    // in its result and flags a write; the stripped copy equals the file.
+    const habits = [{ id: 'steps', source: 'healthKit' }];
+    const fileData = { tasks: [task('r')], unscheduledTasks: [], habits, habitLogs: { '2026-10-01': { water: 3 } } };
+    const localData = { ...fileData, habitLogs: { '2026-10-01': { water: 3, steps: 8000 } } };
+    const strip = (payload) => ({
+      ...payload,
+      data: { ...payload.data, habitLogs: Object.fromEntries(Object.entries(payload.data.habitLogs).map(([d, e]) => [d, Object.fromEntries(Object.entries(e).filter(([h]) => h !== 'steps'))])) },
+    });
+    const transport = makeTransport({ read: async () => envelope(fileData) });
+    const io = makeIo({
+      habits,
+      buildSyncPayload: () => ({ version: 2, data: localData }),
+      mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true }),
+      stripHealthSourcedLogs: strip,
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', remoteChanged: true, wrote: false });
+    expect(transport.write).not.toHaveBeenCalled();
+
+    // A real local change alongside the health counts still writes, stripped.
+    const edited = { ...localData, tasks: [task('r', { title: 'renamed' })] };
+    const io2 = makeIo({
+      habits,
+      buildSyncPayload: () => ({ version: 2, data: edited }),
+      mergeSyncData: () => ({ data: edited, localChanged: false, remoteChanged: true }),
+      stripHealthSourcedLogs: strip,
+    });
+    const t2 = makeTransport({ read: async () => envelope(fileData) });
+    const r2 = await runSnapshotFileCycle({ transport: t2, io: io2, state: fresh });
+    expect(r2.outcome.wrote).toBe(true);
+    expect(written(t2).data.habitLogs['2026-10-01']).toEqual({ water: 3 });
+    expect(written(t2).data.tasks[0].title).toBe('renamed');
+  });
+
+  it('an apply flag with nothing differing from local state applies nothing', async () => {
+    const transport = makeTransport({ read: async () => envelope(remote) });
+    const io = makeIo({
+      buildSyncPayload: () => ({ version: 2, data: remote }),
+      mergeSyncData: () => ({ data: remote, localChanged: true, remoteChanged: false }),
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome.applied).toBe(false);
+    expect(io.applyEngineData).not.toHaveBeenCalled();
+    expect(io.storage.getItem(LOCAL_MODIFIED_KEY)).toBeNull();
   });
 });

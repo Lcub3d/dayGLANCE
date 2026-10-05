@@ -2097,7 +2097,8 @@
     "yes": "SÌ",
     "no": "no",
     "mergeError": "Errore nella simulazione dell'unione",
-    "flagWithoutDiff": "È segnalata una scrittura anche se nel file non cambierebbe nulla. È un bug nel rilevamento delle modifiche dell'unione; copia questo report in una issue."
+    "flagWithoutDiff": "L'unione ha segnalato una scrittura anche se nel file non cambierebbe nulla. La scrittura viene saltata.",
+    "mergeFlags": "Flag dell'unione (scrittura / applicazione)"
   },
   "icloudFirstRun": {
     "title": "Dati trovati su iCloud",

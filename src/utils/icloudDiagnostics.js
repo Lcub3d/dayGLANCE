@@ -36,6 +36,7 @@ import { ICLOUD_LAST_SYNCED_KEY } from './icloudSeedGuard.js';
 import { isICloudSyncEnabled } from './icloudSyncPref.js';
 import { explainSnapshotMerge } from '../sync/snapshotMergeExplain.js';
 import { mergeSyncData } from '../mergeSync.js';
+import { stripHealthSourcedLogs } from './healthLogFilter.js';
 
 /** Shape returned when a probe cannot run on this platform. */
 const UNSUPPORTED = 'unsupported';
@@ -244,7 +245,11 @@ export function dryRunMerge(raw, deps = {}) {
   }
   if (!local) return null;
   const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
-  return explainSnapshotMerge({ local, remote: remote.data, retentionDays, merge: deps.merge ?? mergeSyncData });
+  // The file never carries HealthKit-derived counts (healthLogFilter.js), so
+  // the write question is asked of the stripped data, exactly as the cycle
+  // asks it. The habit definitions ride in the payload itself.
+  const strip = deps.strip ?? ((data) => stripHealthSourcedLogs({ data }, data?.habits ?? local?.habits ?? []).data);
+  return explainSnapshotMerge({ local, remote: remote.data, retentionDays, merge: deps.merge ?? mergeSyncData, outgoing: strip });
 }
 
 /**
@@ -338,11 +343,12 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
       lines.push(`merge dry-run:   error: ${merge.error}`);
     } else {
       lines.push(
-        `merge dry-run:   would write: ${merge.remoteChanged ? 'YES' : 'no'} / would apply: ${merge.localChanged ? 'YES' : 'no'}`,
+        `merge dry-run:   would write: ${merge.wouldWrite ? 'YES' : 'no'} / would apply: ${merge.wouldApply ? 'YES' : 'no'}`,
+        `  merge flags:   write ${merge.remoteChanged ? 'YES' : 'no'} / apply ${merge.localChanged ? 'YES' : 'no'}`,
         `  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
         `  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
       );
-      if (merge.flagWithoutDiff) lines.push('  note:          write flagged although nothing differs from the file (change-flag bug)');
+      if (merge.flagWithoutDiff) lines.push('  note:          the merge flagged a write although nothing would change in the file; the write is skipped');
     }
   }
   return lines.join('\n');

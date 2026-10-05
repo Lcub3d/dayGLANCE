@@ -1,32 +1,38 @@
 /**
- * Explains what a snapshot-file sync cycle would do, without doing it.
+ * Compares what a snapshot-file sync cycle would write and apply against what
+ * is already there, slice by slice.
  *
  * ── Why this exists ────────────────────────────────────────────────────────
- * On 2026-10-05 an idle Mac was seen rewriting dayglance-sync.json on every
- * cycle: each diagnostics report showed the file modified ~30 ms after the
- * cycle's read, with nothing changed on any device. Every such write made the
- * phone's copy non-current, the phone then waited minutes for the download, and
- * edits made on the phone in that window reached nobody. The write decision is
- * taken from the merge's `remoteChanged` flag, which a dozen places in
- * mergeSync.js can raise, several of them already annotated with past churn
- * incidents. Timestamps alone could not say which one was firing.
+ * On 2026-10-05 every Mac in a fleet was seen rewriting dayglance-sync.json on
+ * every cycle: each diagnostics report showed the file modified ~30 ms after
+ * the cycle's read, with nothing changed on any device. Every such write made
+ * the phone's copy non-current, the phone then waited minutes for the download,
+ * and edits made on the phone in that window reached nobody.
  *
- * This module runs the same merge the cycle runs (local state against the file)
- * and reports two things side by side:
+ * The cause was a collision of two correct rules. The iCloud write strips
+ * HealthKit-derived habit counts from the file (Apple guideline 5.1.3,
+ * utils/healthLogFilter.js), while the Macs hold those counts locally because
+ * they arrive through GLANCEvault. So every merge saw 214 days of counts the
+ * file lacked, raised `remoteChanged`, wrote a stripped file identical to the
+ * one already there, and did it again next cycle. The merge's change flags
+ * answer "did the merge pick anything from local?", not "would the file
+ * change?", and only the second question should start a write.
  *
- *   • the flags the merge raised (`localChanged` → the apply, `remoteChanged` →
- *     the write), which is what the cycle actually acts on;
- *   • per top-level slice, whether the merge OUTPUT really differs from the file
- *     (and from local state), compared by content with arrays of ids matched by
- *     id and order noted separately.
+ * So the cycle now asks both: a write needs a flag AND a real difference
+ * between the outgoing (stripped) data and the file; an apply needs a flag AND
+ * a real difference between the merged data and local state. This module is
+ * that comparison, and the diagnostics panel runs the identical function so
+ * what it reports is what the cycle decides.
  *
- * A flag raised with no slice differing is a change-flag bug (an identity
- * comparison, a per-device value overriding the result); a slice that differs
- * on every run with nothing edited is a value that cannot converge. Either way
- * the report names it.
+ * Comparison rules: arrays of ids are matched by id with order noted
+ * separately, scalar lists compare as sets, maps by entry, everything else by
+ * canonical JSON. Absent and empty slices are equal, and so are absent and
+ * empty entries inside a map. Slices the merge
+ * re-stamps on every run (the tombstone fence) are ignored. For the apply
+ * question, slices the merge output simply does not carry are ignored too:
+ * applyEngineData leaves absent keys alone.
  *
- * Pure: no React, no storage, no bridge. The merge is injected so this stays
- * testable and so the diagnostics panel and a test can run the identical code.
+ * Pure: no React, no storage, no bridge.
  */
 
 /** JSON with object keys sorted at every level, so equal content compares equal. */
@@ -118,52 +124,91 @@ export function describeSliceDiff(key, merged, other) {
 
   if (canonicalJson(merged) === canonicalJson(other)) return null;
 
-  // Maps keyed by something (habitLogs, dailyNotes, dayWindows…): say how many keys.
+  // Maps keyed by something (habitLogs, dailyNotes, dayWindows…): say how many.
+  // An empty entry and an absent one are the same thing here too: the HealthKit
+  // strip leaves a day whose only count it removed as `{}`, and the file may
+  // hold that day or not depending on which device last wrote it.
   if (merged && other && typeof merged === 'object' && typeof other === 'object' && !Array.isArray(merged) && !Array.isArray(other)) {
     const keys = new Set([...Object.keys(merged), ...Object.keys(other)]);
     let n = 0;
-    for (const k of keys) if (canonicalJson(merged[k]) !== canonicalJson(other[k])) n += 1;
+    for (const k of keys) {
+      if (isEmptyish(merged[k]) && isEmptyish(other[k])) continue;
+      if (canonicalJson(merged[k]) !== canonicalJson(other[k])) n += 1;
+    }
+    if (n === 0) return null;
     return { key, kind: 'map', summary: `${key}: ${n} of ${keys.size} entries differ` };
   }
   return { key, kind: 'value', summary: `${key}: differs` };
 }
 
 /**
- * Runs the merge and explains its outcome.
+ * Every slice in which `a` differs from `b`.
+ *
+ * @param {object} a    the data about to be written or applied
+ * @param {object} b    the data already there (file, or local state)
+ * @param {{ignoreDropped?: boolean}} [opts]  skip slices `a` does not carry
+ *        at all (for the apply question: absent keys are left alone)
+ * @returns {Array<{key: string, kind: string, summary: string}>}
+ */
+export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
+  const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort();
+  const out = [];
+  for (const k of keys) {
+    if (ignoreDropped && a?.[k] === undefined) continue;
+    const d = describeSliceDiff(k, a?.[k], b?.[k]);
+    if (d) out.push(d);
+  }
+  return out;
+}
+
+/**
+ * Runs the merge and explains its outcome, with the write and apply decisions
+ * the cycle makes from it.
  *
  * @param {object} args
  * @param {object} args.local          this device's payload `data` (buildSyncPayload().data)
  * @param {object} args.remote         the file's `data`
  * @param {number} args.retentionDays
  * @param {(local, remote, retentionDays) => {data: object, localChanged: boolean, remoteChanged: boolean}} args.merge
+ * @param {(data: object) => object} [args.outgoing]  what the transport would
+ *        actually write (the iCloud HealthKit strip); identity by default
  * @returns {{
- *   localChanged: boolean, remoteChanged: boolean,
- *   fileDiffs: Array<{key, kind, summary}>,    merged vs file  (what a write would change)
- *   deviceDiffs: Array<{key, kind, summary}>,  merged vs local (what an apply would change)
- *   flagWithoutDiff: boolean,                  remoteChanged raised but nothing differs from the file
+ *   localChanged: boolean, remoteChanged: boolean,   the merge's own flags
+ *   fileDiffs: Array<{key, kind, summary}>,          outgoing vs file
+ *   deviceDiffs: Array<{key, kind, summary}>,        merged vs local (dropped slices ignored)
+ *   wouldWrite: boolean,                             a flag AND a file difference
+ *   wouldApply: boolean,                             localChanged AND a device difference
+ *   flagWithoutDiff: boolean,                        a write flag with no file difference
  *   error: string|null,
  * }}
  */
-export function explainSnapshotMerge({ local, remote, retentionDays, merge }) {
+export function explainSnapshotMerge({ local, remote, retentionDays, merge, outgoing = (d) => d }) {
+  const empty = {
+    localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [],
+    wouldWrite: false, wouldApply: false, flagWithoutDiff: false, error: null,
+  };
   let result;
   try {
     result = merge(local, remote, retentionDays);
   } catch (err) {
-    return {
-      localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [],
-      flagWithoutDiff: false, error: err?.message ?? String(err),
-    };
+    return { ...empty, error: err?.message ?? String(err) };
   }
   const merged = result?.data ?? {};
-  const keys = (a, b) => [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort();
-  const fileDiffs = keys(merged, remote).map((k) => describeSliceDiff(k, merged[k], remote?.[k])).filter(Boolean);
-  const deviceDiffs = keys(merged, local).map((k) => describeSliceDiff(k, merged[k], local?.[k])).filter(Boolean);
+  const localChanged = !!result?.localChanged;
+  const remoteChanged = !!result?.remoteChanged;
+  let out;
+  try { out = outgoing(merged) ?? merged; } catch (err) { return { ...empty, localChanged, remoteChanged, error: err?.message ?? String(err) }; }
+  const fileDiffs = sliceDiffs(out, remote);
+  const deviceDiffs = sliceDiffs(merged, local, { ignoreDropped: true });
+  const flagged = remoteChanged || localChanged;
   return {
-    localChanged: !!result?.localChanged,
-    remoteChanged: !!result?.remoteChanged,
+    localChanged,
+    remoteChanged,
     fileDiffs,
     deviceDiffs,
-    flagWithoutDiff: !!result?.remoteChanged && fileDiffs.length === 0,
+    wouldWrite: flagged && fileDiffs.length > 0,
+    wouldApply: localChanged && deviceDiffs.length > 0,
+    flagWithoutDiff: flagged && fileDiffs.length === 0,
     error: null,
   };
 }

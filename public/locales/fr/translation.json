@@ -2095,7 +2095,8 @@
     "yes": "OUI",
     "no": "non",
     "mergeError": "Erreur de la simulation de fusion",
-    "flagWithoutDiff": "Une écriture est signalée alors que rien ne changerait dans le fichier. C'est un bogue de détection des changements de la fusion ; copiez ce rapport dans un ticket."
+    "flagWithoutDiff": "La fusion a signalé une écriture alors que rien ne changerait dans le fichier. L'écriture est ignorée.",
+    "mergeFlags": "Indicateurs de fusion (écriture / application)"
   },
   "icloudFirstRun": {
     "title": "Données trouvées dans iCloud",

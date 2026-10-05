@@ -2095,7 +2095,8 @@
     "yes": "SIM",
     "no": "não",
     "mergeError": "Erro na simulação de mesclagem",
-    "flagWithoutDiff": "Uma gravação está marcada embora nada mudasse no arquivo. É um bug na detecção de alterações da mesclagem; copie este relatório para uma issue."
+    "flagWithoutDiff": "A mesclagem marcou uma gravação embora nada mudasse no arquivo. A gravação é ignorada.",
+    "mergeFlags": "Sinalizadores da mesclagem (gravar / aplicar)"
   },
   "icloudFirstRun": {
     "title": "Dados encontrados no iCloud",

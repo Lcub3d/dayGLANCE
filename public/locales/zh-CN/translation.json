@@ -2095,7 +2095,8 @@
     "yes": "是",
     "no": "否",
     "mergeError": "合并试运行出错",
-    "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。这是合并变更检测的缺陷，请将此报告复制到 issue 中。"
+    "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。该写入将被跳过。",
+    "mergeFlags": "合并标志（写入 / 应用）"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",

@@ -44,6 +44,7 @@ import androidx.webkit.WebViewAssetLoader
 import com.dayglance.app.BuildConfig
 import com.dayglance.app.billing.BillingManager
 import com.dayglance.app.billing.SubscriptionBridge
+import com.dayglance.app.bridge.DirectAccessBridge
 import com.dayglance.app.bridge.NativeBridge
 import com.dayglance.app.bridge.ObsidianBridge
 import com.dayglance.app.bridge.SpeechBridge
@@ -70,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var nativeBridge: NativeBridge
     private lateinit var obsidianBridge: ObsidianBridge
+    private lateinit var directAccessBridge: DirectAccessBridge
     // Native GLANCEvault SSE reader (Path 2). Owns the /events socket + lifecycle;
     // pushes frames into the WebView. Foreground/background is driven from onStart/
     // onStop; the renderer drives enable/disable via the NativeBridge callbacks.
@@ -146,6 +148,23 @@ class MainActivity : AppCompatActivity() {
         val callback = fileChooserCallback
         fileChooserCallback = null
         callback?.onReceiveValue(if (uri != null) arrayOf(uri) else emptyArray())
+    }
+
+    // Direct Access sync (docs/direct-access-sync.md): the SAF tree picker,
+    // launched from the web settings card through DirectAccessBridge. The
+    // persisted grant is what keeps the folder across reboots (the same flow
+    // SettingsActivity uses for the Obsidian vault); the result goes back to
+    // the page through the callback its adapter registered.
+    private val directAccessPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+        directAccessBridge.onFolderPicked(uri)
     }
 
     // Registered in onCreate (before the activity starts) — safe to call from any thread
@@ -243,6 +262,11 @@ class MainActivity : AppCompatActivity() {
         healthRepository = HealthRepository(this)
         subscriptionBridge = SubscriptionBridge(billingManager, dataStore, webView)
         obsidianBridge = ObsidianBridge(this, webView)
+        directAccessBridge = DirectAccessBridge(this, webView) {
+            // pickFolder() arrives on the JavascriptInterface thread; the
+            // launcher must run on the main thread.
+            runOnUiThread { directAccessPicker.launch(null) }
+        }
 
         // Native SSE reader. frameSink hops to the main thread and pushes the JSON
         // message into the renderer's bridge receiver. The message is already valid
@@ -465,6 +489,8 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(nativeBridge, "DayGlanceNative")
         // Expose Obsidian vault methods on the same interface name (separate object)
         webView.addJavascriptInterface(obsidianBridge, "DayGlanceObsidian")
+        // Direct Access sync folder — window.DayGlanceDirectAccess
+        webView.addJavascriptInterface(directAccessBridge, "DayGlanceDirectAccess")
         // Expose subscription/billing methods — window.DayGlanceBilling
         webView.addJavascriptInterface(subscriptionBridge, "DayGlanceBilling")
 

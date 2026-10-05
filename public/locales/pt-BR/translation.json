@@ -2140,7 +2140,8 @@
     "unreachable": "A pasta não está disponível agora. A sincronização continua quando ela voltar.",
     "onHint": "Ativada. Este dispositivo sincroniza por meio da pasta.",
     "offHint": "Desativada neste dispositivo. A cópia na pasta e seus outros dispositivos não são afetados.",
-    "neverSynced": "Ainda não sincronizado"
+    "neverSynced": "Ainda não sincronizado",
+    "androidHint": "No Android, escolha uma pasta que um app espelhe no armazenamento deste dispositivo, como Syncthing, FolderSync ou Autosync. Os apps do Google Drive e do Dropbox não oferecem suas pastas aqui."
   },
   "aspire": {
     "title": "Aspire",

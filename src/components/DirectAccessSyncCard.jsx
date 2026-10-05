@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
+import { isNativeAndroid } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
 
 /**
@@ -51,6 +52,11 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
             {t('directAccess.title')}
           </p>
           <p className={`text-xs ${textSecondary}`}>{t('directAccess.desc')}</p>
+          {/* The Google Drive and Dropbox apps do not offer a folder tree to the
+              Android picker; only an app that mirrors to local storage works. */}
+          {isNativeAndroid() && (
+            <p className={`text-xs ${textSecondary} mt-1`}>{t('directAccess.androidHint')}</p>
+          )}
         </div>
         {status.connected && (
           <button

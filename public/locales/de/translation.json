@@ -2095,7 +2095,16 @@
     "syncPref": "Synchronisierung auf diesem Gerät",
     "on": "ein",
     "off": "aus",
-    "notSyncingNote": "Dieses Gerät synchronisiert nicht mit iCloud, seine Daten bleiben also nur hier. Andere Geräte sehen hier vorgenommene Änderungen nicht, und anderswo vorgenommene Änderungen kommen nicht an."
+    "notSyncingNote": "Dieses Gerät synchronisiert nicht mit iCloud, seine Daten bleiben also nur hier. Andere Geräte sehen hier vorgenommene Änderungen nicht, und anderswo vorgenommene Änderungen kommen nicht an.",
+    "wouldWrite": "Würde Datei schreiben",
+    "wouldApply": "Würde auf Gerät anwenden",
+    "fileDiffers": "Datei würde sich ändern in",
+    "deviceDiffers": "Gerät würde sich ändern in",
+    "yes": "JA",
+    "no": "nein",
+    "mergeError": "Fehler beim Merge-Testlauf",
+    "flagWithoutDiff": "Der Merge hat einen Schreibvorgang markiert, obwohl sich in der Datei nichts ändern würde. Der Schreibvorgang wird übersprungen.",
+    "mergeFlags": "Merge-Flags (Schreiben / Anwenden)"
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",

@@ -3,6 +3,7 @@ import {
   collectICloudDiagnostics,
   classifySnapshot,
   detectPlatform,
+  dryRunMerge,
   probeAvailability,
   readLocalState,
   formatBytes,
@@ -403,5 +404,69 @@ describe('formatDiagnosticsReport', () => {
       local: { taskCount: 0, inboxCount: 0, lastSynced: null },
     });
     expect(text).toMatch(/not probeable on this platform/);
+  });
+});
+
+// ── dryRunMerge ────────────────────────────────────────────────────────────
+
+describe('dryRunMerge', () => {
+  const data = { tasks: [{ id: 1, title: 'a', lastModified: '2026-10-01T00:00:00.000Z' }], unscheduledTasks: [] };
+  const file = JSON.stringify({ version: 2, lastModified: '2026-10-05T00:00:00.000Z', data });
+  const quiet = (l, r) => ({ data: r, localChanged: false, remoteChanged: false });
+
+  it('is skipped without a payload builder, a snapshot, or data', () => {
+    expect(dryRunMerge(file, { merge: quiet })).toBeNull();
+    expect(dryRunMerge('{"downloading":true}', { buildSyncPayload: () => ({ data }), merge: quiet })).toBeNull();
+    expect(dryRunMerge('{"version":2}', { buildSyncPayload: () => ({ data }), merge: quiet })).toBeNull();
+    expect(dryRunMerge('not json', { buildSyncPayload: () => ({ data }), merge: quiet })).toBeNull();
+  });
+
+  it('runs the injected merge with the device payload, the file data and the retention', () => {
+    const merge = vi.fn((l, r) => ({ data: r, localChanged: false, remoteChanged: false }));
+    const r = dryRunMerge(file, { buildSyncPayload: () => ({ data }), getSyncRetentionDays: () => 30, merge });
+    expect(merge).toHaveBeenCalledWith(data, data, 30);
+    expect(r).toMatchObject({ remoteChanged: false, localChanged: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false });
+  });
+
+  it('names the slice a write would change', () => {
+    const edited = { tasks: [{ id: 1, title: 'b', lastModified: '2026-10-05T01:00:00.000Z' }], unscheduledTasks: [] };
+    const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
+    const r = dryRunMerge(file, { buildSyncPayload: () => ({ data: edited }), merge });
+    expect(r.remoteChanged).toBe(true);
+    expect(r.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1)']);
+    expect(r.flagWithoutDiff).toBe(false);
+  });
+
+  it('strips HealthKit-derived counts before asking whether the file would change', () => {
+    // The 2026-10-05 case: the device holds counts the file never carries.
+    const habits = [{ id: 'steps', name: 'Steps', source: 'healthKit' }];
+    const withCounts = { ...data, habits, habitLogs: { '2026-10-01': { steps: 8000 } } };
+    const onFile = JSON.stringify({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: { ...data, habits, habitLogs: {} } });
+    const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
+    const r = dryRunMerge(onFile, { buildSyncPayload: () => ({ data: withCounts }), merge });
+    expect(r.remoteChanged).toBe(true);
+    expect(r.fileDiffs).toEqual([]);
+    expect(r.wouldWrite).toBe(false);
+    expect(r.flagWithoutDiff).toBe(true);
+  });
+
+  it('a payload builder that throws is reported, not thrown', () => {
+    const r = dryRunMerge(file, { buildSyncPayload: () => { throw new Error('no state'); }, merge: quiet });
+    expect(r.error).toBe('payload: no state');
+  });
+
+  it('the text report carries the dry-run lines', () => {
+    const base = { platform: 'macos', available: { value: null }, snapshot: { state: 'present', bytes: 10, lastModified: 'x', taskCount: 1, inboxCount: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true };
+    const text = formatDiagnosticsReport({ ...base, merge: { remoteChanged: true, localChanged: false, wouldWrite: true, wouldApply: false, fileDiffs: [{ summary: 'tasks: 1 changed (1)' }], deviceDiffs: [], flagWithoutDiff: false } });
+    expect(text).toContain('merge dry-run:   would write: YES / would apply: no');
+    expect(text).toContain('merge flags:   write YES / apply no');
+    expect(text).toContain('file differs:  tasks: 1 changed (1)');
+    // The effective decision, not the merge's flag, is what the headline shows.
+    const flagged = formatDiagnosticsReport({ ...base, merge: { remoteChanged: true, localChanged: false, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: true } });
+    expect(flagged).toContain('merge dry-run:   would write: no / would apply: no');
+    expect(flagged).toContain('merge flags:   write YES / apply no');
+    expect(flagged).toContain('the write is skipped');
+    expect(formatDiagnosticsReport(base)).not.toContain('merge dry-run');
   });
 });

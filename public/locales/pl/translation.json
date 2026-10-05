@@ -2188,7 +2188,16 @@
     "syncPref": "Synchronizacja na tym urządzeniu",
     "on": "wł.",
     "off": "wył.",
-    "notSyncingNote": "To urządzenie nie synchronizuje się z iCloud, więc jego dane pozostają tylko tutaj. Inne urządzenia nie zobaczą zmian wprowadzonych tutaj, a zmiany wprowadzone gdzie indziej tu nie dotrą."
+    "notSyncingNote": "To urządzenie nie synchronizuje się z iCloud, więc jego dane pozostają tylko tutaj. Inne urządzenia nie zobaczą zmian wprowadzonych tutaj, a zmiany wprowadzone gdzie indziej tu nie dotrą.",
+    "wouldWrite": "Zapisałoby plik",
+    "wouldApply": "Zastosowałoby na urządzeniu",
+    "fileDiffers": "Plik zmieniłby się w",
+    "deviceDiffers": "Urządzenie zmieniłoby się w",
+    "yes": "TAK",
+    "no": "nie",
+    "mergeError": "Błąd próbnego scalania",
+    "flagWithoutDiff": "Scalanie oznaczyło zapis, choć w pliku nic by się nie zmieniło. Zapis jest pomijany.",
+    "mergeFlags": "Flagi scalania (zapis / zastosowanie)"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",

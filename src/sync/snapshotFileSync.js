@@ -25,7 +25,12 @@
  *     first-run prompt, because reading it is what proves the transport works;
  *   • a fresh device facing a populated snapshot is asked, not restored;
  *   • writes are throttled per transport so a daemon's round-trip is not raced;
- *   • HealthKit-derived counts are stripped from every copy written out.
+ *   • HealthKit-derived counts are stripped from every copy written out;
+ *   • a write happens only when what would be written differs from the file,
+ *     and an apply only when the merged data differs from local state. The
+ *     merge's own flags are necessary, not sufficient: with the strip above
+ *     they fired on every cycle of every Mac holding health counts, and the
+ *     resulting identical rewrites starved every phone (2026-10-05).
  *
  * Nothing here touches React. The hook (hooks/useSnapshotFileSync.js) owns the
  * poll, the mutex and the prompt state; App.jsx owns i18n and status UI.
@@ -33,6 +38,7 @@
 
 import { evaluateMissingSnapshot } from '../utils/icloudSeedGuard.js';
 import { shouldPromptFirstRun, payloadHasData } from '../utils/icloudSyncPref.js';
+import { sliceDiffs } from './snapshotMergeExplain.js';
 
 /** Shared with the WebDAV engine: when this device last changed synced data. */
 export const LOCAL_MODIFIED_KEY = 'day-planner-cloud-sync-local-modified';
@@ -196,18 +202,37 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   const { data: mergedData, localChanged, remoteChanged } =
     io.mergeSyncData(localData, remote.data, io.syncRetentionDays);
 
-  if (localChanged) {
+  // The merge's flags say whether it picked anything from either side. They do
+  // NOT say whether the file or the device would actually change, and the two
+  // questions differ: the iCloud write strips HealthKit-derived habit counts
+  // (utils/healthLogFilter.js), so a device that holds those counts (any Mac
+  // receiving them through GLANCEvault) sees them "missing" from the file on
+  // every cycle, and the flag alone rewrote an identical stripped file every
+  // 15 s on every Mac in a fleet — which kept every phone's copy non-current
+  // and its edits stuck for minutes (2026-10-05). So a write needs a flag AND
+  // a real difference between what would be written and the file; an apply
+  // needs the flag AND a real difference between the merged data and local
+  // state. sync/snapshotMergeExplain.js is that comparison, and the iCloud
+  // diagnostics panel runs the identical function.
+  const outPayload = io.stripHealthSourcedLogs({
+    version: 2,
+    lastModified: new Date(now()).toISOString(),
+    data: mergedData,
+  }, io.habits);
+  const applyNeeded = localChanged && sliceDiffs(mergedData, localData, { ignoreDropped: true }).length > 0;
+  const writeNeeded = (remoteChanged || localChanged) && sliceDiffs(outPayload.data, remote.data).length > 0;
+
+  if (applyNeeded) {
     // Apply the FULL merged data locally (health-sourced counts stay on-device).
     io.applyEngineData(mergedData, { allowEmpty: !!remote.lastModified });
     io.storage.setItem(LOCAL_MODIFIED_KEY, new Date(now()).toISOString());
   }
   let wrote = false;
-  if (remoteChanged || localChanged) {
-    wrote = await throttledWrite(outgoing({
-      version: 2,
-      lastModified: new Date(now()).toISOString(),
-      data: mergedData,
-    }));
+  if (writeNeeded) {
+    wrote = await throttledWrite(JSON.stringify(outPayload));
   }
-  return { state: next, outcome: { kind: 'merged', localChanged, remoteChanged, wrote } };
+  return {
+    state: next,
+    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote },
+  };
 }

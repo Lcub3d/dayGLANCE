@@ -2087,7 +2087,16 @@
     "syncPref": "在此设备上同步",
     "on": "开",
     "off": "关",
-    "notSyncingNote": "此设备未与 iCloud 同步，数据只保存在本机。其他设备看不到这里的更改，其他设备的更改也不会传入。"
+    "notSyncingNote": "此设备未与 iCloud 同步，数据只保存在本机。其他设备看不到这里的更改，其他设备的更改也不会传入。",
+    "wouldWrite": "将写入文件",
+    "wouldApply": "将应用到设备",
+    "fileDiffers": "文件将在以下部分变化",
+    "deviceDiffers": "设备将在以下部分变化",
+    "yes": "是",
+    "no": "否",
+    "mergeError": "合并试运行出错",
+    "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。该写入将被跳过。",
+    "mergeFlags": "合并标志（写入 / 应用）"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",

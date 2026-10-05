@@ -10,9 +10,18 @@ name: iOS build
 # project is NOT committed — XcodeGen generates it from dayglance-ios/project.yml
 # on every run, so this builds exactly what that file declares.
 
+# Pushes build on main only; every other branch is built by its pull request.
+# Before this, a push to a PR branch and the PR's own trigger each started a
+# fifteen-minute macOS build of the same commit, and the runner cancelled one.
+# A newer push to the same PR cancels the build of the commit it replaced;
+# main runs are never cancelled.
+concurrency:
+  group: ios-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - 'dayglance-ios/**'
       - 'src/**'

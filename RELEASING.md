@@ -190,6 +190,18 @@ picks up the new `MARKETING_VERSION` from `package.json` (a bare `xcodegen`
 would leave it empty). Then open `dayglance-ios/DayGlance.xcodeproj` in Xcode,
 archive, and upload to App Store Connect.
 
+**TestFlight builds of unreleased work.** App Store Connect refuses any upload
+whose marketing version is already published, so once a version is live, a test
+build has to carry the next one. Override it for a single build without editing
+`package.json`:
+
+```
+MARKETING_VERSION=5.7.0 npm run ios
+```
+
+The build number stays date-based, so repeated test builds under the same
+override still upload. The release itself is still made through the bumper.
+
 ---
 
 ## 3. Release sequencing

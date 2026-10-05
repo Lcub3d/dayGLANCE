@@ -8900,6 +8900,11 @@ const DayPlanner = () => {
     cloudSyncTest:     (cfg) => cloudSyncEngineRef.current.test(cfg),
     // Manual "Sync now" for the WebDAV file tier (full merge cycle).
     cloudSyncNow:      () => cloudSyncEngineRef.current.sync(),
+    // For the iCloud diagnostics dry-run merge (ICloudDiagnostics.jsx): the same
+    // payload and retention the real cycles use, read through the engine
+    // callbacks ref so they are current whenever the check runs.
+    buildSyncPayload:     () => engineCallbacksRef.current.buildPayload?.(),
+    getSyncRetentionDays: () => engineCallbacksRef.current.syncRetentionDays ?? 90,
     // Manual "Sync now" for the GLANCEvault DB tier + its surfaced status.
     vaultSyncNow: async () => {
       const eng = dbEngineRef.current;

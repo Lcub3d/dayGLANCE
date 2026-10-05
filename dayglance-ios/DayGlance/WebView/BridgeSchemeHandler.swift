@@ -162,7 +162,10 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
 
         // Phase 7 — iCloud Sync
         case "readICloudSync":
-            return ICloudBridge.shared.readSync()
+            // Optional boolean: read the last downloaded bytes when a newer
+            // version has stalled past the web layer's grace period.
+            let allowStale = (args.first as? Bool) == true || (args.first as? NSNumber)?.boolValue == true
+            return ICloudBridge.shared.readSync(allowStale: allowStale)
         case "writeICloudSync":
             guard let json = args.first as? String else {
                 return #"{"ok":false,"error":"missing args"}"#

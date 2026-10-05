@@ -30,7 +30,15 @@ final class ICloudBridge {
     /// in-flight operations the local daemon is already aware of. We therefore
     /// always call startDownloadingUbiquitousItem and only return file bytes
     /// once the downloading status reports .current.
-    func readSync() -> String {
+    /// `allowStale`: after a download has stalled past the web layer's grace
+    /// period (sync/icloudSnapshotTransport.js), it asks for the bytes this
+    /// device already holds — the last fully downloaded version, which iOS
+    /// reports as `.downloaded` while a newer one exists remotely — so an edit
+    /// made on this device is not held hostage by a slow fetch. Merging into a
+    /// stale base is what the union merge is for; the next successful download
+    /// merges again. A file that is not downloaded at all (`.notDownloaded`,
+    /// or a .icloud stub) has no bytes to offer and still reports downloading.
+    func readSync(allowStale: Bool = false) -> String {
         guard let container = containerURL() else {
             return #"{"error":"iCloud not available"}"#
         }
@@ -60,7 +68,9 @@ final class ICloudBridge {
         let status = (try? fileURL.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey]))?
             .ubiquitousItemDownloadingStatus
         if let status, status != .current {
-            return #"{"downloading":true}"#
+            if !(allowStale && status == .downloaded) {
+                return #"{"downloading":true}"#
+            }
         }
 
         var result = "null"

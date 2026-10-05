@@ -9,6 +9,15 @@
 #       so it always increases and never needs a manual bump. Set BUILD_NUMBER
 #       to override (matches the macOS electron-builder behavior).
 #
+# Set MARKETING_VERSION to override the marketing version for ONE build without
+# touching package.json. App Store Connect refuses any upload whose marketing
+# version is already published, so a TestFlight build of unreleased work made
+# after the current version ships has to carry the next version:
+#
+#   MARKETING_VERSION=5.7.0 npm run ios
+#
+# The App Store release itself still comes from package.json via the bumper.
+#
 # Run this INSTEAD of a bare `xcodegen generate`: project.yml reads the values via
 # ${DG_MARKETING_VERSION} / ${DG_BUILD_NUMBER}, which a bare run would leave empty.
 #
@@ -24,10 +33,13 @@ if ! command -v xcodegen >/dev/null 2>&1; then
   exit 1
 fi
 
-DG_MARKETING_VERSION="$(node -p "require('./package.json').version")"
+DG_MARKETING_VERSION="${MARKETING_VERSION:-$(node -p "require('./package.json').version")}"
 if [[ -z "$DG_MARKETING_VERSION" ]]; then
   echo "gen-ios-project: could not read version from package.json" >&2
   exit 1
+fi
+if [[ -n "${MARKETING_VERSION:-}" ]]; then
+  echo "gen-ios-project: MARKETING_VERSION override in effect ($DG_MARKETING_VERSION); package.json is untouched" >&2
 fi
 export DG_MARKETING_VERSION
 export DG_BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d.%H%M)}"

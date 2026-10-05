@@ -136,6 +136,20 @@ describe('explainSnapshotMerge with the real merge', () => {
     expect(unstripped.fileDiffs.map((d) => d.key)).toContain('habitLogs');
   });
 
+  it('guard: an order-only difference is reported but does not start a write', () => {
+    // The merge keeps each device's own order, so a write would not change
+    // the other device's order; two devices ordering todayRoutines
+    // differently rewrote the file in turn (2026-10-05).
+    const local = { ...base(), todayRoutines: [{ id: 'r1', lastModified: '2026-10-01T00:00:00.000Z' }, { id: 'r2', lastModified: '2026-10-01T00:00:00.000Z' }] };
+    const remote = { ...base(), todayRoutines: [...local.todayRoutines].reverse() };
+    // A merge that keeps local order and flags the difference as a write.
+    const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
+    const r = explainSnapshotMerge({ local, remote, retentionDays: 90, merge });
+    expect(r.fileDiffs.map((d) => d.kind)).toEqual(['order']);
+    expect(r.wouldWrite).toBe(false);
+    expect(r.flagWithoutDiff).toBe(true);
+  });
+
   it('a flag raised with no difference decides nothing, on both sides', () => {
     const merge = (local) => ({ data: local, localChanged: true, remoteChanged: true });
     const r = explainSnapshotMerge({ local: base(), remote: base(), retentionDays: 90, merge });

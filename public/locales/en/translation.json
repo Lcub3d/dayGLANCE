@@ -2104,7 +2104,16 @@
     "no": "no",
     "mergeError": "Merge dry-run error",
     "flagWithoutDiff": "The merge flagged a write although nothing would change in the file. The write is skipped.",
-    "mergeFlags": "Merge flags (write / apply)"
+    "mergeFlags": "Merge flags (write / apply)",
+    "directAccessTitle": "Direct Access folder",
+    "folder": "Folder",
+    "folderStatus": "Folder status",
+    "folderState": {
+      "connected": "connected",
+      "disconnected": "not connected",
+      "unreachable": "unreachable",
+      "unknown": "unknown"
+    }
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",

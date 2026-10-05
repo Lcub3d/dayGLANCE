@@ -2104,7 +2104,16 @@
     "no": "no",
     "mergeError": "Error en la simulación de fusión",
     "flagWithoutDiff": "La fusión marcó una escritura aunque nada cambiaría en el archivo. La escritura se omite.",
-    "mergeFlags": "Indicadores de fusión (escribir / aplicar)"
+    "mergeFlags": "Indicadores de fusión (escribir / aplicar)",
+    "directAccessTitle": "Carpeta de Direct Access",
+    "folder": "Carpeta",
+    "folderStatus": "Estado de la carpeta",
+    "folderState": {
+      "connected": "conectada",
+      "disconnected": "no conectada",
+      "unreachable": "inaccesible",
+      "unknown": "desconocido"
+    }
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",

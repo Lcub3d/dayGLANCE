@@ -255,6 +255,13 @@ On iPhone and iPad, pick a folder from any location the Files app offers
 sync keeps running alongside; the two share one mutex and never merge into
 state at once.
 
+Settings → Cloud Sync → iCloud diagnostics → *Run check* reads the Direct
+Access file too, on any platform with the bridge: folder status, the file's
+size, modified time and counts, and the dry run of this device's merge against
+it (*would write*, *would apply*, and the slices that differ). That is the tool
+for "why does the file keep changing": the slice it names is the one two
+devices disagree on.
+
 The file is plain JSON, the same `dayglance-sync.json` the WebDAV tier writes.
 If the folder already holds an encrypted copy from a WebDAV setup, Direct
 Access reports it and writes nothing until the file is replaced or decrypted;

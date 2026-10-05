@@ -2104,7 +2104,16 @@
     "no": "non",
     "mergeError": "Erreur de la simulation de fusion",
     "flagWithoutDiff": "La fusion a signalé une écriture alors que rien ne changerait dans le fichier. L'écriture est ignorée.",
-    "mergeFlags": "Indicateurs de fusion (écriture / application)"
+    "mergeFlags": "Indicateurs de fusion (écriture / application)",
+    "directAccessTitle": "Dossier Direct Access",
+    "folder": "Dossier",
+    "folderStatus": "État du dossier",
+    "folderState": {
+      "connected": "connecté",
+      "disconnected": "non connecté",
+      "unreachable": "inaccessible",
+      "unknown": "inconnu"
+    }
   },
   "icloudFirstRun": {
     "title": "Données trouvées dans iCloud",

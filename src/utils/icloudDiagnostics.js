@@ -224,7 +224,40 @@ const defaultDeps = () => ({
   buildSyncPayload: null,
   getSyncRetentionDays: null,
   merge: mergeSyncData,
+  // The Direct Access transport (sync/directAccessTransport.js), so the same
+  // readout covers its file. The panel passes the singleton; null → no section.
+  directAccess: null,
 });
+
+/**
+ * The same readout for the Direct Access file: what this device sees in the
+ * folder, and what its cycle would do with it. Reads through the transport
+ * the cycle itself uses, so the classification is the cycle's own.
+ *
+ * Two Macs were seen trading rewrites of an identical Nextcloud file while
+ * the iCloud file held still (2026-10-05); nothing in the app could say which
+ * slice they disagreed on, because the dry run only looked at iCloud.
+ *
+ * @returns {Promise<null | {status: string, name: string|null, enabled: boolean,
+ *   snapshot: object|null, merge: object|null}>}  null when the platform has
+ *   no Direct Access bridge at all.
+ */
+export async function probeDirectAccess(deps = {}) {
+  const transport = deps.directAccess;
+  if (!transport || typeof transport.isSupported !== 'function' || !transport.isSupported()) return null;
+  const s = typeof transport.getSnapshot === 'function' ? transport.getSnapshot() : {};
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false };
+  if (!s?.connected) return { ...head, snapshot: null, merge: null };
+  let raw;
+  try {
+    raw = await transport.read();
+  } catch (err) {
+    raw = JSON.stringify({ error: err?.message ?? String(err) });
+  }
+  const snapshot = classifySnapshot(raw, deps);
+  const merge = snapshot.state === 'present' ? dryRunMerge(raw, deps) : null;
+  return { ...head, snapshot, merge };
+}
 
 /**
  * Runs the cycle's merge against the file WITHOUT applying or writing, and says
@@ -286,12 +319,14 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
     : classifySnapshot(raw, deps);
 
   const merge = snapshot.state === 'present' ? dryRunMerge(raw, deps) : null;
+  const directAccess = await probeDirectAccess(deps);
 
   return {
     platform,
     available,
     snapshot,
     merge,
+    directAccess,
     // The in-app preference is separate from container availability: a device can
     // resolve the container perfectly and still be deliberately not syncing,
     // because the user chose "start fresh" at first run or switched it off in
@@ -306,7 +341,35 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
  * Plain-text report for the copy-to-clipboard button, so a user can paste the
  * findings into an issue without retyping or screenshotting them.
  */
-export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge }) {
+const snapshotLines = (snapshot, indent, none) => {
+  const lines = [`${indent}file:          ${snapshot.state}`];
+  // Size/mtime/counts only mean something when there are real file bytes; for a
+  // sentinel state they would all read as blanks or, worse, as a tiny file.
+  if (snapshot.state === 'present' || snapshot.bytes > 0) {
+    lines.push(
+      `${indent}  size:          ${formatBytes(snapshot.bytes)}`,
+      `${indent}  lastModified:  ${snapshot.lastModified ?? none}`,
+      `${indent}  tasks/inbox:   ${snapshot.taskCount ?? none} / ${snapshot.inboxCount ?? none}`,
+    );
+  }
+  if (snapshot.error) lines.push(`${indent}  error:         ${snapshot.error}`);
+  return lines;
+};
+
+const mergeLines = (merge, indent, none) => {
+  if (!merge) return [];
+  if (merge.error) return [`${indent}merge dry-run:   error: ${merge.error}`];
+  const lines = [
+    `${indent}merge dry-run:   would write: ${merge.wouldWrite ? 'YES' : 'no'} / would apply: ${merge.wouldApply ? 'YES' : 'no'}`,
+    `${indent}  merge flags:   write ${merge.remoteChanged ? 'YES' : 'no'} / apply ${merge.localChanged ? 'YES' : 'no'}`,
+    `${indent}  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
+    `${indent}  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
+  ];
+  if (merge.flagWithoutDiff) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  return lines;
+};
+
+export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
   const none = '(none)';
   const lines = [
     'dayGLANCE iCloud diagnostics',
@@ -316,16 +379,7 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
   if (available.raw) lines.push(`  raw:           ${available.raw}`);
   if (available.error) lines.push(`  error:         ${available.error}`);
   lines.push(`snapshot file:   ${snapshot.state}`);
-  // Size/mtime/counts only mean something when there are real file bytes; for a
-  // sentinel state they would all read as blanks or, worse, as a tiny file.
-  if (snapshot.state === 'present' || snapshot.bytes > 0) {
-    lines.push(
-      `  size:          ${formatBytes(snapshot.bytes)}`,
-      `  lastModified:  ${snapshot.lastModified ?? none}`,
-      `  tasks/inbox:   ${snapshot.taskCount ?? none} / ${snapshot.inboxCount ?? none}`,
-    );
-  }
-  if (snapshot.error) lines.push(`  error:         ${snapshot.error}`);
+  lines.push(...snapshotLines(snapshot, '', none).slice(1));
 
   const t = transports ?? { icloud: {}, webdav: {}, vault: {} };
   lines.push(
@@ -338,18 +392,17 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
     `local tasks:     ${local.taskCount}`,
     `local inbox:     ${local.inboxCount}`,
   );
-  if (merge) {
-    if (merge.error) {
-      lines.push(`merge dry-run:   error: ${merge.error}`);
-    } else {
-      lines.push(
-        `merge dry-run:   would write: ${merge.wouldWrite ? 'YES' : 'no'} / would apply: ${merge.wouldApply ? 'YES' : 'no'}`,
-        `  merge flags:   write ${merge.remoteChanged ? 'YES' : 'no'} / apply ${merge.localChanged ? 'YES' : 'no'}`,
-        `  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
-        `  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
-      );
-      if (merge.flagWithoutDiff) lines.push('  note:          the merge flagged a write although nothing would change in the file; the write is skipped');
-    }
+  lines.push(...mergeLines(merge, '', none));
+
+  if (directAccess) {
+    const da = directAccess;
+    lines.push(
+      '',
+      'direct access:   ' + (da.snapshot ? `${da.status} (${da.name ?? none})` : da.status === 'unreachable' ? `unreachable (${da.name ?? none})` : 'not connected'),
+      `  sync on device: ${da.enabled === false ? 'OFF' : 'on'}`,
+    );
+    if (da.snapshot) lines.push(...snapshotLines(da.snapshot, '  ', none));
+    lines.push(...mergeLines(da.merge, '  ', none));
   }
   return lines.join('\n');
 }

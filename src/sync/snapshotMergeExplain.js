@@ -162,6 +162,17 @@ export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
 }
 
 /**
+ * The differences a write can actually resolve. An order-only difference in
+ * an id-keyed list is not one: the merge keeps each device's own order
+ * (mergeArrayById preserves local order and appends remote-only items), so
+ * writing it never changes the other device's order, and two devices that
+ * order a list differently would rewrite the file in turn forever. Two Macs
+ * did, over todayRoutines (2026-10-05). The difference is still reported;
+ * it just does not start a write.
+ */
+export const writeWorthy = (diffs) => diffs.filter((d) => d.kind !== 'order');
+
+/**
  * Runs the merge and explains its outcome, with the write and apply decisions
  * the cycle makes from it.
  *
@@ -176,7 +187,7 @@ export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
  *   localChanged: boolean, remoteChanged: boolean,   the merge's own flags
  *   fileDiffs: Array<{key, kind, summary}>,          outgoing vs file
  *   deviceDiffs: Array<{key, kind, summary}>,        merged vs local (dropped slices ignored)
- *   wouldWrite: boolean,                             a flag AND a file difference
+ *   wouldWrite: boolean,                             a flag AND a file difference a write can resolve
  *   wouldApply: boolean,                             localChanged AND a device difference
  *   flagWithoutDiff: boolean,                        a write flag with no file difference
  *   error: string|null,
@@ -201,14 +212,15 @@ export function explainSnapshotMerge({ local, remote, retentionDays, merge, outg
   const fileDiffs = sliceDiffs(out, remote);
   const deviceDiffs = sliceDiffs(merged, local, { ignoreDropped: true });
   const flagged = remoteChanged || localChanged;
+  const writable = writeWorthy(fileDiffs);
   return {
     localChanged,
     remoteChanged,
     fileDiffs,
     deviceDiffs,
-    wouldWrite: flagged && fileDiffs.length > 0,
+    wouldWrite: flagged && writable.length > 0,
     wouldApply: localChanged && deviceDiffs.length > 0,
-    flagWithoutDiff: flagged && fileDiffs.length === 0,
+    flagWithoutDiff: flagged && writable.length === 0,
     error: null,
   };
 }

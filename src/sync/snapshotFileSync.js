@@ -38,7 +38,7 @@
 
 import { evaluateMissingSnapshot } from '../utils/icloudSeedGuard.js';
 import { shouldPromptFirstRun, payloadHasData } from '../utils/icloudSyncPref.js';
-import { sliceDiffs } from './snapshotMergeExplain.js';
+import { sliceDiffs, writeWorthy } from './snapshotMergeExplain.js';
 
 /** Shared with the WebDAV engine: when this device last changed synced data. */
 export const LOCAL_MODIFIED_KEY = 'day-planner-cloud-sync-local-modified';
@@ -213,14 +213,16 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   // a real difference between what would be written and the file; an apply
   // needs the flag AND a real difference between the merged data and local
   // state. sync/snapshotMergeExplain.js is that comparison, and the iCloud
-  // diagnostics panel runs the identical function.
+  // diagnostics panel runs the identical function. An order-only difference
+  // does not count for the write: the merge keeps each device's own order,
+  // so writing it changes nothing on the other device (writeWorthy).
   const outPayload = io.stripHealthSourcedLogs({
     version: 2,
     lastModified: new Date(now()).toISOString(),
     data: mergedData,
   }, io.habits);
   const applyNeeded = localChanged && sliceDiffs(mergedData, localData, { ignoreDropped: true }).length > 0;
-  const writeNeeded = (remoteChanged || localChanged) && sliceDiffs(outPayload.data, remote.data).length > 0;
+  const writeNeeded = (remoteChanged || localChanged) && writeWorthy(sliceDiffs(outPayload.data, remote.data)).length > 0;
 
   if (applyNeeded) {
     // Apply the FULL merged data locally (health-sourced counts stay on-device).

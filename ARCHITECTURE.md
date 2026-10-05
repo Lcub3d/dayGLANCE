@@ -83,6 +83,7 @@ Business logic that was previously inline in `App.jsx` has been progressively ex
 | `useTaskActions` | CRUD operations on tasks (add, edit, delete, complete, move) |
 | `useCalendarSync` | Native Android calendar event import |
 | `useCloudSync` | WebDAV sync scheduling and conflict surfacing |
+| `useSnapshotFileSync` | Snapshot-file sync (iCloud today, Direct Access next) over one transport: poll, mutex, first-run prompt; the cycle itself is `src/sync/snapshotFileSync.js` |
 | `useDragDrop` | Drag-and-drop rescheduling |
 | `useHabits` | Habit definitions and daily completion tracking |
 | `useRoutines` | Routine chip definitions by day of week |

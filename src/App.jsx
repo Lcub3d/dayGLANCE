@@ -2196,7 +2196,7 @@ const DayPlanner = () => {
       clearStrandedSyncGuards();
       setCurrentTime(new Date());
       // The snapshot transports run first (fast local file I/O; they share a
-      // mutex, so the second is deferred to its next tick if the first is still
+      // mutex, so the second retries two seconds later if the first is still
       // running), then WebDAV (network). engine.download() bypasses its own
       // backoff for these foreground kicks.
       iCloudSync.runSync();

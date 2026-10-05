@@ -2104,7 +2104,16 @@
     "no": "nein",
     "mergeError": "Fehler beim Merge-Testlauf",
     "flagWithoutDiff": "Der Merge hat einen Schreibvorgang markiert, obwohl sich in der Datei nichts ändern würde. Der Schreibvorgang wird übersprungen.",
-    "mergeFlags": "Merge-Flags (Schreiben / Anwenden)"
+    "mergeFlags": "Merge-Flags (Schreiben / Anwenden)",
+    "directAccessTitle": "Direct-Access-Ordner",
+    "folder": "Ordner",
+    "folderStatus": "Ordnerstatus",
+    "folderState": {
+      "connected": "verbunden",
+      "disconnected": "nicht verbunden",
+      "unreachable": "nicht erreichbar",
+      "unknown": "unbekannt"
+    }
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",

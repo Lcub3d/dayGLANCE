@@ -2087,7 +2087,15 @@
     "syncPref": "Sync on this device",
     "on": "on",
     "off": "off",
-    "notSyncingNote": "This device is not syncing with iCloud, so its data stays here only. Other devices will not see changes made here, and changes made elsewhere will not arrive."
+    "notSyncingNote": "This device is not syncing with iCloud, so its data stays here only. Other devices will not see changes made here, and changes made elsewhere will not arrive.",
+    "wouldWrite": "Would write file",
+    "wouldApply": "Would apply to device",
+    "fileDiffers": "File would change in",
+    "deviceDiffers": "Device would change in",
+    "yes": "YES",
+    "no": "no",
+    "mergeError": "Merge dry-run error",
+    "flagWithoutDiff": "A write is flagged although nothing would change in the file. That is a change-flag bug in the merge; please copy this report into an issue."
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",

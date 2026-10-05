@@ -2087,7 +2087,15 @@
     "syncPref": "Sincronización en este dispositivo",
     "on": "activada",
     "off": "desactivada",
-    "notSyncingNote": "Este dispositivo no se sincroniza con iCloud, así que sus datos se quedan solo aquí. Los demás dispositivos no verán los cambios hechos aquí, y los cambios hechos en otro sitio no llegarán."
+    "notSyncingNote": "Este dispositivo no se sincroniza con iCloud, así que sus datos se quedan solo aquí. Los demás dispositivos no verán los cambios hechos aquí, y los cambios hechos en otro sitio no llegarán.",
+    "wouldWrite": "Escribiría el archivo",
+    "wouldApply": "Aplicaría al dispositivo",
+    "fileDiffers": "El archivo cambiaría en",
+    "deviceDiffers": "El dispositivo cambiaría en",
+    "yes": "SÍ",
+    "no": "no",
+    "mergeError": "Error en la simulación de fusión",
+    "flagWithoutDiff": "Hay una escritura marcada aunque nada cambiaría en el archivo. Es un error en la detección de cambios de la fusión; copia este informe en un issue."
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",

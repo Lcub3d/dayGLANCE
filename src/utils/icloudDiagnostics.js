@@ -34,6 +34,8 @@
 // a key that belonged to a different sync tier.
 import { ICLOUD_LAST_SYNCED_KEY } from './icloudSeedGuard.js';
 import { isICloudSyncEnabled } from './icloudSyncPref.js';
+import { explainSnapshotMerge } from '../sync/snapshotMergeExplain.js';
+import { mergeSyncData } from '../mergeSync.js';
 
 /** Shape returned when a probe cannot run on this platform. */
 const UNSUPPORTED = 'unsupported';
@@ -216,7 +218,34 @@ const defaultDeps = () => ({
   nativeBridge: typeof window !== 'undefined' ? window.DayGlanceNative : null,
   electronAPI: typeof window !== 'undefined' ? window.electronAPI : null,
   localStorage: typeof window !== 'undefined' ? window.localStorage : null,
+  // The dry-run merge needs this device's payload, which only the app can
+  // build; the panel passes it in from the sync context. Absent → no dry run.
+  buildSyncPayload: null,
+  getSyncRetentionDays: null,
+  merge: mergeSyncData,
 });
+
+/**
+ * Runs the cycle's merge against the file WITHOUT applying or writing, and says
+ * what it would have done and why (sync/snapshotMergeExplain.js). This is the
+ * row that answers "why does this idle Mac rewrite the file every cycle?", which
+ * the timestamps alone could only hint at.
+ *
+ * @returns {object|null} null when there is no snapshot or no payload builder.
+ */
+export function dryRunMerge(raw, deps = {}) {
+  if (typeof deps.buildSyncPayload !== 'function') return null;
+  let remote;
+  try { remote = JSON.parse(raw); } catch { return null; }
+  if (!remote || typeof remote !== 'object' || remote.downloading || remote.error || !remote.data) return null;
+  let local;
+  try { local = deps.buildSyncPayload()?.data; } catch (err) {
+    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
+  }
+  if (!local) return null;
+  const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
+  return explainSnapshotMerge({ local, remote: remote.data, retentionDays, merge: deps.merge ?? mergeSyncData });
+}
 
 /**
  * Runs every probe and returns a flat report.
@@ -251,10 +280,13 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
     ? { state: UNSUPPORTED, bytes: 0, lastModified: null, version: null, taskCount: null, inboxCount: null, error: null }
     : classifySnapshot(raw, deps);
 
+  const merge = snapshot.state === 'present' ? dryRunMerge(raw, deps) : null;
+
   return {
     platform,
     available,
     snapshot,
+    merge,
     // The in-app preference is separate from container availability: a device can
     // resolve the container perfectly and still be deliberately not syncing,
     // because the user chose "start fresh" at first run or switched it off in
@@ -269,7 +301,7 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
  * Plain-text report for the copy-to-clipboard button, so a user can paste the
  * findings into an issue without retyping or screenshotting them.
  */
-export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled }) {
+export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge }) {
   const none = '(none)';
   const lines = [
     'dayGLANCE iCloud diagnostics',
@@ -301,5 +333,17 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
     `local tasks:     ${local.taskCount}`,
     `local inbox:     ${local.inboxCount}`,
   );
+  if (merge) {
+    if (merge.error) {
+      lines.push(`merge dry-run:   error: ${merge.error}`);
+    } else {
+      lines.push(
+        `merge dry-run:   would write: ${merge.remoteChanged ? 'YES' : 'no'} / would apply: ${merge.localChanged ? 'YES' : 'no'}`,
+        `  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
+        `  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
+      );
+      if (merge.flagWithoutDiff) lines.push('  note:          write flagged although nothing differs from the file (change-flag bug)');
+    }
+  }
   return lines.join('\n');
 }

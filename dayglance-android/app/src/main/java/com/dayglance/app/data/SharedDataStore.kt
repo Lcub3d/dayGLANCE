@@ -52,6 +52,20 @@ class SharedDataStore(context: Context) {
             ?: DEFAULT_NEW_NOTES_FOLDER
         set(value) = prefs.edit { putString(KEY_NEW_NOTES_FOLDER, value) }
 
+    // ── Direct Access sync (docs/direct-access-sync.md) ─────────────────────
+
+    /**
+     * SAF tree URI of the folder a third-party app keeps in step across
+     * devices. Picked from the web settings card through DirectAccessBridge;
+     * read by DirectAccessRepository. Null when no folder is connected.
+     */
+    var directAccessPath: String?
+        get() = prefs.getString(KEY_DIRECT_ACCESS_PATH, null)
+        set(value) = prefs.edit {
+            if (value != null) putString(KEY_DIRECT_ACCESS_PATH, value)
+            else remove(KEY_DIRECT_ACCESS_PATH)
+        }
+
     // ── App appearance preference ───────────────────────────────────────────
 
     /**
@@ -358,6 +372,7 @@ class SharedDataStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "dayglance_shared"
         private const val KEY_VAULT_PATH = "obsidian_vault_path"
+        private const val KEY_DIRECT_ACCESS_PATH = "direct_access_path"
         private const val KEY_DAILY_NOTE_FOLDER = "obsidian_daily_note_folder"
         private const val KEY_DAILY_NOTE_PATTERN = "obsidian_daily_note_pattern"
         private const val KEY_NEW_NOTES_FOLDER = "obsidian_new_notes_folder"

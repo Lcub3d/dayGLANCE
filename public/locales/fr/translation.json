@@ -2140,7 +2140,8 @@
     "unreachable": "Le dossier n'est pas disponible pour le moment. La synchronisation reprend dès qu'il est de retour.",
     "onHint": "Activée. Cet appareil se synchronise via le dossier.",
     "offHint": "Désactivée sur cet appareil. La copie dans le dossier et vos autres appareils ne sont pas affectés.",
-    "neverSynced": "Pas encore synchronisé"
+    "neverSynced": "Pas encore synchronisé",
+    "androidHint": "Sur Android, choisissez un dossier qu'une application reflète dans le stockage de cet appareil, comme Syncthing, FolderSync ou Autosync. Les applications Google Drive et Dropbox ne proposent pas leurs dossiers ici."
   },
   "aspire": {
     "title": "Aspire",

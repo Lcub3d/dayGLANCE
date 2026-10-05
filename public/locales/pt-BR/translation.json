@@ -41,7 +41,9 @@
       "requestFailed": "pedido falhou",
       "iCloudUnavailable": "iCloud indisponível: {{error}}",
       "CREDENTIAL_INVALID": "O servidor de sincronização não aceita mais o acesso deste dispositivo. Suas alterações estão salvas neste dispositivo. Peça a quem administra seu servidor de sincronização para restaurar o acesso deste dispositivo.",
-      "QUOTA_EXCEEDED": "O servidor de sincronização atingiu o limite desta conta. Suas alterações estão salvas neste dispositivo e a sincronização será repetida automaticamente. Peça a quem administra seu servidor de sincronização para aumentar o limite."
+      "QUOTA_EXCEEDED": "O servidor de sincronização atingiu o limite desta conta. Suas alterações estão salvas neste dispositivo e a sincronização será repetida automaticamente. Peça a quem administra seu servidor de sincronização para aumentar o limite.",
+      "directAccessUnavailable": "Pasta do Direct Access indisponível: {{error}}",
+      "directAccessEncrypted": "O arquivo na pasta do Direct Access está criptografado e este dispositivo não consegue lê-lo. Nada foi gravado nele."
     },
     "vaultUrl": {
       "invalid": "Digite um URL de vault válido.",
@@ -2047,7 +2049,13 @@
     "confirm": "Apagar tudo",
     "working": "Apagando…",
     "partialFailure": "Não foi possível limpar alguns dados:",
-    "otherDevices": "Os outros dispositivos mantêm sua própria cópia e irão restaurá-la. Redefina-os um de cada vez: feche o dayGLANCE em todos, depois abra um único dispositivo, redefina-o e feche-o novamente antes de passar ao seguinte."
+    "otherDevices": "Os outros dispositivos mantêm sua própria cópia e irão restaurá-la. Redefina-os um de cada vez: feche o dayGLANCE em todos, depois abra um único dispositivo, redefina-o e feche-o novamente antes de passar ao seguinte.",
+    "scopeDeviceHintDirectAccess": "A cópia na pasta do Direct Access é mantida, e este dispositivo pode lê-la de volta imediatamente mesmo com a sincronização desativada. Use isto apenas para corrigir um estado local com problemas, não para começar do zero.",
+    "scopeEverywhereDirectAccess": "Este dispositivo e a pasta do Direct Access",
+    "scopeEverywhereDirectAccessHint": "Também apaga a cópia na pasta do Direct Access, para que nada a restaure aqui.",
+    "scopeDeviceHintBoth": "As cópias no iCloud e na pasta do Direct Access são mantidas, e este dispositivo pode lê-las de volta imediatamente mesmo com a sincronização desativada. Use isto apenas para corrigir um estado local com problemas, não para começar do zero.",
+    "scopeEverywhereBoth": "Este dispositivo, o iCloud e a pasta do Direct Access",
+    "scopeEverywhereBothHint": "Também apaga as cópias no iCloud e na pasta do Direct Access, para que nada as restaure aqui nem ao reinstalar."
   },
   "icloudDiag": {
     "title": "Diagnóstico do iCloud",
@@ -2111,6 +2119,19 @@
     "title": "Sincronização com o iCloud",
     "onHint": "Ativada. Este dispositivo sincroniza automaticamente com seus outros dispositivos Apple.",
     "offHint": "Desativada neste dispositivo. A cópia no iCloud e seus outros dispositivos não são afetados."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sincronize por meio de uma pasta que outro app já mantém em dia entre seus dispositivos: Google Drive, Dropbox, OneDrive, Syncthing ou um compartilhamento de rede. O dayGLANCE lê e grava um arquivo ali; esse app o transporta.",
+    "chooseFolder": "Escolher pasta…",
+    "changeFolder": "Alterar pasta",
+    "disconnect": "Desconectar",
+    "notConnected": "Nenhuma pasta conectada neste dispositivo.",
+    "connectedTo": "Sincronizando por",
+    "unreachable": "A pasta não está disponível agora. A sincronização continua quando ela voltar.",
+    "onHint": "Ativada. Este dispositivo sincroniza por meio da pasta.",
+    "offHint": "Desativada neste dispositivo. A cópia na pasta e seus outros dispositivos não são afetados.",
+    "neverSynced": "Ainda não sincronizado"
   },
   "aspire": {
     "title": "Aspire",

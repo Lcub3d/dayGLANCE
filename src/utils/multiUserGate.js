@@ -1,16 +1,18 @@
 // Multi-user gating. Multi-user (users/assignments) only does anything across
-// synced devices, so it is useless without cloud sync configured — either the
-// WebDAV file tier (cloudSyncConfig.enabled) or the GLANCEvault DB tier
-// (isVaultEnabled). These helpers centralize the "requires sync" rule and,
-// crucially, the never-trap rule so both settings surfaces behave identically.
+// synced devices, so it is useless without cloud sync configured — the WebDAV
+// file tier (cloudSyncConfig.enabled), the GLANCEvault DB tier
+// (isVaultEnabled), or a Direct Access folder (a shared folder reaches other
+// people, unlike iCloud). These helpers centralize the "requires sync" rule
+// and, crucially, the never-trap rule so both settings surfaces behave
+// identically.
 
 /**
  * Whether cloud sync is configured enough to make multi-user meaningful.
- * @param {{cloudSyncEnabled?: boolean, vaultEnabled?: boolean}} opts
+ * @param {{cloudSyncEnabled?: boolean, vaultEnabled?: boolean, directAccessEnabled?: boolean}} opts
  * @returns {boolean}
  */
-export function canEnableMultiUser({ cloudSyncEnabled, vaultEnabled } = {}) {
-  return !!(cloudSyncEnabled || vaultEnabled);
+export function canEnableMultiUser({ cloudSyncEnabled, vaultEnabled, directAccessEnabled } = {}) {
+  return !!(cloudSyncEnabled || vaultEnabled || directAccessEnabled);
 }
 
 /**

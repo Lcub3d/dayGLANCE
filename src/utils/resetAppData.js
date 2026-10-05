@@ -79,6 +79,7 @@
  */
 
 import * as icloudFileTransport from '../intents/icloudFileTransport.js';
+import { directAccessTransport } from '../sync/directAccessTransport.js';
 
 /** The dayGLANCE snapshot inside the iCloud container's Documents/ folder. */
 export const ICLOUD_SYNC_FILE = 'dayglance-sync.json';
@@ -275,6 +276,24 @@ export async function clearICloudSnapshot({ icloud }, errors) {
   }
 }
 
+/**
+ * Deletes the Direct Access snapshot (docs/direct-access-sync.md) for the same
+ * reason: the next cycle on this device, or on any device sharing the folder,
+ * would otherwise merge it straight back. `attempted: false` means no folder is
+ * connected on this device, which is not an error.
+ */
+export async function clearDirectAccessSnapshot({ directAccess }, errors) {
+  if (!directAccess?.isConnected?.()) return { attempted: false, ok: false };
+  try {
+    const ok = await directAccess.deleteSnapshot();
+    if (!ok) errors.push('Direct Access snapshot could not be deleted');
+    return { attempted: true, ok };
+  } catch (err) {
+    errors.push(`Direct Access snapshot: ${err?.message ?? err}`);
+    return { attempted: true, ok: false };
+  }
+}
+
 // ── Orchestration ──────────────────────────────────────────────────────────
 
 const defaultDeps = () => ({
@@ -283,6 +302,7 @@ const defaultDeps = () => ({
   indexedDB: typeof window !== 'undefined' ? window.indexedDB : null,
   caches: typeof window !== 'undefined' ? window.caches : null,
   icloud: icloudFileTransport,
+  directAccess: directAccessTransport,
 });
 
 /**
@@ -290,11 +310,12 @@ const defaultDeps = () => ({
  *
  * @param {object}  options
  * @param {'device'|'everywhere'} [options.scope='device']
- *        'device'     — local storage only; the iCloud snapshot survives.
- *        'everywhere' — also deletes the iCloud snapshot.
+ *        'device'     — local storage only; the iCloud and Direct Access snapshots survive.
+ *        'everywhere' — also deletes the iCloud and Direct Access snapshots.
  * @param {object}  [deps] Injected browser/platform APIs (tests override these).
  * @returns {Promise<{scope, indexedDb: string[], caches: string[],
- *                    cloud: {attempted: boolean, ok: boolean}, errors: string[]}>}
+ *                    cloud: {attempted: boolean, ok: boolean},
+ *                    directAccess: {attempted: boolean, ok: boolean}, errors: string[]}>}
  *
  * The caller is responsible for reloading afterwards — see reloadAfterReset().
  * Until it does, the in-memory React state is still live and the reset guard is
@@ -311,12 +332,16 @@ export async function resetAppData({ scope = 'device' } = {}, deps = defaultDeps
     scope === 'everywhere'
       ? await clearICloudSnapshot(deps, errors)
       : { attempted: false, ok: false };
+  const directAccess =
+    scope === 'everywhere'
+      ? await clearDirectAccessSnapshot(deps, errors)
+      : { attempted: false, ok: false };
 
   const indexedDb = await deleteIndexedDbDatabases(deps, errors);
   const cacheNames = await clearCacheStorage(deps, errors);
   clearWebStorage(deps, errors);
 
-  return { scope, indexedDb, caches: cacheNames, cloud, errors };
+  return { scope, indexedDb, caches: cacheNames, cloud, directAccess, errors };
 }
 
 /**

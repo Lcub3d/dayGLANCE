@@ -22,6 +22,8 @@ import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormattin
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
+import DirectAccessSyncCard from './DirectAccessSyncCard.jsx';
+import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
 import AutoBackupSettingsForm from './AutoBackupSettingsForm.jsx';
 import ResetAppDataSection from './ResetAppDataSection.jsx';
 import FrameEditor from './FrameEditor.jsx';
@@ -1615,6 +1617,16 @@ const MobileSettingsPanel = () => {
             borderClass={borderClass}
           />
         </>
+      )}
+      {/* Desktop only — a narrow Electron window renders this panel too
+          (docs/direct-access-sync.md). */}
+      {isDirectAccessSupported() && (
+        <DirectAccessSyncCard
+          darkMode={darkMode}
+          textPrimary={textPrimary}
+          textSecondary={textSecondary}
+          borderClass={borderClass}
+        />
       )}
     </div>
     );

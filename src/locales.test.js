@@ -184,6 +184,7 @@ describe('locale bundles', () => {
     // marzeń, Список бажань, 心愿清单) while de, es, fr, it and pt keep the
     // English idiom. Listed as deliberate, but a native speaker may disagree.
     'bucket.title': 'Bucket List is carried as the borrowed English idiom.',
+    'directAccess.title': 'Direct Access is the feature name (docs/direct-access-sync.md), kept as is in every language.',
   };
 
   /**

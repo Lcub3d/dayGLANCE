@@ -130,7 +130,7 @@ iCloud users see the same cycles, the same prompt, the same keys.
 - Tests: the cycle planner with each guard mutation-checked, and a scenario that
   walks save → state → write → read → apply through a fake transport.
 
-### Phase 2: Direct Access on desktop (macOS, Windows, Linux)
+### Phase 2: Direct Access on desktop (macOS, Windows, Linux) — done
 
 - `electron/directAccess.ts` modelled on `icloud.ts` and `obsidian.ts`: native
   picker with security-scoped bookmarks, config in the user-data folder, restore
@@ -145,6 +145,27 @@ iCloud users see the same cycles, the same prompt, the same keys.
 - Reset-app-data gains the Direct Access snapshot for scope `everywhere`.
 - Docs: this file gains the user-facing behaviour; README feature row;
   ARCHITECTURE.md describes both file-tier models.
+
+#### What Phase 2 shipped, and two decisions it settled
+
+- No first-run restore prompt for Direct Access. iCloud asks because its sync
+  can come back on without the user; here, picking the folder is the decision,
+  and the snapshot in it is applied.
+- An unreachable folder (the streaming tool not running, a share not mounted)
+  is reported once, then waited out quietly: the transport marks itself
+  unreachable, the hook stops cycling, and each poll tick re-probes so sync
+  resumes on its own when the folder is back. A fresh pick clears the
+  last-synced stamp, so an empty new folder is seeded at once rather than
+  treated as an eviction of the old one.
+- The main process classifies reads (`electron/directAccessStore.ts`): a
+  zero-length file is a cloud-only placeholder or a tool mid-write and is never
+  reported as absent; a vanished folder is an error, never an absent file; an
+  unchanged file is served from a size-and-mtime cache. Writes go through
+  `writeFileAtomicSync`.
+- The folder path and the macOS bookmark are persisted by the main process in
+  `direct-access.json` under the user-data folder; the renderer stores only the
+  per-device switch (`dayglance-direct-access-enabled`) and the last-synced
+  stamp (`dayglance-direct-access-last-synced`).
 
 ### Phase 3: Android
 
@@ -172,6 +193,21 @@ iCloud users see the same cycles, the same prompt, the same keys.
   snapshot, then delete them.
 - A diagnostics card like `ICloudDiagnostics`, and a web/PWA transport via the
   File System Access API that `folderBackup.js` already demonstrates.
+
+## Using it (desktop)
+
+Settings → Cloud Sync → **Direct Access** → *Choose folder…* on each machine,
+picking the same folder inside whatever the syncing tool mirrors (for example
+`Google Drive/GLANCE`). The card shows the folder name, the last time a snapshot
+was read, and a switch that pauses syncing on that device without touching the
+folder copy. *Change folder* re-picks; *Disconnect* forgets the folder on that
+device and leaves the file where it is. Reset App Data → *This device and the
+Direct Access folder* deletes the file too.
+
+The file is plain JSON, the same `dayglance-sync.json` the WebDAV tier writes.
+If the folder already holds an encrypted copy from a WebDAV setup, Direct
+Access reports it and writes nothing until the file is replaced or decrypted;
+it never downgrades an encrypted file to plaintext.
 
 ## Risks
 

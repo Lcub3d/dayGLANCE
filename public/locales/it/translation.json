@@ -41,7 +41,9 @@
       "requestFailed": "richiesta fallita",
       "iCloudUnavailable": "iCloud non disponibile: {{error}}",
       "CREDENTIAL_INVALID": "Il server di sincronizzazione non accetta più l'accesso di questo dispositivo. Le tue modifiche sono salvate su questo dispositivo. Chiedi a chi gestisce il tuo server di sincronizzazione di ripristinare l'accesso per questo dispositivo.",
-      "QUOTA_EXCEEDED": "Il server di sincronizzazione ha raggiunto il limite di questo account. Le tue modifiche sono salvate su questo dispositivo e la sincronizzazione riproverà automaticamente. Chiedi a chi gestisce il tuo server di sincronizzazione di aumentare il limite."
+      "QUOTA_EXCEEDED": "Il server di sincronizzazione ha raggiunto il limite di questo account. Le tue modifiche sono salvate su questo dispositivo e la sincronizzazione riproverà automaticamente. Chiedi a chi gestisce il tuo server di sincronizzazione di aumentare il limite.",
+      "directAccessUnavailable": "Cartella Direct Access non disponibile: {{error}}",
+      "directAccessEncrypted": "Il file nella cartella Direct Access è cifrato e questo dispositivo non può leggerlo. Non vi è stato scritto nulla."
     },
     "vaultUrl": {
       "invalid": "Inserisci un URL del vault valido.",
@@ -2049,7 +2051,13 @@
     "confirm": "Cancella tutto",
     "working": "Cancellazione…",
     "partialFailure": "Non è stato possibile cancellare alcuni dati:",
-    "otherDevices": "Gli altri dispositivi conservano la propria copia e la ripristineranno. Reimpostali uno alla volta: chiudi dayGLANCE ovunque, poi apri un solo dispositivo, reimpostalo e chiudilo di nuovo prima di passare al successivo."
+    "otherDevices": "Gli altri dispositivi conservano la propria copia e la ripristineranno. Reimpostali uno alla volta: chiudi dayGLANCE ovunque, poi apri un solo dispositivo, reimpostalo e chiudilo di nuovo prima di passare al successivo.",
+    "scopeDeviceHintDirectAccess": "La copia nella cartella Direct Access viene conservata e questo dispositivo può rileggerla subito anche con la sincronizzazione disattivata. Usalo solo per correggere uno stato locale danneggiato, non per ricominciare da zero.",
+    "scopeEverywhereDirectAccess": "Questo dispositivo e la cartella Direct Access",
+    "scopeEverywhereDirectAccessHint": "Elimina anche la copia nella cartella Direct Access, così nulla la ripristina qui.",
+    "scopeDeviceHintBoth": "Le copie su iCloud e nella cartella Direct Access vengono conservate e questo dispositivo può rileggerle subito anche con la sincronizzazione disattivata. Usalo solo per correggere uno stato locale danneggiato, non per ricominciare da zero.",
+    "scopeEverywhereBoth": "Questo dispositivo, iCloud e la cartella Direct Access",
+    "scopeEverywhereBothHint": "Elimina anche le copie su iCloud e nella cartella Direct Access, così nulla le ripristina qui o dopo una reinstallazione."
   },
   "icloudDiag": {
     "title": "Diagnostica iCloud",
@@ -2113,6 +2121,19 @@
     "title": "Sincronizzazione iCloud",
     "onHint": "Attiva. Questo dispositivo si sincronizza automaticamente con gli altri tuoi dispositivi Apple.",
     "offHint": "Disattivata su questo dispositivo. La copia su iCloud e gli altri tuoi dispositivi non sono interessati."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sincronizza tramite una cartella che un'altra app tiene già aggiornata tra i tuoi dispositivi: Google Drive, Dropbox, OneDrive, Syncthing o una condivisione di rete. dayGLANCE vi legge e scrive un solo file; quell'app lo trasferisce.",
+    "chooseFolder": "Scegli cartella…",
+    "changeFolder": "Cambia cartella",
+    "disconnect": "Disconnetti",
+    "notConnected": "Nessuna cartella collegata su questo dispositivo.",
+    "connectedTo": "Sincronizzazione tramite",
+    "unreachable": "La cartella non è disponibile al momento. La sincronizzazione riprende quando torna disponibile.",
+    "onHint": "Attiva. Questo dispositivo si sincronizza tramite la cartella.",
+    "offHint": "Disattivata su questo dispositivo. La copia nella cartella e gli altri tuoi dispositivi non sono interessati.",
+    "neverSynced": "Non ancora sincronizzato"
   },
   "aspire": {
     "title": "Aspire",

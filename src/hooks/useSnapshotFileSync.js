@@ -42,6 +42,7 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  * @param {number}  args.io.syncRetentionDays
  * @param {() => boolean} [args.io.isResetInProgress]
  * @param {(error: string) => void} [args.io.onUnavailable]  transport reported an error object
+ * @param {() => void} [args.io.onEncryptedUnreadable]  the file is encrypted, this device cannot read it, and the transport forbids writing over it
  * @param {() => number} [args.io.now]
  * @returns {{
  *   runSync: () => Promise<void>,
@@ -117,6 +118,10 @@ export default function useSnapshotFileSync({
       } else if (outcome.kind === 'error') {
         console.error(`[${transport.id}] unavailable:`, outcome.error);
         ioRef.current.onUnavailable?.(outcome.error);
+      } else if (outcome.kind === 'skipped' && outcome.reason === 'encrypted-unreadable') {
+        // Nothing was written over the file we cannot read; the user has to
+        // know, because nothing else will happen until they act.
+        ioRef.current.onEncryptedUnreadable?.();
       }
     } catch (err) {
       // A transport that throws (rather than returning an error object) must

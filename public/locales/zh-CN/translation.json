@@ -41,7 +41,9 @@
       "passphraseNeeded": "请在上方输入同步口令以启用 GLANCEvault。",
       "vaultUnreachable": "无法连接 GLANCEvault。请检查服务地址和设备令牌。（{{detail}}）",
       "requestFailed": "请求失败",
-      "iCloudUnavailable": "iCloud 不可用：{{error}}"
+      "iCloudUnavailable": "iCloud 不可用：{{error}}",
+      "directAccessUnavailable": "Direct Access 文件夹不可用：{{error}}",
+      "directAccessEncrypted": "Direct Access 文件夹中的文件已加密，此设备无法读取。未向其写入任何内容。"
     },
     "vaultUrl": {
       "invalid": "请输入有效的 GLANCEvault URL。",
@@ -2047,7 +2049,13 @@
     "confirm": "清除全部数据",
     "working": "正在擦除…",
     "partialFailure": "部分数据无法清除：",
-    "otherDevices": "其他设备会保留自己的副本并将其恢复。请逐台重置：先退出所有设备上的 dayGLANCE，再只打开一台设备，完成重置后退出，然后处理下一台。"
+    "otherDevices": "其他设备会保留自己的副本并将其恢复。请逐台重置：先退出所有设备上的 dayGLANCE，再只打开一台设备，完成重置后退出，然后处理下一台。",
+    "scopeDeviceHintDirectAccess": "Direct Access 文件夹中的副本会被保留，即使同步已关闭，此设备也能立即将其读回。仅用于修复异常的本地状态，而不是重新开始。",
+    "scopeEverywhereDirectAccess": "此设备和 Direct Access 文件夹",
+    "scopeEverywhereDirectAccessHint": "同时删除 Direct Access 文件夹中的副本，这样在此处不会再恢复任何内容。",
+    "scopeDeviceHintBoth": "iCloud 和 Direct Access 文件夹中的副本会被保留，即使同步已关闭，此设备也能立即将其读回。仅用于修复异常的本地状态，而不是重新开始。",
+    "scopeEverywhereBoth": "此设备、iCloud 和 Direct Access 文件夹",
+    "scopeEverywhereBothHint": "同时删除 iCloud 和 Direct Access 文件夹中的副本，这样在此处或重新安装后都不会再恢复任何内容。"
   },
   "icloudDiag": {
     "title": "iCloud 诊断",
@@ -2111,6 +2119,19 @@
     "title": "iCloud 同步",
     "onHint": "已开启。此设备会自动与其他 Apple 设备同步。",
     "offHint": "此设备已关闭。iCloud 副本和其他设备不会受到影响。"
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "通过另一个应用已在你的设备之间保持同步的文件夹进行同步：Google Drive、Dropbox、OneDrive、Syncthing 或网络共享。dayGLANCE 在其中读写一个文件，由该应用负责传输。",
+    "chooseFolder": "选择文件夹…",
+    "changeFolder": "更换文件夹",
+    "disconnect": "断开连接",
+    "notConnected": "此设备尚未连接任何文件夹。",
+    "connectedTo": "同步文件夹：",
+    "unreachable": "该文件夹当前不可用。待其恢复后同步将自动继续。",
+    "onHint": "已开启。此设备通过该文件夹同步。",
+    "offHint": "此设备已关闭。文件夹中的副本和其他设备不会受到影响。",
+    "neverSynced": "尚未同步"
   },
   "aspire": {
     "title": "Aspire",

@@ -19,6 +19,9 @@ describe('canEnableMultiUser', () => {
 
   it('is true when the GLANCEvault tier is enabled', () => {
     expect(canEnableMultiUser({ cloudSyncEnabled: false, vaultEnabled: true })).toBe(true);
+    // A Direct Access folder is a shared destination too (docs/direct-access-sync.md).
+    expect(canEnableMultiUser({ cloudSyncEnabled: false, vaultEnabled: false, directAccessEnabled: true })).toBe(true);
+    expect(canEnableMultiUser({ directAccessEnabled: false })).toBe(false);
   });
 });
 

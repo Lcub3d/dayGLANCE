@@ -41,7 +41,9 @@
       "requestFailed": "pedido falhou",
       "iCloudUnavailable": "iCloud indisponível: {{error}}",
       "CREDENTIAL_INVALID": "O servidor de sincronização já não aceita o acesso deste dispositivo. As suas alterações estão guardadas neste dispositivo. Peça a quem gere o seu servidor de sincronização para restaurar o acesso deste dispositivo.",
-      "QUOTA_EXCEEDED": "O servidor de sincronização atingiu o limite desta conta. As suas alterações estão guardadas neste dispositivo e a sincronização será repetida automaticamente. Peça a quem gere o seu servidor de sincronização para aumentar o limite."
+      "QUOTA_EXCEEDED": "O servidor de sincronização atingiu o limite desta conta. As suas alterações estão guardadas neste dispositivo e a sincronização será repetida automaticamente. Peça a quem gere o seu servidor de sincronização para aumentar o limite.",
+      "directAccessUnavailable": "Pasta do Direct Access indisponível: {{error}}",
+      "directAccessEncrypted": "O ficheiro na pasta do Direct Access está encriptado e este dispositivo não o consegue ler. Nada foi escrito nele."
     },
     "vaultUrl": {
       "invalid": "Introduza um URL de vault válido.",
@@ -2047,7 +2049,13 @@
     "confirm": "Apagar tudo",
     "working": "A apagar…",
     "partialFailure": "Não foi possível limpar alguns dados:",
-    "otherDevices": "Os outros dispositivos mantêm a sua própria cópia e irão restaurá-la. Reponha-os um de cada vez: feche o dayGLANCE em todos, depois abra um único dispositivo, reponha-o e feche-o novamente antes de passar ao seguinte."
+    "otherDevices": "Os outros dispositivos mantêm a sua própria cópia e irão restaurá-la. Reponha-os um de cada vez: feche o dayGLANCE em todos, depois abra um único dispositivo, reponha-o e feche-o novamente antes de passar ao seguinte.",
+    "scopeDeviceHintDirectAccess": "A cópia na pasta do Direct Access é mantida, e este dispositivo pode voltar a lê-la de imediato mesmo com a sincronização desativada. Utilize isto apenas para corrigir um estado local com problemas, não para recomeçar do zero.",
+    "scopeEverywhereDirectAccess": "Este dispositivo e a pasta do Direct Access",
+    "scopeEverywhereDirectAccessHint": "Apaga também a cópia na pasta do Direct Access, para que nada a reponha aqui.",
+    "scopeDeviceHintBoth": "As cópias no iCloud e na pasta do Direct Access são mantidas, e este dispositivo pode voltar a lê-las de imediato mesmo com a sincronização desativada. Utilize isto apenas para corrigir um estado local com problemas, não para recomeçar do zero.",
+    "scopeEverywhereBoth": "Este dispositivo, o iCloud e a pasta do Direct Access",
+    "scopeEverywhereBothHint": "Apaga também as cópias no iCloud e na pasta do Direct Access, para que nada as reponha aqui nem numa reinstalação."
   },
   "icloudDiag": {
     "title": "Diagnóstico do iCloud",
@@ -2111,6 +2119,19 @@
     "title": "Sincronização com o iCloud",
     "onHint": "Ativada. Este dispositivo sincroniza automaticamente com os seus outros dispositivos Apple.",
     "offHint": "Desativada neste dispositivo. A cópia no iCloud e os seus outros dispositivos não são afetados."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sincronize através de uma pasta que outra aplicação já mantém atualizada entre os seus dispositivos: Google Drive, Dropbox, OneDrive, Syncthing ou uma partilha de rede. O dayGLANCE lê e escreve um ficheiro nessa pasta; essa aplicação transporta-o.",
+    "chooseFolder": "Escolher pasta…",
+    "changeFolder": "Alterar pasta",
+    "disconnect": "Desligar",
+    "notConnected": "Nenhuma pasta ligada neste dispositivo.",
+    "connectedTo": "A sincronizar através de",
+    "unreachable": "A pasta não está disponível neste momento. A sincronização retoma quando voltar a estar.",
+    "onHint": "Ativada. Este dispositivo sincroniza através da pasta.",
+    "offHint": "Desativada neste dispositivo. A cópia na pasta e os seus outros dispositivos não são afetados.",
+    "neverSynced": "Ainda não sincronizado"
   },
   "aspire": {
     "title": "Aspire",

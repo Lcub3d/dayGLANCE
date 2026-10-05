@@ -2197,7 +2197,16 @@
     "no": "nie",
     "mergeError": "Błąd próbnego scalania",
     "flagWithoutDiff": "Scalanie oznaczyło zapis, choć w pliku nic by się nie zmieniło. Zapis jest pomijany.",
-    "mergeFlags": "Flagi scalania (zapis / zastosowanie)"
+    "mergeFlags": "Flagi scalania (zapis / zastosowanie)",
+    "directAccessTitle": "Folder Direct Access",
+    "folder": "Folder",
+    "folderStatus": "Stan folderu",
+    "folderState": {
+      "connected": "połączony",
+      "disconnected": "niepołączony",
+      "unreachable": "niedostępny",
+      "unknown": "nieznany"
+    }
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",

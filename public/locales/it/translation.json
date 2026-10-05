@@ -2106,7 +2106,16 @@
     "no": "no",
     "mergeError": "Errore nella simulazione dell'unione",
     "flagWithoutDiff": "L'unione ha segnalato una scrittura anche se nel file non cambierebbe nulla. La scrittura viene saltata.",
-    "mergeFlags": "Flag dell'unione (scrittura / applicazione)"
+    "mergeFlags": "Flag dell'unione (scrittura / applicazione)",
+    "directAccessTitle": "Cartella Direct Access",
+    "folder": "Cartella",
+    "folderStatus": "Stato della cartella",
+    "folderState": {
+      "connected": "collegata",
+      "disconnected": "non collegata",
+      "unreachable": "irraggiungibile",
+      "unknown": "sconosciuto"
+    }
   },
   "icloudFirstRun": {
     "title": "Dati trovati su iCloud",

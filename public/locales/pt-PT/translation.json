@@ -2104,7 +2104,16 @@
     "no": "não",
     "mergeError": "Erro na simulação de fusão",
     "flagWithoutDiff": "A fusão assinalou uma escrita embora nada mudasse no ficheiro. A escrita é ignorada.",
-    "mergeFlags": "Indicadores da fusão (escrever / aplicar)"
+    "mergeFlags": "Indicadores da fusão (escrever / aplicar)",
+    "directAccessTitle": "Pasta do Direct Access",
+    "folder": "Pasta",
+    "folderStatus": "Estado da pasta",
+    "folderState": {
+      "connected": "ligada",
+      "disconnected": "não ligada",
+      "unreachable": "inacessível",
+      "unknown": "desconhecido"
+    }
   },
   "icloudFirstRun": {
     "title": "Dados encontrados no iCloud",

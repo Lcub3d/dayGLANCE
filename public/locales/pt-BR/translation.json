@@ -2104,7 +2104,16 @@
     "no": "não",
     "mergeError": "Erro na simulação de mesclagem",
     "flagWithoutDiff": "A mesclagem marcou uma gravação embora nada mudasse no arquivo. A gravação é ignorada.",
-    "mergeFlags": "Sinalizadores da mesclagem (gravar / aplicar)"
+    "mergeFlags": "Sinalizadores da mesclagem (gravar / aplicar)",
+    "directAccessTitle": "Pasta do Direct Access",
+    "folder": "Pasta",
+    "folderStatus": "Status da pasta",
+    "folderState": {
+      "connected": "conectada",
+      "disconnected": "não conectada",
+      "unreachable": "inacessível",
+      "unknown": "desconhecido"
+    }
   },
   "icloudFirstRun": {
     "title": "Dados encontrados no iCloud",

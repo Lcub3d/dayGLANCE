@@ -6,6 +6,7 @@ import {
   formatDiagnosticsReport,
   formatBytes,
 } from '../utils/icloudDiagnostics.js';
+import { useSyncCtx } from '../context/SyncContext.jsx';
 
 /**
  * Read-only readout of what this device sees in the iCloud container.
@@ -25,6 +26,10 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // The dry-run merge needs this device's payload; the app hands a builder
+  // through the sync context. Null outside the app tree (tests), which simply
+  // leaves the dry-run rows out.
+  const syncCtx = useSyncCtx();
 
   // User-triggered, never on mount: readICloudSync is a SYNCHRONOUS bridge call
   // on iOS that returns the whole snapshot, so running it on render would block
@@ -33,7 +38,13 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
     setBusy(true);
     setCopied(false);
     try {
-      setReport(await collectICloudDiagnostics());
+      setReport(await collectICloudDiagnostics({
+        nativeBridge: typeof window !== 'undefined' ? window.DayGlanceNative : null,
+        electronAPI: typeof window !== 'undefined' ? window.electronAPI : null,
+        localStorage: typeof window !== 'undefined' ? window.localStorage : null,
+        buildSyncPayload: syncCtx?.buildSyncPayload ?? null,
+        getSyncRetentionDays: syncCtx?.getSyncRetentionDays ?? null,
+      }));
     } finally {
       setBusy(false);
     }
@@ -150,6 +161,48 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
               label={t('icloudDiag.localCounts')}
               value={`${report.local.taskCount} / ${report.local.inboxCount}`}
             />
+
+            {/* The cycle's merge, run against the file without applying or
+                writing, through the same comparison the cycle decides by
+                (sync/snapshotMergeExplain.js). "Would write" and "would apply"
+                are what the cycle would do; the merge flags are what the merge
+                said; the two lists are what the result really differs in. A
+                slice that differs on every run with nothing edited is a value
+                that cannot converge. This is how an idle Mac rewriting the file
+                every 15 s got named (2026-10-05). */}
+            {report.merge && !report.merge.error && (
+              <>
+                <Row
+                  label={t('icloudDiag.wouldWrite')}
+                  value={report.merge.wouldWrite ? t('icloudDiag.yes') : t('icloudDiag.no')}
+                  tone={report.merge.wouldWrite ? 'text-amber-600 dark:text-amber-400' : undefined}
+                />
+                <Row
+                  label={t('icloudDiag.wouldApply')}
+                  value={report.merge.wouldApply ? t('icloudDiag.yes') : t('icloudDiag.no')}
+                />
+                <Row
+                  label={t('icloudDiag.mergeFlags')}
+                  value={`${report.merge.remoteChanged ? t('icloudDiag.yes') : t('icloudDiag.no')} / ${report.merge.localChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}`}
+                />
+                <Row
+                  label={t('icloudDiag.fileDiffers')}
+                  value={report.merge.fileDiffs.length ? report.merge.fileDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
+                />
+                <Row
+                  label={t('icloudDiag.deviceDiffers')}
+                  value={report.merge.deviceDiffs.length ? report.merge.deviceDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
+                />
+                {report.merge.flagWithoutDiff && (
+                  <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+                    {t('icloudDiag.flagWithoutDiff')}
+                  </p>
+                )}
+              </>
+            )}
+            {report.merge?.error && (
+              <Row label={t('icloudDiag.mergeError')} value={report.merge.error} />
+            )}
           </div>
 
           {/* Flag the state the user would want to know about but cannot see:

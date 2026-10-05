@@ -42,13 +42,13 @@ const task = (id, title, lastModified) => ({
  * transport over the shared folder. `decided` models the per-device first-run
  * preference the transport owns.
  */
-function mountDevice(name, folder, { tasks = [], decided = true, enabled = true, resetting = false } = {}) {
+function mountDevice(name, folder, { tasks = [], decided = true, enabled = true, resetting = false, mutex = { current: false }, readDelayMs = 0 } = {}) {
   const dev = {
     name, tasks, storage: makeStorage(), folder,
     decided, enabled, resetting,
     applied: [], reads: 0, unavailable: [],
     changedCb: null,
-    mutex: { current: false }, pending: { current: false }, startedAt: { current: 0 },
+    mutex, pending: { current: false }, startedAt: { current: 0 },
   };
   dev.transport = {
     id: `fake-${name}`,
@@ -58,7 +58,13 @@ function mountDevice(name, folder, { tasks = [], decided = true, enabled = true,
     allowsPlaintextReseed: true,
     isSupported: () => true,
     isAvailable: () => true,
-    read: vi.fn(async () => { dev.reads += 1; return folder.text; }),
+    // A real read is an IPC or bridge round trip that settles on a later
+    // task, not in a microtask; readDelayMs models that under fake timers.
+    read: vi.fn(async () => {
+      if (readDelayMs) await new Promise((r) => setTimeout(r, readDelayMs));
+      dev.reads += 1;
+      return folder.text;
+    }),
     write: vi.fn(async (text) => { folder.text = text; folder.writes += 1; return true; }),
     onChanged: (cb) => { dev.changedCb = cb; return () => { dev.changedCb = null; }; },
     kicksOnVisibility: () => false,
@@ -293,6 +299,65 @@ describe('useSnapshotFileSync: scheduling', () => {
     d.mutex.current = false;
     await vi.advanceTimersByTimeAsync(1);
     expect(d.reads).toBe(3);
+  });
+
+  it('guard: two transports polling in step share the mutex; the one skipped runs 2 s later, every tick', async () => {
+    // The desktop case (2026-10-05): iCloud and Direct Access on one Mac, both
+    // polling every 15 s from timers started in the same render. iCloud's
+    // tick fires first and holds the mutex through its read; Direct Access's
+    // tick lands microseconds later. Without the retry it never ran.
+    const mutex = { current: false };
+    const a = mountDevice('A', makeFolder(), { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')], mutex, readDelayMs: 5 });
+    const b = mountDevice('B', makeFolder(), { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')], mutex });
+    globalThis.localStorage = a.storage;
+    a.runEffects();
+    b.runEffects();
+    // Startup: A's cycle is in flight when B's startup kick arrives.
+    expect(b.pending.current).toBe(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(a.reads).toBe(1);
+    expect(b.reads).toBe(0);
+    await vi.advanceTimersByTimeAsync(1_990);
+    expect(b.reads).toBe(1);
+    expect(b.pending.current).toBe(false);
+
+    // Every poll tick collides the same way, and every tick B still runs.
+    for (let tick = 1; tick <= 3; tick += 1) {
+      await vi.advanceTimersByTimeAsync(13_010);
+      expect(a.reads).toBe(1 + tick);
+      expect(b.reads).toBe(tick);
+      await vi.advanceTimersByTimeAsync(1_990);
+      expect(b.reads).toBe(1 + tick);
+    }
+    expect(mutex.current).toBe(false);
+    a.cleanups.forEach((c) => c());
+    b.cleanups.forEach((c) => c());
+  });
+
+  it('a retry that still finds the lock held does not chain; the next poll tick is the next attempt', async () => {
+    const d = mountDevice('K', makeFolder(), { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')] });
+    globalThis.localStorage = d.storage;
+    d.runEffects();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(d.reads).toBe(1);
+
+    // A lock stranded from outside (iOS suspended the app mid-cycle).
+    d.mutex.current = true;
+    await vi.advanceTimersByTimeAsync(15_000); // tick: skipped, retry armed
+    await vi.advanceTimersByTimeAsync(2_000);  // retry: still locked, no second retry
+    d.mutex.current = false;
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(d.reads).toBe(1);
+    await vi.advanceTimersByTimeAsync(11_000); // the next tick runs normally
+    expect(d.reads).toBe(2);
+
+    // A retry armed just before unmount is cancelled with the instance.
+    d.mutex.current = true;
+    await vi.advanceTimersByTimeAsync(15_000);
+    d.cleanups.forEach((c) => c());
+    d.mutex.current = false;
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(d.reads).toBe(2);
   });
 
   it('does not start anything the transport does not support, or in the tray', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   collectICloudDiagnostics,
   classifySnapshot,
+  probeDirectAccess,
   detectPlatform,
   dryRunMerge,
   probeAvailability,
@@ -351,6 +352,82 @@ describe('collectICloudDiagnostics', () => {
     expect(writeICloudSync).not.toHaveBeenCalled();
     expect(iCloudDeleteFile).not.toHaveBeenCalled();
     expect(iCloudWriteFile).not.toHaveBeenCalled();
+  });
+});
+
+// ── probeDirectAccess ──────────────────────────────────────────────────────
+
+const fakeDirectAccess = ({ supported = true, status = 'connected', name = 'GLANCE', enabled = true, read = async () => payload() } = {}) => ({
+  isSupported: () => supported,
+  getSnapshot: () => ({ supported, status, name, enabled, connected: status === 'connected' || status === 'unreachable' }),
+  read: vi.fn(read),
+  write: vi.fn(),
+  deleteSnapshot: vi.fn(),
+});
+
+describe('probeDirectAccess', () => {
+  const data = { tasks: [{ id: 1, title: 'a', lastModified: '2026-10-01T00:00:00.000Z' }], unscheduledTasks: [] };
+  const quiet = (l, r) => ({ data: r, localChanged: false, remoteChanged: false });
+
+  it('is absent on a platform without the bridge, and never reads a folder that is not connected', async () => {
+    expect(await probeDirectAccess({ directAccess: null })).toBeNull();
+    expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
+    const off = fakeDirectAccess({ status: 'disconnected', name: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, snapshot: null, merge: null });
+    expect(off.read).not.toHaveBeenCalled();
+  });
+
+  it('reads the connected folder through the transport and dry-runs the merge on it', async () => {
+    const t = fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) });
+    const r = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data }), merge: quiet });
+    expect(r.status).toBe('connected');
+    expect(r.name).toBe('GLANCE');
+    expect(r.snapshot.state).toBe('present');
+    expect(r.snapshot.taskCount).toBe(1);
+    expect(r.merge).toMatchObject({ wouldWrite: false, wouldApply: false, fileDiffs: [] });
+    expect(t.write).not.toHaveBeenCalled();
+    expect(t.deleteSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('names the slice this device would rewrite, which is the question the panel exists to answer', async () => {
+    const edited = { ...data, tasks: [{ ...data.tasks[0], title: 'b', lastModified: '2026-10-05T01:00:00.000Z' }] };
+    const t = fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) });
+    const r = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data: edited }), merge: (l) => ({ data: l, localChanged: false, remoteChanged: true }) });
+    expect(r.merge.wouldWrite).toBe(true);
+    expect(r.merge.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1)']);
+  });
+
+  it('maps the transport contract: absent, downloading, error, a throwing read, an unreachable folder', async () => {
+    expect((await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => null }) })).snapshot.state).toBe('absent');
+    expect((await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => '{"downloading":true}' }) })).snapshot.state).toBe('downloading');
+    const err = await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => '{"error":"folder unavailable"}' }) });
+    expect(err.snapshot).toMatchObject({ state: 'error', error: 'folder unavailable' });
+    const thrown = await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => { throw new Error('bridge gone'); } }) });
+    expect(thrown.snapshot).toMatchObject({ state: 'error', error: 'bridge gone' });
+    const unreachable = await probeDirectAccess({ directAccess: fakeDirectAccess({ status: 'unreachable', read: async () => '{"error":"ENOENT"}' }) });
+    expect(unreachable.status).toBe('unreachable');
+    expect(unreachable.snapshot.state).toBe('error');
+  });
+
+  it('rides along in the full report, and the text report carries its own block', async () => {
+    const r = await collectICloudDiagnostics({
+      electronAPI: { platform: 'darwin', readICloud: async () => payload() },
+      localStorage: fakeLocalStorage(),
+      buildSyncPayload: () => ({ data }),
+      merge: quiet,
+      directAccess: fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: '2026-10-05T18:00:00.000Z', data }) }),
+    });
+    expect(r.directAccess.status).toBe('connected');
+    const text = formatDiagnosticsReport(r);
+    expect(text).toMatch(/direct access:\s+connected \(GLANCE\)/);
+    expect(text).toMatch(/\n  file:\s+present/);
+    expect(text).toMatch(/\n    lastModified:\s+2026-10-05T18:00:00.000Z/);
+    expect(text).toMatch(/\n  merge dry-run:\s+would write: no \/ would apply: no/);
+
+    const off = formatDiagnosticsReport({ ...r, directAccess: { status: 'disconnected', name: null, enabled: true, snapshot: null, merge: null } });
+    expect(off).toMatch(/direct access:\s+not connected/);
+    expect(off).not.toMatch(/\n  file:/);
+    expect(formatDiagnosticsReport({ ...r, directAccess: null })).not.toMatch(/direct access:/);
   });
 });
 

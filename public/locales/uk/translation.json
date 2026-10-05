@@ -2203,7 +2203,16 @@
     "no": "ні",
     "mergeError": "Помилка пробного злиття",
     "flagWithoutDiff": "Злиття позначило запис, хоча у файлі нічого б не змінилося. Запис пропускається.",
-    "mergeFlags": "Прапорці злиття (запис / застосування)"
+    "mergeFlags": "Прапорці злиття (запис / застосування)",
+    "directAccessTitle": "Тека Direct Access",
+    "folder": "Тека",
+    "folderStatus": "Стан теки",
+    "folderState": {
+      "connected": "підключено",
+      "disconnected": "не підключено",
+      "unreachable": "недоступна",
+      "unknown": "невідомо"
+    }
   },
   "icloudFirstRun": {
     "title": "У iCloud знайдено дані",

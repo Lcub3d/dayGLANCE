@@ -2104,7 +2104,16 @@
     "no": "否",
     "mergeError": "合并试运行出错",
     "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。该写入将被跳过。",
-    "mergeFlags": "合并标志（写入 / 应用）"
+    "mergeFlags": "合并标志（写入 / 应用）",
+    "directAccessTitle": "Direct Access 文件夹",
+    "folder": "文件夹",
+    "folderStatus": "文件夹状态",
+    "folderState": {
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "unreachable": "无法访问",
+      "unknown": "未知"
+    }
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",

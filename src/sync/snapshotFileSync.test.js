@@ -388,6 +388,19 @@ describe('guard: the merge flags are necessary, not sufficient', () => {
     expect(written(t2).data.tasks[0].title).toBe('renamed');
   });
 
+  it('guard: an order-only difference from the file writes nothing', async () => {
+    const fileData = data([task('a'), task('b')]);
+    const localData = data([task('b'), task('a')]);
+    const transport = makeTransport({ read: async () => envelope(fileData) });
+    const io = makeIo({
+      buildSyncPayload: () => ({ version: 2, data: localData }),
+      mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true }),
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome.wrote).toBe(false);
+    expect(transport.write).not.toHaveBeenCalled();
+  });
+
   it('an apply flag with nothing differing from local state applies nothing', async () => {
     const transport = makeTransport({ read: async () => envelope(remote) });
     const io = makeIo({

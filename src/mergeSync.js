@@ -3,6 +3,7 @@
 // mergeTaskArrays pins timestampField rather than re-exporting the alias
 // directly (which would default to `updatedAt`).
 import { mergeArrayById, mergeSyncData as upstreamMergeSyncData, pruneTombstones } from '@glance-apps/sync';
+import { canonicalJson } from './sync/snapshotMergeExplain.js';
 import { mergeDeferrals } from './utils/deferrals.js';
 import { mergePlanTrail, sameTrail } from './utils/planTrail.js';
 import {
@@ -18,8 +19,55 @@ import { containObsidianGhostRows } from './utils/obsidianGhostRows.js';
 import { mergeDayWindowMaps, dayWindowMapsEqual, migrateDayWindows } from './sync/dayWindowSync.js';
 import { mergeJoboCollections } from './jobo/ledger.js';
 
-export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) =>
-  mergeArrayById(local, remote, deletedIds, syncHorizon, { timestampField: 'lastModified' });
+/**
+ * Resolves the one case the id-keyed merge cannot: the same id on both sides
+ * with EQUAL timestamps and DIFFERENT content. The upstream merge keeps the
+ * local copy there, which is fine between a device and a server (the server
+ * is one copy) and never converges between two devices sharing a file: each
+ * writes its own copy, reads the other's, keeps its own, writes again. Two
+ * Macs did exactly that over a Nextcloud folder for most of an hour
+ * (2026-10-05), on two Obsidian-imported inbox tasks whose bookkeeping fields
+ * (not edit-stamped by design, utils/stampTimestamps.js) had drifted while one
+ * Mac was cut off from the vault.
+ *
+ * The pick is a total order on content (the canonical JSON that sorts lower),
+ * so both devices choose the same copy whichever side they see it from, and
+ * choosing it twice changes nothing. Equal stamps mean no user edit separates
+ * the copies, only bookkeeping either device re-derives, so which copy wins
+ * matters less than that they agree.
+ *
+ * @returns {{merged: Array, localChanged: boolean, remoteChanged: boolean}}
+ */
+export function breakTimestampTies(merged, local, remote, tsField = 'lastModified') {
+  const byId = (list) => new Map((list || []).filter((t) => t && t.id !== undefined).map((t) => [String(t.id), t]));
+  const localById = byId(local);
+  const remoteById = byId(remote);
+  let localChanged = false;
+  let remoteChanged = false;
+  const out = (merged || []).map((item) => {
+    if (!item || item.id === undefined) return item;
+    const l = localById.get(String(item.id));
+    const r = remoteById.get(String(item.id));
+    if (!l || !r) return item;
+    if (new Date(l[tsField] || 0).getTime() !== new Date(r[tsField] || 0).getTime()) return item;
+    const cl = canonicalJson(l);
+    const cr = canonicalJson(r);
+    if (cl === cr) return item;
+    const pick = cl < cr ? l : r;
+    if (pick === r) localChanged = true; else remoteChanged = true;
+    return pick;
+  });
+  return { merged: out, localChanged, remoteChanged };
+}
+
+export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) => {
+  const r = mergeArrayById(local, remote, deletedIds, syncHorizon, { timestampField: 'lastModified' });
+  const t = breakTimestampTies(r.merged, local, remote);
+  return { merged: t.merged, localChanged: r.localChanged || t.localChanged, remoteChanged: r.remoteChanged || t.remoteChanged };
+};
+
+/** The id-keyed lists the upstream merge resolves by lastModified. */
+const TIMESTAMPED_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks', 'todayRoutines'];
 
 // mergeSyncData (since @glance-apps/sync v1.3.0) merges the multi-user roster
 // (`users`, last-write-wins per user keyed by `syncId`) while deliberately
@@ -269,6 +317,15 @@ const tombstoneMapsEqual = (a = {}, b = {}) => {
  */
 export const mergeSyncData = (local, remote, retentionDays) => {
   const result = upstreamMergeSyncData(local, remote, retentionDays);
+  // Equal-stamp ties converge on one copy (breakTimestampTies). Runs before
+  // the carries below so a sticky field is restored onto the picked copy.
+  for (const key of TIMESTAMPED_LISTS) {
+    if (!Array.isArray(result.data?.[key])) continue;
+    const t = breakTimestampTies(result.data[key], local?.[key], remote?.[key]);
+    result.data[key] = t.merged;
+    if (t.localChanged) result.localChanged = true;
+    if (t.remoteChanged) result.remoteChanged = true;
+  }
   // Tombstone GC is its OWN fixed 60-day policy (src/sync/tombstoneRetention.js),
   // NOT the user's "Keep past events" window (retentionDays). The upstream merge
   // prunes completedTaskUids at retentionDays; that is overridden below too

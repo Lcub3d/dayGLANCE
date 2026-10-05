@@ -33,13 +33,58 @@ export const ICLOUD_POLL_MS = 15 * 1000;
  */
 export const ICLOUD_WRITE_THROTTLE_MS = 5000;
 
+/**
+ * How long a non-current local copy is waited out before the transport reads
+ * the bytes the device already holds.
+ *
+ * ICloudBridge.readSync answers {"downloading":true} whenever a newer version
+ * exists remotely and has not finished arriving, and the cycle skips until it
+ * has. That is right for seconds and wrong for minutes: on 2026-10-05 an idle
+ * Mac rewriting the file every cycle kept a phone in that state for twelve
+ * minutes, and every edit made on the phone in that window reached nobody.
+ * Past this window the transport asks the bridge for the last fully downloaded
+ * version (iOS `.downloaded`), the cycle merges the device's edits into it and
+ * writes, and the next successful download merges again. The union merge is
+ * built for a stale base; the cost is one extra write. A file with no bytes
+ * at all (`.notDownloaded`, a .icloud stub) still reports downloading.
+ */
+export const ICLOUD_DOWNLOAD_GRACE_MS = 2 * 60 * 1000;
+
+const isDownloadingSentinel = (str) => {
+  if (typeof str !== 'string' || !str.startsWith('{')) return false;
+  try { return JSON.parse(str)?.downloading === true; } catch { return false; }
+};
+
 const isElectronMac = () =>
   typeof window !== 'undefined' &&
   !!(window.electronAPI?.isElectron && window.electronAPI?.platform === 'darwin');
 
-export function createICloudSnapshotTransport() {
+/**
+ * @param {object} [deps]
+ * @param {() => number} [deps.now]
+ * @param {number} [deps.downloadGraceMs]
+ */
+export function createICloudSnapshotTransport({ now = Date.now, downloadGraceMs = ICLOUD_DOWNLOAD_GRACE_MS } = {}) {
   const onIOS = () => isNativeIOS();
   const onMac = () => !onIOS() && isElectronMac();
+  // Epoch ms of the first consecutive cycle that found the copy non-current, or 0.
+  let downloadingSince = 0;
+
+  const readIOS = () => {
+    const fresh = window.DayGlanceNative.readICloudSync();
+    if (!isDownloadingSentinel(fresh)) {
+      downloadingSince = 0;
+      return fresh;
+    }
+    const t = now();
+    if (!downloadingSince) downloadingSince = t;
+    if (t - downloadingSince < downloadGraceMs) return fresh;
+    // Stalled past the window: take the last downloaded version if there is one.
+    const stale = window.DayGlanceNative.readICloudSync(true);
+    if (!stale || isDownloadingSentinel(stale)) return fresh;
+    console.warn(`[icloud] download stalled for ${Math.round((t - downloadingSince) / 1000)} s; merging into the last downloaded copy`);
+    return stale;
+  };
 
   return {
     id: 'icloud',
@@ -67,9 +112,9 @@ export function createICloudSnapshotTransport() {
       return onMac();
     },
 
-    read: async () => (onIOS()
-      ? window.DayGlanceNative.readICloudSync()
-      : await window.electronAPI.readICloud()),
+    // macOS answers downloading only for a .icloud stub, which has no bytes to
+    // fall back to, so the bounded wait applies to iOS alone.
+    read: async () => (onIOS() ? readIOS() : await window.electronAPI.readICloud()),
 
     write: async (text) => {
       if (onIOS()) {

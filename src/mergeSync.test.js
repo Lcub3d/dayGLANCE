@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { mergeTaskArrays, mergeRoutineDefinitions, mergeDailyNotes, mergeHabits, mergeHabitLogs, mergeRoutineCompletions, mergeSyncData, mergeCalendarConfigByUser } from './mergeSync.js';
+import { mergeTaskArrays, mergeRoutineDefinitions, mergeDailyNotes, mergeHabits, mergeHabitLogs, mergeRoutineCompletions, mergeSyncData, mergeCalendarConfigByUser, breakTimestampTies } from './mergeSync.js';
+import { sliceDiffs } from './sync/snapshotMergeExplain.js';
 
 // Helpers to create task fixtures with timestamps
 const T = (id, title, lastModified, extra = {}) => ({
@@ -51,14 +52,36 @@ describe('mergeTaskArrays', () => {
     expect(remoteChanged).toBe(true);
   });
 
-  it('prefers local on equal timestamps', () => {
+  it('keeps local on equal timestamps when the copies are the same', () => {
     const time = ts(5);
-    const local  = [T(1, 'Local ver', time)];
-    const remote = [T(1, 'Remote ver', time)];
+    const local  = [T(1, 'Same', time)];
+    const remote = [T(1, 'Same', time)];
     const { merged, localChanged, remoteChanged } = mergeTaskArrays(local, remote, {});
-    expect(merged[0].title).toBe('Local ver');
+    expect(merged[0]).toBe(local[0]);
     expect(localChanged).toBe(false);
     expect(remoteChanged).toBe(false);
+  });
+
+  it('guard: breaks an equal-timestamp tie between DIFFERENT copies the same way from either side', () => {
+    // Two devices sharing a file, each holding its own copy with the same
+    // stamp (bookkeeping fields are not edit-stamped). "Keep local" on both
+    // sides never converges; the pick must not depend on which side is local.
+    const time = ts(5);
+    const a = T(1, 'x', time, { obsidianClearedTime: '09:00' });
+    const b = T(1, 'x', time, { obsidianClearedTime: null });
+    const fromA = mergeTaskArrays([a], [b], {});
+    const fromB = mergeTaskArrays([b], [a], {});
+    expect(fromA.merged[0]).toEqual(fromB.merged[0]);
+    // Exactly one side is told it changed, and it is the side that lost.
+    const winner = fromA.merged[0];
+    expect(fromA.localChanged).toBe(winner !== a);
+    expect(fromA.remoteChanged).toBe(winner !== b);
+    expect(fromB.localChanged).toBe(winner !== b);
+    expect(fromB.remoteChanged).toBe(winner !== a);
+    // Idempotent: merging the pick with either original changes nothing.
+    expect(mergeTaskArrays([winner], [a], {}).merged[0]).toEqual(winner);
+    expect(mergeTaskArrays([winner], [b], {}).merged[0]).toEqual(winner);
+    expect(breakTimestampTies([a], [a], [b]).merged[0]).toEqual(winner);
   });
 
   // ── The core user scenario ──────────────────────────────────────
@@ -131,6 +154,25 @@ describe('mergeSyncData', () => {
     syncUrl: null, taskCalendarUrl: null,
     routineDefinitions: {}, todayRoutines: [], routinesDate: '',
     minimizedSections: {}, use24HourClock: false
+  });
+
+  it('SCENARIO (2026-10-05): two Macs over one folder converge on equal-stamp copies instead of trading rewrites', () => {
+    // Both hold an Obsidian-imported inbox task with the same stamp and
+    // different bookkeeping. The desktop writes the file; the laptop merges
+    // it, then the desktop merges the laptop's write. After one round trip
+    // neither side differs from the file in that slice.
+    const time = ts(30);
+    const desktop = { ...emptyData(), unscheduledTasks: [T('obsidian-dg-oqsfaoi1', 'Call', time, { obsidianClearedTime: '09:00', importSource: 'obsidian' })] };
+    const laptop  = { ...emptyData(), unscheduledTasks: [T('obsidian-dg-oqsfaoi1', 'Call', time, { obsidianClearedTime: null, importSource: 'obsidian' })] };
+
+    const file1 = mergeSyncData(desktop, desktop, 90).data;        // desktop's write
+    const onLaptop = mergeSyncData(laptop, file1, 90);              // laptop reads it
+    const file2 = onLaptop.data;                                    // whatever the laptop would write
+    const onDesktop = mergeSyncData(desktop, file2, 90);            // desktop reads that
+    expect(onDesktop.data.unscheduledTasks[0]).toEqual(onLaptop.data.unscheduledTasks[0]);
+    expect(sliceDiffs(onDesktop.data, file2).filter((d) => d.key === 'unscheduledTasks')).toEqual([]);
+    expect(sliceDiffs(onLaptop.data, file1).filter((d) => d.key === 'unscheduledTasks').length)
+      .toBe(onLaptop.data.unscheduledTasks[0].obsidianClearedTime === '09:00' ? 0 : 1); // the laptop wrote only if it lost
   });
 
   it('merges two empty datasets with no changes', () => {

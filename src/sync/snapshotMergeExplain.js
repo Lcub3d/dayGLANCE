@@ -84,25 +84,28 @@ export function describeSliceDiff(key, merged, other) {
     const byId = (list) => new Map(list.filter((x) => x && x.id !== undefined).map((x) => [String(x.id), x]));
     const m = byId(merged);
     const o = byId(other);
-    let changed = 0;
-    let onlyMerged = 0;
-    let onlyOther = 0;
+    // Name up to five ids per group: a report that says "-1 only on other
+    // side" without the id cannot be acted on (an Android inbox task the merge
+    // kept dropping, 2026-10-06).
+    const sample = (ids) => (ids.length ? ` (${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', …' : ''})` : '');
     const changedIds = [];
+    const onlyMergedIds = [];
+    const onlyOtherIds = [];
     for (const [id, item] of m) {
-      if (!o.has(id)) { onlyMerged += 1; continue; }
-      if (canonicalJson(item) !== canonicalJson(o.get(id))) {
-        changed += 1;
-        if (changedIds.length < 5) changedIds.push(id);
-      }
+      if (!o.has(id)) { onlyMergedIds.push(id); continue; }
+      if (canonicalJson(item) !== canonicalJson(o.get(id))) changedIds.push(id);
     }
-    for (const id of o.keys()) if (!m.has(id)) onlyOther += 1;
+    for (const id of o.keys()) if (!m.has(id)) onlyOtherIds.push(id);
+    const changed = changedIds.length;
+    const onlyMerged = onlyMergedIds.length;
+    const onlyOther = onlyOtherIds.length;
     const orderDiffers = changed === 0 && onlyMerged === 0 && onlyOther === 0
       && merged.map((x) => String(x?.id)).join('\u0000') !== other.map((x) => String(x?.id)).join('\u0000');
     if (!changed && !onlyMerged && !onlyOther && !orderDiffers) return null;
     const parts = [];
-    if (changed) parts.push(`${changed} changed${changedIds.length ? ` (${changedIds.join(', ')}${changed > changedIds.length ? ', …' : ''})` : ''}`);
-    if (onlyMerged) parts.push(`+${onlyMerged} only in result`);
-    if (onlyOther) parts.push(`-${onlyOther} only on other side`);
+    if (changed) parts.push(`${changed} changed${sample(changedIds)}`);
+    if (onlyMerged) parts.push(`+${onlyMerged} only in result${sample(onlyMergedIds)}`);
+    if (onlyOther) parts.push(`-${onlyOther} only on other side${sample(onlyOtherIds)}`);
     if (orderDiffers) parts.push('order differs');
     return { key, kind: orderDiffers && parts.length === 1 ? 'order' : 'items', summary: `${key}: ${parts.join(', ')}` };
   }

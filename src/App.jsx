@@ -6228,6 +6228,13 @@ const DayPlanner = () => {
     // — that resurrects a task deleted on another device (the seed-task ping-pong).
     // See utils/rescueUnsyncedTasks.js.
     const rescueDeletedIds = data.deletedTaskIds || {};
+    // The merge's fence, for the horizon guard: a prev-only task the payload
+    // would have sent, older than this, was dropped by the merge as a zombie
+    // (tombstone pruned); rescuing it re-applied every cycle (2026-10-06).
+    const rescueOpts = {
+      horizon: data.tombstonePrunedBefore || null,
+      isGoverned: (t) => !t._native && keepImportedTask(t, multiUserEnabled),
+    };
     // Obsidian tasks are rescuable (re-derived from the local vault), but a
     // genuinely vault-deleted one must stay gone — honor its deletedObsidianKeys
     // tombstone. See utils/rescueUnsyncedTasks.js (the ala7ur flicker fix).
@@ -6243,10 +6250,10 @@ const DayPlanner = () => {
     // reconcile already resolved, and rescuing it undid that move every cycle
     // (utils/rescueUnsyncedTasks.js, the cross-list guard).
     if (normalizedTasks) setTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
       retiredRecord, retiredLiveIds));
     if (normalizedUnsched) setUnscheduledTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
       retiredRecord, retiredLiveIds));
     if (data.unscheduledOrderTimestamp) {
       setUnscheduledOrderTimestamp(data.unscheduledOrderTimestamp);

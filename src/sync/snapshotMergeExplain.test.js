@@ -26,7 +26,7 @@ describe('describeSliceDiff', () => {
   it('matches id collections by id and names the changed ids', () => {
     const d = describeSliceDiff('tasks', [task(1, { title: 'new' }), task(2), task(3)], [task(1), task(2), task(4)]);
     expect(d.kind).toBe('items');
-    expect(d.summary).toBe('tasks: 1 changed (1), +1 only in result, -1 only on other side');
+    expect(d.summary).toBe('tasks: 1 changed (1), +1 only in result (3), -1 only on other side (4)');
   });
 
   it('reports a pure reorder as order, not as items', () => {

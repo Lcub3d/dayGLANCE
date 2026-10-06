@@ -44,12 +44,22 @@
 // an id the merge placed somewhere is governed by the merge, and its absence
 // from THIS list is a move, not a loss.
 //
-// KNOWN BOUNDARY (not a flaw): a tombstone only lives 60 days (the fence/GC window,
-// src/sync/tombstoneRetention.js). A device offline longer than 60 days still holds
-// the task in `prev`, its tombstone has been GC'd, and the fence-suppressed merged
-// set lacks it — so the guard can't fire and the re-add resurrects it. This is the
-// same 60-day limit the resurrection fence has, inherent to a finite tombstone
-// policy, not specific to this rescue.
+// THE HORIZON GUARD (2026-10-06, the Android ghost): a tombstone only lives 60
+// days (src/sync/tombstoneRetention.js). A device offline longer than that still
+// holds the task in `prev`, its tombstone has been GC'd, and the merge drops the
+// task by its own fence (a local-only task older than the remote's
+// `tombstonePrunedBefore` is presumed deleted elsewhere, not uploaded). The
+// tombstone guard above cannot fire, so the rescue re-added it, the next cycle's
+// merge dropped it again, and the apply ran every 15 s forever: a phone that had
+// not synced since June held one inbox task the rest of the fleet had deleted
+// months before, and the diagnostics showed "would apply: YES" on every check.
+// This used to be documented here as a known boundary. It is closed by giving
+// the rescue the same fence the merge uses: a prev-only task the merge GOVERNS
+// (one buildSyncPayload would have sent: not native, and not an import the
+// payload excludes) whose lastModified is older than `horizon` is not rescued.
+// Device-only tasks the payload never carries (native rows, excluded imports)
+// are re-provided by their own source and are not subject to it; nor is
+// anything when the caller has no horizon to offer.
 
 import { isObsidianTombstoned } from './obsidianDeletions.js';
 
@@ -69,6 +79,13 @@ export const isDefaultRescuable = (t) =>
  * @param {Set<string>} [liveIds]  ids live ANYWHERE in the incoming result (both task
  *   lists and the recycle bin); a prev-only copy of one of these is a cross-list move
  *   the merge already resolved, never a loss to rescue.
+ * @param {object} [opts]
+ * @param {Date|string|null} [opts.horizon]  the merge's fence (the remote's
+ *   `tombstonePrunedBefore`); a governed prev-only task older than it is presumed
+ *   deleted elsewhere with its tombstone pruned, and is NOT rescued. Null → no fence.
+ * @param {(t:object)=>boolean} [opts.isGoverned]  which tasks the merge governs
+ *   (buildSyncPayload would have sent them); only these are subject to the horizon.
+ *   Default: everything but `_native` rows.
  * @returns {object[]} mergedList followed by the rescued (untombstoned) prev-only tasks
  */
 export function rescueUnsyncedTasks(
@@ -78,11 +95,13 @@ export function rescueUnsyncedTasks(
   isRescuable = isDefaultRescuable,
   obsidianTombstones = {},
   liveIds = null,
+  { horizon = null, isGoverned = (t) => !t._native } = {},
 ) {
   const merged = Array.isArray(mergedList) ? mergedList : [];
   const mergedIds = new Set(merged.map((t) => String(t.id)));
   const tombstoned = deletedIds || {};
   const obsidianTombs = obsidianTombstones || {};
+  const fence = horizon ? new Date(horizon).getTime() : NaN;
   const rescued = (Array.isArray(prevList) ? prevList : []).filter((t) => {
     if (!t) return false;
     const id = String(t.id);
@@ -90,6 +109,9 @@ export function rescueUnsyncedTasks(
     if (liveIds && liveIds.has(id)) return false; // live in another list of the result: a move, not a loss
     if (!isRescuable(t)) return false;            // merge governs this task — an absence is a real delete
     if (tombstoned[id]) return false;             // deleted elsewhere (in-app / DB) — stay deleted
+    // Older than the fence and governed by the merge: the merge dropped it as a
+    // zombie (its tombstone is gone), and rescuing it would start the loop.
+    if (!Number.isNaN(fence) && isGoverned(t) && new Date(t.lastModified || 0).getTime() < fence) return false;
     // A vault-deleted Obsidian task stays deleted (LWW: deletion at least as new
     // as the task). A re-created / still-note-backed task (newer than any deletion)
     // is kept.

@@ -6,7 +6,9 @@ and leaves moving that folder between devices to whatever already does so:
 Google Drive for desktop, Dropbox, OneDrive, Syncthing, a Nextcloud client, or
 a plain network share.
 
-This document is the design and the phased plan. Phase 1 is the refactor that
+This document is the design and the phased plan. Phases 1 and 2 are merged;
+3 and 4 are built and awaiting device tests; 5 and 6 are designed below.
+Phase 1 is the refactor that
 makes the rest possible; each later phase is its own branch and PR.
 
 ## Where it fits
@@ -225,7 +227,124 @@ iCloud users see the same cycles, the same prompt, the same keys.
   (`src/sync/directAccessNativeBridge.js`, shared with Android) accepts both.
 - The iOS foreground event now kicks the Direct Access cycle as well as iCloud.
 
-### Phase 5 (optional, any order)
+### Phase 5: multi-user over Direct Access
+
+Phase 2 made a connected folder count as configured sync, so the multi-user
+toggle unlocks and the roster that rides inside the snapshot (`users`, merged
+last-writer-wins per `syncId` by `mergeSyncData`) travels with everything
+else. What it left out is the household roster file, `glance-users.json`,
+which is how two people on two *different* apps or accounts agree on who is in
+the household: today it syncs over WebDAV (`syncSharedUsers`) or iCloud Drive
+(`syncSharedUsersViaICloud`), and the "Sync household roster" button and the
+automatic roster sync in `App.jsx` know only those two. A device whose only
+tier is Direct Access unlocks multi-user and then has no roster sync. A shared
+Nextcloud, Drive or Syncthing folder is exactly the shared destination iCloud
+cannot be (`multiUserICloudOnly`), so this tier has to carry the roster.
+
+- **One file, same wire format, same place.** `glance-users.json` in
+  lastGLANCE's wire schema (`id` = sync id), at `usersPath` relative to the
+  picked folder, default `GLANCE/users/`, exactly where the WebDAV tier puts
+  it relative to its root. A sibling app pointed at the same folder reads the
+  same roster with no translation. Plaintext, as on WebDAV and iCloud: names
+  and ids only.
+- **The bridges learn relative paths.** Every Direct Access bridge today reads,
+  writes and deletes one fixed file. Each gains the same five path-taking
+  operations the iCloud intents transport has (`listFiles`, `readFile`,
+  `writeFile`, `deleteFile`, `makeDir`), confined to the picked folder: a path
+  that escapes it (`..`, an absolute path) is refused in the bridge, not in the
+  renderer, on all three platforms. Electron is `path.resolve` plus a prefix
+  check; Android walks `DocumentFile` children under the tree; iOS resolves
+  under the bookmark and keeps the coordinated I/O. The single-file snapshot
+  calls stay as they are. A fake bridge in `src/sync/` exercises the contract
+  once for all three.
+- **`syncSharedUsersViaDirectAccess(usersPath, localUsers)`** in
+  `src/intents/sharedUsers.js`, a copy of the iCloud one over the Direct
+  Access bridge: read, `mergeUsers`, write (make the directory on a failed
+  write, as the iCloud one does). Null when no folder is connected or the
+  transport is unreachable.
+- **Gates and wiring.** `canSyncUserRoster` and `multiUserUnavailableReason`
+  take `directAccessConnected`; the button prefers WebDAV, then Direct Access,
+  then iCloud, and the automatic roster sync effect runs the Direct Access one
+  whenever a folder is connected, keyed on its last-synced stamp the way the
+  WebDAV one is keyed on `cloudSyncLastSynced`.
+- **Tests.** `sharedUsers.test.js` over the fake bridge: first writer seeds,
+  second merges, a tombstoned user stays gone, an unreachable folder is null
+  and writes nothing; the gate tests gain the Direct Access rows; a scenario
+  with two devices on one folder converging their rosters; and the path
+  confinement mutation-checked on the Electron store (the only bridge that
+  runs here).
+- **Acceptance on devices.** Two Macs on the Nextcloud folder with WebDAV off:
+  add a household member on one, press the button on the other, see the
+  member. Then the same without the button.
+
+### Phase 6: intents over Direct Access, and the sibling apps
+
+Intents (`docs/tasker-intents-architecture.md`) are how the GLANCE apps talk
+to each other: one envelope file per event, written by the sender into an
+events folder and polled by the receiver, with a cursor so nothing is handled
+twice and a garbage collector that deletes expired files. There are four
+transports today: Android broadcasts, the WebDAV event log, the vault, and
+iCloud Drive files under `GLANCE/events/`. Direct Access gives a folder, which
+is the one thing the iCloud transport needs, so it becomes the fifth. This is
+the larger phase, because a transport nobody else can read is pointless:
+lastGLANCE and lifeGLANCE have to gain the Direct Access tier too.
+
+**6a. dayGLANCE.**
+
+- **Extract the folder transport once.** The iCloud intents code is already
+  split into an adapter (`icloudFileTransport.js`: the five operations) and
+  logic that only knows the adapter: `writeEventFileICloud`, the receive loop
+  in `useIntentPoller.js`, `runIntentGCICloud`, `icloudDeliverer`. Lift that
+  logic into `src/intents/folderIntents.js`, parameterised on an adapter, and
+  instantiate it twice: iCloud, and Direct Access over the Phase 5 bridge
+  operations. Same filenames (`filenameFor(envelope)`), same envelope, same
+  cursor key per transport, same retention. The iCloud instance keeps its
+  one difference, refusing encrypted envelopes; the Direct Access instance
+  takes the WebDAV posture, plaintext unless passphrase encryption is on,
+  because the folder is someone else's cloud.
+- **A fifth outbox target.** `emitTargets` adds `directAccess` when a folder
+  is connected and the new "Direct Access intents" switch is on; the outbox
+  deliverer map gains the deliverer; the poller runs the receive loop for it
+  on the same tick as the others. The switch sits beside "iCloud intents" and
+  "GLANCEvault intents" in Settings, independent of the sync switch, and
+  saving reloads the app so the poller restarts, as the vault one does.
+- **Tests.** `folderIntents.test.js` runs the whole emit → file → receive →
+  handle → GC path over a fake adapter, once per instance; the deliverer
+  tests gain the Direct Access rows (transient when the folder is unreachable,
+  held when encryption is on and the key is not ready); a scenario with two
+  fake devices on one folder where an intent emitted on one is handled once
+  on the other and the file is collected after retention.
+- **Acceptance.** A `create` intent from a Mac reaches dayGLANCE on Android
+  through the Nextcloud folder and FolderSync, and the event file is gone
+  after retention.
+
+**6b. lastGLANCE, then 6c. lifeGLANCE.** Each needs the tier before the
+transport, in this order:
+
+1. **The folder bridge.** The five operations plus `pickFolder`, `status`,
+   `disconnect`, with the same read classification (`absent` only when the
+   folder is there and the file is not; a zero-length file is a placeholder,
+   never absent; a vanished folder or revoked grant is an error). lastGLANCE
+   is Capacitor, so this is a small custom plugin wrapping the same Kotlin
+   (SAF tree, `SafeReplace`) and Swift (security-scoped bookmark, coordinated
+   I/O) that dayGLANCE's shells carry; the porting notes in the Tasker doc's
+   section 8 apply unchanged. Electron is `electron/directAccessStore.ts` as
+   is.
+2. **Snapshot sync through the folder**, using `snapshotFileSync.js` and the
+   transport pattern, so the sibling's own data syncs there too and the
+   first-run and seed guards come with it. The cycle is pure and has no
+   dayGLANCE in it; it belongs in `@glance-apps/sync` beside the merge the
+   siblings already share, and this is the point to move it.
+3. **The roster** (Phase 5's file, same path) and **the intents transport**
+   (6a's module, same adapter contract). Both are app-independent by
+   construction; a sibling adds its own switch and its own cursor key.
+
+**Acceptance for the phase:** three apps on one folder. A task created in
+dayGLANCE on Android appears as an intent in lastGLANCE on a Mac, the
+household roster edited in lifeGLANCE shows in both others, and an idle hour
+leaves every file's modified time where it was.
+
+### Phase 7 (optional, any order)
 
 - Passphrase encryption for the Direct Access file, including the key-readiness
   gate in `useCloudSync.js`.

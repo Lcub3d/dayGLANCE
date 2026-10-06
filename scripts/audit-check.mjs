@@ -72,6 +72,19 @@ const ACK = {
     reason: 'max-stale handling can serve one user\'s cached response to another. Only the desktop packager uses it, to download Electron on the build machine: a single user, no shared cache. No patched version (all <=4.2.0).',
     review: '2026-11-30',
   },
+  // Published 2026-10-06. GHSA-68fv-2mgg-jv7q (source-map-js, via postcss) is
+  // FIXED by the package.json override to ^1.2.2 (postcss 8.5 asks for
+  // ^1.2.1, so the pin is in-major). These two have no in-major fix:
+  'GHSA-rj75-hqrm-r3gf': {
+    disposition: 'accept', pkg: 'postcss-selector-parser (via tailwindcss 3: postcss-nested)',
+    reason: 'Quadratic selector parsing can exhaust CPU. Tailwind 3 runs at build time over our own stylesheets, never over outside input. The fix is 7.1.6, a major above the ^6 tailwindcss 3 depends on; revisit with the tailwind 4 upgrade.',
+    review: '2026-12-31',
+  },
+  'GHSA-hp3w-g68c-fv3c': {
+    disposition: 'accept', pkg: 'sprintf-js (via electron-builder: @electron/get, global-agent, roarr)',
+    reason: 'Unbounded precision specifiers in a format string can hang the process. Only the desktop packager\'s logger uses it, on the build machine, with its own format strings. No patched version (every release affected).',
+    review: '2026-12-31',
+  },
 };
 
 const res = spawnSync('npm', ['audit', '--json'], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });

@@ -2113,7 +2113,9 @@
       "disconnected": "nicht verbunden",
       "unreachable": "nicht erreichbar",
       "unknown": "unbekannt"
-    }
+    },
+    "titleFolder": "Sync-Diagnose",
+    "hintFolder": "Nur lesend. Zeigt, was dieses Gerät gerade im Direct-Access-Ordner sieht. Nichts wird geschrieben, gelöscht oder synchronisiert."
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",

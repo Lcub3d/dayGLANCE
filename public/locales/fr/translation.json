@@ -2113,7 +2113,9 @@
       "disconnected": "non connecté",
       "unreachable": "inaccessible",
       "unknown": "inconnu"
-    }
+    },
+    "titleFolder": "Diagnostic de synchronisation",
+    "hintFolder": "Lecture seule. Indique ce que cet appareil voit actuellement dans le dossier Direct Access. Rien n'est écrit, supprimé ni synchronisé."
   },
   "icloudFirstRun": {
     "title": "Données trouvées dans iCloud",

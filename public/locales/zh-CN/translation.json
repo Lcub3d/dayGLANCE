@@ -2113,7 +2113,9 @@
       "disconnected": "未连接",
       "unreachable": "无法访问",
       "unknown": "未知"
-    }
+    },
+    "titleFolder": "同步诊断",
+    "hintFolder": "只读。显示此设备当前在 Direct Access 文件夹中看到的内容。不会写入、删除或同步任何内容。"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",

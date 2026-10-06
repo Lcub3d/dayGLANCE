@@ -979,20 +979,24 @@ const SettingsModal = () => {
                       {/* Apple platforms only — on Android/web every probe reports
                           unsupported, so the panel would be an empty box. */}
                       {isICloudAvailable() && (
-                        <>
-                          <ICloudSyncToggle
-                            darkMode={darkMode}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderClass={borderClass}
-                          />
-                          <ICloudDiagnostics
-                            darkMode={darkMode}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderClass={borderClass}
-                          />
-                        </>
+                        <ICloudSyncToggle
+                          darkMode={darkMode}
+                          textPrimary={textPrimary}
+                          textSecondary={textSecondary}
+                          borderClass={borderClass}
+                        />
+                      )}
+                      {/* Wherever a file transport exists: the panel reads the iCloud
+                          container on Apple platforms and the Direct Access folder on any
+                          platform with the bridge, so an Android device on a folder gets
+                          the same dry run the Macs have (docs/direct-access-sync.md). */}
+                      {(isICloudAvailable() || isDirectAccessSupported()) && (
+                        <ICloudDiagnostics
+                          darkMode={darkMode}
+                          textPrimary={textPrimary}
+                          textSecondary={textSecondary}
+                          borderClass={borderClass}
+                        />
                       )}
                       {/* Desktop only — the Electron main process holds the folder
                           (docs/direct-access-sync.md). */}

@@ -85,10 +85,18 @@ describe('rescueUnsyncedTasks', () => {
       expect(out.map((t) => t.id)).toEqual(['a', 'os', 'cal']);
     });
 
-    it('a task with no lastModified at all counts as older than any horizon', () => {
-      const prev = [{ id: 'stampless', title: 'x', importSource: 'obsidian' }];
+    it('guard: an UNSTAMPED task is not old — a missing stamp or the epoch sentinel is exempt from the fence', () => {
+      // A fresh Obsidian import carries lastModified = epoch on purpose
+      // (obsidian.js), and a bridge inbound row likewise. The file tier will
+      // not upload it (its fence reads 1970 as ancient), so it is prev-only
+      // every cycle while the vault carries it to the fleet. It must survive
+      // the apply, exactly as it did before the horizon guard existed.
+      const prev = [
+        { id: 'fresh-note', title: 'x', importSource: 'obsidian', lastModified: new Date(0).toISOString() },
+        { id: 'stampless', title: 'y', importSource: 'obsidian' },
+      ];
       const out = rescueUnsyncedTasks(merged('a'), prev, {}, undefined, {}, null, { horizon });
-      expect(out.map((t) => t.id)).toEqual(['a']);
+      expect(out.map((t) => t.id)).toEqual(['a', 'fresh-note', 'stampless']);
     });
 
     it('the loop: with the guard the second apply has nothing left to rescue', () => {

@@ -188,7 +188,40 @@ export function readSyncTransports({ localStorage } = {}) {
       // than imported so this module stays injectable and testable.
       configured: !!(vaultCfg?.enabled && vaultCfg?.vaultUrl && vaultCfg?.vaultToken && vaultCfg?.accountId),
       lastSynced: get('dayglance-vault-db-sync-last-synced'),
+      // The rest is what the DB engine persists under its storage prefix
+      // (@glance-apps/sync dbEngine.js, prefix 'dayglance-vault' per
+      // src/sync/dbEngine.js). A device whose vault card looked healthy but
+      // whose last-synced read "never" for months (2026-10-06) could not say
+      // which: a config missing one field (the gate is all four), a credential
+      // halt, or an engine that never finishes a clean cycle. These rows say.
+      ...vaultDetail(vaultCfg, get, json),
     },
+  };
+}
+
+const VAULT_PREFIX = 'dayglance-vault';
+function vaultDetail(cfg, get, json) {
+  const host = (() => {
+    try { return cfg?.vaultUrl ? new URL(cfg.vaultUrl).host : null; } catch { return cfg?.vaultUrl ? '(unparseable URL)' : null; }
+  })();
+  const count = (v) => (Array.isArray(v) ? v.length : 0);
+  const halt = json(`${VAULT_PREFIX}-db-sync-credential-halt`);
+  return {
+    hasConfig: !!cfg,
+    enabled: !!cfg?.enabled,
+    hasUrl: !!cfg?.vaultUrl,
+    hasToken: !!cfg?.vaultToken,
+    hasAccountId: !!cfg?.accountId,
+    host,
+    // Pull cursor (the last server sequence applied) and the last push the
+    // server acknowledged. Both 0/absent on a device that never completed a
+    // cycle; a cursor that moves while last-synced stays "never" means cycles
+    // run but never end clean.
+    highWaterMark: get(`${VAULT_PREFIX}-db-sync-hwm`),
+    pushAck: get(`${VAULT_PREFIX}-db-sync-push-ack`),
+    dirtyCount: count(json(`${VAULT_PREFIX}-db-sync-dirty`)),
+    quarantineCount: count(json(`${VAULT_PREFIX}-db-sync-quarantine`)),
+    credentialHalt: halt && typeof halt === 'object' ? { message: halt.message ?? null, at: halt.at ?? null } : null,
   };
 }
 
@@ -369,6 +402,19 @@ const mergeLines = (merge, indent, none) => {
   return lines;
 };
 
+const yn = (v) => (v ? 'yes' : 'NO');
+const vaultLines = (v, none) => {
+  if (!v || v.hasConfig === undefined) return [];
+  if (!v.hasConfig) return ['  config:        (none saved on this device)'];
+  const lines = [
+    `  config:        enabled ${yn(v.enabled)} / url ${yn(v.hasUrl)}${v.host ? ` (${v.host})` : ''} / token ${yn(v.hasToken)} / account id ${yn(v.hasAccountId)}`,
+    `  cursor:        pull ${v.highWaterMark ?? none} / push ack ${v.pushAck ?? none}`,
+    `  rows:          ${v.dirtyCount} pending / ${v.quarantineCount} quarantined`,
+  ];
+  if (v.credentialHalt) lines.push(`  credential halt: ${v.credentialHalt.at ?? '?'} ${v.credentialHalt.message ?? ''}`.trimEnd());
+  return lines;
+};
+
 export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
   const none = '(none)';
   const lines = [
@@ -389,6 +435,7 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
     `  last synced:   ${t.webdav.lastSynced ?? 'never'}`,
     `glancevault:     ${t.vault.configured ? 'configured' : 'not configured'}`,
     `  last synced:   ${t.vault.lastSynced ?? 'never'}`,
+    ...vaultLines(t.vault, none),
     `local tasks:     ${local.taskCount}`,
     `local inbox:     ${local.inboxCount}`,
   );

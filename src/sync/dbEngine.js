@@ -1343,6 +1343,12 @@ export function createDbEngine(callbacks = {}) {
       // The first committed pull of the session releases the intent drains
       // (sync/initialPull.js): their guards can now see the fleet's state.
       markInitialPullComplete();
+      // The package stamps its last-synced key at the end of ITS dbSyncCycle,
+      // which this wrapper bypasses, so engine.getLastSynced() (the settings
+      // card, the diagnostics panel) read "never" on every device however
+      // well the vault synced (2026-10-06). Same key, same meaning: a cycle
+      // that pulled and pushed with nothing failed or suppressed.
+      try { localStorage.setItem(`${storageKeyPrefix}-db-sync-last-synced`, new Date().toISOString()); } catch { /* storage unavailable */ }
       callbacks.onStatusChange?.('success');
       // Committed: the cursor now describes state this device actually holds, so
       // the mark has nothing left to protect. Cleared here rather than in a

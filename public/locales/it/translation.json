@@ -2117,7 +2117,11 @@
       "unknown": "sconosciuto"
     },
     "titleFolder": "Diagnostica sincronizzazione",
-    "hintFolder": "Sola lettura. Mostra cosa vede ora questo dispositivo nella cartella Direct Access. Nulla viene scritto, eliminato o sincronizzato."
+    "hintFolder": "Sola lettura. Mostra cosa vede ora questo dispositivo nella cartella Direct Access. Nulla viene scritto, eliminato o sincronizzato.",
+    "vaultConfig": "Config vault (attivo / URL / token / account)",
+    "vaultCursor": "Cursore vault (pull / conferma push)",
+    "vaultRows": "Righe vault (in attesa / in quarantena)",
+    "vaultHalt": "Blocco credenziali vault"
   },
   "icloudFirstRun": {
     "title": "Dati trovati su iCloud",

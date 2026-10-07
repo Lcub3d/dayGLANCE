@@ -2115,7 +2115,11 @@
       "unknown": "未知"
     },
     "titleFolder": "同步诊断",
-    "hintFolder": "只读。显示此设备当前在 Direct Access 文件夹中看到的内容。不会写入、删除或同步任何内容。"
+    "hintFolder": "只读。显示此设备当前在 Direct Access 文件夹中看到的内容。不会写入、删除或同步任何内容。",
+    "vaultConfig": "Vault 配置（启用 / URL / 令牌 / 账户）",
+    "vaultCursor": "Vault 游标（拉取 / 推送确认）",
+    "vaultRows": "Vault 行（待处理 / 已隔离）",
+    "vaultHalt": "Vault 凭据停止"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",

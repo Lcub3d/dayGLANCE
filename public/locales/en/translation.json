@@ -2115,7 +2115,11 @@
       "unknown": "unknown"
     },
     "titleFolder": "Sync diagnostics",
-    "hintFolder": "Read-only. Reports what this device currently sees in the Direct Access folder. Nothing is written, deleted or synced."
+    "hintFolder": "Read-only. Reports what this device currently sees in the Direct Access folder. Nothing is written, deleted or synced.",
+    "vaultConfig": "Vault config (enabled / URL / token / account)",
+    "vaultCursor": "Vault cursor (pull / push ack)",
+    "vaultRows": "Vault rows (pending / quarantined)",
+    "vaultHalt": "Vault credential halt"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",

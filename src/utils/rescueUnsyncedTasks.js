@@ -60,6 +60,17 @@
 // Device-only tasks the payload never carries (native rows, excluded imports)
 // are re-provided by their own source and are not subject to it; nor is
 // anything when the caller has no horizon to offer.
+//
+// UNSTAMPED IS NOT OLD (2026-10-07): a fresh Obsidian import and a bridge
+// inbound row carry lastModified = epoch on purpose (obsidian.js,
+// obsidianBridgeInbound.js: "so cloud merge correctly prefers real user edits
+// from other devices"). The file-tier fence reads that as 1970 and drops the
+// task as a zombie rather than uploading it, and before this guard the rescue
+// quietly kept it in state while the vault tier carried it to the fleet. The
+// guard as first merged (#1992) read it the same way and would have dropped a
+// brand-new note line from state on every apply. So a missing stamp or the
+// epoch sentinel is exempt from the horizon: a task is a zombie only when a
+// REAL stamp says it is older than the fence.
 
 import { isObsidianTombstoned } from './obsidianDeletions.js';
 
@@ -111,7 +122,11 @@ export function rescueUnsyncedTasks(
     if (tombstoned[id]) return false;             // deleted elsewhere (in-app / DB) — stay deleted
     // Older than the fence and governed by the merge: the merge dropped it as a
     // zombie (its tombstone is gone), and rescuing it would start the loop.
-    if (!Number.isNaN(fence) && isGoverned(t) && new Date(t.lastModified || 0).getTime() < fence) return false;
+    // Only a REAL stamp counts; absent or epoch means "not stamped yet".
+    if (!Number.isNaN(fence) && isGoverned(t)) {
+      const stamp = t.lastModified ? new Date(t.lastModified).getTime() : NaN;
+      if (Number.isFinite(stamp) && stamp > 0 && stamp < fence) return false;
+    }
     // A vault-deleted Obsidian task stays deleted (LWW: deletion at least as new
     // as the task). A re-created / still-note-backed task (newer than any deletion)
     // is kept.

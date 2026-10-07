@@ -25,7 +25,10 @@
  *     first-run prompt, because reading it is what proves the transport works;
  *   • a fresh device facing a populated snapshot is asked, not restored;
  *   • writes are throttled per transport so a daemon's round-trip is not raced;
- *   • HealthKit-derived counts are stripped from every copy written out;
+ *   • health-store counts are stripped from every copy written out, on the
+ *     transports that ask for it (`transport.stripsHealthLogs`): iCloud does,
+ *     for Apple's guideline 5.1.3; Direct Access is someone else's folder and
+ *     carries them, exactly as GLANCEvault and WebDAV do;
  *   • a write happens only when what would be written differs from the file,
  *     and an apply only when the merged data differs from local state. The
  *     merge's own flags are necessary, not sufficient: with the strip above
@@ -80,6 +83,7 @@ const count = (storage, key) => {
  * @param {() => boolean} args.transport.firstRunDecided   has the user answered the restore prompt
  * @param {number}   args.transport.writeThrottleMs
  * @param {boolean}  args.transport.allowsPlaintextReseed  may an undecryptable envelope be overwritten
+ * @param {boolean}  [args.transport.stripsHealthLogs=true]  strip health-store counts from what is written
  * @param {object} args.io
  * @param {() => object} args.io.buildSyncPayload          `{ version, lastModified?, data }`
  * @param {(data: object, opts: {allowEmpty: boolean}) => void} args.io.applyEngineData
@@ -119,7 +123,18 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     if (!ok) log.error(`[${transport.id}] snapshot write failed`);
     return ok;
   };
-  const outgoing = (payload) => JSON.stringify(io.stripHealthSourcedLogs(payload, io.habits));
+  // Apple forbids HealthKit-derived data in iCloud (guideline 5.1.3), so the
+  // iCloud transport strips health-store counts from what it writes. The rule
+  // is Apple's and about Apple's container: a Direct Access folder is the
+  // user's own cloud, and stripping there is what kept an Android phone's
+  // Health Connect steps from ever reaching the Macs (2026-10-07). The vault
+  // and WebDAV tiers carry those counts; this tier does too, unless the
+  // transport says otherwise. Absent means strip, so a transport that does not
+  // know the property keeps the stricter behaviour.
+  const strip = transport.stripsHealthLogs === false
+    ? (payload) => payload
+    : (payload) => io.stripHealthSourcedLogs(payload, io.habits);
+  const outgoing = (payload) => JSON.stringify(strip(payload));
 
   const read = classifySnapshotText(await transport.read());
 
@@ -216,11 +231,11 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   // diagnostics panel runs the identical function. An order-only difference
   // does not count for the write: the merge keeps each device's own order,
   // so writing it changes nothing on the other device (writeWorthy).
-  const outPayload = io.stripHealthSourcedLogs({
+  const outPayload = strip({
     version: 2,
     lastModified: new Date(now()).toISOString(),
     data: mergedData,
-  }, io.habits);
+  });
   const applyNeeded = localChanged && sliceDiffs(mergedData, localData, { ignoreDropped: true }).length > 0;
   const writeNeeded = (remoteChanged || localChanged) && writeWorthy(sliceDiffs(outPayload.data, remote.data)).length > 0;
 

@@ -16,6 +16,11 @@
  *     picking the folder IS the decision, and the snapshot in it is applied.
  *   • `allowsPlaintextReseed` is false. The folder is someone else's cloud; an
  *     encrypted file this device cannot read is left exactly as it is.
+ *   • `stripsHealthLogs` is false. The iCloud file leaves out HealthKit-derived
+ *     counts for Apple's guideline 5.1.3, which is about Apple's container. This
+ *     folder is the user's own cloud, so the file carries health-store counts
+ *     like GLANCEvault and WebDAV do, and an Android phone's Health Connect
+ *     steps reach the Macs (which have no health store of their own).
  *   • A longer write throttle: third-party tools round-trip slower than the
  *     iCloud daemon, and each write inside that window risks a conflict copy.
  *   • An unreachable folder (the streaming tool not running, a share not
@@ -168,6 +173,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     writeThrottleMs: DIRECT_ACCESS_WRITE_THROTTLE_MS,
     lastSyncedKey: DIRECT_ACCESS_LAST_SYNCED_KEY,
     allowsPlaintextReseed: false,
+    stripsHealthLogs: false,
 
     isSupported: () => !!bridge(),
 

@@ -8,9 +8,11 @@
 // unit, source) still syncs, and each device repopulates its own counts from its
 // own health store. Only the derived COUNTS are excluded.
 //
-// This is applied to the iCloud transport only. WebDAV / GLANCEvault sync to the
-// user's own server (not Apple iCloud) and are outside guideline 5.1.3; keeping
-// health counts there also preserves cross-platform (e.g. Android → iOS) sync.
+// This is applied to the iCloud transport only (`transport.stripsHealthLogs`,
+// sync/snapshotFileSync.js). WebDAV, GLANCEvault and a Direct Access folder sync
+// to the user's own storage (not Apple iCloud) and are outside guideline 5.1.3;
+// keeping health counts there also preserves cross-platform (e.g. Android →
+// Mac) sync.
 
 // A habit is "health-sourced" when its counts come from a device health store.
 const HEALTH_SOURCES = new Set(['healthKit', 'healthConnect']);

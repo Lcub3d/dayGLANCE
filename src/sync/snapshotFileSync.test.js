@@ -226,6 +226,68 @@ describe('a real snapshot', () => {
   });
 });
 
+describe('guard: the health strip follows the transport', () => {
+  // Apple's guideline 5.1.3 is about Apple's container. The iCloud transport
+  // strips HealthKit-derived counts; a Direct Access folder is the user's own
+  // cloud and carries them, like GLANCEvault and WebDAV do. Stripping there
+  // kept an Android phone's Health Connect steps from reaching the Macs
+  // (2026-10-07).
+  const habits = [{ id: 'steps', source: 'healthConnect' }];
+  const strip = vi.fn((p) => ({ ...p, stripped: true }));
+
+  it('a transport that says stripsHealthLogs: false writes the counts whole, on merge and on seed', async () => {
+    const remote = data([task('r')]);
+    const merged = data([task('r'), task('l')]);
+    const transport = makeTransport({ stripsHealthLogs: false, read: async () => envelope(remote) });
+    const io = makeIo({ habits, mergeSyncData: () => ({ data: merged, localChanged: true, remoteChanged: true }), stripHealthSourcedLogs: strip });
+    await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(strip).not.toHaveBeenCalled();
+    expect(written(transport).stripped).toBeUndefined();
+
+    const seeding = makeTransport({ stripsHealthLogs: false });
+    await runSnapshotFileCycle({ transport: seeding, io: makeIo({ habits, buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), stripHealthSourcedLogs: strip }), state: fresh });
+    expect(strip).not.toHaveBeenCalled();
+    expect(written(seeding).stripped).toBeUndefined();
+  });
+
+  it('a transport that says true, or says nothing, strips as before', async () => {
+    for (const over of [{ stripsHealthLogs: true }, {}]) {
+      const t = makeTransport({ ...over, read: async () => envelope(data([task('r')])) });
+      const io = makeIo({ habits, mergeSyncData: () => ({ data: data([task('r'), task('l')]), localChanged: true, remoteChanged: true }), stripHealthSourcedLogs: (p) => ({ ...p, stripped: true }) });
+      await runSnapshotFileCycle({ transport: t, io, state: fresh });
+      expect(written(t).stripped).toBe(true);
+    }
+  });
+
+  it('SCENARIO (2026-10-07): Health Connect steps on the phone reach a Mac over the folder, with the real merge and strip', async () => {
+    const { mergeSyncData } = await import('../mergeSync.js');
+    const { stripHealthSourcedLogs } = await import('../utils/healthLogFilter.js');
+    const base = { tasks: [task('a')], unscheduledTasks: [], recycleBin: [], completedTaskUids: [], deletedTaskIds: {}, habits, habitLogs: {}, habitLogTimestamps: {} };
+    const phone = { ...base, habitLogs: { '2026-10-07': { steps: 6543 } }, habitLogTimestamps: { '2026-10-07:steps': '2026-10-07T12:00:00.000Z' } };
+    const file = mergeSyncData(base, base, 90).data;                       // what the Macs wrote: no counts
+    const real = (over) => makeIo({ habits, mergeSyncData, stripHealthSourcedLogs, ...over });
+
+    // The phone's cycle over a Direct Access folder: the write carries the steps.
+    const folder = makeTransport({ stripsHealthLogs: false, read: async () => envelope(file) });
+    const r1 = await runSnapshotFileCycle({ transport: folder, io: real({ buildSyncPayload: () => ({ version: 2, data: phone }) }), state: fresh });
+    expect(r1.outcome).toMatchObject({ kind: 'merged', wrote: true });
+    expect(written(folder).data.habitLogs['2026-10-07']).toEqual({ steps: 6543 });
+
+    // A Mac reads that file: it has no health store, so it adopts the counts.
+    const onMac = makeTransport({ stripsHealthLogs: false, read: async () => folder.write.mock.calls[0][0] });
+    const macIo = real({ buildSyncPayload: () => ({ version: 2, data: file }) });
+    const r2 = await runSnapshotFileCycle({ transport: onMac, io: macIo, state: fresh });
+    expect(r2.outcome).toMatchObject({ kind: 'merged', applied: true });
+    expect(macIo.applyEngineData.mock.calls[0][0].habitLogs['2026-10-07']).toEqual({ steps: 6543 });
+
+    // The same phone over iCloud: the strip holds, and the counts never leave the device.
+    const icloud = makeTransport({ stripsHealthLogs: true, read: async () => envelope(file) });
+    const r3 = await runSnapshotFileCycle({ transport: icloud, io: real({ buildSyncPayload: () => ({ version: 2, data: phone }) }), state: fresh });
+    expect(r3.outcome.wrote).toBe(false);
+    expect(icloud.write).not.toHaveBeenCalled();
+  });
+});
+
 describe('first-run restore prompt', () => {
   const populated = () => makeTransport({
     read: async () => envelope(data([task('r1'), task('r2')], [task('i1')]), '2026-10-03T00:00:00.000Z'),

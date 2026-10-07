@@ -207,6 +207,32 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
               value={report.transports.vault.configured ? t('icloudDiag.configured') : t('icloudDiag.notConfigured')}
             />
             <Row label={t('icloudDiag.vaultSynced')} value={report.transports.vault.lastSynced ?? t('icloudDiag.never')} />
+            {report.transports.vault.hasConfig && (
+              <>
+                <Row
+                  label={t('icloudDiag.vaultConfig')}
+                  value={[report.transports.vault.enabled, report.transports.vault.hasUrl, report.transports.vault.hasToken, report.transports.vault.hasAccountId]
+                    .map((v) => (v ? t('icloudDiag.yes') : t('icloudDiag.no'))).join(' / ')}
+                  tone={report.transports.vault.configured ? undefined : 'text-amber-600 dark:text-amber-400'}
+                />
+                <Row
+                  label={t('icloudDiag.vaultCursor')}
+                  value={`${report.transports.vault.highWaterMark ?? t('icloudDiag.none')} / ${report.transports.vault.pushAck ?? t('icloudDiag.none')}`}
+                />
+                <Row
+                  label={t('icloudDiag.vaultRows')}
+                  value={`${report.transports.vault.dirtyCount} / ${report.transports.vault.quarantineCount}`}
+                  tone={report.transports.vault.quarantineCount > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+                />
+                {report.transports.vault.credentialHalt && (
+                  <Row
+                    label={t('icloudDiag.vaultHalt')}
+                    value={`${report.transports.vault.credentialHalt.at ?? '?'} ${report.transports.vault.credentialHalt.message ?? ''}`}
+                    tone="text-amber-600 dark:text-amber-400"
+                  />
+                )}
+              </>
+            )}
 
             <Row
               label={t('icloudDiag.localCounts')}

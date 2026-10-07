@@ -177,7 +177,7 @@ describe('readSyncTransports', () => {
   it('reports both tiers unconfigured on a bare store', () => {
     const r = readSyncTransports({ localStorage: fakeLocalStorage() });
     expect(r.webdav).toEqual({ configured: false, provider: null, lastSynced: null });
-    expect(r.vault).toEqual({ configured: false, lastSynced: null });
+    expect(r.vault).toMatchObject({ configured: false, lastSynced: null, hasConfig: false });
     expect(r.icloud).toEqual({ lastSynced: null });
   });
 
@@ -226,7 +226,57 @@ describe('readSyncTransports', () => {
         'dayglance-vault-db-sync-last-synced': '2026-08-08T10:00:00.000Z',
       }),
     });
-    expect(complete.vault).toEqual({ configured: true, lastSynced: '2026-08-08T10:00:00.000Z' });
+    expect(complete.vault).toMatchObject({ configured: true, lastSynced: '2026-08-08T10:00:00.000Z' });
+  });
+
+  // The phone whose vault read "never" for months (2026-10-06): the report has
+  // to say WHICH of the four gate fields is missing, and what the engine's own
+  // persisted state looks like, or the line cannot be acted on.
+  it('names the missing vault config field and reads the engine\'s persisted state', () => {
+    const r = readSyncTransports({
+      localStorage: fakeLocalStorage({
+        'dayglance-vault-config': '{"enabled":true,"vaultUrl":"https://vault.example.net/api","vaultToken":"t"}',
+        'dayglance-vault-db-sync-hwm': '4812',
+        'dayglance-vault-db-sync-push-ack': '4790',
+        'dayglance-vault-db-sync-dirty': '["a","b"]',
+        'dayglance-vault-db-sync-quarantine': '[{"id":"q"}]',
+        'dayglance-vault-db-sync-credential-halt': '{"message":"token rejected","at":"2026-09-01T00:00:00.000Z"}',
+      }),
+    });
+    expect(r.vault).toMatchObject({
+      configured: false, hasConfig: true, enabled: true, hasUrl: true, hasToken: true, hasAccountId: false,
+      host: 'vault.example.net', highWaterMark: '4812', pushAck: '4790', dirtyCount: 2, quarantineCount: 1,
+      credentialHalt: { message: 'token rejected', at: '2026-09-01T00:00:00.000Z' },
+    });
+    const text = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: r.vault }, syncEnabled: true,
+    });
+    expect(text).toMatch(/config:\s+enabled yes \/ url yes \(vault.example.net\) \/ token yes \/ account id NO/);
+    expect(text).toMatch(/cursor:\s+pull 4812 \/ push ack 4790/);
+    expect(text).toMatch(/rows:\s+2 pending \/ 1 quarantined/);
+    expect(text).toMatch(/credential halt: 2026-09-01T00:00:00.000Z token rejected/);
+  });
+
+  it('a device with no vault config says so in one line, and a healthy one prints no halt', () => {
+    const none = readSyncTransports({ localStorage: fakeLocalStorage() });
+    const t1 = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 0, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: none.vault }, syncEnabled: true,
+    });
+    expect(t1).toMatch(/config:\s+\(none saved on this device\)/);
+    const ok = readSyncTransports({
+      localStorage: fakeLocalStorage({
+        'dayglance-vault-config': '{"enabled":true,"vaultUrl":"https://v","vaultToken":"t","accountId":"a"}',
+        'dayglance-vault-db-sync-last-synced': '2026-10-06T10:00:00.000Z',
+      }),
+    });
+    const t2 = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 0, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: ok.vault }, syncEnabled: true,
+    });
+    expect(t2).toMatch(/glancevault:\s+configured/);
+    expect(t2).not.toMatch(/credential halt/);
   });
 
   it('survives corrupt config JSON and throwing storage', () => {

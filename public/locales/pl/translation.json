@@ -2208,7 +2208,11 @@
       "unknown": "nieznany"
     },
     "titleFolder": "Diagnostyka synchronizacji",
-    "hintFolder": "Tylko do odczytu. Pokazuje, co to urządzenie widzi obecnie w folderze Direct Access. Nic nie jest zapisywane, usuwane ani synchronizowane."
+    "hintFolder": "Tylko do odczytu. Pokazuje, co to urządzenie widzi obecnie w folderze Direct Access. Nic nie jest zapisywane, usuwane ani synchronizowane.",
+    "vaultConfig": "Konfiguracja vault (włączony / URL / token / konto)",
+    "vaultCursor": "Kursor vault (pull / potwierdzenie push)",
+    "vaultRows": "Wiersze vault (oczekujące / kwarantanna)",
+    "vaultHalt": "Blokada poświadczeń vault"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",

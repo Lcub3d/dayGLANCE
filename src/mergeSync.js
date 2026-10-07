@@ -69,6 +69,51 @@ export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) =
 /** The id-keyed lists the upstream merge resolves by lastModified. */
 const TIMESTAMPED_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks', 'todayRoutines'];
 
+/** The task lists governed by `deletedTaskIds`, where the epoch restore applies. */
+const TASK_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks'];
+
+/** A stamp that means "not stamped yet", not "ancient": absent, or the epoch. */
+const isUnstamped = (ts) => !ts || !(new Date(ts).getTime() > 0);
+
+/**
+ * Keeps local-only tasks the upstream fence dropped for carrying no real stamp.
+ *
+ * The fence (mergeArrayById): a local-only task whose lastModified is older
+ * than the remote's `tombstonePrunedBefore` is presumed deleted elsewhere with
+ * its tombstone already pruned, and is dropped rather than uploaded. Right for
+ * a task with a real old stamp. Wrong for a fresh Obsidian import or a bridge
+ * inbound row, which carry lastModified = epoch ON PURPOSE (obsidian.js,
+ * obsidianBridgeInbound.js) so that any real edit elsewhere outranks them: the
+ * fence read 1970 as ancient, so the file tier never uploaded a fresh note
+ * line, and the apply then dropped it from state every cycle while the rescue
+ * put it back (two Macs, 2026-10-07: "unscheduledTasks: -2 only on other side
+ * (obsidian-dg-…)" on every check). The vault tier carried such tasks all
+ * along; the file tier now does too.
+ *
+ * A task with ANY tombstone stays dropped: every tombstone is newer than the
+ * epoch, so the deletion wins exactly as the upstream rule has it. Order-
+ * independent and idempotent: the restored copy is appended, and a second
+ * merge finds it on the remote side and keeps it by the normal rule.
+ *
+ * @returns {{merged: Array, restored: number}}
+ */
+export function restoreUnstampedLocalOnly(merged, local, remote, deletedIds = {}) {
+  const have = new Set((merged || []).filter((t) => t && t.id !== undefined).map((t) => String(t.id)));
+  const onRemote = new Set((remote || []).filter((t) => t && t.id !== undefined).map((t) => String(t.id)));
+  const out = [...(merged || [])];
+  let restored = 0;
+  for (const t of local || []) {
+    if (!t || t.id === undefined) continue;
+    const id = String(t.id);
+    if (have.has(id) || onRemote.has(id)) continue;   // kept, or resolved against a remote copy
+    if (!isUnstamped(t.lastModified)) continue;        // a real old stamp: the fence's zombie call stands
+    if (deletedIds && deletedIds[id]) continue;        // deleted somewhere: stays deleted
+    out.push(t);
+    restored += 1;
+  }
+  return { merged: out, restored };
+}
+
 // mergeSyncData (since @glance-apps/sync v1.3.0) merges the multi-user roster
 // (`users`, last-write-wins per user keyed by `syncId`) while deliberately
 // leaving the per-device `multiUserEnabled` toggle alone. dayGLANCE previously
@@ -317,6 +362,18 @@ const tombstoneMapsEqual = (a = {}, b = {}) => {
  */
 export const mergeSyncData = (local, remote, retentionDays) => {
   const result = upstreamMergeSyncData(local, remote, retentionDays);
+  // Unstamped local-only tasks are not zombies (restoreUnstampedLocalOnly):
+  // keep them, and flag the write that uploads them. The union of both sides'
+  // tombstones is what the upstream merge judged them against.
+  const allTombstones = { ...(local?.deletedTaskIds || {}), ...(remote?.deletedTaskIds || {}) };
+  for (const key of TASK_LISTS) {
+    if (!Array.isArray(result.data?.[key])) continue;
+    const r = restoreUnstampedLocalOnly(result.data[key], local?.[key], remote?.[key], allTombstones);
+    if (r.restored) {
+      result.data[key] = r.merged;
+      result.remoteChanged = true;
+    }
+  }
   // Equal-stamp ties converge on one copy (breakTimestampTies). Runs before
   // the carries below so a sticky field is restored onto the picked copy.
   for (const key of TIMESTAMPED_LISTS) {

@@ -192,6 +192,20 @@ describe('Part B — end-to-end two-device sync via the REAL engine', () => {
     expect(B.data.tasks.find((t) => t.id === 1).title).toBe('task 1');
   });
 
+  it('a clean cycle stamps the engine\'s own last-synced key, so getLastSynced() is not "never" forever', async () => {
+    // The wrapper bypasses the package's dbSyncCycle, which is where the
+    // package writes this key; every device read "never" for months.
+    const vault = createMemoryVault();
+    const A = makeDevice('A', vault, { ...EMPTY, tasks: [task(1, '2026-06-18T10:00:00.000Z')] });
+    expect(A.engine.getLastSynced()).toBeNull();
+    const before = Date.now();
+    await A.engine.dbSyncCycle();
+    const stamped = A.engine.getLastSynced();
+    expect(stamped).toBeTruthy();
+    expect(new Date(stamped).getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(localStorage.getItem('dev-A-db-sync-last-synced')).toBe(stamped);
+  });
+
   it('concurrent bundle edits on both devices converge (set-union) through real crypto', async () => {
     const vault = createMemoryVault();
     const base = { ...EMPTY, completedTaskUids: ['uid-base::2026-06-17'] };

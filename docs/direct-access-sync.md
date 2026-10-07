@@ -49,6 +49,17 @@ parameterised by a *transport*, and Direct Access becomes the second transport.
 
 ## Design decisions
 
+**Health-store counts ride in the file.** The iCloud transport strips
+HealthKit-derived habit counts from what it writes (`utils/healthLogFilter.js`),
+because Apple guideline 5.1.3 forbids HealthKit data in iCloud. That rule is
+about Apple's container. A Direct Access folder is the user's own cloud, so the
+transport declares `stripsHealthLogs: false` and the cycle writes the counts
+whole, exactly as GLANCEvault and WebDAV carry them; a Mac, which has no health
+store, adopts an Android phone's Health Connect steps from the file. The first
+build stripped on every transport, and the steps never reached the Macs
+(2026-10-07). The diagnostics dry run asks the write question the same way the
+cycle does, per transport.
+
 - **Same file, same envelope.** The folder holds `dayglance-sync.json` in the
   existing `{ version, lastModified, data }` shape. A user who points Direct
   Access at a locally mirrored copy of their WebDAV folder interoperates.
@@ -103,6 +114,7 @@ A **transport** is a plain object:
   isEnabled(): boolean,             // per-device switch (iCloud: tri-state, absent = on)
   writeThrottleMs,                  // iCloud 5 s; Direct Access longer
   allowsPlaintextReseed: boolean,   // iCloud true (legacy envelope cleanup); Direct Access false
+  stripsHealthLogs: boolean,        // iCloud true (Apple guideline 5.1.3); Direct Access false
 }
 ```
 

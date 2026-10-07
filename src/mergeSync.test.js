@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeTaskArrays, mergeRoutineDefinitions, mergeDailyNotes, mergeHabits, mergeHabitLogs, mergeRoutineCompletions, mergeSyncData, mergeCalendarConfigByUser, breakTimestampTies } from './mergeSync.js';
+import { mergeTaskArrays, mergeRoutineDefinitions, mergeDailyNotes, mergeHabits, mergeHabitLogs, mergeRoutineCompletions, mergeSyncData, mergeCalendarConfigByUser, breakTimestampTies, restoreUnstampedLocalOnly } from './mergeSync.js';
 import { sliceDiffs } from './sync/snapshotMergeExplain.js';
 
 // Helpers to create task fixtures with timestamps
@@ -154,6 +154,76 @@ describe('mergeSyncData', () => {
     syncUrl: null, taskCalendarUrl: null,
     routineDefinitions: {}, todayRoutines: [], routinesDate: '',
     minimizedSections: {}, use24HourClock: false
+  });
+
+  describe('UNSTAMPED IS NOT A ZOMBIE (2026-10-07, the fresh Obsidian line)', () => {
+    // The remote carries the 60-day fence. A fresh Obsidian import is stamped
+    // with the epoch on purpose; the upstream fence read that as ancient and
+    // dropped it instead of uploading it.
+    const fence = new Date(Date.now() - 60 * 86400000).toISOString();
+    const withFence = (d) => ({ ...d, tombstonePrunedBefore: fence });
+    const epoch = new Date(0).toISOString();
+    const obsidian = (id, over = {}) => ({ ...T(id, 'note line', epoch, { importSource: 'obsidian' }), ...over });
+
+    it('guard: an epoch-stamped local-only task is kept and flagged for upload, in both task lists', () => {
+      const local = { ...emptyData(), tasks: [obsidian('obsidian-dg-a')], unscheduledTasks: [obsidian('obsidian-dg-b')] };
+      const remote = withFence(emptyData());
+      const r = mergeSyncData(local, remote, 90);
+      expect(r.data.tasks.map((t) => t.id)).toEqual(['obsidian-dg-a']);
+      expect(r.data.unscheduledTasks.map((t) => t.id)).toEqual(['obsidian-dg-b']);
+      expect(r.remoteChanged).toBe(true);
+      // Nothing for this device to change: the merged lists equal its own.
+      expect(sliceDiffs(r.data, local, { ignoreDropped: true }).filter((d) => d.key.endsWith('asks'))).toEqual([]);
+    });
+
+    it('a task with NO stamp at all is kept the same way', () => {
+      const local = { ...emptyData(), unscheduledTasks: [{ id: 'bare', title: 'x' }] };
+      const r = mergeSyncData(local, withFence(emptyData()), 90);
+      expect(r.data.unscheduledTasks.map((t) => t.id)).toEqual(['bare']);
+    });
+
+    it('the zombie rule is intact: a REAL stamp older than the fence is still dropped and not uploaded', () => {
+      const old = T('ancient', 'x', new Date(Date.now() - 90 * 86400000).toISOString());
+      const local = { ...emptyData(), unscheduledTasks: [old] };
+      const r = mergeSyncData(local, withFence(emptyData()), 90);
+      expect(r.data.unscheduledTasks).toEqual([]);
+    });
+
+    it('a tombstone on either side still wins over an unstamped copy', () => {
+      const local = { ...emptyData(), unscheduledTasks: [obsidian('obsidian-dg-gone')] };
+      const remote = withFence({ ...emptyData(), deletedTaskIds: { 'obsidian-dg-gone': ts(5) } });
+      expect(mergeSyncData(local, remote, 90).data.unscheduledTasks).toEqual([]);
+      const localTomb = { ...local, deletedTaskIds: { 'obsidian-dg-gone': ts(5) } };
+      expect(mergeSyncData(localTomb, withFence(emptyData()), 90).data.unscheduledTasks).toEqual([]);
+    });
+
+    it('a remote copy with a real stamp outranks the epoch copy, as the epoch was chosen to allow', () => {
+      const local = { ...emptyData(), unscheduledTasks: [obsidian('obsidian-dg-c', { title: 'stale parse' })] };
+      const remote = withFence({ ...emptyData(), unscheduledTasks: [T('obsidian-dg-c', 'edited elsewhere', ts(30))] });
+      const r = mergeSyncData(local, remote, 90);
+      expect(r.data.unscheduledTasks[0].title).toBe('edited elsewhere');
+    });
+
+    it('round trip: the Mac uploads the note line once, the other device adopts it, and both are then quiet', () => {
+      const mac = { ...emptyData(), unscheduledTasks: [obsidian('obsidian-dg-d')] };
+      const file1 = withFence(mergeSyncData(mac, withFence(emptyData()), 90).data);   // the Mac's write
+      expect(file1.unscheduledTasks.map((t) => t.id)).toEqual(['obsidian-dg-d']);
+      const phone = emptyData();
+      const onPhone = mergeSyncData(phone, file1, 90);                                 // the phone reads it
+      expect(onPhone.data.unscheduledTasks.map((t) => t.id)).toEqual(['obsidian-dg-d']);
+      expect(onPhone.localChanged).toBe(true);
+      const again = mergeSyncData(mac, file1, 90);                                      // the Mac re-reads its own write
+      expect(sliceDiffs(again.data, file1).filter((d) => d.key === 'unscheduledTasks')).toEqual([]);
+    });
+
+    it('restoreUnstampedLocalOnly is idempotent and leaves kept or remote-resolved ids alone', () => {
+      const a = obsidian('a');
+      const once = restoreUnstampedLocalOnly([], [a], [], {});
+      const twice = restoreUnstampedLocalOnly(once.merged, [a], [], {});
+      expect(once.merged).toEqual([a]);
+      expect(twice).toEqual({ merged: [a], restored: 0 });
+      expect(restoreUnstampedLocalOnly([], [a], [a], {}).restored).toBe(0);
+    });
   });
 
   it('SCENARIO (2026-10-05): two Macs over one folder converge on equal-stamp copies instead of trading rewrites', () => {

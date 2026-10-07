@@ -408,6 +408,7 @@ describe('collectICloudDiagnostics', () => {
 // ── probeDirectAccess ──────────────────────────────────────────────────────
 
 const fakeDirectAccess = ({ supported = true, status = 'connected', name = 'GLANCE', enabled = true, read = async () => payload() } = {}) => ({
+  stripsHealthLogs: false,
   isSupported: () => supported,
   getSnapshot: () => ({ supported, status, name, enabled, connected: status === 'connected' || status === 'unreachable' }),
   read: vi.fn(read),
@@ -575,6 +576,18 @@ describe('dryRunMerge', () => {
     expect(r.fileDiffs).toEqual([]);
     expect(r.wouldWrite).toBe(false);
     expect(r.flagWithoutDiff).toBe(true);
+  });
+
+  it('asked for a transport that carries health counts, the same counts ARE a write (Direct Access)', () => {
+    const habits = [{ id: 'steps', name: 'Steps', source: 'healthConnect' }];
+    const withCounts = { ...data, habits, habitLogs: { '2026-10-07': { steps: 6543 } } };
+    const onFile = JSON.stringify({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: { ...data, habits, habitLogs: {} } });
+    const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
+    const r = dryRunMerge(onFile, { buildSyncPayload: () => ({ data: withCounts }), merge }, { stripsHealthLogs: false });
+    expect(r.wouldWrite).toBe(true);
+    expect(r.fileDiffs.map((d) => d.key)).toEqual(['habitLogs']);
+    // The default is the iCloud question.
+    expect(dryRunMerge(onFile, { buildSyncPayload: () => ({ data: withCounts }), merge }).wouldWrite).toBe(false);
   });
 
   it('a payload builder that throws is reported, not thrown', () => {

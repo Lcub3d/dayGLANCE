@@ -92,6 +92,8 @@ export function createICloudSnapshotTransport({ now = Date.now, downloadGraceMs 
     writeThrottleMs: ICLOUD_WRITE_THROTTLE_MS,
     lastSyncedKey: ICLOUD_LAST_SYNCED_KEY,
     allowsPlaintextReseed: true,
+    /** Apple guideline 5.1.3: no HealthKit-derived data in iCloud (utils/healthLogFilter.js). */
+    stripsHealthLogs: true,
 
     /** Platform has an iCloud bridge at all. Decides whether the poll even starts. */
     isSupported: () => onIOS() || onMac(),

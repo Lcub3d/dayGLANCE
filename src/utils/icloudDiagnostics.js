@@ -288,7 +288,9 @@ export async function probeDirectAccess(deps = {}) {
     raw = JSON.stringify({ error: err?.message ?? String(err) });
   }
   const snapshot = classifySnapshot(raw, deps);
-  const merge = snapshot.state === 'present' ? dryRunMerge(raw, deps) : null;
+  const merge = snapshot.state === 'present'
+    ? dryRunMerge(raw, deps, { stripsHealthLogs: transport.stripsHealthLogs !== false })
+    : null;
   return { ...head, snapshot, merge };
 }
 
@@ -300,7 +302,7 @@ export async function probeDirectAccess(deps = {}) {
  *
  * @returns {object|null} null when there is no snapshot or no payload builder.
  */
-export function dryRunMerge(raw, deps = {}) {
+export function dryRunMerge(raw, deps = {}, { stripsHealthLogs = true } = {}) {
   if (typeof deps.buildSyncPayload !== 'function') return null;
   let remote;
   try { remote = JSON.parse(raw); } catch { return null; }
@@ -311,10 +313,14 @@ export function dryRunMerge(raw, deps = {}) {
   }
   if (!local) return null;
   const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
-  // The file never carries HealthKit-derived counts (healthLogFilter.js), so
-  // the write question is asked of the stripped data, exactly as the cycle
-  // asks it. The habit definitions ride in the payload itself.
-  const strip = deps.strip ?? ((data) => stripHealthSourcedLogs({ data }, data?.habits ?? local?.habits ?? []).data);
+  // The iCloud file never carries HealthKit-derived counts (healthLogFilter.js),
+  // so its write question is asked of the stripped data, exactly as the cycle
+  // asks it; a Direct Access folder carries them (`transport.stripsHealthLogs`),
+  // and its question is asked of the data whole. The habit definitions ride in
+  // the payload itself.
+  const strip = deps.strip ?? (stripsHealthLogs
+    ? (data) => stripHealthSourcedLogs({ data }, data?.habits ?? local?.habits ?? []).data
+    : (data) => data);
   return explainSnapshotMerge({ local, remote: remote.data, retentionDays, merge: deps.merge ?? mergeSyncData, outgoing: strip });
 }
 

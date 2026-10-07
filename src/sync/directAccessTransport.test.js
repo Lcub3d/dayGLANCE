@@ -152,6 +152,9 @@ describe('transport contract constants', () => {
   it('never reseeds plaintext over an unreadable encrypted file, never prompts, throttles longer than iCloud', () => {
     const { transport } = make();
     expect(transport.allowsPlaintextReseed).toBe(false);
+    // The user's own cloud, not Apple's: health-store counts ride in the file
+    // (iCloud strips them for guideline 5.1.3).
+    expect(transport.stripsHealthLogs).toBe(false);
     expect(transport.firstRunDecided()).toBe(true);
     expect(transport.writeThrottleMs).toBeGreaterThan(5000);
     expect(transport.lastSyncedKey).toBe(DIRECT_ACCESS_LAST_SYNCED_KEY);

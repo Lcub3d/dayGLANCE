@@ -2058,11 +2058,19 @@
     "scopeEverywhereBothHint": "Apaga também as cópias no iCloud e na pasta do Direct Access, para que nada as reponha aqui nem numa reinstalação."
   },
   "icloudDiag": {
-    "title": "Diagnóstico do iCloud",
-    "hint": "Apenas de leitura. Indica o que este dispositivo vê atualmente no contentor do iCloud. Nada é escrito, eliminado ou sincronizado.",
+    "title": "Diagnóstico de sincronização",
+    "hint": "Apenas de leitura. Indica o que este dispositivo vê atualmente em cada transporte de sincronização: o contentor do iCloud, a pasta do Direct Access, o GLANCEvault e o WebDAV. Nada é escrito, eliminado ou sincronizado.",
     "run": "Executar verificação",
     "running": "A verificar…",
     "platform": "Plataforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Contentor",
     "containerError": "Erro do contentor",
     "available": "DISPONÍVEL",
@@ -2104,6 +2112,8 @@
     "no": "não",
     "mergeError": "Erro na simulação de fusão",
     "flagWithoutDiff": "A fusão assinalou uma escrita embora nada mudasse no ficheiro. A escrita é ignorada.",
+    "applyFlagWithoutDiff": "A fusão assinalou uma aplicação embora nada mudasse neste dispositivo. A aplicação é ignorada.",
+    "bothFlagsWithoutDiff": "A fusão assinalou uma escrita e uma aplicação embora nada mudasse no ficheiro nem neste dispositivo. Ambas são ignoradas.",
     "mergeFlags": "Indicadores da fusão (escrever / aplicar)",
     "directAccessTitle": "Pasta do Direct Access",
     "folder": "Pasta",
@@ -2114,8 +2124,6 @@
       "unreachable": "inacessível",
       "unknown": "desconhecido"
     },
-    "titleFolder": "Diagnóstico de sincronização",
-    "hintFolder": "Apenas leitura. Mostra o que este dispositivo vê agora na pasta do Direct Access. Nada é escrito, eliminado ou sincronizado.",
     "vaultConfig": "Config. do vault (ativo / URL / token / conta)",
     "vaultCursor": "Cursor do vault (pull / confirmação de push)",
     "vaultRows": "Linhas do vault (pendentes / em quarentena)",

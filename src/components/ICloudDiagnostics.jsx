@@ -8,7 +8,6 @@ import {
 } from '../utils/icloudDiagnostics.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { directAccessTransport } from '../sync/directAccessTransport.js';
-import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
 
 /**
  * Read-only readout of what this device sees in the iCloud container.
@@ -133,7 +132,11 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         />
         {merge.flagWithoutDiff && (
           <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
-            {t('icloudDiag.flagWithoutDiff')}
+            {merge.writeFlagWithoutDiff && merge.applyFlagWithoutDiff
+              ? t('icloudDiag.bothFlagsWithoutDiff')
+              : merge.applyFlagWithoutDiff
+                ? t('icloudDiag.applyFlagWithoutDiff')
+                : t('icloudDiag.flagWithoutDiff')}
           </p>
         )}
       </>
@@ -145,7 +148,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
       <div className="flex items-center justify-between gap-2">
         <div className={`text-sm font-medium ${textPrimary} flex items-center gap-2`}>
           <Stethoscope size={15} className={textSecondary} />
-          {isICloudAvailable() ? t('icloudDiag.title') : t('icloudDiag.titleFolder')}
+          {t('icloudDiag.title')}
         </div>
         <button
           onClick={run}
@@ -156,12 +159,16 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         </button>
       </div>
 
-      <p className={`text-xs ${textSecondary}`}>{isICloudAvailable() ? t('icloudDiag.hint') : t('icloudDiag.hintFolder')}</p>
+      <p className={`text-xs ${textSecondary}`}>{t('icloudDiag.hint')}</p>
 
       {report && (
         <>
           <div className="pt-1">
-            <Row label={t('icloudDiag.platform')} value={report.platform} />
+            <Row label={t('icloudDiag.platform')} value={t(`icloudDiag.platformName.${report.platform}`, { defaultValue: report.platform })} />
+            {/* The iCloud rows only where iCloud exists; elsewhere they could
+                only say "not probeable / unsupported / never". The Direct
+                Access block below has always been conditional the same way. */}
+            {(report.icloud ?? true) && (<>
             <Row
               label={t('icloudDiag.container')}
               value={
@@ -192,6 +199,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
                 show the WebDAV key, so an iCloud-only device always read "never"
                 — true of WebDAV, and silent about the tier it actually used. */}
             <Row label={t('icloudDiag.icloudSynced')} value={report.transports.icloud?.lastSynced ?? t('icloudDiag.never')} />
+            </>)}
 
             {/* The other transports. Without these, an unavailable container
                 leaves "so where did this data come from?" unanswerable. */}
@@ -239,7 +247,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
               value={`${report.local.taskCount} / ${report.local.inboxCount}`}
             />
 
-            <MergeRows merge={report.merge} />
+            {(report.icloud ?? true) && <MergeRows merge={report.merge} />}
           </div>
 
           {/* The Direct Access folder, on platforms that have the bridge: the

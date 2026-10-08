@@ -2058,11 +2058,19 @@
     "scopeEverywhereBothHint": "Supprime aussi les copies dans iCloud et dans le dossier Direct Access, afin que rien ne les restaure ici ni lors d'une réinstallation."
   },
   "icloudDiag": {
-    "title": "Diagnostic iCloud",
-    "hint": "Lecture seule. Indique ce que cet appareil voit actuellement dans le conteneur iCloud. Rien n'est écrit, supprimé ni synchronisé.",
+    "title": "Diagnostic de synchronisation",
+    "hint": "Lecture seule. Indique ce que cet appareil voit actuellement dans chaque transport de synchronisation : le conteneur iCloud, le dossier Direct Access, GLANCEvault et WebDAV. Rien n'est écrit, supprimé ni synchronisé.",
     "run": "Lancer le test",
     "running": "Vérification…",
     "platform": "Plateforme",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Conteneur",
     "containerError": "Erreur de conteneur",
     "available": "DISPONIBLE",
@@ -2104,6 +2112,8 @@
     "no": "non",
     "mergeError": "Erreur de la simulation de fusion",
     "flagWithoutDiff": "La fusion a signalé une écriture alors que rien ne changerait dans le fichier. L'écriture est ignorée.",
+    "applyFlagWithoutDiff": "La fusion a signalé une application alors que rien ne changerait sur cet appareil. L'application est ignorée.",
+    "bothFlagsWithoutDiff": "La fusion a signalé une écriture et une application alors que rien ne changerait dans le fichier ni sur cet appareil. Les deux sont ignorées.",
     "mergeFlags": "Indicateurs de fusion (écriture / application)",
     "directAccessTitle": "Dossier Direct Access",
     "folder": "Dossier",
@@ -2114,8 +2124,6 @@
       "unreachable": "inaccessible",
       "unknown": "inconnu"
     },
-    "titleFolder": "Diagnostic de synchronisation",
-    "hintFolder": "Lecture seule. Indique ce que cet appareil voit actuellement dans le dossier Direct Access. Rien n'est écrit, supprimé ni synchronisé.",
     "vaultConfig": "Config du vault (actif / URL / jeton / compte)",
     "vaultCursor": "Curseur du vault (pull / accusé push)",
     "vaultRows": "Lignes du vault (en attente / en quarantaine)",

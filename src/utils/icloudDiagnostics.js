@@ -73,6 +73,27 @@ export function detectPlatform({ nativeBridge, electronAPI } = {}) {
 }
 
 /**
+ * The platform this device actually is, for the report's first line. The
+ * iCloud platform above answers a different question (which iCloud bridge
+ * serves the probe), and printing it as "platform: none" on an Android phone
+ * read as a bug (2026-10-08). Swift sets `window.DayGlanceIOS` at document
+ * start; the Android WebView registers `DayGlanceNative` without it; Electron
+ * exposes Node's `process.platform`; anything else is the web or the PWA.
+ *
+ * @returns {'ios'|'android'|'macos'|'windows'|'linux'|'web'}
+ */
+export function detectDevicePlatform({ nativeBridge, electronAPI, isIOS } = {}) {
+  // The iOS bridge is the one that serves iCloudAvailable; Android's never does.
+  if (isIOS || nativeBridge?.iCloudAvailable) return 'ios';
+  if (nativeBridge) return 'android';
+  const p = electronAPI?.platform;
+  if (p === 'darwin') return 'macos';
+  if (p === 'win32') return 'windows';
+  if (p) return p === 'linux' ? 'linux' : p;
+  return 'web';
+}
+
+/**
  * Probes container availability.
  *
  * iOS asks the bridge directly. macOS has no availability probe — electron/icloud.ts
@@ -251,6 +272,7 @@ export function readLocalState({ localStorage } = {}) {
 const defaultDeps = () => ({
   nativeBridge: typeof window !== 'undefined' ? window.DayGlanceNative : null,
   electronAPI: typeof window !== 'undefined' ? window.electronAPI : null,
+  isIOS: typeof window !== 'undefined' && !!window.DayGlanceIOS,
   localStorage: typeof window !== 'undefined' ? window.localStorage : null,
   // The dry-run merge needs this device's payload, which only the app can
   // build; the panel passes it in from the sync context. Absent → no dry run.
@@ -309,7 +331,7 @@ export function dryRunMerge(raw, deps = {}, { stripsHealthLogs = true } = {}) {
   if (!remote || typeof remote !== 'object' || remote.downloading || remote.error || !remote.data) return null;
   let local;
   try { local = deps.buildSyncPayload()?.data; } catch (err) {
-    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
+    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
   }
   if (!local) return null;
   const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
@@ -332,7 +354,11 @@ export function dryRunMerge(raw, deps = {}, { stripsHealthLogs = true } = {}) {
  * dataset it blocks the JS thread. Fine for a button press, not for mounting a
  * settings pane.
  *
- * @returns {Promise<{platform, available, snapshot, local}>}
+ * @returns {Promise<{platform, icloudPlatform, icloud, available, snapshot, local}>}
+ *   `platform` is the device (detectDevicePlatform); `icloudPlatform` is the
+ *   iCloud bridge that served the probe, or 'none'; `icloud` is false where
+ *   there is no iCloud at all, and the container, snapshot and iCloud-sync
+ *   rows then carry nothing worth printing.
  */
 export async function collectICloudDiagnostics(deps = defaultDeps()) {
   const platform = detectPlatform(deps);
@@ -361,7 +387,9 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
   const directAccess = await probeDirectAccess(deps);
 
   return {
-    platform,
+    platform: detectDevicePlatform(deps),
+    icloudPlatform: platform,
+    icloud: platform !== 'none',
     available,
     snapshot,
     merge,
@@ -404,7 +432,13 @@ const mergeLines = (merge, indent, none) => {
     `${indent}  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
     `${indent}  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
   ];
-  if (merge.flagWithoutDiff) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  // Name the flag that fired: an apply flag with no device difference is not
+  // a write, and the old one-size note said it was (Mac report, 2026-10-08).
+  const w = merge.writeFlagWithoutDiff ?? (merge.remoteChanged && merge.flagWithoutDiff);
+  const a = merge.applyFlagWithoutDiff ?? (merge.localChanged && merge.flagWithoutDiff && !w);
+  if (w && a) lines.push(`${indent}  note:          the merge flagged a write and an apply although nothing would change in the file or on this device; both are skipped`);
+  else if (w) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  else if (a) lines.push(`${indent}  note:          the merge flagged an apply although nothing would change on this device; the apply is skipped`);
   return lines;
 };
 
@@ -421,22 +455,30 @@ const vaultLines = (v, none) => {
   return lines;
 };
 
-export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
+export function formatDiagnosticsReport({ platform, icloud, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
   const none = '(none)';
   const lines = [
-    'dayGLANCE iCloud diagnostics',
+    'dayGLANCE sync diagnostics',
     `platform:        ${platform}`,
-    `container:       ${available.value === null ? 'not probeable on this platform' : available.value ? 'AVAILABLE' : 'unavailable'}`,
   ];
-  if (available.raw) lines.push(`  raw:           ${available.raw}`);
-  if (available.error) lines.push(`  error:         ${available.error}`);
-  lines.push(`snapshot file:   ${snapshot.state}`);
-  lines.push(...snapshotLines(snapshot, '', none).slice(1));
-
+  // The iCloud block only where iCloud exists. On Android, Windows, Linux and
+  // the web it read "not probeable / unsupported / never" and said nothing;
+  // the Direct Access block below has always been conditional the same way.
+  // A report built without the flag (older callers, tests) keeps the block.
+  const hasICloud = icloud ?? true;
   const t = transports ?? { icloud: {}, webdav: {}, vault: {} };
+  if (hasICloud) {
+    lines.push(`container:       ${available.value === null ? 'not probeable on this platform' : available.value ? 'AVAILABLE' : 'unavailable'}`);
+    if (available.raw) lines.push(`  raw:           ${available.raw}`);
+    if (available.error) lines.push(`  error:         ${available.error}`);
+    lines.push(`snapshot file:   ${snapshot.state}`);
+    lines.push(...snapshotLines(snapshot, '', none).slice(1));
+    lines.push(
+      `sync on device:  ${syncEnabled === false ? 'OFF' : 'on'}`,
+      `icloud synced:   ${t.icloud?.lastSynced ?? 'never'}`,
+    );
+  }
   lines.push(
-    `sync on device:  ${syncEnabled === false ? 'OFF' : 'on'}`,
-    `icloud synced:   ${t.icloud?.lastSynced ?? 'never'}`,
     `webdav sync:     ${t.webdav.configured ? `configured (${t.webdav.provider ?? 'unknown'})` : 'not configured'}`,
     `  last synced:   ${t.webdav.lastSynced ?? 'never'}`,
     `glancevault:     ${t.vault.configured ? 'configured' : 'not configured'}`,
@@ -445,7 +487,7 @@ export function formatDiagnosticsReport({ platform, available, snapshot, local, 
     `local tasks:     ${local.taskCount}`,
     `local inbox:     ${local.inboxCount}`,
   );
-  lines.push(...mergeLines(merge, '', none));
+  if (hasICloud) lines.push(...mergeLines(merge, '', none));
 
   if (directAccess) {
     const da = directAccess;

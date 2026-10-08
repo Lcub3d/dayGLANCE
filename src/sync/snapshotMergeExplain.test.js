@@ -107,6 +107,17 @@ describe('explainSnapshotMerge with the real merge', () => {
     expect(r.wouldApply).toBe(true);
     expect(r.deviceDiffs.map((d) => d.summary)).toContain('tasks: 1 changed (2)');
     expect(r.wouldWrite).toBe(false);
+    // An apply flag WITH a device difference is not a flag without one.
+    expect(r).toMatchObject({ writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false });
+  });
+
+  it('names the flag that fired without a difference: write, apply, or both (the 2026-10-08 Mac report)', () => {
+    const b = base();
+    const only = (over) => explainSnapshotMerge({ local: b, remote: b, retentionDays: 90, merge: (l) => ({ data: l, ...over }) });
+    expect(only({ localChanged: true, remoteChanged: false })).toMatchObject({ writeFlagWithoutDiff: false, applyFlagWithoutDiff: true, flagWithoutDiff: true });
+    expect(only({ localChanged: false, remoteChanged: true })).toMatchObject({ writeFlagWithoutDiff: true, applyFlagWithoutDiff: false, flagWithoutDiff: true });
+    expect(only({ localChanged: true, remoteChanged: true })).toMatchObject({ writeFlagWithoutDiff: true, applyFlagWithoutDiff: true, flagWithoutDiff: true });
+    expect(only({ localChanged: false, remoteChanged: false })).toMatchObject({ writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false });
   });
 
   it('the 2026-10-05 case: health counts the file never carries flag a write that would change nothing', () => {
@@ -129,6 +140,7 @@ describe('explainSnapshotMerge with the real merge', () => {
     expect(r.fileDiffs).toEqual([]);              // but nothing would change
     expect(r.wouldWrite).toBe(false);
     expect(r.flagWithoutDiff).toBe(true);
+    expect(r.writeFlagWithoutDiff).toBe(true);
 
     // Without the strip the same inputs would be a real write: the guard is the strip-aware comparison.
     const unstripped = explainSnapshotMerge({ local, remote: file, retentionDays: 90, merge: mergeSyncData });
@@ -153,7 +165,7 @@ describe('explainSnapshotMerge with the real merge', () => {
   it('a flag raised with no difference decides nothing, on both sides', () => {
     const merge = (local) => ({ data: local, localChanged: true, remoteChanged: true });
     const r = explainSnapshotMerge({ local: base(), remote: base(), retentionDays: 90, merge });
-    expect(r).toMatchObject({ remoteChanged: true, localChanged: true, wouldWrite: false, wouldApply: false, flagWithoutDiff: true });
+    expect(r).toMatchObject({ remoteChanged: true, localChanged: true, wouldWrite: false, wouldApply: false, flagWithoutDiff: true, writeFlagWithoutDiff: true, applyFlagWithoutDiff: true });
   });
 
   it('slices the merge output does not carry do not count as an apply', () => {

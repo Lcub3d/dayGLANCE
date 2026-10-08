@@ -34,15 +34,19 @@
  *     merge's own flags are necessary, not sufficient: with the strip above
  *     they fired on every cycle of every Mac holding health counts, and the
  *     resulting identical rewrites starved every phone (2026-10-05);
- *   • a write takes a second look: the cycle that first wants it records what
- *     it saw, and writes only when a later cycle, at least WRITE_CONFIRM_MS
- *     on, sees the same difference against the same unchanged file. A change
- *     reaches a device by two roads at different speeds, GLANCEvault in
- *     seconds and the folder's syncing tool in tens of seconds, so the second
- *     Mac learned of an iPhone's edit from the vault, found its folder copy
- *     stale, wrote the same data with a fresh stamp, and Nextcloud reported a
- *     conflict on every change (2026-10-08). The second look lets the slower
- *     road catch up; a real edit made here still goes out, one poll later.
+ *   • a change made on this device is written at once; a change that reached
+ *     this device by another road is only relayed once the file has sat
+ *     unchanged, still lacking it, for RELAY_CONFIRM_MS. A change reaches a
+ *     device by two roads at different speeds, GLANCEvault in seconds and the
+ *     folder's syncing tool in tens of seconds, so the second Mac learned of
+ *     an iPhone's edit from the vault, found its folder copy stale, wrote the
+ *     same data with a fresh stamp, and Nextcloud reported a conflict on
+ *     every change (2026-10-08). Deferring every write by one poll did not
+ *     help: it held the originating device's write back too, which only
+ *     lengthened the window in which the others relayed it. "Made here" is
+ *     the device's own last-edit stamp (LOCAL_EDIT_KEY, set by the persist
+ *     pass for an edit and not for an apply) being newer than this device's
+ *     last write to, or before that last read of, this file.
  *
  * Nothing here touches React. The hook (hooks/useSnapshotFileSync.js) owns the
  * poll, the mutex and the prompt state; App.jsx owns i18n and status UI.
@@ -56,12 +60,20 @@ import { sliceDiffs, writeWorthy } from './snapshotMergeExplain.js';
 export const LOCAL_MODIFIED_KEY = 'day-planner-cloud-sync-local-modified';
 
 /**
- * How long a wanted write waits for a second look that still wants it. Less
- * than the transports' polls (15 s), so the next poll confirms; more than the
- * watcher debounce and the skipped-cycle retry, so a kick seconds after the
- * first look does not count as the second.
+ * When this device itself last changed its data. Set by the persist pass for
+ * an edit made here and not for an apply from a transport
+ * (hooks/useDataPersistence.js). Device-local, never synced.
  */
-export const WRITE_CONFIRM_MS = 10 * 1000;
+export const LOCAL_EDIT_KEY = 'day-planner-local-edit-at';
+
+/**
+ * How long a change that reached this device by another road must stay
+ * missing from an unchanged file before this device relays it. Longer than
+ * the folder's syncing tool takes to deliver the originating device's own
+ * write (Nextcloud's desktop client polls every 30 s without push), so the
+ * relay only happens when nobody else carried it.
+ */
+export const RELAY_CONFIRM_MS = 90 * 1000;
 
 /**
  * Classifies the raw text a transport read.
@@ -111,10 +123,11 @@ const count = (storage, key) => {
  * @param {(envelope: object) => boolean} args.io.isEncryptedEnvelope
  * @param {(envelope: object) => Promise<object>} args.io.decryptData
  * @param {Storage}  args.io.storage                        localStorage-like
+ * @param {() => string|null} [args.io.lastLocalEditAt]      when this device itself last changed its data (default: LOCAL_EDIT_KEY in storage)
  * @param {() => number} [args.io.now]
  * @param {Console}  [args.io.log]
- * @param {{missingSince: number, lastWriteAt: number, pendingWrite?: {fingerprint: string, at: number}|null}} args.state  carried between cycles
- * @returns {Promise<{state: {missingSince: number, lastWriteAt: number, pendingWrite: object|null}, outcome: object}>}
+ * @param {{missingSince: number, lastWriteAt: number, lastWrittenAt?: number, pendingWrite?: {fingerprint: string, at: number}|null}} args.state  carried between cycles
+ * @returns {Promise<{state: {missingSince: number, lastWriteAt: number, lastWrittenAt: number, pendingWrite: object|null}, outcome: object}>}
  *   outcome.kind is one of:
  *     'skipped'   (reason: 'missing-grace' | 'empty-state-guard' | 'downloading' |
  *                  'unparseable' | 'no-data' | 'encrypted-unreadable')
@@ -122,8 +135,9 @@ const count = (storage, key) => {
  *     'reseeded'  an undecryptable envelope was replaced with local plaintext
  *     'error'     (reason: 'unavailable', error) the transport reported an error
  *     'prompted'  (info) a first-run restore choice is needed; nothing was written
- *     'merged'    (localChanged, remoteChanged, applied, wrote, deferred)
- *                 deferred: a write is wanted and waits for its second look
+ *     'merged'    (localChanged, remoteChanged, applied, wrote, deferred, ownEdits)
+ *                 deferred: a relay is wanted and waits for the file to catch up
+ *                 ownEdits: this device has a change of its own not yet written
  */
 export async function runSnapshotFileCycle({ transport, io, state }) {
   const log = io.log ?? console;
@@ -131,8 +145,19 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   const next = {
     missingSince: state?.missingSince ?? 0,
     lastWriteAt: state?.lastWriteAt ?? 0,
+    // The last SUCCESSFUL write to this file (lastWriteAt counts attempts, for
+    // the throttle), or before any, the read before this cycle: the baseline
+    // an edit made here has to be newer than to count as not yet written.
+    lastWrittenAt: state?.lastWrittenAt ?? 0,
     pendingWrite: state?.pendingWrite ?? null,
   };
+  const lastLocalEdit = (() => {
+    try {
+      const v = io.lastLocalEditAt ? io.lastLocalEditAt() : io.storage.getItem(LOCAL_EDIT_KEY);
+      const t = v ? new Date(v).getTime() : NaN;
+      return Number.isFinite(t) ? t : 0;
+    } catch { return 0; }
+  })();
 
   // Writing faster than the daemon's round-trip piles conflict versions onto
   // the remote; skip writes inside the window. The next poll re-runs the merge
@@ -211,8 +236,13 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   // device. Record that — it is what a later absence is measured against — and
   // record it BEFORE the first-run prompt: reading the snapshot is what proves
   // the transport works, whatever the user then chooses to do with it.
+  const previousRead = (() => {
+    try { const v = io.storage.getItem(transport.lastSyncedKey); const t = v ? new Date(v).getTime() : NaN; return Number.isFinite(t) ? t : 0; }
+    catch { return 0; }
+  })();
   io.storage.setItem(transport.lastSyncedKey, new Date(now()).toISOString());
   next.missingSince = 0;
+  if (!next.lastWrittenAt) next.lastWrittenAt = previousRead;
 
   // First launch on a device with no data of its own, facing a populated
   // remote copy. Ask instead of restoring silently (utils/icloudSyncPref.js).
@@ -268,18 +298,25 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     io.storage.setItem(LOCAL_MODIFIED_KEY, new Date(now()).toISOString());
   }
 
-  // The second look (header). What was seen: the differences a write would
-  // resolve, against the file version they were seen on. The same sight on a
-  // later cycle, WRITE_CONFIRM_MS on, is the confirmation; a different file
-  // version starts over, since the slower road may just have delivered what
-  // this device was about to write.
+  // Made here, or relayed (header). A change of this device's own goes out
+  // now. Anything else is relayed only after the file has sat unchanged,
+  // still lacking it, for RELAY_CONFIRM_MS: what was seen (the differences a
+  // write would resolve, against the file version they were seen on) has to
+  // be seen again that much later. A different file version starts over,
+  // since the slower road may just have delivered it.
+  const ownEdits = lastLocalEdit > next.lastWrittenAt;
   let wrote = false;
   let deferred = false;
-  if (writeNeeded) {
+  if (writeNeeded && ownEdits) {
+    wrote = await throttledWrite(JSON.stringify(outPayload));
+    if (wrote) next.lastWrittenAt = now();
+    next.pendingWrite = null;
+  } else if (writeNeeded) {
     const fingerprint = `${remote.lastModified ?? ''}\u0000${writable.map((d) => d.summary).join('\n')}`;
     const pending = next.pendingWrite;
-    if (pending && pending.fingerprint === fingerprint && now() - pending.at >= WRITE_CONFIRM_MS) {
+    if (pending && pending.fingerprint === fingerprint && now() - pending.at >= RELAY_CONFIRM_MS) {
       wrote = await throttledWrite(JSON.stringify(outPayload));
+      if (wrote) next.lastWrittenAt = now();
     } else {
       if (!pending || pending.fingerprint !== fingerprint) next.pendingWrite = { fingerprint, at: now() };
       deferred = true;
@@ -289,6 +326,6 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   }
   return {
     state: next,
-    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote, deferred },
+    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote, deferred, ownEdits },
   };
 }

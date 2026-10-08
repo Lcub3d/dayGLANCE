@@ -2,7 +2,6 @@
    is called as a plain function once per fake device, as the bridge scenario
    harness (dayglance-obsidian-plugin/test) calls useObsidianSync. */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WRITE_CONFIRM_MS } from '../sync/snapshotFileSync.js';
 
 // The hook is exercised the way the bridge scenario harness exercises
 // useObsidianSync: React's primitives are replaced by plain holders and the
@@ -73,9 +72,11 @@ function mountDevice(name, folder, { tasks = [], decided = true, enabled = true,
     setEnabled: (v) => { dev.enabled = v; dev.decided = true; },
     firstRunDecided: () => dev.decided,
   };
-  // The cycle's clock, so a test can move it past the write's second look
-  // (WRITE_CONFIRM_MS) without waiting in real time.
+  // The cycle's clock, and when this device last edited its own data: a
+  // change made here (editedAt after the last read) is written at once, one
+  // that arrived by another road is relayed only after the file sat unchanged.
   dev.clock = Date.now();
+  dev.editedAt = null;
   dev.io = {
     buildSyncPayload: () => ({ version: 2, data: { tasks: dev.tasks, unscheduledTasks: [] } }),
     applyEngineData: (data) => { dev.applied.push(data); dev.tasks = data.tasks; },
@@ -83,6 +84,7 @@ function mountDevice(name, folder, { tasks = [], decided = true, enabled = true,
     syncRetentionDays: 90,
     isResetInProgress: () => dev.resetting,
     onUnavailable: (e) => dev.unavailable.push(e),
+    lastLocalEditAt: () => dev.editedAt,
     now: () => dev.clock,
   };
 
@@ -109,8 +111,8 @@ function mountDevice(name, folder, { tasks = [], decided = true, enabled = true,
   // The hook reads the page's localStorage; each device brings its own, and
   // cycles are awaited one at a time so the swap is safe.
   dev.sync = async () => { globalThis.localStorage = dev.storage; await dev.api.runSync(); };
-  // A merged write takes a second look: two cycles, WRITE_CONFIRM_MS apart.
-  dev.settle = async () => { await dev.sync(); dev.clock += WRITE_CONFIRM_MS; await dev.sync(); };
+  // The user edits on this device: the clock moves on and the edit is stamped.
+  dev.edit = (tasks) => { dev.clock += 1000; dev.editedAt = new Date(dev.clock).toISOString(); dev.tasks = tasks; };
   return dev;
 }
 
@@ -150,13 +152,10 @@ describe('useSnapshotFileSync: save → write → read → apply across two devi
     expect(b.decided).toBe(true);
     expect(b.enabled).toBe(true);
 
-    // B edits the task (a newer lastModified, as a save stamps it). B's next
-    // cycle merges and wants the write, the one after confirms it (the second
-    // look); A's next cycle applies it.
-    b.tasks = [task('t1', 'Write plan (edited)', '2026-10-01T10:00:00.000Z')];
-    await b.sync();
-    expect(parse(folder).data.tasks[0].title).toBe('Write plan');   // deferred
-    b.clock += WRITE_CONFIRM_MS;
+    // B edits the task (a newer lastModified, as a save stamps it). The next
+    // cycle on B merges and writes the folder at once, as the change was
+    // made there; A's next cycle applies it.
+    b.edit([task('t1', 'Write plan (edited)', '2026-10-01T10:00:00.000Z')]);
     await b.sync();
     expect(parse(folder).data.tasks[0].title).toBe('Write plan (edited)');
 
@@ -166,8 +165,8 @@ describe('useSnapshotFileSync: save → write → read → apply across two devi
     expect(a.storage.getItem('fake-last-synced')).toBeTruthy();
 
     // And back: A adds a task, B picks it up without losing its own edit.
-    a.tasks = [...a.tasks, task('t2', 'Second', '2026-10-01T11:00:00.000Z')];
-    await a.settle();
+    a.edit([...a.tasks, task('t2', 'Second', '2026-10-01T11:00:00.000Z')]);
+    await a.sync();
     await b.sync();
     expect(b.tasks.map((t) => t.id).sort()).toEqual(['t1', 't2']);
     expect(b.tasks.find((t) => t.id === 't1').title).toBe('Write plan (edited)');

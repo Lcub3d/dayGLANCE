@@ -32,6 +32,7 @@ import { LIVE_BACKUP_FILENAME } from './utils/folderBackup.js';
 import { collectDeviceSettings, applyDeviceSettings } from './utils/deviceSettings.js';
 import { isResetInProgress } from './utils/resetAppData.js';
 import useSnapshotFileSync from './hooks/useSnapshotFileSync.js';
+import { LOCAL_EDIT_KEY } from './sync/snapshotFileSync.js';
 import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js';
 import { directAccessTransport } from './sync/directAccessTransport.js';
 import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
@@ -1903,6 +1904,7 @@ const DayPlanner = () => {
     unscheduledOrderTimestamp,
     cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
     setUndoToast,
+    isRemoteApply,
   });
 
   // Set below once useFolderBackup is instantiated (it needs
@@ -2784,6 +2786,7 @@ const DayPlanner = () => {
       // component; engineCallbacksRef is refreshed with them every render.
       buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
       applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      lastLocalEditAt: () => { try { return localStorage.getItem(LOCAL_EDIT_KEY); } catch { return null; } },
       habits,
       syncRetentionDays,
       isResetInProgress,
@@ -2820,6 +2823,7 @@ const DayPlanner = () => {
     io: {
       buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
       applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      lastLocalEditAt: () => { try { return localStorage.getItem(LOCAL_EDIT_KEY); } catch { return null; } },
       habits,
       syncRetentionDays,
       isResetInProgress,

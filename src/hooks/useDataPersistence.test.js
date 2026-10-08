@@ -249,6 +249,24 @@ describe('saveData records the original plan', () => {
 
     expect(written('day-planner-tasks')[0].originalPlan).toBeUndefined();
   });
+
+  it('stamps when this device last edited its own data, and not on an apply from a transport', async () => {
+    // The snapshot file tiers write at once for a change made here and wait
+    // for the folder to catch up with one that arrived by another road
+    // (sync/snapshotFileSync.js). The apply re-persists too, so the stamp is
+    // gated on isRemoteApply, the same gate the intent emitters use.
+    const useDataPersistence = await loadHookAs('main');
+    const keys = () => setItem.mock.calls.map(([k]) => k);
+
+    useDataPersistence(saveProps({ isRemoteApply: () => false })).saveData();
+    expect(keys()).toContain('day-planner-cloud-sync-local-modified');
+    expect(keys()).toContain('day-planner-local-edit-at');
+
+    setItem.mockClear();
+    useDataPersistence(saveProps({ isRemoteApply: () => true })).saveData();
+    expect(keys()).toContain('day-planner-cloud-sync-local-modified');
+    expect(keys()).not.toContain('day-planner-local-edit-at');
+  });
 });
 
 // ── Regression: the baseline has to reach React STATE, not just storage ──────

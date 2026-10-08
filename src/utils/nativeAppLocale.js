@@ -58,3 +58,38 @@ export function syncAppLanguageFromNative(i18n) {
   adopt(state.tag);
   window.__dayglanceAppLocaleChanged = adopt;
 }
+
+// iOS. iOS keeps the app language itself: Settings > dayGLANCE > Language, or
+// the phone's language when none is set. The widgets follow it directly, but
+// the web UI reads i18next's cached choice before navigator.language, so after
+// a change in Settings the screens stayed on the old language while the
+// widgets switched.
+//
+// There is no API to ask iOS whether the user set a per-app language, so this
+// watches for change instead: the language iOS hands the WebView is
+// remembered, and when it differs at the next launch (Settings relaunches the
+// app), the user changed it there, and the UI follows. The in-app picker still
+// works on its own terms in between, and is the only way to choose a language
+// when the phone has a single preferred language and iOS shows no Language row.
+//
+// Ported from lastGLANCE (krelltunez/lastGLANCE#334).
+export const IOS_LANGUAGE_SEEN_KEY = 'dayglance-ios-language-seen';
+
+export function followIOSLanguageChanges(
+  i18n,
+  reported = typeof navigator === 'undefined' ? undefined : navigator.language,
+  storage = typeof localStorage === 'undefined' ? undefined : localStorage,
+) {
+  if (typeof window === 'undefined' || !window.DayGlanceIOS || !reported || !storage) return;
+  try {
+    const seen = storage.getItem(IOS_LANGUAGE_SEEN_KEY);
+    storage.setItem(IOS_LANGUAGE_SEEN_KEY, reported);
+    // First launch with this code: nothing to compare against, and adopting
+    // here would override every existing user's in-app choice.
+    if (seen === null || seen === reported) return;
+    const lng = resolveLanguage(reported);
+    if (lng !== resolveLanguage(i18n.resolvedLanguage || i18n.language)) i18n.changeLanguage(lng);
+  } catch {
+    // Storage unavailable: keep the cached language, as before.
+  }
+}

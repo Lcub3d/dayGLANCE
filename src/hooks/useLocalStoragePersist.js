@@ -74,6 +74,8 @@ export default function useLocalStoragePersist({
     localStorage.setItem('day-planner-daily-notes', JSON.stringify(dailyNotes));
     if (!suppressCloudUploadRef.current && (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current)) {
       localStorage.setItem('day-planner-cloud-sync-local-modified', new Date().toISOString());
+      // A note edited here (useDataPersistence stamps the same key for the rest).
+      localStorage.setItem('day-planner-local-edit-at', new Date().toISOString());
     }
     // Keyed on dailyNotes only: this persists on note change and reads the sync
     // guards (refs + current enabled flag) as live values. Adding cloudSyncConfig

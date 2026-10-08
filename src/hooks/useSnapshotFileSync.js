@@ -46,6 +46,7 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  * @param {object}  args.io
  * @param {() => object} args.io.buildSyncPayload
  * @param {(data: object, opts: object) => void} args.io.applyEngineData
+ * @param {() => string|null} [args.io.lastLocalEditAt]  when this device itself last changed its data
  * @param {Array}   args.io.habits
  * @param {number}  args.io.syncRetentionDays
  * @param {() => boolean} [args.io.isResetInProgress]
@@ -124,6 +125,7 @@ export default function useSnapshotFileSync({
         io: {
           buildSyncPayload: ioRef.current.buildSyncPayload,
           applyEngineData: ioRef.current.applyEngineData,
+          lastLocalEditAt: ioRef.current.lastLocalEditAt,
           habits: ioRef.current.habits,
           syncRetentionDays: ioRef.current.syncRetentionDays,
           mergeSyncData,

@@ -86,6 +86,7 @@ const EXCLUDED_KEYS = new Set([
   'day-planner-auto-backup-remote-last',
   'day-planner-cloud-sync-last-synced',
   'day-planner-cloud-sync-local-modified',
+  'day-planner-local-edit-at',
   'day-planner-cal-sync-last-synced',
   'day-planner-obsidian-last-scanned',
   'day-planner-obsidian-last-synced',

@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { setNativeAppLanguage, syncAppLanguageFromNative } from './nativeAppLocale.js';
+import {
+  IOS_LANGUAGE_SEEN_KEY,
+  followIOSLanguageChanges,
+  setNativeAppLanguage,
+  syncAppLanguageFromNative,
+} from './nativeAppLocale.js';
 
 const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, 'window');
 const origWindow = hadWindow ? globalThis.window : undefined;
@@ -99,6 +104,55 @@ describe('nativeAppLocale', () => {
     const i18n = fakeI18n('en');
     expect(() => syncAppLanguageFromNative(i18n)).not.toThrow();
     expect(() => setNativeAppLanguage('pl')).not.toThrow();
+    expect(i18n.changeLanguage).not.toHaveBeenCalled();
+  });
+});
+
+describe('following iOS language changes', () => {
+  const store = (seen) => {
+    const m = new Map(seen ? [[IOS_LANGUAGE_SEEN_KEY, seen]] : []);
+    return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v), m };
+  };
+
+  afterEach(() => {
+    if (hadWindow) globalThis.window = origWindow;
+    else delete globalThis.window;
+  });
+
+  it('adopts a language changed in iOS Settings since the last launch', () => {
+    globalThis.window = { DayGlanceIOS: true };
+    const i18n = fakeI18n('en');
+    followIOSLanguageChanges(i18n, 'pl-PL', store('en-US'));
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('pl');
+  });
+
+  it('keeps an in-app choice while the iOS language stays the same', () => {
+    globalThis.window = { DayGlanceIOS: true };
+    const i18n = fakeI18n('uk');
+    followIOSLanguageChanges(i18n, 'en-US', store('en-US'));
+    expect(i18n.changeLanguage).not.toHaveBeenCalled();
+  });
+
+  it('only records the language on the first launch, so existing choices stand', () => {
+    globalThis.window = { DayGlanceIOS: true };
+    const i18n = fakeI18n('de');
+    const s = store();
+    followIOSLanguageChanges(i18n, 'en-US', s);
+    expect(i18n.changeLanguage).not.toHaveBeenCalled();
+    expect(s.m.get(IOS_LANGUAGE_SEEN_KEY)).toBe('en-US');
+  });
+
+  it('maps the iOS tag onto a shipped language', () => {
+    globalThis.window = { DayGlanceIOS: true };
+    const i18n = fakeI18n('en');
+    followIOSLanguageChanges(i18n, 'zh-Hans-CN', store('en-US'));
+    expect(i18n.changeLanguage).toHaveBeenCalledWith('zh-CN');
+  });
+
+  it('does nothing off iOS, Android included', () => {
+    globalThis.window = { DayGlanceNative: {} };
+    const i18n = fakeI18n('en');
+    followIOSLanguageChanges(i18n, 'pl-PL', store('en-US'));
     expect(i18n.changeLanguage).not.toHaveBeenCalled();
   });
 });

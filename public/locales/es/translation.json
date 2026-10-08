@@ -2058,11 +2058,19 @@
     "scopeEverywhereBothHint": "También elimina las copias en iCloud y en la carpeta de Direct Access, de modo que nada las restaure aquí ni al reinstalar."
   },
   "icloudDiag": {
-    "title": "Diagnóstico de iCloud",
-    "hint": "Solo lectura. Informa de lo que este dispositivo ve actualmente en el contenedor de iCloud. No se escribe, elimina ni sincroniza nada.",
+    "title": "Diagnóstico de sincronización",
+    "hint": "Solo lectura. Informa de lo que este dispositivo ve actualmente en cada transporte de sincronización: el contenedor de iCloud, la carpeta de Direct Access, GLANCEvault y WebDAV. No se escribe, elimina ni sincroniza nada.",
     "run": "Ejecutar comprobación",
     "running": "Comprobando…",
     "platform": "Plataforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Contenedor",
     "containerError": "Error de contenedor",
     "available": "DISPONIBLE",
@@ -2104,6 +2112,8 @@
     "no": "no",
     "mergeError": "Error en la simulación de fusión",
     "flagWithoutDiff": "La fusión marcó una escritura aunque nada cambiaría en el archivo. La escritura se omite.",
+    "applyFlagWithoutDiff": "La fusión marcó una aplicación aunque nada cambiaría en este dispositivo. La aplicación se omite.",
+    "bothFlagsWithoutDiff": "La fusión marcó una escritura y una aplicación aunque nada cambiaría en el archivo ni en este dispositivo. Ambas se omiten.",
     "mergeFlags": "Indicadores de fusión (escribir / aplicar)",
     "directAccessTitle": "Carpeta de Direct Access",
     "folder": "Carpeta",
@@ -2114,8 +2124,6 @@
       "unreachable": "inaccesible",
       "unknown": "desconocido"
     },
-    "titleFolder": "Diagnóstico de sincronización",
-    "hintFolder": "Solo lectura. Muestra lo que este dispositivo ve ahora en la carpeta de Direct Access. No se escribe, borra ni sincroniza nada.",
     "vaultConfig": "Config. del vault (activo / URL / token / cuenta)",
     "vaultCursor": "Cursor del vault (pull / confirmación push)",
     "vaultRows": "Filas del vault (pendientes / en cuarentena)",

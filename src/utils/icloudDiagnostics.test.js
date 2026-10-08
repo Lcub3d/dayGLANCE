@@ -4,6 +4,7 @@ import {
   classifySnapshot,
   probeDirectAccess,
   detectPlatform,
+  detectDevicePlatform,
   dryRunMerge,
   probeAvailability,
   readLocalState,
@@ -49,6 +50,21 @@ describe('detectPlatform', () => {
   it('reports none on Windows/Linux Electron despite the exposed API', () => {
     expect(detectPlatform({ electronAPI: { platform: 'win32', readICloud: async () => null } })).toBe('none');
     expect(detectPlatform({ electronAPI: { platform: 'linux', readICloud: async () => null } })).toBe('none');
+  });
+});
+
+describe('detectDevicePlatform', () => {
+  // The report's first line is the device, not the iCloud bridge: an Android
+  // phone printed "platform: none" (2026-10-08).
+  it('names every shell', () => {
+    expect(detectDevicePlatform({ isIOS: true, nativeBridge: {} })).toBe('ios');
+    expect(detectDevicePlatform({ nativeBridge: { iCloudAvailable: () => '{}' } })).toBe('ios');
+    expect(detectDevicePlatform({ nativeBridge: {} })).toBe('android');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'darwin' } })).toBe('macos');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'win32' } })).toBe('windows');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'linux' } })).toBe('linux');
+    expect(detectDevicePlatform({})).toBe('web');
+    expect(detectDevicePlatform()).toBe('web');
   });
 });
 
@@ -369,10 +385,15 @@ describe('collectICloudDiagnostics', () => {
     expect(r.snapshot.state).toBe('present');
   });
 
-  it('reports unsupported on Android/web without touching bridges', async () => {
+  it('reports unsupported on Android/web without touching bridges, and names the device', async () => {
     const r = await collectICloudDiagnostics({ localStorage: fakeLocalStorage() });
-    expect(r.platform).toBe('none');
+    expect(r.platform).toBe('web');
+    expect(r.icloudPlatform).toBe('none');
+    expect(r.icloud).toBe(false);
     expect(r.snapshot.state).toBe('unsupported');
+    const android = await collectICloudDiagnostics({ nativeBridge: {}, localStorage: fakeLocalStorage() });
+    expect(android).toMatchObject({ platform: 'android', icloudPlatform: 'none', icloud: false });
+    expect(formatDiagnosticsReport(android)).toMatch(/^dayGLANCE sync diagnostics\nplatform: +android\nwebdav sync:/);
   });
 
   it('captures a throwing read instead of rejecting', async () => {
@@ -524,6 +545,24 @@ describe('formatDiagnosticsReport', () => {
     expect(text).not.toMatch(/size:/);
   });
 
+  it('prints the iCloud block only where iCloud exists', () => {
+    const base = {
+      available: { value: null, raw: null, error: null },
+      snapshot: { state: 'unsupported', bytes: 0, lastModified: null, taskCount: null, inboxCount: null, error: null },
+      local: { taskCount: 3, inboxCount: 1 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      merge: { remoteChanged: false, localChanged: false, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false },
+    };
+    const android = formatDiagnosticsReport({ ...base, platform: 'android', icloud: false });
+    expect(android).toMatch(/^dayGLANCE sync diagnostics\nplatform: +android\nwebdav sync:/);
+    for (const gone of ['container:', 'snapshot file:', 'sync on device:', 'icloud synced:', 'merge dry-run:']) expect(android).not.toContain(gone);
+    expect(android).toMatch(/glancevault:/);
+    expect(android).toMatch(/local tasks: +3/);
+    const mac = formatDiagnosticsReport({ ...base, platform: 'macos', icloud: true });
+    for (const kept of ['container:', 'snapshot file:', 'sync on device:', 'icloud synced:', 'merge dry-run:']) expect(mac).toContain(kept);
+    // A report built without the flag keeps the block.
+    expect(formatDiagnosticsReport({ ...base, platform: 'macos' })).toContain('container:');
+  });
+
   it('says so plainly when the platform cannot probe availability', () => {
     const text = formatDiagnosticsReport({
       platform: 'macos',
@@ -607,6 +646,13 @@ describe('dryRunMerge', () => {
     expect(flagged).toContain('merge dry-run:   would write: no / would apply: no');
     expect(flagged).toContain('merge flags:   write YES / apply no');
     expect(flagged).toContain('the write is skipped');
+    // The flag is named. An apply flag with no device difference is not a write (Mac over Direct Access, 2026-10-08).
+    const applyOnly = formatDiagnosticsReport({ ...base, merge: { remoteChanged: false, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(applyOnly).toContain('flagged an apply although nothing would change on this device; the apply is skipped');
+    expect(applyOnly).not.toContain('flagged a write');
+    const both = formatDiagnosticsReport({ ...base, merge: { remoteChanged: true, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: true, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(both).toContain('flagged a write and an apply');
+    expect(formatDiagnosticsReport(base)).toContain('dayGLANCE sync diagnostics');
     expect(formatDiagnosticsReport(base)).not.toContain('merge dry-run');
   });
 });

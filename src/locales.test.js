@@ -185,6 +185,8 @@ describe('locale bundles', () => {
     // English idiom. Listed as deliberate, but a native speaker may disagree.
     'bucket.title': 'Bucket List is carried as the borrowed English idiom.',
     'directAccess.title': 'Direct Access is the feature name (docs/direct-access-sync.md), kept as is in every language.',
+    'icloudDiag.platformName.ios': 'Product names: iPhone / iPad.',
+    'icloudDiag.platformName.web': 'Web / PWA, left technical; uk and zh-CN localize "Web".',
   };
 
   /**

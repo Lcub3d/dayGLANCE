@@ -986,18 +986,16 @@ const SettingsModal = () => {
                           borderClass={borderClass}
                         />
                       )}
-                      {/* Wherever a file transport exists: the panel reads the iCloud
-                          container on Apple platforms and the Direct Access folder on any
-                          platform with the bridge, so an Android device on a folder gets
-                          the same dry run the Macs have (docs/direct-access-sync.md). */}
-                      {(isICloudAvailable() || isDirectAccessSupported()) && (
-                        <ICloudDiagnostics
-                          darkMode={darkMode}
-                          textPrimary={textPrimary}
-                          textSecondary={textSecondary}
-                          borderClass={borderClass}
-                        />
-                      )}
+                      {/* On every platform: the panel reports GLANCEvault and WebDAV
+                          everywhere, the iCloud container on Apple platforms, and the
+                          Direct Access folder wherever the bridge exists, each block
+                          only where its transport is (docs/direct-access-sync.md). */}
+                      <ICloudDiagnostics
+                        darkMode={darkMode}
+                        textPrimary={textPrimary}
+                        textSecondary={textSecondary}
+                        borderClass={borderClass}
+                      />
                       {/* Desktop only — the Electron main process holds the folder
                           (docs/direct-access-sync.md). */}
                       {isDirectAccessSupported() && (

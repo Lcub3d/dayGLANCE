@@ -49,6 +49,14 @@ parameterised by a *transport*, and Direct Access becomes the second transport.
 
 ## Design decisions
 
+**One diagnostics panel, on every platform.** Settings → Cloud Sync → Sync
+diagnostics reports GLANCEvault and WebDAV everywhere, the iCloud container on
+Apple platforms, and the Direct Access folder wherever the bridge exists, each
+block only where its transport is. The report's first line names the device
+(`ios`, `android`, `macos`, `windows`, `linux`, `web`), not the iCloud bridge.
+The web and PWA, which have neither file transport, still get the vault and
+WebDAV rows.
+
 **Health-store counts ride in the file.** The iCloud transport strips
 HealthKit-derived habit counts from what it writes (`utils/healthLogFilter.js`),
 because Apple guideline 5.1.3 forbids HealthKit data in iCloud. That rule is
@@ -386,7 +394,7 @@ On iPhone and iPad, pick a folder from any location the Files app offers
 sync keeps running alongside; the two share one mutex and never merge into
 state at once.
 
-Settings → Cloud Sync → iCloud diagnostics → *Run check* reads the Direct
+Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct
 Access file too, on any platform with the bridge: folder status, the file's
 size, modified time and counts, and the dry run of this device's merge against
 it (*would write*, *would apply*, and the slices that differ). That is the tool

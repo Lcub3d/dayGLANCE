@@ -232,30 +232,10 @@ iCloud users see the same cycles, the same prompt, the same keys.
 #### What Phase 4 shipped
 
 - A folder in a third-party File Provider's storage (Nextcloud, Drive, Dropbox)
-  is not on disk until something enumerates it through file coordination:
-  that is the gray cloud next to it in Files. The picker hands back a path
-  that does not exist yet, so a bookmark of it fails ("The file couldn't be
-  opened because it doesn't exist", iPhone, 2026-10-08), and `fileExists`
-  says "absent" for everything in it, which the cycle reads as "seed over
-  it". `DirectAccessBridge.materialize` lists the folder through a coordinated
-  read before it is bookmarked, probed, read or written, and whether the
-  file exists is judged from that listing, never from the disk alone; a file
-  that is listed but cannot be read yet is `downloading`, never `absent`.
-- `DirectAccessBridge.swift` holds the folder through a security-scoped
-  bookmark in UserDefaults (the `ObsidianBridge` pattern) and classifies reads
-  exactly as the desktop store and the Android classifier do. Reads and writes
-  go through `NSFileCoordinator`: for a File Provider location a coordinated
-  read is what materialises a cloud-only file, and a coordinated `.forReplacing`
-  write is what tells the provider to upload. An iCloud Drive folder picked
-  here is handled too (the `.icloud` stub reads as downloading).
-- The folder picker is `UIDocumentPickerViewController(forOpeningContentTypes:
-  [.folder])`; the result reaches the page through `window.__dgDirectAccessPicked`
-  without a reload.
-- `BridgeSchemeHandler` gained the `directaccess` namespace and the WebView shim
-  the `window.DayGlanceDirectAccess` proxy. Because every dgbridge:// answer is
-  text, booleans arrive as `"true"`/`"false"`; the native adapter
-  (`src/sync/directAccessNativeBridge.js`, shared with Android) accepts both.
-- The iOS foreground event now kicks the Direct Access cycle as well as iCloud.
+  cannot be held at all on iOS: see "On iPhone and iPad the bookmark is of the
+  sync FILE" under Phase 4. An earlier attempt to materialise the folder by
+  listing it through coordination did nothing, because with the older File
+  Provider API a folder has no directory on disk to materialise.
 
 ### Phase 5: multi-user over Direct Access
 
@@ -399,10 +379,27 @@ the Google Drive and Dropbox apps do not offer their folders to Android's
 folder picker. Remote changes land on the 15 second poll or when the app comes
 to the foreground.
 
-On iPhone and iPad, pick a folder from any location the Files app offers
-(iCloud Drive, Google Drive, Dropbox, a Nextcloud or SMB location). iCloud
-sync keeps running alongside; the two share one mutex and never merge into
-state at once.
+On iPhone and iPad the bookmark is of the sync FILE, not of its folder.
+Nextcloud, Google Drive, Dropbox, Box and OneDrive ship Apple's older
+non-replicated File Provider extension, which keeps every item in its own
+directory keyed by the item's id: a picked folder has no real directory on disk
+and never will, so a bookmark of it fails ("The file couldn't be opened because
+it doesn't exist", iPhone, 2026-10-08) and a path built by appending a file name
+to it points nowhere. Folder selection from those providers is a known-open
+Apple bug (FB9703910). A picked file works with all of them: the system calls
+the provider's `startProvidingItem` on a coordinated read and `itemChanged`
+after a coordinated `.forReplacing` write, which is how any app edits a
+provider's document in place. So the card offers **Choose sync file…** (the
+`dayglance-sync.json` another device already seeded) and **Create sync file…**
+(the export picker moves a file holding `null` into a folder of the user's
+choice; `null` classifies as absent, so the first cycle seeds it from this
+device exactly as it seeds an empty folder). A wrong file name is refused, and
+a create that the picker renamed on a clash (`dayglance-sync 2.json`) is
+removed with a message to choose the existing file. A bookmarked file that is
+gone reads as `error`, never `absent`: there is no folder to seed into, and
+the user re-picks or re-creates. `deleteSnapshot` forgets the bookmark with
+the file. iCloud sync keeps running alongside; the two share one mutex and
+never merge into state at once.
 
 Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct
 Access file too, on any platform with the bridge: folder status, the file's

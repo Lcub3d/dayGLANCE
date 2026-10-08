@@ -2148,6 +2148,10 @@
     "desc": "通过另一个应用已在你的设备之间保持同步的文件夹进行同步：Google Drive、Dropbox、OneDrive、Syncthing 或网络共享。dayGLANCE 在其中读写一个文件，由该应用负责传输。",
     "chooseFolder": "选择文件夹…",
     "changeFolder": "更换文件夹",
+    "chooseFile": "选择同步文件…",
+    "createFile": "创建同步文件…",
+    "changeFile": "更换文件",
+    "notConnectedFile": "此设备上未连接同步文件。",
     "disconnect": "断开连接",
     "notConnected": "此设备尚未连接任何文件夹。",
     "connectedTo": "同步文件夹：",
@@ -2157,7 +2161,7 @@
     "pickFailed": "无法连接文件夹：{{reason}}",
     "neverSynced": "尚未同步",
     "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。",
-    "iosHint": "在 iPhone 和 iPad 上，请从“文件”应用中的某个位置选择文件夹，例如 iCloud 云盘、Google Drive 或 Dropbox。"
+    "iosHint": "在 iPhone 和 iPad 上，从“文件”App 中的位置（如 Nextcloud、Google Drive 或 Dropbox）选择其他设备已共享的 dayglance-sync.json。如果还没有设备创建它，请在它们将共享的文件夹中创建。"
   },
   "aspire": {
     "title": "Aspire",

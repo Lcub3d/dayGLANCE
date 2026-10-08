@@ -2150,6 +2150,10 @@
     "desc": "Sincronizza tramite una cartella che un'altra app tiene già aggiornata tra i tuoi dispositivi: Google Drive, Dropbox, OneDrive, Syncthing o una condivisione di rete. dayGLANCE vi legge e scrive un solo file; quell'app lo trasferisce.",
     "chooseFolder": "Scegli cartella…",
     "changeFolder": "Cambia cartella",
+    "chooseFile": "Scegli file di sincronizzazione…",
+    "createFile": "Crea file di sincronizzazione…",
+    "changeFile": "Cambia file",
+    "notConnectedFile": "Nessun file di sincronizzazione collegato su questo dispositivo.",
     "disconnect": "Disconnetti",
     "notConnected": "Nessuna cartella collegata su questo dispositivo.",
     "connectedTo": "Sincronizzazione tramite",
@@ -2159,7 +2163,7 @@
     "pickFailed": "Impossibile collegare la cartella: {{reason}}",
     "neverSynced": "Non ancora sincronizzato",
     "androidHint": "Su Android, scegli una cartella che un'app replica nella memoria di questo dispositivo, come Syncthing, FolderSync o Autosync. Le app di Google Drive e Dropbox non offrono qui le loro cartelle.",
-    "iosHint": "Su iPhone e iPad, scegli una cartella da una posizione dell'app File, come iCloud Drive, Google Drive o Dropbox."
+    "iosHint": "Su iPhone e iPad, scegli il dayglance-sync.json che gli altri tuoi dispositivi già condividono, da una posizione dell'app File come Nextcloud, Google Drive o Dropbox. Se nessun dispositivo lo ha ancora creato, crealo nella cartella che condivideranno."
   },
   "aspire": {
     "title": "Aspire",

@@ -49,7 +49,20 @@ export function createNativeDirectAccessBridge({
     // could not be launched. One pick at a time: a second call before the
     // first resolves replaces its callback, and the earlier promise settles
     // null when the result finally arrives for the later one.
-    pick: () => new Promise((resolve) => {
+    pick: () => launch('pickFolder'),
+    // iOS only: the sync file itself, picked or created (DirectAccessBridge.swift).
+    // Android's bridge has neither method; the call throws and resolves null.
+    pickFile: () => launch('pickFile'),
+    createFile: () => launch('createFile'),
+
+    disconnect: async () => truthy(native().disconnect()),
+    read: async () => parse(native().read()),
+    write: async (text) => truthy(native().write(text)),
+    deleteFile: async () => truthy(native().deleteSnapshot()),
+  };
+
+  function launch(method) {
+    return new Promise((resolve) => {
       const w = win();
       const previous = w[PICK_CALLBACK];
       const handler = (result) => {
@@ -64,16 +77,11 @@ export function createNativeDirectAccessBridge({
       w[PICK_CALLBACK] = handler;
       if (typeof previous === 'function') previous(null);
       try {
-        native().pickFolder();
+        native()[method]();
       } catch {
         if (w[PICK_CALLBACK] === handler) delete w[PICK_CALLBACK];
         resolve(null);
       }
-    }),
-
-    disconnect: async () => truthy(native().disconnect()),
-    read: async () => parse(native().read()),
-    write: async (text) => truthy(native().write(text)),
-    deleteFile: async () => truthy(native().deleteSnapshot()),
-  };
+    });
+  }
 }

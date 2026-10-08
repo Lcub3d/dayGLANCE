@@ -256,34 +256,10 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
      * answered. A Nextcloud folder picked on an iPhone did nothing, and
      * nothing on the device said why (2026-10-08).
      */
-    pickFolder: async () => {
-      const b = bridge();
-      if (!b) return null;
-      let timer = null;
-      const timeout = new Promise((resolve) => {
-        timer = setTimer(() => resolve({ error: 'the folder picker returned no result' }), DIRECT_ACCESS_PICK_TIMEOUT_MS);
-      });
-      let st;
-      try { st = await Promise.race([b.pick(), timeout]); }
-      catch (err) { st = { error: err?.message ?? String(err) }; }
-      finally { clearTimer(timer); }
-      if (st && typeof st === 'object' && st.error) {
-        state.pickError = st.error + (st.path ? ` (${st.path})` : '');
-        log.warn?.('[direct-access] folder pick failed:', st);
-        notify();
-        return null;
-      }
-      if (state.pickError) { state.pickError = null; notify(); }
-      if (!st) return null;
-      // A different folder has its own history: the seed guard must not read
-      // an empty new folder as an eviction of the old one and wait ten
-      // minutes before seeding it.
-      clearLastSynced();
-      writePref(true);
-      applyStatus(st);
-      emitChanged();
-      return snapshot;
-    },
+    pickFolder: async () => runPick('pick'),
+    /** iOS: the sync file itself, picked (pickFile) or created in a chosen folder (createFile). */
+    pickFile: async () => runPick('pickFile'),
+    createFile: async () => runPick('createFile'),
 
     disconnect: async () => {
       try { await bridge()?.disconnect(); } catch { /* the renderer side still forgets it */ }
@@ -301,6 +277,40 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     /** Deletes the snapshot in the folder (reset scope "everywhere"). */
     deleteSnapshot: async () => (await bridge()?.deleteFile()) === true,
   };
+
+  async function runPick(method) {
+    const b = bridge();
+    if (!b) return null;
+    if (typeof b[method] !== 'function') {
+      state.pickError = 'not available on this platform';
+      notify();
+      return null;
+    }
+    let timer = null;
+    const timeout = new Promise((resolve) => {
+      timer = setTimer(() => resolve({ error: 'the picker returned no result' }), DIRECT_ACCESS_PICK_TIMEOUT_MS);
+    });
+    let st;
+    try { st = await Promise.race([b[method](), timeout]); }
+    catch (err) { st = { error: err?.message ?? String(err) }; }
+    finally { clearTimer(timer); }
+    if (st && typeof st === 'object' && st.error) {
+      state.pickError = st.error + (st.path ? ` (${st.path})` : '');
+      log.warn?.('[direct-access] folder pick failed:', st);
+      notify();
+      return null;
+    }
+    if (state.pickError) { state.pickError = null; notify(); }
+    if (!st) return null;
+    // A different folder has its own history: the seed guard must not read
+    // an empty new folder as an eviction of the old one and wait ten
+    // minutes before seeding it.
+    clearLastSynced();
+    writePref(true);
+    applyStatus(st);
+    emitChanged();
+    return snapshot;
+  }
 }
 
 /** The app's one Direct Access transport. */

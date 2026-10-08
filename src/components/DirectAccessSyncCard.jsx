@@ -8,10 +8,10 @@ import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/di
 /**
  * Settings → Cloud Sync: the Direct Access card (docs/direct-access-sync.md).
  *
- * Desktop only (the Electron main process holds the folder). Shows the
- * connection, offers the native folder picker, and carries the per-device
- * on/off switch, which mirrors ICloudSyncToggle: turning it off is inert, not
- * destructive — the folder copy and the other devices are untouched.
+ * Shows the connection, offers the native picker (a folder on desktop and
+ * Android, the sync file itself on iPhone and iPad), and carries the
+ * per-device on/off switch, which mirrors ICloudSyncToggle: turning it off is
+ * inert, not destructive — the shared copy and the other devices are untouched.
  */
 const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, transport = directAccessTransport }) => {
   const { t } = useTranslation();
@@ -29,11 +29,18 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
     return () => clearInterval(timer);
   }, [status.status]);
 
-  const pick = async () => {
+  // On iPhone and iPad the bookmark is of the sync file, not the folder: the
+  // Files providers (Nextcloud, Drive, Dropbox) cannot hand over a folder
+  // (DirectAccessBridge.swift). So the card offers the file: pick the one a
+  // device already seeded, or create it in a folder for a first device.
+  const ios = isNativeIOS();
+  const run = (fn) => async () => {
     setBusy(true);
-    try { await transport.pickFolder(); }
+    try { await fn(); }
     finally { setBusy(false); }
   };
+  const pick = run(() => (ios ? transport.pickFile() : transport.pickFolder()));
+  const create = run(() => transport.createFile());
   const disconnect = async () => {
     setBusy(true);
     try { await transport.disconnect(); }
@@ -89,11 +96,18 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
         </p>
       )}
       {!status.connected ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className={`text-xs ${textSecondary}`}>{t('directAccess.notConnected')}</p>
-          <button type="button" onClick={pick} disabled={busy || status.status === 'unknown'} className={button}>
-            {t('directAccess.chooseFolder')}
-          </button>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className={`text-xs ${textSecondary}`}>{ios ? t('directAccess.notConnectedFile') : t('directAccess.notConnected')}</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={pick} disabled={busy || status.status === 'unknown'} className={button}>
+              {ios ? t('directAccess.chooseFile') : t('directAccess.chooseFolder')}
+            </button>
+            {ios && (
+              <button type="button" onClick={create} disabled={busy || status.status === 'unknown'} className={button}>
+                {t('directAccess.createFile')}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -116,7 +130,7 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={pick} disabled={busy} className={button}>
-              {t('directAccess.changeFolder')}
+              {ios ? t('directAccess.changeFile') : t('directAccess.changeFolder')}
             </button>
             <button type="button" onClick={disconnect} disabled={busy} className={button}>
               {t('directAccess.disconnect')}

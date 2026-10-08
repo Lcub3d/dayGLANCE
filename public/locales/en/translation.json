@@ -2148,6 +2148,10 @@
     "desc": "Sync through a folder another app already keeps in step across your devices: Google Drive, Dropbox, OneDrive, Syncthing or a network share. dayGLANCE reads and writes one file there; that app moves it.",
     "chooseFolder": "Choose folder…",
     "changeFolder": "Change folder",
+    "chooseFile": "Choose sync file…",
+    "createFile": "Create sync file…",
+    "changeFile": "Change file",
+    "notConnectedFile": "No sync file connected on this device.",
     "disconnect": "Disconnect",
     "notConnected": "No folder connected on this device.",
     "connectedTo": "Syncing through",
@@ -2157,7 +2161,7 @@
     "pickFailed": "The folder could not be connected: {{reason}}",
     "neverSynced": "Not synced yet",
     "androidHint": "On Android, pick a folder that an app mirrors to this device's storage, such as Syncthing, FolderSync or Autosync. The Google Drive and Dropbox apps do not offer their folders here.",
-    "iosHint": "On iPhone and iPad, pick a folder from a location in the Files app, such as iCloud Drive, Google Drive or Dropbox."
+    "iosHint": "On iPhone and iPad, choose the dayglance-sync.json your other devices already share, from a location in the Files app such as Nextcloud, Google Drive or Dropbox. If no device has made one yet, create it in the folder they will share."
   },
   "aspire": {
     "title": "Aspire",

@@ -231,6 +231,16 @@ iCloud users see the same cycles, the same prompt, the same keys.
 
 #### What Phase 4 shipped
 
+- A folder in a third-party File Provider's storage (Nextcloud, Drive, Dropbox)
+  is not on disk until something enumerates it through file coordination:
+  that is the gray cloud next to it in Files. The picker hands back a path
+  that does not exist yet, so a bookmark of it fails ("The file couldn't be
+  opened because it doesn't exist", iPhone, 2026-10-08), and `fileExists`
+  says "absent" for everything in it, which the cycle reads as "seed over
+  it". `DirectAccessBridge.materialize` lists the folder through a coordinated
+  read before it is bookmarked, probed, read or written, and whether the
+  file exists is judged from that listing, never from the disk alone; a file
+  that is listed but cannot be read yet is `downloading`, never `absent`.
 - `DirectAccessBridge.swift` holds the folder through a security-scoped
   bookmark in UserDefaults (the `ObsidianBridge` pattern) and classifies reads
   exactly as the desktop store and the Android classifier do. Reads and writes

@@ -30,6 +30,16 @@ import UniformTypeIdentifiers
 /// a coordinated read is what materialises a cloud-only file, and a coordinated
 /// `.forReplacing` write is what tells the provider to upload the new version.
 ///
+/// A folder in a third-party provider's storage (Nextcloud, Drive, Dropbox) is
+/// not on disk until something enumerates it through file coordination: that
+/// is the gray cloud next to it in Files. The picker hands back a path that
+/// does not exist yet, a bookmark cannot be made of it ("The file couldn't be
+/// opened because it doesn't exist", iPhone, 2026-10-08), and fileExists says
+/// "absent" for everything in it, which the cycle would read as "seed over
+/// it". So the folder is materialised (`materialize`) before it is bookmarked,
+/// probed, read or written, and whether the file exists is judged from the
+/// provider's own listing of the folder, never from the disk alone.
+///
 /// JS contract (identical to Android's DirectAccessBridge.kt, with booleans as
 /// the strings "true"/"false" because every dgbridge:// answer is text):
 ///   pickFolder()        → "null"; later window.__dgDirectAccessPicked({…} | null)
@@ -74,6 +84,21 @@ final class DirectAccessBridge: NSObject {
         return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
     }
 
+    /// Asks the folder's provider to put the folder on disk and list it. The
+    /// caller holds the security scope. Returns the names in the folder, or nil
+    /// when the folder cannot be enumerated (it is gone, or the provider cannot
+    /// reach it): then nothing in it may be trusted, least of all "absent".
+    private func materialize(_ folder: URL) -> [String]? {
+        var names: [String]?
+        var coordError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: folder, options: [], error: &coordError) { url in
+            names = try? FileManager.default.contentsOfDirectory(atPath: url.path)
+        }
+        if coordError != nil { return nil }
+        guard isDirectory(folder) else { return nil }
+        return names ?? []
+    }
+
     // MARK: - pickFolder
 
     func pickFolder() {
@@ -103,7 +128,7 @@ final class DirectAccessBridge: NSObject {
             name = url.lastPathComponent
             path = url.path
             if url.startAccessingSecurityScopedResource() {
-                reachable = isDirectory(url)
+                reachable = materialize(url) != nil
                 url.stopAccessingSecurityScopedResource()
             }
         }
@@ -135,7 +160,7 @@ final class DirectAccessBridge: NSObject {
             return kind("error", ["error": "permission denied"])
         }
         defer { folder.stopAccessingSecurityScopedResource() }
-        guard isDirectory(folder) else { return kind("error", ["error": "folder not found"]) }
+        guard let names = materialize(folder) else { return kind("error", ["error": "folder not found"]) }
 
         let fileURL = folder.appendingPathComponent(syncFileName)
 
@@ -147,22 +172,27 @@ final class DirectAccessBridge: NSObject {
             return kind("downloading")
         }
 
+        // Existence is the provider's call (its listing), not the disk's: a
+        // third-party provider's file is not on disk until it is read through
+        // coordination, and "absent" means "seed over it".
         var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir) else {
-            return kind("absent")
+        let onDisk = FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir)
+        if onDisk && isDir.boolValue { return kind("error", ["error": "\(syncFileName) is not a file"]) }
+        guard onDisk || names.contains(syncFileName) else { return kind("absent") }
+
+        if onDisk {
+            let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+            let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
+            let modified = (attrs?[.modificationDate] as? Date) ?? Date.distantPast
+            // A cloud-only placeholder, or a provider part-way through replacing it.
+            if size == 0 { return kind("downloading") }
+            if let c = cache, c.modified == modified, c.size == size {
+                return kind("text", ["text": c.text])
+            }
         }
-        if isDir.boolValue { return kind("error", ["error": "\(syncFileName) is not a file"]) }
 
-        let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
-        let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
-        let modified = (attrs?[.modificationDate] as? Date) ?? Date.distantPast
-        // A cloud-only placeholder, or a provider part-way through replacing it.
-        if size == 0 { return kind("downloading") }
-
-        if let c = cache, c.modified == modified, c.size == size {
-            return kind("text", ["text": c.text])
-        }
-
+        // The coordinated read materialises a file the provider has not put on
+        // disk yet, and reads the one it has.
         var text: String?
         var coordError: NSError?
         NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], error: &coordError) { url in
@@ -171,8 +201,12 @@ final class DirectAccessBridge: NSObject {
             }
         }
         // The provider could not hand the file over yet (still materialising, a
-        // lock held, a transient failure): the next poll retries.
+        // lock held, offline, a transient failure): the next poll retries. It is
+        // listed, so it is never "absent".
         guard coordError == nil, let t = text, !t.isEmpty else { return kind("downloading") }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+        let size = (attrs?[.size] as? NSNumber)?.intValue ?? t.utf8.count
+        let modified = (attrs?[.modificationDate] as? Date) ?? Date()
         cache = (modified, size, t)
         return kind("text", ["text": t])
     }
@@ -180,7 +214,7 @@ final class DirectAccessBridge: NSObject {
     func write(_ text: String) -> String {
         guard let folder = folderURL(), folder.startAccessingSecurityScopedResource() else { return "false" }
         defer { folder.stopAccessingSecurityScopedResource() }
-        guard isDirectory(folder), let data = text.data(using: .utf8) else { return "false" }
+        guard materialize(folder) != nil, let data = text.data(using: .utf8) else { return "false" }
         let fileURL = folder.appendingPathComponent(syncFileName)
 
         var ok = false
@@ -200,7 +234,8 @@ final class DirectAccessBridge: NSObject {
         defer { folder.stopAccessingSecurityScopedResource() }
         let fileURL = folder.appendingPathComponent(syncFileName)
         cache = nil
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return "true" }
+        guard let names = materialize(folder) else { return "false" }
+        guard FileManager.default.fileExists(atPath: fileURL.path) || names.contains(syncFileName) else { return "true" }
 
         var ok = false
         var coordError: NSError?
@@ -264,20 +299,24 @@ extension DirectAccessBridge: UIDocumentPickerDelegate {
         // nothing said why, 2026-10-08).
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        // A provider folder that is not on disk yet cannot be bookmarked; listing
+        // it through coordination is what puts it there (header).
+        let listed = materialize(url) != nil
         do {
             let bookmark = try url.bookmarkData(options: [])
             UserDefaults.standard.set(bookmark, forKey: bookmarkKey)
             cache = nil
-            NSLog("[directAccess] picked %@ (security scope: %@)", url.path, scoped ? "yes" : "no")
+            NSLog("[directAccess] picked %@ (security scope: %@, listed: %@)", url.path, scoped ? "yes" : "no", listed ? "yes" : "no")
             // The page updates its card and kicks a cycle from this; no reload.
             postPicked(status())
         } catch {
-            NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@): %@",
-                  url.path, scoped ? "yes" : "no", error.localizedDescription)
+            NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@, listed: %@): %@",
+                  url.path, scoped ? "yes" : "no", listed ? "yes" : "no", error.localizedDescription)
             postPicked(json([
                 "error": "bookmark: \(error.localizedDescription)",
                 "path": url.path,
                 "scoped": scoped,
+                "listed": listed,
             ]))
         }
     }

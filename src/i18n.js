@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import en from '../public/locales/en/translation.json';
 import { languages, loaders, resolveLanguage } from './locales.js';
+import { syncAppLanguageFromNative } from './utils/nativeAppLocale.js';
 
 // Resolves a language from the lazy chunks in locales.js. i18next only asks for
 // a language it is about to use, so this fetches one bundle, not six.
@@ -52,5 +53,9 @@ export const ready = i18n
       convertDetectedLanguage: (lng) => resolveLanguage(lng),
     },
   });
+
+// On Android 13+, a language chosen in Settings > Apps > dayGLANCE > Language
+// wins over the cached one, at startup and live. No-op everywhere else.
+ready.then(() => syncAppLanguageFromNative(i18n));
 
 export default i18n;

@@ -35,9 +35,12 @@ const androidDirFor = (tag) => `values-${ANDROID_QUALIFIER[tag] ?? tag}`;
 const IOS_LOCALE_NAME = { 'zh-CN': 'zh-Hans' };
 const iosLocaleFor = (tag) => IOS_LOCALE_NAME[tag] ?? tag;
 
-// The same mapping for the <locale> entries in locales_config.xml, which use
-// BCP-47 rather than resource qualifiers.
-const ANDROID_LOCALE_NAME = { 'pt-BR': 'pt', 'pt-PT': 'pt' };
+// The <locale> entries in locales_config.xml use the web tags as-is (BCP-47).
+// Both Portuguese standards are listed, so Settings > Language can tell them
+// apart and the WebView is handed the right one; their native strings still
+// share values-pt. The in-app picker hands these same tags to Android
+// (LocaleBridge), so the two lists cannot be allowed to differ.
+const ANDROID_LOCALE_NAME = {};
 const androidLocaleFor = (tag) => ANDROID_LOCALE_NAME[tag] ?? tag;
 
 /**

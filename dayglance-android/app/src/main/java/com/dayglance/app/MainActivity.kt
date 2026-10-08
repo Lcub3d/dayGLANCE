@@ -182,6 +182,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        lastLocaleTag = resources.configuration.locales[0].toLanguageTag()
         splashScreen.setKeepOnScreenCondition { !webViewReady || !appReady || !billingReady }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -675,9 +676,42 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // The app language last seen, so a configuration change that is not a
+    // language change (rotation, resize) does not rebuild every widget.
+    private var lastLocaleTag: String? = null
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         applyStatusBarAppearance()
+        onLocaleMaybeChanged(newConfig)
+    }
+
+    /**
+     * configChanges includes locale, so a language change lands here instead of
+     * recreating the activity and reloading the WebView. That covers both ways
+     * the app language changes on Android 13+: the in-app picker (through
+     * NativeBridge.setAppLocale) and Settings > Apps > dayGLANCE > Language.
+     * Either way the native surfaces are rebuilt in the new language and, for an
+     * explicit app language, the web UI is told, so a choice made in Settings
+     * shows up without a restart.
+     */
+    private fun onLocaleMaybeChanged(config: Configuration) {
+        val tag = config.locales[0].toLanguageTag()
+        if (tag == lastLocaleTag) return
+        lastLocaleTag = tag
+        com.dayglance.app.bridge.LocaleBridge.refreshNativeSurfaces(this)
+        // A null app tag means the app follows the system (or this is Android 12
+        // or older, where a system language change lands here too); the web UI's
+        // own choice stands then.
+        val appTag = com.dayglance.app.bridge.LocaleBridge.currentTag(this) ?: return
+        if (!::webView.isInitialized) return
+        val arg = JSONObject.quote(appTag)
+        webView.post {
+            webView.evaluateJavascript(
+                "(function(){ if (window.__dayglanceAppLocaleChanged) window.__dayglanceAppLocaleChanged($arg); })();",
+                null
+            )
+        }
     }
 
     /**

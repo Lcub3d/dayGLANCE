@@ -2151,8 +2151,8 @@
     "scopeEverywhereBothHint": "Usuwa także kopie w iCloud i w folderze Direct Access, więc nic ich nie przywróci ani tutaj, ani po ponownej instalacji."
   },
   "icloudDiag": {
-    "title": "Diagnostyka iCloud",
-    "hint": "Tylko do odczytu. Pokazuje, co to urządzenie aktualnie widzi w kontenerze iCloud. Nic nie jest zapisywane, usuwane ani synchronizowane.",
+    "title": "Diagnostyka synchronizacji",
+    "hint": "Tylko do odczytu. Pokazuje, co to urządzenie aktualnie widzi w każdym transporcie synchronizacji: kontenerze iCloud, folderze Direct Access, GLANCEvault i WebDAV. Nic nie jest zapisywane, usuwane ani synchronizowane.",
     "run": "Uruchom sprawdzenie",
     "running": "Sprawdzanie…",
     "platform": "Platforma",
@@ -2197,6 +2197,8 @@
     "no": "nie",
     "mergeError": "Błąd próbnego scalania",
     "flagWithoutDiff": "Scalanie oznaczyło zapis, choć w pliku nic by się nie zmieniło. Zapis jest pomijany.",
+    "applyFlagWithoutDiff": "Scalanie oznaczyło zastosowanie, choć na tym urządzeniu nic by się nie zmieniło. Zastosowanie jest pomijane.",
+    "bothFlagsWithoutDiff": "Scalanie oznaczyło zapis i zastosowanie, choć ani w pliku, ani na tym urządzeniu nic by się nie zmieniło. Oba są pomijane.",
     "mergeFlags": "Flagi scalania (zapis / zastosowanie)",
     "directAccessTitle": "Folder Direct Access",
     "folder": "Folder",
@@ -2207,8 +2209,6 @@
       "unreachable": "niedostępny",
       "unknown": "nieznany"
     },
-    "titleFolder": "Diagnostyka synchronizacji",
-    "hintFolder": "Tylko do odczytu. Pokazuje, co to urządzenie widzi obecnie w folderze Direct Access. Nic nie jest zapisywane, usuwane ani synchronizowane.",
     "vaultConfig": "Konfiguracja vault (włączony / URL / token / konto)",
     "vaultCursor": "Kursor vault (pull / potwierdzenie push)",
     "vaultRows": "Wiersze vault (oczekujące / kwarantanna)",

@@ -192,14 +192,17 @@ export const writeWorthy = (diffs) => diffs.filter((d) => d.kind !== 'order');
  *   deviceDiffs: Array<{key, kind, summary}>,        merged vs local (dropped slices ignored)
  *   wouldWrite: boolean,                             a flag AND a file difference a write can resolve
  *   wouldApply: boolean,                             localChanged AND a device difference
- *   flagWithoutDiff: boolean,                        a write flag with no file difference
+ *   writeFlagWithoutDiff: boolean,                   a write flag with no file difference a write could resolve
+ *   applyFlagWithoutDiff: boolean,                   an apply flag with no device difference
+ *   flagWithoutDiff: boolean,                        either of the two
  *   error: string|null,
  * }}
  */
 export function explainSnapshotMerge({ local, remote, retentionDays, merge, outgoing = (d) => d }) {
   const empty = {
     localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [],
-    wouldWrite: false, wouldApply: false, flagWithoutDiff: false, error: null,
+    wouldWrite: false, wouldApply: false,
+    writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false, error: null,
   };
   let result;
   try {
@@ -216,6 +219,11 @@ export function explainSnapshotMerge({ local, remote, retentionDays, merge, outg
   const deviceDiffs = sliceDiffs(merged, local, { ignoreDropped: true });
   const flagged = remoteChanged || localChanged;
   const writable = writeWorthy(fileDiffs);
+  // Each flag is judged against its own question. A Mac over a Direct Access
+  // folder reported "apply YES" with no device difference under a note about
+  // a skipped WRITE (2026-10-08): the note has to name the flag that fired.
+  const writeFlagWithoutDiff = remoteChanged && writable.length === 0;
+  const applyFlagWithoutDiff = localChanged && deviceDiffs.length === 0;
   return {
     localChanged,
     remoteChanged,
@@ -223,7 +231,9 @@ export function explainSnapshotMerge({ local, remote, retentionDays, merge, outg
     deviceDiffs,
     wouldWrite: flagged && writable.length > 0,
     wouldApply: localChanged && deviceDiffs.length > 0,
-    flagWithoutDiff: flagged && writable.length === 0,
+    writeFlagWithoutDiff,
+    applyFlagWithoutDiff,
+    flagWithoutDiff: writeFlagWithoutDiff || applyFlagWithoutDiff,
     error: null,
   };
 }

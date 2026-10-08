@@ -2058,8 +2058,8 @@
     "scopeEverywhereBothHint": "Também apaga as cópias no iCloud e na pasta do Direct Access, para que nada as restaure aqui nem ao reinstalar."
   },
   "icloudDiag": {
-    "title": "Diagnóstico do iCloud",
-    "hint": "Apenas de leitura. Indica o que este dispositivo vê atualmente no contêiner do iCloud. Nada é escrito, excluído ou sincronizado.",
+    "title": "Diagnóstico de sincronização",
+    "hint": "Apenas de leitura. Indica o que este dispositivo vê atualmente em cada transporte de sincronização: o contêiner do iCloud, a pasta do Direct Access, o GLANCEvault e o WebDAV. Nada é escrito, excluído ou sincronizado.",
     "run": "Executar verificação",
     "running": "Verificando…",
     "platform": "Plataforma",
@@ -2104,6 +2104,8 @@
     "no": "não",
     "mergeError": "Erro na simulação de mesclagem",
     "flagWithoutDiff": "A mesclagem marcou uma gravação embora nada mudasse no arquivo. A gravação é ignorada.",
+    "applyFlagWithoutDiff": "A mesclagem sinalizou que havia algo a aplicar, embora nada mudasse neste dispositivo. Nada é aplicado.",
+    "bothFlagsWithoutDiff": "A mesclagem sinalizou uma gravação e algo a aplicar, embora nada mudasse no arquivo nem neste dispositivo. Ambos são ignorados.",
     "mergeFlags": "Sinalizadores da mesclagem (gravar / aplicar)",
     "directAccessTitle": "Pasta do Direct Access",
     "folder": "Pasta",
@@ -2114,8 +2116,6 @@
       "unreachable": "inacessível",
       "unknown": "desconhecido"
     },
-    "titleFolder": "Diagnóstico de sincronização",
-    "hintFolder": "Somente leitura. Mostra o que este dispositivo vê agora na pasta do Direct Access. Nada é gravado, excluído ou sincronizado.",
     "vaultConfig": "Config. do vault (ativo / URL / token / conta)",
     "vaultCursor": "Cursor do vault (pull / confirmação de push)",
     "vaultRows": "Linhas do vault (pendentes / em quarentena)",

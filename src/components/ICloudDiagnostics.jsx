@@ -8,7 +8,6 @@ import {
 } from '../utils/icloudDiagnostics.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { directAccessTransport } from '../sync/directAccessTransport.js';
-import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
 
 /**
  * Read-only readout of what this device sees in the iCloud container.
@@ -133,7 +132,11 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         />
         {merge.flagWithoutDiff && (
           <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
-            {t('icloudDiag.flagWithoutDiff')}
+            {merge.writeFlagWithoutDiff && merge.applyFlagWithoutDiff
+              ? t('icloudDiag.bothFlagsWithoutDiff')
+              : merge.applyFlagWithoutDiff
+                ? t('icloudDiag.applyFlagWithoutDiff')
+                : t('icloudDiag.flagWithoutDiff')}
           </p>
         )}
       </>
@@ -145,7 +148,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
       <div className="flex items-center justify-between gap-2">
         <div className={`text-sm font-medium ${textPrimary} flex items-center gap-2`}>
           <Stethoscope size={15} className={textSecondary} />
-          {isICloudAvailable() ? t('icloudDiag.title') : t('icloudDiag.titleFolder')}
+          {t('icloudDiag.title')}
         </div>
         <button
           onClick={run}
@@ -156,7 +159,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         </button>
       </div>
 
-      <p className={`text-xs ${textSecondary}`}>{isICloudAvailable() ? t('icloudDiag.hint') : t('icloudDiag.hintFolder')}</p>
+      <p className={`text-xs ${textSecondary}`}>{t('icloudDiag.hint')}</p>
 
       {report && (
         <>

@@ -607,6 +607,13 @@ describe('dryRunMerge', () => {
     expect(flagged).toContain('merge dry-run:   would write: no / would apply: no');
     expect(flagged).toContain('merge flags:   write YES / apply no');
     expect(flagged).toContain('the write is skipped');
+    // The flag is named. An apply flag with no device difference is not a write (Mac over Direct Access, 2026-10-08).
+    const applyOnly = formatDiagnosticsReport({ ...base, merge: { remoteChanged: false, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(applyOnly).toContain('flagged an apply although nothing would change on this device; the apply is skipped');
+    expect(applyOnly).not.toContain('flagged a write');
+    const both = formatDiagnosticsReport({ ...base, merge: { remoteChanged: true, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: true, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(both).toContain('flagged a write and an apply');
+    expect(formatDiagnosticsReport(base)).toContain('dayGLANCE sync diagnostics');
     expect(formatDiagnosticsReport(base)).not.toContain('merge dry-run');
   });
 });

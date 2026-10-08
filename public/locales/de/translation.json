@@ -2058,8 +2058,8 @@
     "scopeEverywhereBothHint": "Löscht auch die Kopien in iCloud und im Direct-Access-Ordner, sodass weder hier noch nach einer Neuinstallation etwas wiederhergestellt wird."
   },
   "icloudDiag": {
-    "title": "iCloud-Diagnose",
-    "hint": "Nur lesend. Zeigt an, was dieses Gerät derzeit im iCloud-Container sieht. Es wird nichts geschrieben, gelöscht oder synchronisiert.",
+    "title": "Sync-Diagnose",
+    "hint": "Nur lesend. Zeigt, was dieses Gerät derzeit in jedem Sync-Transport sieht: iCloud-Container, Direct-Access-Ordner, GLANCEvault und WebDAV. Es wird nichts geschrieben, gelöscht oder synchronisiert.",
     "run": "Prüfung starten",
     "running": "Wird geprüft…",
     "platform": "Plattform",
@@ -2104,6 +2104,8 @@
     "no": "nein",
     "mergeError": "Fehler beim Merge-Testlauf",
     "flagWithoutDiff": "Der Merge hat einen Schreibvorgang markiert, obwohl sich in der Datei nichts ändern würde. Der Schreibvorgang wird übersprungen.",
+    "applyFlagWithoutDiff": "Der Merge hat eine Übernahme markiert, obwohl sich auf diesem Gerät nichts ändern würde. Die Übernahme wird übersprungen.",
+    "bothFlagsWithoutDiff": "Der Merge hat einen Schreibvorgang und eine Übernahme markiert, obwohl sich weder in der Datei noch auf diesem Gerät etwas ändern würde. Beides wird übersprungen.",
     "mergeFlags": "Merge-Flags (Schreiben / Anwenden)",
     "directAccessTitle": "Direct-Access-Ordner",
     "folder": "Ordner",
@@ -2114,8 +2116,6 @@
       "unreachable": "nicht erreichbar",
       "unknown": "unbekannt"
     },
-    "titleFolder": "Sync-Diagnose",
-    "hintFolder": "Nur lesend. Zeigt, was dieses Gerät gerade im Direct-Access-Ordner sieht. Nichts wird geschrieben, gelöscht oder synchronisiert.",
     "vaultConfig": "Vault-Konfiguration (aktiv / URL / Token / Konto)",
     "vaultCursor": "Vault-Cursor (Pull / Push-Bestätigung)",
     "vaultRows": "Vault-Zeilen (ausstehend / in Quarantäne)",

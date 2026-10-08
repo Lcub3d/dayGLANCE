@@ -2060,8 +2060,8 @@
     "scopeEverywhereBothHint": "Elimina anche le copie su iCloud e nella cartella Direct Access, così nulla le ripristina qui o dopo una reinstallazione."
   },
   "icloudDiag": {
-    "title": "Diagnostica iCloud",
-    "hint": "Sola lettura. Riporta ciò che questo dispositivo vede attualmente nel container iCloud. Non viene scritto, eliminato né sincronizzato nulla.",
+    "title": "Diagnostica sincronizzazione",
+    "hint": "Sola lettura. Riporta ciò che questo dispositivo vede attualmente in ogni trasporto di sincronizzazione: il container iCloud, la cartella Direct Access, GLANCEvault e WebDAV. Non viene scritto, eliminato né sincronizzato nulla.",
     "run": "Esegui controllo",
     "running": "Controllo in corso…",
     "platform": "Piattaforma",
@@ -2106,6 +2106,8 @@
     "no": "no",
     "mergeError": "Errore nella simulazione dell'unione",
     "flagWithoutDiff": "L'unione ha segnalato una scrittura anche se nel file non cambierebbe nulla. La scrittura viene saltata.",
+    "applyFlagWithoutDiff": "L'unione ha segnalato un'applicazione anche se su questo dispositivo non cambierebbe nulla. L'applicazione viene saltata.",
+    "bothFlagsWithoutDiff": "L'unione ha segnalato una scrittura e un'applicazione anche se non cambierebbe nulla né nel file né su questo dispositivo. Entrambe vengono saltate.",
     "mergeFlags": "Flag dell'unione (scrittura / applicazione)",
     "directAccessTitle": "Cartella Direct Access",
     "folder": "Cartella",
@@ -2116,8 +2118,6 @@
       "unreachable": "irraggiungibile",
       "unknown": "sconosciuto"
     },
-    "titleFolder": "Diagnostica sincronizzazione",
-    "hintFolder": "Sola lettura. Mostra cosa vede ora questo dispositivo nella cartella Direct Access. Nulla viene scritto, eliminato o sincronizzato.",
     "vaultConfig": "Config vault (attivo / URL / token / account)",
     "vaultCursor": "Cursore vault (pull / conferma push)",
     "vaultRows": "Righe vault (in attesa / in quarantena)",

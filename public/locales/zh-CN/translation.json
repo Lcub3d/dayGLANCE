@@ -2058,8 +2058,8 @@
     "scopeEverywhereBothHint": "同时删除 iCloud 和 Direct Access 文件夹中的副本，这样在此处或重新安装后都不会再恢复任何内容。"
   },
   "icloudDiag": {
-    "title": "iCloud 诊断",
-    "hint": "只读。报告该设备当前在 iCloud 容器中看到的内容。没有写入、删除或同步任何内容。",
+    "title": "同步诊断",
+    "hint": "只读。报告该设备当前在每个同步传输中看到的内容：iCloud 容器、Direct Access 文件夹、GLANCEvault 和 WebDAV。没有写入、删除或同步任何内容。",
     "run": "运行检查",
     "running": "检查…",
     "platform": "平台",
@@ -2104,6 +2104,8 @@
     "no": "否",
     "mergeError": "合并试运行出错",
     "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。该写入将被跳过。",
+    "applyFlagWithoutDiff": "合并标记了应用，但此设备上不会有任何变化。该应用将被跳过。",
+    "bothFlagsWithoutDiff": "合并标记了写入和应用，但文件和此设备都不会有任何变化。两者都将被跳过。",
     "mergeFlags": "合并标志（写入 / 应用）",
     "directAccessTitle": "Direct Access 文件夹",
     "folder": "文件夹",
@@ -2114,8 +2116,6 @@
       "unreachable": "无法访问",
       "unknown": "未知"
     },
-    "titleFolder": "同步诊断",
-    "hintFolder": "只读。显示此设备当前在 Direct Access 文件夹中看到的内容。不会写入、删除或同步任何内容。",
     "vaultConfig": "Vault 配置（启用 / URL / 令牌 / 账户）",
     "vaultCursor": "Vault 游标（拉取 / 推送确认）",
     "vaultRows": "Vault 行（待处理 / 已隔离）",

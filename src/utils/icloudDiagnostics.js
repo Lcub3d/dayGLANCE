@@ -309,7 +309,7 @@ export function dryRunMerge(raw, deps = {}, { stripsHealthLogs = true } = {}) {
   if (!remote || typeof remote !== 'object' || remote.downloading || remote.error || !remote.data) return null;
   let local;
   try { local = deps.buildSyncPayload()?.data; } catch (err) {
-    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
+    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
   }
   if (!local) return null;
   const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
@@ -404,7 +404,13 @@ const mergeLines = (merge, indent, none) => {
     `${indent}  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
     `${indent}  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
   ];
-  if (merge.flagWithoutDiff) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  // Name the flag that fired: an apply flag with no device difference is not
+  // a write, and the old one-size note said it was (Mac report, 2026-10-08).
+  const w = merge.writeFlagWithoutDiff ?? (merge.remoteChanged && merge.flagWithoutDiff);
+  const a = merge.applyFlagWithoutDiff ?? (merge.localChanged && merge.flagWithoutDiff && !w);
+  if (w && a) lines.push(`${indent}  note:          the merge flagged a write and an apply although nothing would change in the file or on this device; both are skipped`);
+  else if (w) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  else if (a) lines.push(`${indent}  note:          the merge flagged an apply although nothing would change on this device; the apply is skipped`);
   return lines;
 };
 
@@ -424,7 +430,7 @@ const vaultLines = (v, none) => {
 export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
   const none = '(none)';
   const lines = [
-    'dayGLANCE iCloud diagnostics',
+    'dayGLANCE sync diagnostics',
     `platform:        ${platform}`,
     `container:       ${available.value === null ? 'not probeable on this platform' : available.value ? 'AVAILABLE' : 'unavailable'}`,
   ];

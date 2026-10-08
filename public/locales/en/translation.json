@@ -2058,8 +2058,8 @@
     "scopeEverywhereBothHint": "Also deletes the copies in iCloud and the Direct Access folder, so nothing restores them here or on a reinstall."
   },
   "icloudDiag": {
-    "title": "iCloud diagnostics",
-    "hint": "Read-only. Reports what this device currently sees in the iCloud container. Nothing is written, deleted or synced.",
+    "title": "Sync diagnostics",
+    "hint": "Read-only. Reports what this device currently sees in each sync transport: the iCloud container, the Direct Access folder, GLANCEvault and WebDAV. Nothing is written, deleted or synced.",
     "run": "Run check",
     "running": "Checking…",
     "platform": "Platform",
@@ -2104,6 +2104,8 @@
     "no": "no",
     "mergeError": "Merge dry-run error",
     "flagWithoutDiff": "The merge flagged a write although nothing would change in the file. The write is skipped.",
+    "applyFlagWithoutDiff": "The merge flagged an apply although nothing would change on this device. The apply is skipped.",
+    "bothFlagsWithoutDiff": "The merge flagged a write and an apply although nothing would change in the file or on this device. Both are skipped.",
     "mergeFlags": "Merge flags (write / apply)",
     "directAccessTitle": "Direct Access folder",
     "folder": "Folder",
@@ -2114,8 +2116,6 @@
       "unreachable": "unreachable",
       "unknown": "unknown"
     },
-    "titleFolder": "Sync diagnostics",
-    "hintFolder": "Read-only. Reports what this device currently sees in the Direct Access folder. Nothing is written, deleted or synced.",
     "vaultConfig": "Vault config (enabled / URL / token / account)",
     "vaultCursor": "Vault cursor (pull / push ack)",
     "vaultRows": "Vault rows (pending / quarantined)",

@@ -362,7 +362,7 @@ the Google Drive and Dropbox apps do not offer their folders to Android's
 folder picker. Remote changes land on the 15 second poll or when the app comes
 to the foreground.
 
-Settings → Cloud Sync → iCloud diagnostics → *Run check* reads the Direct
+Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct
 Access file too, on any platform with the bridge: folder status, the file's
 size, modified time and counts, and the dry run of this device's merge against
 it (*would write*, *would apply*, and the slices that differ). That is the tool

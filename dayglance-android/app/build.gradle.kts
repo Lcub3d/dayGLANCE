@@ -57,6 +57,18 @@ android {
         }
     }
 
+    // Ship every language in the Play bundle instead of splitting them out.
+    // Play installs only the language splits matching the device's system
+    // languages, but the in-app picker can set the app language to any of them
+    // (LocaleBridge); a Polish choice on an English-only phone would find no
+    // values-pl installed and fall back to English. The sideload APK is a
+    // universal build and already carries every language.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     // Name the release APK dayglance.apk
     applicationVariants.all {
         outputs.all {

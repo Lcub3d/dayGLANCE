@@ -5,46 +5,48 @@ import UniformTypeIdentifiers
 
 /// Direct Access sync (docs/direct-access-sync.md): window.DayGlanceDirectAccess.
 ///
-/// The user picks a folder from a Files location — iCloud Drive, Google Drive,
-/// Dropbox, a Nextcloud or SMB location — and dayGLANCE reads and writes
-/// dayglance-sync.json in it; that location's provider moves the file between
-/// devices. Access is held through a security-scoped bookmark in UserDefaults,
-/// the way ObsidianBridge holds the vault. The web layer runs the same cycle it
-/// runs for iCloud and for the desktop and Android folders, through the adapter
-/// in src/sync/directAccessNativeBridge.js, which wraps these synchronous calls
-/// in the promise shape the Electron preload offers.
+/// On iPhone and iPad the bookmark is of the sync FILE, dayglance-sync.json,
+/// not of its folder. Nextcloud, Google Drive, Dropbox, Box and OneDrive ship
+/// Apple's older non-replicated File Provider extension, which keeps every
+/// item in its own directory keyed by the item's id: a picked FOLDER has no
+/// real directory on disk and never will, so a bookmark of it fails ("The
+/// file couldn't be opened because it doesn't exist", iPhone, 2026-10-08),
+/// and a path built by appending a file name to it points nowhere. Folder
+/// selection from those providers is a known-open Apple bug (FB9703910). A
+/// picked FILE works with all of them: the system calls the provider's
+/// startProvidingItem on a coordinated read and itemChanged after a
+/// coordinated `.forReplacing` write, which is how any app edits a provider's
+/// document in place.
+///
+/// So the user either picks the existing file (a folder another device has
+/// already seeded) or creates it in a folder of their choice through the
+/// export picker (a first device). Access is held through a security-scoped
+/// bookmark of the file in UserDefaults, the way ObsidianBridge holds the
+/// vault. The web layer runs the same cycle it runs for iCloud and for the
+/// desktop and Android folders, through the adapter in
+/// src/sync/directAccessNativeBridge.js.
 ///
 /// Read classification mirrors electron/directAccessStore.ts and the Android
-/// DirectAccessRead exactly, because the shared cycle treats all three alike:
+/// DirectAccessRead, because the shared cycle treats all three alike, with one
+/// difference: a bookmarked file that is gone is `error`, never `absent`. The
+/// cycle seeds over "absent", and there is no folder to seed into here; the
+/// user re-picks or re-creates the file instead.
 ///
-///   absent       the file is not there: the web layer may seed it.
 ///   downloading  the file is there but cannot be trusted yet: a zero-length
 ///                placeholder, an iCloud `.icloud` stub, or a coordinated read
-///                the provider could not satisfy yet. NEVER reported as absent,
-///                because absent means "seed over it".
-///   error        the folder cannot be used: no bookmark, a bookmark that no
-///                longer resolves or grants access, a vanished folder.
+///                the provider could not satisfy yet.
+///   error        the file cannot be used: no bookmark, a bookmark that no
+///                longer resolves or grants access, a file that is gone.
 ///   text         the file's content.
 ///
-/// Reads and writes go through NSFileCoordinator: for a File Provider location
-/// a coordinated read is what materialises a cloud-only file, and a coordinated
-/// `.forReplacing` write is what tells the provider to upload the new version.
-///
-/// A folder in a third-party provider's storage (Nextcloud, Drive, Dropbox) is
-/// not on disk until something enumerates it through file coordination: that
-/// is the gray cloud next to it in Files. The picker hands back a path that
-/// does not exist yet, a bookmark cannot be made of it ("The file couldn't be
-/// opened because it doesn't exist", iPhone, 2026-10-08), and fileExists says
-/// "absent" for everything in it, which the cycle would read as "seed over
-/// it". So the folder is materialised (`materialize`) before it is bookmarked,
-/// probed, read or written, and whether the file exists is judged from the
-/// provider's own listing of the folder, never from the disk alone.
-///
-/// JS contract (identical to Android's DirectAccessBridge.kt, with booleans as
-/// the strings "true"/"false" because every dgbridge:// answer is text):
-///   pickFolder()        → "null"; later window.__dgDirectAccessPicked({…} | null)
+/// JS contract (the method names Android's DirectAccessBridge.kt shares, plus
+/// the two iOS picks; booleans travel as the strings "true"/"false" because
+/// every dgbridge:// answer is text):
+///   pickFile()          → "null"; later window.__dgDirectAccessPicked({…} | null | {error})
+///   createFile()        → "null"; same callback
+///   pickFolder()        → same as pickFile (older callers)
 ///   status()            → JSON { configured, name, path, reachable }
-///   read()              → JSON { kind: absent|downloading|error|text, text?, error? }
+///   read()              → JSON { kind: downloading|error|text, text?, error? }
 ///   write(text)         → "true" | "false"
 ///   deleteSnapshot()    → "true" | "false"
 ///   disconnect()        → "true"
@@ -55,16 +57,17 @@ final class DirectAccessBridge: NSObject {
     /// Set by WebView.swift so the picker result can call back into the page.
     weak var webView: WKWebView?
 
-    private let bookmarkKey  = "dayglance.directAccess.folderBookmark"
-    private let syncFileName = "dayglance-sync.json"
+    private let bookmarkKey       = "dayglance.directAccess.fileBookmark"
+    private let legacyFolderKey   = "dayglance.directAccess.folderBookmark"
+    private let syncFileName      = "dayglance-sync.json"
 
     // The poll reads every 15 s; an unchanged file (same modification date and
     // size) is served from here. Our own writes invalidate it.
     private var cache: (modified: Date, size: Int, text: String)?
 
-    // MARK: - Folder bookmark
+    // MARK: - File bookmark
 
-    private func folderURL() -> URL? {
+    private func fileURL() -> URL? {
         guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
         var stale = false
         guard let url = try? URL(
@@ -79,29 +82,17 @@ final class DirectAccessBridge: NSObject {
         return url
     }
 
-    private func isDirectory(_ url: URL) -> Bool {
-        var isDir: ObjCBool = false
-        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
+    /// iCloud Drive keeps a cloud-only file as a hidden `.name.icloud` stub,
+    /// and the older File Provider API writes its placeholders the same way.
+    private func placeholderURL(for file: URL) -> URL {
+        file.deletingLastPathComponent().appendingPathComponent("." + file.lastPathComponent + ".icloud")
     }
 
-    /// Asks the folder's provider to put the folder on disk and list it. The
-    /// caller holds the security scope. Returns the names in the folder, or nil
-    /// when the folder cannot be enumerated (it is gone, or the provider cannot
-    /// reach it): then nothing in it may be trusted, least of all "absent".
-    private func materialize(_ folder: URL) -> [String]? {
-        var names: [String]?
-        var coordError: NSError?
-        NSFileCoordinator().coordinate(readingItemAt: folder, options: [], error: &coordError) { url in
-            names = try? FileManager.default.contentsOfDirectory(atPath: url.path)
-        }
-        if coordError != nil { return nil }
-        guard isDirectory(folder) else { return nil }
-        return names ?? []
+    private func isUbiquitous(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isUbiquitousItemKey]))?.isUbiquitousItem == true
     }
 
-    // MARK: - pickFolder
-
-    func pickFolder() {
+    private func present(_ picker: UIDocumentPickerViewController) {
         DispatchQueue.main.async {
             guard let rootVC = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
@@ -110,12 +101,40 @@ final class DirectAccessBridge: NSObject {
                 self.postPicked(self.json(["error": "no view controller to present the picker from"]))
                 return
             }
-            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
             picker.delegate = self
             picker.allowsMultipleSelection = false
             rootVC.present(picker, animated: true)
         }
     }
+
+    // MARK: - pickFile / createFile
+
+    /// Opens the Files picker on an existing dayglance-sync.json. Any file can
+    /// be chosen; the delegate refuses one with another name, so a wrong file
+    /// is never adopted as the fleet's snapshot.
+    func pickFile() {
+        present(UIDocumentPickerViewController(forOpeningContentTypes: [.json, .data]))
+    }
+
+    /// Creates dayglance-sync.json in a folder the user chooses, through the
+    /// export picker: a temporary file holding the text "null" is MOVED there
+    /// (asCopy false), and the delegate bookmarks its new location. "null"
+    /// classifies as absent in the web layer, so the first cycle seeds the
+    /// file from this device's data exactly as it seeds an empty folder.
+    func createFile() {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(syncFileName)
+        do {
+            try "null".data(using: .utf8)!.write(to: tmp, options: .atomic)
+        } catch {
+            NSLog("[directAccess] create: temp file failed: %@", error.localizedDescription)
+            postPicked(json(["error": "could not prepare the file: \(error.localizedDescription)"]))
+            return
+        }
+        present(UIDocumentPickerViewController(forExporting: [tmp], asCopy: false))
+    }
+
+    /// Older callers; on iOS a folder cannot be held (header), so the file is picked.
+    func pickFolder() { pickFile() }
 
     // MARK: - status / disconnect
 
@@ -124,11 +143,13 @@ final class DirectAccessBridge: NSObject {
         var name: Any = NSNull()
         var path: Any = NSNull()
         var reachable = false
-        if configured, let url = folderURL() {
+        if configured, let url = fileURL() {
             name = url.lastPathComponent
             path = url.path
             if url.startAccessingSecurityScopedResource() {
-                reachable = materialize(url) != nil
+                // On disk, or a placeholder the provider will fill on the first read.
+                reachable = FileManager.default.fileExists(atPath: url.path)
+                    || FileManager.default.fileExists(atPath: placeholderURL(for: url).path)
                 url.stopAccessingSecurityScopedResource()
             }
         }
@@ -140,9 +161,10 @@ final class DirectAccessBridge: NSObject {
         ])
     }
 
-    /// Forgets the folder. The file in it is left where it is.
+    /// Forgets the file. The file itself is left where it is.
     func disconnect() -> String {
         UserDefaults.standard.removeObject(forKey: bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: legacyFolderKey)
         cache = nil
         return "true"
     }
@@ -151,60 +173,63 @@ final class DirectAccessBridge: NSObject {
 
     func read() -> String {
         guard UserDefaults.standard.data(forKey: bookmarkKey) != nil else {
-            return kind("error", ["error": "no folder connected"])
+            return kind("error", ["error": "no file connected"])
         }
-        // The folder first: a bookmark that no longer resolves or grants access,
-        // or a folder that vanished, must read as an error, not as "the file is
-        // absent" (which would seed a new file into whatever reappears there).
-        guard let folder = folderURL(), folder.startAccessingSecurityScopedResource() else {
+        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else {
             return kind("error", ["error": "permission denied"])
         }
-        defer { folder.stopAccessingSecurityScopedResource() }
-        guard let names = materialize(folder) else { return kind("error", ["error": "folder not found"]) }
+        defer { file.stopAccessingSecurityScopedResource() }
 
-        let fileURL = folder.appendingPathComponent(syncFileName)
+        var isDir: ObjCBool = false
+        let onDisk = FileManager.default.fileExists(atPath: file.path, isDirectory: &isDir)
+        if onDisk && isDir.boolValue { return kind("error", ["error": "\(syncFileName) is not a file"]) }
+        let stub = placeholderURL(for: file)
+        let hasStub = FileManager.default.fileExists(atPath: stub.path)
 
-        // An iCloud Drive folder picked here shows a cloud-only file as a hidden
-        // .name.icloud stub; ask for the download and wait.
-        let placeholderURL = folder.appendingPathComponent("." + syncFileName + ".icloud")
-        if FileManager.default.fileExists(atPath: placeholderURL.path) {
-            try? FileManager.default.startDownloadingUbiquitousItem(at: fileURL)
+        // iCloud Drive: a coordinated read of a cloud-only item blocks until it
+        // is down, so ask for the download and let the next poll read it. A
+        // provider's placeholder is filled by the coordinated read below.
+        if !onDisk && hasStub && isUbiquitous(file) {
+            try? FileManager.default.startDownloadingUbiquitousItem(at: file)
             return kind("downloading")
         }
 
-        // Existence is the provider's call (its listing), not the disk's: a
-        // third-party provider's file is not on disk until it is read through
-        // coordination, and "absent" means "seed over it".
-        var isDir: ObjCBool = false
-        let onDisk = FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir)
-        if onDisk && isDir.boolValue { return kind("error", ["error": "\(syncFileName) is not a file"]) }
-        guard onDisk || names.contains(syncFileName) else { return kind("absent") }
-
         if onDisk {
-            let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+            let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
             let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
             let modified = (attrs?[.modificationDate] as? Date) ?? Date.distantPast
-            // A cloud-only placeholder, or a provider part-way through replacing it.
+            // A provider part-way through replacing it.
             if size == 0 { return kind("downloading") }
             if let c = cache, c.modified == modified, c.size == size {
                 return kind("text", ["text": c.text])
             }
         }
 
-        // The coordinated read materialises a file the provider has not put on
-        // disk yet, and reads the one it has.
+        // The coordinated read is what makes the provider put the file on disk
+        // (startProvidingItem), and reads the one that is there.
         var text: String?
         var coordError: NSError?
-        NSFileCoordinator().coordinate(readingItemAt: fileURL, options: [], error: &coordError) { url in
+        NSFileCoordinator().coordinate(readingItemAt: file, options: [], error: &coordError) { url in
             if let data = try? Data(contentsOf: url), let s = String(data: data, encoding: .utf8) {
                 text = s
             }
         }
-        // The provider could not hand the file over yet (still materialising, a
-        // lock held, offline, a transient failure): the next poll retries. It is
-        // listed, so it is never "absent".
-        guard coordError == nil, let t = text, !t.isEmpty else { return kind("downloading") }
-        let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path)
+        if let e = coordError {
+            // Gone for good (deleted on another device, the provider forgot
+            // it): the user re-picks or re-creates. Anything else is transient.
+            let gone = !onDisk && !hasStub
+                && e.domain == NSCocoaErrorDomain
+                && (e.code == NSFileReadNoSuchFileError || e.code == NSFileNoSuchFileError)
+            return gone
+                ? kind("error", ["error": "the sync file is gone: \(e.localizedDescription)"])
+                : kind("downloading")
+        }
+        guard let t = text, !t.isEmpty else {
+            return (onDisk || hasStub)
+                ? kind("downloading")
+                : kind("error", ["error": "the sync file is gone"])
+        }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
         let size = (attrs?[.size] as? NSNumber)?.intValue ?? t.utf8.count
         let modified = (attrs?[.modificationDate] as? Date) ?? Date()
         cache = (modified, size, t)
@@ -212,37 +237,41 @@ final class DirectAccessBridge: NSObject {
     }
 
     func write(_ text: String) -> String {
-        guard let folder = folderURL(), folder.startAccessingSecurityScopedResource() else { return "false" }
-        defer { folder.stopAccessingSecurityScopedResource() }
-        guard materialize(folder) != nil, let data = text.data(using: .utf8) else { return "false" }
-        let fileURL = folder.appendingPathComponent(syncFileName)
+        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else { return "false" }
+        defer { file.stopAccessingSecurityScopedResource() }
+        guard let data = text.data(using: .utf8) else { return "false" }
 
         var ok = false
         var coordError: NSError?
-        NSFileCoordinator().coordinate(writingItemAt: fileURL, options: .forReplacing, error: &coordError) { url in
-            // Atomic: a torn file is the worse hazard here, since the provider
-            // would ship it to every other device.
+        // `.forReplacing` is what tells a provider to upload the new version
+        // (itemChanged); the write is atomic so a torn file never ships.
+        NSFileCoordinator().coordinate(writingItemAt: file, options: .forReplacing, error: &coordError) { url in
             ok = (try? data.write(to: url, options: .atomic)) != nil
         }
         cache = nil
         return (ok && coordError == nil) ? "true" : "false"
     }
 
-    /// Deletes the snapshot (reset scope "everywhere"). A missing file counts as deleted.
+    /// Deletes the snapshot (reset scope "everywhere"), and forgets the
+    /// bookmark with it: a bookmark of a deleted file is good for nothing,
+    /// and the card then offers to pick or create again. A missing file
+    /// counts as deleted.
     func deleteSnapshot() -> String {
-        guard let folder = folderURL(), folder.startAccessingSecurityScopedResource() else { return "false" }
-        defer { folder.stopAccessingSecurityScopedResource() }
-        let fileURL = folder.appendingPathComponent(syncFileName)
+        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else { return "false" }
+        defer { file.stopAccessingSecurityScopedResource() }
         cache = nil
-        guard let names = materialize(folder) else { return "false" }
-        guard FileManager.default.fileExists(atPath: fileURL.path) || names.contains(syncFileName) else { return "true" }
-
-        var ok = false
-        var coordError: NSError?
-        NSFileCoordinator().coordinate(writingItemAt: fileURL, options: .forDeleting, error: &coordError) { url in
-            ok = (try? FileManager.default.removeItem(at: url)) != nil
+        let present = FileManager.default.fileExists(atPath: file.path)
+            || FileManager.default.fileExists(atPath: placeholderURL(for: file).path)
+        var ok = !present
+        if present {
+            var coordError: NSError?
+            NSFileCoordinator().coordinate(writingItemAt: file, options: .forDeleting, error: &coordError) { url in
+                ok = (try? FileManager.default.removeItem(at: url)) != nil
+            }
+            ok = ok && coordError == nil
         }
-        return (ok && coordError == nil) ? "true" : "false"
+        if ok { UserDefaults.standard.removeObject(forKey: bookmarkKey) }
+        return ok ? "true" : "false"
     }
 
     // MARK: - Helpers
@@ -285,38 +314,51 @@ final class DirectAccessBridge: NSObject {
 
 extension DirectAccessBridge: UIDocumentPickerDelegate {
 
+    /// Both pickers land here: the open picker with the file the user chose,
+    /// the export picker with the moved file's new location.
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let url = urls.first else {
             NSLog("[directAccess] pick: the picker returned no URL")
-            postPicked(json(["error": "the picker returned no folder"]))
+            postPicked(json(["error": "the picker returned no file"]))
             return
         }
         // A false here means the URL carried no security scope to start, not
-        // that access is denied: a third-party File Provider folder can answer
-        // either way. The bookmark is the real test, so it is attempted
-        // regardless, and a failure is reported with its reason rather than
-        // swallowed (a Nextcloud folder picked on an iPhone did nothing, and
-        // nothing said why, 2026-10-08).
+        // that access is denied; the bookmark is the real test.
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        // A provider folder that is not on disk yet cannot be bookmarked; listing
-        // it through coordination is what puts it there (header).
-        let listed = materialize(url) != nil
+
+        // The wrong file is never adopted. The export picker renames on a
+        // name clash ("dayglance-sync 2.json"): that means the folder already
+        // has the fleet's file, so the stray copy is removed and the user is
+        // told to choose the existing one.
+        guard url.lastPathComponent == syncFileName else {
+            NSLog("[directAccess] pick: refused %@ (not %@)", url.path, syncFileName)
+            if url.lastPathComponent.hasPrefix("dayglance-sync") {
+                var coordError: NSError?
+                NSFileCoordinator().coordinate(writingItemAt: url, options: .forDeleting, error: &coordError) { u in
+                    try? FileManager.default.removeItem(at: u)
+                }
+                postPicked(json(["error": "that folder already has a \(syncFileName): choose it instead of creating one", "path": url.path]))
+            } else {
+                postPicked(json(["error": "that is not \(syncFileName)", "path": url.path]))
+            }
+            return
+        }
         do {
             let bookmark = try url.bookmarkData(options: [])
             UserDefaults.standard.set(bookmark, forKey: bookmarkKey)
+            UserDefaults.standard.removeObject(forKey: legacyFolderKey)
             cache = nil
-            NSLog("[directAccess] picked %@ (security scope: %@, listed: %@)", url.path, scoped ? "yes" : "no", listed ? "yes" : "no")
+            NSLog("[directAccess] picked %@ (security scope: %@)", url.path, scoped ? "yes" : "no")
             // The page updates its card and kicks a cycle from this; no reload.
             postPicked(status())
         } catch {
-            NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@, listed: %@): %@",
-                  url.path, scoped ? "yes" : "no", listed ? "yes" : "no", error.localizedDescription)
+            NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@): %@",
+                  url.path, scoped ? "yes" : "no", error.localizedDescription)
             postPicked(json([
                 "error": "bookmark: \(error.localizedDescription)",
                 "path": url.path,
                 "scoped": scoped,
-                "listed": listed,
             ]))
         }
     }

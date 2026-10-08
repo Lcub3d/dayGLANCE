@@ -233,13 +233,35 @@ describe('picking and disconnecting', () => {
     expect(timers[0].ms).toBe(DIRECT_ACCESS_PICK_TIMEOUT_MS);
     timers[0].fn();
     expect(await picked).toBeNull();
-    expect(transport.getSnapshot().pickError).toBe('the folder picker returned no result');
+    expect(transport.getSnapshot().pickError).toBe('the picker returned no result');
     expect(clearTimer).toHaveBeenCalled();
   });
 
   it('probeStatus hands back the shell\'s own status for the diagnostics report', async () => {
     const { transport, bridge } = make();
     expect(await transport.probeStatus()).toEqual(await bridge.status());
+  });
+
+  it('pickFile and createFile (iOS) connect exactly as pickFolder does; a bridge without them says so', async () => {
+    const storage = makeStorage({ [DIRECT_ACCESS_LAST_SYNCED_KEY]: 'stamp', [DIRECT_ACCESS_PREF_KEY]: 'false' });
+    const file = { configured: true, path: '/x/dayglance-sync.json', name: 'dayglance-sync.json', reachable: true };
+    const bridge = makeBridge({ folder: { configured: false }, pickFile: vi.fn(async () => file), createFile: vi.fn(async () => file) });
+    const { transport } = make({ bridge, storage });
+    const kicks = vi.fn();
+    transport.onChanged(kicks);
+    transport.subscribe(() => {});
+    await flush();
+    expect(await transport.pickFile()).toMatchObject({ status: 'connected', name: 'dayglance-sync.json', enabled: true });
+    expect(storage.getItem(DIRECT_ACCESS_LAST_SYNCED_KEY)).toBeNull();
+    expect(kicks).toHaveBeenCalledTimes(1);
+    expect(await transport.createFile()).toMatchObject({ status: 'connected' });
+    expect(bridge.createFile).toHaveBeenCalledTimes(1);
+    // Desktop and Android bridges have no file pick: reported, not thrown.
+    const plain = make({ bridge: makeBridge() });
+    plain.transport.subscribe(() => {});
+    await flush();
+    expect(await plain.transport.pickFile()).toBeNull();
+    expect(plain.transport.getSnapshot().pickError).toBe('not available on this platform');
   });
 
   it('a cancelled picker changes nothing', async () => {

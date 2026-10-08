@@ -400,8 +400,11 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
     // strings "true"/"false" because every answer here is text.
     private func dispatchDirectAccess(method: String, args: [Any]) -> String? {
         switch method {
-        case "pickFolder":
-            DirectAccessBridge.shared.pickFolder()
+        case "pickFolder", "pickFile":
+            DirectAccessBridge.shared.pickFile()
+            return "null"
+        case "createFile":
+            DirectAccessBridge.shared.createFile()
             return "null"
         case "status":
             return DirectAccessBridge.shared.status()

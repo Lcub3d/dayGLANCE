@@ -19,6 +19,8 @@ const makeNative = (platform = 'android', over = {}) => {
     deleteSnapshot: vi.fn(() => bool(true)),
     disconnect: vi.fn(() => bool(true)),
     pickFolder: vi.fn(() => (platform === 'ios' ? 'null' : undefined)),
+    // iOS only: the sync file itself. Android's bridge has neither.
+    ...(platform === 'ios' ? { pickFile: vi.fn(() => 'null'), createFile: vi.fn(() => 'null') } : {}),
     ...over,
   };
   return n;
@@ -81,6 +83,22 @@ describe('the folder picker round trip', () => {
     w.__dgDirectAccessPicked({ configured: true, name: 'Drive', path: '/x', reachable: true });
     expect(await picked).toMatchObject({ configured: true, name: 'Drive' });
     expect(w.__dgDirectAccessPicked).toBeUndefined();
+  });
+
+  it('pickFile and createFile (iOS) use the same callback; on Android they resolve null', async () => {
+    const ios = make(makeNative('ios'));
+    const picked = ios.bridge.pickFile();
+    expect(ios.native.pickFile).toHaveBeenCalledTimes(1);
+    ios.w.__dgDirectAccessPicked({ configured: true, name: 'dayglance-sync.json', path: '/x/dayglance-sync.json', reachable: true });
+    expect(await picked).toMatchObject({ name: 'dayglance-sync.json' });
+    const created = ios.bridge.createFile();
+    expect(ios.native.createFile).toHaveBeenCalledTimes(1);
+    ios.w.__dgDirectAccessPicked({ configured: true, name: 'dayglance-sync.json', path: '/y/dayglance-sync.json', reachable: true });
+    expect(await created).toMatchObject({ path: '/y/dayglance-sync.json' });
+    const android = make(makeNative('android'));
+    expect(await android.bridge.pickFile()).toBeNull();
+    expect(await android.bridge.createFile()).toBeNull();
+    expect(android.w.__dgDirectAccessPicked).toBeUndefined();
   });
 
   it('a cancelled picker resolves null', async () => {

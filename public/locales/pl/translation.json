@@ -2241,6 +2241,10 @@
     "desc": "Synchronizuj przez folder, który inna aplikacja już utrzymuje w zgodzie między Twoimi urządzeniami: Google Drive, Dropbox, OneDrive, Syncthing lub udział sieciowy. dayGLANCE odczytuje i zapisuje tam jeden plik; ta aplikacja go przenosi.",
     "chooseFolder": "Wybierz folder…",
     "changeFolder": "Zmień folder",
+    "chooseFile": "Wybierz plik synchronizacji…",
+    "createFile": "Utwórz plik synchronizacji…",
+    "changeFile": "Zmień plik",
+    "notConnectedFile": "Na tym urządzeniu nie połączono pliku synchronizacji.",
     "disconnect": "Odłącz",
     "notConnected": "Na tym urządzeniu nie połączono żadnego folderu.",
     "connectedTo": "Synchronizacja przez",
@@ -2250,7 +2254,7 @@
     "pickFailed": "Nie udało się połączyć folderu: {{reason}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
     "androidHint": "Na Androidzie wybierz folder, który jakaś aplikacja odzwierciedla w pamięci tego urządzenia, np. Syncthing, FolderSync lub Autosync. Aplikacje Google Drive i Dropbox nie udostępniają tutaj swoich folderów.",
-    "iosHint": "Na iPhonie i iPadzie wybierz folder z lokalizacji w aplikacji Pliki, np. iCloud Drive, Google Drive lub Dropbox."
+    "iosHint": "Na iPhonie i iPadzie wybierz plik dayglance-sync.json, który Twoje inne urządzenia już współdzielą, z lokalizacji w aplikacji Pliki, takiej jak Nextcloud, Google Drive lub Dropbox. Jeśli żadne urządzenie jeszcze go nie utworzyło, utwórz go w folderze, który będą współdzielić."
   },
   "aspire": {
     "title": "Aspire",

@@ -2148,6 +2148,10 @@
     "desc": "Sincronize através de uma pasta que outra aplicação já mantém atualizada entre os seus dispositivos: Google Drive, Dropbox, OneDrive, Syncthing ou uma partilha de rede. O dayGLANCE lê e escreve um ficheiro nessa pasta; essa aplicação transporta-o.",
     "chooseFolder": "Escolher pasta…",
     "changeFolder": "Alterar pasta",
+    "chooseFile": "Escolher ficheiro de sincronização…",
+    "createFile": "Criar ficheiro de sincronização…",
+    "changeFile": "Mudar ficheiro",
+    "notConnectedFile": "Nenhum ficheiro de sincronização ligado neste dispositivo.",
     "disconnect": "Desligar",
     "notConnected": "Nenhuma pasta ligada neste dispositivo.",
     "connectedTo": "A sincronizar através de",
@@ -2157,7 +2161,7 @@
     "pickFailed": "Não foi possível ligar a pasta: {{reason}}",
     "neverSynced": "Ainda não sincronizado",
     "androidHint": "No Android, escolha uma pasta que uma aplicação espelhe no armazenamento deste dispositivo, como Syncthing, FolderSync ou Autosync. As aplicações do Google Drive e do Dropbox não disponibilizam aqui as suas pastas.",
-    "iosHint": "No iPhone e no iPad, escolha uma pasta numa localização da aplicação Ficheiros, como iCloud Drive, Google Drive ou Dropbox."
+    "iosHint": "No iPhone e no iPad, escolha o dayglance-sync.json que os seus outros dispositivos já partilham, numa localização da app Ficheiros como Nextcloud, Google Drive ou Dropbox. Se nenhum dispositivo o criou ainda, crie-o na pasta que irão partilhar."
   },
   "aspire": {
     "title": "Aspire",

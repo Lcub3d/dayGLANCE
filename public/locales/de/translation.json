@@ -2148,6 +2148,10 @@
     "desc": "Synchronisieren Sie über einen Ordner, den eine andere App bereits zwischen Ihren Geräten abgleicht: Google Drive, Dropbox, OneDrive, Syncthing oder eine Netzwerkfreigabe. dayGLANCE liest und schreibt dort eine Datei; diese App überträgt sie.",
     "chooseFolder": "Ordner wählen…",
     "changeFolder": "Ordner ändern",
+    "chooseFile": "Sync-Datei wählen…",
+    "createFile": "Sync-Datei erstellen…",
+    "changeFile": "Datei ändern",
+    "notConnectedFile": "Auf diesem Gerät ist keine Sync-Datei verbunden.",
     "disconnect": "Trennen",
     "notConnected": "Auf diesem Gerät ist kein Ordner verbunden.",
     "connectedTo": "Synchronisiert über",
@@ -2157,7 +2161,7 @@
     "pickFailed": "Der Ordner konnte nicht verbunden werden: {{reason}}",
     "neverSynced": "Noch nicht synchronisiert",
     "androidHint": "Wählen Sie unter Android einen Ordner, den eine App in den Speicher dieses Geräts spiegelt, etwa Syncthing, FolderSync oder Autosync. Die Apps von Google Drive und Dropbox bieten ihre Ordner hier nicht an.",
-    "iosHint": "Wählen Sie auf iPhone und iPad einen Ordner aus einem Speicherort der Dateien-App, etwa iCloud Drive, Google Drive oder Dropbox."
+    "iosHint": "Wählen Sie auf iPhone und iPad die dayglance-sync.json, die Ihre anderen Geräte bereits teilen, an einem Ort in der Dateien-App wie Nextcloud, Google Drive oder Dropbox. Hat noch kein Gerät eine erstellt, erstellen Sie sie in dem Ordner, den sie teilen werden."
   },
   "aspire": {
     "title": "Aspire",

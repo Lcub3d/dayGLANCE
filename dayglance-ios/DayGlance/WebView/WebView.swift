@@ -86,6 +86,8 @@ struct WebView: UIViewRepresentable {
         VaultSseBridge.shared.webView = webView
         // And the vault bridge — its asynchronous scan answers via __obsidianDispatch.
         ObsidianBridge.shared.webView = webView
+        // And the Direct Access folder picker — its result lands via __dgDirectAccessPicked.
+        DirectAccessBridge.shared.webView = webView
 
         webView.load(URLRequest(url: URL(string: "dg:///index.html")!))
         return webView
@@ -102,7 +104,7 @@ struct WebView: UIViewRepresentable {
         window.isIPad = \(isIPad ? "true" : "false");
 
         // Route any bridge call through the dgbridge:// synchronous XHR scheme.
-        // Both DayGlanceNative and DayGlanceObsidian are Proxy objects so any
+        // DayGlanceNative, DayGlanceObsidian and DayGlanceDirectAccess are Proxy objects so any
         // method name works without enumerating them — future bridge phases just
         // handle new method names in BridgeSchemeHandler.swift.
         (function() {
@@ -130,6 +132,15 @@ struct WebView: UIViewRepresentable {
                 get: function(_, method) {
                     return function() {
                         return _callBridge('obsidian', method, Array.from(arguments));
+                    };
+                }
+            });
+
+            // Direct Access sync folder (docs/direct-access-sync.md).
+            window.DayGlanceDirectAccess = new Proxy({}, {
+                get: function(_, method) {
+                    return function() {
+                        return _callBridge('directaccess', method, Array.from(arguments));
                     };
                 }
             });

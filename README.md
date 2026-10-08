@@ -491,7 +491,7 @@ One address policy backs all of this, and it is implemented separately in the de
 
 Sync through a folder that another app already keeps in step across your devices: Google Drive for desktop, Dropbox, OneDrive, Syncthing, or a plain network share. dayGLANCE reads and writes a single file (`dayglance-sync.json`) in the folder you pick; that app moves it between machines. The merge is the same task-level, timestamp-based merge the WebDAV and iCloud tiers use, so edits from two machines converge, and it runs alongside WebDAV, GLANCEvault and iCloud rather than replacing them.
 
-**Setup (desktop and Android apps):** Settings → Cloud Sync → Direct Access → **Choose folder…** and pick the synced folder on each device. A device switch under the card pauses syncing on that device without touching the folder copy. On Android the folder has to come from an app that mirrors to the phone's storage (Syncthing, FolderSync, Autosync): the Google Drive and Dropbox apps do not offer their folders to Android's folder picker. iPhone and iPad support is planned; see `docs/direct-access-sync.md` for the design and the roadmap.
+**Setup (desktop, Android, iPhone and iPad):** Settings → Cloud Sync → Direct Access → **Choose folder…** and pick the synced folder on each device. A device switch under the card pauses syncing on that device without touching the folder copy. On Android the folder has to come from an app that mirrors to the phone's storage (Syncthing, FolderSync, Autosync): the Google Drive and Dropbox apps do not offer their folders to Android's folder picker. On iPhone and iPad any location the Files app offers works. See `docs/direct-access-sync.md` for the design.
 
 ### CalDAV / iCal Calendar Import
 

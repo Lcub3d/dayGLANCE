@@ -213,7 +213,8 @@ iCloud users see the same cycles, the same prompt, the same keys.
 - `DirectAccessBridge.kt` is `window.DayGlanceDirectAccess`; MainActivity owns
   the SAF tree picker and takes the persistable grant, and the result reaches
   the page through `window.__dgDirectAccessPicked`.
-- `src/sync/directAccessAndroidBridge.js` adapts those synchronous calls to the
+- `src/sync/directAccessNativeBridge.js` (named for Android in this phase, shared
+  with iOS from Phase 4) adapts those synchronous calls to the
   promise shape the Electron preload offers, so the transport, hook, cycle and
   settings card are unchanged. There is no folder watcher on SAF, so the poll
   and the foreground kick carry remote changes.
@@ -221,12 +222,30 @@ iCloud users see the same cycles, the same prompt, the same keys.
   apps do not offer a folder tree to the picker, so the folder has to come from
   an app that mirrors to local storage (Syncthing, FolderSync, Autosync).
 
-### Phase 4: iOS
+### Phase 4: iOS — done
 
 - Folder picker plus security-scoped bookmark, the pattern `ObsidianBridge.swift`
   already uses. Drive and Dropbox file providers support folder selection and
   hydrate on coordinated reads.
 - Lowest value because iCloud already covers Apple-only users.
+
+#### What Phase 4 shipped
+
+- `DirectAccessBridge.swift` holds the folder through a security-scoped
+  bookmark in UserDefaults (the `ObsidianBridge` pattern) and classifies reads
+  exactly as the desktop store and the Android classifier do. Reads and writes
+  go through `NSFileCoordinator`: for a File Provider location a coordinated
+  read is what materialises a cloud-only file, and a coordinated `.forReplacing`
+  write is what tells the provider to upload. An iCloud Drive folder picked
+  here is handled too (the `.icloud` stub reads as downloading).
+- The folder picker is `UIDocumentPickerViewController(forOpeningContentTypes:
+  [.folder])`; the result reaches the page through `window.__dgDirectAccessPicked`
+  without a reload.
+- `BridgeSchemeHandler` gained the `directaccess` namespace and the WebView shim
+  the `window.DayGlanceDirectAccess` proxy. Because every dgbridge:// answer is
+  text, booleans arrive as `"true"`/`"false"`; the native adapter
+  (`src/sync/directAccessNativeBridge.js`, shared with Android) accepts both.
+- The iOS foreground event now kicks the Direct Access cycle as well as iCloud.
 
 ### Phase 5: multi-user over Direct Access
 
@@ -354,7 +373,7 @@ leaves every file's modified time where it was.
 - A diagnostics card like `ICloudDiagnostics`, and a web/PWA transport via the
   File System Access API that `folderBackup.js` already demonstrates.
 
-## Using it (desktop and Android)
+## Using it (desktop, Android, iPhone and iPad)
 
 Settings → Cloud Sync → **Direct Access** → *Choose folder…* on each machine,
 picking the same folder inside whatever the syncing tool mirrors (for example
@@ -369,6 +388,11 @@ that an app mirrors to the phone's storage (Syncthing, FolderSync, Autosync);
 the Google Drive and Dropbox apps do not offer their folders to Android's
 folder picker. Remote changes land on the 15 second poll or when the app comes
 to the foreground.
+
+On iPhone and iPad, pick a folder from any location the Files app offers
+(iCloud Drive, Google Drive, Dropbox, a Nextcloud or SMB location). iCloud
+sync keeps running alongside; the two share one mutex and never merge into
+state at once.
 
 Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct
 Access file too, on any platform with the bridge: folder status, the file's

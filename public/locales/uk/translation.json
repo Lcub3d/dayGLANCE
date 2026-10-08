@@ -2254,7 +2254,8 @@
     "onHint": "Увімкнено. Цей пристрій синхронізується через папку.",
     "offHint": "Вимкнено на цьому пристрої. Копія в папці та ваші інші пристрої не зачіпаються.",
     "neverSynced": "Ще не синхронізовано",
-    "androidHint": "На Android виберіть папку, яку якась програма дзеркалить у пам'ять цього пристрою, наприклад Syncthing, FolderSync або Autosync. Програми Google Drive і Dropbox не пропонують тут своїх папок."
+    "androidHint": "На Android виберіть папку, яку якась програма дзеркалить у пам'ять цього пристрою, наприклад Syncthing, FolderSync або Autosync. Програми Google Drive і Dropbox не пропонують тут своїх папок.",
+    "iosHint": "На iPhone та iPad виберіть папку з розташування у програмі «Файли», наприклад iCloud Drive, Google Drive або Dropbox."
   },
   "aspire": {
     "title": "Aspire",

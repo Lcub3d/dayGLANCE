@@ -2155,7 +2155,8 @@
     "onHint": "已开启。此设备通过该文件夹同步。",
     "offHint": "此设备已关闭。文件夹中的副本和其他设备不会受到影响。",
     "neverSynced": "尚未同步",
-    "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。"
+    "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。",
+    "iosHint": "在 iPhone 和 iPad 上，请从“文件”应用中的某个位置选择文件夹，例如 iCloud 云盘、Google Drive 或 Dropbox。"
   },
   "aspire": {
     "title": "Aspire",

@@ -1,19 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createAndroidDirectAccessBridge, isAndroidDirectAccessAvailable } from './directAccessAndroidBridge.js';
+import { createNativeDirectAccessBridge, isNativeDirectAccessAvailable } from './directAccessNativeBridge.js';
 import { createDirectAccessTransport } from './directAccessTransport.js';
 import { classifySnapshotText } from './snapshotFileSync.js';
 
-/** A fake of the Kotlin DirectAccessBridge: synchronous, JSON text in and out. */
-const makeNative = (over = {}) => {
+/**
+ * Fakes of the two native bridges. Android's JavascriptInterface answers with
+ * real booleans; iOS's dgbridge:// proxy answers everything as text, so its
+ * booleans are the strings "true"/"false" and void calls answer "null".
+ */
+const makeNative = (platform = 'android', over = {}) => {
+  const bool = (b) => (platform === 'ios' ? String(b) : b);
   const n = {
-    folder: { configured: true, name: 'Sync', path: 'content://tree/x', reachable: true },
+    folder: { configured: true, name: 'Sync', path: platform === 'ios' ? '/private/var/mobile/Sync' : 'content://tree/x', reachable: true },
     file: { kind: 'absent' },
     status: vi.fn(() => JSON.stringify(n.folder)),
     read: vi.fn(() => JSON.stringify(n.file)),
-    write: vi.fn(() => true),
-    deleteSnapshot: vi.fn(() => true),
-    disconnect: vi.fn(() => true),
-    pickFolder: vi.fn(),
+    write: vi.fn(() => bool(true)),
+    deleteSnapshot: vi.fn(() => bool(true)),
+    disconnect: vi.fn(() => bool(true)),
+    pickFolder: vi.fn(() => (platform === 'ios' ? 'null' : undefined)),
     ...over,
   };
   return n;
@@ -21,55 +26,59 @@ const makeNative = (over = {}) => {
 
 const make = (native = makeNative()) => {
   const w = {};
-  const bridge = createAndroidDirectAccessBridge({ native: () => native, win: () => w });
+  const bridge = createNativeDirectAccessBridge({ native: () => native, win: () => w });
   return { bridge, native, w };
 };
 
 describe('availability', () => {
-  it('is false outside the Android WebView', () => {
-    expect(isAndroidDirectAccessAvailable()).toBe(false);
+  it('is false outside the native shells', () => {
+    expect(isNativeDirectAccessAvailable()).toBe(false);
   });
 });
 
-describe('synchronous calls mapped to promises', () => {
+describe.each(['android', 'ios'])('synchronous calls mapped to promises (%s)', (platform) => {
   it('status and restore parse the status JSON', async () => {
-    const { bridge, native } = make();
+    const { bridge, native } = make(makeNative(platform));
     expect(await bridge.restore()).toEqual(native.folder);
     expect(await bridge.status()).toEqual(native.folder);
   });
 
   it('read parses the classification; garbage reads as null (an error to the transport)', async () => {
-    const { bridge, native } = make();
+    const { bridge, native } = make(makeNative(platform));
     native.file = { kind: 'text', text: '{"version":2}' };
     expect(await bridge.read()).toEqual({ kind: 'text', text: '{"version":2}' });
     native.read = () => 'not json';
     expect(await bridge.read()).toBeNull();
+    native.read = () => null; // iOS: the scheme handler answered 500
+    expect(await bridge.read()).toBeNull();
   });
 
-  it('write, deleteFile and disconnect return strict booleans', async () => {
-    const { bridge, native } = make();
+  it('write, deleteFile and disconnect return strict booleans whatever the native type', async () => {
+    const { bridge, native } = make(makeNative(platform));
     expect(await bridge.write('{}')).toBe(true);
     expect(native.write).toHaveBeenCalledWith('{}');
-    native.write = () => 'true';
+    native.write = () => (platform === 'ios' ? 'false' : false);
+    expect(await bridge.write('{}')).toBe(false);
+    native.write = () => null;
     expect(await bridge.write('{}')).toBe(false);
     expect(await bridge.deleteFile()).toBe(true);
     expect(await bridge.disconnect()).toBe(true);
   });
 
   it('has no folder watcher', () => {
-    const { bridge } = make();
+    const { bridge } = make(makeNative(platform));
     expect(bridge.onChanged).toBeUndefined();
   });
 });
 
 describe('the folder picker round trip', () => {
-  it('resolves with the status MainActivity posts back, and clears its callback', async () => {
+  it('resolves with the status the shell posts back, and clears its callback', async () => {
     const { bridge, native, w } = make();
     const picked = bridge.pick();
     expect(native.pickFolder).toHaveBeenCalledTimes(1);
     expect(typeof w.__dgDirectAccessPicked).toBe('function');
-    // Kotlin passes the org.json object as a JS literal.
-    w.__dgDirectAccessPicked({ configured: true, name: 'Drive', path: 'content://tree/y', reachable: true });
+    // Kotlin and Swift both pass the JSON object as a JS literal.
+    w.__dgDirectAccessPicked({ configured: true, name: 'Drive', path: '/x', reachable: true });
     expect(await picked).toMatchObject({ configured: true, name: 'Drive' });
     expect(w.__dgDirectAccessPicked).toBeUndefined();
   });
@@ -82,7 +91,7 @@ describe('the folder picker round trip', () => {
   });
 
   it('a bridge that throws on launch resolves null and leaves no callback behind', async () => {
-    const native = makeNative({ pickFolder: () => { throw new Error('no activity'); } });
+    const native = makeNative('android', { pickFolder: () => { throw new Error('no activity'); } });
     const { bridge, w } = make(native);
     expect(await bridge.pick()).toBeNull();
     expect(w.__dgDirectAccessPicked).toBeUndefined();
@@ -105,8 +114,8 @@ describe('through the shared transport', () => {
   };
   const flush = () => new Promise((r) => setTimeout(r, 0));
 
-  it('connects from the native status and maps reads onto the cycle contract', async () => {
-    const native = makeNative();
+  it.each(['android', 'ios'])('connects from the native status and maps reads onto the cycle contract (%s)', async (platform) => {
+    const native = makeNative(platform);
     const { bridge } = make(native);
     const transport = createDirectAccessTransport({ bridge: () => bridge, storage: storage, log: { warn: vi.fn() } });
     transport.subscribe(() => {});
@@ -117,6 +126,7 @@ describe('through the shared transport', () => {
     expect(classifySnapshotText(await transport.read())).toEqual({ kind: 'absent' });
     native.file = { kind: 'downloading' };
     expect(classifySnapshotText(await transport.read())).toEqual({ kind: 'downloading' });
+    expect(await transport.write('{"version":2}')).toBe(true);
     native.file = { kind: 'error', error: 'permission denied' };
     expect(classifySnapshotText(await transport.read())).toEqual({ kind: 'error', error: 'permission denied' });
     expect(transport.getSnapshot().status).toBe('unreachable');

@@ -1,0 +1,74 @@
+/**
+ * Direct Access on the native apps: window.DayGlanceDirectAccess (Android's
+ * DirectAccessBridge.kt, iOS's DirectAccessBridge.swift) adapted to the
+ * promise-based bridge shape the transport already consumes on Electron
+ * (electronAPI.directAccess), so sync/directAccessTransport.js, the hook and
+ * the cycle run unchanged on every platform.
+ *
+ * The native calls are synchronous and answer with JSON text. Android's
+ * JavascriptInterface returns real booleans; iOS answers every dgbridge:// call
+ * as text, so its booleans arrive as the strings "true"/"false". The adapter
+ * accepts both. The one asynchronous step is the folder picker: pickFolder()
+ * launches the platform's picker (the Storage Access Framework tree picker,
+ * the Files folder picker) and the result is delivered through
+ * `window.__dgDirectAccessPicked(statusOrNull)`.
+ *
+ * Neither platform offers a folder watcher for a picked folder, so `onChanged`
+ * is absent; the poll and the foreground kick carry remote changes.
+ */
+
+/** Present inside the Android WebView and the iOS shell, never on the web. */
+export const isNativeDirectAccessAvailable = () =>
+  typeof window !== 'undefined' && !!window.DayGlanceDirectAccess;
+
+const PICK_CALLBACK = '__dgDirectAccessPicked';
+
+/** iOS answers booleans as text; Android as booleans. */
+const truthy = (value) => value === true || value === 'true';
+
+/**
+ * @param {object} [deps]
+ * @param {() => object} [deps.native]  the native bridge object
+ * @param {() => object} [deps.win]     where the pick callback is registered
+ */
+export function createNativeDirectAccessBridge({
+  native = () => window.DayGlanceDirectAccess,
+  win = () => window,
+} = {}) {
+  const parse = (value) => {
+    if (value == null) return null;
+    if (typeof value !== 'string') return value;
+    try { return JSON.parse(value); } catch { return null; }
+  };
+
+  return {
+    restore: async () => parse(native().status()),
+    status: async () => parse(native().status()),
+
+    // Resolves with the new status, or null when the picker was cancelled or
+    // could not be launched. One pick at a time: a second call before the
+    // first resolves replaces its callback, and the earlier promise settles
+    // null when the result finally arrives for the later one.
+    pick: () => new Promise((resolve) => {
+      const w = win();
+      const previous = w[PICK_CALLBACK];
+      const handler = (result) => {
+        if (w[PICK_CALLBACK] === handler) delete w[PICK_CALLBACK];
+        resolve(parse(result));
+      };
+      w[PICK_CALLBACK] = handler;
+      if (typeof previous === 'function') previous(null);
+      try {
+        native().pickFolder();
+      } catch {
+        if (w[PICK_CALLBACK] === handler) delete w[PICK_CALLBACK];
+        resolve(null);
+      }
+    }),
+
+    disconnect: async () => truthy(native().disconnect()),
+    read: async () => parse(native().read()),
+    write: async (text) => truthy(native().write(text)),
+    deleteFile: async () => truthy(native().deleteSnapshot()),
+  };
+}

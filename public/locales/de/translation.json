@@ -2063,6 +2063,14 @@
     "run": "Prüfung starten",
     "running": "Wird geprüft…",
     "platform": "Plattform",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Container",
     "containerError": "Container-Fehler",
     "available": "VERFÜGBAR",

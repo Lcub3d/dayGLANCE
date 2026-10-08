@@ -2063,6 +2063,14 @@
     "run": "运行检查",
     "running": "检查…",
     "platform": "平台",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "网页 / PWA"
+    },
     "container": "容器",
     "containerError": "容器错误",
     "available": "可用",

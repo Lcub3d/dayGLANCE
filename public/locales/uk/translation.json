@@ -2162,6 +2162,14 @@
     "run": "Запустити перевірку",
     "running": "Перевірка…",
     "platform": "Платформа",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Веб / PWA"
+    },
     "container": "Контейнер",
     "containerError": "Помилка контейнера",
     "available": "ДОСТУПНО",

@@ -2063,6 +2063,14 @@
     "run": "Executar verificação",
     "running": "A verificar…",
     "platform": "Plataforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Contentor",
     "containerError": "Erro do contentor",
     "available": "DISPONÍVEL",

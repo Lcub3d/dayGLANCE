@@ -2065,6 +2065,14 @@
     "run": "Esegui controllo",
     "running": "Controllo in corso…",
     "platform": "Piattaforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Container",
     "containerError": "Errore del container",
     "available": "DISPONIBILE",

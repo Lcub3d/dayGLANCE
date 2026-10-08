@@ -164,7 +164,11 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
       {report && (
         <>
           <div className="pt-1">
-            <Row label={t('icloudDiag.platform')} value={report.platform} />
+            <Row label={t('icloudDiag.platform')} value={t(`icloudDiag.platformName.${report.platform}`, { defaultValue: report.platform })} />
+            {/* The iCloud rows only where iCloud exists; elsewhere they could
+                only say "not probeable / unsupported / never". The Direct
+                Access block below has always been conditional the same way. */}
+            {(report.icloud ?? true) && (<>
             <Row
               label={t('icloudDiag.container')}
               value={
@@ -195,6 +199,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
                 show the WebDAV key, so an iCloud-only device always read "never"
                 — true of WebDAV, and silent about the tier it actually used. */}
             <Row label={t('icloudDiag.icloudSynced')} value={report.transports.icloud?.lastSynced ?? t('icloudDiag.never')} />
+            </>)}
 
             {/* The other transports. Without these, an unavailable container
                 leaves "so where did this data come from?" unanswerable. */}
@@ -242,7 +247,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
               value={`${report.local.taskCount} / ${report.local.inboxCount}`}
             />
 
-            <MergeRows merge={report.merge} />
+            {(report.icloud ?? true) && <MergeRows merge={report.merge} />}
           </div>
 
           {/* The Direct Access folder, on platforms that have the bridge: the

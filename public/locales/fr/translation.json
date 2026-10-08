@@ -2063,6 +2063,14 @@
     "run": "Lancer le test",
     "running": "Vérification…",
     "platform": "Plateforme",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Conteneur",
     "containerError": "Erreur de conteneur",
     "available": "DISPONIBLE",

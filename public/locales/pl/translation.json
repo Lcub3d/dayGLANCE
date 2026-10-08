@@ -2156,6 +2156,14 @@
     "run": "Uruchom sprawdzenie",
     "running": "Sprawdzanie…",
     "platform": "Platforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Kontener",
     "containerError": "Błąd kontenera",
     "available": "DOSTĘPNY",

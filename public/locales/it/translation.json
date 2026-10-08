@@ -2156,6 +2156,7 @@
     "unreachable": "La cartella non è disponibile al momento. La sincronizzazione riprende quando torna disponibile.",
     "onHint": "Attiva. Questo dispositivo si sincronizza tramite la cartella.",
     "offHint": "Disattivata su questo dispositivo. La copia nella cartella e gli altri tuoi dispositivi non sono interessati.",
+    "pickFailed": "Impossibile collegare la cartella: {{reason}}",
     "neverSynced": "Non ancora sincronizzato",
     "androidHint": "Su Android, scegli una cartella che un'app replica nella memoria di questo dispositivo, come Syncthing, FolderSync o Autosync. Le app di Google Drive e Dropbox non offrono qui le loro cartelle.",
     "iosHint": "Su iPhone e iPad, scegli una cartella da una posizione dell'app File, come iCloud Drive, Google Drive o Dropbox."

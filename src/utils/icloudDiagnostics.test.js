@@ -445,8 +445,29 @@ describe('probeDirectAccess', () => {
     expect(await probeDirectAccess({ directAccess: null })).toBeNull();
     expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
     const off = fakeDirectAccess({ status: 'disconnected', name: null });
-    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, snapshot: null, merge: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null });
     expect(off.read).not.toHaveBeenCalled();
+  });
+
+  it('carries the last pick failure and the shell\'s own status into the report (the iPhone pick that did nothing, 2026-10-08)', async () => {
+    const t = fakeDirectAccess({ status: 'disconnected', name: null });
+    t.getSnapshot = () => ({ supported: true, status: 'disconnected', name: null, enabled: true, connected: false, pickError: 'bookmark: permission denied (/Nextcloud/dg)' });
+    t.probeStatus = async () => ({ configured: false, name: null, path: null, reachable: false });
+    const r = await probeDirectAccess({ directAccess: t });
+    expect(r.pickError).toBe('bookmark: permission denied (/Nextcloud/dg)');
+    expect(r.native).toEqual({ configured: false, name: null, path: null, reachable: false });
+    const text = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: r,
+    });
+    expect(text).toMatch(/direct access: +not connected\n  sync on device: on\n  last pick: +FAILED: bookmark: permission denied \(\/Nextcloud\/dg\)\n  shell status: +\{"configured":false/);
+    // A transport without the probe, or with nothing to report, prints neither line.
+    const plain = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      directAccess: { status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null },
+    });
+    expect(plain).not.toMatch(/last pick|shell status/);
   });
 
   it('reads the connected folder through the transport and dry-runs the merge on it', async () => {

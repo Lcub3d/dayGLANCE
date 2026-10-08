@@ -81,6 +81,13 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
         )}
       </div>
 
+      {/* Why the last pick failed, from the shell (no bookmark, no result).
+          Without this a failed pick looked exactly like a cancelled one. */}
+      {status.pickError && (
+        <p className="text-xs text-red-700 dark:text-red-300 break-words">
+          {t('directAccess.pickFailed', { reason: status.pickError })}
+        </p>
+      )}
       {!status.connected ? (
         <div className="flex items-center justify-between gap-3">
           <p className={`text-xs ${textSecondary}`}>{t('directAccess.notConnected')}</p>

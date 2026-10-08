@@ -33,7 +33,16 @@
  *     and an apply only when the merged data differs from local state. The
  *     merge's own flags are necessary, not sufficient: with the strip above
  *     they fired on every cycle of every Mac holding health counts, and the
- *     resulting identical rewrites starved every phone (2026-10-05).
+ *     resulting identical rewrites starved every phone (2026-10-05);
+ *   • a write takes a second look: the cycle that first wants it records what
+ *     it saw, and writes only when a later cycle, at least WRITE_CONFIRM_MS
+ *     on, sees the same difference against the same unchanged file. A change
+ *     reaches a device by two roads at different speeds, GLANCEvault in
+ *     seconds and the folder's syncing tool in tens of seconds, so the second
+ *     Mac learned of an iPhone's edit from the vault, found its folder copy
+ *     stale, wrote the same data with a fresh stamp, and Nextcloud reported a
+ *     conflict on every change (2026-10-08). The second look lets the slower
+ *     road catch up; a real edit made here still goes out, one poll later.
  *
  * Nothing here touches React. The hook (hooks/useSnapshotFileSync.js) owns the
  * poll, the mutex and the prompt state; App.jsx owns i18n and status UI.
@@ -45,6 +54,14 @@ import { sliceDiffs, writeWorthy } from './snapshotMergeExplain.js';
 
 /** Shared with the WebDAV engine: when this device last changed synced data. */
 export const LOCAL_MODIFIED_KEY = 'day-planner-cloud-sync-local-modified';
+
+/**
+ * How long a wanted write waits for a second look that still wants it. Less
+ * than the transports' polls (15 s), so the next poll confirms; more than the
+ * watcher debounce and the skipped-cycle retry, so a kick seconds after the
+ * first look does not count as the second.
+ */
+export const WRITE_CONFIRM_MS = 10 * 1000;
 
 /**
  * Classifies the raw text a transport read.
@@ -96,8 +113,8 @@ const count = (storage, key) => {
  * @param {Storage}  args.io.storage                        localStorage-like
  * @param {() => number} [args.io.now]
  * @param {Console}  [args.io.log]
- * @param {{missingSince: number, lastWriteAt: number}} args.state  carried between cycles
- * @returns {Promise<{state: {missingSince: number, lastWriteAt: number}, outcome: object}>}
+ * @param {{missingSince: number, lastWriteAt: number, pendingWrite?: {fingerprint: string, at: number}|null}} args.state  carried between cycles
+ * @returns {Promise<{state: {missingSince: number, lastWriteAt: number, pendingWrite: object|null}, outcome: object}>}
  *   outcome.kind is one of:
  *     'skipped'   (reason: 'missing-grace' | 'empty-state-guard' | 'downloading' |
  *                  'unparseable' | 'no-data' | 'encrypted-unreadable')
@@ -105,12 +122,17 @@ const count = (storage, key) => {
  *     'reseeded'  an undecryptable envelope was replaced with local plaintext
  *     'error'     (reason: 'unavailable', error) the transport reported an error
  *     'prompted'  (info) a first-run restore choice is needed; nothing was written
- *     'merged'    (localChanged, remoteChanged, wrote)
+ *     'merged'    (localChanged, remoteChanged, applied, wrote, deferred)
+ *                 deferred: a write is wanted and waits for its second look
  */
 export async function runSnapshotFileCycle({ transport, io, state }) {
   const log = io.log ?? console;
   const now = io.now ?? Date.now;
-  const next = { missingSince: state?.missingSince ?? 0, lastWriteAt: state?.lastWriteAt ?? 0 };
+  const next = {
+    missingSince: state?.missingSince ?? 0,
+    lastWriteAt: state?.lastWriteAt ?? 0,
+    pendingWrite: state?.pendingWrite ?? null,
+  };
 
   // Writing faster than the daemon's round-trip piles conflict versions onto
   // the remote; skip writes inside the window. The next poll re-runs the merge
@@ -237,19 +259,36 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     data: mergedData,
   });
   const applyNeeded = localChanged && sliceDiffs(mergedData, localData, { ignoreDropped: true }).length > 0;
-  const writeNeeded = (remoteChanged || localChanged) && writeWorthy(sliceDiffs(outPayload.data, remote.data)).length > 0;
+  const writable = (remoteChanged || localChanged) ? writeWorthy(sliceDiffs(outPayload.data, remote.data)) : [];
+  const writeNeeded = writable.length > 0;
 
   if (applyNeeded) {
     // Apply the FULL merged data locally (health-sourced counts stay on-device).
     io.applyEngineData(mergedData, { allowEmpty: !!remote.lastModified });
     io.storage.setItem(LOCAL_MODIFIED_KEY, new Date(now()).toISOString());
   }
+
+  // The second look (header). What was seen: the differences a write would
+  // resolve, against the file version they were seen on. The same sight on a
+  // later cycle, WRITE_CONFIRM_MS on, is the confirmation; a different file
+  // version starts over, since the slower road may just have delivered what
+  // this device was about to write.
   let wrote = false;
+  let deferred = false;
   if (writeNeeded) {
-    wrote = await throttledWrite(JSON.stringify(outPayload));
+    const fingerprint = `${remote.lastModified ?? ''}\u0000${writable.map((d) => d.summary).join('\n')}`;
+    const pending = next.pendingWrite;
+    if (pending && pending.fingerprint === fingerprint && now() - pending.at >= WRITE_CONFIRM_MS) {
+      wrote = await throttledWrite(JSON.stringify(outPayload));
+    } else {
+      if (!pending || pending.fingerprint !== fingerprint) next.pendingWrite = { fingerprint, at: now() };
+      deferred = true;
+    }
+  } else {
+    next.pendingWrite = null;
   }
   return {
     state: next,
-    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote },
+    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote, deferred },
   };
 }

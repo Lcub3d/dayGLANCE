@@ -57,6 +57,18 @@ block only where its transport is. The report's first line names the device
 The web and PWA, which have neither file transport, still get the vault and
 WebDAV rows.
 
+**A write takes a second look.** A change reaches a device by two roads at
+different speeds: GLANCEvault in seconds, the folder's syncing tool in tens of
+seconds. The second Mac learned of an iPhone's edit from the vault, found its
+folder copy stale, wrote the same data with a fresh stamp, and Nextcloud
+reported a conflict on every change (2026-10-08; the conflict copies were
+byte-identical in content to the live file). So the cycle that first wants a
+write only records what it saw, and writes when a later cycle, at least
+`WRITE_CONFIRM_MS` (10 s) on, sees the same difference against the same file
+version. If the file moved on in between, the slower road delivered what this
+device was about to write, and the write is dropped. A real edit made on the
+device still goes out, one poll later. Seeding an absent file is not deferred.
+
 **Health-store counts ride in the file.** The iCloud transport strips
 HealthKit-derived habit counts from what it writes (`utils/healthLogFilter.js`),
 because Apple guideline 5.1.3 forbids HealthKit data in iCloud. That rule is

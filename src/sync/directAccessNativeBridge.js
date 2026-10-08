@@ -54,7 +54,15 @@ export function createNativeDirectAccessBridge({
       const previous = w[PICK_CALLBACK];
       const handler = (result) => {
         if (w[PICK_CALLBACK] === handler) delete w[PICK_CALLBACK];
-        resolve(parse(result));
+        const parsed = parse(result);
+        // A failed pick is reported, not swallowed: the shell says what went
+        // wrong (no bookmark, no view controller) and the card stays as it is.
+        if (parsed && typeof parsed === 'object' && parsed.error) {
+          console.error('[direct-access] folder pick failed:', parsed);
+          resolve(null);
+          return;
+        }
+        resolve(parsed);
       };
       w[PICK_CALLBACK] = handler;
       if (typeof previous === 'function') previous(null);

@@ -90,6 +90,20 @@ describe('the folder picker round trip', () => {
     expect(await picked).toBeNull();
   });
 
+  it('a failed pick the shell reports resolves null, logs the reason, and leaves the card alone', async () => {
+    // A Nextcloud folder picked on an iPhone did nothing and nothing said why
+    // (2026-10-08): the shell now posts {error, …} and the page logs it.
+    const { bridge, w } = make();
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const picked = bridge.pick();
+      w.__dgDirectAccessPicked({ error: 'bookmark: permission denied', path: '/x', scoped: false });
+      expect(await picked).toBeNull();
+      expect(spy).toHaveBeenCalledWith('[direct-access] folder pick failed:', expect.objectContaining({ error: 'bookmark: permission denied' }));
+      expect(w.__dgDirectAccessPicked).toBeUndefined();
+    } finally { spy.mockRestore(); }
+  });
+
   it('a bridge that throws on launch resolves null and leaves no callback behind', async () => {
     const native = makeNative('android', { pickFolder: () => { throw new Error('no activity'); } });
     const { bridge, w } = make(native);

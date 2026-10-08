@@ -81,7 +81,8 @@ final class DirectAccessBridge: NSObject {
             guard let rootVC = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
                 .first?.windows.first?.rootViewController else {
-                self.postPicked("null")
+                NSLog("[directAccess] pick: no root view controller to present from")
+                self.postPicked(self.json(["error": "no view controller to present the picker from"]))
                 return
             }
             let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
@@ -230,10 +231,17 @@ final class DirectAccessBridge: NSObject {
 
     private func postPicked(_ literal: String) {
         DispatchQueue.main.async {
-            self.webView?.evaluateJavaScript(
-                "window.__dgDirectAccessPicked && window.__dgDirectAccessPicked(\(literal))",
-                completionHandler: nil
-            )
+            guard let webView = self.webView else {
+                NSLog("[directAccess] pick result dropped: no web view to deliver it to")
+                return
+            }
+            webView.evaluateJavaScript(
+                "window.__dgDirectAccessPicked && window.__dgDirectAccessPicked(\(literal))"
+            ) { _, error in
+                if let error = error {
+                    NSLog("[directAccess] pick result not delivered: %@", error.localizedDescription)
+                }
+            }
         }
     }
 }
@@ -243,22 +251,39 @@ final class DirectAccessBridge: NSObject {
 extension DirectAccessBridge: UIDocumentPickerDelegate {
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls.first, url.startAccessingSecurityScopedResource() else {
-            postPicked("null")
+        guard let url = urls.first else {
+            NSLog("[directAccess] pick: the picker returned no URL")
+            postPicked(json(["error": "the picker returned no folder"]))
             return
         }
-        defer { url.stopAccessingSecurityScopedResource() }
-        guard let bookmark = try? url.bookmarkData(options: []) else {
-            postPicked("null")
-            return
+        // A false here means the URL carried no security scope to start, not
+        // that access is denied: a third-party File Provider folder can answer
+        // either way. The bookmark is the real test, so it is attempted
+        // regardless, and a failure is reported with its reason rather than
+        // swallowed (a Nextcloud folder picked on an iPhone did nothing, and
+        // nothing said why, 2026-10-08).
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let bookmark = try url.bookmarkData(options: [])
+            UserDefaults.standard.set(bookmark, forKey: bookmarkKey)
+            cache = nil
+            NSLog("[directAccess] picked %@ (security scope: %@)", url.path, scoped ? "yes" : "no")
+            // The page updates its card and kicks a cycle from this; no reload.
+            postPicked(status())
+        } catch {
+            NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@): %@",
+                  url.path, scoped ? "yes" : "no", error.localizedDescription)
+            postPicked(json([
+                "error": "bookmark: \(error.localizedDescription)",
+                "path": url.path,
+                "scoped": scoped,
+            ]))
         }
-        UserDefaults.standard.set(bookmark, forKey: bookmarkKey)
-        cache = nil
-        // The page updates its card and kicks a cycle from this; no reload.
-        postPicked(status())
     }
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        NSLog("[directAccess] pick cancelled")
         postPicked("null")
     }
 }

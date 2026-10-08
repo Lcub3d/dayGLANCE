@@ -301,7 +301,14 @@ export async function probeDirectAccess(deps = {}) {
   const transport = deps.directAccess;
   if (!transport || typeof transport.isSupported !== 'function' || !transport.isSupported()) return null;
   const s = typeof transport.getSnapshot === 'function' ? transport.getSnapshot() : {};
-  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false };
+  // The shell's own answer, verbatim: after a pick that "did nothing" it says
+  // whether a folder was saved at all, and the card's last pick error says
+  // why not (2026-10-08).
+  let native = null;
+  if (typeof transport.probeStatus === 'function') {
+    try { native = await transport.probeStatus(); } catch (err) { native = { error: err?.message ?? String(err) }; }
+  }
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, pickError: s?.pickError ?? null, native };
   if (!s?.connected) return { ...head, snapshot: null, merge: null };
   let raw;
   try {
@@ -496,6 +503,8 @@ export function formatDiagnosticsReport({ platform, icloud, available, snapshot,
       'direct access:   ' + (da.snapshot ? `${da.status} (${da.name ?? none})` : da.status === 'unreachable' ? `unreachable (${da.name ?? none})` : 'not connected'),
       `  sync on device: ${da.enabled === false ? 'OFF' : 'on'}`,
     );
+    if (da.pickError) lines.push(`  last pick:     FAILED: ${da.pickError}`);
+    if (da.native !== undefined && da.native !== null) lines.push(`  shell status:  ${typeof da.native === 'string' ? da.native : JSON.stringify(da.native)}`);
     if (da.snapshot) lines.push(...snapshotLines(da.snapshot, '  ', none));
     lines.push(...mergeLines(da.merge, '  ', none));
   }

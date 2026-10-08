@@ -71,10 +71,19 @@ export const isDirectAccessSupported = () => !!defaultBridge();
  * @param {() => Storage|null} [deps.storage]
  * @param {Pick<Console,'warn'>} [deps.log]
  */
-export function createDirectAccessTransport({ bridge = defaultBridge, storage = defaultStorage, log = console } = {}) {
+/**
+ * A folder picker that never answers (a delegate that is not called, a result
+ * lost on the way back into the page) would otherwise leave the card's button
+ * disabled and say nothing. Long enough to browse a slow Files location.
+ */
+export const DIRECT_ACCESS_PICK_TIMEOUT_MS = 3 * 60 * 1000;
+
+export function createDirectAccessTransport({ bridge = defaultBridge, storage = defaultStorage, log = console, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
   // status: 'unknown' until the main process has restored its config, then
-  // 'disconnected' | 'connected' | 'unreachable'.
-  const state = { status: 'unknown', name: null, path: null };
+  // 'disconnected' | 'connected' | 'unreachable'. pickError is why the last
+  // folder pick failed, shown on the card and in the diagnostics report until
+  // the next pick; a picker that was cancelled clears it.
+  const state = { status: 'unknown', name: null, path: null, pickError: null };
   const statusListeners = new Set();
   const changeListeners = new Set();
   let unsubscribeBridge = null;
@@ -97,6 +106,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     path: state.path,
     connected: isConnected(),
     enabled: isEnabled(),
+    pickError: state.pickError,
   });
   let snapshot = compute();
   const notify = () => {
@@ -240,9 +250,30 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     getSnapshot: () => snapshot,
     isConnected,
 
-    /** Native folder picker. Resolves to the new snapshot, or null if cancelled. */
+    /**
+     * Native folder picker. Resolves to the new snapshot, or null when the
+     * picker was cancelled, failed (snapshot.pickError says why), or never
+     * answered. A Nextcloud folder picked on an iPhone did nothing, and
+     * nothing on the device said why (2026-10-08).
+     */
     pickFolder: async () => {
-      const st = await bridge()?.pick();
+      const b = bridge();
+      if (!b) return null;
+      let timer = null;
+      const timeout = new Promise((resolve) => {
+        timer = setTimer(() => resolve({ error: 'the folder picker returned no result' }), DIRECT_ACCESS_PICK_TIMEOUT_MS);
+      });
+      let st;
+      try { st = await Promise.race([b.pick(), timeout]); }
+      catch (err) { st = { error: err?.message ?? String(err) }; }
+      finally { clearTimer(timer); }
+      if (st && typeof st === 'object' && st.error) {
+        state.pickError = st.error + (st.path ? ` (${st.path})` : '');
+        log.warn?.('[direct-access] folder pick failed:', st);
+        notify();
+        return null;
+      }
+      if (state.pickError) { state.pickError = null; notify(); }
       if (!st) return null;
       // A different folder has its own history: the seed guard must not read
       // an empty new folder as an eviction of the old one and wait ten
@@ -258,6 +289,13 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
       try { await bridge()?.disconnect(); } catch { /* the renderer side still forgets it */ }
       clearLastSynced();
       applyStatus(null);
+    },
+
+    /** The shell's own view of the folder, verbatim, for the diagnostics report. */
+    probeStatus: async () => {
+      const b = bridge();
+      if (!b) return null;
+      try { return await b.status(); } catch (err) { return { error: err?.message ?? String(err) }; }
     },
 
     /** Deletes the snapshot in the folder (reset scope "everywhere"). */

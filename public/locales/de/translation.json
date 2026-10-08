@@ -2154,6 +2154,7 @@
     "unreachable": "Der Ordner ist gerade nicht verfügbar. Die Synchronisierung läuft weiter, sobald er wieder da ist.",
     "onHint": "Ein. Dieses Gerät synchronisiert über den Ordner.",
     "offHint": "Auf diesem Gerät aus. Die Kopie im Ordner und Ihre anderen Geräte sind nicht betroffen.",
+    "pickFailed": "Der Ordner konnte nicht verbunden werden: {{reason}}",
     "neverSynced": "Noch nicht synchronisiert",
     "androidHint": "Wählen Sie unter Android einen Ordner, den eine App in den Speicher dieses Geräts spiegelt, etwa Syncthing, FolderSync oder Autosync. Die Apps von Google Drive und Dropbox bieten ihre Ordner hier nicht an.",
     "iosHint": "Wählen Sie auf iPhone und iPad einen Ordner aus einem Speicherort der Dateien-App, etwa iCloud Drive, Google Drive oder Dropbox."

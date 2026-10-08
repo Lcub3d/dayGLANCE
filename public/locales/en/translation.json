@@ -2154,6 +2154,7 @@
     "unreachable": "The folder is not available right now. Syncing resumes when it is back.",
     "onHint": "On. This device syncs through the folder.",
     "offHint": "Off on this device. The copy in the folder and your other devices are unaffected.",
+    "pickFailed": "The folder could not be connected: {{reason}}",
     "neverSynced": "Not synced yet",
     "androidHint": "On Android, pick a folder that an app mirrors to this device's storage, such as Syncthing, FolderSync or Autosync. The Google Drive and Dropbox apps do not offer their folders here.",
     "iosHint": "On iPhone and iPad, pick a folder from a location in the Files app, such as iCloud Drive, Google Drive or Dropbox."

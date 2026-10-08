@@ -3,6 +3,7 @@ import {
   createDirectAccessTransport,
   DIRECT_ACCESS_LAST_SYNCED_KEY,
   DIRECT_ACCESS_PREF_KEY,
+  DIRECT_ACCESS_PICK_TIMEOUT_MS,
 } from './directAccessTransport.js';
 import { classifySnapshotText } from './snapshotFileSync.js';
 
@@ -37,11 +38,12 @@ const makeBridge = (over = {}) => {
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-const make = ({ bridge = makeBridge(), storage = makeStorage(), present = true } = {}) => {
+const make = ({ bridge = makeBridge(), storage = makeStorage(), present = true, ...rest } = {}) => {
   const transport = createDirectAccessTransport({
     bridge: () => (present ? bridge : null),
     storage: () => storage,
     log: { warn: vi.fn() },
+    ...rest,
   });
   return { transport, bridge, storage };
 };
@@ -199,6 +201,45 @@ describe('picking and disconnecting', () => {
     expect(storage.getItem(DIRECT_ACCESS_PREF_KEY)).toBe('true');
     expect(kicks).toHaveBeenCalledTimes(1);
     expect(transport.isAvailable()).toBe(true);
+  });
+
+  it('a pick the shell reports as failed is shown as pickError, returns null, and changes nothing else', async () => {
+    const { transport, bridge, storage } = make({ log: { warn: vi.fn() } });
+    const seen = [];
+    transport.subscribe(() => seen.push(transport.getSnapshot().pickError));
+    await flush();
+    storage.setItem(DIRECT_ACCESS_LAST_SYNCED_KEY, 'stamp');
+    bridge.pick = vi.fn(async () => ({ error: 'bookmark: permission denied', path: '/Nextcloud/dg', scoped: false }));
+    expect(await transport.pickFolder()).toBeNull();
+    expect(transport.getSnapshot().pickError).toBe('bookmark: permission denied (/Nextcloud/dg)');
+    expect(seen.at(-1)).toBe('bookmark: permission denied (/Nextcloud/dg)');
+    expect(storage.getItem(DIRECT_ACCESS_LAST_SYNCED_KEY)).toBe('stamp');
+    expect(transport.getSnapshot().status).toBe('connected');
+    // The next successful pick clears it.
+    bridge.pick = vi.fn(async () => ({ configured: true, path: '/x', name: 'x', reachable: true }));
+    await transport.pickFolder();
+    expect(transport.getSnapshot().pickError).toBeNull();
+  });
+
+  it('a picker that never answers is reported after the timeout instead of hanging the card', async () => {
+    const timers = [];
+    const setTimer = vi.fn((fn, ms) => { timers.push({ fn, ms }); return timers.length; });
+    const clearTimer = vi.fn();
+    const { transport, bridge } = make({ setTimer, clearTimer });
+    transport.subscribe(() => {});
+    await flush();
+    bridge.pick = vi.fn(() => new Promise(() => {}));
+    const picked = transport.pickFolder();
+    expect(timers[0].ms).toBe(DIRECT_ACCESS_PICK_TIMEOUT_MS);
+    timers[0].fn();
+    expect(await picked).toBeNull();
+    expect(transport.getSnapshot().pickError).toBe('the folder picker returned no result');
+    expect(clearTimer).toHaveBeenCalled();
+  });
+
+  it('probeStatus hands back the shell\'s own status for the diagnostics report', async () => {
+    const { transport, bridge } = make();
+    expect(await transport.probeStatus()).toEqual(await bridge.status());
   });
 
   it('a cancelled picker changes nothing', async () => {

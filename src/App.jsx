@@ -148,6 +148,7 @@ import { keepImportedTask } from './sync/payloadExclusions.js';
 import { canEnableMultiUser } from './utils/multiUserGate.js';
 import { encryptData, hasEncryptionReady } from './utils/crypto.js';
 import useCalendarSync from './hooks/useCalendarSync.js';
+import useCalendarFileImport from './hooks/useCalendarFileImport.js';
 import useBackup from './hooks/useBackup.js';
 import useGTDFrames from './hooks/useGTDFrames.js';
 import { getGlanceHGInstances, isHGSessionReachable } from './hooks/useHyperGlance.js';
@@ -4693,56 +4694,10 @@ const DayPlanner = () => {
     setPendingEditProjectId(null);
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setPendingImportFile(file);
-    setImportColor('bg-gray-600');
-    setShowImportModal(true);
-    e.target.value = '';
-  };
-
-  const processImportFile = (asTaskCalendar) => {
-    if (!pendingImportFile) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const icsContent = event.target.result;
-      const events = parseICS(icsContent);
-
-      // Read fresh completedTaskUids from localStorage to avoid stale closure
-      const freshCompletedUids = new Set(
-        JSON.parse(localStorage.getItem('day-planner-task-completed-uids') || '[]')
-      );
-
-      const allImported = events.flatMap(event =>
-        expandMultiDayEvent(event, { asTaskCalendar, freshCompletedUids, color: importColor, importSource: 'file' })
-      );
-      const importedTasks = filterByDateWindow(allImported, syncRetentionDays);
-
-      if (asTaskCalendar) {
-        const kept = tasks.filter(t => !(t.isTaskCalendar && t.importSource === 'file'));
-        setTasks([...kept, ...importedTasks]);
-      } else {
-        const kept = tasks.filter(t => !(t.imported && !t.isTaskCalendar && t.importSource === 'file'));
-        setTasks([...kept, ...importedTasks]);
-      }
-
-      setPendingImportFile(null);
-      setShowImportModal(false);
-
-      const count = importedTasks.length;
-      setSyncNotification({
-        type: count > 0 ? 'success' : 'info',
-        title: t('sync.icalImportTitle'),
-        message: count > 0
-          ? t('sync.icalImportedCount', { count })
-          : t('sync.icalImportEmpty')
-      });
-    };
-    reader.readAsText(pendingImportFile);
-  };
+  const { handleFileUpload, processImportFile, cancelImport } = useCalendarFileImport({
+    tasks, setTasks, pendingImportFile, setPendingImportFile, setShowImportModal,
+    importColor, setImportColor, syncRetentionDays, setSyncNotification, t,
+  });
 
   // Delete every file-imported calendar EVENT (importSource 'file', not task
   // calendar). URL-subscribed events are replaced wholesale on every sync, but
@@ -8997,7 +8952,7 @@ const DayPlanner = () => {
     restoreFromAutoBackup, restoreFromRemoteBackup,
     folderBackup, restoreFromBackupFolder,
     exportBackup, restoreBackup,
-    handleFileUpload, handleBackupFileSelect, processImportFile, removeFileImportedEvents,
+    handleFileUpload, handleBackupFileSelect, processImportFile, cancelImport, removeFileImportedEvents,
     buildSyncPayload,
     fetchAllDailyContent, fetchWeather,
   };

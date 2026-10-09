@@ -123,6 +123,13 @@ export function stampTimestamps(currentTasks, prevTasks, now, onRestamp) {
   const prevMap = new Map((prevTasks || []).map((t) => [String(t.id), t]));
   return currentTasks.map((t) => {
     const prevTask = prevMap.get(String(t.id));
+    // A file re-import can explicitly restore an id whose deletion is newer
+    // than this device's clock. The importer orders that restore after both
+    // the tombstone and the previous stored copy. Do not lower its explicit
+    // stamp during save or outbound payload building. Ordinary edits retain
+    // the stored stamp until changed, so they still take the normal path.
+    if (t.imported && t.importSource === 'file' &&
+        Date.parse(t.lastModified) > (Date.parse(prevTask?.lastModified) || 0)) return t;
     if (prevTask && prevTask.lastModified) {
       if (normalizedForCompare(prevTask) === normalizedForCompare(t)) {
         return { ...t, lastModified: prevTask.lastModified };
@@ -132,6 +139,12 @@ export function stampTimestamps(currentTasks, prevTasks, now, onRestamp) {
       }
     }
     if (!prevTask && t.lastModified) return t;
-    return { ...t, lastModified: now };
+    // Later edits of a restored file task must also stay after its stored
+    // restore stamp, even before the local clock has caught up with it.
+    const previousTime = Date.parse(prevTask?.lastModified);
+    const editedAt = t.imported && t.importSource === 'file' && previousTime >= Date.parse(now)
+      ? new Date(previousTime + 1).toISOString()
+      : now;
+    return { ...t, lastModified: editedAt };
   });
 }

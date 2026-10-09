@@ -103,8 +103,10 @@ cycle does, per transport.
   rewrites an encrypted envelope it cannot decrypt as plaintext. That is
   acceptable inside Apple's container and wrong on a Google Drive folder.
   Direct Access refuses to write over an encrypted file it cannot read (it
-  surfaces an error instead). Optional passphrase encryption of the Direct
-  Access file is a later phase and reuses `src/utils/crypto.js`.
+  surfaces an error instead). Passphrase encryption of the Direct Access file
+  is Phase 6 and reuses `src/utils/crypto.js`: the same envelope and the same
+  session key as WebDAV, so a folder mirrored from a WebDAV setup
+  interoperates.
 - **Off by default, explicitly configured.** iCloud's tri-state preference
   exists because iOS re-grants the entitlement on reinstall. Direct Access has
   no such problem: absence means off, and "configured" means a folder was
@@ -265,6 +267,27 @@ iCloud users see the same cycles, the same prompt, the same keys.
   listing it through coordination did nothing, because with the older File
   Provider API a folder has no directory on disk to materialise.
 
+### Parity: what "shipped" means
+
+Phase 4 closed on 2026-10-09 with the iPhone, two Macs and an Android phone
+converging through a Nextcloud folder. The tier does not ship on that alone.
+It ships when a fleet with no WebDAV server and no vault can do everything the
+WebDAV tier does: share a household roster (Phase 5), encrypt the file with a
+passphrase (Phase 6), and carry intents between the GLANCE apps (Phase 7).
+Encryption was "optional" in earlier drafts; it is required, and it comes
+before intents so the intent files follow the same envelope decision rather
+than getting a second one later. Phase 8 holds what is still optional.
+
+One fact from Phase 4 shapes all three: **on iPhone and iPad there is no
+folder.** Nextcloud, Google Drive, Dropbox, Box and OneDrive ship Apple's older
+non-replicated File Provider API, under which a picked folder has no directory
+on disk and cannot be bookmarked, listed, or written into (see "On iPhone and
+iPad the bookmark is of the sync FILE" below). An iPhone holds bookmarks to
+files, one per file, each picked or created through the Files picker. So on
+iOS, every file the tier needs is its own bookmark, and anything that needs to
+list a directory or create files by name does not exist on iOS with those
+providers. Where that matters, each phase says so.
+
 ### Phase 5: multi-user over Direct Access
 
 Phase 2 made a connected folder count as configured sync, so the multi-user
@@ -285,21 +308,31 @@ cannot be (`multiUserICloudOnly`), so this tier has to carry the roster.
   it relative to its root. A sibling app pointed at the same folder reads the
   same roster with no translation. Plaintext, as on WebDAV and iCloud: names
   and ids only.
-- **The bridges learn relative paths.** Every Direct Access bridge today reads,
-  writes and deletes one fixed file. Each gains the same five path-taking
-  operations the iCloud intents transport has (`listFiles`, `readFile`,
-  `writeFile`, `deleteFile`, `makeDir`), confined to the picked folder: a path
-  that escapes it (`..`, an absolute path) is refused in the bridge, not in the
-  renderer, on all three platforms. Electron is `path.resolve` plus a prefix
-  check; Android walks `DocumentFile` children under the tree; iOS resolves
-  under the bookmark and keeps the coordinated I/O. The single-file snapshot
-  calls stay as they are. A fake bridge in `src/sync/` exercises the contract
-  once for all three.
-- **`syncSharedUsersViaDirectAccess(usersPath, localUsers)`** in
-  `src/intents/sharedUsers.js`, a copy of the iCloud one over the Direct
-  Access bridge: read, `mergeUsers`, write (make the directory on a failed
-  write, as the iCloud one does). Null when no folder is connected or the
-  transport is unreachable.
+- **The transport gains a roster slot, and the renderer never branches on
+  platform.** `directAccessTransport` gains `readUsers()` and
+  `writeUsers(text)` (and `usersStatus()` for the card and diagnostics), with
+  the same read classification as the snapshot. Behind them:
+  - *Electron and Android* gain the five path-taking operations the iCloud
+    intents transport has (`listFiles`, `readFile`, `writeFile`,
+    `deleteFile`, `makeDir`), confined to the picked folder: a path that
+    escapes it (`..`, an absolute path) is refused in the bridge, not in the
+    renderer. Electron is `path.resolve` plus a prefix check; Android walks
+    `DocumentFile` children under the tree. The roster slot is
+    `readFile`/`writeFile` at `usersPath + glance-users.json`, with `makeDir`
+    on a failed write. The single-file snapshot calls stay as they are.
+  - *iOS* has no folder, so the roster is a second bookmarked file. The
+    Direct Access card gains "Choose household roster…" and "Create household
+    roster…", the same two flows the snapshot uses (`pickFile`/`createFile`
+    with a slot argument: `snapshot` or `users`; the open picker refuses a
+    file not named `glance-users.json`, the export picker moves a seeded
+    `{"version":1,"users":[]}` into the folder the user chooses, which should
+    be `GLANCE/users/`). `usersPath` has no meaning on iOS and the setting is
+    hidden there.
+  - A fake bridge in `src/sync/` exercises both shapes once.
+- **`syncSharedUsersViaDirectAccess(localUsers)`** in `src/intents/sharedUsers.js`,
+  the iCloud one over the roster slot: read, `mergeUsers`, write. Null when no
+  folder is connected, the transport is unreachable, or (iOS) no roster file
+  is bookmarked.
 - **Gates and wiring.** `canSyncUserRoster` and `multiUserUnavailableReason`
   take `directAccessConnected`; the button prefers WebDAV, then Direct Access,
   then iCloud, and the automatic roster sync effect runs the Direct Access one
@@ -307,15 +340,60 @@ cannot be (`multiUserICloudOnly`), so this tier has to carry the roster.
   WebDAV one is keyed on `cloudSyncLastSynced`.
 - **Tests.** `sharedUsers.test.js` over the fake bridge: first writer seeds,
   second merges, a tombstoned user stays gone, an unreachable folder is null
-  and writes nothing; the gate tests gain the Direct Access rows; a scenario
-  with two devices on one folder converging their rosters; and the path
-  confinement mutation-checked on the Electron store (the only bridge that
-  runs here).
+  and writes nothing, an iPhone with no roster bookmark is null; the gate
+  tests gain the Direct Access rows; a scenario with two devices on one folder
+  converging their rosters; the path confinement mutation-checked on the
+  Electron store (the only bridge that runs here) and in
+  `DirectAccessReadTest` for Android.
 - **Acceptance on devices.** Two Macs on the Nextcloud folder with WebDAV off:
   add a household member on one, press the button on the other, see the
-  member. Then the same without the button.
+  member. Then the same without the button. Then the iPhone: choose the
+  roster file the Macs made, see the member.
 
-### Phase 6: intents over Direct Access, and the sibling apps
+### Phase 6: passphrase encryption of the Direct Access file
+
+The WebDAV posture, with the same envelope, the same passphrase and the same
+session key (`src/utils/crypto.js`), so a folder that mirrors a WebDAV setup
+interoperates and a device prompts for one passphrase, not two.
+
+- **The file decides; the switch decides the first write.** A Direct Access
+  file is either a plaintext snapshot or an encrypted envelope, and every
+  writer follows what it read: a device that read an envelope writes an
+  envelope, whatever its own switch says, because downgrading someone else's
+  cloud folder to plaintext is the one thing this tier promised never to do.
+  The per-device "Encrypt the Direct Access file" switch governs seeding an
+  absent file and upgrading a plaintext one: the first write after the switch
+  goes on is an envelope, and from then on the file decides for everyone.
+  Turning the switch off changes nothing until the file is replaced (Phase 8
+  has the explicit "remove encryption" action).
+- **The key gate.** `useCloudSync.js`'s readiness check gains
+  `needDirectAccessKey = directAccessConnected && (switch on || the file is an
+  envelope)`, and the cycle treats a key that is not ready like the encrypted-
+  unreadable case it already has: nothing is applied, nothing is written, the
+  card says a passphrase is needed, and the existing prompt collects it. The
+  entered passphrase derives the same file-tier key WebDAV uses.
+- **The cycle.** `runSnapshotFileCycle` takes `io.encryptData` and
+  `transport.encryptsWrites()`, and the outgoing payload is enveloped after
+  the health strip (the strip reads plaintext). The seed guard, the content
+  gate and the "made here or relayed" rule are unchanged: they look at
+  plaintext data, before the envelope.
+- **The roster stays plaintext, as on WebDAV**, and the intents transport of
+  Phase 7 takes this decision as given: enveloped when the switch is on.
+- **Diagnostics.** The Direct Access block reports `encryption: envelope |
+  plaintext` for the file and `key: ready | needed` for the device.
+- **Tests.** The cycle writes an envelope when the switch is on and a
+  plaintext file is read (upgrade); writes an envelope when an envelope is
+  read and the switch is off (never downgrade); seeds an envelope when the
+  switch is on; holds both apply and write when an envelope is read and the
+  key is not ready; the gate rows; a scenario with two fake devices where one
+  turns the switch on, the file becomes an envelope, the other prompts, and
+  they converge. Each guard mutation-checked.
+- **Acceptance on devices.** Two Macs on the folder, encryption on one. The
+  file becomes an envelope within a poll, the other Mac prompts for the
+  passphrase once, and an edit on each side reaches the other. Turn the
+  switch off on the first Mac: the file stays an envelope.
+
+### Phase 7: intents over Direct Access, and the sibling apps
 
 Intents (`docs/tasker-intents-architecture.md`) are how the GLANCE apps talk
 to each other: one envelope file per event, written by the sender into an
@@ -327,7 +405,19 @@ is the one thing the iCloud transport needs, so it becomes the fifth. This is
 the larger phase, because a transport nobody else can read is pointless:
 lastGLANCE and lifeGLANCE have to gain the Direct Access tier too.
 
-**6a. dayGLANCE.**
+**Not on iPhone and iPad with the third-party providers.** An intents
+transport lists a directory and creates files by name, and an iPhone on
+Nextcloud, Drive or Dropbox can do neither (see "Parity" above): it holds
+bookmarks to files it was handed, nothing more. So the Direct Access intents
+transport is desktop and Android. An iPhone on such a provider still syncs its
+snapshot and roster through the folder; for intents it uses the vault, or the
+WebDAV tier, which for a Nextcloud user is the same server through its proper
+interface. The card says so on iOS rather than offering a switch that cannot
+work. A provider that does hand over real folders (Secure ShellFish, an SMB
+share through Files) would work, but the tier does not detect that and does
+not promise it.
+
+**7a. dayGLANCE.**
 
 - **Extract the folder transport once.** The iCloud intents code is already
   split into an adapter (`icloudFileTransport.js`: the five operations) and
@@ -356,7 +446,7 @@ lastGLANCE and lifeGLANCE have to gain the Direct Access tier too.
   through the Nextcloud folder and FolderSync, and the event file is gone
   after retention.
 
-**6b. lastGLANCE, then 6c. lifeGLANCE.** Each needs the tier before the
+**7b. lastGLANCE, then 7c. lifeGLANCE.** Each needs the tier before the
 transport, in this order:
 
 1. **The folder bridge.** The five operations plus `pickFolder`, `status`,
@@ -374,7 +464,7 @@ transport, in this order:
    dayGLANCE in it; it belongs in `@glance-apps/sync` beside the merge the
    siblings already share, and this is the point to move it.
 3. **The roster** (Phase 5's file, same path) and **the intents transport**
-   (6a's module, same adapter contract). Both are app-independent by
+   (7a's module, same adapter contract). Both are app-independent by
    construction; a sibling adds its own switch and its own cursor key.
 
 **Acceptance for the phase:** three apps on one folder. A task created in
@@ -382,14 +472,16 @@ dayGLANCE on Android appears as an intent in lastGLANCE on a Mac, the
 household roster edited in lifeGLANCE shows in both others, and an idle hour
 leaves every file's modified time where it was.
 
-### Phase 7 (optional, any order)
+### Phase 8 (optional, any order)
 
-- Passphrase encryption for the Direct Access file, including the key-readiness
-  gate in `useCloudSync.js`.
+- An explicit "remove encryption from the Direct Access file" action, the
+  only sanctioned downgrade: rewrites the file as plaintext once, from a device
+  that holds the key.
 - Merge sibling "conflicted copy" files that Dropbox or Drive leave beside the
   snapshot, then delete them.
-- A diagnostics card like `ICloudDiagnostics`, and a web/PWA transport via the
-  File System Access API that `folderBackup.js` already demonstrates.
+- A web/PWA transport via the File System Access API that `folderBackup.js`
+  already demonstrates. (The diagnostics card exists since Phase 3 and runs on
+  every platform since #1998.)
 
 ## Using it (desktop, Android, iPhone and iPad)
 

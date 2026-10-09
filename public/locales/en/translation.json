@@ -1158,7 +1158,21 @@
     "stop": "Stop",
     "skipPhase": "Skip phase",
     "startHyperGlance": "Start hyperGLANCE",
-    "tasksRemaining": "Tasks ({{count}} remaining)"
+    "tasksRemaining": "Tasks ({{count}} remaining)",
+    "doReview": {
+      "title": "Record focused work",
+      "chooseTask": "Which task did you work on?",
+      "minutes": "{{minutes}} full minutes will be recorded in Do.",
+      "remainder": "{{seconds}} seconds cannot be represented as full minutes and will not be recorded.",
+      "clockChanged": "The clock or time zone changed. Affected work intervals cannot be recorded.",
+      "unavailable": "JOBO is unavailable or read-only. Retry after it is ready, or continue without recording this work.",
+      "held": "The write has not reached storage. JOBO is retrying while this page stays open. Retry here to confirm saving before completing the task.",
+      "failed": "The work could not be saved. Retry, or continue without waiting.",
+      "completed": "Task completed",
+      "inProgress": "Still in progress",
+      "continueWithoutSaving": "Continue without waiting",
+      "precision": "Only complete minutes inside each uninterrupted work segment are recorded. Pauses and breaks are excluded."
+    }
   },
   "voice": {
     "title": "Voice Input",

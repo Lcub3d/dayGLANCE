@@ -127,6 +127,7 @@ import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
 import useJoboLedger from './hooks/useJoboLedger.js';
+import useFocusDo from './hooks/useFocusDo.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -1340,6 +1341,8 @@ const DayPlanner = () => {
   // actually stamped anything) and, when it did fire, stamped each device's own
   // user onto shared items — manufacturing competing claims across devices.
 
+  const focusDoRef = useRef(null);
+  const focusEndedRef = useRef(false);
   const {
     showFocusMode, setShowFocusMode,
     focusPhase, setFocusPhase,
@@ -1362,7 +1365,7 @@ const DayPlanner = () => {
     handleFocusTimerEndRef,
     exitFocusModeRef,
     focusModeAvailableRef,
-  } = useFocusMode();
+  } = useFocusMode({ onTimerTransition: event => focusDoRef.current?.transition(event) });
 
   // ── HyperGLANCE state ────────────────────────────────────────────────────
   const [showHyperGlanceMode, setShowHyperGlanceMode] = React.useState(false);
@@ -4318,6 +4321,8 @@ const DayPlanner = () => {
   // own when there is no block. Only a string counts: this is also a click
   // handler, and an event is not a task.
   const enterFocusMode = (taskId) => {
+    if (showFocusMode || focusDoRef.current?.isPending()) return;
+    focusEndedRef.current = false;
     setShowFocusMode(true);
     setFocusShowSettings(true);
     setFocusShowStats(false);
@@ -4334,6 +4339,7 @@ const DayPlanner = () => {
       if (named) block = [named, ...block];
     }
     setFocusBlockTasks(block);
+    focusDoRef.current?.begin(block);
     setFocusWorkMinutes(25);
     setFocusBreakMinutes(5);
     setFocusLongBreakMinutes(15);
@@ -4354,6 +4360,7 @@ const DayPlanner = () => {
   openRoutinesDashboardRef.current = openRoutinesDashboard;
 
   const startFocusTimer = () => {
+    if (!focusShowSettings || focusDoRef.current?.isPending()) return;
     setFocusShowSettings(false);
     setFocusSessionStart(new Date());
     setFocusPhase('work');
@@ -4367,7 +4374,10 @@ const DayPlanner = () => {
   };
   startFocusTimerRef.current = startFocusTimer;
 
-  const exitFocusMode = (showStats = true) => {
+  const finishExitFocusMode = (showStats = true, completedActionId = null) => {
+    if (focusEndedRef.current) return;
+    focusEndedRef.current = true;
+    focusDoRef.current?.finish();
     setFocusTimerRunning(false);
     if (focusTimerRef.current) {
       clearInterval(focusTimerRef.current);
@@ -4377,7 +4387,7 @@ const DayPlanner = () => {
     const minutesCopy = { ...focusTaskMinutes };
     if (focusPhase === 'work' && focusTimerSeconds < focusWorkMinutes * 60) {
       const elapsedMinutes = (focusWorkMinutes * 60 - focusTimerSeconds) / 60;
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
+      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id) && t.id !== completedActionId);
       if (activeTasks.length > 0) {
         const perTask = elapsedMinutes / activeTasks.length;
         activeTasks.forEach(t => {
@@ -4411,7 +4421,7 @@ const DayPlanner = () => {
             totalMinutes: existing.totalMinutes + sessionMinutes,
             sessions: existing.sessions + 1,
             cyclesCompleted: existing.cyclesCompleted + focusCycleCount,
-            tasksCompleted: existing.tasksCompleted + focusCompletedTasks.size,
+            tasksCompleted: existing.tasksCompleted + new Set([...focusCompletedTasks, ...(completedActionId != null ? [completedActionId] : [])]).size,
             // Bounded so that repeatedly opening and closing focus mode can't
             // grow one day's entry without limit; the newest are kept, and
             // totalMinutes above stays complete either way.
@@ -4432,9 +4442,16 @@ const DayPlanner = () => {
       setShowFocusMode(false);
     }
   };
+  const exitFocusMode = (showStats = true) => {
+    if (focusEndedRef.current) { dismissFocusStats(); return; }
+    setFocusTimerRunning(false);
+    if (focusDoRef.current?.settle(({ completedActionId }) => finishExitFocusMode(showStats, completedActionId), { exiting: true })) return;
+    finishExitFocusMode(showStats);
+  };
   exitFocusModeRef.current = exitFocusMode;
 
   const dismissFocusStats = () => {
+    if (focusDoRef.current?.isPending()) return;
     try { if (document.fullscreenElement) document.exitFullscreen?.(); } catch (e) {}
     try { wakeLockSentinel.current?.release(); wakeLockSentinel.current = null; } catch (e) {}
     // Android: restore system bars + DND + reschedule notifications
@@ -4443,7 +4460,7 @@ const DayPlanner = () => {
     setShowFocusMode(false);
   };
 
-  const skipFocusPhase = () => {
+  const advanceFocusPhase = () => {
     if (focusPhase === 'work') {
       const newCycle = focusCycleCount + 1;
       setFocusCycleCount(newCycle);
@@ -4460,10 +4477,24 @@ const DayPlanner = () => {
     }
   };
 
-  const handleFocusTimerEnd = () => {
+  const skipFocusPhase = () => {
+    if (focusDoRef.current?.isPending() || focusEndedRef.current) return;
+    const wasRunning = focusTimerRunning;
+    if (focusPhase === 'work') {
+      setFocusTimerRunning(false);
+      const next = ({ allCompleted, completedActionId } = {}) => {
+        if (allCompleted) { finishExitFocusMode(true, completedActionId); return; }
+        advanceFocusPhase();
+        setFocusTimerRunning(wasRunning);
+      };
+      if (!focusDoRef.current?.settle(next)) next();
+    } else advanceFocusPhase();
+  };
+
+  const advanceFocusTimerEnd = (completedActionId = null) => {
     if (focusPhase === 'work') {
       // Distribute work minutes across active (non-completed) block tasks
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
+      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id) && t.id !== completedActionId);
       if (activeTasks.length > 0) {
         const perTask = focusWorkMinutes / activeTasks.length;
         setFocusTaskMinutes(prev => {
@@ -4492,6 +4523,15 @@ const DayPlanner = () => {
       playFocusSound('work');
     }
     setFocusTimerRunning(true);
+  };
+  const handleFocusTimerEnd = () => {
+    if (focusDoRef.current?.isPending() || focusEndedRef.current) return;
+    setFocusTimerRunning(false);
+    const next = ({ allCompleted, completedActionId } = {}) => {
+      if (allCompleted) finishExitFocusMode(true, completedActionId);
+      else advanceFocusTimerEnd(completedActionId);
+    };
+    if (focusPhase !== 'work' || !focusDoRef.current?.settle(next)) next();
   };
   handleFocusTimerEndRef.current = handleFocusTimerEnd;
 
@@ -7122,6 +7162,7 @@ const DayPlanner = () => {
     frameScheduleModal, setFrameScheduleModal,
     focusBlockTasks, setFocusBlockTasks,
     focusCompletedTasks, setFocusCompletedTasks,
+    isFocusSettlementPending: () => focusDoRef.current?.isPending(),
     exitFocusModeRef,
     playFocusSound,
     getObsidianTaskMeta: obsidianConfig?.enabled && obsidianVaultHandleRef.current
@@ -7193,6 +7234,32 @@ const DayPlanner = () => {
       : null,
     addProject, goals,
   });
+  const focusDo = useFocusDo({
+    enabled: joboEnabled, loaded: joboLoaded, writable: joboWritable,
+    records: joboRecords, recordJobo,
+    resolveBlock: block => block.flatMap(original => {
+      const found = resolveTaskRef(original.id, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed) return [];
+      // getTasksForDate includes occurrence exceptions and duration, whereas
+      // the lightweight task-link resolver deliberately omits duration.
+      if (original.recurringTemplateId != null) {
+        return getTasksForDate(new Date(original.date + 'T12:00:00')).filter(task => task.id === original.id && !task.completed);
+      }
+      return [found.task];
+    }),
+    complete: actionId => {
+      const found = resolveTaskRef(actionId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(found.task.id)) return null;
+      return { allCompleted: focusCompleteTask(found.task.id, { exitWhenDone: false }), completedActionId: found.task.id };
+    },
+  });
+  focusDoRef.current = focusDo;
+  const focusReviewId = focusDo.review?.capture.id;
+  useEffect(() => {
+    // A tray/Stream Deck stop can happen while the main window is hidden.
+    // Bring its existing Focus dialog forward for attribution, without a new wire format.
+    if (focusReviewId) window.electronAPI?.openMainAt?.({ action: 'focus-mode' });
+  }, [focusReviewId]);
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.
   openNewInboxTaskRef.current = openNewInboxTask;
@@ -9048,6 +9115,8 @@ const DayPlanner = () => {
     focusLog, setFocusLog,
     focusLogModalDate, setFocusLogModalDate,
     wakeLockSentinel, focusModeAvailable,
+    focusDoReview: focusDo.review, saveFocusDo: focusDo.save,
+    dismissFocusDo: focusDo.dismiss,
 
     // ── AI / Voice ────────────────────────────────────────────────────────────
     aiConfig, setAiConfig, aiSuppressed,

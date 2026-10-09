@@ -1158,7 +1158,21 @@
     "stop": "Stopp",
     "skipPhase": "Phase überspringen",
     "startHyperGlance": "hyperGLANCE starten",
-    "tasksRemaining": "Aufgaben (noch {{count}})"
+    "tasksRemaining": "Aufgaben (noch {{count}})",
+    "doReview": {
+      "title": "Fokusarbeit erfassen",
+      "chooseTask": "An welcher Aufgabe hast du gearbeitet?",
+      "minutes": "{{minutes}} volle Minuten werden in Do erfasst.",
+      "remainder": "{{seconds}} Sekunden lassen sich nicht als volle Minuten darstellen und werden nicht erfasst.",
+      "clockChanged": "Uhrzeit oder Zeitzone hat sich geändert. Betroffene Arbeitsintervalle können nicht erfasst werden.",
+      "unavailable": "JOBO ist nicht verfügbar oder schreibgeschützt. Versuche es später erneut oder fahre ohne Erfassung fort.",
+      "held": "Die Daten sind noch nicht gespeichert. JOBO versucht es erneut, solange diese Seite offen bleibt. Bestätige die Speicherung durch einen erneuten Versuch, bevor du die Aufgabe abschließt.",
+      "failed": "Die Arbeit konnte nicht gespeichert werden. Versuche es erneut oder fahre ohne Warten fort.",
+      "completed": "Aufgabe abgeschlossen",
+      "inProgress": "Noch in Arbeit",
+      "continueWithoutSaving": "Ohne Warten fortfahren",
+      "precision": "Nur volle Minuten innerhalb jedes ununterbrochenen Arbeitsabschnitts werden erfasst. Unterbrechungen und Pausen zählen nicht."
+    }
   },
   "voice": {
     "title": "Spracheingabe",

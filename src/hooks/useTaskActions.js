@@ -79,6 +79,7 @@ export default function useTaskActions({
   frameScheduleModal, setFrameScheduleModal,
   focusBlockTasks, setFocusBlockTasks,
   focusCompletedTasks, setFocusCompletedTasks,
+  isFocusSettlementPending = () => false,
   exitFocusModeRef,
   playFocusSound,
   // Obsidian integration.
@@ -861,8 +862,12 @@ export default function useTaskActions({
 
   // ── Focus mode wrappers ──────────────────────────────────────────────────
 
-  const focusCompleteTask = (taskId) => {
-    toggleComplete(taskId);
+  const focusCompleteTask = (taskId, { exitWhenDone = true } = {}) => {
+    if (isFocusSettlementPending()) return false;
+    const found = resolveTaskRef(taskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+    if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(taskId)) return false;
+    taskId = found.task.id;
+    toggleComplete(taskId, found.where === 'inbox');
     setFocusCompletedTasks(prev => {
       const next = new Set(prev);
       next.add(taskId);
@@ -873,8 +878,9 @@ export default function useTaskActions({
     const allDone = focusBlockTasks.every(t => t.completed || t.id === taskId || focusCompletedTasks.has(t.id));
     if (allDone) {
       playFocusSound('complete');
-      setTimeout(() => exitFocusModeRef.current?.(true), 500);
+      if (exitWhenDone) setTimeout(() => exitFocusModeRef.current?.(true), 500);
     }
+    return allDone;
   };
 
   const hgCompleteTask = (taskId) => {

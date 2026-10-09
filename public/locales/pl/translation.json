@@ -1185,7 +1185,21 @@
     "stop": "Zatrzymaj",
     "skipPhase": "Pomiń fazę",
     "startHyperGlance": "Uruchom hyperGLANCE",
-    "tasksRemaining": "Zadania (pozostało: {{count}})"
+    "tasksRemaining": "Zadania (pozostało: {{count}})",
+    "doReview": {
+      "title": "Zapisz pracę w skupieniu",
+      "chooseTask": "Nad którym zadaniem pracowano?",
+      "minutes": "W Do zostanie zapisane {{minutes}} pełnych minut.",
+      "remainder": "{{seconds}} sekund nie da się przedstawić jako pełnych minut i nie zostaną zapisane.",
+      "clockChanged": "Zegar lub strefa czasowa uległy zmianie. Nie można zapisać objętych zmianą przedziałów pracy.",
+      "unavailable": "JOBO jest niedostępne lub tylko do odczytu. Spróbuj ponownie, gdy będzie gotowe, albo kontynuuj bez zapisywania tej pracy.",
+      "held": "Dane nie zostały jeszcze zapisane. JOBO ponawia próbę, dopóki ta strona jest otwarta. Spróbuj ponownie tutaj, aby potwierdzić zapis przed ukończeniem zadania.",
+      "failed": "Nie udało się zapisać pracy. Spróbuj ponownie lub kontynuuj bez czekania.",
+      "completed": "Zadanie ukończone",
+      "inProgress": "Nadal w toku",
+      "continueWithoutSaving": "Kontynuuj bez czekania",
+      "precision": "Zapisywane są tylko pełne minuty każdego nieprzerwanego odcinka pracy. Pauzy i przerwy są wykluczone."
+    }
   },
   "voice": {
     "title": "Wprowadzanie głosowe",

@@ -1160,7 +1160,21 @@
     "stop": "Interrompi",
     "skipPhase": "Salta fase",
     "startHyperGlance": "Avvia hyperGLANCE",
-    "tasksRemaining": "Attività rimanenti: {{count}}"
+    "tasksRemaining": "Attività rimanenti: {{count}}",
+    "doReview": {
+      "title": "Registra il lavoro concentrato",
+      "chooseTask": "A quale attività hai lavorato?",
+      "minutes": "Verranno registrati {{minutes}} minuti interi in Do.",
+      "remainder": "{{seconds}} secondi non possono essere rappresentati come minuti interi e non verranno registrati.",
+      "clockChanged": "L’orologio o il fuso orario è cambiato. Gli intervalli interessati non possono essere registrati.",
+      "unavailable": "JOBO non è disponibile o è in sola lettura. Riprova quando sarà pronto oppure continua senza registrare questo lavoro.",
+      "held": "I dati non sono ancora salvati. JOBO riprova finché questa pagina rimane aperta. Riprova qui per confermare il salvataggio prima di completare l’attività.",
+      "failed": "Impossibile salvare il lavoro. Riprova oppure continua senza attendere.",
+      "completed": "Attività completata",
+      "inProgress": "Ancora in corso",
+      "continueWithoutSaving": "Continua senza attendere",
+      "precision": "Vengono registrati solo i minuti interi di ogni segmento di lavoro ininterrotto. Le pause e i riposi sono esclusi."
+    }
   },
   "voice": {
     "title": "Input vocale",

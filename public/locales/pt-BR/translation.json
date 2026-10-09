@@ -1158,7 +1158,21 @@
     "stop": "Parar",
     "skipPhase": "Pular fase",
     "startHyperGlance": "Iniciar hyperGLANCE",
-    "tasksRemaining": "Tarefas (restantes: {{count}})"
+    "tasksRemaining": "Tarefas (restantes: {{count}})",
+    "doReview": {
+      "title": "Registrar trabalho focado",
+      "chooseTask": "Em qual tarefa você trabalhou?",
+      "minutes": "Serão registrados {{minutes}} minutos completos no Do.",
+      "remainder": "{{seconds}} segundos não podem ser representados como minutos completos e não serão registrados.",
+      "clockChanged": "O relógio ou o fuso horário mudou. Os intervalos afetados não podem ser registrados.",
+      "unavailable": "O JOBO está indisponível ou em modo somente leitura. Tente novamente quando estiver pronto ou continue sem registrar este trabalho.",
+      "held": "Os dados ainda não foram salvos. O JOBO tenta novamente enquanto esta página estiver aberta. Tente aqui para confirmar o salvamento antes de concluir a tarefa.",
+      "failed": "Não foi possível salvar o trabalho. Tente novamente ou continue sem esperar.",
+      "completed": "Tarefa concluída",
+      "inProgress": "Ainda em andamento",
+      "continueWithoutSaving": "Continuar sem esperar",
+      "precision": "São registrados apenas minutos completos dentro de cada trecho de trabalho ininterrupto. Pausas e descansos são excluídos."
+    }
   },
   "voice": {
     "title": "Entrada de voz",

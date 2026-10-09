@@ -88,12 +88,19 @@ export function describeSliceDiff(key, merged, other) {
     // side" without the id cannot be acted on (an Android inbox task the merge
     // kept dropping, 2026-10-06).
     const sample = (ids) => (ids.length ? ` (${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', …' : ''})` : '');
+    // A changed id names the fields that differ (up to four), so "habits: 1
+    // changed" says WHAT about the row differs (2026-10-09).
+    const fields = (a, b) => {
+      const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort()
+        .filter((k) => canonicalJson(a?.[k]) !== canonicalJson(b?.[k]));
+      return keys.length ? `: ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? ', …' : ''}` : '';
+    };
     const changedIds = [];
     const onlyMergedIds = [];
     const onlyOtherIds = [];
     for (const [id, item] of m) {
       if (!o.has(id)) { onlyMergedIds.push(id); continue; }
-      if (canonicalJson(item) !== canonicalJson(o.get(id))) changedIds.push(id);
+      if (canonicalJson(item) !== canonicalJson(o.get(id))) changedIds.push(`${id}${fields(item, o.get(id))}`);
     }
     for (const id of o.keys()) if (!m.has(id)) onlyOtherIds.push(id);
     const changed = changedIds.length;
@@ -149,14 +156,19 @@ export function describeSliceDiff(key, merged, other) {
  *
  * @param {object} a    the data about to be written or applied
  * @param {object} b    the data already there (file, or local state)
- * @param {{ignoreDropped?: boolean}} [opts]  skip slices `a` does not carry
- *        at all (for the apply question: absent keys are left alone)
+ * @param {{ignoreDropped?: boolean, ignoreKeys?: Iterable<string>}} [opts]
+ *        ignoreDropped: skip slices `a` does not carry at all (for the apply
+ *        question: absent keys are left alone); ignoreKeys: slices to leave
+ *        out altogether (the merge's device-local keys, for the write question:
+ *        every device keeps its own value, so the file's is nobody's business)
  * @returns {Array<{key: string, kind: string, summary: string}>}
  */
-export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
+export function sliceDiffs(a, b, { ignoreDropped = false, ignoreKeys = [] } = {}) {
+  const skip = new Set(ignoreKeys);
   const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort();
   const out = [];
   for (const k of keys) {
+    if (skip.has(k)) continue;
     if (ignoreDropped && a?.[k] === undefined) continue;
     const d = describeSliceDiff(k, a?.[k], b?.[k]);
     if (d) out.push(d);
@@ -183,7 +195,7 @@ export const writeWorthy = (diffs) => diffs.filter((d) => d.kind !== 'order');
  * @param {object} args.local          this device's payload `data` (buildSyncPayload().data)
  * @param {object} args.remote         the file's `data`
  * @param {number} args.retentionDays
- * @param {(local, remote, retentionDays) => {data: object, localChanged: boolean, remoteChanged: boolean}} args.merge
+ * @param {(local, remote, retentionDays) => {data: object, localChanged: boolean, remoteChanged: boolean, deviceLocalKeys?: string[]}} args.merge
  * @param {(data: object) => object} [args.outgoing]  what the transport would
  *        actually write (the iCloud HealthKit strip); identity by default
  * @returns {{
@@ -215,7 +227,10 @@ export function explainSnapshotMerge({ local, remote, retentionDays, merge, outg
   const remoteChanged = !!result?.remoteChanged;
   let out;
   try { out = outgoing(merged) ?? merged; } catch (err) { return { ...empty, localChanged, remoteChanged, error: err?.message ?? String(err) }; }
-  const fileDiffs = sliceDiffs(out, remote);
+  // Device-local keys (mergeSync.js, result.deviceLocalKeys) are left out of
+  // the file question: the file holds whichever device wrote last, and a
+  // write would change what no device reads.
+  const fileDiffs = sliceDiffs(out, remote, { ignoreKeys: result?.deviceLocalKeys ?? [] });
   const deviceDiffs = sliceDiffs(merged, local, { ignoreDropped: true });
   const flagged = remoteChanged || localChanged;
   const writable = writeWorthy(fileDiffs);

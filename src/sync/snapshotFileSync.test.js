@@ -588,6 +588,23 @@ describe('guard: the merge flags are necessary, not sufficient', () => {
     expect(written(t2).data.tasks[0].title).toBe('renamed');
   });
 
+  it('guard: a difference only in the keys the merge calls device-local writes nothing', async () => {
+    const fileData = { ...data([task('a')]), use24HourClock: false, minimizedSections: { inbox: false } };
+    const localData = { ...data([task('a')]), use24HourClock: true, minimizedSections: { inbox: true } };
+    const transport = makeTransport({ read: async () => envelope(fileData) });
+    const io = makeIo({
+      buildSyncPayload: () => ({ version: 2, data: localData }),
+      mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true, deviceLocalKeys: ['use24HourClock', 'minimizedSections'] }),
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: false, deferred: false });
+    expect(transport.write).not.toHaveBeenCalled();
+    // The same merge without the list: the difference counts, and the write goes out.
+    const io2 = makeIo({ buildSyncPayload: () => ({ version: 2, data: localData }), mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true }) });
+    const t2 = makeTransport({ read: async () => envelope(fileData) });
+    expect((await runSnapshotFileCycle({ transport: t2, io: io2, state: fresh })).outcome.wrote).toBe(true);
+  });
+
   it('guard: an order-only difference from the file writes nothing', async () => {
     const fileData = data([task('a'), task('b')]);
     const localData = data([task('b'), task('a')]);

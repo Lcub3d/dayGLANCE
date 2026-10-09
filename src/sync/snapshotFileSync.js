@@ -116,7 +116,7 @@ const count = (storage, key) => {
  * @param {object} args.io
  * @param {() => object} args.io.buildSyncPayload          `{ version, lastModified?, data }`
  * @param {(data: object, opts: {allowEmpty: boolean}) => void} args.io.applyEngineData
- * @param {(local: object, remote: object, retentionDays: number) => {data: object, localChanged: boolean, remoteChanged: boolean}} args.io.mergeSyncData
+ * @param {(local: object, remote: object, retentionDays: number) => {data: object, localChanged: boolean, remoteChanged: boolean, deviceLocalKeys?: string[]}} args.io.mergeSyncData
  * @param {(payload: object, habits: Array) => object} args.io.stripHealthSourcedLogs
  * @param {Array}    args.io.habits
  * @param {number}   args.io.syncRetentionDays
@@ -266,7 +266,7 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     };
   }
 
-  const { data: mergedData, localChanged, remoteChanged } =
+  const { data: mergedData, localChanged, remoteChanged, deviceLocalKeys = [] } =
     io.mergeSyncData(localData, remote.data, io.syncRetentionDays);
 
   // The merge's flags say whether it picked anything from either side. They do
@@ -289,7 +289,11 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     data: mergedData,
   });
   const applyNeeded = localChanged && sliceDiffs(mergedData, localData, { ignoreDropped: true }).length > 0;
-  const writable = (remoteChanged || localChanged) ? writeWorthy(sliceDiffs(outPayload.data, remote.data)) : [];
+  // Device-local keys (the merge names them) are left out of the file
+  // question: every device keeps its own value, so the file's is nobody's.
+  const writable = (remoteChanged || localChanged)
+    ? writeWorthy(sliceDiffs(outPayload.data, remote.data, { ignoreKeys: deviceLocalKeys }))
+    : [];
   const writeNeeded = writable.length > 0;
 
   if (applyNeeded) {

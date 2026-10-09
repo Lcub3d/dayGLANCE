@@ -74,6 +74,17 @@ enough for the folder's tool to deliver the originating device's own write, so
 the relay only happens when nobody else carried it. Seeding an absent file is
 never deferred.
 
+**Device-local keys are not a write.** Each device keeps its own
+`use24HourClock`, `minimizedSections` and `obsidianConfig` (and, with multi-user
+on, the feature toggles and calendar URLs). The file holds whichever device
+wrote last, and no device adopts those values from it, so a difference in them
+is left out of the write question. The merge wrapper names them
+(`result.deviceLocalKeys`) and the cycle and the diagnostics dry run read that
+list, so an iPhone no longer reports "would write: YES" over its clock format.
+`habits` joined the equal-stamp tie-break the same day: two copies of a row
+with one stamp and different content now converge instead of reading
+"1 changed" forever.
+
 **Health-store counts ride in the file.** The iCloud transport strips
 HealthKit-derived habit counts from what it writes (`utils/healthLogFilter.js`),
 because Apple guideline 5.1.3 forbids HealthKit data in iCloud. That rule is

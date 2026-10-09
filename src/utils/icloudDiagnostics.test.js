@@ -487,7 +487,7 @@ describe('probeDirectAccess', () => {
     const t = fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) });
     const r = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data: edited }), merge: (l) => ({ data: l, localChanged: false, remoteChanged: true }) });
     expect(r.merge.wouldWrite).toBe(true);
-    expect(r.merge.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1)']);
+    expect(r.merge.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1: lastModified, title)']);
   });
 
   it('maps the transport contract: absent, downloading, error, a throwing read, an unreachable folder', async () => {
@@ -621,7 +621,7 @@ describe('dryRunMerge', () => {
     const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
     const r = dryRunMerge(file, { buildSyncPayload: () => ({ data: edited }), merge });
     expect(r.remoteChanged).toBe(true);
-    expect(r.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1)']);
+    expect(r.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1: lastModified, title)']);
     expect(r.flagWithoutDiff).toBe(false);
   });
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { runSnapshotFileCycle } from '../sync/snapshotFileSync.js';
 import { mergeSyncData } from '../mergeSync.js';
 import { stripHealthSourcedLogs } from '../utils/healthLogFilter.js';
-import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
+import { decryptData, encryptData, isEncryptedEnvelope, hasEncryptionReady, getSyncPassphrase } from '../utils/crypto.js';
 
 /**
  * Schedules snapshot-file sync (sync/snapshotFileSync.js) for one transport.
@@ -52,6 +52,7 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  * @param {() => boolean} [args.io.isResetInProgress]
  * @param {(error: string) => void} [args.io.onUnavailable]  transport reported an error object
  * @param {() => void} [args.io.onEncryptedUnreadable]  the file is encrypted, this device cannot read it, and the transport forbids writing over it
+ * @param {() => void} [args.io.onKeyNeeded]  the file is an envelope, or the device wants to write one, and no key or passphrase is in memory: prompt
  * @param {() => number} [args.io.now]
  * @returns {{
  *   runSync: () => Promise<void>,
@@ -132,6 +133,9 @@ export default function useSnapshotFileSync({
           stripHealthSourcedLogs,
           isEncryptedEnvelope,
           decryptData,
+          encryptData,
+          // encryptData derives the key lazily from a passphrase in memory.
+          encryptionReady: () => hasEncryptionReady() || !!getSyncPassphrase(),
           storage: localStorage,
           now: ioRef.current.now,
         },
@@ -146,8 +150,12 @@ export default function useSnapshotFileSync({
         ioRef.current.onUnavailable?.(outcome.error);
       } else if (outcome.kind === 'skipped' && outcome.reason === 'encrypted-unreadable') {
         // Nothing was written over the file we cannot read; the user has to
-        // know, because nothing else will happen until they act.
-        ioRef.current.onEncryptedUnreadable?.();
+        // know, because nothing else will happen until they act. With no key
+        // in memory at all, acting means entering the passphrase.
+        if (outcome.needsKey) ioRef.current.onKeyNeeded?.();
+        else ioRef.current.onEncryptedUnreadable?.();
+      } else if ((outcome.kind === 'skipped' && outcome.reason === 'key-needed') || outcome.keyNeeded) {
+        ioRef.current.onKeyNeeded?.();
       }
     } catch (err) {
       // A transport that throws (rather than returning an error object) must

@@ -5,6 +5,7 @@ import { restoreDbRootKey } from '../sync/dbEngine.js';
 import { isDbIntentsEnabled } from '../intents/dbIntentsConfig.js';
 import { loadVaultIntentsRootKey } from '../intents/intentsKeyStore.js';
 import { SECURE_SLOT, secureGet, secureSet, secureStoreAvailable } from '../utils/nativeSecureStore.js';
+import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
 
 const useCloudSync = () => {
   const [cloudSyncConfig, setCloudSyncConfig] = useState(() => {
@@ -93,7 +94,11 @@ const useCloudSync = () => {
   //   • File tier  — needed only when WebDAV sync is enabled AND encrypted. A
   //     vault-only device has encryptionEnabled=true but enabled=false, so it must
   //     NOT be gated on the file-tier key (which it never writes) — that was the
-  //     cause of the every-launch re-prompt.
+  //     cause of the every-launch re-prompt. The Direct Access "encrypt the
+  //     file" switch (docs/direct-access-sync.md, Phase 6) uses the SAME key:
+  //     a device with it on needs the key before its first write. A device
+  //     whose folder holds an envelope with the switch off is prompted by the
+  //     cycle itself when it reads the file (App's onKeyNeeded).
   //   • GLANCEvault — needed whenever the vault is enabled; gated on its DB root key.
   useEffect(() => {
     const config = (() => {
@@ -101,7 +106,7 @@ const useCloudSync = () => {
       return saved ? JSON.parse(saved) : null;
     })();
 
-    const needFileKey  = !!(config?.enabled && config?.encryptionEnabled);
+    const needFileKey  = !!(config?.enabled && config?.encryptionEnabled) || directAccessEncryptsWrites();
     const needVaultKey = isVaultEnabled();
     // The vault INTENTS key lives in its OWN origin-partitioned IndexedDB slot and
     // ALSO needs the passphrase to derive. It must be in the readiness gate too:

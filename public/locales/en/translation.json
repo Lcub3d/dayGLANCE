@@ -2127,7 +2127,14 @@
     "vaultConfig": "Vault config (enabled / URL / token / account)",
     "vaultCursor": "Vault cursor (pull / push ack)",
     "vaultRows": "Vault rows (pending / quarantined)",
-    "vaultHalt": "Vault credential halt"
+    "vaultHalt": "Vault credential halt",
+    "encryption": "File encryption",
+    "envelope": "encrypted",
+    "plaintext": "plaintext",
+    "encryptSwitch": "Encrypt on this device",
+    "key": "Sync key",
+    "keyReady": "ready",
+    "keyNeeded": "needed (enter the sync passphrase)"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",
@@ -2168,7 +2175,12 @@
     "pickFailed": "The folder could not be connected: {{reason}}",
     "neverSynced": "Not synced yet",
     "androidHint": "On Android, pick a folder that an app mirrors to this device's storage, such as Syncthing, FolderSync or Autosync. The Google Drive and Dropbox apps do not offer their folders here.",
-    "iosHint": "On iPhone and iPad, choose the dayglance-sync.json your other devices already share, from a location in the Files app such as Nextcloud, Google Drive or Dropbox. If no device has made one yet, create it in the folder they will share."
+    "iosHint": "On iPhone and iPad, choose the dayglance-sync.json your other devices already share, from a location in the Files app such as Nextcloud, Google Drive or Dropbox. If no device has made one yet, create it in the folder they will share.",
+    "encrypt": "Encrypt the file in the folder",
+    "encryptHint": "Off. The file is written as it is. If another device has already encrypted it, this device follows the file and asks for the sync passphrase.",
+    "encryptOnHint": "On. The next write seals the file with your sync passphrase, the same one WebDAV encryption uses, and every device then follows the file. Turning this off never makes the file plaintext again.",
+    "encryptPassphraseHint": "Choose a sync passphrase. Every device that opens this folder will ask for it once. If you already use one for WebDAV encryption, enter that one.",
+    "encryptTurnOn": "Turn on encryption"
   },
   "aspire": {
     "title": "Aspire",

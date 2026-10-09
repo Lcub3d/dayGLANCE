@@ -44,6 +44,19 @@ export const DIRECT_ACCESS_WRITE_THROTTLE_MS = 15 * 1000;
 export const DIRECT_ACCESS_LAST_SYNCED_KEY = 'dayglance-direct-access-last-synced';
 /** 'true' | 'false' | absent. Absent means ON once a folder is connected. */
 export const DIRECT_ACCESS_PREF_KEY = 'dayglance-direct-access-enabled';
+/**
+ * 'true' | absent. The per-device "encrypt the file" switch (Phase 6): it
+ * decides the FIRST write, seeding an absent file or upgrading a plaintext
+ * one; from then on the file decides for every device. Forgotten with the
+ * folder on disconnect, like the last-synced stamp.
+ */
+export const DIRECT_ACCESS_ENCRYPT_KEY = 'dayglance-direct-access-encrypt';
+
+/** Read without a transport: the launch-time key gate (hooks/useCloudSync.js) runs before any folder is restored. */
+export const directAccessEncryptsWrites = (storage = defaultStorage) => {
+  try { return storage()?.getItem(DIRECT_ACCESS_ENCRYPT_KEY) === 'true'; }
+  catch { return false; }
+};
 
 // Electron (every desktop platform) exposes the bridge directly; the Android
 // WebView and the iOS shell expose synchronous native methods as
@@ -97,6 +110,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     catch { return null; }
   };
   const isEnabled = () => readPref() !== 'false';
+  const encryptsWrites = () => directAccessEncryptsWrites(storage);
   const isConnected = () => state.status === 'connected' || state.status === 'unreachable';
 
   // The settings panel reads this through useSyncExternalStore, which needs
@@ -108,6 +122,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     path: state.path,
     connected: isConnected(),
     enabled: isEnabled(),
+    encrypt: encryptsWrites(),
     pickError: state.pickError,
     roster: state.roster,
   });
@@ -185,6 +200,12 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
   };
   const writePref = (enabled) => {
     try { storage()?.setItem(DIRECT_ACCESS_PREF_KEY, enabled ? 'true' : 'false'); } catch { /* ignore */ }
+  };
+  const writeEncryptPref = (on) => {
+    try {
+      if (on) storage()?.setItem(DIRECT_ACCESS_ENCRYPT_KEY, 'true');
+      else storage()?.removeItem(DIRECT_ACCESS_ENCRYPT_KEY);
+    } catch { /* ignore */ }
   };
 
   return {
@@ -294,6 +315,13 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
       notify();
       if (enabled) emitChanged();
     },
+    /** Phase 6. Turning it on kicks a cycle so the upgrade is written now; off changes nothing until the file is replaced. */
+    encryptsWrites,
+    setEncryptsWrites: (on) => {
+      writeEncryptPref(!!on);
+      notify();
+      if (on) emitChanged();
+    },
     // Picking the folder is the decision; the snapshot in it is applied.
     firstRunDecided: () => true,
 
@@ -329,6 +357,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     disconnect: async () => {
       try { await bridge()?.disconnect(); } catch { /* the renderer side still forgets it */ }
       clearLastSynced();
+      writeEncryptPref(false);
       applyStatus(null);
     },
 

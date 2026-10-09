@@ -19,6 +19,14 @@ vi.mock('react', () => ({
   },
 }));
 
+// The real crypto module, with decryptData overridable per test: a device
+// with the wrong key (a failing decrypt) is distinct from one with none.
+let decryptImpl = null;
+vi.mock('../utils/crypto.js', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, decryptData: (...args) => (decryptImpl ? decryptImpl(...args) : real.decryptData(...args)) };
+});
+
 const { default: useSnapshotFileSync } = await import('./useSnapshotFileSync.js');
 
 // One shared "folder": whatever the daemon would ferry between devices.
@@ -240,20 +248,58 @@ describe('useSnapshotFileSync: synchronous guards', () => {
     expect(d.mutex.current).toBe(false);
   });
 
-  it('an encrypted file the transport may not overwrite is surfaced through onEncryptedUnreadable, untouched', async () => {
+  it('an encrypted file with no key in memory asks for the passphrase (onKeyNeeded), untouched', async () => {
     const folder = makeFolder();
     // The real envelope shape (@glance-apps/sync isEncryptedEnvelope); no key is cached here.
     folder.text = JSON.stringify({ v: 1, enc: 'AES-GCM-256', salt: 'abc', iv: 'def', data: 'ghi' });
     const d = mountDevice('F2', folder, { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')] });
     d.transport.allowsPlaintextReseed = false;
     const encrypted = vi.fn();
+    const keyNeeded = vi.fn();
     d.io.onEncryptedUnreadable = encrypted;
+    d.io.onKeyNeeded = keyNeeded;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await d.sync();
     warn.mockRestore();
-    expect(encrypted).toHaveBeenCalledTimes(1);
+    expect(keyNeeded).toHaveBeenCalledTimes(1);
+    expect(encrypted).not.toHaveBeenCalled();
     expect(folder.writes).toBe(0);
     expect(d.applied).toEqual([]);
+    expect(d.mutex.current).toBe(false);
+  });
+
+  it('an encrypted file the key in memory cannot open is surfaced through onEncryptedUnreadable, untouched', async () => {
+    const folder = makeFolder();
+    folder.text = JSON.stringify({ v: 1, enc: 'AES-GCM-256', salt: 'abc', iv: 'def', data: 'ghi' });
+    const d = mountDevice('F3', folder, { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')] });
+    d.transport.allowsPlaintextReseed = false;
+    const encrypted = vi.fn();
+    const keyNeeded = vi.fn();
+    d.io.onEncryptedUnreadable = encrypted;
+    d.io.onKeyNeeded = keyNeeded;
+    decryptImpl = async () => { throw new Error('Decryption failed — wrong passphrase or corrupted data.'); };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try { await d.sync(); } finally { warn.mockRestore(); decryptImpl = null; }
+    expect(encrypted).toHaveBeenCalledTimes(1);
+    expect(keyNeeded).not.toHaveBeenCalled();
+    expect(folder.writes).toBe(0);
+    expect(d.mutex.current).toBe(false);
+  });
+
+  it('a device whose switch is on with no key in memory holds its write and asks (onKeyNeeded), on seed and on merge', async () => {
+    const folder = makeFolder();
+    const d = mountDevice('F4', folder, { tasks: [task('t', 'x', '2026-10-01T00:00:00.000Z')] });
+    d.transport.encryptsWrites = () => true;
+    const keyNeeded = vi.fn();
+    d.io.onKeyNeeded = keyNeeded;
+    await d.sync();                                                   // seed wanted as an envelope
+    expect(keyNeeded).toHaveBeenCalledTimes(1);
+    expect(folder.writes).toBe(0);
+    expect(folder.text).toBeNull();
+    folder.text = JSON.stringify({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: { tasks: [], unscheduledTasks: [] } });
+    await d.sync();                                                   // merge: the plaintext is read, the upgrade is held
+    expect(keyNeeded).toHaveBeenCalledTimes(2);
+    expect(folder.writes).toBe(0);
     expect(d.mutex.current).toBe(false);
   });
 

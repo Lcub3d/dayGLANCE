@@ -373,9 +373,163 @@ describe('encrypted envelopes', () => {
     transport.allowsPlaintextReseed = false;
     const io = makeIo({ buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }) });
     const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
-    expect(outcome).toEqual({ kind: 'skipped', reason: 'encrypted-unreadable' });
+    expect(outcome).toEqual({ kind: 'skipped', reason: 'encrypted-unreadable', needsKey: false });
     expect(transport.write).not.toHaveBeenCalled();
     expect(io.applyEngineData).not.toHaveBeenCalled();
+  });
+});
+
+describe('Phase 6: the file decides, the switch decides the first write', () => {
+  // A fake of @glance-apps/sync's envelope: the plaintext JSON, base64, under
+  // the real envelope header, sealed and opened with a shared "key" flag.
+  const seal = (payload) => ({ v: 1, enc: 'AES-GCM-256', data: Buffer.from(JSON.stringify(payload)).toString('base64') });
+  const open = (env) => JSON.parse(Buffer.from(env.data, 'base64').toString());
+  const isSealed = (v) => !!v && v.v === 1 && v.enc === 'AES-GCM-256' && typeof v.data === 'string';
+  const crypto = (ready = true) => ({
+    isEncryptedEnvelope: isSealed,
+    encryptData: vi.fn(async (p) => { if (!ready) throw new Error('Encryption key not available'); return seal(p); }),
+    decryptData: vi.fn(async (e) => { if (!ready) { const err = new Error('Encryption key not available'); err.code = 'PASSPHRASE_REQUIRED'; throw err; } return open(e); }),
+    encryptionReady: () => ready,
+  });
+  const plain = (d) => JSON.stringify({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: d });
+  const sealedText = (d) => JSON.stringify(seal({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: d }));
+  const folderTransport = (text, encrypts = false) => makeTransport({
+    read: async () => text,
+    allowsPlaintextReseed: false,
+    encryptsWrites: () => encrypts,
+  });
+  const realMerge = (local, remote) => {
+    const ids = new Set(local.tasks.map((t) => t.id));
+    const tasks = [...local.tasks, ...remote.tasks.filter((t) => !ids.has(t.id))];
+    return { data: { tasks, unscheduledTasks: [] }, localChanged: tasks.length > local.tasks.length, remoteChanged: tasks.length > remote.tasks.length };
+  };
+
+  it('upgrade: the switch is on and a plaintext file is read → the write is an envelope', async () => {
+    const transport = folderTransport(plain(data([task('r')])), true);
+    const io = makeIo({ ...crypto(), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), mergeSyncData: realMerge });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: true, keyNeeded: false });
+    const file = written(transport);
+    expect(isSealed(file)).toBe(true);
+    expect(open(file).data.tasks.map((t) => t.id).sort()).toEqual(['mine', 'r']);
+  });
+
+  it('guard: never downgrade. An envelope is read and the switch is off → the write is still an envelope', async () => {
+    const transport = folderTransport(sealedText(data([task('r')])), false);
+    const io = makeIo({ ...crypto(), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), mergeSyncData: realMerge });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: true });
+    expect(isSealed(written(transport))).toBe(true);
+    expect(io.applyEngineData).toHaveBeenCalled();                    // the plaintext was applied
+  });
+
+  it('seed: an absent file is seeded as an envelope when the switch is on, plaintext when off', async () => {
+    const on = folderTransport(null, true);
+    const io = makeIo({ ...crypto(), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }) });
+    expect((await runSnapshotFileCycle({ transport: on, io, state: fresh })).outcome).toEqual({ kind: 'seeded', wrote: true });
+    expect(isSealed(written(on))).toBe(true);
+    const off = folderTransport(null, false);
+    await runSnapshotFileCycle({ transport: off, io, state: fresh });
+    expect(isSealed(written(off))).toBe(false);
+    expect(written(off).data.tasks[0].id).toBe('mine');
+  });
+
+  it('guard: the strip reads plaintext — health counts are stripped before the envelope, not lost inside it', async () => {
+    const transport = folderTransport(null, true);
+    transport.stripsHealthLogs = true;
+    const io = makeIo({ ...crypto(), buildSyncPayload: () => ({ version: 2, data: { ...data([task('mine')]), habitLogs: [{ id: 'h' }] } }),
+      stripHealthSourcedLogs: vi.fn((payload) => ({ ...payload, data: { ...payload.data, habitLogs: [] } })) });
+    await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(io.stripHealthSourcedLogs).toHaveBeenCalled();
+    expect(open(written(transport)).data.habitLogs).toEqual([]);
+  });
+
+  it('key gate: an envelope is read and no key or passphrase is in memory → nothing applied, nothing written, needsKey', async () => {
+    const transport = folderTransport(sealedText(data([task('r')])), false);
+    const io = makeIo({ ...crypto(false), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }) });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toEqual({ kind: 'skipped', reason: 'encrypted-unreadable', needsKey: true });
+    expect(transport.write).not.toHaveBeenCalled();
+    expect(io.applyEngineData).not.toHaveBeenCalled();
+    expect(io.storage.getItem(transport.lastSyncedKey)).toBeNull();
+  });
+
+  it('key gate: the switch is on, the file is plaintext and no key is ready → the plaintext is applied, the write is held, never plaintext', async () => {
+    const transport = folderTransport(plain(data([task('r')])), true);
+    const io = makeIo({ ...crypto(false), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), mergeSyncData: realMerge });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', applied: true, wrote: false, keyNeeded: true });
+    expect(transport.write).not.toHaveBeenCalled();
+    expect(io.encryptData).not.toHaveBeenCalled();
+  });
+
+  it('key gate: seeding with the switch on and no key ready is skipped, not written plaintext', async () => {
+    const transport = folderTransport(null, true);
+    const io = makeIo({ ...crypto(false), buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }) });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toEqual({ kind: 'skipped', reason: 'key-needed' });
+    expect(transport.write).not.toHaveBeenCalled();
+  });
+
+  it('a transport without the switch, and an io without encryptData, behave exactly as before (plaintext)', async () => {
+    const transport = makeTransport({ read: async () => plain(data([task('r')])) });
+    const io = makeIo({ buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), mergeSyncData: realMerge });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: true, keyNeeded: false });
+    expect(isSealed(written(transport))).toBe(false);
+  });
+
+  it('SCENARIO: two devices on one folder; one turns the switch on, the file becomes an envelope, the other is prompted, then they converge', async () => {
+    const folder = { text: plain(data([task('shared')])) };
+    const device = (name, tasks, { encrypts = false, ready = true } = {}) => {
+      const dev = { tasks, applied: null, state: { ...fresh }, clock: T0 };
+      dev.transport = makeTransport({
+        id: name,
+        read: async () => folder.text,
+        write: vi.fn(async (text) => { folder.text = text; return true; }),
+        allowsPlaintextReseed: false,
+        encryptsWrites: () => encrypts,
+        writeThrottleMs: 0,
+      });
+      dev.io = makeIo({
+        ...crypto(ready),
+        buildSyncPayload: () => ({ version: 2, data: data(dev.applied ?? dev.tasks) }),
+        applyEngineData: vi.fn((d) => { dev.applied = d.tasks; }),
+        mergeSyncData: realMerge,
+        now: () => dev.clock,
+      });
+      dev.run = async () => {
+        const r = await runSnapshotFileCycle({ transport: dev.transport, io: dev.io, state: dev.state });
+        dev.state = r.state;
+        return r.outcome;
+      };
+      dev.setReady = (ready) => { Object.assign(dev.io, crypto(ready)); };
+      return dev;
+    };
+    const a = device('A', [task('shared'), task('from-a')], { encrypts: true });
+    const b = device('B', [task('shared')], { ready: false });
+    // A's switch is on: its next write seals the file.
+    expect(await a.run()).toMatchObject({ kind: 'merged', wrote: true });
+    expect(isSealed(JSON.parse(folder.text))).toBe(true);
+    // B has no key: it is prompted and touches nothing.
+    expect(await b.run()).toEqual({ kind: 'skipped', reason: 'encrypted-unreadable', needsKey: true });
+    expect(b.io.applyEngineData).not.toHaveBeenCalled();
+    // The passphrase is entered on B: it reads the envelope, applies, and its own later edit goes out sealed.
+    b.setReady(true);
+    expect(await b.run()).toMatchObject({ kind: 'merged', applied: true });
+    expect(b.applied.map((t) => t.id).sort()).toEqual(['from-a', 'shared']);
+    b.applied = [...b.applied, task('from-b')];
+    b.clock += 1000;
+    b.io.lastLocalEditAt = () => new Date(b.clock).toISOString();
+    expect(await b.run()).toMatchObject({ kind: 'merged', wrote: true });
+    expect(isSealed(JSON.parse(folder.text))).toBe(true);
+    // A, switch now OFF, still follows the file: reads B's edit, and writes nothing plaintext ever.
+    Object.assign(a.transport, { encryptsWrites: () => false });
+    expect(await a.run()).toMatchObject({ kind: 'merged', applied: true });
+    expect(a.applied.map((t) => t.id).sort()).toEqual(['from-a', 'from-b', 'shared']);
+    for (const call of [...a.transport.write.mock.calls, ...b.transport.write.mock.calls]) {
+      expect(isSealed(JSON.parse(call[0]))).toBe(true);
+    }
   });
 });
 

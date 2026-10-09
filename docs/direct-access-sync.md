@@ -358,11 +358,27 @@ cannot be (`multiUserICloudOnly`), so this tier has to carry the roster.
   member. Then the same without the button. Then the iPhone: choose the
   roster file the Macs made, see the member.
 
-### Phase 6: passphrase encryption of the Direct Access file
+### Phase 6: passphrase encryption of the Direct Access file — done
 
 The WebDAV posture, with the same envelope, the same passphrase and the same
 session key (`src/utils/crypto.js`), so a folder that mirrors a WebDAV setup
 interoperates and a device prompts for one passphrase, not two.
+
+Shipped as designed below, with two refinements found in the build. The key
+gate is in two places rather than one: `useCloudSync.js` gates launch on the
+switch alone (`directAccessEncryptsWrites()`, read from storage before any
+folder is restored), and the cycle itself raises `onKeyNeeded` when it reads
+an envelope with no key and no passphrase in memory (`decryptData` throws
+`PASSPHRASE_REQUIRED`), or wants to write one. App.jsx answers both with the
+existing `SyncPassphraseModal`; a key that is present but wrong (a decrypt
+that fails for any other reason) stays the `encrypted-unreadable` error on the
+card, since a prompt would not help. And a plaintext file read with the switch
+on and no key ready IS applied (there is nothing to protect in what was read);
+only the write is held, never written plaintext. The switch is forgotten with
+the folder on disconnect, and disabling WebDAV encryption leaves the key in
+place while the switch is on. Tests: `snapshotFileSync.test.js` ("Phase 6"),
+`useSnapshotFileSync.test.js`, `directAccessTransport.test.js`,
+`icloudDiagnostics.test.js`, `DirectAccessSyncCard.test.jsx`.
 
 - **The file decides; the switch decides the first write.** A Direct Access
   file is either a plaintext snapshot or an encrypted envelope, and every
@@ -581,12 +597,24 @@ holds it as a second bookmark and the roster slot reads and writes it without
 a path. iCloud sync keeps running alongside; the two share one mutex and
 never merge into state at once.
 
+**Encrypt the file in the folder** (Phase 6) is a checkbox under the connected
+card. A device that already holds the file-tier key (WebDAV encryption, or
+the passphrase entered this session) just flips it; one without is asked to
+choose the sync passphrase, which every device opening the folder then asks
+for once. The next write seals the file in the same envelope WebDAV uses, and
+from then on the file decides: every device writes an envelope whatever its
+own switch says, and turning the switch off never makes the file plaintext
+again. A device that opens an encrypted file without the key is prompted for
+the passphrase before anything is applied or written.
+
 Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct
 Access file too, on any platform with the bridge: folder status, the file's
 size, modified time and counts, and the dry run of this device's merge against
 it (*would write*, *would apply*, and the slices that differ). That is the tool
 for "why does the file keep changing": the slice it names is the one two
-devices disagree on.
+devices disagree on. Three more rows say whether the file is an *envelope* or
+*plaintext*, whether this device's encrypt switch is on, and whether its key
+is *ready* or *needed* (an envelope is decrypted for the dry run when it is).
 
 The file is plain JSON, the same `dayglance-sync.json` the WebDAV tier writes.
 If the folder already holds an encrypted copy from a WebDAV setup, Direct

@@ -333,7 +333,14 @@ cannot be (`multiUserICloudOnly`), so this tier has to carry the roster.
 - **`syncSharedUsersViaDirectAccess(localUsers)`** in `src/intents/sharedUsers.js`,
   the iCloud one over the roster slot: read, `mergeUsers`, write. Null when no
   folder is connected, the transport is unreachable, or (iOS) no roster file
-  is bookmarked.
+  is bookmarked. Unlike the WebDAV and iCloud roster syncs, which rewrite the
+  file on every run, it follows the snapshot cycle's two rules, because two
+  devices rewriting one file in a syncing folder is a conflict copy per run
+  (two Macs, 2026-10-09): it writes only when the roster the file holds would
+  change, at once for a change made on this device (a member added, renamed or
+  removed in Settings stamps `dayglance-users-local-edit-at`), and for one that
+  arrived by another road only once the file has sat unchanged, still lacking
+  it, for `RELAY_CONFIRM_MS`.
 - **Gates and wiring.** `canSyncUserRoster` and `multiUserUnavailableReason`
   take `directAccessConnected`; the button prefers WebDAV, then Direct Access,
   then iCloud, and the automatic roster sync effect runs the Direct Access one

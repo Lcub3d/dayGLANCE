@@ -43,7 +43,7 @@ import { getDbIntentsConfig, setDbIntentsConfig, getDbIntentsConnection } from '
 import { getIcloudIntentsEnabledFlag, setIcloudIntentsEnabled } from '../intents/icloudIntentsConfig.js';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { INTENT_CONFIG_KEY, MULTI_USER_CONFIG_KEY } from '../intents/useIntentPoller.js';
-import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess } from '../intents/sharedUsers.js';
+import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess, markRosterEdited } from '../intents/sharedUsers.js';
 import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
 import { getSyncPassphrase, setSyncPassphrase } from '../utils/crypto.js';
 import { setupIntentsEncryption } from '../intents/intentsEncryptionSetup.js';
@@ -3206,6 +3206,7 @@ const MobileSettingsPanel = () => {
                       const updated = users.map(usr => usr.id === u.id ? { ...usr, name: trimmed, updatedAt: new Date().toISOString() } : usr);
                       setUsers(updated);
                       localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                      markRosterEdited();
                       setMuEditingUserId(null);
                     }}
                     className="px-2 py-1 bg-blue-600 text-white rounded-lg text-xs"
@@ -3234,6 +3235,7 @@ const MobileSettingsPanel = () => {
                       const updated = users.map(usr => usr.id === u.id ? { ...usr, deleted: true, updatedAt: new Date().toISOString() } : usr);
                       setUsers(updated);
                       localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                      markRosterEdited();
                       if (meUserSyncId === (u.syncId ?? u.id)) {
                         setMeUserSyncId(null);
                         localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: null }));
@@ -3264,6 +3266,7 @@ const MobileSettingsPanel = () => {
                   const updated = [...users, newUser];
                   setUsers(updated);
                   localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                  markRosterEdited();
                   setMuNewUserName('');
                   setMuAddingUser(false);
                 } else if (e.key === 'Escape') {
@@ -3281,6 +3284,7 @@ const MobileSettingsPanel = () => {
                 const updated = [...users, newUser];
                 setUsers(updated);
                 localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                markRosterEdited();
                 setMuNewUserName('');
                 setMuAddingUser(false);
               }}

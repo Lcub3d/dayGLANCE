@@ -30,7 +30,7 @@ import UnportableVaultNamesPanel from './UnportableVaultNamesPanel.jsx';
 import BridgePairingPanel from './BridgePairingPanel.jsx';
 import BridgeStatusPanel from './BridgeStatusPanel.jsx';
 import { INTENT_CONFIG_KEY, MULTI_USER_CONFIG_KEY } from '../intents/useIntentPoller.js';
-import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess } from '../intents/sharedUsers.js';
+import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess, markRosterEdited } from '../intents/sharedUsers.js';
 import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
 import { getSyncPassphrase, setSyncPassphrase } from '../utils/crypto.js';
 import { isVaultEnabled } from '../sync/vaultConfig.js';
@@ -1318,6 +1318,7 @@ const SettingsModal = () => {
                                           const updated = users.map(usr => usr.id === u.id ? { ...usr, name: trimmed, updatedAt: new Date().toISOString() } : usr);
                                           setUsers(updated);
                                           localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                          markRosterEdited();
                                           setEditingUserId(null);
                                         }}
                                         className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
@@ -1351,6 +1352,7 @@ const SettingsModal = () => {
                                           const updated = users.map(usr => usr.id === u.id ? { ...usr, deleted: true, updatedAt: new Date().toISOString() } : usr);
                                           setUsers(updated);
                                           localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                          markRosterEdited();
                                           if (meUserSyncId === (u.syncId ?? u.id)) {
                                             setMeUserSyncId(null);
                                             localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: null }));
@@ -1382,6 +1384,7 @@ const SettingsModal = () => {
                                       const updated = [...users, newUser];
                                       setUsers(updated);
                                       localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                      markRosterEdited();
                                       setNewUserName('');
                                       setAddingUser(false);
                                     } else if (e.key === 'Escape') {
@@ -1399,6 +1402,7 @@ const SettingsModal = () => {
                                     const updated = [...users, newUser];
                                     setUsers(updated);
                                     localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                    markRosterEdited();
                                     setNewUserName('');
                                     setAddingUser(false);
                                   }}

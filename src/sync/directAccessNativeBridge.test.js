@@ -18,7 +18,16 @@ const makeNative = (platform = 'android', over = {}) => {
     write: vi.fn(() => bool(true)),
     deleteSnapshot: vi.fn(() => bool(true)),
     disconnect: vi.fn(() => bool(true)),
+    __platform: platform,
     pickFolder: vi.fn(() => (platform === 'ios' ? 'null' : undefined)),
+    // Android only: files by path (DirectAccessBridge.kt).
+    ...(platform === 'android' ? {
+      listFiles: vi.fn(() => '["glance-users.json"]'),
+      readFile: vi.fn(() => JSON.stringify({ kind: 'text', text: '{"users":[]}' })),
+      writeFile: vi.fn(() => true),
+      deleteFileAt: vi.fn(() => true),
+      makeDir: vi.fn(() => true),
+    } : {}),
     // iOS only: the sync file itself. Android's bridge has neither.
     ...(platform === 'ios' ? { pickFile: vi.fn(() => 'null'), createFile: vi.fn(() => 'null') } : {}),
     ...over,
@@ -26,9 +35,9 @@ const makeNative = (platform = 'android', over = {}) => {
   return n;
 };
 
-const make = (native = makeNative()) => {
+const make = (native = makeNative(), platform = native.__platform ?? 'android') => {
   const w = {};
-  const bridge = createNativeDirectAccessBridge({ native: () => native, win: () => w });
+  const bridge = createNativeDirectAccessBridge({ native: () => native, win: () => w, platform });
   return { bridge, native, w };
 };
 
@@ -176,5 +185,30 @@ describe('through the shared transport', () => {
     const picking = transport.pickFolder();
     w.__dgDirectAccessPicked({ configured: true, name: 'Sync', path: 'content://tree/x', reachable: true });
     expect(await picking).toMatchObject({ status: 'connected', enabled: true });
+  });
+});
+
+describe('files by path (Android)', () => {
+  it('maps the Kotlin answers onto the paths shape the transport reads', async () => {
+    const { bridge, native } = make(makeNative('android'));
+    expect(await bridge.paths.list('GLANCE/users')).toEqual(['glance-users.json']);
+    expect(native.listFiles).toHaveBeenCalledWith('GLANCE/users');
+    expect(await bridge.paths.read('GLANCE/users/glance-users.json')).toEqual({ kind: 'text', text: '{"users":[]}' });
+    expect(await bridge.paths.write('GLANCE/users/glance-users.json', '{}')).toBe(true);
+    expect(native.writeFile).toHaveBeenCalledWith('GLANCE/users/glance-users.json', '{}');
+    expect(await bridge.paths.remove('GLANCE/users/glance-users.json')).toBe(true);
+    expect(await bridge.paths.makeDir('GLANCE/users')).toBe(true);
+    // A refused path: the shell answers "null" for a listing and false for the rest.
+    native.listFiles = () => 'null';
+    native.writeFile = () => false;
+    expect(await bridge.paths.list('../x')).toBeNull();
+    expect(await bridge.paths.write('../x', '{}')).toBe(false);
+    // Garbage from the shell is an error, never a crash.
+    native.readFile = () => 'not json';
+    expect(await bridge.paths.read('x')).toEqual({ kind: 'error', error: 'bad answer from the shell' });
+  });
+
+  it('an iPhone has no files by path', () => {
+    expect(make(makeNative('ios')).bridge.paths).toBeUndefined();
   });
 });

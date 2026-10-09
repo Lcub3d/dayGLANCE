@@ -91,6 +91,35 @@ export interface DirectAccessStore {
   /** Watches the folder for changes to the snapshot not made by this store. */
   startWatch(onChange: () => void): void;
   stopWatch(): void;
+
+  // ── Files by path, confined to the folder (docs/direct-access-sync.md,
+  // Phase 5). The household roster lives at GLANCE/users/glance-users.json
+  // relative to the picked folder, and the intents transport (Phase 7) lists
+  // and creates event files under GLANCE/events/. Every path is relative to
+  // the folder; one that escapes it (`..`, an absolute path) is refused HERE,
+  // never left to the renderer. The snapshot calls above stay as they are.
+  /** File names in a directory, [] for a missing directory, null when the folder itself is unusable. */
+  listFiles(rel: string): string[] | null;
+  readFile(rel: string): DirectAccessRead;
+  /** Atomic, parents created. */
+  writeFile(rel: string, text: string): boolean;
+  /** Idempotent: a missing file counts as deleted. */
+  deleteFile(rel: string): boolean;
+  makeDir(rel: string): boolean;
+}
+
+/**
+ * The absolute path of `rel` inside `base`, or null when it would land
+ * outside. Only `rel` strings that resolve to the folder itself or below it
+ * pass: `..`, an absolute path, a drive letter on Windows all fail the prefix
+ * check after resolution.
+ */
+export function resolveInside(base: string, rel: unknown): string | null {
+  if (typeof rel !== 'string') return null;
+  const root = path.resolve(base);
+  const abs = path.resolve(root, rel);
+  if (abs === root) return abs;
+  return abs.startsWith(root + path.sep) ? abs : null;
 }
 
 interface StoreDeps {
@@ -260,6 +289,86 @@ export function createDirectAccessStore({ now = Date.now, log = console }: Store
     if (cb && dir) startWatch(cb);
   };
 
+  // ── Files by path ──────────────────────────────────────────────────────
+  const inside = (rel: unknown): string | null => (base ? resolveInside(base, rel) : null);
+
+  const listFiles = (rel: string): string[] | null => {
+    if (!reachable()) return null;
+    const abs = inside(rel);
+    if (!abs) return null;
+    try {
+      return fs.readdirSync(abs, { withFileTypes: true }).filter((d) => d.isFile()).map((d) => d.name);
+    } catch (e) {
+      return errCode(e) === 'ENOENT' ? [] : null;
+    }
+  };
+
+  const readFile = (rel: string): DirectAccessRead => {
+    if (!base) return { kind: 'error', error: 'no folder connected' };
+    if (!reachable()) return { kind: 'error', error: 'folder not found' };
+    const abs = inside(rel);
+    if (!abs || abs === path.resolve(base)) return { kind: 'error', error: 'path outside the folder' };
+    let stat: fs.Stats;
+    try {
+      stat = retryTransientFs(() => fs.statSync(abs));
+    } catch (e) {
+      if (errCode(e) === 'ENOENT') return { kind: 'absent' };
+      if (PERMANENT_READ_CODES.has(errCode(e) ?? '')) return { kind: 'error', error: describeFolderError(e) };
+      return { kind: 'downloading' };
+    }
+    if (!stat.isFile()) return { kind: 'error', error: `${rel} is not a file` };
+    // The same placeholder rule as the snapshot: a cloud-only file is an
+    // empty entry until the tool materialises it.
+    if (stat.size === 0) return { kind: 'downloading' };
+    try {
+      const text = retryTransientFs(() => fs.readFileSync(abs, 'utf-8'));
+      return text.length === 0 ? { kind: 'downloading' } : { kind: 'text', text };
+    } catch (e) {
+      if (PERMANENT_READ_CODES.has(errCode(e) ?? '')) return { kind: 'error', error: describeFolderError(e) };
+      return { kind: 'downloading' };
+    }
+  };
+
+  const writeFile = (rel: string, text: string): boolean => {
+    if (!base || !reachable()) return false;
+    const abs = inside(rel);
+    if (!abs || abs === path.resolve(base) || typeof text !== 'string') return false;
+    try {
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      lastWriteAt = now();
+      writeFileAtomicSync(abs, text);
+      return true;
+    } catch (e) {
+      log.warn('[direct-access] writeFile failed:', (e as Error)?.message ?? e);
+      return false;
+    }
+  };
+
+  const deleteFile = (rel: string): boolean => {
+    if (!base || !reachable()) return false;
+    const abs = inside(rel);
+    if (!abs || abs === path.resolve(base)) return false;
+    try {
+      lastWriteAt = now();
+      fs.unlinkSync(abs);
+      return true;
+    } catch (e) {
+      return errCode(e) === 'ENOENT';
+    }
+  };
+
+  const makeDir = (rel: string): boolean => {
+    if (!base || !reachable()) return false;
+    const abs = inside(rel);
+    if (!abs) return false;
+    try {
+      fs.mkdirSync(abs, { recursive: true });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return {
     setBase,
     getBase: () => base,
@@ -269,5 +378,10 @@ export function createDirectAccessStore({ now = Date.now, log = console }: Store
     remove,
     startWatch,
     stopWatch,
+    listFiles,
+    readFile,
+    writeFile,
+    deleteFile,
+    makeDir,
   };
 }

@@ -321,3 +321,64 @@ describe('change events and status subscription', () => {
     expect(seen.at(-1)).toBe(s2);
   });
 });
+
+describe('the household roster slot (Phase 5)', () => {
+  const rel = 'GLANCE/users/glance-users.json';
+  const withPaths = (files = {}, over = {}) => {
+    const dirs = new Set();
+    const paths = {
+      list: vi.fn(async (d) => Object.keys(files).filter((k) => k.startsWith(d + '/')).map((k) => k.slice(d.length + 1))),
+      read: vi.fn(async (p) => (p in files ? files[p] : { kind: 'absent' })),
+      write: vi.fn(async (p, text) => {
+        const dir = p.slice(0, p.lastIndexOf('/'));
+        if (!dirs.has(dir) && !over.autoDirs) return false;   // a tool that refuses to create parents
+        files[p] = { kind: 'text', text };
+        return true;
+      }),
+      remove: vi.fn(async (p) => { delete files[p]; return true; }),
+      makeDir: vi.fn(async (d) => { dirs.add(d); return true; }),
+    };
+    return { bridge: makeBridge({ paths }), paths, files, dirs };
+  };
+
+  it('maps a path read onto the snapshot read contract, and reports the shell\'s errors', async () => {
+    const { bridge, files } = withPaths();
+    const { transport } = make({ bridge });
+    transport.subscribe(() => {});
+    await flush();
+    expect(transport.rosterSupported()).toBe(true);
+    expect(classifySnapshotText(await transport.rosterRead(rel))).toEqual({ kind: 'absent' });
+    files[rel] = { kind: 'downloading' };
+    expect(classifySnapshotText(await transport.rosterRead(rel))).toEqual({ kind: 'downloading' });
+    files[rel] = { kind: 'text', text: '{"version":1,"users":[]}' };
+    expect(await transport.rosterRead(rel)).toBe('{"version":1,"users":[]}');
+    files[rel] = { kind: 'error', error: 'folder not found' };
+    expect(classifySnapshotText(await transport.rosterRead(rel))).toEqual({ kind: 'error', error: 'folder not found' });
+  });
+
+  it('a write that fails for a missing directory creates it and tries once more', async () => {
+    const { bridge, paths, files, dirs } = withPaths();
+    const { transport } = make({ bridge });
+    expect(await transport.rosterWrite(rel, '{"version":1}')).toBe(true);
+    expect(paths.makeDir).toHaveBeenCalledWith('GLANCE/users');
+    expect(dirs.has('GLANCE/users')).toBe(true);
+    expect(files[rel]).toEqual({ kind: 'text', text: '{"version":1}' });
+    expect(paths.write).toHaveBeenCalledTimes(2);
+  });
+
+  it('an iPhone offers the roster as its own bookmarked file: the path is ignored', async () => {
+    const users = { read: vi.fn(async () => ({ kind: 'text', text: '{"users":[]}' })), write: vi.fn(async () => true) };
+    const { transport } = make({ bridge: makeBridge({ users }) });
+    expect(transport.rosterSupported()).toBe(true);
+    expect(await transport.rosterRead(rel)).toBe('{"users":[]}');
+    expect(await transport.rosterWrite(rel, 'x')).toBe(true);
+    expect(users.write).toHaveBeenCalledWith('x');
+  });
+
+  it('a bridge with neither is reported, not thrown, and never written', async () => {
+    const { transport } = make({ bridge: makeBridge() });
+    expect(transport.rosterSupported()).toBe(false);
+    expect(classifySnapshotText(await transport.rosterRead(rel)).kind).toBe('error');
+    expect(await transport.rosterWrite(rel, 'x')).toBe(false);
+  });
+});

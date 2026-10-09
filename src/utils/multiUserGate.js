@@ -48,8 +48,10 @@ export function multiUserToggleLocked({ cloudSyncConfigured, multiUserEnabled } 
  * @param {{cloudSyncConfigured?: boolean, icloudAvailable?: boolean}} opts
  * @returns {'none'|'icloud-only'|'no-sync'}
  */
-export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailable } = {}) {
-  if (cloudSyncConfigured) return 'none';
+export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailable, directAccessConnected } = {}) {
+  // A connected Direct Access folder is a shared destination (the folder is
+  // whatever the household shares), so it counts as configured here too.
+  if (cloudSyncConfigured || directAccessConnected) return 'none';
   return icloudAvailable ? 'icloud-only' : 'no-sync';
 }
 
@@ -67,9 +69,12 @@ export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailabl
  * enabled while WebDAV is off, where syncSharedUsersViaICloud is the only way to
  * reconcile the roster.
  *
- * @param {{multiUserEnabled?: boolean, cloudSyncEnabled?: boolean, icloudAvailable?: boolean}} opts
+ * A connected Direct Access folder carries the roster too (Phase 5 of
+ * docs/direct-access-sync.md), so it is a transport here.
+ *
+ * @param {{multiUserEnabled?: boolean, cloudSyncEnabled?: boolean, icloudAvailable?: boolean, directAccessConnected?: boolean}} opts
  * @returns {boolean}
  */
-export function canSyncUserRoster({ multiUserEnabled, cloudSyncEnabled, icloudAvailable } = {}) {
-  return !!(multiUserEnabled && (cloudSyncEnabled || icloudAvailable));
+export function canSyncUserRoster({ multiUserEnabled, cloudSyncEnabled, icloudAvailable, directAccessConnected } = {}) {
+  return !!(multiUserEnabled && (cloudSyncEnabled || icloudAvailable || directAccessConnected));
 }

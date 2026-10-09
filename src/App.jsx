@@ -161,7 +161,7 @@ import { useGoalNotifyEmitter } from './intents/useGoalNotifyEmitter.js';
 import { useOutboxFlush } from './intents/useOutboxFlush.js';
 import { useAndroidIntentBridge } from './intents/useAndroidIntentBridge.js';
 import { useUrlActionHandler } from './intents/useUrlActionHandler.js';
-import { syncSharedUsers, syncSharedUsersViaICloud } from './intents/sharedUsers.js';
+import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess } from './intents/sharedUsers.js';
 import useVoiceAI from './hooks/useVoiceAI.js';
 import useNavigation from './hooks/useNavigation.js';
 import useStats from './hooks/useStats.js';
@@ -2706,41 +2706,6 @@ const DayPlanner = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded, multiUserEnabled, meUserSyncId]);
 
-  // Sync user list with glance-users.json on WebDAV and iCloud, so dayGLANCE
-  // and lastGLANCE share the same roster regardless of which app is opened first.
-  // Both transports run simultaneously; whichever returns non-null is applied.
-  // Re-runs when users change or cloud sync config changes.
-  useEffect(() => {
-    if (!multiUserEnabled) return;
-    const usersPath = (() => {
-      const raw = localStorage.getItem('dayglance-multi-user-config');
-      return raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
-    })();
-
-    const applyMerged = (merged) => {
-      if (!merged) return;
-      const localById = new Map(users.map(u => [u.syncId ?? u.id, u]));
-      const hasNew = merged.some(u => {
-        const local = localById.get(u.syncId ?? u.id);
-        return !local || u.updatedAt > local.updatedAt;
-      });
-      if (hasNew || merged.length !== users.length) {
-        localStorage.setItem('dayglance-users', JSON.stringify(merged));
-        setUsers(merged);
-      }
-    };
-
-    if (cloudSyncConfig?.enabled) {
-      syncSharedUsers(cloudSyncConfig, usersPath, users)
-        .then(applyMerged)
-        .catch(err => console.warn('[shared-users] WebDAV sync error:', err.message));
-    }
-
-    syncSharedUsersViaICloud(usersPath, users)
-      .then(applyMerged)
-      .catch(err => console.warn('[shared-users] iCloud sync error:', err.message));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users, multiUserEnabled, cloudSyncConfig?.enabled, cloudSyncConfig?.nextcloudUrl, cloudSyncConfig?.webdavUrl, cloudSyncLastSynced]);
 
   // Only track obsidianConfig on non-native apps; native apps auto-populate fields from the vault.
   // Content-keyed (like icsCalendars above), NOT identity-keyed: every vault
@@ -2833,6 +2798,57 @@ const DayPlanner = () => {
       onEncryptedUnreadable: () => flashDirectAccessError(t('sync.errors.directAccessEncrypted')),
     },
   });
+
+  // Sync user list with glance-users.json on WebDAV, a connected Direct Access
+  // folder and iCloud, so dayGLANCE and lastGLANCE share the same roster
+  // regardless of which app is opened first. The transports run
+  // simultaneously; whichever returns non-null is applied. Re-runs when users
+  // change, cloud sync config changes, a WebDAV cycle completes, or (Direct
+  // Access) the folder connects and then once a minute while it is.
+  const [directAccessRosterTick, setDirectAccessRosterTick] = useState(0);
+  const directAccessRoster = directAccessStatus.connected && directAccessStatus.enabled;
+  useEffect(() => {
+    if (!multiUserEnabled || !directAccessRoster) return;
+    const timer = setInterval(() => setDirectAccessRosterTick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, [multiUserEnabled, directAccessRoster]);
+  useEffect(() => {
+    if (!multiUserEnabled) return;
+    const usersPath = (() => {
+      const raw = localStorage.getItem('dayglance-multi-user-config');
+      return raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
+    })();
+
+    const applyMerged = (merged) => {
+      if (!merged) return;
+      const localById = new Map(users.map(u => [u.syncId ?? u.id, u]));
+      const hasNew = merged.some(u => {
+        const local = localById.get(u.syncId ?? u.id);
+        return !local || u.updatedAt > local.updatedAt;
+      });
+      if (hasNew || merged.length !== users.length) {
+        localStorage.setItem('dayglance-users', JSON.stringify(merged));
+        setUsers(merged);
+      }
+    };
+
+    if (cloudSyncConfig?.enabled) {
+      syncSharedUsers(cloudSyncConfig, usersPath, users)
+        .then(applyMerged)
+        .catch(err => console.warn('[shared-users] WebDAV sync error:', err.message));
+    }
+
+    if (directAccessRoster) {
+      syncSharedUsersViaDirectAccess(usersPath, users)
+        .then(applyMerged)
+        .catch(err => console.warn('[shared-users] Direct Access sync error:', err.message));
+    }
+
+    syncSharedUsersViaICloud(usersPath, users)
+      .then(applyMerged)
+      .catch(err => console.warn('[shared-users] iCloud sync error:', err.message));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, multiUserEnabled, cloudSyncConfig?.enabled, cloudSyncConfig?.nextcloudUrl, cloudSyncConfig?.webdavUrl, cloudSyncLastSynced, directAccessRoster, directAccessRosterTick]);
 
   // Cloud sync: download on app load or when sync is first enabled.
   // One-time check: if existing sync user is still on the legacy 'dayglance'

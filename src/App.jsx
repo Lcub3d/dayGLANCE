@@ -2774,6 +2774,10 @@ const DayPlanner = () => {
   // state at once, and a stranded lock is released whichever transport held it.
   // No first-run prompt: picking the folder is the decision.
   const directAccessStatus = useDirectAccessStatus();
+  // Raised by the Direct Access cycle when the file needs a passphrase this
+  // device does not have; it lets the unlock prompt show without WebDAV
+  // encryption or the vault being configured.
+  const [directAccessKeyWanted, setDirectAccessKeyWanted] = useState(false);
   const flashDirectAccessError = (message) => {
     setCloudSyncError(message);
     setCloudSyncStatus('error');
@@ -2796,6 +2800,17 @@ const DayPlanner = () => {
       // The folder holds an encrypted file this device cannot read, and Direct
       // Access never writes plaintext over someone else's cloud copy.
       onEncryptedUnreadable: () => flashDirectAccessError(t('sync.errors.directAccessEncrypted')),
+      // The file is an envelope (or this device wants to write one) and no key
+      // or passphrase is in memory: the same prompt WebDAV encryption uses
+      // (Phase 6). The entered passphrase derives the file-tier key from the
+      // file's own salt on the next cycle.
+      // While the launch key check is still pending (null) its answer is on
+      // the way and decides; a prompt raised now would flash and vanish.
+      onKeyNeeded: () => {
+        if (syncKeyReadyRef.current === null) return;
+        setDirectAccessKeyWanted(true);
+        setSyncKeyReady(false);
+      },
     },
   });
 
@@ -10322,7 +10337,7 @@ const DayPlanner = () => {
       {/* Sync passphrase prompt — shown on app load when an encrypted transport
           (WebDAV encryption or GLANCEvault) is active but no cached key was found
           in device storage (e.g. new device, or first launch after key isolation). */}
-      {(cloudSyncConfig?.encryptionEnabled || isVaultEnabled() || isDbIntentsEnabled()) && syncKeyReady === false && (
+      {(cloudSyncConfig?.encryptionEnabled || isVaultEnabled() || isDbIntentsEnabled() || directAccessStatus.encrypt || directAccessKeyWanted) && syncKeyReady === false && (
         <SyncPassphraseModal
           darkMode={darkMode}
           textPrimary={textPrimary}

@@ -156,6 +156,10 @@ export function classifySnapshot(raw, deps = {}) {
   if (parsed?.downloading) return { ...empty, state: 'downloading' };
   if (parsed?.error) return { ...empty, state: 'error', error: String(parsed.error) };
 
+  // An encrypted envelope (the @glance-apps/sync shape) has no readable counts
+  // or stamp; the Direct Access probe decrypts it when this device has the key.
+  if (isEnvelope(parsed)) return { ...empty, state: 'present', bytes, encrypted: true };
+
   return {
     state: 'present',
     bytes,
@@ -164,8 +168,12 @@ export function classifySnapshot(raw, deps = {}) {
     taskCount: Array.isArray(parsed?.data?.tasks) ? parsed.data.tasks.length : null,
     inboxCount: Array.isArray(parsed?.data?.unscheduledTasks) ? parsed.data.unscheduledTasks.length : null,
     error: null,
+    encrypted: false,
   };
 }
+
+/** The envelope test, inlined so this module keeps its one import (isEncryptedEnvelope in @glance-apps/sync). */
+const isEnvelope = (v) => v !== null && typeof v === 'object' && v.v === 1 && v.enc === 'AES-GCM-256' && typeof v.data === 'string';
 
 /**
  * The OTHER sync transports, so the report can rule them in or out.
@@ -282,6 +290,11 @@ const defaultDeps = () => ({
   // The Direct Access transport (sync/directAccessTransport.js), so the same
   // readout covers its file. The panel passes the singleton; null → no section.
   directAccess: null,
+  // Phase 6: decrypt an enveloped Direct Access file for the dry run, and say
+  // whether this device could (utils/crypto.js). Absent → an envelope is
+  // reported as such and not merged.
+  decryptData: null,
+  encryptionReady: null,
 });
 
 /**
@@ -294,8 +307,10 @@ const defaultDeps = () => ({
  * slice they disagreed on, because the dry run only looked at iCloud.
  *
  * @returns {Promise<null | {status: string, name: string|null, enabled: boolean,
- *   snapshot: object|null, merge: object|null}>}  null when the platform has
- *   no Direct Access bridge at all.
+ *   encrypt: boolean, keyReady: boolean|null, snapshot: object|null,
+ *   merge: object|null}>}  null when the platform has no Direct Access bridge
+ *   at all. `encrypt` is the device's switch; `keyReady` whether it holds the
+ *   file-tier key (null when the caller passed no `encryptionReady`).
  */
 export async function probeDirectAccess(deps = {}) {
   const transport = deps.directAccess;
@@ -308,7 +323,8 @@ export async function probeDirectAccess(deps = {}) {
   if (typeof transport.probeStatus === 'function') {
     try { native = await transport.probeStatus(); } catch (err) { native = { error: err?.message ?? String(err) }; }
   }
-  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null };
+  const keyReady = typeof deps.encryptionReady === 'function' ? !!deps.encryptionReady() : null;
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, encrypt: s?.encrypt === true, keyReady, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null };
   if (!s?.connected) return { ...head, snapshot: null, merge: null };
   let raw;
   try {
@@ -316,8 +332,23 @@ export async function probeDirectAccess(deps = {}) {
   } catch (err) {
     raw = JSON.stringify({ error: err?.message ?? String(err) });
   }
-  const snapshot = classifySnapshot(raw, deps);
-  const merge = snapshot.state === 'present'
+  let snapshot = classifySnapshot(raw, deps);
+  let readable = !snapshot.encrypted;
+  if (snapshot.encrypted) {
+    // The dry run needs plaintext: decrypt as the cycle would, and keep the
+    // envelope's own facts (size, that it is one) on the row.
+    let plain = null;
+    if (typeof deps.decryptData === 'function') {
+      try { plain = await deps.decryptData(JSON.parse(raw)); }
+      catch (err) { snapshot = { ...snapshot, error: `cannot decrypt: ${err?.message ?? err}` }; }
+    }
+    if (plain && typeof plain === 'object') {
+      raw = JSON.stringify(plain);
+      snapshot = { ...classifySnapshot(raw, deps), bytes: snapshot.bytes, encrypted: true };
+      readable = true;
+    }
+  }
+  const merge = snapshot.state === 'present' && readable
     ? dryRunMerge(raw, deps, { stripsHealthLogs: transport.stripsHealthLogs !== false })
     : null;
   return { ...head, snapshot, merge };
@@ -507,7 +538,13 @@ export function formatDiagnosticsReport({ platform, icloud, available, snapshot,
     if (da.native !== undefined && da.native !== null) lines.push(`  shell status:  ${typeof da.native === 'string' ? da.native : JSON.stringify(da.native)}`);
     // An iPhone's roster is its own bookmarked file (Phase 5); elsewhere it is a path in the folder and has no line.
     if (da.roster) lines.push(`  roster file:   ${da.roster.configured ? `${da.roster.reachable ? 'chosen' : 'chosen, unreachable'} (${da.roster.name ?? none})` : 'not chosen'}`);
-    if (da.snapshot) lines.push(...snapshotLines(da.snapshot, '  ', none));
+    if (da.snapshot) {
+      lines.push(...snapshotLines(da.snapshot, '  ', none));
+      // Phase 6: what the file is, and whether this device could read or seal one.
+      if (da.snapshot.state === 'present') lines.push(`  encryption:    ${da.snapshot.encrypted ? 'envelope' : 'plaintext'}`);
+      if (da.encrypt !== undefined) lines.push(`  encrypt switch: ${da.encrypt ? 'on' : 'off'}`);
+      if (da.keyReady !== undefined && da.keyReady !== null) lines.push(`  key:           ${da.keyReady ? 'ready' : 'needed'}`);
+    }
     lines.push(...mergeLines(da.merge, '  ', none));
   }
   return lines.join('\n');

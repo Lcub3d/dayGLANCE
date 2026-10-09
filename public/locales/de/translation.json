@@ -2127,7 +2127,14 @@
     "vaultConfig": "Vault-Konfiguration (aktiv / URL / Token / Konto)",
     "vaultCursor": "Vault-Cursor (Pull / Push-Bestätigung)",
     "vaultRows": "Vault-Zeilen (ausstehend / in Quarantäne)",
-    "vaultHalt": "Vault-Anmeldestopp"
+    "vaultHalt": "Vault-Anmeldestopp",
+    "encryption": "Dateiverschlüsselung",
+    "envelope": "verschlüsselt",
+    "plaintext": "unverschlüsselt",
+    "encryptSwitch": "Auf diesem Gerät verschlüsseln",
+    "key": "Sync-Schlüssel",
+    "keyReady": "bereit",
+    "keyNeeded": "fehlt (Sync-Passphrase eingeben)"
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",
@@ -2168,7 +2175,12 @@
     "pickFailed": "Der Ordner konnte nicht verbunden werden: {{reason}}",
     "neverSynced": "Noch nicht synchronisiert",
     "androidHint": "Wählen Sie unter Android einen Ordner, den eine App in den Speicher dieses Geräts spiegelt, etwa Syncthing, FolderSync oder Autosync. Die Apps von Google Drive und Dropbox bieten ihre Ordner hier nicht an.",
-    "iosHint": "Wählen Sie auf iPhone und iPad die dayglance-sync.json, die Ihre anderen Geräte bereits teilen, an einem Ort in der Dateien-App wie Nextcloud, Google Drive oder Dropbox. Hat noch kein Gerät eine erstellt, erstellen Sie sie in dem Ordner, den sie teilen werden."
+    "iosHint": "Wählen Sie auf iPhone und iPad die dayglance-sync.json, die Ihre anderen Geräte bereits teilen, an einem Ort in der Dateien-App wie Nextcloud, Google Drive oder Dropbox. Hat noch kein Gerät eine erstellt, erstellen Sie sie in dem Ordner, den sie teilen werden.",
+    "encrypt": "Datei im Ordner verschlüsseln",
+    "encryptHint": "Aus. Die Datei wird unverändert geschrieben. Hat ein anderes Gerät sie bereits verschlüsselt, folgt dieses Gerät der Datei und fragt nach der Sync-Passphrase.",
+    "encryptOnHint": "An. Der nächste Schreibvorgang versiegelt die Datei mit deiner Sync-Passphrase, derselben wie bei der WebDAV-Verschlüsselung, und alle Geräte folgen danach der Datei. Ausschalten macht die Datei nie wieder unverschlüsselt.",
+    "encryptPassphraseHint": "Wähle eine Sync-Passphrase. Jedes Gerät, das diesen Ordner öffnet, fragt einmal danach. Wenn du bereits eine für die WebDAV-Verschlüsselung nutzt, gib diese ein.",
+    "encryptTurnOn": "Verschlüsselung einschalten"
   },
   "aspire": {
     "title": "Aspire",

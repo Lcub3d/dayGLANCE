@@ -2127,7 +2127,14 @@
     "vaultConfig": "Config du vault (actif / URL / jeton / compte)",
     "vaultCursor": "Curseur du vault (pull / accusé push)",
     "vaultRows": "Lignes du vault (en attente / en quarantaine)",
-    "vaultHalt": "Arrêt du vault (identifiants)"
+    "vaultHalt": "Arrêt du vault (identifiants)",
+    "encryption": "Chiffrement du fichier",
+    "envelope": "chiffré",
+    "plaintext": "en clair",
+    "encryptSwitch": "Chiffrer sur cet appareil",
+    "key": "Clé de synchronisation",
+    "keyReady": "prête",
+    "keyNeeded": "manquante (saisir la phrase secrète)"
   },
   "icloudFirstRun": {
     "title": "Données trouvées dans iCloud",
@@ -2168,7 +2175,12 @@
     "pickFailed": "Le dossier n'a pas pu être connecté : {{reason}}",
     "neverSynced": "Pas encore synchronisé",
     "androidHint": "Sur Android, choisissez un dossier qu'une application reflète dans le stockage de cet appareil, comme Syncthing, FolderSync ou Autosync. Les applications Google Drive et Dropbox ne proposent pas leurs dossiers ici.",
-    "iosHint": "Sur iPhone et iPad, choisissez le dayglance-sync.json que vos autres appareils partagent déjà, depuis un emplacement de l'app Fichiers comme Nextcloud, Google Drive ou Dropbox. Si aucun appareil ne l'a encore créé, créez-le dans le dossier qu'ils partageront."
+    "iosHint": "Sur iPhone et iPad, choisissez le dayglance-sync.json que vos autres appareils partagent déjà, depuis un emplacement de l'app Fichiers comme Nextcloud, Google Drive ou Dropbox. Si aucun appareil ne l'a encore créé, créez-le dans le dossier qu'ils partageront.",
+    "encrypt": "Chiffrer le fichier dans le dossier",
+    "encryptHint": "Désactivé. Le fichier est écrit tel quel. Si un autre appareil l'a déjà chiffré, cet appareil suit le fichier et demande la phrase secrète de synchronisation.",
+    "encryptOnHint": "Activé. La prochaine écriture scelle le fichier avec votre phrase secrète de synchronisation, la même que pour le chiffrement WebDAV, et tous les appareils suivent ensuite le fichier. Désactiver ne remet jamais le fichier en clair.",
+    "encryptPassphraseHint": "Choisissez une phrase secrète de synchronisation. Chaque appareil qui ouvre ce dossier la demandera une fois. Si vous en utilisez déjà une pour le chiffrement WebDAV, saisissez celle-là.",
+    "encryptTurnOn": "Activer le chiffrement"
   },
   "aspire": {
     "title": "Aspire",

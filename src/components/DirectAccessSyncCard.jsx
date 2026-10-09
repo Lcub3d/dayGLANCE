@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { isNativeAndroid, isNativeIOS } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
+import { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey } from '../utils/crypto.js';
 
 /**
  * Settings → Cloud Sync: the Direct Access card (docs/direct-access-sync.md).
@@ -12,11 +13,63 @@ import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/di
  * Android, the sync file itself on iPhone and iPad), and carries the
  * per-device on/off switch, which mirrors ICloudSyncToggle: turning it off is
  * inert, not destructive — the shared copy and the other devices are untouched.
+ *
+ * The encryption switch (Phase 6) uses the file-tier key WebDAV encryption
+ * uses, so a device that already has that key just flips it; one without is
+ * asked for the sync passphrase first (`crypto` is injectable for tests).
  */
-const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, multiUserEnabled = false, transport = directAccessTransport }) => {
+/**
+ * What a tap on the encryption switch does. The switch flips at once when a
+ * key (or the passphrase) is in memory; otherwise the passphrase fields open
+ * and the switch turns on with them. Turning it off never touches the file
+ * (the file decides, docs/direct-access-sync.md Phase 6).
+ */
+export const decideEncryptToggle = ({ encrypt, keyInMemory }) => (encrypt ? 'off' : keyInMemory ? 'on' : 'ask');
+
+/**
+ * Turns the switch on from a freshly chosen passphrase: derives and caches
+ * the file-tier key first, so the upgrade the kick writes can be sealed.
+ * Returns `{ ok: true }` or `{ ok: false, error }` with the message to show.
+ */
+export async function turnOnEncryption({ passphrase, confirm, setupEncryptionKey, transport, t }) {
+  const p = (passphrase ?? '').trim();
+  if (!p) return { ok: false, error: null };
+  if (p !== (confirm ?? '').trim()) return { ok: false, error: t('sync.form.passphraseMismatch') };
+  try {
+    await setupEncryptionKey(p);
+  } catch (err) {
+    return { ok: false, error: err?.message ?? String(err) };
+  }
+  transport.setEncryptsWrites(true);
+  return { ok: true };
+}
+
+const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, multiUserEnabled = false, transport = directAccessTransport, crypto = { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey } }) => {
   const { t } = useTranslation();
   const status = useDirectAccessStatus(transport);
   const [busy, setBusy] = useState(false);
+
+  const [askPassphrase, setAskPassphrase] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [passphraseConfirm, setPassphraseConfirm] = useState('');
+  const [passphraseError, setPassphraseError] = useState(null);
+  const toggleEncrypt = () => {
+    const keyInMemory = crypto.hasEncryptionReady() || !!crypto.getSyncPassphrase();
+    const action = decideEncryptToggle({ encrypt: !!status.encrypt, keyInMemory });
+    if (action === 'off') { transport.setEncryptsWrites(false); setAskPassphrase(false); return; }
+    if (action === 'on') { transport.setEncryptsWrites(true); return; }
+    setPassphrase(''); setPassphraseConfirm(''); setPassphraseError(null);
+    setAskPassphrase(true);
+  };
+  const submitPassphrase = async (e) => {
+    e?.preventDefault?.();
+    setBusy(true);
+    try {
+      const r = await turnOnEncryption({ passphrase, confirm: passphraseConfirm, setupEncryptionKey: crypto.setupEncryptionKey, transport, t });
+      if (r.ok) { setAskPassphrase(false); setPassphrase(''); setPassphraseConfirm(''); setPassphraseError(null); }
+      else setPassphraseError(r.error);
+    } finally { setBusy(false); }
+  };
 
   // The cycle stamps this on every real read; re-read it while the card is open.
   const readLastSynced = () => {
@@ -141,6 +194,53 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
             <button type="button" onClick={disconnect} disabled={busy} className={button}>
               {t('directAccess.disconnect')}
             </button>
+          </div>
+          <div className={`pt-2 border-t ${borderClass} space-y-2`}>
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={!!status.encrypt || askPassphrase}
+                onChange={toggleEncrypt}
+                disabled={busy}
+                className="mt-0.5 w-4 h-4 rounded flex-shrink-0"
+                aria-label={t('directAccess.encrypt')}
+              />
+              <span className="min-w-0">
+                <span className={`text-sm ${textPrimary} flex items-center gap-1.5`}>
+                  <Lock size={12} className={textSecondary} />
+                  {t('directAccess.encrypt')}
+                </span>
+                <span className={`block text-xs ${textSecondary}`}>
+                  {status.encrypt ? t('directAccess.encryptOnHint') : t('directAccess.encryptHint')}
+                </span>
+              </span>
+            </label>
+            {askPassphrase && !status.encrypt && (
+              <form onSubmit={submitPassphrase} className="ml-7 space-y-2">
+                <p className={`text-xs ${textSecondary}`}>{t('directAccess.encryptPassphraseHint')}</p>
+                <input
+                  type="password"
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  placeholder={t('sync.form.passphrasePlaceholderNew')}
+                  aria-label={t('sync.form.syncPassphraseLabel')}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                />
+                <input
+                  type="password"
+                  value={passphraseConfirm}
+                  onChange={(e) => setPassphraseConfirm(e.target.value)}
+                  placeholder={t('sync.form.confirmPassphrasePlaceholder')}
+                  aria-label={t('sync.form.confirmPassphraseLabel')}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                />
+                {passphraseError && <p className="text-xs text-red-600 dark:text-red-400">{passphraseError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={busy || !passphrase.trim()} className={button}>{t('directAccess.encryptTurnOn')}</button>
+                  <button type="button" disabled={busy} onClick={() => setAskPassphrase(false)} className={button}>{t('common.cancel')}</button>
+                </div>
+              </form>
+            )}
           </div>
           {ios && multiUserEnabled && roster && (
             <div className={`pt-2 border-t ${borderClass} space-y-2`}>

@@ -2220,7 +2220,14 @@
     "vaultConfig": "Konfiguracja vault (włączony / URL / token / konto)",
     "vaultCursor": "Kursor vault (pull / potwierdzenie push)",
     "vaultRows": "Wiersze vault (oczekujące / kwarantanna)",
-    "vaultHalt": "Blokada poświadczeń vault"
+    "vaultHalt": "Blokada poświadczeń vault",
+    "encryption": "Szyfrowanie pliku",
+    "envelope": "zaszyfrowany",
+    "plaintext": "jawny",
+    "encryptSwitch": "Szyfruj na tym urządzeniu",
+    "key": "Klucz synchronizacji",
+    "keyReady": "gotowy",
+    "keyNeeded": "brak (wpisz hasło synchronizacji)"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",
@@ -2261,7 +2268,12 @@
     "pickFailed": "Nie udało się połączyć folderu: {{reason}}",
     "neverSynced": "Jeszcze nie zsynchronizowano",
     "androidHint": "Na Androidzie wybierz folder, który jakaś aplikacja odzwierciedla w pamięci tego urządzenia, np. Syncthing, FolderSync lub Autosync. Aplikacje Google Drive i Dropbox nie udostępniają tutaj swoich folderów.",
-    "iosHint": "Na iPhonie i iPadzie wybierz plik dayglance-sync.json, który Twoje inne urządzenia już współdzielą, z lokalizacji w aplikacji Pliki, takiej jak Nextcloud, Google Drive lub Dropbox. Jeśli żadne urządzenie jeszcze go nie utworzyło, utwórz go w folderze, który będą współdzielić."
+    "iosHint": "Na iPhonie i iPadzie wybierz plik dayglance-sync.json, który Twoje inne urządzenia już współdzielą, z lokalizacji w aplikacji Pliki, takiej jak Nextcloud, Google Drive lub Dropbox. Jeśli żadne urządzenie jeszcze go nie utworzyło, utwórz go w folderze, który będą współdzielić.",
+    "encrypt": "Szyfruj plik w folderze",
+    "encryptHint": "Wyłączone. Plik jest zapisywany bez zmian. Jeśli inne urządzenie już go zaszyfrowało, to urządzenie podąża za plikiem i prosi o hasło synchronizacji.",
+    "encryptOnHint": "Włączone. Następny zapis zabezpiecza plik Twoim hasłem synchronizacji, tym samym, którego używa szyfrowanie WebDAV, a potem wszystkie urządzenia podążają za plikiem. Wyłączenie nigdy nie przywraca pliku do postaci jawnej.",
+    "encryptPassphraseHint": "Wybierz hasło synchronizacji. Każde urządzenie, które otworzy ten folder, poprosi o nie raz. Jeśli używasz już hasła do szyfrowania WebDAV, wpisz to samo.",
+    "encryptTurnOn": "Włącz szyfrowanie"
   },
   "aspire": {
     "title": "Aspire",

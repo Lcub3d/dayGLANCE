@@ -2127,7 +2127,14 @@
     "vaultConfig": "Config. do vault (ativo / URL / token / conta)",
     "vaultCursor": "Cursor do vault (pull / confirmação de push)",
     "vaultRows": "Linhas do vault (pendentes / em quarentena)",
-    "vaultHalt": "Vault parado por credenciais"
+    "vaultHalt": "Vault parado por credenciais",
+    "encryption": "Cifra do ficheiro",
+    "envelope": "cifrado",
+    "plaintext": "sem cifra",
+    "encryptSwitch": "Cifrar neste dispositivo",
+    "key": "Chave de sincronização",
+    "keyReady": "pronta",
+    "keyNeeded": "em falta (introduza a frase-passe)"
   },
   "icloudFirstRun": {
     "title": "Dados encontrados no iCloud",
@@ -2168,7 +2175,12 @@
     "pickFailed": "Não foi possível ligar a pasta: {{reason}}",
     "neverSynced": "Ainda não sincronizado",
     "androidHint": "No Android, escolha uma pasta que uma aplicação espelhe no armazenamento deste dispositivo, como Syncthing, FolderSync ou Autosync. As aplicações do Google Drive e do Dropbox não disponibilizam aqui as suas pastas.",
-    "iosHint": "No iPhone e no iPad, escolha o dayglance-sync.json que os seus outros dispositivos já partilham, numa localização da app Ficheiros como Nextcloud, Google Drive ou Dropbox. Se nenhum dispositivo o criou ainda, crie-o na pasta que irão partilhar."
+    "iosHint": "No iPhone e no iPad, escolha o dayglance-sync.json que os seus outros dispositivos já partilham, numa localização da app Ficheiros como Nextcloud, Google Drive ou Dropbox. Se nenhum dispositivo o criou ainda, crie-o na pasta que irão partilhar.",
+    "encrypt": "Cifrar o ficheiro na pasta",
+    "encryptHint": "Desligado. O ficheiro é escrito tal como está. Se outro dispositivo já o cifrou, este dispositivo segue o ficheiro e pede a frase-passe de sincronização.",
+    "encryptOnHint": "Ligado. A próxima escrita sela o ficheiro com a sua frase-passe de sincronização, a mesma que a cifra WebDAV usa, e depois todos os dispositivos seguem o ficheiro. Desligar nunca volta a deixar o ficheiro sem cifra.",
+    "encryptPassphraseHint": "Escolha uma frase-passe de sincronização. Cada dispositivo que abrir esta pasta pede-a uma vez. Se já usa uma para a cifra WebDAV, introduza essa.",
+    "encryptTurnOn": "Ligar a cifra"
   },
   "aspire": {
     "title": "Aspire",

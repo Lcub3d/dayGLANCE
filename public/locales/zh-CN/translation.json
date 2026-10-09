@@ -2127,7 +2127,14 @@
     "vaultConfig": "Vault 配置（启用 / URL / 令牌 / 账户）",
     "vaultCursor": "Vault 游标（拉取 / 推送确认）",
     "vaultRows": "Vault 行（待处理 / 已隔离）",
-    "vaultHalt": "Vault 凭据停止"
+    "vaultHalt": "Vault 凭据停止",
+    "encryption": "文件加密",
+    "envelope": "已加密",
+    "plaintext": "明文",
+    "encryptSwitch": "在本设备上加密",
+    "key": "同步密钥",
+    "keyReady": "就绪",
+    "keyNeeded": "缺少（请输入同步口令）"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",
@@ -2168,7 +2175,12 @@
     "pickFailed": "无法连接文件夹：{{reason}}",
     "neverSynced": "尚未同步",
     "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。",
-    "iosHint": "在 iPhone 和 iPad 上，从“文件”App 中的位置（如 Nextcloud、Google Drive 或 Dropbox）选择其他设备已共享的 dayglance-sync.json。如果还没有设备创建它，请在它们将共享的文件夹中创建。"
+    "iosHint": "在 iPhone 和 iPad 上，从“文件”App 中的位置（如 Nextcloud、Google Drive 或 Dropbox）选择其他设备已共享的 dayglance-sync.json。如果还没有设备创建它，请在它们将共享的文件夹中创建。",
+    "encrypt": "加密文件夹中的文件",
+    "encryptHint": "关闭。文件按原样写入。如果其他设备已将其加密，本设备会跟随该文件并要求输入同步口令。",
+    "encryptOnHint": "开启。下一次写入会用你的同步口令（与 WebDAV 加密相同）封存该文件，此后所有设备都跟随该文件。关闭此项不会让文件恢复为明文。",
+    "encryptPassphraseHint": "选择一个同步口令。每台打开此文件夹的设备都会询问一次。如果你已为 WebDAV 加密设置了口令，请输入同一个。",
+    "encryptTurnOn": "开启加密"
   },
   "aspire": {
     "title": "Aspire",

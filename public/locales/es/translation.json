@@ -2127,7 +2127,14 @@
     "vaultConfig": "Config. del vault (activo / URL / token / cuenta)",
     "vaultCursor": "Cursor del vault (pull / confirmación push)",
     "vaultRows": "Filas del vault (pendientes / en cuarentena)",
-    "vaultHalt": "Vault detenido por credenciales"
+    "vaultHalt": "Vault detenido por credenciales",
+    "encryption": "Cifrado del archivo",
+    "envelope": "cifrado",
+    "plaintext": "sin cifrar",
+    "encryptSwitch": "Cifrar en este dispositivo",
+    "key": "Clave de sincronización",
+    "keyReady": "lista",
+    "keyNeeded": "falta (introduce la frase de contraseña)"
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",
@@ -2168,7 +2175,12 @@
     "pickFailed": "No se pudo conectar la carpeta: {{reason}}",
     "neverSynced": "Aún no sincronizado",
     "androidHint": "En Android, elige una carpeta que una app refleje en el almacenamiento de este dispositivo, como Syncthing, FolderSync o Autosync. Las apps de Google Drive y Dropbox no ofrecen sus carpetas aquí.",
-    "iosHint": "En iPhone y iPad, elige el dayglance-sync.json que ya comparten tus otros dispositivos, desde una ubicación de la app Archivos como Nextcloud, Google Drive o Dropbox. Si ningún dispositivo lo ha creado aún, créalo en la carpeta que compartirán."
+    "iosHint": "En iPhone y iPad, elige el dayglance-sync.json que ya comparten tus otros dispositivos, desde una ubicación de la app Archivos como Nextcloud, Google Drive o Dropbox. Si ningún dispositivo lo ha creado aún, créalo en la carpeta que compartirán.",
+    "encrypt": "Cifrar el archivo en la carpeta",
+    "encryptHint": "Desactivado. El archivo se escribe tal cual. Si otro dispositivo ya lo cifró, este dispositivo sigue al archivo y pide la frase de contraseña de sincronización.",
+    "encryptOnHint": "Activado. La próxima escritura sella el archivo con tu frase de contraseña de sincronización, la misma que usa el cifrado WebDAV, y después todos los dispositivos siguen al archivo. Desactivarlo nunca vuelve a dejar el archivo sin cifrar.",
+    "encryptPassphraseHint": "Elige una frase de contraseña de sincronización. Cada dispositivo que abra esta carpeta la pedirá una vez. Si ya usas una para el cifrado WebDAV, introduce esa.",
+    "encryptTurnOn": "Activar el cifrado"
   },
   "aspire": {
     "title": "Aspire",

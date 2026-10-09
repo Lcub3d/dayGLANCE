@@ -8,16 +8,16 @@ const ImportCalendarModal = () => {
   const { t } = useTranslation();
   const { colors, cardBg, borderClass, textPrimary, textSecondary, darkMode } = useDayPlannerCtx();
   const {
-    showImportModal, setShowImportModal,
-    pendingImportFile, setPendingImportFile,
+    showImportModal,
+    pendingImportFile,
     importColor, setImportColor,
-    processImportFile,
+    processImportFile, cancelImport,
   } = useSyncCtx();
 
   if (!showImportModal) return null;
 
   return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowImportModal(false); setPendingImportFile(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={cancelImport}>
           <div
             className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-sm w-full mx-4`}
             onClick={(e) => e.stopPropagation()}
@@ -62,7 +62,7 @@ const ImportCalendarModal = () => {
             </div>
             <div className="flex justify-end mt-4">
               <button
-                onClick={() => { setShowImportModal(false); setPendingImportFile(null); }}
+                onClick={cancelImport}
                 className={`px-4 py-2 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors`}
               >
                 {t('common.cancel')}

@@ -1,5 +1,6 @@
 import { webdavFetch } from '../utils/cloudSyncProviders.js';
 import * as icloudFileTransport from './icloudFileTransport.js';
+import { directAccessTransport } from '../sync/directAccessTransport.js';
 
 const USERS_FILENAME = 'glance-users.json';
 const DEFAULT_USERS_PATH = '/GLANCE/users/';
@@ -141,39 +142,28 @@ export async function syncSharedUsers(cloudSyncConfig, usersPath, localUsers) {
   return merged;
 }
 
-/**
- * Sync the local user list with glance-users.json on iCloud Drive, using the
- * same directory structure as WebDAV: GLANCE/users/glance-users.json under
- * the Documents/ folder of the iCloud container.
- *
- * Returns the merged user array, or null if iCloud is not available or the
- * file is still downloading (caller should retry on next sync cycle).
- */
-export async function syncSharedUsersViaICloud(usersPath, localUsers) {
-  if (!icloudFileTransport.isAvailable()) return null;
-
-  // Build relative path: strip leading / from usersPath, append filename.
+/** The roster's directory and file, relative to a folder root (no leading slash). */
+function relativeRosterPaths(usersPath) {
   const dirPath = (usersPath ?? DEFAULT_USERS_PATH).replace(/^\//, '').replace(/\/*$/, '') + '/';
-  const filePath = dirPath + USERS_FILENAME;
+  return { dirPath, filePath: dirPath + USERS_FILENAME };
+}
 
-  let remoteRaw;
-  try {
-    remoteRaw = await icloudFileTransport.readFile(filePath);
-  } catch (err) {
-    console.warn('[shared-users/icloud] readFile error:', err.message);
-    return null;
-  }
-
-  // Still downloading — caller should retry
+/**
+ * What a folder-based roster sync does with what it read: the merged roster
+ * and the body to write back, or null when the file is still downloading and
+ * the caller should retry next cycle. `remoteRaw` follows the snapshot read
+ * contract: null for an absent file, '{"downloading":true}', or the text.
+ * Shared by the iCloud and Direct Access roster syncs.
+ */
+export function reconcileRoster(remoteRaw, localUsers) {
   if (remoteRaw && typeof remoteRaw === 'string') {
     try {
       const parsed = JSON.parse(remoteRaw);
       if (parsed?.downloading === true) return null;
     } catch { /* not JSON — treat as content */ }
   }
-
   let merged;
-  if (remoteRaw === null || remoteRaw === 'null') {
+  if (remoteRaw === null || remoteRaw === undefined || remoteRaw === 'null') {
     // File doesn't exist yet — this app is first
     merged = localUsers;
   } else {
@@ -186,9 +176,34 @@ export async function syncSharedUsersViaICloud(usersPath, localUsers) {
     }
     merged = mergeUsers(localUsers, remoteWire);
   }
+  const body = JSON.stringify({ version: 1, users: merged.map(toWireFormat), updated_at: new Date().toISOString() });
+  return { merged, body };
+}
 
-  const wireUsers = merged.map(toWireFormat);
-  const body = JSON.stringify({ version: 1, users: wireUsers, updated_at: new Date().toISOString() });
+/**
+ * Sync the local user list with glance-users.json on iCloud Drive, using the
+ * same directory structure as WebDAV: GLANCE/users/glance-users.json under
+ * the Documents/ folder of the iCloud container.
+ *
+ * Returns the merged user array, or null if iCloud is not available or the
+ * file is still downloading (caller should retry on next sync cycle).
+ */
+export async function syncSharedUsersViaICloud(usersPath, localUsers) {
+  if (!icloudFileTransport.isAvailable()) return null;
+
+  const { dirPath, filePath } = relativeRosterPaths(usersPath);
+
+  let remoteRaw;
+  try {
+    remoteRaw = await icloudFileTransport.readFile(filePath);
+  } catch (err) {
+    console.warn('[shared-users/icloud] readFile error:', err.message);
+    return null;
+  }
+
+  const r = reconcileRoster(remoteRaw, localUsers);
+  if (!r) return null; // still downloading — caller should retry
+  const { merged, body } = r;
 
   let ok = await icloudFileTransport.writeFile(filePath, body);
   if (!ok) {
@@ -200,5 +215,50 @@ export async function syncSharedUsersViaICloud(usersPath, localUsers) {
     console.warn('[shared-users/icloud] writeFile failed');
   }
 
+  return merged;
+}
+
+/**
+ * Sync the local user list with glance-users.json in the Direct Access folder
+ * (docs/direct-access-sync.md, Phase 5), at the same relative path WebDAV
+ * uses, through the transport's roster slot: files by path on desktop and
+ * Android, the roster's own bookmarked file on an iPhone.
+ *
+ * Returns the merged user array, or null when no folder is connected, the
+ * folder or roster is unreachable (nothing is written then), or the file is
+ * still being delivered (retry next cycle).
+ */
+export async function syncSharedUsersViaDirectAccess(usersPath, localUsers, transport = directAccessTransport) {
+  if (!transport?.isSupported?.() || !transport.rosterSupported?.()) return null;
+  if (!transport.isAvailable()) return null;
+
+  const { filePath } = relativeRosterPaths(usersPath);
+
+  let remoteRaw;
+  try {
+    remoteRaw = await transport.rosterRead(filePath);
+  } catch (err) {
+    console.warn('[shared-users/direct-access] read error:', err?.message ?? err);
+    return null;
+  }
+  // An error object (the folder went away, a roster that cannot be reached):
+  // say nothing and write nothing. Seeding over a folder we cannot read would
+  // be the resurrection the snapshot cycle guards against.
+  if (remoteRaw && typeof remoteRaw === 'string') {
+    try {
+      const parsed = JSON.parse(remoteRaw);
+      if (parsed && typeof parsed === 'object' && parsed.error) {
+        console.warn('[shared-users/direct-access] roster unavailable:', parsed.error);
+        return null;
+      }
+    } catch { /* content */ }
+  }
+
+  const r = reconcileRoster(remoteRaw, localUsers);
+  if (!r) return null;
+  const { merged, body } = r;
+
+  const ok = await transport.rosterWrite(filePath, body);
+  if (!ok) console.warn('[shared-users/direct-access] write failed');
   return merged;
 }

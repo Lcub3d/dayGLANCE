@@ -389,5 +389,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on('direct-access:changed', handler);
       return () => ipcRenderer.removeListener('direct-access:changed', handler);
     },
+    // Files by path, relative to the folder and confined to it in the main
+    // process (the household roster, Phase 5; intents, Phase 7).
+    paths: {
+      list: (rel: string): Promise<string[] | null> => ipcRenderer.invoke('direct-access:list-files', rel),
+      read: (rel: string): Promise<unknown> => ipcRenderer.invoke('direct-access:read-file', rel),
+      write: (rel: string, text: string): Promise<boolean> => ipcRenderer.invoke('direct-access:write-file', rel, text),
+      remove: (rel: string): Promise<boolean> => ipcRenderer.invoke('direct-access:delete-file', rel),
+      makeDir: (rel: string): Promise<boolean> => ipcRenderer.invoke('direct-access:make-dir', rel),
+    },
   },
 });

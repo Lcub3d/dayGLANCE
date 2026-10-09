@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { createDirectAccessStore, describeFolderError, SYNC_FILE, WRITE_SUPPRESSION_MS } from './directAccessStore.js';
+import { createDirectAccessStore, describeFolderError, resolveInside, SYNC_FILE, WRITE_SUPPRESSION_MS } from './directAccessStore.js';
 
 let dir: string;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dg-direct-')); });
@@ -215,4 +215,68 @@ describe('watcher', () => {
       store.stopWatch();
     }
   }, 15_000);
+});
+
+describe('files by path, confined to the folder (Phase 5)', () => {
+  it('guard: a path that escapes the folder is refused by every operation', () => {
+    const store = createDirectAccessStore();
+    store.setBase(dir);
+    const outside = path.join(dir, '..', 'escaped.json');
+    for (const rel of ['../escaped.json', '/etc/passwd', 'GLANCE/../../escaped.json', path.resolve(dir, '..', 'x')]) {
+      expect(store.readFile(rel).kind).toBe('error');
+      expect(store.writeFile(rel, '{}')).toBe(false);
+      expect(store.deleteFile(rel)).toBe(false);
+      expect(store.makeDir(rel)).toBe(false);
+      expect(store.listFiles(rel)).toBeNull();
+    }
+    expect(fs.existsSync(outside)).toBe(false);
+    // The folder itself is a directory, not a file: readable as a listing only.
+    expect(store.readFile('.').kind).toBe('error');
+    expect(store.writeFile('', '{}')).toBe(false);
+    expect(store.listFiles('.')).toEqual([]);
+  });
+
+  it('resolveInside admits the folder and what is below it, nothing else', () => {
+    expect(resolveInside(dir, 'GLANCE/users/glance-users.json')).toBe(path.join(dir, 'GLANCE', 'users', 'glance-users.json'));
+    expect(resolveInside(dir, '')).toBe(path.resolve(dir));
+    expect(resolveInside(dir, '..')).toBeNull();
+    expect(resolveInside(dir, 'a/../..')).toBeNull();
+    expect(resolveInside(dir, path.dirname(path.resolve(dir)))).toBeNull();
+    expect(resolveInside(dir, 42 as unknown as string)).toBeNull();
+    // A sibling folder whose name merely starts with the folder's is outside.
+    expect(resolveInside(dir, path.resolve(dir) + '-other/x')).toBeNull();
+  });
+
+  it('the roster round trip: absent, written with its parents, read back, listed, deleted', () => {
+    const store = createDirectAccessStore();
+    store.setBase(dir);
+    const rel = 'GLANCE/users/glance-users.json';
+    expect(store.readFile(rel)).toEqual({ kind: 'absent' });
+    expect(store.listFiles('GLANCE/users')).toEqual([]);
+    expect(store.writeFile(rel, '{"version":1,"users":[]}')).toBe(true);
+    expect(store.readFile(rel)).toEqual({ kind: 'text', text: '{"version":1,"users":[]}' });
+    expect(store.listFiles('GLANCE/users')).toEqual(['glance-users.json']);
+    expect(store.makeDir('GLANCE/events')).toBe(true);
+    expect(store.listFiles('GLANCE')).toEqual([]);          // directories are not files
+    expect(store.deleteFile(rel)).toBe(true);
+    expect(store.deleteFile(rel)).toBe(true);                // idempotent
+    expect(store.readFile(rel)).toEqual({ kind: 'absent' });
+  });
+
+  it('classifies a path read like the snapshot: a placeholder is downloading, a directory is an error, no folder is an error', () => {
+    const store = createDirectAccessStore();
+    expect(store.readFile('x.json')).toEqual({ kind: 'error', error: 'no folder connected' });
+    expect(store.listFiles('.')).toBeNull();
+    store.setBase(dir);
+    fs.mkdirSync(path.join(dir, 'GLANCE'));
+    fs.writeFileSync(path.join(dir, 'GLANCE', 'empty.json'), '');
+    expect(store.readFile('GLANCE/empty.json')).toEqual({ kind: 'downloading' });
+    expect(store.readFile('GLANCE').kind).toBe('error');
+    const sub = path.join(dir, 'gone');
+    fs.mkdirSync(sub);
+    store.setBase(sub);
+    fs.rmSync(sub, { recursive: true, force: true });
+    expect(store.readFile('x.json')).toEqual({ kind: 'error', error: 'folder not found' });
+    expect(store.writeFile('x.json', '{}')).toBe(false);
+  });
 });

@@ -216,6 +216,52 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
 
     write: async (text) => (await bridge().write(text)) === true,
 
+    // ── The household roster (docs/direct-access-sync.md, Phase 5) ──────
+    // glance-users.json at a path relative to the folder, the same place the
+    // WebDAV tier keeps it. Desktop and Android bridges offer files by path
+    // (`paths`, confined to the folder in the shell); an iPhone has no folder
+    // and offers the roster as its own bookmarked file (`users`). The caller
+    // never branches on which: it hands over the relative path and gets the
+    // same string contract the snapshot read has (classifySnapshotText).
+    rosterSupported: () => {
+      const b = bridge();
+      return !!(b && (b.paths || b.users));
+    },
+    rosterRead: async (relPath) => {
+      const b = bridge();
+      if (!b) return JSON.stringify({ error: 'no bridge' });
+      let r;
+      try {
+        if (b.users) r = await b.users.read();
+        else if (b.paths) r = await b.paths.read(relPath);
+        else return JSON.stringify({ error: 'the roster is not reachable on this platform' });
+      } catch (err) {
+        return JSON.stringify({ error: err?.message ?? String(err) });
+      }
+      switch (r?.kind) {
+        case 'absent': return null;
+        case 'downloading': return JSON.stringify({ downloading: true });
+        case 'text': return r.text;
+        default: return JSON.stringify({ error: r?.error ?? 'roster unavailable' });
+      }
+    },
+    // Creates the directory on a failed write, the way the iCloud roster sync
+    // does; an iPhone's bookmarked file has no directory to create.
+    rosterWrite: async (relPath, text) => {
+      const b = bridge();
+      if (!b) return false;
+      try {
+        if (b.users) return (await b.users.write(text)) === true;
+        if (!b.paths) return false;
+        if ((await b.paths.write(relPath, text)) === true) return true;
+        const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
+        if (dir) await b.paths.makeDir(dir);
+        return (await b.paths.write(relPath, text)) === true;
+      } catch {
+        return false;
+      }
+    },
+
     // Push signals: the main process's folder watcher, a folder picked or
     // re-enabled in settings, and a folder that came back from unreachable.
     onChanged: (cb) => {

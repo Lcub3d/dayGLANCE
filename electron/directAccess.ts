@@ -128,5 +128,18 @@ export function registerDirectAccessHandlers(getWindow: () => BrowserWindow | nu
 
   ipcMain.handle('direct-access:delete', async () => store.remove());
 
+  // Files by path, confined to the folder in the store (Phase 5: the household
+  // roster; Phase 7: intents). The renderer sends paths relative to the folder.
+  ipcMain.handle('direct-access:list-files', async (_event, rel: unknown) =>
+    (typeof rel === 'string' ? store.listFiles(rel) : null));
+  ipcMain.handle('direct-access:read-file', async (_event, rel: unknown) =>
+    (typeof rel === 'string' ? store.readFile(rel) : { kind: 'error', error: 'bad path' }));
+  ipcMain.handle('direct-access:write-file', async (_event, rel: unknown, text: unknown) =>
+    (typeof rel === 'string' && typeof text === 'string' ? store.writeFile(rel, text) : false));
+  ipcMain.handle('direct-access:delete-file', async (_event, rel: unknown) =>
+    (typeof rel === 'string' ? store.deleteFile(rel) : false));
+  ipcMain.handle('direct-access:make-dir', async (_event, rel: unknown) =>
+    (typeof rel === 'string' ? store.makeDir(rel) : false));
+
   app.on('will-quit', () => { store.stopWatch(); });
 }

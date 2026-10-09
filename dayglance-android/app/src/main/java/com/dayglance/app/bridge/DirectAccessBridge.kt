@@ -23,6 +23,13 @@ import com.dayglance.app.data.DirectAccessRepository
  *   write(text)             → Boolean
  *   deleteSnapshot()        → Boolean
  *   disconnect()            → Boolean
+ *   listFiles(rel)          → JSON array of names, "[]" for a missing directory, "null" when refused
+ *   readFile(rel)           → JSON { kind, text? | error? }, as read()
+ *   writeFile(rel, text)    → Boolean
+ *   deleteFileAt(rel)       → Boolean (a missing file counts as deleted)
+ *   makeDir(rel)            → Boolean
+ * The last five take a path relative to the folder and confined to it in the
+ * repository (docs/direct-access-sync.md, Phase 5: the household roster).
  *
  * All methods run on the JavascriptInterface background thread; SAF I/O is
  * acceptable there (the Obsidian bridge does the same).
@@ -54,6 +61,21 @@ class DirectAccessBridge(
         repository.clearFolder()
         return true
     }
+
+    @JavascriptInterface
+    fun listFiles(rel: String?): String = repository.listFiles(rel)
+
+    @JavascriptInterface
+    fun readFile(rel: String?): String = repository.readFile(rel)
+
+    @JavascriptInterface
+    fun writeFile(rel: String?, text: String): Boolean = repository.writeFile(rel, text)
+
+    @JavascriptInterface
+    fun deleteFileAt(rel: String?): Boolean = repository.deleteFile(rel)
+
+    @JavascriptInterface
+    fun makeDir(rel: String?): Boolean = repository.makeDir(rel)
 
     /**
      * NOT a @JavascriptInterface: MainActivity's picker result. A null uri is a

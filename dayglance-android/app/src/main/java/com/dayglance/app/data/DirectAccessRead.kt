@@ -23,7 +23,9 @@ import org.json.JSONObject
  *   text         the file's content.
  *
  * Pure over the [Source] seam so every branch is unit-testable on the JVM;
- * DirectAccessRepository binds it to DocumentFile.
+ * DirectAccessRepository binds it to DocumentFile, for the snapshot and for
+ * any file named by a path (Phase 5: the household roster), which only
+ * changes the name in the messages.
  */
 object DirectAccessRead {
 
@@ -49,7 +51,7 @@ object DirectAccessRead {
         data class Text(val text: String) : Result()
     }
 
-    fun classify(src: Source): Result {
+    fun classify(src: Source, name: String = SYNC_FILE): Result {
         if (!src.configured()) return Result.Error("no folder connected")
         // The folder first: a revoked grant or a vanished tree must read as an
         // error, not as "the file is absent" (which would seed a new file into
@@ -57,7 +59,7 @@ object DirectAccessRead {
         if (src.grantRevoked()) return Result.Error("permission denied")
         if (!src.folderExists()) return Result.Error("folder not found")
         if (!src.fileExists()) return Result.Absent
-        if (src.fileIsDirectory()) return Result.Error("$SYNC_FILE is not a file")
+        if (src.fileIsDirectory()) return Result.Error("$name is not a file")
         if (src.fileLength() == 0L) return Result.Downloading
         val text = try {
             src.readText()
@@ -65,7 +67,7 @@ object DirectAccessRead {
             // A provider mid-sync, a lock held by the syncing app, a transient
             // I/O failure: the next poll retries.
             return Result.Downloading
-        } ?: return Result.Error("could not open $SYNC_FILE")
+        } ?: return Result.Error("could not open $name")
         // The read raced a truncate-then-write by another app.
         if (text.isEmpty()) return Result.Downloading
         return Result.Text(text)

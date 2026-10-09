@@ -34,6 +34,10 @@ const truthy = (value) => value === true || value === 'true';
 export function createNativeDirectAccessBridge({
   native = () => window.DayGlanceDirectAccess,
   win = () => window,
+  // Which shell: Android's bridge offers files by path (`paths`), an iPhone's
+  // offers the roster as its own bookmarked file (`users`, a later PR). The
+  // iOS proxy answers any method name, so this cannot be felt out at runtime.
+  platform = (typeof window !== 'undefined' && window.DayGlanceIOS) ? 'ios' : 'android',
 } = {}) {
   const parse = (value) => {
     if (value == null) return null;
@@ -59,6 +63,18 @@ export function createNativeDirectAccessBridge({
     read: async () => parse(native().read()),
     write: async (text) => truthy(native().write(text)),
     deleteFile: async () => truthy(native().deleteSnapshot()),
+
+    // Files by path, relative to the folder and confined to it in the shell
+    // (DirectAccessPath.kt). Android only: docs/direct-access-sync.md, Phase 5.
+    ...(platform === 'android' ? {
+      paths: {
+        list: async (rel) => { const v = parse(native().listFiles(rel)); return Array.isArray(v) ? v : null; },
+        read: async (rel) => parse(native().readFile(rel)) ?? { kind: 'error', error: 'bad answer from the shell' },
+        write: async (rel, text) => truthy(native().writeFile(rel, text)),
+        remove: async (rel) => truthy(native().deleteFileAt(rel)),
+        makeDir: async (rel) => truthy(native().makeDir(rel)),
+      },
+    } : {}),
   };
 
   function launch(method) {

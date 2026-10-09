@@ -132,6 +132,88 @@ class DirectAccessRepository(private val context: Context) {
         }
     }
 
+    // ── Files by path (Phase 5: the household roster; Phase 7: intents) ──────
+    //
+    // Every path is relative to the folder and confined to it by
+    // DirectAccessPath; the walk is DocumentFile.findFile per segment, which
+    // never leaves the tree the grant covers. The snapshot calls above are
+    // untouched.
+
+    /** The directory at [segments], created on the way when [create]; null when missing or not a directory. */
+    private fun dirAt(root: DocumentFile, segments: List<String>, create: Boolean): DocumentFile? {
+        var dir = root
+        for (seg in segments) {
+            val next = try { dir.findFile(seg) } catch (e: Exception) { null }
+            dir = when {
+                next != null && next.isDirectory -> next
+                next != null -> return null
+                create -> (try { dir.createDirectory(seg) } catch (e: Exception) { null }) ?: return null
+                else -> return null
+            }
+        }
+        return dir
+    }
+
+    /** JSON array of the file names in the directory ([] when it is missing), or "null" when the folder is unusable or the path escapes it. */
+    fun listFiles(rel: String?): String {
+        val root = root()
+        val segments = DirectAccessPath.segments(rel)
+        if (root == null || !folderReachable(root) || segments == null) return "null"
+        val dir = dirAt(root, segments, create = false) ?: return "[]"
+        return try {
+            org.json.JSONArray(dir.listFiles().filter { it.isFile }.mapNotNull { it.name }).toString()
+        } catch (e: Exception) {
+            "null"
+        }
+    }
+
+    /** The classified read of the file at [rel] as JSON, the way [read] classifies the snapshot. */
+    fun readFile(rel: String?): String {
+        val root = root()
+        val segments = DirectAccessPath.fileSegments(rel)
+            ?: return DirectAccessRead.toJson(DirectAccessRead.Result.Error("path outside the folder"))
+        val name = segments.last()
+        val parent = if (root != null && folderReachable(root)) dirAt(root, segments.dropLast(1), create = false) else null
+        val source = PathSource(root, parent, name)
+        return DirectAccessRead.toJson(DirectAccessRead.classify(source, name))
+    }
+
+    /** Crash-safe create-or-replace of the file at [rel], creating its directories. */
+    fun writeFile(rel: String?, text: String): Boolean {
+        val root = root() ?: return false
+        if (!folderReachable(root)) return false
+        val segments = DirectAccessPath.fileSegments(rel) ?: return false
+        val parent = dirAt(root, segments.dropLast(1), create = true) ?: return false
+        return try {
+            SafeReplace.replace(SafDir(parent), segments.last(), text)
+        } catch (e: Exception) {
+            Log.w(TAG, "writeFile failed: ${e.message}")
+            false
+        }
+    }
+
+    /** Deletes the file at [rel]. A missing file counts as deleted. */
+    fun deleteFile(rel: String?): Boolean {
+        val root = root() ?: return false
+        if (!folderReachable(root)) return false
+        val segments = DirectAccessPath.fileSegments(rel) ?: return false
+        val parent = dirAt(root, segments.dropLast(1), create = false) ?: return true
+        return try {
+            val f = parent.findFile(segments.last()) ?: return true
+            if (f.isDirectory) false else f.delete()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** Creates the directory at [rel] with its parents. */
+    fun makeDir(rel: String?): Boolean {
+        val root = root() ?: return false
+        if (!folderReachable(root)) return false
+        val segments = DirectAccessPath.segments(rel) ?: return false
+        return dirAt(root, segments, create = true) != null
+    }
+
     private fun recover(root: DocumentFile) {
         try {
             when (SafeReplace.recover(SafDir(root), DirectAccessRead.SYNC_FILE)) {
@@ -182,6 +264,30 @@ class DirectAccessRepository(private val context: Context) {
             if (text.isNotEmpty()) cache = stamp.copy(text = text)
             return text
         }
+    }
+
+    /** One read of a file named by a path: no cache, the parent found by the caller. */
+    private inner class PathSource(
+        private val root: DocumentFile?,
+        private val parent: DocumentFile?,
+        private val name: String,
+    ) : DirectAccessRead.Source {
+        private var file: DocumentFile? = null
+        private var looked = false
+        private fun file(): DocumentFile? {
+            if (!looked) {
+                looked = true
+                file = try { parent?.findFile(name) } catch (e: Exception) { null }
+            }
+            return file
+        }
+        override fun configured() = isConfigured()
+        override fun grantRevoked() = this@DirectAccessRepository.grantRevoked()
+        override fun folderExists() = try { root != null && root.exists() && root.isDirectory } catch (e: Exception) { false }
+        override fun fileExists() = file() != null
+        override fun fileIsDirectory() = file()?.isDirectory == true
+        override fun fileLength() = file()?.length() ?: 0L
+        override fun readText(): String? = file()?.let { this@DirectAccessRepository.readText(it) }
     }
 
     /** The write-side seam for SafeReplace, mirroring ObsidianRepository.SafDir. */

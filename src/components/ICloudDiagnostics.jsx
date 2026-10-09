@@ -8,6 +8,7 @@ import {
 } from '../utils/icloudDiagnostics.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { directAccessTransport } from '../sync/directAccessTransport.js';
+import { decryptData, getSyncPassphrase, hasEncryptionReady } from '../utils/crypto.js';
 
 /**
  * Read-only readout of what this device sees in the iCloud container.
@@ -46,6 +47,8 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         buildSyncPayload: syncCtx?.buildSyncPayload ?? null,
         getSyncRetentionDays: syncCtx?.getSyncRetentionDays ?? null,
         directAccess: directAccessTransport,
+        decryptData,
+        encryptionReady: () => hasEncryptionReady() || !!getSyncPassphrase(),
       }));
     } finally {
       setBusy(false);
@@ -272,6 +275,19 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
                 value={report.directAccess.enabled === false ? t('icloudDiag.off') : t('icloudDiag.on')}
               />
               {report.directAccess.snapshot && <SnapshotRows snapshot={report.directAccess.snapshot} />}
+              {report.directAccess.snapshot?.state === 'present' && (
+                <Row label={t('icloudDiag.encryption')} value={report.directAccess.snapshot.encrypted ? t('icloudDiag.envelope') : t('icloudDiag.plaintext')} />
+              )}
+              {report.directAccess.snapshot && (
+                <Row label={t('icloudDiag.encryptSwitch')} value={report.directAccess.encrypt ? t('icloudDiag.on') : t('icloudDiag.off')} />
+              )}
+              {report.directAccess.snapshot && report.directAccess.keyReady !== null && report.directAccess.keyReady !== undefined && (
+                <Row
+                  label={t('icloudDiag.key')}
+                  value={report.directAccess.keyReady ? t('icloudDiag.keyReady') : t('icloudDiag.keyNeeded')}
+                  tone={report.directAccess.keyReady ? undefined : 'text-amber-600 dark:text-amber-400'}
+                />
+              )}
               <MergeRows merge={report.directAccess.merge} />
             </div>
           )}

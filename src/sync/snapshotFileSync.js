@@ -113,6 +113,7 @@ const count = (storage, key) => {
  * @param {number}   args.transport.writeThrottleMs
  * @param {boolean}  args.transport.allowsPlaintextReseed  may an undecryptable envelope be overwritten
  * @param {boolean}  [args.transport.stripsHealthLogs=true]  strip health-store counts from what is written
+ * @param {() => boolean} [args.transport.encryptsWrites]  the per-device switch: seed and upgrade as an envelope
  * @param {object} args.io
  * @param {() => object} args.io.buildSyncPayload          `{ version, lastModified?, data }`
  * @param {(data: object, opts: {allowEmpty: boolean}) => void} args.io.applyEngineData
@@ -122,6 +123,8 @@ const count = (storage, key) => {
  * @param {number}   args.io.syncRetentionDays
  * @param {(envelope: object) => boolean} args.io.isEncryptedEnvelope
  * @param {(envelope: object) => Promise<object>} args.io.decryptData
+ * @param {(payload: object) => Promise<object>} [args.io.encryptData]  plaintext payload → envelope
+ * @param {() => boolean} [args.io.encryptionReady]  can encryptData succeed now (a key or the passphrase is in memory)
  * @param {Storage}  args.io.storage                        localStorage-like
  * @param {() => string|null} [args.io.lastLocalEditAt]      when this device itself last changed its data (default: LOCAL_EDIT_KEY in storage)
  * @param {() => number} [args.io.now]
@@ -130,14 +133,26 @@ const count = (storage, key) => {
  * @returns {Promise<{state: {missingSince: number, lastWriteAt: number, lastWrittenAt: number, pendingWrite: object|null}, outcome: object}>}
  *   outcome.kind is one of:
  *     'skipped'   (reason: 'missing-grace' | 'empty-state-guard' | 'downloading' |
- *                  'unparseable' | 'no-data' | 'encrypted-unreadable')
+ *                  'unparseable' | 'no-data' | 'encrypted-unreadable' | 'key-needed')
+ *                 encrypted-unreadable carries needsKey: true when no key and no
+ *                 passphrase are in memory (the prompt collects one), false when
+ *                 the key in memory is the wrong one
  *     'seeded'    the absent file was written from local data (wrote: boolean)
  *     'reseeded'  an undecryptable envelope was replaced with local plaintext
  *     'error'     (reason: 'unavailable', error) the transport reported an error
  *     'prompted'  (info) a first-run restore choice is needed; nothing was written
- *     'merged'    (localChanged, remoteChanged, applied, wrote, deferred, ownEdits)
+ *     'merged'    (localChanged, remoteChanged, applied, wrote, deferred, ownEdits, keyNeeded)
  *                 deferred: a relay is wanted and waits for the file to catch up
  *                 ownEdits: this device has a change of its own not yet written
+ *                 keyNeeded: a write is wanted as an envelope and no key is ready
+ *
+ * Encryption (docs/direct-access-sync.md, Phase 6): the file decides, the
+ * switch decides the first write. A file read as an envelope is written back
+ * as an envelope whatever the switch says (never downgrade someone else's
+ * cloud folder); a plaintext or absent file is written as an envelope when
+ * `transport.encryptsWrites()` is on. Every guard, the content gate and the
+ * made-here rule look at plaintext, before the envelope. A wanted envelope
+ * with no key ready is held, never written plaintext.
  */
 export async function runSnapshotFileCycle({ transport, io, state }) {
   const log = io.log ?? console;
@@ -181,9 +196,17 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   const strip = transport.stripsHealthLogs === false
     ? (payload) => payload
     : (payload) => io.stripHealthSourcedLogs(payload, io.habits);
-  const outgoing = (payload) => JSON.stringify(strip(payload));
 
   const read = classifySnapshotText(await transport.read());
+
+  // The file decides; the switch decides the first write.
+  const envelopeRead = read.kind === 'snapshot' && !!io.isEncryptedEnvelope(read.remote);
+  const envelopeOut = envelopeRead || !!transport.encryptsWrites?.();
+  const canEncrypt = typeof io.encryptData === 'function' && (io.encryptionReady ? !!io.encryptionReady() : true);
+  const keyNeeded = envelopeOut && !canEncrypt;
+  // Serialised after the health strip (the strip reads plaintext).
+  const encode = async (payload) => JSON.stringify(envelopeOut ? await io.encryptData(payload) : payload);
+  const outgoing = (payload) => encode(strip(payload));
 
   if (read.kind === 'absent') {
     // No remote file yet — seed it with local data, but only if the absence is
@@ -202,7 +225,8 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     if (localCount > 0 && payloadCount === 0) {
       return { state: next, outcome: { kind: 'skipped', reason: 'empty-state-guard' } };
     }
-    const wrote = await throttledWrite(outgoing(payload));
+    if (keyNeeded) return { state: next, outcome: { kind: 'skipped', reason: 'key-needed' } };
+    const wrote = await throttledWrite(await outgoing(payload));
     return { state: next, outcome: { kind: 'seeded', wrote } };
   }
 
@@ -215,18 +239,24 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   }
 
   let remote = read.remote;
-  if (io.isEncryptedEnvelope(remote)) {
+  if (envelopeRead) {
+    let needsKey = false;
     try { remote = await io.decryptData(remote); }
     catch (decErr) {
       log.warn(`[${transport.id}] encrypted snapshot could not be decrypted:`, decErr?.message ?? decErr);
+      needsKey = decErr?.code === 'PASSPHRASE_REQUIRED';
       remote = null;
     }
     if (!remote?.data) {
       if (!transport.allowsPlaintextReseed) {
         // Someone else's cloud folder: never downgrade a file we cannot read.
-        return { state: next, outcome: { kind: 'skipped', reason: 'encrypted-unreadable' } };
+        // Nothing is applied and nothing is written; with no key in memory
+        // at all the caller prompts for the passphrase.
+        return { state: next, outcome: { kind: 'skipped', reason: 'encrypted-unreadable', needsKey } };
       }
-      const wrote = await throttledWrite(outgoing(io.buildSyncPayload()));
+      // iCloud's legacy-envelope cleanup: the file could not be followed, so
+      // this is the one write that is plaintext by design.
+      const wrote = await throttledWrite(JSON.stringify(strip(io.buildSyncPayload())));
       return { state: next, outcome: { kind: 'reseeded', wrote } };
     }
   }
@@ -311,15 +341,18 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   const ownEdits = lastLocalEdit > next.lastWrittenAt;
   let wrote = false;
   let deferred = false;
-  if (writeNeeded && ownEdits) {
-    wrote = await throttledWrite(JSON.stringify(outPayload));
+  if (writeNeeded && keyNeeded) {
+    // An envelope is wanted and nothing can seal it: hold the write where it
+    // is (the relay clock, if any, keeps running) and say so.
+  } else if (writeNeeded && ownEdits) {
+    wrote = await throttledWrite(await encode(outPayload));
     if (wrote) next.lastWrittenAt = now();
     next.pendingWrite = null;
   } else if (writeNeeded) {
     const fingerprint = `${remote.lastModified ?? ''}\u0000${writable.map((d) => d.summary).join('\n')}`;
     const pending = next.pendingWrite;
     if (pending && pending.fingerprint === fingerprint && now() - pending.at >= RELAY_CONFIRM_MS) {
-      wrote = await throttledWrite(JSON.stringify(outPayload));
+      wrote = await throttledWrite(await encode(outPayload));
       if (wrote) next.lastWrittenAt = now();
     } else {
       if (!pending || pending.fingerprint !== fingerprint) next.pendingWrite = { fingerprint, at: now() };
@@ -330,6 +363,6 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
   }
   return {
     state: next,
-    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote, deferred, ownEdits },
+    outcome: { kind: 'merged', localChanged, remoteChanged, applied: applyNeeded, wrote, deferred, ownEdits, keyNeeded: writeNeeded && keyNeeded },
   };
 }

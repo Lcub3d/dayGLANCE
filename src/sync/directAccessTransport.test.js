@@ -4,6 +4,8 @@ import {
   DIRECT_ACCESS_LAST_SYNCED_KEY,
   DIRECT_ACCESS_PREF_KEY,
   DIRECT_ACCESS_PICK_TIMEOUT_MS,
+  DIRECT_ACCESS_ENCRYPT_KEY,
+  directAccessEncryptsWrites,
 } from './directAccessTransport.js';
 import { classifySnapshotText } from './snapshotFileSync.js';
 
@@ -178,6 +180,36 @@ describe('per-device switch', () => {
     transport.setEnabled(true);
     expect(transport.isEnabled()).toBe(true);
     expect(kicks).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the encryption switch (Phase 6)', () => {
+  it('is off until stored as on, kicks a cycle when turned on (the upgrade is written now), and is readable without a transport for the launch key gate', () => {
+    const { transport, storage } = make();
+    const kicks = vi.fn();
+    transport.onChanged(kicks);
+    expect(transport.encryptsWrites()).toBe(false);
+    expect(transport.getSnapshot().encrypt).toBe(false);
+    transport.setEncryptsWrites(true);
+    expect(storage.getItem(DIRECT_ACCESS_ENCRYPT_KEY)).toBe('true');
+    expect(transport.encryptsWrites()).toBe(true);
+    expect(transport.getSnapshot().encrypt).toBe(true);
+    expect(kicks).toHaveBeenCalledTimes(1);
+    expect(directAccessEncryptsWrites(() => storage)).toBe(true);
+    transport.setEncryptsWrites(false);
+    expect(storage.getItem(DIRECT_ACCESS_ENCRYPT_KEY)).toBeNull();
+    expect(kicks).toHaveBeenCalledTimes(1);                           // off changes nothing until the file is replaced
+    expect(directAccessEncryptsWrites(() => { throw new Error('no storage'); })).toBe(false);
+  });
+
+  it('is forgotten with the folder on disconnect, like the last-synced stamp', async () => {
+    const { transport, storage } = make();
+    transport.subscribe(() => {});
+    await flush();
+    transport.setEncryptsWrites(true);
+    await transport.disconnect();
+    expect(storage.getItem(DIRECT_ACCESS_ENCRYPT_KEY)).toBeNull();
+    expect(transport.getSnapshot().encrypt).toBe(false);
   });
 });
 

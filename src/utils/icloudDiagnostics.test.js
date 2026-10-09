@@ -445,7 +445,7 @@ describe('probeDirectAccess', () => {
     expect(await probeDirectAccess({ directAccess: null })).toBeNull();
     expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
     const off = fakeDirectAccess({ status: 'disconnected', name: null });
-    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, pickError: null, native: null, roster: null, snapshot: null, merge: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, encrypt: false, keyReady: null, pickError: null, native: null, roster: null, snapshot: null, merge: null });
     expect(off.read).not.toHaveBeenCalled();
   });
 
@@ -475,6 +475,35 @@ describe('probeDirectAccess', () => {
       directAccess: { status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null },
     });
     expect(plain).not.toMatch(/last pick|shell status|roster file/);
+  });
+
+  it('Phase 6: reports an envelope, decrypts it for the dry run when the device has the key, and says whether the key is ready', async () => {
+    const seal = (p) => JSON.stringify({ v: 1, enc: 'AES-GCM-256', data: Buffer.from(JSON.stringify(p)).toString('base64') });
+    const open = async (e) => JSON.parse(Buffer.from(e.data, 'base64').toString());
+    const t = fakeDirectAccess({ read: async () => seal({ version: 2, lastModified: 'x', data }) });
+    t.getSnapshot = () => ({ supported: true, status: 'connected', name: 'GLANCE', enabled: true, connected: true, encrypt: true });
+    // With the key: the counts and the dry run come from the plaintext; the row still says it is an envelope.
+    const withKey = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data }), merge: quiet, decryptData: open, encryptionReady: () => true });
+    expect(withKey).toMatchObject({ encrypt: true, keyReady: true, snapshot: { state: 'present', encrypted: true, taskCount: 1, lastModified: 'x' }, merge: { wouldWrite: false } });
+    expect(withKey.snapshot.bytes).toBeGreaterThan(0);
+    // Without: the envelope is reported as such, nothing is merged, and the key row says what to do.
+    const noKey = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data }), merge: quiet, decryptData: async () => { const e = new Error('Encryption key not available'); e.code = 'PASSPHRASE_REQUIRED'; throw e; }, encryptionReady: () => false });
+    expect(noKey).toMatchObject({ keyReady: false, snapshot: { state: 'present', encrypted: true, taskCount: null }, merge: null });
+    expect(noKey.snapshot.error).toMatch(/cannot decrypt/);
+    // A caller without crypto (older callers, tests) gets the envelope row and no key row.
+    const bare = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data }), merge: quiet });
+    expect(bare).toMatchObject({ keyReady: null, snapshot: { encrypted: true }, merge: null });
+    const text = formatDiagnosticsReport({
+      platform: 'macos', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: noKey,
+    });
+    expect(text).toMatch(/encryption: +envelope\n  encrypt switch: on\n  key: +needed/);
+    const plainText = formatDiagnosticsReport({
+      platform: 'macos', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      directAccess: await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) }), buildSyncPayload: () => ({ data }), merge: quiet, encryptionReady: () => true }),
+    });
+    expect(plainText).toMatch(/encryption: +plaintext\n  encrypt switch: off\n  key: +ready/);
   });
 
   it('reads the connected folder through the transport and dry-runs the merge on it', async () => {

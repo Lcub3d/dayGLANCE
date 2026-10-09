@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
 import { setupEncryptionKey, setSyncPassphrase, clearEncryptionKey, getSyncPassphrase } from '../utils/crypto.js';
+import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
 import { getVaultConfig, setVaultConfig } from '../sync/vaultConfig.js';
 import { createDbEngine, resetDbRootKey, resetVaultSyncCursor } from '../sync/dbEngine.js';
 import { testVaultConnection } from '../sync/vaultConnectionTest.js';
@@ -145,8 +146,10 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         setSyncPassphrase(passphrase);
       }
       // If already encrypted and no passphrase entered, leave the session key as-is.
-    } else if (alreadyEncrypted) {
-      // User disabled encryption.
+    } else if (alreadyEncrypted && !directAccessEncryptsWrites()) {
+      // User disabled encryption. The Direct Access file uses the same key
+      // (docs/direct-access-sync.md, Phase 6): while its switch is on, the key
+      // stays, or that device would prompt again for the passphrase it has.
       await clearEncryptionKey();
     }
 

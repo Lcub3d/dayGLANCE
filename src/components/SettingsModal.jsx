@@ -1008,6 +1008,7 @@ const SettingsModal = () => {
                       {isDirectAccessSupported() && (
                         <DirectAccessSyncCard
                           darkMode={darkMode}
+                          multiUserEnabled={multiUserEnabled}
                           textPrimary={textPrimary}
                           textSecondary={textSecondary}
                           borderClass={borderClass}

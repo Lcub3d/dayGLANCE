@@ -39,17 +39,27 @@ import UniformTypeIdentifiers
 ///                longer resolves or grants access, a file that is gone.
 ///   text         the file's content.
 ///
+/// Two files, two bookmarks (docs/direct-access-sync.md, Phase 5): the
+/// snapshot and the household roster, glance-users.json, each picked or
+/// created the same way. The roster is a second bookmark because there is no
+/// folder to find it in; the web layer's roster slot (`users`) reads and
+/// writes it without a path.
+///
 /// JS contract (the method names Android's DirectAccessBridge.kt shares, plus
-/// the two iOS picks; booleans travel as the strings "true"/"false" because
-/// every dgbridge:// answer is text):
-///   pickFile()          → "null"; later window.__dgDirectAccessPicked({…} | null | {error})
-///   createFile()        → "null"; same callback
+/// the iOS picks and the roster slot; booleans travel as the strings
+/// "true"/"false" because every dgbridge:// answer is text):
+///   pickFile(slot?)     → "null"; later window.__dgDirectAccessPicked({…, slot} | null | {error})
+///   createFile(slot?)   → "null"; same callback. slot: "snapshot" (default) | "users"
 ///   pickFolder()        → same as pickFile (older callers)
-///   status()            → JSON { configured, name, path, reachable }
+///   status()            → JSON { configured, name, path, reachable }   (the snapshot)
 ///   read()              → JSON { kind: downloading|error|text, text?, error? }
 ///   write(text)         → "true" | "false"
 ///   deleteSnapshot()    → "true" | "false"
-///   disconnect()        → "true"
+///   disconnect()        → "true"   (forgets both files)
+///   usersStatus()       → JSON { configured, name, path, reachable }   (the roster)
+///   readUsers()         → as read(), for the roster
+///   writeUsers(text)    → "true" | "false"
+///   forgetUsers()       → "true"
 final class DirectAccessBridge: NSObject {
 
     static let shared = DirectAccessBridge()
@@ -57,18 +67,49 @@ final class DirectAccessBridge: NSObject {
     /// Set by WebView.swift so the picker result can call back into the page.
     weak var webView: WKWebView?
 
-    private let bookmarkKey       = "dayglance.directAccess.fileBookmark"
-    private let legacyFolderKey   = "dayglance.directAccess.folderBookmark"
-    private let syncFileName      = "dayglance-sync.json"
+    /// The two files this bridge holds, each by its own bookmark.
+    enum Slot: String {
+        case snapshot, users
+
+        var fileName: String {
+            switch self {
+            case .snapshot: return "dayglance-sync.json"
+            case .users: return "glance-users.json"
+            }
+        }
+        var bookmarkKey: String {
+            switch self {
+            case .snapshot: return "dayglance.directAccess.fileBookmark"
+            case .users: return "dayglance.directAccess.usersBookmark"
+            }
+        }
+        /// What createFile moves into the chosen folder. The snapshot's "null"
+        /// classifies as absent so the first cycle seeds it; the roster's is
+        /// an empty roster the first roster sync merges into.
+        var seed: String {
+            switch self {
+            case .snapshot: return "null"
+            case .users: return #"{"version":1,"users":[]}"#
+            }
+        }
+        static func named(_ raw: Any?) -> Slot {
+            (raw as? String).flatMap(Slot.init(rawValue:)) ?? .snapshot
+        }
+    }
+
+    private let legacyFolderKey = "dayglance.directAccess.folderBookmark"
+
+    /// Which file the open picker on screen is for.
+    private var pendingSlot: Slot = .snapshot
 
     // The poll reads every 15 s; an unchanged file (same modification date and
     // size) is served from here. Our own writes invalidate it.
-    private var cache: (modified: Date, size: Int, text: String)?
+    private var caches: [Slot: (modified: Date, size: Int, text: String)] = [:]
 
-    // MARK: - File bookmark
+    // MARK: - File bookmarks
 
-    private func fileURL() -> URL? {
-        guard let data = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
+    private func fileURL(_ slot: Slot) -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: slot.bookmarkKey) else { return nil }
         var stale = false
         guard let url = try? URL(
             resolvingBookmarkData: data,
@@ -77,7 +118,7 @@ final class DirectAccessBridge: NSObject {
             bookmarkDataIsStale: &stale
         ) else { return nil }
         if stale, let fresh = try? url.bookmarkData(options: []) {
-            UserDefaults.standard.set(fresh, forKey: bookmarkKey)
+            UserDefaults.standard.set(fresh, forKey: slot.bookmarkKey)
         }
         return url
     }
@@ -109,41 +150,44 @@ final class DirectAccessBridge: NSObject {
 
     // MARK: - pickFile / createFile
 
-    /// Opens the Files picker on an existing dayglance-sync.json. Any file can
-    /// be chosen; the delegate refuses one with another name, so a wrong file
-    /// is never adopted as the fleet's snapshot.
-    func pickFile() {
+    /// Opens the Files picker on an existing file for the slot (the snapshot,
+    /// or the roster). Any file can be chosen; the delegate refuses one with
+    /// another name, so a wrong file is never adopted.
+    func pickFile(slot: Slot = .snapshot) {
+        pendingSlot = slot
         present(UIDocumentPickerViewController(forOpeningContentTypes: [.json, .data]))
     }
 
-    /// Creates dayglance-sync.json in a folder the user chooses, through the
-    /// export picker: a temporary file holding the text "null" is MOVED there
-    /// (asCopy false), and the delegate bookmarks its new location. "null"
-    /// classifies as absent in the web layer, so the first cycle seeds the
-    /// file from this device's data exactly as it seeds an empty folder.
-    func createFile() {
-        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(syncFileName)
+    /// Creates the slot's file in a folder the user chooses, through the
+    /// export picker: a temporary file holding the slot's seed is MOVED there
+    /// (asCopy false), and the delegate bookmarks its new location. The
+    /// snapshot's seed, "null", classifies as absent in the web layer, so the
+    /// first cycle seeds the file from this device's data exactly as it seeds
+    /// an empty folder.
+    func createFile(slot: Slot = .snapshot) {
+        pendingSlot = slot
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(slot.fileName)
         do {
-            try "null".data(using: .utf8)!.write(to: tmp, options: .atomic)
+            try slot.seed.data(using: .utf8)!.write(to: tmp, options: .atomic)
         } catch {
             NSLog("[directAccess] create: temp file failed: %@", error.localizedDescription)
-            postPicked(json(["error": "could not prepare the file: \(error.localizedDescription)"]))
+            postPicked(json(["error": "could not prepare the file: \(error.localizedDescription)", "slot": slot.rawValue]))
             return
         }
         present(UIDocumentPickerViewController(forExporting: [tmp], asCopy: false))
     }
 
     /// Older callers; on iOS a folder cannot be held (header), so the file is picked.
-    func pickFolder() { pickFile() }
+    func pickFolder() { pickFile(slot: .snapshot) }
 
     // MARK: - status / disconnect
 
-    func status() -> String {
-        let configured = UserDefaults.standard.data(forKey: bookmarkKey) != nil
+    private func statusObject(_ slot: Slot) -> [String: Any] {
+        let configured = UserDefaults.standard.data(forKey: slot.bookmarkKey) != nil
         var name: Any = NSNull()
         var path: Any = NSNull()
         var reachable = false
-        if configured, let url = fileURL() {
+        if configured, let url = fileURL(slot) {
             name = url.lastPathComponent
             path = url.path
             if url.startAccessingSecurityScopedResource() {
@@ -153,36 +197,53 @@ final class DirectAccessBridge: NSObject {
                 url.stopAccessingSecurityScopedResource()
             }
         }
-        return json([
+        return [
             "configured": configured,
             "name": name,
             "path": path,
             "reachable": reachable,
-        ])
+        ]
     }
 
-    /// Forgets the file. The file itself is left where it is.
+    func status() -> String { json(statusObject(.snapshot)) }
+    func usersStatus() -> String { json(statusObject(.users)) }
+
+    /// Forgets both files. The files themselves are left where they are.
     func disconnect() -> String {
-        UserDefaults.standard.removeObject(forKey: bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: Slot.snapshot.bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: Slot.users.bookmarkKey)
         UserDefaults.standard.removeObject(forKey: legacyFolderKey)
-        cache = nil
+        caches = [:]
+        return "true"
+    }
+
+    /// Forgets the roster file only.
+    func forgetUsers() -> String {
+        UserDefaults.standard.removeObject(forKey: Slot.users.bookmarkKey)
+        caches[.users] = nil
         return "true"
     }
 
     // MARK: - read / write / delete
 
-    func read() -> String {
-        guard UserDefaults.standard.data(forKey: bookmarkKey) != nil else {
-            return kind("error", ["error": "no file connected"])
+    func read() -> String { readSlot(.snapshot) }
+    func readUsers() -> String { readSlot(.users) }
+    func write(_ text: String) -> String { writeSlot(.snapshot, text) }
+    func writeUsers(_ text: String) -> String { writeSlot(.users, text) }
+
+    private func readSlot(_ slot: Slot) -> String {
+        guard UserDefaults.standard.data(forKey: slot.bookmarkKey) != nil else {
+            return kind("error", ["error": slot == .snapshot ? "no file connected" : "no roster file chosen"])
         }
-        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else {
+        guard let file = fileURL(slot), file.startAccessingSecurityScopedResource() else {
             return kind("error", ["error": "permission denied"])
         }
         defer { file.stopAccessingSecurityScopedResource() }
+        let cache = caches[slot]
 
         var isDir: ObjCBool = false
         let onDisk = FileManager.default.fileExists(atPath: file.path, isDirectory: &isDir)
-        if onDisk && isDir.boolValue { return kind("error", ["error": "\(syncFileName) is not a file"]) }
+        if onDisk && isDir.boolValue { return kind("error", ["error": "\(slot.fileName) is not a file"]) }
         let stub = placeholderURL(for: file)
         let hasStub = FileManager.default.fileExists(atPath: stub.path)
 
@@ -232,12 +293,12 @@ final class DirectAccessBridge: NSObject {
         let attrs = try? FileManager.default.attributesOfItem(atPath: file.path)
         let size = (attrs?[.size] as? NSNumber)?.intValue ?? t.utf8.count
         let modified = (attrs?[.modificationDate] as? Date) ?? Date()
-        cache = (modified, size, t)
+        caches[slot] = (modified, size, t)
         return kind("text", ["text": t])
     }
 
-    func write(_ text: String) -> String {
-        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else { return "false" }
+    private func writeSlot(_ slot: Slot, _ text: String) -> String {
+        guard let file = fileURL(slot), file.startAccessingSecurityScopedResource() else { return "false" }
         defer { file.stopAccessingSecurityScopedResource() }
         guard let data = text.data(using: .utf8) else { return "false" }
 
@@ -248,7 +309,7 @@ final class DirectAccessBridge: NSObject {
         NSFileCoordinator().coordinate(writingItemAt: file, options: .forReplacing, error: &coordError) { url in
             ok = (try? data.write(to: url, options: .atomic)) != nil
         }
-        cache = nil
+        caches[slot] = nil
         return (ok && coordError == nil) ? "true" : "false"
     }
 
@@ -257,9 +318,9 @@ final class DirectAccessBridge: NSObject {
     /// and the card then offers to pick or create again. A missing file
     /// counts as deleted.
     func deleteSnapshot() -> String {
-        guard let file = fileURL(), file.startAccessingSecurityScopedResource() else { return "false" }
+        guard let file = fileURL(.snapshot), file.startAccessingSecurityScopedResource() else { return "false" }
         defer { file.stopAccessingSecurityScopedResource() }
-        cache = nil
+        caches[.snapshot] = nil
         let present = FileManager.default.fileExists(atPath: file.path)
             || FileManager.default.fileExists(atPath: placeholderURL(for: file).path)
         var ok = !present
@@ -270,7 +331,7 @@ final class DirectAccessBridge: NSObject {
             }
             ok = ok && coordError == nil
         }
-        if ok { UserDefaults.standard.removeObject(forKey: bookmarkKey) }
+        if ok { UserDefaults.standard.removeObject(forKey: Slot.snapshot.bookmarkKey) }
         return ok ? "true" : "false"
     }
 
@@ -326,32 +387,37 @@ extension DirectAccessBridge: UIDocumentPickerDelegate {
         // that access is denied; the bookmark is the real test.
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let slot = pendingSlot
+        let expected = slot.fileName
 
         // The wrong file is never adopted. The export picker renames on a
         // name clash ("dayglance-sync 2.json"): that means the folder already
         // has the fleet's file, so the stray copy is removed and the user is
         // told to choose the existing one.
-        guard url.lastPathComponent == syncFileName else {
-            NSLog("[directAccess] pick: refused %@ (not %@)", url.path, syncFileName)
-            if url.lastPathComponent.hasPrefix("dayglance-sync") {
+        guard url.lastPathComponent == expected else {
+            NSLog("[directAccess] pick: refused %@ (not %@)", url.path, expected)
+            let stem = (expected as NSString).deletingPathExtension
+            if url.lastPathComponent.hasPrefix(stem) {
                 var coordError: NSError?
                 NSFileCoordinator().coordinate(writingItemAt: url, options: .forDeleting, error: &coordError) { u in
                     try? FileManager.default.removeItem(at: u)
                 }
-                postPicked(json(["error": "that folder already has a \(syncFileName): choose it instead of creating one", "path": url.path]))
+                postPicked(json(["error": "that folder already has a \(expected): choose it instead of creating one", "path": url.path, "slot": slot.rawValue]))
             } else {
-                postPicked(json(["error": "that is not \(syncFileName)", "path": url.path]))
+                postPicked(json(["error": "that is not \(expected)", "path": url.path, "slot": slot.rawValue]))
             }
             return
         }
         do {
             let bookmark = try url.bookmarkData(options: [])
-            UserDefaults.standard.set(bookmark, forKey: bookmarkKey)
-            UserDefaults.standard.removeObject(forKey: legacyFolderKey)
-            cache = nil
-            NSLog("[directAccess] picked %@ (security scope: %@)", url.path, scoped ? "yes" : "no")
+            UserDefaults.standard.set(bookmark, forKey: slot.bookmarkKey)
+            if slot == .snapshot { UserDefaults.standard.removeObject(forKey: legacyFolderKey) }
+            caches[slot] = nil
+            NSLog("[directAccess] picked %@ for %@ (security scope: %@)", url.path, slot.rawValue, scoped ? "yes" : "no")
             // The page updates its card and kicks a cycle from this; no reload.
-            postPicked(status())
+            var st = statusObject(slot)
+            st["slot"] = slot.rawValue
+            postPicked(json(st))
         } catch {
             NSLog("[directAccess] pick: bookmark failed for %@ (security scope: %@): %@",
                   url.path, scoped ? "yes" : "no", error.localizedDescription)
@@ -359,6 +425,7 @@ extension DirectAccessBridge: UIDocumentPickerDelegate {
                 "error": "bookmark: \(error.localizedDescription)",
                 "path": url.path,
                 "scoped": scoped,
+                "slot": slot.rawValue,
             ]))
         }
     }

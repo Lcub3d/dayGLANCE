@@ -401,13 +401,23 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
     private func dispatchDirectAccess(method: String, args: [Any]) -> String? {
         switch method {
         case "pickFolder", "pickFile":
-            DirectAccessBridge.shared.pickFile()
+            DirectAccessBridge.shared.pickFile(slot: DirectAccessBridge.Slot.named(args.first))
             return "null"
         case "createFile":
-            DirectAccessBridge.shared.createFile()
+            DirectAccessBridge.shared.createFile(slot: DirectAccessBridge.Slot.named(args.first))
             return "null"
         case "status":
             return DirectAccessBridge.shared.status()
+        // The household roster, a second bookmarked file (Phase 5).
+        case "usersStatus":
+            return DirectAccessBridge.shared.usersStatus()
+        case "readUsers":
+            return DirectAccessBridge.shared.readUsers()
+        case "writeUsers":
+            guard let text = args.first as? String else { return "false" }
+            return DirectAccessBridge.shared.writeUsers(text)
+        case "forgetUsers":
+            return DirectAccessBridge.shared.forgetUsers()
         case "read":
             return DirectAccessBridge.shared.read()
         case "write":

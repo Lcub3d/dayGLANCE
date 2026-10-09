@@ -83,7 +83,9 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
   // 'disconnected' | 'connected' | 'unreachable'. pickError is why the last
   // folder pick failed, shown on the card and in the diagnostics report until
   // the next pick; a picker that was cancelled clears it.
-  const state = { status: 'unknown', name: null, path: null, pickError: null };
+  // roster: on an iPhone, the roster file's own status ({configured, name,
+  // path, reachable}); null where the roster is a path in the folder.
+  const state = { status: 'unknown', name: null, path: null, pickError: null, roster: null };
   const statusListeners = new Set();
   const changeListeners = new Set();
   let unsubscribeBridge = null;
@@ -107,6 +109,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     connected: isConnected(),
     enabled: isEnabled(),
     pickError: state.pickError,
+    roster: state.roster,
   });
   let snapshot = compute();
   const notify = () => {
@@ -151,6 +154,9 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
         log.warn('[direct-access] restore failed:', e?.message ?? e);
         applyStatus(null);
       }
+      if (b.users?.status) {
+        try { state.roster = normalizeRoster(await b.users.status()); notify(); } catch { /* unknown until a pick */ }
+      }
     })();
     return initPromise;
   };
@@ -169,6 +175,10 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     } catch { /* still away */ }
     finally { reprobing = false; }
   };
+
+  const normalizeRoster = (st) => (st && st.configured
+    ? { configured: true, name: st.name ?? null, path: st.path ?? null, reachable: !!st.reachable }
+    : { configured: false, name: null, path: null, reachable: false });
 
   const clearLastSynced = () => {
     try { storage()?.removeItem(DIRECT_ACCESS_LAST_SYNCED_KEY); } catch { /* ignore */ }
@@ -306,6 +316,15 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     /** iOS: the sync file itself, picked (pickFile) or created in a chosen folder (createFile). */
     pickFile: async () => runPick('pickFile'),
     createFile: async () => runPick('createFile'),
+    /** iOS: the household roster, a second bookmarked file (Phase 5). */
+    pickUsersFile: async () => runPick('pickFile', 'users'),
+    createUsersFile: async () => runPick('createFile', 'users'),
+    forgetUsersFile: async () => {
+      const b = bridge();
+      try { await b?.users?.forget?.(); } catch { /* forgotten on this side regardless */ }
+      state.roster = b?.users ? normalizeRoster(null) : null;
+      notify();
+    },
 
     disconnect: async () => {
       try { await bridge()?.disconnect(); } catch { /* the renderer side still forgets it */ }
@@ -324,10 +343,10 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     deleteSnapshot: async () => (await bridge()?.deleteFile()) === true,
   };
 
-  async function runPick(method) {
+  async function runPick(method, slot = 'snapshot') {
     const b = bridge();
     if (!b) return null;
-    if (typeof b[method] !== 'function') {
+    if (typeof b[method] !== 'function' || (slot === 'users' && !b.users)) {
       state.pickError = 'not available on this platform';
       notify();
       return null;
@@ -337,7 +356,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
       timer = setTimer(() => resolve({ error: 'the picker returned no result' }), DIRECT_ACCESS_PICK_TIMEOUT_MS);
     });
     let st;
-    try { st = await Promise.race([b[method](), timeout]); }
+    try { st = await Promise.race([method === 'pick' ? b.pick() : b[method](slot), timeout]); }
     catch (err) { st = { error: err?.message ?? String(err) }; }
     finally { clearTimer(timer); }
     if (st && typeof st === 'object' && st.error) {
@@ -348,6 +367,12 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     }
     if (state.pickError) { state.pickError = null; notify(); }
     if (!st) return null;
+    if (slot === 'users') {
+      // The roster file: its own status, nothing about the snapshot changes.
+      state.roster = normalizeRoster(st);
+      notify();
+      return snapshot;
+    }
     // A different folder has its own history: the seed guard must not read
     // an empty new folder as an eviction of the old one and wait ten
     // minutes before seeding it.

@@ -445,7 +445,7 @@ describe('probeDirectAccess', () => {
     expect(await probeDirectAccess({ directAccess: null })).toBeNull();
     expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
     const off = fakeDirectAccess({ status: 'disconnected', name: null });
-    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, pickError: null, native: null, roster: null, snapshot: null, merge: null });
     expect(off.read).not.toHaveBeenCalled();
   });
 
@@ -461,13 +461,20 @@ describe('probeDirectAccess', () => {
       local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: r,
     });
     expect(text).toMatch(/direct access: +not connected\n  sync on device: on\n  last pick: +FAILED: bookmark: permission denied \(\/Nextcloud\/dg\)\n  shell status: +\{"configured":false/);
+    // An iPhone's roster file has its own line; a folder platform has none.
+    t.getSnapshot = () => ({ supported: true, status: 'disconnected', name: null, enabled: true, connected: false, roster: { configured: true, name: 'glance-users.json', reachable: true } });
+    const withRoster = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: await probeDirectAccess({ directAccess: t }),
+    });
+    expect(withRoster).toMatch(/roster file: +chosen \(glance-users.json\)/);
     // A transport without the probe, or with nothing to report, prints neither line.
     const plain = formatDiagnosticsReport({
       platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
       local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
       directAccess: { status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null },
     });
-    expect(plain).not.toMatch(/last pick|shell status/);
+    expect(plain).not.toMatch(/last pick|shell status|roster file/);
   });
 
   it('reads the connected folder through the transport and dry-runs the merge on it', async () => {

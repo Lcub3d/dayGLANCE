@@ -426,7 +426,11 @@ a create that the picker renamed on a clash (`dayglance-sync 2.json`) is
 removed with a message to choose the existing file. A bookmarked file that is
 gone reads as `error`, never `absent`: there is no folder to seed into, and
 the user re-picks or re-creates. `deleteSnapshot` forgets the bookmark with
-the file. iCloud sync keeps running alongside; the two share one mutex and
+the file. With multi-user on, the card offers the household roster the same
+way (Phase 5): **Choose roster…** for the `glance-users.json` the other devices
+keep in the folder's `GLANCE/users`, or **Create roster…** there; the bridge
+holds it as a second bookmark and the roster slot reads and writes it without
+a path. iCloud sync keeps running alongside; the two share one mutex and
 never merge into state at once.
 
 Settings → Cloud Sync → Sync diagnostics → *Run check* reads the Direct

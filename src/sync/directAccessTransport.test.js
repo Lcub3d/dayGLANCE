@@ -382,3 +382,74 @@ describe('the household roster slot (Phase 5)', () => {
     expect(await transport.rosterWrite(rel, 'x')).toBe(false);
   });
 });
+
+describe('the roster file on an iPhone (Phase 5)', () => {
+  const usersBridge = (configured = false) => {
+    const users = {
+      status: vi.fn(async () => ({ configured, name: configured ? 'glance-users.json' : null, path: configured ? '/x/glance-users.json' : null, reachable: configured })),
+      read: vi.fn(async () => (configured ? { kind: 'text', text: '{"users":[]}' } : { kind: 'error', error: 'no roster file chosen' })),
+      write: vi.fn(async () => true),
+      forget: vi.fn(async () => true),
+    };
+    const bridge = makeBridge({
+      users,
+      pickFile: vi.fn(async (slot) => (slot === 'users'
+        ? { configured: true, name: 'glance-users.json', path: '/x/glance-users.json', reachable: true, slot: 'users' }
+        : { configured: true, name: 'dayglance-sync.json', path: '/x/dayglance-sync.json', reachable: true })),
+      createFile: vi.fn(async (slot) => ({ configured: true, name: slot === 'users' ? 'glance-users.json' : 'dayglance-sync.json', path: '/y', reachable: true, slot })),
+    });
+    return { bridge, users };
+  };
+
+  it('restores the roster status with the snapshot, and reports it in the snapshot', async () => {
+    const { transport } = make({ bridge: usersBridge(true).bridge });
+    transport.subscribe(() => {});
+    await flush();
+    expect(transport.getSnapshot().roster).toEqual({ configured: true, name: 'glance-users.json', path: '/x/glance-users.json', reachable: true });
+    const { transport: t2 } = make({ bridge: makeBridge() });
+    t2.subscribe(() => {});
+    await flush();
+    expect(t2.getSnapshot().roster).toBeNull();            // a folder platform: no roster file
+  });
+
+  it('picking or creating the roster file sets the roster and leaves the snapshot connection alone', async () => {
+    const storage = makeStorage({ [DIRECT_ACCESS_LAST_SYNCED_KEY]: 'stamp' });
+    const { bridge } = usersBridge(false);
+    const { transport } = make({ bridge, storage });
+    const kicks = vi.fn();
+    transport.onChanged(kicks);
+    transport.subscribe(() => {});
+    await flush();
+    expect(transport.getSnapshot().roster.configured).toBe(false);
+    const snap = await transport.pickUsersFile();
+    expect(bridge.pickFile).toHaveBeenCalledWith('users');
+    expect(snap.roster).toEqual({ configured: true, name: 'glance-users.json', path: '/x/glance-users.json', reachable: true });
+    expect(snap.status).toBe('connected');
+    expect(snap.name).toBe('GLANCE');                        // the snapshot connection, untouched
+    expect(storage.getItem(DIRECT_ACCESS_LAST_SYNCED_KEY)).toBe('stamp');
+    expect(kicks).not.toHaveBeenCalled();
+    await transport.createUsersFile();
+    expect(bridge.createFile).toHaveBeenCalledWith('users');
+    await transport.forgetUsersFile();
+    expect(bridge.users.forget).toHaveBeenCalled();
+    expect(transport.getSnapshot().roster).toEqual({ configured: false, name: null, path: null, reachable: false });
+  });
+
+  it('a platform without the roster file reports the pick as unavailable', async () => {
+    const { transport } = make({ bridge: makeBridge({ pickFile: vi.fn() }) });
+    transport.subscribe(() => {});
+    await flush();
+    expect(await transport.pickUsersFile()).toBeNull();
+    expect(transport.getSnapshot().pickError).toBe('not available on this platform');
+  });
+
+  it('the roster slot reads and writes the bookmarked file; without one the read is an error and nothing is written', async () => {
+    const chosen = usersBridge(true);
+    const { transport } = make({ bridge: chosen.bridge });
+    expect(await transport.rosterRead('GLANCE/users/glance-users.json')).toBe('{"users":[]}');
+    expect(await transport.rosterWrite('GLANCE/users/glance-users.json', 'x')).toBe(true);
+    const none = usersBridge(false);
+    const { transport: t2 } = make({ bridge: none.bridge });
+    expect(classifySnapshotText(await t2.rosterRead('GLANCE/users/glance-users.json'))).toEqual({ kind: 'error', error: 'no roster file chosen' });
+  });
+});

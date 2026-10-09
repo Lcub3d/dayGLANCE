@@ -54,10 +54,11 @@ export function createNativeDirectAccessBridge({
     // first resolves replaces its callback, and the earlier promise settles
     // null when the result finally arrives for the later one.
     pick: () => launch('pickFolder'),
-    // iOS only: the sync file itself, picked or created (DirectAccessBridge.swift).
-    // Android's bridge has neither method; the call throws and resolves null.
-    pickFile: () => launch('pickFile'),
-    createFile: () => launch('createFile'),
+    // iOS only: a file itself, picked or created (DirectAccessBridge.swift):
+    // the snapshot, or with slot 'users' the household roster. Android's
+    // bridge has neither method; the call throws and resolves null.
+    pickFile: (slot = 'snapshot') => launch('pickFile', slot),
+    createFile: (slot = 'snapshot') => launch('createFile', slot),
 
     disconnect: async () => truthy(native().disconnect()),
     read: async () => parse(native().read()),
@@ -66,6 +67,16 @@ export function createNativeDirectAccessBridge({
 
     // Files by path, relative to the folder and confined to it in the shell
     // (DirectAccessPath.kt). Android only: docs/direct-access-sync.md, Phase 5.
+    // The household roster as its own bookmarked file. iOS only: there is no
+    // folder to find it in (docs/direct-access-sync.md, Phase 5).
+    ...(platform === 'ios' ? {
+      users: {
+        status: async () => parse(native().usersStatus()),
+        read: async () => parse(native().readUsers()) ?? { kind: 'error', error: 'bad answer from the shell' },
+        write: async (text) => truthy(native().writeUsers(text)),
+        forget: async () => truthy(native().forgetUsers()),
+      },
+    } : {}),
     ...(platform === 'android' ? {
       paths: {
         list: async (rel) => { const v = parse(native().listFiles(rel)); return Array.isArray(v) ? v : null; },
@@ -77,7 +88,7 @@ export function createNativeDirectAccessBridge({
     } : {}),
   };
 
-  function launch(method) {
+  function launch(method, ...args) {
     return new Promise((resolve) => {
       const w = win();
       const previous = w[PICK_CALLBACK];
@@ -93,7 +104,7 @@ export function createNativeDirectAccessBridge({
       w[PICK_CALLBACK] = handler;
       if (typeof previous === 'function') previous(null);
       try {
-        native()[method]();
+        native()[method](...args);
       } catch {
         if (w[PICK_CALLBACK] === handler) delete w[PICK_CALLBACK];
         resolve(null);

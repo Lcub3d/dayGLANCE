@@ -31,13 +31,25 @@ overlapping intervals still count only once in the day-time union.
 
 Do retains its existing civil `HH:mm` coordinates. Capture uses event instants
 internally, but does **not** persist seconds or add a new sync schema. Each
-uninterrupted segment includes only complete civil minutes inside it: round the
-start up and the end down. For example, 09:00:10–09:01:30 contains no full minute,
-so those 80 seconds make no timed Do row. Pausing cannot fill that gap from a
-later segment. Settlement explicitly shows recorded minutes and the unrecorded
-remainder. A clock/time-zone change that cannot be represented safely is
-reported instead of inventing a civil interval. Cross-midnight intervals retain
-an explicit end date.
+uninterrupted segment rounds its start and end independently to the nearest
+minute; a boundary exactly halfway rounds forward. Equal rounded endpoints
+produce no timed Do row. For example, 09:00:20–09:01:40 becomes 09:00–09:02,
+while 09:00:40–09:01:20 makes no row. Even a very short segment spanning a
+half-minute boundary can produce a minute (09:00:29–09:00:31 becomes 09:00–09:01).
+
+With an unchanged civil clock and time zone, rounding preserves boundary order:
+segments either side of a pause may touch, but do not overlap. It does not preserve exact elapsed seconds. Each segment’s
+duration can differ from captured work by up to a minute, and differences can
+accumulate across segments. Two separate 62-second segments, each starting at
+:29 and ending at :31 in the following minute, total 124 seconds but yield four
+Do minutes. Settlement shows the minute total and whether it is higher or lower
+than captured work, with the difference rounded up to a whole second. The
+existing Focus counters and log do not use these rounded Do totals.
+
+A clock/time-zone change that cannot be represented safely is reported instead
+of inventing a civil interval. Dates are taken from the rounded boundaries, so
+cross-midnight intervals retain an explicit end date, including when rounding
+an end at 23:59:40 to the following day’s 00:00.
 
 ## Writes and recovery
 
@@ -56,6 +68,11 @@ lose an unfinished capture or an unsaved held write.
 JOBO off does not collect or retrospectively import Focus work. The existing
 `focusMinutes` counters and `day-planner-focus-log` remain independent of Do;
 the legacy session log is wall time, not the new work-only ledger measurement.
+The original phase boundary still credits its equal task split and cycle before
+Do settlement. Skip retains its original cycle behavior without adding legacy
+work minutes. An explicit Exit/Stop freezes its old accounting boundary so
+waiting for Do storage cannot extend that exit’s log or change its recipients.
+A review followed by continued work remains inside the legacy wall-time session.
 
 ## Verification
 
@@ -65,7 +82,8 @@ notification polling), task completion handlers, and settlement rendering:
 
 ```sh
 npm test -- --run src/jobo/focusCapture.test.js src/jobo/focusRecords.test.js \
-  src/jobo/focusSession.test.js src/hooks/useFocusMode.test.js \
+  src/jobo/focusSession.test.js src/jobo/focusRounding.test.js \
+  src/jobo/focusLegacyBoundary.test.js src/hooks/useFocusMode.test.js \
   src/hooks/useTaskActions.focus.test.js src/components/FocusDoReview.test.jsx
 ```
 

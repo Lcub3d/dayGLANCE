@@ -6,7 +6,8 @@ export default function FocusDoReview({ review, onSave, onDismiss }) {
   const { t } = useTranslation();
   const { capture, summary, busy, error, choice } = review;
   const [selected, setSelected] = useState(capture.candidates[0].actionId);
-  const remainderSeconds = Math.ceil(summary.unrecordedMilliseconds / 1000);
+  const differenceSeconds = Math.ceil(Math.abs(summary.recordedDifferenceMilliseconds) / 1000);
+  const differenceKey = summary.recordedDifferenceMilliseconds > 0 ? 'differenceMore' : 'differenceLess';
   return (
     <section aria-labelledby="focus-do-heading" className="w-full max-w-md px-6 py-8 my-auto flex flex-col gap-5 text-gray-200">
       <h1 id="focus-do-heading" className="text-2xl font-bold text-white">{t('focus.doReview.title')}</h1>
@@ -22,7 +23,7 @@ export default function FocusDoReview({ review, onSave, onDismiss }) {
         </label>
       )}
       <p>{t('focus.doReview.minutes', { minutes: summary.recordedMinutes })}</p>
-      {remainderSeconds > 0 && <p className="text-sm text-amber-300">{t('focus.doReview.remainder', { seconds: remainderSeconds })}</p>}
+      {differenceSeconds > 0 && <p className="text-sm text-amber-300">{t(`focus.doReview.${differenceKey}`, { seconds: differenceSeconds })}</p>}
       {summary.clockChanged && <p className="text-sm text-amber-300">{t('focus.doReview.clockChanged')}</p>}
       {error && <p role="alert" className="text-sm text-amber-300">{t(`focus.doReview.${error}`)}</p>}
       <div className="flex flex-col gap-3">
@@ -34,7 +35,6 @@ export default function FocusDoReview({ review, onSave, onDismiss }) {
         </button>
         {error && <button disabled={busy} onClick={onDismiss} className="py-2 text-sm underline disabled:opacity-50">{t('focus.doReview.continueWithoutSaving')}</button>}
       </div>
-      <p className="text-xs text-gray-400">{t('focus.doReview.precision')}</p>
     </section>
   );
 }

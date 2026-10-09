@@ -74,7 +74,7 @@ describe('Focus timer command boundary', () => {
     native.action = 'focus-resume'; await vi.advanceTimersByTimeAsync(500); useRenderedHook();
     expect(hook.focusTimerRunning).toBe(false);
     await session.save('a', false);
-    expect(recordJobo.mock.calls[0][0].map(row => [row.startTime, row.endTime])).toEqual([['09:00', '09:01'], ['09:03', '09:04']]);
+    expect(recordJobo.mock.calls[0][0].map(row => [row.startTime, row.endTime])).toEqual([['09:00', '09:01'], ['09:02', '09:04']]);
   });
   it('timer expiry closes work before calling the real end-handler ref', async () => {
     useStartedHook();

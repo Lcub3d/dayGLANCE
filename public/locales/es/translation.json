@@ -1162,16 +1162,16 @@
     "doReview": {
       "title": "Registrar trabajo de concentración",
       "chooseTask": "¿En qué tarea has trabajado?",
-      "minutes": "Se registrarán {{minutes}} minutos completos en Do.",
-      "remainder": "{{seconds}} segundos no se pueden representar como minutos completos y no se registrarán.",
-      "clockChanged": "Ha cambiado el reloj o la zona horaria. No se pueden registrar los intervalos afectados.",
-      "unavailable": "JOBO no está disponible o es de solo lectura. Vuelve a intentarlo cuando esté listo o continúa sin registrar este trabajo.",
-      "held": "Los datos aún no se han guardado. JOBO reintentará mientras esta página siga abierta. Reintenta aquí para confirmar el guardado antes de completar la tarea.",
-      "failed": "No se pudo guardar el trabajo. Reintenta o continúa sin esperar.",
+      "minutes": "{{minutes}} min para registrar",
+      "differenceMore": "Unos {{seconds}} segundos más que el trabajo de concentración.",
+      "differenceLess": "Unos {{seconds}} segundos menos que el trabajo de concentración.",
+      "clockChanged": "Cambió el reloj o la zona horaria. Parte del trabajo no se puede registrar.",
+      "unavailable": "No se puede escribir en JOBO. Reintenta cuando esté disponible.",
+      "held": "Aún no se ha guardado. Reintentando. Guarda antes de completar la tarea.",
+      "failed": "No se pudo guardar. Reintenta.",
       "completed": "Tarea completada",
       "inProgress": "Sigue en curso",
-      "continueWithoutSaving": "Continuar sin esperar",
-      "precision": "Solo se registran los minutos completos dentro de cada tramo de trabajo ininterrumpido. Se excluyen las pausas y los descansos."
+      "continueWithoutSaving": "Continuar sin esperar"
     }
   },
   "voice": {

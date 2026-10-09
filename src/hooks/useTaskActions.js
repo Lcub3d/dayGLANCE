@@ -862,12 +862,14 @@ export default function useTaskActions({
 
   // ── Focus mode wrappers ──────────────────────────────────────────────────
 
-  const focusCompleteTask = (taskId, { exitWhenDone = true } = {}) => {
+  const focusCompleteTask = (taskId, { exitWhenDone = true, fromSettlement = false } = {}) => {
     if (isFocusSettlementPending()) return false;
-    const found = resolveTaskRef(taskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
-    if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(taskId)) return false;
-    taskId = found.task.id;
-    toggleComplete(taskId, found.where === 'inbox');
+    if (fromSettlement) {
+      const found = resolveTaskRef(taskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(taskId)) return false;
+      taskId = found.task.id;
+      toggleComplete(taskId, found.where === 'inbox');
+    } else toggleComplete(taskId);
     setFocusCompletedTasks(prev => {
       const next = new Set(prev);
       next.add(taskId);

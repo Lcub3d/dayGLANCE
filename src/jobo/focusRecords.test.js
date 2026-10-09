@@ -10,26 +10,26 @@ const instant = time => Date.parse(`2026-10-09T${time}Z`);
 const span = (start, end) => ({ startedAt: instant(start), endedAt: instant(end), startOffset: 0, endOffset: 0 });
 const capture = (start, end) => sealFocusCapture(resumeFocusCapture(beginFocusCapture({ id: 'focus:s:0', tasks: [task] }), instant(start)), instant(end));
 
-describe('complete-minute Focus Do', () => {
-  it('clips inward without expanding short work or filling a pause', () => {
-    expect(focusMinuteInterval(span('09:00:20', '09:02:40'))).toEqual({ date: task.date, startTime: '09:01', endDate: task.date, endTime: '09:02', minutes: 1 });
-    expect(focusMinuteInterval(span('09:00:20', '09:01:40'))).toBeNull();
+describe('minute-resolution Focus Do', () => {
+  it('rounds both civil boundaries without rounding the duration', () => {
+    expect(focusMinuteInterval(span('09:00:20', '09:02:40'))).toEqual({ date: task.date, startTime: '09:00', endDate: task.date, endTime: '09:03', minutes: 3 });
+    expect(focusMinuteInterval(span('09:00:20', '09:01:40')).minutes).toBe(2);
     expect(focusMinuteInterval(span('09:00:50', '09:01:10'))).toBeNull();
     expect(focusMinuteInterval(span('09:00:00', '09:01:00')).minutes).toBe(1);
   });
-  it('keeps the excluded raw time explicit, including an 80-second segment', () => {
-    expect(summarizeFocusCapture(capture('09:00:20', '09:01:40'))).toMatchObject({ workMilliseconds: 80000, recordedMinutes: 0, unrecordedMilliseconds: 80000 });
-    expect(summarizeFocusCapture(capture('09:00:20', '09:02:40'))).toMatchObject({ workMilliseconds: 140000, recordedMinutes: 1, unrecordedMilliseconds: 80000 });
+  it('keeps the signed difference from captured work explicit', () => {
+    expect(summarizeFocusCapture(capture('09:00:20', '09:01:40'))).toMatchObject({ workMilliseconds: 80000, recordedMinutes: 2, recordedDifferenceMilliseconds: 40000 });
+    expect(summarizeFocusCapture(capture('09:00:40', '09:01:20'))).toMatchObject({ workMilliseconds: 40000, recordedMinutes: 0, recordedDifferenceMilliseconds: -40000 });
   });
   it('creates one partial Do per represented segment, linked to one captured task and plan', () => {
     let c = pauseFocusCapture(resumeFocusCapture(beginFocusCapture({ id: 's', tasks: [task] }), instant('09:00:00')), instant('09:02:00'));
     c = sealFocusCapture(resumeFocusCapture(c, instant('09:02:30')), instant('09:04:40'));
     const rows = buildFocusDoRecords(c, 't1', []);
     expect(rows).toHaveLength(2);
-    expect(rows.map(row => [row.startTime, row.endTime])).toEqual([['09:00', '09:02'], ['09:03', '09:04']]);
+    expect(rows.map(row => [row.startTime, row.endTime])).toEqual([['09:00', '09:02'], ['09:03', '09:05']]);
     expect(rows.every(row => row.source === 'focus' && row.progress === 'partial' && row.taskId === 't1')).toBe(true);
     expect(rows[0].planSnapshot).toEqual({ date: task.date, startTime: '09:00', duration: 30 });
-    expect(compareExecutionToPlan(rows[0].planSnapshot, rows).metrics).toMatchObject({ recordedMinutes: 3, gapMinutes: 1 });
+    expect(compareExecutionToPlan(rows[0].planSnapshot, rows).metrics).toMatchObject({ recordedMinutes: 4, gapMinutes: 1 });
   });
   it('reuses every id and version stamp on repeat construction', () => {
     const c = capture('09:00:00', '09:02:00');

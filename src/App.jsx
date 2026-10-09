@@ -1343,6 +1343,7 @@ const DayPlanner = () => {
 
   const focusDoRef = useRef(null);
   const focusEndedRef = useRef(false);
+  const focusExitBoundaryRef = useRef(null);
   const {
     showFocusMode, setShowFocusMode,
     focusPhase, setFocusPhase,
@@ -4321,8 +4322,9 @@ const DayPlanner = () => {
   // own when there is no block. Only a string counts: this is also a click
   // handler, and an event is not a task.
   const enterFocusMode = (taskId) => {
-    if (showFocusMode || focusDoRef.current?.isPending()) return;
+    if ((joboEnabled && showFocusMode) || focusDoRef.current?.isPending()) return;
     focusEndedRef.current = false;
+    focusExitBoundaryRef.current = null;
     setShowFocusMode(true);
     setFocusShowSettings(true);
     setFocusShowStats(false);
@@ -4360,7 +4362,7 @@ const DayPlanner = () => {
   openRoutinesDashboardRef.current = openRoutinesDashboard;
 
   const startFocusTimer = () => {
-    if (!focusShowSettings || focusDoRef.current?.isPending()) return;
+    if ((joboEnabled && !focusShowSettings) || focusDoRef.current?.isPending()) return;
     setFocusShowSettings(false);
     setFocusSessionStart(new Date());
     setFocusPhase('work');
@@ -4374,9 +4376,17 @@ const DayPlanner = () => {
   };
   startFocusTimerRef.current = startFocusTimer;
 
-  const finishExitFocusMode = (showStats = true, completedActionId = null) => {
-    if (focusEndedRef.current) return;
-    focusEndedRef.current = true;
+  // Freeze legacy accounting at the event that used to run it. Do review may
+  // complete a task or wait for storage, but cannot change those recipients.
+  const captureFocusBoundary = () => ({
+    endedAt: new Date(), phase: focusPhase, timerSeconds: focusTimerSeconds, workMinutes: focusWorkMinutes,
+    cycleCount: focusCycleCount, taskMinutes: { ...focusTaskMinutes },
+    completedTasks: new Set(focusCompletedTasks), blockTasks: focusBlockTasks,
+    sessionStart: focusSessionStart,
+  });
+  const finishExitFocusMode = (showStats = true, completedActionId = null, boundary = captureFocusBoundary()) => {
+    if (joboEnabled && focusEndedRef.current) return;
+    focusEndedRef.current = joboEnabled;
     focusDoRef.current?.finish();
     setFocusTimerRunning(false);
     if (focusTimerRef.current) {
@@ -4384,10 +4394,10 @@ const DayPlanner = () => {
       focusTimerRef.current = null;
     }
     // Distribute partial work time for current in-progress work cycle
-    const minutesCopy = { ...focusTaskMinutes };
-    if (focusPhase === 'work' && focusTimerSeconds < focusWorkMinutes * 60) {
-      const elapsedMinutes = (focusWorkMinutes * 60 - focusTimerSeconds) / 60;
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id) && t.id !== completedActionId);
+    const minutesCopy = { ...boundary.taskMinutes };
+    if (boundary.phase === 'work' && boundary.timerSeconds < boundary.workMinutes * 60) {
+      const elapsedMinutes = (boundary.workMinutes * 60 - boundary.timerSeconds) / 60;
+      const activeTasks = boundary.blockTasks.filter(t => !t.completed && !boundary.completedTasks.has(t.id));
       if (activeTasks.length > 0) {
         const perTask = elapsedMinutes / activeTasks.length;
         activeTasks.forEach(t => {
@@ -4404,15 +4414,15 @@ const DayPlanner = () => {
       }));
     }
     // Record session in daily focus log
-    if (focusSessionStart) {
-      const sessionMinutes = Math.round((new Date() - focusSessionStart) / 60000);
+    if (boundary.sessionStart) {
+      const sessionMinutes = Math.round((boundary.endedAt - boundary.sessionStart) / 60000);
       if (sessionMinutes > 0) {
-        const sessionDateStr = dateToString(new Date(focusSessionStart));
+        const sessionDateStr = dateToString(new Date(boundary.sessionStart));
         // WHEN the session ran, not just how long — the Day Dial places it
         // against the block it happened in. Minutes-of-day from the start,
         // with the end left unwrapped past 1440 when a session crosses
         // midnight (the log is keyed by the date the session STARTED).
-        const startMin = focusSessionStart.getHours() * 60 + focusSessionStart.getMinutes();
+        const startMin = boundary.sessionStart.getHours() * 60 + boundary.sessionStart.getMinutes();
         const span = { start: startMin, end: startMin + sessionMinutes };
         setFocusLog(prev => {
           const existing = prev[sessionDateStr] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
@@ -4420,8 +4430,8 @@ const DayPlanner = () => {
             ...existing,
             totalMinutes: existing.totalMinutes + sessionMinutes,
             sessions: existing.sessions + 1,
-            cyclesCompleted: existing.cyclesCompleted + focusCycleCount,
-            tasksCompleted: existing.tasksCompleted + new Set([...focusCompletedTasks, ...(completedActionId != null ? [completedActionId] : [])]).size,
+            cyclesCompleted: existing.cyclesCompleted + boundary.cycleCount,
+            tasksCompleted: existing.tasksCompleted + new Set([...boundary.completedTasks, ...(completedActionId != null ? [completedActionId] : [])]).size,
             // Bounded so that repeatedly opening and closing focus mode can't
             // grow one day's entry without limit; the newest are kept, and
             // totalMinutes above stays complete either way.
@@ -4443,10 +4453,14 @@ const DayPlanner = () => {
     }
   };
   const exitFocusMode = (showStats = true) => {
-    if (focusEndedRef.current) { dismissFocusStats(); return; }
+    if (joboEnabled && focusEndedRef.current) { dismissFocusStats(); return; }
+    const boundary = focusExitBoundaryRef.current ?? captureFocusBoundary();
     setFocusTimerRunning(false);
-    if (focusDoRef.current?.settle(({ completedActionId }) => finishExitFocusMode(showStats, completedActionId), { exiting: true })) return;
-    finishExitFocusMode(showStats);
+    if (focusDoRef.current?.settle(({ completedActionId }) => finishExitFocusMode(showStats, completedActionId, boundary), { exiting: true })) {
+      focusExitBoundaryRef.current = boundary;
+      return;
+    }
+    finishExitFocusMode(showStats, null, boundary);
   };
   exitFocusModeRef.current = exitFocusMode;
 
@@ -4461,75 +4475,61 @@ const DayPlanner = () => {
   };
 
   const advanceFocusPhase = () => {
+    const boundary = captureFocusBoundary();
     if (focusPhase === 'work') {
-      const newCycle = focusCycleCount + 1;
-      setFocusCycleCount(newCycle);
-      if (newCycle % 4 === 0) {
-        setFocusPhase('longBreak');
-        setFocusTimerSeconds(focusLongBreakMinutes * 60);
-      } else {
-        setFocusPhase('shortBreak');
-        setFocusTimerSeconds(focusBreakMinutes * 60);
-      }
+      boundary.cycleCount = focusCycleCount + 1;
+      boundary.phase = boundary.cycleCount % 4 === 0 ? 'longBreak' : 'shortBreak';
+      boundary.timerSeconds = (boundary.phase === 'longBreak' ? focusLongBreakMinutes : focusBreakMinutes) * 60;
+      setFocusCycleCount(boundary.cycleCount);
     } else {
-      setFocusPhase('work');
-      setFocusTimerSeconds(focusWorkMinutes * 60);
+      boundary.phase = 'work';
+      boundary.timerSeconds = focusWorkMinutes * 60;
     }
+    setFocusPhase(boundary.phase);
+    setFocusTimerSeconds(boundary.timerSeconds);
+    return boundary;
   };
 
   const skipFocusPhase = () => {
-    if (focusDoRef.current?.isPending() || focusEndedRef.current) return;
+    if (focusDoRef.current?.isPending() || (joboEnabled && focusEndedRef.current)) return;
     const wasRunning = focusTimerRunning;
     if (focusPhase === 'work') {
       setFocusTimerRunning(false);
+      const boundary = advanceFocusPhase();
       const next = ({ allCompleted, completedActionId } = {}) => {
-        if (allCompleted) { finishExitFocusMode(true, completedActionId); return; }
-        advanceFocusPhase();
+        if (allCompleted) {
+          finishExitFocusMode(true, completedActionId, { ...boundary, endedAt: new Date() });
+          return;
+        }
         setFocusTimerRunning(wasRunning);
       };
       if (!focusDoRef.current?.settle(next)) next();
     } else advanceFocusPhase();
   };
 
-  const advanceFocusTimerEnd = (completedActionId = null) => {
+  const advanceFocusTimerEnd = () => {
+    const boundary = advanceFocusPhase();
     if (focusPhase === 'work') {
-      // Distribute work minutes across active (non-completed) block tasks
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id) && t.id !== completedActionId);
+      // Keep the original equal split at expiry, before Do attribution or completion.
+      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
       if (activeTasks.length > 0) {
         const perTask = focusWorkMinutes / activeTasks.length;
-        setFocusTaskMinutes(prev => {
-          const next = { ...prev };
-          activeTasks.forEach(t => {
-            next[t.id] = (next[t.id] || 0) + perTask;
-          });
-          return next;
+        activeTasks.forEach(t => {
+          boundary.taskMinutes[t.id] = (boundary.taskMinutes[t.id] || 0) + perTask;
         });
+        setFocusTaskMinutes(boundary.taskMinutes);
       }
-      const newCycle = focusCycleCount + 1;
-      setFocusCycleCount(newCycle);
-      if (newCycle % 4 === 0) {
-        setFocusPhase('longBreak');
-        setFocusTimerSeconds(focusLongBreakMinutes * 60);
-        playFocusSound('break');
-      } else {
-        setFocusPhase('shortBreak');
-        setFocusTimerSeconds(focusBreakMinutes * 60);
-        playFocusSound('break');
-      }
-    } else {
-      // Break ended → start work
-      setFocusPhase('work');
-      setFocusTimerSeconds(focusWorkMinutes * 60);
-      playFocusSound('work');
-    }
-    setFocusTimerRunning(true);
+      playFocusSound('break');
+    } else playFocusSound('work');
+    return boundary;
   };
   const handleFocusTimerEnd = () => {
-    if (focusDoRef.current?.isPending() || focusEndedRef.current) return;
+    if (focusDoRef.current?.isPending() || (joboEnabled && focusEndedRef.current)) return;
     setFocusTimerRunning(false);
+    const boundary = advanceFocusTimerEnd();
     const next = ({ allCompleted, completedActionId } = {}) => {
-      if (allCompleted) finishExitFocusMode(true, completedActionId);
-      else advanceFocusTimerEnd(completedActionId);
+      if (allCompleted) finishExitFocusMode(true, completedActionId, { ...boundary, endedAt: new Date() });
+      else setFocusTimerRunning(true);
     };
     if (focusPhase !== 'work' || !focusDoRef.current?.settle(next)) next();
   };
@@ -7250,7 +7250,7 @@ const DayPlanner = () => {
     complete: actionId => {
       const found = resolveTaskRef(actionId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
       if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(found.task.id)) return null;
-      return { allCompleted: focusCompleteTask(found.task.id, { exitWhenDone: false }), completedActionId: found.task.id };
+      return { allCompleted: focusCompleteTask(found.task.id, { exitWhenDone: false, fromSettlement: true }), completedActionId: found.task.id };
     },
   });
   focusDoRef.current = focusDo;

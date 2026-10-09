@@ -62,13 +62,10 @@ describe('Focus settlement through the ledger writer', () => {
     await session.save('a', false);
     expect(state.recordJobo.mock.calls[0][0][0]).toMatchObject({ title: 'Write', planSnapshot: { startTime: '09:00' } });
   });
-  it('zero representable minutes still show remainder and support native completion without a timed row', async () => {
-    at = start + 10000;
-    move(paused, running); move(running, paused, 80000); session.settle(next);
-    // 09:00:50 -> 09:02:10 actually contains one full minute. Use 09:00:10 -> 09:01:30.
-    session.dismiss(); session.begin([task]); at = start + 10000;
-    move(paused, running); move(running, paused, 80000); session.settle(next);
-    expect(review.summary).toMatchObject({ recordedMinutes: 0, unrecordedMilliseconds: 80000 });
+  it('equal rounded endpoints still review and support completion without a timed row', async () => {
+    at = start + 40000;
+    move(paused, running); move(running, paused, 40000); session.settle(next);
+    expect(review.summary).toMatchObject({ workMilliseconds: 40000, recordedMinutes: 0, recordedDifferenceMilliseconds: -40000 });
     await session.save('a', true);
     expect(state.recordJobo).not.toHaveBeenCalled();
     expect(state.complete).toHaveBeenCalledOnce();

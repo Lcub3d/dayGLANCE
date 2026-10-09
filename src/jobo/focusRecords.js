@@ -8,7 +8,7 @@ const civilFields = (minute) => {
   return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
 };
 
-/** Only complete civil minutes actually inside this uninterrupted work span. */
+/** Round each civil boundary independently; half-minutes round forward. */
 export function focusMinuteInterval(segment) {
   const { startedAt, endedAt, startOffset, endOffset } = segment;
   if (![startedAt, endedAt, startOffset, endOffset].every(Number.isSafeInteger)
@@ -16,8 +16,8 @@ export function focusMinuteInterval(segment) {
   // A zone/DST change cannot be represented honestly as one civil interval.
   // Keep the existing JOBO coordinates rather than inventing an hour of work.
   if (startOffset !== endOffset) return null;
-  const start = Math.ceil((startedAt - startOffset * 60000) / 60000);
-  const end = Math.floor((endedAt - endOffset * 60000) / 60000);
+  const start = Math.round((startedAt - startOffset * 60000) / 60000);
+  const end = Math.round((endedAt - endOffset * 60000) / 60000);
   if (end <= start) return null;
   const a = civilFields(start), b = civilFields(end);
   return { date: a.date, startTime: a.time, endDate: b.date, endTime: b.time, minutes: end - start };
@@ -33,7 +33,7 @@ export function summarizeFocusCapture(capture) {
   }
   return {
     workMilliseconds, recordedMinutes, clockChanged,
-    unrecordedMilliseconds: Math.max(0, workMilliseconds - recordedMinutes * 60000),
+    recordedDifferenceMilliseconds: recordedMinutes * 60000 - workMilliseconds,
   };
 }
 

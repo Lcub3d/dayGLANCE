@@ -1164,16 +1164,16 @@
     "doReview": {
       "title": "Registra il lavoro concentrato",
       "chooseTask": "A quale attività hai lavorato?",
-      "minutes": "Verranno registrati {{minutes}} minuti interi in Do.",
-      "remainder": "{{seconds}} secondi non possono essere rappresentati come minuti interi e non verranno registrati.",
-      "clockChanged": "L’orologio o il fuso orario è cambiato. Gli intervalli interessati non possono essere registrati.",
-      "unavailable": "JOBO non è disponibile o è in sola lettura. Riprova quando sarà pronto oppure continua senza registrare questo lavoro.",
-      "held": "I dati non sono ancora salvati. JOBO riprova finché questa pagina rimane aperta. Riprova qui per confermare il salvataggio prima di completare l’attività.",
-      "failed": "Impossibile salvare il lavoro. Riprova oppure continua senza attendere.",
+      "minutes": "{{minutes}} min da registrare",
+      "differenceMore": "Circa {{seconds}} secondi in più rispetto al lavoro concentrato.",
+      "differenceLess": "Circa {{seconds}} secondi in meno rispetto al lavoro concentrato.",
+      "clockChanged": "L’orologio o il fuso orario è cambiato. Parte del lavoro non può essere registrata.",
+      "unavailable": "JOBO non è scrivibile. Riprova quando sarà pronto.",
+      "held": "Non ancora salvato. Nuovo tentativo in corso. Salva prima di completare l’attività.",
+      "failed": "Salvataggio non riuscito. Riprova.",
       "completed": "Attività completata",
       "inProgress": "Ancora in corso",
-      "continueWithoutSaving": "Continua senza attendere",
-      "precision": "Vengono registrati solo i minuti interi di ogni segmento di lavoro ininterrotto. Le pause e i riposi sono esclusi."
+      "continueWithoutSaving": "Continua senza attendere"
     }
   },
   "voice": {

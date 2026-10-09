@@ -308,7 +308,7 @@ export async function probeDirectAccess(deps = {}) {
   if (typeof transport.probeStatus === 'function') {
     try { native = await transport.probeStatus(); } catch (err) { native = { error: err?.message ?? String(err) }; }
   }
-  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, pickError: s?.pickError ?? null, native };
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null };
   if (!s?.connected) return { ...head, snapshot: null, merge: null };
   let raw;
   try {
@@ -505,6 +505,8 @@ export function formatDiagnosticsReport({ platform, icloud, available, snapshot,
     );
     if (da.pickError) lines.push(`  last pick:     FAILED: ${da.pickError}`);
     if (da.native !== undefined && da.native !== null) lines.push(`  shell status:  ${typeof da.native === 'string' ? da.native : JSON.stringify(da.native)}`);
+    // An iPhone's roster is its own bookmarked file (Phase 5); elsewhere it is a path in the folder and has no line.
+    if (da.roster) lines.push(`  roster file:   ${da.roster.configured ? `${da.roster.reachable ? 'chosen' : 'chosen, unreachable'} (${da.roster.name ?? none})` : 'not chosen'}`);
     if (da.snapshot) lines.push(...snapshotLines(da.snapshot, '  ', none));
     lines.push(...mergeLines(da.merge, '  ', none));
   }

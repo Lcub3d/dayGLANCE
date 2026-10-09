@@ -20,6 +20,13 @@ const makeNative = (platform = 'android', over = {}) => {
     disconnect: vi.fn(() => bool(true)),
     __platform: platform,
     pickFolder: vi.fn(() => (platform === 'ios' ? 'null' : undefined)),
+    // iOS only: the roster as its own bookmarked file (DirectAccessBridge.swift).
+    ...(platform === 'ios' ? {
+      usersStatus: vi.fn(() => JSON.stringify({ configured: false, name: null, path: null, reachable: false })),
+      readUsers: vi.fn(() => JSON.stringify({ kind: 'error', error: 'no roster file chosen' })),
+      writeUsers: vi.fn(() => 'true'),
+      forgetUsers: vi.fn(() => 'true'),
+    } : {}),
     // Android only: files by path (DirectAccessBridge.kt).
     ...(platform === 'android' ? {
       listFiles: vi.fn(() => '["glance-users.json"]'),
@@ -210,5 +217,30 @@ describe('files by path (Android)', () => {
 
   it('an iPhone has no files by path', () => {
     expect(make(makeNative('ios')).bridge.paths).toBeUndefined();
+  });
+});
+
+describe('the roster as its own bookmarked file (iOS)', () => {
+  it('maps the Swift answers onto the users shape the transport reads, and passes the slot to the picks', async () => {
+    const { bridge, native, w } = make(makeNative('ios'));
+    expect(await bridge.users.status()).toEqual({ configured: false, name: null, path: null, reachable: false });
+    expect(await bridge.users.read()).toEqual({ kind: 'error', error: 'no roster file chosen' });
+    expect(await bridge.users.write('{"users":[]}')).toBe(true);
+    expect(native.writeUsers).toHaveBeenCalledWith('{"users":[]}');
+    expect(await bridge.users.forget()).toBe(true);
+    const picked = bridge.pickFile('users');
+    expect(native.pickFile).toHaveBeenCalledWith('users');
+    w.__dgDirectAccessPicked({ configured: true, name: 'glance-users.json', path: '/x/glance-users.json', reachable: true, slot: 'users' });
+    expect(await picked).toMatchObject({ slot: 'users' });
+    const created = bridge.createFile();
+    expect(native.createFile).toHaveBeenCalledWith('snapshot');
+    w.__dgDirectAccessPicked(null);
+    expect(await created).toBeNull();
+    native.readUsers = () => 'garbage';
+    expect(await bridge.users.read()).toEqual({ kind: 'error', error: 'bad answer from the shell' });
+  });
+
+  it('Android has no users slot', () => {
+    expect(make(makeNative('android')).bridge.users).toBeUndefined();
   });
 });

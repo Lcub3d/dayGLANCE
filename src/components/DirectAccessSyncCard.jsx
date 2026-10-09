@@ -13,7 +13,7 @@ import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/di
  * per-device on/off switch, which mirrors ICloudSyncToggle: turning it off is
  * inert, not destructive — the shared copy and the other devices are untouched.
  */
-const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, transport = directAccessTransport }) => {
+const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, multiUserEnabled = false, transport = directAccessTransport }) => {
   const { t } = useTranslation();
   const status = useDirectAccessStatus(transport);
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,12 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
   };
   const pick = run(() => (ios ? transport.pickFile() : transport.pickFolder()));
   const create = run(() => transport.createFile());
+  // The household roster on an iPhone is a second bookmarked file (Phase 5):
+  // the same two flows, for glance-users.json.
+  const pickRoster = run(() => transport.pickUsersFile());
+  const createRoster = run(() => transport.createUsersFile());
+  const forgetRoster = run(() => transport.forgetUsersFile());
+  const roster = status.roster;
   const disconnect = async () => {
     setBusy(true);
     try { await transport.disconnect(); }
@@ -136,6 +142,31 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
               {t('directAccess.disconnect')}
             </button>
           </div>
+          {ios && multiUserEnabled && roster && (
+            <div className={`pt-2 border-t ${borderClass} space-y-2`}>
+              <p className={`text-xs ${textSecondary}`}>{t('directAccess.iosRosterHint')}</p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className={`text-xs ${textPrimary}`} title={roster.path ?? undefined}>
+                  {roster.configured
+                    ? t('directAccess.rosterChosen', { name: roster.name })
+                    : t('directAccess.rosterNotChosen')}
+                </p>
+                <div className="flex gap-2">
+                  {roster.configured ? (
+                    <>
+                      <button type="button" onClick={pickRoster} disabled={busy} className={button}>{t('directAccess.rosterChange')}</button>
+                      <button type="button" onClick={forgetRoster} disabled={busy} className={button}>{t('directAccess.rosterForget')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={pickRoster} disabled={busy} className={button}>{t('directAccess.rosterChoose')}</button>
+                      <button type="button" onClick={createRoster} disabled={busy} className={button}>{t('directAccess.rosterCreate')}</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

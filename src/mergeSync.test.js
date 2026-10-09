@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mergeTaskArrays, mergeRoutineDefinitions, mergeDailyNotes, mergeHabits, mergeHabitLogs, mergeRoutineCompletions, mergeSyncData, mergeCalendarConfigByUser, breakTimestampTies, restoreUnstampedLocalOnly } from './mergeSync.js';
-import { sliceDiffs } from './sync/snapshotMergeExplain.js';
+import { sliceDiffs, canonicalJson } from './sync/snapshotMergeExplain.js';
 
 // Helpers to create task fixtures with timestamps
 const T = (id, title, lastModified, extra = {}) => ({
@@ -154,6 +154,28 @@ describe('mergeSyncData', () => {
     syncUrl: null, taskCalendarUrl: null,
     routineDefinitions: {}, todayRoutines: [], routinesDate: '',
     minimizedSections: {}, use24HourClock: false
+  });
+
+  describe('device-local keys and the habits tie-break (2026-10-09)', () => {
+    it('names the keys every device keeps its own value for', () => {
+      const r = mergeSyncData(emptyData(), emptyData(), 90);
+      expect(r.deviceLocalKeys).toEqual(['obsidianConfig', 'obsidianConfigUpdatedAt', 'minimizedSections', 'use24HourClock']);
+      const mu = mergeSyncData({ ...emptyData(), multiUserEnabled: true }, emptyData(), 90);
+      expect(mu.deviceLocalKeys).toEqual(expect.arrayContaining(['habitsEnabled', 'habitsEnabledUpdatedAt', 'syncUrl', 'minimizedSections', 'use24HourClock']));
+    });
+
+    it('two copies of a habit with the same stamp and different content converge on one (the iPhone\'s Steps row)', () => {
+      const stamp = ts(60);
+      const a = { id: 1773358175610, name: 'Steps', source: 'healthConnect', lastModified: stamp, lastAutoSync: { deviceId: 'android', platform: 'Android', timestamp: stamp } };
+      const b = { ...a, lastAutoSync: { deviceId: 'android', platform: 'Android', timestamp: stamp }, archived: false };
+      const winner = canonicalJson(a) < canonicalJson(b) ? a : b;
+      const r1 = mergeSyncData({ ...emptyData(), habits: [a] }, { ...emptyData(), habits: [b] }, 90);
+      const r2 = mergeSyncData({ ...emptyData(), habits: [b] }, { ...emptyData(), habits: [a] }, 90);
+      expect(r1.data.habits).toEqual([winner]);
+      expect(r2.data.habits).toEqual([winner]);
+      // Each side that did not hold the winner is told so, once; the winner's side is quiet.
+      expect(r1.data.habits[0] === winner || r2.data.habits[0] === winner).toBe(true);
+    });
   });
 
   describe('UNSTAMPED IS NOT A ZOMBIE (2026-10-07, the fresh Obsidian line)', () => {

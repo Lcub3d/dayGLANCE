@@ -66,8 +66,14 @@ export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) =
   return { merged: t.merged, localChanged: r.localChanged || t.localChanged, remoteChanged: r.remoteChanged || t.remoteChanged };
 };
 
-/** The id-keyed lists the upstream merge resolves by lastModified. */
-const TIMESTAMPED_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks', 'todayRoutines'];
+/**
+ * The id-keyed lists the upstream merge resolves by lastModified. `habits` is
+ * here since 2026-10-09: an iPhone held a copy of the Steps habit with the
+ * same stamp as the folder's but different content (the upstream habit merge
+ * keeps local on a tie), so its dry run read "habits: 1 changed" forever and
+ * the two copies never converged.
+ */
+const TIMESTAMPED_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks', 'todayRoutines', 'habits'];
 
 /** The task lists governed by `deletedTaskIds`, where the epoch restore applies. */
 const TASK_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks'];
@@ -593,6 +599,18 @@ export const mergeSyncData = (local, remote, retentionDays) => {
       if (Object.prototype.hasOwnProperty.call(local, tsKey)) result.data[tsKey] = local[tsKey];
     }
   }
+  // The keys every device keeps its own value for: these, their stamps, and
+  // the UI and device preferences the upstream merge keeps local. A snapshot
+  // file carries whichever device wrote last, no device adopts them from it,
+  // and so a difference in them is never worth a write (sync/snapshotFileSync.js
+  // and the diagnostics dry run read this list; an iPhone's iCloud dry run said
+  // "would write: YES" over use24HourClock and minimizedSections, 2026-10-09).
+  result.deviceLocalKeys = [
+    ...keepLocalKeys,
+    ...keepLocalKeys.map((k) => `${k}UpdatedAt`),
+    'minimizedSections',
+    'use24HourClock',
+  ];
 
   // Preserve the "sticky" `archived` flag across whole-entity LWW. The upstream
   // merge keeps the newer copy WHOLE, so if that copy simply never carried

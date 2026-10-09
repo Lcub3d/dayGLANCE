@@ -26,7 +26,7 @@ describe('describeSliceDiff', () => {
   it('matches id collections by id and names the changed ids', () => {
     const d = describeSliceDiff('tasks', [task(1, { title: 'new' }), task(2), task(3)], [task(1), task(2), task(4)]);
     expect(d.kind).toBe('items');
-    expect(d.summary).toBe('tasks: 1 changed (1), +1 only in result (3), -1 only on other side (4)');
+    expect(d.summary).toBe('tasks: 1 changed (1: title), +1 only in result (3), -1 only on other side (4)');
   });
 
   it('reports a pure reorder as order, not as items', () => {
@@ -57,12 +57,28 @@ describe('describeSliceDiff', () => {
   });
 });
 
+describe('describeSliceDiff names the fields of a changed row', () => {
+  it('lists up to four differing fields per changed id', () => {
+    const d = describeSliceDiff('habits', [{ id: 'h', name: 'Steps', lastModified: 'x', lastAutoSync: { a: 1 } }], [{ id: 'h', name: 'Steps', lastModified: 'x', lastAutoSync: { a: 2 } }]);
+    expect(d.summary).toBe('habits: 1 changed (h: lastAutoSync)');
+    const many = describeSliceDiff('tasks', [{ id: 1, a: 1, b: 1, c: 1, d: 1, e: 1 }], [{ id: 1, a: 2, b: 2, c: 2, d: 2, e: 2 }]);
+    expect(many.summary).toBe('tasks: 1 changed (1: a, b, c, d, …)');
+  });
+});
+
 describe('sliceDiffs', () => {
   it('lists every differing slice, and can ignore slices the first side does not carry', () => {
     const a = { tasks: [task(1)], habitLogs: { d: { h: 1 } } };
     const b = { tasks: [task(1)], habitLogs: { d: { h: 2 } }, weatherZip: '60601' };
     expect(sliceDiffs(a, b).map((d) => d.key)).toEqual(['habitLogs', 'weatherZip']);
     expect(sliceDiffs(a, b, { ignoreDropped: true }).map((d) => d.key)).toEqual(['habitLogs']);
+  });
+
+  it('leaves out the keys it is told to', () => {
+    const a = { tasks: [task(1)], use24HourClock: true, minimizedSections: { a: 1 } };
+    const b = { tasks: [task(1)], use24HourClock: false, minimizedSections: { a: 0 } };
+    expect(sliceDiffs(a, b).map((d) => d.key)).toEqual(['minimizedSections', 'use24HourClock']);
+    expect(sliceDiffs(a, b, { ignoreKeys: ['use24HourClock', 'minimizedSections'] })).toEqual([]);
   });
 });
 
@@ -95,7 +111,7 @@ describe('explainSnapshotMerge with the real merge', () => {
     const r = explainSnapshotMerge({ local, remote: base(), retentionDays: 90, merge: mergeSyncData });
     expect(r.remoteChanged).toBe(true);
     expect(r.wouldWrite).toBe(true);
-    expect(r.fileDiffs.map((d) => d.summary)).toContain('tasks: 1 changed (1)');
+    expect(r.fileDiffs.map((d) => d.summary)).toContain('tasks: 1 changed (1: lastModified, title)');
     expect(r.wouldApply).toBe(false);
   });
 
@@ -105,7 +121,7 @@ describe('explainSnapshotMerge with the real merge', () => {
     const r = explainSnapshotMerge({ local: base(), remote, retentionDays: 90, merge: mergeSyncData });
     expect(r.localChanged).toBe(true);
     expect(r.wouldApply).toBe(true);
-    expect(r.deviceDiffs.map((d) => d.summary)).toContain('tasks: 1 changed (2)');
+    expect(r.deviceDiffs.map((d) => d.summary)).toContain('tasks: 1 changed (2: lastModified, title)');
     expect(r.wouldWrite).toBe(false);
     // An apply flag WITH a device difference is not a flag without one.
     expect(r).toMatchObject({ writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false });
@@ -146,6 +162,22 @@ describe('explainSnapshotMerge with the real merge', () => {
     const unstripped = explainSnapshotMerge({ local, remote: file, retentionDays: 90, merge: mergeSyncData });
     expect(unstripped.wouldWrite).toBe(true);
     expect(unstripped.fileDiffs.map((d) => d.key)).toContain('habitLogs');
+  });
+
+  it('the 2026-10-09 case: device-local keys the merge names are not a write (the iPhone over iCloud)', () => {
+    // Each device keeps its own use24HourClock, minimizedSections and
+    // obsidianConfig; the file holds whichever device wrote last. The real
+    // merge names them (deviceLocalKeys), and they are left out of the file
+    // question entirely.
+    const local = { ...base(), use24HourClock: true, minimizedSections: { inbox: true }, obsidianConfig: { vault: 'phone' }, obsidianConfigUpdatedAt: '2026-10-09T00:00:00.000Z' };
+    const remote = { ...base(), use24HourClock: false, minimizedSections: { inbox: false }, obsidianConfig: { vault: 'mac' }, obsidianConfigUpdatedAt: '2026-10-08T00:00:00.000Z' };
+    const r = explainSnapshotMerge({ local, remote, retentionDays: 90, merge: mergeSyncData });
+    expect(r.fileDiffs).toEqual([]);
+    expect(r.wouldWrite).toBe(false);
+    // A merge that does not name them (a stub, an older wrapper) still reports them.
+    const plain = explainSnapshotMerge({ local, remote, retentionDays: 90, merge: (l) => ({ data: l, localChanged: false, remoteChanged: true }) });
+    expect(plain.fileDiffs.map((d) => d.key)).toEqual(['minimizedSections', 'obsidianConfig', 'obsidianConfigUpdatedAt', 'use24HourClock']);
+    expect(plain.wouldWrite).toBe(true);
   });
 
   it('guard: an order-only difference is reported but does not start a write', () => {

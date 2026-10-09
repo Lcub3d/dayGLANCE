@@ -41,7 +41,9 @@
       "requestFailed": "la solicitud falló",
       "iCloudUnavailable": "iCloud no disponible: {{error}}",
       "CREDENTIAL_INVALID": "El servidor de sincronización ya no acepta el acceso de este dispositivo. Tus cambios están guardados en este dispositivo. Pide a quien administra tu servidor de sincronización que restaure el acceso para este dispositivo.",
-      "QUOTA_EXCEEDED": "El servidor de sincronización ha alcanzado el límite de esta cuenta. Tus cambios están guardados en este dispositivo y la sincronización se reintentará automáticamente. Pide a quien administra tu servidor de sincronización que aumente el límite."
+      "QUOTA_EXCEEDED": "El servidor de sincronización ha alcanzado el límite de esta cuenta. Tus cambios están guardados en este dispositivo y la sincronización se reintentará automáticamente. Pide a quien administra tu servidor de sincronización que aumente el límite.",
+      "directAccessUnavailable": "Carpeta de Direct Access no disponible: {{error}}",
+      "directAccessEncrypted": "El archivo de la carpeta de Direct Access está cifrado y este dispositivo no puede leerlo. No se ha escrito nada en él."
     },
     "vaultUrl": {
       "invalid": "Introduce una URL de vault válida.",
@@ -2047,14 +2049,28 @@
     "confirm": "Borrar todo",
     "working": "Borrando…",
     "partialFailure": "Algunos datos no se pudieron borrar:",
-    "otherDevices": "Los demás dispositivos conservan su propia copia y la restaurarán. Restablécelos de uno en uno: cierra dayGLANCE en todas partes, luego abre un solo dispositivo, restablécelo y ciérralo de nuevo antes de pasar al siguiente."
+    "otherDevices": "Los demás dispositivos conservan su propia copia y la restaurarán. Restablécelos de uno en uno: cierra dayGLANCE en todas partes, luego abre un solo dispositivo, restablécelo y ciérralo de nuevo antes de pasar al siguiente.",
+    "scopeDeviceHintDirectAccess": "La copia en la carpeta de Direct Access se conserva, y este dispositivo puede volver a leerla de inmediato aunque la sincronización esté desactivada. Úsalo solo para corregir un estado local defectuoso, no para empezar de cero.",
+    "scopeEverywhereDirectAccess": "Este dispositivo y la carpeta de Direct Access",
+    "scopeEverywhereDirectAccessHint": "También elimina la copia en la carpeta de Direct Access, de modo que nada la restaure aquí.",
+    "scopeDeviceHintBoth": "Las copias en iCloud y en la carpeta de Direct Access se conservan, y este dispositivo puede volver a leerlas de inmediato aunque la sincronización esté desactivada. Úsalo solo para corregir un estado local defectuoso, no para empezar de cero.",
+    "scopeEverywhereBoth": "Este dispositivo, iCloud y la carpeta de Direct Access",
+    "scopeEverywhereBothHint": "También elimina las copias en iCloud y en la carpeta de Direct Access, de modo que nada las restaure aquí ni al reinstalar."
   },
   "icloudDiag": {
-    "title": "Diagnóstico de iCloud",
-    "hint": "Solo lectura. Informa de lo que este dispositivo ve actualmente en el contenedor de iCloud. No se escribe, elimina ni sincroniza nada.",
+    "title": "Diagnóstico de sincronización",
+    "hint": "Solo lectura. Informa de lo que este dispositivo ve actualmente en cada transporte de sincronización: el contenedor de iCloud, la carpeta de Direct Access, GLANCEvault y WebDAV. No se escribe, elimina ni sincroniza nada.",
     "run": "Ejecutar comprobación",
     "running": "Comprobando…",
     "platform": "Plataforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Contenedor",
     "containerError": "Error de contenedor",
     "available": "DISPONIBLE",
@@ -2096,7 +2112,22 @@
     "no": "no",
     "mergeError": "Error en la simulación de fusión",
     "flagWithoutDiff": "La fusión marcó una escritura aunque nada cambiaría en el archivo. La escritura se omite.",
-    "mergeFlags": "Indicadores de fusión (escribir / aplicar)"
+    "applyFlagWithoutDiff": "La fusión marcó una aplicación aunque nada cambiaría en este dispositivo. La aplicación se omite.",
+    "bothFlagsWithoutDiff": "La fusión marcó una escritura y una aplicación aunque nada cambiaría en el archivo ni en este dispositivo. Ambas se omiten.",
+    "mergeFlags": "Indicadores de fusión (escribir / aplicar)",
+    "directAccessTitle": "Carpeta de Direct Access",
+    "folder": "Carpeta",
+    "folderStatus": "Estado de la carpeta",
+    "folderState": {
+      "connected": "conectada",
+      "disconnected": "no conectada",
+      "unreachable": "inaccesible",
+      "unknown": "desconocido"
+    },
+    "vaultConfig": "Config. del vault (activo / URL / token / cuenta)",
+    "vaultCursor": "Cursor del vault (pull / confirmación push)",
+    "vaultRows": "Filas del vault (pendientes / en cuarentena)",
+    "vaultHalt": "Vault detenido por credenciales"
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",
@@ -2111,6 +2142,33 @@
     "title": "Sincronización con iCloud",
     "onHint": "Activada. Este dispositivo se sincroniza automáticamente con tus otros dispositivos Apple.",
     "offHint": "Desactivada en este dispositivo. La copia en iCloud y tus otros dispositivos no se ven afectados."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sincroniza a través de una carpeta que otra app ya mantiene al día entre tus dispositivos: Google Drive, Dropbox, OneDrive, Syncthing o una carpeta compartida en red. dayGLANCE lee y escribe un archivo allí; esa app lo mueve.",
+    "chooseFolder": "Elegir carpeta…",
+    "changeFolder": "Cambiar carpeta",
+    "chooseFile": "Elegir archivo de sincronización…",
+    "createFile": "Crear archivo de sincronización…",
+    "changeFile": "Cambiar archivo",
+    "notConnectedFile": "No hay ningún archivo de sincronización conectado en este dispositivo.",
+    "rosterChoose": "Elegir lista del hogar…",
+    "rosterCreate": "Crear lista del hogar…",
+    "rosterChange": "Cambiar lista",
+    "rosterForget": "Olvidar lista",
+    "rosterChosen": "Lista del hogar: {{name}}",
+    "rosterNotChosen": "Lista del hogar: no elegida en este dispositivo.",
+    "iosRosterHint": "La lista del hogar es glance-users.json en GLANCE/users de la carpeta compartida. Elige la que crearon tus otros dispositivos o créala ahí.",
+    "disconnect": "Desconectar",
+    "notConnected": "No hay ninguna carpeta conectada en este dispositivo.",
+    "connectedTo": "Sincronizando a través de",
+    "unreachable": "La carpeta no está disponible ahora mismo. La sincronización se reanuda cuando vuelva a estarlo.",
+    "onHint": "Activada. Este dispositivo se sincroniza a través de la carpeta.",
+    "offHint": "Desactivada en este dispositivo. La copia en la carpeta y tus otros dispositivos no se ven afectados.",
+    "pickFailed": "No se pudo conectar la carpeta: {{reason}}",
+    "neverSynced": "Aún no sincronizado",
+    "androidHint": "En Android, elige una carpeta que una app refleje en el almacenamiento de este dispositivo, como Syncthing, FolderSync o Autosync. Las apps de Google Drive y Dropbox no ofrecen sus carpetas aquí.",
+    "iosHint": "En iPhone y iPad, elige el dayglance-sync.json que ya comparten tus otros dispositivos, desde una ubicación de la app Archivos como Nextcloud, Google Drive o Dropbox. Si ningún dispositivo lo ha creado aún, créalo en la carpeta que compartirán."
   },
   "aspire": {
     "title": "Aspire",

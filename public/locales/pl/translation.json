@@ -51,7 +51,9 @@
       "passphraseNeeded": "Podaj powyżej swoje hasło synchronizacji, aby włączyć GLANCEvault.",
       "vaultUnreachable": "Nie można połączyć się z GLANCEvault. Sprawdź adres URL magazynu GLANCEvault i token urządzenia. ({{detail}})",
       "requestFailed": "żądanie nie powiodło się",
-      "iCloudUnavailable": "iCloud niedostępny: {{error}}"
+      "iCloudUnavailable": "iCloud niedostępny: {{error}}",
+      "directAccessUnavailable": "Folder Direct Access niedostępny: {{error}}",
+      "directAccessEncrypted": "Plik w folderze Direct Access jest zaszyfrowany i to urządzenie nie może go odczytać. Nic do niego nie zapisano."
     },
     "vaultUrl": {
       "invalid": "Podaj prawidłowy adres URL magazynu GLANCEvault.",
@@ -2140,14 +2142,28 @@
     "confirm": "Usuń wszystko",
     "working": "Usuwanie…",
     "partialFailure": "Nie udało się wyczyścić niektórych danych:",
-    "otherDevices": "Pozostałe urządzenia zachowują własną kopię i ją przywrócą. Resetuj je pojedynczo: zamknij dayGLANCE wszędzie, następnie otwórz jedno urządzenie, zresetuj je i zamknij ponownie przed przejściem do następnego."
+    "otherDevices": "Pozostałe urządzenia zachowują własną kopię i ją przywrócą. Resetuj je pojedynczo: zamknij dayGLANCE wszędzie, następnie otwórz jedno urządzenie, zresetuj je i zamknij ponownie przed przejściem do następnego.",
+    "scopeDeviceHintDirectAccess": "Kopia w folderze Direct Access zostaje zachowana, a to urządzenie może ją od razu odczytać ponownie, nawet gdy synchronizacja jest wyłączona. Używaj tego tylko do naprawy błędnego stanu lokalnego, nie do rozpoczęcia od nowa.",
+    "scopeEverywhereDirectAccess": "To urządzenie i folder Direct Access",
+    "scopeEverywhereDirectAccessHint": "Usuwa także kopię w folderze Direct Access, więc nic jej tu nie przywróci.",
+    "scopeDeviceHintBoth": "Kopie w iCloud i w folderze Direct Access zostają zachowane, a to urządzenie może je od razu odczytać ponownie, nawet gdy synchronizacja jest wyłączona. Używaj tego tylko do naprawy błędnego stanu lokalnego, nie do rozpoczęcia od nowa.",
+    "scopeEverywhereBoth": "To urządzenie, iCloud i folder Direct Access",
+    "scopeEverywhereBothHint": "Usuwa także kopie w iCloud i w folderze Direct Access, więc nic ich nie przywróci ani tutaj, ani po ponownej instalacji."
   },
   "icloudDiag": {
-    "title": "Diagnostyka iCloud",
-    "hint": "Tylko do odczytu. Pokazuje, co to urządzenie aktualnie widzi w kontenerze iCloud. Nic nie jest zapisywane, usuwane ani synchronizowane.",
+    "title": "Diagnostyka synchronizacji",
+    "hint": "Tylko do odczytu. Pokazuje, co to urządzenie aktualnie widzi w każdym transporcie synchronizacji: kontenerze iCloud, folderze Direct Access, GLANCEvault i WebDAV. Nic nie jest zapisywane, usuwane ani synchronizowane.",
     "run": "Uruchom sprawdzenie",
     "running": "Sprawdzanie…",
     "platform": "Platforma",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Kontener",
     "containerError": "Błąd kontenera",
     "available": "DOSTĘPNY",
@@ -2189,7 +2205,22 @@
     "no": "nie",
     "mergeError": "Błąd próbnego scalania",
     "flagWithoutDiff": "Scalanie oznaczyło zapis, choć w pliku nic by się nie zmieniło. Zapis jest pomijany.",
-    "mergeFlags": "Flagi scalania (zapis / zastosowanie)"
+    "applyFlagWithoutDiff": "Scalanie oznaczyło zastosowanie, choć na tym urządzeniu nic by się nie zmieniło. Zastosowanie jest pomijane.",
+    "bothFlagsWithoutDiff": "Scalanie oznaczyło zapis i zastosowanie, choć ani w pliku, ani na tym urządzeniu nic by się nie zmieniło. Oba są pomijane.",
+    "mergeFlags": "Flagi scalania (zapis / zastosowanie)",
+    "directAccessTitle": "Folder Direct Access",
+    "folder": "Folder",
+    "folderStatus": "Stan folderu",
+    "folderState": {
+      "connected": "połączony",
+      "disconnected": "niepołączony",
+      "unreachable": "niedostępny",
+      "unknown": "nieznany"
+    },
+    "vaultConfig": "Konfiguracja vault (włączony / URL / token / konto)",
+    "vaultCursor": "Kursor vault (pull / potwierdzenie push)",
+    "vaultRows": "Wiersze vault (oczekujące / kwarantanna)",
+    "vaultHalt": "Blokada poświadczeń vault"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",
@@ -2204,6 +2235,33 @@
     "title": "Synchronizacja iCloud",
     "onHint": "Włączona. To urządzenie synchronizuje się automatycznie z Twoimi innymi urządzeniami Apple.",
     "offHint": "Wyłączona na tym urządzeniu. Kopia w iCloud i Twoje inne urządzenia pozostają bez zmian."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Synchronizuj przez folder, który inna aplikacja już utrzymuje w zgodzie między Twoimi urządzeniami: Google Drive, Dropbox, OneDrive, Syncthing lub udział sieciowy. dayGLANCE odczytuje i zapisuje tam jeden plik; ta aplikacja go przenosi.",
+    "chooseFolder": "Wybierz folder…",
+    "changeFolder": "Zmień folder",
+    "chooseFile": "Wybierz plik synchronizacji…",
+    "createFile": "Utwórz plik synchronizacji…",
+    "changeFile": "Zmień plik",
+    "notConnectedFile": "Na tym urządzeniu nie połączono pliku synchronizacji.",
+    "rosterChoose": "Wybierz listę domowników…",
+    "rosterCreate": "Utwórz listę domowników…",
+    "rosterChange": "Zmień listę",
+    "rosterForget": "Zapomnij listę",
+    "rosterChosen": "Lista domowników: {{name}}",
+    "rosterNotChosen": "Lista domowników: nie wybrano na tym urządzeniu.",
+    "iosRosterHint": "Lista domowników to glance-users.json w GLANCE/users współdzielonego folderu. Wybierz tę, którą utworzyły Twoje inne urządzenia, albo utwórz ją tam.",
+    "disconnect": "Odłącz",
+    "notConnected": "Na tym urządzeniu nie połączono żadnego folderu.",
+    "connectedTo": "Synchronizacja przez",
+    "unreachable": "Folder jest teraz niedostępny. Synchronizacja wznowi się, gdy znów będzie dostępny.",
+    "onHint": "Włączona. To urządzenie synchronizuje się przez folder.",
+    "offHint": "Wyłączona na tym urządzeniu. Kopia w folderze i Twoje inne urządzenia pozostają bez zmian.",
+    "pickFailed": "Nie udało się połączyć folderu: {{reason}}",
+    "neverSynced": "Jeszcze nie zsynchronizowano",
+    "androidHint": "Na Androidzie wybierz folder, który jakaś aplikacja odzwierciedla w pamięci tego urządzenia, np. Syncthing, FolderSync lub Autosync. Aplikacje Google Drive i Dropbox nie udostępniają tutaj swoich folderów.",
+    "iosHint": "Na iPhonie i iPadzie wybierz plik dayglance-sync.json, który Twoje inne urządzenia już współdzielą, z lokalizacji w aplikacji Pliki, takiej jak Nextcloud, Google Drive lub Dropbox. Jeśli żadne urządzenie jeszcze go nie utworzyło, utwórz go w folderze, który będą współdzielić."
   },
   "aspire": {
     "title": "Aspire",

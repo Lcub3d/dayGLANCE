@@ -19,6 +19,9 @@ describe('canEnableMultiUser', () => {
 
   it('is true when the GLANCEvault tier is enabled', () => {
     expect(canEnableMultiUser({ cloudSyncEnabled: false, vaultEnabled: true })).toBe(true);
+    // A Direct Access folder is a shared destination too (docs/direct-access-sync.md).
+    expect(canEnableMultiUser({ cloudSyncEnabled: false, vaultEnabled: false, directAccessEnabled: true })).toBe(true);
+    expect(canEnableMultiUser({ directAccessEnabled: false })).toBe(false);
   });
 });
 
@@ -84,5 +87,18 @@ describe('canSyncUserRoster', () => {
 
   it('defaults to hidden with no arguments', () => {
     expect(canSyncUserRoster()).toBe(false);
+  });
+
+  // Phase 5 of docs/direct-access-sync.md: a connected folder carries the roster.
+  it('is shown with multi-user on and a Direct Access folder connected, and nothing else', () => {
+    expect(canSyncUserRoster({ multiUserEnabled: true, directAccessConnected: true })).toBe(true);
+    expect(canSyncUserRoster({ multiUserEnabled: false, directAccessConnected: true })).toBe(false);
+  });
+});
+
+describe('multiUserUnavailableReason with a Direct Access folder', () => {
+  it('a connected folder is a shared destination: no reason to show', () => {
+    expect(multiUserUnavailableReason({ cloudSyncConfigured: false, icloudAvailable: true, directAccessConnected: true })).toBe('none');
+    expect(multiUserUnavailableReason({ cloudSyncConfigured: false, icloudAvailable: true, directAccessConnected: false })).toBe('icloud-only');
   });
 });

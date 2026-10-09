@@ -3,6 +3,7 @@
 // mergeTaskArrays pins timestampField rather than re-exporting the alias
 // directly (which would default to `updatedAt`).
 import { mergeArrayById, mergeSyncData as upstreamMergeSyncData, pruneTombstones } from '@glance-apps/sync';
+import { canonicalJson } from './sync/snapshotMergeExplain.js';
 import { mergeDeferrals } from './utils/deferrals.js';
 import { mergePlanTrail, sameTrail } from './utils/planTrail.js';
 import {
@@ -18,8 +19,106 @@ import { containObsidianGhostRows } from './utils/obsidianGhostRows.js';
 import { mergeDayWindowMaps, dayWindowMapsEqual, migrateDayWindows } from './sync/dayWindowSync.js';
 import { mergeJoboCollections } from './jobo/ledger.js';
 
-export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) =>
-  mergeArrayById(local, remote, deletedIds, syncHorizon, { timestampField: 'lastModified' });
+/**
+ * Resolves the one case the id-keyed merge cannot: the same id on both sides
+ * with EQUAL timestamps and DIFFERENT content. The upstream merge keeps the
+ * local copy there, which is fine between a device and a server (the server
+ * is one copy) and never converges between two devices sharing a file: each
+ * writes its own copy, reads the other's, keeps its own, writes again. Two
+ * Macs did exactly that over a Nextcloud folder for most of an hour
+ * (2026-10-05), on two Obsidian-imported inbox tasks whose bookkeeping fields
+ * (not edit-stamped by design, utils/stampTimestamps.js) had drifted while one
+ * Mac was cut off from the vault.
+ *
+ * The pick is a total order on content (the canonical JSON that sorts lower),
+ * so both devices choose the same copy whichever side they see it from, and
+ * choosing it twice changes nothing. Equal stamps mean no user edit separates
+ * the copies, only bookkeeping either device re-derives, so which copy wins
+ * matters less than that they agree.
+ *
+ * @returns {{merged: Array, localChanged: boolean, remoteChanged: boolean}}
+ */
+export function breakTimestampTies(merged, local, remote, tsField = 'lastModified') {
+  const byId = (list) => new Map((list || []).filter((t) => t && t.id !== undefined).map((t) => [String(t.id), t]));
+  const localById = byId(local);
+  const remoteById = byId(remote);
+  let localChanged = false;
+  let remoteChanged = false;
+  const out = (merged || []).map((item) => {
+    if (!item || item.id === undefined) return item;
+    const l = localById.get(String(item.id));
+    const r = remoteById.get(String(item.id));
+    if (!l || !r) return item;
+    if (new Date(l[tsField] || 0).getTime() !== new Date(r[tsField] || 0).getTime()) return item;
+    const cl = canonicalJson(l);
+    const cr = canonicalJson(r);
+    if (cl === cr) return item;
+    const pick = cl < cr ? l : r;
+    if (pick === r) localChanged = true; else remoteChanged = true;
+    return pick;
+  });
+  return { merged: out, localChanged, remoteChanged };
+}
+
+export const mergeTaskArrays = (local, remote, deletedIds, syncHorizon = null) => {
+  const r = mergeArrayById(local, remote, deletedIds, syncHorizon, { timestampField: 'lastModified' });
+  const t = breakTimestampTies(r.merged, local, remote);
+  return { merged: t.merged, localChanged: r.localChanged || t.localChanged, remoteChanged: r.remoteChanged || t.remoteChanged };
+};
+
+/**
+ * The id-keyed lists the upstream merge resolves by lastModified. `habits` is
+ * here since 2026-10-09: an iPhone held a copy of the Steps habit with the
+ * same stamp as the folder's but different content (the upstream habit merge
+ * keeps local on a tie), so its dry run read "habits: 1 changed" forever and
+ * the two copies never converged.
+ */
+const TIMESTAMPED_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks', 'todayRoutines', 'habits'];
+
+/** The task lists governed by `deletedTaskIds`, where the epoch restore applies. */
+const TASK_LISTS = ['tasks', 'unscheduledTasks', 'recycleBin', 'recurringTasks'];
+
+/** A stamp that means "not stamped yet", not "ancient": absent, or the epoch. */
+const isUnstamped = (ts) => !ts || !(new Date(ts).getTime() > 0);
+
+/**
+ * Keeps local-only tasks the upstream fence dropped for carrying no real stamp.
+ *
+ * The fence (mergeArrayById): a local-only task whose lastModified is older
+ * than the remote's `tombstonePrunedBefore` is presumed deleted elsewhere with
+ * its tombstone already pruned, and is dropped rather than uploaded. Right for
+ * a task with a real old stamp. Wrong for a fresh Obsidian import or a bridge
+ * inbound row, which carry lastModified = epoch ON PURPOSE (obsidian.js,
+ * obsidianBridgeInbound.js) so that any real edit elsewhere outranks them: the
+ * fence read 1970 as ancient, so the file tier never uploaded a fresh note
+ * line, and the apply then dropped it from state every cycle while the rescue
+ * put it back (two Macs, 2026-10-07: "unscheduledTasks: -2 only on other side
+ * (obsidian-dg-…)" on every check). The vault tier carried such tasks all
+ * along; the file tier now does too.
+ *
+ * A task with ANY tombstone stays dropped: every tombstone is newer than the
+ * epoch, so the deletion wins exactly as the upstream rule has it. Order-
+ * independent and idempotent: the restored copy is appended, and a second
+ * merge finds it on the remote side and keeps it by the normal rule.
+ *
+ * @returns {{merged: Array, restored: number}}
+ */
+export function restoreUnstampedLocalOnly(merged, local, remote, deletedIds = {}) {
+  const have = new Set((merged || []).filter((t) => t && t.id !== undefined).map((t) => String(t.id)));
+  const onRemote = new Set((remote || []).filter((t) => t && t.id !== undefined).map((t) => String(t.id)));
+  const out = [...(merged || [])];
+  let restored = 0;
+  for (const t of local || []) {
+    if (!t || t.id === undefined) continue;
+    const id = String(t.id);
+    if (have.has(id) || onRemote.has(id)) continue;   // kept, or resolved against a remote copy
+    if (!isUnstamped(t.lastModified)) continue;        // a real old stamp: the fence's zombie call stands
+    if (deletedIds && deletedIds[id]) continue;        // deleted somewhere: stays deleted
+    out.push(t);
+    restored += 1;
+  }
+  return { merged: out, restored };
+}
 
 // mergeSyncData (since @glance-apps/sync v1.3.0) merges the multi-user roster
 // (`users`, last-write-wins per user keyed by `syncId`) while deliberately
@@ -269,6 +368,27 @@ const tombstoneMapsEqual = (a = {}, b = {}) => {
  */
 export const mergeSyncData = (local, remote, retentionDays) => {
   const result = upstreamMergeSyncData(local, remote, retentionDays);
+  // Unstamped local-only tasks are not zombies (restoreUnstampedLocalOnly):
+  // keep them, and flag the write that uploads them. The union of both sides'
+  // tombstones is what the upstream merge judged them against.
+  const allTombstones = { ...(local?.deletedTaskIds || {}), ...(remote?.deletedTaskIds || {}) };
+  for (const key of TASK_LISTS) {
+    if (!Array.isArray(result.data?.[key])) continue;
+    const r = restoreUnstampedLocalOnly(result.data[key], local?.[key], remote?.[key], allTombstones);
+    if (r.restored) {
+      result.data[key] = r.merged;
+      result.remoteChanged = true;
+    }
+  }
+  // Equal-stamp ties converge on one copy (breakTimestampTies). Runs before
+  // the carries below so a sticky field is restored onto the picked copy.
+  for (const key of TIMESTAMPED_LISTS) {
+    if (!Array.isArray(result.data?.[key])) continue;
+    const t = breakTimestampTies(result.data[key], local?.[key], remote?.[key]);
+    result.data[key] = t.merged;
+    if (t.localChanged) result.localChanged = true;
+    if (t.remoteChanged) result.remoteChanged = true;
+  }
   // Tombstone GC is its OWN fixed 60-day policy (src/sync/tombstoneRetention.js),
   // NOT the user's "Keep past events" window (retentionDays). The upstream merge
   // prunes completedTaskUids at retentionDays; that is overridden below too
@@ -479,6 +599,18 @@ export const mergeSyncData = (local, remote, retentionDays) => {
       if (Object.prototype.hasOwnProperty.call(local, tsKey)) result.data[tsKey] = local[tsKey];
     }
   }
+  // The keys every device keeps its own value for: these, their stamps, and
+  // the UI and device preferences the upstream merge keeps local. A snapshot
+  // file carries whichever device wrote last, no device adopts them from it,
+  // and so a difference in them is never worth a write (sync/snapshotFileSync.js
+  // and the diagnostics dry run read this list; an iPhone's iCloud dry run said
+  // "would write: YES" over use24HourClock and minimizedSections, 2026-10-09).
+  result.deviceLocalKeys = [
+    ...keepLocalKeys,
+    ...keepLocalKeys.map((k) => `${k}UpdatedAt`),
+    'minimizedSections',
+    'use24HourClock',
+  ];
 
   // Preserve the "sticky" `archived` flag across whole-entity LWW. The upstream
   // merge keeps the newer copy WHOLE, so if that copy simply never carried

@@ -7,6 +7,7 @@ import {
   formatBytes,
 } from '../utils/icloudDiagnostics.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
+import { directAccessTransport } from '../sync/directAccessTransport.js';
 
 /**
  * Read-only readout of what this device sees in the iCloud container.
@@ -44,6 +45,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
         localStorage: typeof window !== 'undefined' ? window.localStorage : null,
         buildSyncPayload: syncCtx?.buildSyncPayload ?? null,
         getSyncRetentionDays: syncCtx?.getSyncRetentionDays ?? null,
+        directAccess: directAccessTransport,
       }));
     } finally {
       setBusy(false);
@@ -73,6 +75,74 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
 
   const snapshotLabel = (s) => t(`icloudDiag.state.${s.state}`, { defaultValue: s.state });
 
+  const SnapshotRows = ({ snapshot }) => (
+    <>
+      <Row label={t('icloudDiag.snapshot')} value={snapshotLabel(snapshot)} />
+      {/* Only when there are real file bytes. A sentinel response is the
+          bridge's status object, not a file, and showing its length as a
+          size reads as though a tiny file exists. */}
+      {(snapshot.state === 'present' || snapshot.bytes > 0) && (
+        <>
+          <Row label={t('icloudDiag.size')} value={formatBytes(snapshot.bytes)} />
+          <Row label={t('icloudDiag.lastModified')} value={snapshot.lastModified ?? t('icloudDiag.none')} />
+          <Row
+            label={t('icloudDiag.remoteCounts')}
+            value={`${snapshot.taskCount ?? t('icloudDiag.none')} / ${snapshot.inboxCount ?? t('icloudDiag.none')}`}
+          />
+        </>
+      )}
+      {snapshot.error && (
+        <Row label={t('icloudDiag.snapshotError')} value={snapshot.error} />
+      )}
+    </>
+  );
+
+  // The cycle's merge, run against the file without applying or writing,
+  // through the same comparison the cycle decides by
+  // (sync/snapshotMergeExplain.js). "Would write" and "would apply" are what
+  // the cycle would do; the merge flags are what the merge said; the two lists
+  // are what the result really differs in. A slice that differs on every run
+  // with nothing edited is a value that cannot converge. This is how an idle
+  // Mac rewriting the file every 15 s got named (2026-10-05).
+  const MergeRows = ({ merge }) => {
+    if (!merge) return null;
+    if (merge.error) return <Row label={t('icloudDiag.mergeError')} value={merge.error} />;
+    return (
+      <>
+        <Row
+          label={t('icloudDiag.wouldWrite')}
+          value={merge.wouldWrite ? t('icloudDiag.yes') : t('icloudDiag.no')}
+          tone={merge.wouldWrite ? 'text-amber-600 dark:text-amber-400' : undefined}
+        />
+        <Row
+          label={t('icloudDiag.wouldApply')}
+          value={merge.wouldApply ? t('icloudDiag.yes') : t('icloudDiag.no')}
+        />
+        <Row
+          label={t('icloudDiag.mergeFlags')}
+          value={`${merge.remoteChanged ? t('icloudDiag.yes') : t('icloudDiag.no')} / ${merge.localChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}`}
+        />
+        <Row
+          label={t('icloudDiag.fileDiffers')}
+          value={merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
+        />
+        <Row
+          label={t('icloudDiag.deviceDiffers')}
+          value={merge.deviceDiffs.length ? merge.deviceDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
+        />
+        {merge.flagWithoutDiff && (
+          <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+            {merge.writeFlagWithoutDiff && merge.applyFlagWithoutDiff
+              ? t('icloudDiag.bothFlagsWithoutDiff')
+              : merge.applyFlagWithoutDiff
+                ? t('icloudDiag.applyFlagWithoutDiff')
+                : t('icloudDiag.flagWithoutDiff')}
+          </p>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className={`rounded-lg border ${borderClass} p-3 space-y-2`}>
       <div className="flex items-center justify-between gap-2">
@@ -94,7 +164,11 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
       {report && (
         <>
           <div className="pt-1">
-            <Row label={t('icloudDiag.platform')} value={report.platform} />
+            <Row label={t('icloudDiag.platform')} value={t(`icloudDiag.platformName.${report.platform}`, { defaultValue: report.platform })} />
+            {/* The iCloud rows only where iCloud exists; elsewhere they could
+                only say "not probeable / unsupported / never". The Direct
+                Access block below has always been conditional the same way. */}
+            {(report.icloud ?? true) && (<>
             <Row
               label={t('icloudDiag.container')}
               value={
@@ -109,23 +183,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
             {report.available.error && (
               <Row label={t('icloudDiag.containerError')} value={report.available.error} />
             )}
-            <Row label={t('icloudDiag.snapshot')} value={snapshotLabel(report.snapshot)} />
-            {/* Only when there are real file bytes. A sentinel response is the
-                bridge's status object, not a file, and showing its length as a
-                size reads as though a tiny file exists. */}
-            {(report.snapshot.state === 'present' || report.snapshot.bytes > 0) && (
-              <>
-                <Row label={t('icloudDiag.size')} value={formatBytes(report.snapshot.bytes)} />
-                <Row label={t('icloudDiag.lastModified')} value={report.snapshot.lastModified ?? t('icloudDiag.none')} />
-                <Row
-                  label={t('icloudDiag.remoteCounts')}
-                  value={`${report.snapshot.taskCount ?? t('icloudDiag.none')} / ${report.snapshot.inboxCount ?? t('icloudDiag.none')}`}
-                />
-              </>
-            )}
-            {report.snapshot.error && (
-              <Row label={t('icloudDiag.snapshotError')} value={report.snapshot.error} />
-            )}
+            <SnapshotRows snapshot={report.snapshot} />
 
             {/* The in-app preference, which #1333's "start fresh on this device"
                 sets. Without this row a device with a perfectly reachable
@@ -141,6 +199,7 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
                 show the WebDAV key, so an iCloud-only device always read "never"
                 — true of WebDAV, and silent about the tier it actually used. */}
             <Row label={t('icloudDiag.icloudSynced')} value={report.transports.icloud?.lastSynced ?? t('icloudDiag.never')} />
+            </>)}
 
             {/* The other transports. Without these, an unavailable container
                 leaves "so where did this data come from?" unanswerable. */}
@@ -156,54 +215,66 @@ const ICloudDiagnostics = ({ darkMode, textPrimary, textSecondary, borderClass }
               value={report.transports.vault.configured ? t('icloudDiag.configured') : t('icloudDiag.notConfigured')}
             />
             <Row label={t('icloudDiag.vaultSynced')} value={report.transports.vault.lastSynced ?? t('icloudDiag.never')} />
+            {report.transports.vault.hasConfig && (
+              <>
+                <Row
+                  label={t('icloudDiag.vaultConfig')}
+                  value={[report.transports.vault.enabled, report.transports.vault.hasUrl, report.transports.vault.hasToken, report.transports.vault.hasAccountId]
+                    .map((v) => (v ? t('icloudDiag.yes') : t('icloudDiag.no'))).join(' / ')}
+                  tone={report.transports.vault.configured ? undefined : 'text-amber-600 dark:text-amber-400'}
+                />
+                <Row
+                  label={t('icloudDiag.vaultCursor')}
+                  value={`${report.transports.vault.highWaterMark ?? t('icloudDiag.none')} / ${report.transports.vault.pushAck ?? t('icloudDiag.none')}`}
+                />
+                <Row
+                  label={t('icloudDiag.vaultRows')}
+                  value={`${report.transports.vault.dirtyCount} / ${report.transports.vault.quarantineCount}`}
+                  tone={report.transports.vault.quarantineCount > 0 ? 'text-amber-600 dark:text-amber-400' : undefined}
+                />
+                {report.transports.vault.credentialHalt && (
+                  <Row
+                    label={t('icloudDiag.vaultHalt')}
+                    value={`${report.transports.vault.credentialHalt.at ?? '?'} ${report.transports.vault.credentialHalt.message ?? ''}`}
+                    tone="text-amber-600 dark:text-amber-400"
+                  />
+                )}
+              </>
+            )}
 
             <Row
               label={t('icloudDiag.localCounts')}
               value={`${report.local.taskCount} / ${report.local.inboxCount}`}
             />
 
-            {/* The cycle's merge, run against the file without applying or
-                writing, through the same comparison the cycle decides by
-                (sync/snapshotMergeExplain.js). "Would write" and "would apply"
-                are what the cycle would do; the merge flags are what the merge
-                said; the two lists are what the result really differs in. A
-                slice that differs on every run with nothing edited is a value
-                that cannot converge. This is how an idle Mac rewriting the file
-                every 15 s got named (2026-10-05). */}
-            {report.merge && !report.merge.error && (
-              <>
-                <Row
-                  label={t('icloudDiag.wouldWrite')}
-                  value={report.merge.wouldWrite ? t('icloudDiag.yes') : t('icloudDiag.no')}
-                  tone={report.merge.wouldWrite ? 'text-amber-600 dark:text-amber-400' : undefined}
-                />
-                <Row
-                  label={t('icloudDiag.wouldApply')}
-                  value={report.merge.wouldApply ? t('icloudDiag.yes') : t('icloudDiag.no')}
-                />
-                <Row
-                  label={t('icloudDiag.mergeFlags')}
-                  value={`${report.merge.remoteChanged ? t('icloudDiag.yes') : t('icloudDiag.no')} / ${report.merge.localChanged ? t('icloudDiag.yes') : t('icloudDiag.no')}`}
-                />
-                <Row
-                  label={t('icloudDiag.fileDiffers')}
-                  value={report.merge.fileDiffs.length ? report.merge.fileDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
-                />
-                <Row
-                  label={t('icloudDiag.deviceDiffers')}
-                  value={report.merge.deviceDiffs.length ? report.merge.deviceDiffs.map((d) => d.summary).join('; ') : t('icloudDiag.none')}
-                />
-                {report.merge.flagWithoutDiff && (
-                  <p className="text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded p-2">
-                    {t('icloudDiag.flagWithoutDiff')}
-                  </p>
-                )}
-              </>
-            )}
-            {report.merge?.error && (
-              <Row label={t('icloudDiag.mergeError')} value={report.merge.error} />
-            )}
+            {(report.icloud ?? true) && <MergeRows merge={report.merge} />}
           </div>
+
+          {/* The Direct Access folder, on platforms that have the bridge: the
+              same file readout and dry run, through the transport the cycle
+              uses. Two Macs trading rewrites of an identical Nextcloud file
+              while the iCloud file held still (2026-10-05) could not be
+              explained from this panel until it looked at that file too. */}
+          {report.directAccess && (
+            <div className={`pt-2 border-t ${borderClass}`}>
+              <p className={`text-xs font-medium ${textPrimary} pb-1`}>{t('icloudDiag.directAccessTitle')}</p>
+              <Row
+                label={t('icloudDiag.folder')}
+                value={report.directAccess.name ?? t('icloudDiag.none')}
+              />
+              <Row
+                label={t('icloudDiag.folderStatus')}
+                value={t(`icloudDiag.folderState.${report.directAccess.status}`, { defaultValue: report.directAccess.status })}
+                tone={report.directAccess.status === 'unreachable' ? 'text-amber-600 dark:text-amber-400' : undefined}
+              />
+              <Row
+                label={t('icloudDiag.syncPref')}
+                value={report.directAccess.enabled === false ? t('icloudDiag.off') : t('icloudDiag.on')}
+              />
+              {report.directAccess.snapshot && <SnapshotRows snapshot={report.directAccess.snapshot} />}
+              <MergeRows merge={report.directAccess.merge} />
+            </div>
+          )}
 
           {/* Flag the state the user would want to know about but cannot see:
               this device holds data and is NOT syncing it anywhere.

@@ -44,6 +44,7 @@ import androidx.webkit.WebViewAssetLoader
 import com.dayglance.app.BuildConfig
 import com.dayglance.app.billing.BillingManager
 import com.dayglance.app.billing.SubscriptionBridge
+import com.dayglance.app.bridge.DirectAccessBridge
 import com.dayglance.app.bridge.NativeBridge
 import com.dayglance.app.bridge.ObsidianBridge
 import com.dayglance.app.bridge.SpeechBridge
@@ -70,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var nativeBridge: NativeBridge
     private lateinit var obsidianBridge: ObsidianBridge
+    private lateinit var directAccessBridge: DirectAccessBridge
     // Native GLANCEvault SSE reader (Path 2). Owns the /events socket + lifecycle;
     // pushes frames into the WebView. Foreground/background is driven from onStart/
     // onStop; the renderer drives enable/disable via the NativeBridge callbacks.
@@ -148,6 +150,23 @@ class MainActivity : AppCompatActivity() {
         callback?.onReceiveValue(if (uri != null) arrayOf(uri) else emptyArray())
     }
 
+    // Direct Access sync (docs/direct-access-sync.md): the SAF tree picker,
+    // launched from the web settings card through DirectAccessBridge. The
+    // persisted grant is what keeps the folder across reboots (the same flow
+    // SettingsActivity uses for the Obsidian vault); the result goes back to
+    // the page through the callback its adapter registered.
+    private val directAccessPicker = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+        }
+        directAccessBridge.onFolderPicked(uri)
+    }
+
     // Registered in onCreate (before the activity starts) — safe to call from any thread
     private val requestHealthPermissions = registerForActivityResult(
         PermissionController.createRequestPermissionResultContract()
@@ -163,6 +182,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+        lastLocaleTag = resources.configuration.locales[0].toLanguageTag()
         splashScreen.setKeepOnScreenCondition { !webViewReady || !appReady || !billingReady }
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -243,6 +263,11 @@ class MainActivity : AppCompatActivity() {
         healthRepository = HealthRepository(this)
         subscriptionBridge = SubscriptionBridge(billingManager, dataStore, webView)
         obsidianBridge = ObsidianBridge(this, webView)
+        directAccessBridge = DirectAccessBridge(this, webView) {
+            // pickFolder() arrives on the JavascriptInterface thread; the
+            // launcher must run on the main thread.
+            runOnUiThread { directAccessPicker.launch(null) }
+        }
 
         // Native SSE reader. frameSink hops to the main thread and pushes the JSON
         // message into the renderer's bridge receiver. The message is already valid
@@ -465,6 +490,8 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(nativeBridge, "DayGlanceNative")
         // Expose Obsidian vault methods on the same interface name (separate object)
         webView.addJavascriptInterface(obsidianBridge, "DayGlanceObsidian")
+        // Direct Access sync folder — window.DayGlanceDirectAccess
+        webView.addJavascriptInterface(directAccessBridge, "DayGlanceDirectAccess")
         // Expose subscription/billing methods — window.DayGlanceBilling
         webView.addJavascriptInterface(subscriptionBridge, "DayGlanceBilling")
 
@@ -649,9 +676,42 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // The app language last seen, so a configuration change that is not a
+    // language change (rotation, resize) does not rebuild every widget.
+    private var lastLocaleTag: String? = null
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         applyStatusBarAppearance()
+        onLocaleMaybeChanged(newConfig)
+    }
+
+    /**
+     * configChanges includes locale, so a language change lands here instead of
+     * recreating the activity and reloading the WebView. That covers both ways
+     * the app language changes on Android 13+: the in-app picker (through
+     * NativeBridge.setAppLocale) and Settings > Apps > dayGLANCE > Language.
+     * Either way the native surfaces are rebuilt in the new language and, for an
+     * explicit app language, the web UI is told, so a choice made in Settings
+     * shows up without a restart.
+     */
+    private fun onLocaleMaybeChanged(config: Configuration) {
+        val tag = config.locales[0].toLanguageTag()
+        if (tag == lastLocaleTag) return
+        lastLocaleTag = tag
+        com.dayglance.app.bridge.LocaleBridge.refreshNativeSurfaces(this)
+        // A null app tag means the app follows the system (or this is Android 12
+        // or older, where a system language change lands here too); the web UI's
+        // own choice stands then.
+        val appTag = com.dayglance.app.bridge.LocaleBridge.currentTag(this) ?: return
+        if (!::webView.isInitialized) return
+        val arg = JSONObject.quote(appTag)
+        webView.post {
+            webView.evaluateJavascript(
+                "(function(){ if (window.__dayglanceAppLocaleChanged) window.__dayglanceAppLocaleChanged($arg); })();",
+                null
+            )
+        }
     }
 
     /**

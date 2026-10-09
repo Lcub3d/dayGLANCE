@@ -1,16 +1,18 @@
 // Multi-user gating. Multi-user (users/assignments) only does anything across
-// synced devices, so it is useless without cloud sync configured — either the
-// WebDAV file tier (cloudSyncConfig.enabled) or the GLANCEvault DB tier
-// (isVaultEnabled). These helpers centralize the "requires sync" rule and,
-// crucially, the never-trap rule so both settings surfaces behave identically.
+// synced devices, so it is useless without cloud sync configured — the WebDAV
+// file tier (cloudSyncConfig.enabled), the GLANCEvault DB tier
+// (isVaultEnabled), or a Direct Access folder (a shared folder reaches other
+// people, unlike iCloud). These helpers centralize the "requires sync" rule
+// and, crucially, the never-trap rule so both settings surfaces behave
+// identically.
 
 /**
  * Whether cloud sync is configured enough to make multi-user meaningful.
- * @param {{cloudSyncEnabled?: boolean, vaultEnabled?: boolean}} opts
+ * @param {{cloudSyncEnabled?: boolean, vaultEnabled?: boolean, directAccessEnabled?: boolean}} opts
  * @returns {boolean}
  */
-export function canEnableMultiUser({ cloudSyncEnabled, vaultEnabled } = {}) {
-  return !!(cloudSyncEnabled || vaultEnabled);
+export function canEnableMultiUser({ cloudSyncEnabled, vaultEnabled, directAccessEnabled } = {}) {
+  return !!(cloudSyncEnabled || vaultEnabled || directAccessEnabled);
 }
 
 /**
@@ -46,8 +48,10 @@ export function multiUserToggleLocked({ cloudSyncConfigured, multiUserEnabled } 
  * @param {{cloudSyncConfigured?: boolean, icloudAvailable?: boolean}} opts
  * @returns {'none'|'icloud-only'|'no-sync'}
  */
-export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailable } = {}) {
-  if (cloudSyncConfigured) return 'none';
+export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailable, directAccessConnected } = {}) {
+  // A connected Direct Access folder is a shared destination (the folder is
+  // whatever the household shares), so it counts as configured here too.
+  if (cloudSyncConfigured || directAccessConnected) return 'none';
   return icloudAvailable ? 'icloud-only' : 'no-sync';
 }
 
@@ -65,9 +69,12 @@ export function multiUserUnavailableReason({ cloudSyncConfigured, icloudAvailabl
  * enabled while WebDAV is off, where syncSharedUsersViaICloud is the only way to
  * reconcile the roster.
  *
- * @param {{multiUserEnabled?: boolean, cloudSyncEnabled?: boolean, icloudAvailable?: boolean}} opts
+ * A connected Direct Access folder carries the roster too (Phase 5 of
+ * docs/direct-access-sync.md), so it is a transport here.
+ *
+ * @param {{multiUserEnabled?: boolean, cloudSyncEnabled?: boolean, icloudAvailable?: boolean, directAccessConnected?: boolean}} opts
  * @returns {boolean}
  */
-export function canSyncUserRoster({ multiUserEnabled, cloudSyncEnabled, icloudAvailable } = {}) {
-  return !!(multiUserEnabled && (cloudSyncEnabled || icloudAvailable));
+export function canSyncUserRoster({ multiUserEnabled, cloudSyncEnabled, icloudAvailable, directAccessConnected } = {}) {
+  return !!(multiUserEnabled && (cloudSyncEnabled || icloudAvailable || directAccessConnected));
 }

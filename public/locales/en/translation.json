@@ -41,7 +41,9 @@
       "passphraseNeeded": "Enter your sync passphrase above to enable GLANCEvault.",
       "vaultUnreachable": "Couldn't reach GLANCEvault. Check the vault URL and device token. ({{detail}})",
       "requestFailed": "request failed",
-      "iCloudUnavailable": "iCloud unavailable: {{error}}"
+      "iCloudUnavailable": "iCloud unavailable: {{error}}",
+      "directAccessUnavailable": "Direct Access folder unavailable: {{error}}",
+      "directAccessEncrypted": "The file in the Direct Access folder is encrypted and this device cannot read it. Nothing was written to it."
     },
     "vaultUrl": {
       "invalid": "Enter a valid vault URL.",
@@ -2047,14 +2049,28 @@
     "confirm": "Erase everything",
     "working": "Erasing…",
     "partialFailure": "Some data could not be cleared:",
-    "otherDevices": "Other devices keep their own copy and will restore it. Reset them one at a time: quit dayGLANCE everywhere, then open a single device, reset it, and quit again before moving to the next."
+    "otherDevices": "Other devices keep their own copy and will restore it. Reset them one at a time: quit dayGLANCE everywhere, then open a single device, reset it, and quit again before moving to the next.",
+    "scopeDeviceHintDirectAccess": "The copy in the Direct Access folder is kept, and this device can read it straight back even if syncing is off. Use this only to fix a bad local state, not to start over.",
+    "scopeEverywhereDirectAccess": "This device and the Direct Access folder",
+    "scopeEverywhereDirectAccessHint": "Also deletes the copy in the Direct Access folder, so nothing restores it here.",
+    "scopeDeviceHintBoth": "The copies in iCloud and the Direct Access folder are kept, and this device can read them straight back even if syncing is off. Use this only to fix a bad local state, not to start over.",
+    "scopeEverywhereBoth": "This device, iCloud and the Direct Access folder",
+    "scopeEverywhereBothHint": "Also deletes the copies in iCloud and the Direct Access folder, so nothing restores them here or on a reinstall."
   },
   "icloudDiag": {
-    "title": "iCloud diagnostics",
-    "hint": "Read-only. Reports what this device currently sees in the iCloud container. Nothing is written, deleted or synced.",
+    "title": "Sync diagnostics",
+    "hint": "Read-only. Reports what this device currently sees in each sync transport: the iCloud container, the Direct Access folder, GLANCEvault and WebDAV. Nothing is written, deleted or synced.",
     "run": "Run check",
     "running": "Checking…",
     "platform": "Platform",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Container",
     "containerError": "Container error",
     "available": "AVAILABLE",
@@ -2096,7 +2112,22 @@
     "no": "no",
     "mergeError": "Merge dry-run error",
     "flagWithoutDiff": "The merge flagged a write although nothing would change in the file. The write is skipped.",
-    "mergeFlags": "Merge flags (write / apply)"
+    "applyFlagWithoutDiff": "The merge flagged an apply although nothing would change on this device. The apply is skipped.",
+    "bothFlagsWithoutDiff": "The merge flagged a write and an apply although nothing would change in the file or on this device. Both are skipped.",
+    "mergeFlags": "Merge flags (write / apply)",
+    "directAccessTitle": "Direct Access folder",
+    "folder": "Folder",
+    "folderStatus": "Folder status",
+    "folderState": {
+      "connected": "connected",
+      "disconnected": "not connected",
+      "unreachable": "unreachable",
+      "unknown": "unknown"
+    },
+    "vaultConfig": "Vault config (enabled / URL / token / account)",
+    "vaultCursor": "Vault cursor (pull / push ack)",
+    "vaultRows": "Vault rows (pending / quarantined)",
+    "vaultHalt": "Vault credential halt"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",
@@ -2111,6 +2142,33 @@
     "title": "iCloud sync",
     "onHint": "On. This device syncs with your other Apple devices automatically.",
     "offHint": "Off on this device. The iCloud copy and your other devices are unaffected."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Sync through a folder another app already keeps in step across your devices: Google Drive, Dropbox, OneDrive, Syncthing or a network share. dayGLANCE reads and writes one file there; that app moves it.",
+    "chooseFolder": "Choose folder…",
+    "changeFolder": "Change folder",
+    "chooseFile": "Choose sync file…",
+    "createFile": "Create sync file…",
+    "changeFile": "Change file",
+    "notConnectedFile": "No sync file connected on this device.",
+    "rosterChoose": "Choose roster…",
+    "rosterCreate": "Create roster…",
+    "rosterChange": "Change roster",
+    "rosterForget": "Forget roster",
+    "rosterChosen": "Household roster: {{name}}",
+    "rosterNotChosen": "Household roster: not chosen on this device.",
+    "iosRosterHint": "The household roster is glance-users.json in the shared folder's GLANCE/users. Choose the one your other devices made, or create it there.",
+    "disconnect": "Disconnect",
+    "notConnected": "No folder connected on this device.",
+    "connectedTo": "Syncing through",
+    "unreachable": "The folder is not available right now. Syncing resumes when it is back.",
+    "onHint": "On. This device syncs through the folder.",
+    "offHint": "Off on this device. The copy in the folder and your other devices are unaffected.",
+    "pickFailed": "The folder could not be connected: {{reason}}",
+    "neverSynced": "Not synced yet",
+    "androidHint": "On Android, pick a folder that an app mirrors to this device's storage, such as Syncthing, FolderSync or Autosync. The Google Drive and Dropbox apps do not offer their folders here.",
+    "iosHint": "On iPhone and iPad, choose the dayglance-sync.json your other devices already share, from a location in the Files app such as Nextcloud, Google Drive or Dropbox. If no device has made one yet, create it in the folder they will share."
   },
   "aspire": {
     "title": "Aspire",

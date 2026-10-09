@@ -14,6 +14,7 @@ import { registerSpeechHandlers } from './speech.js';
 import { registerStorefrontHandlers } from './storefront.js';
 import { registerICloudHandlers } from './icloud.js';
 import { registerObsidianHandlers } from './obsidian.js';
+import { registerDirectAccessHandlers } from './directAccess.js';
 import { APP_SCHEME, APP_HOST, APP_BASE_URL, resolveAppRequest } from './appProtocol.js';
 import { shouldQuitOnAllWindowsClosed, shouldUnregisterShortcutsOnQuit } from './startupQuit.js';
 import { initStartupLog, logStartup } from './startupLog.js';
@@ -1633,6 +1634,7 @@ app.whenReady().then(async () => {
   registerStorefrontHandlers();
   registerICloudHandlers(() => live(mainWindow));
   registerObsidianHandlers();
+  registerDirectAccessHandlers(() => live(mainWindow));
   if (process.platform === 'darwin') createTray();
 
   app.on('activate', () => {

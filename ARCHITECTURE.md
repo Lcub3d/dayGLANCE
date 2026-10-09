@@ -250,6 +250,10 @@ Sync is file-based: the entire app dataset is serialised to a single JSON file s
 
 There is no server-side logic: the client does all conflict resolution.
 
+### Snapshot-file transports (iCloud, Direct Access)
+
+Two more file-tier options share the merge but not the engine. iCloud and Direct Access are **snapshot-file transports**: a local copy of `dayglance-sync.json` that a daemon ferries between devices (the iCloud container; a Google Drive, Dropbox, OneDrive or Syncthing folder the user picked). There is no ETag and no `If-Match`, so the cycle is read whole → `mergeSyncData()` → apply → write back, with the data-safety guards (eviction grace, empty-state seed guard, placeholder reads, write throttle, HealthKit strip) in `src/sync/snapshotFileSync.js` and the scheduling in `src/hooks/useSnapshotFileSync.js`. Each transport is a small object (`src/sync/icloudSnapshotTransport.js`, `src/sync/directAccessTransport.js`); they share one mutex so two never merge into state at once, and they run alongside the WebDAV engine, which keeps its own lock. Direct Access holds its folder in the Electron main process (`electron/directAccess.ts`, `electron/directAccessStore.ts`) and, on Android and iOS, in the app's preferences behind a Storage Access Framework grant or a security-scoped bookmark (`DirectAccessRepository.kt`, `DirectAccessBridge.swift`, both bridged as `window.DayGlanceDirectAccess`), the way the Obsidian vault is held on each. Design and roadmap: `docs/direct-access-sync.md`.
+
 ### Conflict resolution
 
 Merges happen at the **item level**, not the file level. The strategy is "newest `lastModified` wins" per item, with tombstones to prevent deleted items from being resurrected:

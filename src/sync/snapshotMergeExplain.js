@@ -84,25 +84,35 @@ export function describeSliceDiff(key, merged, other) {
     const byId = (list) => new Map(list.filter((x) => x && x.id !== undefined).map((x) => [String(x.id), x]));
     const m = byId(merged);
     const o = byId(other);
-    let changed = 0;
-    let onlyMerged = 0;
-    let onlyOther = 0;
+    // Name up to five ids per group: a report that says "-1 only on other
+    // side" without the id cannot be acted on (an Android inbox task the merge
+    // kept dropping, 2026-10-06).
+    const sample = (ids) => (ids.length ? ` (${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', …' : ''})` : '');
+    // A changed id names the fields that differ (up to four), so "habits: 1
+    // changed" says WHAT about the row differs (2026-10-09).
+    const fields = (a, b) => {
+      const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort()
+        .filter((k) => canonicalJson(a?.[k]) !== canonicalJson(b?.[k]));
+      return keys.length ? `: ${keys.slice(0, 4).join(', ')}${keys.length > 4 ? ', …' : ''}` : '';
+    };
     const changedIds = [];
+    const onlyMergedIds = [];
+    const onlyOtherIds = [];
     for (const [id, item] of m) {
-      if (!o.has(id)) { onlyMerged += 1; continue; }
-      if (canonicalJson(item) !== canonicalJson(o.get(id))) {
-        changed += 1;
-        if (changedIds.length < 5) changedIds.push(id);
-      }
+      if (!o.has(id)) { onlyMergedIds.push(id); continue; }
+      if (canonicalJson(item) !== canonicalJson(o.get(id))) changedIds.push(`${id}${fields(item, o.get(id))}`);
     }
-    for (const id of o.keys()) if (!m.has(id)) onlyOther += 1;
+    for (const id of o.keys()) if (!m.has(id)) onlyOtherIds.push(id);
+    const changed = changedIds.length;
+    const onlyMerged = onlyMergedIds.length;
+    const onlyOther = onlyOtherIds.length;
     const orderDiffers = changed === 0 && onlyMerged === 0 && onlyOther === 0
       && merged.map((x) => String(x?.id)).join('\u0000') !== other.map((x) => String(x?.id)).join('\u0000');
     if (!changed && !onlyMerged && !onlyOther && !orderDiffers) return null;
     const parts = [];
-    if (changed) parts.push(`${changed} changed${changedIds.length ? ` (${changedIds.join(', ')}${changed > changedIds.length ? ', …' : ''})` : ''}`);
-    if (onlyMerged) parts.push(`+${onlyMerged} only in result`);
-    if (onlyOther) parts.push(`-${onlyOther} only on other side`);
+    if (changed) parts.push(`${changed} changed${sample(changedIds)}`);
+    if (onlyMerged) parts.push(`+${onlyMerged} only in result${sample(onlyMergedIds)}`);
+    if (onlyOther) parts.push(`-${onlyOther} only on other side${sample(onlyOtherIds)}`);
     if (orderDiffers) parts.push('order differs');
     return { key, kind: orderDiffers && parts.length === 1 ? 'order' : 'items', summary: `${key}: ${parts.join(', ')}` };
   }
@@ -146,20 +156,36 @@ export function describeSliceDiff(key, merged, other) {
  *
  * @param {object} a    the data about to be written or applied
  * @param {object} b    the data already there (file, or local state)
- * @param {{ignoreDropped?: boolean}} [opts]  skip slices `a` does not carry
- *        at all (for the apply question: absent keys are left alone)
+ * @param {{ignoreDropped?: boolean, ignoreKeys?: Iterable<string>}} [opts]
+ *        ignoreDropped: skip slices `a` does not carry at all (for the apply
+ *        question: absent keys are left alone); ignoreKeys: slices to leave
+ *        out altogether (the merge's device-local keys, for the write question:
+ *        every device keeps its own value, so the file's is nobody's business)
  * @returns {Array<{key: string, kind: string, summary: string}>}
  */
-export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
+export function sliceDiffs(a, b, { ignoreDropped = false, ignoreKeys = [] } = {}) {
+  const skip = new Set(ignoreKeys);
   const keys = [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort();
   const out = [];
   for (const k of keys) {
+    if (skip.has(k)) continue;
     if (ignoreDropped && a?.[k] === undefined) continue;
     const d = describeSliceDiff(k, a?.[k], b?.[k]);
     if (d) out.push(d);
   }
   return out;
 }
+
+/**
+ * The differences a write can actually resolve. An order-only difference in
+ * an id-keyed list is not one: the merge keeps each device's own order
+ * (mergeArrayById preserves local order and appends remote-only items), so
+ * writing it never changes the other device's order, and two devices that
+ * order a list differently would rewrite the file in turn forever. Two Macs
+ * did, over todayRoutines (2026-10-05). The difference is still reported;
+ * it just does not start a write.
+ */
+export const writeWorthy = (diffs) => diffs.filter((d) => d.kind !== 'order');
 
 /**
  * Runs the merge and explains its outcome, with the write and apply decisions
@@ -169,23 +195,26 @@ export function sliceDiffs(a, b, { ignoreDropped = false } = {}) {
  * @param {object} args.local          this device's payload `data` (buildSyncPayload().data)
  * @param {object} args.remote         the file's `data`
  * @param {number} args.retentionDays
- * @param {(local, remote, retentionDays) => {data: object, localChanged: boolean, remoteChanged: boolean}} args.merge
+ * @param {(local, remote, retentionDays) => {data: object, localChanged: boolean, remoteChanged: boolean, deviceLocalKeys?: string[]}} args.merge
  * @param {(data: object) => object} [args.outgoing]  what the transport would
  *        actually write (the iCloud HealthKit strip); identity by default
  * @returns {{
  *   localChanged: boolean, remoteChanged: boolean,   the merge's own flags
  *   fileDiffs: Array<{key, kind, summary}>,          outgoing vs file
  *   deviceDiffs: Array<{key, kind, summary}>,        merged vs local (dropped slices ignored)
- *   wouldWrite: boolean,                             a flag AND a file difference
+ *   wouldWrite: boolean,                             a flag AND a file difference a write can resolve
  *   wouldApply: boolean,                             localChanged AND a device difference
- *   flagWithoutDiff: boolean,                        a write flag with no file difference
+ *   writeFlagWithoutDiff: boolean,                   a write flag with no file difference a write could resolve
+ *   applyFlagWithoutDiff: boolean,                   an apply flag with no device difference
+ *   flagWithoutDiff: boolean,                        either of the two
  *   error: string|null,
  * }}
  */
 export function explainSnapshotMerge({ local, remote, retentionDays, merge, outgoing = (d) => d }) {
   const empty = {
     localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [],
-    wouldWrite: false, wouldApply: false, flagWithoutDiff: false, error: null,
+    wouldWrite: false, wouldApply: false,
+    writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false, error: null,
   };
   let result;
   try {
@@ -198,17 +227,28 @@ export function explainSnapshotMerge({ local, remote, retentionDays, merge, outg
   const remoteChanged = !!result?.remoteChanged;
   let out;
   try { out = outgoing(merged) ?? merged; } catch (err) { return { ...empty, localChanged, remoteChanged, error: err?.message ?? String(err) }; }
-  const fileDiffs = sliceDiffs(out, remote);
+  // Device-local keys (mergeSync.js, result.deviceLocalKeys) are left out of
+  // the file question: the file holds whichever device wrote last, and a
+  // write would change what no device reads.
+  const fileDiffs = sliceDiffs(out, remote, { ignoreKeys: result?.deviceLocalKeys ?? [] });
   const deviceDiffs = sliceDiffs(merged, local, { ignoreDropped: true });
   const flagged = remoteChanged || localChanged;
+  const writable = writeWorthy(fileDiffs);
+  // Each flag is judged against its own question. A Mac over a Direct Access
+  // folder reported "apply YES" with no device difference under a note about
+  // a skipped WRITE (2026-10-08): the note has to name the flag that fired.
+  const writeFlagWithoutDiff = remoteChanged && writable.length === 0;
+  const applyFlagWithoutDiff = localChanged && deviceDiffs.length === 0;
   return {
     localChanged,
     remoteChanged,
     fileDiffs,
     deviceDiffs,
-    wouldWrite: flagged && fileDiffs.length > 0,
+    wouldWrite: flagged && writable.length > 0,
     wouldApply: localChanged && deviceDiffs.length > 0,
-    flagWithoutDiff: flagged && fileDiffs.length === 0,
+    writeFlagWithoutDiff,
+    applyFlagWithoutDiff,
+    flagWithoutDiff: writeFlagWithoutDiff || applyFlagWithoutDiff,
     error: null,
   };
 }

@@ -51,6 +51,7 @@ Part of the **GLANCE family**: focused, standalone apps connected through a shar
 - [Goals & Projects](#goals--projects)
 - [Integrations](#integrations)
   - [Nextcloud & WebDAV Sync](#nextcloud--webdav-sync)
+  - [Direct Access Sync](#direct-access-sync)
   - [CalDAV / iCal Calendar Import](#caldav--ical-calendar-import)
   - [Stream Deck Plugin](#stream-deck-plugin)
   - [TRMNL](#trmnl)
@@ -485,6 +486,12 @@ The sync engine resolves conflicts at the task level using timestamps, not last-
 One address policy backs all of this, and it is implemented separately in the desktop app, the four server-side proxies, and the sibling GLANCE apps. `api/ssrf-vectors.json` is the canonical table those implementations are checked against; regenerate it with `npm run ssrf:vectors` after any policy change and copy it to the siblings, the same way `dayDial.vectors.json` keeps the dial geometry in agreement across platforms.
 
 **Reaching a server on your own network (desktop app).** The desktop app routes sync through the Electron main process, which refuses private network addresses by default so that a hostile URL cannot be used to probe your LAN. A self-hosted GLANCEvault usually *is* on a private address, though, whether that is a LAN box on `192.168.x.x`, a Docker host on `10.x.x.x`, or a Tailscale node (Tailscale hands out addresses in `100.64.0.0/10` and `fd7a:115c:a1e0::/48`, both of which count as private even when you point a public domain name at them). Run **Settings → Cloud Sync → Test Connection**: if the address is blocked, the app offers **Allow this address…** and asks you to confirm in a native dialog. The permission covers that one scheme, host and port, never a whole range, and it never applies to a redirect. Granted addresses are listed under the vault fields and can be removed there at any time. A vault on the same machine as the app (`localhost`, `127.0.0.1`) works the same way, and is permitted only for the exact port you confirm, so allowing the vault on one port grants nothing to anything else listening locally. Link-local addresses, which include the cloud metadata endpoint, cannot be permitted at all. The browser and mobile apps connect directly and are unaffected.
+
+### Direct Access Sync
+
+Sync through a folder that another app already keeps in step across your devices: Google Drive for desktop, Dropbox, OneDrive, Syncthing, or a plain network share. dayGLANCE reads and writes a single file (`dayglance-sync.json`) in the folder you pick; that app moves it between machines. The merge is the same task-level, timestamp-based merge the WebDAV and iCloud tiers use, so edits from two machines converge, and it runs alongside WebDAV, GLANCEvault and iCloud rather than replacing them.
+
+**Setup (desktop, Android, iPhone and iPad):** Settings → Cloud Sync → Direct Access → **Choose folder…** and pick the synced folder on each device. A device switch under the card pauses syncing on that device without touching the folder copy. On Android the folder has to come from an app that mirrors to the phone's storage (Syncthing, FolderSync, Autosync): the Google Drive and Dropbox apps do not offer their folders to Android's folder picker. On iPhone and iPad the card offers the sync **file** rather than the folder: **Choose sync file…** picks the `dayglance-sync.json` another device already made, from any location in the Files app (Nextcloud, Google Drive, Dropbox, iCloud Drive), and **Create sync file…** makes one in a folder of your choice for a first device. The Files providers cannot hand an app a folder, only a file. With multi-user on, the card also offers the household roster the same way (**Choose roster…** for the `glance-users.json` your other devices keep in the folder's `GLANCE/users`, or **Create roster…** there), since the roster cannot be found from a file bookmark. See `docs/direct-access-sync.md` for the design.
 
 ### CalDAV / iCal Calendar Import
 

@@ -41,6 +41,7 @@ export default function useDataPersistence({
   unscheduledOrderTimestamp,
   cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
   setUndoToast,
+  isRemoteApply = () => false,
 }) {
   const readStored = (storageKey) => {
     try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
@@ -311,6 +312,12 @@ export default function useDataPersistence({
     // otherwise the initial loadData() sets it to "now" and overwrites remote
     if (!cloudSyncConfig?.enabled || cloudSyncInitialDoneRef.current) {
       safeSet('day-planner-cloud-sync-local-modified', new Date().toISOString());
+      // When this device itself last changed its data, as opposed to taking a
+      // change in from a transport (an apply re-persists too). The snapshot
+      // file tiers write at once for a change made here and wait for the
+      // folder to catch up with one that arrived by another road
+      // (sync/snapshotFileSync.js, LOCAL_EDIT_KEY).
+      if (!isRemoteApply()) safeSet('day-planner-local-edit-at', new Date().toISOString());
     }
   };
 

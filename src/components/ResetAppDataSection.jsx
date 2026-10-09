@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, Loader, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
+import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { resetAppData, reloadAfterReset } from '../utils/resetAppData.js';
 
 /**
@@ -27,9 +28,16 @@ const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBac
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState(null);
 
-  // The cloud option is meaningless where there is no iCloud transport
-  // (Android, web, non-Mac Electron) — hide it rather than offer a no-op.
-  const cloudAvailable = isICloudAvailable();
+  // The cloud option is meaningless where there is no cloud copy to delete:
+  // neither an iCloud transport (Android, web, non-Mac Electron) nor a Direct
+  // Access folder connected on this device — hide it rather than offer a no-op.
+  const directAccess = useDirectAccessStatus();
+  const icloudAvailable = isICloudAvailable();
+  const cloudAvailable = icloudAvailable || directAccess.connected;
+  // Which copies the "everywhere" scope reaches, so the labels name them.
+  const scopeVariant = icloudAvailable && directAccess.connected ? 'Both'
+    : directAccess.connected ? 'DirectAccess'
+    : '';
 
   const runReset = async () => {
     setBusy(true);
@@ -95,7 +103,7 @@ const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBac
             />
             <span>
               <span className="font-medium">{t('reset.scopeDevice')}</span>
-              <span className={`block ${textSecondary}`}>{t('reset.scopeDeviceHint')}</span>
+              <span className={`block ${textSecondary}`}>{t(`reset.scopeDeviceHint${scopeVariant}`)}</span>
             </span>
           </label>
           <label className={`flex items-start gap-2 text-sm ${textPrimary} cursor-pointer`}>
@@ -108,8 +116,8 @@ const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBac
               disabled={busy}
             />
             <span>
-              <span className="font-medium">{t('reset.scopeEverywhere')}</span>
-              <span className={`block ${textSecondary}`}>{t('reset.scopeEverywhereHint')}</span>
+              <span className="font-medium">{t(`reset.scopeEverywhere${scopeVariant}`)}</span>
+              <span className={`block ${textSecondary}`}>{t(`reset.scopeEverywhere${scopeVariant}Hint`)}</span>
             </span>
           </label>
         </div>

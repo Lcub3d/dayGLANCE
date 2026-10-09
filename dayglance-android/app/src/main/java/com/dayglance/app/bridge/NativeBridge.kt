@@ -360,6 +360,20 @@ class NativeBridge(
         } catch (_: Throwable) { /* ignore — widget is non-critical */ }
     }
 
+    // ── App language (Android 13+ per-app locale) ────────────────────────────
+
+    /** {"supported": bool, "tag": string|null}. See [LocaleBridge]. */
+    @JavascriptInterface
+    fun getAppLocale(): String = LocaleBridge.describe(context)
+
+    /**
+     * Hands an explicit in-app language choice to Android, so widgets, the Up
+     * Next notification, tiles and shortcuts follow it. Only the picker calls
+     * this, never startup detection. An empty tag returns to the system language.
+     */
+    @JavascriptInterface
+    fun setAppLocale(tag: String) = LocaleBridge.set(context, tag)
+
     // ── HTTP ─────────────────────────────────────────────────────────────────
 
     /**

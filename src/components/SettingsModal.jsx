@@ -15,6 +15,9 @@ import TodoistSettings from './TodoistSettings.jsx';
 import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import CalendarList from './CalendarList.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
+import DirectAccessSyncCard from './DirectAccessSyncCard.jsx';
+import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
+import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
 import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
@@ -27,7 +30,7 @@ import UnportableVaultNamesPanel from './UnportableVaultNamesPanel.jsx';
 import BridgePairingPanel from './BridgePairingPanel.jsx';
 import BridgeStatusPanel from './BridgeStatusPanel.jsx';
 import { INTENT_CONFIG_KEY, MULTI_USER_CONFIG_KEY } from '../intents/useIntentPoller.js';
-import { syncSharedUsers, syncSharedUsersViaICloud } from '../intents/sharedUsers.js';
+import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess, markRosterEdited } from '../intents/sharedUsers.js';
 import { isAvailable as isICloudAvailable } from '../intents/icloudFileTransport.js';
 import { getSyncPassphrase, setSyncPassphrase } from '../utils/crypto.js';
 import { isVaultEnabled } from '../sync/vaultConfig.js';
@@ -145,14 +148,20 @@ const SettingsModal = () => {
   // "Requires cloud sync" is wrong on an iCloud-only device — that user IS
   // syncing, just to a destination only they can reach. Pick the sentence that
   // matches their situation instead of the generic one.
+  // A connected Direct Access folder is a shared destination and carries the
+  // household roster (docs/direct-access-sync.md, Phase 5).
+  const directAccessStatus = useDirectAccessStatus();
+  const directAccessRoster = directAccessStatus.connected && directAccessStatus.enabled;
   const multiUserReason = multiUserUnavailableReason({
     cloudSyncConfigured,
     icloudAvailable: isICloudAvailable(),
+    directAccessConnected: directAccessRoster,
   });
   const multiUserRosterSyncable = canSyncUserRoster({
     multiUserEnabled,
     cloudSyncEnabled: cloudSyncConfig?.enabled,
     icloudAvailable: isICloudAvailable(),
+    directAccessConnected: directAccessRoster,
   });
   const [addingUser, setAddingUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
@@ -977,20 +986,33 @@ const SettingsModal = () => {
                       {/* Apple platforms only — on Android/web every probe reports
                           unsupported, so the panel would be an empty box. */}
                       {isICloudAvailable() && (
-                        <>
-                          <ICloudSyncToggle
-                            darkMode={darkMode}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderClass={borderClass}
-                          />
-                          <ICloudDiagnostics
-                            darkMode={darkMode}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderClass={borderClass}
-                          />
-                        </>
+                        <ICloudSyncToggle
+                          darkMode={darkMode}
+                          textPrimary={textPrimary}
+                          textSecondary={textSecondary}
+                          borderClass={borderClass}
+                        />
+                      )}
+                      {/* On every platform: the panel reports GLANCEvault and WebDAV
+                          everywhere, the iCloud container on Apple platforms, and the
+                          Direct Access folder wherever the bridge exists, each block
+                          only where its transport is (docs/direct-access-sync.md). */}
+                      <ICloudDiagnostics
+                        darkMode={darkMode}
+                        textPrimary={textPrimary}
+                        textSecondary={textSecondary}
+                        borderClass={borderClass}
+                      />
+                      {/* Desktop only — the Electron main process holds the folder
+                          (docs/direct-access-sync.md). */}
+                      {isDirectAccessSupported() && (
+                        <DirectAccessSyncCard
+                          darkMode={darkMode}
+                          multiUserEnabled={multiUserEnabled}
+                          textPrimary={textPrimary}
+                          textSecondary={textSecondary}
+                          borderClass={borderClass}
+                        />
                       )}
                       </>)}
                     </div>
@@ -1238,11 +1260,13 @@ const SettingsModal = () => {
                                   try {
                                     const raw = localStorage.getItem(MULTI_USER_CONFIG_KEY);
                                     const uPath = raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
-                                    // Prefer WebDAV when configured; otherwise fetch the roster
-                                    // from iCloud Drive (same-Apple-ID zero-config sync).
+                                    // Prefer WebDAV when configured, then a connected Direct
+                                    // Access folder, then iCloud Drive (same-Apple-ID only).
                                     const merged = cloudSyncConfig?.enabled
                                       ? await syncSharedUsers(cloudSyncConfig, uPath, users)
-                                      : await syncSharedUsersViaICloud(uPath, users);
+                                      : directAccessRoster
+                                        ? await syncSharedUsersViaDirectAccess(uPath, users)
+                                        : await syncSharedUsersViaICloud(uPath, users);
                                     if (merged) {
                                       localStorage.setItem('dayglance-users', JSON.stringify(merged));
                                       setUsers(merged);
@@ -1294,6 +1318,7 @@ const SettingsModal = () => {
                                           const updated = users.map(usr => usr.id === u.id ? { ...usr, name: trimmed, updatedAt: new Date().toISOString() } : usr);
                                           setUsers(updated);
                                           localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                          markRosterEdited();
                                           setEditingUserId(null);
                                         }}
                                         className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
@@ -1327,6 +1352,7 @@ const SettingsModal = () => {
                                           const updated = users.map(usr => usr.id === u.id ? { ...usr, deleted: true, updatedAt: new Date().toISOString() } : usr);
                                           setUsers(updated);
                                           localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                          markRosterEdited();
                                           if (meUserSyncId === (u.syncId ?? u.id)) {
                                             setMeUserSyncId(null);
                                             localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: null }));
@@ -1358,6 +1384,7 @@ const SettingsModal = () => {
                                       const updated = [...users, newUser];
                                       setUsers(updated);
                                       localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                      markRosterEdited();
                                       setNewUserName('');
                                       setAddingUser(false);
                                     } else if (e.key === 'Escape') {
@@ -1375,6 +1402,7 @@ const SettingsModal = () => {
                                     const updated = [...users, newUser];
                                     setUsers(updated);
                                     localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                    markRosterEdited();
                                     setNewUserName('');
                                     setAddingUser(false);
                                   }}

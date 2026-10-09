@@ -73,6 +73,27 @@ export function detectPlatform({ nativeBridge, electronAPI } = {}) {
 }
 
 /**
+ * The platform this device actually is, for the report's first line. The
+ * iCloud platform above answers a different question (which iCloud bridge
+ * serves the probe), and printing it as "platform: none" on an Android phone
+ * read as a bug (2026-10-08). Swift sets `window.DayGlanceIOS` at document
+ * start; the Android WebView registers `DayGlanceNative` without it; Electron
+ * exposes Node's `process.platform`; anything else is the web or the PWA.
+ *
+ * @returns {'ios'|'android'|'macos'|'windows'|'linux'|'web'}
+ */
+export function detectDevicePlatform({ nativeBridge, electronAPI, isIOS } = {}) {
+  // The iOS bridge is the one that serves iCloudAvailable; Android's never does.
+  if (isIOS || nativeBridge?.iCloudAvailable) return 'ios';
+  if (nativeBridge) return 'android';
+  const p = electronAPI?.platform;
+  if (p === 'darwin') return 'macos';
+  if (p === 'win32') return 'windows';
+  if (p) return p === 'linux' ? 'linux' : p;
+  return 'web';
+}
+
+/**
  * Probes container availability.
  *
  * iOS asks the bridge directly. macOS has no availability probe — electron/icloud.ts
@@ -188,7 +209,40 @@ export function readSyncTransports({ localStorage } = {}) {
       // than imported so this module stays injectable and testable.
       configured: !!(vaultCfg?.enabled && vaultCfg?.vaultUrl && vaultCfg?.vaultToken && vaultCfg?.accountId),
       lastSynced: get('dayglance-vault-db-sync-last-synced'),
+      // The rest is what the DB engine persists under its storage prefix
+      // (@glance-apps/sync dbEngine.js, prefix 'dayglance-vault' per
+      // src/sync/dbEngine.js). A device whose vault card looked healthy but
+      // whose last-synced read "never" for months (2026-10-06) could not say
+      // which: a config missing one field (the gate is all four), a credential
+      // halt, or an engine that never finishes a clean cycle. These rows say.
+      ...vaultDetail(vaultCfg, get, json),
     },
+  };
+}
+
+const VAULT_PREFIX = 'dayglance-vault';
+function vaultDetail(cfg, get, json) {
+  const host = (() => {
+    try { return cfg?.vaultUrl ? new URL(cfg.vaultUrl).host : null; } catch { return cfg?.vaultUrl ? '(unparseable URL)' : null; }
+  })();
+  const count = (v) => (Array.isArray(v) ? v.length : 0);
+  const halt = json(`${VAULT_PREFIX}-db-sync-credential-halt`);
+  return {
+    hasConfig: !!cfg,
+    enabled: !!cfg?.enabled,
+    hasUrl: !!cfg?.vaultUrl,
+    hasToken: !!cfg?.vaultToken,
+    hasAccountId: !!cfg?.accountId,
+    host,
+    // Pull cursor (the last server sequence applied) and the last push the
+    // server acknowledged. Both 0/absent on a device that never completed a
+    // cycle; a cursor that moves while last-synced stays "never" means cycles
+    // run but never end clean.
+    highWaterMark: get(`${VAULT_PREFIX}-db-sync-hwm`),
+    pushAck: get(`${VAULT_PREFIX}-db-sync-push-ack`),
+    dirtyCount: count(json(`${VAULT_PREFIX}-db-sync-dirty`)),
+    quarantineCount: count(json(`${VAULT_PREFIX}-db-sync-quarantine`)),
+    credentialHalt: halt && typeof halt === 'object' ? { message: halt.message ?? null, at: halt.at ?? null } : null,
   };
 }
 
@@ -218,13 +272,56 @@ export function readLocalState({ localStorage } = {}) {
 const defaultDeps = () => ({
   nativeBridge: typeof window !== 'undefined' ? window.DayGlanceNative : null,
   electronAPI: typeof window !== 'undefined' ? window.electronAPI : null,
+  isIOS: typeof window !== 'undefined' && !!window.DayGlanceIOS,
   localStorage: typeof window !== 'undefined' ? window.localStorage : null,
   // The dry-run merge needs this device's payload, which only the app can
   // build; the panel passes it in from the sync context. Absent → no dry run.
   buildSyncPayload: null,
   getSyncRetentionDays: null,
   merge: mergeSyncData,
+  // The Direct Access transport (sync/directAccessTransport.js), so the same
+  // readout covers its file. The panel passes the singleton; null → no section.
+  directAccess: null,
 });
+
+/**
+ * The same readout for the Direct Access file: what this device sees in the
+ * folder, and what its cycle would do with it. Reads through the transport
+ * the cycle itself uses, so the classification is the cycle's own.
+ *
+ * Two Macs were seen trading rewrites of an identical Nextcloud file while
+ * the iCloud file held still (2026-10-05); nothing in the app could say which
+ * slice they disagreed on, because the dry run only looked at iCloud.
+ *
+ * @returns {Promise<null | {status: string, name: string|null, enabled: boolean,
+ *   snapshot: object|null, merge: object|null}>}  null when the platform has
+ *   no Direct Access bridge at all.
+ */
+export async function probeDirectAccess(deps = {}) {
+  const transport = deps.directAccess;
+  if (!transport || typeof transport.isSupported !== 'function' || !transport.isSupported()) return null;
+  const s = typeof transport.getSnapshot === 'function' ? transport.getSnapshot() : {};
+  // The shell's own answer, verbatim: after a pick that "did nothing" it says
+  // whether a folder was saved at all, and the card's last pick error says
+  // why not (2026-10-08).
+  let native = null;
+  if (typeof transport.probeStatus === 'function') {
+    try { native = await transport.probeStatus(); } catch (err) { native = { error: err?.message ?? String(err) }; }
+  }
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null };
+  if (!s?.connected) return { ...head, snapshot: null, merge: null };
+  let raw;
+  try {
+    raw = await transport.read();
+  } catch (err) {
+    raw = JSON.stringify({ error: err?.message ?? String(err) });
+  }
+  const snapshot = classifySnapshot(raw, deps);
+  const merge = snapshot.state === 'present'
+    ? dryRunMerge(raw, deps, { stripsHealthLogs: transport.stripsHealthLogs !== false })
+    : null;
+  return { ...head, snapshot, merge };
+}
 
 /**
  * Runs the cycle's merge against the file WITHOUT applying or writing, and says
@@ -234,21 +331,25 @@ const defaultDeps = () => ({
  *
  * @returns {object|null} null when there is no snapshot or no payload builder.
  */
-export function dryRunMerge(raw, deps = {}) {
+export function dryRunMerge(raw, deps = {}, { stripsHealthLogs = true } = {}) {
   if (typeof deps.buildSyncPayload !== 'function') return null;
   let remote;
   try { remote = JSON.parse(raw); } catch { return null; }
   if (!remote || typeof remote !== 'object' || remote.downloading || remote.error || !remote.data) return null;
   let local;
   try { local = deps.buildSyncPayload()?.data; } catch (err) {
-    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
+    return { localChanged: false, remoteChanged: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: false, flagWithoutDiff: false, error: `payload: ${err?.message ?? err}` };
   }
   if (!local) return null;
   const retentionDays = typeof deps.getSyncRetentionDays === 'function' ? (deps.getSyncRetentionDays() ?? 90) : 90;
-  // The file never carries HealthKit-derived counts (healthLogFilter.js), so
-  // the write question is asked of the stripped data, exactly as the cycle
-  // asks it. The habit definitions ride in the payload itself.
-  const strip = deps.strip ?? ((data) => stripHealthSourcedLogs({ data }, data?.habits ?? local?.habits ?? []).data);
+  // The iCloud file never carries HealthKit-derived counts (healthLogFilter.js),
+  // so its write question is asked of the stripped data, exactly as the cycle
+  // asks it; a Direct Access folder carries them (`transport.stripsHealthLogs`),
+  // and its question is asked of the data whole. The habit definitions ride in
+  // the payload itself.
+  const strip = deps.strip ?? (stripsHealthLogs
+    ? (data) => stripHealthSourcedLogs({ data }, data?.habits ?? local?.habits ?? []).data
+    : (data) => data);
   return explainSnapshotMerge({ local, remote: remote.data, retentionDays, merge: deps.merge ?? mergeSyncData, outgoing: strip });
 }
 
@@ -260,7 +361,11 @@ export function dryRunMerge(raw, deps = {}) {
  * dataset it blocks the JS thread. Fine for a button press, not for mounting a
  * settings pane.
  *
- * @returns {Promise<{platform, available, snapshot, local}>}
+ * @returns {Promise<{platform, icloudPlatform, icloud, available, snapshot, local}>}
+ *   `platform` is the device (detectDevicePlatform); `icloudPlatform` is the
+ *   iCloud bridge that served the probe, or 'none'; `icloud` is false where
+ *   there is no iCloud at all, and the container, snapshot and iCloud-sync
+ *   rows then carry nothing worth printing.
  */
 export async function collectICloudDiagnostics(deps = defaultDeps()) {
   const platform = detectPlatform(deps);
@@ -286,12 +391,16 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
     : classifySnapshot(raw, deps);
 
   const merge = snapshot.state === 'present' ? dryRunMerge(raw, deps) : null;
+  const directAccess = await probeDirectAccess(deps);
 
   return {
-    platform,
+    platform: detectDevicePlatform(deps),
+    icloudPlatform: platform,
+    icloud: platform !== 'none',
     available,
     snapshot,
     merge,
+    directAccess,
     // The in-app preference is separate from container availability: a device can
     // resolve the container perfectly and still be deliberately not syncing,
     // because the user chose "start fresh" at first run or switched it off in
@@ -306,50 +415,100 @@ export async function collectICloudDiagnostics(deps = defaultDeps()) {
  * Plain-text report for the copy-to-clipboard button, so a user can paste the
  * findings into an issue without retyping or screenshotting them.
  */
-export function formatDiagnosticsReport({ platform, available, snapshot, local, transports, syncEnabled, merge }) {
-  const none = '(none)';
-  const lines = [
-    'dayGLANCE iCloud diagnostics',
-    `platform:        ${platform}`,
-    `container:       ${available.value === null ? 'not probeable on this platform' : available.value ? 'AVAILABLE' : 'unavailable'}`,
-  ];
-  if (available.raw) lines.push(`  raw:           ${available.raw}`);
-  if (available.error) lines.push(`  error:         ${available.error}`);
-  lines.push(`snapshot file:   ${snapshot.state}`);
+const snapshotLines = (snapshot, indent, none) => {
+  const lines = [`${indent}file:          ${snapshot.state}`];
   // Size/mtime/counts only mean something when there are real file bytes; for a
   // sentinel state they would all read as blanks or, worse, as a tiny file.
   if (snapshot.state === 'present' || snapshot.bytes > 0) {
     lines.push(
-      `  size:          ${formatBytes(snapshot.bytes)}`,
-      `  lastModified:  ${snapshot.lastModified ?? none}`,
-      `  tasks/inbox:   ${snapshot.taskCount ?? none} / ${snapshot.inboxCount ?? none}`,
+      `${indent}  size:          ${formatBytes(snapshot.bytes)}`,
+      `${indent}  lastModified:  ${snapshot.lastModified ?? none}`,
+      `${indent}  tasks/inbox:   ${snapshot.taskCount ?? none} / ${snapshot.inboxCount ?? none}`,
     );
   }
-  if (snapshot.error) lines.push(`  error:         ${snapshot.error}`);
+  if (snapshot.error) lines.push(`${indent}  error:         ${snapshot.error}`);
+  return lines;
+};
 
+const mergeLines = (merge, indent, none) => {
+  if (!merge) return [];
+  if (merge.error) return [`${indent}merge dry-run:   error: ${merge.error}`];
+  const lines = [
+    `${indent}merge dry-run:   would write: ${merge.wouldWrite ? 'YES' : 'no'} / would apply: ${merge.wouldApply ? 'YES' : 'no'}`,
+    `${indent}  merge flags:   write ${merge.remoteChanged ? 'YES' : 'no'} / apply ${merge.localChanged ? 'YES' : 'no'}`,
+    `${indent}  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
+    `${indent}  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
+  ];
+  // Name the flag that fired: an apply flag with no device difference is not
+  // a write, and the old one-size note said it was (Mac report, 2026-10-08).
+  const w = merge.writeFlagWithoutDiff ?? (merge.remoteChanged && merge.flagWithoutDiff);
+  const a = merge.applyFlagWithoutDiff ?? (merge.localChanged && merge.flagWithoutDiff && !w);
+  if (w && a) lines.push(`${indent}  note:          the merge flagged a write and an apply although nothing would change in the file or on this device; both are skipped`);
+  else if (w) lines.push(`${indent}  note:          the merge flagged a write although nothing would change in the file; the write is skipped`);
+  else if (a) lines.push(`${indent}  note:          the merge flagged an apply although nothing would change on this device; the apply is skipped`);
+  return lines;
+};
+
+const yn = (v) => (v ? 'yes' : 'NO');
+const vaultLines = (v, none) => {
+  if (!v || v.hasConfig === undefined) return [];
+  if (!v.hasConfig) return ['  config:        (none saved on this device)'];
+  const lines = [
+    `  config:        enabled ${yn(v.enabled)} / url ${yn(v.hasUrl)}${v.host ? ` (${v.host})` : ''} / token ${yn(v.hasToken)} / account id ${yn(v.hasAccountId)}`,
+    `  cursor:        pull ${v.highWaterMark ?? none} / push ack ${v.pushAck ?? none}`,
+    `  rows:          ${v.dirtyCount} pending / ${v.quarantineCount} quarantined`,
+  ];
+  if (v.credentialHalt) lines.push(`  credential halt: ${v.credentialHalt.at ?? '?'} ${v.credentialHalt.message ?? ''}`.trimEnd());
+  return lines;
+};
+
+export function formatDiagnosticsReport({ platform, icloud, available, snapshot, local, transports, syncEnabled, merge, directAccess }) {
+  const none = '(none)';
+  const lines = [
+    'dayGLANCE sync diagnostics',
+    `platform:        ${platform}`,
+  ];
+  // The iCloud block only where iCloud exists. On Android, Windows, Linux and
+  // the web it read "not probeable / unsupported / never" and said nothing;
+  // the Direct Access block below has always been conditional the same way.
+  // A report built without the flag (older callers, tests) keeps the block.
+  const hasICloud = icloud ?? true;
   const t = transports ?? { icloud: {}, webdav: {}, vault: {} };
+  if (hasICloud) {
+    lines.push(`container:       ${available.value === null ? 'not probeable on this platform' : available.value ? 'AVAILABLE' : 'unavailable'}`);
+    if (available.raw) lines.push(`  raw:           ${available.raw}`);
+    if (available.error) lines.push(`  error:         ${available.error}`);
+    lines.push(`snapshot file:   ${snapshot.state}`);
+    lines.push(...snapshotLines(snapshot, '', none).slice(1));
+    lines.push(
+      `sync on device:  ${syncEnabled === false ? 'OFF' : 'on'}`,
+      `icloud synced:   ${t.icloud?.lastSynced ?? 'never'}`,
+    );
+  }
   lines.push(
-    `sync on device:  ${syncEnabled === false ? 'OFF' : 'on'}`,
-    `icloud synced:   ${t.icloud?.lastSynced ?? 'never'}`,
     `webdav sync:     ${t.webdav.configured ? `configured (${t.webdav.provider ?? 'unknown'})` : 'not configured'}`,
     `  last synced:   ${t.webdav.lastSynced ?? 'never'}`,
     `glancevault:     ${t.vault.configured ? 'configured' : 'not configured'}`,
     `  last synced:   ${t.vault.lastSynced ?? 'never'}`,
+    ...vaultLines(t.vault, none),
     `local tasks:     ${local.taskCount}`,
     `local inbox:     ${local.inboxCount}`,
   );
-  if (merge) {
-    if (merge.error) {
-      lines.push(`merge dry-run:   error: ${merge.error}`);
-    } else {
-      lines.push(
-        `merge dry-run:   would write: ${merge.wouldWrite ? 'YES' : 'no'} / would apply: ${merge.wouldApply ? 'YES' : 'no'}`,
-        `  merge flags:   write ${merge.remoteChanged ? 'YES' : 'no'} / apply ${merge.localChanged ? 'YES' : 'no'}`,
-        `  file differs:  ${merge.fileDiffs.length ? merge.fileDiffs.map((d) => d.summary).join('; ') : none}`,
-        `  device differs:${merge.deviceDiffs.length ? ' ' + merge.deviceDiffs.map((d) => d.summary).join('; ') : ' ' + none}`,
-      );
-      if (merge.flagWithoutDiff) lines.push('  note:          the merge flagged a write although nothing would change in the file; the write is skipped');
-    }
+  if (hasICloud) lines.push(...mergeLines(merge, '', none));
+
+  if (directAccess) {
+    const da = directAccess;
+    lines.push(
+      '',
+      'direct access:   ' + (da.snapshot ? `${da.status} (${da.name ?? none})` : da.status === 'unreachable' ? `unreachable (${da.name ?? none})` : 'not connected'),
+      `  sync on device: ${da.enabled === false ? 'OFF' : 'on'}`,
+    );
+    if (da.pickError) lines.push(`  last pick:     FAILED: ${da.pickError}`);
+    if (da.native !== undefined && da.native !== null) lines.push(`  shell status:  ${typeof da.native === 'string' ? da.native : JSON.stringify(da.native)}`);
+    // An iPhone's roster is its own bookmarked file (Phase 5); elsewhere it is a path in the folder and has no line.
+    if (da.roster) lines.push(`  roster file:   ${da.roster.configured ? `${da.roster.reachable ? 'chosen' : 'chosen, unreachable'} (${da.roster.name ?? none})` : 'not chosen'}`);
+    if (da.snapshot) lines.push(...snapshotLines(da.snapshot, '  ', none));
+    lines.push(...mergeLines(da.merge, '  ', none));
   }
   return lines.join('\n');
 }

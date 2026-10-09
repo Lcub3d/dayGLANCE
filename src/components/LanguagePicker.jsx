@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { languages, resolveLanguage } from '../locales.js';
+import { setNativeAppLanguage } from '../utils/nativeAppLocale.js';
 
 /**
  * The language's own name for itself, derived from the tag rather than a table
@@ -39,6 +40,9 @@ export default function LanguagePicker({ className, id }) {
       onChange={(e) => {
         const language = e.target.value;
         i18n.changeLanguage(language);
+        // On Android 13+ the choice also goes to the system, so widgets, the
+        // Up Next notification, tiles and shortcuts follow it.
+        setNativeAppLanguage(language);
       }}
       className={className}
     >

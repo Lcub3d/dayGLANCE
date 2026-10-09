@@ -369,4 +369,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setLaunchOnWrite: (enabled: boolean): Promise<boolean> =>
       ipcRenderer.invoke('obsidian:set-launch-on-write', enabled),
   },
+
+  // Direct Access sync — dayglance-sync.json in a folder the user picked, kept
+  // in step across devices by a third-party tool (Drive, Dropbox, OneDrive,
+  // Syncthing). Folder access is held by the main process exactly as the
+  // Obsidian vault's is (electron/directAccess.ts); the renderer drives it
+  // through src/sync/directAccessTransport.js and only ever sees a folder name.
+  directAccess: {
+    pick: (): Promise<unknown> => ipcRenderer.invoke('direct-access:pick'),
+    restore: (): Promise<unknown> => ipcRenderer.invoke('direct-access:restore'),
+    disconnect: (): Promise<boolean> => ipcRenderer.invoke('direct-access:disconnect'),
+    status: (): Promise<unknown> => ipcRenderer.invoke('direct-access:status'),
+    // { kind: 'absent' | 'downloading' | 'error' | 'text', text?, error? }
+    read: (): Promise<unknown> => ipcRenderer.invoke('direct-access:read'),
+    write: (json: string): Promise<boolean> => ipcRenderer.invoke('direct-access:write', json),
+    deleteFile: (): Promise<boolean> => ipcRenderer.invoke('direct-access:delete'),
+    onChanged: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('direct-access:changed', handler);
+      return () => ipcRenderer.removeListener('direct-access:changed', handler);
+    },
+    // Files by path, relative to the folder and confined to it in the main
+    // process (the household roster, Phase 5; intents, Phase 7).
+    paths: {
+      list: (rel: string): Promise<string[] | null> => ipcRenderer.invoke('direct-access:list-files', rel),
+      read: (rel: string): Promise<unknown> => ipcRenderer.invoke('direct-access:read-file', rel),
+      write: (rel: string, text: string): Promise<boolean> => ipcRenderer.invoke('direct-access:write-file', rel, text),
+      remove: (rel: string): Promise<boolean> => ipcRenderer.invoke('direct-access:delete-file', rel),
+      makeDir: (rel: string): Promise<boolean> => ipcRenderer.invoke('direct-access:make-dir', rel),
+    },
+  },
 });

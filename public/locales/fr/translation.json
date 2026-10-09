@@ -41,7 +41,9 @@
       "passphraseNeeded": "Saisissez votre phrase secrète de synchronisation ci-dessus pour activer GLANCEvault.",
       "vaultUnreachable": "Impossible de joindre GLANCEvault. Vérifiez l'URL du coffre et le jeton d'appareil. ({{detail}})",
       "requestFailed": "échec de la requête",
-      "iCloudUnavailable": "iCloud indisponible : {{error}}"
+      "iCloudUnavailable": "iCloud indisponible : {{error}}",
+      "directAccessUnavailable": "Dossier Direct Access indisponible : {{error}}",
+      "directAccessEncrypted": "Le fichier du dossier Direct Access est chiffré et cet appareil ne peut pas le lire. Rien n'y a été écrit."
     },
     "vaultUrl": {
       "invalid": "Saisissez une URL de vault valide.",
@@ -2047,14 +2049,28 @@
     "confirm": "Tout effacer",
     "working": "Effacement…",
     "partialFailure": "Certaines données n'ont pas pu être effacées :",
-    "otherDevices": "Les autres appareils conservent leur propre copie et la restaureront. Réinitialisez-les un par un : quittez dayGLANCE partout, puis ouvrez un seul appareil, réinitialisez-le et quittez-le avant de passer au suivant."
+    "otherDevices": "Les autres appareils conservent leur propre copie et la restaureront. Réinitialisez-les un par un : quittez dayGLANCE partout, puis ouvrez un seul appareil, réinitialisez-le et quittez-le avant de passer au suivant.",
+    "scopeDeviceHintDirectAccess": "La copie dans le dossier Direct Access est conservée, et cet appareil peut la relire immédiatement même si la synchronisation est désactivée. À utiliser uniquement pour corriger un état local défectueux, pas pour repartir de zéro.",
+    "scopeEverywhereDirectAccess": "Cet appareil et le dossier Direct Access",
+    "scopeEverywhereDirectAccessHint": "Supprime aussi la copie dans le dossier Direct Access, afin que rien ne la restaure ici.",
+    "scopeDeviceHintBoth": "Les copies dans iCloud et dans le dossier Direct Access sont conservées, et cet appareil peut les relire immédiatement même si la synchronisation est désactivée. À utiliser uniquement pour corriger un état local défectueux, pas pour repartir de zéro.",
+    "scopeEverywhereBoth": "Cet appareil, iCloud et le dossier Direct Access",
+    "scopeEverywhereBothHint": "Supprime aussi les copies dans iCloud et dans le dossier Direct Access, afin que rien ne les restaure ici ni lors d'une réinstallation."
   },
   "icloudDiag": {
-    "title": "Diagnostic iCloud",
-    "hint": "Lecture seule. Indique ce que cet appareil voit actuellement dans le conteneur iCloud. Rien n'est écrit, supprimé ni synchronisé.",
+    "title": "Diagnostic de synchronisation",
+    "hint": "Lecture seule. Indique ce que cet appareil voit actuellement dans chaque transport de synchronisation : le conteneur iCloud, le dossier Direct Access, GLANCEvault et WebDAV. Rien n'est écrit, supprimé ni synchronisé.",
     "run": "Lancer le test",
     "running": "Vérification…",
     "platform": "Plateforme",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "Web / PWA"
+    },
     "container": "Conteneur",
     "containerError": "Erreur de conteneur",
     "available": "DISPONIBLE",
@@ -2096,7 +2112,22 @@
     "no": "non",
     "mergeError": "Erreur de la simulation de fusion",
     "flagWithoutDiff": "La fusion a signalé une écriture alors que rien ne changerait dans le fichier. L'écriture est ignorée.",
-    "mergeFlags": "Indicateurs de fusion (écriture / application)"
+    "applyFlagWithoutDiff": "La fusion a signalé une application alors que rien ne changerait sur cet appareil. L'application est ignorée.",
+    "bothFlagsWithoutDiff": "La fusion a signalé une écriture et une application alors que rien ne changerait dans le fichier ni sur cet appareil. Les deux sont ignorées.",
+    "mergeFlags": "Indicateurs de fusion (écriture / application)",
+    "directAccessTitle": "Dossier Direct Access",
+    "folder": "Dossier",
+    "folderStatus": "État du dossier",
+    "folderState": {
+      "connected": "connecté",
+      "disconnected": "non connecté",
+      "unreachable": "inaccessible",
+      "unknown": "inconnu"
+    },
+    "vaultConfig": "Config du vault (actif / URL / jeton / compte)",
+    "vaultCursor": "Curseur du vault (pull / accusé push)",
+    "vaultRows": "Lignes du vault (en attente / en quarantaine)",
+    "vaultHalt": "Arrêt du vault (identifiants)"
   },
   "icloudFirstRun": {
     "title": "Données trouvées dans iCloud",
@@ -2111,6 +2142,33 @@
     "title": "Synchronisation iCloud",
     "onHint": "Activée. Cet appareil se synchronise automatiquement avec vos autres appareils Apple.",
     "offHint": "Désactivée sur cet appareil. La copie iCloud et vos autres appareils ne sont pas affectés."
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "Synchronisez via un dossier qu'une autre application maintient déjà à jour entre vos appareils : Google Drive, Dropbox, OneDrive, Syncthing ou un partage réseau. dayGLANCE y lit et écrit un seul fichier ; cette application le déplace.",
+    "chooseFolder": "Choisir un dossier…",
+    "changeFolder": "Changer de dossier",
+    "chooseFile": "Choisir le fichier de synchronisation…",
+    "createFile": "Créer le fichier de synchronisation…",
+    "changeFile": "Changer de fichier",
+    "notConnectedFile": "Aucun fichier de synchronisation connecté sur cet appareil.",
+    "rosterChoose": "Choisir la liste du foyer…",
+    "rosterCreate": "Créer la liste du foyer…",
+    "rosterChange": "Changer de liste",
+    "rosterForget": "Oublier la liste",
+    "rosterChosen": "Liste du foyer : {{name}}",
+    "rosterNotChosen": "Liste du foyer : non choisie sur cet appareil.",
+    "iosRosterHint": "La liste du foyer est glance-users.json dans GLANCE/users du dossier partagé. Choisissez celle que vos autres appareils ont créée, ou créez-la là.",
+    "disconnect": "Déconnecter",
+    "notConnected": "Aucun dossier connecté sur cet appareil.",
+    "connectedTo": "Synchronisation via",
+    "unreachable": "Le dossier n'est pas disponible pour le moment. La synchronisation reprend dès qu'il est de retour.",
+    "onHint": "Activée. Cet appareil se synchronise via le dossier.",
+    "offHint": "Désactivée sur cet appareil. La copie dans le dossier et vos autres appareils ne sont pas affectés.",
+    "pickFailed": "Le dossier n'a pas pu être connecté : {{reason}}",
+    "neverSynced": "Pas encore synchronisé",
+    "androidHint": "Sur Android, choisissez un dossier qu'une application reflète dans le stockage de cet appareil, comme Syncthing, FolderSync ou Autosync. Les applications Google Drive et Dropbox ne proposent pas leurs dossiers ici.",
+    "iosHint": "Sur iPhone et iPad, choisissez le dayglance-sync.json que vos autres appareils partagent déjà, depuis un emplacement de l'app Fichiers comme Nextcloud, Google Drive ou Dropbox. Si aucun appareil ne l'a encore créé, créez-le dans le dossier qu'ils partageront."
   },
   "aspire": {
     "title": "Aspire",

@@ -51,16 +51,62 @@ describe('rescueUnsyncedTasks', () => {
     expect(out.map((t) => t.id)).toEqual(['a', 'int-live']);
   });
 
-  it('KNOWN 60-DAY BOUNDARY: an offline-past-60 task has no tombstone, so it IS resurrected', () => {
-    // Device offline > 60 days: the task is still in prev, its tombstone has been
-    // GC'd (deletedIds no longer has it), and the fence-suppressed merge lacks it.
-    // The guard cannot fire — the re-add resurrects it. This is the inherent limit
-    // of a 60-day tombstone policy (same boundary as the resurrection fence), and is
-    // asserted here so it reads as a documented boundary, not a future regression.
-    const prev = [imported('imp-ancient')];
+  it('without a horizon, an offline-past-60 task has no tombstone and IS resurrected (callers that know no fence)', () => {
+    const prev = [imported('imp-ancient', { lastModified: '2026-01-01T00:00:00.000Z' })];
     const deletedIdsAfterGc = {}; // tombstone pruned at 60 days
     const out = rescueUnsyncedTasks(merged('a'), prev, deletedIdsAfterGc);
-    expect(out.map((t) => t.id)).toEqual(['a', 'imp-ancient']); // resurrected — known limit
+    expect(out.map((t) => t.id)).toEqual(['a', 'imp-ancient']);
+  });
+
+  describe('THE HORIZON GUARD (2026-10-06, the Android ghost)', () => {
+    // A phone that had not synced since June held one inbox task the fleet had
+    // deleted months before. Its tombstone was pruned; the merge dropped the task
+    // by its fence; the rescue put it back; the apply ran every cycle forever.
+    const horizon = '2026-08-07T00:00:00.000Z'; // the file's tombstonePrunedBefore
+    const ancient = (id, extra = {}) => ({ id, title: id, lastModified: '2026-06-01T00:00:00.000Z', ...extra });
+    const recent = (id, extra = {}) => ({ id, title: id, lastModified: '2026-10-01T00:00:00.000Z', ...extra });
+
+    it('guard: a governed prev-only task older than the horizon is NOT rescued', () => {
+      const prev = [ancient('ghost', { importSource: 'obsidian' }), ancient('ghost-file', { imported: true, importSource: 'file' })];
+      const out = rescueUnsyncedTasks(merged('a'), prev, {}, undefined, {}, null, { horizon });
+      expect(out.map((t) => t.id)).toEqual(['a']);
+    });
+
+    it('a governed prev-only task NEWER than the horizon is still rescued (a genuine race-add)', () => {
+      const prev = [recent('fresh', { importSource: 'obsidian' })];
+      const out = rescueUnsyncedTasks(merged('a'), prev, {}, undefined, {}, null, { horizon });
+      expect(out.map((t) => t.id)).toEqual(['a', 'fresh']);
+    });
+
+    it('a task the merge does not govern is rescued regardless of age (its own source re-provides it)', () => {
+      const prev = [ancient('os', { _native: true }), ancient('cal', { imported: true })];
+      const isGoverned = (t) => !t._native && !(t.imported && !t.isTaskCalendar && t.importSource !== 'file');
+      const out = rescueUnsyncedTasks(merged('a'), prev, {}, undefined, {}, null, { horizon, isGoverned });
+      expect(out.map((t) => t.id)).toEqual(['a', 'os', 'cal']);
+    });
+
+    it('guard: an UNSTAMPED task is not old — a missing stamp or the epoch sentinel is exempt from the fence', () => {
+      // A fresh Obsidian import carries lastModified = epoch on purpose
+      // (obsidian.js), and a bridge inbound row likewise. The file tier will
+      // not upload it (its fence reads 1970 as ancient), so it is prev-only
+      // every cycle while the vault carries it to the fleet. It must survive
+      // the apply, exactly as it did before the horizon guard existed.
+      const prev = [
+        { id: 'fresh-note', title: 'x', importSource: 'obsidian', lastModified: new Date(0).toISOString() },
+        { id: 'stampless', title: 'y', importSource: 'obsidian' },
+      ];
+      const out = rescueUnsyncedTasks(merged('a'), prev, {}, undefined, {}, null, { horizon });
+      expect(out.map((t) => t.id)).toEqual(['a', 'fresh-note', 'stampless']);
+    });
+
+    it('the loop: with the guard the second apply has nothing left to rescue', () => {
+      // Cycle 1: merged lacks the ghost, prev has it. Cycle 2: prev is cycle 1's output.
+      const prev1 = [plain('a'), ancient('ghost', { importSource: 'obsidian' })];
+      const after1 = rescueUnsyncedTasks(merged('a'), prev1, {}, undefined, {}, null, { horizon });
+      const after2 = rescueUnsyncedTasks(merged('a'), after1, {}, undefined, {}, null, { horizon });
+      expect(after1).toEqual(after2);
+      expect(after2.map((t) => t.id)).toEqual(['a']);
+    });
   });
 
   it('tolerates empty / null inputs', () => {

@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   collectICloudDiagnostics,
   classifySnapshot,
+  probeDirectAccess,
   detectPlatform,
+  detectDevicePlatform,
   dryRunMerge,
   probeAvailability,
   readLocalState,
@@ -48,6 +50,21 @@ describe('detectPlatform', () => {
   it('reports none on Windows/Linux Electron despite the exposed API', () => {
     expect(detectPlatform({ electronAPI: { platform: 'win32', readICloud: async () => null } })).toBe('none');
     expect(detectPlatform({ electronAPI: { platform: 'linux', readICloud: async () => null } })).toBe('none');
+  });
+});
+
+describe('detectDevicePlatform', () => {
+  // The report's first line is the device, not the iCloud bridge: an Android
+  // phone printed "platform: none" (2026-10-08).
+  it('names every shell', () => {
+    expect(detectDevicePlatform({ isIOS: true, nativeBridge: {} })).toBe('ios');
+    expect(detectDevicePlatform({ nativeBridge: { iCloudAvailable: () => '{}' } })).toBe('ios');
+    expect(detectDevicePlatform({ nativeBridge: {} })).toBe('android');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'darwin' } })).toBe('macos');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'win32' } })).toBe('windows');
+    expect(detectDevicePlatform({ electronAPI: { platform: 'linux' } })).toBe('linux');
+    expect(detectDevicePlatform({})).toBe('web');
+    expect(detectDevicePlatform()).toBe('web');
   });
 });
 
@@ -176,7 +193,7 @@ describe('readSyncTransports', () => {
   it('reports both tiers unconfigured on a bare store', () => {
     const r = readSyncTransports({ localStorage: fakeLocalStorage() });
     expect(r.webdav).toEqual({ configured: false, provider: null, lastSynced: null });
-    expect(r.vault).toEqual({ configured: false, lastSynced: null });
+    expect(r.vault).toMatchObject({ configured: false, lastSynced: null, hasConfig: false });
     expect(r.icloud).toEqual({ lastSynced: null });
   });
 
@@ -225,7 +242,57 @@ describe('readSyncTransports', () => {
         'dayglance-vault-db-sync-last-synced': '2026-08-08T10:00:00.000Z',
       }),
     });
-    expect(complete.vault).toEqual({ configured: true, lastSynced: '2026-08-08T10:00:00.000Z' });
+    expect(complete.vault).toMatchObject({ configured: true, lastSynced: '2026-08-08T10:00:00.000Z' });
+  });
+
+  // The phone whose vault read "never" for months (2026-10-06): the report has
+  // to say WHICH of the four gate fields is missing, and what the engine's own
+  // persisted state looks like, or the line cannot be acted on.
+  it('names the missing vault config field and reads the engine\'s persisted state', () => {
+    const r = readSyncTransports({
+      localStorage: fakeLocalStorage({
+        'dayglance-vault-config': '{"enabled":true,"vaultUrl":"https://vault.example.net/api","vaultToken":"t"}',
+        'dayglance-vault-db-sync-hwm': '4812',
+        'dayglance-vault-db-sync-push-ack': '4790',
+        'dayglance-vault-db-sync-dirty': '["a","b"]',
+        'dayglance-vault-db-sync-quarantine': '[{"id":"q"}]',
+        'dayglance-vault-db-sync-credential-halt': '{"message":"token rejected","at":"2026-09-01T00:00:00.000Z"}',
+      }),
+    });
+    expect(r.vault).toMatchObject({
+      configured: false, hasConfig: true, enabled: true, hasUrl: true, hasToken: true, hasAccountId: false,
+      host: 'vault.example.net', highWaterMark: '4812', pushAck: '4790', dirtyCount: 2, quarantineCount: 1,
+      credentialHalt: { message: 'token rejected', at: '2026-09-01T00:00:00.000Z' },
+    });
+    const text = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: r.vault }, syncEnabled: true,
+    });
+    expect(text).toMatch(/config:\s+enabled yes \/ url yes \(vault.example.net\) \/ token yes \/ account id NO/);
+    expect(text).toMatch(/cursor:\s+pull 4812 \/ push ack 4790/);
+    expect(text).toMatch(/rows:\s+2 pending \/ 1 quarantined/);
+    expect(text).toMatch(/credential halt: 2026-09-01T00:00:00.000Z token rejected/);
+  });
+
+  it('a device with no vault config says so in one line, and a healthy one prints no halt', () => {
+    const none = readSyncTransports({ localStorage: fakeLocalStorage() });
+    const t1 = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 0, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: none.vault }, syncEnabled: true,
+    });
+    expect(t1).toMatch(/config:\s+\(none saved on this device\)/);
+    const ok = readSyncTransports({
+      localStorage: fakeLocalStorage({
+        'dayglance-vault-config': '{"enabled":true,"vaultUrl":"https://v","vaultToken":"t","accountId":"a"}',
+        'dayglance-vault-db-sync-last-synced': '2026-10-06T10:00:00.000Z',
+      }),
+    });
+    const t2 = formatDiagnosticsReport({
+      platform: 'none', available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 0, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: ok.vault }, syncEnabled: true,
+    });
+    expect(t2).toMatch(/glancevault:\s+configured/);
+    expect(t2).not.toMatch(/credential halt/);
   });
 
   it('survives corrupt config JSON and throwing storage', () => {
@@ -318,10 +385,15 @@ describe('collectICloudDiagnostics', () => {
     expect(r.snapshot.state).toBe('present');
   });
 
-  it('reports unsupported on Android/web without touching bridges', async () => {
+  it('reports unsupported on Android/web without touching bridges, and names the device', async () => {
     const r = await collectICloudDiagnostics({ localStorage: fakeLocalStorage() });
-    expect(r.platform).toBe('none');
+    expect(r.platform).toBe('web');
+    expect(r.icloudPlatform).toBe('none');
+    expect(r.icloud).toBe(false);
     expect(r.snapshot.state).toBe('unsupported');
+    const android = await collectICloudDiagnostics({ nativeBridge: {}, localStorage: fakeLocalStorage() });
+    expect(android).toMatchObject({ platform: 'android', icloudPlatform: 'none', icloud: false });
+    expect(formatDiagnosticsReport(android)).toMatch(/^dayGLANCE sync diagnostics\nplatform: +android\nwebdav sync:/);
   });
 
   it('captures a throwing read instead of rejecting', async () => {
@@ -351,6 +423,111 @@ describe('collectICloudDiagnostics', () => {
     expect(writeICloudSync).not.toHaveBeenCalled();
     expect(iCloudDeleteFile).not.toHaveBeenCalled();
     expect(iCloudWriteFile).not.toHaveBeenCalled();
+  });
+});
+
+// ── probeDirectAccess ──────────────────────────────────────────────────────
+
+const fakeDirectAccess = ({ supported = true, status = 'connected', name = 'GLANCE', enabled = true, read = async () => payload() } = {}) => ({
+  stripsHealthLogs: false,
+  isSupported: () => supported,
+  getSnapshot: () => ({ supported, status, name, enabled, connected: status === 'connected' || status === 'unreachable' }),
+  read: vi.fn(read),
+  write: vi.fn(),
+  deleteSnapshot: vi.fn(),
+});
+
+describe('probeDirectAccess', () => {
+  const data = { tasks: [{ id: 1, title: 'a', lastModified: '2026-10-01T00:00:00.000Z' }], unscheduledTasks: [] };
+  const quiet = (l, r) => ({ data: r, localChanged: false, remoteChanged: false });
+
+  it('is absent on a platform without the bridge, and never reads a folder that is not connected', async () => {
+    expect(await probeDirectAccess({ directAccess: null })).toBeNull();
+    expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
+    const off = fakeDirectAccess({ status: 'disconnected', name: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, pickError: null, native: null, roster: null, snapshot: null, merge: null });
+    expect(off.read).not.toHaveBeenCalled();
+  });
+
+  it('carries the last pick failure and the shell\'s own status into the report (the iPhone pick that did nothing, 2026-10-08)', async () => {
+    const t = fakeDirectAccess({ status: 'disconnected', name: null });
+    t.getSnapshot = () => ({ supported: true, status: 'disconnected', name: null, enabled: true, connected: false, pickError: 'bookmark: permission denied (/Nextcloud/dg)' });
+    t.probeStatus = async () => ({ configured: false, name: null, path: null, reachable: false });
+    const r = await probeDirectAccess({ directAccess: t });
+    expect(r.pickError).toBe('bookmark: permission denied (/Nextcloud/dg)');
+    expect(r.native).toEqual({ configured: false, name: null, path: null, reachable: false });
+    const text = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: r,
+    });
+    expect(text).toMatch(/direct access: +not connected\n  sync on device: on\n  last pick: +FAILED: bookmark: permission denied \(\/Nextcloud\/dg\)\n  shell status: +\{"configured":false/);
+    // An iPhone's roster file has its own line; a folder platform has none.
+    t.getSnapshot = () => ({ supported: true, status: 'disconnected', name: null, enabled: true, connected: false, roster: { configured: true, name: 'glance-users.json', reachable: true } });
+    const withRoster = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: await probeDirectAccess({ directAccess: t }),
+    });
+    expect(withRoster).toMatch(/roster file: +chosen \(glance-users.json\)/);
+    // A transport without the probe, or with nothing to report, prints neither line.
+    const plain = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      directAccess: { status: 'disconnected', name: null, enabled: true, pickError: null, native: null, snapshot: null, merge: null },
+    });
+    expect(plain).not.toMatch(/last pick|shell status|roster file/);
+  });
+
+  it('reads the connected folder through the transport and dry-runs the merge on it', async () => {
+    const t = fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) });
+    const r = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data }), merge: quiet });
+    expect(r.status).toBe('connected');
+    expect(r.name).toBe('GLANCE');
+    expect(r.snapshot.state).toBe('present');
+    expect(r.snapshot.taskCount).toBe(1);
+    expect(r.merge).toMatchObject({ wouldWrite: false, wouldApply: false, fileDiffs: [] });
+    expect(t.write).not.toHaveBeenCalled();
+    expect(t.deleteSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('names the slice this device would rewrite, which is the question the panel exists to answer', async () => {
+    const edited = { ...data, tasks: [{ ...data.tasks[0], title: 'b', lastModified: '2026-10-05T01:00:00.000Z' }] };
+    const t = fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: 'x', data }) });
+    const r = await probeDirectAccess({ directAccess: t, buildSyncPayload: () => ({ data: edited }), merge: (l) => ({ data: l, localChanged: false, remoteChanged: true }) });
+    expect(r.merge.wouldWrite).toBe(true);
+    expect(r.merge.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1: lastModified, title)']);
+  });
+
+  it('maps the transport contract: absent, downloading, error, a throwing read, an unreachable folder', async () => {
+    expect((await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => null }) })).snapshot.state).toBe('absent');
+    expect((await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => '{"downloading":true}' }) })).snapshot.state).toBe('downloading');
+    const err = await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => '{"error":"folder unavailable"}' }) });
+    expect(err.snapshot).toMatchObject({ state: 'error', error: 'folder unavailable' });
+    const thrown = await probeDirectAccess({ directAccess: fakeDirectAccess({ read: async () => { throw new Error('bridge gone'); } }) });
+    expect(thrown.snapshot).toMatchObject({ state: 'error', error: 'bridge gone' });
+    const unreachable = await probeDirectAccess({ directAccess: fakeDirectAccess({ status: 'unreachable', read: async () => '{"error":"ENOENT"}' }) });
+    expect(unreachable.status).toBe('unreachable');
+    expect(unreachable.snapshot.state).toBe('error');
+  });
+
+  it('rides along in the full report, and the text report carries its own block', async () => {
+    const r = await collectICloudDiagnostics({
+      electronAPI: { platform: 'darwin', readICloud: async () => payload() },
+      localStorage: fakeLocalStorage(),
+      buildSyncPayload: () => ({ data }),
+      merge: quiet,
+      directAccess: fakeDirectAccess({ read: async () => JSON.stringify({ version: 2, lastModified: '2026-10-05T18:00:00.000Z', data }) }),
+    });
+    expect(r.directAccess.status).toBe('connected');
+    const text = formatDiagnosticsReport(r);
+    expect(text).toMatch(/direct access:\s+connected \(GLANCE\)/);
+    expect(text).toMatch(/\n  file:\s+present/);
+    expect(text).toMatch(/\n    lastModified:\s+2026-10-05T18:00:00.000Z/);
+    expect(text).toMatch(/\n  merge dry-run:\s+would write: no \/ would apply: no/);
+
+    const off = formatDiagnosticsReport({ ...r, directAccess: { status: 'disconnected', name: null, enabled: true, snapshot: null, merge: null } });
+    expect(off).toMatch(/direct access:\s+not connected/);
+    expect(off).not.toMatch(/\n  file:/);
+    expect(formatDiagnosticsReport({ ...r, directAccess: null })).not.toMatch(/direct access:/);
   });
 });
 
@@ -396,6 +573,24 @@ describe('formatDiagnosticsReport', () => {
     expect(text).not.toMatch(/size:/);
   });
 
+  it('prints the iCloud block only where iCloud exists', () => {
+    const base = {
+      available: { value: null, raw: null, error: null },
+      snapshot: { state: 'unsupported', bytes: 0, lastModified: null, taskCount: null, inboxCount: null, error: null },
+      local: { taskCount: 3, inboxCount: 1 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      merge: { remoteChanged: false, localChanged: false, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], flagWithoutDiff: false },
+    };
+    const android = formatDiagnosticsReport({ ...base, platform: 'android', icloud: false });
+    expect(android).toMatch(/^dayGLANCE sync diagnostics\nplatform: +android\nwebdav sync:/);
+    for (const gone of ['container:', 'snapshot file:', 'sync on device:', 'icloud synced:', 'merge dry-run:']) expect(android).not.toContain(gone);
+    expect(android).toMatch(/glancevault:/);
+    expect(android).toMatch(/local tasks: +3/);
+    const mac = formatDiagnosticsReport({ ...base, platform: 'macos', icloud: true });
+    for (const kept of ['container:', 'snapshot file:', 'sync on device:', 'icloud synced:', 'merge dry-run:']) expect(mac).toContain(kept);
+    // A report built without the flag keeps the block.
+    expect(formatDiagnosticsReport({ ...base, platform: 'macos' })).toContain('container:');
+  });
+
   it('says so plainly when the platform cannot probe availability', () => {
     const text = formatDiagnosticsReport({
       platform: 'macos',
@@ -433,7 +628,7 @@ describe('dryRunMerge', () => {
     const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
     const r = dryRunMerge(file, { buildSyncPayload: () => ({ data: edited }), merge });
     expect(r.remoteChanged).toBe(true);
-    expect(r.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1)']);
+    expect(r.fileDiffs.map((d) => d.summary)).toEqual(['tasks: 1 changed (1: lastModified, title)']);
     expect(r.flagWithoutDiff).toBe(false);
   });
 
@@ -448,6 +643,18 @@ describe('dryRunMerge', () => {
     expect(r.fileDiffs).toEqual([]);
     expect(r.wouldWrite).toBe(false);
     expect(r.flagWithoutDiff).toBe(true);
+  });
+
+  it('asked for a transport that carries health counts, the same counts ARE a write (Direct Access)', () => {
+    const habits = [{ id: 'steps', name: 'Steps', source: 'healthConnect' }];
+    const withCounts = { ...data, habits, habitLogs: { '2026-10-07': { steps: 6543 } } };
+    const onFile = JSON.stringify({ version: 2, lastModified: '2026-10-02T00:00:00.000Z', data: { ...data, habits, habitLogs: {} } });
+    const merge = (l) => ({ data: l, localChanged: false, remoteChanged: true });
+    const r = dryRunMerge(onFile, { buildSyncPayload: () => ({ data: withCounts }), merge }, { stripsHealthLogs: false });
+    expect(r.wouldWrite).toBe(true);
+    expect(r.fileDiffs.map((d) => d.key)).toEqual(['habitLogs']);
+    // The default is the iCloud question.
+    expect(dryRunMerge(onFile, { buildSyncPayload: () => ({ data: withCounts }), merge }).wouldWrite).toBe(false);
   });
 
   it('a payload builder that throws is reported, not thrown', () => {
@@ -467,6 +674,13 @@ describe('dryRunMerge', () => {
     expect(flagged).toContain('merge dry-run:   would write: no / would apply: no');
     expect(flagged).toContain('merge flags:   write YES / apply no');
     expect(flagged).toContain('the write is skipped');
+    // The flag is named. An apply flag with no device difference is not a write (Mac over Direct Access, 2026-10-08).
+    const applyOnly = formatDiagnosticsReport({ ...base, merge: { remoteChanged: false, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: false, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(applyOnly).toContain('flagged an apply although nothing would change on this device; the apply is skipped');
+    expect(applyOnly).not.toContain('flagged a write');
+    const both = formatDiagnosticsReport({ ...base, merge: { remoteChanged: true, localChanged: true, wouldWrite: false, wouldApply: false, fileDiffs: [], deviceDiffs: [], writeFlagWithoutDiff: true, applyFlagWithoutDiff: true, flagWithoutDiff: true } });
+    expect(both).toContain('flagged a write and an apply');
+    expect(formatDiagnosticsReport(base)).toContain('dayGLANCE sync diagnostics');
     expect(formatDiagnosticsReport(base)).not.toContain('merge dry-run');
   });
 });

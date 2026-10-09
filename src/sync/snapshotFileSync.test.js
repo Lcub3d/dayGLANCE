@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runSnapshotFileCycle, classifySnapshotText, LOCAL_MODIFIED_KEY } from './snapshotFileSync.js';
+import { runSnapshotFileCycle, classifySnapshotText, LOCAL_MODIFIED_KEY, RELAY_CONFIRM_MS } from './snapshotFileSync.js';
 import { MISSING_GRACE_MS } from '../utils/icloudSeedGuard.js';
 
 // Every guard the App.jsx iCloud loop carried, asserted at the one place a
@@ -44,6 +44,9 @@ const makeIo = (over = {}) => ({
   isEncryptedEnvelope: (e) => !!e?.__encrypted,
   decryptData: vi.fn(async () => { throw new Error('no key'); }),
   storage: makeStorage(),
+  // By default the device has a change of its own to write (an edit stamped
+  // at T0, after any read); relay tests override this with null.
+  lastLocalEditAt: () => new Date(T0).toISOString(),
   now: () => T0,
   log: { warn: vi.fn(), error: vi.fn() },
   ...over,
@@ -51,6 +54,19 @@ const makeIo = (over = {}) => ({
 
 const fresh = { missingSince: 0, lastWriteAt: 0 };
 const written = (transport, n = 0) => JSON.parse(transport.write.mock.calls[n][0]);
+
+// A relay (no change of this device's own) waits RELAY_CONFIRM_MS for the
+// file to catch up: this runs the cycle, and if it deferred, runs it again
+// that much later and returns the second result. An own edit writes at once,
+// and then this is just the one cycle.
+const settled = async ({ transport, io, state }) => {
+  const first = await runSnapshotFileCycle({ transport, io, state });
+  if (first.outcome.kind !== 'merged' || !first.outcome.deferred) return first;
+  const clock = io.now;
+  io.now = () => clock() + RELAY_CONFIRM_MS;
+  try { return await runSnapshotFileCycle({ transport, io, state: first.state }); }
+  finally { io.now = clock; }
+};
 
 describe('classifySnapshotText', () => {
   it('distinguishes absent, placeholder, error, garbage and a snapshot', () => {
@@ -193,7 +209,7 @@ describe('a real snapshot', () => {
 
     const merged = data([task('r'), task('l')]);
     const remoteOnly = makeIo({ mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }) });
-    const b = await runSnapshotFileCycle({ transport, io: remoteOnly, state: fresh });
+    const b = await settled({ transport, io: remoteOnly, state: fresh });
     expect(b.outcome).toMatchObject({ wrote: true });
     expect(remoteOnly.applyEngineData).not.toHaveBeenCalled();
     expect(written(transport)).toEqual({ version: 2, lastModified: new Date(T0).toISOString(), data: merged });
@@ -209,7 +225,7 @@ describe('a real snapshot', () => {
       mergeSyncData: () => ({ data: merged, localChanged: true, remoteChanged: true }),
       stripHealthSourcedLogs: vi.fn((p) => ({ ...p, stripped: true })),
     });
-    await runSnapshotFileCycle({ transport, io, state: fresh });
+    await settled({ transport, io, state: fresh });
     expect(io.stripHealthSourcedLogs).toHaveBeenCalledWith(expect.objectContaining({ data: merged }), habits);
     expect(written(transport).stripped).toBe(true);
     expect(io.applyEngineData.mock.calls[0][0].stripped).toBeUndefined();
@@ -223,6 +239,68 @@ describe('a real snapshot', () => {
     });
     await runSnapshotFileCycle({ transport: seeding, io: seedIo, state: fresh });
     expect(written(seeding).stripped).toBe(true);
+  });
+});
+
+describe('guard: the health strip follows the transport', () => {
+  // Apple's guideline 5.1.3 is about Apple's container. The iCloud transport
+  // strips HealthKit-derived counts; a Direct Access folder is the user's own
+  // cloud and carries them, like GLANCEvault and WebDAV do. Stripping there
+  // kept an Android phone's Health Connect steps from reaching the Macs
+  // (2026-10-07).
+  const habits = [{ id: 'steps', source: 'healthConnect' }];
+  const strip = vi.fn((p) => ({ ...p, stripped: true }));
+
+  it('a transport that says stripsHealthLogs: false writes the counts whole, on merge and on seed', async () => {
+    const remote = data([task('r')]);
+    const merged = data([task('r'), task('l')]);
+    const transport = makeTransport({ stripsHealthLogs: false, read: async () => envelope(remote) });
+    const io = makeIo({ habits, mergeSyncData: () => ({ data: merged, localChanged: true, remoteChanged: true }), stripHealthSourcedLogs: strip });
+    await settled({ transport, io, state: fresh });
+    expect(strip).not.toHaveBeenCalled();
+    expect(written(transport).stripped).toBeUndefined();
+
+    const seeding = makeTransport({ stripsHealthLogs: false });
+    await runSnapshotFileCycle({ transport: seeding, io: makeIo({ habits, buildSyncPayload: () => ({ version: 2, data: data([task('mine')]) }), stripHealthSourcedLogs: strip }), state: fresh });
+    expect(strip).not.toHaveBeenCalled();
+    expect(written(seeding).stripped).toBeUndefined();
+  });
+
+  it('a transport that says true, or says nothing, strips as before', async () => {
+    for (const over of [{ stripsHealthLogs: true }, {}]) {
+      const t = makeTransport({ ...over, read: async () => envelope(data([task('r')])) });
+      const io = makeIo({ habits, mergeSyncData: () => ({ data: data([task('r'), task('l')]), localChanged: true, remoteChanged: true }), stripHealthSourcedLogs: (p) => ({ ...p, stripped: true }) });
+      await settled({ transport: t, io, state: fresh });
+      expect(written(t).stripped).toBe(true);
+    }
+  });
+
+  it('SCENARIO (2026-10-07): Health Connect steps on the phone reach a Mac over the folder, with the real merge and strip', async () => {
+    const { mergeSyncData } = await import('../mergeSync.js');
+    const { stripHealthSourcedLogs } = await import('../utils/healthLogFilter.js');
+    const base = { tasks: [task('a')], unscheduledTasks: [], recycleBin: [], completedTaskUids: [], deletedTaskIds: {}, habits, habitLogs: {}, habitLogTimestamps: {} };
+    const phone = { ...base, habitLogs: { '2026-10-07': { steps: 6543 } }, habitLogTimestamps: { '2026-10-07:steps': '2026-10-07T12:00:00.000Z' } };
+    const file = mergeSyncData(base, base, 90).data;                       // what the Macs wrote: no counts
+    const real = (over) => makeIo({ habits, mergeSyncData, stripHealthSourcedLogs, ...over });
+
+    // The phone's cycle over a Direct Access folder: the write carries the steps.
+    const folder = makeTransport({ stripsHealthLogs: false, read: async () => envelope(file) });
+    const r1 = await settled({ transport: folder, io: real({ buildSyncPayload: () => ({ version: 2, data: phone }) }), state: fresh });
+    expect(r1.outcome).toMatchObject({ kind: 'merged', wrote: true });
+    expect(written(folder).data.habitLogs['2026-10-07']).toEqual({ steps: 6543 });
+
+    // A Mac reads that file: it has no health store, so it adopts the counts.
+    const onMac = makeTransport({ stripsHealthLogs: false, read: async () => folder.write.mock.calls[0][0] });
+    const macIo = real({ buildSyncPayload: () => ({ version: 2, data: file }) });
+    const r2 = await runSnapshotFileCycle({ transport: onMac, io: macIo, state: fresh });
+    expect(r2.outcome).toMatchObject({ kind: 'merged', applied: true });
+    expect(macIo.applyEngineData.mock.calls[0][0].habitLogs['2026-10-07']).toEqual({ steps: 6543 });
+
+    // The same phone over iCloud: the strip holds, and the counts never leave the device.
+    const icloud = makeTransport({ stripsHealthLogs: true, read: async () => envelope(file) });
+    const r3 = await settled({ transport: icloud, io: real({ buildSyncPayload: () => ({ version: 2, data: phone }) }), state: fresh });
+    expect(r3.outcome.wrote).toBe(false);
+    expect(icloud.write).not.toHaveBeenCalled();
   });
 });
 
@@ -301,6 +379,125 @@ describe('encrypted envelopes', () => {
   });
 });
 
+describe('guard: made here, or relayed', () => {
+  const file = data([task('r')]);
+  const merged = data([task('r'), task('l')]);
+  const iso = (t) => new Date(t).toISOString();
+  // A change that reached this device by another road: no edit of its own.
+  const relaying = (over = {}) => makeIo({ lastLocalEditAt: () => null, mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }), ...over });
+
+  it('a change made here is written at once (the Mac that created a task, 2026-10-08 21:06)', async () => {
+    const transport = makeTransport({ read: async () => envelope(file) });
+    const io = makeIo({ mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }) });
+    const { state, outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: true, deferred: false, ownEdits: true });
+    expect(written(transport).data).toEqual(merged);
+    expect(state.lastWrittenAt).toBe(T0);
+    expect(state.pendingWrite).toBeNull();
+  });
+
+  it('a relay defers, and the apply is not deferred', async () => {
+    const transport = makeTransport({ read: async () => envelope(file) });
+    const io = relaying({ mergeSyncData: () => ({ data: merged, localChanged: true, remoteChanged: true }) });
+    const { state, outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: false, deferred: true, applied: true, ownEdits: false });
+    expect(transport.write).not.toHaveBeenCalled();
+    expect(io.applyEngineData).toHaveBeenCalledTimes(1);
+    expect(state.pendingWrite).toEqual({ fingerprint: expect.any(String), at: T0 });
+  });
+
+  it('SCENARIO (2026-10-08): the change came by the vault first; the folder catches up, and the relay is dropped', async () => {
+    // The second Mac learned of an iPhone's edit from GLANCEvault seconds
+    // before its Nextcloud client delivered the phone's file. It wrote the
+    // same data with a fresh stamp, and Nextcloud reported a conflict.
+    let onDisk = envelope(file, '2026-10-08T14:26:20.000Z');
+    const transport = makeTransport({ read: async () => onDisk });
+    const io = relaying({
+      buildSyncPayload: () => ({ version: 2, data: merged }),
+      mergeSyncData: (local, remote) => ({ data: merged, localChanged: false, remoteChanged: remote.tasks.length < merged.tasks.length }),
+    });
+    const a = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(a.outcome).toMatchObject({ deferred: true });
+    onDisk = envelope(merged, '2026-10-08T14:26:35.000Z');  // the phone's version arrives
+    io.now = () => T0 + 15_000;
+    const b = await runSnapshotFileCycle({ transport, io, state: a.state });
+    expect(b.outcome).toMatchObject({ kind: 'merged', wrote: false, deferred: false });
+    expect(transport.write).not.toHaveBeenCalled();
+    expect(b.state.pendingWrite).toBeNull();
+  });
+
+  it('a relay goes out once the file has sat unchanged, still lacking it, for RELAY_CONFIRM_MS; a kick sooner does not', async () => {
+    const transport = makeTransport({ read: async () => envelope(file) });
+    const io = relaying();
+    const a = await runSnapshotFileCycle({ transport, io, state: fresh });
+    io.now = () => T0 + RELAY_CONFIRM_MS - 1;
+    const b = await runSnapshotFileCycle({ transport, io, state: a.state });
+    expect(b.outcome).toMatchObject({ wrote: false, deferred: true });
+    expect(b.state.pendingWrite.at).toBe(T0);
+    io.now = () => T0 + RELAY_CONFIRM_MS;
+    const c = await runSnapshotFileCycle({ transport, io, state: b.state });
+    expect(c.outcome).toMatchObject({ wrote: true, deferred: false, ownEdits: false });
+    expect(c.state.lastWrittenAt).toBe(T0 + RELAY_CONFIRM_MS);
+  });
+
+  it('a file that changed in between, with the difference still there, starts the relay over', async () => {
+    let onDisk = envelope(file, '2026-10-08T14:26:20.000Z');
+    const transport = makeTransport({ read: async () => onDisk });
+    const io = relaying();
+    const a = await runSnapshotFileCycle({ transport, io, state: fresh });
+    onDisk = envelope(file, '2026-10-08T14:26:35.000Z');    // someone rewrote it, still without the task
+    io.now = () => T0 + RELAY_CONFIRM_MS;
+    const b = await runSnapshotFileCycle({ transport, io, state: a.state });
+    expect(b.outcome).toMatchObject({ wrote: false, deferred: true });
+    expect(b.state.pendingWrite.at).toBe(T0 + RELAY_CONFIRM_MS);
+  });
+
+  it('an edit older than the last read of this file is not "made here, unwritten": the device relays', async () => {
+    // The other Mac had edited hours ago and read the file every 15 s since;
+    // the task it now holds came by the vault.
+    const transport = makeTransport({ read: async () => envelope(file) });
+    const io = relaying({
+      lastLocalEditAt: () => iso(T0 - 3_600_000),
+      storage: makeStorage({ 'fake-last-synced': iso(T0 - 15_000) }),
+    });
+    const { outcome, state } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ wrote: false, deferred: true, ownEdits: false });
+    expect(state.lastWrittenAt).toBe(T0 - 15_000);
+    // An edit since that read IS made here.
+    const io2 = relaying({ lastLocalEditAt: () => iso(T0 - 5_000), storage: makeStorage({ 'fake-last-synced': iso(T0 - 15_000) }) });
+    const t2 = makeTransport({ read: async () => envelope(file) });
+    expect((await runSnapshotFileCycle({ transport: t2, io: io2, state: fresh })).outcome).toMatchObject({ wrote: true, ownEdits: true });
+  });
+
+  it('a successful write moves the baseline: the next difference without a new edit is a relay', async () => {
+    let onDisk = envelope(file);
+    const transport = makeTransport({ read: async () => onDisk });
+    const io = makeIo({ mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }) });
+    const a = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(a.outcome).toMatchObject({ wrote: true, ownEdits: true });
+    // The file still lacks the task (the write did not land yet, or was undone elsewhere): no new edit here.
+    io.now = () => T0 + 15_000;
+    const b = await runSnapshotFileCycle({ transport, io, state: a.state });
+    expect(b.outcome).toMatchObject({ wrote: false, deferred: true, ownEdits: false });
+  });
+
+  it('a cycle that wants no write clears the pending relay', async () => {
+    const transport = makeTransport({ read: async () => envelope(file) });
+    const a = await runSnapshotFileCycle({ transport, io: relaying(), state: fresh });
+    expect(a.state.pendingWrite).not.toBeNull();
+    const quiet = makeIo({ mergeSyncData: () => ({ data: file, localChanged: false, remoteChanged: false }) });
+    const b = await runSnapshotFileCycle({ transport, io: quiet, state: a.state });
+    expect(b.state.pendingWrite).toBeNull();
+  });
+
+  it('seeding an absent file is not deferred: nothing could have raced it', async () => {
+    const transport = makeTransport();
+    const io = makeIo({ buildSyncPayload: () => ({ version: 2, data: data([task('a')]) }) });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toEqual({ kind: 'seeded', wrote: true });
+  });
+});
+
 describe('write throttle', () => {
   it('guard: skips writes inside the transport\'s window and resumes after it', async () => {
     const remote = data([task('r')]);
@@ -308,13 +505,16 @@ describe('write throttle', () => {
     const merged = data([task('r'), task('l')]);
     const io = makeIo({ mergeSyncData: () => ({ data: merged, localChanged: false, remoteChanged: true }) });
 
+    // The device keeps editing (its edit stamp follows the clock), so every
+    // cycle has a change of its own and only the window holds it back.
+    io.lastLocalEditAt = () => new Date(io.now()).toISOString();
     const a = await runSnapshotFileCycle({ transport, io, state: fresh });
     expect(a.outcome.wrote).toBe(true);
     expect(a.state.lastWriteAt).toBe(T0);
 
     io.now = () => T0 + 4999;
     const b = await runSnapshotFileCycle({ transport, io, state: a.state });
-    expect(b.outcome).toMatchObject({ kind: 'merged', wrote: false });
+    expect(b.outcome).toMatchObject({ kind: 'merged', wrote: false, deferred: false, ownEdits: true });
     expect(b.state.lastWriteAt).toBe(T0);
     expect(transport.write).toHaveBeenCalledTimes(1);
 
@@ -382,10 +582,40 @@ describe('guard: the merge flags are necessary, not sufficient', () => {
       stripHealthSourcedLogs: strip,
     });
     const t2 = makeTransport({ read: async () => envelope(fileData) });
-    const r2 = await runSnapshotFileCycle({ transport: t2, io: io2, state: fresh });
+    const r2 = await settled({ transport: t2, io: io2, state: fresh });
     expect(r2.outcome.wrote).toBe(true);
     expect(written(t2).data.habitLogs['2026-10-01']).toEqual({ water: 3 });
     expect(written(t2).data.tasks[0].title).toBe('renamed');
+  });
+
+  it('guard: a difference only in the keys the merge calls device-local writes nothing', async () => {
+    const fileData = { ...data([task('a')]), use24HourClock: false, minimizedSections: { inbox: false } };
+    const localData = { ...data([task('a')]), use24HourClock: true, minimizedSections: { inbox: true } };
+    const transport = makeTransport({ read: async () => envelope(fileData) });
+    const io = makeIo({
+      buildSyncPayload: () => ({ version: 2, data: localData }),
+      mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true, deviceLocalKeys: ['use24HourClock', 'minimizedSections'] }),
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome).toMatchObject({ kind: 'merged', wrote: false, deferred: false });
+    expect(transport.write).not.toHaveBeenCalled();
+    // The same merge without the list: the difference counts, and the write goes out.
+    const io2 = makeIo({ buildSyncPayload: () => ({ version: 2, data: localData }), mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true }) });
+    const t2 = makeTransport({ read: async () => envelope(fileData) });
+    expect((await runSnapshotFileCycle({ transport: t2, io: io2, state: fresh })).outcome.wrote).toBe(true);
+  });
+
+  it('guard: an order-only difference from the file writes nothing', async () => {
+    const fileData = data([task('a'), task('b')]);
+    const localData = data([task('b'), task('a')]);
+    const transport = makeTransport({ read: async () => envelope(fileData) });
+    const io = makeIo({
+      buildSyncPayload: () => ({ version: 2, data: localData }),
+      mergeSyncData: () => ({ data: localData, localChanged: false, remoteChanged: true }),
+    });
+    const { outcome } = await runSnapshotFileCycle({ transport, io, state: fresh });
+    expect(outcome.wrote).toBe(false);
+    expect(transport.write).not.toHaveBeenCalled();
   });
 
   it('an apply flag with nothing differing from local state applies nothing', async () => {

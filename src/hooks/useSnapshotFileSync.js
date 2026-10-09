@@ -19,7 +19,15 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  *   • `startedAtRef` records when the mutex was taken, so a foreground resume
  *     can tell a live cycle from one iOS stranded by suspending the app
  *     mid-sync (App.jsx clearStrandedSyncGuards releases a stale lock).
- *   • `pendingRef` is raised when a cycle is skipped under the lock.
+ *   • `pendingRef` is raised when a cycle is skipped under the lock, and the
+ *     skipped instance retries on its own two seconds later. Two instances
+ *     poll on the same cadence from timers started in the same render, so
+ *     without the retry the second one's tick found the lock held by the
+ *     first's read on EVERY tick: on a Mac running iCloud and Direct Access
+ *     together, Direct Access wrote once at the pick and never again
+ *     (2026-10-05). A retry that finds the lock still held does not chain;
+ *     the next poll tick is the next attempt, so a lock stranded by iOS
+ *     suspending the app mid-cycle cannot spin this.
  *   • the first-run prompt gates the loop through a ref, because state lands a
  *     render too late to stop the next poll tick, and merging then is exactly
  *     the silent restore the prompt exists to offer a way out of.
@@ -38,10 +46,12 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  * @param {object}  args.io
  * @param {() => object} args.io.buildSyncPayload
  * @param {(data: object, opts: object) => void} args.io.applyEngineData
+ * @param {() => string|null} [args.io.lastLocalEditAt]  when this device itself last changed its data
  * @param {Array}   args.io.habits
  * @param {number}  args.io.syncRetentionDays
  * @param {() => boolean} [args.io.isResetInProgress]
  * @param {(error: string) => void} [args.io.onUnavailable]  transport reported an error object
+ * @param {() => void} [args.io.onEncryptedUnreadable]  the file is encrypted, this device cannot read it, and the transport forbids writing over it
  * @param {() => number} [args.io.now]
  * @returns {{
  *   runSync: () => Promise<void>,
@@ -50,6 +60,9 @@ import { decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
  *   declineFirstRun: () => void,
  * }}
  */
+/** How long a cycle skipped under the shared mutex waits before its one retry. */
+export const SKIPPED_RETRY_MS = 2000;
+
 export default function useSnapshotFileSync({
   transport, active, dataLoaded,
   cloudSyncInProgressRef, pendingRef, startedAtRef,
@@ -66,6 +79,8 @@ export default function useSnapshotFileSync({
   const internalStartedAtRef = useRef(0);
   const pending = pendingRef ?? internalPendingRef;
   const startedAt = startedAtRef ?? internalStartedAtRef;
+  // The one-shot retry armed by a cycle skipped under the mutex.
+  const retryRef = useRef(null);
 
   // Carried between cycles: the eviction clock and the write throttle stamp.
   const cycleStateRef = useRef({ missingSince: 0, lastWriteAt: 0 });
@@ -73,7 +88,7 @@ export default function useSnapshotFileSync({
   const firstRunPendingRef = useRef(false);
   const [firstRun, setFirstRun] = useState(null);
 
-  const runCycle = async () => {
+  const runCycle = async (isRetry = false) => {
     if (!enabled) return;
     if (!dataLoadedRef.current) return;
     // A reset in flight has already deleted the snapshot (scope 'everywhere')
@@ -86,11 +101,22 @@ export default function useSnapshotFileSync({
     if (!transport.isEnabled()) return;
     if (firstRunPendingRef.current) return;
     if (cloudSyncInProgressRef.current) {
+      // The other snapshot transport (or this one, kicked twice) holds the
+      // lock. Come back once, shortly: a cycle is local file I/O and is over
+      // in milliseconds, so the retry almost always runs. A retry that still
+      // finds the lock leaves it to the next poll tick rather than chaining.
       pending.current = true;
+      if (!isRetry && retryRef.current === null) {
+        retryRef.current = setTimeout(() => {
+          retryRef.current = null;
+          runCycleRef.current(true);
+        }, SKIPPED_RETRY_MS);
+      }
       return;
     }
     if (!transport.isAvailable()) return;
 
+    pending.current = false;
     cloudSyncInProgressRef.current = true;
     startedAt.current = Date.now();
     try {
@@ -99,6 +125,7 @@ export default function useSnapshotFileSync({
         io: {
           buildSyncPayload: ioRef.current.buildSyncPayload,
           applyEngineData: ioRef.current.applyEngineData,
+          lastLocalEditAt: ioRef.current.lastLocalEditAt,
           habits: ioRef.current.habits,
           syncRetentionDays: ioRef.current.syncRetentionDays,
           mergeSyncData,
@@ -117,6 +144,10 @@ export default function useSnapshotFileSync({
       } else if (outcome.kind === 'error') {
         console.error(`[${transport.id}] unavailable:`, outcome.error);
         ioRef.current.onUnavailable?.(outcome.error);
+      } else if (outcome.kind === 'skipped' && outcome.reason === 'encrypted-unreadable') {
+        // Nothing was written over the file we cannot read; the user has to
+        // know, because nothing else will happen until they act.
+        ioRef.current.onEncryptedUnreadable?.();
       }
     } catch (err) {
       // A transport that throws (rather than returning an error object) must
@@ -178,18 +209,22 @@ export default function useSnapshotFileSync({
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [enabled, transport, runSync]);
 
-  // Push signal from the native side (the file changed under us). If a cycle
-  // is already running, retry shortly so the change isn't lost.
+  // Push signal from the native side (the file changed under us). A cycle
+  // already running makes this a skip, and the skip's own retry picks the
+  // change up two seconds later.
   useEffect(() => {
     if (!enabled || !transport.onChanged) return;
-    return transport.onChanged(() => {
-      if (cloudSyncInProgressRef.current) {
-        setTimeout(runSync, 2000);
-      } else {
-        runSync();
-      }
-    });
-  }, [enabled, transport, cloudSyncInProgressRef, runSync]);
+    return transport.onChanged(runSync);
+  }, [enabled, transport, runSync]);
+
+  // A retry armed just before unmount must not run against a dead instance.
+  useEffect(() => {
+    if (!enabled) return;
+    return () => {
+      if (retryRef.current !== null) clearTimeout(retryRef.current);
+      retryRef.current = null;
+    };
+  }, [enabled]);
 
   return { runSync, firstRun, acceptFirstRun, declineFirstRun };
 }

@@ -41,7 +41,9 @@
       "passphraseNeeded": "请在上方输入同步口令以启用 GLANCEvault。",
       "vaultUnreachable": "无法连接 GLANCEvault。请检查服务地址和设备令牌。（{{detail}}）",
       "requestFailed": "请求失败",
-      "iCloudUnavailable": "iCloud 不可用：{{error}}"
+      "iCloudUnavailable": "iCloud 不可用：{{error}}",
+      "directAccessUnavailable": "Direct Access 文件夹不可用：{{error}}",
+      "directAccessEncrypted": "Direct Access 文件夹中的文件已加密，此设备无法读取。未向其写入任何内容。"
     },
     "vaultUrl": {
       "invalid": "请输入有效的 GLANCEvault URL。",
@@ -2047,14 +2049,28 @@
     "confirm": "清除全部数据",
     "working": "正在擦除…",
     "partialFailure": "部分数据无法清除：",
-    "otherDevices": "其他设备会保留自己的副本并将其恢复。请逐台重置：先退出所有设备上的 dayGLANCE，再只打开一台设备，完成重置后退出，然后处理下一台。"
+    "otherDevices": "其他设备会保留自己的副本并将其恢复。请逐台重置：先退出所有设备上的 dayGLANCE，再只打开一台设备，完成重置后退出，然后处理下一台。",
+    "scopeDeviceHintDirectAccess": "Direct Access 文件夹中的副本会被保留，即使同步已关闭，此设备也能立即将其读回。仅用于修复异常的本地状态，而不是重新开始。",
+    "scopeEverywhereDirectAccess": "此设备和 Direct Access 文件夹",
+    "scopeEverywhereDirectAccessHint": "同时删除 Direct Access 文件夹中的副本，这样在此处不会再恢复任何内容。",
+    "scopeDeviceHintBoth": "iCloud 和 Direct Access 文件夹中的副本会被保留，即使同步已关闭，此设备也能立即将其读回。仅用于修复异常的本地状态，而不是重新开始。",
+    "scopeEverywhereBoth": "此设备、iCloud 和 Direct Access 文件夹",
+    "scopeEverywhereBothHint": "同时删除 iCloud 和 Direct Access 文件夹中的副本，这样在此处或重新安装后都不会再恢复任何内容。"
   },
   "icloudDiag": {
-    "title": "iCloud 诊断",
-    "hint": "只读。报告该设备当前在 iCloud 容器中看到的内容。没有写入、删除或同步任何内容。",
+    "title": "同步诊断",
+    "hint": "只读。报告该设备当前在每个同步传输中看到的内容：iCloud 容器、Direct Access 文件夹、GLANCEvault 和 WebDAV。没有写入、删除或同步任何内容。",
     "run": "运行检查",
     "running": "检查…",
     "platform": "平台",
+    "platformName": {
+      "ios": "iPhone / iPad",
+      "android": "Android",
+      "macos": "macOS",
+      "windows": "Windows",
+      "linux": "Linux",
+      "web": "网页 / PWA"
+    },
     "container": "容器",
     "containerError": "容器错误",
     "available": "可用",
@@ -2096,7 +2112,22 @@
     "no": "否",
     "mergeError": "合并试运行出错",
     "flagWithoutDiff": "合并标记了写入，但文件中不会有任何变化。该写入将被跳过。",
-    "mergeFlags": "合并标志（写入 / 应用）"
+    "applyFlagWithoutDiff": "合并标记了应用，但此设备上不会有任何变化。该应用将被跳过。",
+    "bothFlagsWithoutDiff": "合并标记了写入和应用，但文件和此设备都不会有任何变化。两者都将被跳过。",
+    "mergeFlags": "合并标志（写入 / 应用）",
+    "directAccessTitle": "Direct Access 文件夹",
+    "folder": "文件夹",
+    "folderStatus": "文件夹状态",
+    "folderState": {
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "unreachable": "无法访问",
+      "unknown": "未知"
+    },
+    "vaultConfig": "Vault 配置（启用 / URL / 令牌 / 账户）",
+    "vaultCursor": "Vault 游标（拉取 / 推送确认）",
+    "vaultRows": "Vault 行（待处理 / 已隔离）",
+    "vaultHalt": "Vault 凭据停止"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",
@@ -2111,6 +2142,33 @@
     "title": "iCloud 同步",
     "onHint": "已开启。此设备会自动与其他 Apple 设备同步。",
     "offHint": "此设备已关闭。iCloud 副本和其他设备不会受到影响。"
+  },
+  "directAccess": {
+    "title": "Direct Access",
+    "desc": "通过另一个应用已在你的设备之间保持同步的文件夹进行同步：Google Drive、Dropbox、OneDrive、Syncthing 或网络共享。dayGLANCE 在其中读写一个文件，由该应用负责传输。",
+    "chooseFolder": "选择文件夹…",
+    "changeFolder": "更换文件夹",
+    "chooseFile": "选择同步文件…",
+    "createFile": "创建同步文件…",
+    "changeFile": "更换文件",
+    "notConnectedFile": "此设备上未连接同步文件。",
+    "rosterChoose": "选择家庭名单…",
+    "rosterCreate": "创建家庭名单…",
+    "rosterChange": "更换名单",
+    "rosterForget": "忘记名单",
+    "rosterChosen": "家庭名单：{{name}}",
+    "rosterNotChosen": "家庭名单：此设备上未选择。",
+    "iosRosterHint": "家庭名单是共享文件夹 GLANCE/users 中的 glance-users.json。选择其他设备已创建的那个，或在那里创建。",
+    "disconnect": "断开连接",
+    "notConnected": "此设备尚未连接任何文件夹。",
+    "connectedTo": "同步文件夹：",
+    "unreachable": "该文件夹当前不可用。待其恢复后同步将自动继续。",
+    "onHint": "已开启。此设备通过该文件夹同步。",
+    "offHint": "此设备已关闭。文件夹中的副本和其他设备不会受到影响。",
+    "pickFailed": "无法连接文件夹：{{reason}}",
+    "neverSynced": "尚未同步",
+    "androidHint": "在 Android 上，请选择由某个应用镜像到本设备存储的文件夹，例如 Syncthing、FolderSync 或 Autosync。Google Drive 和 Dropbox 应用不会在此提供其文件夹。",
+    "iosHint": "在 iPhone 和 iPad 上，从“文件”App 中的位置（如 Nextcloud、Google Drive 或 Dropbox）选择其他设备已共享的 dayglance-sync.json。如果还没有设备创建它，请在它们将共享的文件夹中创建。"
   },
   "aspire": {
     "title": "Aspire",

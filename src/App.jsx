@@ -32,7 +32,10 @@ import { LIVE_BACKUP_FILENAME } from './utils/folderBackup.js';
 import { collectDeviceSettings, applyDeviceSettings } from './utils/deviceSettings.js';
 import { isResetInProgress } from './utils/resetAppData.js';
 import useSnapshotFileSync from './hooks/useSnapshotFileSync.js';
+import { LOCAL_EDIT_KEY } from './sync/snapshotFileSync.js';
 import { createICloudSnapshotTransport } from './sync/icloudSnapshotTransport.js';
+import { directAccessTransport } from './sync/directAccessTransport.js';
+import useDirectAccessStatus from './hooks/useDirectAccessStatus.js';
 import { evaluateSnapshotPush } from './utils/widgetSnapshotDedupe.js';
 import { computeSkySnapshot, projectDialSnapshot } from './utils/dayDial.js';
 import { loadAlarmPrefs } from './utils/dialPrefs.js';
@@ -158,7 +161,7 @@ import { useGoalNotifyEmitter } from './intents/useGoalNotifyEmitter.js';
 import { useOutboxFlush } from './intents/useOutboxFlush.js';
 import { useAndroidIntentBridge } from './intents/useAndroidIntentBridge.js';
 import { useUrlActionHandler } from './intents/useUrlActionHandler.js';
-import { syncSharedUsers, syncSharedUsersViaICloud } from './intents/sharedUsers.js';
+import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess } from './intents/sharedUsers.js';
 import useVoiceAI from './hooks/useVoiceAI.js';
 import useNavigation from './hooks/useNavigation.js';
 import useStats from './hooks/useStats.js';
@@ -1901,6 +1904,7 @@ const DayPlanner = () => {
     unscheduledOrderTimestamp,
     cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
     setUndoToast,
+    isRemoteApply,
   });
 
   // Set below once useFolderBackup is instantiated (it needs
@@ -2166,7 +2170,7 @@ const DayPlanner = () => {
       suppressTimestampRef.current = false;
       suppressClearPendingRef.current = false;
       if (cloudSyncInProgressRef.current &&
-          Date.now() - iCloudSyncStartedAtRef.current > STALE_ICLOUD_LOCK_MS) {
+          Date.now() - snapshotSyncStartedAtRef.current > STALE_ICLOUD_LOCK_MS) {
         cloudSyncInProgressRef.current = false;
       }
     };
@@ -2193,9 +2197,12 @@ const DayPlanner = () => {
     const handleNativeForeground = () => {
       clearStrandedSyncGuards();
       setCurrentTime(new Date());
-      // iCloud runs first (fast local file I/O), then WebDAV (network).
-      // engine.download() bypasses its own backoff for these foreground kicks.
+      // The snapshot transports run first (fast local file I/O; they share a
+      // mutex, so the second retries two seconds later if the first is still
+      // running), then WebDAV (network). engine.download() bypasses its own
+      // backoff for these foreground kicks.
       iCloudSync.runSync();
+      directAccessSync.runSync();
       cloudSyncDownloadRef.current?.();
       requestAnimationFrame(() => setTimeout(() => {
         refreshHealthPermsRef.current?.();
@@ -2488,11 +2495,12 @@ const DayPlanner = () => {
   // applyingRemoteDataRef is declared earlier (near the cloud-sync refs) so the
   // intent emitters, which mount above this point, can read it as their
   // remote-apply guard.
-  // Timestamp (ms) when the iCloud mutex was taken, so a foreground resume can
-  // tell a genuinely in-flight cycle from one stranded by iOS suspending the app
-  // mid-sync (the in-flight promise never settles, so its finally never clears
-  // the lock). Used by clearStrandedSyncGuards on resume.
-  const iCloudSyncStartedAtRef  = useRef(0);
+  // Timestamp (ms) when the snapshot-transport mutex (iCloud, Direct Access)
+  // was taken, so a foreground resume can tell a genuinely in-flight cycle from
+  // one stranded by iOS suspending the app mid-sync (the in-flight promise
+  // never settles, so its finally never clears the lock). Used by
+  // clearStrandedSyncGuards on resume.
+  const snapshotSyncStartedAtRef  = useRef(0);
 
   useEffect(() => {
     if (dataLoaded) {
@@ -2698,41 +2706,6 @@ const DayPlanner = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataLoaded, multiUserEnabled, meUserSyncId]);
 
-  // Sync user list with glance-users.json on WebDAV and iCloud, so dayGLANCE
-  // and lastGLANCE share the same roster regardless of which app is opened first.
-  // Both transports run simultaneously; whichever returns non-null is applied.
-  // Re-runs when users change or cloud sync config changes.
-  useEffect(() => {
-    if (!multiUserEnabled) return;
-    const usersPath = (() => {
-      const raw = localStorage.getItem('dayglance-multi-user-config');
-      return raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
-    })();
-
-    const applyMerged = (merged) => {
-      if (!merged) return;
-      const localById = new Map(users.map(u => [u.syncId ?? u.id, u]));
-      const hasNew = merged.some(u => {
-        const local = localById.get(u.syncId ?? u.id);
-        return !local || u.updatedAt > local.updatedAt;
-      });
-      if (hasNew || merged.length !== users.length) {
-        localStorage.setItem('dayglance-users', JSON.stringify(merged));
-        setUsers(merged);
-      }
-    };
-
-    if (cloudSyncConfig?.enabled) {
-      syncSharedUsers(cloudSyncConfig, usersPath, users)
-        .then(applyMerged)
-        .catch(err => console.warn('[shared-users] WebDAV sync error:', err.message));
-    }
-
-    syncSharedUsersViaICloud(usersPath, users)
-      .then(applyMerged)
-      .catch(err => console.warn('[shared-users] iCloud sync error:', err.message));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users, multiUserEnabled, cloudSyncConfig?.enabled, cloudSyncConfig?.nextcloudUrl, cloudSyncConfig?.webdavUrl, cloudSyncLastSynced]);
 
   // Only track obsidianConfig on non-native apps; native apps auto-populate fields from the vault.
   // Content-keyed (like icsCalendars above), NOT identity-keyed: every vault
@@ -2761,7 +2734,7 @@ const DayPlanner = () => {
   // cloudSyncInProgressRef is the snapshot-transport mutex: it serialises
   // snapshot transports with each other, NOT with the WebDAV engine, which has
   // its own lock (a WebDAV retry loop must never block iCloud).
-  // iCloudSyncStartedAtRef lets clearStrandedSyncGuards release a lock that
+  // snapshotSyncStartedAtRef lets clearStrandedSyncGuards release a lock that
   // iOS stranded by suspending the app mid-cycle.
   const openNewInboxTaskRef = useRef(null);
   const openNewTaskFormRef = useRef(null);
@@ -2772,12 +2745,13 @@ const DayPlanner = () => {
     dataLoaded,
     cloudSyncInProgressRef,
     pendingRef: iCloudPendingRef,
-    startedAtRef: iCloudSyncStartedAtRef,
+    startedAtRef: snapshotSyncStartedAtRef,
     io: {
       // Thunks: buildSyncPayload/applyEngineData are declared further down this
       // component; engineCallbacksRef is refreshed with them every render.
       buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
       applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      lastLocalEditAt: () => { try { return localStorage.getItem(LOCAL_EDIT_KEY); } catch { return null; } },
       habits,
       syncRetentionDays,
       isResetInProgress,
@@ -2790,6 +2764,91 @@ const DayPlanner = () => {
       },
     },
   });
+
+  // ── Direct Access sync ───────────────────────────────────────────────────
+  // The second snapshot transport (docs/direct-access-sync.md): the same cycle
+  // and hook as iCloud, over a folder a third-party tool (Drive, Dropbox,
+  // OneDrive, Syncthing) keeps in step across devices. Desktop only;
+  // isSupported() is false everywhere else, so nothing is scheduled there. The
+  // mutex and its timestamp are shared with iCloud so the two never merge into
+  // state at once, and a stranded lock is released whichever transport held it.
+  // No first-run prompt: picking the folder is the decision.
+  const directAccessStatus = useDirectAccessStatus();
+  const flashDirectAccessError = (message) => {
+    setCloudSyncError(message);
+    setCloudSyncStatus('error');
+    setTimeout(() => setCloudSyncStatus((s) => s === 'error' ? 'idle' : s), 5000);
+  };
+  const directAccessSync = useSnapshotFileSync({
+    transport: directAccessTransport,
+    active: !isTrayMode,
+    dataLoaded,
+    cloudSyncInProgressRef,
+    startedAtRef: snapshotSyncStartedAtRef,
+    io: {
+      buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
+      applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      lastLocalEditAt: () => { try { return localStorage.getItem(LOCAL_EDIT_KEY); } catch { return null; } },
+      habits,
+      syncRetentionDays,
+      isResetInProgress,
+      onUnavailable: (error) => flashDirectAccessError(t('sync.errors.directAccessUnavailable', { error })),
+      // The folder holds an encrypted file this device cannot read, and Direct
+      // Access never writes plaintext over someone else's cloud copy.
+      onEncryptedUnreadable: () => flashDirectAccessError(t('sync.errors.directAccessEncrypted')),
+    },
+  });
+
+  // Sync user list with glance-users.json on WebDAV, a connected Direct Access
+  // folder and iCloud, so dayGLANCE and lastGLANCE share the same roster
+  // regardless of which app is opened first. The transports run
+  // simultaneously; whichever returns non-null is applied. Re-runs when users
+  // change, cloud sync config changes, a WebDAV cycle completes, or (Direct
+  // Access) the folder connects and then once a minute while it is.
+  const [directAccessRosterTick, setDirectAccessRosterTick] = useState(0);
+  const directAccessRoster = directAccessStatus.connected && directAccessStatus.enabled;
+  useEffect(() => {
+    if (!multiUserEnabled || !directAccessRoster) return;
+    const timer = setInterval(() => setDirectAccessRosterTick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, [multiUserEnabled, directAccessRoster]);
+  useEffect(() => {
+    if (!multiUserEnabled) return;
+    const usersPath = (() => {
+      const raw = localStorage.getItem('dayglance-multi-user-config');
+      return raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
+    })();
+
+    const applyMerged = (merged) => {
+      if (!merged) return;
+      const localById = new Map(users.map(u => [u.syncId ?? u.id, u]));
+      const hasNew = merged.some(u => {
+        const local = localById.get(u.syncId ?? u.id);
+        return !local || u.updatedAt > local.updatedAt;
+      });
+      if (hasNew || merged.length !== users.length) {
+        localStorage.setItem('dayglance-users', JSON.stringify(merged));
+        setUsers(merged);
+      }
+    };
+
+    if (cloudSyncConfig?.enabled) {
+      syncSharedUsers(cloudSyncConfig, usersPath, users)
+        .then(applyMerged)
+        .catch(err => console.warn('[shared-users] WebDAV sync error:', err.message));
+    }
+
+    if (directAccessRoster) {
+      syncSharedUsersViaDirectAccess(usersPath, users)
+        .then(applyMerged)
+        .catch(err => console.warn('[shared-users] Direct Access sync error:', err.message));
+    }
+
+    syncSharedUsersViaICloud(usersPath, users)
+      .then(applyMerged)
+      .catch(err => console.warn('[shared-users] iCloud sync error:', err.message));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, multiUserEnabled, cloudSyncConfig?.enabled, cloudSyncConfig?.nextcloudUrl, cloudSyncConfig?.webdavUrl, cloudSyncLastSynced, directAccessRoster, directAccessRosterTick]);
 
   // Cloud sync: download on app load or when sync is first enabled.
   // One-time check: if existing sync user is still on the legacy 'dayglance'
@@ -6189,6 +6248,13 @@ const DayPlanner = () => {
     // — that resurrects a task deleted on another device (the seed-task ping-pong).
     // See utils/rescueUnsyncedTasks.js.
     const rescueDeletedIds = data.deletedTaskIds || {};
+    // The merge's fence, for the horizon guard: a prev-only task the payload
+    // would have sent, older than this, was dropped by the merge as a zombie
+    // (tombstone pruned); rescuing it re-applied every cycle (2026-10-06).
+    const rescueOpts = {
+      horizon: data.tombstonePrunedBefore || null,
+      isGoverned: (t) => !t._native && keepImportedTask(t, multiUserEnabled),
+    };
     // Obsidian tasks are rescuable (re-derived from the local vault), but a
     // genuinely vault-deleted one must stay gone — honor its deletedObsidianKeys
     // tombstone. See utils/rescueUnsyncedTasks.js (the ala7ur flicker fix).
@@ -6204,10 +6270,10 @@ const DayPlanner = () => {
     // reconcile already resolved, and rescuing it undid that move every cycle
     // (utils/rescueUnsyncedTasks.js, the cross-list guard).
     if (normalizedTasks) setTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedTasks, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
       retiredRecord, retiredLiveIds));
     if (normalizedUnsched) setUnscheduledTasks(prev => applyTaskRetirements(
-      rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds),
+      rescueUnsyncedTasks(preserveStickyFields(normalizedUnsched, prev), prev, rescueDeletedIds, undefined, rescueObsidianTombstones, retiredLiveIds, rescueOpts),
       retiredRecord, retiredLiveIds));
     if (data.unscheduledOrderTimestamp) {
       setUnscheduledOrderTimestamp(data.unscheduledOrderTimestamp);
@@ -9075,6 +9141,9 @@ const DayPlanner = () => {
     cloudSyncConfigured: canEnableMultiUser({
       cloudSyncEnabled: cloudSyncConfig?.enabled,
       vaultEnabled: isVaultEnabled(),
+      // Reactive too: useDirectAccessStatus re-renders on connect, disconnect
+      // and the per-device switch.
+      directAccessEnabled: directAccessStatus.connected && directAccessStatus.enabled,
     }),
     users, setUsers,
     meUserSyncId, setMeUserSyncId,

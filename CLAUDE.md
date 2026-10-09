@@ -179,6 +179,7 @@ and confirming a test fails.
 - **iCloud snapshot sync loop** → `src/hooks/useSnapshotFileSync.js` + `src/sync/snapshotFileSync.js` (with tests); iCloud is one transport (`src/sync/icloudSnapshotTransport.js`), Direct Access the next (`docs/direct-access-sync.md`)
 - **Calendar file import** → `src/hooks/useCalendarFileImport.js` (with tests, #2016)
 - **Widget snapshot** → `src/utils/widgetSnapshot.js` (with tests); the effect in App.jsx gathers inputs and owns the push
+- **TRMNL push and auto-sync** → `src/hooks/useTrmnlSync.js` (with tests)
 
 ## Next candidates
 
@@ -189,8 +190,6 @@ wiring, and moving them only relocates them. Sizes are approximate.
 - **Calendar writeback and sync** (`syncTaskCompletionToCalDAV`,
   `syncWithCalendar`, `syncTaskCalendar`, ~500 lines): into the existing
   `useCalendarSync`.
-- **TRMNL sync** (`performTrmnlSync`, ~135 lines): into the existing
-  `useTrmnlSync`.
 - **Focus orchestration** (`enterFocusMode`, `startFocusTimer`,
   `exitFocusMode`, the phase and timer-end handlers): into `useFocusMode`.
 - **Sync apply and payload** (`applyEngineData`, `buildSyncPayload`, ~600

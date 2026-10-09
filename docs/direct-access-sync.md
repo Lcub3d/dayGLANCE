@@ -284,9 +284,10 @@ non-replicated File Provider API, under which a picked folder has no directory
 on disk and cannot be bookmarked, listed, or written into (see "On iPhone and
 iPad the bookmark is of the sync FILE" below). An iPhone holds bookmarks to
 files, one per file, each picked or created through the Files picker. So on
-iOS, every file the tier needs is its own bookmark, and anything that needs to
-list a directory or create files by name does not exist on iOS with those
-providers. Where that matters, each phase says so.
+iOS, every file the tier needs is its own bookmark, and nothing in this tier
+may depend on listing a directory or creating a file by name: the roster is
+one file (Phase 5) and the intents transport is one file (Phase 7), on every
+platform, so the iPhone has exactly what the Macs have.
 
 ### Phase 5: multi-user over Direct Access
 
@@ -396,55 +397,102 @@ interoperates and a device prompts for one passphrase, not two.
 ### Phase 7: intents over Direct Access, and the sibling apps
 
 Intents (`docs/tasker-intents-architecture.md`) are how the GLANCE apps talk
-to each other: one envelope file per event, written by the sender into an
-events folder and polled by the receiver, with a cursor so nothing is handled
-twice and a garbage collector that deletes expired files. There are four
-transports today: Android broadcasts, the WebDAV event log, the vault, and
-iCloud Drive files under `GLANCE/events/`. Direct Access gives a folder, which
-is the one thing the iCloud transport needs, so it becomes the fifth. This is
-the larger phase, because a transport nobody else can read is pointless:
-lastGLANCE and lifeGLANCE have to gain the Direct Access tier too.
+to each other: an envelope per event, an idempotent `event_id` that is also a
+sortable timestamp, a cursor so nothing is handled twice, and a retention
+window after which events are garbage-collected. There are four transports
+today: Android broadcasts, WebDAV, the vault, and iCloud Drive. The two file
+transports, WebDAV and iCloud, are built on a **directory**: one file per
+event under `GLANCE/events/`, found by listing the directory, read one at a
+time, deleted when expired. Direct Access becomes the fifth transport, and
+lastGLANCE and lifeGLANCE gain the tier too, because a transport nobody else
+can read is pointless.
 
-**Not on iPhone and iPad with the third-party providers.** An intents
-transport lists a directory and creates files by name, and an iPhone on
-Nextcloud, Drive or Dropbox can do neither (see "Parity" above): it holds
-bookmarks to files it was handed, nothing more. So the Direct Access intents
-transport is desktop and Android. An iPhone on such a provider still syncs its
-snapshot and roster through the folder; for intents it uses the vault, or the
-WebDAV tier, which for a Nextcloud user is the same server through its proper
-interface. The card says so on iOS rather than offering a switch that cannot
-work. A provider that does hand over real folders (Secure ShellFish, an SMB
-share through Files) would work, but the tier does not detect that and does
-not promise it.
+**The directory model does not reach the iPhone, so this transport does not
+use it.** An iPhone on Nextcloud, Drive, Dropbox, Box or OneDrive holds
+bookmarks to files it was handed and cannot list a directory or create a file
+by name (see "Parity"). iCloud can do intents on iOS only because the iCloud
+container is a real directory the app owns. So the Direct Access transport is
+built on the one primitive every platform has, **a single file**, and it is
+the same on desktop, Android and iPhone: one implementation, one format, full
+parity. Nothing about the directory transports changes.
+
+**The event set.** `GLANCE/events/glance-events.json` is a JSON document
+`{ version: 1, events: [envelope, …] }` holding every live envelope, plaintext
+or encrypted exactly as the WebDAV transport builds them. An encrypted
+envelope keeps `event_id`, `emitted_at` and `emitted_by` in its plaintext
+header (`@glance-apps/intents`), which is all the set logic reads. The file is
+a set keyed by `event_id`:
+
+- **Merge is a union** that drops envelopes past retention, order-independent
+  and idempotent, so any two copies of the file converge whichever order they
+  are merged in. The syncing tool's last-writer-wins on a collision loses an
+  append, and a conflicted copy is inert; both are repaired by the next merge.
+- **A sender writes its own events, and keeps them until they stick.** The
+  outbox holds an intent until the device's own cycle has read the file back
+  with the event in it (the same confirmation the snapshot cycle gives its own
+  writes), and a device keeps a ledger of the events it emitted within
+  retention so a copy that lost them re-adds them. Nobody re-adds another
+  device's events: the sender is the one responsible for them.
+- **A receiver reads, never writes for what it read.** The receive loop reads
+  the file, handles the envelopes with `event_id` above its cursor that it did
+  not emit, and advances the cursor, exactly as the directory loops do over a
+  listing. The cursor key is per transport.
+- **Garbage collection is the merge.** Expired envelopes fall out of the union;
+  the device that drops them writes the file only under the relay rule
+  (RELAY_CONFIRM_MS), the way the snapshot cycle treats a change it did not
+  make, so an idle fleet does not take turns rewriting the file. A sender's
+  own write carries any pending drops with it.
+- **One cycle shape.** Read, merge, apply (handle received events), write when
+  the merged set differs from the file and the write is this device's to make.
+  This is `runSnapshotFileCycle` with a different merge, a different apply and
+  no seed prompt, so the file cycle is generalised over `{ merge, apply, slot }`
+  rather than copied, and `snapshotFileSync.js` grows one parameter instead of
+  a sibling module.
+
+**How each platform reaches the file.** Desktop and Android: by path through
+the Phase 5 operations. iPhone: a third bookmarked file, picked or created the
+way the snapshot and the roster are (**Choose events file… / Create events
+file…**, seeded with an empty set). The transport exposes an `events` slot
+beside `users` with the same read and write contract, so nothing above the
+transport knows which.
+
+**Encryption** follows Phase 6: enveloped when the Direct Access switch is on,
+with the WebDAV intents key, held in the outbox while the key is not ready.
+
+**What this costs.** The file grows with the fleet's events over the retention
+window and is rewritten whole on every change; at a few hundred events of a
+kilobyte each that is a snapshot-sized write, which the fleet already makes
+every edit. A collision between two senders costs one extra cycle. On an
+iPhone intents arrive when the app is in the foreground, as iCloud intents do.
 
 **7a. dayGLANCE.**
 
-- **Extract the folder transport once.** The iCloud intents code is already
-  split into an adapter (`icloudFileTransport.js`: the five operations) and
-  logic that only knows the adapter: `writeEventFileICloud`, the receive loop
-  in `useIntentPoller.js`, `runIntentGCICloud`, `icloudDeliverer`. Lift that
-  logic into `src/intents/folderIntents.js`, parameterised on an adapter, and
-  instantiate it twice: iCloud, and Direct Access over the Phase 5 bridge
-  operations. Same filenames (`filenameFor(envelope)`), same envelope, same
-  cursor key per transport, same retention. The iCloud instance keeps its
-  one difference, refusing encrypted envelopes; the Direct Access instance
-  takes the WebDAV posture, plaintext unless passphrase encryption is on,
-  because the folder is someone else's cloud.
+- `src/intents/folderIntents.js`: the event-set merge, the sender ledger, the
+  receive loop over a set, and the deliverer, all over the transport's `events`
+  slot. The iCloud directory code stays as it is.
+- The generalised file cycle: `runSnapshotFileCycle` takes the merge and the
+  apply as parameters with the snapshot's as defaults; the Direct Access
+  intents cycle runs on the same poll and mutex as the snapshot cycle.
 - **A fifth outbox target.** `emitTargets` adds `directAccess` when a folder
   is connected and the new "Direct Access intents" switch is on; the outbox
-  deliverer map gains the deliverer; the poller runs the receive loop for it
-  on the same tick as the others. The switch sits beside "iCloud intents" and
-  "GLANCEvault intents" in Settings, independent of the sync switch, and
-  saving reloads the app so the poller restarts, as the vault one does.
-- **Tests.** `folderIntents.test.js` runs the whole emit → file → receive →
-  handle → GC path over a fake adapter, once per instance; the deliverer
-  tests gain the Direct Access rows (transient when the folder is unreachable,
-  held when encryption is on and the key is not ready); a scenario with two
-  fake devices on one folder where an intent emitted on one is handled once
-  on the other and the file is collected after retention.
+  deliverer map gains the deliverer, which appends to the device's ledger and
+  reports delivered once the event has been read back. The switch sits beside
+  "iCloud intents" and "GLANCEvault intents" in Settings, independent of the
+  sync switch, and saving reloads the app so the poller restarts, as the vault
+  one does.
+- **Tests.** `folderIntents.test.js` runs emit → ledger → write → read → handle
+  → cursor → expiry over a fake transport; the union merge is checked for
+  order-independence and idempotence and for repairing a lost append; the
+  deliverer tests gain the Direct Access rows (transient when the folder is
+  unreachable, held when encryption is on and the key is not ready); a
+  scenario with two fake devices on one file where an intent emitted on one is
+  handled once on the other, survives a conflicted copy, and falls out after
+  retention; and the cycle generalisation is mutation-checked against the
+  existing snapshot tests.
 - **Acceptance.** A `create` intent from a Mac reaches dayGLANCE on Android
-  through the Nextcloud folder and FolderSync, and the event file is gone
-  after retention.
+  through the Nextcloud folder and FolderSync, and on the iPhone through the
+  events file it picked, and the envelope is gone from the file after
+  retention.
 
 **7b. lastGLANCE, then 7c. lifeGLANCE.** Each needs the tier before the
 transport, in this order:
@@ -464,8 +512,9 @@ transport, in this order:
    dayGLANCE in it; it belongs in `@glance-apps/sync` beside the merge the
    siblings already share, and this is the point to move it.
 3. **The roster** (Phase 5's file, same path) and **the intents transport**
-   (7a's module, same adapter contract). Both are app-independent by
-   construction; a sibling adds its own switch and its own cursor key.
+   (7a's event set, same slot contract: by path on desktop and Android, a
+   bookmarked file on iOS). Both are app-independent by construction; a
+   sibling adds its own switch, its own cursor key and its own sender ledger.
 
 **Acceptance for the phase:** three apps on one folder. A task created in
 dayGLANCE on Android appears as an intent in lastGLANCE on a Mac, the

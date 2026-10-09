@@ -178,6 +178,7 @@ and confirming a test fails.
 - **Native calendar integration** → `src/utils/nativeCalendar.js` (with tests)
 - **iCloud snapshot sync loop** → `src/hooks/useSnapshotFileSync.js` + `src/sync/snapshotFileSync.js` (with tests); iCloud is one transport (`src/sync/icloudSnapshotTransport.js`), Direct Access the next (`docs/direct-access-sync.md`)
 - **Calendar file import** → `src/hooks/useCalendarFileImport.js` (with tests, #2016)
+- **Widget snapshot** → `src/utils/widgetSnapshot.js` (with tests); the effect in App.jsx gathers inputs and owns the push
 
 ## Next candidates
 
@@ -185,9 +186,6 @@ Pure logic and logic that carries data-safety rules first; UI wiring last.
 The context object and render at the end of the file (~2,300 lines) are
 wiring, and moving them only relocates them. Sizes are approximate.
 
-- **Widget snapshot** (the `updateWidgetSnapshot` effect, ~480 lines): pure
-  data assembly, so a builder in `src/utils/` with tests, called by a thin
-  effect.
 - **Calendar writeback and sync** (`syncTaskCompletionToCalDAV`,
   `syncWithCalendar`, `syncTaskCalendar`, ~500 lines): into the existing
   `useCalendarSync`.

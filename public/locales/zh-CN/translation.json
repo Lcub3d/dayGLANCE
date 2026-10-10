@@ -725,7 +725,11 @@
     "viewsOnDevice": "此设备上的视图",
     "viewsOnDeviceHint": "在此关闭的视图仅在此设备上从切换器、快捷键和默认视图选项中移除。其内容不会丢失。至少保留一个视图开启。",
     "viewsInPortrait": "竖屏视图",
-    "viewsInLandscape": "横屏视图"
+    "viewsInLandscape": "横屏视图",
+    "directAccessIntents": "Direct Access 意图",
+    "directAccessIntentsDesc": "通过 Direct Access 文件夹与其他 GLANCE 应用共享任务意图：一个事件文件 glance-events.json，文件夹中的每台设备和每个应用都会读取并追加。当 Direct Access 文件已加密时，它也以你的同步口令加密。",
+    "directAccessIntentsEnable": "启用 Direct Access 意图",
+    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",
@@ -2180,7 +2184,14 @@
     "encryptHint": "关闭。文件按原样写入。如果其他设备已将其加密，本设备会跟随该文件并要求输入同步口令。",
     "encryptOnHint": "开启。下一次写入会用你的同步口令（与 WebDAV 加密相同）封存该文件，此后所有设备都跟随该文件。关闭此项不会让文件恢复为明文。",
     "encryptPassphraseHint": "选择一个同步口令。每台打开此文件夹的设备都会询问一次。如果你已为 WebDAV 加密设置了口令，请输入同一个。",
-    "encryptTurnOn": "开启加密"
+    "encryptTurnOn": "开启加密",
+    "eventsChoose": "选择事件文件…",
+    "eventsCreate": "创建事件文件…",
+    "eventsChange": "更换事件文件",
+    "eventsForget": "忘记事件文件",
+    "eventsChosen": "事件文件：{{name}}",
+    "eventsNotChosen": "事件文件：本设备尚未选择。",
+    "iosEventsHint": "意图通过共享文件夹 GLANCE/events 中的 glance-events.json 传递。请选择其他设备创建的那个文件，或在那里创建它。"
   },
   "aspire": {
     "title": "Aspire",

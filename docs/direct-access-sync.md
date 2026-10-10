@@ -417,7 +417,34 @@ place while the switch is on. Tests: `snapshotFileSync.test.js` ("Phase 6"),
   passphrase once, and an edit on each side reaches the other. Turn the
   switch off on the first Mac: the file stays an envelope.
 
-### Phase 7: intents over Direct Access, and the sibling apps
+### Phase 7: intents over Direct Access, and the sibling apps — 7a done
+
+7a shipped as designed below, with one structural refinement. The design
+said the file cycle would be generalised over `{ merge, apply, slot }` so
+`snapshotFileSync.js` grows a parameter rather than a sibling. In the build
+the snapshot cycle's guards (the eviction clock, the empty-state guard, the
+first-run prompt, the device-local keys, the health strip, the envelope)
+turned out to be snapshot-specific all the way down, and a cycle
+parameterised over merge and apply would still carry every one of them past
+the event set. What the two cycles actually share is the read classification
+(`classifySnapshotText`), the write throttle and the relay rule, so the relay
+rule became the shared helper `relayDecision` (the snapshot cycle now calls
+it, and its relay tests pass unchanged), and `intents/folderIntents.js` holds
+`runEventSetCycle` over the same transport slot contract. Everything else is
+as written: the union merge, the sender ledger, the cursor, GC as the merge
+under the relay rule, the deliverer that reports delivered once the file has
+been read back, the opt-in beside the iCloud and GLANCEvault ones, the
+iPhone's third bookmarked file (**Choose events file… / Create events
+file…**, seeded with an empty set). Encryption: an envelope is sealed with
+the WebDAV intents root key when the Direct Access encrypt switch is on, and
+held in the outbox (`intents_key_not_ready`) while that key is absent; a
+device receiving a sealed envelope without the key logs `no_root_key` and
+moves on, as the WebDAV loop does. Tests: `folderIntents.test.js`,
+`useDirectAccessIntents.test.js`, `directAccessIntentsConfig.test.js`, the
+Direct Access rows in `deliverers.test.js` and `emitTargets.test.js`, the
+events slot in `directAccessTransport.test.js` and
+`directAccessNativeBridge.test.js`; the receiver-never-seeds, expiry, own-
+skip, cursor and raw-own guards mutation-checked.
 
 Intents (`docs/tasker-intents-architecture.md`) are how the GLANCE apps talk
 to each other: an envelope per event, an idempotent `event_id` that is also a
@@ -596,6 +623,17 @@ keep in the folder's `GLANCE/users`, or **Create roster…** there; the bridge
 holds it as a second bookmark and the roster slot reads and writes it without
 a path. iCloud sync keeps running alongside; the two share one mutex and
 never merge into state at once.
+
+**Direct Access intents** (Phase 7) is the opt-in under Settings → Intents,
+beside the iCloud and GLANCEvault ones, and needs a connected folder. On, the
+other GLANCE apps on the folder exchange intents through one file,
+`GLANCE/events/glance-events.json`: this device writes its own events into it
+at once and keeps them in a ledger until retention, so a copy of the file that
+a syncing tool's conflict stripped them from gets them back; it handles the
+events others wrote once each, above its cursor; expired events fall out of
+the file under the relay rule. On an iPhone the file is a third bookmarked
+file, **Choose events file…** or **Create events file…** on the card, like
+the roster. Envelopes are sealed when the Direct Access file is encrypted.
 
 **Encrypt the file in the folder** (Phase 6) is a checkbox under the connected
 card. A device that already holds the file-tier key (WebDAV encryption, or

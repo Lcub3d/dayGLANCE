@@ -76,6 +76,25 @@ export const LOCAL_EDIT_KEY = 'day-planner-local-edit-at';
 export const RELAY_CONFIRM_MS = 90 * 1000;
 
 /**
+ * The relay rule, shared with the event-set cycle (intents/folderIntents.js):
+ * a change this device did not make goes out only once the same difference
+ * (`fingerprint`, against the file version it was seen on) has been seen
+ * again RELAY_CONFIRM_MS later. Returns whether to write now and the pending
+ * look to carry: a different fingerprint starts over, the same one is kept.
+ *
+ * @param {{fingerprint: string, at: number}|null} pending
+ * @param {string} fingerprint
+ * @param {number} now
+ * @returns {{write: boolean, pending: {fingerprint: string, at: number}}}
+ */
+export function relayDecision(pending, fingerprint, now) {
+  if (pending && pending.fingerprint === fingerprint && now - pending.at >= RELAY_CONFIRM_MS) {
+    return { write: true, pending };
+  }
+  return { write: false, pending: (!pending || pending.fingerprint !== fingerprint) ? { fingerprint, at: now } : pending };
+}
+
+/**
  * Classifies the raw text a transport read.
  *
  * @param {string|null|undefined} str
@@ -350,12 +369,12 @@ export async function runSnapshotFileCycle({ transport, io, state }) {
     next.pendingWrite = null;
   } else if (writeNeeded) {
     const fingerprint = `${remote.lastModified ?? ''}\u0000${writable.map((d) => d.summary).join('\n')}`;
-    const pending = next.pendingWrite;
-    if (pending && pending.fingerprint === fingerprint && now() - pending.at >= RELAY_CONFIRM_MS) {
+    const decision = relayDecision(next.pendingWrite, fingerprint, now());
+    next.pendingWrite = decision.pending;
+    if (decision.write) {
       wrote = await throttledWrite(await encode(outPayload));
       if (wrote) next.lastWrittenAt = now();
     } else {
-      if (!pending || pending.fingerprint !== fingerprint) next.pendingWrite = { fingerprint, at: now() };
       deferred = true;
     }
   } else {

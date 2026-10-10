@@ -725,7 +725,11 @@
     "viewsOnDevice": "Views on this device",
     "viewsOnDeviceHint": "A view turned off here leaves the switcher, the shortcuts and the default picker on this device only. Nothing it shows is lost. Keep at least one view on.",
     "viewsInPortrait": "Views in portrait",
-    "viewsInLandscape": "Views in landscape"
+    "viewsInLandscape": "Views in landscape",
+    "directAccessIntents": "Direct Access intents",
+    "directAccessIntentsDesc": "Share task intents with other GLANCE apps through the Direct Access folder: one event file, glance-events.json, that every device and app on the folder reads and adds to. Encrypted with your sync passphrase when the Direct Access file is.",
+    "directAccessIntentsEnable": "Enable Direct Access intents",
+    "directAccessIntentsNeedsFolder": "No folder is connected on this device. Connect one under Cloud Sync → Direct Access first; until then nothing is sent or received here."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",
@@ -2180,7 +2184,14 @@
     "encryptHint": "Off. The file is written as it is. If another device has already encrypted it, this device follows the file and asks for the sync passphrase.",
     "encryptOnHint": "On. The next write seals the file with your sync passphrase, the same one WebDAV encryption uses, and every device then follows the file. Turning this off never makes the file plaintext again.",
     "encryptPassphraseHint": "Choose a sync passphrase. Every device that opens this folder will ask for it once. If you already use one for WebDAV encryption, enter that one.",
-    "encryptTurnOn": "Turn on encryption"
+    "encryptTurnOn": "Turn on encryption",
+    "eventsChoose": "Choose events file…",
+    "eventsCreate": "Create events file…",
+    "eventsChange": "Change events file",
+    "eventsForget": "Forget events file",
+    "eventsChosen": "Events file: {{name}}",
+    "eventsNotChosen": "Events file: not chosen on this device.",
+    "iosEventsHint": "Intents travel in glance-events.json in the shared folder's GLANCE/events. Choose the one your other devices made, or create it there."
   },
   "aspire": {
     "title": "Aspire",

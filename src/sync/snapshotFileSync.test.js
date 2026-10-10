@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runSnapshotFileCycle, classifySnapshotText, LOCAL_MODIFIED_KEY, RELAY_CONFIRM_MS } from './snapshotFileSync.js';
+import { runSnapshotFileCycle, classifySnapshotText, LOCAL_MODIFIED_KEY, RELAY_CONFIRM_MS, relayDecision } from './snapshotFileSync.js';
 import { MISSING_GRACE_MS } from '../utils/icloudSeedGuard.js';
 
 // Every guard the App.jsx iCloud loop carried, asserted at the one place a
@@ -530,6 +530,18 @@ describe('Phase 6: the file decides, the switch decides the first write', () => 
     for (const call of [...a.transport.write.mock.calls, ...b.transport.write.mock.calls]) {
       expect(isSealed(JSON.parse(call[0]))).toBe(true);
     }
+  });
+});
+
+describe('relayDecision (the rule the event-set cycle shares)', () => {
+  it('starts a look on a new fingerprint, keeps it on the same one, writes once it is RELAY_CONFIRM_MS old, and starts over on a different one', () => {
+    const first = relayDecision(null, 'A', T0);
+    expect(first).toEqual({ write: false, pending: { fingerprint: 'A', at: T0 } });
+    const same = relayDecision(first.pending, 'A', T0 + 1000);
+    expect(same).toEqual({ write: false, pending: { fingerprint: 'A', at: T0 } });
+    expect(relayDecision(same.pending, 'A', T0 + RELAY_CONFIRM_MS - 1).write).toBe(false);
+    expect(relayDecision(same.pending, 'A', T0 + RELAY_CONFIRM_MS)).toEqual({ write: true, pending: { fingerprint: 'A', at: T0 } });
+    expect(relayDecision(same.pending, 'B', T0 + RELAY_CONFIRM_MS)).toEqual({ write: false, pending: { fingerprint: 'B', at: T0 + RELAY_CONFIRM_MS } });
   });
 });
 

@@ -324,7 +324,7 @@ export async function probeDirectAccess(deps = {}) {
     try { native = await transport.probeStatus(); } catch (err) { native = { error: err?.message ?? String(err) }; }
   }
   const keyReady = typeof deps.encryptionReady === 'function' ? !!deps.encryptionReady() : null;
-  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, encrypt: s?.encrypt === true, keyReady, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null };
+  const head = { status: s?.status ?? 'unknown', name: s?.name ?? null, enabled: s?.enabled !== false, encrypt: s?.encrypt === true, keyReady, pickError: s?.pickError ?? null, native, roster: s?.roster ?? null, events: s?.events ?? null };
   if (!s?.connected) return { ...head, snapshot: null, merge: null };
   let raw;
   try {
@@ -538,6 +538,8 @@ export function formatDiagnosticsReport({ platform, icloud, available, snapshot,
     if (da.native !== undefined && da.native !== null) lines.push(`  shell status:  ${typeof da.native === 'string' ? da.native : JSON.stringify(da.native)}`);
     // An iPhone's roster is its own bookmarked file (Phase 5); elsewhere it is a path in the folder and has no line.
     if (da.roster) lines.push(`  roster file:   ${da.roster.configured ? `${da.roster.reachable ? 'chosen' : 'chosen, unreachable'} (${da.roster.name ?? none})` : 'not chosen'}`);
+    // Likewise the intents event set (Phase 7).
+    if (da.events) lines.push(`  events file:   ${da.events.configured ? `${da.events.reachable ? 'chosen' : 'chosen, unreachable'} (${da.events.name ?? none})` : 'not chosen'}`);
     if (da.snapshot) {
       lines.push(...snapshotLines(da.snapshot, '  ', none));
       // Phase 6: what the file is, and whether this device could read or seal one.

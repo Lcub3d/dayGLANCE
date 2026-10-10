@@ -41,6 +41,7 @@ import { isVaultEnabled } from '../sync/vaultConfig.js';
 import { multiUserToggleLocked, multiUserUnavailableReason, canSyncUserRoster } from '../utils/multiUserGate.js';
 import { getDbIntentsConfig, setDbIntentsConfig, getDbIntentsConnection } from '../intents/dbIntentsConfig.js';
 import { getIcloudIntentsEnabledFlag, setIcloudIntentsEnabled } from '../intents/icloudIntentsConfig.js';
+import { getDirectAccessIntentsEnabledFlag, setDirectAccessIntentsEnabled } from '../intents/directAccessIntentsConfig.js';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { INTENT_CONFIG_KEY, MULTI_USER_CONFIG_KEY } from '../intents/useIntentPoller.js';
 import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess, markRosterEdited } from '../intents/sharedUsers.js';
@@ -222,6 +223,9 @@ const MobileSettingsPanel = () => {
   // when the user flips this on, matching WebDAV/vault gating.
   const [icloudIntentsEnabled, setIcloudIntentsEnabledState] = useState(() => getIcloudIntentsEnabledFlag());
   const [icloudIntentsSaved, setIcloudIntentsSaved] = useState(false);
+  // Direct Access intents opt-in (docs/direct-access-sync.md, Phase 7).
+  const [directAccessIntentsEnabled, setDirectAccessIntentsEnabledState] = useState(() => getDirectAccessIntentsEnabledFlag());
+  const [directAccessIntentsSaved, setDirectAccessIntentsSaved] = useState(false);
   // Android automation intents (Tasker) opt-in gate. DEFAULT OFF — the native
   // SharedPreferences flag is the source of truth; mirror it for the toggle.
   const [automationIntentsEnabled, setAutomationIntentsEnabled] = useState(
@@ -2602,6 +2606,57 @@ const MobileSettingsPanel = () => {
               className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
             >
               {icloudIntentsSaved ? t('common.saved') : t('common.save')}
+            </button>
+          </div>
+        )}
+
+        {/* Direct Access intents opt-in — wherever the folder bridge exists
+            (docs/direct-access-sync.md, Phase 7). Gates the event-set transport
+            (emit + poll); default OFF, inert until a folder is connected here. */}
+        {isDirectAccessSupported() && (
+          <div>
+            <h5 className={sectionCls}>
+              <span className="flex items-center gap-2">
+                <FolderOpen size={14} className={textSecondary} />
+                {t('settings.directAccessIntents')}
+              </span>
+            </h5>
+            <p className={`${textSecondary} text-xs mb-3`}>
+              {t('settings.directAccessIntentsDesc')}
+            </p>
+            {!directAccessStatus.connected && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">{t('settings.directAccessIntentsNeedsFolder')}</p>
+            )}
+            <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
+              <input
+                type="checkbox"
+                id="direct-access-intents-toggle-mobile"
+                checked={directAccessIntentsEnabled}
+                onChange={e => setDirectAccessIntentsEnabledState(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded"
+              />
+              <div>
+                <label htmlFor="direct-access-intents-toggle-mobile" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
+                  {t('settings.directAccessIntentsEnable')}
+                </label>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const wasEnabled = getDirectAccessIntentsEnabledFlag();
+                setDirectAccessIntentsEnabled(directAccessIntentsEnabled);
+                // Reload so the poller remounts and re-reads the opt-in, as the
+                // iCloud and GLANCEvault intents switches do.
+                if (wasEnabled !== directAccessIntentsEnabled) {
+                  window.location.reload();
+                  return;
+                }
+                setDirectAccessIntentsSaved(true);
+                setTimeout(() => setDirectAccessIntentsSaved(false), 2000);
+              }}
+              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              {directAccessIntentsSaved ? t('common.saved') : t('common.save')}
             </button>
           </div>
         )}

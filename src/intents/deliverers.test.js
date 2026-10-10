@@ -4,6 +4,7 @@ import {
   vaultDeliverer,
   webdavDeliverer,
   icloudDeliverer,
+  directAccessDeliverer,
   DELIVERED,
   TRANSIENT,
   PERMANENT,
@@ -251,5 +252,47 @@ describe('icloud deliverer', () => {
     });
     expect(result).toBe(TRANSIENT);
     expect(write).not.toHaveBeenCalled();
+  });
+});
+
+// ─── 4. DIRECT ACCESS deliverer (Phase 7) ────────────────────────────────────
+
+describe('direct access deliverer', () => {
+  const transport = (available = true) => ({ isAvailable: () => available, isSupported: () => true, isConnected: () => available });
+  const base = () => ({ transport: transport(), isEnabled: () => true, encrypts: () => false, config: {}, now: () => Date.now() });
+
+  it('delivers once the file has been read back with the event (publish true), transient otherwise', async () => {
+    const published = [];
+    const publish = vi.fn(async (t, envelope) => { published.push(envelope); return true; });
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), publish })).toBe(DELIVERED);
+    expect(published[0]).toMatchObject({ event_id: '20260101T000000Z-aaa111', action: 'notify', emitted_by: 'app.testglance' });
+    expect(published[0].encrypted).toBeUndefined();
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), publish: async () => false })).toBe(TRANSIENT);
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), publish: async () => { throw new Error('fs'); } })).toBe(TRANSIENT);
+  });
+
+  it('holds (transient, nothing written) while the opt-in is off or the folder is away', async () => {
+    const publish = vi.fn();
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), isEnabled: () => false, publish })).toBe(TRANSIENT);
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), transport: transport(false), publish })).toBe(TRANSIENT);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('encrypts with the WebDAV intents root key when the Direct Access encrypt switch is on; held for the key without one, never plaintext', async () => {
+    const publish = vi.fn(async () => true);
+    const held = await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, loadWebdavKey: async () => null, publish });
+    expect(held).toEqual({ status: TRANSIENT, reason: HELD_NO_KEY_REASON });
+    expect(publish).not.toHaveBeenCalled();
+    const key = await aRootKey();
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, loadWebdavKey: async () => key, publish })).toBe(DELIVERED);
+    const envelope = publish.mock.calls[0][1];
+    expect(envelope.encrypted).toBe(true);
+    expect(envelope.event_id).toBe('20260101T000000Z-aaa111');
+    expect(JSON.stringify(envelope)).not.toContain('SECRET-TITLE');
+  });
+
+  it('is in the deliverer map under the outbox target name', async () => {
+    const { deliverers } = await import('./deliverers.js');
+    expect(deliverers.directAccess).toBe(directAccessDeliverer);
   });
 });

@@ -418,6 +418,16 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
             return DirectAccessBridge.shared.writeUsers(text)
         case "forgetUsers":
             return DirectAccessBridge.shared.forgetUsers()
+        // The intents event set, a third bookmarked file (Phase 7).
+        case "eventsStatus":
+            return DirectAccessBridge.shared.eventsStatus()
+        case "readEvents":
+            return DirectAccessBridge.shared.readEvents()
+        case "writeEvents":
+            guard let text = args.first as? String else { return "false" }
+            return DirectAccessBridge.shared.writeEvents(text)
+        case "forgetEvents":
+            return DirectAccessBridge.shared.forgetEvents()
         case "read":
             return DirectAccessBridge.shared.read()
         case "write":

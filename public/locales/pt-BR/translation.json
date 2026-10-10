@@ -725,7 +725,11 @@
     "viewsOnDevice": "Visualizações neste dispositivo",
     "viewsOnDeviceHint": "Uma visualização desativada aqui sai do seletor, dos atalhos e da escolha padrão somente neste dispositivo. Nada se perde. Pelo menos uma visualização fica ativa.",
     "viewsInPortrait": "Visualizações em retrato",
-    "viewsInLandscape": "Visualizações em paisagem"
+    "viewsInLandscape": "Visualizações em paisagem",
+    "directAccessIntents": "Intents do Direct Access",
+    "directAccessIntentsDesc": "Compartilhe intents de tarefas com outros apps GLANCE pela pasta do Direct Access: um arquivo de eventos, glance-events.json, que cada dispositivo e app na pasta lê e amplia. Criptografado com sua frase secreta de sincronização quando o arquivo do Direct Access também é.",
+    "directAccessIntentsEnable": "Ativar intents do Direct Access",
+    "directAccessIntentsNeedsFolder": "Nenhuma pasta está conectada neste dispositivo. Conecte uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado ou recebido aqui."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -2180,7 +2184,14 @@
     "encryptHint": "Desligado. O arquivo é gravado como está. Se outro dispositivo já o criptografou, este dispositivo segue o arquivo e pede a frase secreta de sincronização.",
     "encryptOnHint": "Ligado. A próxima gravação sela o arquivo com sua frase secreta de sincronização, a mesma usada pela criptografia WebDAV, e depois todos os dispositivos seguem o arquivo. Desligar nunca deixa o arquivo sem criptografia de novo.",
     "encryptPassphraseHint": "Escolha uma frase secreta de sincronização. Cada dispositivo que abrir esta pasta vai pedi-la uma vez. Se você já usa uma para a criptografia WebDAV, digite essa.",
-    "encryptTurnOn": "Ligar criptografia"
+    "encryptTurnOn": "Ligar criptografia",
+    "eventsChoose": "Escolher arquivo de eventos…",
+    "eventsCreate": "Criar arquivo de eventos…",
+    "eventsChange": "Trocar arquivo de eventos",
+    "eventsForget": "Esquecer arquivo de eventos",
+    "eventsChosen": "Arquivo de eventos: {{name}}",
+    "eventsNotChosen": "Arquivo de eventos: não escolhido neste dispositivo.",
+    "iosEventsHint": "Os intents viajam no glance-events.json, em GLANCE/events da pasta compartilhada. Escolha o que seus outros dispositivos criaram ou crie-o lá."
   },
   "aspire": {
     "title": "Aspire",

@@ -725,7 +725,11 @@
     "viewsOnDevice": "Ansichten auf diesem Gerät",
     "viewsOnDeviceHint": "Eine hier ausgeschaltete Ansicht verschwindet nur auf diesem Gerät aus dem Umschalter, den Tastenkürzeln und der Standardauswahl. Nichts davon geht verloren. Mindestens eine Ansicht bleibt an.",
     "viewsInPortrait": "Ansichten im Hochformat",
-    "viewsInLandscape": "Ansichten im Querformat"
+    "viewsInLandscape": "Ansichten im Querformat",
+    "directAccessIntents": "Direct-Access-Intents",
+    "directAccessIntentsDesc": "Aufgaben-Intents über den Direct-Access-Ordner mit anderen GLANCE-Apps teilen: eine Ereignisdatei, glance-events.json, die jedes Gerät und jede App im Ordner liest und ergänzt. Verschlüsselt mit deiner Sync-Passphrase, wenn die Direct-Access-Datei es ist.",
+    "directAccessIntentsEnable": "Direct-Access-Intents aktivieren",
+    "directAccessIntentsNeedsFolder": "Auf diesem Gerät ist kein Ordner verbunden. Verbinde zuerst einen unter Cloud-Sync → Direct Access; bis dahin wird hier nichts gesendet oder empfangen."
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",
@@ -2180,7 +2184,14 @@
     "encryptHint": "Aus. Die Datei wird unverändert geschrieben. Hat ein anderes Gerät sie bereits verschlüsselt, folgt dieses Gerät der Datei und fragt nach der Sync-Passphrase.",
     "encryptOnHint": "An. Der nächste Schreibvorgang versiegelt die Datei mit deiner Sync-Passphrase, derselben wie bei der WebDAV-Verschlüsselung, und alle Geräte folgen danach der Datei. Ausschalten macht die Datei nie wieder unverschlüsselt.",
     "encryptPassphraseHint": "Wähle eine Sync-Passphrase. Jedes Gerät, das diesen Ordner öffnet, fragt einmal danach. Wenn du bereits eine für die WebDAV-Verschlüsselung nutzt, gib diese ein.",
-    "encryptTurnOn": "Verschlüsselung einschalten"
+    "encryptTurnOn": "Verschlüsselung einschalten",
+    "eventsChoose": "Ereignisdatei wählen…",
+    "eventsCreate": "Ereignisdatei erstellen…",
+    "eventsChange": "Ereignisdatei ändern",
+    "eventsForget": "Ereignisdatei vergessen",
+    "eventsChosen": "Ereignisdatei: {{name}}",
+    "eventsNotChosen": "Ereignisdatei: auf diesem Gerät nicht gewählt.",
+    "iosEventsHint": "Intents reisen in glance-events.json im Ordner GLANCE/events des geteilten Ordners. Wähle die Datei, die deine anderen Geräte angelegt haben, oder erstelle sie dort."
   },
   "aspire": {
     "title": "Aspire",

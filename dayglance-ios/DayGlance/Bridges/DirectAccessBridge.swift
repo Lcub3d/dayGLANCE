@@ -69,27 +69,39 @@ final class DirectAccessBridge: NSObject {
 
     /// The two files this bridge holds, each by its own bookmark.
     enum Slot: String {
-        case snapshot, users
+        case snapshot, users, events
 
         var fileName: String {
             switch self {
             case .snapshot: return "dayglance-sync.json"
             case .users: return "glance-users.json"
+            case .events: return "glance-events.json"
             }
         }
         var bookmarkKey: String {
             switch self {
             case .snapshot: return "dayglance.directAccess.fileBookmark"
             case .users: return "dayglance.directAccess.usersBookmark"
+            case .events: return "dayglance.directAccess.eventsBookmark"
             }
         }
         /// What createFile moves into the chosen folder. The snapshot's "null"
         /// classifies as absent so the first cycle seeds it; the roster's is
-        /// an empty roster the first roster sync merges into.
+        /// an empty roster the first roster sync merges into; the event set's
+        /// (Phase 7) an empty set the first cycle unions into.
         var seed: String {
             switch self {
             case .snapshot: return "null"
             case .users: return #"{"version":1,"users":[]}"#
+            case .events: return #"{"version":1,"events":[]}"#
+            }
+        }
+        /// What readSlot says when no file of this slot is bookmarked.
+        var missingMessage: String {
+            switch self {
+            case .snapshot: return "no file connected"
+            case .users: return "no roster file chosen"
+            case .events: return "no events file chosen"
             }
         }
         static func named(_ raw: Any?) -> Slot {
@@ -207,11 +219,13 @@ final class DirectAccessBridge: NSObject {
 
     func status() -> String { json(statusObject(.snapshot)) }
     func usersStatus() -> String { json(statusObject(.users)) }
+    func eventsStatus() -> String { json(statusObject(.events)) }
 
-    /// Forgets both files. The files themselves are left where they are.
+    /// Forgets every file. The files themselves are left where they are.
     func disconnect() -> String {
         UserDefaults.standard.removeObject(forKey: Slot.snapshot.bookmarkKey)
         UserDefaults.standard.removeObject(forKey: Slot.users.bookmarkKey)
+        UserDefaults.standard.removeObject(forKey: Slot.events.bookmarkKey)
         UserDefaults.standard.removeObject(forKey: legacyFolderKey)
         caches = [:]
         return "true"
@@ -224,16 +238,25 @@ final class DirectAccessBridge: NSObject {
         return "true"
     }
 
+    /// Forgets the events file only (Phase 7).
+    func forgetEvents() -> String {
+        UserDefaults.standard.removeObject(forKey: Slot.events.bookmarkKey)
+        caches[.events] = nil
+        return "true"
+    }
+
     // MARK: - read / write / delete
 
     func read() -> String { readSlot(.snapshot) }
     func readUsers() -> String { readSlot(.users) }
+    func readEvents() -> String { readSlot(.events) }
     func write(_ text: String) -> String { writeSlot(.snapshot, text) }
     func writeUsers(_ text: String) -> String { writeSlot(.users, text) }
+    func writeEvents(_ text: String) -> String { writeSlot(.events, text) }
 
     private func readSlot(_ slot: Slot) -> String {
         guard UserDefaults.standard.data(forKey: slot.bookmarkKey) != nil else {
-            return kind("error", ["error": slot == .snapshot ? "no file connected" : "no roster file chosen"])
+            return kind("error", ["error": slot.missingMessage])
         }
         guard let file = fileURL(slot), file.startAccessingSecurityScopedResource() else {
             return kind("error", ["error": "permission denied"])

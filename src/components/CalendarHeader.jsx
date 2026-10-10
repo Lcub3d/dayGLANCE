@@ -20,6 +20,7 @@ import { renderTitle, getLinkUrl, hasNotesOrSubtasks, isLinkOnlyTask, hasOnlySub
 import { dateToString, extractWikilinks, formatDeadlineDate, formatShortDate, stripWikilinks } from '../utils/taskUtils.js';
 import { findRunningTask } from '../utils/runningTask.js';
 import { HABIT_COLORS, HABIT_ICONS } from '../constants/habits.js';
+import { MOBILE_HOUR_GUTTER_W } from '../constants/timeline.js';
 import { MiniHabitRing } from './HabitRing.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
 import DeadlinePickerPopover from './DeadlinePickerPopover.jsx';
@@ -254,8 +255,11 @@ const CalendarHeader = () => {
     </>
   ) : effectiveViewMode === 'multi' ? (
     <>
-    {/* Top-left cell: hosts ViewCycler on large screens */}
-    <div className={`w-16 flex-shrink-0 border-r ${borderClass} flex items-center justify-center`} style={{ minHeight: 'var(--header-row-h)' }}>
+    {/* Top-left cell: hosts ViewCycler on large screens. Over the upright
+        tablet's JOBO it takes the phone's hour column width, the JOBO lanes'
+        gutter below, so the header's line meets the Plan column's. */}
+    <div className={`${tabletJoboView ? '' : 'w-16 '}flex-shrink-0 border-r ${borderClass} flex items-center justify-center`}
+      style={{ minHeight: 'var(--header-row-h)', ...(tabletJoboView ? { width: MOBILE_HOUR_GUTTER_W } : {}) }}>
       {isTablet && !isLandscape ? <MobileViewToggle /> : ((canShowViewCycler || schedOnlyCycler) && <ViewCycler />)}
     </div>
     {visibleDates.map((date, idx) => {

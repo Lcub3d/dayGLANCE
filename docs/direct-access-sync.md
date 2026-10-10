@@ -372,7 +372,14 @@ an envelope with no key and no passphrase in memory (`decryptData` throws
 `PASSPHRASE_REQUIRED`), or wants to write one. App.jsx answers both with the
 existing `SyncPassphraseModal`; a key that is present but wrong (a decrypt
 that fails for any other reason) stays the `encrypted-unreadable` error on the
-card, since a prompt would not help. And a plaintext file read with the switch
+card, since a prompt would not help. Before either prompt, the hook loads the
+key this device cached (`initSessionKey`), once per session: the launch gate
+restores the file-tier key only for the transports it knows need it, and a
+device whose folder holds an envelope another device sealed has the key from
+its first unlock and nothing at launch to say so. Three devices were asked
+again on every launch until this (2026-10-10). The passphrase is asked for
+once per device, and again only if the cached key is gone (a storage purge, a
+reset) or the file was sealed with a different passphrase. And a plaintext file read with the switch
 on and no key ready IS applied (there is nothing to protect in what was read);
 only the write is held, never written plaintext. The switch is forgotten with
 the folder on disconnect, and disabling WebDAV encryption leaves the key in

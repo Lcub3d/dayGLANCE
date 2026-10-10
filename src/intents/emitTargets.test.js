@@ -16,6 +16,11 @@ let mockIcloudAvailable = false;
 vi.mock('./icloudFileTransport.js', () => ({
   isAvailable: () => mockIcloudAvailable,
 }));
+// Direct Access intents (Phase 7): the opt-in flag AND a connected folder.
+let mockDirectAccess = false;
+vi.mock('./directAccessIntentsConfig.js', () => ({
+  isDirectAccessIntentsEnabled: () => mockDirectAccess,
+}));
 
 function memLocalStorage() {
   const m = new Map();
@@ -29,6 +34,7 @@ function memLocalStorage() {
 beforeEach(() => {
   global.localStorage = memLocalStorage();
   mockIcloudAvailable = false;
+  mockDirectAccess = false;
 });
 afterAll(() => { delete global.localStorage; });
 
@@ -102,5 +108,15 @@ describe('isIcloudIntentsEnabled', () => {
     // both
     mockIcloudAvailable = true;
     expect(isIcloudIntentsEnabled()).toBe(true);
+  });
+});
+
+describe('enabledIntentTargets: Direct Access (Phase 7)', () => {
+  it('INCLUDES "directAccess" only when its own gate says so, alongside the others, and last', () => {
+    expect(enabledIntentTargets(null)).toEqual([]);
+    mockDirectAccess = true;
+    expect(enabledIntentTargets(null)).toEqual(['directAccess']);
+    enableVault();
+    expect(enabledIntentTargets(WEBDAV)).toEqual(['webdav', 'vault', 'directAccess']);
   });
 });

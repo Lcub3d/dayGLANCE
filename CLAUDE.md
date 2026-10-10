@@ -169,7 +169,7 @@ and confirming a test fails.
 
 # App.jsx — Ongoing Decomposition
 
-`App.jsx` started at ~30,000 lines and has been reduced to ~9,600 across four refactor passes. All previously listed extraction candidates are done:
+`App.jsx` started at ~30,000 lines and came down to ~9,600 across four refactor passes, then crept back to ~10,700 (October 2026). Extracted so far:
 
 - **ICS/CalDAV parser** → `src/utils/icsParser.js` (with tests)
 - **Voice input pipeline** → `src/hooks/useVoiceInput.js`
@@ -177,6 +177,25 @@ and confirming a test fails.
 - **Obsidian sync handlers** → `src/hooks/useObsidianSync.js`
 - **Native calendar integration** → `src/utils/nativeCalendar.js` (with tests)
 - **iCloud snapshot sync loop** → `src/hooks/useSnapshotFileSync.js` + `src/sync/snapshotFileSync.js` (with tests); iCloud is one transport (`src/sync/icloudSnapshotTransport.js`), Direct Access the next (`docs/direct-access-sync.md`)
+- **Calendar file import** → `src/hooks/useCalendarFileImport.js` (with tests, #2016)
+- **Widget snapshot** → `src/utils/widgetSnapshot.js` (with tests); the effect in App.jsx gathers inputs and owns the push
+- **TRMNL push and auto-sync** → `src/hooks/useTrmnlSync.js` (with tests)
+
+## Next candidates
+
+Pure logic and logic that carries data-safety rules first; UI wiring last.
+The context object and render at the end of the file (~2,300 lines) are
+wiring, and moving them only relocates them. Sizes are approximate.
+
+- **Calendar writeback and sync** (`syncTaskCompletionToCalDAV`,
+  `syncWithCalendar`, `syncTaskCalendar`, ~500 lines): into the existing
+  `useCalendarSync`.
+- **Focus orchestration** (`enterFocusMode`, `startFocusTimer`,
+  `exitFocusMode`, the phase and timer-end handlers): into `useFocusMode`.
+- **Sync apply and payload** (`applyEngineData`, `buildSyncPayload`, ~600
+  lines): the highest risk and the biggest payoff, so last and slowest. Write
+  scenario tests that walk payload → apply → state before moving anything,
+  and follow "Adding a field to a task" above.
 
 ## Guidance
 

@@ -98,7 +98,8 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
   // the next pick; a picker that was cancelled clears it.
   // roster: on an iPhone, the roster file's own status ({configured, name,
   // path, reachable}); null where the roster is a path in the folder.
-  const state = { status: 'unknown', name: null, path: null, pickError: null, roster: null };
+  // events: likewise for the intents event set (Phase 7).
+  const state = { status: 'unknown', name: null, path: null, pickError: null, roster: null, events: null };
   const statusListeners = new Set();
   const changeListeners = new Set();
   let unsubscribeBridge = null;
@@ -125,6 +126,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     encrypt: encryptsWrites(),
     pickError: state.pickError,
     roster: state.roster,
+    events: state.events,
   });
   let snapshot = compute();
   const notify = () => {
@@ -170,7 +172,10 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
         applyStatus(null);
       }
       if (b.users?.status) {
-        try { state.roster = normalizeRoster(await b.users.status()); notify(); } catch { /* unknown until a pick */ }
+        try { state.roster = normalizeFileStatus(await b.users.status()); notify(); } catch { /* unknown until a pick */ }
+      }
+      if (b.events?.status) {
+        try { state.events = normalizeFileStatus(await b.events.status()); notify(); } catch { /* unknown until a pick */ }
       }
     })();
     return initPromise;
@@ -191,7 +196,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     finally { reprobing = false; }
   };
 
-  const normalizeRoster = (st) => (st && st.configured
+  const normalizeFileStatus = (st) => (st && st.configured
     ? { configured: true, name: st.name ?? null, path: st.path ?? null, reachable: !!st.reachable }
     : { configured: false, name: null, path: null, reachable: false });
 
@@ -207,6 +212,63 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
       else storage()?.removeItem(DIRECT_ACCESS_ENCRYPT_KEY);
     } catch { /* ignore */ }
   };
+
+  // A file slot beside the snapshot: the household roster (Phase 5) and the
+  // intents event set (Phase 7). Desktop and Android bridges offer files by
+  // path (`paths`, confined to the folder in the shell); an iPhone has no
+  // folder and offers each as its own bookmarked file (`users`, `events`).
+  // The caller never branches on which: it hands over the relative path and
+  // gets the same string contract the snapshot read has (classifySnapshotText).
+  const fileSlot = (name, label) => ({
+    supported: () => {
+      const b = bridge();
+      return !!(b && (b.paths || b[name]));
+    },
+    read: async (relPath) => {
+      const b = bridge();
+      if (!b) return JSON.stringify({ error: 'no bridge' });
+      let r;
+      try {
+        if (b[name]) r = await b[name].read();
+        else if (b.paths) r = await b.paths.read(relPath);
+        else return JSON.stringify({ error: `the ${label} is not reachable on this platform` });
+      } catch (err) {
+        return JSON.stringify({ error: err?.message ?? String(err) });
+      }
+      switch (r?.kind) {
+        case 'absent': return null;
+        case 'downloading': return JSON.stringify({ downloading: true });
+        case 'text': return r.text;
+        default: return JSON.stringify({ error: r?.error ?? `${label} unavailable` });
+      }
+    },
+    // Creates the directory on a failed write, the way the iCloud roster sync
+    // does; an iPhone's bookmarked file has no directory to create.
+    write: async (relPath, text) => {
+      const b = bridge();
+      if (!b) return false;
+      try {
+        if (b[name]) return (await b[name].write(text)) === true;
+        if (!b.paths) return false;
+        if ((await b.paths.write(relPath, text)) === true) return true;
+        const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
+        if (dir) await b.paths.makeDir(dir);
+        return (await b.paths.write(relPath, text)) === true;
+      } catch {
+        return false;
+      }
+    },
+    /** iOS: forget the bookmarked file for this slot. */
+    forget: async () => {
+      const b = bridge();
+      try { await b?.[name]?.forget?.(); } catch { /* forgotten on this side regardless */ }
+      const next = b?.[name] ? normalizeFileStatus(null) : null;
+      if (name === 'users') state.roster = next; else state.events = next;
+      notify();
+    },
+  });
+  const usersSlot = fileSlot('users', 'roster');
+  const eventsSlot = fileSlot('events', 'event set');
 
   return {
     id: 'direct-access',
@@ -249,49 +311,14 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
 
     // ── The household roster (docs/direct-access-sync.md, Phase 5) ──────
     // glance-users.json at a path relative to the folder, the same place the
-    // WebDAV tier keeps it. Desktop and Android bridges offer files by path
-    // (`paths`, confined to the folder in the shell); an iPhone has no folder
-    // and offers the roster as its own bookmarked file (`users`). The caller
-    // never branches on which: it hands over the relative path and gets the
-    // same string contract the snapshot read has (classifySnapshotText).
-    rosterSupported: () => {
-      const b = bridge();
-      return !!(b && (b.paths || b.users));
-    },
-    rosterRead: async (relPath) => {
-      const b = bridge();
-      if (!b) return JSON.stringify({ error: 'no bridge' });
-      let r;
-      try {
-        if (b.users) r = await b.users.read();
-        else if (b.paths) r = await b.paths.read(relPath);
-        else return JSON.stringify({ error: 'the roster is not reachable on this platform' });
-      } catch (err) {
-        return JSON.stringify({ error: err?.message ?? String(err) });
-      }
-      switch (r?.kind) {
-        case 'absent': return null;
-        case 'downloading': return JSON.stringify({ downloading: true });
-        case 'text': return r.text;
-        default: return JSON.stringify({ error: r?.error ?? 'roster unavailable' });
-      }
-    },
-    // Creates the directory on a failed write, the way the iCloud roster sync
-    // does; an iPhone's bookmarked file has no directory to create.
-    rosterWrite: async (relPath, text) => {
-      const b = bridge();
-      if (!b) return false;
-      try {
-        if (b.users) return (await b.users.write(text)) === true;
-        if (!b.paths) return false;
-        if ((await b.paths.write(relPath, text)) === true) return true;
-        const dir = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
-        if (dir) await b.paths.makeDir(dir);
-        return (await b.paths.write(relPath, text)) === true;
-      } catch {
-        return false;
-      }
-    },
+    // WebDAV tier keeps it (fileSlot above).
+    rosterSupported: usersSlot.supported,
+    rosterRead: usersSlot.read,
+    rosterWrite: usersSlot.write,
+    // ── The intents event set (Phase 7): glance-events.json, likewise. ──
+    eventsSupported: eventsSlot.supported,
+    eventsRead: eventsSlot.read,
+    eventsWrite: eventsSlot.write,
 
     // Push signals: the main process's folder watcher, a folder picked or
     // re-enabled in settings, and a folder that came back from unreachable.
@@ -347,12 +374,11 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     /** iOS: the household roster, a second bookmarked file (Phase 5). */
     pickUsersFile: async () => runPick('pickFile', 'users'),
     createUsersFile: async () => runPick('createFile', 'users'),
-    forgetUsersFile: async () => {
-      const b = bridge();
-      try { await b?.users?.forget?.(); } catch { /* forgotten on this side regardless */ }
-      state.roster = b?.users ? normalizeRoster(null) : null;
-      notify();
-    },
+    forgetUsersFile: usersSlot.forget,
+    /** iOS: the intents event set, a third bookmarked file (Phase 7). */
+    pickEventsFile: async () => runPick('pickFile', 'events'),
+    createEventsFile: async () => runPick('createFile', 'events'),
+    forgetEventsFile: eventsSlot.forget,
 
     disconnect: async () => {
       try { await bridge()?.disconnect(); } catch { /* the renderer side still forgets it */ }
@@ -375,7 +401,7 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
   async function runPick(method, slot = 'snapshot') {
     const b = bridge();
     if (!b) return null;
-    if (typeof b[method] !== 'function' || (slot === 'users' && !b.users)) {
+    if (typeof b[method] !== 'function' || (slot !== 'snapshot' && !b[slot])) {
       state.pickError = 'not available on this platform';
       notify();
       return null;
@@ -396,9 +422,10 @@ export function createDirectAccessTransport({ bridge = defaultBridge, storage = 
     }
     if (state.pickError) { state.pickError = null; notify(); }
     if (!st) return null;
-    if (slot === 'users') {
-      // The roster file: its own status, nothing about the snapshot changes.
-      state.roster = normalizeRoster(st);
+    if (slot !== 'snapshot') {
+      // The roster or events file: its own status, nothing about the snapshot changes.
+      if (slot === 'users') state.roster = normalizeFileStatus(st);
+      else state.events = normalizeFileStatus(st);
       notify();
       return snapshot;
     }

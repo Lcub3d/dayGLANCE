@@ -5,6 +5,7 @@ import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { isNativeAndroid, isNativeIOS } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
 import { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey } from '../utils/crypto.js';
+import { getDirectAccessIntentsEnabledFlag } from '../intents/directAccessIntentsConfig.js';
 
 /**
  * Settings → Cloud Sync: the Direct Access card (docs/direct-access-sync.md).
@@ -100,6 +101,13 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
   const createRoster = run(() => transport.createUsersFile());
   const forgetRoster = run(() => transport.forgetUsersFile());
   const roster = status.roster;
+  // The intents event set on an iPhone is a third bookmarked file (Phase 7),
+  // offered once the Direct Access intents opt-in is on.
+  const pickEvents = run(() => transport.pickEventsFile());
+  const createEvents = run(() => transport.createEventsFile());
+  const forgetEvents = run(() => transport.forgetEventsFile());
+  const events = status.events;
+  const intentsOn = getDirectAccessIntentsEnabledFlag();
   const disconnect = async () => {
     setBusy(true);
     try { await transport.disconnect(); }
@@ -261,6 +269,31 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
                     <>
                       <button type="button" onClick={pickRoster} disabled={busy} className={button}>{t('directAccess.rosterChoose')}</button>
                       <button type="button" onClick={createRoster} disabled={busy} className={button}>{t('directAccess.rosterCreate')}</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {ios && intentsOn && events && (
+            <div className={`pt-2 border-t ${borderClass} space-y-2`}>
+              <p className={`text-xs ${textSecondary}`}>{t('directAccess.iosEventsHint')}</p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className={`text-xs ${textPrimary}`} title={events.path ?? undefined}>
+                  {events.configured
+                    ? t('directAccess.eventsChosen', { name: events.name })
+                    : t('directAccess.eventsNotChosen')}
+                </p>
+                <div className="flex gap-2">
+                  {events.configured ? (
+                    <>
+                      <button type="button" onClick={pickEvents} disabled={busy} className={button}>{t('directAccess.eventsChange')}</button>
+                      <button type="button" onClick={forgetEvents} disabled={busy} className={button}>{t('directAccess.eventsForget')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={pickEvents} disabled={busy} className={button}>{t('directAccess.eventsChoose')}</button>
+                      <button type="button" onClick={createEvents} disabled={busy} className={button}>{t('directAccess.eventsCreate')}</button>
                     </>
                   )}
                 </div>

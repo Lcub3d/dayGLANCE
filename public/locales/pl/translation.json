@@ -744,7 +744,11 @@
     "viewsOnDevice": "Widoki na tym urządzeniu",
     "viewsOnDeviceHint": "Widok wyłączony tutaj znika z przełącznika, skrótów i listy widoku domyślnego tylko na tym urządzeniu. Nic z tego, co pokazuje, nie ginie. Pozostaw włączony co najmniej jeden widok.",
     "viewsInPortrait": "Widoki w orientacji pionowej",
-    "viewsInLandscape": "Widoki w orientacji poziomej"
+    "viewsInLandscape": "Widoki w orientacji poziomej",
+    "directAccessIntents": "Intencje Direct Access",
+    "directAccessIntentsDesc": "Udostępniaj intencje zadań innym aplikacjom GLANCE przez folder Direct Access: jeden plik zdarzeń, glance-events.json, który każde urządzenie i każda aplikacja w folderze odczytuje i uzupełnia. Szyfrowany Twoim hasłem synchronizacji, gdy plik Direct Access jest szyfrowany.",
+    "directAccessIntentsEnable": "Włącz intencje Direct Access",
+    "directAccessIntentsNeedsFolder": "Na tym urządzeniu nie podłączono folderu. Najpierw podłącz go w Synchronizacja w chmurze → Direct Access; do tego czasu nic nie jest tu wysyłane ani odbierane."
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",
@@ -2273,7 +2277,14 @@
     "encryptHint": "Wyłączone. Plik jest zapisywany bez zmian. Jeśli inne urządzenie już go zaszyfrowało, to urządzenie podąża za plikiem i prosi o hasło synchronizacji.",
     "encryptOnHint": "Włączone. Następny zapis zabezpiecza plik Twoim hasłem synchronizacji, tym samym, którego używa szyfrowanie WebDAV, a potem wszystkie urządzenia podążają za plikiem. Wyłączenie nigdy nie przywraca pliku do postaci jawnej.",
     "encryptPassphraseHint": "Wybierz hasło synchronizacji. Każde urządzenie, które otworzy ten folder, poprosi o nie raz. Jeśli używasz już hasła do szyfrowania WebDAV, wpisz to samo.",
-    "encryptTurnOn": "Włącz szyfrowanie"
+    "encryptTurnOn": "Włącz szyfrowanie",
+    "eventsChoose": "Wybierz plik zdarzeń…",
+    "eventsCreate": "Utwórz plik zdarzeń…",
+    "eventsChange": "Zmień plik zdarzeń",
+    "eventsForget": "Zapomnij plik zdarzeń",
+    "eventsChosen": "Plik zdarzeń: {{name}}",
+    "eventsNotChosen": "Plik zdarzeń: nie wybrano na tym urządzeniu.",
+    "iosEventsHint": "Intencje podróżują w pliku glance-events.json w GLANCE/events wspólnego folderu. Wybierz ten, który utworzyły Twoje inne urządzenia, albo utwórz go tam."
   },
   "aspire": {
     "title": "Aspire",

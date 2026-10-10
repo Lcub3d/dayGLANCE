@@ -445,7 +445,7 @@ describe('probeDirectAccess', () => {
     expect(await probeDirectAccess({ directAccess: null })).toBeNull();
     expect(await probeDirectAccess({ directAccess: fakeDirectAccess({ supported: false }) })).toBeNull();
     const off = fakeDirectAccess({ status: 'disconnected', name: null });
-    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, encrypt: false, keyReady: null, pickError: null, native: null, roster: null, snapshot: null, merge: null });
+    expect(await probeDirectAccess({ directAccess: off })).toEqual({ status: 'disconnected', name: null, enabled: true, encrypt: false, keyReady: null, pickError: null, native: null, roster: null, events: null, snapshot: null, merge: null });
     expect(off.read).not.toHaveBeenCalled();
   });
 
@@ -468,6 +468,13 @@ describe('probeDirectAccess', () => {
       local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true, directAccess: await probeDirectAccess({ directAccess: t }),
     });
     expect(withRoster).toMatch(/roster file: +chosen \(glance-users.json\)/);
+    const withEvents = formatDiagnosticsReport({
+      platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },
+      local: { taskCount: 1, inboxCount: 0 }, transports: { icloud: {}, webdav: {}, vault: {} }, syncEnabled: true,
+      directAccess: { status: 'connected', name: 'dayglance-sync.json', enabled: true, pickError: null, native: null, roster: null, events: { configured: false, name: null, path: null, reachable: false }, snapshot: null, merge: null },
+    });
+    expect(withEvents).toMatch(/events file: +not chosen/);
+    expect(withEvents).not.toMatch(/roster file/);
     // A transport without the probe, or with nothing to report, prints neither line.
     const plain = formatDiagnosticsReport({
       platform: 'ios', icloud: false, available: { value: null }, snapshot: { state: 'unsupported', bytes: 0 },

@@ -9,6 +9,7 @@ import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { describeObstacle } from '../utils/dayOccupancy.js';
 import { createPendingProject } from '../utils/pendingProject.js';
 import { canFollowUp, resolveTaskRef } from '../utils/followUp.js';
+import { editedSeriesStart } from '../utils/recurrenceEngine.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -457,12 +458,11 @@ export default function useTaskActions({
   const updateRecurrencePattern = (templateId, dateStr, newRecurrence) => {
     setRecurringTasks(prev => prev.map(t => {
       if (t.id !== templateId) return t;
-      // The series starts where it always did. The engine expands from
-      // startDate, so moving it earlier (it used to snap to the 1st of the
-      // month) invents occurrences from before the series existed. Only an
-      // edit made from a date before the start moves it, and then to that date.
-      const origStart = t.recurrence.startDate;
-      const newStart = origStart && origStart <= dateStr ? origStart : dateStr;
+      // Never earlier than the series' own start: it used to snap to the 1st
+      // of the month, which invented occurrences from before the series
+      // existed. Yearly and biweekly may move it forward to stay anchored on
+      // this occurrence; see editedSeriesStart.
+      const newStart = editedSeriesStart(newRecurrence, t.recurrence.startDate, dateStr);
       return { ...t, recurrence: { ...newRecurrence, startDate: newStart }, lastModified: new Date().toISOString() };
     }));
   };

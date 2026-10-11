@@ -2,6 +2,7 @@ package com.dayglance.app.sse
 
 import android.util.Log
 import com.dayglance.app.bridge.LanHostPolicy
+import com.dayglance.app.bridge.LanTrust
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -169,6 +170,7 @@ class VaultSseClient(
             readTimeout = 60_000
             instanceFollowRedirects = LanHostPolicy.mayFollowRedirects(target)
         }
+        LanTrust.applyTo(conn, target)
         activeConnection = conn
         try {
             val code = conn.responseCode

@@ -12,16 +12,16 @@
   (bridge/LanHostPolicy.kt): http:// to a public host is still refused before
   any connection is opened. iOS allows the same via NSAllowsArbitraryLoads.
 
-  Trust anchors: user-installed CAs are trusted in addition to the system
-  store, so a LAN server with a self-signed or private-CA certificate works
-  once the user installs that certificate on the device (Settings → Security
-  → Install a certificate). Without this, Android 7+ apps ignore user CAs.
+  Trust anchors: system CAs only, the platform default, written out so nobody
+  adds src="user" here. User-installed CAs (needed for a self-signed or
+  private-CA LAN server) are trusted per connection, for LAN hosts only, by
+  bridge/LanTrust.kt; added here they would apply to every host, so a work
+  profile's or MDM's CA could intercept traffic to public sync servers.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>

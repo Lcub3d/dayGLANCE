@@ -44,6 +44,7 @@ class HttpBridge {
                 }.toString()
             }
             val connection = target.openConnection() as HttpURLConnection
+            LanTrust.applyTo(connection, target)
             // HttpURLConnection only accepts standard verbs; WebDAV uses PROPFIND, MKCOL, etc.
             // Use reflection to bypass the validation for non-standard methods.
             try {

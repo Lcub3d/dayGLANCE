@@ -51,8 +51,24 @@ class LanHostPolicyTest {
     }
 
     @Test
-    fun `redirects are followed only for https`() {
-        assertTrue(LanHostPolicy.mayFollowRedirects(URL("https://10.10.10.2:18800/webdav/")))
+    fun `user-installed CAs are trusted only for https to a LAN host`() {
+        assertTrue(LanHostPolicy.usesLanTrust(URL("https://10.10.10.2:18800/webdav/")))
+        assertTrue(LanHostPolicy.usesLanTrust(URL("https://nas.local/dav")))
+        assertTrue(LanHostPolicy.usesLanTrust(URL("https://localhost:8443/")))
+        // Public hosts keep system-only trust: a user-store CA must not be able
+        // to intercept a public sync server or GLANCEvault.
+        assertFalse(LanHostPolicy.usesLanTrust(URL("https://vault.example.com/")))
+        assertFalse(LanHostPolicy.usesLanTrust(URL("https://8.8.8.8/")))
+        // http has no TLS to trust.
+        assertFalse(LanHostPolicy.usesLanTrust(URL("http://10.10.10.2/")))
+    }
+
+    @Test
+    fun `redirects are followed only for https to a public host`() {
+        assertTrue(LanHostPolicy.mayFollowRedirects(URL("https://vault.example.com/")))
+        // A LAN https connection carries user-CA trust into any redirect.
+        assertFalse(LanHostPolicy.mayFollowRedirects(URL("https://10.10.10.2:18800/webdav/")))
+        // An http redirect could bounce credentials to a public http host.
         assertFalse(LanHostPolicy.mayFollowRedirects(URL("http://10.10.10.2/")))
         assertFalse(LanHostPolicy.mayFollowRedirects(URL("http://localhost/")))
     }

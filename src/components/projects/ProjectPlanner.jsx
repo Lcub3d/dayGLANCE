@@ -40,6 +40,7 @@ import SchedTaskCard from '../sched/SchedTaskCard.jsx';
 import HyperGlanceEditor from './HyperGlanceEditor.jsx';
 import RecurringSeriesRow from './RecurringSeriesRow.jsx';
 import { sortByProjectOrder, applyProjectReorder, projectReorderIds, topProjectOrder, sendToBottomIds } from '../../utils/projectOrder.js';
+import { readRetiredTaskIds } from '../../utils/retiredTaskIds.js';
 
 /**
  * PLANNER — a per-project planning dashboard, themed to the project's color.
@@ -464,9 +465,13 @@ const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) =>
     if (showTabs) setActiveTab('unscheduled');
   };
 
+  // Resolved through the retired-id record: on an Obsidian-linked project the
+  // writeback swaps the new task's id for its block-derived one moments after
+  // the add. Null once the task is no longer an open inbox task (scheduled,
+  // completed, deleted), and the offer is withdrawn with it.
+  const sendToBottomTarget = justAdded ? sendToBottomIds(projectInbox(), justAdded.id, readRetiredTaskIds()) : null;
   const sendToBottom = () => {
-    const ids = justAdded && sendToBottomIds(projectInbox(), justAdded.id);
-    if (ids) reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, ids));
+    if (sendToBottomTarget) reorderUnscheduledTasks(applyProjectReorder(unscheduledTasks, sendToBottomTarget));
     setJustAdded(null);
   };
 
@@ -681,7 +686,7 @@ const ProjectPlanner = ({ project, onClose, initialHyperglanceOpen = false }) =>
                 <Plus size={14} />
               </button>
             </form>
-            {justAdded && (
+            {justAdded && sendToBottomTarget && (
               <div data-planner-just-added className={`flex items-center gap-2 text-xs ${textSecondary}`} role="status">
                 <span className="truncate min-w-0">{t('planner.addedToTop', { title: justAdded.title })}</span>
                 <button

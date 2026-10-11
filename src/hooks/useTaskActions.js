@@ -456,9 +456,12 @@ export default function useTaskActions({
   const updateRecurrencePattern = (templateId, dateStr, newRecurrence) => {
     setRecurringTasks(prev => prev.map(t => {
       if (t.id !== templateId) return t;
+      // The series starts where it always did. The engine expands from
+      // startDate, so moving it earlier (it used to snap to the 1st of the
+      // month) invents occurrences from before the series existed. Only an
+      // edit made from a date before the start moves it, and then to that date.
       const origStart = t.recurrence.startDate;
-      const earlierDate = origStart <= dateStr ? origStart : dateStr;
-      const newStart = earlierDate.substring(0, 8) + '01';
+      const newStart = origStart && origStart <= dateStr ? origStart : dateStr;
       return { ...t, recurrence: { ...newRecurrence, startDate: newStart }, lastModified: new Date().toISOString() };
     }));
   };

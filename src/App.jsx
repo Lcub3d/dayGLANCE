@@ -3867,8 +3867,11 @@ const DayPlanner = () => {
                 // Project changes in the editor apply to the whole series —
                 // project membership is series-level, like the template itself.
                 projectId: newTask.projectId || undefined,
-                // Update recurrence pattern on template if changed
-                recurrence: { ...newTask.recurrence, startDate: t.recurrence?.startDate || parsed.dateStr.substring(0, 8) + '01' },
+                // Update recurrence pattern on template if changed. The start
+                // never moves: an earlier one invents occurrences before the
+                // series existed. (A template with no startDate expands to
+                // nothing, so the fallback is a guard, not a reachable path.)
+                recurrence: { ...newTask.recurrence, startDate: t.recurrence?.startDate || parsed.dateStr },
                 lastModified: new Date().toISOString(),
               };
             }));

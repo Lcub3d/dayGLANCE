@@ -16,6 +16,7 @@ import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import CalendarList from './CalendarList.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
 import DirectAccessSyncCard from './DirectAccessSyncCard.jsx';
+import DirectAccessFileRow from './DirectAccessFileRow.jsx';
 import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
@@ -1012,7 +1013,6 @@ const SettingsModal = () => {
                       {isDirectAccessSupported() && (
                         <DirectAccessSyncCard
                           darkMode={darkMode}
-                          multiUserEnabled={multiUserEnabled}
                           textPrimary={textPrimary}
                           textSecondary={textSecondary}
                           borderClass={borderClass}
@@ -1294,6 +1294,7 @@ const SettingsModal = () => {
                             )}
                           </div>
                           {/* User list */}
+                          <DirectAccessFileRow slot="users" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
                           <div>
                             <p className={`text-xs font-medium ${textSecondary} mb-2`}>{t('settings.multiUserPeople')}</p>
                             <div className="space-y-2">
@@ -2728,6 +2729,7 @@ const SettingsModal = () => {
                           {!directAccessStatus.connected && (
                             <p className="text-xs text-amber-700 dark:text-amber-300">{t('settings.directAccessIntentsNeedsFolder')}</p>
                           )}
+                          <DirectAccessFileRow slot="events" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
                           <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
                             <input
                               type="checkbox"

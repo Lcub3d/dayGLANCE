@@ -20,7 +20,7 @@ export default function useSaveOnChange({
   completedTaskUids, recurringTasks, routineDefinitions, todayRoutines, routinesDate,
   removedTodayRoutineIds, habits, habitLogs, habitsEnabled, routinesEnabled, gtdFrames,
   goals, projects, areas, goalsProjectsEnabled,
-  dailyNotes, users, routineCompletions, multiUserEnabled,
+  dailyNotes, users, routineCompletions, multiUserEnabled, aspireEntries,
 }) {
   useEffect(() => {
     if (isTrayMode || !dataLoaded || isResetInProgress()) return;
@@ -53,5 +53,5 @@ export default function useSaveOnChange({
     // are called, not dependencies, and would over-trigger). The suppress* refs are
     // stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataLoaded, tasks, unscheduledTasks, recycleBin, taskCalendarUrl, syncUrl, syncRetentionDays, completedTaskUids, recurringTasks, routineDefinitions, todayRoutines, routinesDate, removedTodayRoutineIds, habits, habitLogs, habitsEnabled, routinesEnabled, gtdFrames, goals, projects, areas, goalsProjectsEnabled, dailyNotes, users, routineCompletions, multiUserEnabled]);
+  }, [dataLoaded, tasks, unscheduledTasks, recycleBin, taskCalendarUrl, syncUrl, syncRetentionDays, completedTaskUids, recurringTasks, routineDefinitions, todayRoutines, routinesDate, removedTodayRoutineIds, habits, habitLogs, habitsEnabled, routinesEnabled, gtdFrames, goals, projects, areas, goalsProjectsEnabled, dailyNotes, users, routineCompletions, multiUserEnabled, aspireEntries]);
 }

@@ -2617,7 +2617,7 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
   // Projects tab filter field: title match, applied after Open | Completed.
   const [projectQuery, setProjectQuery] = useState('');
   const filterInputRef = useRef(null);
-  // Aspire (experimental): the placeholder modal opened from the FAB stack.
+  // Aspire (experimental): editable notebook opened from the FAB stack.
   const [showAspire, setShowAspire] = useState(false);
   // Phone: the controls under Goals | Projects hidden by its chevron. A
   // per-device preference; storage can be missing or throw (private mode,
@@ -2917,6 +2917,8 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
     if (!isActive) return;
     const handler = (e) => {
       if (e.key !== 'Escape') return;
+      // Aspire owns dismissal so a pending or failed save is never discarded.
+      if (showAspire) return;
       // A task notes/subtasks overlay (e.g. opened from a SCHED/planner card)
       // sits above everything and closes itself — leave ESC to it.
       if (document.querySelector('.sched-notes-panel')) return;
@@ -2941,7 +2943,6 @@ const GoalDashboard = ({ embedded = false, desktop = false, isActive = false, in
       else if (areaForm) close = () => setAreaForm(null);
       else if (showManageAreas) close = () => setShowManageAreas(false);
       else if (moveToProject) close = () => setMoveToProject(null);
-      else if (showAspire) close = () => setShowAspire(false);
       if (!close) return;
       e.stopImmediatePropagation(); // prevent all other keydown listeners
       e.preventDefault();

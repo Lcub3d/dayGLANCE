@@ -65,6 +65,7 @@ const task = (id, title, lastModified, extra = {}) => ({
 // move state), claimed routine chips, and the keyed habitLogs/timestamps maps.
 function buildFixture() {
   return {
+    aspireEntries: [{ id: 'aspire-1', kind: 'wish', text: 'Learn pottery', order: 1, createdAt: '2026-10-01T10:00:00.000Z', updatedAt: '2026-10-01T10:00:00.000Z', contentUpdatedAt: '2026-10-01T10:00:00.000Z', orderUpdatedAt: '2026-10-01T10:00:00.000Z', deleted: false }],
     tasks: [
       task(1001, 'Standup', ts(120), { date: '2026-06-18', startTime: '09:00' }),
       task(1002, 'Write report', ts(30), {
@@ -239,7 +240,7 @@ describe('dbAdapter losslessness gate', () => {
       // pickJoboRecord (docs/jobo-ledger-persistence.md): two devices holding
       // pristine copies of one record tie on updatedAt, and the engine's own
       // "remote wins" tie would leave each keeping the other's, never converging.
-      expect(isInsertOnly(r.entity)).toBe(r.kind === 'singleton' || r.kind === 'recurringTasks' || r.kind === 'joboRecords');
+      expect(isInsertOnly(r.entity)).toBe(r.kind === 'singleton' || r.kind === 'recurringTasks' || r.kind === 'joboRecords' || r.kind === 'aspireEntries');
     }
   });
 

@@ -126,13 +126,20 @@ export const getOccurrencesInRange = (template, rangeStartStr, rangeEndStr, maxR
       cursor.setMonth(cursor.getMonth() + 1, 1);
     }
   } else if (rec.type === 'yearly') {
-    const cursor = new Date(startDate);
-    while (cursor <= rangeEnd && count < maxOcc) {
-      if (cursor >= startDate) {
-        if (endDate && cursor > endDate) break;
-        if (!addIfInRange(cursor)) break;
-      }
-      cursor.setFullYear(cursor.getFullYear() + 1);
+    // Each year's date comes from the START's month and day, not from the
+    // previous occurrence. Stepping a running cursor (setFullYear + 1) carried
+    // 29 February's overflow forward: 2024-02-29 became 2025-03-01 and then
+    // stayed on 1 March, leap years included. A 29 February series still
+    // shows on 1 March in years without one (Date's own overflow), as it
+    // always has, so occurrences already saved against those dates keep
+    // matching; only leap years return to the 29th.
+    const month = startDate.getMonth();
+    const day = startDate.getDate();
+    for (let year = startDate.getFullYear(); count < maxOcc; year++) {
+      const cursor = new Date(year, month, day, 12);
+      if (cursor > rangeEnd) break;
+      if (endDate && cursor > endDate) break;
+      if (!addIfInRange(cursor)) break;
     }
   }
   return results;

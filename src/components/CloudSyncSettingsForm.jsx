@@ -8,6 +8,7 @@ import { createDbEngine, resetDbRootKey, resetVaultSyncCursor } from '../sync/db
 import { testVaultConnection } from '../sync/vaultConnectionTest.js';
 import { testFileTierConnection, providerServerUrl, BLOCKED_PRIVATE_ADDRESS } from '../sync/proxyTrustPreflight.js';
 import { classifyVaultUrl } from '../sync/vaultUrlPolicy.js';
+import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
@@ -143,7 +144,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     // WebDAV is marked enabled only when the user toggled it on AND the connection is
     // configured — so enabling GLANCEvault alone never writes a bogus enabled WebDAV
     // config, and unchecking the toggle disables sync while keeping the credentials.
-    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled };
+    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled, syncFolder: normalizeSyncFolder(formData.syncFolder) };
 
     if (encryptionEnabled) {
       if (passphraseRequired && passphrase) {

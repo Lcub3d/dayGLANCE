@@ -26,6 +26,7 @@ import { partitionExpiredSingleDayFrames } from './utils/expiredFrames.js';
 import { webdavFetch } from './utils/cloudSyncProviders.js';
 import { normalizeEtag } from '@glance-apps/sync';
 import { autoBackupDB, createAutoBackupProvidersForFolder, AUTO_BACKUP_RETENTION, AUTO_BACKUP_INTERVALS } from './utils/autoBackup.js';
+import { normalizeSyncFolder } from './utils/syncFolder.js';
 import { LIVE_BACKUP_FILENAME } from './utils/folderBackup.js';
 import { collectDeviceSettings, applyDeviceSettings } from './utils/deviceSettings.js';
 import { isResetInProgress } from './utils/resetAppData.js';
@@ -925,7 +926,9 @@ const DayPlanner = () => {
   // the engine) — surfaced in Cloud Sync settings so a key mismatch is visible.
   const [vaultSkipped, setVaultSkipped] = useState(0);
   const engineFolderRef = useRef(null);
-  const syncFolder = cloudSyncConfig?.syncFolder ?? 'GLANCE/dayglance';
+  // Normalized here as well as on save, so a folder stored before #2037 with a
+  // leading or trailing slash stops producing doubled slashes in the URL.
+  const syncFolder = normalizeSyncFolder(cloudSyncConfig?.syncFolder);
   const autoBackupProviders = useMemo(() => createAutoBackupProvidersForFolder(syncFolder), [syncFolder]);
   if (!cloudSyncEngineRef.current || engineFolderRef.current !== syncFolder) {
     engineFolderRef.current = syncFolder;

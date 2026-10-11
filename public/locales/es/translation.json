@@ -28,6 +28,7 @@
       "FORBIDDEN": "Sincronización bloqueada (403). Puede que tu servidor esté bloqueando la solicitud.",
       "LOCKED": "La sincronización está bloqueada por otro dispositivo. Inténtalo de nuevo en un momento.",
       "NETWORK_ERROR": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "SYNC_FAILED": "La sincronización no se completó: {{detail}}. Se volverá a intentar automáticamente.",
       "PASSPHRASE_REQUIRED": "Introduce tu frase de contraseña de sincronización para continuar.",
       "PRECONDITION_FAILED": "Otro dispositivo se actualizó primero. Reintentando.",
       "KEY_MISMATCH": "Frase de contraseña de sincronización incorrecta. Debe coincidir exactamente con la usada en tus otros dispositivos.",

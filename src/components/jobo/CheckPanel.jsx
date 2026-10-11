@@ -180,6 +180,8 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
         const task = entry.sourceTask;
         const color = taskColorToHex(task?.color || entry.task?.color || 'bg-purple-500', task?.nativeCalendarColor);
         const planned = journalPlanRange(entry.plan, date, formatTime, language);
+        const closing = new Set(entry.comparison?.closingCompletionIds || []);
+        const numbered = entry.sessions.filter(record => !closing.has(record.id));
         // Reuse the card's vocabulary, including its incomplete/estimated rules.
         // Invalid ledger input cannot justify a complete timing comparison.
         const summaries = invalid ? [] : summaryRows(entry.labels, entry.comparison, t);
@@ -204,11 +206,22 @@ export function CheckJournal({ model, date, loaded, error, onOpenNotes, formatTi
             <div className="min-w-0">
               <p className={`text-xs ${textSecondary}`}>{t('jobo.check.actual')}</p>
               <ol className="space-y-1">
-                {entry.sessions.map((record, index) => {
+                {entry.sessions.map((record) => {
                   const moment = journalMoment(record);
                   const timed = record.timing === 'timed';
+                  // A completion that closes the last timed session is that
+                  // session's end, not a session: shown as when it was marked
+                  // complete, unnumbered (core's closesLastSession).
+                  if (closing.has(record.id)) {
+                    return <li key={record.id} data-check-session={record.id} data-check-closing className="min-w-0">
+                      {moment && <p className={`text-xs ${textSecondary}`} data-check-completion>
+                        {t('jobo.view.completedAt', { time: `${moment.date !== date ? `${journalDate(moment.date, language, date)} ` : ''}${formatTime(moment.time)}` })}
+                      </p>}
+                    </li>;
+                  }
+                  const number = numbered.indexOf(record) + 1;
                   return <li key={record.id} data-check-session={record.id} className="min-w-0">
-                    {entry.sessions.length > 1 && <span className={`text-xs ${textSecondary}`}>{t('jobo.check.session', { number: index + 1 })}{' · '}</span>}
+                    {numbered.length > 1 && <span className={`text-xs ${textSecondary}`}>{t('jobo.check.session', { number })}{' · '}</span>}
                     <span data-check-actual>{timed
                       ? journalRange(record.date, record.startTime, record.endDate, record.endTime, date, formatTime, language)
                       : t('jobo.check.untimed')}</span>

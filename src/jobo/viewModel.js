@@ -10,7 +10,7 @@ import {
 import { resolveOccurrence } from './detector.js';
 import { validCivilDate } from './viewDates.js';
 
-import { completionMarker } from './completionMarker.js';
+import { completionMarker, completionMoment } from './completionMarker.js';
 
 const DAY_MINUTES = 24 * 60;
 const PROGRESS_ORDER = Object.freeze([
@@ -132,18 +132,28 @@ function safeComparison(plan, records, options = {}) {
  * intentionally makes a mixed timed/untimed history non-comparable as a
  * whole, while the timed subset remains useful for diagnostics.
  */
+// A completion's moment as its marker shows it, so a completion closes a
+// session in the comparison exactly when it sits at that session's end on
+// screen (core's closesLastSession).
+const recordCompletionMoment = record => completionMoment(record.createdAt);
+
 function comparisonMetadata(plan, records, options = {}) {
   const attempts = sortJoboAttempts(records);
   const hasEstimatedAttempts = attempts.some(record => record.timingBasis === 'planDuration');
   const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED && record.timingBasis !== 'planDuration');
-  const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, options);
-  const measuredComparison = safeComparison(plan, measuredAttempts, options);
+  const compareOptions = { completionMoment: recordCompletionMoment, ...options };
+  const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, compareOptions);
+  const measuredComparison = safeComparison(plan, measuredAttempts, compareOptions);
   return {
     comparable: comparison?.comparable === true,
     comparison,
     measuredComparison,
     hasEstimatedAttempts,
-    hasUntimedAttempts: attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
+    // Untimed attempts the comparison could not account for. A completion
+    // closing the last timed session is accounted for: it is that session's end.
+    hasUntimedAttempts: comparison
+      ? comparison.metrics.unmeasuredAttemptCount > 0
+      : attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
     attempts,
     measuredAttempts,
     measured: {

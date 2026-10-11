@@ -511,6 +511,36 @@ function comparisonPlanOverlap(bounds, anchor) {
   return unionBoundsMinutes(clipped);
 }
 
+/**
+ * How long after its timed group's last session a completion may be stamped
+ * and still close that session: the session end's rounding to the minute and
+ * the moment it takes to tick the box. A completion any later is left to the
+ * Do column's estimate, which reads the gap as work nobody measured
+ * (DoColumn's estimateCompletion), so the two never claim the same minutes.
+ */
+export const COMPLETION_CLOSES_SESSION_MINUTES = 2;
+
+// The civil moment a completion stamp carries on its own clock. A stamp in
+// UTC (Z) has no civil clock of its own, so it gives none here; the view
+// passes its display projection (completionMarker.js) instead.
+function ownCivilMoment(stamp) {
+  if (typeof stamp !== 'string' || /Z$/i.test(stamp) || !Number.isFinite(Date.parse(stamp))) return null;
+  return { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
+}
+
+// A completion that closes the group's last timed session: the task was
+// checked off during it, or within COMPLETION_CLOSES_SESSION_MINUTES after
+// it ended. It marks when that session's work ended, not work nobody
+// measured, so it does not make the history incomplete. Only a completion
+// that still stands (an uncheck drops it to partial), with a moment.
+function closesLastSession(record, last, completionMoment) {
+  if (record.source !== 'completion' || record.progress !== DO_PROGRESS.COMPLETED) return false;
+  const moment = completionMoment(record);
+  if (!moment || !validDate(moment.date) || !validTime(moment.time)) return false;
+  const minute = civilMinute(moment.date, moment.time);
+  return minute >= last.start && minute <= last.end + COMPLETION_CLOSES_SESSION_MINUTES;
+}
+
 function comparisonNotStarted({ attemptCount, currentPlanEnd, nowMinute }) {
   return attemptCount === 0
     && currentPlanEnd !== null
@@ -523,8 +553,13 @@ function comparisonNotStarted({ attemptCount, currentPlanEnd, nowMinute }) {
  *
  * recordedMinutes / activeMinutes are unique measured wall-clock coverage.
  * Untimed Do proves execution without inventing minutes. If any live Do is
- * untimed, the overall execution is not interval-comparable to Plan. Timed
- * diagnostic metrics remain available for the measured subset.
+ * untimed, the overall execution is not interval-comparable to Plan, unless
+ * it is a completion that closes the last timed session (closesLastSession):
+ * the checkbox ticked as the measured work ended. Timed diagnostic metrics
+ * remain available for the measured subset.
+ *
+ * `completionMoment(record)` gives a completion's civil { date, time }; by
+ * default a stamp's own clock, and none for a UTC stamp.
  */
 export function compareExecutionToPlan(plan, records, options = {}) {
   if (!plain(options)) throw new TypeError('Comparison options must be a plain object');
@@ -533,11 +568,13 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     now,
     knownUnplanned = false,
     tolerance = {},
+    completionMoment = record => ownCivilMoment(record.createdAt),
   } = options;
 
   if (!Array.isArray(records)) throw new TypeError('Expected an attempt array');
   if (typeof knownUnplanned !== 'boolean') throw new TypeError('knownUnplanned must be boolean');
   if (plan != null && knownUnplanned) throw new TypeError('A timed plan cannot be known-unplanned');
+  if (typeof completionMoment !== 'function') throw new TypeError('completionMoment must be a function');
 
   const anchor = plan == null ? null : planBounds(plan);
   const current = displayedPlan == null ? null : planBounds(displayedPlan);
@@ -572,9 +609,22 @@ export function compareExecutionToPlan(plan, records, options = {}) {
   const elapsedMinutes = bounds.length ? lastEnd - firstStart : null;
   const gapMinutes = bounds.length ? Math.max(0, elapsedMinutes - activeMinutes) : null;
 
+  // The last timed session: the one that ends last (the earliest start among
+  // ties). A completion closing it is that session's end, not a session.
+  const last = bounds.length
+    ? { start: Math.min(...bounds.filter(item => item.end === lastEnd).map(item => item.start)), end: lastEnd }
+    : null;
+  const closingCompletionIds = last
+    ? attempts.filter(record => record.timing === DO_TIMING.UNTIMED && closesLastSession(record, last, completionMoment))
+      .map(record => record.id)
+    : [];
+  const closingCompletionCount = closingCompletionIds.length;
+  const unmeasuredAttemptCount = untimedAttemptCount - closingCompletionCount;
+  const sessionCount = attempts.length - closingCompletionCount;
+
   const executionPattern = attempts.length === 0
     ? null
-    : attempts.length === 1 ? EXECUTION_PATTERN.SINGLE_SESSION : EXECUTION_PATTERN.SPLIT_SESSIONS;
+    : sessionCount === 1 ? EXECUTION_PATTERN.SINGLE_SESSION : EXECUTION_PATTERN.SPLIT_SESSIONS;
 
   // Canonical rule:
   // notStarted = Plan fully elapsed AND no live Do.
@@ -589,6 +639,9 @@ export function compareExecutionToPlan(plan, records, options = {}) {
     comparable: false,
     notStarted,
     executionPattern,
+    // The completions that close the last timed session, so a view can show
+    // each as that session's end rather than as a session of its own.
+    closingCompletionIds,
     intervalRelation: null,
     startTiming: null,
     finishTiming: null,
@@ -609,13 +662,16 @@ export function compareExecutionToPlan(plan, records, options = {}) {
       attemptCount: attempts.length,
       timedSessionCount: timedAttempts.length,
       untimedAttemptCount,
+      closingCompletionCount,
+      unmeasuredAttemptCount,
     },
   };
 
   // Untimed execution proves activity, but cannot support interval/duration
   // comparison. Mixed timed+untimed history is intentionally non-comparable as
   // a whole because the unmeasured portion could change every time dimension.
-  if (!anchor || !attempts.length || untimedAttemptCount > 0) return result;
+  // A completion closing the last session is not unmeasured work.
+  if (!anchor || !attempts.length || unmeasuredAttemptCount > 0) return result;
 
   const startOffsetMinutes = firstStart - anchor.start;
   const finishOffsetMinutes = lastEnd - anchor.end;

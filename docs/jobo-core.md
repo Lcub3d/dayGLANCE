@@ -73,6 +73,28 @@ start/finish, duration, or Allen comparison. In mixed Timed + Untimed history,
 the overall Plan → Do comparison is non-comparable while measured Timed
 diagnostics remain available.
 
+One untimed record does not make a history mixed: a **completion that closes
+the last timed session**. A completion that still stands (`source:
+'completion'`, `progress: 'completed'`), stamped during the group's last timed
+session or up to `COMPLETION_CLOSES_SESSION_MINUTES` (2) after it ended,
+marks when that session's work ended: the checkbox ticked as the measured work
+finished, the most common Focus path. It is not counted as a session, adds no
+minutes, and the history stays comparable. The window covers only the end's
+rounding to the minute and the moment it takes to tick the box: a completion
+any later is left to the Do column's estimate, which reads the gap as work
+nobody measured, so the two rules never claim the same minutes. Any other
+untimed record keeps the history mixed. The result reports
+`closingCompletionIds`, `closingCompletionCount` and `unmeasuredAttemptCount`
+beside `untimedAttemptCount`; the Check lists a closing completion as the
+moment its session was marked complete, not as a session, and the Do column
+draws no estimate for it.
+
+A completion's moment comes from `options.completionMoment(record)`. By
+default it is the stamp's own clock, and a UTC stamp gives none; the day model
+passes the projection its completion markers use (`completionMarker.js`), so a
+completion closes a session exactly when it sits at that session's end on
+screen.
+
 ## Prototype import
 
 `migrateLegacyDoRecord()` is an import boundary for prototype data, not a

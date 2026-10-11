@@ -125,6 +125,7 @@ import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
 import useJoboLedger from './hooks/useJoboLedger.js';
+import useAspireNotebook from './hooks/useAspireNotebook.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -377,7 +378,7 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
-  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // Aspire notebook (wishes and mottos). The switch gates its interface only.
   // behind the same Experimental switch pattern; the FAB lives in the Goals &
   // Projects space.
   const [aspireEnabled, setAspireEnabled] = useState(() => {
@@ -1175,6 +1176,19 @@ const DayPlanner = () => {
     const result = await restoreJobo(data.joboRecords);
     if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
   };
+  // Notebook data remains loaded and syncable while its experimental UI is off.
+  const {
+    aspireEntries, aspireLoaded, aspireWritable, aspireError,
+    commitAspire, applyRemoteAspire, restoreAspire, reloadAspire,
+  } = useAspireNotebook();
+  const aspireEntriesRef = useRef(aspireEntries);
+  aspireEntriesRef.current = aspireEntries;
+  const restoreAspireOrThrow = async (data) => {
+    // Old backups have no notebook and must leave this device's copy alone.
+    if (!Array.isArray(data?.aspireEntries)) return;
+    const result = await restoreAspire(data.aspireEntries);
+    if (!result.ok) throw new Error(`Aspire notebook: ${result.error}`);
+  };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -1935,7 +1949,7 @@ const DayPlanner = () => {
     completedTaskUids, recurringTasks, routineDefinitions, todayRoutines: allTodayRoutines, routinesDate,
     removedTodayRoutineIds, habits, habitLogs, habitsEnabled, routinesEnabled, gtdFrames,
     goals, projects, areas, goalsProjectsEnabled,
-    dailyNotes, users, routineCompletions, multiUserEnabled,
+    dailyNotes, users, routineCompletions, multiUserEnabled, aspireEntries,
   });
 
   // View preferences aren't part of the useSaveOnChange data slices, so
@@ -2419,7 +2433,7 @@ const DayPlanner = () => {
       cloudSyncEngineRef.current.upload();
     }, 5000);
     return () => { if (cloudSyncDebounceRef.current) clearTimeout(cloudSyncDebounceRef.current); };
-  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, dataLoaded, suppressCloudUploadRef]);
+  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, dataLoaded, suppressCloudUploadRef, aspireEntries]);
 
   // ── GLANCEvault DB transport ─────────────────────────────────────────────
   // Row-grained sync that runs ALONGSIDE the file-tier WebDAV engine (it shares
@@ -4623,6 +4637,7 @@ const DayPlanner = () => {
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4689,6 +4704,7 @@ const DayPlanner = () => {
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4776,6 +4792,7 @@ const DayPlanner = () => {
       const record = await autoBackupDB.getBackup(backupId);
       if (!record?.data?.data) throw new Error('Invalid backup record');
       const { data } = record.data;
+      await restoreAspireOrThrow(data);
       await restoreJoboOrThrow(data);
       if (data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(data.aiConfig));
       if (data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
@@ -4798,6 +4815,7 @@ const DayPlanner = () => {
       if (!provider) throw new Error('No provider configured');
       const backup = await provider.downloadBackup(autoBackupConfig.remote, filename);
       if (!backup?.data) throw new Error('Invalid backup file');
+      await restoreAspireOrThrow(backup.data);
       await restoreJoboOrThrow(backup.data);
       if (backup.data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(backup.data.aiConfig));
       if (backup.data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(backup.data.obsidianConfig));
@@ -4927,6 +4945,7 @@ const DayPlanner = () => {
           throw new Error('Invalid backup file format');
         }
 
+        await restoreAspireOrThrow(backup.data);
         await restoreJoboOrThrow(backup.data);
         applyBackupToLocalStorage(backup.data);
 
@@ -4966,6 +4985,7 @@ const DayPlanner = () => {
         alert(t('backup.folderBackupNotFound', { filename: LIVE_BACKUP_FILENAME }));
         return;
       }
+      await restoreAspireOrThrow(payload.data);
       await restoreJoboOrThrow(payload.data);
       applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
@@ -5688,6 +5708,7 @@ const DayPlanner = () => {
         // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
         // treat an absent key as "does not carry it"; [] would mean empty.
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -5983,6 +6004,7 @@ const DayPlanner = () => {
     // JOBO ledger rows go through the hook, the only writer: merged by id with
     // incoming timestamps untouched, held until the ledger has loaded.
     if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
+    if (Array.isArray(data.aspireEntries)) applyRemoteAspire(data.aspireEntries);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -8472,6 +8494,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
+    aspireEntries, aspireLoaded, aspireWritable, aspireError, commitAspire, reloadAspire,
     joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo, recordJoboUndo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,

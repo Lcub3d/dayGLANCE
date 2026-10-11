@@ -60,6 +60,7 @@ import { recordOwnWriteSeq, withOwnAckRecording } from './ownWrites.js';
 import { isObsidianTombstoned } from '../utils/obsidianDeletions.js';
 import { ghostSuccessorId, persistDerivedGhostRetirements } from '../utils/obsidianGhostRows.js';
 import { createIdbKeyValue } from '../utils/idbKeyValue.js';
+import { cycleErrorCode } from './syncErrors.js';
 
 const APP_ID = 'dayglance';
 const CRYPTO_DB_NAME = 'dayglance-db-crypto';
@@ -372,6 +373,14 @@ export function createDbEngine(callbacks = {}) {
   // into the request that produced it, so we can see which entityId/route the
   // server rejected — instead of guessing across repos. Quiet on success.
   const rawFetch = fetchImpl || ((...a) => globalThis.fetch(...a));
+  // Errors the transport itself threw (no HTTP response at all). The vault
+  // client gives every HTTP failure its own code, so a code-less error that is
+  // NOT in here came from this device (IndexedDB, the apply path, a bug), and
+  // labelling it a network error sent people checking a connection that was
+  // fine (#2035). Tracked by identity so the error object the package sees is
+  // untouched.
+  const transportErrors = new WeakSet();
+  const noteTransportError = (e) => { if (e && typeof e === 'object') transportErrors.add(e); };
   // The query string is redacted from failure logs: it carries the accountId,
   // which shouldn't be printed on every transient failure (console captures,
   // attached debuggers). Origin + path keep the diagnostic value — the route and
@@ -385,6 +394,7 @@ export function createDbEngine(callbacks = {}) {
       res = await rawFetch(url, opts);
     } catch (e) {
       console.warn('[dayglance vault]', opts.method || 'GET', redactedUrl(url), '→ network error:', e?.message || e);
+      noteTransportError(e);
       throw e;
     }
     if (!res || res.ok === false) console.warn('[dayglance vault]', opts.method || 'GET', redactedUrl(url), '→', res?.status);
@@ -1429,7 +1439,7 @@ export function createDbEngine(callbacks = {}) {
       // that just rejected us.
       throttleAnnounced = false;
       breaker.onFailure(err);
-      const code = err && err.code ? err.code : 'NETWORK_ERROR';
+      const code = cycleErrorCode(err, transportErrors);
       callbacks.onError?.(err?.message || String(err), code);
       callbacks.onStatusChange?.('error');
       return { applied: 0, skipped: 0, skippedEntityIds: [], error: err?.message, code };

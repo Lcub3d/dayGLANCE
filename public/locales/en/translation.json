@@ -29,6 +29,7 @@
       "FORBIDDEN": "Sync blocked (403). Your server may be blocking the request.",
       "LOCKED": "Sync is locked by another device. Try again in a moment.",
       "NETWORK_ERROR": "Network error. Check your connection and try again.",
+      "SYNC_FAILED": "Sync didn't finish: {{detail}}. It will try again automatically.",
       "PASSPHRASE_REQUIRED": "Enter your sync passphrase to continue.",
       "PRECONDITION_FAILED": "Another device updated first. Retrying.",
       "QUOTA_EXCEEDED": "The sync server has reached its limit for this account. Your changes are saved on this device and syncing will retry automatically. Ask whoever runs your sync server to raise the limit.",

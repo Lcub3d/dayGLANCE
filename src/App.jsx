@@ -69,7 +69,7 @@ import { calculateGoalProgress } from './utils/goalProgress.js';
 import { resolveGoalsLink, areaFilterHides } from './utils/goalsLink.js';
 import { HABIT_ICONS, HABIT_ICON_NAMES, HABIT_COLORS } from './constants/habits.js';
 import { FRAME_COLORS } from './constants/frames.js';
-import { getOccurrencesInRange, getRecurrencePresets } from './utils/recurrenceEngine.js';
+import { getOccurrencesInRange, getRecurrencePresets, editedSeriesStart } from './utils/recurrenceEngine.js';
 import { getPartialTag, getFilteredTags, applyTagCompletion, getPartialDate, getPartialTime, getPartialDeadline, getPartialPriority, getPartialDuration, getDateCandidates, parseFlexibleDate, getTimeCandidates, parseFlexibleTime, completeShortcutText, cleanTitle, removeFromTitle } from './utils/suggestionParser.js';
 import ClockTimePicker from './components/ClockTimePicker.jsx';
 import { HabitRing, MiniHabitRing } from './components/HabitRing.jsx';
@@ -3868,10 +3868,10 @@ const DayPlanner = () => {
                 // project membership is series-level, like the template itself.
                 projectId: newTask.projectId || undefined,
                 // Update recurrence pattern on template if changed. The start
-                // never moves: an earlier one invents occurrences before the
-                // series existed. (A template with no startDate expands to
-                // nothing, so the fallback is a guard, not a reachable path.)
-                recurrence: { ...newTask.recurrence, startDate: t.recurrence?.startDate || parsed.dateStr },
+                // never moves earlier, which would invent occurrences before
+                // the series existed; yearly and biweekly may move it forward
+                // to stay anchored on this occurrence (editedSeriesStart).
+                recurrence: { ...newTask.recurrence, startDate: editedSeriesStart(newTask.recurrence, t.recurrence?.startDate, parsed.dateStr) },
                 lastModified: new Date().toISOString(),
               };
             }));

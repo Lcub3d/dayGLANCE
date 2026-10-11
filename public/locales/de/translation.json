@@ -28,6 +28,7 @@
       "FORBIDDEN": "Synchronisierung blockiert (403). Ihr Server blockiert möglicherweise die Anfrage.",
       "LOCKED": "Die Synchronisierung ist von einem anderen Gerät gesperrt. Versuchen Sie es gleich noch einmal.",
       "NETWORK_ERROR": "Netzwerkfehler. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "SYNC_FAILED": "Die Synchronisierung wurde nicht abgeschlossen: {{detail}}. Sie wird automatisch erneut versucht.",
       "PASSPHRASE_REQUIRED": "Geben Sie Ihre Sync-Passphrase ein, um fortzufahren.",
       "PRECONDITION_FAILED": "Ein anderes Gerät hat zuerst aktualisiert. Wird erneut versucht.",
       "KEY_MISMATCH": "Falsche Sync-Passphrase. Sie muss genau mit der auf Ihren anderen Geräten verwendeten Passphrase übereinstimmen.",
@@ -2241,6 +2242,9 @@
       "secondary": "Späte Enden: {{finish}} · Länger gedauert: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Aufgabe erstellen",
+    "makeTaskHint": "Öffnet aus dieser Ausführung eine neue Posteingangsaufgabe und verknüpft die Ausführung damit.",
+    "makeTaskNotLinked": "Aufgabe hinzugefügt. Die Ausführung wurde inzwischen geändert und daher nicht verknüpft.",
     "undo": {
       "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
       "completionBlocked": "Die Aufgabe ist nicht mehr abgeschlossen, daher kann das Do nicht wieder „Abgeschlossen“ werden. Es bleibt, wie es ist.",

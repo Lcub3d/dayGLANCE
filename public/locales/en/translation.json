@@ -29,6 +29,7 @@
       "FORBIDDEN": "Sync blocked (403). Your server may be blocking the request.",
       "LOCKED": "Sync is locked by another device. Try again in a moment.",
       "NETWORK_ERROR": "Network error. Check your connection and try again.",
+      "SYNC_FAILED": "Sync didn't finish: {{detail}}. It will try again automatically.",
       "PASSPHRASE_REQUIRED": "Enter your sync passphrase to continue.",
       "PRECONDITION_FAILED": "Another device updated first. Retrying.",
       "QUOTA_EXCEEDED": "The sync server has reached its limit for this account. Your changes are saved on this device and syncing will retry automatically. Ask whoever runs your sync server to raise the limit.",
@@ -2241,6 +2242,9 @@
       "secondary": "Late finishes: {{finish}} · Ran long: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Make a task",
+    "makeTaskHint": "Opens a new Inbox task from this Do and links the Do to it.",
+    "makeTaskNotLinked": "Task added. The Do changed in the meantime, so it was not linked.",
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",

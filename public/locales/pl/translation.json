@@ -39,6 +39,7 @@
       "FORBIDDEN": "Synchronizacja zablokowana (403). Twój serwer może blokować żądanie.",
       "LOCKED": "Synchronizacja jest zablokowana przez inne urządzenie. Spróbuj ponownie za chwilę.",
       "NETWORK_ERROR": "Błąd sieci. Sprawdź swoje połączenie i spróbuj ponownie.",
+      "SYNC_FAILED": "Synchronizacja nie została ukończona: {{detail}}. Zostanie automatycznie ponowiona.",
       "PASSPHRASE_REQUIRED": "Podaj swoje hasło synchronizacji, aby kontynuować.",
       "PRECONDITION_FAILED": "Inne urządzenie zaktualizowało dane wcześniej. Ponowna próba.",
       "QUOTA_EXCEEDED": "Serwer synchronizacji osiągnął limit dla tego konta. Zmiany są zapisane na tym urządzeniu, a synchronizacja zostanie ponowiona automatycznie. Poproś osobę administrującą serwerem synchronizacji o zwiększenie limitu.",
@@ -2334,6 +2335,9 @@
       "secondary": "Późne zakończenia: {{finish}} · Trwało dłużej: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Utwórz zadanie",
+    "makeTaskHint": "Otwiera nowe zadanie w skrzynce na podstawie tego wykonania i łączy z nim to wykonanie.",
+    "makeTaskNotLinked": "Dodano zadanie. Wykonanie zmieniło się w międzyczasie, więc nie zostało połączone.",
     "undo": {
       "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
       "completionBlocked": "Jego zadanie nie jest już ukończone, więc Do nie może wrócić do stanu Ukończone. Pozostał bez zmian.",

@@ -28,6 +28,7 @@
       "FORBIDDEN": "Sincronização bloqueada (403). Seu servidor pode estar bloqueando a solicitação.",
       "LOCKED": "A sincronização está bloqueada por outro dispositivo. Tente novamente dentro de momentos.",
       "NETWORK_ERROR": "Erro de rede. Verifique sua conexão e tente novamente.",
+      "SYNC_FAILED": "A sincronização não foi concluída: {{detail}}. Ela será tentada novamente de forma automática.",
       "PASSPHRASE_REQUIRED": "Digite sua frase de sincronização para continuar.",
       "PRECONDITION_FAILED": "Outro dispositivo atualizou primeiro. A tentar novamente.",
       "KEY_MISMATCH": "Frase de sincronização incorreta. Deve corresponder exatamente à usada nos seus outros dispositivos.",
@@ -2241,6 +2242,9 @@
       "secondary": "Finais tardios: {{finish}} · Demorou mais: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Criar tarefa",
+    "makeTaskHint": "Abre uma nova tarefa na caixa de entrada a partir desta execução e a vincula à tarefa.",
+    "makeTaskNotLinked": "Tarefa adicionada. A execução mudou nesse meio-tempo, então não foi vinculada.",
     "undo": {
       "changed": "Este Do mudou desde então, então foi mantido como está.",
       "completionBlocked": "A tarefa não está mais concluída, então o Do não pode voltar a Concluído. Foi mantido como está.",

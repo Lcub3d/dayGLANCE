@@ -9,6 +9,7 @@ import { testVaultConnection } from '../sync/vaultConnectionTest.js';
 import { testFileTierConnection, providerServerUrl, BLOCKED_PRIVATE_ADDRESS } from '../sync/proxyTrustPreflight.js';
 import { classifyVaultUrl } from '../sync/vaultUrlPolicy.js';
 import { classifyWebdavUrl } from '../sync/webdavUrlPolicy.js';
+import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
@@ -144,7 +145,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     // WebDAV is marked enabled only when the user toggled it on AND the connection is
     // configured — so enabling GLANCEvault alone never writes a bogus enabled WebDAV
     // config, and unchecking the toggle disables sync while keeping the credentials.
-    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled };
+    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled, syncFolder: normalizeSyncFolder(formData.syncFolder) };
 
     if (encryptionEnabled) {
       if (passphraseRequired && passphrase) {
@@ -689,13 +690,17 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 {(vaultSyncing || vaultStatus === 'uploading' || vaultStatus === 'downloading') ? t('common.syncing') : t('common.syncNow')}
               </button>
             </div>
-            {vaultError ? (
+            {vaultError && (
               <p className="text-xs text-red-500">{vaultError}</p>
-            ) : vaultLastSynced ? (
+            )}
+            {/* Shown alongside an error too: the error is about the latest
+                cycle (often a background one), and hiding the last good sync
+                made it read as "nothing has synced" (#2035). */}
+            {vaultLastSynced && (
               <p className={`text-xs ${textSecondary}`}>
                 {t('common.lastSynced')}: {new Date(vaultLastSynced).toLocaleString()}
               </p>
-            ) : null}
+            )}
             {vaultSkipped > 0 && (
               <p className="text-xs text-amber-500">
                 {t('sync.form.vaultSkipped', { count: vaultSkipped })}

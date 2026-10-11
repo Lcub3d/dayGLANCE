@@ -251,18 +251,39 @@ Unplanned work sometimes turns out to need a task of its own. An unlinked
 manual Do that is not marked completed offers **Make a task**, on its Check
 entry and in the Do editor, while the ledger can be written.
 
-- **The form:** the normal new-task form, in the Inbox, with the Do's title,
-  tags included (`makeTaskDraft`). The form can still schedule it, give it a
-  project or make it recurring; cancelling changes nothing.
+- **The form:** the normal new-task form for the Inbox, with the Do's title,
+  tags included (`makeTaskDraft`). It can give the task a colour, a priority,
+  a deadline and, with Goals and Projects on, a project; the task lands in the
+  Inbox or the project's list, to be scheduled from there. Cancelling changes
+  nothing.
 - **The link:** saving creates the task and links the Do to it, as one more
   step of the undo history after the add. The link is core's one exception to
-  `taskId` being captured (`linkDoRecord`): set once, from null, on a manual
-  Do that is not completed, as a newer version. The title, interval, progress
-  and `planSnapshot` stay as recorded, so the work done before the task
-  existed still reads as unplanned, and later sessions on the task join it.
-- **A Do that changed meanwhile** (edited, deleted or linked, here or on
-  another device) is left as it is: the task is still made, and a toast says
-  the Do was not linked.
+  `taskId` being captured (`linkDoRecord`): set from null, on a manual Do that
+  is not completed, as a newer version. The title, interval, progress and
+  `planSnapshot` stay as recorded, so the work done before the task existed
+  still reads as unplanned.
+- **What the link means:** the Do belongs to the task. It takes the task's
+  colour, and its Check entry offers the task's next step (Schedule… for a
+  new Inbox task, as for any unscheduled task with Do recorded). It does not
+  merge it into the task's later sessions: with no captured plan, it stays its
+  own execution group in the Check and the statistics, as unplanned work.
+- **Linked once, not forever:** only an unlinked Do can be linked, and
+  ordinary edits never rebind `taskId` (`updateDoRecord` refuses it). Undo
+  writes the unlinked version back as a newer one; that Do offers Make a task
+  again, and linking it again is the same operation.
+- **Never a series:** the Inbox form cannot make a recurring task, and the
+  save links only a one-off task (`useTaskActions`), so a manual Do is never
+  linked to a series. Unplanned work belongs to no occurrence, inventing one
+  would be wrong, and the views resolve a series only through an occurrence,
+  so a link to a template would show as a Do whose task is gone.
+- **A Do that changed meanwhile** (edited, deleted or linked, here or on a
+  device whose change has synced) is left as it is: the task is still made,
+  and a toast says the Do was not linked.
+- **Two devices at once:** if two devices each make a task from the same Do
+  before either syncs, both links are versions of one record and the shared
+  pick decides (`pickJoboRecord`: newer `updatedAt`, then lower `observedAt`),
+  as for any concurrent edit. It is not first-link-wins. Both tasks exist; the
+  one that lost the pick is simply not linked.
 - **Not offered** on completion or Focus records, which are always linked, or
   on completed unlinked work, which has nothing left to make. A linked manual
   Do cannot be completed, so linking one would leave it in a state core does

@@ -135,11 +135,16 @@ describe('the task form makes the task and links the Do', () => {
     expect(inbox).not.toHaveProperty('linkDo');
   });
 
-  it('scheduled or recurring instead: links to whatever was made', () => {
+  it('scheduled instead: links to the task made', () => {
     const scheduled = save(form, false);
     expect(scheduled.onTaskMadeFromDo).toHaveBeenCalledWith(expect.anything(), scheduled.scheduled.id);
+  });
+
+  // MUTATION: let the recurring branch set createdId again and this fails.
+  it('a series is never linked: the series is made, the Do stays unlinked', () => {
     const recurring = save({ ...form, recurrence: { type: 'daily', interval: 1 } }, false);
-    expect(recurring.onTaskMadeFromDo).toHaveBeenCalledWith(expect.anything(), recurring.template.id);
+    expect(recurring.template.title).toBe('Call the bank #admin');
+    expect(recurring.onTaskMadeFromDo).not.toHaveBeenCalled();
   });
 
   it('an ordinary new task links nothing', () => {

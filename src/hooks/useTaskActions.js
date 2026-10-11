@@ -193,8 +193,9 @@ export default function useTaskActions({
         ...(newTask.assignedUserSyncIds?.length ? { assignedUserSyncIds: newTask.assignedUserSyncIds } : {}),
       };
 
-      // The id a new task was saved under (null when the save moved an
-      // existing Inbox task instead), for a Do this task was made from.
+      // The id a new one-off task was saved under, for a Do this task was
+      // made from (null when the save moved an existing Inbox task instead,
+      // or made a series: see the link below).
       let createdId = null;
       if (toInbox) {
         createdId = taskId;
@@ -231,7 +232,6 @@ export default function useTaskActions({
           lastModified: new Date().toISOString()
         };
         setRecurringTasks(prev => [...prev, template]);
-        createdId = taskId;
         if (!onboardingProgress.hasCreatedRecurring) {
           setOnboardingProgress(prev => ({ ...prev, hasCreatedRecurring: true }));
         }
@@ -311,6 +311,10 @@ export default function useTaskActions({
 
       // "Make a task" from an unlinked Do (jobo/carryForward.js makeTaskDraft):
       // link that Do to the task just saved. One more undo step, after the add.
+      // Only a one-off task is linked. Make a task opens the Inbox form, which
+      // cannot make a series; if one is ever made from a Do, the Do stays
+      // unlinked, since a series has no occurrence the work belongs to and
+      // the views resolve a template id only through one.
       if (newTask.linkDo && createdId != null) onTaskMadeFromDo?.(newTask.linkDo, createdId);
 
       setNewTask({ title: '', startTime: getNextQuarterHour(), duration: 30, date: dateToString(selectedDate), isAllDay: false, recurrence: null });

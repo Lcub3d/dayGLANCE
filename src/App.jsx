@@ -233,6 +233,7 @@ import { isTrayMode } from './utils/trayMode.js';
 import { shouldFetchNativeEvents } from './utils/trayFetchGate.js';
 import { nativeFetchWindowFor, windowDates, NATIVE_FETCH_RADIUS_DAYS } from './utils/nativeFetchWindow.js';
 import { weekViewDatesFor } from './utils/weekViewDates.js';
+import { dayViewColumnsFor } from './utils/dayViewColumns.js';
 import { schedRollingWindow } from './utils/schedAgenda.js';
 import useTrayPopupVisible from './hooks/useTrayPopupVisible.js';
 
@@ -435,6 +436,9 @@ const DayPlanner = () => {
     const saved = localStorage.getItem('day-planner-day-view-mode');
     return saved ? JSON.parse(saved) : 'calendar-day';
   });
+  // Today's date while DAY's arrows have paged from rolling-24 back to today's
+  // calendar day; session-only. See utils/dayViewColumns.js.
+  const [rollingDayPausedOn, setRollingDayPausedOn] = useState(null);
   // Mobile view DEFAULT (what the app opens in) vs the LIVE mode (what the
   // header toggle switches during a session). Previously one persisted value
   // played both roles, so using SCHED for a while silently became the new
@@ -1598,6 +1602,12 @@ const DayPlanner = () => {
     visibleDays,
     effectiveViewMode,
     monthViewActive,
+    weekViewMode,
+    weekStartDay,
+    dayViewMode,
+    rollingDayPausedOn,
+    setRollingDayPausedOn,
+    selectedDate,
     setSelectedDate,
     setShowMonthView,
     setShowSpotlight,
@@ -6325,39 +6335,15 @@ const DayPlanner = () => {
     showWelcome, setShowWelcome,
   });
 
-  // Columns for DayView — three 8-hour windows.
-  // 'calendar-day': fixed 00-08 / 08-16 / 16-24 for selectedDate.
-  // 'rolling-24': leftmost column is the current 8-hour block; columns that
-  // cross midnight carry the next calendar day's date.
-  const dayViewColumns = useMemo(() => {
-    const base = new Date(selectedDate);
-    base.setHours(0, 0, 0, 0);
-    const nextDay = new Date(base);
-    nextDay.setDate(nextDay.getDate() + 1);
-    const baseStr = dateToString(base);
-    const nextStr = dateToString(nextDay);
-
-    // rolling-24 only makes sense when viewing today; fall back to calendar-day for other dates
-    const isViewingToday = baseStr === dateToString(new Date());
-    if (dayViewMode === 'rolling-24' && isViewingToday) {
-      const blockStart = Math.floor(currentTime.getHours() / 8) * 8;
-      return [0, 1, 2].map(i => {
-        const absStart = blockStart + i * 8;
-        const crossesMidnight = absStart >= 24;
-        const startHour = absStart % 24;
-        const endHour = startHour + 8;
-        const date = crossesMidnight ? nextDay : base;
-        const dateStr = crossesMidnight ? nextStr : baseStr;
-        return { startHour, endHour, date, dateStr };
-      });
-    }
-    // calendar-day (default)
-    return [
-      { startHour: 0,  endHour: 8,  date: base, dateStr: baseStr },
-      { startHour: 8,  endHour: 16, date: base, dateStr: baseStr },
-      { startHour: 16, endHour: 24, date: base, dateStr: baseStr },
-    ];
-  }, [selectedDate, dayViewMode, currentTime]);
+  // Columns for DayView — three 8-hour windows; the rule (and why rolling-24
+  // can be paused for today) is in utils/dayViewColumns.js.
+  const dayViewColumns = useMemo(
+    () => dayViewColumnsFor({ selectedDate, dayViewMode, rollingPausedOn: rollingDayPausedOn, now: currentTime }),
+    [selectedDate, dayViewMode, rollingDayPausedOn, currentTime]);
+  // Paged off the live rolling page onto today's calendar day: the header
+  // offers Today to return to it.
+  const dayViewRollingPaused = effectiveViewMode === 'day' && dayViewMode === 'rolling-24'
+    && dateToString(selectedDate) === dateToString(currentTime) && rollingDayPausedOn === dateToString(currentTime);
 
   // Auto-select new tags when they appear (only truly new tags, not previously deselected ones)
   const prevAllTagsRef = useRef(new Set(allTags));
@@ -8027,7 +8013,7 @@ const DayPlanner = () => {
     defaultView, setDefaultView,
     hiddenViews, setViewHidden,
     dayViewMode, setDayViewMode,
-    dayViewColumns,
+    dayViewColumns, dayViewRollingPaused,
     weekViewMode, setWeekViewMode,
     weekViewDates,
 

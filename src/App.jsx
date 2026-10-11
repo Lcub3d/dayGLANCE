@@ -130,6 +130,8 @@ import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
 import useJoboLedger from './hooks/useJoboLedger.js';
+import useFocusDo from './hooks/useFocusDo.js';
+import useFocusOrchestration from './hooks/useFocusOrchestration.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -1351,6 +1353,7 @@ const DayPlanner = () => {
   // actually stamped anything) and, when it did fire, stamped each device's own
   // user onto shared items — manufacturing competing claims across devices.
 
+  const focusDoRef = useRef(null);
   const {
     showFocusMode, setShowFocusMode,
     focusPhase, setFocusPhase,
@@ -1373,7 +1376,7 @@ const DayPlanner = () => {
     handleFocusTimerEndRef,
     exitFocusModeRef,
     focusModeAvailableRef,
-  } = useFocusMode();
+  } = useFocusMode({ onTimerTransition: event => focusDoRef.current?.transition(event) });
 
   // ── HyperGLANCE state ────────────────────────────────────────────────────
   const [showHyperGlanceMode, setShowHyperGlanceMode] = React.useState(false);
@@ -4222,193 +4225,33 @@ const DayPlanner = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSpotlight, calendarFilter, nativeCalendarKey]);
 
-  // How many session spans one day keeps for the Day Dial's focus rail.
-  // A day cannot hold many real sessions; this only bounds the pathological
-  // open-and-close case.
-  const FOCUS_SPANS_PER_DAY = 60;
-
-  // `taskId` (optional): the task a request named — the Up Next widget's
-  // Focus button (dayglance://startFocus?id=). It joins the session when the
-  // block derived from NOW does not already hold it, and is the session on its
-  // own when there is no block. Only a string counts: this is also a click
-  // handler, and an event is not a task.
-  const enterFocusMode = (taskId) => {
-    setShowFocusMode(true);
-    setFocusShowSettings(true);
-    setFocusShowStats(false);
-    setFocusPhase('work');
-    setFocusTimerSeconds(0);
-    setFocusCycleCount(0);
-    setFocusSessionStart(null);
-    setFocusCompletedTasks(new Set());
-    setFocusTimerRunning(false);
-    setFocusTaskMinutes({});
-    let block = computeFocusBlockTasks();
-    if (typeof taskId === 'string' && taskId && !block.some(t => t.id === taskId)) {
-      const named = getTasksForDate(new Date()).find(t => t.id === taskId && !t.completed);
-      if (named) block = [named, ...block];
-    }
-    setFocusBlockTasks(block);
-    setFocusWorkMinutes(25);
-    setFocusBreakMinutes(5);
-    setFocusLongBreakMinutes(15);
-    // Request fullscreen (web fallback; Android uses native immersive mode below)
-    try { document.documentElement.requestFullscreen?.(); } catch (e) {}
-    // Request wake lock
-    (async () => {
-      try {
-        if (navigator.wakeLock) {
-          wakeLockSentinel.current = await navigator.wakeLock.request('screen');
-        }
-      } catch (e) {}
-    })();
-    // Android: immersive mode + pause notifications + DND
-    nativeEnterFocusMode();
-  };
+  const {
+    enterFocusMode, startFocusTimer, exitFocusMode, dismissFocusStats, skipFocusPhase, handleFocusTimerEnd,
+  } = useFocusOrchestration({
+    joboEnabled, focusDoRef,
+    showFocusMode, setShowFocusMode,
+    focusPhase, setFocusPhase,
+    focusTimerSeconds, setFocusTimerSeconds,
+    focusCycleCount, setFocusCycleCount,
+    focusSessionStart, setFocusSessionStart,
+    focusWorkMinutes, setFocusWorkMinutes,
+    focusBreakMinutes, setFocusBreakMinutes,
+    focusLongBreakMinutes, setFocusLongBreakMinutes,
+    focusCompletedTasks, setFocusCompletedTasks,
+    setFocusShowStats, focusShowSettings, setFocusShowSettings,
+    focusTimerRunning, setFocusTimerRunning,
+    focusTaskMinutes, setFocusTaskMinutes,
+    focusBlockTasks, setFocusBlockTasks, setFocusLog,
+    focusTimerRef, wakeLockSentinel,
+    setTasks, computeFocusBlockTasks: () => computeFocusBlockTasks(),
+    getTasksForDate: (...args) => getTasksForDate(...args),
+    playFocusSound, onboardingProgress, setOnboardingProgress,
+  });
   enterFocusModeRef.current = enterFocusMode;
-  openRoutinesDashboardRef.current = openRoutinesDashboard;
-
-  const startFocusTimer = () => {
-    setFocusShowSettings(false);
-    setFocusSessionStart(new Date());
-    setFocusPhase('work');
-    setFocusTimerSeconds(focusWorkMinutes * 60);
-    setFocusTimerRunning(true);
-    playFocusSound('work');
-    triggerHaptic('medium');
-    if (!onboardingProgress.hasUsedFocusMode) {
-      setOnboardingProgress(prev => ({ ...prev, hasUsedFocusMode: true }));
-    }
-  };
   startFocusTimerRef.current = startFocusTimer;
-
-  const exitFocusMode = (showStats = true) => {
-    setFocusTimerRunning(false);
-    if (focusTimerRef.current) {
-      clearInterval(focusTimerRef.current);
-      focusTimerRef.current = null;
-    }
-    // Distribute partial work time for current in-progress work cycle
-    const minutesCopy = { ...focusTaskMinutes };
-    if (focusPhase === 'work' && focusTimerSeconds < focusWorkMinutes * 60) {
-      const elapsedMinutes = (focusWorkMinutes * 60 - focusTimerSeconds) / 60;
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
-      if (activeTasks.length > 0) {
-        const perTask = elapsedMinutes / activeTasks.length;
-        activeTasks.forEach(t => {
-          minutesCopy[t.id] = (minutesCopy[t.id] || 0) + perTask;
-        });
-      }
-    }
-    if (Object.keys(minutesCopy).length > 0) {
-      setTasks(prev => prev.map(t => {
-        if (minutesCopy[t.id]) {
-          return { ...t, focusMinutes: (t.focusMinutes || 0) + minutesCopy[t.id] };
-        }
-        return t;
-      }));
-    }
-    // Record session in daily focus log
-    if (focusSessionStart) {
-      const sessionMinutes = Math.round((new Date() - focusSessionStart) / 60000);
-      if (sessionMinutes > 0) {
-        const sessionDateStr = dateToString(new Date(focusSessionStart));
-        // WHEN the session ran, not just how long — the Day Dial places it
-        // against the block it happened in. Minutes-of-day from the start,
-        // with the end left unwrapped past 1440 when a session crosses
-        // midnight (the log is keyed by the date the session STARTED).
-        const startMin = focusSessionStart.getHours() * 60 + focusSessionStart.getMinutes();
-        const span = { start: startMin, end: startMin + sessionMinutes };
-        setFocusLog(prev => {
-          const existing = prev[sessionDateStr] || { totalMinutes: 0, sessions: 0, cyclesCompleted: 0, tasksCompleted: 0 };
-          const updated = {
-            ...existing,
-            totalMinutes: existing.totalMinutes + sessionMinutes,
-            sessions: existing.sessions + 1,
-            cyclesCompleted: existing.cyclesCompleted + focusCycleCount,
-            tasksCompleted: existing.tasksCompleted + focusCompletedTasks.size,
-            // Bounded so that repeatedly opening and closing focus mode can't
-            // grow one day's entry without limit; the newest are kept, and
-            // totalMinutes above stays complete either way.
-            spans: [...(existing.spans || []), span].slice(-FOCUS_SPANS_PER_DAY),
-          };
-          return { ...prev, [sessionDateStr]: updated };
-        });
-      }
-    }
-    if (showStats) {
-      setFocusShowStats(true);
-    } else {
-      // Exit fullscreen and release wake lock only when closing entirely
-      try { if (document.fullscreenElement) document.exitFullscreen?.(); } catch (e) {}
-      try { wakeLockSentinel.current?.release(); wakeLockSentinel.current = null; } catch (e) {}
-      // Android: restore system bars + DND + reschedule notifications
-      nativeExitFocusMode();
-      setShowFocusMode(false);
-    }
-  };
   exitFocusModeRef.current = exitFocusMode;
-
-  const dismissFocusStats = () => {
-    try { if (document.fullscreenElement) document.exitFullscreen?.(); } catch (e) {}
-    try { wakeLockSentinel.current?.release(); wakeLockSentinel.current = null; } catch (e) {}
-    // Android: restore system bars + DND + reschedule notifications
-    nativeExitFocusMode();
-    setFocusShowStats(false);
-    setShowFocusMode(false);
-  };
-
-  const skipFocusPhase = () => {
-    if (focusPhase === 'work') {
-      const newCycle = focusCycleCount + 1;
-      setFocusCycleCount(newCycle);
-      if (newCycle % 4 === 0) {
-        setFocusPhase('longBreak');
-        setFocusTimerSeconds(focusLongBreakMinutes * 60);
-      } else {
-        setFocusPhase('shortBreak');
-        setFocusTimerSeconds(focusBreakMinutes * 60);
-      }
-    } else {
-      setFocusPhase('work');
-      setFocusTimerSeconds(focusWorkMinutes * 60);
-    }
-  };
-
-  const handleFocusTimerEnd = () => {
-    if (focusPhase === 'work') {
-      // Distribute work minutes across active (non-completed) block tasks
-      const activeTasks = focusBlockTasks.filter(t => !t.completed && !focusCompletedTasks.has(t.id));
-      if (activeTasks.length > 0) {
-        const perTask = focusWorkMinutes / activeTasks.length;
-        setFocusTaskMinutes(prev => {
-          const next = { ...prev };
-          activeTasks.forEach(t => {
-            next[t.id] = (next[t.id] || 0) + perTask;
-          });
-          return next;
-        });
-      }
-      const newCycle = focusCycleCount + 1;
-      setFocusCycleCount(newCycle);
-      if (newCycle % 4 === 0) {
-        setFocusPhase('longBreak');
-        setFocusTimerSeconds(focusLongBreakMinutes * 60);
-        playFocusSound('break');
-      } else {
-        setFocusPhase('shortBreak');
-        setFocusTimerSeconds(focusBreakMinutes * 60);
-        playFocusSound('break');
-      }
-    } else {
-      // Break ended → start work
-      setFocusPhase('work');
-      setFocusTimerSeconds(focusWorkMinutes * 60);
-      playFocusSound('work');
-    }
-    setFocusTimerRunning(true);
-  };
   handleFocusTimerEndRef.current = handleFocusTimerEnd;
+  openRoutinesDashboardRef.current = openRoutinesDashboard;
 
   // ── HyperGLANCE functions ──────────────────────────────────────────────────
   const instantiateHGTemplateTasks = (project, sessionDate) => {
@@ -6985,6 +6828,7 @@ const DayPlanner = () => {
     frameScheduleModal, setFrameScheduleModal,
     focusBlockTasks, setFocusBlockTasks,
     focusCompletedTasks, setFocusCompletedTasks,
+    isFocusSettlementPending: () => focusDoRef.current?.isPending(),
     onTaskMadeFromDo: linkDoToNewTask,
     exitFocusModeRef,
     playFocusSound,
@@ -7057,6 +6901,32 @@ const DayPlanner = () => {
       : null,
     addProject, goals,
   });
+  const focusDo = useFocusDo({
+    enabled: joboEnabled, loaded: joboLoaded, writable: joboWritable,
+    records: joboRecords, recordJobo,
+    resolveBlock: block => block.flatMap(original => {
+      const found = resolveTaskRef(original.id, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed) return [];
+      // getTasksForDate includes occurrence exceptions and duration, whereas
+      // the lightweight task-link resolver deliberately omits duration.
+      if (original.recurringTemplateId != null) {
+        return getTasksForDate(new Date(original.date + 'T12:00:00')).filter(task => task.id === original.id && !task.completed);
+      }
+      return [found.task];
+    }),
+    complete: actionId => {
+      const found = resolveTaskRef(actionId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(found.task.id)) return null;
+      return { allCompleted: focusCompleteTask(found.task.id, { exitWhenDone: false, fromSettlement: true }), completedActionId: found.task.id };
+    },
+  });
+  focusDoRef.current = focusDo;
+  const focusReviewId = focusDo.review?.capture.id;
+  useEffect(() => {
+    // A tray/Stream Deck stop can happen while the main window is hidden.
+    // Bring its existing Focus dialog forward for attribution, without a new wire format.
+    if (focusReviewId) window.electronAPI?.openMainAt?.({ action: 'focus-mode' });
+  }, [focusReviewId]);
   // Keep a stable ref so the foreground handler (defined earlier in the component)
   // can call openNewInboxTask without needing it in its closure.
   openNewInboxTaskRef.current = openNewInboxTask;
@@ -8536,6 +8406,8 @@ const DayPlanner = () => {
     focusLog, setFocusLog,
     focusLogModalDate, setFocusLogModalDate,
     wakeLockSentinel, focusModeAvailable,
+    focusDoReview: focusDo.review, saveFocusDo: focusDo.save,
+    dismissFocusDo: focusDo.dismiss,
 
     // ── AI / Voice ────────────────────────────────────────────────────────────
     aiConfig, setAiConfig, aiSuppressed,

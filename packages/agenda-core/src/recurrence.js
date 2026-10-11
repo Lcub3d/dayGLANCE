@@ -230,9 +230,21 @@ const sundayOf = (dateStr) => {
  *
  * An edit made from a date before `origStart` (or a series without one)
  * starts at `dateStr`, never on an invented earlier date.
+ *
+ * When the pattern, with `origStart`, already produces `dateStr`, nothing
+ * needs to move and the start is kept. That is every ordinary save of an
+ * occurrence (the mobile editor passes the unchanged pattern on each save),
+ * and it matters where the engine shows an occurrence off the start's own
+ * month/day: a yearly series started on 29 February shows on 1 March in other
+ * years, and anchoring on that 1 March would move the series off its leap day.
  */
 export const editedSeriesStart = (recurrence, origStart, dateStr) => {
   if (!origStart || dateStr < origStart) return dateStr;
+
+  if ((recurrence?.type === 'yearly' || recurrence?.type === 'biweekly')
+      && getOccurrencesInRange({ recurrence: { ...recurrence, startDate: origStart } }, dateStr, dateStr, 1).includes(dateStr)) {
+    return origStart;
+  }
 
   if (recurrence?.type === 'yearly') {
     // dateStr's month and day, in the first year it falls on or after

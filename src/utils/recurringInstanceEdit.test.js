@@ -171,4 +171,18 @@ describe('applyRecurringInstanceEdit', () => {
     const tmpl = template({ recurrence: { type: 'biweekly', daysOfWeek: [3], startDate: '2026-09-30' } });
     expect(save(tmpl, editOf(tmpl, { title: 'Retro' }), 'this').recurrence.startDate).toBe('2026-09-30');
   });
+
+  it('an ordinary save of a 29 February series\' 1 March occurrence keeps it on its leap day', () => {
+    // The engine shows a 29 February yearly series on 1 March in other years.
+    const tmpl = template({ recurrence: { type: 'yearly', startDate: '2024-02-29' } });
+    const dateStr = '2025-03-01';
+    expect(getOccurrencesInRange(tmpl, '2025-01-01', '2025-12-31')).toEqual([dateStr]);
+    const { title, startTime, duration, isAllDay, color } = recurringTaskInstance(tmpl, dateStr);
+    const next = applyRecurringInstanceEdit(tmpl, {
+      dateStr, edit: { title, startTime: '10:00', duration, isAllDay, color }, scope: 'this',
+      projectId: tmpl.projectId, recurrence: tmpl.recurrence, now: NOW,
+    });
+    expect(next.recurrence.startDate).toBe('2024-02-29');
+    expect(getOccurrencesInRange(next, '2024-01-01', '2024-12-31')).toEqual(['2024-02-29']);
+  });
 });

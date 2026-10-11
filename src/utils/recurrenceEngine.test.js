@@ -461,3 +461,53 @@ describe('editedSeriesStart — a pattern edit anchors on the edited occurrence'
     expect(expand(rec, start, '2026-01-01', '2027-12-31')).toEqual(['2026-10-20', '2026-11-03', '2026-11-17']);
   });
 });
+
+// A pattern that already produces the edited occurrence keeps its start. The
+// mobile editor passes the unchanged pattern on every save (#2049), so this is
+// what keeps an ordinary save from rewriting the series.
+describe('editedSeriesStart — an occurrence the pattern already produces keeps the start', () => {
+  const addDays = (dateStr, n) => {
+    const d = new Date(dateStr + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it('keeps a 29 February yearly series on its leap day when a 1 March occurrence is saved', () => {
+    const rec = { type: 'yearly', startDate: '2024-02-29' };
+    const shown = getOccurrencesInRange({ recurrence: rec }, '2025-01-01', '2025-12-31');
+    expect(shown).toEqual(['2025-03-01']);
+    expect(editedSeriesStart(rec, '2024-02-29', '2025-03-01')).toBe('2024-02-29');
+  });
+
+  it('still anchors a yearly edit on a day the pattern does not produce', () => {
+    expect(editedSeriesStart({ type: 'yearly' }, '2026-10-15', '2026-10-20')).toBe('2026-10-20');
+  });
+
+  it('saving any real yearly or biweekly occurrence never moves the start', () => {
+    const patterns = [
+      { type: 'yearly' },
+      { type: 'biweekly', daysOfWeek: [2] },
+      { type: 'biweekly', daysOfWeek: [1, 3, 5] },
+      { type: 'biweekly', daysOfWeek: [0, 6] },
+      { type: 'biweekly', daysOfWeek: [] },
+    ];
+    const moved = [];
+    let checked = 0;
+    // Every third day across 2023-2024 (all weekday/phase alignments), plus
+    // the leap day itself and its neighbours.
+    const starts = [];
+    for (let i = 0; i < 731; i += 3) starts.push(addDays('2023-01-01', i));
+    starts.push('2024-02-28', '2024-02-29', '2024-03-01');
+    for (const start of starts) {
+      for (const p of patterns) {
+        const rec = { ...p, startDate: start };
+        for (const occ of getOccurrencesInRange({ recurrence: rec }, start, addDays(start, 3 * 366))) {
+          checked++;
+          if (editedSeriesStart(rec, start, occ) !== start) moved.push(`${p.type} ${start} @ ${occ}`);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(10000);
+    expect(moved).toEqual([]);
+  });
+});

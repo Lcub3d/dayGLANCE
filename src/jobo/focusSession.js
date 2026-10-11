@@ -6,11 +6,17 @@ export function createFocusSession({ getState, publish, makeId = () => crypto.ra
   let sessionId = null, phaseNumber = 0, capture = null, pending = null, busy = false;
   let block = [];
   const reset = () => { sessionId = null; capture = null; pending = null; busy = false; publish(null); };
-  const view = (error = null) => publish(pending ? {
-    capture: pending.capture, choice: pending.choice, summary: summarizeFocusCapture(pending.capture), busy, error,
-  } : null);
+  const view = (error = null) => {
+    // Successful automatic settlement needs no dialog (or hidden-window wake).
+    // A failed/unsafe write uses the same review and retry path as manual work.
+    if (pending?.automatic && !error) return;
+    if (pending) pending.automatic = false;
+    publish(pending ? {
+      capture: pending.capture, choice: pending.choice, summary: summarizeFocusCapture(pending.capture), busy, error,
+    } : null);
+  };
 
-  return {
+  const session = {
     begin(tasks) {
       // A new entry cannot silently discard a settlement still on screen.
       if (pending || busy) return false;
@@ -40,7 +46,7 @@ export function createFocusSession({ getState, publish, makeId = () => crypto.ra
       }
       return true;
     },
-    settle(continuation, { exiting = false } = {}) {
+    settle(continuation, { exiting = false, autoRecordSingle = false } = {}) {
       if (pending) {
         // A native Stop while reviewing a phase ends the session after review.
         if (exiting) pending.continuation = continuation;
@@ -50,8 +56,11 @@ export function createFocusSession({ getState, publish, makeId = () => crypto.ra
       const sealed = sealFocusCapture(capture, now());
       capture = null;
       if ((!sealed.segments.length && !sealed.clockChanged) || !sealed.candidates.length) return false;
-      pending = { capture: sealed, continuation, choice: null };
-      view();
+      const automatic = autoRecordSingle && !exiting && sealed.candidates.length === 1
+        && !summarizeFocusCapture(sealed).clockChanged;
+      pending = { capture: sealed, continuation, choice: null, automatic };
+      if (automatic) void session.save(sealed.candidates[0].actionId, false);
+      else view();
       return true;
     },
     async save(actionId, completed) {
@@ -90,4 +99,5 @@ export function createFocusSession({ getState, publish, makeId = () => crypto.ra
     finish: reset,
     isPending: () => pending !== null,
   };
+  return session;
 }

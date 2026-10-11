@@ -1163,14 +1163,13 @@
       "title": "Registrar trabajo de concentración",
       "chooseTask": "¿En qué tarea has trabajado?",
       "minutes": "{{minutes}} min para registrar",
-      "differenceMore": "Unos {{seconds}} segundos más que el trabajo de concentración.",
-      "differenceLess": "Unos {{seconds}} segundos menos que el trabajo de concentración.",
       "clockChanged": "Cambió el reloj o la zona horaria. Parte del trabajo no se puede registrar.",
       "unavailable": "No se puede escribir en JOBO. Reintenta cuando esté disponible.",
       "held": "Aún no se ha guardado. Reintentando. Guarda antes de completar la tarea.",
       "failed": "No se pudo guardar. Reintenta.",
       "completed": "Tarea completada",
       "inProgress": "Sigue en curso",
+      "dontRecord": "No registrar",
       "continueWithoutSaving": "Continuar sin esperar"
     }
   },

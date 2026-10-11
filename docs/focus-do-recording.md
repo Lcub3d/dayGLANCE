@@ -6,8 +6,10 @@ segment; breaks and the settlement dialog never count as work. Notification,
 widget, tray, and Stream Deck commands use the same timer/exit boundaries.
 A tray settlement brings the existing main-window Focus dialog forward.
 
-At a work phase boundary or early exit, a single captured task is selected
-automatically. A multi-task block asks for one task, with the first selected.
+At a work phase boundary (including skip), a single captured task is recorded
+automatically as partial work, and the timer continues into its next phase.
+Multi-task blocks and early exits keep the review, with the first task selected.
+Clock changes and unavailable or failed writes also keep the review.
 The entire phase belongs to that task; segments are not divided across tasks.
 The task title and timed plan are captured before work starts, and the next
 work phase captures the then-current task state. There is no extra task picker
@@ -17,6 +19,11 @@ recreated by the completion action. When a recurring task has no timed plan
 keep its Focus rows independent: the template link alone cannot resolve an
 occurrence or join its execution/notes. Its measured minutes still count, and
 native completion still targets the captured occurrence action id.
+
+“Don’t record” discards a reviewed phase before any write, then continues without
+changing task completion. Once a write has been attempted, “Continue without
+waiting” leaves any ledger-owned retry intact. Neither action discards earlier
+recorded phases.
 
 “Still in progress” saves partial timed Do rows and leaves task completion alone.
 “Task completed” saves those rows first, then calls the normal Focus completion
@@ -42,9 +49,8 @@ segments either side of a pause may touch, but do not overlap. It does not prese
 duration can differ from captured work by up to a minute, and differences can
 accumulate across segments. Two separate 62-second segments, each starting at
 :29 and ending at :31 in the following minute, total 124 seconds but yield four
-Do minutes. Settlement shows the minute total and whether it is higher or lower
-than captured work, with the difference rounded up to a whole second. The
-existing Focus counters and log do not use these rounded Do totals.
+Do minutes. Settlement shows the minute total without an elapsed-time difference
+annotation. The existing Focus counters and log do not use these rounded Do totals.
 
 A clock/time-zone change that cannot be represented safely is reported instead
 of inventing a civil interval. Dates are taken from the rounded boundaries, so

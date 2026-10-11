@@ -1,23 +1,24 @@
-import { readFileSync } from 'node:fs';
-import ts from 'typescript';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFocusSession } from './focusSession.js';
 
-// Execute the real App boundary callbacks with render-local state snapshots.
-// This covers the App/controller seam without replacing the legacy algorithms.
-const source = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
-const ast = ts.createSourceFile('App.jsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JSX);
-const names = ['enterFocusMode', 'startFocusTimer', 'captureFocusBoundary', 'exitFocusMode', 'finishExitFocusMode', 'dismissFocusStats', 'skipFocusPhase', 'advanceFocusPhase', 'advanceFocusTimerEnd', 'handleFocusTimerEnd'];
-const callbacks = {};
-function visit(node) {
-  if (ts.isVariableDeclaration(node) && names.includes(node.name.getText(ast))) callbacks[node.name.getText(ast)] = node.initializer.getText(ast);
-  ts.forEachChild(node, visit);
-}
-visit(ast);
+// Run the real orchestration hook with stable ref slots and render-local state.
+// Timer transitions and ledger writes use the real Focus session controller.
+let refSlots, refCursor;
+vi.mock('react', () => ({
+  useRef: initial => refSlots[refCursor++] ??= { current: initial },
+}));
+vi.mock('../native.js', () => ({
+  nativeEnterFocusMode: vi.fn(), nativeExitFocusMode: vi.fn(), triggerHaptic: vi.fn(),
+}));
+const { default: renderFocusOrchestration } = await import('../hooks/useFocusOrchestration.js');
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 const start = Date.parse('2026-10-09T09:00:00Z');
 const NativeDate = Date;
 function setup(ids = ['a'], enabled = true) {
   let now = start, review = null, scope;
+  const refs = [];
+  vi.setSystemTime(now);
   class ClockDate extends NativeDate {
     constructor(...args) { super(...(args.length ? args : [now])); }
     static now() { return now; }
@@ -31,6 +32,8 @@ function setup(ids = ['a'], enabled = true) {
     document: { documentElement: {} }, navigator: {}, onboardingProgress: { hasUsedFocusMode: true },
     dateToString: date => date.toISOString().slice(0, 10),
   };
+  vi.stubGlobal('document', d.document);
+  vi.stubGlobal('navigator', d.navigator);
   d.tasks = ids.map(id => ({ id, title: id, date: '2026-10-09', startTime: '09:00', duration: 60, completed: false, focusMinutes: 0 }));
   d.focusBlockTasks = d.tasks;
   d.computeFocusBlockTasks = d.getTasksForDate = () => d.tasks;
@@ -55,26 +58,26 @@ function setup(ids = ['a'], enabled = true) {
     };
   }
   function render() {
-    scope = { ...d };
-    for (const [name, expression] of Object.entries(callbacks)) scope[name] = new Function('deps', `with(deps){return (${expression});}`)(scope);
+    refSlots = refs; refCursor = 0;
+    scope = renderFocusOrchestration({ ...d });
   }
   session.begin(d.focusBlockTasks);
   session.transition({ before: { phase: 'work', running: false }, after: { phase: 'work', running: true }, at: now });
   render();
   return { d, state, session, records, complete, review: () => review,
-    at(minutes, seconds = 0) { now = start + minutes * 60000 + seconds * 1000; },
+    at(minutes, seconds = 0) { now = start + minutes * 60000 + seconds * 1000; vi.setSystemTime(now); },
     call(name, ...args) { render(); return scope[name](...args); },
   };
 }
 const log = h => h.d.focusLog['2026-10-09'];
 describe('Focus settlement preserves the legacy event boundary', () => {
-  it('credits a naturally finished cycle before the single task is completed', async () => {
-    const h = setup(); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+  it('credits a naturally finished cycle before review completes the remaining task', async () => {
+    const h = setup(['a', 'b']); h.complete('b'); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
     h.at(30); await h.session.save('a', true);
     expect(h.d.tasks[0].focusMinutes).toBe(25);
     expect(h.d.focusTaskMinutes).toEqual({ a: 25 });
     expect(h.d.focusCycleCount).toBe(1);
-    expect(log(h)).toMatchObject({ totalMinutes: 30, cyclesCompleted: 1, tasksCompleted: 1 });
+    expect(log(h)).toMatchObject({ totalMinutes: 30, cyclesCompleted: 1, tasksCompleted: 2 });
   });
   it('retains the old equal split when the new review completes one of two tasks', async () => {
     const h = setup(['a', 'b']); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
@@ -95,15 +98,15 @@ describe('Focus settlement preserves the legacy event boundary', () => {
     expect(h.d.tasks[0].focusMinutes).toBe(8); expect(log(h).totalMinutes).toBe(10);
   });
   it('keeps the old skip cycle without inventing legacy focusMinutes', async () => {
-    const h = setup(); h.at(10); h.d.focusTimerSeconds = 900; h.call('skipFocusPhase');
+    const h = setup(['a', 'b']); h.complete('b'); h.at(10); h.d.focusTimerSeconds = 900; h.call('skipFocusPhase');
     h.at(15); await h.session.save('a', true);
     expect(h.d.tasks[0].focusMinutes).toBe(0); expect(h.d.focusCycleCount).toBe(1);
     expect(log(h)).toMatchObject({ totalMinutes: 15, cyclesCompleted: 1 });
   });
   it('a native exit during phase review uses that boundary without double credit', async () => {
-    const h = setup(); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+    const h = setup(['a', 'b']); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
     h.at(27); h.call('exitFocusMode', false); h.at(30); await h.session.save('a', true);
-    expect(h.d.tasks[0].focusMinutes).toBe(25); expect(log(h)).toMatchObject({ totalMinutes: 27, sessions: 1, cyclesCompleted: 1 });
+    expect(h.d.tasks[0].focusMinutes).toBe(12.5); expect(log(h)).toMatchObject({ totalMinutes: 27, sessions: 1, cyclesCompleted: 1 });
     expect(h.d.showFocusMode).toBe(false);
   });
   it('freezes the work duration when repeated native Stop follows a duration change', async () => {
@@ -127,5 +130,80 @@ describe('Focus settlement preserves the legacy event boundary', () => {
     expect(skip.d.focusTaskMinutes).toEqual({}); expect(skip.d.focusCycleCount).toBe(1);
     const restart = setup(['a'], false); restart.at(10); restart.d.focusTimerSeconds = 900; restart.call('startFocusTimer');
     expect(restart.d.focusTimerSeconds).toBe(1500);
+  });
+});
+
+
+describe('automatic single-task phase orchestration', () => {
+  it('runs four unattended work/break cycles and records each phase once', async () => {
+    const h = setup();
+    for (let cycle = 0; cycle < 4; cycle++) {
+      h.at(cycle * 30 + 25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+      expect(h.review()).toBeNull();
+      await Promise.resolve();
+      expect(h.d.focusTimerRunning).toBe(true);
+      expect(h.d.focusPhase).toBe(cycle === 3 ? 'longBreak' : 'shortBreak');
+      expect(h.d.focusTimerSeconds).toBe(cycle === 3 ? 900 : 300);
+      expect(h.d.focusCycleCount).toBe(cycle + 1);
+      expect(h.records).toHaveLength(cycle + 1);
+      expect(h.d.focusTaskMinutes).toEqual({ a: (cycle + 1) * 25 });
+      if (cycle < 3) {
+        h.at(cycle * 30 + 30); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+        expect(h.d.focusPhase).toBe('work');
+      }
+    }
+    expect(new Set(h.records.map(row => row.id)).size).toBe(4);
+    expect(h.records.map(row => [row.startTime, row.endTime])).toEqual([
+      ['09:00', '09:25'], ['09:30', '09:55'], ['10:00', '10:25'], ['10:30', '10:55'],
+    ]);
+    expect(h.d.tasks[0].completed).toBe(false);
+  });
+  it.each([true, false])('single-task skip preserves its running state (%s)', async running => {
+    const h = setup(); h.at(10); h.d.focusTimerSeconds = 900;
+    if (!running) h.d.setFocusTimerRunning(false);
+    h.call('skipFocusPhase'); await Promise.resolve();
+    expect(h.review()).toBeNull();
+    expect(h.records).toHaveLength(1);
+    expect(h.d.focusTimerRunning).toBe(running);
+    expect(h.d.focusPhase).toBe('shortBreak');
+    expect(h.d.focusTaskMinutes).toEqual({});
+  });
+  it('declining a multi-task phase starts the break without saving or completing', () => {
+    const h = setup(['a', 'b']); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+    expect(h.review()).not.toBeNull(); expect(h.d.focusTimerRunning).toBe(false);
+    h.session.dismiss();
+    expect(h.records).toEqual([]); expect(h.d.tasks.every(task => !task.completed)).toBe(true);
+    expect(h.d.focusPhase).toBe('shortBreak'); expect(h.d.focusTimerRunning).toBe(true);
+    expect(h.d.focusTaskMinutes).toEqual({ a: 12.5, b: 12.5 });
+  });
+  it('declining an early exit leaves previous automatic records intact', async () => {
+    const h = setup(); h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd'); await Promise.resolve();
+    h.at(30); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd');
+    h.at(32); h.d.focusTimerSeconds = 1380; h.call('exitFocusMode', false);
+    expect(h.review()).not.toBeNull(); h.session.dismiss();
+    expect(h.records).toHaveLength(1); expect(h.d.showFocusMode).toBe(false);
+    expect(log(h)).toMatchObject({ totalMinutes: 32, cyclesCompleted: 1, tasksCompleted: 0 });
+  });
+});
+
+describe('extracted Focus entry and exit lifecycle', () => {
+  it('resolves a named task outside the current block, then starts and settles it', async () => {
+    const h = setup(); h.d.showFocusMode = false; h.d.computeFocusBlockTasks = () => [];
+    h.call('enterFocusMode', 'a');
+    expect(h.d.focusBlockTasks.map(task => task.id)).toEqual(['a']);
+    expect(h.d.focusShowSettings).toBe(true); expect(h.d.focusTimerRunning).toBe(false);
+    h.call('startFocusTimer');
+    h.at(25); h.d.focusTimerSeconds = 0; h.call('handleFocusTimerEnd'); await Promise.resolve();
+    expect(h.records).toHaveLength(1); expect(h.review()).toBeNull();
+    expect(h.d.focusPhase).toBe('shortBreak'); expect(h.d.focusTimerRunning).toBe(true);
+  });
+  it('keeps exit idempotent across renders and resets the guard for a new session', () => {
+    const h = setup(); h.at(2); h.d.focusTimerSeconds = 1380; h.call('exitFocusMode');
+    h.session.dismiss();
+    expect(log(h).sessions).toBe(1); expect(h.d.focusShowStats).toBe(true);
+    h.call('exitFocusMode'); expect(h.d.showFocusMode).toBe(false); expect(log(h).sessions).toBe(1);
+    h.call('enterFocusMode'); h.call('startFocusTimer');
+    h.at(4); h.d.focusTimerSeconds = 1380; h.call('exitFocusMode', false); h.session.dismiss();
+    expect(log(h).sessions).toBe(2); expect(h.d.showFocusMode).toBe(false);
   });
 });

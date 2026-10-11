@@ -13,15 +13,16 @@ const review = {
 };
 const render = over => renderToStaticMarkup(<FocusDoReview review={{ ...review, ...over }} onSave={vi.fn()} onDismiss={vi.fn()} />);
 describe('Focus settlement presentation', () => {
-  it('auto attributes one task and discloses a lower Do total', () => {
+  it('selects one task without a duration-difference annotation', () => {
     const html = render();
     expect(html).toContain('Write &lt;draft&gt;'); expect(html).not.toContain('<select');
-    expect(html).toContain('1 min to record'); expect(html).toContain('80 seconds less');
+    expect(html).toContain('1 min to record'); expect(html).not.toContain('80 seconds less');
+    expect(html).toContain('Don&#x27;t record');
     expect(html).not.toContain('round to the nearest minute');
     expect(html).toContain('Task completed'); expect(html).toContain('Still in progress');
   });
-  it('also discloses a higher Do total after rounding', () => {
-    expect(render({ summary: { ...review.summary, recordedDifferenceMilliseconds: 116000 } })).toContain('116 seconds more');
+  it('omits the annotation for a higher Do total as well', () => {
+    expect(render({ summary: { ...review.summary, recordedDifferenceMilliseconds: 116000 } })).not.toContain('116 seconds more');
   });
   it('omits a difference warning when work and Do totals match', () => {
     const html = render({ summary: { ...review.summary, recordedDifferenceMilliseconds: 0 } });
@@ -36,8 +37,9 @@ describe('Focus settlement presentation', () => {
     const html = render({ error: 'held', choice: { actionId: 'a' } });
     expect(html).toContain('role="alert"'); expect(html).toContain('Not saved yet');
     expect(html).toContain('Continue without waiting');
+    expect(html).not.toContain('Don&#x27;t record');
   });
-  it('both decision buttons are disabled during a write', () => {
-    expect((render({ busy: true }).match(/<button disabled=""/g) || []).length).toBe(2);
+  it('all three decision buttons are disabled during a write', () => {
+    expect((render({ busy: true }).match(/<button disabled=""/g) || []).length).toBe(3);
   });
 });

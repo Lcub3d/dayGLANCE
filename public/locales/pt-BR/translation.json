@@ -1163,14 +1163,13 @@
       "title": "Registrar trabalho focado",
       "chooseTask": "Em qual tarefa você trabalhou?",
       "minutes": "{{minutes}} min para registrar",
-      "differenceMore": "Cerca de {{seconds}} segundos a mais que o trabalho focado.",
-      "differenceLess": "Cerca de {{seconds}} segundos a menos que o trabalho focado.",
       "clockChanged": "O relógio ou o fuso horário mudou. Parte do trabalho não pode ser registrada.",
       "unavailable": "Não é possível gravar no JOBO. Tente quando estiver disponível.",
       "held": "Ainda não foi salvo. Tentando novamente. Salve antes de concluir a tarefa.",
       "failed": "Não foi possível salvar. Tente novamente.",
       "completed": "Tarefa concluída",
       "inProgress": "Ainda em andamento",
+      "dontRecord": "Não registrar",
       "continueWithoutSaving": "Continuar sem esperar"
     }
   },

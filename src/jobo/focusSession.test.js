@@ -144,3 +144,80 @@ describe('Focus settlement through the ledger writer', () => {
     ledger.dispose();
   });
 });
+
+describe('unattended single-task phases and declining a review', () => {
+  const flushSave = async () => { await Promise.resolve(); };
+  const settlePhase = () => session.settle(next, { autoRecordSingle: true });
+  it('records a single-task phase without showing a review or completing the task', async () => {
+    move(paused, running); move(running, paused, 120000);
+    expect(settlePhase()).toBe(true);
+    expect(review).toBeNull();
+    await flushSave();
+    expect(state.recordJobo).toHaveBeenCalledOnce();
+    expect(state.recordJobo.mock.calls[0][0][0]).toMatchObject({ taskId: 'a', progress: 'partial', endTime: '09:02' });
+    expect(state.complete).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
+    expect(session.isPending()).toBe(false);
+  });
+  it('keeps attribution for multiple candidates and review on single-task exit', async () => {
+    session.begin([task, { ...task, id: 'b' }]);
+    move(paused, running); move(running, paused, 120000); settlePhase();
+    expect(review.capture.candidates).toHaveLength(2);
+    session.dismiss();
+    session.begin([task]); move(paused, running); move(running, paused, 120000);
+    session.settle(next, { exiting: true, autoRecordSingle: true });
+    await flushSave();
+    expect(review.capture.candidates).toHaveLength(1);
+    expect(state.recordJobo).not.toHaveBeenCalled();
+  });
+  it('declining before a write discards only this phase and resumes exactly once', () => {
+    move(paused, running); stop();
+    session.dismiss(); session.dismiss();
+    expect(state.recordJobo).not.toHaveBeenCalled();
+    expect(state.complete).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledExactlyOnceWith({ allCompleted: false });
+    move(paused, running, 60000); move(running, paused, 60000); session.settle(next);
+    expect(review.summary.recordedMinutes).toBe(1);
+  });
+  it('falls back to review on automatic write failure and retries the same record identity', async () => {
+    state.recordJobo.mockResolvedValueOnce({ ok: false, held: true }).mockResolvedValue({ ok: true });
+    move(paused, running); move(running, paused, 120000); settlePhase(); await flushSave();
+    expect(review.error).toBe('held');
+    expect(next).not.toHaveBeenCalled();
+    const first = state.recordJobo.mock.calls[0][0];
+    await session.save('a', false);
+    expect(state.recordJobo.mock.calls[1][0]).toEqual(first);
+    expect(next).toHaveBeenCalledOnce();
+  });
+  it.each([{ loaded: false, records: undefined }, { writable: false }])('shows an unavailable automatic save without losing work: %j', async flags => {
+    Object.assign(state, flags);
+    move(paused, running); move(running, paused, 120000); settlePhase(); await flushSave();
+    expect(review.error).toBe('unavailable');
+    expect(review.summary.recordedMinutes).toBe(2);
+    expect(state.recordJobo).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+  it('keeps clock-change warnings for review instead of silently recording a partial capture', () => {
+    move(paused, running); move(running, paused, -1000); settlePhase();
+    expect(review.summary.clockChanged).toBe(true);
+    expect(state.recordJobo).not.toHaveBeenCalled();
+  });
+  it('serializes repeated phase commands and redirects an in-flight automatic save to exit', async () => {
+    let resolve; state.recordJobo = vi.fn(() => new Promise(r => { resolve = r; }));
+    move(paused, running); move(running, paused, 120000); settlePhase(); settlePhase();
+    session.dismiss();
+    const exit = vi.fn(); session.settle(exit, { exiting: true });
+    expect(state.recordJobo).toHaveBeenCalledOnce();
+    expect(move(paused, running)).toBe(false);
+    resolve({ ok: true }); await flushSave();
+    expect(next).not.toHaveBeenCalled();
+    expect(exit).toHaveBeenCalledOnce();
+    expect(state.complete).not.toHaveBeenCalled();
+  });
+  it('auto-settles equal rounded endpoints without a write or completion', async () => {
+    at = start + 40000; move(paused, running); move(running, paused, 40000);
+    settlePhase(); await flushSave();
+    expect(review).toBeNull(); expect(state.recordJobo).not.toHaveBeenCalled();
+    expect(state.complete).not.toHaveBeenCalled(); expect(next).toHaveBeenCalledOnce();
+  });
+});

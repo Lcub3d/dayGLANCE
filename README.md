@@ -31,6 +31,7 @@ Part of the **GLANCE family**: focused, standalone apps connected through a shar
   - [Visual Time-Blocking](#visual-time-blocking)
   - [Frames](#frames)
   - [Desktop Views: MULTI, DAY, WEEK, and MONTH](#desktop-views-multi-day-week-and-month)
+  - [JOBO: Plan versus Actual (experimental)](#jobo-plan-versus-actual-experimental)
   - [Smart Inbox](#smart-inbox)
   - [Focus Mode](#focus-mode)
   - [Day Dial](#day-dial)
@@ -311,6 +312,12 @@ Views you do not use on a given device can be turned off under Settings, "Views 
 | WEEK | MONTH |
 |:-:|:-:|
 | ![Week view](screenshots/desktop-week.png) | ![Month view](screenshots/desktop-month.png) |
+
+### JOBO: Plan versus Actual (experimental)
+
+JOBO puts what you planned beside what you actually did. The Plan is your timeline as scheduled; the Do is the work as it happened, recorded when you check a task off, when you add it yourself, or by Focus sessions. JOBO compares the two (started late, ran long, split across sessions), and its end-of-day **Check** offers a next step for anything left unfinished: continue it tomorrow with the time that is left, add a follow-up, move it to the Inbox, or delete it. Statistics cover the day, week, month and all time, and past days in the other views show the work that was done.
+
+**Setup:** Off by default, per device. Desktop: Settings → Experimental → **JOBO view**, then key `6`. Phone: Settings → App Settings → **JOBO view**, then the timeline's view switcher. Full guide in [docs/jobo-guide.md](docs/jobo-guide.md).
 
 ### Smart Inbox
 
@@ -610,6 +617,7 @@ These are the ones worth knowing by heart:
 | `←` / `→` | Previous / next day |
 | `T` | Jump to today |
 | `1` `2` `3` `4` | Go straight to MULTI / DAY / WEEK / MONTH |
+| `6` | Go straight to JOBO (with JOBO on) |
 | `C` | Cycle through the views |
 | `,` / `.` | Side panel: Glance / Inbox |
 | `M` | Toggle month nav |

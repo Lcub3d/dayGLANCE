@@ -32,7 +32,7 @@ const dailyFromOct15 = () => ({
   exceptions: {},
 });
 
-describe('updateRecurrencePattern — the series keeps its start', () => {
+describe('updateRecurrencePattern — never earlier than the start, anchored on the edit', () => {
   it('a daily series has no occurrences before it was created', () => {
     expect(getOccurrencesInRange(dailyFromOct15(), '2026-10-01', '2026-10-14')).toEqual([]);
   });
@@ -65,6 +65,22 @@ describe('updateRecurrencePattern — the series keeps its start', () => {
 
     expect(edited.recurrence.startDate).toBe('2026-10-12');
     expect(getOccurrencesInRange(edited, '2026-10-01', '2026-10-14')).toEqual(['2026-10-12', '2026-10-13', '2026-10-14']);
+  });
+
+  it('"Yearly on Oct 20", picked from Oct 20, recurs on Oct 20 and not on the start date', () => {
+    const edited = editPattern(dailyFromOct15(), '2026-10-20', preset('2026-10-20', v => v.type === 'yearly'));
+
+    // Moved forward, never back: Oct 15 to 19 were never Oct 20 occurrences.
+    expect(edited.recurrence.startDate).toBe('2026-10-20');
+    expect(getOccurrencesInRange(edited, '2026-01-01', '2028-12-31'))
+      .toEqual(['2026-10-20', '2027-10-20', '2028-10-20']);
+  });
+
+  it('"Every 2 weeks on Tuesday", picked from Tue Oct 20, keeps Oct 20', () => {
+    const edited = editPattern(dailyFromOct15(), '2026-10-20', preset('2026-10-20', v => v.type === 'biweekly'));
+
+    expect(getOccurrencesInRange(edited, '2026-10-01', '2026-11-30'))
+      .toEqual(['2026-10-20', '2026-11-03', '2026-11-17']);
   });
 
   it('leaves other templates alone', () => {

@@ -31,7 +31,19 @@ class HttpBridge {
     @JavascriptInterface
     fun request(method: String, url: String, headersJson: String, body: String): String {
         return try {
-            val connection = URL(url).openConnection() as HttpURLConnection
+            val target = URL(url)
+            // The network security config permits cleartext app-wide (the platform
+            // can't scope it to LAN ranges), so the LAN-only rule for http:// is
+            // enforced here, before any connection opens. See LanHostPolicy.
+            if (!LanHostPolicy.isSecureOrLanUrl(target)) {
+                return JSONObject().apply {
+                    put("status", 0)
+                    put("ok", false)
+                    put("body", "")
+                    put("error", "Refused: http:// is only allowed for local network hosts. Use https:// for ${target.host}.")
+                }.toString()
+            }
+            val connection = target.openConnection() as HttpURLConnection
             // HttpURLConnection only accepts standard verbs; WebDAV uses PROPFIND, MKCOL, etc.
             // Use reflection to bypass the validation for non-standard methods.
             try {

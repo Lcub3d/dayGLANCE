@@ -511,3 +511,49 @@ describe('editedSeriesStart — an occurrence the pattern already produces keeps
     expect(moved).toEqual([]);
   });
 });
+
+// Yearly dates come from the start's month and day. Stepping the previous
+// occurrence forward carried 29 February's overflow on: 2024-02-29 became
+// 2025-03-01 and then stayed on 1 March, leap years included.
+describe('getOccurrencesInRange — yearly from a 29 February start', () => {
+  const leap = { recurrence: { type: 'yearly', startDate: '2024-02-29' } };
+
+  it('returns to 29 February in every leap year and keeps 1 March in the others', () => {
+    expect(getOccurrencesInRange(leap, '2024-01-01', '2033-12-31')).toEqual([
+      '2024-02-29', '2025-03-01', '2026-03-01', '2027-03-01',
+      '2028-02-29', '2029-03-01', '2030-03-01', '2031-03-01',
+      '2032-02-29', '2033-03-01',
+    ]);
+  });
+
+  it('finds the leap-year occurrence from a range that starts inside that year', () => {
+    expect(getOccurrencesInRange(leap, '2028-02-01', '2028-03-31')).toEqual(['2028-02-29']);
+  });
+
+  it('counts maxOccurrences and stops at endDate across the leap years', () => {
+    const limited = { recurrence: { ...leap.recurrence, maxOccurrences: 5 } };
+    expect(getOccurrencesInRange(limited, '2024-01-01', '2040-12-31'))
+      .toEqual(['2024-02-29', '2025-03-01', '2026-03-01', '2027-03-01', '2028-02-29']);
+    const ended = { recurrence: { ...leap.recurrence, endDate: '2028-02-29' } };
+    expect(getOccurrencesInRange(ended, '2024-01-01', '2040-12-31').at(-1)).toBe('2028-02-29');
+  });
+
+  it('honours a deleted occurrence on the leap day', () => {
+    const t = { ...leap, exceptions: { '2028-02-29': { deleted: true } } };
+    expect(getOccurrencesInRange(t, '2028-01-01', '2028-12-31')).toEqual([]);
+  });
+
+  it('leaves every other start date on its own month and day, every year', () => {
+    const moved = [];
+    // Every start in 2023 (no 29 February), over 13 years spanning 2024, 2028
+    // and 2032.
+    for (let i = 0; i < 365; i++) {
+      const d = new Date('2023-01-01T12:00:00');
+      d.setDate(d.getDate() + i);
+      const start = d.toISOString().slice(0, 10);
+      const occ = getOccurrencesInRange({ recurrence: { type: 'yearly', startDate: start } }, start, `${2023 + 12}-12-31`);
+      if (occ.length !== 13 || occ.some((o, k) => o !== `${2023 + k}${start.slice(4)}`)) moved.push(start);
+    }
+    expect(moved).toEqual([]);
+  });
+});

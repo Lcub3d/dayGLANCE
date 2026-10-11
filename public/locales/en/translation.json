@@ -50,6 +50,10 @@
       "httpRejected": "Insecure connection. Use https:// for a vault on the public internet. Plain http:// is only allowed on a trusted local network (localhost or a LAN address).",
       "insecureLanWarning": "Unencrypted connection: only use on a trusted network."
     },
+    "webdavUrl": {
+      "insecureLanWarning": "Unencrypted connection: your password is sent in plain text. Only use on a trusted network.",
+      "insecurePublicWarning": "Unencrypted connection over the internet: your password and data are sent in plain text. Use https://. The Android app refuses this connection."
+    },
     "form": {
       "webdavTitle": "WebDAV Sync",
       "webdavToggle": "Sync via WebDAV",

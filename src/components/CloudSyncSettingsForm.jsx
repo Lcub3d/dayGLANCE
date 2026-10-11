@@ -8,6 +8,7 @@ import { createDbEngine, resetDbRootKey, resetVaultSyncCursor } from '../sync/db
 import { testVaultConnection } from '../sync/vaultConnectionTest.js';
 import { testFileTierConnection, providerServerUrl, BLOCKED_PRIVATE_ADDRESS } from '../sync/proxyTrustPreflight.js';
 import { classifyVaultUrl } from '../sync/vaultUrlPolicy.js';
+import { classifyWebdavUrl } from '../sync/webdavUrlPolicy.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
@@ -396,6 +397,12 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               {field.type === 'password' && (
                 <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.aiApiKeyHint')}</p>
               )}
+              {field.type === 'url' && (() => {
+                const urlCheck = classifyWebdavUrl(formData[field.key]);
+                return urlCheck && (
+                  <p className={`text-xs mt-0.5 ${urlCheck.level === 'danger' ? 'text-red-500' : 'text-amber-500'}`}>{t(urlCheck.messageKey)}</p>
+                );
+              })()}
             </div>
           ))}
 

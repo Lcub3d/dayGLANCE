@@ -60,6 +60,10 @@
       "httpRejected": "Niezabezpieczone połączenie. Dla magazynu w publicznym internecie użyj https://. Zwykłe http:// jest dozwolone tylko w zaufanej sieci lokalnej (localhost lub adres LAN).",
       "insecureLanWarning": "Połączenie bez szyfrowania: używaj tylko w zaufanej sieci."
     },
+    "webdavUrl": {
+      "insecureLanWarning": "Połączenie nieszyfrowane: hasło jest wysyłane otwartym tekstem. Używaj tylko w zaufanej sieci.",
+      "insecurePublicWarning": "Nieszyfrowane połączenie przez internet: hasło i dane są wysyłane otwartym tekstem. Użyj https://. Aplikacja na Androida odrzuca to połączenie."
+    },
     "form": {
       "webdavTitle": "Synchronizacja WebDAV",
       "webdavToggle": "Synchronizuj przez WebDAV",

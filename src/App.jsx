@@ -1595,6 +1595,8 @@ const DayPlanner = () => {
     visibleDays,
     effectiveViewMode,
     monthViewActive,
+    weekViewMode,
+    weekStartDay,
     setSelectedDate,
     setShowMonthView,
     setShowSpotlight,

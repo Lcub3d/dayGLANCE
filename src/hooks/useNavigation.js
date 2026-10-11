@@ -2,11 +2,14 @@ import { useCallback } from 'react';
 import { dateToString } from '../utils/taskUtils.js';
 import { getNextOccurrence } from '../utils/recurrenceEngine.js';
 import { shiftDateByMonths } from '../utils/monthGrid.js';
+import { shiftWeekStripDate } from '../utils/weekViewDates.js';
 
 export default function useNavigation({
   visibleDays,
   effectiveViewMode,
   monthViewActive = false,
+  weekViewMode = 'strict',
+  weekStartDay = 0,
   setSelectedDate,
   setShowMonthView,
   setShowSpotlight,
@@ -25,16 +28,22 @@ export default function useNavigation({
       setSelectedDate(prev => shiftDateByMonths(prev, direction));
       return;
     }
-    const stride = effectiveViewMode === 'day' || effectiveViewMode === 'jobo' ? 1
-      : effectiveViewMode === 'week' || effectiveViewMode === 'sched' ? 7
-      : visibleDays;
+    // WEEK / SCHED: page to the strip adjacent to the one on screen, which a
+    // plain seven-day shift misses around a rolling strip (#2045).
+    if (effectiveViewMode === 'week' || effectiveViewMode === 'sched') {
+      setSelectedDate(prev => shiftWeekStripDate({
+        direction, selectedDate: prev, viewMode: effectiveViewMode, weekViewMode, weekStartDay,
+      }));
+      return;
+    }
+    const stride = effectiveViewMode === 'day' || effectiveViewMode === 'jobo' ? 1 : visibleDays;
     setSelectedDate(prev => {
       const newDate = new Date(prev);
       newDate.setDate(newDate.getDate() + (direction * stride));
       newDate.setHours(12, 0, 0, 0);
       return newDate;
     });
-  }, [setSelectedDate, visibleDays, effectiveViewMode, monthViewActive]);
+  }, [setSelectedDate, visibleDays, effectiveViewMode, monthViewActive, weekViewMode, weekStartDay]);
 
   const goToToday = useCallback(() => {
     const today = new Date();

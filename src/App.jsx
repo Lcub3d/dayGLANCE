@@ -42,6 +42,7 @@ import { buildProjectedDay, projectionDates, guardSnapshotSize } from './utils/w
 import { computeRecurringExpansionRange } from './utils/recurringExpansionRange.js';
 import { parseRecurringId } from './utils/recurringId.js';
 import { expandRecurringTasks } from './utils/expandRecurringTasks.js';
+import { instanceEditChanges, applyRecurringInstanceEdit } from './utils/recurringInstanceEdit.js';
 import { buildWidgetMonthWindow } from './utils/widgetMonthWindow.js';
 import { resolveDayLink, decodeBridgeLink } from './utils/dayLink.js';
 import { widgetDayTasks } from './utils/widgetNativeEvents.js';
@@ -98,6 +99,7 @@ import StorageBreakdownModal from './components/StorageBreakdownModal.jsx';
 import IntentActivityLogModal from './components/IntentActivityLogModal.jsx';
 import EmptyBinConfirmModal from './components/EmptyBinConfirmModal.jsx';
 import RecurringDeleteModal from './components/RecurringDeleteModal.jsx';
+import RecurringEditModal from './components/RecurringEditModal.jsx';
 import EditRecurrenceModal from './components/EditRecurrenceModal.jsx';
 import ReminderToasts from './components/ReminderToasts.jsx';
 import TaskPeek from './components/TaskPeek.jsx';
@@ -572,6 +574,7 @@ const DayPlanner = () => {
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
   const [recurringDeleteConfirm, setRecurringDeleteConfirm] = useState(null); // { taskId, dateStr }
+  const [recurringEditConfirm, setRecurringEditConfirm] = useState(null); // { dateStr }
   const [editingRecurrenceTaskId, setEditingRecurrenceTaskId] = useState(null); // recurring composite ID string
   const [showRecurrenceEndDatePicker, setShowRecurrenceEndDatePicker] = useState(null); // { source: 'edit' | 'new', templateId?: number }
   const [showAddTask, setShowAddTask] = useState(false);
@@ -3744,11 +3747,43 @@ const DayPlanner = () => {
 
   // A project named in the modal ("New project…") is created as the task is
   // saved, and the rest reads newTask with its real id (utils/pendingProject.js).
-  const saveMobileEditTask = () => {
+  //
+  // Editing one occurrence of a recurring series asks first whether a changed
+  // title, time, colour or assignment is for that occurrence or the whole
+  // series (#2042): RecurringEditModal calls back here with the scope. It asks
+  // before the pending project is created, so cancelling leaves nothing behind.
+  const saveMobileEditTask = (scope) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
-    saveMobileEditTaskFrom(createPendingProject(newTask, { addProject, goals }).newTask);
+    if (!scope && recurringEditNeedsScope(newTask)) {
+      setRecurringEditConfirm({ dateStr: parseRecurringId(mobileEditingTask.id).dateStr });
+      return;
+    }
+    setRecurringEditConfirm(null);
+    saveMobileEditTaskFrom(createPendingProject(newTask, { addProject, goals }).newTask, scope);
   };
-  const saveMobileEditTaskFrom = (newTask) => {
+  // The occurrence fields as the save writes them.
+  const recurringInstanceEditFrom = (newTask) => ({
+    title: cleanTitle(newTask.title),
+    startTime: newTask.isAllDay ? '00:00' : newTask.startTime,
+    duration: newTask.duration,
+    isAllDay: newTask.isAllDay || false,
+    color: newTask.color || colors[0].class,
+    assignedUserSyncIds: mobileEditingTask.assignedUserSyncIds,
+  });
+  // True when the save below would reach the occurrence-or-series branch with
+  // a changed occurrence field. Converting to a one-off (no recurrence) and
+  // moving a non-daily occurrence to another date are single-occurrence by
+  // nature and do not ask.
+  const recurringEditNeedsScope = (newTask) => {
+    if (mobileEditIsInbox || !newTask.recurrence) return false;
+    const parsed = parseRecurringId(mobileEditingTask.id);
+    if (!parsed) return false;
+    if (newTask.date && newTask.date !== parsed.dateStr && newTask.recurrence.type !== 'daily') return false;
+    const template = recurringTasks.find(t => t.id === parsed.templateId);
+    if (!template) return false;
+    return instanceEditChanges(template, parsed.dateStr, recurringInstanceEditFrom(newTask), { defaultColor: colors[0].class }).any;
+  };
+  const saveMobileEditTaskFrom = (newTask, scope) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
     pushUndo();
     const taskId = mobileEditingTask.id;
@@ -3823,55 +3858,17 @@ const DayPlanner = () => {
               assignedUserSyncIds: mobileEditingTask.assignedUserSyncIds,
             }]);
           } else {
-            // User-assignment scope chosen in the Edit Task modal: 'all' (the
-            // whole series, default) or 'this' (only the edited occurrence).
-            const assignScope = mobileEditingTask._assignScope || 'all';
-            const assigned = mobileEditingTask.assignedUserSyncIds;
-            setRecurringTasks(prev => prev.map(t => {
-              if (t.id !== parsed.templateId) return t;
-              // Title/time/colour edits always live on this date's exception.
-              const instanceException = {
-                ...(t.exceptions?.[parsed.dateStr] || {}),
-                title: cleanTitle(newTask.title),
-                startTime: newTask.isAllDay ? '00:00' : newTask.startTime,
-                duration: newTask.duration,
-                isAllDay: newTask.isAllDay || false,
-                color: newTask.color || colors[0].class,
-              };
-              let exceptions = { ...t.exceptions, [parsed.dateStr]: instanceException };
-              let templateAssigned = t.assignedUserSyncIds;
-              if (assignScope === 'this') {
-                // Assign only this occurrence: store the override on its exception.
-                // An empty array means "everybody" for this date; undefined leaves
-                // it inheriting the series value.
-                if (assigned !== undefined) instanceException.assignedUserSyncIds = assigned;
-              } else {
-                // Assign the whole series: write to the template and strip any
-                // per-instance assignment overrides so the series value wins on
-                // every occurrence.
-                templateAssigned = assigned ?? t.assignedUserSyncIds;
-                exceptions = Object.fromEntries(
-                  Object.entries(exceptions).map(([d, exc]) => {
-                    if (exc && 'assignedUserSyncIds' in exc) {
-                      const { assignedUserSyncIds, ...rest } = exc;
-                      return [d, rest];
-                    }
-                    return [d, exc];
-                  })
-                );
-              }
-              return {
-                ...t,
-                exceptions,
-                assignedUserSyncIds: templateAssigned,
-                // Project changes in the editor apply to the whole series —
-                // project membership is series-level, like the template itself.
-                projectId: newTask.projectId || undefined,
-                // Update recurrence pattern on template if changed
-                recurrence: { ...newTask.recurrence, startDate: t.recurrence?.startDate || parsed.dateStr.substring(0, 8) + '01' },
-                lastModified: new Date().toISOString(),
-              };
-            }));
+            // Scope picked in RecurringEditModal; nothing scoped changed when unset.
+            setRecurringTasks(prev => prev.map(t => t.id !== parsed.templateId ? t : applyRecurringInstanceEdit(t, {
+              dateStr: parsed.dateStr,
+              edit: recurringInstanceEditFrom(newTask),
+              scope: scope || 'this',
+              // Project and pattern are series-level, like the template itself.
+              projectId: newTask.projectId,
+              recurrence: newTask.recurrence,
+              now: new Date().toISOString(),
+              defaultColor: colors[0].class,
+            })));
           }
         }
       }
@@ -8152,6 +8149,7 @@ const DayPlanner = () => {
     deadlinePickerTaskId, setDeadlinePickerTaskId,
     showRecurrencePicker, setShowRecurrencePicker,
     recurringDeleteConfirm, setRecurringDeleteConfirm,
+    recurringEditConfirm, setRecurringEditConfirm,
     editingRecurrenceTaskId, setEditingRecurrenceTaskId,
     showRecurrenceEndDatePicker, setShowRecurrenceEndDatePicker,
     showIncompleteTasks, setShowIncompleteTasks,
@@ -8959,6 +8957,7 @@ const DayPlanner = () => {
 
 
       <RecurringDeleteModal />
+      <RecurringEditModal />
 
       <EditRecurrenceModal />
 

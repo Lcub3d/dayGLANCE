@@ -108,6 +108,10 @@
       "vaultConsentWarningLoopback": "Ten adres to usługa działająca na tym komputerze. Zezwalaj tylko wtedy, gdy to Twój własny GLANCEvault, a podany port jest tym, na którym nasłuchuje. Inne programy na tym komputerze działają na innych portach, a to zezwolenie ich nie obejmuje.",
       "vaultConsentScope": "Dotyczy tylko tego jednego adresu. Możesz to później usunąć w Ustawieniach, w sekcji synchronizacji w chmurze.",
       "vaultConsentAllow": "Zezwól",
+      "privateAddressNeedsPermission": "{{origin}} znajduje się w sieci prywatnej, więc dayGLANCE potrzebuje Twojej zgody, aby się z nim połączyć. Serwer nie został jeszcze odpytany.",
+      "reservedAddressRefused": "{{origin}} to adres zastrzeżony, z którym dayGLANCE się nie połączy.",
+      "privateAddressGrantFailed": "Nie udało się zezwolić na ten adres.",
+      "privateConsentWarningLoopbackServer": "Ten adres to usługa działająca na tym komputerze. Zezwalaj tylko wtedy, gdy to Twój własny serwer synchronizacji, a podany port jest tym, na którym nasłuchuje. Inne programy na tym komputerze działają na innych portach, a to zezwolenie ich nie obejmuje.",
       "vaultSkipped_one": "Nie udało się odczytać {{count}} elementu (pominięto). Zwykle oznacza to, że na innym urządzeniu użyto innego hasła synchronizacji.",
       "vaultSkipped_few": "Nie udało się odczytać {{count}} elementów (pominięto). Zwykle oznacza to, że na innym urządzeniu użyto innego hasła synchronizacji.",
       "vaultSkipped_many": "Nie udało się odczytać {{count}} elementów (pominięto). Zwykle oznacza to, że na innym urządzeniu użyto innego hasła synchronizacji.",
@@ -483,7 +487,7 @@
     "enableJoboHint": "Plan kontra rzeczywistość. Szósty widok, pod klawiszem 6, który będzie rejestrować, co faktycznie wykonano, na tle planu.",
     "enableJoboHintPhone": "Plan kontra rzeczywistość. Widok w przełączniku widoków osi czasu, który zapisuje, co zrobiono względem planu.",
     "enableAspire": "Aspire",
-    "enableAspireHint": "Planowanie życia: lista życzeń, pięcioletnia wizja i motta. Na razie zaślepka, otwierana z przestrzeni Cele i projekty.",
+    "enableAspireHint": "Prosty notatnik na życzenia i motta, dostępny w przestrzeni Cele i projekty.",
     "inbox": "Skrzynka",
     "inboxAutoArchive": "Automatycznie archiwizuj ukończone zadania ze skrzynki",
     "inboxArchiveNever": "Nigdy",
@@ -2231,7 +2235,12 @@
     "encryptSwitch": "Szyfruj na tym urządzeniu",
     "key": "Klucz synchronizacji",
     "keyReady": "gotowy",
-    "keyNeeded": "brak (wpisz hasło synchronizacji)"
+    "keyNeeded": "brak (wpisz hasło synchronizacji)",
+    "conflictCopies": "Kopie konfliktowe",
+    "lastSweep": "Ostatnie czyszczenie",
+    "sweep": "Scal i usuń kopie",
+    "sweeping": "Scalanie…",
+    "sweepCounts": "{{merged}} scalono, {{removed}} usunięto, {{left}} pozostało"
   },
   "icloudFirstRun": {
     "title": "Znaleziono dane w iCloud",
@@ -2284,12 +2293,44 @@
     "eventsForget": "Zapomnij plik zdarzeń",
     "eventsChosen": "Plik zdarzeń: {{name}}",
     "eventsNotChosen": "Plik zdarzeń: nie wybrano na tym urządzeniu.",
-    "iosEventsHint": "Intencje podróżują w pliku glance-events.json w GLANCE/events wspólnego folderu. Wybierz ten, który utworzyły Twoje inne urządzenia, albo utwórz go tam."
+    "iosEventsHint": "Intencje podróżują w pliku glance-events.json w GLANCE/events wspólnego folderu. Wybierz ten, który utworzyły Twoje inne urządzenia, albo utwórz go tam.",
+    "removeEncryption": "Usuń szyfrowanie z pliku…",
+    "removeEncryptionConfirm": "To jednorazowo zapisze plik w folderze jawnie i wyłączy przełącznik tutaj. Najpierw wyłącz „Szyfruj plik w folderze” na pozostałych urządzeniach, inaczej następne zapisujące znów go zaszyfruje.",
+    "removeEncryptionGo": "Usuń szyfrowanie",
+    "removeEncryptionOutcome": {
+      "removed": "Gotowe. Plik jest znów jawny; każde urządzenie podąża za nim od następnego odczytu.",
+      "already-plaintext": "Plik jest już jawny. Przełącznik jest tutaj wyłączony.",
+      "needs-key": "To urządzenie nie może otworzyć pliku: {{detail}}",
+      "unavailable": "Folder jest teraz niedostępny. {{detail}}",
+      "write-failed": "Nie udało się zapisać pliku. Nic się nie zmieniło.",
+      "no-file": "W folderze nie ma jeszcze pliku."
+    }
   },
   "aspire": {
     "title": "Aspire",
-    "placeholder": "Tutaj znajdą się twoja lista życzeń, pięcioletnia wizja i motta.",
-    "comingSoon": "Wkrótce"
+    "intro": "Pisz swobodnie. Możesz zostawić wszystko puste.",
+    "wishes": "Życzenia",
+    "mottos": "Motta",
+    "blankHint": "Zostaw tę stronę pustą lub dodaj myśl, kiedy zechcesz.",
+    "addWish": "Dodaj życzenie",
+    "addMotto": "Dodaj motto",
+    "wishLabel": "Życzenie {{number}}",
+    "mottoLabel": "Motto {{number}}",
+    "writeHere": "Napisz tutaj…",
+    "moveUp": "Przenieś wpis {{number}} w górę",
+    "moveDown": "Przenieś wpis {{number}} w dół",
+    "remove": "Usuń wpis {{number}}",
+    "saving": "Zapisywanie…",
+    "unsaved": "Niezapisane zmiany",
+    "saved": "Zapisano na tym urządzeniu. Używa skonfigurowanej synchronizacji.",
+    "loading": "Ładowanie notatnika…",
+    "readOnly": "To urządzenie może odczytać notatnik, ale nie może zapisać zmian.",
+    "loadFailed": "Nie udało się wczytać notatnika. Zapisane dane nie zostały zastąpione.",
+    "saveFailed": "Nie udało się zapisać. Tekst pozostał tutaj; spróbuj ponownie lub anuluj edycję.",
+    "conflict": "Ten wpis zmieniono gdzie indziej. Szkic pozostał tutaj. Anuluj, aby zobaczyć najnowszą wersję przed ponowną edycją.",
+    "retry": "Wczytaj ponownie",
+    "removed": "Wpis usunięty",
+    "undo": "Cofnij"
   },
   "jobo": {
     "stats": {

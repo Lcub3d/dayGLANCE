@@ -107,6 +107,7 @@ export const KNOWN_INDEXEDDB_NAMES = Object.freeze([
   'dayglance-intents-crypto',
   'dayglance-intents-outbox',
   'dayglance-jobo',
+  'dayglance-aspire',
   'dayglance-obsidian',
   'dayglance-todoist',
 ]);

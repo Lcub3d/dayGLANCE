@@ -18,6 +18,7 @@ import { dropTombstonedObsidianTasks, dropTombstonedObsidianNotes } from './util
 import { containObsidianGhostRows } from './utils/obsidianGhostRows.js';
 import { mergeDayWindowMaps, dayWindowMapsEqual, migrateDayWindows } from './sync/dayWindowSync.js';
 import { mergeJoboCollections } from './jobo/ledger.js';
+import { mergeAspireCollections } from './aspire/notebook.js';
 
 /**
  * Resolves the one case the id-keyed merge cannot: the same id on both sides
@@ -584,6 +585,16 @@ export const mergeSyncData = (local, remote, retentionDays) => {
       result.data.joboRecords = jobo.merged;
       if (jobo.localChanged) result.localChanged = true;
       if (jobo.remoteChanged) result.remoteChanged = true;
+    }
+  }
+  // Aspire's entry-level text, order and retained deletion registers use the
+  // same merge on disk and in the vault. Never apply the task retention horizon.
+  {
+    const aspire = mergeAspireCollections(local?.aspireEntries, remote?.aspireEntries);
+    if (aspire.merged !== undefined) {
+      result.data.aspireEntries = aspire.merged;
+      if (aspire.localChanged) result.localChanged = true;
+      if (aspire.remoteChanged) result.remoteChanged = true;
     }
   }
   // Keep device-local settings on this device's own value rather than the

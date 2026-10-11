@@ -98,6 +98,10 @@
       "vaultConsentWarningLoopback": "Esta dirección es un servicio que se ejecuta en este ordenador. Permítela solo si es tu propio GLANCEvault y el puerto es aquel en el que escucha. Otros programas de este equipo son accesibles en otros puertos, y este permiso no los incluye.",
       "vaultConsentScope": "Esto se aplica únicamente a esta dirección. Puedes quitarla más tarde en Ajustes, en Sincronización en la nube.",
       "vaultConsentAllow": "Permitir",
+      "privateAddressNeedsPermission": "{{origin}} está en una red privada, así que dayGLANCE necesita tu permiso para conectarse. Todavía no se ha contactado con el servidor.",
+      "reservedAddressRefused": "{{origin}} es una dirección reservada a la que dayGLANCE no se conectará.",
+      "privateAddressGrantFailed": "No se pudo permitir esta dirección.",
+      "privateConsentWarningLoopbackServer": "Esta dirección es un servicio que se ejecuta en este ordenador. Permítela solo si es tu propio servidor de sincronización y el puerto es aquel en el que escucha. Otros programas de este equipo son accesibles en otros puertos, y este permiso no los incluye.",
       "vaultSkipped_one": "No se pudo leer {{count}} elemento (omitido). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "vaultSkipped_other": "No se pudieron leer {{count}} elementos (omitidos). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "saveEnable": "Guardar y activar",
@@ -461,7 +465,7 @@
     "enableJoboHint": "Plan frente a realidad. Una sexta vista, en la tecla 6, que registrará lo hecho frente a lo planificado.",
     "enableJoboHintPhone": "Plan frente a realidad. Una vista en el selector de vistas de la línea de tiempo que registra lo hecho frente a lo planificado.",
     "enableAspire": "Aspire",
-    "enableAspireHint": "Planificación de vida: una lista de deseos, una visión a cinco años y lemas. Por ahora un marcador de posición, abierto desde el espacio Objetivos y proyectos.",
+    "enableAspireHint": "Un cuaderno sencillo para deseos y lemas, disponible en Objetivos y proyectos.",
     "inbox": "Bandeja de entrada",
     "inboxAutoArchive": "Archivar automáticamente tareas completadas de la bandeja",
     "inboxArchiveNever": "Nunca",
@@ -2138,7 +2142,12 @@
     "encryptSwitch": "Cifrar en este dispositivo",
     "key": "Clave de sincronización",
     "keyReady": "lista",
-    "keyNeeded": "falta (introduce la frase de contraseña)"
+    "keyNeeded": "falta (introduce la frase de contraseña)",
+    "conflictCopies": "Copias en conflicto",
+    "lastSweep": "Última limpieza",
+    "sweep": "Combinar y eliminar copias",
+    "sweeping": "Combinando…",
+    "sweepCounts": "{{merged}} combinadas, {{removed}} eliminadas, {{left}} pendientes"
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",
@@ -2191,12 +2200,44 @@
     "eventsForget": "Olvidar archivo de eventos",
     "eventsChosen": "Archivo de eventos: {{name}}",
     "eventsNotChosen": "Archivo de eventos: no elegido en este dispositivo.",
-    "iosEventsHint": "Los intents viajan en glance-events.json, en GLANCE/events de la carpeta compartida. Elige el que crearon tus otros dispositivos o créalo ahí."
+    "iosEventsHint": "Los intents viajan en glance-events.json, en GLANCE/events de la carpeta compartida. Elige el que crearon tus otros dispositivos o créalo ahí.",
+    "removeEncryption": "Quitar el cifrado del archivo…",
+    "removeEncryptionConfirm": "Esto reescribe el archivo de la carpeta sin cifrar, una vez, y desactiva el interruptor aquí. Desactiva antes «Cifrar el archivo en la carpeta» en tus otros dispositivos, o el siguiente en escribir lo volverá a cifrar.",
+    "removeEncryptionGo": "Quitar el cifrado",
+    "removeEncryptionOutcome": {
+      "removed": "Hecho. El archivo vuelve a estar sin cifrar; cada dispositivo lo sigue desde su próxima lectura.",
+      "already-plaintext": "El archivo ya está sin cifrar. El interruptor está desactivado aquí.",
+      "needs-key": "Este dispositivo no puede abrir el archivo: {{detail}}",
+      "unavailable": "La carpeta no está disponible ahora. {{detail}}",
+      "write-failed": "No se pudo escribir el archivo. No se cambió nada.",
+      "no-file": "Aún no hay ningún archivo en la carpeta."
+    }
   },
   "aspire": {
     "title": "Aspire",
-    "placeholder": "Aquí vivirán tu lista de deseos, tu visión a cinco años y tus lemas.",
-    "comingSoon": "Próximamente"
+    "intro": "Escribe libremente. Puedes dejar cualquier cosa en blanco.",
+    "wishes": "Deseos",
+    "mottos": "Lemas",
+    "blankHint": "Deja esta página en blanco o añade una idea cuando quieras.",
+    "addWish": "Añadir deseo",
+    "addMotto": "Añadir lema",
+    "wishLabel": "Deseo {{number}}",
+    "mottoLabel": "Lema {{number}}",
+    "writeHere": "Escribe aquí…",
+    "moveUp": "Subir entrada {{number}}",
+    "moveDown": "Bajar entrada {{number}}",
+    "remove": "Eliminar entrada {{number}}",
+    "saving": "Guardando…",
+    "unsaved": "Cambios sin guardar",
+    "saved": "Guardado en este dispositivo. Usa la sincronización configurada.",
+    "loading": "Cargando cuaderno…",
+    "readOnly": "Este dispositivo puede leer el cuaderno, pero no guardar cambios.",
+    "loadFailed": "No se pudo cargar el cuaderno. Los datos guardados no se han reemplazado.",
+    "saveFailed": "No se pudo guardar. Tu texto sigue aquí; vuelve a intentarlo o cancela la edición.",
+    "conflict": "Esta entrada cambió en otro lugar. Tu borrador sigue aquí. Cancela para ver la versión más reciente antes de editar.",
+    "retry": "Volver a cargar",
+    "removed": "Entrada eliminada",
+    "undo": "Deshacer"
   },
   "jobo": {
     "stats": {

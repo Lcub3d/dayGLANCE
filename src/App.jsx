@@ -55,6 +55,7 @@ import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilin
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
+import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
 import { absorbCalendarDays, absorbCalendarWindow, readCalendarProjectionCache, writeCalendarProjectionCache } from './utils/calendarProjectionCache.js';
@@ -124,6 +125,7 @@ import useHabits from './hooks/useHabits.js';
 import useRoutines, { sanitizeMergedRoutineCompletions, startOfTodayIso } from './hooks/useRoutines.js';
 import useGoalsProjects from './hooks/useGoalsProjects.js';
 import useJoboLedger from './hooks/useJoboLedger.js';
+import useAspireNotebook from './hooks/useAspireNotebook.js';
 import useFocusMode from './hooks/useFocusMode.js';
 import useTrmnlSync from './hooks/useTrmnlSync.js';
 import useObsidian from './hooks/useObsidian.js';
@@ -156,6 +158,7 @@ import { useNotifyEmitter } from './intents/useNotifyEmitter.js';
 import { useGoalNotifyEmitter } from './intents/useGoalNotifyEmitter.js';
 import { useOutboxFlush } from './intents/useOutboxFlush.js';
 import { useDirectAccessIntents } from './intents/useDirectAccessIntents.js';
+import useConflictCopySweep from './hooks/useConflictCopySweep.js';
 import { useAndroidIntentBridge } from './intents/useAndroidIntentBridge.js';
 import { useUrlActionHandler } from './intents/useUrlActionHandler.js';
 import { syncSharedUsers, syncSharedUsersViaICloud, syncSharedUsersViaDirectAccess } from './intents/sharedUsers.js';
@@ -375,7 +378,7 @@ const DayPlanner = () => {
     return saved !== null ? JSON.parse(saved) === true : false;
   });
   useEffect(() => { localStorage.setItem('day-planner-jobo-enabled', JSON.stringify(joboEnabled)); }, [joboEnabled]);
-  // Aspire (life planning: wish list, five-year vision, mottos) — placeholder
+  // Aspire notebook (wishes and mottos). The switch gates its interface only.
   // behind the same Experimental switch pattern; the FAB lives in the Goals &
   // Projects space.
   const [aspireEnabled, setAspireEnabled] = useState(() => {
@@ -1173,6 +1176,19 @@ const DayPlanner = () => {
     const result = await restoreJobo(data.joboRecords);
     if (!result.ok) throw new Error(`JOBO ledger: ${result.error}`);
   };
+  // Notebook data remains loaded and syncable while its experimental UI is off.
+  const {
+    aspireEntries, aspireLoaded, aspireWritable, aspireError,
+    commitAspire, applyRemoteAspire, restoreAspire, reloadAspire,
+  } = useAspireNotebook();
+  const aspireEntriesRef = useRef(aspireEntries);
+  aspireEntriesRef.current = aspireEntries;
+  const restoreAspireOrThrow = async (data) => {
+    // Old backups have no notebook and must leave this device's copy alone.
+    if (!Array.isArray(data?.aspireEntries)) return;
+    const result = await restoreAspire(data.aspireEntries);
+    if (!result.ok) throw new Error(`Aspire notebook: ${result.error}`);
+  };
   const [projectFilter, setProjectFilter] = useState(null);
   // Clear project filter when the selected date changes
   useEffect(() => { setProjectFilter(null); }, [selectedDate]);
@@ -1933,7 +1949,7 @@ const DayPlanner = () => {
     completedTaskUids, recurringTasks, routineDefinitions, todayRoutines: allTodayRoutines, routinesDate,
     removedTodayRoutineIds, habits, habitLogs, habitsEnabled, routinesEnabled, gtdFrames,
     goals, projects, areas, goalsProjectsEnabled,
-    dailyNotes, users, routineCompletions, multiUserEnabled,
+    dailyNotes, users, routineCompletions, multiUserEnabled, aspireEntries,
   });
 
   // View preferences aren't part of the useSaveOnChange data slices, so
@@ -2417,7 +2433,7 @@ const DayPlanner = () => {
       cloudSyncEngineRef.current.upload();
     }, 5000);
     return () => { if (cloudSyncDebounceRef.current) clearTimeout(cloudSyncDebounceRef.current); };
-  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, dataLoaded, suppressCloudUploadRef]);
+  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, dataLoaded, suppressCloudUploadRef, aspireEntries]);
 
   // ── GLANCEvault DB transport ─────────────────────────────────────────────
   // Row-grained sync that runs ALONGSIDE the file-tier WebDAV engine (it shares
@@ -2823,6 +2839,23 @@ const DayPlanner = () => {
     },
   });
 
+  // Conflict copies the syncing tool left beside the Direct Access files
+  // (docs/direct-access-sync.md, Phase 8): merged into this device's data
+  // and removed, every ten minutes and from the diagnostics panel.
+  const conflictSweep = useConflictCopySweep({
+    active: !isTrayMode,
+    dataLoaded,
+    io: {
+      buildSyncPayload: () => engineCallbacksRef.current.buildPayload(),
+      applyEngineData: (data, opts) => engineCallbacksRef.current.applyPayload(data, opts),
+      syncRetentionDays,
+      localUsers: users,
+      applyUsers: (merged) => { localStorage.setItem('dayglance-users', JSON.stringify(merged)); setUsers(merged); },
+      usersPath: (() => { try { const raw = localStorage.getItem('dayglance-multi-user-config'); return raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined; } catch { return undefined; } })(),
+      eventsPath: (() => { try { const raw = localStorage.getItem(INTENT_CONFIG_KEY); return raw ? (JSON.parse(raw).eventsPath ?? undefined) : undefined; } catch { return undefined; } })(),
+    },
+  });
+
   // Sync user list with glance-users.json on WebDAV, a connected Direct Access
   // folder and iCloud, so dayGLANCE and lastGLANCE share the same roster
   // regardless of which app is opened first. The transports run
@@ -3168,84 +3201,17 @@ const DayPlanner = () => {
   const getTodayStr = () => dateToString(new Date());
 
   // Get overdue tasks: incomplete tasks past their end time + inbox tasks with past deadlines
-  // Includes recurring instances for today (matches dayGLANCE widget behavior)
-  const getOverdueTasks = () => {
-    const todayStr = getTodayStr();
-    const now = currentTime || new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-    const isOverdueToday = (t) => {
-      if (t.date !== todayStr || t.isAllDay) return false;
-      const [h, m] = (t.startTime || '00:00').split(':').map(Number);
-      const endMinutes = h * 60 + m + (t.duration || 30);
-      return endMinutes <= nowMinutes;
-    };
-
-    // Incomplete scheduled tasks from past dates (not imported events)
-    // + today's tasks whose end time has passed
-    const overdueScheduled = tasks.filter(t => {
-      if (t.completed || t.imported || t.isExample || !isVisibleForUser(t)) return false;
-      if (t.date < todayStr) return true;
-      return isOverdueToday(t);
-    }).map(t => ({ ...t, _overdueType: 'scheduled' }));
-
-    // Today's recurring instances past their end time
-    const todayRecurring = expandedRecurringTasks.filter(t =>
-      t.date === todayStr && !t.completed && !t.isExample && isVisibleForUser(t) && isOverdueToday(t)
-    ).map(t => ({ ...t, _overdueType: 'scheduled' }));
-
-    // Past uncompleted recurring all-day instances (look back up to 7 days)
-    const overdueRecurringAllDay = [];
-    for (let i = 1; i <= 7; i++) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateStr = dateToString(d);
-      for (const template of recurringTasks) {
-        if (template.isExample) continue;
-        if (!isVisibleForUser(template)) continue;
-        const isTemplateAllDay = template.isAllDay ?? false;
-        if (!isTemplateAllDay) continue;
-        const occs = getOccurrencesInRange(template, dateStr, dateStr);
-        if (occs.length === 0) continue;
-        if ((template.completedDates || []).includes(dateStr)) continue;
-        const exception = template.exceptions?.[dateStr];
-        if (exception?.completed) continue;
-        const instanceId = `recurring-${template.id}-${dateStr}`;
-        // Skip if already covered by overdueScheduled (shouldn't happen for recurring, but be safe)
-        if (overdueScheduled.some(t => t.id === instanceId)) continue;
-        overdueRecurringAllDay.push({
-          id: instanceId,
-          title: exception?.title ?? template.title,
-          startTime: null,
-          duration: exception?.duration ?? template.duration,
-          color: exception?.color ?? template.color,
-          completed: false,
-          isAllDay: true,
-          notes: template.notes || '',
-          subtasks: template.subtasks || [],
-          // Energy-axis override is series-level (see setTaskEnergy); the
-          // expansion is an explicit field list, so it must be carried here or
-          // instances silently fall back to auto-derivation.
-          energy: template.energy,
-          date: dateStr,
-          isRecurring: true,
-          recurringTemplateId: template.id,
-          recurrenceType: template.recurrence?.type,
-          // Project membership is series-level (stored on the template);
-          // instances inherit it so project-filtered views keep occurrences.
-          projectId: template.projectId,
-          _overdueType: 'scheduled',
-        });
-      }
-    }
-
-    // Inbox tasks with past deadlines (bucket items never nag)
-    const overdueDeadlines = unscheduledTasks.filter(t =>
-      notBucketed(t) && t.deadline && t.deadline < todayStr && !t.completed && !t.isExample && isVisibleForUser(t)
-    ).map(t => ({ ...t, _overdueType: 'deadline' }));
-
-    return [...overdueScheduled, ...todayRecurring, ...overdueRecurringAllDay, ...overdueDeadlines];
-  };
+  // Includes recurring instances for today (matches dayGLANCE widget behavior).
+  // Keep this lazy: expandedRecurringTasks is declared later in the component.
+  const getOverdueTasks = () => collectOverdueTasks({
+    todayStr: getTodayStr(),
+    now: currentTime || new Date(),
+    tasks,
+    expandedRecurringTasks,
+    recurringTasks,
+    unscheduledTasks,
+    isVisibleForUser,
+  });
 
   // Refs for functions/values defined after the useDragDrop call (TDZ-safe pattern).
   // moveToRecycleBin/clearDeadline: circular dep with useTaskActions (wired after useTaskActions).
@@ -4671,6 +4637,7 @@ const DayPlanner = () => {
         projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
         areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
         goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
         autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
         gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4737,6 +4704,7 @@ const DayPlanner = () => {
       projects: JSON.parse(localStorage.getItem('day-planner-projects') || '[]'),
       areas: JSON.parse(localStorage.getItem('day-planner-areas') || '[]'),
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
       goalsProjectsEnabled: JSON.parse(localStorage.getItem('day-planner-goals-projects-enabled') || 'false'),
       autoBackupConfig: JSON.parse(localStorage.getItem('day-planner-auto-backup-config') || 'null'),
       gettingStartedDismissed: localStorage.getItem('gettingStartedDismissed') === 'true',
@@ -4824,6 +4792,7 @@ const DayPlanner = () => {
       const record = await autoBackupDB.getBackup(backupId);
       if (!record?.data?.data) throw new Error('Invalid backup record');
       const { data } = record.data;
+      await restoreAspireOrThrow(data);
       await restoreJoboOrThrow(data);
       if (data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(data.aiConfig));
       if (data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(data.obsidianConfig));
@@ -4846,6 +4815,7 @@ const DayPlanner = () => {
       if (!provider) throw new Error('No provider configured');
       const backup = await provider.downloadBackup(autoBackupConfig.remote, filename);
       if (!backup?.data) throw new Error('Invalid backup file');
+      await restoreAspireOrThrow(backup.data);
       await restoreJoboOrThrow(backup.data);
       if (backup.data.aiConfig) localStorage.setItem('day-planner-ai-config', JSON.stringify(backup.data.aiConfig));
       if (backup.data.obsidianConfig) localStorage.setItem('day-planner-obsidian-config', JSON.stringify(backup.data.obsidianConfig));
@@ -4975,6 +4945,7 @@ const DayPlanner = () => {
           throw new Error('Invalid backup file format');
         }
 
+        await restoreAspireOrThrow(backup.data);
         await restoreJoboOrThrow(backup.data);
         applyBackupToLocalStorage(backup.data);
 
@@ -5014,6 +4985,7 @@ const DayPlanner = () => {
         alert(t('backup.folderBackupNotFound', { filename: LIVE_BACKUP_FILENAME }));
         return;
       }
+      await restoreAspireOrThrow(payload.data);
       await restoreJoboOrThrow(payload.data);
       applyBackupToLocalStorage(payload.data);
       // Re-arm folder backup after the reload regardless of what the backed-up
@@ -5736,6 +5708,7 @@ const DayPlanner = () => {
         // JOBO ledger, only once loaded (see useJoboLedger above). Both tiers
         // treat an absent key as "does not carry it"; [] would mean empty.
         ...(joboRecordsRef.current !== undefined ? { joboRecords: joboRecordsRef.current } : {}),
+        ...(aspireEntriesRef.current !== undefined ? { aspireEntries: aspireEntriesRef.current } : {}),
         goalsProjectsEnabled,
         goalsProjectsEnabledUpdatedAt: localStorage.getItem('day-planner-goals-projects-enabled-updated-at') || null,
         obsidianConfig: obsidianConfig ?? null,
@@ -6031,6 +6004,7 @@ const DayPlanner = () => {
     // JOBO ledger rows go through the hook, the only writer: merged by id with
     // incoming timestamps untouched, held until the ledger has loaded.
     if (Array.isArray(data.joboRecords)) applyRemoteJobo(data.joboRecords);
+    if (Array.isArray(data.aspireEntries)) applyRemoteAspire(data.aspireEntries);
     if (data.goalsProjectsEnabled !== undefined) {
       localStorage.setItem('day-planner-goals-projects-enabled', JSON.stringify(data.goalsProjectsEnabled));
       setGoalsProjectsEnabled(data.goalsProjectsEnabled);
@@ -8433,6 +8407,8 @@ const DayPlanner = () => {
     // callbacks ref so they are current whenever the check runs.
     buildSyncPayload:     () => engineCallbacksRef.current.buildPayload?.(),
     getSyncRetentionDays: () => engineCallbacksRef.current.syncRetentionDays ?? 90,
+    // The conflict copy sweep, on demand from the diagnostics panel (Phase 8).
+    sweepConflictCopies:  () => conflictSweep.sweepNow(),
     // Manual "Sync now" for the GLANCEvault DB tier + its surfaced status.
     vaultSyncNow: async () => {
       const eng = dbEngineRef.current;
@@ -8518,6 +8494,7 @@ const DayPlanner = () => {
     habitsEnabled, setHabitsEnabled,
     joboEnabled, setJoboEnabled,
     aspireEnabled, setAspireEnabled,
+    aspireEntries, aspireLoaded, aspireWritable, aspireError, commitAspire, reloadAspire,
     joboRecords, joboLoaded, joboWritable, joboError, recordJobo, reloadJobo, recordJoboUndo,
     showHabitModal, setShowHabitModal,
     editingHabit, setEditingHabit,

@@ -33,6 +33,7 @@ import { TOMBSTONE_BUNDLE_KEYS, tombstoneCutoff, pruneCompletedTaskUids } from '
 import { mergeRetiredTaskIds } from '../utils/retiredTaskIds.js';
 import { mergeDayWindowMaps } from './dayWindowSync.js';
 import { pickJoboRecord } from '../jobo/core.js';
+import { pickAspireEntry } from '../aspire/notebook.js';
 
 // ── Collection kinds: each array element is one row, keyed by a stable id, with
 // entity-grain last-writer-wins on tsField (the same grain the file-tier merge
@@ -54,6 +55,7 @@ export const COLLECTION_KINDS = {
   // pulled copy runs through core's pickJoboRecord (applyRemoteJobo) rather
   // than the engine's remote-wins tie, which two devices would never agree on.
   joboRecords:      { idField: 'id',     tsField: 'updatedAt'    },
+  aspireEntries:    { idField: 'id',     tsField: 'updatedAt'    },
 };
 
 // The five task-shaped kinds. A task keeps its `id` while moving between these
@@ -135,7 +137,7 @@ export function entityKind(entity) {
 // Other collections and per-date dailyNotes use normal entity-grain LWW.
 export function isInsertOnly(entity) {
   const k = entityKind(entity);
-  return k === SINGLETON_KIND || k === 'recurringTasks' || k === 'joboRecords';
+  return k === SINGLETON_KIND || k === 'recurringTasks' || k === 'joboRecords' || k === 'aspireEntries';
 }
 
 export function getEntityLastModified(entity) {
@@ -446,6 +448,16 @@ export function applyRemoteEntity(data, entity) {
   if (kind === 'joboRecords') {
     return applyRemoteJobo(data, entity.value);
   }
+  if (kind === 'aspireEntries') {
+    const remote = entity.value;
+    if (!remote || remote.id == null) return [];
+    if (!Array.isArray(data.aspireEntries)) data.aspireEntries = [];
+    const index = data.aspireEntries.findIndex(row => row && String(row.id) === String(remote.id));
+    if (index < 0) { data.aspireEntries.push(remote); return []; }
+    const merged = pickAspireEntry(data.aspireEntries[index], remote);
+    data.aspireEntries[index] = merged;
+    return deepEqual(merged, remote) ? [] : [makeEntityId(kind, remote.id)];
+  }
   if (COLLECTION_KINDS[kind]) {
     return upsertCollection(data, kind, entity.value);
   }
@@ -472,7 +484,7 @@ export function applyRemoteDelete(data, entityId) {
   // from a device whose ledger vanished from its payload, and the snapshot
   // guard already refuses to propagate that; refusing it here too keeps the
   // history on a device that receives one anyway.
-  if (kind === 'joboRecords') return;
+  if (kind === 'joboRecords' || kind === 'aspireEntries') return;
   if (COLLECTION_KINDS[kind]) {
     const cfg = COLLECTION_KINDS[kind];
     data[kind] = (data[kind] || []).filter((x) => x == null || String(x[cfg.idField] ?? x.id) !== id);

@@ -98,6 +98,10 @@
       "vaultConsentWarningLoopback": "Diese Adresse ist ein Dienst auf diesem Computer. Lasse sie nur zu, wenn es dein eigener GLANCEvault ist und der Port derjenige ist, auf dem er lauscht. Andere Programme auf diesem Rechner sind über andere Ports erreichbar; diese Berechtigung gilt nicht für sie.",
       "vaultConsentScope": "Dies gilt nur für diese eine Adresse. Du kannst sie später in den Einstellungen unter Cloud-Synchronisierung entfernen.",
       "vaultConsentAllow": "Zulassen",
+      "privateAddressNeedsPermission": "{{origin}} liegt in einem privaten Netzwerk, daher braucht dayGLANCE deine Erlaubnis, um sich damit zu verbinden. Der Server wurde noch nicht kontaktiert.",
+      "reservedAddressRefused": "{{origin}} ist eine reservierte Adresse, mit der sich dayGLANCE nicht verbindet.",
+      "privateAddressGrantFailed": "Diese Adresse konnte nicht zugelassen werden.",
+      "privateConsentWarningLoopbackServer": "Diese Adresse ist ein Dienst auf diesem Computer. Lasse sie nur zu, wenn es dein eigener Sync-Server ist und der Port derjenige ist, auf dem er lauscht. Andere Programme auf diesem Rechner sind über andere Ports erreichbar; diese Berechtigung gilt nicht für sie.",
       "vaultSkipped_one": "{{count}} Element konnte nicht gelesen werden (übersprungen). Das bedeutet meist, dass auf einem anderen Gerät eine andere Synchronisierungs-Passphrase verwendet wurde.",
       "vaultSkipped_other": "{{count}} Elemente konnten nicht gelesen werden (übersprungen). Das bedeutet meist, dass auf einem anderen Gerät eine andere Synchronisierungs-Passphrase verwendet wurde.",
       "saveEnable": "Speichern & aktivieren",
@@ -461,7 +465,7 @@
     "enableJoboHint": "Plan gegen Ist. Eine sechste Ansicht auf Taste 6, die festhält, was gegenüber dem Plan tatsächlich getan wurde.",
     "enableJoboHintPhone": "Plan gegen Ist. Eine Ansicht im Ansichtsumschalter der Zeitleiste, die festhält, was gegenüber dem Plan erledigt wurde.",
     "enableAspire": "Aspire",
-    "enableAspireHint": "Lebensplanung: eine Wunschliste fürs Leben, eine Fünfjahresvision und Leitsätze. Vorerst ein Platzhalter, erreichbar aus dem Bereich Ziele & Projekte.",
+    "enableAspireHint": "Ein einfaches Notizbuch für Wünsche und Leitsätze im Bereich Ziele & Projekte.",
     "inbox": "Posteingang",
     "inboxAutoArchive": "Abgeschlossene Posteingangsaufgaben automatisch archivieren",
     "inboxArchiveNever": "Nie",
@@ -2138,7 +2142,12 @@
     "encryptSwitch": "Auf diesem Gerät verschlüsseln",
     "key": "Sync-Schlüssel",
     "keyReady": "bereit",
-    "keyNeeded": "fehlt (Sync-Passphrase eingeben)"
+    "keyNeeded": "fehlt (Sync-Passphrase eingeben)",
+    "conflictCopies": "Konfliktkopien",
+    "lastSweep": "Letzter Durchlauf",
+    "sweep": "Kopien zusammenführen und entfernen",
+    "sweeping": "Wird zusammengeführt…",
+    "sweepCounts": "{{merged}} zusammengeführt, {{removed}} entfernt, {{left}} verbleibend"
   },
   "icloudFirstRun": {
     "title": "Daten in iCloud gefunden",
@@ -2191,12 +2200,44 @@
     "eventsForget": "Ereignisdatei vergessen",
     "eventsChosen": "Ereignisdatei: {{name}}",
     "eventsNotChosen": "Ereignisdatei: auf diesem Gerät nicht gewählt.",
-    "iosEventsHint": "Intents reisen in glance-events.json im Ordner GLANCE/events des geteilten Ordners. Wähle die Datei, die deine anderen Geräte angelegt haben, oder erstelle sie dort."
+    "iosEventsHint": "Intents reisen in glance-events.json im Ordner GLANCE/events des geteilten Ordners. Wähle die Datei, die deine anderen Geräte angelegt haben, oder erstelle sie dort.",
+    "removeEncryption": "Verschlüsselung der Datei entfernen…",
+    "removeEncryptionConfirm": "Dies schreibt die Datei im Ordner einmalig unverschlüsselt neu und schaltet den Schalter hier aus. Schalte zuerst „Datei im Ordner verschlüsseln“ auf deinen anderen Geräten aus, sonst versiegelt das nächste schreibende Gerät sie wieder.",
+    "removeEncryptionGo": "Verschlüsselung entfernen",
+    "removeEncryptionOutcome": {
+      "removed": "Erledigt. Die Datei ist wieder unverschlüsselt; jedes Gerät folgt ihr ab dem nächsten Lesen.",
+      "already-plaintext": "Die Datei ist bereits unverschlüsselt. Der Schalter ist hier aus.",
+      "needs-key": "Dieses Gerät kann die Datei nicht öffnen: {{detail}}",
+      "unavailable": "Der Ordner ist gerade nicht verfügbar. {{detail}}",
+      "write-failed": "Die Datei konnte nicht geschrieben werden. Nichts wurde geändert.",
+      "no-file": "Im Ordner gibt es noch keine Datei."
+    }
   },
   "aspire": {
     "title": "Aspire",
-    "placeholder": "Hier entstehen deine Lebenswünsche, deine Fünfjahresvision und deine Leitsätze.",
-    "comingSoon": "Demnächst"
+    "intro": "Schreib frei. Du kannst alles leer lassen.",
+    "wishes": "Wünsche",
+    "mottos": "Leitsätze",
+    "blankHint": "Lass diese Seite leer oder füge jederzeit einen Gedanken hinzu.",
+    "addWish": "Wunsch hinzufügen",
+    "addMotto": "Leitsatz hinzufügen",
+    "wishLabel": "Wunsch {{number}}",
+    "mottoLabel": "Leitsatz {{number}}",
+    "writeHere": "Hier schreiben…",
+    "moveUp": "Eintrag {{number}} nach oben",
+    "moveDown": "Eintrag {{number}} nach unten",
+    "remove": "Eintrag {{number}} entfernen",
+    "saving": "Wird gespeichert…",
+    "unsaved": "Ungespeicherte Änderungen",
+    "saved": "Auf diesem Gerät gespeichert. Verwendet deine eingerichtete Synchronisierung.",
+    "loading": "Notizbuch wird geladen…",
+    "readOnly": "Dieses Gerät kann das Notizbuch lesen, aber keine Änderungen speichern.",
+    "loadFailed": "Das Notizbuch konnte nicht geladen werden. Gespeicherte Daten wurden nicht ersetzt.",
+    "saveFailed": "Speichern fehlgeschlagen. Dein Text bleibt hier; versuche es erneut oder brich die Bearbeitung ab.",
+    "conflict": "Dieser Eintrag wurde anderswo geändert. Dein Entwurf bleibt hier. Brich die Bearbeitung ab, um die aktuelle Version zu sehen.",
+    "retry": "Erneut laden",
+    "removed": "Eintrag entfernt",
+    "undo": "Rückgängig"
   },
   "jobo": {
     "stats": {

@@ -98,6 +98,10 @@
       "vaultConsentWarningLoopback": "This address is a service running on this computer. Only allow it if it is your own GLANCEvault and the port is the one it listens on. Other programs on this machine are reachable at other ports, and this permission does not cover them.",
       "vaultConsentScope": "This applies to this one address only. You can remove it later in Settings, under Cloud Sync.",
       "vaultConsentAllow": "Allow",
+      "privateAddressNeedsPermission": "{{origin}} is on a private network, so dayGLANCE needs your permission to connect to it. The server has not been contacted yet.",
+      "reservedAddressRefused": "{{origin}} is a reserved address that dayGLANCE will not connect to.",
+      "privateAddressGrantFailed": "Could not allow this address.",
+      "privateConsentWarningLoopbackServer": "This address is a service running on this computer. Only allow it if it is your own sync server and the port is the one it listens on. Other programs on this machine are reachable at other ports, and this permission does not cover them.",
       "vaultSkipped_one": "{{count}} item couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "vaultSkipped_other": "{{count}} items couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "saveEnable": "Save & Enable",
@@ -2138,7 +2142,12 @@
     "encryptSwitch": "Encrypt on this device",
     "key": "Sync key",
     "keyReady": "ready",
-    "keyNeeded": "needed (enter the sync passphrase)"
+    "keyNeeded": "needed (enter the sync passphrase)",
+    "conflictCopies": "Conflict copies",
+    "lastSweep": "Last sweep",
+    "sweep": "Merge and remove copies",
+    "sweeping": "Merging…",
+    "sweepCounts": "{{merged}} merged, {{removed}} removed, {{left}} left"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",
@@ -2191,7 +2200,18 @@
     "eventsForget": "Forget events file",
     "eventsChosen": "Events file: {{name}}",
     "eventsNotChosen": "Events file: not chosen on this device.",
-    "iosEventsHint": "Intents travel in glance-events.json in the shared folder's GLANCE/events. Choose the one your other devices made, or create it there."
+    "iosEventsHint": "Intents travel in glance-events.json in the shared folder's GLANCE/events. Choose the one your other devices made, or create it there.",
+    "removeEncryption": "Remove encryption from the file…",
+    "removeEncryptionConfirm": "This rewrites the file in the folder as plaintext, once, and turns the switch off here. Turn \"Encrypt the file in the folder\" off on your other devices first, or the next one to write seals it again.",
+    "removeEncryptionGo": "Remove encryption",
+    "removeEncryptionOutcome": {
+      "removed": "Done. The file is plaintext again; every device follows it from its next read.",
+      "already-plaintext": "The file is already plaintext. The switch is off here.",
+      "needs-key": "This device cannot open the file: {{detail}}",
+      "unavailable": "The folder is not available right now. {{detail}}",
+      "write-failed": "The file could not be written. Nothing changed.",
+      "no-file": "There is no file in the folder yet."
+    }
   },
   "aspire": {
     "title": "Aspire",

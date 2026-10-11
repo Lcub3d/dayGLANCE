@@ -98,6 +98,10 @@
       "vaultConsentWarningLoopback": "此地址是运行在这台电脑上的服务。请仅在它是你自己的 GLANCEvault、且端口正是它监听的端口时才允许。这台机器上的其他程序通过其他端口提供服务，本授权并不包含它们。",
       "vaultConsentScope": "此设置仅适用于该地址。你之后可以在“设置”的“云同步”中移除它。",
       "vaultConsentAllow": "允许",
+      "privateAddressNeedsPermission": "{{origin}} 位于私有网络中，dayGLANCE 需要你的许可才能连接。尚未联系该服务器。",
+      "reservedAddressRefused": "{{origin}} 是保留地址，dayGLANCE 不会连接到它。",
+      "privateAddressGrantFailed": "无法允许此地址。",
+      "privateConsentWarningLoopbackServer": "此地址是运行在这台电脑上的服务。请仅在它是你自己的同步服务器、且端口正是它监听的端口时才允许。这台机器上的其他程序通过其他端口提供服务，本授权并不包含它们。",
       "vaultSkipped_one": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "vaultSkipped_other": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "saveEnable": "保存并启用",
@@ -2138,7 +2142,12 @@
     "encryptSwitch": "在本设备上加密",
     "key": "同步密钥",
     "keyReady": "就绪",
-    "keyNeeded": "缺少（请输入同步口令）"
+    "keyNeeded": "缺少（请输入同步口令）",
+    "conflictCopies": "冲突副本",
+    "lastSweep": "上次清理",
+    "sweep": "合并并删除副本",
+    "sweeping": "合并中…",
+    "sweepCounts": "已合并 {{merged}}，已删除 {{removed}}，剩余 {{left}}"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",
@@ -2191,7 +2200,18 @@
     "eventsForget": "忘记事件文件",
     "eventsChosen": "事件文件：{{name}}",
     "eventsNotChosen": "事件文件：本设备尚未选择。",
-    "iosEventsHint": "意图通过共享文件夹 GLANCE/events 中的 glance-events.json 传递。请选择其他设备创建的那个文件，或在那里创建它。"
+    "iosEventsHint": "意图通过共享文件夹 GLANCE/events 中的 glance-events.json 传递。请选择其他设备创建的那个文件，或在那里创建它。",
+    "removeEncryption": "移除文件加密…",
+    "removeEncryptionConfirm": "这会把文件夹中的文件一次性重写为明文，并关闭此处的开关。请先在其他设备上关闭“加密文件夹中的文件”，否则下一台写入的设备会再次加密它。",
+    "removeEncryptionGo": "移除加密",
+    "removeEncryptionOutcome": {
+      "removed": "完成。文件已恢复为明文；每台设备从下次读取起跟随它。",
+      "already-plaintext": "文件已经是明文。此处开关已关闭。",
+      "needs-key": "本设备无法打开该文件：{{detail}}",
+      "unavailable": "文件夹当前不可用。{{detail}}",
+      "write-failed": "无法写入文件。未做任何更改。",
+      "no-file": "文件夹中还没有文件。"
+    }
   },
   "aspire": {
     "title": "Aspire",

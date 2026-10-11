@@ -14,6 +14,8 @@
 // own line order and neither reads nor writes this field (buildout spec
 // 2.5 records the deferred design for making the note follow it).
 
+import { resolveRetirement } from './retiredTaskIds.js';
+
 export const PROJECT_ORDER_STEP = 10;
 
 const hasOrder = (t) => typeof t?.projectOrder === 'number' && Number.isFinite(t.projectOrder);
@@ -102,12 +104,19 @@ export function topProjectOrder(projectInbox) {
  * The applyProjectReorder ids that move one open task to the bottom of its
  * project's open tasks, the rest keeping their order. Null when the task is
  * not an open task of this inbox (completed, scheduled or gone since).
+ *
+ * `retired` is the retired-id record (utils/retiredTaskIds.js). A task added
+ * to an Obsidian-linked project changes id once the writeback stamps its line
+ * (the random id retires onto the block-derived one), usually within seconds
+ * of the add, so the id the caller held is resolved through the record first.
  */
-export function sendToBottomIds(projectInbox, id) {
+export function sendToBottomIds(projectInbox, id, retired = null) {
+  const target = String(resolveRetirement(retired, id) ?? id);
   const open = sortByProjectOrder((projectInbox || []).filter((t) => t && !t.completed)).map((t) => t.id);
-  if (!open.some((x) => String(x) === String(id))) return null;
-  const rest = open.filter((x) => String(x) !== String(id));
-  return projectReorderIds([...rest, id], projectInbox);
+  const current = open.find((x) => String(x) === target);
+  if (current === undefined) return null;
+  const rest = open.filter((x) => String(x) !== target);
+  return projectReorderIds([...rest, current], projectInbox);
 }
 
 export function orderProjectTasks(scheduled, unscheduled) {

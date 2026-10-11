@@ -79,6 +79,9 @@ export default function useTaskActions({
   frameScheduleModal, setFrameScheduleModal,
   focusBlockTasks, setFocusBlockTasks,
   focusCompletedTasks, setFocusCompletedTasks,
+  isFocusSettlementPending = () => false,
+  // "Make a task" from an unlinked Do: links the Do once the task is saved.
+  onTaskMadeFromDo,
   exitFocusModeRef,
   playFocusSound,
   // Obsidian integration.
@@ -191,7 +194,12 @@ export default function useTaskActions({
         ...(newTask.assignedUserSyncIds?.length ? { assignedUserSyncIds: newTask.assignedUserSyncIds } : {}),
       };
 
+      // The id a new one-off task was saved under, for a Do this task was
+      // made from (null when the save moved an existing Inbox task instead,
+      // or made a series: see the link below).
+      let createdId = null;
       if (toInbox) {
+        createdId = taskId;
         const inboxTask = { ...task, priority: newTask.priority ?? 0 };
         if (newTask.deadline) {
           inboxTask.deadline = newTask.deadline;
@@ -199,6 +207,7 @@ export default function useTaskActions({
         setUnscheduledTasks(prev => [...prev, inboxTask]);
       } else if (newTask.keepUnscheduled && newTask.projectId) {
         // Save as unscheduled project task (no scheduling)
+        createdId = taskId;
         setUnscheduledTasks(prev => [...prev, task]);
       } else if (newTask.recurrence) {
         // Create recurring task template
@@ -269,6 +278,7 @@ export default function useTaskActions({
           : getAdjustedTimeForImportedConflicts(taskId, requestedStartTime, newTask.duration, taskDate);
 
         scheduledAdjustedStartTime = adjustedStartTime;
+        createdId = taskId;
         setTasks(prev => [...prev, {
           ...task,
           startTime: adjustedStartTime,
@@ -299,6 +309,14 @@ export default function useTaskActions({
           blockId: obsidianMeta.obsidianBlockId,
         });
       }
+
+      // "Make a task" from an unlinked Do (jobo/carryForward.js makeTaskDraft):
+      // link that Do to the task just saved. One more undo step, after the add.
+      // Only a one-off task is linked. Make a task opens the Inbox form, which
+      // cannot make a series; if one is ever made from a Do, the Do stays
+      // unlinked, since a series has no occurrence the work belongs to and
+      // the views resolve a template id only through one.
+      if (newTask.linkDo && createdId != null) onTaskMadeFromDo?.(newTask.linkDo, createdId);
 
       setNewTask({ title: '', startTime: getNextQuarterHour(), duration: 30, date: dateToString(selectedDate), isAllDay: false, recurrence: null });
       setShowAddTask(false);
@@ -861,8 +879,14 @@ export default function useTaskActions({
 
   // ── Focus mode wrappers ──────────────────────────────────────────────────
 
-  const focusCompleteTask = (taskId) => {
-    toggleComplete(taskId);
+  const focusCompleteTask = (taskId, { exitWhenDone = true, fromSettlement = false } = {}) => {
+    if (isFocusSettlementPending()) return false;
+    if (fromSettlement) {
+      const found = resolveTaskRef(taskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(taskId)) return false;
+      taskId = found.task.id;
+      toggleComplete(taskId, found.where === 'inbox');
+    } else toggleComplete(taskId);
     setFocusCompletedTasks(prev => {
       const next = new Set(prev);
       next.add(taskId);
@@ -873,8 +897,9 @@ export default function useTaskActions({
     const allDone = focusBlockTasks.every(t => t.completed || t.id === taskId || focusCompletedTasks.has(t.id));
     if (allDone) {
       playFocusSound('complete');
-      setTimeout(() => exitFocusModeRef.current?.(true), 500);
+      if (exitWhenDone) setTimeout(() => exitFocusModeRef.current?.(true), 500);
     }
+    return allDone;
   };
 
   const hgCompleteTask = (taskId) => {

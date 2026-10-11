@@ -139,4 +139,13 @@ describe('sendToBottomIds', () => {
     expect(sendToBottomIds([t('a'), t('x', { completed: true })], 'x')).toBeNull();
     expect(sendToBottomIds([t('a')], 'gone')).toBeNull();
   });
+
+  it('follows the id through the retired-id record (an Obsidian-linked add re-ids the task on writeback)', () => {
+    const inbox = [t('obsidian-dg-x', { projectOrder: -10 }), t('a', { projectOrder: 0 }), t('b', { projectOrder: 10 })];
+    const retired = { 'uuid-1': { retiredAt: '2026-09-08T20:00:00.000Z', successor: 'obsidian-dg-x' } };
+    expect(sendToBottomIds(inbox, 'uuid-1')).toBeNull();
+    expect(sendToBottomIds(inbox, 'uuid-1', retired)).toEqual(['a', 'b', 'obsidian-dg-x']);
+    // An id the record does not name resolves to itself.
+    expect(sendToBottomIds(inbox, 'a', retired)).toEqual(['obsidian-dg-x', 'b', 'a']);
+  });
 });

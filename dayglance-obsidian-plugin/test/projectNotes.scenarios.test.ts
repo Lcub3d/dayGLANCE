@@ -41,6 +41,8 @@ const { flushBridgeOutbox, emitBridgeIntent, __resetBridgeStreamForTests } = awa
 const { NoteBlockWriter } = await import('../src/noteBlocks');
 const { parseYaml } = await import('obsidian');
 const { noteTextHash } = await import('@glance-apps/obsidian-format');
+const { topProjectOrder, sendToBottomIds, applyProjectReorder, sortByProjectOrder } = await import('../../src/utils/projectOrder.js');
+const { readRetiredTaskIds } = await import('../../src/utils/retiredTaskIds.js');
 
 type Row = Record<string, any>;
 
@@ -295,6 +297,39 @@ describe('project and goal notes: creation, the maintained map, the project fiel
     await A.writeback();
     await s.plugin.transport.drain();
     expect(s.plugin.app.vault.writes).toBe(writes);
+  });
+
+  it('5b. PLANNER "Send to bottom" (2026-10-11): a quick-add to a linked project is re-ided by the writeback; the offer still finds it through the retired-id record and moves it last, and the order survives the round trip', async () => {
+    await bootLinked();
+    const inboxOf = () => A.state.inbox.filter((t) => t.projectId === 'p1' && !t.archived);
+    A.add({ title: 'First', projectId: 'p1', projectOrder: 0 });
+    A.add({ title: 'Second', projectId: 'p1', projectOrder: 10 });
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    // The planner's quick-add: a random id, at the top.
+    const addedId = A.add({ title: 'Fresh', projectId: 'p1', projectOrder: topProjectOrder(inboxOf()) });
+    expect(sortByProjectOrder(inboxOf())[0].id).toBe(addedId);
+    // The writeback lands it in the note and swaps its id while the offer is showing.
+    await A.writeback();
+    await s.plugin.transport.drain();
+    expect(A.all().find((t) => t.id === addedId)).toBeUndefined();
+    const fresh = A.all().find((t) => t.title.startsWith('Fresh'))!;
+    expect(fresh.id).toMatch(/^obsidian-dg-/);
+    // The click, as the planner makes it.
+    (globalThis as any).localStorage = { getItem: (k: string) => A.store.get(k) ?? null };
+    const ids = sendToBottomIds(inboxOf(), addedId, readRetiredTaskIds());
+    expect(ids).not.toBeNull();
+    A.state.inbox.splice(0, A.state.inbox.length, ...applyProjectReorder(A.state.inbox, ids!));
+    const order = () => sortByProjectOrder(inboxOf()).map((t) => t.title.replace(/ #obsidian$/, ''));
+    expect(order()).toEqual(['First', 'Second', 'Fresh']);
+    // The order is the app's: the next observation round trip keeps it.
+    await A.writeback();
+    await s.plugin.transport.drain();
+    await s.settle();
+    await A.sync();
+    expect(order()).toEqual(['First', 'Second', 'Fresh']);
   });
 
   it('6. assigning an existing daily-note task moves its line into the note under the SAME id; unassigning removes the line and the task stays in dayGLANCE, app-only', async () => {

@@ -23,6 +23,7 @@ import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
 import ICloudDiagnostics from './ICloudDiagnostics.jsx';
 import ICloudSyncToggle from './ICloudSyncToggle.jsx';
 import DirectAccessSyncCard from './DirectAccessSyncCard.jsx';
+import DirectAccessFileRow from './DirectAccessFileRow.jsx';
 import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import AutoBackupSettingsForm from './AutoBackupSettingsForm.jsx';
@@ -1634,7 +1635,6 @@ const MobileSettingsPanel = () => {
       {isDirectAccessSupported() && (
         <DirectAccessSyncCard
           darkMode={darkMode}
-          multiUserEnabled={multiUserEnabled}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
           borderClass={borderClass}
@@ -2627,6 +2627,7 @@ const MobileSettingsPanel = () => {
             {!directAccessStatus.connected && (
               <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">{t('settings.directAccessIntentsNeedsFolder')}</p>
             )}
+            <DirectAccessFileRow slot="events" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
             <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
               <input
                 type="checkbox"
@@ -3236,6 +3237,7 @@ const MobileSettingsPanel = () => {
       </div>
 
       {/* People */}
+      <DirectAccessFileRow slot="users" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
       <div>
         <p className={`text-xs font-medium ${textSecondary} mb-2`}>{t('settings.multiUserPeople')}</p>
         <div className="space-y-2">

@@ -61,6 +61,7 @@ import { isObsidianTombstoned } from '../utils/obsidianDeletions.js';
 import { ghostSuccessorId, persistDerivedGhostRetirements } from '../utils/obsidianGhostRows.js';
 import { createIdbKeyValue } from '../utils/idbKeyValue.js';
 import { cycleErrorCode } from './syncErrors.js';
+import { nativeHttpRequest } from '../native.js';
 
 const APP_ID = 'dayglance';
 const CRYPTO_DB_NAME = 'dayglance-db-crypto';
@@ -351,9 +352,10 @@ export function createDbEngine(callbacks = {}) {
   const fetchImpl = callbacks.fetchImpl
     ?? (isNativeApp
       ? async (url, { method = 'GET', headers = {}, body } = {}) => {
-        // The native bridge is synchronous and returns a JSON string.
+        // Async on every shell that supports it (native.js, #2048): the old
+        // synchronous bridge froze the WebView for the whole request.
         let r;
-        try { r = JSON.parse(nativeBridge.httpRequest(method, url, JSON.stringify(headers), body ?? '')); }
+        try { r = await nativeHttpRequest(method, url, headers, body ?? ''); }
         catch { throw new TypeError('Failed to fetch'); }
         return shapeResponse(r);
       }

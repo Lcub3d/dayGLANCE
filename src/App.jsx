@@ -5021,7 +5021,7 @@ const DayPlanner = () => {
       let effectiveTaskUrl = taskCalendarUrl;
       if (isNativeApp()) {
         // On native apps: fetch directly — no CORS restrictions, no proxy server available
-        const result = nativeHttpRequest('GET', taskCalendarUrl, taskAuthHeaders, '');
+        const result = await nativeHttpRequest('GET', taskCalendarUrl, taskAuthHeaders, '');
         if (!result || !result.ok) throw new Error('Failed to fetch task calendar');
         icsContent = result.body;
       } else {

@@ -51,6 +51,10 @@
       "httpRejected": "Unsichere Verbindung. Verwenden Sie https:// für einen Vault im öffentlichen Internet. Einfaches http:// ist nur in einem vertrauenswürdigen lokalen Netzwerk erlaubt (localhost oder eine LAN-Adresse).",
       "insecureLanWarning": "Unverschlüsselte Verbindung: nur in einem vertrauenswürdigen Netzwerk verwenden."
     },
+    "webdavUrl": {
+      "insecureLanWarning": "Unverschlüsselte Verbindung: Ihr Passwort wird im Klartext gesendet. Nur in einem vertrauenswürdigen Netzwerk verwenden.",
+      "insecurePublicWarning": "Unverschlüsselte Verbindung über das Internet: Ihr Passwort und Ihre Daten werden im Klartext gesendet. Verwenden Sie https://. Die Android-App lehnt diese Verbindung ab."
+    },
     "form": {
       "webdavTitle": "WebDAV-Synchronisierung",
       "webdavToggle": "Über WebDAV synchronisieren",

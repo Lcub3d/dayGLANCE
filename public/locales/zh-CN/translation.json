@@ -51,6 +51,10 @@
       "httpRejected": "连接不安全。公网 GLANCEvault 必须使用 https://。只有 localhost 或局域网地址等受信任本地网络才允许使用明文 http://。",
       "insecureLanWarning": "当前连接未加密，请仅在受信任的网络中使用。"
     },
+    "webdavUrl": {
+      "insecureLanWarning": "未加密的连接：您的密码以明文发送。仅在受信任的网络中使用。",
+      "insecurePublicWarning": "通过互联网的未加密连接：您的密码和数据以明文发送。请使用 https://。Android 应用会拒绝此连接。"
+    },
     "form": {
       "webdavTitle": "WebDAV 同步",
       "webdavToggle": "通过 WebDAV 同步",

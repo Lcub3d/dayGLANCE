@@ -51,6 +51,10 @@
       "httpRejected": "Ligação não segura. Utilize https:// para um vault na internet pública. O http:// simples só é permitido numa rede local de confiança (localhost ou um endereço LAN).",
       "insecureLanWarning": "Ligação não encriptada: utilize apenas numa rede de confiança."
     },
+    "webdavUrl": {
+      "insecureLanWarning": "Ligação sem encriptação: a sua palavra-passe é enviada em texto simples. Utilize apenas numa rede de confiança.",
+      "insecurePublicWarning": "Ligação sem encriptação pela internet: a sua palavra-passe e os seus dados são enviados em texto simples. Utilize https://. A app Android recusa esta ligação."
+    },
     "form": {
       "webdavTitle": "Sincronização WebDAV",
       "webdavToggle": "Sincronizar através de WebDAV",

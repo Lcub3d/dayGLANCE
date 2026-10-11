@@ -467,7 +467,7 @@
     "experimental": "Expérimental",
     "experimentalHint": "Fonctions encore en construction, livrées par étapes. Désactivées par défaut ; rien ne change tant que vous n'en activez pas une.",
     "enableJobo": "Vue JOBO",
-    "enableJoboHint": "Prévu contre réalisé. Une sixième vue, sur la touche 6, qui enregistrera ce qui a été fait par rapport à ce qui était prévu.",
+    "enableJoboHint": "Prévu contre réalisé. Une sixième vue, sur la touche 6, qui enregistre ce qui a été fait par rapport à ce qui était prévu.",
     "enableJoboHintPhone": "Prévu contre réalisé. Une vue du sélecteur de vues de la chronologie, qui enregistre ce qui a été fait par rapport au plan.",
     "enableAspire": "Aspire",
     "enableAspireHint": "Planification de vie : une liste de souhaits, une vision à cinq ans et des devises. Un simple espace réservé pour l'instant, ouvert depuis l'espace Objectifs et projets.",

@@ -28,6 +28,7 @@
       "FORBIDDEN": "Sincronización bloqueada (403). Puede que tu servidor esté bloqueando la solicitud.",
       "LOCKED": "La sincronización está bloqueada por otro dispositivo. Inténtalo de nuevo en un momento.",
       "NETWORK_ERROR": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "SYNC_FAILED": "La sincronización no se completó: {{detail}}. Se volverá a intentar automáticamente.",
       "PASSPHRASE_REQUIRED": "Introduce tu frase de contraseña de sincronización para continuar.",
       "PRECONDITION_FAILED": "Otro dispositivo se actualizó primero. Reintentando.",
       "KEY_MISMATCH": "Frase de contraseña de sincronización incorrecta. Debe coincidir exactamente con la usada en tus otros dispositivos.",
@@ -49,6 +50,10 @@
       "invalid": "Introduce una URL de vault válida.",
       "httpRejected": "Conexión no segura. Usa https:// para un vault en la internet pública. El http:// simple solo se permite en una red local de confianza (localhost o una dirección LAN).",
       "insecureLanWarning": "Conexión sin cifrar: úsala solo en una red de confianza."
+    },
+    "webdavUrl": {
+      "insecureLanWarning": "Conexión sin cifrar: tu contraseña se envía en texto plano. Úsala solo en una red de confianza.",
+      "insecurePublicWarning": "Conexión sin cifrar a través de internet: tu contraseña y tus datos se envían en texto plano. Usa https://. La app de Android rechaza esta conexión."
     },
     "form": {
       "webdavTitle": "Sincronización WebDAV",
@@ -98,6 +103,10 @@
       "vaultConsentWarningLoopback": "Esta dirección es un servicio que se ejecuta en este ordenador. Permítela solo si es tu propio GLANCEvault y el puerto es aquel en el que escucha. Otros programas de este equipo son accesibles en otros puertos, y este permiso no los incluye.",
       "vaultConsentScope": "Esto se aplica únicamente a esta dirección. Puedes quitarla más tarde en Ajustes, en Sincronización en la nube.",
       "vaultConsentAllow": "Permitir",
+      "privateAddressNeedsPermission": "{{origin}} está en una red privada, así que dayGLANCE necesita tu permiso para conectarse. Todavía no se ha contactado con el servidor.",
+      "reservedAddressRefused": "{{origin}} es una dirección reservada a la que dayGLANCE no se conectará.",
+      "privateAddressGrantFailed": "No se pudo permitir esta dirección.",
+      "privateConsentWarningLoopbackServer": "Esta dirección es un servicio que se ejecuta en este ordenador. Permítela solo si es tu propio servidor de sincronización y el puerto es aquel en el que escucha. Otros programas de este equipo son accesibles en otros puertos, y este permiso no los incluye.",
       "vaultSkipped_one": "No se pudo leer {{count}} elemento (omitido). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "vaultSkipped_other": "No se pudieron leer {{count}} elementos (omitidos). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "saveEnable": "Guardar y activar",
@@ -725,7 +734,11 @@
     "viewsOnDevice": "Vistas en este dispositivo",
     "viewsOnDeviceHint": "Una vista desactivada aquí desaparece del selector, de los atajos y de la vista predeterminada solo en este dispositivo. No se pierde nada. Al menos una vista debe quedar activa.",
     "viewsInPortrait": "Vistas en vertical",
-    "viewsInLandscape": "Vistas en horizontal"
+    "viewsInLandscape": "Vistas en horizontal",
+    "directAccessIntents": "Intents de Direct Access",
+    "directAccessIntentsDesc": "Comparte intents de tareas con otras apps GLANCE a través de la carpeta de Direct Access: un archivo de eventos, glance-events.json, que cada dispositivo y app de la carpeta lee y amplía. Cifrado con tu frase de contraseña de sincronización cuando el archivo de Direct Access lo está.",
+    "directAccessIntentsEnable": "Activar intents de Direct Access",
+    "directAccessIntentsNeedsFolder": "No hay ninguna carpeta conectada en este dispositivo. Conecta una primero en Sincronización en la nube → Direct Access; hasta entonces aquí no se envía ni se recibe nada."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -2147,7 +2160,12 @@
     "encryptSwitch": "Cifrar en este dispositivo",
     "key": "Clave de sincronización",
     "keyReady": "lista",
-    "keyNeeded": "falta (introduce la frase de contraseña)"
+    "keyNeeded": "falta (introduce la frase de contraseña)",
+    "conflictCopies": "Copias en conflicto",
+    "lastSweep": "Última limpieza",
+    "sweep": "Combinar y eliminar copias",
+    "sweeping": "Combinando…",
+    "sweepCounts": "{{merged}} combinadas, {{removed}} eliminadas, {{left}} pendientes"
   },
   "icloudFirstRun": {
     "title": "Datos encontrados en iCloud",
@@ -2193,7 +2211,25 @@
     "encryptHint": "Desactivado. El archivo se escribe tal cual. Si otro dispositivo ya lo cifró, este dispositivo sigue al archivo y pide la frase de contraseña de sincronización.",
     "encryptOnHint": "Activado. La próxima escritura sella el archivo con tu frase de contraseña de sincronización, la misma que usa el cifrado WebDAV, y después todos los dispositivos siguen al archivo. Desactivarlo nunca vuelve a dejar el archivo sin cifrar.",
     "encryptPassphraseHint": "Elige una frase de contraseña de sincronización. Cada dispositivo que abra esta carpeta la pedirá una vez. Si ya usas una para el cifrado WebDAV, introduce esa.",
-    "encryptTurnOn": "Activar el cifrado"
+    "encryptTurnOn": "Activar el cifrado",
+    "eventsChoose": "Elegir archivo de eventos…",
+    "eventsCreate": "Crear archivo de eventos…",
+    "eventsChange": "Cambiar archivo de eventos",
+    "eventsForget": "Olvidar archivo de eventos",
+    "eventsChosen": "Archivo de eventos: {{name}}",
+    "eventsNotChosen": "Archivo de eventos: no elegido en este dispositivo.",
+    "iosEventsHint": "Los intents viajan en glance-events.json, en GLANCE/events de la carpeta compartida. Elige el que crearon tus otros dispositivos o créalo ahí.",
+    "removeEncryption": "Quitar el cifrado del archivo…",
+    "removeEncryptionConfirm": "Esto reescribe el archivo de la carpeta sin cifrar, una vez, y desactiva el interruptor aquí. Desactiva antes «Cifrar el archivo en la carpeta» en tus otros dispositivos, o el siguiente en escribir lo volverá a cifrar.",
+    "removeEncryptionGo": "Quitar el cifrado",
+    "removeEncryptionOutcome": {
+      "removed": "Hecho. El archivo vuelve a estar sin cifrar; cada dispositivo lo sigue desde su próxima lectura.",
+      "already-plaintext": "El archivo ya está sin cifrar. El interruptor está desactivado aquí.",
+      "needs-key": "Este dispositivo no puede abrir el archivo: {{detail}}",
+      "unavailable": "La carpeta no está disponible ahora. {{detail}}",
+      "write-failed": "No se pudo escribir el archivo. No se cambió nada.",
+      "no-file": "Aún no hay ningún archivo en la carpeta."
+    }
   },
   "aspire": {
     "title": "Aspire",
@@ -2219,6 +2255,9 @@
       "secondary": "Fin tardío: {{finish}} · Duró más: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Crear tarea",
+    "makeTaskHint": "Abre una nueva tarea en la bandeja de entrada a partir de esta ejecución y la vincula a ella.",
+    "makeTaskNotLinked": "Tarea añadida. La ejecución cambió entretanto, así que no se ha vinculado.",
     "undo": {
       "changed": "Este Do cambió desde entonces, así que se dejó como está.",
       "completionBlocked": "Su tarea ya no está completada, así que el Do no puede volver a Completado. Se dejó como está.",

@@ -38,6 +38,9 @@ import {
 import * as iCloudTransport from './icloudFileTransport.js';
 import { HELD_NO_KEY_REASON } from './outbox.js';
 import { intentsClientFor } from './dbIntentsTransport.js';
+import { directAccessTransport, directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
+import { isDirectAccessIntentsEnabled } from './directAccessIntentsConfig.js';
+import { publishOwnEvent, retentionMsFrom } from './folderIntents.js';
 
 export const DELIVERED = 'delivered';
 export const TRANSIENT = 'transient';
@@ -232,6 +235,45 @@ export async function icloudDeliverer(intent, opts = {}) {
   return ok ? DELIVERED : TRANSIENT;
 }
 
+// ─── 4. DIRECT ACCESS deliverer — the event-set file (Phase 7) ───────────────
+
+/**
+ * Deliver one intent to the Direct Access event set (intents/folderIntents.js).
+ * Encrypted iff the Direct Access "encrypt the file" switch is on, with the
+ * WebDAV intents root key; held (HELD_NO_KEY_REASON) while that key is not
+ * ready, never sent plaintext. Held too while the opt-in is off or no folder
+ * is connected or reachable: both may change. Delivered once the file has
+ * been read back with the event in it; the device's ledger keeps the event
+ * until retention so a copy of the file that loses it gets it back.
+ *
+ * @param {object} intent
+ * @param {object} [opts] - test seams (transport, isEnabled, encrypts, loadWebdavKey, publish, storage, now, config)
+ * @returns {Promise<'delivered'|'transient'|'permanent'|{status, reason}>}
+ */
+export async function directAccessDeliverer(intent, opts = {}) {
+  const transport = opts.transport ?? directAccessTransport;
+  const enabled = opts.isEnabled ?? (() => isDirectAccessIntentsEnabled(transport));
+  if (!enabled()) return TRANSIENT;
+  if (!transport.isAvailable()) return TRANSIENT;
+
+  const encrypts = opts.encrypts ?? directAccessEncryptsWrites;
+  const built = await buildFileTierEnvelope(intent, { encryptionEnabled: !!encrypts() }, opts);
+  if (built.hold) return { status: TRANSIENT, reason: HELD_NO_KEY_REASON };
+
+  const config = opts.config ?? readIntentConfig();
+  const storage = opts.storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+  const publish = opts.publish ?? publishOwnEvent;
+  try {
+    const ok = await publish(transport, built.envelope, {
+      storage, now: opts.now, eventsPath: config?.eventsPath, retentionMs: opts.retentionMs ?? retentionMsFrom(storage),
+    });
+    return ok ? DELIVERED : TRANSIENT;
+  } catch (err) {
+    console.warn('[deliver/direct-access] write error:', err?.message);
+    return TRANSIENT;
+  }
+}
+
 // Convenience map keyed by the outbox's transport names. Each value is directly
 // usable as an outbox deliverer (the second opts arg defaults), so stage 2b can
 // pass this straight to flush().
@@ -239,4 +281,5 @@ export const deliverers = {
   webdav: webdavDeliverer,
   icloud: icloudDeliverer,
   vault: vaultDeliverer,
+  directAccess: directAccessDeliverer,
 };

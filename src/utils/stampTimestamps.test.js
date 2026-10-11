@@ -349,3 +349,43 @@ describe('stampTimestamps — a plan trail growing is not an edit', () => {
     expect(merged[0].completed).toBe(true);
   });
 });
+
+describe('stampTimestamps — explicit file-import restoration stamps', () => {
+  const previous = '2026-10-10T12:00:00.001Z';
+  const restored = '2026-10-10T12:00:00.002Z';
+  const now = '2026-10-09T12:00:00.000Z';
+  const stored = { id: 'file', title: 'before', imported: true, importSource: 'file', lastModified: previous };
+
+  it('keeps a strictly newer explicit file stamp when content changed', () => {
+    const current = { ...stored, title: 're-imported', lastModified: restored };
+    expect(stampTimestamps([current], [stored], now)).toEqual([current]);
+  });
+  it('keeps an explicit restore even if the restored file content is identical', () => {
+    const current = { ...stored, lastModified: restored };
+    expect(stampTimestamps([current], [stored], now)).toEqual([current]);
+  });
+  it('later edits stay after a file restore when the local clock has not caught up', () => {
+    expect(stampTimestamps([{ ...stored, title: 'ordinary edit' }], [stored], now)[0].lastModified).toBe(restored);
+  });
+  it('ordinary file edits use the local clock once it has caught up', () => {
+    const later = '2026-10-11T12:00:00.000Z';
+    expect(stampTimestamps([{ ...stored, title: 'ordinary edit' }], [stored], later)[0].lastModified).toBe(later);
+  });
+  it('an unchanged file copy without an explicit newer stamp retains the stored stamp', () => {
+    expect(stampTimestamps([{ ...stored, lastModified: undefined }], [stored], now)[0].lastModified).toBe(previous);
+  });
+  it.each([
+    { imported: false, importSource: 'file' },
+    { imported: true, importSource: 'sync' },
+    { imported: false, importSource: undefined },
+  ])('does not extend the explicit-import rule to other task sources: %j', source => {
+    const prior = { ...stored, ...source };
+    const current = { ...prior, title: 'changed', lastModified: restored };
+    expect(stampTimestamps([current], [prior], now)[0].lastModified).toBe(now);
+  });
+  it('invalid or older file stamps do not bypass the stored timestamp ordering', () => {
+    for (const lastModified of ['invalid', '2026-10-01T12:00:00.000Z']) {
+      expect(stampTimestamps([{ ...stored, title: 'changed', lastModified }], [stored], now)[0].lastModified).toBe(restored);
+    }
+  });
+});

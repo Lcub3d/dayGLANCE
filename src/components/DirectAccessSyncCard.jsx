@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { isNativeAndroid, isNativeIOS } from '../native.js';
 import { directAccessTransport, DIRECT_ACCESS_LAST_SYNCED_KEY } from '../sync/directAccessTransport.js';
-import { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey } from '../utils/crypto.js';
+import { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey, decryptData, isEncryptedEnvelope } from '../utils/crypto.js';
+import { removeDirectAccessEncryption } from '../sync/directAccessEncryption.js';
+import { getDirectAccessIntentsEnabledFlag } from '../intents/directAccessIntentsConfig.js';
 
 /**
  * Settings → Cloud Sync: the Direct Access card (docs/direct-access-sync.md).
@@ -44,10 +46,22 @@ export async function turnOnEncryption({ passphrase, confirm, setupEncryptionKey
   return { ok: true };
 }
 
-const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, multiUserEnabled = false, transport = directAccessTransport, crypto = { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey } }) => {
+const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClass, multiUserEnabled = false, transport = directAccessTransport, crypto = { getSyncPassphrase, hasEncryptionReady, setupEncryptionKey, decryptData, isEncryptedEnvelope } }) => {
   const { t } = useTranslation();
   const status = useDirectAccessStatus(transport);
   const [busy, setBusy] = useState(false);
+
+  // Phase 8: the one sanctioned downgrade, behind a confirmation. Offered
+  // when this device holds the key; the action itself says whether the file
+  // was an envelope.
+  const [removeStep, setRemoveStep] = useState(null);   // null | 'confirm' | {outcome, detail}
+  const removeEncryption = async () => {
+    setBusy(true);
+    try {
+      const r = await removeDirectAccessEncryption({ transport, io: { decryptData: crypto.decryptData ?? decryptData, isEncryptedEnvelope: crypto.isEncryptedEnvelope ?? isEncryptedEnvelope } });
+      setRemoveStep(r);
+    } finally { setBusy(false); }
+  };
 
   const [askPassphrase, setAskPassphrase] = useState(false);
   const [passphrase, setPassphrase] = useState('');
@@ -100,6 +114,13 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
   const createRoster = run(() => transport.createUsersFile());
   const forgetRoster = run(() => transport.forgetUsersFile());
   const roster = status.roster;
+  // The intents event set on an iPhone is a third bookmarked file (Phase 7),
+  // offered once the Direct Access intents opt-in is on.
+  const pickEvents = run(() => transport.pickEventsFile());
+  const createEvents = run(() => transport.createEventsFile());
+  const forgetEvents = run(() => transport.forgetEventsFile());
+  const events = status.events;
+  const intentsOn = getDirectAccessIntentsEnabledFlag();
   const disconnect = async () => {
     setBusy(true);
     try { await transport.disconnect(); }
@@ -241,6 +262,31 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
                 </div>
               </form>
             )}
+            {(crypto.hasEncryptionReady() || !!crypto.getSyncPassphrase()) && (
+              <div className="ml-7 space-y-2">
+                {removeStep === null && (
+                  <button type="button" onClick={() => setRemoveStep('confirm')} disabled={busy} className={`text-xs underline ${textSecondary}`}>
+                    {t('directAccess.removeEncryption')}
+                  </button>
+                )}
+                {removeStep === 'confirm' && (
+                  <>
+                    <p className={`text-xs ${textSecondary}`}>{t('directAccess.removeEncryptionConfirm')}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={removeEncryption} disabled={busy} className={button}>{t('directAccess.removeEncryptionGo')}</button>
+                      <button type="button" onClick={() => setRemoveStep(null)} disabled={busy} className={button}>{t('common.cancel')}</button>
+                    </div>
+                  </>
+                )}
+                {removeStep && typeof removeStep === 'object' && (
+                  <p className={`text-xs ${removeStep.outcome === 'removed' || removeStep.outcome === 'already-plaintext' ? textSecondary : 'text-red-700 dark:text-red-300'}`} data-remove-outcome={removeStep.outcome}>
+                    {t(`directAccess.removeEncryptionOutcome.${removeStep.outcome}`, { detail: removeStep.detail ?? '' })}
+                    {' '}
+                    <button type="button" onClick={() => setRemoveStep(null)} className="underline">{t('common.ok')}</button>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           {ios && multiUserEnabled && roster && (
             <div className={`pt-2 border-t ${borderClass} space-y-2`}>
@@ -261,6 +307,31 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
                     <>
                       <button type="button" onClick={pickRoster} disabled={busy} className={button}>{t('directAccess.rosterChoose')}</button>
                       <button type="button" onClick={createRoster} disabled={busy} className={button}>{t('directAccess.rosterCreate')}</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {ios && intentsOn && events && (
+            <div className={`pt-2 border-t ${borderClass} space-y-2`}>
+              <p className={`text-xs ${textSecondary}`}>{t('directAccess.iosEventsHint')}</p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className={`text-xs ${textPrimary}`} title={events.path ?? undefined}>
+                  {events.configured
+                    ? t('directAccess.eventsChosen', { name: events.name })
+                    : t('directAccess.eventsNotChosen')}
+                </p>
+                <div className="flex gap-2">
+                  {events.configured ? (
+                    <>
+                      <button type="button" onClick={pickEvents} disabled={busy} className={button}>{t('directAccess.eventsChange')}</button>
+                      <button type="button" onClick={forgetEvents} disabled={busy} className={button}>{t('directAccess.eventsForget')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={pickEvents} disabled={busy} className={button}>{t('directAccess.eventsChoose')}</button>
+                      <button type="button" onClick={createEvents} disabled={busy} className={button}>{t('directAccess.eventsCreate')}</button>
                     </>
                   )}
                 </div>

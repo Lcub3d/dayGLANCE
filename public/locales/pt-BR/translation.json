@@ -28,6 +28,7 @@
       "FORBIDDEN": "Sincronização bloqueada (403). Seu servidor pode estar bloqueando a solicitação.",
       "LOCKED": "A sincronização está bloqueada por outro dispositivo. Tente novamente dentro de momentos.",
       "NETWORK_ERROR": "Erro de rede. Verifique sua conexão e tente novamente.",
+      "SYNC_FAILED": "A sincronização não foi concluída: {{detail}}. Ela será tentada novamente de forma automática.",
       "PASSPHRASE_REQUIRED": "Digite sua frase de sincronização para continuar.",
       "PRECONDITION_FAILED": "Outro dispositivo atualizou primeiro. A tentar novamente.",
       "KEY_MISMATCH": "Frase de sincronização incorreta. Deve corresponder exatamente à usada nos seus outros dispositivos.",
@@ -49,6 +50,10 @@
       "invalid": "Digite um URL de vault válido.",
       "httpRejected": "Conexão não segura. Use https:// para um vault na internet pública. O http:// simples só é permitido numa rede local de confiança (localhost ou um endereço LAN).",
       "insecureLanWarning": "Conexão não criptografada: use apenas numa rede de confiança."
+    },
+    "webdavUrl": {
+      "insecureLanWarning": "Conexão sem criptografia: sua senha é enviada em texto simples. Use apenas em uma rede confiável.",
+      "insecurePublicWarning": "Conexão sem criptografia pela internet: sua senha e seus dados são enviados em texto simples. Use https://. O app Android recusa esta conexão."
     },
     "form": {
       "webdavTitle": "Sincronização WebDAV",
@@ -98,6 +103,10 @@
       "vaultConsentWarningLoopback": "Este endereço é um serviço em execução neste computador. Só permita se for o seu próprio GLANCEvault e a porta for aquela em que ele escuta. Outros programas nesta máquina ficam acessíveis em outras portas, e esta permissão não os abrange.",
       "vaultConsentScope": "Isso vale apenas para este endereço. Você pode removê-lo depois em Configurações, em Sincronização na nuvem.",
       "vaultConsentAllow": "Permitir",
+      "privateAddressNeedsPermission": "{{origin}} está em uma rede privada, então o dayGLANCE precisa da sua permissão para se conectar. O servidor ainda não foi contatado.",
+      "reservedAddressRefused": "{{origin}} é um endereço reservado ao qual o dayGLANCE não se conecta.",
+      "privateAddressGrantFailed": "Não foi possível permitir este endereço.",
+      "privateConsentWarningLoopbackServer": "Este endereço é um serviço em execução neste computador. Só permita se for o seu próprio servidor de sincronização e a porta for aquela em que ele escuta. Outros programas nesta máquina ficam acessíveis em outras portas, e esta permissão não os abrange.",
       "vaultSkipped_one": "Não foi possível ler {{count}} item (ignorado). Normalmente significa que foi usada uma frase de sincronização diferente em outro dispositivo.",
       "vaultSkipped_other": "Não foi possível ler {{count}} itens (ignorados). Normalmente significa que foi usada uma frase de sincronização diferente em outro dispositivo.",
       "saveEnable": "Salvar e ativar",
@@ -725,7 +734,11 @@
     "viewsOnDevice": "Visualizações neste dispositivo",
     "viewsOnDeviceHint": "Uma visualização desativada aqui sai do seletor, dos atalhos e da escolha padrão somente neste dispositivo. Nada se perde. Pelo menos uma visualização fica ativa.",
     "viewsInPortrait": "Visualizações em retrato",
-    "viewsInLandscape": "Visualizações em paisagem"
+    "viewsInLandscape": "Visualizações em paisagem",
+    "directAccessIntents": "Intents do Direct Access",
+    "directAccessIntentsDesc": "Compartilhe intents de tarefas com outros apps GLANCE pela pasta do Direct Access: um arquivo de eventos, glance-events.json, que cada dispositivo e app na pasta lê e amplia. Criptografado com sua frase secreta de sincronização quando o arquivo do Direct Access também é.",
+    "directAccessIntentsEnable": "Ativar intents do Direct Access",
+    "directAccessIntentsNeedsFolder": "Nenhuma pasta está conectada neste dispositivo. Conecte uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado ou recebido aqui."
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -2147,7 +2160,12 @@
     "encryptSwitch": "Criptografar neste dispositivo",
     "key": "Chave de sincronização",
     "keyReady": "pronta",
-    "keyNeeded": "falta (digite a frase secreta)"
+    "keyNeeded": "falta (digite a frase secreta)",
+    "conflictCopies": "Cópias em conflito",
+    "lastSweep": "Última varredura",
+    "sweep": "Mesclar e remover cópias",
+    "sweeping": "Mesclando…",
+    "sweepCounts": "{{merged}} mescladas, {{removed}} removidas, {{left}} restantes"
   },
   "icloudFirstRun": {
     "title": "Dados encontrados no iCloud",
@@ -2193,7 +2211,25 @@
     "encryptHint": "Desligado. O arquivo é gravado como está. Se outro dispositivo já o criptografou, este dispositivo segue o arquivo e pede a frase secreta de sincronização.",
     "encryptOnHint": "Ligado. A próxima gravação sela o arquivo com sua frase secreta de sincronização, a mesma usada pela criptografia WebDAV, e depois todos os dispositivos seguem o arquivo. Desligar nunca deixa o arquivo sem criptografia de novo.",
     "encryptPassphraseHint": "Escolha uma frase secreta de sincronização. Cada dispositivo que abrir esta pasta vai pedi-la uma vez. Se você já usa uma para a criptografia WebDAV, digite essa.",
-    "encryptTurnOn": "Ligar criptografia"
+    "encryptTurnOn": "Ligar criptografia",
+    "eventsChoose": "Escolher arquivo de eventos…",
+    "eventsCreate": "Criar arquivo de eventos…",
+    "eventsChange": "Trocar arquivo de eventos",
+    "eventsForget": "Esquecer arquivo de eventos",
+    "eventsChosen": "Arquivo de eventos: {{name}}",
+    "eventsNotChosen": "Arquivo de eventos: não escolhido neste dispositivo.",
+    "iosEventsHint": "Os intents viajam no glance-events.json, em GLANCE/events da pasta compartilhada. Escolha o que seus outros dispositivos criaram ou crie-o lá.",
+    "removeEncryption": "Remover a criptografia do arquivo…",
+    "removeEncryptionConfirm": "Isso regrava o arquivo da pasta sem criptografia, uma vez, e desliga a chave aqui. Desligue antes \"Criptografar o arquivo na pasta\" nos seus outros dispositivos, ou o próximo a gravar vai selá-lo de novo.",
+    "removeEncryptionGo": "Remover criptografia",
+    "removeEncryptionOutcome": {
+      "removed": "Pronto. O arquivo voltou a ficar sem criptografia; cada dispositivo o segue a partir da próxima leitura.",
+      "already-plaintext": "O arquivo já está sem criptografia. A chave está desligada aqui.",
+      "needs-key": "Este dispositivo não consegue abrir o arquivo: {{detail}}",
+      "unavailable": "A pasta não está disponível agora. {{detail}}",
+      "write-failed": "Não foi possível gravar o arquivo. Nada mudou.",
+      "no-file": "Ainda não há arquivo na pasta."
+    }
   },
   "aspire": {
     "title": "Aspire",
@@ -2219,6 +2255,9 @@
       "secondary": "Finais tardios: {{finish}} · Demorou mais: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Criar tarefa",
+    "makeTaskHint": "Abre uma nova tarefa na caixa de entrada a partir desta execução e a vincula à tarefa.",
+    "makeTaskNotLinked": "Tarefa adicionada. A execução mudou nesse meio-tempo, então não foi vinculada.",
     "undo": {
       "changed": "Este Do mudou desde então, então foi mantido como está.",
       "completionBlocked": "A tarefa não está mais concluída, então o Do não pode voltar a Concluído. Foi mantido como está.",

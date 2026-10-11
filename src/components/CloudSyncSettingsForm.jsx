@@ -6,7 +6,10 @@ import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
 import { getVaultConfig, setVaultConfig } from '../sync/vaultConfig.js';
 import { createDbEngine, resetDbRootKey, resetVaultSyncCursor } from '../sync/dbEngine.js';
 import { testVaultConnection } from '../sync/vaultConnectionTest.js';
+import { testFileTierConnection, providerServerUrl, BLOCKED_PRIVATE_ADDRESS } from '../sync/proxyTrustPreflight.js';
 import { classifyVaultUrl } from '../sync/vaultUrlPolicy.js';
+import { classifyWebdavUrl } from '../sync/webdavUrlPolicy.js';
+import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
@@ -115,12 +118,20 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   const vaultBeingDisabled = !!vaultOriginal?.enabled && !vaultEnabled;
   const canSave = (webdavActive || vaultFilled || vaultBeingDisabled || webdavBeingDisabled) && passphraseValid && !passphraseMismatch && vaultReady && vaultUrlOk;
 
+  // On desktop, the pre-flight reports a private-network server the proxy would
+  // refuse, instead of the synthetic 400 the probe gets back from it (#2024).
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
-    const result = await cloudSyncTest({ ...formData, provider: formData.provider });
-    setTestResult(result);
-    setTesting(false);
+    try {
+      const result = await testFileTierConnection(
+        { ...formData, provider: formData.provider },
+        { provider: activeProvider, probe: cloudSyncTest },
+      );
+      setTestResult(result);
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleSave = async () => {
@@ -134,7 +145,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     // WebDAV is marked enabled only when the user toggled it on AND the connection is
     // configured — so enabling GLANCEvault alone never writes a bogus enabled WebDAV
     // config, and unchecking the toggle disables sync while keeping the credentials.
-    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled };
+    const newConfig = { ...formData, provider: formData.provider, enabled: webdavActive, encryptionEnabled, syncFolder: normalizeSyncFolder(formData.syncFolder) };
 
     if (encryptionEnabled) {
       if (passphraseRequired && passphrase) {
@@ -269,37 +280,65 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
     }
   };
 
-  // Raise the main process's native permission dialog for the entered vault URL,
-  // then re-run the test so a granted address turns straight into a green
-  // "Connected." The dialog is deliberately reachable only from this click.
-  const handleGrantPrivateAddress = async () => {
-    if (!proxyTrust) return;
-    setVaultTesting(true);
+  // Raise the main process's native permission dialog for `url`. The dialog is
+  // deliberately reachable only from an "Allow this address" click. Returns the
+  // refusal message to show, or null once the origin is granted.
+  // `warningLoopbackKey` names what the user is expected to be running locally.
+  const requestPrivateAddressGrant = async (url, warningLoopbackKey) => {
     try {
       // The main process owns the dialog but holds no locale bundle, so the
       // translated chrome travels with the request (applicationMenu.ts pattern).
-      const result = await proxyTrust.request(vaultUrl.trim(), {
+      const result = await proxyTrust.request(url, {
         title: t('sync.form.vaultConsentTitle'),
         question: t('sync.form.vaultConsentQuestion'),
         resolvesTo: t('sync.form.vaultConsentResolvesTo'),
         warning: t('sync.form.vaultConsentWarning'),
-        warningLoopback: t('sync.form.vaultConsentWarningLoopback'),
+        warningLoopback: t(warningLoopbackKey),
         scope: t('sync.form.vaultConsentScope'),
         allow: t('sync.form.vaultConsentAllow'),
         cancel: t('common.cancel'),
       });
       await refreshTrustedHosts();
-      if (!result?.ok) {
-        setVaultTestResult({ ok: false, message: result?.reason || t('sync.form.vaultUnreachableSimple') });
-        return;
-      }
+      return result?.ok ? null : (result?.reason || '');
     } catch {
-      setVaultTestResult({ ok: false, message: t('sync.form.vaultUnreachableSimple') });
-      return;
+      return '';
+    }
+  };
+
+  // Vault: grant, then re-run the test so a granted address turns straight
+  // into a green "Connected."
+  const handleGrantPrivateAddress = async () => {
+    if (!proxyTrust) return;
+    setVaultTesting(true);
+    let refusal;
+    try {
+      refusal = await requestPrivateAddressGrant(vaultUrl.trim(), 'sync.form.vaultConsentWarningLoopback');
     } finally {
       setVaultTesting(false);
     }
+    if (refusal !== null) {
+      setVaultTestResult({ ok: false, message: refusal || t('sync.form.vaultUnreachableSimple') });
+      return;
+    }
     await handleVaultTest();
+  };
+
+  // WebDAV / Nextcloud: the same grant, for the server URL the test inspected.
+  const handleGrantWebdavPrivateAddress = async () => {
+    const url = providerServerUrl(activeProvider, formData);
+    if (!proxyTrust || !url) return;
+    setTesting(true);
+    let refusal;
+    try {
+      refusal = await requestPrivateAddressGrant(url, 'sync.form.privateConsentWarningLoopbackServer');
+    } finally {
+      setTesting(false);
+    }
+    if (refusal !== null) {
+      setTestResult({ success: false, error: refusal || t('sync.form.privateAddressGrantFailed') });
+      return;
+    }
+    await handleTest();
   };
 
   const handleRevokePrivateAddress = async (origin) => {
@@ -359,6 +398,12 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               {field.type === 'password' && (
                 <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.aiApiKeyHint')}</p>
               )}
+              {field.type === 'url' && (() => {
+                const urlCheck = classifyWebdavUrl(formData[field.key]);
+                return urlCheck && (
+                  <p className={`text-xs mt-0.5 ${urlCheck.level === 'danger' ? 'text-red-500' : 'text-amber-500'}`}>{t(urlCheck.messageKey)}</p>
+                );
+              })()}
             </div>
           ))}
 
@@ -398,8 +443,27 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
           </div>
           {testResult && (
             <p className={`text-sm ${testResult.success ? 'text-green-500' : 'text-red-500'}`}>
-              {testResult.success ? t('sync.form.connectionSuccess') : testResult.error}
+              {testResult.success
+                ? t('sync.form.connectionSuccess')
+                : testResult.code === BLOCKED_PRIVATE_ADDRESS
+                  ? t(testResult.canGrant ? 'sync.form.privateAddressNeedsPermission' : 'sync.form.reservedAddressRefused', { origin: testResult.origin })
+                  : testResult.error}
             </p>
+          )}
+          {/* A private-network server (LAN, Docker host, Tailscale) is refused by
+              the desktop proxy until its origin is permitted (#2024). */}
+          {testResult?.canGrant && proxyTrust && (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={handleGrantWebdavPrivateAddress}
+                disabled={testing}
+                className={secondaryBtn}
+              >
+                {t('sync.form.vaultAllowPrivateAddress')}
+              </button>
+              <p className={`text-xs ${textSecondary}`}>{t('sync.form.vaultAllowPrivateAddressHint')}</p>
+            </div>
           )}
           {cloudSyncStatus === 'error' && cloudSyncError ? (
             <p className="text-xs text-red-500">{cloudSyncError}</p>
@@ -596,25 +660,6 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 <p className={`text-xs ${textSecondary}`}>{t('sync.form.vaultAllowPrivateAddressHint')}</p>
               </div>
             )}
-            {proxyTrust && trustedHosts.length > 0 && (
-              <div className="space-y-1">
-                <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
-                <ul className="space-y-1">
-                  {trustedHosts.map((h) => (
-                    <li key={h.origin} className="flex items-center justify-between gap-2">
-                      <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRevokePrivateAddress(h.origin)}
-                        className="text-xs text-red-500 hover:underline shrink-0"
-                      >
-                        {t('sync.form.vaultTrustedHostRemove')}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
             <p className={`text-xs ${textSecondary}`}>{t('sync.form.vaultReloadHint')}</p>
             {!vaultEncryptionReady && (
               <p className="text-xs text-amber-500">
@@ -645,13 +690,17 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 {(vaultSyncing || vaultStatus === 'uploading' || vaultStatus === 'downloading') ? t('common.syncing') : t('common.syncNow')}
               </button>
             </div>
-            {vaultError ? (
+            {vaultError && (
               <p className="text-xs text-red-500">{vaultError}</p>
-            ) : vaultLastSynced ? (
+            )}
+            {/* Shown alongside an error too: the error is about the latest
+                cycle (often a background one), and hiding the last good sync
+                made it read as "nothing has synced" (#2035). */}
+            {vaultLastSynced && (
               <p className={`text-xs ${textSecondary}`}>
                 {t('common.lastSynced')}: {new Date(vaultLastSynced).toLocaleString()}
               </p>
-            ) : null}
+            )}
             {vaultSkipped > 0 && (
               <p className="text-xs text-amber-500">
                 {t('sync.form.vaultSkipped', { count: vaultSkipped })}
@@ -660,6 +709,28 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
           </>
         )}
       </div>
+
+      {/* Private addresses the desktop proxy may reach (#1642). Shared by
+          WebDAV and GLANCEvault, so it sits outside both sections. */}
+      {proxyTrust && trustedHosts.length > 0 && (
+        <div className={`border-t ${borderClass} pt-4 space-y-1`}>
+          <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
+          <ul className="space-y-1">
+            {trustedHosts.map((h) => (
+              <li key={h.origin} className="flex items-center justify-between gap-2">
+                <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRevokePrivateAddress(h.origin)}
+                  className="text-xs text-red-500 hover:underline shrink-0"
+                >
+                  {t('sync.form.vaultTrustedHostRemove')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex justify-end gap-2 pt-2">
         <button

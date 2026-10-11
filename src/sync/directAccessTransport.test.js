@@ -359,7 +359,8 @@ describe('the household roster slot (Phase 5)', () => {
   const withPaths = (files = {}, over = {}) => {
     const dirs = new Set();
     const paths = {
-      list: vi.fn(async (d) => Object.keys(files).filter((k) => k.startsWith(d + '/')).map((k) => k.slice(d.length + 1))),
+      // The folder root is ''; a listing is the files directly in the directory.
+      list: vi.fn(async (d) => Object.keys(files).filter((k) => (d ? k.startsWith(d + '/') : true)).map((k) => (d ? k.slice(d.length + 1) : k)).filter((k) => !k.includes('/'))),
       read: vi.fn(async (p) => (p in files ? files[p] : { kind: 'absent' })),
       write: vi.fn(async (p, text) => {
         const dir = p.slice(0, p.lastIndexOf('/'));
@@ -407,11 +408,48 @@ describe('the household roster slot (Phase 5)', () => {
     expect(users.write).toHaveBeenCalledWith('x');
   });
 
+  it('files by path (Phase 8): list, read and remove through the paths bridge; absent on an iPhone', async () => {
+    const { bridge, files } = withPaths({ 'dayglance-sync (1).json': { kind: 'text', text: '{"version":2}' }, 'GLANCE/users/glance-users.json': { kind: 'text', text: '{}' } });
+    const { transport } = make({ bridge });
+    expect(transport.files.supported()).toBe(true);
+    expect(await transport.files.list('')).toEqual(['dayglance-sync (1).json']);
+    expect(await transport.files.list('GLANCE/users')).toEqual(['glance-users.json']);
+    expect(await transport.files.read('dayglance-sync (1).json')).toBe('{"version":2}');
+    expect(await transport.files.read('nope.json')).toBeNull();
+    expect(await transport.files.remove('dayglance-sync (1).json')).toBe(true);
+    expect(files['dayglance-sync (1).json']).toBeUndefined();
+    const iphone = make({ bridge: makeBridge({ users: { read: vi.fn(), write: vi.fn() } }) }).transport;
+    expect(iphone.files.supported()).toBe(false);
+    expect(await iphone.files.list('')).toBeNull();
+    expect(classifySnapshotText(await iphone.files.read('x')).kind).toBe('error');
+    expect(await iphone.files.remove('x')).toBe(false);
+  });
+
   it('a bridge with neither is reported, not thrown, and never written', async () => {
     const { transport } = make({ bridge: makeBridge() });
     expect(transport.rosterSupported()).toBe(false);
     expect(classifySnapshotText(await transport.rosterRead(rel)).kind).toBe('error');
     expect(await transport.rosterWrite(rel, 'x')).toBe(false);
+  });
+
+  it('the intents event set (Phase 7) is the same slot shape: by path on desktop and Android, a bookmarked file on an iPhone', async () => {
+    const ev = 'GLANCE/events/glance-events.json';
+    const { bridge, files } = withPaths({ [ev]: { kind: 'text', text: '{"version":1,"events":[]}' } });
+    const byPath = make({ bridge }).transport;
+    expect(byPath.eventsSupported()).toBe(true);
+    expect(await byPath.eventsRead(ev)).toBe('{"version":1,"events":[]}');
+    expect(await byPath.eventsWrite(ev, '{"version":1,"events":[1]}')).toBe(true);
+    expect(files[ev]).toEqual({ kind: 'text', text: '{"version":1,"events":[1]}' });
+    const events = { read: vi.fn(async () => ({ kind: 'absent' })), write: vi.fn(async () => true) };
+    const iphone = make({ bridge: makeBridge({ events }) }).transport;
+    expect(iphone.eventsSupported()).toBe(true);
+    expect(await iphone.eventsRead(ev)).toBeNull();
+    expect(await iphone.eventsWrite(ev, 'x')).toBe(true);
+    expect(events.write).toHaveBeenCalledWith('x');
+    const none = make({ bridge: makeBridge() }).transport;
+    expect(none.eventsSupported()).toBe(false);
+    expect(classifySnapshotText(await none.eventsRead(ev)).kind).toBe('error');
+    expect(await none.eventsWrite(ev, 'x')).toBe(false);
   });
 });
 
@@ -465,6 +503,40 @@ describe('the roster file on an iPhone (Phase 5)', () => {
     await transport.forgetUsersFile();
     expect(bridge.users.forget).toHaveBeenCalled();
     expect(transport.getSnapshot().roster).toEqual({ configured: false, name: null, path: null, reachable: false });
+  });
+
+  it('the events file (Phase 7): restored with the snapshot, picked, created and forgotten like the roster', async () => {
+    const events = {
+      status: vi.fn(async () => ({ configured: true, name: 'glance-events.json', path: '/x/glance-events.json', reachable: true })),
+      read: vi.fn(async () => ({ kind: 'text', text: '{"version":1,"events":[]}' })),
+      write: vi.fn(async () => true),
+      forget: vi.fn(async () => true),
+    };
+    const bridge = makeBridge({
+      events,
+      pickFile: vi.fn(async (slot) => ({ configured: true, name: 'glance-events.json', path: '/y/glance-events.json', reachable: true, slot })),
+      createFile: vi.fn(async (slot) => ({ configured: true, name: 'glance-events.json', path: '/z/glance-events.json', reachable: true, slot })),
+    });
+    const { transport } = make({ bridge });
+    transport.subscribe(() => {});
+    await flush();
+    expect(transport.getSnapshot().events).toEqual({ configured: true, name: 'glance-events.json', path: '/x/glance-events.json', reachable: true });
+    await transport.pickEventsFile();
+    expect(bridge.pickFile).toHaveBeenCalledWith('events');
+    expect(transport.getSnapshot().events.path).toBe('/y/glance-events.json');
+    expect(transport.getSnapshot().name).toBe('GLANCE');                 // the snapshot connection is untouched
+    await transport.createEventsFile();
+    expect(bridge.createFile).toHaveBeenCalledWith('events');
+    expect(transport.getSnapshot().events.path).toBe('/z/glance-events.json');
+    await transport.forgetEventsFile();
+    expect(events.forget).toHaveBeenCalled();
+    expect(transport.getSnapshot().events).toEqual({ configured: false, name: null, path: null, reachable: false });
+    expect(transport.getSnapshot().roster).toBeNull();                   // no users slot on this bridge
+    // Without the slot the pick is reported, not thrown.
+    const plain = make({ bridge: makeBridge({ pickFile: vi.fn() }) }).transport;
+    expect(await plain.pickEventsFile()).toBeNull();
+    expect(plain.getSnapshot().pickError).toBe('not available on this platform');
+    expect(plain.getSnapshot().events).toBeNull();
   });
 
   it('a platform without the roster file reports the pick as unavailable', async () => {

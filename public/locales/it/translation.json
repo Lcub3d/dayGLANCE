@@ -28,6 +28,7 @@
       "FORBIDDEN": "Sincronizzazione bloccata (403). Il tuo server potrebbe bloccare la richiesta.",
       "LOCKED": "La sincronizzazione è bloccata da un altro dispositivo. Riprova tra un momento.",
       "NETWORK_ERROR": "Errore di rete. Controlla la connessione e riprova.",
+      "SYNC_FAILED": "La sincronizzazione non è stata completata: {{detail}}. Verrà ritentata automaticamente.",
       "PASSPHRASE_REQUIRED": "Inserisci la tua passphrase di sincronizzazione per continuare.",
       "PRECONDITION_FAILED": "Un altro dispositivo ha aggiornato per primo. Nuovo tentativo.",
       "KEY_MISMATCH": "Passphrase di sincronizzazione errata. Deve corrispondere esattamente a quella usata sugli altri dispositivi.",
@@ -49,6 +50,10 @@
       "invalid": "Inserisci un URL del vault valido.",
       "httpRejected": "Connessione non sicura. Usa https:// per un vault sulla rete internet pubblica. Il semplice http:// è consentito solo su una rete locale attendibile (localhost o un indirizzo LAN).",
       "insecureLanWarning": "Connessione non cifrata: usala solo su una rete attendibile."
+    },
+    "webdavUrl": {
+      "insecureLanWarning": "Connessione non crittografata: la password viene inviata in chiaro. Usala solo su una rete attendibile.",
+      "insecurePublicWarning": "Connessione non crittografata su internet: password e dati vengono inviati in chiaro. Usa https://. L'app Android rifiuta questa connessione."
     },
     "form": {
       "webdavTitle": "Sincronizzazione WebDAV",
@@ -98,6 +103,10 @@
       "vaultConsentWarningLoopback": "Questo indirizzo è un servizio in esecuzione su questo computer. Consentilo solo se è il tuo GLANCEvault e la porta è quella su cui è in ascolto. Altri programmi su questa macchina sono raggiungibili su altre porte, e questa autorizzazione non li include.",
       "vaultConsentScope": "Vale solo per questo indirizzo. Puoi rimuoverlo in seguito in Impostazioni, sotto Sincronizzazione cloud.",
       "vaultConsentAllow": "Consenti",
+      "privateAddressNeedsPermission": "{{origin}} si trova su una rete privata, quindi dayGLANCE ha bisogno del tuo permesso per connettersi. Il server non è ancora stato contattato.",
+      "reservedAddressRefused": "{{origin}} è un indirizzo riservato a cui dayGLANCE non si connette.",
+      "privateAddressGrantFailed": "Impossibile consentire questo indirizzo.",
+      "privateConsentWarningLoopbackServer": "Questo indirizzo è un servizio in esecuzione su questo computer. Consentilo solo se è il tuo server di sincronizzazione e la porta è quella su cui è in ascolto. Altri programmi su questa macchina sono raggiungibili su altre porte, e questa autorizzazione non li include.",
       "vaultSkipped_one": "Impossibile leggere {{count}} elemento (saltato). Di solito significa che su un altro dispositivo è stata usata una passphrase di sincronizzazione diversa.",
       "vaultSkipped_other": "Impossibile leggere {{count}} elementi (saltati). Di solito significa che su un altro dispositivo è stata usata una passphrase di sincronizzazione diversa.",
       "saveEnable": "Salva e attiva",
@@ -725,7 +734,11 @@
     "viewsOnDevice": "Viste su questo dispositivo",
     "viewsOnDeviceHint": "Una vista disattivata qui scompare dal selettore, dalle scorciatoie e dalla scelta predefinita solo su questo dispositivo. Non si perde nulla. Almeno una vista resta attiva.",
     "viewsInPortrait": "Viste in verticale",
-    "viewsInLandscape": "Viste in orizzontale"
+    "viewsInLandscape": "Viste in orizzontale",
+    "directAccessIntents": "Intent Direct Access",
+    "directAccessIntentsDesc": "Condividi gli intent delle attività con le altre app GLANCE tramite la cartella Direct Access: un file di eventi, glance-events.json, che ogni dispositivo e app sulla cartella legge e amplia. Cifrato con la tua passphrase di sincronizzazione quando lo è il file Direct Access.",
+    "directAccessIntentsEnable": "Attiva gli intent Direct Access",
+    "directAccessIntentsNeedsFolder": "Nessuna cartella è collegata su questo dispositivo. Collegane prima una in Sincronizzazione cloud → Direct Access; fino ad allora qui non viene inviato né ricevuto nulla."
   },
   "dailyNotes": {
     "quickNotes": "Note rapide",
@@ -2149,7 +2162,12 @@
     "encryptSwitch": "Cifra su questo dispositivo",
     "key": "Chiave di sincronizzazione",
     "keyReady": "pronta",
-    "keyNeeded": "mancante (inserisci la passphrase)"
+    "keyNeeded": "mancante (inserisci la passphrase)",
+    "conflictCopies": "Copie in conflitto",
+    "lastSweep": "Ultima pulizia",
+    "sweep": "Unisci e rimuovi le copie",
+    "sweeping": "Unione in corso…",
+    "sweepCounts": "{{merged}} unite, {{removed}} rimosse, {{left}} rimaste"
   },
   "icloudFirstRun": {
     "title": "Dati trovati su iCloud",
@@ -2195,7 +2213,25 @@
     "encryptHint": "Disattivato. Il file viene scritto così com'è. Se un altro dispositivo lo ha già cifrato, questo dispositivo segue il file e chiede la passphrase di sincronizzazione.",
     "encryptOnHint": "Attivato. La prossima scrittura sigilla il file con la tua passphrase di sincronizzazione, la stessa usata dalla cifratura WebDAV, e da allora tutti i dispositivi seguono il file. Disattivarlo non riporta mai il file in chiaro.",
     "encryptPassphraseHint": "Scegli una passphrase di sincronizzazione. Ogni dispositivo che apre questa cartella la chiederà una volta. Se ne usi già una per la cifratura WebDAV, inserisci quella.",
-    "encryptTurnOn": "Attiva la cifratura"
+    "encryptTurnOn": "Attiva la cifratura",
+    "eventsChoose": "Scegli file eventi…",
+    "eventsCreate": "Crea file eventi…",
+    "eventsChange": "Cambia file eventi",
+    "eventsForget": "Dimentica file eventi",
+    "eventsChosen": "File eventi: {{name}}",
+    "eventsNotChosen": "File eventi: non scelto su questo dispositivo.",
+    "iosEventsHint": "Gli intent viaggiano in glance-events.json, in GLANCE/events della cartella condivisa. Scegli quello creato dagli altri tuoi dispositivi, oppure crealo lì.",
+    "removeEncryption": "Rimuovi la cifratura dal file…",
+    "removeEncryptionConfirm": "Riscrive il file nella cartella in chiaro, una volta, e disattiva l'interruttore qui. Prima disattiva «Cifra il file nella cartella» sugli altri dispositivi, altrimenti il prossimo che scrive lo sigilla di nuovo.",
+    "removeEncryptionGo": "Rimuovi la cifratura",
+    "removeEncryptionOutcome": {
+      "removed": "Fatto. Il file è di nuovo in chiaro; ogni dispositivo lo segue dalla prossima lettura.",
+      "already-plaintext": "Il file è già in chiaro. L'interruttore è disattivato qui.",
+      "needs-key": "Questo dispositivo non può aprire il file: {{detail}}",
+      "unavailable": "La cartella non è disponibile al momento. {{detail}}",
+      "write-failed": "Non è stato possibile scrivere il file. Nulla è cambiato.",
+      "no-file": "Nella cartella non c'è ancora alcun file."
+    }
   },
   "aspire": {
     "title": "Aspire",
@@ -2221,6 +2257,9 @@
       "secondary": "Fini in ritardo: {{finish}} · Durato di più: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Crea attività",
+    "makeTaskHint": "Apre una nuova attività in arrivo da questa esecuzione e vi collega l'esecuzione.",
+    "makeTaskNotLinked": "Attività aggiunta. L'esecuzione è cambiata nel frattempo, quindi non è stata collegata.",
     "undo": {
       "changed": "Questo Do è cambiato nel frattempo, quindi è stato lasciato com'è.",
       "completionBlocked": "Il suo compito non è più completato, quindi il Do non può tornare Completato. È stato lasciato com'è.",

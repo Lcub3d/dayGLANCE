@@ -29,6 +29,7 @@
       "FORBIDDEN": "同步被阻止（403）。服务器可能拦截了此请求。",
       "LOCKED": "另一台设备正在同步，请稍后重试。",
       "NETWORK_ERROR": "网络错误。检查您的连接并重试。",
+      "SYNC_FAILED": "同步未完成：{{detail}}。将自动重试。",
       "PASSPHRASE_REQUIRED": "输入您的同步密码以继续。",
       "PRECONDITION_FAILED": "另一台设备已先完成更新，正在重试。",
       "QUOTA_EXCEEDED": "此账户已达到同步服务器的配额上限。你的更改仍保存在本机，系统会自动重试同步。请联系服务器管理员提高配额。",
@@ -49,6 +50,10 @@
       "invalid": "请输入有效的 GLANCEvault URL。",
       "httpRejected": "连接不安全。公网 GLANCEvault 必须使用 https://。只有 localhost 或局域网地址等受信任本地网络才允许使用明文 http://。",
       "insecureLanWarning": "当前连接未加密，请仅在受信任的网络中使用。"
+    },
+    "webdavUrl": {
+      "insecureLanWarning": "未加密的连接：您的密码以明文发送。仅在受信任的网络中使用。",
+      "insecurePublicWarning": "通过互联网的未加密连接：您的密码和数据以明文发送。请使用 https://。Android 应用会拒绝此连接。"
     },
     "form": {
       "webdavTitle": "WebDAV 同步",
@@ -98,6 +103,10 @@
       "vaultConsentWarningLoopback": "此地址是运行在这台电脑上的服务。请仅在它是你自己的 GLANCEvault、且端口正是它监听的端口时才允许。这台机器上的其他程序通过其他端口提供服务，本授权并不包含它们。",
       "vaultConsentScope": "此设置仅适用于该地址。你之后可以在“设置”的“云同步”中移除它。",
       "vaultConsentAllow": "允许",
+      "privateAddressNeedsPermission": "{{origin}} 位于私有网络中，dayGLANCE 需要你的许可才能连接。尚未联系该服务器。",
+      "reservedAddressRefused": "{{origin}} 是保留地址，dayGLANCE 不会连接到它。",
+      "privateAddressGrantFailed": "无法允许此地址。",
+      "privateConsentWarningLoopbackServer": "此地址是运行在这台电脑上的服务。请仅在它是你自己的同步服务器、且端口正是它监听的端口时才允许。这台机器上的其他程序通过其他端口提供服务，本授权并不包含它们。",
       "vaultSkipped_one": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "vaultSkipped_other": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "saveEnable": "保存并启用",
@@ -725,7 +734,11 @@
     "viewsOnDevice": "此设备上的视图",
     "viewsOnDeviceHint": "在此关闭的视图仅在此设备上从切换器、快捷键和默认视图选项中移除。其内容不会丢失。至少保留一个视图开启。",
     "viewsInPortrait": "竖屏视图",
-    "viewsInLandscape": "横屏视图"
+    "viewsInLandscape": "横屏视图",
+    "directAccessIntents": "Direct Access 意图",
+    "directAccessIntentsDesc": "通过 Direct Access 文件夹与其他 GLANCE 应用共享任务意图：一个事件文件 glance-events.json，文件夹中的每台设备和每个应用都会读取并追加。当 Direct Access 文件已加密时，它也以你的同步口令加密。",
+    "directAccessIntentsEnable": "启用 Direct Access 意图",
+    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",
@@ -2147,7 +2160,12 @@
     "encryptSwitch": "在本设备上加密",
     "key": "同步密钥",
     "keyReady": "就绪",
-    "keyNeeded": "缺少（请输入同步口令）"
+    "keyNeeded": "缺少（请输入同步口令）",
+    "conflictCopies": "冲突副本",
+    "lastSweep": "上次清理",
+    "sweep": "合并并删除副本",
+    "sweeping": "合并中…",
+    "sweepCounts": "已合并 {{merged}}，已删除 {{removed}}，剩余 {{left}}"
   },
   "icloudFirstRun": {
     "title": "iCloud 中找到的数据",
@@ -2193,7 +2211,25 @@
     "encryptHint": "关闭。文件按原样写入。如果其他设备已将其加密，本设备会跟随该文件并要求输入同步口令。",
     "encryptOnHint": "开启。下一次写入会用你的同步口令（与 WebDAV 加密相同）封存该文件，此后所有设备都跟随该文件。关闭此项不会让文件恢复为明文。",
     "encryptPassphraseHint": "选择一个同步口令。每台打开此文件夹的设备都会询问一次。如果你已为 WebDAV 加密设置了口令，请输入同一个。",
-    "encryptTurnOn": "开启加密"
+    "encryptTurnOn": "开启加密",
+    "eventsChoose": "选择事件文件…",
+    "eventsCreate": "创建事件文件…",
+    "eventsChange": "更换事件文件",
+    "eventsForget": "忘记事件文件",
+    "eventsChosen": "事件文件：{{name}}",
+    "eventsNotChosen": "事件文件：本设备尚未选择。",
+    "iosEventsHint": "意图通过共享文件夹 GLANCE/events 中的 glance-events.json 传递。请选择其他设备创建的那个文件，或在那里创建它。",
+    "removeEncryption": "移除文件加密…",
+    "removeEncryptionConfirm": "这会把文件夹中的文件一次性重写为明文，并关闭此处的开关。请先在其他设备上关闭“加密文件夹中的文件”，否则下一台写入的设备会再次加密它。",
+    "removeEncryptionGo": "移除加密",
+    "removeEncryptionOutcome": {
+      "removed": "完成。文件已恢复为明文；每台设备从下次读取起跟随它。",
+      "already-plaintext": "文件已经是明文。此处开关已关闭。",
+      "needs-key": "本设备无法打开该文件：{{detail}}",
+      "unavailable": "文件夹当前不可用。{{detail}}",
+      "write-failed": "无法写入文件。未做任何更改。",
+      "no-file": "文件夹中还没有文件。"
+    }
   },
   "aspire": {
     "title": "Aspire",
@@ -2219,6 +2255,9 @@
       "secondary": "结束偏晚：{{finish}} · 超时：{{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "创建任务",
+    "makeTaskHint": "根据此执行记录在收件箱中新建任务，并将其关联到该任务。",
+    "makeTaskNotLinked": "任务已添加。该执行记录在此期间已更改，因此未关联。",
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
       "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",

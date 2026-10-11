@@ -26,6 +26,10 @@ const makeNative = (platform = 'android', over = {}) => {
       readUsers: vi.fn(() => JSON.stringify({ kind: 'error', error: 'no roster file chosen' })),
       writeUsers: vi.fn(() => 'true'),
       forgetUsers: vi.fn(() => 'true'),
+      eventsStatus: vi.fn(() => JSON.stringify({ configured: false, name: null, path: null, reachable: false })),
+      readEvents: vi.fn(() => JSON.stringify({ kind: 'error', error: 'no events file chosen' })),
+      writeEvents: vi.fn(() => 'true'),
+      forgetEvents: vi.fn(() => 'true'),
     } : {}),
     // Android only: files by path (DirectAccessBridge.kt).
     ...(platform === 'android' ? {
@@ -242,5 +246,21 @@ describe('the roster as its own bookmarked file (iOS)', () => {
 
   it('Android has no users slot', () => {
     expect(make(makeNative('android')).bridge.users).toBeUndefined();
+    expect(make(makeNative('android')).bridge.events).toBeUndefined();
+  });
+
+  it('the events file (Phase 7) is a third slot of the same shape, and the picks carry its slot name', async () => {
+    const { bridge, native, w } = make(makeNative('ios'));
+    expect(await bridge.events.status()).toEqual({ configured: false, name: null, path: null, reachable: false });
+    expect(await bridge.events.read()).toEqual({ kind: 'error', error: 'no events file chosen' });
+    expect(await bridge.events.write('{"version":1,"events":[]}')).toBe(true);
+    expect(native.writeEvents).toHaveBeenCalledWith('{"version":1,"events":[]}');
+    expect(await bridge.events.forget()).toBe(true);
+    const picked = bridge.createFile('events');
+    expect(native.createFile).toHaveBeenCalledWith('events');
+    w.__dgDirectAccessPicked({ configured: true, name: 'glance-events.json', path: '/x/glance-events.json', reachable: true, slot: 'events' });
+    expect(await picked).toMatchObject({ slot: 'events' });
+    native.readEvents = () => 'garbage';
+    expect(await bridge.events.read()).toEqual({ kind: 'error', error: 'bad answer from the shell' });
   });
 });

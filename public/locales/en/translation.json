@@ -29,6 +29,7 @@
       "FORBIDDEN": "Sync blocked (403). Your server may be blocking the request.",
       "LOCKED": "Sync is locked by another device. Try again in a moment.",
       "NETWORK_ERROR": "Network error. Check your connection and try again.",
+      "SYNC_FAILED": "Sync didn't finish: {{detail}}. It will try again automatically.",
       "PASSPHRASE_REQUIRED": "Enter your sync passphrase to continue.",
       "PRECONDITION_FAILED": "Another device updated first. Retrying.",
       "QUOTA_EXCEEDED": "The sync server has reached its limit for this account. Your changes are saved on this device and syncing will retry automatically. Ask whoever runs your sync server to raise the limit.",
@@ -49,6 +50,10 @@
       "invalid": "Enter a valid vault URL.",
       "httpRejected": "Insecure connection. Use https:// for a vault on the public internet. Plain http:// is only allowed on a trusted local network (localhost or a LAN address).",
       "insecureLanWarning": "Unencrypted connection: only use on a trusted network."
+    },
+    "webdavUrl": {
+      "insecureLanWarning": "Unencrypted connection: your password is sent in plain text. Only use on a trusted network.",
+      "insecurePublicWarning": "Unencrypted connection over the internet: your password and data are sent in plain text. Use https://. The Android app refuses this connection."
     },
     "form": {
       "webdavTitle": "WebDAV Sync",
@@ -98,6 +103,10 @@
       "vaultConsentWarningLoopback": "This address is a service running on this computer. Only allow it if it is your own GLANCEvault and the port is the one it listens on. Other programs on this machine are reachable at other ports, and this permission does not cover them.",
       "vaultConsentScope": "This applies to this one address only. You can remove it later in Settings, under Cloud Sync.",
       "vaultConsentAllow": "Allow",
+      "privateAddressNeedsPermission": "{{origin}} is on a private network, so dayGLANCE needs your permission to connect to it. The server has not been contacted yet.",
+      "reservedAddressRefused": "{{origin}} is a reserved address that dayGLANCE will not connect to.",
+      "privateAddressGrantFailed": "Could not allow this address.",
+      "privateConsentWarningLoopbackServer": "This address is a service running on this computer. Only allow it if it is your own sync server and the port is the one it listens on. Other programs on this machine are reachable at other ports, and this permission does not cover them.",
       "vaultSkipped_one": "{{count}} item couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "vaultSkipped_other": "{{count}} items couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "saveEnable": "Save & Enable",
@@ -725,7 +734,11 @@
     "viewsOnDevice": "Views on this device",
     "viewsOnDeviceHint": "A view turned off here leaves the switcher, the shortcuts and the default picker on this device only. Nothing it shows is lost. Keep at least one view on.",
     "viewsInPortrait": "Views in portrait",
-    "viewsInLandscape": "Views in landscape"
+    "viewsInLandscape": "Views in landscape",
+    "directAccessIntents": "Direct Access intents",
+    "directAccessIntentsDesc": "Share task intents with other GLANCE apps through the Direct Access folder: one event file, glance-events.json, that every device and app on the folder reads and adds to. Encrypted with your sync passphrase when the Direct Access file is.",
+    "directAccessIntentsEnable": "Enable Direct Access intents",
+    "directAccessIntentsNeedsFolder": "No folder is connected on this device. Connect one under Cloud Sync → Direct Access first; until then nothing is sent or received here."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",
@@ -2147,7 +2160,12 @@
     "encryptSwitch": "Encrypt on this device",
     "key": "Sync key",
     "keyReady": "ready",
-    "keyNeeded": "needed (enter the sync passphrase)"
+    "keyNeeded": "needed (enter the sync passphrase)",
+    "conflictCopies": "Conflict copies",
+    "lastSweep": "Last sweep",
+    "sweep": "Merge and remove copies",
+    "sweeping": "Merging…",
+    "sweepCounts": "{{merged}} merged, {{removed}} removed, {{left}} left"
   },
   "icloudFirstRun": {
     "title": "Data found in iCloud",
@@ -2193,7 +2211,25 @@
     "encryptHint": "Off. The file is written as it is. If another device has already encrypted it, this device follows the file and asks for the sync passphrase.",
     "encryptOnHint": "On. The next write seals the file with your sync passphrase, the same one WebDAV encryption uses, and every device then follows the file. Turning this off never makes the file plaintext again.",
     "encryptPassphraseHint": "Choose a sync passphrase. Every device that opens this folder will ask for it once. If you already use one for WebDAV encryption, enter that one.",
-    "encryptTurnOn": "Turn on encryption"
+    "encryptTurnOn": "Turn on encryption",
+    "eventsChoose": "Choose events file…",
+    "eventsCreate": "Create events file…",
+    "eventsChange": "Change events file",
+    "eventsForget": "Forget events file",
+    "eventsChosen": "Events file: {{name}}",
+    "eventsNotChosen": "Events file: not chosen on this device.",
+    "iosEventsHint": "Intents travel in glance-events.json in the shared folder's GLANCE/events. Choose the one your other devices made, or create it there.",
+    "removeEncryption": "Remove encryption from the file…",
+    "removeEncryptionConfirm": "This rewrites the file in the folder as plaintext, once, and turns the switch off here. Turn \"Encrypt the file in the folder\" off on your other devices first, or the next one to write seals it again.",
+    "removeEncryptionGo": "Remove encryption",
+    "removeEncryptionOutcome": {
+      "removed": "Done. The file is plaintext again; every device follows it from its next read.",
+      "already-plaintext": "The file is already plaintext. The switch is off here.",
+      "needs-key": "This device cannot open the file: {{detail}}",
+      "unavailable": "The folder is not available right now. {{detail}}",
+      "write-failed": "The file could not be written. Nothing changed.",
+      "no-file": "There is no file in the folder yet."
+    }
   },
   "aspire": {
     "title": "Aspire",
@@ -2219,6 +2255,9 @@
       "secondary": "Late finishes: {{finish}} · Ran long: {{longer}}"
     },
     "title": "JOBO",
+    "makeTask": "Make a task",
+    "makeTaskHint": "Opens a new Inbox task from this Do and links the Do to it.",
+    "makeTaskNotLinked": "Task added. The Do changed in the meantime, so it was not linked.",
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",

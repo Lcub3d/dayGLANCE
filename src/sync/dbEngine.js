@@ -60,6 +60,7 @@ import { recordOwnWriteSeq, withOwnAckRecording } from './ownWrites.js';
 import { isObsidianTombstoned } from '../utils/obsidianDeletions.js';
 import { ghostSuccessorId, persistDerivedGhostRetirements } from '../utils/obsidianGhostRows.js';
 import { createIdbKeyValue } from '../utils/idbKeyValue.js';
+import { cycleErrorCode } from './syncErrors.js';
 
 const APP_ID = 'dayglance';
 const CRYPTO_DB_NAME = 'dayglance-db-crypto';
@@ -159,6 +160,16 @@ const VAULT_KEY_SLOT = 'db';
 // returned false on every launch and the passphrase modal reappeared. iOS is
 // therefore detected by its explicit marker and routed to its REAL secure-store
 // methods; only Android (no marker, a real getSyncKey) uses the Keystore path.
+/** The native records are base64 JSON: the DB root key is {rootBytes, salt}, the file-tier key {rawKey, salt}. */
+const decodeKeyRecord = (b64) => {
+  if (!b64 || typeof b64 !== 'string') return null;
+  try { return JSON.parse(atob(b64)); } catch { return null; }
+};
+export const isRootKeyRecord = (b64) => {
+  const r = decodeKeyRecord(b64);
+  return !!(r && Array.isArray(r.rootBytes) && r.rootBytes.length > 0);
+};
+
 export function nativeKeyConfig() {
   if (secureStoreAvailable()) {
     return {
@@ -172,18 +183,29 @@ export function nativeKeyConfig() {
   if (!isAndroid) {
     return { cryptoDBName: CRYPTO_DB_NAME, nativeGetSyncKey: null, nativeStoreSyncKey: null };
   }
-  // Prefer the isolated per-slot bridge methods; fall back to the shared legacy
-  // slot on older shells (no isolation there, but no worse than before).
+  // Prefer the isolated per-slot bridge methods. A key written to the shared
+  // legacy slot by an older shell is read from there once (when it is a root
+  // key record, not the file tier's) so the upgrade does not re-prompt; it is
+  // written back under its own slot on the next derivation.
   if (bridge.getSyncKeyForSlot && bridge.storeSyncKeyForSlot) {
     return {
       cryptoDBName: CRYPTO_DB_NAME,
-      nativeGetSyncKey: () => bridge.getSyncKeyForSlot(VAULT_KEY_SLOT),
+      nativeGetSyncKey: () => {
+        const own = bridge.getSyncKeyForSlot(VAULT_KEY_SLOT);
+        if (own) return own;
+        const legacy = bridge.getSyncKey ? bridge.getSyncKey() : null;
+        return isRootKeyRecord(legacy) ? legacy : null;
+      },
       nativeStoreSyncKey: (val) => bridge.storeSyncKeyForSlot(VAULT_KEY_SLOT, val),
     };
   }
+  // The shared legacy slot (an older shell): the file tier writes here too.
+  // A record of the file tier's shape is not our key: reading it as one gave
+  // an empty root key that failed the account check as "passphrase doesn't
+  // match" (2026-10-10). No record means re-derive from the passphrase.
   return {
     cryptoDBName: CRYPTO_DB_NAME,
-    nativeGetSyncKey: bridge.getSyncKey ? () => bridge.getSyncKey() : null,
+    nativeGetSyncKey: bridge.getSyncKey ? () => { const v = bridge.getSyncKey(); return isRootKeyRecord(v) ? v : null; } : null,
     nativeStoreSyncKey: bridge.storeSyncKey ? (val) => bridge.storeSyncKey(val) : null,
   };
 }
@@ -351,6 +373,14 @@ export function createDbEngine(callbacks = {}) {
   // into the request that produced it, so we can see which entityId/route the
   // server rejected — instead of guessing across repos. Quiet on success.
   const rawFetch = fetchImpl || ((...a) => globalThis.fetch(...a));
+  // Errors the transport itself threw (no HTTP response at all). The vault
+  // client gives every HTTP failure its own code, so a code-less error that is
+  // NOT in here came from this device (IndexedDB, the apply path, a bug), and
+  // labelling it a network error sent people checking a connection that was
+  // fine (#2035). Tracked by identity so the error object the package sees is
+  // untouched.
+  const transportErrors = new WeakSet();
+  const noteTransportError = (e) => { if (e && typeof e === 'object') transportErrors.add(e); };
   // The query string is redacted from failure logs: it carries the accountId,
   // which shouldn't be printed on every transient failure (console captures,
   // attached debuggers). Origin + path keep the diagnostic value — the route and
@@ -364,6 +394,7 @@ export function createDbEngine(callbacks = {}) {
       res = await rawFetch(url, opts);
     } catch (e) {
       console.warn('[dayglance vault]', opts.method || 'GET', redactedUrl(url), '→ network error:', e?.message || e);
+      noteTransportError(e);
       throw e;
     }
     if (!res || res.ok === false) console.warn('[dayglance vault]', opts.method || 'GET', redactedUrl(url), '→', res?.status);
@@ -1408,7 +1439,7 @@ export function createDbEngine(callbacks = {}) {
       // that just rejected us.
       throttleAnnounced = false;
       breaker.onFailure(err);
-      const code = err && err.code ? err.code : 'NETWORK_ERROR';
+      const code = cycleErrorCode(err, transportErrors);
       callbacks.onError?.(err?.message || String(err), code);
       callbacks.onStatusChange?.('error');
       return { applied: 0, skipped: 0, skippedEntityIds: [], error: err?.message, code };

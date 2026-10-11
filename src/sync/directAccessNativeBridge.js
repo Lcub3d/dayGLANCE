@@ -55,8 +55,9 @@ export function createNativeDirectAccessBridge({
     // null when the result finally arrives for the later one.
     pick: () => launch('pickFolder'),
     // iOS only: a file itself, picked or created (DirectAccessBridge.swift):
-    // the snapshot, or with slot 'users' the household roster. Android's
-    // bridge has neither method; the call throws and resolves null.
+    // the snapshot, with slot 'users' the household roster, with 'events' the
+    // intents event set. Android's bridge has neither method; the call throws
+    // and resolves null.
     pickFile: (slot = 'snapshot') => launch('pickFile', slot),
     createFile: (slot = 'snapshot') => launch('createFile', slot),
 
@@ -75,6 +76,13 @@ export function createNativeDirectAccessBridge({
         read: async () => parse(native().readUsers()) ?? { kind: 'error', error: 'bad answer from the shell' },
         write: async (text) => truthy(native().writeUsers(text)),
         forget: async () => truthy(native().forgetUsers()),
+      },
+      // The intents event set, a third bookmarked file (Phase 7).
+      events: {
+        status: async () => parse(native().eventsStatus()),
+        read: async () => parse(native().readEvents()) ?? { kind: 'error', error: 'bad answer from the shell' },
+        write: async (text) => truthy(native().writeEvents(text)),
+        forget: async () => truthy(native().forgetEvents()),
       },
     } : {}),
     ...(platform === 'android' ? {

@@ -59,7 +59,7 @@ class HttpBridge {
             }
             connection.connectTimeout = 20_000
             connection.readTimeout = 20_000
-            connection.instanceFollowRedirects = true
+            connection.instanceFollowRedirects = LanHostPolicy.mayFollowRedirects(target)
 
             // Without this, HttpURLConnection silently adds Accept-Encoding: gzip,
             // and Apache mod_deflate rewrites the ETag on encoded responses

@@ -167,7 +167,7 @@ class VaultSseClient(
             // trips it, but a silently-dead connection is detected and reconnected
             // within the timeout instead of parking forever.
             readTimeout = 60_000
-            instanceFollowRedirects = true
+            instanceFollowRedirects = LanHostPolicy.mayFollowRedirects(target)
         }
         activeConnection = conn
         try {

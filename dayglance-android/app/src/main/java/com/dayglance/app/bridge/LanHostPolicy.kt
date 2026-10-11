@@ -21,6 +21,16 @@ object LanHostPolicy {
         return isLocalOrLanHost(url.host ?: "")
     }
 
+    /**
+     * Whether a request to [url] may follow redirects. The check above sees only
+     * the first URL, and HttpURLConnection follows http → http redirects to any
+     * host, so a LAN http server (or anyone rewriting its plaintext traffic)
+     * could bounce a request, credentials included, to a public http host.
+     * https is safe to follow: the platform never downgrades an https redirect
+     * to http, so the chain stays https.
+     */
+    fun mayFollowRedirects(url: URL): Boolean = (url.protocol ?: "").lowercase() == "https"
+
     /** True for loopback / private-LAN / *.local hosts, where cleartext http is ok. */
     fun isLocalOrLanHost(rawHost: String): Boolean {
         var host = rawHost.trim().lowercase()

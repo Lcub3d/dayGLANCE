@@ -51,6 +51,13 @@ class LanHostPolicyTest {
     }
 
     @Test
+    fun `redirects are followed only for https`() {
+        assertTrue(LanHostPolicy.mayFollowRedirects(URL("https://10.10.10.2:18800/webdav/")))
+        assertFalse(LanHostPolicy.mayFollowRedirects(URL("http://10.10.10.2/")))
+        assertFalse(LanHostPolicy.mayFollowRedirects(URL("http://localhost/")))
+    }
+
+    @Test
     fun `other schemes are refused`() {
         assertFalse(LanHostPolicy.isSecureOrLanUrl(URL("ftp://10.0.0.1/")))
     }

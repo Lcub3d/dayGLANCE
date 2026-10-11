@@ -6,6 +6,8 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.ProtocolException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Native HTTP bridge — lets the WebView JS make arbitrary HTTP requests
@@ -36,12 +38,7 @@ class HttpBridge {
             // can't scope it to LAN ranges), so the LAN-only rule for http:// is
             // enforced here, before any connection opens. See LanHostPolicy.
             if (!LanHostPolicy.isSecureOrLanUrl(target)) {
-                return JSONObject().apply {
-                    put("status", 0)
-                    put("ok", false)
-                    put("body", "")
-                    put("error", "Refused: http:// is only allowed for local network hosts. Use https:// for ${target.host}.")
-                }.toString()
+                return errorResult("Refused: http:// is only allowed for local network hosts. Use https:// for ${target.host}.")
             }
             val connection = target.openConnection() as HttpURLConnection
             LanTrust.applyTo(connection, target)
@@ -105,12 +102,27 @@ class HttpBridge {
                 })
             }.toString()
         } catch (e: Exception) {
-            JSONObject().apply {
-                put("status", 0)
-                put("ok", false)
-                put("body", "")
-                put("error", e.message ?: "Network error")
-            }.toString()
+            errorResult(e.message ?: "Network error")
         }
+    }
+
+    companion object {
+        /**
+         * Worker pool for NativeBridge.httpRequestAsync (#2048). Process-wide so an
+         * Activity recreation (dark mode, language) doesn't leak threads; bounded
+         * so a burst of sync calls can't open unlimited connections. Daemon
+         * threads, so the pool never keeps the process alive.
+         */
+        val workers: ExecutorService = Executors.newFixedThreadPool(4) { r ->
+            Thread(r, "dg-http").apply { isDaemon = true }
+        }
+
+        /** The bridge's failure shape: { status: 0, ok: false, body: "", error }. */
+        fun errorResult(message: String): String = JSONObject().apply {
+            put("status", 0)
+            put("ok", false)
+            put("body", "")
+            put("error", message)
+        }.toString()
     }
 }

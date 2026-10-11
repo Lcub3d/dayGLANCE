@@ -80,6 +80,7 @@ export default function useTaskActions({
   frameScheduleModal, setFrameScheduleModal,
   focusBlockTasks, setFocusBlockTasks,
   focusCompletedTasks, setFocusCompletedTasks,
+  isFocusSettlementPending = () => false,
   // "Make a task" from an unlinked Do: links the Do once the task is saved.
   onTaskMadeFromDo,
   exitFocusModeRef,
@@ -881,8 +882,14 @@ export default function useTaskActions({
 
   // ── Focus mode wrappers ──────────────────────────────────────────────────
 
-  const focusCompleteTask = (taskId) => {
-    toggleComplete(taskId);
+  const focusCompleteTask = (taskId, { exitWhenDone = true, fromSettlement = false } = {}) => {
+    if (isFocusSettlementPending()) return false;
+    if (fromSettlement) {
+      const found = resolveTaskRef(taskId, { tasks, unscheduledTasks, recurringTasks, recycleBin });
+      if (!found || found.where === 'deleted' || found.task.completed || focusCompletedTasks.has(taskId)) return false;
+      taskId = found.task.id;
+      toggleComplete(taskId, found.where === 'inbox');
+    } else toggleComplete(taskId);
     setFocusCompletedTasks(prev => {
       const next = new Set(prev);
       next.add(taskId);
@@ -893,8 +900,9 @@ export default function useTaskActions({
     const allDone = focusBlockTasks.every(t => t.completed || t.id === taskId || focusCompletedTasks.has(t.id));
     if (allDone) {
       playFocusSound('complete');
-      setTimeout(() => exitFocusModeRef.current?.(true), 500);
+      if (exitWhenDone) setTimeout(() => exitFocusModeRef.current?.(true), 500);
     }
+    return allDone;
   };
 
   const hgCompleteTask = (taskId) => {

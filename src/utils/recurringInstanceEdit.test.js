@@ -142,4 +142,10 @@ describe('applyRecurringInstanceEdit', () => {
     expect(next.projectId).toBe('p1');
     expect(next.recurrence).toEqual({ type: 'weekly', days: [1], startDate: '2026-10-01' });
   });
+
+  it('a template with no start takes the edited date, never the 1st of its month', () => {
+    const tmpl = template({ recurrence: { type: 'daily' } });
+    const next = save(tmpl, editOf(tmpl), 'this');
+    expect(next.recurrence.startDate).toBe(DATE);
+  });
 });

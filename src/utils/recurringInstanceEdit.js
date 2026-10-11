@@ -89,7 +89,10 @@ export function applyRecurringInstanceEdit(template, { dateStr, edit, scope, pro
   next.exceptions = exceptions;
   next.projectId = projectId || undefined;
   if (recurrence) {
-    next.recurrence = { ...recurrence, startDate: template.recurrence?.startDate || dateStr.substring(0, 8) + '01' };
+    // The start never moves: an earlier one invents occurrences before the
+    // series existed. (A template with no startDate expands to nothing, so
+    // the fallback is a guard, not a reachable path.)
+    next.recurrence = { ...recurrence, startDate: template.recurrence?.startDate || dateStr };
   }
   next.lastModified = now;
   return next;

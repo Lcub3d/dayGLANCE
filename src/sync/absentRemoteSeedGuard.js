@@ -107,10 +107,14 @@ export function createAbsentRemoteSeedGuard({
      * May the upload the engine is about to make proceed? Consumes the absence
      * observation, so the answer is about THIS read and no earlier one.
      *
-     * @returns {{allowed: boolean, missingSince: number, reason?: string}}
+     * `absence` reports whether THIS decision followed a read that found no file.
+     * The verified-write gate needs it: an absent file has no ETag to validate a
+     * write with, so only the seed branch may write without one.
+     *
+     * @returns {{allowed: boolean, missingSince: number, absence: boolean, reason?: string}}
      */
     decideUpload() {
-      if (!absencePending) return { allowed: true, missingSince };
+      if (!absencePending) return { allowed: true, missingSince, absence: false };
       absencePending = false;
       const decision = evaluateMissingSnapshot({
         hasSyncedBefore: !!hasSyncedBefore(),
@@ -119,8 +123,8 @@ export function createAbsentRemoteSeedGuard({
         graceMs,
       });
       missingSince = decision.missingSince;
-      if (!decision.skip) return { allowed: true, missingSince };
-      return { allowed: false, missingSince, reason: ABSENT_REMOTE_REASON };
+      if (!decision.skip) return { allowed: true, missingSince, absence: true };
+      return { allowed: false, missingSince, absence: true, reason: ABSENT_REMOTE_REASON };
     },
 
     /** What the guard is currently holding. For diagnostics and tests. */
@@ -142,17 +146,22 @@ export function createAbsentRemoteSeedGuard({
  * caller that injects one of its own afterwards has to install the guard on it
  * explicitly.
  *
+ * Takes any number of observers, each needing `observeRead(result)`. The
+ * verified-write gate rides the same wrapper, so the absence rule and the record
+ * of what was read can never disagree about which reads happened.
+ *
  * @param {Record<string, object>} providers
- * @param {ReturnType<typeof createAbsentRemoteSeedGuard>} guard
+ * @param {...{observeRead: (result: unknown) => void}} guards
  */
-export function installAbsentRemoteSeedGuard(providers, guard) {
+export function installAbsentRemoteSeedGuard(providers, ...guards) {
+  const observers = guards.filter((guard) => guard && typeof guard.observeRead === 'function');
   for (const provider of Object.values(providers || {})) {
     if (!provider || typeof provider.download !== 'function') continue;
     if (provider.download.absentRemoteSeedGuarded) continue;
     const original = provider.download;
     const wrapped = async function (cfg) {
       const result = await original.call(this, cfg);
-      guard.observeRead(result);
+      for (const observer of observers) observer.observeRead(result);
       return result;
     };
     wrapped.absentRemoteSeedGuarded = true;

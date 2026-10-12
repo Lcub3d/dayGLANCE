@@ -15,13 +15,13 @@ describe('the file tier seed guard', () => {
   it('allows the write when the read found a file', () => {
     const g = guard();
     g.observeRead({ payload: { tasks: [] }, etag: '"e1"' });
-    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0 });
+    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0, absence: false });
   });
 
   it('seeds immediately on a device that has never synced', () => {
     const g = guard(false);
     g.observeRead(null);
-    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0 });
+    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0, absence: true });
   });
 
   it('holds the first absent read on a device that has synced before, and starts the clock', () => {
@@ -29,6 +29,7 @@ describe('the file tier seed guard', () => {
     g.observeRead(null);
     const decision = g.decideUpload();
     expect(decision.allowed).toBe(false);
+    expect(decision.absence).toBe(true);
     expect(decision.reason).toBe(ABSENT_REMOTE_REASON);
     expect(g.state().missingSince).toBe(T0);
   });
@@ -51,7 +52,7 @@ describe('the file tier seed guard', () => {
     g.decideUpload();
     now = T0 + MISSING_GRACE_MS;
     g.observeRead(null);
-    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0 });
+    expect(g.decideUpload()).toEqual({ allowed: true, missingSince: 0, absence: true });
     // The next absence starts its own window rather than inheriting this one.
     g.observeRead(null);
     expect(g.decideUpload().allowed).toBe(false);

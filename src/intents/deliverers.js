@@ -209,12 +209,17 @@ export async function webdavDeliverer(intent, opts = {}) {
 // ─── 3. ICLOUD deliverer — mirrors WebDAV over the iCloud write path ──────────
 
 /**
- * Deliver one intent to the iCloud file tier, same encryption policy as WebDAV.
- * iCloud has no HTTP status: a write either succeeds or doesn't, and both
- * "unavailable" and "write failed" are retryable → 'transient'.
+ * Deliver one intent to the iCloud event directory (useIntentPoller.js
+ * writeEventFileICloud). Always plaintext: iCloud Drive is encrypted by Apple
+ * at rest and in transit, the iCloud snapshot transport writes plaintext for
+ * the same reason, and the iCloud poll on every receiver refuses an encrypted
+ * envelope as a misconfigured sender (`encrypted_on_icloud`). This deliverer
+ * used to build its envelope under the WebDAV intents config's encryption
+ * flag, so a device with WebDAV encryption on sealed every iCloud intent and
+ * every iCloud receiver skipped it. Held (transient) while iCloud is away.
  *
  * @param {object} intent
- * @param {object} [opts] - test seams (config, loadWebdavKey, isAvailable, writeEventFileICloud)
+ * @param {object} [opts] - test seams (isAvailable, writeEventFileICloud, config)
  * @returns {Promise<'delivered'|'transient'|'permanent'>}
  */
 export async function icloudDeliverer(intent, opts = {}) {
@@ -223,13 +228,12 @@ export async function icloudDeliverer(intent, opts = {}) {
   if (!isAvailable()) return TRANSIENT;
 
   const config = opts.config ?? readIntentConfig();
-  const built = await buildFileTierEnvelope(intent, config, opts);
-  if (built.hold) return TRANSIENT; // encryption on, key not ready yet
+  const envelope = buildEnvelope(toEnvelopeParams(intent));
 
   const write = opts.writeEventFileICloud ?? writeEventFileICloud;
   let ok;
   try {
-    ok = await write(config, built.envelope);
+    ok = await write(config, envelope);
   } catch (err) {
     console.warn('[deliver/icloud] write error:', err?.message);
     return TRANSIENT;

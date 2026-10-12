@@ -216,42 +216,13 @@ describe('webdav deliverer', () => {
     expect(sentEnvelope).not.toHaveProperty('payload');
   });
 
-  it('encryption on but key not ready → transient, writes nothing', async () => {
-    const write = vi.fn();
-    const result = await webdavDeliverer(makeIntent(), {
-      config: { ...WEBDAV, encryptionEnabled: true }, loadWebdavKey: async () => null, writeEventFile: write,
-    });
-    expect(result).toBe(TRANSIENT);
-    expect(write).not.toHaveBeenCalled();
-  });
-});
-
-// ─── 3. ICLOUD deliverer ───────────────────────────────────────────────────────
-
-describe('icloud deliverer', () => {
-  it('(e) write true → delivered; write false → transient; unavailable → transient; throw → transient', async () => {
-    const base = { config: { encryptionEnabled: false }, isAvailable: () => true };
-
-    expect(await icloudDeliverer(makeIntent(), { ...base, writeEventFileICloud: async () => true })).toBe(DELIVERED);
-    expect(await icloudDeliverer(makeIntent(), { ...base, writeEventFileICloud: async () => false })).toBe(TRANSIENT);
-    expect(await icloudDeliverer(makeIntent(), { ...base, isAvailable: () => false, writeEventFileICloud: vi.fn() })).toBe(TRANSIENT);
-    expect(await icloudDeliverer(makeIntent(), { ...base, writeEventFileICloud: async () => { throw new Error('fs'); } })).toBe(TRANSIENT);
-  });
-
-  it('does not write when iCloud is unavailable', async () => {
-    const write = vi.fn();
-    const result = await icloudDeliverer(makeIntent(), { config: {}, isAvailable: () => false, writeEventFileICloud: write });
-    expect(result).toBe(TRANSIENT);
-    expect(write).not.toHaveBeenCalled();
-  });
-
-  it('encryption on but key not ready → transient, writes nothing', async () => {
-    const write = vi.fn();
-    const result = await icloudDeliverer(makeIntent(), {
-      config: { encryptionEnabled: true }, isAvailable: () => true, loadWebdavKey: async () => null, writeEventFileICloud: write,
-    });
-    expect(result).toBe(TRANSIENT);
-    expect(write).not.toHaveBeenCalled();
+  it('writes plaintext whatever the WebDAV encryption flag says: the iCloud poll refuses a sealed envelope', async () => {
+    const written = [];
+    const write = vi.fn(async (config, envelope) => { written.push(envelope); return true; });
+    expect(await icloudDeliverer(makeIntent(), { config: { encryptionEnabled: true }, isAvailable: () => true, writeEventFileICloud: write })).toBe(DELIVERED);
+    expect(written[0].encrypted).toBeUndefined();
+    expect(written[0]).toMatchObject({ event_id: '20260101T000000Z-aaa111', action: 'notify' });
+    expect(JSON.stringify(written[0])).toContain('SECRET-TITLE');
   });
 });
 

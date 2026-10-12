@@ -18,7 +18,7 @@ import { BridgeTransport, publishPairingMeta, type BridgeState } from '../src/br
 import type { BridgePairing } from '../src/pairing';
 // The SAME specifier the app uses, so the root key lands in the module instance the app reads.
 import { setupDbRootKey, hasDbRootKey } from '@glance-apps/sync';
-import { getDbRootKey, hasDbRootKey as hasDbRootKeyDirect } from '@glance-apps/sync/src/dbCrypto.js';
+import { getDbRootKey, hasDbRootKey as hasDbRootKeyDirect, encryptEntity, KEYCHECK_ENTITY_ID, KEYCHECK_PAYLOAD } from '@glance-apps/sync/src/dbCrypto.js';
 import { deriveBridgeSubkey, exportBridgeSubkey, normalizeScope, normalizeProjectNoteSettings, type VaultScope, type ProjectNoteSettings } from '@glance-apps/obsidian-format';
 
 export const VAULT_URL = 'https://vault.test';
@@ -120,6 +120,12 @@ export async function createScenario(): Promise<Scenario> {
   const rootSalt = new Uint8Array(16).fill(7);
   await setupDbRootKey('harness-passphrase', rootSalt, { nativeGetSyncKey: async () => null, nativeStoreSyncKey: () => {} });
   if (!hasDbRootKey() || !hasDbRootKeyDirect()) throw new Error(`harness: root key not visible (index ${hasDbRootKey()}, direct ${hasDbRootKeyDirect()})`);
+  // The account's key verifier, as every real account has once main sync has
+  // run: dayGLANCE's bridge uses the root key only after decrypting it
+  // (src/utils/bridgeKeyGate.js).
+  vault.handle('POST', `${VAULT_URL}/sync/dayglance/batch`, JSON.stringify({
+    rows: [{ entityId: KEYCHECK_ENTITY_ID, envelope: await encryptEntity(KEYCHECK_PAYLOAD, KEYCHECK_ENTITY_ID) }],
+  }));
   const pairingSalt = new Uint8Array(16).fill(3);
   const subkey = await deriveBridgeSubkey(getDbRootKey(), pairingSalt);
   const pairing: BridgePairing = {

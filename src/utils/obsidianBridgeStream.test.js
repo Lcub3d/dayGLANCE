@@ -15,6 +15,15 @@ import {
   __resetBridgeStreamForTests,
 } from './obsidianBridgeStream.js';
 
+// The key gate (bridgeKeyGate.js) proves the root key against the account's
+// verifier row; it has its own tests. Here the installed key is taken as
+// proven so these tests keep to the stream they cover.
+vi.mock('./bridgeKeyGate.js', async () => {
+  const { getDbRootKey } = await import('@glance-apps/sync/src/dbCrypto.js');
+  return { verifiedBridgeRootKey: async () => getDbRootKey(), resetBridgeKeyGate: () => {} };
+});
+
+
 // The emitter's load-bearing claims: intents get their id at emit time and
 // live in a PERSISTED outbox before any network; flushing seals them under
 // the subkey derived from root key + the discovered pairing salt; an

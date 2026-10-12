@@ -8,6 +8,15 @@ import {
 } from '@glance-apps/obsidian-format';
 import { startBridgePairing, cancelBridgePairing } from './obsidianBridgePairing.js';
 
+// The key gate (bridgeKeyGate.js) proves the root key against the account's
+// verifier row; it has its own tests. Here the installed key is taken as
+// proven so these tests keep to the stream they cover.
+vi.mock('./bridgeKeyGate.js', async () => {
+  const { getDbRootKey } = await import('@glance-apps/sync/src/dbCrypto.js');
+  return { verifiedBridgeRootKey: async () => getDbRootKey(), resetBridgeKeyGate: () => {} };
+});
+
+
 // The app-side pairing flow: preconditions produce TYPED errors (the
 // Settings UI shows the actual fix), a successful start drops a sealed
 // offer at .dayglance/pairing that opens with the returned code, and the

@@ -100,43 +100,54 @@ describe('nativeHttpRequest', () => {
   });
 
   describe('iOS', () => {
-    let xhrs;
+    let posts;
+    let answer;
     beforeEach(() => {
-      xhrs = [];
+      posts = [];
+      answer = null;
       window.DayGlanceIOS = true;
       // The injected shim's Proxy: every method "exists", and its httpRequest
       // is the synchronous XHR this must not use.
       window.DayGlanceNative = new Proxy({}, {
         get: () => () => { throw new Error('the synchronous shim must not be used'); },
       });
+      // A URL-based call would put the headers (the bearer token) where WebKit
+      // logs them, and an async one is CORS-blocked: no XHR at all.
       globalThis.XMLHttpRequest = class {
-        open(method, url, async) { Object.assign(this, { method, url, async }); }
-        send() { xhrs.push(this); }
+        constructor() { throw new Error('native HTTP must not use a dgbridge:// XHR'); }
+      };
+      window.webkit = {
+        messageHandlers: {
+          dgHttp: {
+            postMessage: vi.fn((body) => {
+              posts.push(body);
+              return new Promise((resolve, reject) => { answer = { resolve, reject }; });
+            }),
+          },
+        },
       };
     });
 
-    it('makes an asynchronous dgbridge:// call with the shim\'s argument encoding', async () => {
-      const p = nativeHttpRequest('GET', 'https://h/f', { A: 'b' }, '');
-      expect(xhrs).toHaveLength(1);
-      const [x] = xhrs;
-      expect(x.async).toBe(true);
-      expect(x.url.startsWith('dgbridge://native_httpRequest?args=')).toBe(true);
-      const args = JSON.parse(decodeURIComponent(x.url.split('?args=')[1]));
-      expect(args).toEqual(['GET', 'https://h/f', '{"A":"b"}', '']);
-
-      x.status = 200;
-      x.responseText = JSON.stringify(OK);
-      x.onload();
+    it('posts the request to the dgHttp message handler and resolves with its reply', async () => {
+      let settled = false;
+      const p = nativeHttpRequest('GET', 'https://h/f', { Authorization: 'Bearer secret' }, '')
+        .then((r) => { settled = true; return r; });
+      expect(posts).toEqual([['GET', 'https://h/f', '{"Authorization":"Bearer secret"}', '']]);
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      answer.resolve(JSON.stringify(OK));
       expect(await p).toEqual(OK);
     });
 
-    it('resolves null when the handler answers with an error status or the XHR fails', async () => {
-      const p1 = nativeHttpRequest('GET', 'https://h/1');
-      xhrs[0].status = 500; xhrs[0].onload();
-      expect(await p1).toBe(null);
-      const p2 = nativeHttpRequest('GET', 'https://h/2');
-      xhrs[1].onerror();
-      expect(await p2).toBe(null);
+    it('resolves null when the handler rejects', async () => {
+      const p = nativeHttpRequest('GET', 'https://h/1');
+      answer.reject(new Error('not allowed'));
+      expect(await p).toBe(null);
+    });
+
+    it('resolves null without the handler rather than falling back to a URL', async () => {
+      delete window.webkit;
+      expect(await nativeHttpRequest('GET', 'https://h/f', { Authorization: 'Bearer secret' })).toBe(null);
     });
   });
 });

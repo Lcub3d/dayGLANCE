@@ -10,6 +10,7 @@ import { describeObstacle } from '../utils/dayOccupancy.js';
 import { createPendingProject } from '../utils/pendingProject.js';
 import { canFollowUp, resolveTaskRef } from '../utils/followUp.js';
 import { editedSeriesStart } from '../utils/recurrenceEngine.js';
+import { recordDeletedTaskTombstone } from '../utils/deletedTaskTombstones.js';
 
 // Strip a specific tag (e.g. "#obsidian") from a title string.
 const stripTag = (title, tag) =>
@@ -40,16 +41,9 @@ const minutesToTime = (minutes) => {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 };
 
-// PROVENANCE (see utils/retiredTaskIds.js): THIS site is the user-pressed
-// delete. It knows INTENT — the user removed the task and there is no
-// successor — so it writes deletedTaskIds, never retiredTaskIds (that channel
-// belongs to the commit-that-renames, which knows a successor) and never
-// deletedObsidianKeys (the vault-scan detector's observed-vanish channel).
-const recordDeletedTaskTombstone = (taskId) => {
-  const tombstones = JSON.parse(localStorage.getItem('day-planner-deleted-task-ids') || '{}');
-  tombstones[String(taskId)] = new Date().toISOString();
-  localStorage.setItem('day-planner-deleted-task-ids', JSON.stringify(tombstones));
-};
+// THIS module's deletes are user-pressed: they know INTENT, so they write the
+// deletedTaskIds tombstone (utils/deletedTaskTombstones.js explains the
+// provenance rule; the MCP undo of a created series writes the same record).
 
 export default function useTaskActions({
   tasks, setTasks, setEventNote,

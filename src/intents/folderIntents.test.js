@@ -90,7 +90,7 @@ describe('the event set', () => {
     expect(parseEventSetText('{"version":2,"data":{}}')).toEqual({ kind: 'no-data' });
     const e = foreign('a');
     expect(parseEventSetText(fileWith(e))).toEqual({ kind: 'set', events: [e], writtenBy: null, salt: null });
-    expect(parseEventSetText(serializeEventSet([e], 'mac-1'))).toEqual({ kind: 'set', events: [e], writtenBy: 'mac-1' });
+    expect(parseEventSetText(serializeEventSet([e], 'mac-1'))).toEqual({ kind: 'set', events: [e], writtenBy: 'mac-1', salt: null });
     expect(relativeEventsPath(undefined)).toBe('GLANCE/events/glance-events.json');
     expect(relativeEventsPath('/Shared/ev/')).toBe('Shared/ev/glance-events.json');
   });

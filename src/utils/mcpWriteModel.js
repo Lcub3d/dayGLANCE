@@ -31,6 +31,7 @@ import {
   applyResizeBlock,
   applySetCompletion,
   applyUpdateTask,
+  applyUpdateRecurringTask,
   applyAddSubtask,
   applyUpdateSubtask,
   applyUndoOps,
@@ -42,10 +43,14 @@ import {
 } from './goalProjectMutations.js';
 import { toBlock, inboxItem, goalItem, projectItem } from './mcpReadModel.js';
 import { resolveRetirement } from './retiredTaskIds.js';
+import { recurringTaskInstance } from './expandRecurringTasks.js';
+import { getOccurrencesInRange } from './recurrenceEngine.js';
+import { recurrenceToWire } from './mcpRepeat.js';
+import { recordDeletedTaskTombstone } from './deletedTaskTombstones.js';
 
 const WRITE_METHODS = new Set([
   'create_task', 'schedule_task', 'move_block', 'resize_block', 'set_completion',
-  'update_task', 'add_subtask', 'update_subtask',
+  'update_task', 'update_recurring_task', 'add_subtask', 'update_subtask',
   'create_goal', 'update_goal', 'create_project', 'update_project',
   'undo_mcp_writes',
 ]);
@@ -128,6 +133,16 @@ function dispatchWrite(state, setters, method, params) {
     case 'create_task': {
       const r = applyCreateTask(state, { ...params, nowIso });
       if (!r.ok) return r;
+      if (r.series) {
+        // A repeating task (#2066) is one template in recurringTasks; its
+        // undo removes the series the way the app's own series delete does.
+        if (!r.replayed) setters.setRecurringTasks(r.recurringTasks);
+        const undo = r.replayed ? undefined : {
+          summary: `Created repeating ${q(r.template.title)} from ${r.template.recurrence.startDate}`,
+          op: { kind: 'remove_created_series', templateId: r.template.id },
+        };
+        return { ok: true, data: { ...seriesEntity(r.template), replayed: r.replayed }, ...(undo ? { undo } : {}) };
+      }
       // One slice changed per shape (the other comes back by reference);
       // scheduled creates land directly in tasks — §5.2 atomicity is one
       // transition, not two batched ones.
@@ -247,6 +262,29 @@ function dispatchWrite(state, setters, method, params) {
       if (r.task.assignedUserSyncIds?.length) entity.assignee_id = r.task.assignedUserSyncIds[0];
       return { ok: true, data: { ...entity, replayed: r.replayed }, ...(undo ? { undo } : {}) };
     }
+    case 'update_recurring_task': {
+      const r = applyUpdateRecurringTask(state, { ...params, nowIso });
+      if (!r.ok) return r;
+      if (!r.unchanged) setters.setRecurringTasks(r.recurringTasks);
+      const undo = r.undoSnapshot ? {
+        // One quoted span (see update_task): the post-edit series title.
+        summary: `Edited repeating ${q(r.template.title)} (${params.scope === 'series' ? 'series' : r.dateStr}: ${recurringFieldNames(params).join(', ')})`,
+        op: { kind: 'restore_series_fields', ...r.undoSnapshot },
+      } : undefined;
+      const occurs = getOccurrencesInRange(r.template, r.dateStr, r.dateStr, 1).includes(r.dateStr);
+      return {
+        ok: true,
+        data: {
+          ...seriesEntity(r.template, { from: r.dateStr }),
+          // The edited occurrence as it now reads; null when a pattern change
+          // means the series no longer falls on that date.
+          occurrence: occurs ? toBlock(occurrenceTask(r.template, r.dateStr)) : null,
+          scope: params.scope,
+          unchanged: !!r.unchanged,
+        },
+        ...(undo ? { undo } : {}),
+      };
+    }
     case 'add_subtask': {
       const r = applyAddSubtask(state, { ...params, nowIso });
       if (!r.ok) return r;
@@ -335,6 +373,9 @@ function dispatchWrite(state, setters, method, params) {
       setters.setUnscheduledTasks(r.unscheduledTasks);
       setters.setRecurringTasks(r.recurringTasks);
       setters.setRecycleBin(r.recycleBin);
+      // An undone series create is a delete: tombstoned as the app's own
+      // series delete does, so sync does not bring it back.
+      for (const id of r.tombstones ?? []) recordDeletedTaskTombstone(id, nowIso);
       let undone = r.undone;
       let skipped = r.skipped;
       if (entityOps.length) {
@@ -418,6 +459,46 @@ function completionUndo(state, { taskId, completed }) {
       before: { completed: !!task.completed, completedAt: task.completedAt ?? null },
     },
   };
+}
+
+/** How many upcoming dates a series response lists. */
+const NEXT_OCCURRENCES = 5;
+
+/** An occurrence as the read surface builds it, for toBlock. */
+function occurrenceTask(template, dateStr) {
+  return { ...recurringTaskInstance(template, dateStr), recurrence: template.recurrence };
+}
+
+/**
+ * The series part of a create or update_recurring_task response: the series,
+ * its pattern in the wire shape, and its next dates from `from` (the start
+ * for a create) so the caller can confirm the pattern is the one it meant.
+ */
+function seriesEntity(template, { from } = {}) {
+  const start = template.recurrence?.startDate;
+  const dates = getOccurrencesInRange(template, from && from > start ? from : start, '9999-12-31', NEXT_OCCURRENCES);
+  const data = {
+    series: {
+      id: String(template.id),
+      title: template.title ?? '',
+      repeat: recurrenceToWire(template.recurrence),
+      start_date: start ?? null,
+      ...(template.projectId ? { project_id: template.projectId } : {}),
+      ...(template.notes ? { notes: template.notes } : {}),
+    },
+    next_occurrences: dates,
+  };
+  if (!from) data.first_occurrence = dates.length ? toBlock(occurrenceTask(template, dates[0])) : null;
+  if (template.assignedUserSyncIds?.length) data.assignee_id = template.assignedUserSyncIds[0];
+  return data;
+}
+
+/** The wire names of what an update_recurring_task call changed, for its summary. */
+export function recurringFieldNames(params) {
+  const names = { startTime: 'start_time', durationMinutes: 'duration', allDay: 'all_day', recurrence: 'repeat', projectId: 'project', assigneeSyncId: 'assignee' };
+  const set = Object.keys(params.set ?? {}).map((k) => names[k] ?? k);
+  const cleared = (params.clear ?? []).filter((k) => !set.includes(k));
+  return [...set, ...cleared];
 }
 
 /** The task entity of a subtask write's response: block or inbox item, as update_task shapes it. */

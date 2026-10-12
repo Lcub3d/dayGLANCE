@@ -18,6 +18,17 @@ export type UndoOp =
   | { kind: 'restore_block_fields'; blockId: string; before: Record<string, unknown> }
   | { kind: 'restore_completion'; taskId: string; before: { completed: boolean; completedAt?: string | null } }
   | { kind: 'restore_recurring_completion'; templateId: string | number; dateStr: string; wasCompleted: boolean }
+  // A repeating series (#2066): created, or edited for one occurrence or all.
+  // The edit's undo carries the template fields and the exception dates it
+  // changed; completions are never part of it.
+  | { kind: 'remove_created_series'; templateId: string | number }
+  | {
+      kind: 'restore_series_fields';
+      templateId: string | number;
+      before: Record<string, unknown>;
+      absentBefore?: string[];
+      exceptionsBefore?: Record<string, unknown>;
+    }
   /**
    * Reverses an update_task edit, inbox or scheduled. `before` holds the
    * prior values of the touched fields; `absentBefore` names touched fields
@@ -116,6 +127,11 @@ export function undoGroupKey(op: UndoOp): string {
       return `${op.entityKind}:${op.entityId}`;
     case 'restore_recurring_completion':
       return `${op.templateId}::${op.dateStr}`;
+    // The series as a whole: an occurrence edit lives on the template too, so
+    // it groups with the series rather than with that date's completion.
+    case 'remove_created_series':
+    case 'restore_series_fields':
+      return `series:${op.templateId}`;
     default: {
       const kind = (op as { kind?: unknown } | null | undefined)?.kind;
       throw new Error(

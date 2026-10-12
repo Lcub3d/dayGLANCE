@@ -493,7 +493,7 @@ describe('applyUpdateTask — field edits with by-design guards', () => {
     const r = applyUpdateTask(base(), { taskId: 'recurring-abc-2026-08-10', set: { title: 'x' }, clear: [] });
     expect(r).toMatchObject({ ok: false, error: { code: 'validation' } });
     expect(r.error.message).toMatch(/synthetic/);
-    expect(r.error.message).toMatch(/Edit the series/);
+    expect(r.error.message).toMatch(/dayglance_update_recurring_task/);
   });
 
   it('rejects CalDAV task-calendar tasks (the set_task_completion precedent)', () => {

@@ -161,16 +161,16 @@ describe('the registered surface, read over the wire', () => {
   afterAll(() => h.close());
   afterEach(() => { multiUser = false; bridge.calls.length = 0; });
 
-  it('lists exactly the tools the reference documents: 19 without multi-user, 20 with', async () => {
+  it('lists exactly the tools the reference documents: 20 without multi-user, 21 with', async () => {
     const client = await h.connect();
     const without = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(without).toEqual(documentedTools.filter((n) => n !== 'dayglance_list_users'));
-    expect(without).toHaveLength(19);
+    expect(without).toHaveLength(20);
 
     multiUser = true;
     const withUsers = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(withUsers).toEqual(documentedTools);
-    expect(withUsers).toHaveLength(20);
+    expect(withUsers).toHaveLength(21);
   });
 
   it('a multi-user toggle changes the schema on the SAME connection\'s next request, no reconnect', async () => {
@@ -375,6 +375,85 @@ describe('the guards in front of a write, on the real request path', () => {
       await h.close();
     }
   });
+});
+
+describe('repeating tasks over the wire (#2066)', () => {
+  const seriesScript: Script = {
+    ...okScript,
+    create_task: (p) => ({
+      ok: true,
+      data: { series: { id: (p as { taskId: string }).taskId, title: (p as { title: string }).title } },
+      undo: { summary: `Created repeating “${(p as { title: string }).title}”`, op: { kind: 'remove_created_series', templateId: (p as { taskId: string }).taskId } },
+    }),
+    update_recurring_task: (p) => ({
+      ok: true,
+      data: { scope: (p as { scope: string }).scope },
+      undo: { summary: 'Edited repeating “Standup” (series: title)', op: { kind: 'restore_series_fields', templateId: 's1', before: { title: 'Standup' } } },
+    }),
+  };
+  const withHarness = async (fn: (client: Awaited<ReturnType<Harness['connect']>>, calls: Call[], journal: unknown[]) => Promise<void>) => {
+    const bridge = fakeBridge(seriesScript);
+    const journal: unknown[] = [];
+    const h = await start({ writeDeps: writeDeps(bridge.bridge, { journal: (rec) => journal.push(rec) }) });
+    try {
+      await fn(await h.connect(), bridge.calls, journal);
+    } finally {
+      await h.close();
+    }
+  };
+
+  it('create_task with start and repeat reaches the bridge with the stored pattern, and is journaled per series', () =>
+    withHarness(async (client, calls, journal) => {
+      const r = await client.callTool({ name: 'dayglance_create_task', arguments: {
+        title: 'Standup', start: '2026-10-05 09:00', duration_minutes: 15,
+        repeat: { frequency: 'weekly', days_of_week: ['mon', 'wed'], count: 10 },
+      } });
+      expect(r.isError).toBeFalsy();
+      expect(calls[0]).toMatchObject({
+        method: 'create_task',
+        params: {
+          title: 'Standup',
+          schedule: { date: '2026-10-05', startTime: '09:00', durationMinutes: 15 },
+          recurrence: { type: 'weekly', daysOfWeek: [1, 3], maxOccurrences: 10 },
+        },
+      });
+      expect(journal[0]).toMatchObject({ op: { kind: 'remove_created_series' } });
+    }));
+
+  it('an interval is a by-design rejection with its own message, decided before the bridge', () =>
+    withHarness(async (client, calls) => {
+      const r = await client.callTool({ name: 'dayglance_create_task', arguments: {
+        title: 'Water plants', start: '2026-10-05 09:00', repeat: { frequency: 'daily', interval: 3 },
+      } });
+      expect(r.isError).toBe(true);
+      expect(body(r)).toMatchObject({ error: { code: 'validation', message: expect.stringMatching(/no interval by design/) } });
+      expect(calls).toEqual([]);
+    }));
+
+  it('update_recurring_task reaches the bridge with its plan; a bad scope or a series-only field never does', () =>
+    withHarness(async (client, calls, journal) => {
+      const ok = await client.callTool({ name: 'dayglance_update_recurring_task', arguments: {
+        task_id: 'recurring-s1-2026-10-07', scope: 'series', title: 'Daily sync',
+      } });
+      expect(ok.isError).toBeFalsy();
+      expect(calls[0]).toMatchObject({
+        method: 'update_recurring_task',
+        params: { taskId: 'recurring-s1-2026-10-07', scope: 'series', set: { title: 'Daily sync' }, clear: [] },
+      });
+      expect(journal[0]).toMatchObject({ tool: 'dayglance_update_recurring_task', op: { kind: 'restore_series_fields' } });
+
+      // The scope is a plain string in the schema so this message survives SDK validation.
+      const noScope = await client.callTool({ name: 'dayglance_update_recurring_task', arguments: {
+        task_id: 'recurring-s1-2026-10-07', scope: 'all', title: 'x',
+      } });
+      expect(body(noScope)).toMatchObject({ error: { code: 'validation', message: expect.stringMatching(/"occurrence".*"series"/) } });
+
+      const seriesOnly = await client.callTool({ name: 'dayglance_update_recurring_task', arguments: {
+        task_id: 'recurring-s1-2026-10-07', scope: 'occurrence', notes: 'x',
+      } });
+      expect(body(seriesOnly)).toMatchObject({ error: { code: 'validation', message: expect.stringMatching(/belongs to the whole series by design/) } });
+      expect(calls).toHaveLength(1);
+    }));
 });
 
 describe('the listener itself', () => {

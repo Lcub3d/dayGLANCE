@@ -137,13 +137,43 @@ describe('planCreateTask — by-design rejections (copy must say design, not uns
     }
   });
 
-  it('repeat → typed v1 rejection naming v1', () => {
-    const r = plan({ title: 'T', repeat: 'weekly' });
+  it('repeat without start → by-design rejection: a series lives on the calendar', () => {
+    const r = plan({ title: 'T', repeat: { frequency: 'weekly' } });
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.code).toBe('validation');
-      expect(r.message).toMatch(/v1/);
+      expect(r.message).toMatch(/repeat needs start/);
     }
+  });
+
+  it('repeat with start → a series plan anchored on start (#2066)', () => {
+    const r = plan({ title: 'Renew server', start: '2026-10-13 09:00', repeat: { frequency: 'monthly' } });
+    expect(r).toEqual({
+      ok: true,
+      plan: {
+        title: 'Renew server',
+        schedule: { date: '2026-10-13', startTime: '09:00', durationMinutes: 30, allDay: false },
+        recurrence: { type: 'monthly', monthDay: 13, monthWeekday: null, startDate: '2026-10-13' },
+      },
+    });
+  });
+
+  it('an all-day series takes its first date from the bare start', () => {
+    const r = plan({ title: 'Bins', start: '2026-10-13', all_day: true, repeat: { frequency: 'weekly', days_of_week: ['tue'] } });
+    expect(r.ok && r.plan.recurrence).toEqual({ type: 'weekly', daysOfWeek: [2], startDate: '2026-10-13' });
+    expect(r.ok && r.plan.schedule?.allDay).toBe(true);
+  });
+
+  it('a series is scheduled, so priority and deadline are still rejected by design', () => {
+    const r = plan({ title: 'T', start: '2026-10-13 09:00', priority: 2, repeat: { frequency: 'daily' } });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/by design/);
+  });
+
+  it('an invalid repeat is the repeat parser\'s validation error, before anything is written', () => {
+    const r = plan({ title: 'T', start: '2026-10-13 09:00', repeat: { frequency: 'monthly', interval: 3 } });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.message).toMatch(/no interval by design/);
   });
 
   it('project without priority/deadline is fine (both shapes)', () => {

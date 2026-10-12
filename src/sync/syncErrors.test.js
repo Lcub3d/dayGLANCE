@@ -45,12 +45,23 @@ describe('locale coverage for the 1.10.0 engine codes', () => {
   it.each([
     ['QUOTA_EXCEEDED'],
     ['CREDENTIAL_INVALID'],
+    ['ABSENT_REMOTE_HOLD'],
   ])('%s renders from both locales through syncErrorText', (code) => {
     for (const locale of [en, fr]) {
       const rendered = syncErrorText(realT(locale), 'engine fallback message', code);
       expect(rendered, `missing sync.errors.${code}`).not.toBe('engine fallback message');
       expect(rendered.length).toBeGreaterThan(20);
     }
+  });
+
+  // The hold's message has one job: say that nothing was written. Everything
+  // else is secondary, because the user's next question is whether their data is
+  // intact — and a hold that reads like a failure invites them to "fix" it by
+  // re-seeding by hand.
+  it('the absent-remote hold says nothing was written, before anything else', () => {
+    expect(en.sync.errors.ABSENT_REMOTE_HOLD).toMatch(/^The sync file is missing/);
+    expect(en.sync.errors.ABSENT_REMOTE_HOLD).toMatch(/Nothing was written over it/);
+    expect(en.sync.errors.ABSENT_REMOTE_HOLD).toMatch(/safe on this device/);
   });
 
   it('the quota message contains no deletion advice and points at the operator', () => {

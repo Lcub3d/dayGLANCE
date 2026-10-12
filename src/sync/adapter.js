@@ -10,6 +10,10 @@
 import { createSyncEngine } from '@glance-apps/sync';
 import { mergeSyncData } from '../mergeSync.js';
 import { nativeHttpRequest } from '../native.js';
+import {
+  createAbsentRemoteSeedGuard,
+  installAbsentRemoteSeedGuard,
+} from './absentRemoteSeedGuard.js';
 
 const isNativeApp =
   typeof window !== 'undefined' &&
@@ -43,10 +47,26 @@ const DAYGLANCE_CONFIG = {
       : null,
 };
 
+// The file engine's own "this device has completed a sync" key
+// (`${storageKeyPrefix}-cloud-sync-last-synced`). It is what the seed guard
+// reads to tell a first run from an absence on a device whose remote copy is
+// known to have existed. Derived from the prefix so the two cannot drift.
+const LAST_SYNCED_KEY = `${DAYGLANCE_CONFIG.storageKeyPrefix}-cloud-sync-last-synced`;
+
 // Mirrors App.jsx 4799-4806 pre-extraction. Refuses to upload an empty payload
 // when localStorage still has data — a sign of a stale-state race that would
 // otherwise wipe the remote.
-const validateUploadPayload = async (envelope) => {
+//
+// The absent-remote seed guard rides the same seam: it refuses the engine's
+// "the remote file is 404, so seed it from local state" write on a device that
+// has synced before, until the absence outlasts its grace window. Both are
+// refusals of a write that would otherwise be unconditional, and the engine
+// treats either one as "nothing was written, so this cycle is not a success".
+const validateUploadPayload = (envelope, seedGuard, report) => {
+  // Consume the read observation for THIS upload whatever the verdict, so an
+  // absence can never be judged against a later upload it did not precede.
+  const seed = seedGuard ? seedGuard.decideUpload() : { allowed: true };
+
   const localTaskCount   = JSON.parse(localStorage.getItem('day-planner-tasks')        || '[]').length;
   const localInboxCount  = JSON.parse(localStorage.getItem('day-planner-unscheduled')  || '[]').length;
   const payloadTaskCount = (envelope.data?.tasks?.length || 0) + (envelope.data?.unscheduledTasks?.length || 0);
@@ -55,6 +75,11 @@ const validateUploadPayload = async (envelope) => {
       valid: false,
       reason: `payload has 0 tasks but localStorage has ${localTaskCount + localInboxCount}`,
     };
+  }
+
+  if (!seed.allowed) {
+    report?.hold?.(seed.reason);
+    return { valid: false, reason: seed.reason };
   }
   return { valid: true };
 };
@@ -89,21 +114,54 @@ const validateApplyPayload = async (envelope) => {
  * @param {() => void}                            callbacks.onPassphraseRequired
  * @param {() => void}                            callbacks.onFirstSyncReload
  * @param {() => number}                          callbacks.getSyncRetentionDays
+ * @param {object} [options]
+ * @param {string} [options.appFolderName]        the sync folder in the server
+ * @param {Record<string, object>} [options.providers]  transport override, for
+ *   tests that script a provider; the engine builds its own when unset
  */
-export const createDayGlanceEngine = (callbacks, { appFolderName = 'GLANCE/dayglance' } = {}) => createSyncEngine({
-  ...DAYGLANCE_CONFIG,
-  appFolderName,
-  buildPayload:        callbacks.buildPayload,
-  buildBackupPayload:  callbacks.buildBackupPayload,
-  applyPayload:        callbacks.applyPayload,
-  mergePayloads:       (local, remote) => mergeSyncData(local, remote, callbacks.getSyncRetentionDays()),
-  validateUploadPayload,
-  validateApplyPayload,
-  onStatusChange:      callbacks.onStatusChange,
-  onError:             callbacks.onError,
-  onLastSyncedChange:  callbacks.onLastSyncedChange,
-  onConflict:          callbacks.onConflict,
-  onPassphraseRequired: callbacks.onPassphraseRequired,
-  onFirstSyncReload:   callbacks.onFirstSyncReload,
-  retentionDays:       callbacks.getSyncRetentionDays(),
-});
+export const createDayGlanceEngine = (callbacks, { appFolderName = 'GLANCE/dayglance', providers: providerOverrides } = {}) => {
+  // One guard per engine: the absence streak belongs to the configured folder,
+  // and App.jsx rebuilds the engine when that folder changes.
+  const absentRemoteSeedGuard = createAbsentRemoteSeedGuard({
+    hasSyncedBefore: () => !!localStorage.getItem(LAST_SYNCED_KEY),
+  });
+
+  const engine = createSyncEngine({
+    ...DAYGLANCE_CONFIG,
+    appFolderName,
+    buildPayload:        callbacks.buildPayload,
+    buildBackupPayload:  callbacks.buildBackupPayload,
+    applyPayload:        callbacks.applyPayload,
+    mergePayloads:       (local, remote) => mergeSyncData(local, remote, callbacks.getSyncRetentionDays()),
+    validateUploadPayload: (envelope) => validateUploadPayload(envelope, absentRemoteSeedGuard, {
+      // The engine reports a refused upload as a quiet non-success — status
+      // 'idle', nothing surfaced — and App.jsx drops an 'idle' that arrives while
+      // the status still reads 'downloading'/'uploading', so a hold would leave
+      // the UI on "syncing…" indefinitely. Move the status off the in-flight pair
+      // first; the engine's own 'idle' then lands on top of it.
+      hold: (reason) => {
+        callbacks.onStatusChange?.('error');
+        callbacks.onError?.(reason, 'ABSENT_REMOTE_HOLD', false);
+      },
+    }),
+    validateApplyPayload,
+    onStatusChange:      callbacks.onStatusChange,
+    onError:             callbacks.onError,
+    onLastSyncedChange:  callbacks.onLastSyncedChange,
+    onConflict:          callbacks.onConflict,
+    onPassphraseRequired: callbacks.onPassphraseRequired,
+    onFirstSyncReload:   callbacks.onFirstSyncReload,
+    retentionDays:       callbacks.getSyncRetentionDays(),
+  });
+
+  // Transport override — a scripted provider injected by tests, the same seam
+  // dbEngine.js takes as `callbacks.fetchImpl`. Applied BEFORE the seed guard is
+  // installed so the production path wraps the injected transport too, rather
+  // than the test wrapping it on its own and proving nothing. The engine builds
+  // its own providers when this is unset, and `engine.providers` IS the map the
+  // engine reads (the package returns it by reference).
+  if (providerOverrides) Object.assign(engine.providers, providerOverrides);
+
+  installAbsentRemoteSeedGuard(engine.providers, absentRemoteSeedGuard);
+  return engine;
+};

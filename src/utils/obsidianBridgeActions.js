@@ -27,7 +27,7 @@
 
 import { getVaultConfig } from '../sync/vaultConfig.js';
 import { hasDbRootKey } from '@glance-apps/sync';
-import { getDbRootKey } from '@glance-apps/sync/src/dbCrypto.js';
+import { verifiedBridgeRootKey } from './bridgeKeyGate.js';
 import {
   deriveBridgeSubkey,
   openBridgeEnvelope,
@@ -52,9 +52,11 @@ export async function fetchBridgeActions() {
     if (!cfg?.enabled || !cfg.vaultUrl || !cfg.vaultToken || !cfg.accountId || !hasDbRootKey()) return null;
     const meta = await getBridgePairingMeta();
     if (!meta) return null;
-    const salt = Uint8Array.from(atob(meta.pairingSalt), (c) => c.charCodeAt(0));
-    const subkey = await deriveBridgeSubkey(getDbRootKey(), salt);
     const client = bridgeVaultClientFor(cfg);
+    const rootKey = await verifiedBridgeRootKey(client, cfg.accountId); // bridgeKeyGate.js
+    if (!rootKey) return null;
+    const salt = Uint8Array.from(atob(meta.pairingSalt), (c) => c.charCodeAt(0));
+    const subkey = await deriveBridgeSubkey(rootKey, salt);
 
     let since = readActionCursor();
     const byActionId = new Map();

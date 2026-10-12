@@ -20,11 +20,16 @@
 //   - all_day with duration_minutes:     an all-day task has no meaningful
 //     duration (the UI disables the input)
 //   - all_day with a time in start:      all-day takes a bare date
-//   - repeat:                            recurring creation is out of v1
-//     (taskMutations.js likewise rejects recurring move/resize)
+//   - repeat without start:              a series lives on the calendar
+//
+// A THIRD SHAPE, repeat (#2066): with start, `repeat` turns the scheduled
+// create into a recurring SERIES whose first date is start's. The pattern is
+// validated by mcpRepeatArgs.ts, which also carries the by-design rejection of
+// an interval the app cannot repeat on.
 
 import { isValidLocalDate } from './mcpDates.js';
 import { validateStartTime, validateDurationMinutes } from './mcpLocalTime.js';
+import { parseRepeat, type RecurrencePattern } from './mcpRepeatArgs.js';
 
 export interface CreateTaskArgs {
   title?: unknown;
@@ -50,6 +55,11 @@ export interface CreatePlan {
   deadline?: string;
   /** Inbox duration (scheduled duration lives in `schedule`). */
   durationMinutes?: number;
+  /**
+   * Series shape only (#2066): the stored recurrence, startDate included. Its
+   * presence turns the scheduled create into a recurring template.
+   */
+  recurrence?: RecurrencePattern & { startDate: string };
   /** Scheduled shape only — presence means create onto the calendar. */
   schedule?: {
     date: string;
@@ -75,17 +85,17 @@ const reject = (message: string): CreatePlanResult => ({ ok: false, code: 'valid
 export function planCreateTask(args: CreateTaskArgs, timeZone: string): CreatePlanResult {
   const { title, notes, project_id, assignee_id, priority, deadline, start, duration_minutes, all_day, repeat } = args;
 
-  if (repeat !== undefined) {
-    return reject(
-      'Recurring tasks cannot be created over MCP in v1. Create the repeating series in dayGLANCE itself. ' +
-      'To create a one-off task, drop the repeat argument.',
-    );
-  }
   if (typeof title !== 'string' || !title.trim()) {
     return reject('title must be a non-empty string');
   }
 
   const scheduled = start !== undefined;
+  if (repeat !== undefined && !scheduled) {
+    return reject(
+      'A repeating series lives on the calendar, so repeat needs start: the first date, with a time ' +
+      '("YYYY-MM-DD HH:MM") or as a bare date with all_day. Unscheduled inbox tasks do not repeat by design.',
+    );
+  }
   const allDay = all_day === true;
 
   if (scheduled && (priority !== undefined || deadline !== undefined)) {
@@ -140,7 +150,7 @@ export function planCreateTask(args: CreateTaskArgs, timeZone: string): CreatePl
       );
     }
     plan.schedule = { date: start as string, startTime: '00:00', durationMinutes: 30, allDay: true };
-    return { ok: true, plan };
+    return withRepeat(plan, repeat);
   }
 
   if (typeof start !== 'string' || !/^\S+ \S+$/.test(start)) {
@@ -159,5 +169,14 @@ export function planCreateTask(args: CreateTaskArgs, timeZone: string): CreatePl
     durationMinutes: typeof duration_minutes === 'number' ? duration_minutes : 30,
     allDay: false,
   };
+  return withRepeat(plan, repeat);
+}
+
+/** Attach the series pattern to a scheduled plan, anchored on its first date. */
+function withRepeat(plan: CreatePlan, repeat: unknown): CreatePlanResult {
+  if (repeat === undefined || !plan.schedule) return { ok: true, plan };
+  const parsed = parseRepeat(repeat, plan.schedule.date);
+  if (!parsed.ok) return parsed;
+  plan.recurrence = { ...parsed.recurrence, startDate: plan.schedule.date };
   return { ok: true, plan };
 }

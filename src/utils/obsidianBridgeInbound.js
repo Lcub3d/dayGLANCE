@@ -26,7 +26,7 @@
 
 import { getVaultConfig } from '../sync/vaultConfig.js';
 import { hasDbRootKey } from '@glance-apps/sync';
-import { getDbRootKey } from '@glance-apps/sync/src/dbCrypto.js';
+import { verifiedBridgeRootKey } from './bridgeKeyGate.js';
 import {
   deriveBridgeSubkey,
   openBridgeEnvelope,
@@ -107,9 +107,13 @@ export async function fetchBridgeObservations() {
     if (!hasDbRootKey()) return fail('key-pending');
     const meta = await getBridgePairingMeta();
     if (!meta) return fail('unpaired');
-    const salt = Uint8Array.from(atob(meta.pairingSalt), (c) => c.charCodeAt(0));
-    const subkey = await deriveBridgeSubkey(getDbRootKey(), salt);
     const client = bridgeVaultClientFor(cfg);
+    // A key not yet proven against the account is the same hold: opening
+    // rows under it would read nothing (bridgeKeyGate.js).
+    const rootKey = await verifiedBridgeRootKey(client, cfg.accountId);
+    if (!rootKey) return fail('key-pending');
+    const salt = Uint8Array.from(atob(meta.pairingSalt), (c) => c.charCodeAt(0));
+    const subkey = await deriveBridgeSubkey(rootKey, salt);
 
     let since = 0;
     try { since = Number(localStorage.getItem(OBS_HWM_KEY)) || 0; } catch { /* fresh cursor */ }

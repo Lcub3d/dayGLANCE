@@ -336,6 +336,26 @@ describe('runEventSetCycle', () => {
     expect(getCursor(localStorage)).toBe(b.event_id);
   });
 
+  it('an envelope this device has no key for holds the cursor in front of it and reports keyNeeded; later ones wait too', async () => {
+    const a = foreign('a', 3000), sealed = foreign('sealed', 2000), b = foreign('b', 1000);
+    const folder = { text: fileWith(a, sealed, b) };
+    const handled = [];
+    const receive = async (e) => {
+      if (e.event_id === sealed.event_id) return { handled: false, skipped: 'no_root_key' };
+      handled.push(e.event_id);
+      return { handled: true };
+    };
+    const r = await runEventSetCycle({ transport: fakeTransport(folder), io: { storage: localStorage, now: () => T0, retentionMs: RETENTION, receive }, state: null });
+    expect(r.outcome).toMatchObject({ received: 1, keyNeeded: true });
+    expect(handled).toEqual([a.event_id]);
+    expect(getCursor(localStorage)).toBe(a.event_id);
+    // The key arrives: the next cycle handles the sealed one and the rest.
+    const r2 = await runEventSetCycle({ transport: fakeTransport(folder), io: { storage: localStorage, now: () => T0, retentionMs: RETENTION, receive: async (e) => { handled.push(e.event_id); return { handled: true }; } }, state: r.state });
+    expect(r2.outcome).toMatchObject({ received: 2, keyNeeded: false });
+    expect(handled).toEqual([a.event_id, sealed.event_id, b.event_id]);
+    expect(getCursor(localStorage)).toBe(b.event_id);
+  });
+
   it('a sender-only cycle (no receive) moves no cursor', async () => {
     const t = fakeTransport({ text: fileWith(foreign('a')) });
     await runEventSetCycle({ transport: t, io: io({ receive: undefined }), state: fresh() });

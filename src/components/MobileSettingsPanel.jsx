@@ -3390,8 +3390,8 @@ const MobileSettingsPanel = () => {
       </div>
 
 
-      {/* Users sync path (only shown when cloud sync is configured) */}
-      {cloudSyncConfig?.enabled && (
+      {/* Users sync path (shown when a roster road is configured: WebDAV or a Direct Access folder) */}
+      {(cloudSyncConfig?.enabled || directAccessRoster) && (
         <div>
           <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.usersSyncPath')}</label>
           <input

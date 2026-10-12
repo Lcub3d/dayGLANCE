@@ -1690,7 +1690,15 @@ const DayPlanner = () => {
   // Direct Access intents (docs/direct-access-sync.md, Phase 7): the event-set
   // file in the connected folder, polled on the snapshot cadence; inert unless
   // its own opt-in is on. Same context shape.
-  useDirectAccessIntents(dbIntentContext);
+  // A sealed intent in the folder this device has no key for raises the same
+  // passphrase prompt the folder's sync file does (directAccessKeyWanted).
+  useDirectAccessIntents(dbIntentContext, {
+    onKeyNeeded: () => {
+      if (syncKeyReadyRef.current === null) return;
+      setDirectAccessKeyWanted(true);
+      setSyncKeyReady(false);
+    },
+  });
   // Fresh handle on the intents drain context for the SSE push client (below),
   // which triggers the SAME drain outside the poll cadence.
   const dbIntentContextRef = useRef(dbIntentContext);

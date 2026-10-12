@@ -15,8 +15,9 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
     /// thread, and HttpBridge waits on a semaphore for URLSession, so handling
     /// these inline froze the app's main thread for the whole request (up to its
     /// 20 s timeout per call). They run on a background queue and are answered
-    /// on the main thread. The renderer calls them with an async XHR
-    /// (native.js nativeHttpRequest); the shim's synchronous XHR still works too.
+    /// on the main thread. The renderer no longer reaches httpRequest this way
+    /// (NativeHttpMessageHandler, which keeps credentials out of logged URLs);
+    /// this stays so a direct DayGlanceNative.httpRequest call cannot freeze it.
     private static let backgroundCalls: Set<String> = ["native_httpRequest"]
 
     /// Background calls whose task WebKit stopped (the page reloaded or
@@ -489,10 +490,10 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
         // The page (dg://) and this scheme (dgbridge://) are different origins.
         // WebKit lets the shim's SYNCHRONOUS XHR read the answer without CORS
         // headers, but holds an ASYNC XHR to the access control check, so
-        // nativeHttpRequest's async call (#2048) got every answer blocked as
+        // nativeHttpRequest's async XHR (#2048) got every answer blocked as
         // "Origin dg:// is not allowed by Access-Control-Allow-Origin" and all
-        // native HTTP on iOS failed: vault sync, the Obsidian bridge, WebDAV,
-        // ICS. Allow the app's own origin, and only that one.
+        // native HTTP on iOS failed. HTTP now uses NativeHttpMessageHandler;
+        // this keeps any async call here readable. The app's own origin only.
         let response = HTTPURLResponse(
             url: task.request.url ?? URL(string: "about:blank")!,
             statusCode: json == nil ? 500 : 200,

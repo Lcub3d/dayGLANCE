@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { instanceEditChanges, applyRecurringInstanceEdit } from './recurringInstanceEdit.js';
 import { recurringTaskInstance } from './expandRecurringTasks.js';
+import { getOccurrencesInRange } from './recurrenceEngine.js';
 
 const DATE = '2026-10-14';
 const NOW = '2026-10-11T12:00:00.000Z';
@@ -141,5 +142,47 @@ describe('applyRecurringInstanceEdit', () => {
     });
     expect(next.projectId).toBe('p1');
     expect(next.recurrence).toEqual({ type: 'weekly', days: [1], startDate: '2026-10-01' });
+  });
+
+  it('a template with no start takes the edited date, never the 1st of its month', () => {
+    const tmpl = template({ recurrence: { type: 'daily' } });
+    const next = save(tmpl, editOf(tmpl), 'this');
+    expect(next.recurrence.startDate).toBe(DATE);
+  });
+
+  // Yearly and biweekly take part of their pattern from startDate, so a
+  // pattern change made here anchors on the edited occurrence (Wed Oct 14).
+  const changePattern = (tmpl, recurrence) => applyRecurringInstanceEdit(tmpl, {
+    dateStr: DATE, edit: editOf(tmpl), scope: 'this', projectId: tmpl.projectId, recurrence, now: NOW,
+  });
+
+  it('changing to yearly recurs on the edited date, not on the start date', () => {
+    const next = changePattern(template(), { type: 'yearly' });
+    expect(getOccurrencesInRange(next, '2026-01-01', '2027-12-31')).toEqual([DATE, '2027-10-14']);
+  });
+
+  it('changing to biweekly keeps the edited occurrence when the start week is off phase', () => {
+    const tmpl = template({ recurrence: { type: 'daily', startDate: '2026-10-08' } });
+    const next = changePattern(tmpl, { type: 'biweekly', daysOfWeek: [3] });
+    expect(getOccurrencesInRange(next, '2026-10-01', '2026-11-30')).toEqual([DATE, '2026-10-28', '2026-11-11', '2026-11-25']);
+  });
+
+  it('an ordinary save of a biweekly occurrence leaves the start alone', () => {
+    const tmpl = template({ recurrence: { type: 'biweekly', daysOfWeek: [3], startDate: '2026-09-30' } });
+    expect(save(tmpl, editOf(tmpl, { title: 'Retro' }), 'this').recurrence.startDate).toBe('2026-09-30');
+  });
+
+  it('an ordinary save of a 29 February series\' 1 March occurrence keeps it on its leap day', () => {
+    // The engine shows a 29 February yearly series on 1 March in other years.
+    const tmpl = template({ recurrence: { type: 'yearly', startDate: '2024-02-29' } });
+    const dateStr = '2025-03-01';
+    expect(getOccurrencesInRange(tmpl, '2025-01-01', '2025-12-31')).toEqual([dateStr]);
+    const { title, startTime, duration, isAllDay, color } = recurringTaskInstance(tmpl, dateStr);
+    const next = applyRecurringInstanceEdit(tmpl, {
+      dateStr, edit: { title, startTime: '10:00', duration, isAllDay, color }, scope: 'this',
+      projectId: tmpl.projectId, recurrence: tmpl.recurrence, now: NOW,
+    });
+    expect(next.recurrence.startDate).toBe('2024-02-29');
+    expect(getOccurrencesInRange(next, '2024-01-01', '2024-12-31')).toEqual(['2024-02-29']);
   });
 });

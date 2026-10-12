@@ -12,6 +12,7 @@
 // template, whichever scope is picked.
 
 import { recurringTaskInstance } from './expandRecurringTasks.js';
+import { editedSeriesStart } from './recurrenceEngine.js';
 
 export const INSTANCE_FIELDS = ['title', 'startTime', 'duration', 'isAllDay', 'color'];
 
@@ -53,7 +54,8 @@ export function instanceEditChanges(template, dateStr, edit, { defaultColor } = 
  * @param opts.edit        As for instanceEditChanges.
  * @param opts.scope       'this' or 'all'.
  * @param opts.projectId   Series-level.
- * @param opts.recurrence  Series-level; the template keeps its startDate.
+ * @param opts.recurrence  Series-level; the start never moves earlier (see
+ *                         editedSeriesStart for yearly and biweekly).
  * @param opts.now         ISO stamp for lastModified.
  * @param opts.defaultColor As for instanceEditChanges.
  */
@@ -89,7 +91,10 @@ export function applyRecurringInstanceEdit(template, { dateStr, edit, scope, pro
   next.exceptions = exceptions;
   next.projectId = projectId || undefined;
   if (recurrence) {
-    next.recurrence = { ...recurrence, startDate: template.recurrence?.startDate || dateStr.substring(0, 8) + '01' };
+    // The start never moves earlier, which would invent occurrences before
+    // the series existed; yearly and biweekly may move it forward to stay
+    // anchored on this occurrence (editedSeriesStart).
+    next.recurrence = { ...recurrence, startDate: editedSeriesStart(recurrence, template.recurrence?.startDate, dateStr) };
   }
   next.lastModified = now;
   return next;

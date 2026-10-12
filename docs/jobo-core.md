@@ -87,13 +87,19 @@ untimed record keeps the history mixed. The result reports
 `closingCompletionIds`, `closingCompletionCount` and `unmeasuredAttemptCount`
 beside `untimedAttemptCount`; the Check lists a closing completion as the
 moment its session was marked complete, not as a session, and the Do column
-draws no estimate for it.
+draws no estimate for it. Statistics classify single and split sessions by the
+same count (`groupSessionCount`) in every scope, Day, Week, Month and All
+time, while Do record counts still include the completion.
 
-A completion's moment comes from `options.completionMoment(record)`. By
-default it is the stamp's own clock, and a UTC stamp gives none; the day model
-passes the projection its completion markers use (`completionMarker.js`), so a
-completion closes a session exactly when it sits at that session's end on
-screen.
+The completion does not replace the measured end: start, finish and duration
+still come from the timed sessions.
+
+A completion's moment comes from `options.completionMoment(record)`, by
+default the stamp's own clock (its offset), which the app keeps. A UTC stamp,
+as recurring completions are stamped today, gives no moment and closes
+nothing: timed Do keep civil coordinates without a zone, so reading a UTC
+stamp in the viewer's zone would make one ledger comparable on one device and
+mixed on another.
 
 ## Prototype import
 

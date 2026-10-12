@@ -520,9 +520,11 @@ function comparisonPlanOverlap(bounds, anchor) {
  */
 export const COMPLETION_CLOSES_SESSION_MINUTES = 2;
 
-// The civil moment a completion stamp carries on its own clock. A stamp in
-// UTC (Z) has no civil clock of its own, so it gives none here; the view
-// passes its display projection (completionMarker.js) instead.
+// The civil moment a completion stamp carries on its own clock (its offset).
+// A stamp in UTC (Z), as recurring completions are stamped today, has no civil
+// clock of its own: reading it in a viewer's zone would classify one ledger
+// differently on different devices, so it gives none and closes nothing.
+// Timed Do keep their recorded civil coordinates and no zone.
 function ownCivilMoment(stamp) {
   if (typeof stamp !== 'string' || /Z$/i.test(stamp) || !Number.isFinite(Date.parse(stamp))) return null;
   return { date: stamp.slice(0, 10), time: stamp.slice(11, 16) };
@@ -531,8 +533,10 @@ function ownCivilMoment(stamp) {
 // A completion that closes the group's last timed session: the task was
 // checked off during it, or within COMPLETION_CLOSES_SESSION_MINUTES after
 // it ended. It marks when that session's work ended, not work nobody
-// measured, so it does not make the history incomplete. Only a completion
-// that still stands (an uncheck drops it to partial), with a moment.
+// measured, so it does not make the history incomplete. It does not replace
+// the measured end: finish timing and duration still come from the timed
+// sessions. Only a completion that still stands (an uncheck drops it to
+// partial), with a moment on its own clock.
 function closesLastSession(record, last, completionMoment) {
   if (record.source !== 'completion' || record.progress !== DO_PROGRESS.COMPLETED) return false;
   const moment = completionMoment(record);
@@ -559,7 +563,8 @@ function comparisonNotStarted({ attemptCount, currentPlanEnd, nowMinute }) {
  * remain available for the measured subset.
  *
  * `completionMoment(record)` gives a completion's civil { date, time }; by
- * default a stamp's own clock, and none for a UTC stamp.
+ * default a stamp's own clock, and none for a UTC stamp. The app keeps the
+ * default, so the classification is the same on every device.
  */
 export function compareExecutionToPlan(plan, records, options = {}) {
   if (!plain(options)) throw new TypeError('Comparison options must be a plain object');

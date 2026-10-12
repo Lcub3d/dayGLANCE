@@ -10,7 +10,7 @@ import {
 import { resolveOccurrence } from './detector.js';
 import { validCivilDate } from './viewDates.js';
 
-import { completionMarker, completionMoment } from './completionMarker.js';
+import { completionMarker } from './completionMarker.js';
 
 const DAY_MINUTES = 24 * 60;
 const PROGRESS_ORDER = Object.freeze([
@@ -132,18 +132,16 @@ function safeComparison(plan, records, options = {}) {
  * intentionally makes a mixed timed/untimed history non-comparable as a
  * whole, while the timed subset remains useful for diagnostics.
  */
-// A completion's moment as its marker shows it, so a completion closes a
-// session in the comparison exactly when it sits at that session's end on
-// screen (core's closesLastSession).
-const recordCompletionMoment = record => completionMoment(record.createdAt);
-
 function comparisonMetadata(plan, records, options = {}) {
   const attempts = sortJoboAttempts(records);
   const hasEstimatedAttempts = attempts.some(record => record.timingBasis === 'planDuration');
   const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED && record.timingBasis !== 'planDuration');
-  const compareOptions = { completionMoment: recordCompletionMoment, ...options };
-  const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, compareOptions);
-  const measuredComparison = safeComparison(plan, measuredAttempts, compareOptions);
+  // Core reads a completion's moment from its stamp's own clock (offset), so
+  // every device classifies the same ledger the same way. A UTC stamp has no
+  // civil clock of its own; projecting it into the viewer's zone would make
+  // the same history comparable on one device and mixed on another.
+  const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, options);
+  const measuredComparison = safeComparison(plan, measuredAttempts, options);
   return {
     comparable: comparison?.comparable === true,
     comparison,

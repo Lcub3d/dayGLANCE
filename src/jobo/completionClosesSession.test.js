@@ -5,6 +5,8 @@ import {
 } from './core.js';
 import { buildJoboDayModel } from './viewModel.js';
 import { summarizeJoboDayModel } from './dayStats.js';
+import { buildCheckSummary } from './checkSummary.js';
+import { aggregateCheckSummaries, buildStatisticsReports, statisticsDatesForScope, STATISTICS_SCOPES } from './checkStatistics.js';
 import { timingRows, summaryRows } from '../components/jobo/ExecutionAxes.jsx';
 
 // A timed session followed by the task's checkbox: the most common Focus
@@ -111,22 +113,27 @@ describe('where the app reads it', () => {
     timing: DO_TIMING.TIMED, date: day, startTime: '09:00', endDate: day, endTime: '09:55', planSnapshot: dayPlan,
     createdAt: stamp, updatedAt: stamp, observedAt: stamp, deleted: false,
   });
-  // A UTC stamp, as the detector writes for a recurring completion: the
-  // view projects it into local time, here 09:57 local on the same day.
-  const utcStamp = new Date(2026, 8, 24, 9, 57).toISOString();
-  const done = createDoRecord({
-    id: `do:t1:${utcStamp}`, taskId: 't1', title: 'Draft report', source: 'completion', progress: DO_PROGRESS.COMPLETED,
+  // An ordinary completion is stamped on its own clock, with an offset.
+  const doneAt = (createdAt) => createDoRecord({
+    id: `do:t1:${createdAt}`, taskId: 't1', title: 'Draft report', source: 'completion', progress: DO_PROGRESS.COMPLETED,
     timing: DO_TIMING.UNTIMED, date: day, startTime: null, endDate: null, endTime: null, planSnapshot: dayPlan,
-    createdAt: utcStamp, updatedAt: utcStamp, observedAt: utcStamp, deleted: false,
+    createdAt, updatedAt: createdAt, observedAt: createdAt, deleted: false,
   });
-  const model = () => buildJoboDayModel({ date: day, tasks: [task], records: [session, done], now: { date: day, time: '18:00' } });
+  const done = doneAt(`${day}T09:57:00+09:00`);
+  const model = (records = [session, done]) => buildJoboDayModel({ date: day, tasks: [task], records, now: { date: day, time: '18:00' } });
+  const sessionItem = (records) => model(records).timedRecords.find(entry => entry.id === session.id);
 
-  // MUTATION: stop passing completionMoment in comparisonMetadata and this fails.
   it('the day model compares the execution and reports nothing missing', () => {
-    const item = model().timedRecords.find(entry => entry.id === session.id);
+    const item = sessionItem();
     expect(item.comparison.comparable).toBe(true);
     expect(item.comparisonMeta.hasUntimedAttempts).toBe(false);
     expect(item.labels).toEqual([TIMING_SUMMARY.WITHIN_PLAN]);
+  });
+
+  it('the completion does not replace the measured end', () => {
+    const { comparison } = sessionItem();
+    expect(comparison.metrics.finishOffsetMinutes).toBe(-5);
+    expect(comparison.metrics.recordedMinutes).toBe(55);
   });
 
   it('the day figures count it as compared', () => {
@@ -135,10 +142,32 @@ describe('where the app reads it', () => {
 
   // MUTATION: read untimedAttemptCount again in ExecutionAxes and this fails.
   it('the details show the timing, not "time to add"', () => {
-    const { comparison } = model().timedRecords.find(entry => entry.id === session.id);
+    const { comparison } = sessionItem();
     const t = (key) => key;
     expect(timingRows(comparison, t).map(row => row.key)).toEqual(['start', 'finish', 'duration']);
     expect(summaryRows(null, comparison, t).map(row => row.key)).not.toContain('timeIncomplete');
+  });
+
+  // A UTC stamp (recurring completions today) has no civil clock of its own.
+  // The same ledger must classify the same way whatever zone it is read in.
+  // MUTATION: project UTC stamps into the viewer's zone (completionMoment in
+  // comparisonMetadata, or a viewer-local default in core) and this fails.
+  it('a UTC stamp closes nothing, identically in every time zone', () => {
+    const utc = doneAt(`${day}T09:56:00.000Z`);
+    const saved = process.env.TZ;
+    const seen = [];
+    try {
+      for (const zone of ['UTC', 'America/Los_Angeles', 'Asia/Tokyo', 'Europe/Berlin']) {
+        process.env.TZ = zone;
+        const { comparison } = sessionItem([session, utc]);
+        seen.push([zone, comparison.comparable, comparison.metrics.closingCompletionCount]);
+      }
+    } finally {
+      if (saved === undefined) delete process.env.TZ; else process.env.TZ = saved;
+    }
+    expect(seen).toEqual([
+      ['UTC', false, 0], ['America/Los_Angeles', false, 0], ['Asia/Tokyo', false, 0], ['Europe/Berlin', false, 0],
+    ]);
   });
 });
 
@@ -150,5 +179,36 @@ describe('a later completion stays the estimate\'s', () => {
     const result = compare([timed('08:30', '09:15'), completion('09:30')]);
     expect(result.comparable).toBe(false);
     expect(result.closingCompletionIds).toEqual([]);
+  });
+});
+
+describe('Statistics count a closed session once, in every scope', () => {
+  const dates = ['2026-09-28', '2026-09-29', '2026-09-30'];
+  const p = { date: dates[0], startTime: '09:00', duration: 60 };
+  const at = `${dates[0]}T12:00:00+02:00`;
+  const work = createDoRecord({ id: 'focus:w', taskId: 't1', title: 'Write', source: 'focus', progress: DO_PROGRESS.PARTIAL,
+    timing: DO_TIMING.TIMED, date: dates[0], startTime: '09:00', endDate: dates[0], endTime: '09:55', planSnapshot: p,
+    createdAt: at, updatedAt: at, observedAt: at, deleted: false });
+  const tick = (time) => createDoRecord({ id: `do:t1:${time}`, taskId: 't1', title: 'Write', source: 'completion',
+    progress: DO_PROGRESS.COMPLETED, timing: DO_TIMING.UNTIMED, date: dates[0], startTime: null, endDate: null, endTime: null,
+    planSnapshot: p, createdAt: `${dates[0]}T${time}:00+02:00`, updatedAt: at, observedAt: at, deleted: false });
+  const range = (records, scope) => aggregateCheckSummaries(buildStatisticsReports({
+    records, now: { date: dates[2], time: '12:00' },
+    dates: statisticsDatesForScope({ scope, anchorDate: dates[0], weekDates: dates, evidenceDates: dates }),
+  }));
+
+  // MUTATION: classify by attempts again in rangeExecution (or in
+  // buildCheckSummary) and these fail.
+  it.each(STATISTICS_SCOPES)('%s: a closing completion is not a second session; Do records still count both', scope => {
+    expect(range([work, tick('09:56')], scope)).toMatchObject({ doCount: 2, single: 1, split: 0 });
+  });
+
+  it.each(STATISTICS_SCOPES)('%s: a later completion is still a second session', scope => {
+    expect(range([work, tick('09:58')], scope)).toMatchObject({ doCount: 2, single: 0, split: 1 });
+  });
+
+  it('the day summary agrees', () => {
+    const model = buildJoboDayModel({ date: dates[0], records: [work, tick('09:56')], now: { date: dates[2], time: '12:00' } });
+    expect(buildCheckSummary(model, { date: dates[0] })).toMatchObject({ doCount: 2, single: 1, split: 0 });
   });
 });

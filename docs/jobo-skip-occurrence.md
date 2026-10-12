@@ -166,8 +166,8 @@ statistics (the date-row figures and the statistics panel, every scope):
 | **Plan vs actual** (late starts, ran long, within plan, compared) | Left out. With no Do there is nothing to compare, as for any task without Do. |
 | **Execution** | Unaffected. No Do record exists. |
 
-**What is guaranteed, and where.** In JOBO's statistics a skip never raises a
-completion rate:
+**What is guaranteed, and where.** A skip never raises a completion rate, in
+JOBO's statistics or, per decision 5, in MONTH and the daily summary:
 
 - **Today**, a skipped occurrence counts exactly as the same occurrence
   missed would: in the denominator, not completed.
@@ -180,9 +180,12 @@ completion rate:
   past day it counts as planned with nothing recorded, never vanishing.
 
 **Outside JOBO.** MONTH's day statistics and the daily summary (`useStats`)
-build occurrences with the recurrence engine, which hides `skipped` dates. A
-skip would leave their denominators there and raise those rates, the effect
-Lcub3d warned about. See decision 5.
+build occurrences with the recurrence engine, which hides `skipped` dates, so
+a skip would leave their denominators and raise those rates, the effect
+Lcub3d warned about. Settled (decision 5): they count an active skip too, as
+planned and not completed, so a skip raises no completion rate anywhere in
+the app. Only a date with `skip` is read differently; a move stays excluded
+there, as now, since the one-off task that replaced it is counted instead.
 
 Where Skipped shows in JOBO:
 
@@ -229,10 +232,11 @@ it stays visible.
    would touch the engine shared with the Obsidian plugin.
 4. **Restore at any time** from the Skipped group, besides Undo while it is
    the latest step. Proposed: both, through the one targeted inverse.
-5. **MONTH and the daily summary.** Either (a) count an active skip there too,
-   as planned and not completed, so no rate in the app rises; or (b) scope the
-   guarantee to JOBO and say so in the guide. Proposed: (a). It changes only
-   how those two read a date with `skip`, and leaves moves as they are.
+5. **MONTH and the daily summary.** **Settled: they count an active skip
+   too**, as planned and not completed, so no rate in the app rises. Chosen
+   over scoping the guarantee to JOBO, which would have left those two
+   screens disagreeing with JOBO's. It changes only how they read a date with
+   `skip`, and leaves moves as they are.
 6. **Where Skipped shows in JOBO's statistics.** Proposed: the Overview detail
    line and the Scheduled tasks tooltip, not a fifth tile.
 
@@ -247,9 +251,10 @@ it stays visible.
    Skipped group read from the templates, the strings in all 10 locales.
 3. **Statistics:** the Skipped count, kept in the Scheduled tasks
    denominator and out of No Do recorded and the comparisons, for today's
-   model and the past-date reader; and, if decision 5 is (a), MONTH and the
-   daily summary. The tests that matter: today, a skipped occurrence gives the
-   same rate as a missed one; on a past day a skip never raises a rate; a
-   series edit after the skip leaves its plan unchanged. Mutation check them.
+   model and the past-date reader; and MONTH's day statistics and the daily
+   summary (`useStats`), per decision 5. The tests that matter: today, a
+   skipped occurrence gives the same rate as a missed one, in JOBO and in
+   `useStats`; on a past day a skip never raises a rate; a series edit after
+   the skip leaves its plan unchanged. Mutation check them.
 4. **The guide:** `docs/jobo-guide.md` gains Skip in the Check's table and the
    statistics section.

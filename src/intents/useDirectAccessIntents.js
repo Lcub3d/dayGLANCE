@@ -49,7 +49,7 @@ export function useDirectAccessIntents(context, { transport = directAccessTransp
             retentionMs: retentionMsFrom(localStorage),
             eventsPath: config?.eventsPath,
             deviceId: getDeviceId,
-            receive: (raw) => receiveEnvelope(raw, contextRef.current),
+            receive: (raw, meta) => receiveEnvelope(raw, contextRef.current, { salt: meta?.salt ?? null }),
           },
           state,
         }));

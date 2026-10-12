@@ -278,17 +278,18 @@ describe('direct access deliverer', () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
-  it('encrypts with the WebDAV intents root key when the Direct Access encrypt switch is on; held for the key without one, never plaintext', async () => {
+  it('encrypts under the key for the salt the event set names when the encrypt switch is on; held without one, never plaintext; the salt rides along', async () => {
     const publish = vi.fn(async () => true);
-    const held = await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, loadWebdavKey: async () => null, publish });
+    const held = await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, resolveKey: async () => ({ salt: 'c2FsdA==', key: null }), publish });
     expect(held).toEqual({ status: TRANSIENT, reason: HELD_NO_KEY_REASON });
     expect(publish).not.toHaveBeenCalled();
     const key = await aRootKey();
-    expect(await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, loadWebdavKey: async () => key, publish })).toBe(DELIVERED);
-    const envelope = publish.mock.calls[0][1];
+    expect(await directAccessDeliverer(makeIntent(), { ...base(), encrypts: () => true, resolveKey: async () => ({ salt: 'c2FsdA==', key }), publish })).toBe(DELIVERED);
+    const [, envelope, io] = publish.mock.calls[0];
     expect(envelope.encrypted).toBe(true);
     expect(envelope.event_id).toBe('20260101T000000Z-aaa111');
     expect(JSON.stringify(envelope)).not.toContain('SECRET-TITLE');
+    expect(io.salt).toBe('c2FsdA==');
   });
 
   it('is in the deliverer map under the outbox target name', async () => {

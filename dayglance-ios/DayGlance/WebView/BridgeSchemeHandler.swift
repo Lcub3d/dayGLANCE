@@ -486,11 +486,21 @@ final class BridgeSchemeHandler: NSObject, WKURLSchemeHandler {
     private func respond(to task: any WKURLSchemeTask, with json: String?) {
         // nil = the bridge call FAILED → 500, which the JS shim maps to null.
         let data = (json ?? "").data(using: .utf8) ?? Data()
+        // The page (dg://) and this scheme (dgbridge://) are different origins.
+        // WebKit lets the shim's SYNCHRONOUS XHR read the answer without CORS
+        // headers, but holds an ASYNC XHR to the access control check, so
+        // nativeHttpRequest's async call (#2048) got every answer blocked as
+        // "Origin dg:// is not allowed by Access-Control-Allow-Origin" and all
+        // native HTTP on iOS failed: vault sync, the Obsidian bridge, WebDAV,
+        // ICS. Allow the app's own origin, and only that one.
         let response = HTTPURLResponse(
             url: task.request.url ?? URL(string: "about:blank")!,
             statusCode: json == nil ? 500 : 200,
             httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json; charset=utf-8"]
+            headerFields: [
+                "Content-Type": "application/json; charset=utf-8",
+                "Access-Control-Allow-Origin": "dg://",
+            ]
         )!
         task.didReceive(response)
         task.didReceive(data)

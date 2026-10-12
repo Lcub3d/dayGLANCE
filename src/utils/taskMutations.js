@@ -26,6 +26,8 @@ import { parseRoutineBlockId, routineBlockId } from './mcpRoutines.js';
 import { findRoutineConflict, minutesToTime } from './dayOccupancy.js';
 import { completionTimestamp } from './taskUtils.js';
 import { getProjectColor } from './colorUtils.js';
+import { getOccurrencesInRange } from './recurrenceEngine.js';
+import { applyRecurringInstanceEdit } from './recurringInstanceEdit.js';
 
 export const WRITE_ERROR_CODES = Object.freeze({
   NOT_FOUND: 'not_found',
@@ -183,7 +185,7 @@ export function parseRecurringInstanceId(id) {
  */
 export function applyCreateTask(state, {
   taskId, title, notes, projectId, assigneeSyncId,
-  priority, deadline, durationMinutes, schedule,
+  priority, deadline, durationMinutes, schedule, recurrence,
   transitionId, nowIso,
 }) {
   const unscheduled = state.unscheduledTasks ?? [];
@@ -208,6 +210,12 @@ export function applyCreateTask(state, {
         `No active user with id ${JSON.stringify(assigneeSyncId)}. Enumerate valid assignees with dayglance_list_users`);
     }
     assignedUserSyncIds = [member.syncId ?? member.id];
+  }
+
+  if (recurrence) {
+    return createRecurringSeries(state, {
+      taskId, title: trimmed, notes, projectId, assignedUserSyncIds, schedule, recurrence, nowIso,
+    });
   }
 
   const existing = unscheduled.find((t) => t.id === taskId) ?? tasks.find((t) => t.id === taskId);
@@ -267,6 +275,202 @@ export function applyCreateTask(state, {
     ...(deadline ? { deadline } : {}),
   };
   return { ok: true, replayed: false, unscheduledTasks: [...unscheduled, task], tasks, task, scheduled: false };
+}
+
+/** Default colour of a series with no project, as the UI's colors[0]. */
+const DEFAULT_COLOR = 'bg-blue-500';
+
+/**
+ * CREATE A REPEATING SERIES (#2066). The template is transcribed from the UI's
+ * "convert to recurring" save (App.jsx, the newTask.recurrence branch of the
+ * mobile editor): one row in recurringTasks under the caller's deterministic
+ * id, `recurrence.startDate` the requested date, all-day stored as startTime
+ * '00:00'. Project colour and users are inherited as for a one-off create.
+ *
+ * Deliberately NOT carried: transitionId. A template is not a task row, and a
+ * field the template never had would be a new field to declare to every sync
+ * layer (CLAUDE.md "Adding a field to a task"). The replay check needs none:
+ * the id itself is derived from the idempotency key.
+ *
+ * The routine guard runs on the FIRST OCCURRENCE, the date the caller is told
+ * the series starts on; later occurrences are not checked, exactly as the app
+ * does not check them when a series is created in the editor.
+ */
+function createRecurringSeries(state, {
+  taskId, title, notes, projectId, assignedUserSyncIds, schedule, recurrence, nowIso,
+}) {
+  const recurring = state.recurringTasks ?? [];
+  const existing = recurring.find((t) => String(t.id) === String(taskId));
+  if (existing) return { ok: true, replayed: true, recurringTasks: recurring, template: existing, series: true };
+
+  if (!schedule?.date) {
+    return err(WRITE_ERROR_CODES.VALIDATION, 'A repeating task needs a start date: pass start with repeat.');
+  }
+  const project = projectId ? (state.projects ?? []).find((p) => p.id === projectId) : undefined;
+  const parentGoal = project?.goalId ? (state.goals ?? []).find((g) => g.id === project.goalId) : undefined;
+  let users = assignedUserSyncIds;
+  if (!users && project?.assignedUserSyncIds?.length) users = [...project.assignedUserSyncIds];
+
+  const allDay = !!schedule.allDay;
+  const template = {
+    id: taskId,
+    title,
+    startTime: allDay ? '00:00' : schedule.startTime,
+    duration: schedule.durationMinutes,
+    color: project ? getProjectColor(project, parentGoal) : DEFAULT_COLOR,
+    isAllDay: allDay,
+    notes: typeof notes === 'string' ? notes : '',
+    subtasks: [],
+    recurrence: { ...recurrence, startDate: schedule.date },
+    completedDates: [],
+    exceptions: {},
+    ...(projectId ? { projectId } : {}),
+    ...(users ? { assignedUserSyncIds: users } : {}),
+    lastModified: nowIso,
+  };
+
+  const [first] = getOccurrencesInRange(template, schedule.date, '9999-12-31', 1);
+  if (!first) {
+    return err(WRITE_ERROR_CODES.VALIDATION,
+      `That repeat produces no occurrence on or after ${schedule.date} before it ends, so the series would be empty.`);
+  }
+  const conflict = routineConflictGuard(state, first, {
+    startTime: template.startTime, durationMinutes: template.duration, allDay,
+  });
+  if (conflict) return conflict;
+
+  return { ok: true, replayed: false, recurringTasks: [...recurring, template], template, series: true };
+}
+
+/** The template fields a series edit can touch, restored whole by its undo. */
+const SERIES_UNDO_KEYS = ['title', 'startTime', 'duration', 'isAllDay', 'color', 'assignedUserSyncIds', 'notes', 'projectId', 'recurrence'];
+
+const NOT_AN_OCCURRENCE_MSG = (id) =>
+  `${id} is not an occurrence of its series: the series does not fall on that date. Read the day with ` +
+  'dayglance_get_day and use an id it lists.';
+
+/**
+ * EDIT A REPEATING SERIES OR ONE OCCURRENCE (#2066), through the app's own
+ * save (applyRecurringInstanceEdit, #2049): 'occurrence' writes the changed
+ * fields to that date's exception, 'series' writes them to the template and
+ * clears them from every exception. Notes, project and the pattern are
+ * series-level; the argument layer accepts them only with scope 'series'.
+ *
+ * A pattern change (`set.recurrence`) replaces the whole pattern, its end
+ * included, and the start never moves earlier (editedSeriesStart). Completions
+ * are never touched, here or by the undo.
+ *
+ * Returns the undo snapshot alongside the result: every SERIES_UNDO_KEYS value
+ * before the edit, the keys that were absent, and each exception date the edit
+ * changed with its prior value (null when it had none).
+ */
+export function applyUpdateRecurringTask(state, { taskId, scope, set = {}, clear = [], nowIso }) {
+  const recurring = state.recurringTasks ?? [];
+  const parsed = parseRecurringInstanceId(taskId);
+  if (!parsed) return err(WRITE_ERROR_CODES.VALIDATION, `${taskId} is not a recurring occurrence id`);
+  const template = recurring.find((t) => String(t.id) === String(parsed.templateId));
+  if (!template) return err(WRITE_ERROR_CODES.NOT_FOUND, `No recurring series behind ${taskId}`);
+  if (!getOccurrencesInRange(template, parsed.dateStr, parsed.dateStr, 1).includes(parsed.dateStr)) {
+    return err(WRITE_ERROR_CODES.NOT_FOUND, NOT_AN_OCCURRENCE_MSG(taskId));
+  }
+
+  let assignedUserSyncIds;
+  if (set.assigneeSyncId !== undefined) {
+    const member = (state.users ?? []).find(
+      (u) => !u.deleted && (u.syncId === set.assigneeSyncId || u.id === set.assigneeSyncId),
+    );
+    if (!member) {
+      return err(WRITE_ERROR_CODES.NOT_FOUND,
+        `No active user with id ${JSON.stringify(set.assigneeSyncId)}. Enumerate valid assignees with dayglance_list_users`);
+    }
+    assignedUserSyncIds = [member.syncId ?? member.id];
+  }
+  if (clear.includes('assignee')) assignedUserSyncIds = [];
+  if (set.projectId !== undefined && !(state.projects ?? []).some((p) => p && p.id === set.projectId)) {
+    return err(WRITE_ERROR_CODES.NOT_FOUND,
+      `No project with id ${JSON.stringify(set.projectId)}. Enumerate projects with dayglance_get_goal_progress`);
+  }
+
+  const current = recurringTaskInstanceFields(template, parsed.dateStr);
+  if (set.allDay === false && current.isAllDay && set.startTime === undefined) {
+    return err(WRITE_ERROR_CODES.VALIDATION,
+      'This occurrence is all-day; pass start_time with all_day false so it has a time to move to.');
+  }
+
+  const edit = {};
+  if (set.title !== undefined) edit.title = set.title;
+  if (set.allDay !== undefined) edit.isAllDay = set.allDay;
+  // A start time makes an all-day occurrence timed (the argument layer has
+  // already rejected start_time together with all_day true).
+  if (set.startTime !== undefined) { edit.startTime = set.startTime; edit.isAllDay = false; }
+  if (set.allDay === true) edit.startTime = '00:00';
+  if (set.durationMinutes !== undefined) edit.duration = set.durationMinutes;
+  if (assignedUserSyncIds !== undefined) edit.assignedUserSyncIds = assignedUserSyncIds;
+
+  const projectId = clear.includes('project') ? undefined : (set.projectId ?? template.projectId);
+  let next = applyRecurringInstanceEdit(template, {
+    dateStr: parsed.dateStr,
+    edit,
+    scope: scope === 'series' ? 'all' : 'this',
+    projectId,
+    recurrence: set.recurrence,
+    now: nowIso,
+  });
+  if (!projectId) delete next.projectId;
+  if (set.notes !== undefined) next = { ...next, notes: set.notes };
+  if (clear.includes('notes')) next = { ...next, notes: '' };
+
+  // The edited occurrence lands on a routine only if its own time changed, as
+  // move_block and resize_block check it; other dates are not checked, as the
+  // app does not check them when a series is edited in the editor.
+  const after = recurringTaskInstanceFields(next, parsed.dateStr);
+  const occurs = getOccurrencesInRange(next, parsed.dateStr, parsed.dateStr, 1).includes(parsed.dateStr);
+  if (occurs && (current.isAllDay !== after.isAllDay || current.startTime !== after.startTime || current.duration !== after.duration)) {
+    const conflict = routineConflictGuard(state, parsed.dateStr, {
+      startTime: after.startTime, durationMinutes: after.duration, allDay: after.isAllDay,
+    });
+    if (conflict) return conflict;
+  }
+
+  const before = {};
+  const absentBefore = [];
+  for (const key of SERIES_UNDO_KEYS) {
+    if (key in template && template[key] !== undefined) before[key] = template[key];
+    else absentBefore.push(key);
+  }
+  const exceptionsBefore = {};
+  const priorExceptions = template.exceptions || {};
+  const nextExceptions = next.exceptions || {};
+  for (const d of new Set([...Object.keys(priorExceptions), ...Object.keys(nextExceptions)])) {
+    if (JSON.stringify(priorExceptions[d]) !== JSON.stringify(nextExceptions[d])) {
+      exceptionsBefore[d] = priorExceptions[d] ?? null;
+    }
+  }
+  const changed = SERIES_UNDO_KEYS.some((k) => JSON.stringify(template[k]) !== JSON.stringify(next[k]))
+    || Object.keys(exceptionsBefore).length > 0;
+
+  if (!changed) {
+    return {
+      ok: true, replayed: false, unchanged: true, recurringTasks: recurring, template, dateStr: parsed.dateStr,
+      undoSnapshot: null,
+    };
+  }
+  return {
+    ok: true, replayed: false, unchanged: false,
+    recurringTasks: recurring.map((t) => (t === template ? next : t)),
+    template: next, dateStr: parsed.dateStr,
+    undoSnapshot: { templateId: template.id, before, absentBefore, exceptionsBefore },
+  };
+}
+
+/** The occurrence's own values: the template with that date's exception over it. */
+function recurringTaskInstanceFields(template, dateStr) {
+  const exc = template.exceptions?.[dateStr] || {};
+  return {
+    isAllDay: exc.isAllDay ?? template.isAllDay ?? false,
+    startTime: exc.startTime ?? template.startTime,
+    duration: exc.duration ?? template.duration,
+  };
 }
 
 /**
@@ -366,8 +570,8 @@ export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitio
   if (parseRecurringInstanceId(taskId)) {
     return err(
       WRITE_ERROR_CODES.VALIDATION,
-      `${taskId} is a recurring-task instance: its id is a synthetic per-date view of the series, not an ` +
-      'editable task, and update_task on recurring instances is not supported in v1. Edit the series in dayGLANCE',
+      `${taskId} is a recurring-task occurrence: its id is a synthetic per-date view of the series, not a ` +
+      'one-off task. Edit the series or this occurrence with dayglance_update_recurring_task, which asks for the scope.',
     );
   }
 
@@ -459,7 +663,8 @@ function findWritableBlock(state, tasks, blockId, { operation }) {
   if (parseRecurringInstanceId(blockId)) {
     return err(
       WRITE_ERROR_CODES.VALIDATION,
-      `${blockId} is a recurring-task instance; ${operation} on recurring instances is not supported in v1. Edit the series in dayGLANCE`,
+      `${blockId} is a recurring-task occurrence; ${operation} does not apply to one. Change its time or duration ` +
+      'with dayglance_update_recurring_task, which asks whether the change is for this occurrence or the series.',
     );
   }
   const task = tasks.find((t) => t.id === blockId);
@@ -657,6 +862,7 @@ export function applyUndoOps(state, ops, { nowIso }) {
   let unscheduled = state.unscheduledTasks ?? [];
   let recurring = state.recurringTasks ?? [];
   let recycleBin = state.recycleBin ?? [];
+  const tombstones = [];
   let undone = 0;
   let skipped = 0;
 
@@ -771,12 +977,41 @@ export function applyUndoOps(state, ops, { nowIso }) {
         undone += 1;
         break;
       }
+      case 'remove_created_series': {
+        // A series leaves the way the app's own series delete does: the
+        // template goes and its id is tombstoned (the caller writes
+        // `tombstones`), so sync does not bring it back. Templates have no
+        // recycle-bin form in the app, so there is none here either.
+        const template = recurring.find((t) => String(t.id) === String(op.templateId));
+        if (!template) { skipped += 1; break; }
+        recurring = recurring.filter((t) => t !== template);
+        tombstones.push(String(template.id));
+        undone += 1;
+        break;
+      }
+      case 'restore_series_fields': {
+        // Reverses update_recurring_task: the touched template fields and the
+        // exception dates it changed go back. Completions stay as they are.
+        const template = recurring.find((t) => String(t.id) === String(op.templateId));
+        if (!template || !op.before) { skipped += 1; break; }
+        const next = { ...template, ...op.before, lastModified: nowIso };
+        for (const key of op.absentBefore ?? []) delete next[key];
+        const exceptions = { ...(template.exceptions || {}) };
+        for (const [d, exc] of Object.entries(op.exceptionsBefore ?? {})) {
+          if (exc === null) delete exceptions[d];
+          else exceptions[d] = exc;
+        }
+        next.exceptions = exceptions;
+        recurring = recurring.map((t) => (t === template ? next : t));
+        undone += 1;
+        break;
+      }
       default:
         skipped += 1;
     }
   }
 
-  return { ok: true, tasks, unscheduledTasks: unscheduled, recurringTasks: recurring, recycleBin, undone, skipped };
+  return { ok: true, tasks, unscheduledTasks: unscheduled, recurringTasks: recurring, recycleBin, tombstones, undone, skipped };
 }
 
 export function applySetCompletion(state, { taskId, completed, transitionId, nowIso }) {

@@ -17,7 +17,8 @@ unloaded/unreadable ledger does not render empty-day figures.
 - Late starts, late finishes and longer duration: separate counts over fully
   comparable captured Plan groups dated that day. A group counts once and uses
   all its attempts, including those recorded later. Mixed/inferred groups are
-  excluded, not presented as complete comparisons. Malformed ledger data makes
+  excluded, not presented as complete comparisons; a completion that closes the
+  last timed session does not make a group mixed (`jobo-core.md`). Malformed ledger data makes
   recorded/comparison totals unavailable rather than asserting complete totals.
 
 Tooltips carry the full-day scope, denominators and unmeasured records, as

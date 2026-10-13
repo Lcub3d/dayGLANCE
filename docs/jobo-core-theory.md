@@ -51,7 +51,9 @@ unknown duration and explicit null interval coordinates.
 Untimed Do suppresses `notStarted` but contributes no invented minutes. It
 does not support start/finish, duration, or Allen comparison. If any live Do is
 Untimed, the overall Plan → Do comparison is non-comparable; diagnostics for
-the measured Timed subset remain available.
+the measured Timed subset remain available. The one exception is a completion
+that closes the last timed session (see `jobo-core.md`): it is the end of
+measured work, not unmeasured work.
 
 ## Allen interval relation
 

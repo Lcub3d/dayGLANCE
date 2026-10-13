@@ -126,9 +126,14 @@ Completed directly.
 Unplanned work sometimes turns out to need a task of its own. An unlinked Do
 that is not marked Completed offers **Make a task**, in the editor and in the
 Check. It opens the new-task form for the Inbox with the Do's title and tags.
-Saving creates the task and links the Do to it, so the Do takes the task's
-colour and its Check entry offers the task's next step. The Do still counts as
-unplanned work, since it had no plan when it happened.
+Saving creates the task first, then links the Do to it, so the Do takes the
+task's colour and its Check entry offers the task's next step. The Do still
+counts as unplanned work, since it had no plan when it happened.
+
+If the Do changed in the meantime (edited, deleted, or linked on another
+device) or the link cannot be saved, the task is still made but stays
+unlinked, and a message says so. Undo takes the two steps back in turn: the
+first removes the link, the second the new task.
 
 ---
 
@@ -168,12 +173,13 @@ Each entry offers one action, chosen by the task's state now:
 
 | The task now | Offers | What it does |
 |---|---|---|
-| Unfinished, still on that day | **Continue** | Moves the task to tomorrow at its planned time, with what is left of the plan (rounded up to 15 minutes). |
+| Unfinished, still on that day | **Continue** | Moves the task to tomorrow at its planned time, with what is left of the plan, rounded up to 15 minutes. If nothing timed was recorded, or the work already took as long as planned or longer, it keeps the full planned duration. An all-day task stays all-day. |
 | Finished | **Add follow-up** | Opens the new-task form with the task's project, tags and colour. The follow-up starts unscheduled. |
 | In the Inbox or a project's list, with work recorded | **Schedule…** | Opens the task editor on tomorrow, since there is no planned time to carry. |
 | Unlinked work | **Make a task** | See [Make a task](#make-a-task). |
 | Already moved to another day | **Next: Fri 9:00** | Nothing to do: it has been continued already. |
-| A recurring occurrence, or a deleted task | Nothing | The next occurrence carries the work on. |
+| A recurring occurrence | Nothing | The next occurrence carries the work on. |
+| A task since deleted or archived | Nothing | There is nothing left to move. |
 
 "Tomorrow" means the day after today, not after the day you are reviewing: a
 Monday reviewed on Wednesday continues on Thursday. If the slot clashes with
@@ -182,15 +188,22 @@ a calendar event, Continue says so and moves nothing.
 ### Not started
 
 Below the journal, **Not started** lists the tasks planned for the day that
-ended with nothing recorded and are not completed. Each offers:
+ended with nothing recorded and are not completed. An all-day task appears
+there once its day has passed. A task of your own offers:
 
 - **Continue**, to tomorrow at its planned time with its full duration;
 - **Move to Inbox**, or **Move to its project** when it has one;
 - **Delete**, to the Recycle Bin.
 
+A task from a task calendar offers Continue only, since a move or a delete
+here would not reach its calendar. A recurring occurrence offers nothing: the
+next occurrence carries the work on.
+
 Continue and the Not started actions can be undone from the entry itself, and
 each is one step of the app's normal undo history. A follow-up or a task made
-from a Do is undone like any new task. The Check never edits your Do records.
+from a Do is undone like any new task. The Check never changes the times or
+progress of your Do records; the only change it makes to one is the link that
+Make a task adds.
 
 ---
 
@@ -211,8 +224,10 @@ How the numbers are counted:
 
 - **Recorded time** is measured intervals only. Overlapping records count once.
   Estimates and completion moments without times are not included.
-- **A task done over several sessions or days counts once** in the
-  comparisons.
+- **Sessions against the same plan count once** in the comparisons: the same
+  task with the same planned date, start and duration, however many sessions
+  or days the work took. Work against a different plan, for example after the
+  task was moved to another day, is compared separately.
 - **Missed recurring occurrences** on past days are not counted: only
   occurrences that were completed, changed, or have work recorded.
 
@@ -272,10 +287,13 @@ shows the desktop view.
 - **The switch is per device, the records are not.** A device with JOBO off
   still keeps, syncs and merges everyone's records; nothing is lost by turning
   it off.
-- **Records are created by devices with JOBO on.** Completing a task on a
-  device with JOBO off records no Do, and turning JOBO on later does not create
-  records for earlier completions. Turn it on on every device where you
-  complete tasks.
+- **Records are created by devices with JOBO on.** A device with JOBO off
+  records no Do itself. When its completion syncs to a device with JOBO on,
+  that device records it if it had already seen the task unfinished; a task it
+  first sees as already completed is not recorded, and turning JOBO on later
+  does not create records for earlier completions. To be sure every
+  completion is recorded, turn JOBO on on every device where you complete
+  tasks.
 - **Shared households:** with multi-user on, JOBO shows only the work visible
   to you, as the rest of the app does.
 

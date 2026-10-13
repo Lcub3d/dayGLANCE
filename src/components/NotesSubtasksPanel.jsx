@@ -7,6 +7,7 @@ import { activeLocale, formatLocalizedDate } from '../utils/localeFormatting.js'
 import { formatDuration } from '../utils/formatDuration.js';
 import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { noteFocusTarget } from '../utils/noteFocusTarget.js';
+import { autoSizeTextarea } from '../utils/autoSizeTextarea.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
@@ -346,7 +347,12 @@ const NotesSubtasksPanel = ({
   const urlOnlyNote = isOnlyUrl(localNotes);
   const noteUrl = urlOnlyNote ? localNotes.trim() : null;
   const noteMinH = compact ? 'min-h-[4.5rem]' : 'min-h-[12rem]';
-  const textareaClass = `w-full text-sm px-2 py-1.5 rounded border outline-none ${th.textarea} ${noteMinH} ${compact ? 'resize-none' : 'resize-y'}`;
+  // One height policy for both states (#2067): the editor sizes to its content
+  // (autoSizeTextarea) and the preview grows to it, both capped at the same
+  // share of the viewport and scrolling past it, so clicking to edit no longer
+  // collapses a long note to the min-height floor.
+  const noteMaxH = 'max-h-[60vh]';
+  const textareaClass = `w-full text-sm px-2 py-1.5 rounded border outline-none ${th.textarea} ${noteMinH} ${noteMaxH} ${compact ? 'resize-none' : 'resize-y'}`;
 
   const showLinked = !!(wikilinks && wikilinks.length > 0 && onLoadWikiNote);
   // Keyed on the local draft too, so the block does not vanish mid-edit.
@@ -361,8 +367,11 @@ const NotesSubtasksPanel = ({
   // inherits the count and must leave the keyboard where it is.
   const seenFocusRequestRef = useRef(focusNoteRequest);
   const noteFieldRef = (key) => (el) => {
-    if (el) noteFieldsRef.current.set(key, el);
-    else noteFieldsRef.current.delete(key);
+    if (el) {
+      noteFieldsRef.current.set(key, el);
+      // Open the editor at the note's own height, not the min-height floor.
+      autoSizeTextarea(el);
+    } else noteFieldsRef.current.delete(key);
   };
   useEffect(() => {
     if (focusNoteRequest === seenFocusRequestRef.current) return;
@@ -465,12 +474,13 @@ const NotesSubtasksPanel = ({
                     placeholder={t('task.emptyWikiNotePlaceholder')}
                     aria-label={t('task.editWikiNote', { name: noteName })}
                     className={textareaClass}
+                    onInput={(e) => autoSizeTextarea(e.currentTarget)}
                     autoFocus={!noAutoFocus}
                   />
                 ) : (
                   <div
                     onClick={() => editNote(noteName)}
-                    className={`text-sm cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
+                    className={`text-sm cursor-text p-2 rounded overflow-y-auto ${th.preview} ${noteMinH} ${noteMaxH}`}
                   >
                     {renderNoteContent(state.text, handleContentWikilinkClick, darkMode, t)}
                   </div>
@@ -499,12 +509,13 @@ const NotesSubtasksPanel = ({
               placeholder={t('task.notesFormattingPlaceholder')}
               aria-label={t('task.notes')}
               className={textareaClass}
+              onInput={(e) => autoSizeTextarea(e.currentTarget)}
               autoFocus={!noAutoFocus}
             />
           ) : (
             <div
               onClick={() => editNote('own')}
-              className={`text-sm whitespace-pre-wrap cursor-text p-2 rounded ${th.preview} ${noteMinH}`}
+              className={`text-sm whitespace-pre-wrap cursor-text p-2 rounded overflow-y-auto ${th.preview} ${noteMinH} ${noteMaxH}`}
             >
               {urlOnlyNote ? (
                 <a

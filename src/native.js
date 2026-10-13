@@ -560,22 +560,25 @@ const androidHttpRequestAsync = (bridge, method, url, headersJson, body) => new 
   }
 });
 
-// iOS: the same dgbridge:// call the injected shim makes, but asynchronous. The
-// shim's own XHR is synchronous (fine for quick calls, not for the network);
-// BridgeSchemeHandler answers httpRequest from a background queue.
-const iosHttpRequestAsync = (method, url, headersJson, body) => new Promise((resolve) => {
+// iOS: a WebKit message handler with a reply (NativeHttpMessageHandler.swift).
+// Not a dgbridge:// XHR like the shim's other calls, for two reasons. The
+// shim carries arguments in the URL, and WebKit prints that URL whenever a
+// load fails: for HTTP the arguments are the request headers, so a failing
+// call wrote the GLANCEvault bearer token into the Web Inspector console on
+// every retry. And an ASYNC XHR from dg:// to dgbridge:// is cross-origin and
+// held to the CORS check, which blocked every request in 5.7.0. A message
+// body is never logged, has no origin check, and its reply is async.
+// No handler (no shell that ships this bundle lacks one) resolves null rather
+// than falling back to a URL that can carry credentials.
+const iosHttpRequestAsync = async (method, url, headersJson, body) => {
+  const handler = window.webkit?.messageHandlers?.dgHttp;
+  if (typeof handler?.postMessage !== 'function') return null;
   try {
-    const xhr = new XMLHttpRequest();
-    const args = encodeURIComponent(JSON.stringify([method, url, headersJson, body]));
-    xhr.open('GET', `dgbridge://native_httpRequest?args=${args}`, true);
-    xhr.onload = () => resolve(xhr.status === 200 ? xhr.responseText : null);
-    xhr.onerror = () => resolve(null);
-    xhr.onabort = () => resolve(null);
-    xhr.send(null);
+    return await handler.postMessage([method, url, headersJson, body]);
   } catch {
-    resolve(null);
+    return null;
   }
-});
+};
 
 // The Android shell advertises async HTTP only when it can deliver results
 // (MainActivity wires the sink); an older shell has neither method.

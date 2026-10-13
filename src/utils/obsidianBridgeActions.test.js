@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setupDbRootKey, clearDbRootKey } from '@glance-apps/sync';
 import { getDbRootKey } from '@glance-apps/sync/src/dbCrypto.js';
 import {
@@ -16,6 +16,15 @@ import {
   applyActionsToRecurring,
   ACTION_STALE_MS,
 } from './obsidianBridgeActions.js';
+
+// The key gate (bridgeKeyGate.js) proves the root key against the account's
+// verifier row; it has its own tests. Here the installed key is taken as
+// proven so these tests keep to the stream they cover.
+vi.mock('./bridgeKeyGate.js', async () => {
+  const { getDbRootKey } = await import('@glance-apps/sync/src/dbCrypto.js');
+  return { verifiedBridgeRootKey: async () => getDbRootKey(), resetBridgeKeyGate: () => {} };
+});
+
 
 // The sidebar's one write (companion spec 4.2): the plugin emits `act:`
 // rows; dayGLANCE — the single data-plane writer — applies them through its

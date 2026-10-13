@@ -114,6 +114,17 @@ describe('undoGroupKey — the per-task partition', () => {
     expect(tue).not.toBe(wed);
   });
 
+  it('a series create and its edits group per SERIES, apart from its per-date completions (#2066)', () => {
+    const created = undoGroupKey({ kind: 'remove_created_series', templateId: 42 });
+    const edited = undoGroupKey({ kind: 'restore_series_fields', templateId: 42, before: {}, exceptionsBefore: { '2026-08-11': null } });
+    expect(created).toBe('series:42');
+    expect(edited).toBe(created);
+    expect(created).not.toBe(undoGroupKey({ kind: 'restore_recurring_completion', templateId: 42, dateStr: '2026-08-11', wasCompleted: false }));
+    expect(created).not.toBe(undoGroupKey({ kind: 'remove_created', taskId: '42' }));
+    expect(summaryTitle('Edited repeating “Standup” (2026-08-11: start_time)')).toBe('Standup');
+    expect(summaryTitle('Created repeating “Standup” from 2026-08-10')).toBe('Standup');
+  });
+
   it('THROWS on an unknown op kind — a future multi-task op must fail visibly, not group wrong', () => {
     expect(() => undoGroupKey({ kind: 'bulk_reschedule' } as unknown as UndoOp)).toThrow(/unknown undo op kind "bulk_reschedule"/);
     expect(() => undoGroupKey(undefined as unknown as UndoOp)).toThrow(/unknown undo op kind/);

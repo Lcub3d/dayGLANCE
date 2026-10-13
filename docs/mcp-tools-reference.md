@@ -69,7 +69,7 @@ carries a `type`. All of them occupy the time they cover.
 | `type` | What it is | Writable |
 |---|---|---|
 | `task` | An ordinary dayGLANCE task placed on the calendar. | yes |
-| `recurring_task` | One instance of a recurring series, with a synthetic `recurring-<id>-<date>` id. | move/resize/complete rejected; edit the series in the app |
+| `recurring_task` | One occurrence of a repeating series, with a synthetic `recurring-<id>-<date>` id. Carries `series_id`, `series_start_date` and `repeat` (the `dayglance_create_task` shape). | complete with `dayglance_set_task_completion`; edit with `dayglance_update_recurring_task`; move/resize rejected |
 | `device_calendar_event` | An event from the device calendar (EventKit). Carries `read_only: true`. Only under the calendar consent tier. | no |
 | `calendar_event` | An event imported from an ICS or CalDAV calendar feed. Carries `read_only: true`; the feed owns it. Every write tool rejects it with `calendar_event_readonly`. | no |
 | `routine` | A routine block placed on today's timeline, id `routine-<id>`. Carries `read_only: true`. | no |
@@ -224,6 +224,7 @@ the id you passed.
 ### `dayglance_create_task`
 Two shapes, decided by `start`: **without** it, an unscheduled task, in the inbox or in a
 project via `project_id` (either may carry priority and deadline); **with** it, a scheduled task placed directly onto the calendar in one call.
+With `start` **and** `repeat`, a repeating series starting on `start`'s date (see below).
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
@@ -236,11 +237,31 @@ project via `project_id` (either may carry priority and deadline); **with** it, 
 | `start` | string | no | Local `"YYYY-MM-DD HH:MM"`; with `all_day`, a bare `YYYY-MM-DD`. Presence = scheduled create. |
 | `duration_minutes` | integer | no | 1–1440. Default 30. Contradicts `all_day`. |
 | `all_day` | boolean | no | With `start` only. |
-| `repeat` | — | no | **Rejected**: recurring creation is not supported over MCP. |
+| `repeat` | object | no | With `start` only: make it a repeating series. See below. |
 | `idempotency_key` | string | no | Also seeds a deterministic task id, so replays converge. |
 
-By-design `validation` rejections: priority/deadline with `start`; `all_day` + `duration_minutes`; `all_day` with a time in `start`; any `repeat`.
+By-design `validation` rejections: priority/deadline with `start`; `all_day` + `duration_minutes`; `all_day` with a time in `start`; `repeat` without `start`.
 Unknown `assignee_id` → `not_found`.
+
+**`repeat`** mirrors what the app itself can repeat, and nothing more:
+
+| Field | Applies to | Notes |
+|---|---|---|
+| `frequency` | all | Required: `daily`, `weekly`, `biweekly` (every 2 weeks), `monthly`, `yearly`. Yearly repeats on `start`'s month and day. |
+| `days_of_week` | weekly, biweekly | Non-empty array of `sun` `mon` `tue` `wed` `thu` `fri` `sat`. Default: `start`'s weekday. |
+| `day_of_month` | monthly | 1–31, clamped to the last day in shorter months. Default: `start`'s day. |
+| `nth_weekday` | monthly | `{ "week": 1-5, "day": "tue" }` instead of `day_of_month`. A 5th the month lacks is skipped; there is no "last". |
+| `until` | all | Inclusive local `YYYY-MM-DD`, not before `start`. |
+| `count` | all | Total occurrences, 1–1000. |
+
+There is no `interval`: passing one is a by-design `validation` error naming what is supported,
+never an approximation. Unknown fields and fields for another frequency are `validation` too, as
+is a pattern with no occurrence before it ends. The routine check applies to the first occurrence.
+
+A series response carries `series` (`id`, `title`, `repeat`, `start_date`, and `project_id` /
+`notes` when set), `first_occurrence` (a `recurring_task` block) and `next_occurrences` (up to five
+dates), so the pattern can be checked against what the user asked for. Undo removes the series,
+as deleting it in the app does.
 
 ### `dayglance_update_task`
 Field editor for existing tasks: inbox, project, or scheduled. **Absent leaves a field alone, present
@@ -249,7 +270,7 @@ explicit list — `null` or empty values never clear.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
-| `task_id` | string | yes | Recurring-instance ids are rejected (see below). |
+| `task_id` | string | yes | Recurring occurrences are rejected: use `dayglance_update_recurring_task`. |
 | `title` | string | no | Non-empty; trimmed. Can be set, never cleared. |
 | `notes` | string | no | Empty string is a valid *set*; removal goes through `clear_fields`. |
 | `priority` | integer | no | 0–3. **Unscheduled tasks only** (inbox or project). |
@@ -261,12 +282,46 @@ explicit list — `null` or empty values never clear.
 
 Also `validation`: setting and clearing the same field in one call; a call that neither sets
 nor clears anything. By-design rejections: priority/deadline (set **or** clear) on scheduled
-tasks; recurring instances (dedicated error naming the synthetic
-`recurring-<template>-<date>` id shape); CalDAV task-calendar tasks; `_native` events.
+tasks; recurring occurrences (dedicated error pointing to `dayglance_update_recurring_task`);
+CalDAV task-calendar tasks; `_native` events.
 Date/time/duration/completion have their own tools, and subtasks have
 `dayglance_add_subtask` and `dayglance_update_subtask`.
 A `task_id` returned by `dayglance_create_task` keeps working after the Obsidian re-key to
 `obsidian-dg-…`; the response carries the current id plus `resolved_from`.
+
+### `dayglance_update_recurring_task`
+Edit a repeating series, for one occurrence or for all of them. The scope is **required**, the
+same question the app asks when an occurrence is edited:
+
+- `"occurrence"`: the change is written to that date only.
+- `"series"`: the change goes to the series, and the same field is cleared from any occurrence
+  that had been edited on its own, so the new value shows on every date. Fields the call does not
+  name are left alone either way.
+
+| Param | Type | Required | Notes |
+|---|---|---|---|
+| `task_id` | string | yes | `recurring-<series>-<YYYY-MM-DD>`, as `dayglance_get_day` lists it. A date the series does not fall on → `not_found`. |
+| `scope` | string | yes | `"occurrence"` or `"series"`. |
+| `title` | string | no | Non-empty. Either scope. |
+| `start_time` | string | no | Local `"HH:MM"`, checked on the occurrence's date. Makes an all-day occurrence timed. Either scope. |
+| `duration_minutes` | integer | no | 1–1440. Either scope. |
+| `all_day` | boolean | no | Either scope. Contradicts `start_time` / `duration_minutes` when true; `false` on an all-day occurrence needs `start_time`. |
+| `notes` | string | no | **Series only.** |
+| `project_id` | string | no | **Series only.** Unknown id → `not_found`. |
+| `repeat` | object | no | **Series only.** Replaces the whole pattern, its end included, in the `dayglance_create_task` shape. The series start never moves earlier. |
+| `assignee_id` | string | no | **Multi-user only.** Either scope. |
+| `clear_fields` | string[] | no | `"notes"`, `"project"` (series only), `"assignee"` (multi-user; means everyone). |
+| `idempotency_key` | string | no | |
+
+`validation` for a missing or unknown scope, a series-only field with `"occurrence"`, setting and
+clearing the same field, or a call that names nothing. The edited occurrence's new time is checked
+against routines (`routine_conflict`). Completions are never changed: completing an occurrence is
+`dayglance_set_task_completion`. Moving a single occurrence to another date is not supported.
+
+The response carries `series` and `next_occurrences` as for a create, plus `occurrence` (the
+edited date as it now reads, or `null` when a new pattern no longer falls on it), `scope`, and
+`unchanged: true` when the edit matched what was already stored (nothing is journaled then).
+Undo restores the fields and occurrence edits the call changed.
 
 ### `dayglance_schedule_task`
 Schedule an unscheduled inbox task onto a day and time.
@@ -287,7 +342,7 @@ Move a scheduled block to a new local start (same or different day).
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
-| `block_id` | string | yes | Recurring instances → `validation` (edit the series in dayGLANCE). |
+| `block_id` | string | yes | Recurring occurrences → `validation` (use `dayglance_update_recurring_task`). |
 | `new_start` | string | yes | Local `"YYYY-MM-DD HH:MM"`. |
 | `idempotency_key` | string | no | |
 
@@ -296,7 +351,7 @@ Change a scheduled block's duration without moving its start.
 
 | Param | Type | Required | Notes |
 |---|---|---|---|
-| `block_id` | string | yes | Recurring instances → `validation`. |
+| `block_id` | string | yes | Recurring occurrences → `validation` (use `dayglance_update_recurring_task`). |
 | `duration_minutes` | integer | yes | 1–1440. |
 | `idempotency_key` | string | no | |
 

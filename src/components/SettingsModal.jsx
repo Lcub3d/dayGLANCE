@@ -262,17 +262,37 @@ const SettingsModal = () => {
 
   return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
+            {/* Grows with the window past lg (#2075): the two columns had a
+                768px cap on any screen, so a large or full-screen window
+                still read Settings through a narrow, short box. */}
             <div
-              className={`${cardBg} rounded-lg shadow-xl ${borderClass} border max-w-md lg:max-w-3xl w-full mx-4 max-h-[85vh] overflow-y-auto`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-dialog-title"
+              data-settings-dialog
+              className={`${cardBg} rounded-lg shadow-xl ${borderClass} border max-w-md lg:max-w-3xl xl:max-w-5xl w-full mx-4 max-h-[85vh] lg:max-h-[90vh] overflow-y-auto`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                    <Settings size={20} className="text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('settings.title')}</h3>
+              {/* The header stays put while the content scrolls, with a Close
+                  control in reach from anywhere in the list (#2075). Escape
+                  closes too (hooks/useModalClose.js). */}
+              <div data-settings-header className={`sticky top-0 z-10 ${cardBg} border-b ${borderClass} px-6 py-4 flex items-center gap-3`}>
+                <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <Settings size={20} className="text-blue-600 dark:text-blue-400" />
                 </div>
+                <h3 id="settings-dialog-title" className={`flex-1 text-lg font-semibold ${textPrimary}`}>{t('settings.title')}</h3>
+                <button
+                  type="button"
+                  data-settings-close
+                  onClick={() => setShowSettings(false)}
+                  className={`p-1.5 rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} transition-colors`}
+                  title={t('common.close')}
+                  aria-label={t('common.close')}
+                >
+                  <X size={18} className={textSecondary} />
+                </button>
+              </div>
+              <div className="p-6">
 
                 {updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true) && (
                   <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>

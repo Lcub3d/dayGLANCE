@@ -9,6 +9,17 @@ const progressCounts = () => ({ completed: 0, mostly: 0, partial: 0, started: 0 
 const unique = (items, key) => [...new Map(items.map(item => [key(item), item])).values()];
 const sum = (items, read) => items.reduce((total, item) => total + read(item), 0);
 
+/**
+ * Sessions in an execution group: its attempts, less any completion that
+ * closes the last timed session (core's closesLastSession), which is that
+ * session's end rather than a session. Do record counts are not reduced.
+ * The same count classifies single and split sessions in every scope.
+ */
+export function groupSessionCount(item) {
+  const attempts = item?.attempts?.length ?? 0;
+  return attempts - (item?.comparison?.metrics?.closingCompletionCount ?? 0);
+}
+
 // Native priority: 0 = none, then low, medium, high. Missing task metadata
 // stays unknown; neither a title nor a tag proves the current priority.
 export function checkPriority(task) {
@@ -106,8 +117,8 @@ export function buildCheckSummary(model, { date, inboxTasks = [] } = {}) {
     inboxCompleted: completedInbox.filter(task => !task.projectId && !task.deadline).length,
     projectCompleted: completedInbox.filter(task => task.projectId).length,
     doCount: items.length,
-    single: dayGroups.filter(item => item.attempts.length === 1).length,
-    split: dayGroups.filter(item => item.attempts.length > 1).length,
+    single: dayGroups.filter(item => groupSessionCount(item) === 1).length,
+    split: dayGroups.filter(item => groupSessionCount(item) > 1).length,
     rawMinutes,
     overlapMinutes: rawMinutes == null ? null : rawMinutes - stats.recordedMinutes,
     gapMinutes: groupMetrics.length ? sum(groupMetrics, m => m.gapMinutes) : null,

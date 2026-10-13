@@ -183,6 +183,7 @@ and confirming a test fails.
 - **Overdue tasks** → `src/utils/getOverdueTasks.js` (with tests, #2023)
 - **Recurring occurrence edits** → `src/utils/recurringInstanceEdit.js` (with tests, #2042): what an edit changes on one occurrence, and writing it to the occurrence or the series
 - **Focus orchestration** → `src/hooks/useFocusOrchestration.js` (#2015): entering, starting, advancing, skipping and exiting a session, and settling each work phase into JOBO Do (`src/jobo/focusSession.js`, with tests)
+- **Cloud sync after an edit** → `src/hooks/useCloudSyncAfterEdit.js` (with tests): the 5-second debounce runs a full cycle, never a bare upload (#2065)
 
 ## Next candidates
 

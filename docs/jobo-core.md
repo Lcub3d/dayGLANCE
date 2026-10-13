@@ -73,6 +73,34 @@ start/finish, duration, or Allen comparison. In mixed Timed + Untimed history,
 the overall Plan → Do comparison is non-comparable while measured Timed
 diagnostics remain available.
 
+One untimed record does not make a history mixed: a **completion that closes
+the last timed session**. A completion that still stands (`source:
+'completion'`, `progress: 'completed'`), stamped during the group's last timed
+session or up to `COMPLETION_CLOSES_SESSION_MINUTES` (2) after it ended,
+marks when that session's work ended: the checkbox ticked as the measured work
+finished, the most common Focus path. It is not counted as a session, adds no
+minutes, and the history stays comparable. The window covers only the end's
+rounding to the minute and the moment it takes to tick the box: a completion
+any later is left to the Do column's estimate, which reads the gap as work
+nobody measured, so the two rules never claim the same minutes. Any other
+untimed record keeps the history mixed. The result reports
+`closingCompletionIds`, `closingCompletionCount` and `unmeasuredAttemptCount`
+beside `untimedAttemptCount`; the Check lists a closing completion as the
+moment its session was marked complete, not as a session, and the Do column
+draws no estimate for it. Statistics classify single and split sessions by the
+same count (`groupSessionCount`) in every scope, Day, Week, Month and All
+time, while Do record counts still include the completion.
+
+The completion does not replace the measured end: start, finish and duration
+still come from the timed sessions.
+
+A completion's moment comes from `options.completionMoment(record)`, by
+default the stamp's own clock (its offset), which the app keeps. A UTC stamp,
+as recurring completions are stamped today, gives no moment and closes
+nothing: timed Do keep civil coordinates without a zone, so reading a UTC
+stamp in the viewer's zone would make one ledger comparable on one device and
+mixed on another.
+
 ## Prototype import
 
 `migrateLegacyDoRecord()` is an import boundary for prototype data, not a

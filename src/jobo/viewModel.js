@@ -136,6 +136,10 @@ function comparisonMetadata(plan, records, options = {}) {
   const attempts = sortJoboAttempts(records);
   const hasEstimatedAttempts = attempts.some(record => record.timingBasis === 'planDuration');
   const measuredAttempts = attempts.filter((record) => record.timing === DO_TIMING.TIMED && record.timingBasis !== 'planDuration');
+  // Core reads a completion's moment from its stamp's own clock (offset), so
+  // every device classifies the same ledger the same way. A UTC stamp has no
+  // civil clock of its own; projecting it into the viewer's zone would make
+  // the same history comparable on one device and mixed on another.
   const comparison = hasEstimatedAttempts ? null : safeComparison(plan, attempts, options);
   const measuredComparison = safeComparison(plan, measuredAttempts, options);
   return {
@@ -143,7 +147,11 @@ function comparisonMetadata(plan, records, options = {}) {
     comparison,
     measuredComparison,
     hasEstimatedAttempts,
-    hasUntimedAttempts: attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
+    // Untimed attempts the comparison could not account for. A completion
+    // closing the last timed session is accounted for: it is that session's end.
+    hasUntimedAttempts: comparison
+      ? comparison.metrics.unmeasuredAttemptCount > 0
+      : attempts.some((record) => record.timing === DO_TIMING.UNTIMED),
     attempts,
     measuredAttempts,
     measured: {

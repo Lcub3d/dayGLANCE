@@ -1,4 +1,4 @@
-import { buildCheckSummary, CHECK_PRIORITIES } from './checkSummary.js';
+import { buildCheckSummary, CHECK_PRIORITIES, groupSessionCount } from './checkSummary.js';
 import { createJoboDayModelReader, buildJoboTaskResolver, projectJoboRecords, timedSliceOnDate } from './viewModel.js';
 import { completionMarker } from './completionMarker.js';
 import { validCivilDate } from './viewDates.js';
@@ -157,6 +157,7 @@ export function statisticsReportFromModel(model, { date, inboxTasks = [], isVisi
     executionGroups: groups.map(item => ({
       id: item.groupKey,
       attemptCount: item.attempts.length,
+      sessionCount: groupSessionCount(item),
       context: item.comparison?.planContext ?? item.comparisonMeta?.measuredComparison?.planContext ?? 'unknown',
     })),
   };
@@ -232,8 +233,10 @@ function rangeExecution(reports) {
     if (Object.hasOwn(progress, record.progress)) progress[record.progress] += 1;
   }
   for (const group of groups.values()) {
-    single += Number(group.attemptCount === 1);
-    split += Number(group.attemptCount > 1);
+    // Older reports carry no sessionCount; their attempts are the sessions.
+    const sessions = group.sessionCount ?? group.attemptCount;
+    single += Number(sessions === 1);
+    split += Number(sessions > 1);
     contexts[group.context] += 1;
   }
   return { doCount: records.size, single, split, progress, contexts };

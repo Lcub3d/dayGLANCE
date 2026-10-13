@@ -21,10 +21,15 @@ export function formatOffset(minutes, t) {
   return hours ? t('jobo.view.offsetDaysHours', { days, hours }) : t('jobo.view.offsetDays', { days });
 }
 
+// Untimed attempts the comparison could not account for: a completion that
+// closes the last timed session is that session's end (core's
+// closesLastSession), not missing time. Older results lack the count.
+const unmeasured = metrics => (metrics?.unmeasuredAttemptCount ?? metrics?.untimedAttemptCount) > 0;
+
 export function timingRows(comparison, t) {
   if (!comparison) return [];
   const metrics = comparison.metrics || {};
-  if (metrics.untimedAttemptCount > 0) {
+  if (unmeasured(metrics)) {
     return [{ key: 'incomplete', text: t('jobo.view.timeIncomplete') }];
   }
   if (comparison.notStarted) {
@@ -46,7 +51,7 @@ export function timingRows(comparison, t) {
 }
 
 export function metricRows(comparison, comparisonMeta, t) {
-  const mixed = comparison?.metrics?.untimedAttemptCount > 0;
+  const mixed = unmeasured(comparison?.metrics);
   const source = mixed
     ? comparisonMeta?.measuredComparison?.metrics || comparisonMeta?.measured || comparison?.metrics || {}
     : comparison?.metrics || comparisonMeta?.measured || {};
@@ -74,7 +79,7 @@ export function summaryRows(labels, comparison, t) {
       canonical = [];
     }
   }
-  const incomplete = comparison?.metrics?.untimedAttemptCount > 0;
+  const incomplete = unmeasured(comparison?.metrics);
   if (incomplete && !canonical.includes('timeIncomplete')) canonical = ['timeIncomplete', ...canonical];
   return canonical.map((label) => {
     // Core's "late" means the start or the finish was late. Say which, so
@@ -105,7 +110,7 @@ export default function ExecutionAxes({ comparison, comparisonMeta, latestAttemp
   const detailTiming = timing.filter((row) => row.key !== 'incomplete');
   const metrics = metricRows(comparison, comparisonMeta, t);
   const hasEstimated = comparisonMeta?.hasEstimatedAttempts;
-  const hasUntimed = comparison?.metrics?.untimedAttemptCount > 0 || comparisonMeta?.hasUntimedAttempts;
+  const hasUntimed = unmeasured(comparison?.metrics) || comparisonMeta?.hasUntimedAttempts;
   const progressLabel = latestAttempt
     ? latestAttempt.progress === 'completed'
       ? t('common.completed')

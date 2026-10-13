@@ -44,6 +44,9 @@ const PLAN_START_REACH = 3;
  */
 export function estimateCompletion(item) {
   if (!item?.point || item.estimate) return item;
+  // A completion closing the last timed session is that session's end
+  // (core's closesLastSession): there is no unmeasured stretch to estimate.
+  if (item.comparison?.closingCompletionIds?.includes(item.record?.id)) return item;
   const plan = item.record?.planSnapshot;
   const duration = plan?.duration;
   if (!(Number.isFinite(duration) && duration > 0)) return item;

@@ -108,31 +108,40 @@ since its exception remains as evidence.
 - **Not started:** a recurring occurrence offers **Skip this occurrence**.
 - **After the click:** the row stays as the confirmation, "Skipped · Undo",
   while it is the latest step, as Continue, Move and Delete do.
-- **A Skipped group,** below Not started, lists the day's skipped
-  occurrences with the plan from `skip.plan`. The engine hides them, so the
-  day model no longer contains them: the group reads them from the templates
-  (a `skip` on that date, visible to the current user). This keeps a skip
-  visible after the Check is closed and reopened, or on another device.
-- **Restore** on each Skipped row; see above.
+- **A Skipped group,** below Not started, lists every occurrence of the day
+  that still carries a `skip`, with the plan from `skip.plan`. The engine
+  hides them, so the day model no longer contains them: the group reads them
+  from the templates (a `skip` on that date, visible to the current user).
+  This keeps a skip visible after the Check is closed and reopened, or on
+  another device.
+- **A skip overtaken by later work stays listed.** If a completion or a Do
+  arrived after the skip (see below), its row says so ("Completed later" or
+  "Work recorded") instead of "Skipped". It is no longer counted as Skipped,
+  but the group is still where it is found, because the occurrence is still
+  hidden from the timeline.
+- **Restore** on every row in the group, overtaken or not; see above. It is
+  the one way back to the timeline for an occurrence that carries a skip.
 
 ## Work or completion after a skip
 
 A Do is execution evidence, not completion by itself. So:
 
 - **Skipped** means a `skip` on the date, the occurrence not completed, and no
-  Do recorded against it. Only then is it counted and listed as Skipped.
+  Do recorded against it. Only then is it counted, and labelled, as Skipped.
 - **A completion arriving later** (another device, a widget, MCP or an intent
   that targets the date) wins: the occurrence counts as completed, as any
-  completed occurrence does, and leaves the Skipped group. The stored skip
-  remains as history and is not removed automatically.
+  completed occurrence does, and its row in the Skipped group reads
+  "Completed later". The stored skip remains as history and is not removed
+  automatically.
 - **A Do arriving later** against the occurrence (its task and date, through
   its captured plan) means work happened: the occurrence counts as planned
-  with Do, not completed, and leaves the Skipped group. It is not treated as a
-  completion.
+  with Do, not completed, and its row reads "Work recorded". It is not treated
+  as a completion.
 
 The occurrence stays hidden from the timeline in both cases, since the engine
 hides any `skipped` date; the Do itself shows on the Do side as any Do does.
-Restoring the skip brings the occurrence back.
+Its row stays in the Skipped group with Restore, which brings it back to the
+timeline (asked by Lcub3d on #2057).
 
 ## Sync: what is not guaranteed
 
@@ -221,23 +230,26 @@ it stays visible.
   The Check is where a planned occurrence is reviewed; other entry points can
   follow if asked for.
 
-## Decisions to confirm
+## Decisions
+
+All six were agreed with Lcub3d on #2057 (2026-10-13); the fifth was settled
+first, by the maintainer.
 
 1. **Today only.** Skip on today's Check, not on past days' all-day
-   occurrences. Proposed: today only.
+   occurrences. Agreed: today only.
 2. **The evidence record.** `skip: { at, plan }` beside `skipped: true`,
    absent `skip` meaning moved.
-3. **Hidden from the timeline.** Proposed: yes, as a move is, so no consumer
+3. **Hidden from the timeline.** Agreed: yes, as a move is, so no consumer
    outside JOBO changes. The alternative, a greyed occurrence on the timeline,
    would touch the engine shared with the Obsidian plugin.
 4. **Restore at any time** from the Skipped group, besides Undo while it is
-   the latest step. Proposed: both, through the one targeted inverse.
+   the latest step. Agreed: both, through the one targeted inverse.
 5. **MONTH and the daily summary.** **Settled: they count an active skip
    too**, as planned and not completed, so no rate in the app rises. Chosen
    over scoping the guarantee to JOBO, which would have left those two
    screens disagreeing with JOBO's. It changes only how they read a date with
    `skip`, and leaves moves as they are.
-6. **Where Skipped shows in JOBO's statistics.** Proposed: the Overview detail
+6. **Where Skipped shows in JOBO's statistics.** Agreed: the Overview detail
    line and the Scheduled tasks tooltip, not a fifth tile.
 
 ## Build order
@@ -248,7 +260,8 @@ it stays visible.
    a later completion or Do supersedes the skip for classification.
 2. **The Check:** the action in `notStartedAction` for today's recurring
    occurrences, the Skip action and its `pushUndoAction` step, Restore, the
-   Skipped group read from the templates, the strings in all 10 locales.
+   Skipped group read from the templates with its overtaken rows ("Completed
+   later", "Work recorded"), the strings in all 10 locales.
 3. **Statistics:** the Skipped count, kept in the Scheduled tasks
    denominator and out of No Do recorded and the comparisons, for today's
    model and the past-date reader; and MONTH's day statistics and the daily

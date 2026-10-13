@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { noteTextHash } from '@glance-apps/obsidian-format';
 
 // The hook run the way React runs it: state persists across renders, effects
@@ -137,5 +137,89 @@ describe('useEntityNotes — a linked note\'s description section', () => {
     h.unmount();
     expect(sync.value.saveNoteDescription).toHaveBeenCalledWith('goal', 'g1', 'Goals/Run.md', 'Unsaved');
     expect(saveRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe('useEntityNotes — a linked note edited in Obsidian meanwhile', () => {
+  let texts;
+  const live = () => ({
+    loadNoteDescription: vi.fn(async () => ({ text: texts.at(-1), base: noteTextHash(texts.at(-1)) })),
+    saveNoteDescription: vi.fn(async () => ({ ok: true })),
+  });
+  beforeEach(() => {
+    texts = ['First'];
+    globalThis.window = new EventTarget();
+    globalThis.document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
+  });
+  afterEach(() => { delete globalThis.window; delete globalThis.document; });
+
+  const opened = async (over = {}) => {
+    sync.value = { ...live(), obsidianLastSynced: 'T0', ...over };
+    const h = mount({ kind: 'goal', entity: LINKED, saveRecord: vi.fn(), editWhenEmpty: false });
+    await h.act();
+    expect(h.state.notes).toBe('First');
+    return h;
+  };
+  const syncFinished = async (h, at) => { sync.value = { ...sync.value, obsidianLastSynced: at }; await h.act(); await h.act(); };
+
+  it('shows the new text after an Obsidian cycle finishes', async () => {
+    const h = await opened();
+    texts.push('Changed in Obsidian');
+    await syncFinished(h, 'T1');
+    expect(h.state.notes).toBe('Changed in Obsidian');
+    // The new read is the base a later save is checked against.
+    expect(h.state.vault.base).toBe(noteTextHash('Changed in Obsidian'));
+  });
+
+  it('shows it on returning to the window, too', async () => {
+    const h = await opened();
+    texts.push('Edited while away');
+    window.dispatchEvent(new Event('focus'));
+    await h.act();
+    expect(h.state.notes).toBe('Edited while away');
+    texts.push('And again');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await h.act();
+    expect(h.state.notes).toBe('And again');
+  });
+
+  it('never replaces text the user is typing', async () => {
+    const h = await opened();
+    await h.act((s) => s.setEditing(true));
+    await h.act((s) => s.setNotes('My draft'));
+    texts.push('Changed in Obsidian');
+    await syncFinished(h, 'T1');
+    window.dispatchEvent(new Event('focus'));
+    await h.act();
+    expect(h.state.notes).toBe('My draft');
+  });
+
+  it('never replaces an edit the note does not have yet, even with the editor closed', async () => {
+    const h = await opened();
+    await h.act((s) => s.setNotes('Unsaved'));
+    texts.push('Changed in Obsidian');
+    await syncFinished(h, 'T1');
+    expect(h.state.notes).toBe('Unsaved');
+  });
+
+  it('drops a read that lands after the user started typing', async () => {
+    const h = await opened();
+    let release;
+    sync.value.loadNoteDescription.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    sync.value = { ...sync.value, obsidianLastSynced: 'T1' };
+    h.render();
+    await h.act((s) => s.setEditing(true));
+    release({ text: 'Late', base: noteTextHash('Late') });
+    await h.act();
+    expect(h.state.notes).toBe('First');
+  });
+
+  it('stops listening when it goes away', async () => {
+    const h = await opened();
+    h.unmount();
+    const calls = sync.value.loadNoteDescription.mock.calls.length;
+    window.dispatchEvent(new Event('focus'));
+    await flushPromises();
+    expect(sync.value.loadNoteDescription.mock.calls.length).toBe(calls);
   });
 });

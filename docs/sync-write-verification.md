@@ -21,6 +21,11 @@ the other devices had written and nothing on either side can notice. The absent
 remote seed guard (`absentRemoteSeedGuard.js`) closed one of these doors — the
 404 branch — and explicitly not the other two.
 
+Both writers now run the full cycle instead (rule 5), so the app no longer uploads
+unread. The gate stays anyway: "no caller does that today" is not a guarantee, and
+the conflict dialog's `engine.upload()` (with the ETag the user was shown) still
+has to be checked.
+
 ## The rules
 
 1. **A write must be backed by a read.** `src/sync/verifiedWriteGuard.js` records
@@ -33,12 +38,18 @@ remote seed guard (`absentRemoteSeedGuard.js`) closed one of these doors — the
    absence* — a cycle that read nothing and then never reached its upload, so
    nothing consumed the observation — cannot authorize a later, unrelated write
    as if it were a seed.
-2. **A write that no read backed carries a validator.** When the engine does not
-   supply an ETag (the debounced upload, the button), the guard injects the ETag
-   of the last verified read of the same target, so the server can refuse a write
-   built on stale knowledge. A cycle read that returned no ETag leaves the write
-   unconditional — as the engine always did — because refusing it would stop
-   syncing on servers that send no ETag.
+2. **A write that no read backed carries a validator — and only that write does.**
+   The guard injects the ETag of the last verified read of the same target when,
+   and only when, the write has no read in this cycle behind it (`mode
+   'conditional'`). It never overrides a validator the engine supplies, and it
+   never supplies one to a cycle write: the engine passes none on purpose when the
+   read carried no ETag (a server that sends none — refusing those would stop
+   syncing) and, critically, in the last-resort fallback after two 412s
+   (`skipIfMatch`, the fix for servers whose ETag cannot round-trip through
+   `If-Match`). Re-injecting the read's ETag there re-arms the validator the
+   server just rejected, and the sync wedges exactly where the fallback exists to
+   un-wedge it. Cover: `adapterWriteVerification.test.js` ("the cycle the gate must
+   not wedge" — the third PUT must carry no `If-Match`).
 3. **The target is part of the knowledge.** A target is
    `provider + server + account + folder` (`src/sync/syncTarget.js`). A verified
    read of one target never authorizes a write to another: change the server or
@@ -51,10 +62,19 @@ remote seed guard (`absentRemoteSeedGuard.js`) closed one of these doors — the
    `-cloud-sync-last-synced` stamp only while no target record exists (upgrade
    path). Without this, pointing at a new empty folder produced a false ten-minute
    hold, and switching servers carried a stale absence streak to the new one.
-5. **The ambient sync button runs the full cycle.** It calls `download()`, never
-   `upload()`: one click must read, merge and then write, not push local state
-   over the remote. `src/utils/syncNowAction.js` owns that decision so both
-   headers share it and it cannot regress into an upload.
+5. **Every ambient trigger runs the full cycle.** The header/desktop button and
+   the 5-second post-edit debounce both call `download()`, never `upload()`: a
+   trigger must read, merge and then write, not push local state over the remote.
+   `src/utils/syncNowAction.js` owns both decisions (`runSyncNow`,
+   `runSyncAfterEdit`) so the headers and `App.jsx` share them, and neither
+   signature has an upload parameter to regress into.
+   The debounce is not merely a safety change, it is also the faster path: the
+   verified ETag comes from a read and never from a write (a provider's `upload()`
+   returns no ETag), so a bare upload after any cycle that wrote carries a
+   validator the server has already moved past — a 412 the engine swallows under
+   its in-flight lock, which turns a 5-second propagation into a 60-second one.
+   Cover: `adapterWriteVerification.test.js` ("an edit made after a cycle that
+   wrote").
 6. **Reported means visible.** The refusal/hold message renders whenever
    `cloudSyncError` is non-null. Gating it on `status === 'error'` hid it, because
    the engine settles the status back to `idle` on the next line.

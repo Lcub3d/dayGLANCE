@@ -52,8 +52,8 @@ describe('the verified-write gate', () => {
   });
 
   it('makes a write that no read backs conditional on the last verified read', () => {
-    // App.jsx's 5-second debounce and the header button: engine.upload() with no
-    // read. The server must be able to refuse it.
+    // A bare engine.upload() with no read behind it (the conflict dialog's, or
+    // anything added later). The server must be able to refuse it.
     const { guard } = gate();
     guard.observeRead({ payload: {}, etag: '"e1"' });
     guard.decideWrite();                  // the cycle's own write consumes this read
@@ -175,10 +175,26 @@ describe('installVerifiedWriteGuard', () => {
     // `this` survives the wrapper: providers call this.getFileUrl().
     expect(await p.download({})).toEqual({ payload: {}, etag: '"e1"' });
 
-    guard.decideWrite();                        // the cycle's own write
+    guard.decideWrite();                        // the cycle's own write consumes this read
+    guard.decideWrite();                        // an unbacked write: conditional on the verified read
     await p.upload({}, { data: {} });           // no ETag from the engine
     expect(p.calls.upload[0].etag).toBe('"e1"');
     expect(p.calls.upload[0].fileUrl).toBe('https://dav.example.com/GLANCE/dayglance/dayglance-sync.json');
+  });
+
+  it('leaves the engine\'s own cycle write unconditional when the engine passes no ETag', async () => {
+    // The last-resort fallback after two 412s (`skipIfMatch`), and the server
+    // that sends no ETag at all. The guard has a read to hand but must not use
+    // it: re-injecting the ETag the server just rejected is what wedged the
+    // servers the fallback exists for.
+    const { guard } = gate();
+    const p = provider();
+    installVerifiedWriteGuard({ webdav: p }, guard);
+    p.result = { payload: {}, etag: '"mangled"' };
+    await p.download({});
+    expect(guard.decideWrite().mode).toBe('cycle');
+    await p.upload({}, { data: {} });           // no ETag passed by the engine
+    expect(p.calls.upload[0].etag).toBeNull();
   });
 
   it('falls back to the verified read when the engine uploads without validating', async () => {

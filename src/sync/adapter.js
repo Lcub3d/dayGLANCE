@@ -12,9 +12,10 @@
 //   • an EMPTY payload over a populated localStorage store is a stale-state race
 //     that would wipe the remote;
 //   • a write with no read behind it for the CURRENT target is the overwrite that
-//     shipped: App.jsx's 5-second debounced upload and the header button both
-//     reach the provider without reading anything, so after a misconfigured
-//     server they replace the remote with this device's copy. See
+//     shipped: App.jsx's debounced upload and the header button reached the
+//     provider without reading anything, so after a misconfigured server they
+//     replaced the remote with this device's copy. Both now run the full cycle;
+//     the rule stays for any remaining bare `engine.upload()`. See
 //     `verifiedWriteGuard.js` and docs/sync-write-verification.md.
 
 import { createSyncEngine } from '@glance-apps/sync';

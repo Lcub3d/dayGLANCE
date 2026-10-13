@@ -4,17 +4,22 @@
  *
  * ── The hazard this closes ─────────────────────────────────────────────────
  * The engine's cycle reads, merges, then writes (with `If-Match` from the read).
- * Two other writers reach the same provider with no read at all:
+ * Two other writers reached the same provider with no read at all: `App.jsx`'s
+ * 5-second debounced upload on data changes, and the header/desktop sync button
+ * (`engine.upload()`). Both called `engine.upload()` with no payload and no
+ * ETag, so the provider PUT this device's whole snapshot with no validator —
+ * after a misconfiguration the device has never read the remote, and the other
+ * devices' data is gone with nothing on either side able to notice. The
+ * absent-remote seed guard (`absentRemoteSeedGuard.js`) covers the 404 branch of
+ * the cycle only, and its own docstring says so: a manual upload is deliberately
+ * not judged by it.
  *
- *   • `App.jsx`'s 5-second debounced upload on data changes;
- *   • the header/desktop sync button (`engine.upload()`).
- *
- * Both call `engine.upload()` with no payload and no ETag, so the provider PUTs
- * this device's whole snapshot with no validator — after a misconfiguration the
- * device has never read the remote, and the other devices' data is gone with
- * nothing on either side able to notice. The absent-remote seed guard
- * (`absentRemoteSeedGuard.js`) covers the 404 branch of the cycle only, and its
- * own docstring says so: a manual upload is deliberately not judged by it.
+ * Both writers now run the full cycle (`utils/syncNowAction.js`, and the
+ * debounce in `App.jsx`), so no in-app caller deliberately uploads unread. The
+ * gate stays because "no in-app caller today" is not a guarantee: a bare
+ * `engine.upload()` — the conflict dialog's, with the ETag it was shown, or
+ * anything added later — still has to be checked, and still must not put this
+ * device's snapshot on a server it has not read.
  *
  * ── The rule ───────────────────────────────────────────────────────────────
  * Every write must be authorized by a read of the SAME target (`syncTarget.js`):
@@ -23,12 +28,14 @@
  *                      guard's timed rule allowed the seed. No validator exists
  *                      (the file is believed absent), so none is sent.
  *   mode 'cycle'       a read in this cycle found the file; the write is the
- *                      cycle's own. The read's ETag rides along.
- *   mode 'conditional' no read in this cycle (the debounce, the button): the
- *                      write is allowed only against the ETag of the last
- *                      verified read OF THIS TARGET, so a server that has moved
- *                      on refuses it (412) and the next cycle re-reads, merges
- *                      and writes.
+ *                      cycle's own. The read's ETag rides along — and the
+ *                      validator the ENGINE passes is never overridden, so the
+ *                      fallback after two 412s stays unconditional.
+ *   mode 'conditional' no read in this cycle: the write is allowed only against
+ *                      the ETag of the last verified read OF THIS TARGET, so a
+ *                      server that has moved on refuses it (412) and the next
+ *                      cycle re-reads, merges and writes. This is the last
+ *                      resort for a bare upload; no ambient writer needs it.
  *   mode 'unverified'  nothing to authorize it: REFUSED. The refusal is
  *                      reported, never silent — a write that quietly did not
  *                      happen would otherwise be stamped "synced".
@@ -215,6 +222,15 @@ export function createVerifiedWriteGuard({
  * read outcome. `upload` is wrapped so a write the engine did not read for still
  * carries the last verified ETag — the server then has something to refuse.
  *
+ * The wrapper only supplies a validator for a `'conditional'` plan. Whatever the
+ * engine passes is kept (including nothing): a cycle's own ETag is the engine's
+ * business, and a cycle that passes none means an unconditional PUT on purpose —
+ * either the read carried no ETag (a server that sends none) or the engine is in
+ * the last-resort fallback after two 412s (`skipIfMatch`, the fix for servers
+ * whose ETag cannot round-trip through If-Match). Injecting the read's ETag into
+ * that fallback re-arms the validator the server just rejected, and the sync
+ * wedges exactly where the fallback exists to un-wedge it.
+ *
  * Idempotent, and tolerant of a missing map or a provider without those methods.
  */
 export function installVerifiedWriteGuard(providers, guard) {
@@ -228,7 +244,7 @@ export function installVerifiedWriteGuard(providers, guard) {
       // Consume the plan whatever happens: a plan is about THIS upload only.
       const plan = guard.consumeWritePlan();
       let effective = etag || null;
-      if (!effective && plan && plan.mode !== 'seed') effective = plan.etag || null;
+      if (!effective && plan && plan.mode === 'conditional') effective = plan.etag || null;
       if (!effective && !plan) {
         // No plan means the engine called upload() without validating first.
         // Fall back to the verified read rather than writing unconditionally.

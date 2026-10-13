@@ -82,9 +82,9 @@ export function createAbsentRemoteSeedGuard({
   // whole streak instead of restarting on every cycle.
   let missingSince = 0;
   // Set by the read wrapper, consumed by the very next upload decision. One-shot
-  // on purpose: a manual `engine.upload()` — App.jsx's "sync now", or either
-  // branch of the conflict dialog — is not preceded by a read and must never be
-  // judged by an absence some earlier cycle observed.
+  // on purpose: a bare `engine.upload()` — either branch of the conflict dialog,
+  // or anything added later — is not preceded by a read and must never be judged
+  // by an absence some earlier cycle observed.
   let absencePending = false;
 
   return {

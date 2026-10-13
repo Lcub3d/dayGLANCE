@@ -7,8 +7,9 @@
  * to the behaviour that lost data:
  *
  *   • the ETag of the last successful read of a target — without it a write the
- *     engine did not read for (the 5-second debounce, the header button) has no
- *     validator to send, and an unconditional PUT is exactly the overwrite;
+ *     engine did not read for (a bare `engine.upload()`, e.g. the conflict
+ *     dialog's) has no validator to send, and an unconditional PUT is exactly the
+ *     overwrite;
  *   • which target the last successful sync was against — without it "this device
  *     has synced before" is a global stamp, so a new (empty) folder is treated as
  *     a hazy absence and a new server inherits the old one's absence streak.

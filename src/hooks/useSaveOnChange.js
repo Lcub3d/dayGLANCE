@@ -41,8 +41,9 @@ export default function useSaveOnChange({
     // so subsequent user actions (e.g. completing a task) get properly stamped and uploaded.
     if (suppressClearPendingRef.current) {
       suppressClearPendingRef.current = false;
-      // Use microtask so the upload-debounce effect (which runs next in this batch)
-      // still sees suppress=true for THIS pass, but clears before the next user action.
+      // Use microtask so the cloud-sync debounce effect (which runs next in this
+      // batch) still sees suppress=true for THIS pass, but clears before the next
+      // user action.
       queueMicrotask(() => {
         suppressCloudUploadRef.current = false;
         suppressTimestampRef.current = false;

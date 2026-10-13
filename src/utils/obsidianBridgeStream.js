@@ -30,9 +30,8 @@ import { getVaultConfig } from '../sync/vaultConfig.js';
 import { SENT_INTENTS_KEY, DELIVERY_STATE_KEY, recordSentIntents, pruneSentIntents, selectDeliveryProbes, deliveryVerdict } from './bridgeDelivery.js';
 import { recordOwnWriteSeq } from '../sync/ownWrites.js';
 import { hasDbRootKey } from '@glance-apps/sync';
-// Sanctioned deep imports (see obsidianBridgePairing.js for the root-key
-// rationale; vaultClient keeps the client constructible without the engine).
-import { getDbRootKey } from '@glance-apps/sync/src/dbCrypto.js';
+import { verifiedBridgeRootKey } from './bridgeKeyGate.js';
+// Sanctioned deep import (vaultClient keeps the client constructible without the engine).
 import { createVaultClient } from '@glance-apps/sync/src/vaultClient.js';
 import { defaultVaultFetch } from '../intents/dbIntentsTransport.js';
 import { adaptFetchForVaultClient } from '../intents/vaultIntentsSetup.js';
@@ -76,9 +75,12 @@ const OUTBOX_CAP = 500;
 // carry whole-note content); it is not otherwise load-bearing.
 const FLUSH_CHUNK = 50;
 
-// Subkey cache, keyed by generation so a re-pair (new salt) re-derives.
+// Subkey cache, keyed by generation so a re-pair (new salt) re-derives, and
+// by root key so a passphrase entered again mid-session does too (a subkey
+// from the replaced key would seal rows no plugin copy can open).
 let cachedSubkey = null;
 let cachedSubkeyGeneration = null;
+let cachedSubkeyRoot = null;
 let flushInFlight = null; // the running flush's promise — callers coalesce
 let metaFetchInFlight = null;
 // The publish-once guard for the config row — SESSION-SCOPED ON PURPOSE
@@ -210,13 +212,18 @@ export async function getBridgePairingMeta({ force = false } = {}) {
   return metaFetchInFlight;
 }
 
-async function getBridgeSubkey(meta) {
-  if (!meta || !hasDbRootKey()) return null;
-  if (cachedSubkey && cachedSubkeyGeneration === meta.generation) return cachedSubkey;
+// Only a root key proven against the account seals anything (bridgeKeyGate.js):
+// null leaves queued intents in the outbox for a later flush.
+async function getBridgeSubkey(meta, ctx) {
+  if (!meta || !ctx || !hasDbRootKey()) return null;
+  const rootKey = await verifiedBridgeRootKey(ctx.client, ctx.accountId);
+  if (!rootKey) return null;
+  if (cachedSubkey && cachedSubkeyGeneration === meta.generation && cachedSubkeyRoot === rootKey) return cachedSubkey;
   try {
     const salt = Uint8Array.from(atob(meta.pairingSalt), (c) => c.charCodeAt(0));
-    cachedSubkey = await deriveBridgeSubkey(getDbRootKey(), salt);
+    cachedSubkey = await deriveBridgeSubkey(rootKey, salt);
     cachedSubkeyGeneration = meta.generation;
+    cachedSubkeyRoot = rootKey;
     return cachedSubkey;
   } catch {
     return null;
@@ -274,7 +281,7 @@ async function doFlush() {
     const ctx = vaultClientOrNull();
     if (!ctx) return false;
     const meta = await getBridgePairingMeta();
-    const subkey = await getBridgeSubkey(meta);
+    const subkey = await getBridgeSubkey(meta, ctx);
     if (!subkey) return false;
     // Chunked drain (M2): each chunk leaves the persisted outbox as soon as
     // its ack lands, so a failure partway keeps every acked chunk's progress
@@ -395,7 +402,7 @@ export async function publishBridgeConfig({ dailyNotesPath, dailyNotePattern, ta
     if (publishedConfigHash === hash) return;
     const ctx = vaultClientOrNull();
     if (!ctx) return;
-    const subkey = await getBridgeSubkey(meta);
+    const subkey = await getBridgeSubkey(meta, ctx);
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,
@@ -432,7 +439,7 @@ export async function publishBridgeCalendarProjection(payload, contentHash) {
     if (publishedProjectionHash === hash) return;
     const ctx = vaultClientOrNull();
     if (!ctx) return;
-    const subkey = await getBridgeSubkey(meta);
+    const subkey = await getBridgeSubkey(meta, ctx);
     if (!subkey) return;
     const ack = await ctx.client.batch(BRIDGE_VAULT_APP, {
       accountId: ctx.accountId,

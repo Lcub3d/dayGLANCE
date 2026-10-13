@@ -21,6 +21,7 @@ import { notBucketed, BUCKET_LIST_IDS, DEFAULT_BUCKET_CONFIG } from './bucketLis
 import { buildRoutineBlocks } from './mcpRoutines.js';
 import { buildFrames } from './mcpFrames.js';
 import { noteLinkOf } from './obsidianProjectNotes.js';
+import { recurrenceToWire } from './mcpRepeat.js';
 
 /**
  * Subtasks on the wire (2026-10-04): the task's own checklist, in order,
@@ -145,6 +146,13 @@ export function toBlock(task) {
   // always said; the reads now say too.
   if (task.assignedUserSyncIds?.length) block.assignee_id = task.assignedUserSyncIds[0];
   if (task.isTaskCalendar) block.source = 'caldav_tasks';
+  // A recurring occurrence says which series it belongs to and how it repeats
+  // (#2066), in the shape dayglance_update_recurring_task accepts back.
+  if (type === 'recurring_task' && task.recurrence) {
+    block.series_id = String(task.recurringTemplateId);
+    block.repeat = recurrenceToWire(task.recurrence);
+    block.series_start_date = task.recurrence.startDate ?? null;
+  }
   // Device calendar events cannot be modified through dayGLANCE (EventKit
   // read access only) — carried on every item, not just in tool descriptions.
   // An imported calendar event is read-only the same way: the feed owns it.
@@ -177,8 +185,12 @@ export function expandRecurringForDate(recurringTasks, date) {
         // instance inherits it, so toBlock can emit project_id for a
         // recurring block the same as for a concrete task.
         projectId: template.projectId,
+        // Series-level as well: one set of notes for every occurrence.
+        notes: template.notes,
         date: dateStr,
         isRecurring: true,
+        recurringTemplateId: template.id,
+        recurrence: template.recurrence,
       });
     }
   }

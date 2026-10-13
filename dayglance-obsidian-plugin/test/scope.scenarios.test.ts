@@ -981,6 +981,38 @@ describe('vault task scope, end to end', () => {
     warn.mockRestore();
   }, 30_000);
 
+  it('29. THE EMPTY-KEY INTENTS (2026-10-10): a device whose sync key fails the account check sends the plugin nothing it cannot read; its change waits on the device and applies once the passphrase is entered again', async () => {
+    await bootWithScopedNote();
+    const syncPkg = await import('@glance-apps/sync');
+    // The incident's key: the Direct Access record, {rawKey, salt}, read as a
+    // root key record. rootBytes is undefined, so the key is EMPTY, yet a key
+    // is in memory; the bridge used to seal under it.
+    await syncPkg.initDbRootKey({ nativeGetSyncKey: async () => btoa(JSON.stringify({ rawKey: [1, 2, 3], salt: new Array(16).fill(7) })) });
+    expect(syncPkg.hasDbRootKey()).toBe(true);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const append = {
+      path: NOTE, date: null, noteTask: true, heading: '## Tasks',
+      task: { title: 'Line 29', startTime: null, duration: null, isAllDay: true, date: null, blockId: 'empty0029' },
+    };
+    await A.emit('task_append', append);
+    const intents = () => s.vault.live(BRIDGE_VAULT_APP).filter((r) => r.entityId.startsWith('int:'));
+    expect(intents()).toHaveLength(0);                                   // nothing sealed under the empty key
+    expect(JSON.parse(A.store.get('dayglance-bridge-outbox')!)).toHaveLength(1); // held on the device
+    await s.plugin.transport.drain();
+    expect(s.plugin.transport.heldIntents()).toBe(0);                    // nothing for the plugin to hold
+    expect(s.text(NOTE)).not.toContain('Line 29');
+
+    // The passphrase entered again: the key every device holds.
+    await syncPkg.setupDbRootKey('harness-passphrase', new Uint8Array(16).fill(7), { nativeGetSyncKey: async () => null, nativeStoreSyncKey: () => {} });
+    await A.writeback();
+    expect(intents()).toHaveLength(1);
+    await s.plugin.transport.drain();
+    expect(s.plugin.transport.heldIntents()).toBe(0);
+    expect(s.text(NOTE)).toContain('Line 29 ^dg-empty0029');
+    warn.mockRestore();
+  });
+
   it('9. a plugin reload republishes the pairing meta WITH the scope (harness finding)', async () => {
     await bootWithScopedNote();
     s.plugin.reload();

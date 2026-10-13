@@ -24,6 +24,14 @@ struct WebView: UIViewRepresentable {
         )
         config.userContentController.addUserScript(shim)
 
+        // Native HTTP (nativeHttpRequest): a message handler, so request
+        // headers never travel in a URL WebKit can log (NativeHttpMessageHandler).
+        config.userContentController.addScriptMessageHandler(
+            NativeHttpMessageHandler(),
+            contentWorld: .page,
+            name: NativeHttpMessageHandler.name
+        )
+
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
 

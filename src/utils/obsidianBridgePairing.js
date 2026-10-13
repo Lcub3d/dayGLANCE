@@ -27,10 +27,10 @@
 
 import { getVaultConfig } from '../sync/vaultConfig.js';
 import { hasDbRootKey } from '@glance-apps/sync';
-// getDbRootKey is deliberately not re-exported from the package index (apps
-// normally never touch the raw key object); the deep import is sanctioned
-// here because HKDF-deriving the bridge subkey is exactly the §3.4 use case.
-import { getDbRootKey } from '@glance-apps/sync/src/dbCrypto.js';
+// The raw key comes through the gate, which proves it against the account
+// first (the deep import of getDbRootKey lives there, §3.4).
+import { verifiedBridgeRootKey } from './bridgeKeyGate.js';
+import { bridgeVaultClientFor } from './obsidianBridgeStream.js';
 import {
   generatePairingCode,
   sealPairingOffer,
@@ -64,6 +64,16 @@ export async function startBridgePairing(vaultHandle, deviceToken) {
     e.code = 'pairing_no_root_key';
     throw e;
   }
+  // The subkey this mints is handed to every plugin copy, so it must come
+  // from the key every other device holds: a key that has not decrypted the
+  // account's verifier would pair the whole vault onto a subkey no other
+  // dayGLANCE device can derive (bridgeKeyGate.js).
+  const rootKey = await verifiedBridgeRootKey(bridgeVaultClientFor(cfg), cfg.accountId);
+  if (!rootKey) {
+    const e = new Error('This device\'s sync key has not been confirmed against your GLANCEvault account yet. Let GLANCEvault sync complete without errors, then pair again. If sync reports that the passphrase does not match, enter it again first.');
+    e.code = 'pairing_key_unverified';
+    throw e;
+  }
   if (typeof deviceToken !== 'string' || deviceToken.trim() === '') {
     const e = new Error('Enter the GLANCEvault device token (the same one in Settings → Cloud Sync → GLANCEvault, unless the bridge has its own).');
     e.code = 'pairing_no_token';
@@ -71,7 +81,7 @@ export async function startBridgePairing(vaultHandle, deviceToken) {
   }
 
   const pairingSalt = crypto.getRandomValues(new Uint8Array(16));
-  const subkey = await deriveBridgeSubkey(getDbRootKey(), pairingSalt);
+  const subkey = await deriveBridgeSubkey(rootKey, pairingSalt);
   const subkeyB64 = await exportBridgeSubkey(subkey);
   const pairingSaltB64 = btoa(String.fromCharCode(...pairingSalt));
   const code = generatePairingCode();

@@ -36,6 +36,7 @@ import {
 } from './mcpIdempotency.js';
 import { planCreateTask } from './mcpCreateArgs.js';
 import { planUpdateTask } from './mcpUpdateArgs.js';
+import { planUpdateRecurringTask } from './mcpRecurringArgs.js';
 import {
   planCreateGoal, planUpdateGoal, planCreateProject, planUpdateProject, planAddSubtask, planUpdateSubtask,
   GOAL_CLEARABLE, PROJECT_CLEARABLE,
@@ -254,8 +255,16 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       '1-1440. Defaults to 30. Contradicts all_day: an all-day task has no meaningful duration.'),
     all_day: z.boolean().optional().describe(
       'With start: create an all-day task. start must then be a bare YYYY-MM-DD date.'),
+    // Permissive on purpose (CLAUDE.md, MCP transport suite): parseRepeat
+    // answers an `interval` or an unsupported frequency with the by-design
+    // message, which a strict schema would replace with the SDK's own text.
     repeat: z.unknown().optional().describe(
-      'NOT SUPPORTED: recurring tasks cannot be created over MCP in v1. Passing anything here is an error.'),
+      'With start: make this a repeating task. An object: {"frequency": "daily" | "weekly" | "biweekly" | ' +
+      '"monthly" | "yearly", "days_of_week": ["mon","wed"] (weekly/biweekly; default start\'s weekday), ' +
+      '"day_of_month": 1-31 (monthly, clamped in shorter months; default start\'s day), ' +
+      '"nth_weekday": {"week": 1-5, "day": "tue"} (monthly instead of day_of_month; no "last"), ' +
+      '"until": "YYYY-MM-DD" (inclusive), "count": total occurrences}. Yearly repeats on start\'s month and day. ' +
+      'There is no interval: biweekly is the only "every N". The series starts on start\'s date.'),
     idempotency_key: IDEMPOTENCY_ARG,
   });
 
@@ -265,7 +274,8 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
       description:
         'Create a new dayGLANCE task. Without start: an unscheduled task, in the inbox or in a project via ' +
         'project_id (either may carry priority and deadline). With start: a scheduled task placed directly onto ' +
-        'the calendar in one call, with no separate scheduling step. Returns the created task or block.' +
+        'the calendar in one call, with no separate scheduling step. With start and repeat: a repeating series, ' +
+        'returned as the series, its first occurrence and its next dates. Returns the created task or block.' +
         ID_MAY_CHANGE + ROUTINE_TIME_IS_OCCUPIED,
       inputSchema: createTaskSchema,
     },
@@ -289,7 +299,7 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
   );
 
   const updateTaskSchema = z.object({
-    task_id: z.string().describe('The task to edit. Recurring-instance ids (recurring-...) are not editable; edit the series in dayGLANCE.'),
+    task_id: z.string().describe('The task to edit. Recurring occurrences (recurring-...) are edited with dayglance_update_recurring_task.'),
     title: z.string().optional().describe('New title. Required on every task, so it can be set but never cleared.'),
     notes: z.string().optional().describe('New notes text. To remove notes entirely, name "notes" in clear_fields instead.'),
     priority: z.number().int().optional().describe(
@@ -328,6 +338,53 @@ export function registerWriteTools(server: McpServer, deps: WriteToolDeps): void
         const planned = planUpdateTask(args, multiUser);
         if (!planned.ok) return toolError(planned.code, planned.message);
         const r = await deps.bridge.request('update_task', { ...planned.plan, transitionId });
+        return fromRenderer(r, { timezone: deps.timeZone() }, capture);
+      });
+    },
+  );
+
+  const updateRecurringSchema = z.object({
+    task_id: z.string().describe(
+      'A recurring occurrence id, recurring-<series>-<YYYY-MM-DD>, as dayglance_get_day and dayglance_create_task return it.'),
+    // A string rather than an enum so a wrong value reaches the by-design
+    // message in mcpRecurringArgs.ts instead of the SDK's generic one.
+    scope: z.string().describe(
+      'Required. "occurrence": the change applies to this date only. "series": it applies to every occurrence, ' +
+      'and the same field is cleared from any occurrence edited on its own. Ask the user if unsure, as the app does.'),
+    title: z.string().optional().describe('New title. Can be set, never cleared.'),
+    start_time: z.string().optional().describe('Local "HH:MM". Makes an all-day occurrence timed.'),
+    duration_minutes: z.number().int().optional().describe('1-1440.'),
+    all_day: z.boolean().optional().describe('true makes it all-day; false (with start_time) makes it timed.'),
+    notes: z.string().optional().describe('Series only: one set of notes for every occurrence.'),
+    project_id: z.string().optional().describe('Series only: move the series into a project.'),
+    repeat: z.unknown().optional().describe(
+      'Series only: replace the whole pattern, its end included, in the dayglance_create_task repeat shape. ' +
+      'The series start never moves earlier.'),
+    ...(multiUser ? {
+      assignee_id: z.string().optional().describe(
+        'Reassign by user id from dayglance_list_users. Never guess from a name.'),
+    } : {}),
+    clear_fields: z.array(z.string()).optional().describe(
+      `Field names to REMOVE: "notes", "project" (series only)${multiUser ? ', "assignee"' : ''}.`),
+    idempotency_key: IDEMPOTENCY_ARG,
+  });
+
+  server.registerTool(
+    'dayglance_update_recurring_task',
+    {
+      description:
+        'Edit a repeating dayGLANCE task, for one occurrence or the whole series. Title, time, duration, all-day ' +
+        'and assignee can change for either scope; notes, project and the repeat pattern belong to the series. ' +
+        'Completing an occurrence is dayglance_set_task_completion. Returns the series, the edited occurrence ' +
+        'and the next dates.' + ROUTINE_TIME_IS_OCCUPIED,
+      inputSchema: updateRecurringSchema,
+    },
+    async (args: Record<string, unknown>) => {
+      const idempotency_key = args['idempotency_key'];
+      return write('update_recurring_task', idempotency_key, async (transitionId, capture) => {
+        const planned = planUpdateRecurringTask(args, multiUser, deps.timeZone());
+        if (!planned.ok) return toolError(planned.code, planned.message);
+        const r = await deps.bridge.request('update_recurring_task', { ...planned.plan, transitionId });
         return fromRenderer(r, { timezone: deps.timeZone() }, capture);
       });
     },

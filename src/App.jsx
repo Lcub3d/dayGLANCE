@@ -143,6 +143,8 @@ import useDailyBriefings from './hooks/useDailyBriefings.js';
 import useVoiceInput from './hooks/useVoiceInput.js';
 import useCloudSync from './hooks/useCloudSync.js';
 import { createDayGlanceEngine } from './sync/adapter.js';
+import { resolveSyncTarget } from './sync/syncTarget.js';
+import { runSyncAfterEdit } from './utils/syncNowAction.js';
 import { createDbEngine, resetVaultSyncCursor } from './sync/dbEngine.js';
 import { deriveBlockEnergy } from './utils/energyAxis.js';
 import { registerDbEngine } from './sync/dirtyTracker.js';
@@ -965,6 +967,31 @@ const DayPlanner = () => {
     // always run the latest engine method without a closure refresh.
     cloudSyncDownloadRef.current = () => cloudSyncEngineRef.current.download();
   }
+
+  // Cloud sync: a changed sync target (server, account or folder) invalidates what
+  // this device knows about the remote, so reconfiguration must not be followed by
+  // a write built on the OLD target's knowledge. Cancel any upload the debounce
+  // armed against the previous target (Save does not cancel it), release a hard
+  // stop the old server may have set (nothing else clears it), and read the new
+  // target once — the engine adapter refuses writes no read has backed
+  // (src/sync/verifiedWriteGuard.js).
+  const syncTargetKey = useMemo(
+    () => resolveSyncTarget(cloudSyncConfig, syncFolder)?.key ?? null,
+    [cloudSyncConfig, syncFolder],
+  );
+  const syncTargetSeenRef = useRef(syncTargetKey);
+  useEffect(() => {
+    if (syncTargetSeenRef.current === syncTargetKey) return;
+    syncTargetSeenRef.current = syncTargetKey;
+    if (cloudSyncDebounceRef.current) {
+      clearTimeout(cloudSyncDebounceRef.current);
+      cloudSyncDebounceRef.current = null;
+    }
+    cloudSyncEngineRef.current?.clearHardStop?.();
+    if (dataLoaded && cloudSyncConfig?.enabled && syncKeyReady) {
+      cloudSyncDownloadRef.current?.();
+    }
+  }, [syncTargetKey, dataLoaded, cloudSyncConfig?.enabled, syncKeyReady, cloudSyncDebounceRef, cloudSyncDownloadRef]);
 
   // Daily Notes state — keyed by date string "YYYY-MM-DD" → { text, lastModified }
   // Your notes on imported calendar events (utils/eventNotes.js): apart
@@ -2438,17 +2465,22 @@ const DayPlanner = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncUrl, taskCalendarUrl, icsCalendarsFetchKey, primaryCalendarMeta.enabled]);
 
-  // Cloud sync: debounced upload on data changes.
-  // Upload only (no download) to avoid the applyEngineData → state-change → debounce
-  // re-trigger loop. The 60-second poll handles keeping remote changes in sync.
+  // Cloud sync: debounced sync cycle on data changes.
+  // The full cycle (read → merge → write), never a bare upload: a write with no
+  // read behind it cannot carry a validator the server could refuse, and it also
+  // always 412s once a cycle has written (the verified ETag comes from a read,
+  // never from a write) — which the engine then swallows, turning a 5-second
+  // propagation into a 60-second one. See utils/syncNowAction.js. The apply
+  // guard (suppressCloudUploadRef, set by applyEngineData) is what keeps the
+  // cycle's own apply from re-arming this debounce into a loop.
   useEffect(() => {
     if (isTrayMode || !cloudSyncConfig?.enabled || !dataLoaded || suppressCloudUploadRef.current || !syncKeyReadyRef.current) return;
     if (cloudSyncDebounceRef.current) clearTimeout(cloudSyncDebounceRef.current);
     cloudSyncDebounceRef.current = setTimeout(() => {
-      cloudSyncEngineRef.current.upload();
+      runSyncAfterEdit({ cloudSyncDownload: cloudSyncDownloadRef.current });
     }, 5000);
     return () => { if (cloudSyncDebounceRef.current) clearTimeout(cloudSyncDebounceRef.current); };
-  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, dataLoaded, suppressCloudUploadRef]);
+  }, [tasks, unscheduledTasks, recycleBin, taskCalendarUrl, completedTaskUids, recurringTasks, routineDefinitions, allTodayRoutines, routinesDate, routineCompletions, removedTodayRoutineIds, use24HourClock, habits, habitLogs, habitsEnabled, routinesEnabled, dailyNotes, dayWindows, gtdFrames, bucketConfig, cloudSyncConfig?.enabled, syncKeyReady, multiUserEnabled, users, cloudSyncDebounceRef, cloudSyncDownloadRef, dataLoaded, suppressCloudUploadRef]);
 
   // ── GLANCEvault DB transport ─────────────────────────────────────────────
   // Row-grained sync that runs ALONGSIDE the file-tier WebDAV engine (it shares
@@ -8287,7 +8319,9 @@ const DayPlanner = () => {
     // ── Functions – data persistence ──────────────────────────────────────────
     loadData, saveData,
     cloudSyncDownload: () => cloudSyncEngineRef.current.download(),
-    cloudSyncUpload:   (prebuilt, opts) => cloudSyncEngineRef.current.upload({ prebuiltPayload: prebuilt, ...opts }),
+    // There is deliberately no bare-upload binding: the header button and the
+    // settings "Sync now" both run the full cycle (utils/syncNowAction.js), and
+    // a write with no read behind it is refused by the engine adapter anyway.
     cloudSyncTest:     (cfg) => cloudSyncEngineRef.current.test(cfg),
     // Manual "Sync now" for the WebDAV file tier (full merge cycle).
     cloudSyncNow:      () => cloudSyncEngineRef.current.sync(),

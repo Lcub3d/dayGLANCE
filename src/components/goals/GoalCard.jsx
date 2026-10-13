@@ -8,6 +8,7 @@ import { noteLinkOf } from '../../utils/obsidianProjectNotes.js';
 import { calculateGoalProgress } from '../../utils/goalProgress.js';
 import { hasStalledChild } from '../../utils/stalledBadge.js';
 import GoalProgress from './GoalProgress.jsx';
+import GoalNotes from './GoalNotes.jsx';
 
 /**
  * GoalCard — a single goal node in the dashboard flowchart.
@@ -155,12 +156,9 @@ const GoalCard = forwardRef(
             </div>
           ) : null}
 
-          {/* Description */}
-          {goal.description && (
-            <p className={`text-xs ${textSecondary} leading-snug line-clamp-2`}>
-              {goal.description}
-            </p>
-          )}
+          {/* Notes: the goal's description, formatted and editable in place
+              (#2076). The header above already names a linked note. */}
+          <GoalNotes key={goal.id} goal={goal} showLabel={false} />
 
           {/* Progress */}
           <GoalProgress progress={progress} color={goalColor} />

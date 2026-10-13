@@ -28,10 +28,12 @@ recorded phases.
 “Still in progress” saves partial timed Do rows and leaves task completion alone.
 “Task completed” saves those rows first, then calls the normal Focus completion
 handler. Its existing completion detector independently emits an untimed
-completion row. The existing task + captured-plan execution grouping and core
-mixed timed/untimed comparison rules remain in force: measured minutes, gaps,
-overlaps, and completion are retained, but the mixed execution is not wholly
-comparable to Plan. Existing manual records are not removed or rewritten;
+completion row. The existing task + captured-plan execution grouping applies.
+That completion, stamped as the last work phase is saved, closes the last
+timed session (core's `closesLastSession`, `jobo-core.md`), so the execution
+stays comparable to Plan; a completion stamped more than 2 minutes after the
+last session ends, or stamped in UTC (a recurring occurrence's), still makes
+it mixed. Existing manual records are not removed or rewritten;
 overlapping intervals still count only once in the day-time union.
 
 ## Minute precision

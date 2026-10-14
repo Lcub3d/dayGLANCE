@@ -534,9 +534,8 @@ export function applyScheduleTask(state, { taskId, date, startTime, durationMinu
  * transitionId), notes from useTaskActions.updateTaskNotes, priority from
  * useDeadlinePriority.cyclePriority's commit map, deadline from
  * useTaskActions.setDeadline, assignee from the edit modal's direct
- * assignedUserSyncIds write. lastModified is deliberately NOT stamped here:
- * the save pass (useDataPersistence stampTaskTimestamps) diff-stamps both
- * tasks and unscheduledTasks, the applyMoveBlock/applyResizeBlock precedent.
+ * assignedUserSyncIds write. lastModified is stamped HERE, at the write
+ * (#2083), as every other MCP write already does; see stampedAt below.
  *
  * DELIBERATE DIFFERENCE from the UI edit modal: no cleanTitle(). Sigil
  * parsing ($fri, !2) is a typing-UI affordance; an agent writing "$fri" in a
@@ -563,7 +562,7 @@ export function applyScheduleTask(state, { taskId, date, startTime, durationMinu
  * Returns `touched`: the STORAGE keys this call changed, in a stable order,
  * so the caller can capture exact before-state for the §4.3 undo journal.
  */
-export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitionId }) {
+export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitionId, nowIso }) {
   const tasks = state.tasks ?? [];
   const unscheduled = state.unscheduledTasks ?? [];
 
@@ -625,7 +624,7 @@ export function applyUpdateTask(state, { taskId, set = {}, clear = [], transitio
     return { ok: true, replayed: true, tasks, unscheduledTasks: unscheduled, task, touched: [], scheduled: !inInbox };
   }
 
-  const next = { ...task, ...(transitionId ? { transitionId } : {}) };
+  const next = { ...task, ...(transitionId ? { transitionId } : {}), ...stampedAt(nowIso) };
   const touched = [];
   const touch = (key) => { if (!touched.includes(key)) touched.push(key); };
 
@@ -675,12 +674,27 @@ function findWritableBlock(state, tasks, blockId, { operation }) {
 }
 
 /**
+ * THE WRITE'S OWN STAMP (#2083). update_task, move_block and resize_block
+ * used to leave lastModified to the save pass, which diff-stamps against
+ * storage. While a sync apply is being committed that pass skips stamping
+ * altogether (suppressTimestampRef: it cannot tell the apply's rows from an
+ * edit), and it persists the rows as they are, so an MCP write landing in that
+ * window kept the stamp of the copy it replaced forever. At an equal stamp the
+ * merge then decides by content (mergeSync.js breakTimestampTies), not by who
+ * edited last, and the edit could be reverted. Stamping at the write makes the
+ * edit newer than the copy it supersedes whatever the save pass does; when the
+ * pass does run it finds the content changed and stamps the same moment again.
+ */
+function stampedAt(nowIso) {
+  return nowIso ? { lastModified: nowIso } : {};
+}
+
+/**
  * MOVE. Shape transcribed from the canonical drop handler,
  * useDragDrop.js:466-470: `{ ...t, startTime, date, isAllDay: false,
- * transitionId }`. (lastModified is stamped by stampTaskTimestamps in the
- * save pass, exactly as for the UI drop.)
+ * transitionId }`, plus the write's own lastModified (stampedAt, #2083).
  */
-export function applyMoveBlock(state, { blockId, date, startTime, transitionId }) {
+export function applyMoveBlock(state, { blockId, date, startTime, transitionId, nowIso }) {
   const tasks = state.tasks ?? [];
   const found = findWritableBlock(state, tasks, blockId, { operation: 'move_block' });
   if (!found.ok) return found;
@@ -696,7 +710,7 @@ export function applyMoveBlock(state, { blockId, date, startTime, transitionId }
   });
   if (moveConflict) return moveConflict;
 
-  const moved = { ...found.task, startTime, date, isAllDay: false, ...(transitionId ? { transitionId } : {}) };
+  const moved = { ...found.task, startTime, date, isAllDay: false, ...(transitionId ? { transitionId } : {}), ...stampedAt(nowIso) };
   return { ok: true, replayed: false, tasks: tasks.map((t) => (t.id === blockId ? moved : t)), task: moved };
 }
 
@@ -706,7 +720,7 @@ export function applyMoveBlock(state, { blockId, date, startTime, transitionId }
  * (the UI resize does not stamp one — noted in the Phase 3 trace) so the
  * emit correlation holds for MCP.
  */
-export function applyResizeBlock(state, { blockId, durationMinutes, transitionId }) {
+export function applyResizeBlock(state, { blockId, durationMinutes, transitionId, nowIso }) {
   const tasks = state.tasks ?? [];
   const found = findWritableBlock(state, tasks, blockId, { operation: 'resize_block' });
   if (!found.ok) return found;
@@ -723,7 +737,7 @@ export function applyResizeBlock(state, { blockId, durationMinutes, transitionId
   });
   if (resizeConflict) return resizeConflict;
 
-  const resized = { ...found.task, duration: durationMinutes, ...(transitionId ? { transitionId } : {}) };
+  const resized = { ...found.task, duration: durationMinutes, ...(transitionId ? { transitionId } : {}), ...stampedAt(nowIso) };
   return { ok: true, replayed: false, tasks: tasks.map((t) => (t.id === blockId ? resized : t)), task: resized };
 }
 

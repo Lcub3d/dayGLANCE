@@ -1443,9 +1443,32 @@ const DayPlanner = () => {
     todayRoutines, routinesEnabled,
     dataLoaded, t,
   });
+
+  // GTD Frames state. Before useUndo, whose snapshots include Frames.
+  const {
+    gtdFrames, setGtdFrames,
+    showFramesModal, setShowFramesModal,
+    framesModalTab, setFramesModalTab,
+    editingFrame, setEditingFrame,
+    smartScheduleResults, setSmartScheduleResults,
+    smartScheduleLoading, setSmartScheduleLoading,
+    smartScheduleError, setSmartScheduleError,
+    smartScheduleAccepted, setSmartScheduleAccepted,
+    showRescheduleModal, setShowRescheduleModal,
+    rescheduleResults, setRescheduleResults,
+    rescheduleLoading, setRescheduleLoading,
+    rescheduleError, setRescheduleError,
+    rescheduleAccepted, setRescheduleAccepted,
+    frameContextMenu, setFrameContextMenu,
+    quickAddFrameModal, setQuickAddFrameModal,
+    frameAdjustModal, setFrameAdjustModal,
+    frameAdjustTimeField, setFrameAdjustTimeField,
+    frameScheduleModal, setFrameScheduleModal,
+  } = useGTDFrames();
+
   const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
-    tasks, unscheduledTasks, recycleBin, recurringTasks,
-    setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
+    tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrames,
+    setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, setGtdFrames,
     playUISound, t,
   });
 
@@ -1560,28 +1583,6 @@ const DayPlanner = () => {
     () => (aiSuppressed ? { ...rawAiConfig, enabled: false } : rawAiConfig),
     [rawAiConfig, aiSuppressed],
   );
-
-  // GTD Frames state
-  const {
-    gtdFrames, setGtdFrames,
-    showFramesModal, setShowFramesModal,
-    framesModalTab, setFramesModalTab,
-    editingFrame, setEditingFrame,
-    smartScheduleResults, setSmartScheduleResults,
-    smartScheduleLoading, setSmartScheduleLoading,
-    smartScheduleError, setSmartScheduleError,
-    smartScheduleAccepted, setSmartScheduleAccepted,
-    showRescheduleModal, setShowRescheduleModal,
-    rescheduleResults, setRescheduleResults,
-    rescheduleLoading, setRescheduleLoading,
-    rescheduleError, setRescheduleError,
-    rescheduleAccepted, setRescheduleAccepted,
-    frameContextMenu, setFrameContextMenu,
-    quickAddFrameModal, setQuickAddFrameModal,
-    frameAdjustModal, setFrameAdjustModal,
-    frameAdjustTimeField, setFrameAdjustTimeField,
-    frameScheduleModal, setFrameScheduleModal,
-  } = useGTDFrames();
 
   // Frames owned by me — the everyday set used for AI gating (smart-schedule /
   // reschedule button visibility, empty states, keyboard shortcuts). Mirrors
@@ -8989,11 +8990,13 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Undo/Redo Toast. Above the Refocus timeline pill, which sits in the
-          same place while the timeline is scrolled away from now and would
-          otherwise cover its buttons. */}
+      {/* Undo/Redo Toast. Above the dialogs (z-[60] up to the JOBO panels
+          at z-[100]): an action taken inside one, or a Cmd+Z pressed over one,
+          reports here, and its Undo button has to be reachable. Below
+          HyperGlance's full-screen mode (z-[200]) and the subscription wall.
+          Also above the Refocus timeline pill, which sits in the same place. */}
       {undoToast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[55] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[150] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
           <div
             data-undo-toast
             // Pointer or focus on the toast holds it (hooks/useUndo.js).

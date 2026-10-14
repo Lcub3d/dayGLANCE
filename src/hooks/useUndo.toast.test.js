@@ -17,7 +17,7 @@ vi.mock('react', () => ({
 }));
 const { default: useUndo } = await import('./useUndo.js');
 
-// One render, then its toast effect (the fifth: four refs sync first), run
+// One render, then its toast effect (the sixth: five refs sync first), run
 // as React would: only when the toast changed, after the last one's cleanup.
 let cleanup = null;
 let ranFor;
@@ -32,7 +32,7 @@ function render() {
   if (api.undoToast !== ranFor) {
     ranFor = api.undoToast;
     cleanup?.();
-    cleanup = runtime.effects[4]() || null;
+    cleanup = runtime.effects[5]() || null;
   }
   return api;
 }

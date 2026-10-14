@@ -13,7 +13,7 @@ import { calculateProjectProgress } from '../utils/projectProgress.js';
 import { HABIT_COLORS, HABIT_ICONS } from '../constants/habits.js';
 import { HabitRing } from './HabitRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
-import FrameNudgeCard from './FrameNudgeCard.jsx';
+import FrameNudgeCard, { revealFrameNudgeCard } from './FrameNudgeCard.jsx';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { getGlanceHGInstances, isHGSessionReachable } from '../hooks/useHyperGlance.js';
@@ -82,7 +82,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
     rescheduleError, setRescheduleError,
     morningGlanceText, morningGlanceLoading, morningGlanceDismissed, morningGlanceError,
     eveningGlanceText, eveningGlanceLoading, eveningGlanceDismissed, eveningGlanceError,
-    frameNudgeSuggestion, frameNudgeLoading, frameNudgeError,
+    frameNudgeSuggestion, frameNudgeLoading, frameNudgeError, frameNudgeNotice,
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
     routinesEnabled, todayRoutines, routineCompletions, toggleRoutineCompletion,
     habitsEnabled,
@@ -631,11 +631,12 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
   )}
 
   {/* Frame Nudge card (desktop) */}
-  {aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge && activeFrameForNudge.minutesRemaining > 30 && agendaNowMarker.gapMinutes >= 15 && frameNudgeDismissedKey !== activeFrameNudgeKey && (frameNudgeSuggestion || frameNudgeLoading || frameNudgeError) && (
+  {aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge && activeFrameForNudge.minutesRemaining > 30 && agendaNowMarker.gapMinutes >= 15 && frameNudgeDismissedKey !== activeFrameNudgeKey && (frameNudgeSuggestion || frameNudgeLoading || frameNudgeError || frameNudgeNotice) && (
     <FrameNudgeCard
       suggestion={frameNudgeSuggestion}
       loading={frameNudgeLoading}
       error={frameNudgeError}
+      notice={frameNudgeNotice}
       activeFrame={activeFrameForNudge}
       darkMode={darkMode}
       textPrimary={textPrimary}
@@ -966,8 +967,8 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
             ) : agendaNowMarker.inboxCount > 0 ? (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-xs italic text-red-500">{t('app.maybeTackleInbox')}</span>
-                {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge && (
-                  <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
+                {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge?.minutesRemaining > 30 && (
+                  <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); revealFrameNudgeCard(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
                     <Sparkles size={9} />AI
                   </button>
                 )}
@@ -1137,8 +1138,8 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               ) : agendaNowMarker.inboxCount > 0 ? (
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-xs italic text-red-500">{t('app.maybeTackleInbox')}</span>
-                  {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge && (
-                    <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
+                  {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge?.minutesRemaining > 30 && (
+                    <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); revealFrameNudgeCard(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
                       <Sparkles size={9} />AI
                     </button>
                   )}

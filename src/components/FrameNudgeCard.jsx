@@ -2,14 +2,22 @@ import React from 'react';
 import { RefreshCw, X, Zap, Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const FrameNudgeCard = ({ suggestion, loading, error, activeFrame, darkMode, textPrimary, textSecondary, onRefresh, onDismiss, onStartTask }) => {
+// The card renders at the top of GLANCE while the AI button sits in the agenda
+// below it, so a press scrolled down the list would otherwise answer off-screen.
+export const revealFrameNudgeCard = () => {
+  requestAnimationFrame(() => {
+    document.querySelector('[data-frame-nudge-card]')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  });
+};
+
+const FrameNudgeCard = ({ suggestion, loading, error, notice, activeFrame, darkMode, textPrimary, textSecondary, onRefresh, onDismiss, onStartTask }) => {
   const { t } = useTranslation();
   const borderCol = darkMode ? 'border-teal-800/50' : 'border-teal-200';
   const bgCol = darkMode ? 'bg-teal-900/20' : 'bg-teal-50';
   const labelCol = darkMode ? 'text-teal-300' : 'text-teal-700';
   const iconCol = 'text-teal-500';
   return (
-    <div className={`rounded-lg border p-3 mb-3 ${borderCol} ${bgCol}`}>
+    <div data-frame-nudge-card className={`rounded-lg border p-3 mb-3 ${borderCol} ${bgCol}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <Zap size={13} className={`${iconCol} flex-shrink-0`} />
@@ -35,6 +43,9 @@ const FrameNudgeCard = ({ suggestion, loading, error, activeFrame, darkMode, tex
       )}
       {error && !loading && (
         <p className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+      )}
+      {notice && !error && !loading && (
+        <p className={`text-xs ${textSecondary}`}>{notice}</p>
       )}
       {suggestion && !loading && (
         <button

@@ -197,7 +197,7 @@ function dispatchWrite(state, setters, method, params) {
     }
     case 'move_block': {
       const before = (state.tasks ?? []).find((t) => t.id === params.blockId);
-      const r = applyMoveBlock(state, params);
+      const r = applyMoveBlock(state, { ...params, nowIso });
       if (!r.ok) return r;
       if (!r.replayed) setters.setTasks(r.tasks);
       const undo = r.replayed || !before ? undefined : {
@@ -212,7 +212,7 @@ function dispatchWrite(state, setters, method, params) {
     }
     case 'resize_block': {
       const before = (state.tasks ?? []).find((t) => t.id === params.blockId);
-      const r = applyResizeBlock(state, params);
+      const r = applyResizeBlock(state, { ...params, nowIso });
       if (!r.ok) return r;
       if (!r.replayed) setters.setTasks(r.tasks);
       const undo = r.replayed || !before ? undefined : {
@@ -242,7 +242,7 @@ function dispatchWrite(state, setters, method, params) {
       // is gone.
       const beforeTask = (state.unscheduledTasks ?? []).find((t) => t.id === params.taskId)
         ?? (state.tasks ?? []).find((t) => t.id === params.taskId);
-      const r = applyUpdateTask(state, params);
+      const r = applyUpdateTask(state, { ...params, nowIso });
       if (!r.ok) return r;
       if (!r.replayed) {
         if (r.scheduled) setters.setTasks(r.tasks);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { createKey, TABS, QUERY_RETURN_VARS, ENTITY_TYPES, SOURCE_APPS } from '@glance-apps/intents';
 import { handleIntent } from './handleIntent.js';
 
@@ -866,5 +866,34 @@ describe('handleIntent create goal — clears stale tombstone', () => {
 
     expect(r.success).toBe(true);
     expect(readTombstones()['some-other-id']).toBe('2026-06-01T00:00:00.000Z');
+  });
+});
+
+describe('handleIntent CREATE for another app', () => {
+  it('skips a create whose entity_type is neither task nor goal', async () => {
+    const setTasks = vi.fn();
+    const setUnscheduledTasks = vi.fn();
+    const addGoal = vi.fn();
+    const r = await handleIntent('create', {
+      title: 'Sam reached out',
+      due: '2026-10-14',
+      all_day: true,
+      entity_type: 'milestone',
+      source_app: SOURCE_APPS.LASTGLANCE,
+      source_entity_id: 'interaction-1',
+    }, { tasks: [], unscheduledTasks: [], setTasks, setUnscheduledTasks, addGoal });
+    expect(r.success).toBe(true);
+    expect(r.warning).toMatch(/not for dayGLANCE/);
+    expect(setTasks).not.toHaveBeenCalled();
+    expect(setUnscheduledTasks).not.toHaveBeenCalled();
+    expect(addGoal).not.toHaveBeenCalled();
+  });
+
+  it('still creates a task when entity_type says task', async () => {
+    const setUnscheduledTasks = vi.fn();
+    const setTasks = vi.fn();
+    const r = await handleIntent('create', { title: 'Call Sam', entity_type: ENTITY_TYPES.TASK }, { tasks: [], unscheduledTasks: [], setTasks, setUnscheduledTasks });
+    expect(r.success).toBe(true);
+    expect(setTasks.mock.calls.length + setUnscheduledTasks.mock.calls.length).toBeGreaterThan(0);
   });
 });

@@ -271,6 +271,14 @@ async function handleCreate(payload, context) {
     return handleCreateGoal(v.data, context);
   }
 
+  // A CREATE carrying any other entity_type is meant for another GLANCE app on
+  // the shared channel (lastGLANCE sends lifeGLANCE timeline entries as
+  // `milestone`). Turning it into a task would put "Sam reached out" on the
+  // timeline here, so it is acknowledged and left alone.
+  if (v.data.entity_type && v.data.entity_type !== ENTITY_TYPES.TASK) {
+    return ok({ warning: `entity_type ${v.data.entity_type} is not for dayGLANCE; skipped` });
+  }
+
   const raw = v.data;
 
   const { title: cleanedTitle, tags } = normalizeTags({ title: raw.title, tags: raw.tags });

@@ -57,6 +57,7 @@ import { dateToString, localDateStr, extractTags, extractWikilinks, stripWikilin
 import { defaultUse24HourClock, defaultWeekStartDay, formatLocalizedDate, localizedList } from './utils/localeFormatting.js';
 import { ENGLISH_DAILY_NOTE_TEMPLATE, buildLocalizedDailyNoteTemplate, buildLocalizedTaskHeading, localizeDefaultDailyNoteTemplate } from './utils/dailyNoteTemplate.js';
 import { notBucketed, demoteToBucket, normalizeBucketConfig } from './utils/bucketList.js';
+import { planFrameNudge, resolveFrameNudgeAnswer } from './utils/frameNudge.js';
 import { getOverdueTasks as collectOverdueTasks } from './utils/getOverdueTasks.js';
 import { parseICS, parseDatetime, filterByDateWindow, expandMultiDayEvent } from './utils/icsParser.js';
 import { buildCalendarProxyUrl } from './utils/calendarProxyUrl.js';
@@ -592,6 +593,7 @@ const DayPlanner = () => {
   const [frameNudgeSuggestion, setFrameNudgeSuggestion] = useState(null); // { taskId, taskTitle, reason, isInbox }
   const [frameNudgeLoading, setFrameNudgeLoading] = useState(false);
   const [frameNudgeError, setFrameNudgeError] = useState('');
+  const [frameNudgeNotice, setFrameNudgeNotice] = useState(''); // why a requested nudge produced no suggestion
   const [frameNudgeDismissedKey, setFrameNudgeDismissedKey] = useState(''); // key = todayStr-frameId
   const [aiSubtasksLoadingForTask, setAiSubtasksLoadingForTask] = useState(null); // taskId while loading
 
@@ -6645,50 +6647,40 @@ const DayPlanner = () => {
       : `${todayStr}-free`;
   }, [activeFrameForNudge]);
 
-  const generateFrameNudge = useCallback(async () => {
+  // The eligibility rules and the answer check live in src/utils/frameNudge.js
+  // (pure, tested). A nudge the user asked for always ends visibly: a
+  // suggestion, an error, or a notice saying why there is none. Only the
+  // automatic nudge on entering a frame stays quiet when nothing fits.
+  const generateFrameNudge = useCallback(async (opts) => {
     if (!aiConfig.enabled || !aiConfig.features?.frameNudge || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')) return;
+    const auto = opts?.auto === true;
     const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
     const today = new Date();
-    const todayStr = dateToString(today);
 
-    // Only fire when inside an active frame with >30 min remaining
-    const allFramesToday = getFrameInstancesForDate(today).sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-    const activeF = allFramesToday.find(f => nowMin >= timeToMinutes(f.start) && nowMin < timeToMinutes(f.end));
-    if (!activeF) return;
-    const minutesRemaining = timeToMinutes(activeF.end) - nowMin;
-    if (minutesRemaining <= 30) return;
+    setFrameNudgeError('');
+    setFrameNudgeNotice('');
+    setFrameNudgeSuggestion(null);
 
-    // Effective free time = gap to the next scheduled task (or end of frame), whichever is sooner.
-    // This prevents nudging when the calendar is back-to-back even if the frame has time left.
-    const effectiveMinutes = Math.min(minutesRemaining, agendaNowMarker.gapMinutes);
-    if (effectiveMinutes < 15) return;
+    const plan = planFrameNudge({
+      nowMin,
+      frames: getFrameInstancesForDate(today),
+      gapMinutes: agendaNowMarker.gapMinutes,
+      inboxTasks: unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample && isVisibleForUser(t)),
+      todayTasks: getTasksForDate(today),
+    });
+    if (plan.status !== 'ok') {
+      if (!auto && plan.status === 'no-fit') {
+        setFrameNudgeNotice(i18n.t('frames.nudgeNothingFits', { minutes: plan.effectiveMinutes }));
+      }
+      return;
+    }
+    const { frame: activeF, effectiveMinutes } = plan;
+    const candidates = plan.candidates.map(({ task: t, isInbox }) => ({
+      id: t.id, title: stripWikilinksAndTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox,
+    }));
 
     setFrameNudgeLoading(true);
-    setFrameNudgeError('');
-    setFrameNudgeSuggestion(null);
     try {
-      // Candidate tasks: inbox + today's past-scheduled incomplete tasks
-      // Exclude any task scheduled now or in the future (taskEnd > nowMin covers both active and upcoming)
-      const todayScheduled = getTasksForDate(today).filter(t => {
-        if (t.completed || t.imported || t.isExample) return false;
-        if (t.startTime) {
-          const taskEnd = timeToMinutes(t.startTime) + (t.duration || 30);
-          if (taskEnd > nowMin) return false;
-        }
-        return true;
-      });
-      const inboxItems = unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample && isVisibleForUser(t));
-      // Only include tasks that can actually fit in the available slot.
-      // Tasks with no duration are always included (we don't know how long they take).
-      const candidates = [
-        ...inboxItems.map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: true })),
-        ...todayScheduled.map(t => ({ id: t.id, title: stripWikilinksAndTags(t.title), tags: extractTags(t.title), duration: t.duration || null, isInbox: false })),
-      ]
-        .filter(t => !t.duration || t.duration <= effectiveMinutes)
-        .slice(0, 20);
-
-      if (candidates.length === 0) { setFrameNudgeLoading(false); return; }
-
       const currentTimeStr = `${String(currentTime.getHours()).padStart(2, '0')}:${String(currentTime.getMinutes()).padStart(2, '0')}`;
       const ctx = {
         currentTimeStr,
@@ -6702,22 +6694,11 @@ const DayPlanner = () => {
       };
 
       const result = await aiJSON(frameNudgeSystemPrompt(), frameNudgeUserPrompt(ctx), aiConfig);
-      if (result?.taskId) {
-        const matched = candidates.find(t => t.id === result.taskId || String(t.id) === String(result.taskId));
-        // Discard the suggestion if the AI picked a task that won't fit in the available slot.
-        if (matched?.duration && matched.duration > effectiveMinutes) {
-          setFrameNudgeLoading(false);
-          return;
-        }
-        setFrameNudgeSuggestion({
-          taskId: result.taskId,
-          taskTitle: matched ? matched.title : (result.taskTitle || ''),
-          reason: result.reason || '',
-          isInbox: matched ? matched.isInbox : (result.isInbox ?? true),
-        });
-      }
+      const suggestion = resolveFrameNudgeAnswer(result, candidates, effectiveMinutes);
+      if (suggestion) setFrameNudgeSuggestion(suggestion);
+      else if (!auto) setFrameNudgeNotice(i18n.t('frames.nudgeNoSuggestion'));
     } catch {
-      setFrameNudgeError('Could not get suggestion.');
+      setFrameNudgeError(i18n.t('frames.nudgeError'));
     }
     setFrameNudgeLoading(false);
     // extractTags and stripWikilinksAndTags are module-level imports, not
@@ -6735,7 +6716,7 @@ const DayPlanner = () => {
     if (!activeFrameForNudge) return;
     // Skip if the user already dismissed this key
     if (frameNudgeDismissedKey === activeFrameNudgeKey) return;
-    generateFrameNudge();
+    generateFrameNudge({ auto: true });
   }, [activeFrameNudgeKey, activeFrameForNudge, aiConfig, gtdFrames, frameNudgeDismissedKey, generateFrameNudge, myFrames]);
 
   // Free time inside a frame instance, subtracting tasks, routines, and (for
@@ -8505,6 +8486,7 @@ const DayPlanner = () => {
     frameNudgeSuggestion, setFrameNudgeSuggestion,
     frameNudgeLoading, setFrameNudgeLoading,
     frameNudgeError, setFrameNudgeError,
+    frameNudgeNotice,
     frameNudgeDismissedKey, setFrameNudgeDismissedKey,
 
     // ── Goals & Projects ──────────────────────────────────────────────────────

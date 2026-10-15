@@ -55,10 +55,10 @@ shipped as #2078).
 | **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes | Localization, Sound, Weather, Daily Content blocks |
 | **Appearance** | Theme (Light / Dark / System); default view on load; views on this device; timeline size; tablet view defaults; GLANCE tab default | View Defaults, Tablet View Defaults, timeline size; theme from the header |
 | **Features** | One card each, each with its own switch: Goals & Projects, Routines, Habits, Frames, Multi-user (with the roster), Inbox (auto-archive); an **Experimental** group: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
-| **Notifications** | Everything in today's reminders dialog | The header bell's dialog |
-| **AI** | Provider, key, model, frame nudges, voice | AI Features block |
-| **Sync** | One card each: Cloud Sync (WebDAV / Nextcloud), GLANCEvault, iCloud (Apple only); the sync passphrase as a shared row when any card is on | Cloud Sync block |
+| **AI Features** | One card: provider, key, model, frame nudges, voice | AI Features block |
+| **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only) | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
+| **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |
 | **Backup & Restore** | Back up now; restore from file or folder; auto-backup settings | The header save icon's menu and the auto-backup manager |
 | **Advanced** | Global shortcuts (desktop); network proxy (if #2082 lands); diagnostics | Global Shortcuts block |
 | **About & Help** | Version and update check; help; send feedback; privacy policy and terms | Update banner, help modal links |
@@ -150,6 +150,22 @@ Each channel needs an `enabled` flag that is separate from its configuration:
   pin it with a test.
 - **Integrations**: Obsidian, Todoist, TRMNL, calendars and the rest are audited
   for the same rule in their step.
+
+### Integrations audit (step 2)
+
+Every integration is a card, so the page reads as one list. A card has a
+switch only where off can safely mean pause; the others are **static cards**:
+the same frame, title and status dot, with their on and off inside.
+
+| Integration | Today | Card |
+|---|---|---|
+| TRMNL | `trmnlConfig.enabled` beside the webhook and key; off keeps both | **Card.** Off pauses; on with no webhook opens the form until one is entered |
+| Android Automation | one boolean, no configuration | **Card** |
+| Obsidian | off is Disconnect: `setObsidianConfig(null)` forgets the vault | **Static card** (no switch) for now. A pause needs `enabled: false` with the vault kept, and every reader of `obsidianConfig` (the hook, the plugin bridge, the header dot) audited first, as GLANCEvault was |
+| Calendars | several independent sources (task calendar URL, ICS feeds, device calendars), no single switch | **Static card**: a switch would have to mean "all of them" |
+| Todoist | its own component with its own connect / disconnect | **Static card** around its own connect / disconnect |
+| GLANCE apps (intents) | WebDAV log and GLANCEvault intents, two separate switches | **Static card**, for the same reason as Calendars |
+| Local Integrations (MCP) | its own component with its own kill switch | **Static card**: its switches stay inside, because turning MCP on must go through its consent dialog |
 
 ## Mobile
 

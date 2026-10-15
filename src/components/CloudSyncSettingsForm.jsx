@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Cloud, Database, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, Cloud, Database, Eye, EyeOff, Lock } from 'lucide-react';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
 import { setupEncryptionKey, setSyncPassphrase, clearEncryptionKey, getSyncPassphrase } from '../utils/crypto.js';
 import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
@@ -370,6 +370,69 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
 
   return (
     <div className="space-y-4">
+      {/* ── End-to-end encryption ─────────────────────────────────────────
+          First, because it is shared: WebDAV uses it when on, and GLANCEvault
+          always needs it. */}
+      <SettingsCard
+        cardId="encryption"
+        icon={Lock}
+        title={t('sync.form.encryptionTitle')}
+        switchLabel={t('settings.enableE2EEncryption')}
+        checked={encryptionEnabled}
+        onToggle={(next) => {
+          setEncryptionEnabled(next);
+          setPassphrase('');
+          setPassphraseConfirm('');
+        }}
+        darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+      >
+          <div className="space-y-3">
+            <p className={`text-xs ${textSecondary}`}>
+              {t('sync.form.encryptionExplainer')}
+            </p>
+
+            {alreadyEncrypted && !passphraseRequired && (
+              <p className={`text-xs text-amber-500`}>
+                {t('sync.form.encryptionAlreadyConfigured')}
+              </p>
+            )}
+
+            <div>
+              <label className={`block text-sm ${textSecondary} mb-1`}>
+                {passphraseRequired ? t('sync.form.syncPassphraseLabel') : t('sync.form.syncPassphraseLabelOptional')}
+              </label>
+              <input
+                type="password"
+                placeholder={passphraseRequired ? t('sync.form.passphrasePlaceholderNew') : t('sync.form.passphrasePlaceholderReenter')}
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+              />
+            </div>
+
+            {passphraseRequired && (
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('sync.form.confirmPassphraseLabel')}</label>
+                <input
+                  type="password"
+                  placeholder={t('sync.form.confirmPassphrasePlaceholder')}
+                  value={passphraseConfirm}
+                  onChange={(e) => setPassphraseConfirm(e.target.value)}
+                  className={`w-full px-3 py-2 border ${passphraseMismatch ? 'border-red-500' : borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                />
+                {passphraseMismatch && (
+                  <p className="text-xs text-red-500 mt-0.5">{t('sync.form.passphraseMismatch')}</p>
+                )}
+              </div>
+            )}
+
+            <div className={`text-xs ${textSecondary} space-y-1 rounded-lg p-3 ${darkMode ? 'bg-gray-700' : 'bg-amber-50 border border-amber-200'}`}>
+              <p className="font-medium text-amber-600">{t('sync.form.storePassphraseTitle')}</p>
+              <p>{t('sync.form.storePassphraseBody')}</p>
+            </div>
+          </div>
+      </SettingsCard>
+
       {/* ── WebDAV Sync ───────────────────────────────────────────────────── */}
       <SettingsCard
         cardId="webdav"
@@ -510,71 +573,6 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         </div>
       )}
       </SettingsCard>
-
-      {/* Encryption section */}
-      <div className={`border-t ${borderClass} pt-4 space-y-3`}>
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={encryptionEnabled}
-            onChange={(e) => {
-              setEncryptionEnabled(e.target.checked);
-              setPassphrase('');
-              setPassphraseConfirm('');
-            }}
-            className="w-5 h-5 rounded flex-shrink-0"
-          />
-          <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.enableE2EEncryption')}</span>
-        </label>
-
-        {encryptionEnabled && (
-          <div className="ml-7 space-y-3">
-            <p className={`text-xs ${textSecondary}`}>
-              {t('sync.form.encryptionExplainer')}
-            </p>
-
-            {alreadyEncrypted && !passphraseRequired && (
-              <p className={`text-xs text-amber-500`}>
-                {t('sync.form.encryptionAlreadyConfigured')}
-              </p>
-            )}
-
-            <div>
-              <label className={`block text-sm ${textSecondary} mb-1`}>
-                {passphraseRequired ? t('sync.form.syncPassphraseLabel') : t('sync.form.syncPassphraseLabelOptional')}
-              </label>
-              <input
-                type="password"
-                placeholder={passphraseRequired ? t('sync.form.passphrasePlaceholderNew') : t('sync.form.passphrasePlaceholderReenter')}
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-              />
-            </div>
-
-            {passphraseRequired && (
-              <div>
-                <label className={`block text-sm ${textSecondary} mb-1`}>{t('sync.form.confirmPassphraseLabel')}</label>
-                <input
-                  type="password"
-                  placeholder={t('sync.form.confirmPassphrasePlaceholder')}
-                  value={passphraseConfirm}
-                  onChange={(e) => setPassphraseConfirm(e.target.value)}
-                  className={`w-full px-3 py-2 border ${passphraseMismatch ? 'border-red-500' : borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                />
-                {passphraseMismatch && (
-                  <p className="text-xs text-red-500 mt-0.5">{t('sync.form.passphraseMismatch')}</p>
-                )}
-              </div>
-            )}
-
-            <div className={`text-xs ${textSecondary} space-y-1 rounded-lg p-3 ${darkMode ? 'bg-gray-700' : 'bg-amber-50 border border-amber-200'}`}>
-              <p className="font-medium text-amber-600">{t('sync.form.storePassphraseTitle')}</p>
-              <p>{t('sync.form.storePassphraseBody')}</p>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* ── GLANCEvault (Beta) ────────────────────────────────────────────── */}
       <SettingsCard

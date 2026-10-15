@@ -127,7 +127,8 @@
       "enabling": "Włączanie...",
       "pausedKept": "Wstrzymano. Dane połączenia zostają zachowane: włącz, aby wznowić.",
       "vaultDisconnect": "Rozłącz",
-      "vaultDisconnectConfirm": "Rozłączyć GLANCEvault na tym urządzeniu? Adres serwera, token urządzenia i identyfikator konta zostaną usunięte z tego urządzenia. Twoje dane na serwerze pozostaną nienaruszone."
+      "vaultDisconnectConfirm": "Rozłączyć GLANCEvault na tym urządzeniu? Adres serwera, token urządzenia i identyfikator konta zostaną usunięte z tego urządzenia. Twoje dane na serwerze pozostaną nienaruszone.",
+      "encryptionTitle": "Szyfrowanie end-to-end"
     },
     "passphraseHint": "To hasło zostało ustawione przez Ciebie przy pierwszym włączeniu szyfrowania. Nie jest nigdzie przechowywane — znasz je tylko Ty.",
     "passphraseLabel": "Hasło synchronizacji",
@@ -1464,7 +1465,8 @@
     "taskCount_few": "{{count}} zadania",
     "taskCount_many": "{{count}} zadań",
     "taskCount_other": "{{count}} zadania",
-    "snoozeMinutes": "Drzemka {{count}} min"
+    "snoozeMinutes": "Drzemka {{count}} min",
+    "title": "Przypomnienia"
   },
   "frames": {
     "title": "Ramki GTD",

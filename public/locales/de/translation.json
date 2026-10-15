@@ -115,7 +115,8 @@
       "enabling": "Wird aktiviert...",
       "pausedKept": "Pausiert. Die Verbindungsdaten bleiben erhalten: zum Fortsetzen einschalten.",
       "vaultDisconnect": "Trennen",
-      "vaultDisconnectConfirm": "GLANCEvault auf diesem Gerät trennen? Serveradresse, Geräte-Token und Konto-ID werden von diesem Gerät entfernt. Deine Daten auf dem Server bleiben unberührt."
+      "vaultDisconnectConfirm": "GLANCEvault auf diesem Gerät trennen? Serveradresse, Geräte-Token und Konto-ID werden von diesem Gerät entfernt. Deine Daten auf dem Server bleiben unberührt.",
+      "encryptionTitle": "Ende-zu-Ende-Verschlüsselung"
     },
     "passphraseHint": "Dies ist die Passphrase, die Sie beim ersten Aktivieren der Verschlüsselung festgelegt haben. Sie wird niemals gespeichert — nur Sie kennen sie.",
     "passphraseLabel": "Synchronisierungs-Passphrase",
@@ -1419,7 +1420,8 @@
     "hgStartingNow": "{{title}} · Beginnt jetzt",
     "taskCount_one": "{{count}} Aufgabe",
     "taskCount_other": "{{count}} Aufgaben",
-    "snoozeMinutes": "In {{count}} Min. erneut erinnern"
+    "snoozeMinutes": "In {{count}} Min. erneut erinnern",
+    "title": "Erinnerungen"
   },
   "frames": {
     "title": "GTD-Rahmen",

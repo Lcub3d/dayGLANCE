@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
+import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, Compass, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, Plug, RefreshCw, Server, Settings, Sparkles, Sun, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_LABEL_KEYS, enabledViews, offeredViews } from '../constants/views.js';
@@ -13,6 +13,7 @@ import RemindersSettings from './RemindersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
 import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
 import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
+import SettingsCard from './settings/SettingsCard.jsx';
 import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
 import CardSizeSettings from './CardSizeSettings.jsx';
@@ -64,7 +65,6 @@ const SettingsModal = () => {
   }).format(value);
   const {
     showSettings, setShowSettings,
-    collapsedSettings, toggleSettingsSection,
     updateInfo, setUpdateInfo, updateDismissedVersion, setUpdateDismissedVersion,
     darkMode, themePref, setThemePref,
     cardBg, borderClass, textPrimary, textSecondary, hoverBg,
@@ -121,7 +121,9 @@ const SettingsModal = () => {
     trmnlConfig, setTrmnlConfig, trmnlSyncStatus, trmnlLastSynced, performTrmnlSync,
     setShowIntentActivityLog,
     removeFileImportedEvents,
+    todoist,
   } = useSyncCtx();
+  const todoistConnected = !!todoist?.connected;
 
   const fileImportedEventCount = tasks.filter(
     t => t.imported && !t.isTaskCalendar && t.importSource === 'file'
@@ -269,6 +271,10 @@ const SettingsModal = () => {
 
   const timezoneMismatch = Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone;
   const updateVisible = !!updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true);
+
+  // TRMNL's card is open while its form is being filled in, before a webhook
+  // makes it possible to switch the push on.
+  const [trmnlSetupOpen, setTrmnlSetupOpen] = useState(false);
 
   // Every block of the dialog, verbatim, with the condition under which it
   // renders anything. A topic page is a list of these; separators go between
@@ -920,86 +926,47 @@ const SettingsModal = () => {
     },
     goals: {
       show: true,
+      card: true,
       node: (
-        <>
-            {/* Goals & Projects Section */}
-            <div className="space-y-3">
-              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                <Flag size={16} className={textSecondary} />
-                {t('settings.goalsProjects')}
-              </h4>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={goalsProjectsEnabled}
-                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(e.target.checked); }}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${goalsProjectsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${goalsProjectsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableGoalsProjects')}</span>
-              </label>
-            </div>
-        </>
+        <SettingsCard
+          cardId="goals"
+          icon={Flag}
+          title={t('settings.goalsProjects')}
+          switchLabel={t('settings.enableGoalsProjects')}
+          checked={goalsProjectsEnabled}
+          onToggle={(next) => { if (next) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(next); }}
+          darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+        />
       ),
     },
     routines: {
       show: true,
+      card: true,
       node: (
-        <>
-            {/* Routines Section */}
-            <div className="space-y-3">
-              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                <Sparkles size={16} className={textSecondary} />
-                {t('settings.routines')}
-              </h4>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={routinesEnabled}
-                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setRoutinesEnabled(e.target.checked); }}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${routinesEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${routinesEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableRoutines')}</span>
-              </label>
-            </div>
-        </>
+        <SettingsCard
+          cardId="routines"
+          icon={Sparkles}
+          title={t('settings.routines')}
+          switchLabel={t('settings.enableRoutines')}
+          checked={routinesEnabled}
+          onToggle={(next) => { if (next) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setRoutinesEnabled(next); }}
+          darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+        />
       ),
     },
     habits: {
       show: true,
+      card: true,
       node: (
-        <>
-            {/* Habit Tracking Section */}
-            <div className="space-y-3">
-              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                <Activity size={16} className={textSecondary} />
-                {t('settings.habitTracking')}
-              </h4>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={habitsEnabled}
-                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setHabitsEnabled(e.target.checked); }}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${habitsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${habitsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableHabitTracking')}</span>
-              </label>
-            </div>
-        </>
+        <SettingsCard
+          cardId="habits"
+          icon={Activity}
+          title={t('settings.habitTracking')}
+          switchLabel={t('settings.enableHabitTracking')}
+          checked={habitsEnabled}
+          onToggle={(next) => { if (next) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setHabitsEnabled(next); }}
+          darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+        />
       ),
     },
     experimental: {
@@ -1009,42 +976,30 @@ const SettingsModal = () => {
             {/* Experimental: features landing in slices, off by default.
                 The switch is the only thing a regular user ever sees of
                 them; everything behind it stays absent until it is on. */}
-            <div className="space-y-3">
+            <div className="space-y-3" data-settings-group="experimental">
               <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
                 <FlaskConical size={16} className={textSecondary} />
                 {t('settings.experimental')}
               </h4>
               <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.experimentalHint')}</p>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={joboEnabled}
-                    onChange={(e) => setJoboEnabled(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
-              </label>
-              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHint')}</p>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={aspireEnabled}
-                    onChange={(e) => setAspireEnabled(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aspireEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableAspire')}</span>
-              </label>
-              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableAspireHint')}</p>
+              <SettingsCard
+                cardId="jobo"
+                icon={BarChart3}
+                title={t('settings.enableJobo')}
+                hint={t('settings.enableJoboHint')}
+                checked={joboEnabled}
+                onToggle={setJoboEnabled}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              />
+              <SettingsCard
+                cardId="aspire"
+                icon={Compass}
+                title={t('settings.enableAspire')}
+                hint={t('settings.enableAspireHint')}
+                checked={aspireEnabled}
+                onToggle={setAspireEnabled}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              />
             </div>
         </>
       ),
@@ -1084,16 +1039,9 @@ const SettingsModal = () => {
             {/* Cloud Sync Section */}
             <div className="space-y-3">
               {/* The page is the section now (docs/settings-redesign.md): no
-                  collapse, and each channel is a card with its own switch. */}
-              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                <Cloud size={16} className={textSecondary} />
-                {t('settings.cloudSync')}
-                {(cloudSyncConfig?.enabled || isVaultEnabled()) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-              </h4>
+                  heading of its own, and each channel is a card with its own
+                  switch and status. */}
               {(<>
-              <p className={`${textSecondary} text-xs`}>
-                {t('settings.cloudSyncDesc')}
-              </p>
               <CloudSyncSettingsForm
                 darkMode={darkMode}
                 textPrimary={textPrimary}
@@ -1155,17 +1103,18 @@ const SettingsModal = () => {
     },
     calendarSync: {
       show: true,
+      card: true,
       node: (
         <>
             {/* Calendar Sync Section - wide screens */}
+            <SettingsCard
+              cardId="calendars"
+              icon={RefreshCw}
+              title={t('settings.calendarSync')}
+              badge={calendarSourceActive ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('calSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <RefreshCw size={16} className={textSecondary} />
-                {t('settings.calendarSync')}
-                {calendarSourceActive && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.calSync ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.calSync && (<>
               {!hasNativeCalendar() && <CalendarList />}
               {hasNativeCalendar() && (
                 <p className={`text-xs ${textSecondary}`}>
@@ -1343,52 +1292,35 @@ const SettingsModal = () => {
                   </button>
                 )}
               </div>
-              </>)}
             </div>
+            </SettingsCard>
         </>
       ),
     },
     multiUser: {
       show: true,
+      card: true,
       node: (
         <>
             {/* Multi-user / Household Section */}
-            <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('multiUser')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <Users size={16} className={textSecondary} />
-                {t('settings.multiUser')}
-                {multiUserEnabled && users.filter(u => !u.deleted).length > 0 && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.multiUser ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.multiUser && (
+            {/* Multi-user / Household: the roster only matters while it is on. */}
+            <SettingsCard
+              cardId="multiUser"
+              icon={Users}
+              title={t('settings.multiUser')}
+              hint={t('settings.multiUserModeHint')}
+              switchLabel={t('settings.multiUserMode')}
+              checked={multiUserEnabled}
+              disabled={multiUserLocked}
+              onToggle={(next) => {
+                setMultiUserEnabled(next);
+                localStorage.setItem('dayglance-multi-user-enabled', JSON.stringify(next));
+              }}
+              badge={multiUserEnabled && users.filter(u => !u.deleted).length > 0 ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              summary={multiUserReason !== 'none' ? t(multiUserReason === 'icloud-only' ? 'settings.multiUserICloudOnly' : 'settings.multiUserRequiresSync') : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
                 <div className="space-y-4">
-                  {/* Enable toggle */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.multiUserMode')}</p>
-                      <p className={`${textSecondary} text-xs`}>{t('settings.multiUserModeHint')}</p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={multiUserLocked}
-                      aria-label={t('settings.multiUserMode')}
-                      onClick={() => {
-                        const next = !multiUserEnabled;
-                        setMultiUserEnabled(next);
-                        localStorage.setItem('dayglance-multi-user-enabled', JSON.stringify(next));
-                      }}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${multiUserEnabled ? 'bg-green-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${multiUserLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                      role="switch"
-                      aria-checked={multiUserEnabled}
-                    >
-                      <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${multiUserEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                  {multiUserReason !== 'none' && (
-                    <p className={`text-xs ${textSecondary} -mt-2`}>
-                      {t(multiUserReason === 'icloud-only' ? 'settings.multiUserICloudOnly' : 'settings.multiUserRequiresSync')}
-                    </p>
-                  )}
                   <div className="flex items-center justify-between gap-3">
                     <p className={`${textSecondary} text-xs`}>
                       {t('settings.multiUserDescription', { defaultValue: 'Share dayGLANCE with your household. Tasks can be assigned to specific people; unassigned tasks are visible to everyone.' })}
@@ -1582,49 +1514,35 @@ const SettingsModal = () => {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+            </SettingsCard>
         </>
       ),
     },
     ai: {
       show: !aiSuppressed,
+      card: true,
       node: (
         <>
             {/* AI Features Section — hidden on the China App Store storefront
                 to comply with App Store Review Guideline 5 (Deep Synthesis / MIIT). */}
             {!aiSuppressed && (<>
 
-            <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('ai')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <BrainCircuit size={16} className={aiConfig.enabled ? 'text-purple-400' : textSecondary} />
-                {t('settings.aiFeatures')}
-                {aiConfig.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.ai ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.ai && (<>
-              <p className={`${textSecondary} text-xs`}>
-                {t('settings.aiByoApiKey')}
-              </p>
-
-              {/* Master toggle */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={aiConfig.enabled}
-                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setAiConfig(prev => ({ ...prev, enabled: e.target.checked })); }}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${aiConfig.enabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aiConfig.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableAIFeatures')}</span>
-              </label>
-
-              {aiConfig.enabled && (
-                <div className="space-y-3 mt-2">
+            {/* Off hides the provider, key and model; they are kept, so
+                switching AI back on resumes with the same configuration. */}
+            <SettingsCard
+              cardId="ai"
+              icon={BrainCircuit}
+              title={t('settings.aiFeatures')}
+              hint={t('settings.aiByoApiKey')}
+              switchLabel={t('settings.enableAIFeatures')}
+              checked={aiConfig.enabled}
+              onToggle={(next) => {
+                if (next) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true }));
+                setAiConfig(prev => ({ ...prev, enabled: next }));
+              }}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
+                <div className="space-y-3">
                   {/* Provider selector */}
                   <div>
                     <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiProvider')}</label>
@@ -1868,15 +1786,14 @@ const SettingsModal = () => {
                     ))}
                   </div>
                 </div>
-              )}
-              </>)}
-            </div>
+            </SettingsCard>
             </>)}
         </>
       ),
     },
     obsidian: {
       show: !isMobile || isNativeApp(),
+      card: true,
       node: (
         <>
             {/* Hidden at mobile width ONLY for browsers, where FSA is
@@ -1889,14 +1806,14 @@ const SettingsModal = () => {
                 apps (Android SAF, iOS bookmark). MobileSettingsPanel
                 carries the primary mobile surface; this section is the
                 modal's counterpart wherever the modal is reachable. */}
+            <SettingsCard
+              cardId="obsidian"
+              icon={BookOpen}
+              title={t('settings.obsidianIntegration')}
+              badge={obsidianConfig?.enabled ? <span className={`w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('obsidian')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <BookOpen size={16} className={textSecondary} />
-                {t('settings.obsidianIntegration')}
-                {obsidianConfig?.enabled && <span className={`mr-1 w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.obsidian ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.obsidian && (<>
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.obsidianDesc')}
               </p>
@@ -2277,25 +2194,43 @@ const SettingsModal = () => {
                   {t('settings.obsidianSelectVault')}
                 </button>
               )}
-              </>)}
             </div>
+            </SettingsCard>
             </>)}
         </>
       ),
     },
     trmnl: {
       show: true,
+      card: true,
       node: (
         <>
             {/* TRMNL E-Ink Dashboard Section */}
+            {/* TRMNL E-Ink Dashboard. Off pauses the push and keeps the webhook
+                and key; turning it on with no webhook yet opens the form, and
+                the push starts once a webhook is entered and enabled. */}
+            <SettingsCard
+              cardId="trmnl"
+              icon={LayoutGrid}
+              title={t('settings.trmnlDashboard')}
+              checked={!!trmnlConfig?.enabled || trmnlSetupOpen}
+              onToggle={(next) => {
+                if (!next) {
+                  setTrmnlSetupOpen(false);
+                  if (trmnlConfig?.enabled) setTrmnlConfig(prev => ({ ...prev, enabled: false }));
+                  return;
+                }
+                if (trmnlConfig?.webhookUrl) {
+                  setTrmnlConfig(prev => ({ ...prev, enabled: true }));
+                  setTimeout(() => performTrmnlSync(), 100);
+                } else {
+                  setTrmnlSetupOpen(true);
+                }
+              }}
+              summary={!trmnlConfig?.enabled && !trmnlSetupOpen && trmnlConfig?.webhookUrl ? t('sync.form.pausedKept') : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('trmnl')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <LayoutGrid size={16} className={textSecondary} />
-                {t('settings.trmnlDashboard')}
-                {trmnlConfig?.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.trmnl ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.trmnl && (<>
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.trmnlDescriptionPrefix', { defaultValue: 'Push your daily schedule to a' })} <a href="https://trmnl.com" target="_blank" rel="noopener noreferrer" className="underline">TRMNL</a> {t('settings.trmnlDescriptionSuffix', { defaultValue: 'e-ink display via webhook. Install the DayGLANCE recipe from the TRMNL Recipe Library to get started.' })}
               </p>
@@ -2336,12 +2271,6 @@ const SettingsModal = () => {
                       <RefreshCw size={14} className={trmnlSyncStatus === 'syncing' ? 'animate-spin' : ''} />
                       {trmnlSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
                     </button>
-                    <button
-                      onClick={() => setTrmnlConfig(prev => ({ ...prev, enabled: false }))}
-                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
-                    >
-                      {t('common.disable')}
-                    </button>
                   </>
                 ) : (
                   <button
@@ -2366,42 +2295,49 @@ const SettingsModal = () => {
                 </p>
               )}
 
-              </>)}
             </div>
+            </SettingsCard>
         </>
       ),
     },
     todoist: {
       show: true,
+      card: true,
       node: (
         <>
-            <TodoistSettings />
+            <SettingsCard cardId="todoist" icon={CheckSquare} title={t('todoist.title')} badge={todoistConnected ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+              <TodoistSettings variant="card" />
+            </SettingsCard>
         </>
       ),
     },
     localIntegrations: {
       show: !!window.electronAPI?.localIntegrations,
+      card: true,
       node: (
         <>
             {/* Local Integrations (Stream Deck + MCP) — Electron only,
                 renders nothing on web/mobile builds. */}
-            <LocalIntegrationsSettings />
+            <SettingsCard cardId="localIntegrations" icon={Plug} title={t('settings.localIntegrations')} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+              <LocalIntegrationsSettings variant="card" />
+            </SettingsCard>
         </>
       ),
     },
     glanceIntegrations: {
       show: true,
+      card: true,
       node: (
         <>
             {/* GLANCE Integrations Section */}
+            <SettingsCard
+              cardId="glanceApps"
+              icon={Activity}
+              title={t('settings.glanceIntegrations')}
+              badge={(intentForm.webdavUrl || dbIntentsEnabled) ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('intent')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <Activity size={16} className={textSecondary} />
-                {t('settings.glanceIntegrations')}
-                {(intentForm.webdavUrl || dbIntentsEnabled) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.intent ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.intent && (<>
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.glanceIntegrationsDesc', { defaultValue: 'Connect dayGLANCE to other Glance-compatible apps via a shared WebDAV event log.' })}
               </p>
@@ -2952,53 +2888,35 @@ const SettingsModal = () => {
                   </button>
                 </div>
               )}
-              </>)}
             </div>
+            </SettingsCard>
         </>
       ),
     },
     automationIntents: {
       show: isNativeAndroid(),
+      card: true,
       node: (
         <>
             {/* Automation intents (Tasker) — Android only. Opt-in gate for the
-                exported IntentReceiver + outbound RESULT/NOTIFY broadcasts. */}
-            {isNativeAndroid() && (<>
-            <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('automationIntents')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <Zap size={16} className={textSecondary} />
-                {t('settings.automationIntents')}
-                {automationIntentsEnabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.automationIntents ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.automationIntents && (<>
-              <p className={`${textSecondary} text-xs`}>
-                {t('settings.automationIntentsDesc')}
-              </p>
-              <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
-                <input
-                  type="checkbox"
-                  id="automation-intents-toggle"
-                  checked={automationIntentsEnabled}
-                  onChange={e => {
-                    const v = e.target.checked;
-                    setAutomationIntentsEnabled(v);
-                    nativeSetAutomationIntentsEnabled(v);
-                  }}
-                  className="mt-0.5 h-4 w-4 rounded"
-                />
-                <div>
-                  <label htmlFor="automation-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
-                    {t('settings.automationIntentsToggle')}
-                  </label>
-                  <p className={`text-xs ${textSecondary} mt-0.5`}>
-                    {t('settings.automationIntentsWarning')}
-                  </p>
-                </div>
-              </div>
-              </>)}
-            </div>
-            </>)}
+                exported IntentReceiver + outbound RESULT/NOTIFY broadcasts.
+                The warning shows while it is off, before anyone turns it on. */}
+            {isNativeAndroid() && (
+            <SettingsCard
+              cardId="automationIntents"
+              icon={Zap}
+              title={t('settings.automationIntents')}
+              hint={t('settings.automationIntentsDesc')}
+              switchLabel={t('settings.automationIntentsToggle')}
+              checked={automationIntentsEnabled}
+              onToggle={(v) => {
+                setAutomationIntentsEnabled(v);
+                nativeSetAutomationIntentsEnabled(v);
+              }}
+              summary={t('settings.automationIntentsWarning')}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            />
+            )}
         </>
       ),
     },

@@ -2,6 +2,10 @@
 // its own switch, and its settings only while the switch is on. Off shows the
 // title, the switch and a one-line summary, so a page of cards stays short and
 // shows at a glance what is on.
+//
+// Without `onToggle` it is a static card: the same frame, title and status
+// badge, its contents always shown, for a section whose on and off live
+// inside it (a Disconnect, a consent dialog, several sources of its own).
 import React from 'react';
 
 export default function SettingsCard({
@@ -11,7 +15,7 @@ export default function SettingsCard({
   return (
     <section
       data-settings-card={cardId}
-      data-settings-card-state={checked ? 'on' : 'off'}
+      data-settings-card-state={onToggle ? (checked ? 'on' : 'off') : 'static'}
       className={`rounded-xl border ${borderClass} p-4 space-y-3`}
     >
       <div className="flex items-start gap-3">
@@ -23,6 +27,7 @@ export default function SettingsCard({
           </div>
           {hint && <p className={`text-xs ${textSecondary} mt-0.5`}>{hint}</p>}
         </div>
+        {onToggle && (
         <button
           type="button"
           role="switch"
@@ -35,9 +40,10 @@ export default function SettingsCard({
         >
           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${checked ? 'left-5' : 'left-1'}`} />
         </button>
+        )}
       </div>
       {summary && <div className={`text-xs ${textSecondary}`} data-settings-card-summary>{summary}</div>}
-      {checked && children}
+      {(checked || !onToggle) && children}
     </section>
   );
 }

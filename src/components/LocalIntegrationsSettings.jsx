@@ -91,6 +91,8 @@ const READ_TIER_OPTIONS = [
  *    header. (Previously this component was mounted whole at the bottom of
  *    the mobile panel, stranding a desktop-shaped section in a page of row
  *    cards.)
+ *  - "card": the same bare content inside a desktop Settings card, which
+ *    carries the title.
  */
 const LocalIntegrationsSettings = ({ variant }) => {
   const { t } = useTranslation();
@@ -98,7 +100,7 @@ const LocalIntegrationsSettings = ({ variant }) => {
     collapsedSettings, toggleSettingsSection,
     darkMode, borderClass, textPrimary, textSecondary,
   } = useDayPlannerCtx();
-  const isPage = variant === 'page';
+  const isPage = variant === 'page' || variant === 'card';
 
   const api = typeof window !== 'undefined' ? window.electronAPI?.localIntegrations : undefined;
   const [snapshot, setSnapshot] = useState(null);

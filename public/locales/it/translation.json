@@ -115,7 +115,8 @@
       "enabling": "Attivazione...",
       "pausedKept": "In pausa. I dati di connessione vengono conservati: attivalo per riprendere.",
       "vaultDisconnect": "Disconnetti",
-      "vaultDisconnectConfirm": "Disconnettere GLANCEvault su questo dispositivo? L'indirizzo del server, il token del dispositivo e l'ID account vengono rimossi da questo dispositivo. I tuoi dati sul server non vengono toccati."
+      "vaultDisconnectConfirm": "Disconnettere GLANCEvault su questo dispositivo? L'indirizzo del server, il token del dispositivo e l'ID account vengono rimossi da questo dispositivo. I tuoi dati sul server non vengono toccati.",
+      "encryptionTitle": "Crittografia end-to-end"
     },
     "passphraseHint": "Questa è la passphrase impostata quando hai attivato la cifratura per la prima volta. Non viene mai memorizzata: solo tu la conosci.",
     "passphraseLabel": "Passphrase di sincronizzazione",

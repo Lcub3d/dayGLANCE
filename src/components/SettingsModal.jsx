@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, Compass, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
+import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, Compass, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, Plug, RefreshCw, Server, Settings, Sparkles, Sun, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_LABEL_KEYS, enabledViews, offeredViews } from '../constants/views.js';
@@ -66,7 +66,6 @@ const SettingsModal = () => {
   }).format(value);
   const {
     showSettings, setShowSettings,
-    collapsedSettings, toggleSettingsSection,
     updateInfo, setUpdateInfo, updateDismissedVersion, setUpdateDismissedVersion,
     darkMode, themePref, setThemePref,
     cardBg, borderClass, textPrimary, textSecondary, hoverBg,
@@ -123,7 +122,9 @@ const SettingsModal = () => {
     trmnlConfig, setTrmnlConfig, trmnlSyncStatus, trmnlLastSynced, performTrmnlSync,
     setShowIntentActivityLog,
     removeFileImportedEvents,
+    todoist,
   } = useSyncCtx();
+  const todoistConnected = !!todoist?.connected;
 
   const fileImportedEventCount = tasks.filter(
     t => t.imported && !t.isTaskCalendar && t.importSource === 'file'
@@ -1110,17 +1111,18 @@ const SettingsModal = () => {
     },
     calendarSync: {
       show: true,
+      card: true,
       node: (
         <>
             {/* Calendar Sync Section - wide screens */}
+            <SettingsCard
+              cardId="calendars"
+              icon={RefreshCw}
+              title={t('settings.calendarSync')}
+              badge={calendarSourceActive ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('calSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <RefreshCw size={16} className={textSecondary} />
-                {t('settings.calendarSync')}
-                {calendarSourceActive && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.calSync ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.calSync && (<>
               {!hasNativeCalendar() && <CalendarList />}
               {hasNativeCalendar() && (
                 <p className={`text-xs ${textSecondary}`}>
@@ -1298,8 +1300,8 @@ const SettingsModal = () => {
                   </button>
                 )}
               </div>
-              </>)}
             </div>
+            </SettingsCard>
         </>
       ),
     },
@@ -1799,6 +1801,7 @@ const SettingsModal = () => {
     },
     obsidian: {
       show: !isMobile || isNativeApp(),
+      card: true,
       node: (
         <>
             {/* Hidden at mobile width ONLY for browsers, where FSA is
@@ -1811,14 +1814,14 @@ const SettingsModal = () => {
                 apps (Android SAF, iOS bookmark). MobileSettingsPanel
                 carries the primary mobile surface; this section is the
                 modal's counterpart wherever the modal is reachable. */}
+            <SettingsCard
+              cardId="obsidian"
+              icon={BookOpen}
+              title={t('settings.obsidianIntegration')}
+              badge={obsidianConfig?.enabled ? <span className={`w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('obsidian')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <BookOpen size={16} className={textSecondary} />
-                {t('settings.obsidianIntegration')}
-                {obsidianConfig?.enabled && <span className={`mr-1 w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.obsidian ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.obsidian && (<>
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.obsidianDesc')}
               </p>
@@ -2199,8 +2202,8 @@ const SettingsModal = () => {
                   {t('settings.obsidianSelectVault')}
                 </button>
               )}
-              </>)}
             </div>
+            </SettingsCard>
             </>)}
         </>
       ),
@@ -2307,35 +2310,42 @@ const SettingsModal = () => {
     },
     todoist: {
       show: true,
+      card: true,
       node: (
         <>
-            <TodoistSettings />
+            <SettingsCard cardId="todoist" icon={CheckSquare} title={t('todoist.title')} badge={todoistConnected ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+              <TodoistSettings variant="card" />
+            </SettingsCard>
         </>
       ),
     },
     localIntegrations: {
       show: !!window.electronAPI?.localIntegrations,
+      card: true,
       node: (
         <>
             {/* Local Integrations (Stream Deck + MCP) — Electron only,
                 renders nothing on web/mobile builds. */}
-            <LocalIntegrationsSettings />
+            <SettingsCard cardId="localIntegrations" icon={Plug} title={t('settings.localIntegrations')} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+              <LocalIntegrationsSettings variant="card" />
+            </SettingsCard>
         </>
       ),
     },
     glanceIntegrations: {
       show: true,
+      card: true,
       node: (
         <>
             {/* GLANCE Integrations Section */}
+            <SettingsCard
+              cardId="glanceApps"
+              icon={Activity}
+              title={t('settings.glanceIntegrations')}
+              badge={(intentForm.webdavUrl || dbIntentsEnabled) ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
             <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('intent')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <Activity size={16} className={textSecondary} />
-                {t('settings.glanceIntegrations')}
-                {(intentForm.webdavUrl || dbIntentsEnabled) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.intent ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.intent && (<>
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.glanceIntegrationsDesc', { defaultValue: 'Connect dayGLANCE to other Glance-compatible apps via a shared WebDAV event log.' })}
               </p>
@@ -2886,8 +2896,8 @@ const SettingsModal = () => {
                   </button>
                 </div>
               )}
-              </>)}
             </div>
+            </SettingsCard>
         </>
       ),
     },

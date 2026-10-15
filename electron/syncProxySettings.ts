@@ -13,10 +13,11 @@
 // in-memory). Pointing that session's proxy at the user's server is the whole
 // feature: no request call site changes, and everything else — vault SSE (a
 // streaming renderer fetch the IPC proxy cannot carry), AI, weather, update
-// checks — stays direct. When the feature is OFF, `proxy-fetch` uses net.fetch
-// exactly as it always did (see transportFor): the default session follows the
-// OS proxy configuration, and for someone whose sync reaches its server
-// through a corporate proxy today, that IS the working path.
+// checks — stays on the default session. So it is UNAFFECTED by this setting,
+// which is not the same claim as "direct": the default session follows the OS
+// proxy configuration either way. That is also why OFF uses net.fetch exactly
+// as it always did (see transportFor) — for someone whose sync reaches its
+// server through a corporate proxy today, that IS the working path.
 //
 // Naming: this is the THIRD "proxy" in the codebase, after the hosted relay
 // (api/webdav-proxy.js) and the main process's own IPC proxy (`proxy-fetch`).

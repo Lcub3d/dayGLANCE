@@ -56,11 +56,11 @@ shipped as #2078).
 | **Appearance** | Theme (Light / Dark / System); default view on load; views on this device; timeline size; tablet view defaults; GLANCE tab default | View Defaults, Tablet View Defaults, timeline size; theme from the header |
 | **Features** | One card each, each with its own switch: Goals & Projects, Routines, Habits, Frames, Multi-user (with the roster), Inbox (auto-archive); an **Experimental** group: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
 | **AI Features** | One card: provider, key, model, frame nudges, voice | AI Features block |
-| **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only) | Cloud Sync block |
+| **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only); Network proxy last (desktop, #2082), since it applies only to sync traffic | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
 | **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |
 | **Backup & Restore** | Export; restore from file; Auto-Backup as cards: Local Backups and Remote Backups (each with a switch), Folder Backup (web only, its own connect / disconnect), Backup history (restore and delete); reset | The header save icon's menu and the auto-backup manager |
-| **Advanced** | Global shortcuts (desktop); network proxy (if #2082 lands); diagnostics | Global Shortcuts block |
+| **Advanced** | Global shortcuts (desktop); diagnostics | Global Shortcuts block |
 | **About & Help** | Version and update check; help; send feedback; privacy policy and terms | Update banner, help modal links |
 
 Multi-user is a card under Features rather than its own topic: it is a mode

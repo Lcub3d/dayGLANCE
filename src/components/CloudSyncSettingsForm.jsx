@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Cloud, Database, Eye, EyeOff, Lock } from 'lucide-react';
+import { AlertTriangle, Cloud, Database, Eye, EyeOff, Lock, Network } from 'lucide-react';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
 import { setupEncryptionKey, setSyncPassphrase, clearEncryptionKey, getSyncPassphrase } from '../utils/crypto.js';
 import { directAccessEncryptsWrites } from '../sync/directAccessTransport.js';
@@ -77,7 +77,10 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // no credentials: an authenticated proxy is out of scope, so nothing here
   // holds a secret and no field has to hide one.
   const syncProxyApi = typeof window !== 'undefined' ? window.electronAPI?.syncProxy : null;
-  const [proxyOpen, setProxyOpen] = useState(false);
+  // What the main process last reported: the card's off state reads it, and
+  // switching an active proxy off saves it with enabled:false, so the server,
+  // port and rules are kept for the next time it is switched on.
+  const [proxySaved, setProxySaved] = useState(null);
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [proxyScheme, setProxyScheme] = useState('http');
   const [proxyHost, setProxyHost] = useState('');
@@ -97,12 +100,43 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
       setProxyPort(snapshot.port ? String(snapshot.port) : '');
       setProxyPrivate(snapshot.privateAddresses === 'proxy' ? 'proxy' : 'direct');
       setProxyBypass((snapshot.bypassRules || []).join(', '));
-      // Hidden, not lost: a machine already using a proxy opens the disclosure,
-      // so the state is visible instead of silently active behind a closed row.
-      if (snapshot.active) setProxyOpen(true);
+      setProxySaved(snapshot);
     }).catch(() => { /* the section stays at defaults; a save reports the truth */ });
     return () => { cancelled = true; };
   }, [syncProxyApi]);
+
+  // The card's switch. On opens the form; nothing is sent until Save, since a
+  // proxy needs a server first. Off on an ACTIVE proxy takes effect at once,
+  // as every other card's off does, and keeps what was saved: it re-sends the
+  // saved settings with enabled:false, not the form, so a half-edited field
+  // cannot block switching it off.
+  const handleSyncProxyToggle = async (next) => {
+    setProxyEnabled(next);
+    setProxySaveState(null);
+    if (next || !proxySaved?.active || !syncProxyApi) return;
+    setProxySaving(true);
+    try {
+      const result = await syncProxyApi.set({
+        enabled: false,
+        scheme: proxySaved.scheme,
+        host: proxySaved.host,
+        port: proxySaved.port,
+        privateAddresses: proxySaved.privateAddresses,
+        bypassRules: proxySaved.bypassRules || [],
+      });
+      if (result?.ok && result.snapshot) {
+        setProxySaved(result.snapshot);
+      } else {
+        setProxyEnabled(true);
+        setProxySaveState({ ok: false, reason: t('sync.form.syncProxySaveFailed', { reason: result?.reason || '' }) });
+      }
+    } catch {
+      setProxyEnabled(true);
+      setProxySaveState({ ok: false, reason: t('sync.form.syncProxySaveFailed', { reason: '' }) });
+    } finally {
+      setProxySaving(false);
+    }
+  };
 
   const handleSaveSyncProxy = async () => {
     if (!syncProxyApi || proxySaving) return;
@@ -128,6 +162,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         bypassRules: proxyBypass.trim() ? proxyBypass.split(',').map((r) => r.trim()).filter(Boolean) : [],
       });
       if (result?.ok) {
+        if (result.snapshot) setProxySaved(result.snapshot);
         setProxySaveState({ ok: true });
       } else {
         setProxySaveState({ ok: false, reason: t('sync.form.syncProxySaveFailed', { reason: result?.reason || '' }) });
@@ -829,38 +864,23 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         </div>
       )}
 
-      {/* Sync proxy (Electron): the outbound proxy server the sync traffic
-          connects through. Own save button — main-process config shared by
-          WebDAV and GLANCEvault, independent of the cloudSyncConfig Save
-          below. Test it with either Test Connection button above. */}
+      {/* Sync proxy (Electron): the outbound proxy server sync traffic
+          connects through, as a card like the channels above. Its own Save:
+          the setting lives in the main process and applies to WebDAV and
+          GLANCEvault alike, independent of the cloudSyncConfig Save below. */}
       {syncProxyApi && (
-        <div className={`border-t ${borderClass} pt-3`}>
-          <button
-            type="button"
-            onClick={() => setProxyOpen((open) => !open)}
-            aria-expanded={proxyOpen}
-            className="flex items-center gap-2 w-full text-left"
-          >
-            <span aria-hidden="true" className={`text-xs ${textSecondary}`}>{proxyOpen ? '▾' : '▸'}</span>
-            <span className={sectionHeader}>{t('sync.form.syncProxyAdvanced')}</span>
-            <span className={`text-xs ${textSecondary} ml-auto truncate`}>
-              {proxyEnabled ? t('sync.form.syncProxyStatusOn', { host: proxyHost }) : t('sync.form.syncProxyStatusOff')}
-            </span>
-          </button>
-          {proxyOpen && (
-            <div className="pt-3 space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={proxyEnabled}
-                  onChange={(e) => setProxyEnabled(e.target.checked)}
-                  className="w-5 h-5 rounded flex-shrink-0"
-                />
-                <span className={`text-sm font-medium ${textPrimary}`}>{t('sync.form.syncProxyToggle')}</span>
-              </label>
-              <p className={`text-xs ${textSecondary} ml-7`}>{t('sync.form.syncProxyToggleHint')}</p>
-          {proxyEnabled && (
-            <div className="ml-7 space-y-3">
+        <SettingsCard
+          cardId="syncProxy"
+          icon={Network}
+          title={t('sync.form.syncProxyTitle')}
+          hint={t('sync.form.syncProxyToggleHint')}
+          switchLabel={t('sync.form.syncProxyToggle')}
+          checked={proxyEnabled}
+          onToggle={handleSyncProxyToggle}
+          summary={!proxyEnabled && proxySaved?.host ? t('sync.form.pausedKept') : null}
+          darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+        >
+          <div className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyScheme')}</label>
@@ -939,12 +959,10 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                 />
                 <p className={`text-xs ${textSecondary} mt-0.5`}>{t('sync.form.syncProxyBypassHint')}</p>
               </div>
-            </div>
-          )}
               {/* What this does NOT reach, said where it can be read: the two
                   limits the reviewer asked to state rather than document. */}
-              <p className={`text-xs ${textSecondary} ml-7`}>{t('sync.form.syncProxyLimits')}</p>
-              <div className="flex items-center gap-3 flex-wrap ml-7">
+              <p className={`text-xs ${textSecondary}`}>{t('sync.form.syncProxyLimits')}</p>
+              <div className="flex items-center gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={handleSaveSyncProxy}
@@ -959,9 +977,8 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                   </p>
                 )}
               </div>
-            </div>
-          )}
-        </div>
+          </div>
+        </SettingsCard>
       )}
 
       <div className="flex justify-end gap-2 pt-2">

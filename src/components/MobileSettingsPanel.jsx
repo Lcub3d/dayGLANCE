@@ -4,7 +4,7 @@ import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { HABIT_ICONS, HABIT_ICON_NAMES, HABIT_COLORS } from '../constants/habits.js';
 import { getDeviceId, isNativeAndroid, isNativeApp, nativeGetCalendars, nativePickVault, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
-import { testConnection, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
+import { testConnection, PROVIDER_MODELS, PROVIDER_LABELS, aiHasCredentials } from '../ai.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, scanVaultNotes, formatDatePattern } from '../obsidian.js';
 import UnportableVaultNamesPanel from './UnportableVaultNamesPanel.jsx';
 import BridgeStatusPanel from './BridgeStatusPanel.jsx';
@@ -164,6 +164,8 @@ const MobileSettingsPanel = () => {
     cloudSyncConfigured,
     joboEnabled, setJoboEnabled,
   } = useFeaturesCtx();
+  // AI sub-features can only be switched on once the provider can be called.
+  const aiReady = aiHasCredentials(aiConfig);
   // Gate multi-user when sync is unconfigured; never trap an already-on toggle.
   // "Requires cloud sync" is wrong on an iCloud-only device — that user IS
   // syncing, just to a destination only they can reach. Pick the sentence that
@@ -1531,6 +1533,7 @@ const MobileSettingsPanel = () => {
             {/* Per-feature toggles */}
             <div className="space-y-3">
               <p className={`text-xs font-medium uppercase ${textSecondary}`}>{t('settings.aiFeaturesList')}</p>
+                    {!aiReady && <p className="text-xs text-amber-500" data-ai-needs-key>{t('settings.aiNeedsKey')}</p>}
               {[
                 { key: 'voiceTaskInput', label: t('settings.aiVoiceTaskInput'), icon: <Mic size={14} /> },
                 { key: 'morningSummary', label: t('settings.aiMorningSummary'), icon: <Sun size={14} /> },
@@ -1542,23 +1545,23 @@ const MobileSettingsPanel = () => {
                 { key: 'weeklySummary', label: t('settings.aiWeeklySummary'), icon: <BarChart3 size={14} /> },
                 { key: 'smartScheduling', label: t('settings.aiSmartScheduling'), icon: <CalendarDays size={14} /> },
               ].map(f => (
-                <label key={f.key} className={`flex items-center gap-3 ${f.comingSoon ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
+                <label key={f.key} className={`flex items-center gap-3 ${f.comingSoon || !aiReady ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
                   <div className="relative">
                     <input
                       type="checkbox"
-                      checked={f.comingSoon ? false : aiConfig.features[f.key]}
+                      checked={f.comingSoon || !aiReady ? false : aiConfig.features[f.key]}
                       onChange={(e) => {
-                        if (f.comingSoon) return;
+                        if (f.comingSoon || !aiReady) return;
                         setAiConfig(prev => ({
                           ...prev,
                           features: { ...prev.features, [f.key]: e.target.checked }
                         }));
                       }}
-                      disabled={f.comingSoon}
+                      disabled={f.comingSoon || !aiReady}
                       className="sr-only"
                     />
-                    <div className={`w-9 h-5 rounded-full transition-colors ${!f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${!f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    <div className={`w-9 h-5 rounded-full transition-colors ${aiReady && !f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${aiReady && !f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </div>
                   </div>
                   <span className={`text-sm ${textPrimary} flex items-center gap-1.5`}>

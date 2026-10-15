@@ -18,7 +18,7 @@ const BackupSettings = () => {
   const {
     autoBackupConfig, setAutoBackupConfig, autoBackupStatus,
     performRemoteBackup, folderBackup, restoreFromBackupFolder,
-    loadAutoBackupHistory, exportBackup, handleBackupFileSelect,
+    loadAutoBackupHistory, autoBackupHistory, exportBackup, handleBackupFileSelect,
   } = useSyncCtx();
 
   const { t } = useTranslation();
@@ -61,6 +61,11 @@ const BackupSettings = () => {
             folderBackup={folderBackup}
             onFolderRestore={restoreFromBackupFolder}
           />
+          {/* History lists local and remote backups, so it shows while either is
+              on, or while backups made earlier are still there to restore. A
+              folder-only device has nothing to list here. */}
+          {(autoBackupConfig?.local?.enabled || autoBackupConfig?.remote?.enabled
+            || (autoBackupHistory?.local?.length || 0) + (autoBackupHistory?.remote?.length || 0) > 0) && (
           <SettingsCard
             cardId="backupHistory"
             icon={History}
@@ -69,6 +74,7 @@ const BackupSettings = () => {
           >
             <AutoBackupHistory />
           </SettingsCard>
+          )}
         </div>
       </SettingsCard>
 

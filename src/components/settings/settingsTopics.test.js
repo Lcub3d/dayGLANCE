@@ -63,9 +63,14 @@ describe('visibility', () => {
     expect(visibleSectionKeys(general, { ...sections, globalShortcut: { show: true } })).toEqual(['localization', 'sound', 'globalShortcut']);
   });
 
-  it('Features opens with Inbox and Follow-ups, Experimental last', () => {
+  it('Features holds only what is switched on, Experimental last', () => {
     expect(TOPICS.find((topic) => topic.id === 'features').sections)
-      .toEqual(['inbox', 'followUpTag', 'goals', 'routines', 'habits', 'multiUser', 'experimental']);
+      .toEqual(['goals', 'routines', 'habits', 'multiUser', 'experimental']);
+  });
+
+  it('Inbox and Follow-ups are everyday preferences on General, after Sounds', () => {
+    const general = TOPICS.find((topic) => topic.id === 'general').sections;
+    expect(general.slice(general.indexOf('sound'), general.indexOf('sound') + 3)).toEqual(['sound', 'inbox', 'followUpTag']);
   });
 });
 

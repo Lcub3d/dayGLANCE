@@ -29,7 +29,7 @@ import DirectAccessFileRow from './DirectAccessFileRow.jsx';
 import { isDirectAccessSupported } from '../sync/directAccessTransport.js';
 import useDirectAccessStatus from '../hooks/useDirectAccessStatus.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
-import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
+import { testConnection, fetchProviderModels, PROVIDER_MODELS, PROVIDER_LABELS, aiHasCredentials } from '../ai.js';
 import { isNativeAndroid, isNativeApp, nativePickVault, nativeGetCalendars, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
 import { hasNativeCalendar, electronCalendarAvailable, electronGetCalendars } from '../utils/nativeCalendar.js';
 import { isFileSystemAccessSupported, requestVaultAccess, disconnectVault, formatDatePattern } from '../obsidian.js';
@@ -152,6 +152,8 @@ const SettingsModal = () => {
     users, setUsers,
     meUserSyncId, setMeUserSyncId,
   } = useFeaturesCtx();
+  // AI sub-features can only be switched on once the provider can be called.
+  const aiReady = aiHasCredentials(aiConfig);
   // The live model list fetch (see the model selector below).
   const [aiModelsStatus, setAiModelsStatus] = useState(null);
   const [aiModelsMessage, setAiModelsMessage] = useState('');
@@ -1761,6 +1763,7 @@ const SettingsModal = () => {
                   {/* Per-feature toggles */}
                   <div className="space-y-2 mt-2">
                     <p className={`text-xs font-medium ${textSecondary}`}>{t('settings.aiFeaturesList')}</p>
+                    {!aiReady && <p className="text-xs text-amber-500" data-ai-needs-key>{t('settings.aiNeedsKey')}</p>}
                     {[
                       { key: 'voiceTaskInput', label: t('settings.aiVoiceTaskInput'), icon: <Mic size={12} /> },
                       { key: 'morningSummary', label: t('settings.aiMorningSummary'), icon: <Sun size={12} /> },
@@ -1772,23 +1775,23 @@ const SettingsModal = () => {
                       { key: 'weeklySummary', label: t('settings.aiWeeklySummary'), icon: <BarChart3 size={12} /> },
                       { key: 'smartScheduling', label: t('settings.aiSmartScheduling'), icon: <CalendarDays size={12} /> },
                     ].map(f => (
-                      <label key={f.key} className={`flex items-center gap-2 ${f.comingSoon ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
+                      <label key={f.key} className={`flex items-center gap-2 ${f.comingSoon || !aiReady ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
                         <div className="relative flex-shrink-0">
                           <input
                             type="checkbox"
-                            checked={f.comingSoon ? false : aiConfig.features[f.key]}
+                            checked={f.comingSoon || !aiReady ? false : aiConfig.features[f.key]}
                             onChange={(e) => {
-                              if (f.comingSoon) return;
+                              if (f.comingSoon || !aiReady) return;
                               setAiConfig(prev => ({
                                 ...prev,
                                 features: { ...prev.features, [f.key]: e.target.checked }
                               }));
                             }}
-                            disabled={f.comingSoon}
+                            disabled={f.comingSoon || !aiReady}
                             className="sr-only"
                           />
-                          <div className={`w-8 h-4 rounded-full transition-colors ${!f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${!f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <div className={`w-8 h-4 rounded-full transition-colors ${aiReady && !f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${aiReady && !f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
                           </div>
                         </div>
                         <span className={`text-xs ${textPrimary} flex items-center gap-1.5`}>

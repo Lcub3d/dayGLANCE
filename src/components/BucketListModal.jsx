@@ -5,7 +5,6 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { BUCKET_LIST_IDS, promoteToInbox } from '../utils/bucketList.js';
 import { beginLongPressReorder, isLongPressRowDevice } from '../utils/longPressReorder.js';
-import { stripWikilinks } from '../utils/taskUtils.js';
 import { renderFormattedText, renderTitleWithoutTags, hasNotesOrSubtasks, hasOnlySubtasks } from '../utils/textFormatting.jsx';
 import useBackClose from '../hooks/useBackClose.js';
 
@@ -99,13 +98,13 @@ const BucketListModal = () => {
   };
 
   const sendToInbox = (task) => {
-    pushUndo();
+    const said = pushUndo({ key: 'toInbox', taskId: task.id });
     setUnscheduledTasks(prev => prev.map(t => t.id === task.id ? promoteToInbox(t) : t));
-    setUndoToast({ message: `"${stripWikilinks(task.title)}" sent to Inbox`, actionable: true });
+    setUndoToast({ message: said, actionable: true });
   };
 
   const scheduleNextSlot = (task) => {
-    pushUndo();
+    pushUndo({ key: 'scheduled', taskId: task.id });
     // scheduleTaskAtNextSlot strips bucketId when moving to the timeline.
     scheduleTaskAtNextSlot(task.id, true);
   };

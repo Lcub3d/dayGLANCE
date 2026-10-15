@@ -740,7 +740,16 @@
     "directAccessIntents": "Direct Access 意图",
     "directAccessIntentsDesc": "通过 Direct Access 文件夹与其他 GLANCE 应用共享任务意图：一个事件文件 glance-events.json，文件夹中的每台设备和每个应用都会读取并追加。当 Direct Access 文件已加密时，它也以你的同步口令加密。",
     "directAccessIntentsEnable": "启用 Direct Access 意图",
-    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。"
+    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。",
+    "topics": {
+      "general": "常规",
+      "appearance": "外观",
+      "features": "功能",
+      "ai": "AI",
+      "sync": "同步",
+      "integrations": "集成",
+      "advanced": "高级"
+    }
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",
@@ -1654,7 +1663,9 @@
       "username": "用户名",
       "appPassword": "应用专用密码",
       "webdavUrl": "WebDAV 地址"
-    }
+    },
+    "folderPaused": "文件夹备份已暂停。请在“备份与恢复 → 自动备份”中重新连接以继续。",
+    "storageFull": "存储空间已满，部分数据可能未保存。请清除旧数据或释放浏览器存储空间。"
   },
   "app": {
     "tasksScheduledTitle": "任务已排期",
@@ -2270,9 +2281,7 @@
     "undo": {
       "changed": "这条执行记录之后已被修改，因此保持不变。",
       "completionBlocked": "对应任务已不再是已完成状态，因此执行记录无法恢复为“已完成”，保持不变。",
-      "failed": "无法保存此修改，请重试。",
-      "undone": "已撤销执行记录的修改",
-      "redone": "已重做执行记录的修改"
+      "failed": "无法保存此修改，请重试。"
     },
     "view": {
       "activeLabel": "实际活动时间",
@@ -2619,5 +2628,47 @@
     "peekDeleted": "在回收站中",
     "peekGone": "此任务已不在 dayGLANCE 中。",
     "peekShow": "前往任务"
+  },
+  "undo": {
+    "undone": "已撤销：{{action}}",
+    "redone": "已重做：{{action}}",
+    "nothingToUndo": "没有可撤销的操作",
+    "nothingToRedo": "没有可重做的操作",
+    "untitled": "无标题",
+    "action": {
+      "added": "已添加“{{title}}”",
+      "edited": "已编辑“{{title}}”",
+      "renamed": "已重命名“{{title}}”",
+      "completed": "已完成“{{title}}”",
+      "uncompleted": "已将“{{title}}”标记为未完成",
+      "deleted": "已删除“{{title}}”",
+      "restored": "已恢复“{{title}}”",
+      "binEmptied": "已清空回收站",
+      "moved": "已移动“{{title}}”",
+      "resized": "已更改“{{title}}”的时长",
+      "toInbox": "已将“{{title}}”移至收件箱",
+      "toBucket": "已将“{{title}}”移至心愿清单",
+      "scheduled": "已安排“{{title}}”",
+      "postponed": "已将“{{title}}”推迟到明天",
+      "deadlineSet": "已为“{{title}}”设置截止日期",
+      "deadlinePostponed": "已将“{{title}}”的截止日期改为 {{date}}",
+      "deadlineCleared": "已移除“{{title}}”的截止日期",
+      "priority": "已更改“{{title}}”的优先级",
+      "energy": "已更改“{{title}}”的能量",
+      "color": "已更改“{{title}}”的颜色",
+      "subtaskAdded": "已为“{{title}}”添加子任务",
+      "subtasksAdded_one": "已为“{{title}}”添加 {{count}} 个子任务",
+      "subtasksAdded_other": "已为“{{title}}”添加 {{count}} 个子任务",
+      "subtaskChanged": "已更改“{{title}}”的子任务",
+      "subtaskDeleted": "已删除“{{title}}”的子任务",
+      "snoozed": "已将“{{title}}”推迟 15 分钟",
+      "frameSkipped": "已在当天跳过时间框架“{{title}}”",
+      "frameAdjusted": "已更改时间框架“{{title}}”的时间",
+      "smartScheduled_one": "智能日程已安排 {{count}} 个任务",
+      "smartScheduled_other": "智能日程已安排 {{count}} 个任务",
+      "rescheduled_one": "已重新安排 {{count}} 个任务",
+      "rescheduled_other": "已重新安排 {{count}} 个任务",
+      "voiceApplied": "已应用语音更改"
+    }
   }
 }

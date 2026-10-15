@@ -740,7 +740,16 @@
     "directAccessIntents": "Intents do Direct Access",
     "directAccessIntentsDesc": "Partilhe intents de tarefas com outras apps GLANCE através da pasta do Direct Access: um ficheiro de eventos, glance-events.json, que cada dispositivo e app na pasta lê e acrescenta. Cifrado com a sua frase-passe de sincronização quando o ficheiro do Direct Access o é.",
     "directAccessIntentsEnable": "Ativar intents do Direct Access",
-    "directAccessIntentsNeedsFolder": "Nenhuma pasta está ligada neste dispositivo. Ligue uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado nem recebido aqui."
+    "directAccessIntentsNeedsFolder": "Nenhuma pasta está ligada neste dispositivo. Ligue uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado nem recebido aqui.",
+    "topics": {
+      "general": "Geral",
+      "appearance": "Aspeto",
+      "features": "Funcionalidades",
+      "ai": "IA",
+      "sync": "Sincronização",
+      "integrations": "Integrações",
+      "advanced": "Avançado"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -1654,7 +1663,9 @@
       "username": "Nome de utilizador",
       "appPassword": "Palavra-passe da aplicação",
       "webdavUrl": "URL do WebDAV"
-    }
+    },
+    "folderPaused": "Cópia de segurança na pasta em pausa. Volte a ligá-la em Cópia de segurança e restauro → Cópia de segurança automática para retomar.",
+    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido guardados. Apague dados antigos ou liberte espaço no navegador."
   },
   "app": {
     "tasksScheduledTitle": "Tarefas agendadas",
@@ -2270,9 +2281,7 @@
     "undo": {
       "changed": "Este Do mudou entretanto, por isso foi mantido como está.",
       "completionBlocked": "A tarefa já não está concluída, por isso o Do não pode voltar a Concluído. Foi mantido como está.",
-      "failed": "Não foi possível guardar a alteração. Tente novamente.",
-      "undone": "Alteração do Do anulada",
-      "redone": "Alteração do Do refeita"
+      "failed": "Não foi possível guardar a alteração. Tente novamente."
     },
     "view": {
       "activeLabel": "Tempo ativo",
@@ -2619,5 +2628,47 @@
     "peekDeleted": "Na reciclagem",
     "peekGone": "Esta tarefa já não está no dayGLANCE.",
     "peekShow": "Ir para a tarefa"
+  },
+  "undo": {
+    "undone": "Anulado: {{action}}",
+    "redone": "Refeito: {{action}}",
+    "nothingToUndo": "Nada para anular",
+    "nothingToRedo": "Nada para refazer",
+    "untitled": "Sem título",
+    "action": {
+      "added": "\"{{title}}\" adicionada",
+      "edited": "\"{{title}}\" editada",
+      "renamed": "\"{{title}}\" renomeada",
+      "completed": "\"{{title}}\" concluída",
+      "uncompleted": "\"{{title}}\" marcada como não concluída",
+      "deleted": "\"{{title}}\" eliminada",
+      "restored": "\"{{title}}\" restaurada",
+      "binEmptied": "Reciclagem esvaziada",
+      "moved": "\"{{title}}\" movida",
+      "resized": "Duração de \"{{title}}\" alterada",
+      "toInbox": "\"{{title}}\" movida para a caixa de entrada",
+      "toBucket": "\"{{title}}\" enviada para a Bucket List",
+      "scheduled": "\"{{title}}\" agendada",
+      "postponed": "\"{{title}}\" adiada para amanhã",
+      "deadlineSet": "Prazo definido para \"{{title}}\"",
+      "deadlinePostponed": "Prazo de \"{{title}}\" mudado para {{date}}",
+      "deadlineCleared": "Prazo de \"{{title}}\" removido",
+      "priority": "Prioridade de \"{{title}}\" alterada",
+      "energy": "Energia de \"{{title}}\" alterada",
+      "color": "Cor de \"{{title}}\" alterada",
+      "subtaskAdded": "Subtarefa adicionada a \"{{title}}\"",
+      "subtasksAdded_one": "{{count}} subtarefa adicionada a \"{{title}}\"",
+      "subtasksAdded_other": "{{count}} subtarefas adicionadas a \"{{title}}\"",
+      "subtaskChanged": "Subtarefa de \"{{title}}\" alterada",
+      "subtaskDeleted": "Subtarefa de \"{{title}}\" eliminada",
+      "snoozed": "\"{{title}}\" adiada 15 minutos",
+      "frameSkipped": "Bloco \"{{title}}\" ignorado nesse dia",
+      "frameAdjusted": "Horas do bloco \"{{title}}\" alteradas",
+      "smartScheduled_one": "{{count}} tarefa agendada pelo agendamento inteligente",
+      "smartScheduled_other": "{{count}} tarefas agendadas pelo agendamento inteligente",
+      "rescheduled_one": "{{count}} tarefa reagendada",
+      "rescheduled_other": "{{count}} tarefas reagendadas",
+      "voiceApplied": "Alterações por voz aplicadas"
+    }
   }
 }

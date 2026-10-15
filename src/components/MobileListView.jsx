@@ -998,7 +998,7 @@ const MobileListView = ({ hideInboxHandle = false }) => {
   const handleInboxTouchEnd = useCallback(() => {
     const state = dragRef.current;
     if (state.active && dragTargetMin !== null && !dragBlocked) {
-      pushUndo();
+      pushUndo({ key: 'scheduled', taskId: state.task.id });
       setTasks(prev => [...prev, {
         ...state.task,
         date: dateStr,
@@ -1154,8 +1154,10 @@ const MobileListView = ({ hideInboxHandle = false }) => {
     if (state.active && state.targetAllDay) {
       // Timed item dropped onto all-day zone
       const item = state.item;
-      pushUndo();
+      // A routine is not in the undo snapshot, so only a task's drop is a
+      // step (a routine's drag on desktop is not one either).
       if (item._kind === 'task') {
+        pushUndo({ key: 'moved', taskId: item.id });
         setTasks(prev => prev.map(t => t.id === item.id
           ? { ...t, isAllDay: true, startTime: undefined, transitionId: crypto.randomUUID() }
           : t
@@ -1172,8 +1174,8 @@ const MobileListView = ({ hideInboxHandle = false }) => {
       // Item dropped onto a timed slot (from either timed or all-day)
       const item = state.item;
       const newTime = minutesToTime(dragTargetMin);
-      pushUndo();
       if (item._kind === 'task') {
+        pushUndo({ key: 'moved', taskId: item.id });
         setTasks(prev => prev.map(t => t.id === item.id
           ? { ...t, startTime: newTime, isAllDay: false, date: item.date || dateStr, transitionId: crypto.randomUUID() }
           : t

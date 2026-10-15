@@ -12,7 +12,7 @@ export default function useRecycleBin({
   const [showMobileRecycleBin, setShowMobileRecycleBin] = useState(false);
 
   const undeleteTask = (id) => {
-    pushUndo();
+    pushUndo({ key: 'restored', taskId: id });
     const task = recycleBin.find(t => t.id === id);
     if (task) {
       // Drop the deletion metadata and re-stamp lastModified to "now" so the
@@ -38,7 +38,7 @@ export default function useRecycleBin({
   };
 
   const confirmEmptyBin = () => {
-    pushUndo();
+    pushUndo({ key: 'binEmptied' });
     // Record tombstones for permanently deleted tasks (prevents resurrection during merge sync).
     // PROVENANCE (see utils/retiredTaskIds.js): user-pressed delete — intent
     // known, no successor — so deletedTaskIds, never retiredTaskIds (the

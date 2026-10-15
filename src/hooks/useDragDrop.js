@@ -427,7 +427,7 @@ export default function useDragDrop({
       return;
     }
 
-    pushUndo();
+    pushUndo({ key: dragSource === 'inbox' ? 'scheduled' : 'moved', taskId: draggedTask.id });
     if (dragSource === 'inbox') {
       setUnscheduledTasks(prev => prev.filter(t => t.id !== draggedTask.id));
       const { priority, deadline, ...taskWithoutPriorityAndDeadline } = draggedTask;
@@ -562,7 +562,7 @@ export default function useDragDrop({
 
     const dropDateStr = dateToString(targetDate);
 
-    pushUndo();
+    pushUndo({ key: dragSource === 'inbox' ? 'scheduled' : 'moved', taskId: draggedTask.id });
     if (dragSource === 'inbox') {
       setUnscheduledTasks(prev => prev.filter(t => t.id !== draggedTask.id));
       const { priority, deadline, ...taskWithoutPriorityAndDeadline } = draggedTask;
@@ -638,7 +638,7 @@ export default function useDragDrop({
     // Only allow calendar, recycle bin, overdue scheduled tasks, and inbox tasks with deadlines to be moved to inbox
     if (dragSource !== 'calendar' && dragSource !== 'recycleBin' && dragSource !== 'overdue' && !(dragSource === 'inbox' && draggedTask.deadline)) return;
 
-    pushUndo();
+    pushUndo({ key: 'toInbox', taskId: draggedTask.id });
     if (dragSource === 'calendar') {
       if (draggedTask.isRecurring) {
         const parsed = parseRecurringId(draggedTask.id);
@@ -696,7 +696,7 @@ export default function useDragDrop({
       return;
     }
 
-    pushUndo();
+    pushUndo({ key: 'deleted', taskId: draggedTask.id });
     // Determine source and clean up task metadata
     let deletedFrom = 'calendar';
     let cleanTask = { ...draggedTask };
@@ -745,7 +745,7 @@ export default function useDragDrop({
   const handleResizeStart = (task, e) => {
     e.stopPropagation();
     e.preventDefault();
-    pushUndo();
+    pushUndo({ key: 'resized', taskId: task.id });
     setIsResizing(true);
 
     const startY = e.clientY;
@@ -818,7 +818,7 @@ export default function useDragDrop({
 
   const handleTouchResizeStart = (task, e) => {
     e.stopPropagation();
-    pushUndo();
+    pushUndo({ key: 'resized', taskId: task.id });
     setIsResizing(true);
 
     const startY = e.touches[0].clientY;
@@ -943,9 +943,9 @@ export default function useDragDrop({
   const handleFrameResizeStart = (frameId, dateStr, edge, e) => {
     e.preventDefault();
     e.stopPropagation();
-    pushUndo();
     const frame = gtdFrames.find(f => f.id === frameId);
     if (!frame) return;
+    pushUndo({ key: 'frameAdjusted', title: frame.label });
     const exception = frame.exceptions?.[dateStr];
     const origStart = timeToMinutes(exception?.start || frame.start);
     const origEnd = timeToMinutes(exception?.end || frame.end);
@@ -1312,7 +1312,7 @@ export default function useDragDrop({
         // no-op
       } else if (task.isDeadlineDrag) {
         // Deadline task: move from unscheduled to scheduled
-        pushUndo();
+        pushUndo({ key: 'scheduled', taskId: task.id });
         setUnscheduledTasks(prev => prev.filter(t => t.id !== task.id));
         setTasks(prev => [...prev, {
           id: task.id,
@@ -1330,7 +1330,7 @@ export default function useDragDrop({
         // Recurring task instances via exceptions
         const parsed = parseRecurringId(task.id);
         if (parsed) {
-          pushUndo();
+          pushUndo({ key: 'moved', taskId: task.id });
           setRecurringTasks(prev => prev.map(t => {
             if (t.id === parsed.templateId) {
               return {
@@ -1358,7 +1358,7 @@ export default function useDragDrop({
         }
       } else {
         // Regular task: update time, isAllDay status, and date (for cross-column drag)
-        pushUndo();
+        pushUndo({ key: 'moved', taskId: task.id });
         const prevTask = task;
         const fromAllDayToTimed = fromAllDay && !droppingToAllDay && !!task.nativeEventId;
 

@@ -740,7 +740,16 @@
     "directAccessIntents": "Intents de Direct Access",
     "directAccessIntentsDesc": "Comparte intents de tareas con otras apps GLANCE a través de la carpeta de Direct Access: un archivo de eventos, glance-events.json, que cada dispositivo y app de la carpeta lee y amplía. Cifrado con tu frase de contraseña de sincronización cuando el archivo de Direct Access lo está.",
     "directAccessIntentsEnable": "Activar intents de Direct Access",
-    "directAccessIntentsNeedsFolder": "No hay ninguna carpeta conectada en este dispositivo. Conecta una primero en Sincronización en la nube → Direct Access; hasta entonces aquí no se envía ni se recibe nada."
+    "directAccessIntentsNeedsFolder": "No hay ninguna carpeta conectada en este dispositivo. Conecta una primero en Sincronización en la nube → Direct Access; hasta entonces aquí no se envía ni se recibe nada.",
+    "topics": {
+      "general": "General",
+      "appearance": "Apariencia",
+      "features": "Funciones",
+      "ai": "IA",
+      "sync": "Sincronización",
+      "integrations": "Integraciones",
+      "advanced": "Avanzado"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -1654,7 +1663,9 @@
       "username": "Nombre de usuario",
       "appPassword": "Contraseña de aplicación",
       "webdavUrl": "URL de WebDAV"
-    }
+    },
+    "folderPaused": "Copia de seguridad en carpeta en pausa. Vuelve a conectarla en Copia de seguridad y restauración → Copia de seguridad automática para reanudarla.",
+    "storageFull": "Almacenamiento lleno. Es posible que algunos datos no se hayan guardado. Borra datos antiguos o libera almacenamiento del navegador."
   },
   "app": {
     "tasksScheduledTitle": "Tareas programadas",
@@ -2270,9 +2281,7 @@
     "undo": {
       "changed": "Este Do cambió desde entonces, así que se dejó como está.",
       "completionBlocked": "Su tarea ya no está completada, así que el Do no puede volver a Completado. Se dejó como está.",
-      "failed": "No se pudo guardar el cambio. Inténtalo de nuevo.",
-      "undone": "Cambio de Do deshecho",
-      "redone": "Cambio de Do rehecho"
+      "failed": "No se pudo guardar el cambio. Inténtalo de nuevo."
     },
     "view": {
       "activeLabel": "Tiempo activo",
@@ -2619,5 +2628,47 @@
     "peekDeleted": "En la papelera",
     "peekGone": "Esta tarea ya no está en dayGLANCE.",
     "peekShow": "Ir a la tarea"
+  },
+  "undo": {
+    "undone": "Deshecho: {{action}}",
+    "redone": "Rehecho: {{action}}",
+    "nothingToUndo": "Nada que deshacer",
+    "nothingToRedo": "Nada que rehacer",
+    "untitled": "Sin título",
+    "action": {
+      "added": "Se añadió «{{title}}»",
+      "edited": "Se editó «{{title}}»",
+      "renamed": "Se renombró «{{title}}»",
+      "completed": "Se completó «{{title}}»",
+      "uncompleted": "Se marcó «{{title}}» como pendiente",
+      "deleted": "Se eliminó «{{title}}»",
+      "restored": "Se restauró «{{title}}»",
+      "binEmptied": "Se vació la papelera",
+      "moved": "Se movió «{{title}}»",
+      "resized": "Se cambió la duración de «{{title}}»",
+      "toInbox": "Se movió «{{title}}» a la bandeja de entrada",
+      "toBucket": "Se envió «{{title}}» a la Bucket List",
+      "scheduled": "Se programó «{{title}}»",
+      "postponed": "Se pospuso «{{title}}» a mañana",
+      "deadlineSet": "Se fijó una fecha límite para «{{title}}»",
+      "deadlinePostponed": "Se movió la fecha límite de «{{title}}» al {{date}}",
+      "deadlineCleared": "Se quitó la fecha límite de «{{title}}»",
+      "priority": "Se cambió la prioridad de «{{title}}»",
+      "energy": "Se cambió la energía de «{{title}}»",
+      "color": "Se cambió el color de «{{title}}»",
+      "subtaskAdded": "Se añadió una subtarea a «{{title}}»",
+      "subtasksAdded_one": "Se añadió {{count}} subtarea a «{{title}}»",
+      "subtasksAdded_other": "Se añadieron {{count}} subtareas a «{{title}}»",
+      "subtaskChanged": "Se cambió una subtarea de «{{title}}»",
+      "subtaskDeleted": "Se eliminó una subtarea de «{{title}}»",
+      "snoozed": "Se pospuso «{{title}}» 15 minutos",
+      "frameSkipped": "Se omitió el bloque «{{title}}» ese día",
+      "frameAdjusted": "Se cambiaron las horas del bloque «{{title}}»",
+      "smartScheduled_one": "Se programó {{count}} tarea con la programación inteligente",
+      "smartScheduled_other": "Se programaron {{count}} tareas con la programación inteligente",
+      "rescheduled_one": "Se reprogramó {{count}} tarea",
+      "rescheduled_other": "Se reprogramaron {{count}} tareas",
+      "voiceApplied": "Se aplicaron los cambios por voz"
+    }
   }
 }

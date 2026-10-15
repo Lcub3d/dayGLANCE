@@ -759,7 +759,16 @@
     "directAccessIntents": "Intencje Direct Access",
     "directAccessIntentsDesc": "Udostępniaj intencje zadań innym aplikacjom GLANCE przez folder Direct Access: jeden plik zdarzeń, glance-events.json, który każde urządzenie i każda aplikacja w folderze odczytuje i uzupełnia. Szyfrowany Twoim hasłem synchronizacji, gdy plik Direct Access jest szyfrowany.",
     "directAccessIntentsEnable": "Włącz intencje Direct Access",
-    "directAccessIntentsNeedsFolder": "Na tym urządzeniu nie podłączono folderu. Najpierw podłącz go w Synchronizacja w chmurze → Direct Access; do tego czasu nic nie jest tu wysyłane ani odbierane."
+    "directAccessIntentsNeedsFolder": "Na tym urządzeniu nie podłączono folderu. Najpierw podłącz go w Synchronizacja w chmurze → Direct Access; do tego czasu nic nie jest tu wysyłane ani odbierane.",
+    "topics": {
+      "general": "Ogólne",
+      "appearance": "Wygląd",
+      "features": "Funkcje",
+      "ai": "AI",
+      "sync": "Synchronizacja",
+      "integrations": "Integracje",
+      "advanced": "Zaawansowane"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",
@@ -1709,7 +1718,9 @@
       "username": "Nazwa użytkownika",
       "appPassword": "Hasło aplikacji",
       "webdavUrl": "Adres URL WebDAV"
-    }
+    },
+    "folderPaused": "Kopia zapasowa w folderze wstrzymana. Połącz ją ponownie w Kopia zapasowa i przywracanie → Automatyczna kopia zapasowa, aby wznowić.",
+    "storageFull": "Pamięć pełna. Część danych mogła nie zostać zapisana. Usuń stare dane lub zwolnij pamięć przeglądarki."
   },
   "app": {
     "tasksScheduledTitle": "Zaplanowano zadania",
@@ -2363,9 +2374,7 @@
     "undo": {
       "changed": "Ten Do zmienił się w międzyczasie, więc pozostał bez zmian.",
       "completionBlocked": "Jego zadanie nie jest już ukończone, więc Do nie może wrócić do stanu Ukończone. Pozostał bez zmian.",
-      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie.",
-      "undone": "Cofnięto zmianę Do",
-      "redone": "Przywrócono zmianę Do"
+      "failed": "Nie udało się zapisać zmiany. Spróbuj ponownie."
     },
     "view": {
       "activeLabel": "Czas aktywny",
@@ -2716,5 +2725,53 @@
     "peekDeleted": "W koszu",
     "peekGone": "Tego zadania nie ma już w dayGLANCE.",
     "peekShow": "Przejdź do zadania"
+  },
+  "undo": {
+    "undone": "Cofnięto: {{action}}",
+    "redone": "Ponowiono: {{action}}",
+    "nothingToUndo": "Nie ma czego cofnąć",
+    "nothingToRedo": "Nie ma czego ponowić",
+    "untitled": "Bez tytułu",
+    "action": {
+      "added": "Dodano „{{title}}”",
+      "edited": "Edytowano „{{title}}”",
+      "renamed": "Zmieniono nazwę „{{title}}”",
+      "completed": "Ukończono „{{title}}”",
+      "uncompleted": "Oznaczono „{{title}}” jako nieukończone",
+      "deleted": "Usunięto „{{title}}”",
+      "restored": "Przywrócono „{{title}}”",
+      "binEmptied": "Opróżniono kosz",
+      "moved": "Przeniesiono „{{title}}”",
+      "resized": "Zmieniono czas trwania „{{title}}”",
+      "toInbox": "Przeniesiono „{{title}}” do skrzynki",
+      "toBucket": "Przeniesiono „{{title}}” na listę marzeń",
+      "scheduled": "Zaplanowano „{{title}}”",
+      "postponed": "Przełożono „{{title}}” na jutro",
+      "deadlineSet": "Ustawiono termin dla „{{title}}”",
+      "deadlinePostponed": "Przesunięto termin „{{title}}” na {{date}}",
+      "deadlineCleared": "Usunięto termin z „{{title}}”",
+      "priority": "Zmieniono priorytet „{{title}}”",
+      "energy": "Zmieniono energię „{{title}}”",
+      "color": "Zmieniono kolor „{{title}}”",
+      "subtaskAdded": "Dodano podzadanie do „{{title}}”",
+      "subtasksAdded_one": "Dodano {{count}} podzadanie do „{{title}}”",
+      "subtasksAdded_few": "Dodano {{count}} podzadania do „{{title}}”",
+      "subtasksAdded_many": "Dodano {{count}} podzadań do „{{title}}”",
+      "subtasksAdded_other": "Dodano {{count}} podzadania do „{{title}}”",
+      "subtaskChanged": "Zmieniono podzadanie w „{{title}}”",
+      "subtaskDeleted": "Usunięto podzadanie z „{{title}}”",
+      "snoozed": "Odłożono „{{title}}” o 15 minut",
+      "frameSkipped": "Pominięto ramkę „{{title}}” w tym dniu",
+      "frameAdjusted": "Zmieniono godziny ramki „{{title}}”",
+      "smartScheduled_one": "Inteligentne planowanie zaplanowało {{count}} zadanie",
+      "smartScheduled_few": "Inteligentne planowanie zaplanowało {{count}} zadania",
+      "smartScheduled_many": "Inteligentne planowanie zaplanowało {{count}} zadań",
+      "smartScheduled_other": "Inteligentne planowanie zaplanowało {{count}} zadania",
+      "rescheduled_one": "Przeplanowano {{count}} zadanie",
+      "rescheduled_few": "Przeplanowano {{count}} zadania",
+      "rescheduled_many": "Przeplanowano {{count}} zadań",
+      "rescheduled_other": "Przeplanowano {{count}} zadania",
+      "voiceApplied": "Zastosowano zmiany głosowe"
+    }
   }
 }

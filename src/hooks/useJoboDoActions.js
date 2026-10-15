@@ -4,7 +4,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { snapMinute } from '../components/jobo/DoColumn.jsx';
 import { doLinkCandidates } from '../jobo/linkCandidates.js';
-import { prepareDoEdit, commitDoEdit, offersCompleteTask } from '../jobo/viewActions.js';
+import { prepareDoEdit, commitDoEdit, offersCompleteTask, doWriteMessageKey } from '../jobo/viewActions.js';
 import { canLinkDo } from '../jobo/core.js';
 import useJoboViewWriter from './useJoboViewWriter.js';
 
@@ -36,15 +36,9 @@ export function timedPatch(date, start, end) {
   };
 }
 
-/**
- * The toast's words for one accepted Do write: added (nothing before it),
- * deleted (a tombstone after), or saved.
- */
-export function doWriteMessageKey(before, after) {
-  if (!before) return 'jobo.mobile.doAdded';
-  if (after?.deleted) return 'jobo.mobile.doDeleted';
-  return 'jobo.mobile.doSaved';
-}
+// The toast's words for one accepted Do write live beside the writes
+// (jobo/viewActions.js), where the undo history reads them too.
+export { doWriteMessageKey };
 
 /**
  * What both JOBO views do to a day's Do, apart from dragging: add, edit,

@@ -9,7 +9,7 @@ vi.mock('react', () => ({
 }));
 vi.mock('../components/month/MonthDaySheet.jsx', () => ({ isMonthDaySheetOpen: () => false }));
 
-const { default: useKeyboardShortcuts, isCalendarOnlyShortcut } = await import('./useKeyboardShortcuts.js');
+const { default: useKeyboardShortcuts, isCalendarOnlyShortcut, isTextEntryTarget } = await import('./useKeyboardShortcuts.js');
 
 const listeners = [];
 const fakeDocument = {
@@ -220,5 +220,51 @@ describe('useKeyboardShortcuts — an open Project Planner', () => {
     const e = press('Enter');
     expect(keys.openSelected).toHaveBeenCalledTimes(1);
     expect(e.preventDefault).toHaveBeenCalled();
+  });
+});
+
+describe('useKeyboardShortcuts — Cmd+Z', () => {
+  it('undoes and redoes app state from the page', () => {
+    const p = useMounted();
+    const undo = press('z', { metaKey: true });
+    expect(p.performUndo).toHaveBeenCalledTimes(1);
+    expect(undo.preventDefault).toHaveBeenCalled();
+    press('z', { metaKey: true, shiftKey: true });
+    press('y', { ctrlKey: true });
+    expect(p.performRedo).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves the keys to a text field, so they undo the typing', () => {
+    const p = useMounted();
+    for (const target of [
+      { tagName: 'INPUT', type: 'text' },
+      { tagName: 'INPUT' },
+      { tagName: 'INPUT', type: 'search' },
+      { tagName: 'TEXTAREA' },
+      { tagName: 'DIV', isContentEditable: true },
+    ]) {
+      const undo = press('z', { metaKey: true, target });
+      const redo = press('z', { metaKey: true, shiftKey: true, target });
+      expect(undo.preventDefault).not.toHaveBeenCalled();
+      expect(redo.preventDefault).not.toHaveBeenCalled();
+    }
+    expect(p.performUndo).not.toHaveBeenCalled();
+    expect(p.performRedo).not.toHaveBeenCalled();
+  });
+
+  it('still undoes from a control that has no text to undo', () => {
+    const p = useMounted();
+    press('z', { ctrlKey: true, target: { tagName: 'INPUT', type: 'checkbox' } });
+    press('z', { ctrlKey: true, target: { tagName: 'BUTTON' } });
+    expect(p.performUndo).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('isTextEntryTarget', () => {
+  it('names the fields that type text and nothing else', () => {
+    expect(isTextEntryTarget({ tagName: 'INPUT', type: 'email' })).toBe(true);
+    expect(isTextEntryTarget({ tagName: 'INPUT', type: 'range' })).toBe(false);
+    expect(isTextEntryTarget({ tagName: 'SELECT' })).toBe(false);
+    expect(isTextEntryTarget(null)).toBe(false);
   });
 });

@@ -18,6 +18,21 @@ const getNextQuarterHour = () => {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 };
 
+// Where Cmd+Z belongs to the field, not the app: anything the user types text
+// into keeps the browser's own undo of that typing. A checkbox, a slider or a
+// button has no undo of its own, so the app's still runs there.
+const NON_TEXT_INPUT_TYPES = new Set([
+  'button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit',
+]);
+export const isTextEntryTarget = (target) => {
+  if (!target) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  if (tag === 'TEXTAREA') return true;
+  if (tag !== 'INPUT') return false;
+  return !NON_TEXT_INPUT_TYPES.has(String(target.type || 'text').toLowerCase());
+};
+
 // The shortcuts that only make sense with the calendar on screen: date
 // navigation (arrows, 't'), the MONTH cursor and its popup ('m', Space, Up,
 // Down, Enter), the view cycler and its direct jumps (1–6, 'c'), focus mode
@@ -91,8 +106,9 @@ export default function useKeyboardShortcuts({
 }) {
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Undo/Redo — works even when focus is in an input/textarea
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      // Undo/Redo. In a text field the keys undo the typing, as everywhere
+      // else; the app's undo would revert tasks behind the field instead.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !isTextEntryTarget(e.target)) {
         if (e.key === 'z' && !e.shiftKey) {
           e.preventDefault();
           performUndo();

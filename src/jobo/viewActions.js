@@ -221,3 +221,14 @@ export function offersCompleteTask(record, task) {
   return !!record && !record.deleted && record.source === 'manual' && record.taskId != null
     && !!task && task.completed !== true && !(task.imported && !task.isTaskCalendar);
 }
+
+/**
+ * The words for one accepted Do write: added (nothing before it), deleted (a
+ * tombstone after), or saved. The phone's toast says them as the write lands,
+ * and the undo history says them again for its undo and redo.
+ */
+export function doWriteMessageKey(before, after) {
+  if (!before) return 'jobo.mobile.doAdded';
+  if (after?.deleted) return 'jobo.mobile.doDeleted';
+  return 'jobo.mobile.doSaved';
+}

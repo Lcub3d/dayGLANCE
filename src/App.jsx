@@ -86,12 +86,10 @@ import CloudSyncSettingsForm from './components/CloudSyncSettingsForm.jsx';
 import SyncPassphraseModal from './components/SyncPassphraseModal.jsx';
 import AutoBackupSettingsForm from './components/AutoBackupSettingsForm.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
-import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
-import BackupMenuModal from './components/BackupMenuModal.jsx';
 import ICloudFirstRunModal from './components/ICloudFirstRunModal.jsx';
 import RestoreConfirmModal from './components/RestoreConfirmModal.jsx';
 import AutoBackupManagerModal from './components/AutoBackupManagerModal.jsx';
@@ -115,6 +113,7 @@ import useIsLandscape from './hooks/useIsLandscape.js';
 import useMobileTabBack from './hooks/useMobileTabBack.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
+import UndoToast from './components/UndoToast.jsx';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
 import { makeTaskDraft } from './jobo/carryForward.js';
@@ -1111,7 +1110,7 @@ const DayPlanner = () => {
 
   // Settings & Reminders modals
   const [showSettings, setShowSettings] = useState(false);
-  const [collapsedSettings, setCollapsedSettings] = useState({ cloudSync: true, calSync: true, ai: true, obsidian: true, todoist: true, trmnl: true, multiUser: true, intent: true, automationIntents: true, localIntegrations: true });
+  const [collapsedSettings, setCollapsedSettings] = useState({ cloudSync: false, calSync: true, ai: true, obsidian: true, todoist: true, trmnl: true, multiUser: true, intent: true, automationIntents: true, localIntegrations: true });
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateDismissedVersion, setUpdateDismissedVersion] = useState(() => localStorage.getItem('dayglance-update-dismissed') || null);
   const toggleSettingsSection = (key) => setCollapsedSettings(prev => ({ ...prev, [key]: !prev[key] }));
@@ -1443,9 +1442,32 @@ const DayPlanner = () => {
     todayRoutines, routinesEnabled,
     dataLoaded, t,
   });
+
+  // GTD Frames state. Before useUndo, whose snapshots include Frames.
+  const {
+    gtdFrames, setGtdFrames,
+    showFramesModal, setShowFramesModal,
+    framesModalTab, setFramesModalTab,
+    editingFrame, setEditingFrame,
+    smartScheduleResults, setSmartScheduleResults,
+    smartScheduleLoading, setSmartScheduleLoading,
+    smartScheduleError, setSmartScheduleError,
+    smartScheduleAccepted, setSmartScheduleAccepted,
+    showRescheduleModal, setShowRescheduleModal,
+    rescheduleResults, setRescheduleResults,
+    rescheduleLoading, setRescheduleLoading,
+    rescheduleError, setRescheduleError,
+    rescheduleAccepted, setRescheduleAccepted,
+    frameContextMenu, setFrameContextMenu,
+    quickAddFrameModal, setQuickAddFrameModal,
+    frameAdjustModal, setFrameAdjustModal,
+    frameAdjustTimeField, setFrameAdjustTimeField,
+    frameScheduleModal, setFrameScheduleModal,
+  } = useGTDFrames();
+
   const { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo } = useUndo({
-    tasks, unscheduledTasks, recycleBin, recurringTasks,
-    setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks,
+    tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrames,
+    setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, setGtdFrames,
     playUISound, t,
   });
 
@@ -1560,28 +1582,6 @@ const DayPlanner = () => {
     () => (aiSuppressed ? { ...rawAiConfig, enabled: false } : rawAiConfig),
     [rawAiConfig, aiSuppressed],
   );
-
-  // GTD Frames state
-  const {
-    gtdFrames, setGtdFrames,
-    showFramesModal, setShowFramesModal,
-    framesModalTab, setFramesModalTab,
-    editingFrame, setEditingFrame,
-    smartScheduleResults, setSmartScheduleResults,
-    smartScheduleLoading, setSmartScheduleLoading,
-    smartScheduleError, setSmartScheduleError,
-    smartScheduleAccepted, setSmartScheduleAccepted,
-    showRescheduleModal, setShowRescheduleModal,
-    rescheduleResults, setRescheduleResults,
-    rescheduleLoading, setRescheduleLoading,
-    rescheduleError, setRescheduleError,
-    rescheduleAccepted, setRescheduleAccepted,
-    frameContextMenu, setFrameContextMenu,
-    quickAddFrameModal, setQuickAddFrameModal,
-    frameAdjustModal, setFrameAdjustModal,
-    frameAdjustTimeField, setFrameAdjustTimeField,
-    frameScheduleModal, setFrameScheduleModal,
-  } = useGTDFrames();
 
   // Frames owned by me — the everyday set used for AI gating (smart-schedule /
   // reschedule button visibility, empty states, keyboard shortcuts). Mirrors
@@ -1972,7 +1972,7 @@ const DayPlanner = () => {
     goals, projects, areas, goalsProjectsEnabled,
     unscheduledOrderTimestamp,
     cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
-    setUndoToast,
+    setUndoToast, t,
     isRemoteApply,
   });
 
@@ -2503,7 +2503,7 @@ const DayPlanner = () => {
       onError: (msg, code) => { setVaultError(syncErrorText(t, msg, code)); if (msg) console.warn('[dayglance] vault sync error:', code || '', msg); },
       onRowsSkipped: (count) => {
         setVaultSkipped(count);
-        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), actionable: false });
+        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), kind: 'warning' });
       },
     });
     if (!engine) return;
@@ -3832,7 +3832,7 @@ const DayPlanner = () => {
   };
   const saveMobileEditTaskFrom = (newTask, scope) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
-    pushUndo();
+    pushUndo({ key: 'edited', title: cleanTitle(newTask.title) });
     const taskId = mobileEditingTask.id;
     if (mobileEditIsInbox) {
       setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? {
@@ -4625,8 +4625,8 @@ const DayPlanner = () => {
     disabled: isTrayMode,
     buildPayload: buildAutoBackupPayload,
     onNeedsReconnect: () => setUndoToast({
-      message: 'Folder backup paused — reconnect it in Backup → Auto-Backup to resume.',
-      actionable: false,
+      message: t('backup.folderPaused'),
+      kind: 'warning',
     }),
   });
   folderBackupWriteRef.current = folderBackup.scheduleWrite;
@@ -6766,15 +6766,15 @@ const DayPlanner = () => {
   // and the toast says so.
   const linkDoToNewTask = async (linkDo, taskId) => {
     const next = prepareDoLink({ records: joboRecords, record: linkDo, taskId, now: Date.now() });
-    if (!next) { setUndoToast({ message: t('jobo.makeTaskNotLinked') }); return; }
+    if (!next) { setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' }); return; }
     const before = joboRecords.find(record => record.id === linkDo.id) || null;
     try {
       const result = await recordJobo([next]);
       if (result?.ok || result?.held) recordJoboUndo(before, next);
-      else setUndoToast({ message: t('jobo.makeTaskNotLinked') });
+      else setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' });
     } catch (err) {
       console.error('[jobo] link failed:', err);
-      setUndoToast({ message: t('jobo.makeTaskNotLinked') });
+      setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' });
     }
   };
 
@@ -6999,9 +6999,9 @@ const DayPlanner = () => {
   const sendTaskToBucket = (taskId) => {
     const task = unscheduledTasks.find(t => t.id === taskId);
     if (!task) return;
-    pushUndo();
+    const said = pushUndo({ key: 'toBucket', taskId });
     setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? demoteToBucket(t) : t));
-    setUndoToast({ message: `"${stripWikilinks(task.title)}" sent to Bucket List`, actionable: true });
+    setUndoToast({ message: said, actionable: true });
   };
 
   // Focus mode availability: current task or back-to-back block >= 45 min remaining
@@ -7491,7 +7491,7 @@ const DayPlanner = () => {
 
   // Frame context menu: skip this day (mark exception as deleted)
   const skipFrameForDay = (frameId, dateStr) => {
-    pushUndo();
+    pushUndo({ key: 'frameSkipped', title: gtdFrames.find(f => f.id === frameId)?.label });
     setGtdFrames(prev => prev.map(f => {
       if (f.id !== frameId) return f;
       return { ...f, lastModified: new Date().toISOString(), exceptions: { ...(f.exceptions || {}), [dateStr]: { ...(f.exceptions?.[dateStr] || {}), deleted: true } } };
@@ -7518,7 +7518,7 @@ const DayPlanner = () => {
   const saveFrameAdjust = () => {
     if (!frameAdjustModal) return;
     const { frameId, dateStr, start, end } = frameAdjustModal;
-    pushUndo();
+    pushUndo({ key: 'frameAdjusted', title: gtdFrames.find(f => f.id === frameId)?.label });
     setGtdFrames(prev => prev.map(f => {
       if (f.id !== frameId) return f;
       return { ...f, lastModified: new Date().toISOString(), exceptions: { ...(f.exceptions || {}), [dateStr]: { ...(f.exceptions?.[dateStr] || {}), start, end, deleted: false } } };
@@ -7659,8 +7659,8 @@ const DayPlanner = () => {
   // Apply accepted smart schedule placements
   const applySmartSchedule = () => {
     if (!smartScheduleResults?.placements) return;
-    pushUndo();
     const accepted = smartScheduleResults.placements.filter(p => smartScheduleAccepted[p.taskId]);
+    pushUndo({ key: 'smartScheduled', count: accepted.length });
     const movedIds = new Set();
 
     for (const placement of accepted) {
@@ -7764,8 +7764,8 @@ const DayPlanner = () => {
 
   const applyReschedule = () => {
     if (!rescheduleResults?.placements) return;
-    pushUndo();
     const accepted = rescheduleResults.placements.filter(p => rescheduleAccepted[p.taskId]);
+    pushUndo({ key: 'rescheduled', count: accepted.length });
     let appliedCount = 0;
     for (const placement of accepted) {
       setTasks(prev => prev.map(t => {
@@ -7803,7 +7803,7 @@ const DayPlanner = () => {
           ...(st.duration ? { duration: st.duration } : {}),
         }));
       if (newSubtasks.length > 0) {
-        pushUndo();
+        pushUndo({ key: 'subtasksAdded', taskId, count: newSubtasks.length });
         const updater = t => t.id === taskId ? { ...t, subtasks: [...(t.subtasks || []), ...newSubtasks] } : t;
         if (typeof taskId === 'string' && taskId.startsWith('recurring-')) {
           updateRecurringTemplate(taskId, updater);
@@ -8940,7 +8940,6 @@ const DayPlanner = () => {
       )}
 
       {/* Backup Modals */}
-      <BackupMenuModal />
       <RestoreConfirmModal />
       <AutoBackupManagerModal />
 
@@ -8989,40 +8988,17 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Undo/Redo Toast. Above the Refocus timeline pill, which sits in the
-          same place while the timeline is scrolled away from now and would
-          otherwise cover its buttons. */}
+      {/* Undo/Redo toast, above the dialogs (components/UndoToast.jsx). */}
       {undoToast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[55] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
-          <div
-            data-undo-toast
-            // Pointer or focus on the toast holds it (hooks/useUndo.js).
-            onMouseEnter={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
-            onMouseLeave={() => setUndoToast(prev => (prev ? { ...prev, held: false } : prev))}
-            onFocus={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
-            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setUndoToast(prev => (prev ? { ...prev, held: false } : prev)); }}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}
-          >
-            <span>{undoToast.message}</span>
-            {undoToast.actionable && (
-              <button
-                onClick={() => { performUndo(); }}
-                className="font-semibold text-blue-400 hover:text-blue-300 ml-1"
-              >
-                {t('shortcuts.undoAction')}
-              </button>
-            )}
-            {undoToast.followUp && (
-              <button
-                data-follow-up-action
-                onClick={() => { const task = undoToast.followUp; setUndoToast(null); openFollowUp(task); }}
-                className="font-semibold text-blue-400 hover:text-blue-300 whitespace-nowrap"
-              >
-                {t('followUp.action')}
-              </button>
-            )}
-          </div>
-        </div>
+        <UndoToast
+          toast={undoToast}
+          setToast={setUndoToast}
+          darkMode={darkMode}
+          isMobile={isMobile}
+          onUndo={performUndo}
+          onRedo={performRedo}
+          onFollowUp={openFollowUp}
+        />
       )}
 
       {peekTaskId != null && (
@@ -9520,8 +9496,6 @@ const DayPlanner = () => {
       {/* Settings Modal */}
       {showSettings && <SettingsModal />}
 
-      {/* Reminders Modal */}
-      <RemindersSettingsModal />
       {/* Incomplete Tasks Modal */}
       <IncompleteTasksModal />
 

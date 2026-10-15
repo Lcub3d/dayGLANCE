@@ -48,6 +48,12 @@ npm test
 
 Both must be clean and green before tagging.
 
+Run `npm ci` before building the Android and iOS bundles. They are built
+locally, from whatever `node_modules` holds, and `build:android` /
+`build:ios` now refuse to run when it differs from `package-lock.json`
+(`scripts/check-installed-deps.mjs`). The 5.8.0 Android APK shipped with a
+stale `@glance-apps/sync` and broke WebDAV sync (#2090).
+
 ### 1.3 Device smoke tests
 
 Run these once each on real hardware or a representative simulator:

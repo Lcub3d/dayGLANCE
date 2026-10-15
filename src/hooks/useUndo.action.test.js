@@ -100,7 +100,7 @@ describe('one history for tasks and Do edits', () => {
     h.api.pushUndoAction(stale);
     h.api.performUndo();
     await h.settle();
-    expect(h.toast()).toEqual({ message: 'This Do has changed since', actionable: false });
+    expect(h.toast()).toEqual({ message: 'This Do has changed since', kind: 'warning' });
     h.api.performRedo();
     await h.settle();
     expect(stale.redo).not.toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe('one history for tasks and Do edits', () => {
     h.api.pushUndoAction(h.action('do', { ok: true, message: 'Do change undone' }));
     h.api.performUndo();
     await h.settle();
-    expect(h.toast()).toEqual({ message: 'Do change undone', actionable: false });
+    expect(h.toast()).toEqual({ message: 'Do change undone', redoable: true });
     const translated = harness();
     translated.props.t = (key) => `t:${key}`;
     translated.api.pushUndo();
@@ -122,6 +122,6 @@ describe('one history for tasks and Do edits', () => {
     runtime.cursor = 0;
     const api = useUndoWithT(translated);
     api.performUndo();
-    expect(translated.toast()).toEqual({ message: 't:common.undone', actionable: false });
+    expect(translated.toast()).toEqual({ message: 't:common.undone', redoable: true });
   });
 });

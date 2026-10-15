@@ -13,11 +13,14 @@ const tagAt = (marker) => {
 };
 
 describe('Settings dialog header', () => {
-  it('stays at the top while the content scrolls', () => {
+  it('sits above the scrolling page, so it never scrolls away', () => {
     const header = tagAt('data-settings-header');
-    expect(header).toContain('sticky top-0');
-    // Opaque, so the list does not show through it as it scrolls past.
+    expect(header).toContain('flex-shrink-0');
     expect(header).toContain('${cardBg}');
+    // The page scrolls in its own container below the header, not the dialog.
+    expect(tagAt('data-settings-scroll')).toContain('overflow-y-auto');
+    expect(source.indexOf('data-settings-header')).toBeLessThan(source.indexOf('data-settings-scroll'));
+    expect(tagAt('data-settings-dialog')).toContain('overflow-hidden');
   });
 
   it('carries a labelled Close button that closes the dialog', () => {
@@ -25,8 +28,9 @@ describe('Settings dialog header', () => {
     const button = source.slice(source.lastIndexOf('<button', start), source.indexOf('</button>', start));
     expect(button).toContain('onClick={() => setShowSettings(false)}');
     expect(button).toContain("aria-label={t('common.close')}");
-    // It sits in the header, ahead of every settings section.
-    expect(start).toBeLessThan(source.indexOf('{/* Left column */}'));
+    // In the header, ahead of the topic list and the page.
+    expect(start).toBeGreaterThan(source.indexOf('data-settings-header'));
+    expect(start).toBeLessThan(source.indexOf('data-settings-scroll'));
   });
 
   it('is a labelled modal dialog', () => {
@@ -36,11 +40,11 @@ describe('Settings dialog header', () => {
     expect(source).toContain('id="settings-dialog-title"');
   });
 
-  it('grows past the old 768px cap on large screens', () => {
+  it('keeps one height across topics and grows with large screens', () => {
     const dialog = tagAt('data-settings-dialog');
-    expect(dialog).toContain('lg:max-w-3xl');
+    expect(dialog).toContain('h-[85vh] lg:h-[90vh]');
+    expect(dialog).toContain('lg:max-w-4xl');
     expect(dialog).toContain('xl:max-w-5xl');
-    expect(dialog).toContain('lg:max-h-[90vh]');
   });
 });
 

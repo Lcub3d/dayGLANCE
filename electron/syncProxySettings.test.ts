@@ -8,6 +8,8 @@ import {
   proxyRulesFor,
   bypassRulesFor,
   snapshotFor,
+  LOOPBACK_BYPASS_RULES,
+  PRIVATE_BYPASS_RULES,
   type SyncProxyConfig,
 } from './syncProxySettings.js';
 
@@ -22,6 +24,7 @@ const valid = (over: Partial<SyncProxyConfig> = {}): SyncProxyConfig => ({
   scheme: 'http',
   host: 'proxy.example.com',
   port: 8080,
+  privateAddresses: 'direct',
   bypassRules: [],
   ...over,
 });
@@ -77,6 +80,16 @@ describe('parseSyncProxyConfig', () => {
       expect(parsed.config).not.toHaveProperty('password');
       expect(JSON.stringify(parsed.config)).not.toContain('hunter2');
     }
+  });
+
+  it('accepts both private-address modes and defaults an absent one to direct', () => {
+    expect(parseSyncProxyConfig(valid({ privateAddresses: 'proxy' }))).toEqual({
+      ok: true, config: valid({ privateAddresses: 'proxy' }),
+    });
+    const absent = parseSyncProxyConfig({ ...valid(), privateAddresses: undefined });
+    if (absent.ok) expect(absent.config.privateAddresses).toBe('direct');
+    expect(parseSyncProxyConfig(valid({ privateAddresses: 'bypass' })).ok).toBe(false);
+    expect(parseSyncProxyConfig(valid({ privateAddresses: 1 })).ok).toBe(false);
   });
 
   it('validates bypass rules and rejects list-shaped garbage', () => {
@@ -157,10 +170,51 @@ describe('proxyRulesFor', () => {
 });
 
 describe('bypassRulesFor', () => {
-  it('always brackets <local> first and joins the user rules', () => {
+  // Both modes, per the #2082 thread: the review asked for the private ranges
+  // to be bypassed always, then agreed they must be a choice, because a proxy
+  // sitting INSIDE the target network is reached THROUGH those addresses.
+  it('DIRECT mode bypasses the private and link-local space an external proxy cannot reach', () => {
+    const rules = bypassRulesFor(valid({ privateAddresses: 'direct' }));
+    for (const required of [...LOOPBACK_BYPASS_RULES, ...PRIVATE_BYPASS_RULES]) {
+      expect(rules).toContain(required);
+    }
+    // `<local>` alone is NOT "local addresses": Chromium documents it as
+    // dot-less hostnames, and its implicit list stops at loopback and
+    // link-local — so 10.x, 172.16-31.x and 192.168.x need explicit rules.
+    expect(rules).toContain('192.168.0.0/16');
+    expect(rules).toContain('10.0.0.0/8');
+    expect(rules).toContain('172.16.0.0/12');
+    expect(rules).toContain('169.254.0.0/16');
+    expect(rules).toContain('fc00::/7');
+    expect(rules).toContain('*.local');
+  });
+
+  it('PROXY mode sends the private ranges to the proxy — the away-from-home case', () => {
+    const rules = bypassRulesFor(valid({ privateAddresses: 'proxy' }));
+    for (const privateRule of PRIVATE_BYPASS_RULES) expect(rules).not.toContain(privateRule);
+  });
+
+  it('bypasses loopback in BOTH modes, which is not offered as a choice', () => {
+    for (const mode of ['direct', 'proxy'] as const) {
+      const rules = bypassRulesFor(valid({ privateAddresses: mode }));
+      for (const required of LOOPBACK_BYPASS_RULES) expect(rules).toContain(required);
+      expect(rules.startsWith('<local>')).toBe(true);
+    }
+  });
+
+  it('appends the user rules and de-duplicates against the built-ins', () => {
+    const builtIns = [...LOOPBACK_BYPASS_RULES, ...PRIVATE_BYPASS_RULES].join(',');
     expect(bypassRulesFor(valid({ bypassRules: ['192.168.0.0/24', '*.internal'] })))
-      .toBe('<local>,192.168.0.0/24,*.internal');
-    expect(bypassRulesFor(valid())).toBe('<local>');
+      .toBe(`${builtIns},192.168.0.0/24,*.internal`);
+    expect(bypassRulesFor(valid({ bypassRules: ['10.0.0.0/8', '*.lan'] })))
+      .toBe(`${builtIns},*.lan`);
+    // In PROXY mode a rule the user typed by hand still means what it says.
+    expect(bypassRulesFor(valid({ privateAddresses: 'proxy', bypassRules: ['10.0.0.0/8'] })))
+      .toBe(`${LOOPBACK_BYPASS_RULES.join(',')},10.0.0.0/8`);
+  });
+
+  it('never emits a subtractive rule, which would undo the loopback guarantee', () => {
+    expect(bypassRulesFor(valid({ bypassRules: ['*.example.com'] }))).not.toContain('<-');
   });
 });
 
@@ -171,6 +225,7 @@ describe('snapshotFor', () => {
       scheme: 'http',
       host: 'proxy.example.com',
       port: 8080,
+      privateAddresses: 'direct',
       bypassRules: ['*.internal'],
     });
   });

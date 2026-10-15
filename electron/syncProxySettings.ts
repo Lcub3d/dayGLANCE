@@ -27,15 +27,26 @@
 // and is unchanged: it judges the target by local DNS. A target that resolves
 // to a private or reserved range is still refused until its origin is granted,
 // whether or not a proxy is configured — the proxy changes where the connection
-// comes from, never what is allowed to be connected to. One consequence is
+// comes from, never what is allowed to be connected to. Two consequences are
 // deliberate:
 //
-//   1. Trusted-host grants are NOT auto-merged into the bypass list. A granted
-//      LAN vault must connect DIRECT (an external proxy usually cannot reach
-//      it), but a granted public-looking origin whose local DNS is poisoned
-//      into private space must go THROUGH the proxy — the two want opposite
-//      bypass answers, so the user decides via the explicit bypass rules
-//      instead of either one winning silently. `<local>` is always bypassed.
+//   1. Trusted-host grants are NOT auto-merged into the bypass list, and the
+//      consent itself is required in BOTH private-address modes: a proxy is the
+//      user's own, not a licence to reach private space.
+//   2. Private addresses are a CHOICE, not a rule — because Chromium resolves a
+//      proxy from URL text, before any DNS or connection, it cannot tell "I am
+//      on that LAN, send me direct" from "I am away, that address is only
+//      reachable through this proxy". The same 192.168.1.50 wants opposite
+//      answers, and whichever blanket rule won would silently break the other
+//      half. `privateAddresses` is that choice; its default is the safe one.
+//      Loopback bypasses in both modes (see LOOPBACK_BYPASS_RULES).
+//
+// Bypass rules are matched against the URL's host before any name resolution,
+// so an IP range only matches a URL written as an IP literal. That is why the
+// direct mode carries both the ranges (for `http://192.168.1.10:5005`) and
+// `<local>` / `*.local` (for the simple and mDNS hostnames a LAN server usually
+// has), and why the UI asks for a hostname pattern when the machine is reached
+// by a dotted name.
 //
 // NO CREDENTIALS, ON PURPOSE. Chromium's `user:pass@host` proxy-rule form is
 // not honored for authentication, and the `login` event is documented for
@@ -55,15 +66,26 @@ export type SyncProxyScheme = 'http' | 'https' | 'socks5';
  */
 export type SyncProxyTransport = 'system' | 'proxy-session';
 
+/**
+ * What to do with private and link-local addresses while a proxy is configured.
+ * `direct` bypasses the proxy for them (the safe default: a home NAS an
+ * external proxy cannot reach); `proxy` sends them anyway, which is the shape
+ * of a proxy sitting INSIDE the target network.
+ */
+export type SyncProxyPrivateMode = 'direct' | 'proxy';
+
 export interface SyncProxyConfig {
   enabled: boolean;
   scheme: SyncProxyScheme;
   /** Lowercase hostname or bare IP literal (IPv6 without brackets). */
   host: string;
   port: number;
+  /** How private and link-local addresses are routed. See SyncProxyPrivateMode. */
+  privateAddresses: SyncProxyPrivateMode;
   /**
    * Extra Chromium proxyBypassRules entries the user asked for, verbatim.
-   * `<local>` is always prepended by bypassRulesFor and never stored here.
+   * The always-bypassed rules are prepended by bypassRulesFor and never stored
+   * here, so the user's list stays exactly what they typed.
    */
   bypassRules: string[];
 }
@@ -74,16 +96,46 @@ export interface SyncProxySnapshot {
   scheme: SyncProxyScheme;
   host: string;
   port: number;
+  privateAddresses: SyncProxyPrivateMode;
   bypassRules: string[];
 }
 
 export function defaultSyncProxyConfig(): SyncProxyConfig {
-  return { enabled: false, scheme: 'http', host: '', port: 0, bypassRules: [] };
+  return { enabled: false, scheme: 'http', host: '', port: 0, privateAddresses: 'direct', bypassRules: [] };
 }
 
 const MAX_HOST_LENGTH = 253;
 const MAX_BYPASS_ENTRIES = 20;
 const MAX_BYPASS_LENGTH = 200;
+
+/**
+ * Rules no proxy may intercept, in EITHER private-address mode. Loopback is the
+ * one the review on #2082 pinned: Chromium treats it as a secure origin, and
+ * letting a user-configured proxy reach it grants powers the web platform does
+ * not. `<local>` lives here too because it is not a private range at all —
+ * Chromium documents it as dot-less hostnames, which is how a bare
+ * `http://nas:5005` is written.
+ */
+export const LOOPBACK_BYPASS_RULES: readonly string[] = [
+  '<local>',
+  '127.0.0.0/8',
+  '[::1]',
+];
+
+/**
+ * Added only in `direct` mode: RFC1918, both link-local families and the mDNS
+ * suffix. A user whose proxy sits INSIDE the target network turns these off by
+ * choosing `proxy` — for them, bypassing is the failure.
+ */
+export const PRIVATE_BYPASS_RULES: readonly string[] = [
+  '*.local',
+  '10.0.0.0/8',
+  '172.16.0.0/12',
+  '192.168.0.0/16',
+  '169.254.0.0/16',
+  'fc00::/7',
+  'fe80::/10',
+];
 
 /**
  * Coerce whatever arrived over IPC (or off disk) into a validated config.
@@ -114,6 +166,21 @@ export function parseSyncProxyConfig(raw: unknown): { ok: true; config: SyncProx
     return { ok: false, reason: 'Enter a port between 1 and 65535' };
   }
 
+  // Absent means the default, so a file written before this choice existed
+  // loads instead of failing closed into "no proxy at all". PRESENT but wrong
+  // still fails closed — silently coercing garbage to `direct` would quietly
+  // reroute a user who meant `proxy`.
+  let privateAddresses: SyncProxyPrivateMode = 'direct';
+  if (source.privateAddresses !== undefined) {
+    const privateRaw = typeof source.privateAddresses === 'string'
+      ? source.privateAddresses.toLowerCase()
+      : '';
+    if (privateRaw !== 'direct' && privateRaw !== 'proxy') {
+      return { ok: false, reason: 'Private addresses must connect directly or through the proxy' };
+    }
+    privateAddresses = privateRaw;
+  }
+
   const bypassRules: string[] = [];
   if (source.bypassRules !== undefined) {
     if (!Array.isArray(source.bypassRules)) return { ok: false, reason: 'Bypass rules must be a list' };
@@ -130,7 +197,7 @@ export function parseSyncProxyConfig(raw: unknown): { ok: true; config: SyncProx
 
   return {
     ok: true,
-    config: { enabled, scheme: schemeRaw, host: hostRaw, port, bypassRules },
+    config: { enabled, scheme: schemeRaw, host: hostRaw, port, privateAddresses, bypassRules },
   };
 }
 
@@ -181,13 +248,15 @@ export function proxyRulesFor(config: SyncProxyConfig): string {
 }
 
 /**
- * Chromium proxyBypassRules. `<local>` always bypasses: localhost targets are
- * exactly the destinations an external proxy can rarely reach and the ones the
- * guard's loopback grant exists for (issue #1642). The user's own rules come
- * after; trusted-host grants are NOT merged (see header).
+ * Chromium proxyBypassRules for the given config: loopback always, the private
+ * and link-local ranges only in `direct` mode, then the user's own rules,
+ * de-duplicated. Trusted-host grants are NOT merged (see header).
  */
 export function bypassRulesFor(config: SyncProxyConfig): string {
-  return ['<local>', ...config.bypassRules].join(',');
+  const rules = config.privateAddresses === 'proxy'
+    ? [...LOOPBACK_BYPASS_RULES, ...config.bypassRules]
+    : [...LOOPBACK_BYPASS_RULES, ...PRIVATE_BYPASS_RULES, ...config.bypassRules];
+  return [...new Set(rules)].join(',');
 }
 
 /** The settings UI's view: exactly what the user configured, nothing derived. */
@@ -197,6 +266,7 @@ export function snapshotFor(config: SyncProxyConfig): SyncProxySnapshot {
     scheme: config.scheme,
     host: config.host,
     port: config.port,
+    privateAddresses: config.privateAddresses,
     bypassRules: [...config.bypassRules],
   };
 }

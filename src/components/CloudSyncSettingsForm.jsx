@@ -78,6 +78,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   const [proxyScheme, setProxyScheme] = useState('http');
   const [proxyHost, setProxyHost] = useState('');
   const [proxyPort, setProxyPort] = useState('');
+  const [proxyPrivate, setProxyPrivate] = useState('direct');
   const [proxyBypass, setProxyBypass] = useState('');
   const [proxySaving, setProxySaving] = useState(false);
   const [proxySaveState, setProxySaveState] = useState(null); // { ok: boolean, reason?: string }
@@ -90,6 +91,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
       setProxyScheme(snapshot.scheme || 'http');
       setProxyHost(snapshot.host || '');
       setProxyPort(snapshot.port ? String(snapshot.port) : '');
+      setProxyPrivate(snapshot.privateAddresses === 'proxy' ? 'proxy' : 'direct');
       setProxyBypass((snapshot.bypassRules || []).join(', '));
     }).catch(() => { /* the section stays at defaults; a save reports the truth */ });
     return () => { cancelled = true; };
@@ -115,6 +117,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         scheme: proxyScheme,
         host,
         port,
+        privateAddresses: proxyPrivate,
         bypassRules: proxyBypass.trim() ? proxyBypass.split(',').map((r) => r.trim()).filter(Boolean) : [],
       });
       if (result?.ok) {
@@ -854,6 +857,37 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                   onChange={(e) => setProxyPort(e.target.value)}
                   className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                 />
+              </div>
+              {/* The one thing this feature cannot decide for the user: the same
+                  private address means "reach it myself" on the LAN and "only
+                  reachable through that proxy" when away, so it is asked, not
+                  guessed. Loopback is never offered — it always connects
+                  directly, in both modes. */}
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyPrivate')}</label>
+                <div className="space-y-1">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="syncProxyPrivate"
+                      checked={proxyPrivate === 'direct'}
+                      onChange={() => setProxyPrivate('direct')}
+                      className="mt-1"
+                    />
+                    <span className={`text-sm ${textPrimary}`}>{t('sync.form.syncProxyPrivateDirect')}</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="syncProxyPrivate"
+                      checked={proxyPrivate === 'proxy'}
+                      onChange={() => setProxyPrivate('proxy')}
+                      className="mt-1"
+                    />
+                    <span className={`text-sm ${textPrimary}`}>{t('sync.form.syncProxyPrivateProxy')}</span>
+                  </label>
+                </div>
+                <p className={`text-xs ${textSecondary} mt-0.5`}>{t('sync.form.syncProxyPrivateHint')}</p>
               </div>
               <div>
                 <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyBypass')}</label>

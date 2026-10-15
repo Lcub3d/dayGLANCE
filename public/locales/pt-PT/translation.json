@@ -523,9 +523,9 @@
     "importIcsDesc": "Importar eventos de um ficheiro iCal (.ics)",
     "multiUser": "Multiutilizador",
     "multiUserMode": "Modo multiutilizador",
-    "multiUserModeHint": "Atribuir tarefas domésticas a membros da família",
+    "multiUserModeHint": "Atribua tarefas a membros específicos do agregado",
     "multiUserPeople": "Pessoas",
-    "multiUserRequiresSync": "Requer sincronização na nuvem. Configure primeiro o GLANCEvault ou a sincronização WebDAV.",
+    "multiUserRequiresSync": "O modo multiutilizador precisa de sincronização. Configure primeiro o WebDAV, o GLANCEvault ou uma pasta do Direct Access.",
     "usersSyncPath": "Caminho de sincronização de utilizadores",
     "syncFailed": "Falhou",
     "aiFeatures": "Funcionalidades de IA",
@@ -682,7 +682,7 @@
     "removeFileImportedConfirm": "Remover os {{n}} eventos importados de ficheiro? Reimportar o ficheiro irá restaurá-los.",
     "liveActivity": "Atividade ao Vivo",
     "liveActivityDesc": "O plano de hoje na Dynamic Island e no ecrã de bloqueio. Alarga a ilha e oculta os ícones de sinal ao lado do relógio.",
-    "multiUserICloudOnly": "Requer um destino de sincronização partilhado. O iCloud sincroniza os seus próprios dispositivos com um mesmo Apple ID, pelo que não pode dar uma lista partilhada a duas pessoas. Configure o GLANCEvault ou a sincronização WebDAV para isso.",
+    "multiUserICloudOnly": "Requer um destino de sincronização partilhado. O iCloud sincroniza os seus próprios dispositivos com um mesmo Apple ID, pelo que não pode dar uma lista partilhada a duas pessoas. Configure o WebDAV, o GLANCEvault ou uma pasta do Direct Access para isso.",
     "language": "Idioma",
     "calendarUrlHelpPrompt": "Onde encontro estes URLs?",
     "calendarUrlHelp": "Cole qualquer URL ICS/iCal público. Google Calendar: Definições → [o seu calendário] → “Endereço secreto no formato iCal”. Outlook: Definições → Ver tudo → Calendário → Calendários partilhados → Publicar → ligação ICS. Nextcloud (público): Calendário → Definições → Copiar a ligação pública. Nextcloud (privado): use o URL CalDAV interno com ?export no fim (por exemplo …/remote.php/dav/calendars/user/personal/?export) e introduza as credenciais.",
@@ -775,7 +775,8 @@
       "about": "Sobre e ajuda"
     },
     "theme": "Tema",
-    "themeSystem": "Sistema"
+    "themeSystem": "Sistema",
+    "glanceWebdavLog": "Registo de eventos WebDAV"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

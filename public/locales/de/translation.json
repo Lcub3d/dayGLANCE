@@ -525,7 +525,7 @@
     "multiUserMode": "Mehrbenutzer-Modus",
     "multiUserModeHint": "Aufgaben bestimmten Haushaltsmitgliedern zuweisen",
     "multiUserPeople": "Personen",
-    "multiUserRequiresSync": "Erfordert Cloud-Synchronisierung. Richten Sie zuerst GLANCEvault oder WebDAV-Synchronisierung ein.",
+    "multiUserRequiresSync": "Mehrbenutzer erfordert Synchronisierung. Richten Sie zuerst WebDAV, GLANCEvault oder einen Direct-Access-Ordner ein.",
     "usersSyncPath": "Benutzer-Synchronisierungspfad",
     "syncFailed": "Fehlgeschlagen",
     "aiFeatures": "KI-Funktionen",
@@ -682,7 +682,7 @@
     "removeFileImportedConfirm": "Alle {{n}} aus Datei importierten Termine entfernen? Ein erneuter Datei-Import stellt sie wieder her.",
     "liveActivity": "Live-Aktivität",
     "liveActivityDesc": "Der heutige Plan in der Dynamic Island und auf dem Sperrbildschirm. Verbreitert die Island und verdeckt die Signalsymbole neben der Uhr.",
-    "multiUserICloudOnly": "Erfordert ein gemeinsames Sync-Ziel. iCloud synchronisiert Ihre eigenen Geräte unter einer Apple-ID und kann zwei Personen daher keine gemeinsame Liste bereitstellen. Richten Sie dafür GLANCEvault oder WebDAV-Sync ein.",
+    "multiUserICloudOnly": "Erfordert ein gemeinsames Sync-Ziel. iCloud synchronisiert Ihre eigenen Geräte unter einer Apple-ID und kann zwei Personen daher keine gemeinsame Liste bereitstellen. Richten Sie dafür WebDAV, GLANCEvault oder einen Direct-Access-Ordner ein.",
     "language": "Sprache",
     "calendarUrlHelpPrompt": "Wo finde ich diese URLs?",
     "calendarUrlHelp": "Füge eine beliebige öffentliche ICS/iCal-URL ein. Google Kalender: Einstellungen → [dein Kalender] → „Geheime Adresse im iCal-Format“. Outlook: Einstellungen → Alle anzeigen → Kalender → Freigegebene Kalender → Veröffentlichen → ICS-Link. Nextcloud (öffentlich): Kalender → Einstellungen → Öffentlichen Link kopieren. Nextcloud (privat): Verwende die interne CalDAV-URL mit angehängtem ?export (zum Beispiel …/remote.php/dav/calendars/user/personal/?export) und gib die Zugangsdaten ein.",
@@ -775,7 +775,8 @@
       "about": "Über & Hilfe"
     },
     "theme": "Design",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "glanceWebdavLog": "WebDAV-Ereignisprotokoll"
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

@@ -115,7 +115,8 @@
       "enabling": "A ativar...",
       "pausedKept": "Em pausa. Os dados de ligação são mantidos: ative para retomar.",
       "vaultDisconnect": "Desligar",
-      "vaultDisconnectConfirm": "Desligar o GLANCEvault neste dispositivo? O endereço do servidor, o token do dispositivo e o ID da conta são removidos deste dispositivo. Os seus dados no servidor não são afetados."
+      "vaultDisconnectConfirm": "Desligar o GLANCEvault neste dispositivo? O endereço do servidor, o token do dispositivo e o ID da conta são removidos deste dispositivo. Os seus dados no servidor não são afetados.",
+      "encryptionTitle": "Encriptação ponta a ponta"
     },
     "passphraseHint": "Esta é a frase-passe que definiu quando ativou a cifra pela primeira vez. Nunca é guardada — só o utilizador a conhece.",
     "passphraseLabel": "Frase-passe de sincronização",

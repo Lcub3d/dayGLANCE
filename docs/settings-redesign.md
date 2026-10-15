@@ -153,15 +153,19 @@ Each channel needs an `enabled` flag that is separate from its configuration:
 
 ### Integrations audit (step 2)
 
+Every integration is a card, so the page reads as one list. A card has a
+switch only where off can safely mean pause; the others are **static cards**:
+the same frame, title and status dot, with their on and off inside.
+
 | Integration | Today | Card |
 |---|---|---|
 | TRMNL | `trmnlConfig.enabled` beside the webhook and key; off keeps both | **Card.** Off pauses; on with no webhook opens the form until one is entered |
 | Android Automation | one boolean, no configuration | **Card** |
-| Obsidian | off is Disconnect: `setObsidianConfig(null)` forgets the vault | Not yet. A pause needs `enabled: false` with the vault kept, and every reader of `obsidianConfig` (the hook, the plugin bridge, the header dot) audited first, as GLANCEvault was |
-| Calendars | several independent sources (task calendar URL, ICS feeds, device calendars), no single switch | Stays a block: a card switch would have to mean "all of them" |
-| Todoist | its own component with its own connect / disconnect | Stays as is until its page moves (step 4) |
-| GLANCE apps (intents) | WebDAV log and GLANCEvault intents, two separate switches | Stays a block for the same reason as Calendars |
-| Local Integrations (MCP) | its own component with its own kill switch | Stays as is |
+| Obsidian | off is Disconnect: `setObsidianConfig(null)` forgets the vault | **Static card** (no switch) for now. A pause needs `enabled: false` with the vault kept, and every reader of `obsidianConfig` (the hook, the plugin bridge, the header dot) audited first, as GLANCEvault was |
+| Calendars | several independent sources (task calendar URL, ICS feeds, device calendars), no single switch | **Static card**: a switch would have to mean "all of them" |
+| Todoist | its own component with its own connect / disconnect | **Static card** around its own connect / disconnect |
+| GLANCE apps (intents) | WebDAV log and GLANCEvault intents, two separate switches | **Static card**, for the same reason as Calendars |
+| Local Integrations (MCP) | its own component with its own kill switch | **Static card**: its switches stay inside, because turning MCP on must go through its consent dialog |
 
 ## Mobile
 

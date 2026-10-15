@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "家庭账户 ID",
       "vaultReloadHint": "保存 GLANCEvault 设置后，应用会重新加载并重建同步引擎。",
       "vaultNeedsEncryption": "GLANCEvault 始终使用端到端加密。请先开启上方的“{{encryption}}”并设置同步口令。",
-      "vaultNeedsPassphrase": "请在上方的加密区域输入同步口令，以在此设备上启用 GLANCEvault。",
+      "vaultNeedsPassphrase": "您的同步密码短语，用于在此设备上连接 GLANCEvault。",
       "vaultUnreachableSimple": "无法连接此 URL 上的 GLANCEvault。",
       "vaultAllowPrivateAddress": "允许此地址…",
       "vaultAllowPrivateAddressHint": "dayGLANCE 会请你确认。请只允许你自己网络中的地址。",
@@ -134,8 +134,7 @@
       "pausedKept": "已暂停。连接信息已保留：打开开关即可继续。",
       "vaultDisconnect": "断开连接",
       "vaultDisconnectConfirm": "要在此设备上断开 GLANCEvault 吗？服务器地址、设备令牌和账户 ID 将从此设备移除。服务器上的数据不受影响。",
-      "encryptionTitle": "端到端加密",
-      "saveCaption": "保存后将应用端到端加密、WebDAV 和 GLANCEvault 设置。"
+      "encryptionTitle": "端到端加密"
     },
     "passphraseHint": "这是你首次启用加密时设置的同步口令。应用不会存储它，只有你知道。",
     "passphraseLabel": "同步口令",

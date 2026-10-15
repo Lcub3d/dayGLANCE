@@ -753,7 +753,9 @@
       "integrations": "Integrações",
       "advanced": "Avançado",
       "about": "Sobre e ajuda"
-    }
+    },
+    "theme": "Tema",
+    "themeSystem": "Sistema"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

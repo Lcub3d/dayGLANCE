@@ -753,7 +753,9 @@
       "integrations": "集成",
       "advanced": "高级",
       "about": "关于与帮助"
-    }
+    },
+    "theme": "主题",
+    "themeSystem": "跟随系统"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

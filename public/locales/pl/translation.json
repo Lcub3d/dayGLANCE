@@ -772,7 +772,9 @@
       "integrations": "Integracje",
       "advanced": "Zaawansowane",
       "about": "Informacje i pomoc"
-    }
+    },
+    "theme": "Motyw",
+    "themeSystem": "Systemowy"
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

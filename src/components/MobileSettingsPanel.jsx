@@ -1,13 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit,
-  CalendarDays, CheckCircle, CheckSquare, ChevronDown, ChevronUp,
-  ChevronLeft, ChevronRight, Clock, Cloud, ExternalLink, Plug,
-  Footprints, FolderOpen, Globe, GripVertical, HelpCircle, Key, LayoutGrid,
-  Loader, Lock, MapPin, Mic, Moon, Pencil, Plus,
-  Flag, RefreshCw, Save, Server, Settings, Sparkles, Sun, Target, Trash2,
-  Undo2, Upload, Users, Volume2, VolumeX, Wifi, WifiOff, Zap,
-} from 'lucide-react';
+import { Activity, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, ExternalLink, Flag, FolderOpen, Footprints, Globe, GripVertical, HelpCircle, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Monitor, Moon, Pencil, Plug, Plus, RefreshCw, Save, Server, Settings, Sparkles, Sun, Target, Trash2, Undo2, Upload, Users, Volume2, VolumeX, Wifi, WifiOff, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { HABIT_ICONS, HABIT_ICON_NAMES, HABIT_COLORS } from '../constants/habits.js';
 import { getDeviceId, isNativeAndroid, isNativeApp, nativeGetCalendars, nativePickVault, nativeGetAutomationIntentsEnabled, nativeSetAutomationIntentsEnabled } from '../native.js';
@@ -39,6 +31,7 @@ import TodoistSettings from './TodoistSettings.jsx';
 import { useMcpStatus } from './McpStatusControls.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { isVaultEnabled } from '../sync/vaultConfig.js';
+import { nextThemePref, themeLabel } from '../utils/themePref.js';
 import { multiUserToggleLocked, multiUserUnavailableReason, canSyncUserRoster } from '../utils/multiUserGate.js';
 import { getDbIntentsConfig, setDbIntentsConfig, getDbIntentsConnection } from '../intents/dbIntentsConfig.js';
 import { getIcloudIntentsEnabledFlag, setIcloudIntentsEnabled } from '../intents/icloudIntentsConfig.js';
@@ -69,7 +62,7 @@ const MobileSettingsPanel = () => {
     isPro, isAndroidApp, isIOSApp, isElectronApp, subProductId,
     consumeTestPurchase, canConsumeTestPurchase,
     tasks, setTasks, setUnscheduledTasks,
-    darkMode, setDarkMode,
+    darkMode, setDarkMode, themePref, setThemePref,
     mobileSettingsView, setMobileSettingsView,
     use24HourClock, setUse24HourClock,
     liveActivityEnabled, setLiveActivityEnabled,
@@ -330,12 +323,17 @@ const MobileSettingsPanel = () => {
         <span className={`text-xs font-medium ${textPrimary}`}>{soundEnabled ? t('settings.soundOn') : t('settings.soundOff')}</span>
       </button>
       {/* Row 2: Dark/Light | Frames | Goals */}
+      {/* Theme: cycles Light → Dark → System and shows the current one
+          (docs/settings-redesign.md, Mobile). The grid keeps its nine tiles. */}
       <button
-        onClick={() => setDarkMode(!darkMode)}
+        onClick={() => setThemePref(nextThemePref(themePref))}
+        data-theme-tile={themePref}
         className={`${cardBg} border ${borderClass} rounded-xl p-4 flex flex-col items-center gap-2`}
       >
-        {darkMode ? <Sun size={24} className="text-amber-400" /> : <Moon size={24} className={textSecondary} />}
-        <span className={`text-xs font-medium ${textPrimary}`}>{darkMode ? t('settings.lightMode') : t('settings.darkMode')}</span>
+        {themePref === 'system'
+          ? <Monitor size={24} className={textSecondary} />
+          : themePref === 'dark' ? <Moon size={24} className="text-indigo-400" /> : <Sun size={24} className="text-amber-400" />}
+        <span className={`text-xs font-medium ${textPrimary}`}>{themeLabel(t, themePref)}</span>
       </button>
       <button
         onClick={() => setMobileSettingsView('frames')}

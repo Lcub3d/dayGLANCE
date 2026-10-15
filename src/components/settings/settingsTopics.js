@@ -15,7 +15,7 @@ export const TOPICS = [
   { id: 'general', labelKey: 'settings.topics.general', fallback: 'General',
     sections: ['timezoneNotice', 'localization', 'sound', 'weather', 'dailyContent'] },
   { id: 'appearance', labelKey: 'settings.topics.appearance', fallback: 'Appearance',
-    sections: ['viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
+    sections: ['theme', 'viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
   { id: 'features', labelKey: 'settings.topics.features', fallback: 'Features',
     sections: ['goals', 'routines', 'habits', 'multiUser', 'inbox', 'followUpTag', 'experimental'] },
   { id: 'notifications', labelKey: 'settings.notifications', fallback: 'Notifications',

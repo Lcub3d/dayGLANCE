@@ -7,6 +7,7 @@ import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import FollowUpTagSetting from './FollowUpTagSetting.jsx';
+import { THEME_PREFS, themeLabel } from '../utils/themePref.js';
 import HelpLinks from './HelpLinks.jsx';
 import RemindersSettings from './RemindersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
@@ -65,7 +66,7 @@ const SettingsModal = () => {
     showSettings, setShowSettings,
     collapsedSettings, toggleSettingsSection,
     updateInfo, setUpdateInfo, updateDismissedVersion, setUpdateDismissedVersion,
-    darkMode,
+    darkMode, themePref, setThemePref,
     cardBg, borderClass, textPrimary, textSecondary, hoverBg,
     use24HourClock, setUse24HourClock,
     inboxAutoArchiveDays, setInboxAutoArchiveDays,
@@ -273,6 +274,34 @@ const SettingsModal = () => {
   // renders anything. A topic page is a list of these; separators go between
   // the visible ones only (#2075, docs/settings-redesign.md step 1).
   const sections = {
+    // Light, Dark or System (#2075). The header button keeps its one-click
+    // switch; this is where System lives (utils/themePref.js).
+    theme: {
+      show: true,
+      node: (
+        <div className="space-y-3">
+          <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+            {darkMode ? <Moon size={16} className={textSecondary} /> : <Sun size={16} className={textSecondary} />}
+            {t('settings.theme', 'Theme')}
+          </h4>
+          <div className="flex gap-2" role="radiogroup" aria-label={t('settings.theme', 'Theme')} data-theme-choice>
+            {THEME_PREFS.map((pref) => (
+              <button
+                key={pref}
+                type="button"
+                role="radio"
+                aria-checked={themePref === pref}
+                data-theme-pref={pref}
+                onClick={() => setThemePref(pref)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${themePref === pref ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}`}`}
+              >
+                {themeLabel(t, pref)}
+              </button>
+            ))}
+          </div>
+        </div>
+      ),
+    },
     // The notices that sat above every page (#2075): each now lives on the
     // page it belongs to, and marks its topic in the list while it applies.
     timezoneNotice: {

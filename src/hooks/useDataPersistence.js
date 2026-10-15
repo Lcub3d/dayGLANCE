@@ -73,7 +73,6 @@ export default function useDataPersistence({
       const tasksData = localStorage.getItem('day-planner-tasks');
       const unscheduledData = localStorage.getItem('day-planner-unscheduled');
       const recycleBinData = localStorage.getItem('day-planner-recycle-bin');
-      const darkModeData = localStorage.getItem('day-planner-darkmode');
       const syncUrlData = localStorage.getItem('day-planner-sync-url');
       const taskCalendarUrlData = localStorage.getItem('day-planner-task-calendar-url');
       const completedTaskUidsData = localStorage.getItem('day-planner-task-completed-uids');
@@ -117,9 +116,9 @@ export default function useDataPersistence({
         setRecycleBin(JSON.parse(recycleBinData));
       }
 
-      if (darkModeData) {
-        setDarkMode(JSON.parse(darkModeData));
-      }
+      // The theme is not reloaded here: App reads its preference at start
+      // (utils/themePref.js), and setting it from the resolved value would
+      // turn a 'system' preference into an explicit one on every load.
       if (syncUrlData) {
         // Migrate from JSON-stringified format (e.g. "\"https://...\"") to plain string
         setSyncUrl(syncUrlData.startsWith('"') ? JSON.parse(syncUrlData) : syncUrlData);

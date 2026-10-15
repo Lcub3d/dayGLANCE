@@ -776,7 +776,9 @@
       "integrations": "Інтеграції",
       "advanced": "Додатково",
       "about": "Про застосунок і допомога"
-    }
+    },
+    "theme": "Тема",
+    "themeSystem": "Системна"
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",

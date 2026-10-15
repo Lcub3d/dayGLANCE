@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // doing it, on every provider's request shape (#1789).
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de' } }));
 
-import { aiComplete, aiJSON } from './ai.js';
+import { aiComplete, aiJSON, aiActive, aiFeatureOn } from './ai.js';
+import { readdirSync, readFileSync } from 'node:fs';
 import { languageInstruction } from './utils/aiLanguage.js';
 
 const GERMAN = languageInstruction('de');
@@ -86,5 +87,43 @@ describe('AI features before a key', async () => {
     } finally {
       globalThis.localStorage = original;
     }
+  });
+});
+
+describe('AI gate', () => {
+  const saved = { enabled: true, provider: 'openai', apiKey: '', features: { morningSummary: true, smartScheduling: false } };
+
+  it('a feature saved on stays off until the provider has a key', () => {
+    expect(aiActive(saved)).toBe(false);
+    expect(aiFeatureOn(saved, 'morningSummary')).toBe(false);
+    expect(aiFeatureOn({ ...saved, apiKey: '   ' }, 'morningSummary')).toBe(false);
+    expect(aiFeatureOn({ ...saved, apiKey: 'sk-x' }, 'morningSummary')).toBe(true);
+    expect(aiFeatureOn({ ...saved, provider: 'ollama' }, 'morningSummary')).toBe(true);
+  });
+
+  it('needs the master switch and the feature itself', () => {
+    const keyed = { ...saved, apiKey: 'sk-x' };
+    expect(aiFeatureOn({ ...keyed, enabled: false }, 'morningSummary')).toBe(false);
+    expect(aiFeatureOn(keyed, 'smartScheduling')).toBe(false);
+    expect(aiFeatureOn(keyed, 'weeklySummary')).toBe(false);
+    expect(aiFeatureOn(undefined, 'morningSummary')).toBe(false);
+  });
+
+  // Settings owns the master switch; everywhere else asks the gate, so AI on
+  // with no key, or with every feature off, changes nothing in the app.
+  it('nothing outside Settings reads the master switch directly', () => {
+    const root = new URL('./', import.meta.url);
+    const offenders = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+        if (entry.isDirectory()) { walk(url); continue; }
+        if (!/\.jsx?$/.test(entry.name) || /\.test\.jsx?$/.test(entry.name)) continue;
+        if (/^(SettingsModal|MobileSettingsPanel|ai)\.jsx?$/.test(entry.name)) continue;
+        if (/aiConfig\??\.enabled/.test(readFileSync(url, 'utf8'))) offenders.push(entry.name);
+      }
+    };
+    walk(root);
+    expect(offenders).toEqual([]);
   });
 });

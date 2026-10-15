@@ -8,6 +8,7 @@ import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormatting.js';
+import { aiFeatureOn } from '../ai.js';
 
 const FramesModal = () => {
   const { t } = useTranslation();
@@ -46,7 +47,7 @@ const FramesModal = () => {
             </button>
           </div>
           {/* Tab switcher — only show when AI scheduling is enabled */}
-          {aiConfig?.enabled && aiConfig.features?.smartScheduling && (
+          {aiFeatureOn(aiConfig, 'smartScheduling') && (
           <div className={`flex rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-stone-200'} p-0.5`}>
             <button
               onClick={() => setFramesModalTab('frames')}
@@ -169,7 +170,7 @@ const FramesModal = () => {
             </>
           )}
 
-          {aiConfig?.enabled && aiConfig.features?.smartScheduling && framesModalTab === 'schedule' && (
+          {aiFeatureOn(aiConfig, 'smartScheduling') && framesModalTab === 'schedule' && (
             <SmartSchedulePanel
               aiConfig={aiConfig}
               inboxTasks={unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample)}

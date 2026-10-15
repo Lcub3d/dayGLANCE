@@ -9,7 +9,7 @@ vi.mock('react', () => ({
 }));
 
 const aiComplete = vi.fn();
-vi.mock('../ai.js', () => ({ aiComplete: (...args) => aiComplete(...args) }));
+vi.mock('../ai.js', async (importOriginal) => ({ ...(await importOriginal()), aiComplete: (...args) => aiComplete(...args) }));
 vi.mock('../utils/aiLanguage.js', () => ({ currentAiLanguage: () => 'en' }));
 
 const { default: useDailyBriefings } = await import('./useDailyBriefings.js');

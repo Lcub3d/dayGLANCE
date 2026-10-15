@@ -101,17 +101,21 @@ the same way:
 
 ## Header
 
-Seven icons today (sync, settings, notifications, Day Dial, theme, backup, help; plus the Obsidian dot when the vault is connected); five after:
+Nine icons today; seven after. Three of the seven only appear when their
+feature is set up, so a user with none of them sees four (settings, Day Dial,
+theme, help).
 
-| Item | Decision |
+| Icon | Decision |
 |---|---|
-| Sync status | Stays |
+| Cloud sync | **Stays**: live status and click-to-sync; shown only when sync is set up |
+| Obsidian | **Stays**: live vault status and click-to-sync; shown only when a vault is connected |
+| MCP bolt | **Stays**: live status, and its panel holds the kill switch and the session's undo list, which must stay one click away when an agent misbehaves (the MCP spec's settings-cluster rule) |
 | Settings | Stays |
-| Theme toggle | **Stays** as the one-click Light/Dark switch, and Theme also appears under Appearance with System. When the theme follows the system, the header button switches to an explicit Light or Dark (the opposite of what is showing) |
+| Notifications (bell) | **Moves** to Settings → Notifications |
+| Day Dial | **Stays**: it opens a view, not a setting |
+| Theme | **Stays** as the one-click Light/Dark switch; Theme also appears under Appearance with System. When the theme follows the system, the header button switches to an explicit Light or Dark (the opposite of what is showing) |
+| Backup (save icon) | **Moves** to Settings → Backup & Restore |
 | Help (?) | **Stays**: new users look for help before they look in Settings |
-| Notifications (bell) | Moves to Settings → Notifications |
-| Backup (save icon) | Moves to Settings → Backup & Restore |
-| Day Dial | Stays: it opens a view, not a setting |
 
 ## Theme: System
 

@@ -74,6 +74,7 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // no credentials: an authenticated proxy is out of scope, so nothing here
   // holds a secret and no field has to hide one.
   const syncProxyApi = typeof window !== 'undefined' ? window.electronAPI?.syncProxy : null;
+  const [proxyOpen, setProxyOpen] = useState(false);
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [proxyScheme, setProxyScheme] = useState('http');
   const [proxyHost, setProxyHost] = useState('');
@@ -93,6 +94,9 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
       setProxyPort(snapshot.port ? String(snapshot.port) : '');
       setProxyPrivate(snapshot.privateAddresses === 'proxy' ? 'proxy' : 'direct');
       setProxyBypass((snapshot.bypassRules || []).join(', '));
+      // Hidden, not lost: a machine already using a proxy opens the disclosure,
+      // so the state is visible instead of silently active behind a closed row.
+      if (snapshot.active) setProxyOpen(true);
     }).catch(() => { /* the section stays at defaults; a save reports the truth */ });
     return () => { cancelled = true; };
   }, [syncProxyApi]);
@@ -808,18 +812,31 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
           WebDAV and GLANCEvault, independent of the cloudSyncConfig Save
           below. Test it with either Test Connection button above. */}
       {syncProxyApi && (
-        <div className={`border-t ${borderClass} pt-4 space-y-3`}>
-          <h3 className={sectionHeader}>{t('sync.form.syncProxyTitle')}</h3>
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={proxyEnabled}
-              onChange={(e) => setProxyEnabled(e.target.checked)}
-              className="w-5 h-5 rounded flex-shrink-0"
-            />
-            <span className={`text-sm font-medium ${textPrimary}`}>{t('sync.form.syncProxyToggle')}</span>
-          </label>
-          <p className={`text-xs ${textSecondary} ml-7`}>{t('sync.form.syncProxyToggleHint')}</p>
+        <div className={`border-t ${borderClass} pt-3`}>
+          <button
+            type="button"
+            onClick={() => setProxyOpen((open) => !open)}
+            aria-expanded={proxyOpen}
+            className="flex items-center gap-2 w-full text-left"
+          >
+            <span aria-hidden="true" className={`text-xs ${textSecondary}`}>{proxyOpen ? '▾' : '▸'}</span>
+            <span className={sectionHeader}>{t('sync.form.syncProxyAdvanced')}</span>
+            <span className={`text-xs ${textSecondary} ml-auto truncate`}>
+              {proxyEnabled ? t('sync.form.syncProxyStatusOn', { host: proxyHost }) : t('sync.form.syncProxyStatusOff')}
+            </span>
+          </button>
+          {proxyOpen && (
+            <div className="pt-3 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={proxyEnabled}
+                  onChange={(e) => setProxyEnabled(e.target.checked)}
+                  className="w-5 h-5 rounded flex-shrink-0"
+                />
+                <span className={`text-sm font-medium ${textPrimary}`}>{t('sync.form.syncProxyToggle')}</span>
+              </label>
+              <p className={`text-xs ${textSecondary} ml-7`}>{t('sync.form.syncProxyToggleHint')}</p>
           {proxyEnabled && (
             <div className="ml-7 space-y-3">
               <div className="grid grid-cols-3 gap-2">
@@ -902,21 +919,23 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               </div>
             </div>
           )}
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              type="button"
-              onClick={handleSaveSyncProxy}
-              disabled={proxySaving}
-              className={secondaryBtn}
-            >
-              {t('sync.form.syncProxySave')}
-            </button>
-            {proxySaveState && (
-              <p className={`text-sm ${proxySaveState.ok ? 'text-green-500' : 'text-red-500'}`}>
-                {proxySaveState.ok ? t('sync.form.syncProxySaved') : proxySaveState.reason}
-              </p>
-            )}
-          </div>
+              <div className="flex items-center gap-3 flex-wrap ml-7">
+                <button
+                  type="button"
+                  onClick={handleSaveSyncProxy}
+                  disabled={proxySaving}
+                  className={secondaryBtn}
+                >
+                  {t('sync.form.syncProxySave')}
+                </button>
+                {proxySaveState && (
+                  <p className={`text-sm ${proxySaveState.ok ? 'text-green-500' : 'text-red-500'}`}>
+                    {proxySaveState.ok ? t('sync.form.syncProxySaved') : proxySaveState.reason}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

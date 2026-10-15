@@ -754,8 +754,10 @@ ipcMain.handle('proxy-trust:inspect', async (_event, url: unknown) => {
 // `sync-proxy` session (see the sync-proxy section below) instead of net.fetch's
 // default session, so the user's outbound proxy server is scoped to its own
 // partition: sync requests connect through it, and everything else (vault SSE,
-// AI, weather) stays direct. When it is OFF, net.fetch is used UNCHANGED — the
-// default session follows the OS proxy settings, and that is how people on a
+// AI, weather) keeps using the default session. That is UNAFFECTED BY THIS
+// SETTING, which is not the same claim as "direct" — those requests still
+// follow the OS proxy settings. It is why OFF uses net.fetch UNCHANGED: the
+// default session already follows the OS proxy, and that is how people on a
 // corporate proxy sync today.
 ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, headers: Record<string, string>, body: string | null) => {
   const upperMethod = (method ?? '').toUpperCase();
@@ -769,11 +771,14 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
     // would otherwise blame the server for a 400 it never sent (#2024).
     return { status: 400, ok: false, statusText: msg, body: msg };
   }
-  // Read the flag ONCE for the whole request, so a settings change mid-redirect
-  // cannot make one hop go through the proxy and the next around it.
+  // Read the transport ONCE for the whole request, so a settings change
+  // mid-redirect cannot make one hop go through the proxy and the next around
+  // it. Resolved here, not inside `send`: a per-hop call would re-read the
+  // config on every hop and this loop runs up to MAX_REDIRECTS times.
   type ProxyFetchInit = Parameters<typeof net.fetch>[1];
+  const transport = transportFor(syncProxyConfig);
   const send = (target: string, init: ProxyFetchInit) =>
-    transportFor(syncProxyConfig) === 'proxy-session'
+    transport === 'proxy-session'
       ? getSyncProxySession().fetch(target, init)
       : net.fetch(target, init);
   // 30-second hard timeout — neither net.fetch nor session.fetch has a built-in

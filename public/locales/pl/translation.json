@@ -1465,7 +1465,8 @@
     "taskCount_few": "{{count}} zadania",
     "taskCount_many": "{{count}} zadań",
     "taskCount_other": "{{count}} zadania",
-    "snoozeMinutes": "Drzemka {{count}} min"
+    "snoozeMinutes": "Drzemka {{count}} min",
+    "title": "Przypomnienia"
   },
   "frames": {
     "title": "Ramki GTD",

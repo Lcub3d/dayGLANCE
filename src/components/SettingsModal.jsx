@@ -1039,16 +1039,9 @@ const SettingsModal = () => {
             {/* Cloud Sync Section */}
             <div className="space-y-3">
               {/* The page is the section now (docs/settings-redesign.md): no
-                  collapse, and each channel is a card with its own switch. */}
-              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                <Cloud size={16} className={textSecondary} />
-                {t('settings.cloudSync')}
-                {(cloudSyncConfig?.enabled || isVaultEnabled()) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-              </h4>
+                  heading of its own, and each channel is a card with its own
+                  switch and status. */}
               {(<>
-              <p className={`${textSecondary} text-xs`}>
-                {t('settings.cloudSyncDesc')}
-              </p>
               <CloudSyncSettingsForm
                 darkMode={darkMode}
                 textPrimary={textPrimary}

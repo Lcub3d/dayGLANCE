@@ -1422,7 +1422,8 @@
     "hgStartingNow": "{{title}} · Inizia ora",
     "taskCount_one": "{{count}} attività",
     "taskCount_other": "{{count}} attività",
-    "snoozeMinutes": "Rimanda di {{count}} min"
+    "snoozeMinutes": "Rimanda di {{count}} min",
+    "title": "Promemoria"
   },
   "frames": {
     "title": "Blocchi GTD",

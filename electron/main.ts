@@ -58,6 +58,17 @@ import {
   type TrustedHostsFile,
 } from './proxyUrlPolicy.js';
 import { writeFileAtomicSync } from './atomicWrite.js';
+import {
+  defaultSyncProxyConfig,
+  parseSyncProxyConfig,
+  parseSyncProxySettingsFile,
+  fileCarriesCredentials,
+  transportFor,
+  proxyRulesFor,
+  bypassRulesFor,
+  snapshotFor,
+  type SyncProxyConfig,
+} from './syncProxySettings.js';
 import { trayReloadDebounceMs } from './trayReloadPolicy.js';
 import { decideRecovery } from './rendererRecovery.js';
 import { buildApplicationMenuTemplate, isApplicationMenuLabels, supportsCustomApplicationMenu, type ApplicationMenuLabels } from './applicationMenu.js';
@@ -738,6 +749,16 @@ ipcMain.handle('proxy-trust:inspect', async (_event, url: unknown) => {
 // (Vault SSE does NOT use this path: the proxy buffers the whole body via
 // response.text() below, which can't stream text/event-stream; SSE uses a direct
 // renderer fetch from the app:// origin instead.)
+//
+// When the sync proxy is ON, requests here are issued from the DEDICATED
+// `sync-proxy` session (see the sync-proxy section below) instead of net.fetch's
+// default session, so the user's outbound proxy server is scoped to its own
+// partition: sync requests connect through it, and everything else (vault SSE,
+// AI, weather) keeps using the default session. That is UNAFFECTED BY THIS
+// SETTING, which is not the same claim as "direct" — those requests still
+// follow the OS proxy settings. It is why OFF uses net.fetch UNCHANGED: the
+// default session already follows the OS proxy, and that is how people on a
+// corporate proxy sync today.
 ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, headers: Record<string, string>, body: string | null) => {
   const upperMethod = (method ?? '').toUpperCase();
   if (!PROXY_ALLOWED_METHODS.has(upperMethod)) {
@@ -750,23 +771,34 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
     // would otherwise blame the server for a 400 it never sent (#2024).
     return { status: 400, ok: false, statusText: msg, body: msg };
   }
-  // 30-second hard timeout — net.fetch has no built-in timeout, so a slow or
-  // unresponsive WebDAV server (e.g. a home server that went offline) would
-  // hold the cloudSyncInProgressRef lock indefinitely, silently blocking every
-  // subsequent 60-second poll until the app is force-quit and restarted.
+  // Read the transport ONCE for the whole request, so a settings change
+  // mid-redirect cannot make one hop go through the proxy and the next around
+  // it. Resolved here, not inside `send`: a per-hop call would re-read the
+  // config on every hop and this loop runs up to MAX_REDIRECTS times.
+  type ProxyFetchInit = Parameters<typeof net.fetch>[1];
+  const transport = transportFor(syncProxyConfig);
+  const send = (target: string, init: ProxyFetchInit) =>
+    transport === 'proxy-session'
+      ? getSyncProxySession().fetch(target, init)
+      : net.fetch(target, init);
+  // 30-second hard timeout — neither net.fetch nor session.fetch has a built-in
+  // one, so a slow or unresponsive WebDAV server (e.g. a home server that went
+  // offline) would hold the cloudSyncInProgressRef lock indefinitely, silently
+  // blocking every subsequent 60-second poll until the app is force-quit.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
   try {
-    // net.fetch follows redirects itself, but would NOT re-run validateProxyUrl
-    // on the redirect target — a public URL could 302 to http://127.0.0.1/… and
-    // bypass the SSRF guard. So follow manually, re-validating every hop.
+    // Both fetches follow redirects themselves, but would NOT re-run
+    // validateProxyUrl on the redirect target — a public URL could 302 to
+    // http://127.0.0.1/… and bypass the SSRF guard. So follow manually,
+    // re-validating every hop.
     const MAX_REDIRECTS = 5;
     let currentUrl = url;
     let currentMethod = upperMethod;
     let currentBody = body;
     let response: Awaited<ReturnType<typeof net.fetch>>;
     for (let hop = 0; ; hop++) {
-      response = await net.fetch(currentUrl, {
+      response = await send(currentUrl, {
         method: currentMethod,
         headers,
         redirect: 'manual',
@@ -798,6 +830,103 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
   } finally {
     clearTimeout(timeoutId);
   }
+});
+
+// ── Sync proxy (outbound proxy server) ──────────────────────────────────────
+// A user-configured HTTP/HTTPS/SOCKS5 proxy that the proxy-fetch funnel above
+// connects through. Pure logic lives in syncProxySettings.ts (tested); this
+// block owns what cannot be pure: the file, the dedicated session and the IPC.
+// That file's header documents what the proxy covers (the proxy-fetch funnel,
+// never vault SSE or AI), why OFF stays on net.fetch, and how it interacts with
+// the SSRF guard above. There are no credentials: this version stores no
+// secret, so there is no password file and no auth handler.
+
+const SYNC_PROXY_FILE = 'sync-proxy-settings.json';
+function syncProxyPath(): string {
+  return path.join(app.getPath('userData'), SYNC_PROXY_FILE);
+}
+
+let syncProxyConfig: SyncProxyConfig = defaultSyncProxyConfig();
+
+// Fail-safe load: missing, unreadable or corrupt means OFF, never a half-known
+// proxy — the failure direction forgets the proxy, it never invents one
+// (mirrors loadTrustedHosts above).
+function loadSyncProxySettings(): void {
+  try {
+    if (!fs.existsSync(syncProxyPath())) return;
+    const raw = fs.readFileSync(syncProxyPath(), 'utf-8');
+    syncProxyConfig = parseSyncProxySettingsFile(raw);
+    // A pre-release build wrote proxy credentials here. Parsing drops them, but
+    // dropping them from memory would leave the password in the file, so
+    // rewrite it once on startup rather than waiting for the next save.
+    if (fileCarriesCredentials(raw)) saveSyncProxySettings();
+  } catch (err) {
+    console.error('[dayGLANCE] sync-proxy settings file could not be read:', err);
+    syncProxyConfig = defaultSyncProxyConfig();
+  }
+}
+
+function saveSyncProxySettings(): void {
+  try {
+    writeFileAtomicSync(syncProxyPath(), JSON.stringify(syncProxyConfig, null, 2));
+  } catch (err) {
+    console.error('[dayGLANCE] Failed to save the sync-proxy settings file:', err);
+  }
+}
+
+// The dedicated in-memory session every proxy-fetch request is issued from.
+// session.fetch keeps the net.fetch surface (same init, same Response) while
+// binding the request to THIS partition instead of the default session all
+// windows share — so the user's proxy applies to sync requests only, and vault
+// SSE / AI / weather (renderer fetches on the default session) stay direct.
+// cache:false: the callers track ETags themselves; no Chromium HTTP cache in
+// between. Created lazily, and only while the feature is on, so an app that
+// never enables the proxy never creates it at all.
+let syncProxySession: Electron.Session | null = null;
+function getSyncProxySession(): Electron.Session {
+  if (!syncProxySession) {
+    syncProxySession = session.fromPartition('sync-proxy', { cache: false });
+  }
+  return syncProxySession;
+}
+
+// Apply the given config (default: the live one) to the dedicated session.
+// When OFF this creates nothing and touches nothing — those requests go out
+// through net.fetch on the default session, exactly as before this feature —
+// except that a session already created by an earlier enable is reset, so a
+// stale proxy can never be picked up again without being configured first.
+async function applySyncProxySettings(config: SyncProxyConfig = syncProxyConfig): Promise<void> {
+  if (!config.enabled) {
+    if (syncProxySession) await syncProxySession.setProxy({ mode: 'direct' });
+    return;
+  }
+  await getSyncProxySession().setProxy({
+    mode: 'fixed_servers',
+    proxyRules: proxyRulesFor(config),
+    proxyBypassRules: bypassRulesFor(config),
+  });
+  logStartup(`sync proxy: ${config.scheme}://${config.host}:${config.port}`);
+}
+
+// Settings IPC. `get` is a read and carries no sender discipline (like
+// local-integrations:get); `set` is the mainWindow-only write: validated,
+// applied to the session FIRST, then committed to the file — so a rejected
+// setProxy never leaves the file claiming a proxy the session is not using.
+ipcMain.handle('sync-proxy:get', () => snapshotFor(syncProxyConfig));
+
+ipcMain.handle('sync-proxy:set', async (event, raw: unknown) => {
+  if (event.sender !== live(mainWindow)?.webContents) return { ok: false, reason: 'Unauthorized sender' };
+  const parsed = parseSyncProxyConfig(raw);
+  if (!parsed.ok) return { ok: false, reason: parsed.reason };
+  try {
+    await applySyncProxySettings(parsed.config);
+  } catch (err) {
+    console.error('[dayGLANCE] Failed to apply the sync proxy:', err);
+    return { ok: false, reason: 'Failed to apply the proxy settings' };
+  }
+  syncProxyConfig = parsed.config;
+  saveSyncProxySettings();
+  return { ok: true, snapshot: snapshotFor(syncProxyConfig) };
 });
 
 // Dock badge — macOS only
@@ -1589,6 +1718,23 @@ app.whenReady().then(async () => {
   // prior-install signals — so this MUST read the evidence first.
   loadOrMigrateIntegrationsConfig();
   loadTrustedHosts();
+  // Sync proxy: load the settings file and apply it to the dedicated session
+  // BEFORE any window exists, so no sync request can race the proxy into
+  // effect. A missing or corrupt file means off, and the apply is a no-op then
+  // — sync keeps going out through net.fetch on the default session.
+  loadSyncProxySettings();
+  // A saved proxy that cannot be applied must not stop the app from starting:
+  // nothing would be left to show a window or fix the setting. Treat it as
+  // off for this run (sync takes the pre-feature path, net.fetch on the
+  // default session) and leave the file alone, so the user's settings are
+  // still there to correct. Same direction as the loader: a failure forgets
+  // the proxy, it never invents one.
+  try {
+    await applySyncProxySettings();
+  } catch (err) {
+    console.error('[dayGLANCE] The saved sync proxy could not be applied; sync proxy is off for this run:', err);
+    syncProxyConfig = { ...syncProxyConfig, enabled: false };
+  }
 
   logStartup('storage migration: start');
   await migrateFileToAppStorage();

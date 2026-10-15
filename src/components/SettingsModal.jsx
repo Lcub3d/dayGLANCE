@@ -285,8 +285,6 @@ const SettingsModal = () => {
   };
   // Local Integrations reports whether Stream Deck or MCP is on, for its dot.
   const [localIntegrationsOn, setLocalIntegrationsOn] = useState(false);
-  // Cancel on the Sync form puts it back to what is saved, by remounting it.
-  const [syncFormKey, setSyncFormKey] = useState(0);
 
   // Every block of the dialog, verbatim, with the condition under which it
   // renders anything. A topic page is a list of these; separators go between
@@ -1055,7 +1053,6 @@ const SettingsModal = () => {
                   switch and status. */}
               {(<>
               <CloudSyncSettingsForm
-                key={syncFormKey}
                 darkMode={darkMode}
                 textPrimary={textPrimary}
                 textSecondary={textSecondary}
@@ -1066,8 +1063,6 @@ const SettingsModal = () => {
                 cloudSyncTest={cloudSyncTest}
                 provider={provider}
                 currentProvider={currentProvider}
-                onClose={() => setShowSettings(false)}
-                onCancel={() => setSyncFormKey((k) => k + 1)}
                 cloudSyncLastSynced={cloudSyncLastSynced}
                 cloudSyncStatus={cloudSyncStatus}
                 cloudSyncError={cloudSyncError}

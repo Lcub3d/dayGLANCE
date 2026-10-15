@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "ID account della famiglia",
       "vaultReloadHint": "Il salvataggio di una modifica a GLANCEvault ricarica l'app in modo che i motori di sincronizzazione vengano ricostruiti.",
       "vaultNeedsEncryption": "GLANCEvault è sempre cifrato end-to-end. Attiva \"{{encryption}}\" qui sopra e imposta la tua passphrase di sincronizzazione per abilitarlo.",
-      "vaultNeedsPassphrase": "Inserisci la tua passphrase di sincronizzazione nella sezione di cifratura qui sopra per abilitare GLANCEvault su questo dispositivo.",
+      "vaultNeedsPassphrase": "La tua passphrase di sincronizzazione, per collegare GLANCEvault su questo dispositivo.",
       "vaultUnreachableSimple": "Impossibile raggiungere il vault a questo URL.",
       "vaultAllowPrivateAddress": "Consenti questo indirizzo…",
       "vaultAllowPrivateAddressHint": "dayGLANCE ti chiederà una conferma. Consenti solo indirizzi della tua rete.",
@@ -134,8 +134,7 @@
       "pausedKept": "In pausa. I dati di connessione vengono conservati: attivalo per riprendere.",
       "vaultDisconnect": "Disconnetti",
       "vaultDisconnectConfirm": "Disconnettere GLANCEvault su questo dispositivo? L'indirizzo del server, il token del dispositivo e l'ID account vengono rimossi da questo dispositivo. I tuoi dati sul server non vengono toccati.",
-      "encryptionTitle": "Crittografia end-to-end",
-      "saveCaption": "Il salvataggio applica crittografia end-to-end, WebDAV e GLANCEvault."
+      "encryptionTitle": "Crittografia end-to-end"
     },
     "passphraseHint": "Questa è la passphrase impostata quando hai attivato la cifratura per la prima volta. Non viene mai memorizzata: solo tu la conosci.",
     "passphraseLabel": "Passphrase di sincronizzazione",

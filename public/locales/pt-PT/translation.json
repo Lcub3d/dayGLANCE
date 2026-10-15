@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "ID da conta do agregado",
       "vaultReloadHint": "Guardar uma alteração do GLANCEvault recarrega a aplicação para que os motores de sincronização sejam reconstruídos.",
       "vaultNeedsEncryption": "O GLANCEvault está sempre cifrado de ponta a ponta. Ative \"{{encryption}}\" acima e defina a sua frase-passe de sincronização para o ativar.",
-      "vaultNeedsPassphrase": "Introduza a sua frase-passe de sincronização na secção de cifra acima para ativar o GLANCEvault neste dispositivo.",
+      "vaultNeedsPassphrase": "A sua frase-passe de sincronização, para ligar o GLANCEvault neste dispositivo.",
       "vaultUnreachableSimple": "Não foi possível alcançar o vault neste URL.",
       "vaultAllowPrivateAddress": "Permitir este endereço…",
       "vaultAllowPrivateAddressHint": "O dayGLANCE pedirá a sua confirmação. Permita apenas endereços da sua própria rede.",
@@ -134,8 +134,7 @@
       "pausedKept": "Em pausa. Os dados de ligação são mantidos: ative para retomar.",
       "vaultDisconnect": "Desligar",
       "vaultDisconnectConfirm": "Desligar o GLANCEvault neste dispositivo? O endereço do servidor, o token do dispositivo e o ID da conta são removidos deste dispositivo. Os seus dados no servidor não são afetados.",
-      "encryptionTitle": "Encriptação ponta a ponta",
-      "saveCaption": "Guardar aplica a encriptação ponta a ponta, o WebDAV e o GLANCEvault."
+      "encryptionTitle": "Encriptação ponta a ponta"
     },
     "passphraseHint": "Esta é a frase-passe que definiu quando ativou a cifra pela primeira vez. Nunca é guardada — só o utilizador a conhece.",
     "passphraseLabel": "Frase-passe de sincronização",

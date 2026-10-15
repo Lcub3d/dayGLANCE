@@ -3,6 +3,7 @@ import {
   defaultSyncProxyConfig,
   parseSyncProxyConfig,
   parseSyncProxySettingsFile,
+  transportFor,
   proxyRulesFor,
   bypassRulesFor,
   snapshotFor,
@@ -102,6 +103,22 @@ describe('parseSyncProxySettingsFile', () => {
   it('yields the DISABLED default for a structurally wrong file', () => {
     expect(parseSyncProxySettingsFile('[]')).toEqual(defaultSyncProxyConfig());
     expect(parseSyncProxySettingsFile(JSON.stringify({ enabled: true }))).toEqual(defaultSyncProxyConfig());
+  });
+});
+
+describe('transportFor', () => {
+  it('keeps OFF on the pre-feature path: the default session, OS proxy included', () => {
+    // The one behaviour this feature must never change: a user syncing through
+    // a corporate or system proxy today must not lose sync on update without
+    // touching the setting, so OFF means `net.fetch`, not a forced-direct
+    // dedicated session.
+    expect(transportFor(defaultSyncProxyConfig())).toBe('system');
+    expect(transportFor(valid({ enabled: false }))).toBe('system');
+  });
+
+  it('uses the dedicated session only when the proxy is enabled', () => {
+    expect(transportFor(valid())).toBe('proxy-session');
+    expect(transportFor(valid({ scheme: 'socks5' }))).toBe('proxy-session');
   });
 });
 

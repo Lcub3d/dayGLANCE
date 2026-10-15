@@ -8,11 +8,15 @@
 // WHAT IT COVERS, AND WHAT IT DELIBERATELY DOES NOT
 //
 // Everything that funnels through the `proxy-fetch` IPC (WebDAV/Nextcloud,
-// CalDAV/ICS, GLANCEvault REST, intents, roster, auto-backup) is issued by
-// main.ts from ONE dedicated session (`sync-proxy`, in-memory). Pointing that
-// session's proxy at the user's server is the whole feature: no request call
-// site changes, and everything else — vault SSE (a streaming renderer fetch
-// the IPC proxy cannot carry), AI, weather, update checks — stays direct.
+// CalDAV/ICS, GLANCEvault REST, intents, roster, auto-backup) is issued, WHEN
+// THE FEATURE IS ON, by main.ts from ONE dedicated session (`sync-proxy`,
+// in-memory). Pointing that session's proxy at the user's server is the whole
+// feature: no request call site changes, and everything else — vault SSE (a
+// streaming renderer fetch the IPC proxy cannot carry), AI, weather, update
+// checks — stays direct. When the feature is OFF, `proxy-fetch` uses net.fetch
+// exactly as it always did (see transportFor): the default session follows the
+// OS proxy configuration, and for someone whose sync reaches its server
+// through a corporate proxy today, that IS the working path.
 //
 // Naming: this is the THIRD "proxy" in the codebase, after the hosted relay
 // (api/webdav-proxy.js) and the main process's own IPC proxy (`proxy-fetch`).
@@ -39,6 +43,14 @@
 //      authentication — a Chromium network-stack limitation, stated in the UI.
 
 export type SyncProxyScheme = 'http' | 'https' | 'socks5';
+
+/**
+ * Which transport a sync request takes. `system` is the request going out
+ * exactly as it did before this feature existed: `net.fetch` on the default
+ * session, which follows the OS proxy configuration (system, PAC, auto-detect).
+ * `proxy-session` is the dedicated session this feature configures.
+ */
+export type SyncProxyTransport = 'system' | 'proxy-session';
 
 export interface SyncProxyConfig {
   enabled: boolean;
@@ -137,6 +149,16 @@ export function parseSyncProxySettingsFile(raw: string): SyncProxyConfig {
   try { data = JSON.parse(raw); } catch { return defaultSyncProxyConfig(); }
   const parsed = parseSyncProxyConfig(data);
   return parsed.ok ? parsed.config : defaultSyncProxyConfig();
+}
+
+/**
+ * The transport a sync request takes. OFF must be today's code path exactly: a
+ * machine whose OS proxy is what carries sync today must keep working after
+ * this ships without ever opening the settings, so the dedicated session is not
+ * used — and not even created — while the toggle is off.
+ */
+export function transportFor(config: SyncProxyConfig): SyncProxyTransport {
+  return config.enabled ? 'proxy-session' : 'system';
 }
 
 /**

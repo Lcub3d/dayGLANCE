@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, protocol, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session, screen, Notification, dialog } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, net, protocol, Tray, Menu, nativeImage, nativeTheme, globalShortcut, session, screen, Notification, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { homedir } from 'node:os';
@@ -62,6 +62,7 @@ import {
   defaultSyncProxyConfig,
   parseSyncProxyConfig,
   parseSyncProxySettingsFile,
+  transportFor,
   proxyRulesFor,
   bypassRulesFor,
   snapshotFor,
@@ -748,11 +749,13 @@ ipcMain.handle('proxy-trust:inspect', async (_event, url: unknown) => {
 // response.text() below, which can't stream text/event-stream; SSE uses a direct
 // renderer fetch from the app:// origin instead.)
 //
-// Every request here is issued from the DEDICATED `sync-proxy` session (see the
-// sync-proxy section below), not net.fetch's default session: net.fetch always
-// uses the default session all windows share, so the user's outbound proxy
-// server is scoped to its own partition instead — sync requests connect through
-// it when configured, and everything else (vault SSE, AI, weather) stays direct.
+// When the sync proxy is ON, requests here are issued from the DEDICATED
+// `sync-proxy` session (see the sync-proxy section below) instead of net.fetch's
+// default session, so the user's outbound proxy server is scoped to its own
+// partition: sync requests connect through it, and everything else (vault SSE,
+// AI, weather) stays direct. When it is OFF, net.fetch is used UNCHANGED — the
+// default session follows the OS proxy settings, and that is how people on a
+// corporate proxy sync today.
 ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, headers: Record<string, string>, body: string | null) => {
   const upperMethod = (method ?? '').toUpperCase();
   if (!PROXY_ALLOWED_METHODS.has(upperMethod)) {
@@ -765,23 +768,31 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
     // would otherwise blame the server for a 400 it never sent (#2024).
     return { status: 400, ok: false, statusText: msg, body: msg };
   }
-  // 30-second hard timeout — session.fetch has no built-in timeout, so a slow or
-  // unresponsive WebDAV server (e.g. a home server that went offline) would
-  // hold the cloudSyncInProgressRef lock indefinitely, silently blocking every
-  // subsequent 60-second poll until the app is force-quit and restarted.
+  // Read the flag ONCE for the whole request, so a settings change mid-redirect
+  // cannot make one hop go through the proxy and the next around it.
+  type ProxyFetchInit = Parameters<typeof net.fetch>[1];
+  const send = (target: string, init: ProxyFetchInit) =>
+    transportFor(syncProxyConfig) === 'proxy-session'
+      ? getSyncProxySession().fetch(target, init)
+      : net.fetch(target, init);
+  // 30-second hard timeout — neither net.fetch nor session.fetch has a built-in
+  // one, so a slow or unresponsive WebDAV server (e.g. a home server that went
+  // offline) would hold the cloudSyncInProgressRef lock indefinitely, silently
+  // blocking every subsequent 60-second poll until the app is force-quit.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
   try {
-    // ses.fetch follows redirects itself, but would NOT re-run validateProxyUrl
-    // on the redirect target — a public URL could 302 to http://127.0.0.1/… and
-    // bypass the SSRF guard. So follow manually, re-validating every hop.
+    // Both fetches follow redirects themselves, but would NOT re-run
+    // validateProxyUrl on the redirect target — a public URL could 302 to
+    // http://127.0.0.1/… and bypass the SSRF guard. So follow manually,
+    // re-validating every hop.
     const MAX_REDIRECTS = 5;
     let currentUrl = url;
     let currentMethod = upperMethod;
     let currentBody = body;
-    let response: Awaited<ReturnType<Electron.Session['fetch']>>;
+    let response: Awaited<ReturnType<typeof net.fetch>>;
     for (let hop = 0; ; hop++) {
-      response = await getSyncProxySession().fetch(currentUrl, {
+      response = await send(currentUrl, {
         method: currentMethod,
         headers,
         redirect: 'manual',
@@ -857,7 +868,8 @@ function saveSyncProxySettings(): void {
 // windows share — so the user's proxy applies to sync requests only, and vault
 // SSE / AI / weather (renderer fetches on the default session) stay direct.
 // cache:false: the callers track ETags themselves; no Chromium HTTP cache in
-// between. Created lazily (always post-ready) so it never races the app boot.
+// between. Created lazily, and only while the feature is on, so an app that
+// never enables the proxy never creates it at all.
 let syncProxySession: Electron.Session | null = null;
 function getSyncProxySession(): Electron.Session {
   if (!syncProxySession) {
@@ -867,15 +879,16 @@ function getSyncProxySession(): Electron.Session {
 }
 
 // Apply the given config (default: the live one) to the dedicated session.
-// mode 'direct' when off keeps the session's behaviour identical to a
-// proxy-less machine, so the flag gates the routing, never the data.
+// When OFF this creates nothing and touches nothing — those requests go out
+// through net.fetch on the default session, exactly as before this feature —
+// except that a session already created by an earlier enable is reset, so a
+// stale proxy can never be picked up again without being configured first.
 async function applySyncProxySettings(config: SyncProxyConfig = syncProxyConfig): Promise<void> {
-  const proxySession = getSyncProxySession();
   if (!config.enabled) {
-    await proxySession.setProxy({ mode: 'direct' });
+    if (syncProxySession) await syncProxySession.setProxy({ mode: 'direct' });
     return;
   }
-  await proxySession.setProxy({
+  await getSyncProxySession().setProxy({
     mode: 'fixed_servers',
     proxyRules: proxyRulesFor(config),
     proxyBypassRules: bypassRulesFor(config),
@@ -1716,8 +1729,8 @@ app.whenReady().then(async () => {
   loadTrustedHosts();
   // Sync proxy: load the settings file and apply it to the dedicated session
   // BEFORE any window exists, so no sync request can race the proxy into
-  // effect. A missing or corrupt file means off, and the apply is a no-op
-  // (mode 'direct') then — same as a fresh install.
+  // effect. A missing or corrupt file means off, and the apply is a no-op then
+  // — sync keeps going out through net.fetch on the default session.
   loadSyncProxySettings();
   await applySyncProxySettings();
 

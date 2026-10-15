@@ -774,7 +774,8 @@
       "about": "关于与帮助"
     },
     "theme": "主题",
-    "themeSystem": "跟随系统"
+    "themeSystem": "跟随系统",
+    "glanceWebdavLog": "WebDAV 事件日志"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

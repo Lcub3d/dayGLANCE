@@ -32,6 +32,30 @@ describe('SettingsCard', () => {
     expect(html).not.toContain('role="switch"');
   });
 
+  it('a collapsible card starts closed, showing its title and badge only', () => {
+    const html = renderToStaticMarkup(
+      <SettingsCard cardId="c" title="Fold" collapsible hint="Hint" badge={<i data-badge />} borderClass="" textPrimary="" textSecondary=""><p data-body>body</p></SettingsCard>,
+    );
+    expect(html).toContain('data-settings-card-state="closed"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('data-badge');
+    expect(html).not.toContain('data-body');
+    expect(html).not.toContain('Hint');
+  });
+
+  it('defaultOpen starts it open', () => {
+    const html = renderToStaticMarkup(
+      <SettingsCard cardId="c" title="Fold" collapsible defaultOpen borderClass="" textPrimary="" textSecondary=""><p data-body>body</p></SettingsCard>,
+    );
+    expect(html).toContain('data-settings-card-state="open"');
+    expect(html).toContain('data-body');
+  });
+
+  it('a card with a switch ignores collapsible', () => {
+    expect(render({ checked: true, collapsible: true })).toContain('role="switch"');
+    expect(render({ checked: true, collapsible: true })).toContain('data-body');
+  });
+
   it('a locked switch is disabled and says its state', () => {
     const html = render({ checked: false, disabled: true });
     expect(html).toMatch(/role="switch" aria-checked="false"/);

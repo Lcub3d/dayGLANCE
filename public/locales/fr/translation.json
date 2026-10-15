@@ -774,7 +774,8 @@
       "about": "À propos et aide"
     },
     "theme": "Thème",
-    "themeSystem": "Système"
+    "themeSystem": "Système",
+    "glanceWebdavLog": "Journal d'événements WebDAV"
   },
   "dailyNotes": {
     "quickNotes": "Notes rapides",

@@ -14,7 +14,9 @@ export default function TodoistSettings({ variant = 'section' }) {
   const [input, setInput] = useState('');
   // Desktop owns its collapse state in the shared settings model. The mobile
   // route is a full page and must not inherit the desktop section's visibility.
-  const isPage = variant === 'page';
+  // "card": inside a Settings card, which carries the title and status.
+  const isCard = variant === 'card';
+  const isPage = variant === 'page' || isCard;
   const collapsed = collapsedSettings?.todoist !== false;
   const showBody = isPage || !collapsed;
   const id = useId();
@@ -63,7 +65,7 @@ export default function TodoistSettings({ variant = 'section' }) {
   const scanned = catalog ? Object.values(catalog.items || {}).filter(active).length : 0;
   const emptyReason = scanned === 0 ? 'noActive' : scope === 'today' || (scope === 'filtered' && settings.todayOnly) ? 'noToday' : 'noMatch';
   return <section aria-labelledby={`${id}-title`} className={`space-y-3 ${textPrimary}`}>
-    {isPage ? <h3 id={`${id}-title`} className="font-medium">{t('todoist.title')}</h3> :
+    {isCard ? <span id={`${id}-title`} className="sr-only">{t('todoist.title')}</span> : isPage ? <h3 id={`${id}-title`} className="font-medium">{t('todoist.title')}</h3> :
       <button type="button" onClick={() => toggleSettingsSection('todoist')} aria-expanded={!collapsed}
         aria-controls={`${id}-body`} className="font-medium flex items-center gap-2 w-full text-left">
         <CheckSquare size={16} className={textSecondary} />

@@ -635,17 +635,6 @@ const DesktopLayout = () => {
               </button>
             )}
             <button
-              onClick={() => setShowSettings(true)}
-              className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`}
-              title={t('common.settings')}
-              aria-label={t('common.settings')}
-            >
-              <Settings size={18} className={textSecondary} />
-              {(updateInfo || Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone) && (
-                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${updateInfo ? 'bg-red-500' : 'bg-amber-500'}`} />
-              )}
-            </button>
-            <button
               onClick={() => setShowDayDial(true)}
               className={`p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`}
               title={t('settings.viewCalendarDay')}
@@ -660,6 +649,17 @@ const DesktopLayout = () => {
               aria-label={darkMode ? t('settings.lightMode') : t('settings.darkMode')}
             >
               {darkMode ? <Sun size={18} className={textSecondary} /> : <Moon size={18} className={textSecondary} />}
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg hover:bg-black/5 active:bg-black/10 dark:hover:bg-white/5 dark:active:bg-white/10 transition-colors`}
+              title={t('common.settings')}
+              aria-label={t('common.settings')}
+            >
+              <Settings size={18} className={textSecondary} />
+              {(updateInfo || Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone) && (
+                <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${updateInfo ? 'bg-red-500' : 'bg-amber-500'}`} />
+              )}
             </button>
             <button
               onClick={() => setShowHelpModal(true)}

@@ -137,9 +137,16 @@ describe('Todoist namespace and settings', () => {
       expect(button).toMatch(/\sdisabled(?:=|>|\s)/);
     }
   });
+  it('in a Settings card it shows its body with no header of its own, but keeps its accessible name', async () => {
+    const html = await render(mockSync(), { variant: 'card', collapsed: true });
+    expect(html).toContain('Connect, choose a mode');
+    expect(html).not.toContain('<h3');
+    expect(html).not.toContain('aria-expanded');
+    expect(html).toMatch(/class="sr-only">Todoist Sync</);
+  });
   it('is wired to both settings entries and an always-mounted hook', () => {
     expect(readFileSync('src/App.jsx', 'utf8')).toContain('const todoist = useTodoistSync(');
-    expect(readFileSync('src/components/SettingsModal.jsx', 'utf8')).toContain('<TodoistSettings />');
+    expect(readFileSync('src/components/SettingsModal.jsx', 'utf8')).toContain('<TodoistSettings variant="card" />');
     expect(readFileSync('src/components/MobileSettingsPanel.jsx', 'utf8')).toContain("mobileSettingsView === 'todoist'");
   });
 });

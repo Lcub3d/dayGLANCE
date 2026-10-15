@@ -20,6 +20,12 @@ describe.each(['../DesktopHeader.jsx', '../DesktopLayout.jsx'])('%s', (file) => 
     expect(source).toContain('setDarkMode(!darkMode)');
     expect(source).toContain('setShowHelpModal(true)');
   });
+
+  it('puts Settings between the theme toggle and help', () => {
+    const at = (needle) => source.indexOf(needle);
+    expect(at('onClick={() => setDarkMode(!darkMode)}')).toBeLessThan(at('onClick={() => setShowSettings(true)}'));
+    expect(at('onClick={() => setShowSettings(true)}')).toBeLessThan(at('onClick={() => setShowHelpModal(true)}'));
+  });
 });
 
 describe('dialogs opened from a Settings page', () => {

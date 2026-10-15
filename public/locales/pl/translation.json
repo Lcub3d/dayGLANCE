@@ -144,7 +144,11 @@
       "syncProxySaved": "Ustawienia proxy zapisane.",
       "syncProxyInvalidHost": "Podaj nazwę hosta lub adres IP serwera proxy.",
       "syncProxyInvalidPort": "Podaj port z zakresu od 1 do 65535.",
-      "syncProxySaveFailed": "Nie udało się zapisać ustawień proxy: {{reason}}"
+      "syncProxySaveFailed": "Nie udało się zapisać ustawień proxy: {{reason}}",
+      "pausedKept": "Wstrzymano. Dane połączenia zostają zachowane: włącz, aby wznowić.",
+      "vaultDisconnect": "Rozłącz",
+      "vaultDisconnectConfirm": "Rozłączyć GLANCEvault na tym urządzeniu? Adres serwera, token urządzenia i identyfikator konta zostaną usunięte z tego urządzenia. Twoje dane na serwerze pozostaną nienaruszone.",
+      "encryptionTitle": "Szyfrowanie end-to-end"
     },
     "passphraseHint": "To hasło zostało ustawione przez Ciebie przy pierwszym włączeniu szyfrowania. Nie jest nigdzie przechowywane — znasz je tylko Ty.",
     "passphraseLabel": "Hasło synchronizacji",
@@ -789,7 +793,9 @@
       "integrations": "Integracje",
       "advanced": "Zaawansowane",
       "about": "Informacje i pomoc"
-    }
+    },
+    "theme": "Motyw",
+    "themeSystem": "Systemowy"
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",
@@ -1479,7 +1485,8 @@
     "taskCount_few": "{{count}} zadania",
     "taskCount_many": "{{count}} zadań",
     "taskCount_other": "{{count}} zadania",
-    "snoozeMinutes": "Drzemka {{count}} min"
+    "snoozeMinutes": "Drzemka {{count}} min",
+    "title": "Przypomnienia"
   },
   "frames": {
     "title": "Ramki GTD",

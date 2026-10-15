@@ -132,7 +132,11 @@
       "syncProxySaved": "代理设置已保存。",
       "syncProxyInvalidHost": "请输入代理服务器的主机名或 IP 地址。",
       "syncProxyInvalidPort": "请输入 1–65535 之间的端口。",
-      "syncProxySaveFailed": "无法保存代理设置：{{reason}}"
+      "syncProxySaveFailed": "无法保存代理设置：{{reason}}",
+      "pausedKept": "已暂停。连接信息已保留：打开开关即可继续。",
+      "vaultDisconnect": "断开连接",
+      "vaultDisconnectConfirm": "要在此设备上断开 GLANCEvault 吗？服务器地址、设备令牌和账户 ID 将从此设备移除。服务器上的数据不受影响。",
+      "encryptionTitle": "端到端加密"
     },
     "passphraseHint": "这是你首次启用加密时设置的同步口令。应用不会存储它，只有你知道。",
     "passphraseLabel": "同步口令",
@@ -770,7 +774,9 @@
       "integrations": "集成",
       "advanced": "高级",
       "about": "关于与帮助"
-    }
+    },
+    "theme": "主题",
+    "themeSystem": "跟随系统"
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",
@@ -1434,7 +1440,8 @@
     "hgStartingNow": "{{title}} · 现在开始",
     "taskCount_one": "{{count}} 个任务",
     "taskCount_other": "{{count}} 个任务",
-    "snoozeMinutes": "稍后 {{count}} 分钟提醒"
+    "snoozeMinutes": "稍后 {{count}} 分钟提醒",
+    "title": "提醒"
   },
   "frames": {
     "title": "GTD 时间框架",

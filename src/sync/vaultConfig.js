@@ -2,6 +2,14 @@
 // src/sync/vaultConfig.ts). Its own localStorage key, completely independent of
 // the file-tier (WebDAV) config — the DB transport runs ALONGSIDE WebDAV and is
 // opt-in. Clearing this config reverts to file-only instantly.
+//
+// PAUSED IS NOT FORGOTTEN (docs/settings-redesign.md, #2075). Switching the
+// vault off stores `{ enabled: false, ...connection }`, so switching it back on
+// resumes with the same server, token and account; Disconnect is the explicit
+// forget. Every reader outside the settings form reads getVaultConfig(), which
+// returns null for a paused config exactly as it did when off meant null: the
+// DB engine, the event stream, intents and the Obsidian bridge cannot tell a
+// paused vault from an absent one. Only the form reads getStoredVaultConfig().
 
 // The package's persisted credential-halt key (2.0.0/4a): set when the server
 // rejects this device's credential, honoured by every primitive. Imported as
@@ -37,8 +45,12 @@ function restoreVaultConfigFromSecureStore() {
   }
 }
 
-/** @returns {{enabled:boolean, vaultUrl:string, vaultToken:string, accountId:string}|null} */
-export function getVaultConfig() {
+/**
+ * The stored connection, paused or not. For the settings form only, which
+ * shows a paused connection so it can be resumed or disconnected.
+ * @returns {{enabled:boolean, vaultUrl:string, vaultToken:string, accountId:string}|null}
+ */
+export function getStoredVaultConfig() {
   try {
     const saved = localStorage.getItem(VAULT_CONFIG_KEY);
     if (saved) return JSON.parse(saved);
@@ -46,6 +58,51 @@ export function getVaultConfig() {
     return null;
   }
   return restoreVaultConfigFromSecureStore();
+}
+
+/**
+ * The active connection: null while the vault is paused or absent, so no
+ * reader can act on a paused vault's credentials.
+ * @returns {{enabled:true, vaultUrl:string, vaultToken:string, accountId:string}|null}
+ */
+export function getVaultConfig() {
+  const cfg = getStoredVaultConfig();
+  return cfg && cfg.enabled ? cfg : null;
+}
+
+const sameConnection = (a, b) => !!a && !!b
+  && a.vaultUrl === b.vaultUrl && a.vaultToken === b.vaultToken && a.accountId === b.accountId;
+const hasConnection = (cfg) => !!(cfg && cfg.vaultUrl && cfg.vaultToken && cfg.accountId);
+
+/**
+ * What a Save in the settings form does to the vault config.
+ *
+ * @param stored  getStoredVaultConfig() when the form opened.
+ * @param form    { enabled, vaultUrl, vaultToken, accountId } as entered.
+ * @returns {{ next: object|null, changed: boolean, connectionChanged: boolean }}
+ *   next               what to store: the entered connection when on; the
+ *                      stored connection, paused, when switched off (fields
+ *                      edited and then switched off are discarded); null when
+ *                      there was never a connection.
+ *   changed            anything to save (and so reload for).
+ *   connectionChanged  a new or edited connection, the only case that needs
+ *                      the passphrase, a fresh key and fresh sync cursors.
+ *                      Pausing and resuming the same connection keep both.
+ */
+export function planVaultSave(stored, form) {
+  const entered = {
+    vaultUrl: (form.vaultUrl || '').trim(),
+    vaultToken: (form.vaultToken || '').trim(),
+    accountId: (form.accountId || '').trim(),
+  };
+  let next;
+  if (form.enabled) next = { enabled: true, ...entered };
+  else if (hasConnection(stored)) {
+    next = { enabled: false, vaultUrl: stored.vaultUrl, vaultToken: stored.vaultToken, accountId: stored.accountId };
+  } else next = null;
+  const changed = JSON.stringify(next) !== JSON.stringify(stored || null);
+  const connectionChanged = !!form.enabled && !sameConnection(stored, entered);
+  return { next, changed, connectionChanged };
 }
 
 export function _resetVaultConfigSecureRestoreForTests() { secureRestoreTried = false; }
@@ -62,7 +119,7 @@ export function setVaultConfig(cfg) {
   // cycle re-halts, which is self-correcting. The complete recovery flow
   // (per-account era) remains future work.
   try {
-    const prev = getVaultConfig();
+    const prev = getStoredVaultConfig();
     const credsChanged = !!cfg && (
       !prev || prev.vaultUrl !== cfg.vaultUrl || prev.vaultToken !== cfg.vaultToken || prev.accountId !== cfg.accountId
     );

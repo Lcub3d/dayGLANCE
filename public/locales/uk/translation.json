@@ -144,7 +144,11 @@
       "syncProxySaved": "Налаштування проксі збережено.",
       "syncProxyInvalidHost": "Введіть ім'я хоста або IP-адресу проксі-сервера.",
       "syncProxyInvalidPort": "Введіть порт від 1 до 65535.",
-      "syncProxySaveFailed": "Не вдалося зберегти налаштування проксі: {{reason}}"
+      "syncProxySaveFailed": "Не вдалося зберегти налаштування проксі: {{reason}}",
+      "pausedKept": "Призупинено. Дані підключення збережено: увімкніть, щоб продовжити.",
+      "vaultDisconnect": "Від'єднати",
+      "vaultDisconnectConfirm": "Від'єднати GLANCEvault на цьому пристрої? Адресу сервера, токен пристрою та ID облікового запису буде видалено з цього пристрою. Ваші дані на сервері не зміняться.",
+      "encryptionTitle": "Наскрізне шифрування"
     },
     "passphraseHint": "Це пароль, який ви задали, коли вперше ввімкнули шифрування. Він ніде не зберігається — його знаєте лише ви.",
     "passphraseLabel": "Пароль синхронізації",
@@ -793,7 +797,9 @@
       "integrations": "Інтеграції",
       "advanced": "Додатково",
       "about": "Про застосунок і допомога"
-    }
+    },
+    "theme": "Тема",
+    "themeSystem": "Системна"
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",
@@ -1485,7 +1491,8 @@
     "taskCount_few": "{{count}} завдання",
     "taskCount_many": "{{count}} завдань",
     "taskCount_other": "{{count}} завдання",
-    "snoozeMinutes": "Відкласти на {{count}} хв"
+    "snoozeMinutes": "Відкласти на {{count}} хв",
+    "title": "Нагадування"
   },
   "frames": {
     "title": "Фрейми GTD",

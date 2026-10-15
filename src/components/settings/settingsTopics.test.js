@@ -15,7 +15,7 @@ const en = JSON.parse(readFileSync(new URL('../../../public/locales/en/translati
 
 describe('the topic map', () => {
   it('places every block of the dialog on exactly one topic', () => {
-    expect(modalSectionKeys.length).toBe(29);
+    expect(modalSectionKeys.length).toBe(30);
     const placed = TOPICS.flatMap((topic) => topic.sections);
     expect([...placed].sort()).toEqual([...modalSectionKeys].sort());
     expect(new Set(placed).size).toBe(placed.length);
@@ -35,7 +35,7 @@ describe('the topic map', () => {
 
   it('holds what were the header bell and save icon as their own topics', () => {
     const ids = TOPICS.map((topic) => topic.id);
-    expect(ids).toEqual(['general', 'appearance', 'features', 'notifications', 'ai', 'sync', 'integrations', 'backup', 'advanced', 'about']);
+    expect(ids).toEqual(['general', 'appearance', 'features', 'ai', 'sync', 'integrations', 'notifications', 'backup', 'advanced', 'about']);
     expect(TOPICS.find((topic) => topic.id === 'notifications').sections).toEqual(['notifications']);
     expect(TOPICS.find((topic) => topic.id === 'backup').sections).toEqual(['backup']);
   });

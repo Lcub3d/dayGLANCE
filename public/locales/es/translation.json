@@ -112,7 +112,31 @@
       "vaultSkipped_one": "No se pudo leer {{count}} elemento (omitido). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "vaultSkipped_other": "No se pudieron leer {{count}} elementos (omitidos). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "saveEnable": "Guardar y activar",
-      "enabling": "Activando..."
+      "enabling": "Activando...",
+      "syncProxyAdvanced": "Avanzado: proxy de red",
+      "syncProxyStatusOn": "Activado — {{host}}",
+      "syncProxyStatusOff": "Desactivado",
+      "syncProxyToggle": "Conectar la sincronización a través de un servidor proxy",
+      "syncProxyToggleHint": "Las solicitudes de sincronización (WebDAV, CalDAV y GLANCEvault) se conectan a través de este proxy. Si lo dejas apagado nada cambia: la sincronización sigue usando la configuración del sistema. Lo que no es sincronización no se ve afectado.",
+      "syncProxyScheme": "Tipo",
+      "syncProxyHost": "Servidor",
+      "syncProxyPort": "Puerto",
+      "syncProxyPrivate": "Direcciones privadas y locales",
+      "syncProxyPrivateDirect": "Conectar directamente",
+      "syncProxyPrivateProxy": "Conectar a través del proxy",
+      "syncProxyPrivateHint": "Elige «a través del proxy» cuando el proxy está dentro de la red con la que sincronizas: fuera de casa, un vault en 192.168.x.x solo es alcanzable por él. Localhost siempre se conecta directo y dayGLANCE sigue pidiendo permiso antes de tocar una dirección privada.",
+      "syncProxyLimits": "Las actualizaciones en vivo del vault no pasan por este proxy: si el vault solo es alcanzable a través de él, las actualizaciones pasan a sondear, con hasta un minuto de retraso. «Probar conexión» solo comprueba la accesibilidad. Móvil y web no se ven afectados.",
+      "syncProxyBypass": "Exclusiones (opcional)",
+      "syncProxyBypassHint": "Hosts o rangos que omiten el proxy, p. ej. *.internal o 192.168.1.0/24. Un rango solo coincide con una IP escrita literalmente, así que una máquina a la que accedes por un nombre con puntos necesita su propio patrón.",
+      "syncProxySave": "Guardar ajustes del proxy",
+      "syncProxySaved": "Ajustes del proxy guardados.",
+      "syncProxyInvalidHost": "Introduce el nombre de host o la dirección IP del servidor proxy.",
+      "syncProxyInvalidPort": "Introduce un puerto entre 1 y 65535.",
+      "syncProxySaveFailed": "No se pudo guardar el proxy: {{reason}}",
+      "pausedKept": "En pausa. Los datos de conexión se conservan: actívalo para reanudar.",
+      "vaultDisconnect": "Desconectar",
+      "vaultDisconnectConfirm": "¿Desconectar GLANCEvault en este dispositivo? Se eliminarán de este dispositivo la dirección del servidor, el token del dispositivo y el ID de cuenta. Tus datos en el servidor no se modifican.",
+      "encryptionTitle": "Cifrado de extremo a extremo"
     },
     "passphraseHint": "Esta es la frase de contraseña que estableciste al activar el cifrado por primera vez. Nunca se guarda: solo tú la conoces.",
     "passphraseLabel": "Frase de contraseña de sincronización",
@@ -750,7 +774,9 @@
       "integrations": "Integraciones",
       "advanced": "Avanzado",
       "about": "Acerca de y ayuda"
-    }
+    },
+    "theme": "Tema",
+    "themeSystem": "Sistema"
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",
@@ -1414,7 +1440,8 @@
     "hgStartingNow": "{{title}} · Empieza ahora",
     "taskCount_one": "{{count}} tarea",
     "taskCount_other": "{{count}} tareas",
-    "snoozeMinutes": "Posponer {{count}} min"
+    "snoozeMinutes": "Posponer {{count}} min",
+    "title": "Recordatorios"
   },
   "frames": {
     "title": "Bloques GTD",

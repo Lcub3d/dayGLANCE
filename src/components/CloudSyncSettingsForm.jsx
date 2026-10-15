@@ -919,6 +919,9 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
               </div>
             </div>
           )}
+              {/* What this does NOT reach, said where it can be read: the two
+                  limits the reviewer asked to state rather than document. */}
+              <p className={`text-xs ${textSecondary} ml-7`}>{t('sync.form.syncProxyLimits')}</p>
               <div className="flex items-center gap-3 flex-wrap ml-7">
                 <button
                   type="button"

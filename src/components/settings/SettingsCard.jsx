@@ -18,14 +18,11 @@ export default function SettingsCard({
       data-settings-card-state={onToggle ? (checked ? 'on' : 'off') : 'static'}
       className={`rounded-xl border ${borderClass} p-4 space-y-3`}
     >
-      <div className="flex items-start gap-3">
-        {Icon && <Icon size={18} className={`${textSecondary} flex-shrink-0 mt-0.5`} />}
-        <div className="flex-1 min-w-0">
-          <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
-            <span className="truncate">{title}</span>
-            {badge}
-          </div>
-          {hint && <p className={`text-xs ${textSecondary} mt-0.5`}>{hint}</p>}
+      <div className="flex items-center gap-3">
+        {Icon && <Icon size={18} className={`${textSecondary} flex-shrink-0`} />}
+        <div className={`flex-1 min-w-0 font-medium ${textPrimary} flex items-center gap-2`}>
+          <span className="truncate">{title}</span>
+          {badge}
         </div>
         {onToggle && (
         <button
@@ -42,6 +39,9 @@ export default function SettingsCard({
         </button>
         )}
       </div>
+      {/* The hint starts at the card's edge, like the summary under it, so the
+          lines below the title read as one left-aligned column. */}
+      {hint && <p className={`text-xs ${textSecondary} -mt-1.5`} data-settings-card-hint>{hint}</p>}
       {summary && <div className={`text-xs ${textSecondary}`} data-settings-card-summary>{summary}</div>}
       {(checked || !onToggle) && children}
     </section>

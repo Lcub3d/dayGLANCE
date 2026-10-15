@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
+import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { DESKTOP_VIEW_MODES, NARROW_DESKTOP_VIEW_MODES, MOBILE_VIEW_MODES, VIEW_LABEL_KEYS, enabledViews, offeredViews } from '../constants/views.js';
@@ -7,6 +7,7 @@ import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import FollowUpTagSetting from './FollowUpTagSetting.jsx';
+import HelpLinks from './HelpLinks.jsx';
 import RemindersSettings from './RemindersSettings.jsx';
 import BackupSettings from './BackupSettings.jsx';
 import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
@@ -265,10 +266,93 @@ const SettingsModal = () => {
     window.electronAPI?.setMainWindowHotkey?.('');
   };
 
+  const timezoneMismatch = Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone;
+  const updateVisible = !!updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true);
+
   // Every block of the dialog, verbatim, with the condition under which it
   // renders anything. A topic page is a list of these; separators go between
   // the visible ones only (#2075, docs/settings-redesign.md step 1).
   const sections = {
+    // The notices that sat above every page (#2075): each now lives on the
+    // page it belongs to, and marks its topic in the list while it applies.
+    timezoneNotice: {
+      show: timezoneMismatch,
+      attention: 'amber',
+      node: (
+          <div className={`p-3 rounded-lg border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
+            <div className="flex items-start gap-2">
+              <Globe size={14} className={`flex-shrink-0 mt-0.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm font-medium ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>{t('settings.timezoneMismatch')}</div>
+                <div className={`text-xs mt-0.5 ${darkMode ? 'text-amber-400/80' : 'text-amber-700/80'}`}>
+                  {t('settings.timezoneDevice')}: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}</strong>
+                  {' · '}{t('settings.timezoneHome')}: <strong>{homeTimezone.replace(/_/g, ' ')}</strong>
+                </div>
+                <div className={`text-xs mt-1 ${darkMode ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
+                  {t('settings.timezoneMismatchHint')}
+                </div>
+              </div>
+            </div>
+          </div>
+      ),
+    },
+    about: {
+      show: true,
+      attention: updateVisible ? 'red' : null,
+      node: (
+        <div className="space-y-5">
+          <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+            <Info size={16} className={textSecondary} />
+            {t('settings.topics.about', 'About & Help')}
+          </h4>
+          {updateVisible && (
+              <div className={`p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                      {t('settings.updateAvailable', { version: updateInfo.latestVersion })}
+                    </div>
+                    <div className={`text-xs mt-1 ${darkMode ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
+                      {t('settings.updateCurrentVersion', { version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?' })}
+                    </div>
+                    <div className={`text-xs mt-2 space-y-1 ${darkMode ? 'text-blue-300/80' : 'text-blue-700/80'}`}>
+                      <div><strong>Vercel / Web:</strong> {t('settings.updateVercelHint')}</div>
+                      <div><strong>Docker:</strong> <code className={`text-[11px] px-1 py-0.5 rounded ${darkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>docker compose pull && docker compose up -d</code></div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <a
+                        href={updateInfo.releaseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`text-xs font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} flex items-center gap-1`}
+                      >
+                        <ExternalLink size={12} />
+                        {t('settings.updateReleaseNotes')}
+                      </a>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setUpdateDismissedVersion(updateInfo.latestVersion);
+                      localStorage.setItem('dayglance-update-dismissed', updateInfo.latestVersion);
+                      setUpdateInfo(null);
+                    }}
+                    className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 flex-shrink-0`}
+                    title={t('common.dismiss')}
+                  >
+                    <X size={14} className={darkMode ? 'text-blue-400' : 'text-blue-600'} />
+                  </button>
+                </div>
+              </div>
+          )}
+          <p className={`text-sm ${textSecondary}`} data-about-version>
+            {typeof __APP_VERSION__ !== 'undefined' ? `dayGLANCE v${__APP_VERSION__}` : 'dayGLANCE'}
+            {typeof __BUILD_TIMESTAMP__ !== 'undefined' ? ` · ${new Date(__BUILD_TIMESTAMP__).toLocaleString()}` : ''}
+          </p>
+          <HelpLinks textSecondary={textSecondary} />
+        </div>
+      ),
+    },
     notifications: {
       show: true,
       node: <RemindersSettings />,
@@ -2934,6 +3018,7 @@ const SettingsModal = () => {
               <div className="flex flex-1 min-h-0">
               <SettingsTopicNav
                 topics={listedTopics}
+                sections={sections}
                 activeId={activeTopicId}
                 onSelect={selectTopic}
                 darkMode={darkMode}
@@ -2942,65 +3027,6 @@ const SettingsModal = () => {
                 borderClass={borderClass}
               />
               <div className="flex-1 min-w-0 overflow-y-auto p-6" data-settings-scroll>
-
-                {updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true) && (
-                  <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className={`text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
-                          {t('settings.updateAvailable', { version: updateInfo.latestVersion })}
-                        </div>
-                        <div className={`text-xs mt-1 ${darkMode ? 'text-blue-400/70' : 'text-blue-600/70'}`}>
-                          {t('settings.updateCurrentVersion', { version: typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?' })}
-                        </div>
-                        <div className={`text-xs mt-2 space-y-1 ${darkMode ? 'text-blue-300/80' : 'text-blue-700/80'}`}>
-                          <div><strong>Vercel / Web:</strong> {t('settings.updateVercelHint')}</div>
-                          <div><strong>Docker:</strong> <code className={`text-[11px] px-1 py-0.5 rounded ${darkMode ? 'bg-blue-900/50' : 'bg-blue-100'}`}>docker compose pull && docker compose up -d</code></div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <a
-                            href={updateInfo.releaseUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`text-xs font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} flex items-center gap-1`}
-                          >
-                            <ExternalLink size={12} />
-                            {t('settings.updateReleaseNotes')}
-                          </a>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setUpdateDismissedVersion(updateInfo.latestVersion);
-                          localStorage.setItem('dayglance-update-dismissed', updateInfo.latestVersion);
-                          setUpdateInfo(null);
-                        }}
-                        className={`p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 flex-shrink-0`}
-                        title={t('common.dismiss')}
-                      >
-                        <X size={14} className={darkMode ? 'text-blue-400' : 'text-blue-600'} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone && (
-                  <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
-                    <div className="flex items-start gap-2">
-                      <Globe size={14} className={`flex-shrink-0 mt-0.5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium ${darkMode ? 'text-amber-300' : 'text-amber-800'}`}>{t('settings.timezoneMismatch')}</div>
-                        <div className={`text-xs mt-0.5 ${darkMode ? 'text-amber-400/80' : 'text-amber-700/80'}`}>
-                          {t('settings.timezoneDevice')}: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}</strong>
-                          {' · '}{t('settings.timezoneHome')}: <strong>{homeTimezone.replace(/_/g, ' ')}</strong>
-                        </div>
-                        <div className={`text-xs mt-1 ${darkMode ? 'text-amber-400/70' : 'text-amber-600/70'}`}>
-                          {t('settings.timezoneMismatchHint')}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <SettingsTopicPage key={activeTopicId} topic={activeTopic} sections={sections} borderClass={borderClass} />
               </div>

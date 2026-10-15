@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  TOPICS, visibleSectionKeys, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic, SETTINGS_TOPIC_KEY,
+  TOPICS, visibleSectionKeys, visibleTopics, initialTopicId, topicAttention, readRememberedTopic, rememberTopic, SETTINGS_TOPIC_KEY,
 } from './settingsTopics.js';
 
 // Step 1 of the Settings redesign (#2075): every block of the dialog moves,
@@ -15,7 +15,7 @@ const en = JSON.parse(readFileSync(new URL('../../../public/locales/en/translati
 
 describe('the topic map', () => {
   it('places every block of the dialog on exactly one topic', () => {
-    expect(modalSectionKeys.length).toBe(27);
+    expect(modalSectionKeys.length).toBe(29);
     const placed = TOPICS.flatMap((topic) => topic.sections);
     expect([...placed].sort()).toEqual([...modalSectionKeys].sort());
     expect(new Set(placed).size).toBe(placed.length);
@@ -35,7 +35,7 @@ describe('the topic map', () => {
 
   it('holds what were the header bell and save icon as their own topics', () => {
     const ids = TOPICS.map((topic) => topic.id);
-    expect(ids).toEqual(['general', 'appearance', 'features', 'notifications', 'ai', 'sync', 'integrations', 'backup', 'advanced']);
+    expect(ids).toEqual(['general', 'appearance', 'features', 'notifications', 'ai', 'sync', 'integrations', 'backup', 'advanced', 'about']);
     expect(TOPICS.find((topic) => topic.id === 'notifications').sections).toEqual(['notifications']);
     expect(TOPICS.find((topic) => topic.id === 'backup').sections).toEqual(['backup']);
   });
@@ -55,6 +55,24 @@ describe('visibility', () => {
     const ids = visibleTopics(sections).map((topic) => topic.id);
     expect(ids).toEqual(['general', 'sync']);
     expect(ids).not.toContain('advanced');
+  });
+});
+
+describe('topic marks', () => {
+  const topic = { id: 'x', sections: ['a', 'b', 'c'] };
+
+  it('marks a topic while a visible section needs a look, red over amber', () => {
+    expect(topicAttention(topic, { a: { show: true }, b: { show: true, attention: 'amber' } })).toBe('amber');
+    expect(topicAttention(topic, { a: { show: true, attention: 'amber' }, c: { show: true, attention: 'red' } })).toBe('red');
+  });
+
+  it('never marks for a section that is not shown, or that has nothing to say', () => {
+    expect(topicAttention(topic, { a: { show: false, attention: 'red' }, b: { show: true, attention: null } })).toBeNull();
+  });
+
+  it('puts the timezone notice first on General and the version and help on About', () => {
+    expect(TOPICS.find((tp) => tp.id === 'general').sections[0]).toBe('timezoneNotice');
+    expect(TOPICS.at(-1)).toMatchObject({ id: 'about', sections: ['about'] });
   });
 });
 

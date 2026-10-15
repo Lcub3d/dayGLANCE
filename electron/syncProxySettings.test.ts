@@ -3,6 +3,7 @@ import {
   defaultSyncProxyConfig,
   parseSyncProxyConfig,
   parseSyncProxySettingsFile,
+  fileCarriesCredentials,
   transportFor,
   proxyRulesFor,
   bypassRulesFor,
@@ -12,16 +13,15 @@ import {
 
 // The sync proxy's rules under test: a malformed payload fails CLOSED (the
 // caller keeps the previous config), a corrupt settings file yields the
-// DISABLED default (never an invented proxy), and the Chromium rules compiled
-// from a valid config bracket `<local>` while carrying no credentials.
+// DISABLED default (never an invented proxy), OFF keeps the pre-feature
+// transport, and the Chromium rules compiled from a valid config carry no
+// credential — this version stores no secret at all.
 
 const valid = (over: Partial<SyncProxyConfig> = {}): SyncProxyConfig => ({
   enabled: true,
   scheme: 'http',
   host: 'proxy.example.com',
   port: 8080,
-  username: '',
-  password: '',
   bypassRules: [],
   ...over,
 });
@@ -66,14 +66,17 @@ describe('parseSyncProxyConfig', () => {
     expect(parseSyncProxyConfig(valid({ port: 'eight' })).ok).toBe(false);
   });
 
-  it('tolerates absent credentials but bounds their length', () => {
-    const parsed = parseSyncProxyConfig(valid());
+  it('drops credentials a previous build stored, rather than failing the load', () => {
+    // The pre-release build shipped username/password fields, so a real user's
+    // file can carry them. Failing CLOSED here would silently disable their
+    // proxy; keeping them would keep a secret in memory this version cannot use.
+    const parsed = parseSyncProxyConfig({ ...valid(), username: 'user', password: 'hunter2' });
     expect(parsed.ok).toBe(true);
     if (parsed.ok) {
-      expect(parsed.config.username).toBe('');
-      expect(parsed.config.password).toBe('');
+      expect(parsed.config).not.toHaveProperty('username');
+      expect(parsed.config).not.toHaveProperty('password');
+      expect(JSON.stringify(parsed.config)).not.toContain('hunter2');
     }
-    expect(parseSyncProxyConfig(valid({ username: 'u'.repeat(257) })).ok).toBe(true);
   });
 
   it('validates bypass rules and rejects list-shaped garbage', () => {
@@ -89,9 +92,14 @@ describe('parseSyncProxyConfig', () => {
 
 describe('parseSyncProxySettingsFile', () => {
   it('round-trips a written config', () => {
-    const config = valid({ username: 'user', password: 'pass', bypassRules: ['10.0.0.0/8'] });
+    const config = valid({ bypassRules: ['10.0.0.0/8'] });
     const parsed = parseSyncProxySettingsFile(JSON.stringify(config));
     expect(parsed).toEqual(config);
+  });
+
+  it('loads a credential-bearing file from an earlier build without them', () => {
+    const loaded = parseSyncProxySettingsFile(JSON.stringify({ ...valid(), username: 'u', password: 'p' }));
+    expect(loaded).toEqual(valid());
   });
 
   it('yields the DISABLED default for a corrupt file', () => {
@@ -103,6 +111,19 @@ describe('parseSyncProxySettingsFile', () => {
   it('yields the DISABLED default for a structurally wrong file', () => {
     expect(parseSyncProxySettingsFile('[]')).toEqual(defaultSyncProxyConfig());
     expect(parseSyncProxySettingsFile(JSON.stringify({ enabled: true }))).toEqual(defaultSyncProxyConfig());
+  });
+});
+
+describe('fileCarriesCredentials', () => {
+  it('spots the keys an earlier build wrote', () => {
+    expect(fileCarriesCredentials(JSON.stringify(valid()))).toBe(false);
+    expect(fileCarriesCredentials(JSON.stringify({ ...valid(), password: 'p' }))).toBe(true);
+    expect(fileCarriesCredentials(JSON.stringify({ ...valid(), username: 'u' }))).toBe(true);
+  });
+
+  it('is false for a file it cannot parse, so startup never rewrites garbage', () => {
+    expect(fileCarriesCredentials('{ not json')).toBe(false);
+    expect(fileCarriesCredentials('[]')).toBe(false);
   });
 });
 
@@ -133,12 +154,6 @@ describe('proxyRulesFor', () => {
   it('brackets IPv6 literals, which Chromium requires', () => {
     expect(proxyRulesFor(valid({ host: '::1', port: 8080 }))).toBe('http://[::1]:8080');
   });
-
-  it('never embeds credentials in the rules string', () => {
-    const rules = proxyRulesFor(valid({ username: 'user', password: 'pass' }));
-    expect(rules).toBe('http://proxy.example.com:8080');
-    expect(rules).not.toContain('user');
-  });
 });
 
 describe('bypassRulesFor', () => {
@@ -150,25 +165,22 @@ describe('bypassRulesFor', () => {
 });
 
 describe('snapshotFor', () => {
-  it('exposes active state and reduces credentials to a boolean', () => {
-    expect(snapshotFor(valid({ username: 'user', password: 'pass' }))).toEqual({
+  it('exposes exactly what the user configured', () => {
+    expect(snapshotFor(valid({ bypassRules: ['*.internal'] }))).toEqual({
       active: true,
       scheme: 'http',
       host: 'proxy.example.com',
       port: 8080,
-      username: 'user',
-      hasCredentials: true,
-      bypassRules: [],
+      bypassRules: ['*.internal'],
     });
   });
 
-  it('echoes the username but never the password', () => {
-    const snapshot = snapshotFor(valid({ username: 'user', password: 'hunter2' }));
-    // The key names contain "pass" (bypassRules, hasCredentials), so the
-    // assertion targets the VALUE: the secret itself and its field.
-    expect(snapshot.password).toBeUndefined();
+  it('carries no secret and no derived bypass rules', () => {
+    const snapshot = snapshotFor(valid());
+    expect(snapshot).not.toHaveProperty('password');
+    expect(snapshot).not.toHaveProperty('hasCredentials');
     expect(JSON.stringify(snapshot)).not.toContain('hunter2');
-    expect(snapshot.username).toBe('user');
+    expect(snapshot.bypassRules).toEqual([]);
   });
 
   it('copies the bypass rules so a caller cannot mutate the config', () => {

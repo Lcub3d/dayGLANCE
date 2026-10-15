@@ -2,8 +2,8 @@
 // that the desktop app's sync traffic connects through. Extracted as pure
 // decision functions in the proxyUrlPolicy.ts style: the config shape, its
 // validation, the Chromium proxy rules it compiles to, and the settings
-// snapshot all live here, tested. Disk, the dedicated session and the auth
-// event live in main.ts.
+// snapshot all live here, tested. Disk, the dedicated session and the IPC live
+// in main.ts.
 //
 // WHAT IT COVERS, AND WHAT IT DELIBERATELY DOES NOT
 //
@@ -27,7 +27,7 @@
 // and is unchanged: it judges the target by local DNS. A target that resolves
 // to a private or reserved range is still refused until its origin is granted,
 // whether or not a proxy is configured — the proxy changes where the connection
-// comes from, never what is allowed to be connected to. Two consequences are
+// comes from, never what is allowed to be connected to. One consequence is
 // deliberate:
 //
 //   1. Trusted-host grants are NOT auto-merged into the bypass list. A granted
@@ -36,11 +36,14 @@
 //      into private space must go THROUGH the proxy — the two want opposite
 //      bypass answers, so the user decides via the explicit bypass rules
 //      instead of either one winning silently. `<local>` is always bypassed.
-//   2. Proxy credentials never ride in the rules string. Chromium's
-//      `user:pass@host` proxy-rule form is not honored for auth anyway; HTTP(S)
-//      proxy authentication arrives as a `login` event (authInfo.isProxy) that
-//      main.ts answers from this config. SOCKS5 proxies connect WITHOUT
-//      authentication — a Chromium network-stack limitation, stated in the UI.
+//
+// NO CREDENTIALS, ON PURPOSE. Chromium's `user:pass@host` proxy-rule form is
+// not honored for authentication, and the `login` event is documented for
+// webContents and utility processes — not for a main-process session.fetch —
+// so an authenticated proxy cannot be answered reliably from here. Anyone who
+// needs one runs a local proxy client in front of it. Nothing in this file
+// stores a secret, so there is no password file, no keychain question and no
+// auth handler.
 
 export type SyncProxyScheme = 'http' | 'https' | 'socks5';
 
@@ -58,9 +61,6 @@ export interface SyncProxyConfig {
   /** Lowercase hostname or bare IP literal (IPv6 without brackets). */
   host: string;
   port: number;
-  /** '' when the proxy needs no credentials. Ignored for socks5 (see header). */
-  username: string;
-  password: string;
   /**
    * Extra Chromium proxyBypassRules entries the user asked for, verbatim.
    * `<local>` is always prepended by bypassRulesFor and never stored here.
@@ -68,31 +68,29 @@ export interface SyncProxyConfig {
   bypassRules: string[];
 }
 
-/** What the renderer's settings UI sees. Never carries the password. */
+/** What the renderer's settings UI sees. */
 export interface SyncProxySnapshot {
   active: boolean;
   scheme: SyncProxyScheme;
   host: string;
   port: number;
-  /** The username echoes back (not a secret), so the form can re-send it. */
-  username: string;
-  hasCredentials: boolean;
   bypassRules: string[];
 }
 
 export function defaultSyncProxyConfig(): SyncProxyConfig {
-  return { enabled: false, scheme: 'http', host: '', port: 0, username: '', password: '', bypassRules: [] };
+  return { enabled: false, scheme: 'http', host: '', port: 0, bypassRules: [] };
 }
 
 const MAX_HOST_LENGTH = 253;
-const MAX_CREDENTIAL_LENGTH = 256;
 const MAX_BYPASS_ENTRIES = 20;
 const MAX_BYPASS_LENGTH = 200;
 
 /**
  * Coerce whatever arrived over IPC (or off disk) into a validated config.
  * Anything malformed fails CLOSED: the caller keeps the previous config, so a
- * bad payload can never enable a half-parsed proxy or inject rules.
+ * bad payload can never enable a half-parsed proxy or inject rules. Unknown keys
+ * are dropped, which is what lets a settings file written by the build that
+ * still had credentials load as the credential-less shape.
  */
 export function parseSyncProxyConfig(raw: unknown): { ok: true; config: SyncProxyConfig } | { ok: false; reason: string } {
   if (!raw || typeof raw !== 'object') return { ok: false, reason: 'Invalid proxy settings' };
@@ -116,9 +114,6 @@ export function parseSyncProxyConfig(raw: unknown): { ok: true; config: SyncProx
     return { ok: false, reason: 'Enter a port between 1 and 65535' };
   }
 
-  const username = typeof source.username === 'string' ? source.username.slice(0, MAX_CREDENTIAL_LENGTH) : '';
-  const password = typeof source.password === 'string' ? source.password.slice(0, MAX_CREDENTIAL_LENGTH) : '';
-
   const bypassRules: string[] = [];
   if (source.bypassRules !== undefined) {
     if (!Array.isArray(source.bypassRules)) return { ok: false, reason: 'Bypass rules must be a list' };
@@ -135,7 +130,7 @@ export function parseSyncProxyConfig(raw: unknown): { ok: true; config: SyncProx
 
   return {
     ok: true,
-    config: { enabled, scheme: schemeRaw, host: hostRaw, port, username, password, bypassRules },
+    config: { enabled, scheme: schemeRaw, host: hostRaw, port, bypassRules },
   };
 }
 
@@ -152,6 +147,20 @@ export function parseSyncProxySettingsFile(raw: string): SyncProxyConfig {
 }
 
 /**
+ * True when a settings file still carries the credentials this version no
+ * longer supports. The parsed config drops them either way, but dropping them
+ * from memory leaves a plaintext password on disk, so main.ts rewrites the file
+ * once on startup instead.
+ */
+export function fileCarriesCredentials(raw: string): boolean {
+  let data: unknown;
+  try { data = JSON.parse(raw); } catch { return false; }
+  if (!data || typeof data !== 'object') return false;
+  const source = data as Record<string, unknown>;
+  return typeof source.username === 'string' || typeof source.password === 'string';
+}
+
+/**
  * The transport a sync request takes. OFF must be today's code path exactly: a
  * machine whose OS proxy is what carries sync today must keep working after
  * this ships without ever opening the settings, so the dedicated session is not
@@ -163,8 +172,8 @@ export function transportFor(config: SyncProxyConfig): SyncProxyTransport {
 
 /**
  * Chromium proxyRules for the dedicated session. Scheme-specific rules are not
- * needed — one server handles every scheme; credentials are supplied by the
- * `login` event, never embedded here.
+ * needed — one server handles every scheme — and this version carries no
+ * credentials, so nothing else is embedded here.
  */
 export function proxyRulesFor(config: SyncProxyConfig): string {
   const host = config.host.includes(':') ? `[${config.host}]` : config.host;
@@ -181,15 +190,13 @@ export function bypassRulesFor(config: SyncProxyConfig): string {
   return ['<local>', ...config.bypassRules].join(',');
 }
 
-/** The settings UI's view. The password reduces to a boolean. */
+/** The settings UI's view: exactly what the user configured, nothing derived. */
 export function snapshotFor(config: SyncProxyConfig): SyncProxySnapshot {
   return {
     active: config.enabled,
     scheme: config.scheme,
     host: config.host,
     port: config.port,
-    username: config.username,
-    hasCredentials: config.username !== '',
     bypassRules: [...config.bypassRules],
   };
 }

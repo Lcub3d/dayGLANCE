@@ -70,18 +70,15 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
   // connects through. The main process owns the config file and the dedicated
   // session (electron/syncProxySettings.ts); this is a view over it, saved
   // through its own IPC — deliberately NOT part of the cloudSyncConfig Save
-  // below, because the proxy applies to WebDAV and GLANCEvault alike. The
-  // password is never echoed back, so an untouched password field means "keep
-  // the stored one" (the main process carries it over on an unchanged username).
+  // below, because the proxy applies to WebDAV and GLANCEvault alike. It carries
+  // no credentials: an authenticated proxy is out of scope, so nothing here
+  // holds a secret and no field has to hide one.
   const syncProxyApi = typeof window !== 'undefined' ? window.electronAPI?.syncProxy : null;
   const [proxyEnabled, setProxyEnabled] = useState(false);
   const [proxyScheme, setProxyScheme] = useState('http');
   const [proxyHost, setProxyHost] = useState('');
   const [proxyPort, setProxyPort] = useState('');
-  const [proxyUsername, setProxyUsername] = useState('');
-  const [proxyPassword, setProxyPassword] = useState('');
   const [proxyBypass, setProxyBypass] = useState('');
-  const [proxyHasCredentials, setProxyHasCredentials] = useState(false);
   const [proxySaving, setProxySaving] = useState(false);
   const [proxySaveState, setProxySaveState] = useState(null); // { ok: boolean, reason?: string }
   React.useEffect(() => {
@@ -93,8 +90,6 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
       setProxyScheme(snapshot.scheme || 'http');
       setProxyHost(snapshot.host || '');
       setProxyPort(snapshot.port ? String(snapshot.port) : '');
-      setProxyUsername(snapshot.username || '');
-      setProxyHasCredentials(!!snapshot.hasCredentials);
       setProxyBypass((snapshot.bypassRules || []).join(', '));
     }).catch(() => { /* the section stays at defaults; a save reports the truth */ });
     return () => { cancelled = true; };
@@ -120,13 +115,9 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         scheme: proxyScheme,
         host,
         port,
-        username: proxyUsername.trim(),
-        password: proxyPassword,
         bypassRules: proxyBypass.trim() ? proxyBypass.split(',').map((r) => r.trim()).filter(Boolean) : [],
       });
       if (result?.ok) {
-        setProxyPassword('');
-        setProxyHasCredentials(!!result.snapshot?.hasCredentials);
         setProxySaveState({ ok: true });
       } else {
         setProxySaveState({ ok: false, reason: t('sync.form.syncProxySaveFailed', { reason: result?.reason || '' }) });
@@ -864,30 +855,6 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
                   className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyUsername')}</label>
-                  <input
-                    type="text"
-                    autoComplete="off"
-                    value={proxyUsername}
-                    onChange={(e) => setProxyUsername(e.target.value)}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyPassword')}</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder={proxyHasCredentials ? t('sync.form.syncProxyPasswordStored') : ''}
-                    value={proxyPassword}
-                    onChange={(e) => setProxyPassword(e.target.value)}
-                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none leading-normal text-base ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                  />
-                </div>
-              </div>
-              <p className={`text-xs ${textSecondary}`}>{t('sync.form.syncProxyCredentialsHint')}</p>
               <div>
                 <label className={`block text-sm font-medium ${textSecondary} mb-1`}>{t('sync.form.syncProxyBypass')}</label>
                 <input

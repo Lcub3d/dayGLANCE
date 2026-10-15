@@ -62,6 +62,7 @@ import {
   defaultSyncProxyConfig,
   parseSyncProxyConfig,
   parseSyncProxySettingsFile,
+  fileCarriesCredentials,
   transportFor,
   proxyRulesFor,
   bypassRulesFor,
@@ -829,10 +830,11 @@ ipcMain.handle('proxy-fetch', async (_event, method: string, url: string, header
 // ── Sync proxy (outbound proxy server) ──────────────────────────────────────
 // A user-configured HTTP/HTTPS/SOCKS5 proxy that the proxy-fetch funnel above
 // connects through. Pure logic lives in syncProxySettings.ts (tested); this
-// block owns what cannot be pure: the file, the dedicated session, the auth
-// event and the IPC. That file's header documents what the proxy covers (the
-// proxy-fetch funnel, never vault SSE or AI) and how it interacts with the
-// SSRF guard above, which is unchanged.
+// block owns what cannot be pure: the file, the dedicated session and the IPC.
+// That file's header documents what the proxy covers (the proxy-fetch funnel,
+// never vault SSE or AI), why OFF stays on net.fetch, and how it interacts with
+// the SSRF guard above. There are no credentials: this version stores no
+// secret, so there is no password file and no auth handler.
 
 const SYNC_PROXY_FILE = 'sync-proxy-settings.json';
 function syncProxyPath(): string {
@@ -847,7 +849,12 @@ let syncProxyConfig: SyncProxyConfig = defaultSyncProxyConfig();
 function loadSyncProxySettings(): void {
   try {
     if (!fs.existsSync(syncProxyPath())) return;
-    syncProxyConfig = parseSyncProxySettingsFile(fs.readFileSync(syncProxyPath(), 'utf-8'));
+    const raw = fs.readFileSync(syncProxyPath(), 'utf-8');
+    syncProxyConfig = parseSyncProxySettingsFile(raw);
+    // A pre-release build wrote proxy credentials here. Parsing drops them, but
+    // dropping them from memory would leave the password in the file, so
+    // rewrite it once on startup rather than waiting for the next save.
+    if (fileCarriesCredentials(raw)) saveSyncProxySettings();
   } catch (err) {
     console.error('[dayGLANCE] sync-proxy settings file could not be read:', err);
     syncProxyConfig = defaultSyncProxyConfig();
@@ -896,18 +903,6 @@ async function applySyncProxySettings(config: SyncProxyConfig = syncProxyConfig)
   logStartup(`sync proxy: ${config.scheme}://${config.host}:${config.port}`);
 }
 
-// HTTP(S) proxy authentication. Chromium raises `login` with authInfo.isProxy
-// for a proxy challenge; SOCKS5 never raises it (SOCKS auth is unsupported by
-// the network stack — the settings UI says so). Credentials answer ONLY a
-// challenge from the configured proxy's host, never an origin server's 401,
-// and only while the proxy is actually enabled.
-app.on('login', (event, _webContents, _details, authInfo, callback) => {
-  if (!authInfo.isProxy || !syncProxyConfig.enabled) return;
-  if (!syncProxyConfig.username || authInfo.host !== syncProxyConfig.host) return;
-  event.preventDefault();
-  callback(syncProxyConfig.username, syncProxyConfig.password);
-});
-
 // Settings IPC. `get` is a read and carries no sender discipline (like
 // local-integrations:get); `set` is the mainWindow-only write: validated,
 // applied to the session FIRST, then committed to the file — so a rejected
@@ -918,22 +913,13 @@ ipcMain.handle('sync-proxy:set', async (event, raw: unknown) => {
   if (event.sender !== live(mainWindow)?.webContents) return { ok: false, reason: 'Unauthorized sender' };
   const parsed = parseSyncProxyConfig(raw);
   if (!parsed.ok) return { ok: false, reason: parsed.reason };
-  // A blank password over an unchanged username is "keep the stored one": the
-  // snapshot never carries the password back to the renderer, so the field
-  // starts empty every session and re-typing it must stay optional. Blank BOTH
-  // username and password clears the credentials outright.
-  const next: SyncProxyConfig = parsed.config.password === ''
-    && parsed.config.username !== ''
-    && parsed.config.username === syncProxyConfig.username
-    ? { ...parsed.config, password: syncProxyConfig.password }
-    : parsed.config;
   try {
-    await applySyncProxySettings(next);
+    await applySyncProxySettings(parsed.config);
   } catch (err) {
     console.error('[dayGLANCE] Failed to apply the sync proxy:', err);
     return { ok: false, reason: 'Failed to apply the proxy settings' };
   }
-  syncProxyConfig = next;
+  syncProxyConfig = parsed.config;
   saveSyncProxySettings();
   return { ok: true, snapshot: snapshotFor(syncProxyConfig) };
 });

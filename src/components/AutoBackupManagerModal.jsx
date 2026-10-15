@@ -27,7 +27,7 @@ const AutoBackupManagerModal = () => {
   if (!showAutoBackupManager) return null;
 
   return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowAutoBackupManager(false); setAutoBackupRestoreConfirm(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={() => { setShowAutoBackupManager(false); setAutoBackupRestoreConfirm(null); }}>
           <div
             className={`${cardBg} rounded-lg shadow-xl ${borderClass} border max-w-lg w-full mx-4 max-h-[80vh] flex flex-col`}
             onClick={(e) => e.stopPropagation()}

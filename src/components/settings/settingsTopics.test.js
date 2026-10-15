@@ -15,17 +15,15 @@ const en = JSON.parse(readFileSync(new URL('../../../public/locales/en/translati
 
 describe('the topic map', () => {
   it('places every block of the dialog on exactly one topic', () => {
-    expect(modalSectionKeys.length).toBe(25);
+    expect(modalSectionKeys.length).toBe(27);
     const placed = TOPICS.flatMap((topic) => topic.sections);
     expect([...placed].sort()).toEqual([...modalSectionKeys].sort());
     expect(new Set(placed).size).toBe(placed.length);
   });
 
   it('labels every topic in the locale bundle', () => {
-    for (const topic of TOPICS) {
-      const [, group, key] = topic.labelKey.split('.');
-      expect(en.settings[group][key], topic.id).toBe(topic.fallback);
-    }
+    const lookup = (path) => path.split('.').reduce((node, part) => node?.[part], en);
+    for (const topic of TOPICS) expect(lookup(topic.labelKey), topic.id).toBe(topic.fallback);
   });
 
   it('puts sync and integrations on their own topics, as agreed', () => {
@@ -33,6 +31,13 @@ describe('the topic map', () => {
     expect(of('sync')).toEqual(['cloudSync']);
     expect(of('integrations')).toContain('calendarSync');
     expect(of('features')).toContain('multiUser');
+  });
+
+  it('holds what were the header bell and save icon as their own topics', () => {
+    const ids = TOPICS.map((topic) => topic.id);
+    expect(ids).toEqual(['general', 'appearance', 'features', 'notifications', 'ai', 'sync', 'integrations', 'backup', 'advanced']);
+    expect(TOPICS.find((topic) => topic.id === 'notifications').sections).toEqual(['notifications']);
+    expect(TOPICS.find((topic) => topic.id === 'backup').sections).toEqual(['backup']);
   });
 });
 

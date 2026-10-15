@@ -16,7 +16,7 @@ const RestoreConfirmModal = () => {
   if (!showRestoreConfirm) return null;
 
   return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowRestoreConfirm(false); setPendingBackupFile(null); }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" onClick={() => { setShowRestoreConfirm(false); setPendingBackupFile(null); }}>
           <div
             className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-sm w-full mx-4`}
             onClick={(e) => e.stopPropagation()}

@@ -86,6 +86,7 @@ import CloudSyncSettingsForm from './components/CloudSyncSettingsForm.jsx';
 import SyncPassphraseModal from './components/SyncPassphraseModal.jsx';
 import AutoBackupSettingsForm from './components/AutoBackupSettingsForm.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
+import HelpLinks from './components/HelpLinks.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
@@ -9518,63 +9519,7 @@ const DayPlanner = () => {
             </div>
 
             <div className="px-5 py-4 space-y-5">
-              {/* Docs */}
-              <div>
-                <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('app.documentation')}</p>
-                <a
-                  href="https://docs.dayglance.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
-                >
-                  <ExternalLink size={14} />
-                  docs.dayglance.app
-                </a>
-              </div>
-
-              {/* Contact */}
-              <div>
-                <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('app.contactIssues')}</p>
-                <a
-                  href="mailto:support@glance-apps.com"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
-                >
-                  <ExternalLink size={14} />
-                  support@glance-apps.com
-                </a>
-                <a
-                  href="https://github.com/krelltunez/dayGLANCE/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium mt-1.5"
-                >
-                  <ExternalLink size={14} />
-                  Report an issue on GitHub
-                </a>
-              </div>
-
-              {/* Legal */}
-              <div>
-                <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary} mb-2`}>{t('app.legal')}</p>
-                <a
-                  href="https://www.glance-apps.com/dayglance/privacy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium"
-                >
-                  <ExternalLink size={14} />
-                  {t('onboarding.privacyPolicy')}
-                </a>
-                <a
-                  href="https://www.glance-apps.com/eula"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-500 hover:text-blue-400 transition-colors text-sm font-medium mt-1.5"
-                >
-                  <ExternalLink size={14} />
-                  {t('onboarding.termsOfUse')}
-                </a>
-              </div>
+              <HelpLinks textSecondary={textSecondary} />
 
               {/* Getting Started toggle */}
               <div className={`pt-4 border-t ${borderClass}`}>

@@ -1420,7 +1420,8 @@
     "hgStartingNow": "{{title}} · Começa agora",
     "taskCount_one": "{{count}} tarefa",
     "taskCount_other": "{{count}} tarefas",
-    "snoozeMinutes": "Adiar {{count}} min"
+    "snoozeMinutes": "Adiar {{count}} min",
+    "title": "Lembretes"
   },
   "frames": {
     "title": "Blocos GTD",

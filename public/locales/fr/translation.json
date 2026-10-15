@@ -1420,7 +1420,8 @@
     "hgStartingNow": "{{title}} · Commence maintenant",
     "taskCount_one": "{{count}} tâche",
     "taskCount_other": "{{count}} tâches",
-    "snoozeMinutes": "Rappeler dans {{count}} min"
+    "snoozeMinutes": "Rappeler dans {{count}} min",
+    "title": "Rappels"
   },
   "frames": {
     "title": "Plages GTD",

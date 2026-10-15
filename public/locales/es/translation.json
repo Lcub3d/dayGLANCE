@@ -1420,7 +1420,8 @@
     "hgStartingNow": "{{title}} · Empieza ahora",
     "taskCount_one": "{{count}} tarea",
     "taskCount_other": "{{count}} tareas",
-    "snoozeMinutes": "Posponer {{count}} min"
+    "snoozeMinutes": "Posponer {{count}} min",
+    "title": "Recordatorios"
   },
   "frames": {
     "title": "Bloques GTD",

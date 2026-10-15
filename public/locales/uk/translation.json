@@ -1471,7 +1471,8 @@
     "taskCount_few": "{{count}} завдання",
     "taskCount_many": "{{count}} завдань",
     "taskCount_other": "{{count}} завдання",
-    "snoozeMinutes": "Відкласти на {{count}} хв"
+    "snoozeMinutes": "Відкласти на {{count}} хв",
+    "title": "Нагадування"
   },
   "frames": {
     "title": "Фрейми GTD",

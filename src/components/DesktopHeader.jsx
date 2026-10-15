@@ -296,16 +296,6 @@ const DesktopHeader = () => {
           )}
           <McpBoltButton mcp={mcp} darkMode={darkMode} open={mcpOpen} onToggle={() => setMcpOpen(v => !v)} variant="cluster" />
           <button
-            onClick={() => setShowSettings(true)}
-            className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg}`}
-            title={t('common.settings')}
-          >
-            <Settings size={18} className={textSecondary} />
-            {updateInfo && (
-              <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} bg-red-500`} />
-            )}
-          </button>
-          <button
             onClick={() => setShowDayDial(true)}
             className={`p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg}`}
             title={`${t('settings.viewCalendarDay')} (O)`}
@@ -318,6 +308,16 @@ const DesktopHeader = () => {
             title={darkMode ? t('settings.lightMode') : t('settings.darkMode')}
           >
             {darkMode ? <Sun size={18} className={textSecondary} /> : <Moon size={18} className={textSecondary} />}
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg}`}
+            title={t('common.settings')}
+          >
+            <Settings size={18} className={textSecondary} />
+            {updateInfo && (
+              <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} bg-red-500`} />
+            )}
           </button>
           <button
             onClick={() => setShowHelpModal(true)}

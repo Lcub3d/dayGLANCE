@@ -55,10 +55,10 @@ shipped as #2078).
 | **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes | Localization, Sound, Weather, Daily Content blocks |
 | **Appearance** | Theme (Light / Dark / System); default view on load; views on this device; timeline size; tablet view defaults; GLANCE tab default | View Defaults, Tablet View Defaults, timeline size; theme from the header |
 | **Features** | One card each, each with its own switch: Goals & Projects, Routines, Habits, Frames, Multi-user (with the roster), Inbox (auto-archive); an **Experimental** group: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
-| **Notifications** | Everything in today's reminders dialog | The header bell's dialog |
-| **AI** | Provider, key, model, frame nudges, voice | AI Features block |
-| **Sync** | One card each: Cloud Sync (WebDAV / Nextcloud), GLANCEvault, iCloud (Apple only); the sync passphrase as a shared row when any card is on | Cloud Sync block |
+| **AI Features** | One card: provider, key, model, frame nudges, voice | AI Features block |
+| **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only) | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
+| **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |
 | **Backup & Restore** | Back up now; restore from file or folder; auto-backup settings | The header save icon's menu and the auto-backup manager |
 | **Advanced** | Global shortcuts (desktop); network proxy (if #2082 lands); diagnostics | Global Shortcuts block |
 | **About & Help** | Version and update check; help; send feedback; privacy policy and terms | Update banner, help modal links |

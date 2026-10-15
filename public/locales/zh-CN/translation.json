@@ -1420,7 +1420,8 @@
     "hgStartingNow": "{{title}} · 现在开始",
     "taskCount_one": "{{count}} 个任务",
     "taskCount_other": "{{count}} 个任务",
-    "snoozeMinutes": "稍后 {{count}} 分钟提醒"
+    "snoozeMinutes": "稍后 {{count}} 分钟提醒",
+    "title": "提醒"
   },
   "frames": {
     "title": "GTD 时间框架",

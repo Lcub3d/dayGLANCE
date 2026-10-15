@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "prebuild:android": "node scripts/check-installed-deps.mjs",
     "build:android": "./node_modules/.bin/vite build --config vite.config.android.js",
+    "prebuild:ios": "node scripts/check-installed-deps.mjs",
     "build:ios": "./node_modules/.bin/vite build --config vite.config.ios.js",
     "ios:generate": "bash scripts/gen-ios-project.sh",
     "ios:vectors": "node scripts/export-dial-vectors.mjs",

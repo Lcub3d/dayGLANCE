@@ -1654,7 +1654,9 @@
       "username": "Username",
       "appPassword": "App Password",
       "webdavUrl": "WebDAV URL"
-    }
+    },
+    "folderPaused": "Folder backup paused. Reconnect it in Backup & Restore → Auto-Backup to resume.",
+    "storageFull": "Storage full. Some data may not have saved. Clear old data or free up browser storage."
   },
   "app": {
     "tasksScheduledTitle": "Tasks Scheduled",
@@ -2270,9 +2272,7 @@
     "undo": {
       "changed": "This Do has changed since, so it was left as it is.",
       "completionBlocked": "Its task is no longer completed, so the Do can't return to Completed. It was left as it is.",
-      "failed": "Could not save that change. Try again.",
-      "undone": "Do change undone",
-      "redone": "Do change redone"
+      "failed": "Could not save that change. Try again."
     },
     "view": {
       "activeLabel": "Active time",
@@ -2619,5 +2619,45 @@
     "peekDeleted": "In the Recycle Bin",
     "peekGone": "This task is no longer in dayGLANCE.",
     "peekShow": "Go to task"
+  },
+  "undo": {
+    "undone": "Undone: {{action}}",
+    "redone": "Redone: {{action}}",
+    "untitled": "Untitled",
+    "action": {
+      "added": "Added \"{{title}}\"",
+      "edited": "Edited \"{{title}}\"",
+      "renamed": "Renamed \"{{title}}\"",
+      "completed": "Completed \"{{title}}\"",
+      "uncompleted": "Marked \"{{title}}\" not done",
+      "deleted": "Deleted \"{{title}}\"",
+      "restored": "Restored \"{{title}}\"",
+      "binEmptied": "Emptied the Recycle Bin",
+      "moved": "Moved \"{{title}}\"",
+      "resized": "Changed the length of \"{{title}}\"",
+      "toInbox": "Moved \"{{title}}\" to the Inbox",
+      "toBucket": "Sent \"{{title}}\" to the Bucket List",
+      "scheduled": "Scheduled \"{{title}}\"",
+      "postponed": "Postponed \"{{title}}\" to tomorrow",
+      "deadlineSet": "Set a deadline on \"{{title}}\"",
+      "deadlinePostponed": "Moved the deadline of \"{{title}}\" to {{date}}",
+      "deadlineCleared": "Removed the deadline from \"{{title}}\"",
+      "priority": "Changed the priority of \"{{title}}\"",
+      "energy": "Changed the energy of \"{{title}}\"",
+      "color": "Changed the color of \"{{title}}\"",
+      "subtaskAdded": "Added a subtask to \"{{title}}\"",
+      "subtasksAdded_one": "Added {{count}} subtask to \"{{title}}\"",
+      "subtasksAdded_other": "Added {{count}} subtasks to \"{{title}}\"",
+      "subtaskChanged": "Changed a subtask of \"{{title}}\"",
+      "subtaskDeleted": "Deleted a subtask of \"{{title}}\"",
+      "snoozed": "Snoozed \"{{title}}\" for 15 minutes",
+      "frameSkipped": "Skipped the \"{{title}}\" Frame for the day",
+      "frameAdjusted": "Changed the times of the \"{{title}}\" Frame",
+      "smartScheduled_one": "Scheduled {{count}} task with Smart Schedule",
+      "smartScheduled_other": "Scheduled {{count}} tasks with Smart Schedule",
+      "rescheduled_one": "Rescheduled {{count}} task",
+      "rescheduled_other": "Rescheduled {{count}} tasks",
+      "voiceApplied": "Applied the voice changes"
+    }
   }
 }

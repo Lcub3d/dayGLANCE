@@ -34,7 +34,7 @@ export function createCarryForwardActions({
         return { conflict: { title: obstacleName(conflictingEvent) || '' } };
       }
     }
-    pushUndo();
+    pushUndo({ key: 'moved', taskId: live.id });
     setTasks(prev => prev.map(task => (sameId(task.id, live.id)
       ? { ...task, date: slot.date, startTime: slot.startTime, duration: slot.duration }
       : task)));

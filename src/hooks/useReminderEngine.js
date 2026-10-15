@@ -370,7 +370,7 @@ export default function useReminderEngine({
 
   // Reminder snooze: push task start time forward 15 minutes
   const snoozeReminder = (reminder) => {
-    pushUndo();
+    pushUndo({ key: 'snoozed', taskId: reminder.taskId });
     setActiveReminders(prev => prev.filter(r => r.id !== reminder.id));
     const newStartMin = Math.min(timeToMinutes(reminder.startTime) + 15, 23 * 60 + 45);
     const newStartTime = minutesToTime(newStartMin);

@@ -1654,7 +1654,9 @@
       "username": "Benutzername",
       "appPassword": "App-Passwort",
       "webdavUrl": "WebDAV-URL"
-    }
+    },
+    "folderPaused": "Ordnersicherung pausiert. Verbinde sie unter Sicherung & Wiederherstellung → Automatische Sicherung neu, um fortzufahren.",
+    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei."
   },
   "app": {
     "tasksScheduledTitle": "Aufgaben geplant",
@@ -2270,9 +2272,7 @@
     "undo": {
       "changed": "Dieses Do wurde inzwischen geändert und bleibt, wie es ist.",
       "completionBlocked": "Die Aufgabe ist nicht mehr abgeschlossen, daher kann das Do nicht wieder „Abgeschlossen“ werden. Es bleibt, wie es ist.",
-      "failed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.",
-      "undone": "Do-Änderung rückgängig gemacht",
-      "redone": "Do-Änderung wiederhergestellt"
+      "failed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen."
     },
     "view": {
       "activeLabel": "Aktive Zeit",
@@ -2619,5 +2619,45 @@
     "peekDeleted": "Im Papierkorb",
     "peekGone": "Diese Aufgabe gibt es in dayGLANCE nicht mehr.",
     "peekShow": "Zur Aufgabe"
+  },
+  "undo": {
+    "undone": "Rückgängig gemacht: {{action}}",
+    "redone": "Wiederhergestellt: {{action}}",
+    "untitled": "Ohne Titel",
+    "action": {
+      "added": "„{{title}}“ hinzugefügt",
+      "edited": "„{{title}}“ bearbeitet",
+      "renamed": "„{{title}}“ umbenannt",
+      "completed": "„{{title}}“ erledigt",
+      "uncompleted": "„{{title}}“ als nicht erledigt markiert",
+      "deleted": "„{{title}}“ gelöscht",
+      "restored": "„{{title}}“ wiederhergestellt",
+      "binEmptied": "Papierkorb geleert",
+      "moved": "„{{title}}“ verschoben",
+      "resized": "Dauer von „{{title}}“ geändert",
+      "toInbox": "„{{title}}“ in den Posteingang verschoben",
+      "toBucket": "„{{title}}“ auf die Bucket List gesetzt",
+      "scheduled": "„{{title}}“ eingeplant",
+      "postponed": "„{{title}}“ auf morgen verschoben",
+      "deadlineSet": "Frist für „{{title}}“ gesetzt",
+      "deadlinePostponed": "Frist von „{{title}}“ auf {{date}} verschoben",
+      "deadlineCleared": "Frist von „{{title}}“ entfernt",
+      "priority": "Priorität von „{{title}}“ geändert",
+      "energy": "Energie von „{{title}}“ geändert",
+      "color": "Farbe von „{{title}}“ geändert",
+      "subtaskAdded": "Unteraufgabe zu „{{title}}“ hinzugefügt",
+      "subtasksAdded_one": "{{count}} Unteraufgabe zu „{{title}}“ hinzugefügt",
+      "subtasksAdded_other": "{{count}} Unteraufgaben zu „{{title}}“ hinzugefügt",
+      "subtaskChanged": "Unteraufgabe von „{{title}}“ geändert",
+      "subtaskDeleted": "Unteraufgabe von „{{title}}“ gelöscht",
+      "snoozed": "„{{title}}“ um 15 Minuten verschoben",
+      "frameSkipped": "Rahmen „{{title}}“ für diesen Tag ausgelassen",
+      "frameAdjusted": "Zeiten des Rahmens „{{title}}“ geändert",
+      "smartScheduled_one": "{{count}} Aufgabe mit intelligenter Planung eingeplant",
+      "smartScheduled_other": "{{count}} Aufgaben mit intelligenter Planung eingeplant",
+      "rescheduled_one": "{{count}} Aufgabe neu eingeplant",
+      "rescheduled_other": "{{count}} Aufgaben neu eingeplant",
+      "voiceApplied": "Sprachänderungen übernommen"
+    }
   }
 }

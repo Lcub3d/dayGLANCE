@@ -1973,7 +1973,7 @@ const DayPlanner = () => {
     goals, projects, areas, goalsProjectsEnabled,
     unscheduledOrderTimestamp,
     cloudSyncConfig, cloudSyncInitialDoneRef, suppressTimestampRef,
-    setUndoToast,
+    setUndoToast, t,
     isRemoteApply,
   });
 
@@ -3833,7 +3833,7 @@ const DayPlanner = () => {
   };
   const saveMobileEditTaskFrom = (newTask, scope) => {
     if (!mobileEditingTask || !newTask.title.trim()) return;
-    pushUndo();
+    pushUndo({ key: 'edited', title: cleanTitle(newTask.title) });
     const taskId = mobileEditingTask.id;
     if (mobileEditIsInbox) {
       setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? {
@@ -4626,7 +4626,7 @@ const DayPlanner = () => {
     disabled: isTrayMode,
     buildPayload: buildAutoBackupPayload,
     onNeedsReconnect: () => setUndoToast({
-      message: 'Folder backup paused — reconnect it in Backup → Auto-Backup to resume.',
+      message: t('backup.folderPaused'),
       actionable: false,
     }),
   });
@@ -7000,9 +7000,9 @@ const DayPlanner = () => {
   const sendTaskToBucket = (taskId) => {
     const task = unscheduledTasks.find(t => t.id === taskId);
     if (!task) return;
-    pushUndo();
+    const said = pushUndo({ key: 'toBucket', taskId });
     setUnscheduledTasks(prev => prev.map(t => t.id === taskId ? demoteToBucket(t) : t));
-    setUndoToast({ message: `"${stripWikilinks(task.title)}" sent to Bucket List`, actionable: true });
+    setUndoToast({ message: said, actionable: true });
   };
 
   // Focus mode availability: current task or back-to-back block >= 45 min remaining
@@ -7492,7 +7492,7 @@ const DayPlanner = () => {
 
   // Frame context menu: skip this day (mark exception as deleted)
   const skipFrameForDay = (frameId, dateStr) => {
-    pushUndo();
+    pushUndo({ key: 'frameSkipped', title: gtdFrames.find(f => f.id === frameId)?.label });
     setGtdFrames(prev => prev.map(f => {
       if (f.id !== frameId) return f;
       return { ...f, lastModified: new Date().toISOString(), exceptions: { ...(f.exceptions || {}), [dateStr]: { ...(f.exceptions?.[dateStr] || {}), deleted: true } } };
@@ -7519,7 +7519,7 @@ const DayPlanner = () => {
   const saveFrameAdjust = () => {
     if (!frameAdjustModal) return;
     const { frameId, dateStr, start, end } = frameAdjustModal;
-    pushUndo();
+    pushUndo({ key: 'frameAdjusted', title: gtdFrames.find(f => f.id === frameId)?.label });
     setGtdFrames(prev => prev.map(f => {
       if (f.id !== frameId) return f;
       return { ...f, lastModified: new Date().toISOString(), exceptions: { ...(f.exceptions || {}), [dateStr]: { ...(f.exceptions?.[dateStr] || {}), start, end, deleted: false } } };
@@ -7660,8 +7660,8 @@ const DayPlanner = () => {
   // Apply accepted smart schedule placements
   const applySmartSchedule = () => {
     if (!smartScheduleResults?.placements) return;
-    pushUndo();
     const accepted = smartScheduleResults.placements.filter(p => smartScheduleAccepted[p.taskId]);
+    pushUndo({ key: 'smartScheduled', count: accepted.length });
     const movedIds = new Set();
 
     for (const placement of accepted) {
@@ -7765,8 +7765,8 @@ const DayPlanner = () => {
 
   const applyReschedule = () => {
     if (!rescheduleResults?.placements) return;
-    pushUndo();
     const accepted = rescheduleResults.placements.filter(p => rescheduleAccepted[p.taskId]);
+    pushUndo({ key: 'rescheduled', count: accepted.length });
     let appliedCount = 0;
     for (const placement of accepted) {
       setTasks(prev => prev.map(t => {
@@ -7804,7 +7804,7 @@ const DayPlanner = () => {
           ...(st.duration ? { duration: st.duration } : {}),
         }));
       if (newSubtasks.length > 0) {
-        pushUndo();
+        pushUndo({ key: 'subtasksAdded', taskId, count: newSubtasks.length });
         const updater = t => t.id === taskId ? { ...t, subtasks: [...(t.subtasks || []), ...newSubtasks] } : t;
         if (typeof taskId === 'string' && taskId.startsWith('recurring-')) {
           updateRecurringTemplate(taskId, updater);

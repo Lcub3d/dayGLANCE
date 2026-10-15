@@ -43,11 +43,11 @@ export default function useTaskFormHelpers({
   };
 
   const saveTaskTitle = (isInbox = false) => {
-    pushUndo();
     if (!editingTaskId || !editingTaskText.trim()) {
       cancelEditingTask();
       return;
     }
+    pushUndo({ key: 'renamed', taskId: editingTaskId });
 
     const cleanedTitle = cleanTitle(editingTaskText);
 

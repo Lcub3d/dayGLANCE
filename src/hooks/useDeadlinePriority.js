@@ -25,7 +25,7 @@ export default function useDeadlinePriority({
   };
 
   const cyclePriority = (taskId) => {
-    pushUndo();
+    pushUndo({ key: 'priority', taskId });
     const task = unscheduledTasks.find(t => t.id === taskId);
     const currentPriority = pendingPriorities[taskId] ?? task?.priority ?? 0;
     const newPriority = (currentPriority + 1) % 4;

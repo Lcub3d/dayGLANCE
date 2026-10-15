@@ -7,6 +7,8 @@ import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import FollowUpTagSetting from './FollowUpTagSetting.jsx';
+import RemindersSettings from './RemindersSettings.jsx';
+import BackupSettings from './BackupSettings.jsx';
 import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
 import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
 import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
@@ -267,6 +269,14 @@ const SettingsModal = () => {
   // renders anything. A topic page is a list of these; separators go between
   // the visible ones only (#2075, docs/settings-redesign.md step 1).
   const sections = {
+    notifications: {
+      show: true,
+      node: <RemindersSettings />,
+    },
+    backup: {
+      show: true,
+      node: <BackupSettings />,
+    },
     viewDefaults: {
       show: (canShowViewCycler || schedOnlyCycler) && !isTablet,
       node: (

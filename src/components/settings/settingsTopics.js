@@ -4,8 +4,11 @@
 //
 // Step 1 of the redesign moves blocks without changing them, so a block keeps
 // its own internal layout and collapse state here; the card pattern replaces
-// that per topic in step 2. Notifications, Backup & Restore and About & Help
-// join as their pages land.
+// that per topic in step 2. Notifications and Backup & Restore were the header
+// bell's and save icon's dialogs. About & Help joins next.
+//
+// A label is any locale key: a topic that already had a name in the app keeps
+// it (Notifications, Backup & Restore).
 
 export const TOPICS = [
   { id: 'general', labelKey: 'settings.topics.general', fallback: 'General',
@@ -14,12 +17,16 @@ export const TOPICS = [
     sections: ['viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
   { id: 'features', labelKey: 'settings.topics.features', fallback: 'Features',
     sections: ['goals', 'routines', 'habits', 'multiUser', 'inbox', 'followUpTag', 'experimental'] },
+  { id: 'notifications', labelKey: 'settings.notifications', fallback: 'Notifications',
+    sections: ['notifications'] },
   { id: 'ai', labelKey: 'settings.topics.ai', fallback: 'AI',
     sections: ['ai'] },
   { id: 'sync', labelKey: 'settings.topics.sync', fallback: 'Sync',
     sections: ['cloudSync'] },
   { id: 'integrations', labelKey: 'settings.topics.integrations', fallback: 'Integrations',
     sections: ['calendarSync', 'obsidian', 'todoist', 'trmnl', 'glanceIntegrations', 'localIntegrations', 'automationIntents'] },
+  { id: 'backup', labelKey: 'backup.title', fallback: 'Backup & Restore',
+    sections: ['backup'] },
   { id: 'advanced', labelKey: 'settings.topics.advanced', fallback: 'Advanced',
     sections: ['globalShortcut'] },
 ];

@@ -86,12 +86,10 @@ import CloudSyncSettingsForm from './components/CloudSyncSettingsForm.jsx';
 import SyncPassphraseModal from './components/SyncPassphraseModal.jsx';
 import AutoBackupSettingsForm from './components/AutoBackupSettingsForm.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
-import RemindersSettingsModal from './components/RemindersSettingsModal.jsx';
 import VoiceInputModal from './components/VoiceInputModal.jsx';
 import WeeklyReviewModal from './components/WeeklyReviewModal.jsx';
 import WeeklyReviewReminderCard from './components/WeeklyReviewReminderCard.jsx';
 import IncompleteTasksModal from './components/IncompleteTasksModal.jsx';
-import BackupMenuModal from './components/BackupMenuModal.jsx';
 import ICloudFirstRunModal from './components/ICloudFirstRunModal.jsx';
 import RestoreConfirmModal from './components/RestoreConfirmModal.jsx';
 import AutoBackupManagerModal from './components/AutoBackupManagerModal.jsx';
@@ -8942,7 +8940,6 @@ const DayPlanner = () => {
       )}
 
       {/* Backup Modals */}
-      <BackupMenuModal />
       <RestoreConfirmModal />
       <AutoBackupManagerModal />
 
@@ -9499,8 +9496,6 @@ const DayPlanner = () => {
       {/* Settings Modal */}
       {showSettings && <SettingsModal />}
 
-      {/* Reminders Modal */}
-      <RemindersSettingsModal />
       {/* Incomplete Tasks Modal */}
       <IncompleteTasksModal />
 

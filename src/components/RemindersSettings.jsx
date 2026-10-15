@@ -6,14 +6,15 @@ import ClockTimePicker from './ClockTimePicker.jsx';
 import { localizedWeekdays } from '../utils/localeFormatting.js';
 import { useTranslation } from 'react-i18next';
 
-const RemindersSettingsModal = () => {
+// Settings → Notifications (#2075, docs/settings-redesign.md). The content of
+// what was the header bell's dialog, unchanged; the Settings page frames it.
+const RemindersSettings = () => {
   const { t } = useTranslation();
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary, hoverBg,
     isTablet, use24HourClock, formatTime,
   } = useDayPlannerCtx();
   const {
-    showRemindersSettings, setShowRemindersSettings,
     showMorningTimePicker, setShowMorningTimePicker,
     showWeeklyReviewTimePicker, setShowWeeklyReviewTimePicker,
     reminderSettings, setReminderSettings,
@@ -23,18 +24,11 @@ const RemindersSettingsModal = () => {
 
   return (
     <>
-      {showRemindersSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowRemindersSettings(false)}>
-          <div
-            className={`${cardBg} rounded-lg shadow-xl p-6 ${borderClass} border max-w-lg w-full mx-4 max-h-[85vh] overflow-y-auto`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Bell size={20} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className={`text-lg font-semibold ${textPrimary}`}>{t('settings.notifications')}</h3>
-            </div>
+      <div>
+            <h4 className={`font-medium ${textPrimary} flex items-center gap-2 mb-4`}>
+              <Bell size={16} className={textSecondary} />
+              {t('settings.notifications')}
+            </h4>
 
             {/* Master toggle */}
             <label className="flex items-center gap-3 cursor-pointer mb-4">
@@ -280,15 +274,7 @@ const RemindersSettingsModal = () => {
             </div>
             )}
 
-            <button
-              onClick={() => setShowRemindersSettings(false)}
-              className={`w-full mt-6 px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors text-sm`}
-            >
-              {t('common.close')}
-            </button>
-          </div>
-        </div>
-      )}
+      </div>
 
       {showMorningTimePicker && (
         <ClockTimePicker
@@ -311,4 +297,4 @@ const RemindersSettingsModal = () => {
   );
 };
 
-export default RemindersSettingsModal;
+export default RemindersSettings;

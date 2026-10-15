@@ -34,6 +34,11 @@ describe('settings search', () => {
     expect(searchSettings('shortcut', allShown, t).map((r) => r.topicId)).toEqual(['advanced']);
   });
 
+  it('finds the cards inside a page by their own titles', () => {
+    expect(searchSettings('weekly review', allShown, t)).toContainEqual(expect.objectContaining({ topicId: 'notifications', match: 'Weekly Review' }));
+    expect(searchSettings('encryption', allShown, t).map((r) => r.topicId)).toContain('sync');
+  });
+
   it('a one-letter query matches nothing', () => {
     expect(searchSettings('a', allShown, t)).toEqual([]);
   });

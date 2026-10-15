@@ -115,6 +115,7 @@ import useIsLandscape from './hooks/useIsLandscape.js';
 import useMobileTabBack from './hooks/useMobileTabBack.js';
 import useAudio from './hooks/useAudio.js';
 import useUndo from './hooks/useUndo.js';
+import UndoToast from './components/UndoToast.jsx';
 import useJoboUndo from './hooks/useJoboUndo.js';
 import { buildPastDaySlices, buildPastDayIndex, pastDayDisplay, doSessionsByTask } from './jobo/pastDay.js';
 import { makeTaskDraft } from './jobo/carryForward.js';
@@ -2504,7 +2505,7 @@ const DayPlanner = () => {
       onError: (msg, code) => { setVaultError(syncErrorText(t, msg, code)); if (msg) console.warn('[dayglance] vault sync error:', code || '', msg); },
       onRowsSkipped: (count) => {
         setVaultSkipped(count);
-        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), actionable: false });
+        if (count > 0) setUndoToast({ message: t('sync.form.vaultSkipped', { count }), kind: 'warning' });
       },
     });
     if (!engine) return;
@@ -4627,7 +4628,7 @@ const DayPlanner = () => {
     buildPayload: buildAutoBackupPayload,
     onNeedsReconnect: () => setUndoToast({
       message: t('backup.folderPaused'),
-      actionable: false,
+      kind: 'warning',
     }),
   });
   folderBackupWriteRef.current = folderBackup.scheduleWrite;
@@ -6767,15 +6768,15 @@ const DayPlanner = () => {
   // and the toast says so.
   const linkDoToNewTask = async (linkDo, taskId) => {
     const next = prepareDoLink({ records: joboRecords, record: linkDo, taskId, now: Date.now() });
-    if (!next) { setUndoToast({ message: t('jobo.makeTaskNotLinked') }); return; }
+    if (!next) { setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' }); return; }
     const before = joboRecords.find(record => record.id === linkDo.id) || null;
     try {
       const result = await recordJobo([next]);
       if (result?.ok || result?.held) recordJoboUndo(before, next);
-      else setUndoToast({ message: t('jobo.makeTaskNotLinked') });
+      else setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' });
     } catch (err) {
       console.error('[jobo] link failed:', err);
-      setUndoToast({ message: t('jobo.makeTaskNotLinked') });
+      setUndoToast({ message: t('jobo.makeTaskNotLinked'), kind: 'warning' });
     }
   };
 
@@ -8990,42 +8991,17 @@ const DayPlanner = () => {
         </div>
       )}
 
-      {/* Undo/Redo Toast. Above the dialogs (z-[60] up to the JOBO panels
-          at z-[100]): an action taken inside one, or a Cmd+Z pressed over one,
-          reports here, and its Undo button has to be reachable. Below
-          HyperGlance's full-screen mode (z-[200]) and the subscription wall.
-          Also above the Refocus timeline pill, which sits in the same place. */}
+      {/* Undo/Redo toast, above the dialogs (components/UndoToast.jsx). */}
       {undoToast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[150] ${undoToast.actionable ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ bottom: isMobile ? 'calc(5rem + env(safe-area-inset-bottom, 0px))' : '1.5rem' }}>
-          <div
-            data-undo-toast
-            // Pointer or focus on the toast holds it (hooks/useUndo.js).
-            onMouseEnter={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
-            onMouseLeave={() => setUndoToast(prev => (prev ? { ...prev, held: false } : prev))}
-            onFocus={() => setUndoToast(prev => (prev ? { ...prev, held: true } : prev))}
-            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setUndoToast(prev => (prev ? { ...prev, held: false } : prev)); }}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium ${darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-800 text-white'}`}
-          >
-            <span>{undoToast.message}</span>
-            {undoToast.actionable && (
-              <button
-                onClick={() => { performUndo(); }}
-                className="font-semibold text-blue-400 hover:text-blue-300 ml-1"
-              >
-                {t('shortcuts.undoAction')}
-              </button>
-            )}
-            {undoToast.followUp && (
-              <button
-                data-follow-up-action
-                onClick={() => { const task = undoToast.followUp; setUndoToast(null); openFollowUp(task); }}
-                className="font-semibold text-blue-400 hover:text-blue-300 whitespace-nowrap"
-              >
-                {t('followUp.action')}
-              </button>
-            )}
-          </div>
-        </div>
+        <UndoToast
+          toast={undoToast}
+          setToast={setUndoToast}
+          darkMode={darkMode}
+          isMobile={isMobile}
+          onUndo={performUndo}
+          onRedo={performRedo}
+          onFollowUp={openFollowUp}
+        />
       )}
 
       {peekTaskId != null && (

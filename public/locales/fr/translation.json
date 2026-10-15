@@ -2623,6 +2623,8 @@
   "undo": {
     "undone": "Annulé : {{action}}",
     "redone": "Rétabli : {{action}}",
+    "nothingToUndo": "Rien à annuler",
+    "nothingToRedo": "Rien à rétablir",
     "untitled": "Sans titre",
     "action": {
       "added": "« {{title}} » ajoutée",

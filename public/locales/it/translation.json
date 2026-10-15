@@ -2625,6 +2625,8 @@
   "undo": {
     "undone": "Annullato: {{action}}",
     "redone": "Ripristinato: {{action}}",
+    "nothingToUndo": "Niente da annullare",
+    "nothingToRedo": "Niente da ripristinare",
     "untitled": "Senza titolo",
     "action": {
       "added": "Aggiunta «{{title}}»",

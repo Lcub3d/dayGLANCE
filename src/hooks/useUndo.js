@@ -2,6 +2,20 @@ import { useState, useRef, useEffect } from 'react';
 import { restoreFrames } from '../utils/undoFrames.js';
 import { describeUndoLabel } from '../utils/undoLabels.js';
 
+// How long a toast stays. Each kind has a floor: 2s for a passive note, 4s
+// for one with a button (Undo or Redo), 8s for a warning, which says
+// something went wrong and may ask for something, and 10s for a follow-up
+// offer, which is a decision about what comes next, not a reflex. Past the
+// floor a toast stays long enough to read: a second, plus 60ms a character
+// (about 200 words a minute), up to 15s.
+export function toastDelay(toast) {
+  const floor = toast.followUp ? 10000
+    : toast.kind === 'warning' ? 8000
+      : toast.actionable || toast.redoable ? 4000 : 2000;
+  const reading = 1000 + 60 * String(toast.message ?? '').length;
+  return Math.max(floor, Math.min(reading, 15000));
+}
+
 const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrames, setTasks, setUnscheduledTasks, setRecycleBin, setRecurringTasks, setGtdFrames, playUISound, t }) => {
   // Toast text, translated when the app passes t (tests may not).
   const say = (key, fallback) => (typeof t === 'function' ? t(key) : fallback);
@@ -29,14 +43,11 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrame
   useEffect(() => { recurringTasksRef.current = recurringTasks; }, [recurringTasks]);
   useEffect(() => { gtdFramesRef.current = gtdFrames; }, [gtdFrames]);
 
-  // Auto-dismiss undo/redo toast — 4s for actionable (with Undo button), 2s
-  // for passive, 10s when it also offers a follow-up: that one is a decision
-  // about what comes next, not a reflex. A toast the pointer or keyboard is
-  // on (`held`) stays until it is left, then gets its full time again.
+  // Auto-dismiss the toast after toastDelay. A toast the pointer or keyboard
+  // is on (`held`) stays until it is left, then gets its full time again.
   useEffect(() => {
     if (!undoToast || undoToast.held) return;
-    const delay = undoToast.followUp ? 10000 : undoToast.actionable ? 4000 : 2000;
-    const timer = setTimeout(() => setUndoToast(null), delay);
+    const timer = setTimeout(() => setUndoToast(null), toastDelay(undoToast));
     return () => clearTimeout(timer);
   }, [undoToast]);
 
@@ -87,6 +98,11 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrame
   // The step moves to the other stack at once, so the order of the two
   // stacks is the order pressed; it comes off again if it cannot run (the
   // record changed, or the write failed), and the toast says why.
+  // An undo offers Redo, and a redo offers Undo, so a step taken back by
+  // mistake is one press away on a phone too, where Redo is a hidden
+  // three-finger hold.
+  const wayBack = (direction) => (direction === 'undo' ? { redoable: true } : { actionable: true });
+
   const runAction = (entry, direction, otherStackRef) => {
     otherStackRef.current = [...otherStackRef.current, entry];
     actionQueueRef.current = actionQueueRef.current.then(async () => {
@@ -95,17 +111,20 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrame
       if (result?.ok) {
         playUISound('undo');
         // What the step did, so an undo that lands off screen still says
-        // what changed.
-        setUndoToast({ message: entry.said ? report(direction, entry.said) : result.message || report(direction), actionable: false });
+        // what changed, and the way back.
+        setUndoToast({ message: entry.said ? report(direction, entry.said) : result.message || report(direction), ...wayBack(direction) });
       } else {
         otherStackRef.current = otherStackRef.current.filter((e) => e !== entry);
-        setUndoToast({ message: result?.message || (direction === 'undo' ? say('common.undoFailed', 'Could not undo') : say('common.redoFailed', 'Could not redo')), actionable: false });
+        setUndoToast({ message: result?.message || (direction === 'undo' ? say('common.undoFailed', 'Could not undo') : say('common.redoFailed', 'Could not redo')), kind: 'warning' });
       }
     });
   };
 
   const performUndo = () => {
-    if (undoStackRef.current.length === 0) return;
+    if (undoStackRef.current.length === 0) {
+      setUndoToast({ message: say('undo.nothingToUndo', 'Nothing to undo') });
+      return;
+    }
     const snapshot = undoStackRef.current[undoStackRef.current.length - 1];
     undoStackRef.current = undoStackRef.current.slice(0, -1);
     if (snapshot.action) { runAction(snapshot, 'undo', redoStackRef); return; }
@@ -113,18 +132,21 @@ const useUndo = ({ tasks, unscheduledTasks, recycleBin, recurringTasks, gtdFrame
     redoStackRef.current = [...redoStackRef.current, { ...takeSnapshot(), said: snapshot.said }];
     applySnapshot(snapshot);
     playUISound('undo');
-    setUndoToast({ message: report('undo', snapshot.said), actionable: false });
+    setUndoToast({ message: report('undo', snapshot.said), ...wayBack('undo') });
   };
 
   const performRedo = () => {
-    if (redoStackRef.current.length === 0) return;
+    if (redoStackRef.current.length === 0) {
+      setUndoToast({ message: say('undo.nothingToRedo', 'Nothing to redo') });
+      return;
+    }
     const snapshot = redoStackRef.current[redoStackRef.current.length - 1];
     redoStackRef.current = redoStackRef.current.slice(0, -1);
     if (snapshot.action) { runAction(snapshot, 'redo', undoStackRef); return; }
     undoStackRef.current = [...undoStackRef.current, { ...takeSnapshot(), said: snapshot.said }];
     applySnapshot(snapshot);
     playUISound('undo');
-    setUndoToast({ message: report('redo', snapshot.said), actionable: false });
+    setUndoToast({ message: report('redo', snapshot.said), ...wayBack('redo') });
   };
 
   return { undoToast, setUndoToast, pushUndo, pushUndoAction, performUndo, performRedo };

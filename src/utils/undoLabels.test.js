@@ -100,6 +100,8 @@ describe('undo strings in every language', () => {
     expect(placeholders(undo.undone)).toEqual(['action']);
     expect(placeholders(undo.redone)).toEqual(['action']);
     expect(undo.untitled).toBeTruthy();
+    expect(undo.nothingToUndo).toBeTruthy();
+    expect(undo.nothingToRedo).toBeTruthy();
     for (const key of UNDO_LABELS) {
       const plural = `${key}_other` in en.action;
       const forms = plural ? Object.keys(en.action).filter((k) => k.startsWith(`${key}_`)) : [key];

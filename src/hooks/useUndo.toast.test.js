@@ -15,7 +15,7 @@ vi.mock('react', () => ({
     }];
   },
 }));
-const { default: useUndo } = await import('./useUndo.js');
+const { default: useUndo, toastDelay } = await import('./useUndo.js');
 
 // One render, then its toast effect (the sixth: five refs sync first), run
 // as React would: only when the toast changed, after the last one's cleanup.
@@ -73,3 +73,23 @@ describe('undo toast timing', () => {
     expect(render().undoToast).toBeNull();
   });
 });
+
+describe('toastDelay', () => {
+  it('keeps each kind of toast for at least its floor', () => {
+    expect(toastDelay({ message: 'Undone' })).toBe(2000);
+    expect(toastDelay({ message: 'Undone', redoable: true })).toBe(4000);
+    expect(toastDelay({ message: 'Task completed', actionable: true })).toBe(4000);
+    expect(toastDelay({ message: 'Saved', kind: 'warning' })).toBe(8000);
+    expect(toastDelay({ message: 'Done', actionable: true, followUp: {} })).toBe(10000);
+  });
+
+  it('keeps a longer message long enough to read', () => {
+    const message = 'Undone: Moved the deadline of "Draft the quarterly report" to Fri, Oct 16';
+    expect(toastDelay({ message, redoable: true })).toBe(1000 + 60 * message.length);
+  });
+
+  it('stops growing at 15s', () => {
+    expect(toastDelay({ message: 'x'.repeat(1000), kind: 'warning' })).toBe(15000);
+  });
+});
+

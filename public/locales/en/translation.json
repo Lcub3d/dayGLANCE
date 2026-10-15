@@ -2623,6 +2623,8 @@
   "undo": {
     "undone": "Undone: {{action}}",
     "redone": "Redone: {{action}}",
+    "nothingToUndo": "Nothing to undo",
+    "nothingToRedo": "Nothing to redo",
     "untitled": "Untitled",
     "action": {
       "added": "Added \"{{title}}\"",

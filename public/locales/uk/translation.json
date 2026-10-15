@@ -2726,6 +2726,8 @@
   "undo": {
     "undone": "Скасовано: {{action}}",
     "redone": "Повторено: {{action}}",
+    "nothingToUndo": "Немає що скасувати",
+    "nothingToRedo": "Немає що повторити",
     "untitled": "Без назви",
     "action": {
       "added": "Додано «{{title}}»",

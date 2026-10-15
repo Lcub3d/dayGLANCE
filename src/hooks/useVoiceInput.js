@@ -480,7 +480,7 @@ export default function useVoiceInput({
     const hasNewTasks = voiceParsedTasks && voiceParsedTasks.length > 0;
     const hasEdits = voiceParsedEdits && voiceParsedEdits.length > 0;
     if (!hasNewTasks && !hasEdits) return;
-    pushUndo();
+    pushUndo({ key: 'voiceApplied' });
 
     // Add new tasks
     if (hasNewTasks) {

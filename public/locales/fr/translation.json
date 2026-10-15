@@ -1654,7 +1654,9 @@
       "username": "Nom d’utilisateur",
       "appPassword": "Mot de passe d’application",
       "webdavUrl": "URL WebDAV"
-    }
+    },
+    "folderPaused": "Sauvegarde dans le dossier en pause. Reconnectez-la dans Sauvegarde & Restauration → Sauvegarde automatique pour la reprendre.",
+    "storageFull": "Stockage plein. Certaines données n’ont peut-être pas été enregistrées. Supprimez d’anciennes données ou libérez de l’espace dans le navigateur."
   },
   "app": {
     "tasksScheduledTitle": "Tâches planifiées",
@@ -2270,9 +2272,7 @@
     "undo": {
       "changed": "Ce Do a changé depuis ; il est laissé tel quel.",
       "completionBlocked": "Sa tâche n’est plus terminée, le Do ne peut donc pas redevenir Terminé. Il est laissé tel quel.",
-      "failed": "Impossible d’enregistrer la modification. Réessayez.",
-      "undone": "Modification du Do annulée",
-      "redone": "Modification du Do rétablie"
+      "failed": "Impossible d’enregistrer la modification. Réessayez."
     },
     "view": {
       "activeLabel": "Temps actif",
@@ -2619,5 +2619,45 @@
     "peekDeleted": "Dans la corbeille",
     "peekGone": "Cette tâche n’est plus dans dayGLANCE.",
     "peekShow": "Aller à la tâche"
+  },
+  "undo": {
+    "undone": "Annulé : {{action}}",
+    "redone": "Rétabli : {{action}}",
+    "untitled": "Sans titre",
+    "action": {
+      "added": "« {{title}} » ajoutée",
+      "edited": "« {{title}} » modifiée",
+      "renamed": "« {{title}} » renommée",
+      "completed": "« {{title}} » terminée",
+      "uncompleted": "« {{title}} » marquée comme non terminée",
+      "deleted": "« {{title}} » supprimée",
+      "restored": "« {{title}} » restaurée",
+      "binEmptied": "Corbeille vidée",
+      "moved": "« {{title}} » déplacée",
+      "resized": "Durée de « {{title}} » modifiée",
+      "toInbox": "« {{title}} » déplacée vers la boîte de réception",
+      "toBucket": "« {{title}} » envoyée dans la Bucket List",
+      "scheduled": "« {{title}} » planifiée",
+      "postponed": "« {{title}} » reportée à demain",
+      "deadlineSet": "Échéance définie pour « {{title}} »",
+      "deadlinePostponed": "Échéance de « {{title}} » déplacée au {{date}}",
+      "deadlineCleared": "Échéance de « {{title}} » supprimée",
+      "priority": "Priorité de « {{title}} » modifiée",
+      "energy": "Énergie de « {{title}} » modifiée",
+      "color": "Couleur de « {{title}} » modifiée",
+      "subtaskAdded": "Sous-tâche ajoutée à « {{title}} »",
+      "subtasksAdded_one": "{{count}} sous-tâche ajoutée à « {{title}} »",
+      "subtasksAdded_other": "{{count}} sous-tâches ajoutées à « {{title}} »",
+      "subtaskChanged": "Sous-tâche de « {{title}} » modifiée",
+      "subtaskDeleted": "Sous-tâche de « {{title}} » supprimée",
+      "snoozed": "« {{title}} » repoussée de 15 minutes",
+      "frameSkipped": "Plage « {{title}} » ignorée ce jour-là",
+      "frameAdjusted": "Horaires de la plage « {{title}} » modifiés",
+      "smartScheduled_one": "{{count}} tâche planifiée par la planification intelligente",
+      "smartScheduled_other": "{{count}} tâches planifiées par la planification intelligente",
+      "rescheduled_one": "{{count}} tâche replanifiée",
+      "rescheduled_other": "{{count}} tâches replanifiées",
+      "voiceApplied": "Modifications vocales appliquées"
+    }
   }
 }

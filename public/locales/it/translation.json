@@ -1656,7 +1656,9 @@
       "username": "Nome utente",
       "appPassword": "Password app",
       "webdavUrl": "URL WebDAV"
-    }
+    },
+    "folderPaused": "Backup nella cartella in pausa. Ricollegala in Backup e ripristino → Backup automatico per riprendere.",
+    "storageFull": "Spazio di archiviazione pieno. Alcuni dati potrebbero non essere stati salvati. Elimina i dati vecchi o libera spazio nel browser."
   },
   "app": {
     "tasksScheduledTitle": "Attività pianificate",
@@ -2272,9 +2274,7 @@
     "undo": {
       "changed": "Questo Do è cambiato nel frattempo, quindi è stato lasciato com'è.",
       "completionBlocked": "Il suo compito non è più completato, quindi il Do non può tornare Completato. È stato lasciato com'è.",
-      "failed": "Impossibile salvare la modifica. Riprova.",
-      "undone": "Modifica del Do annullata",
-      "redone": "Modifica del Do ripristinata"
+      "failed": "Impossibile salvare la modifica. Riprova."
     },
     "view": {
       "activeLabel": "Tempo attivo",
@@ -2621,5 +2621,45 @@
     "peekDeleted": "Nel cestino",
     "peekGone": "Questa attività non è più in dayGLANCE.",
     "peekShow": "Vai all'attività"
+  },
+  "undo": {
+    "undone": "Annullato: {{action}}",
+    "redone": "Ripristinato: {{action}}",
+    "untitled": "Senza titolo",
+    "action": {
+      "added": "Aggiunta «{{title}}»",
+      "edited": "Modificata «{{title}}»",
+      "renamed": "Rinominata «{{title}}»",
+      "completed": "Completata «{{title}}»",
+      "uncompleted": "«{{title}}» segnata come non completata",
+      "deleted": "Eliminata «{{title}}»",
+      "restored": "Ripristinata «{{title}}»",
+      "binEmptied": "Cestino svuotato",
+      "moved": "Spostata «{{title}}»",
+      "resized": "Cambiata la durata di «{{title}}»",
+      "toInbox": "«{{title}}» spostata in In arrivo",
+      "toBucket": "«{{title}}» inviata alla Bucket List",
+      "scheduled": "Pianificata «{{title}}»",
+      "postponed": "«{{title}}» rimandata a domani",
+      "deadlineSet": "Impostata una scadenza per «{{title}}»",
+      "deadlinePostponed": "Scadenza di «{{title}}» spostata al {{date}}",
+      "deadlineCleared": "Rimossa la scadenza di «{{title}}»",
+      "priority": "Cambiata la priorità di «{{title}}»",
+      "energy": "Cambiata l’energia di «{{title}}»",
+      "color": "Cambiato il colore di «{{title}}»",
+      "subtaskAdded": "Aggiunta una sottoattività a «{{title}}»",
+      "subtasksAdded_one": "Aggiunta {{count}} sottoattività a «{{title}}»",
+      "subtasksAdded_other": "Aggiunte {{count}} sottoattività a «{{title}}»",
+      "subtaskChanged": "Cambiata una sottoattività di «{{title}}»",
+      "subtaskDeleted": "Eliminata una sottoattività di «{{title}}»",
+      "snoozed": "«{{title}}» posticipata di 15 minuti",
+      "frameSkipped": "Blocco «{{title}}» saltato per quel giorno",
+      "frameAdjusted": "Cambiati gli orari del blocco «{{title}}»",
+      "smartScheduled_one": "{{count}} attività pianificata con la pianificazione intelligente",
+      "smartScheduled_other": "{{count}} attività pianificate con la pianificazione intelligente",
+      "rescheduled_one": "{{count}} attività ripianificata",
+      "rescheduled_other": "{{count}} attività ripianificate",
+      "voiceApplied": "Modifiche vocali applicate"
+    }
   }
 }

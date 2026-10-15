@@ -1715,7 +1715,9 @@
       "username": "Ім’я користувача",
       "appPassword": "Пароль застосунку",
       "webdavUrl": "URL-адреса WebDAV"
-    }
+    },
+    "folderPaused": "Резервне копіювання в папку призупинено. Підключіть її знову в розділі «Резервне копіювання та відновлення» → «Автоматичне резервне копіювання», щоб продовжити.",
+    "storageFull": "Сховище заповнене. Деякі дані могли не зберегтися. Видаліть старі дані або звільніть місце в браузері."
   },
   "app": {
     "tasksScheduledTitle": "Завдання заплановано",
@@ -2369,9 +2371,7 @@
     "undo": {
       "changed": "Цей Do відтоді змінився, тож його залишено як є.",
       "completionBlocked": "Його завдання вже не завершене, тож Do не може знову стати «Завершено». Його залишено як є.",
-      "failed": "Не вдалося зберегти зміну. Спробуйте ще раз.",
-      "undone": "Зміну Do скасовано",
-      "redone": "Зміну Do повторено"
+      "failed": "Не вдалося зберегти зміну. Спробуйте ще раз."
     },
     "view": {
       "activeLabel": "Активний час",
@@ -2722,5 +2722,51 @@
     "peekDeleted": "У кошику",
     "peekGone": "Цього завдання вже немає в dayGLANCE.",
     "peekShow": "Перейти до завдання"
+  },
+  "undo": {
+    "undone": "Скасовано: {{action}}",
+    "redone": "Повторено: {{action}}",
+    "untitled": "Без назви",
+    "action": {
+      "added": "Додано «{{title}}»",
+      "edited": "Змінено «{{title}}»",
+      "renamed": "Перейменовано «{{title}}»",
+      "completed": "Виконано «{{title}}»",
+      "uncompleted": "«{{title}}» позначено як невиконане",
+      "deleted": "Видалено «{{title}}»",
+      "restored": "Відновлено «{{title}}»",
+      "binEmptied": "Кошик очищено",
+      "moved": "Переміщено «{{title}}»",
+      "resized": "Змінено тривалість «{{title}}»",
+      "toInbox": "«{{title}}» переміщено у «Вхідні»",
+      "toBucket": "«{{title}}» додано до списку бажань",
+      "scheduled": "Заплановано «{{title}}»",
+      "postponed": "«{{title}}» перенесено на завтра",
+      "deadlineSet": "Встановлено дедлайн для «{{title}}»",
+      "deadlinePostponed": "Дедлайн «{{title}}» перенесено на {{date}}",
+      "deadlineCleared": "Прибрано дедлайн із «{{title}}»",
+      "priority": "Змінено пріоритет «{{title}}»",
+      "energy": "Змінено енергію «{{title}}»",
+      "color": "Змінено колір «{{title}}»",
+      "subtaskAdded": "Додано підзавдання до «{{title}}»",
+      "subtasksAdded_one": "Додано {{count}} підзавдання до «{{title}}»",
+      "subtasksAdded_few": "Додано {{count}} підзавдання до «{{title}}»",
+      "subtasksAdded_many": "Додано {{count}} підзавдань до «{{title}}»",
+      "subtasksAdded_other": "Додано {{count}} підзавдання до «{{title}}»",
+      "subtaskChanged": "Змінено підзавдання в «{{title}}»",
+      "subtaskDeleted": "Видалено підзавдання з «{{title}}»",
+      "snoozed": "«{{title}}» відкладено на 15 хвилин",
+      "frameSkipped": "Фрейм «{{title}}» пропущено цього дня",
+      "frameAdjusted": "Змінено час фрейму «{{title}}»",
+      "smartScheduled_one": "Розумний розклад запланував {{count}} завдання",
+      "smartScheduled_few": "Розумний розклад запланував {{count}} завдання",
+      "smartScheduled_many": "Розумний розклад запланував {{count}} завдань",
+      "smartScheduled_other": "Розумний розклад запланував {{count}} завдання",
+      "rescheduled_one": "Перенесено {{count}} завдання",
+      "rescheduled_few": "Перенесено {{count}} завдання",
+      "rescheduled_many": "Перенесено {{count}} завдань",
+      "rescheduled_other": "Перенесено {{count}} завдання",
+      "voiceApplied": "Голосові зміни застосовано"
+    }
   }
 }

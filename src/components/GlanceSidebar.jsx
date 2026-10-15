@@ -786,19 +786,19 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                   <button
                     onClick={() => {
                       if (task._overdueType === 'scheduled') {
-                        pushUndo();
+                        const said = pushUndo({ key: 'toInbox', taskId: task.id });
                         setTasks(prev => prev.filter(t => t.id !== task.id));
                         const { startTime, date, duration, _overdueType, ...rest } = task;
                         const inboxTask = { ...rest, priority: rest.priority || 0 };
                         setUnscheduledTasks(prev => [...prev, inboxTask]);
                         if (isTray) window.electronAPI?.backgroundAction({ action: 'move-to-inbox', taskId: task.id, inboxTask });
                         playUISound('slide');
-                        setUndoToast({ message: t('common.toInbox'), actionable: true });
+                        setUndoToast({ message: said ?? t('common.toInbox'), actionable: true });
                       } else {
-                        clearDeadline(task.id);
+                        const said = clearDeadline(task.id);
                         if (isTray) window.electronAPI?.backgroundAction({ action: 'clear-deadline', taskId: task.id });
                         playUISound('slide');
-                        setUndoToast({ message: t('task.noDeadline'), actionable: true });
+                        setUndoToast({ message: said ?? t('task.noDeadline'), actionable: true });
                       }
                     }}
                     className={`p-1.5 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-stone-100 text-stone-500'} ${isDesktop ? 'hover:scale-95' : 'active:scale-95'} transition-transform`}
@@ -1092,14 +1092,14 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    pushUndo();
+                    const said = pushUndo({ key: 'toInbox', taskId: task.id });
                     setTasks(prev => prev.filter(t => t.id !== task.id));
                     const { startTime, date, _agendaType, ...rest } = task;
                     const inboxTask = { ...rest, priority: rest.priority || 0 };
                     setUnscheduledTasks(prev => [...prev, inboxTask]);
                     if (isTray) window.electronAPI?.backgroundAction({ action: 'move-to-inbox', taskId: task.id, inboxTask });
                     playUISound('slide');
-                    setUndoToast({ message: t('common.toInbox'), actionable: true });
+                    setUndoToast({ message: said ?? t('common.toInbox'), actionable: true });
                   }}
                   className={`p-1.5 rounded-lg ${darkMode ? 'bg-white/10 text-gray-400' : 'bg-stone-100 text-stone-500'} ${isDesktop ? 'hover:scale-95' : 'active:scale-95'} transition-transform`}
                    title={t('common.toInbox')}

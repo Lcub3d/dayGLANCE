@@ -102,7 +102,7 @@ export default function useTaskActions({
   // ── Deadline management ──────────────────────────────────────────────────
 
   const setDeadline = (taskId, deadline) => {
-    pushUndo();
+    pushUndo({ key: 'deadlineSet', taskId });
     setUnscheduledTasks(prev => prev.map(t =>
       t.id === taskId ? { ...t, deadline } : t
     ));
@@ -118,20 +118,22 @@ export default function useTaskActions({
     const nextDay = new Date(task.deadline + 'T12:00:00');
     nextDay.setDate(nextDay.getDate() + 1);
     const nextDateStr = nextDay.toISOString().split('T')[0];
-    pushUndo();
+    const said = pushUndo({ key: 'deadlinePostponed', taskId, date: formatDeadlineDate(nextDateStr) });
     setUnscheduledTasks(prev => prev.map(t =>
       t.id === taskId ? { ...t, deadline: nextDateStr } : t
     ));
-    setUndoToast({ message: 'Deadline postponed to ' + formatDeadlineDate(nextDateStr), actionable: true });
+    setUndoToast({ message: said, actionable: true });
     playUISound('slide');
   };
 
+  // Returns what it did, in words, for a caller's toast.
   const clearDeadline = (taskId) => {
-    pushUndo();
+    const said = pushUndo({ key: 'deadlineCleared', taskId });
     setUnscheduledTasks(prev => prev.map(t =>
       t.id === taskId ? { ...t, deadline: null } : t
     ));
     setShowDeadlinePicker(null);
+    return said;
   };
 
   // ── Task creation ────────────────────────────────────────────────────────
@@ -146,13 +148,13 @@ export default function useTaskActions({
 
   const addTaskFrom = (newTask, toInbox, createdProject) => {
     if (newTask.title.trim()) {
-      pushUndo();
-
       // Remove natural-language phrases the quick-add layer parsed into task
       // fields ("tomorrow 3pm every 2 weeks"); their values already live on
       // newTask. Dismissed chips are not in nlSpans, so their text survives.
       // cleanTitle then strips sigil shorthand as before.
       const savedTitle = cleanTitle(stripSpans(newTask.title, newTask.nlSpans));
+      // Scheduling an Inbox task by swipe goes through here too.
+      pushUndo({ key: swipeSchedulingInboxTaskId.current ? 'scheduled' : 'added', title: savedTitle });
 
       // Determine whether this task should be linked to an Obsidian daily note.
       // Recurring and swipe-scheduling paths are excluded: recurring tasks use
@@ -380,7 +382,7 @@ export default function useTaskActions({
   // changeTaskColor: a recurring instance stores the override on its SERIES —
   // energy is a property of the block's nature, which recurs with it.
   const setTaskEnergy = (taskId, energy, fromInbox = false) => {
-    pushUndo();
+    pushUndo({ key: 'energy', taskId });
     if (typeof taskId === 'string' && taskId.startsWith('recurring-')) {
       const parsed = parseRecurringId(taskId);
       if (parsed) {
@@ -396,7 +398,7 @@ export default function useTaskActions({
   };
 
   const changeTaskColor = (taskId, newColor, fromInbox = false) => {
-    pushUndo();
+    pushUndo({ key: 'color', taskId });
     if (typeof taskId === 'string' && taskId.startsWith('recurring-')) {
       const parsed = parseRecurringId(taskId);
       if (parsed) {
@@ -476,7 +478,12 @@ export default function useTaskActions({
   // ── Task completion ──────────────────────────────────────────────────────
 
   const toggleComplete = (id, fromInbox = false) => {
-    pushUndo();
+    // Which way it goes decides the words: "Completed" or "Marked … not done".
+    const recurringRef = typeof id === 'string' && id.startsWith('recurring-') ? parseRecurringId(id) : null;
+    const wasDone = recurringRef
+      ? !!recurringTasks.find(t => t.id === recurringRef.templateId)?.completedDates?.includes(recurringRef.dateStr)
+      : !!(fromInbox ? unscheduledTasks : tasks).find(t => t.id === id)?.completed;
+    const said = pushUndo({ key: wasDone ? 'uncompleted' : 'completed', taskId: id });
     playUISound('tick');
     triggerHaptic('medium');
     if (typeof id === 'string' && id.startsWith('recurring-')) {
@@ -503,7 +510,7 @@ export default function useTaskActions({
       if (!wasCompleted) {
         // The occurrence as that day showed it, for "Schedule follow-up task".
         const occurrence = resolveTaskRef(id, { recurringTasks })?.task;
-        setUndoToast({ message: 'Task completed', actionable: true, ...(occurrence ? { followUp: occurrence } : {}) });
+        setUndoToast({ message: said, actionable: true, ...(occurrence ? { followUp: occurrence } : {}) });
       }
       return;
     }
@@ -549,7 +556,7 @@ export default function useTaskActions({
       ));
     }
     if (taskToToggle && !taskToToggle.completed) {
-      setUndoToast({ message: 'Task completed', actionable: true, ...(canFollowUp(taskToToggle) ? { followUp: taskToToggle } : {}) });
+      setUndoToast({ message: said, actionable: true, ...(canFollowUp(taskToToggle) ? { followUp: taskToToggle } : {}) });
     }
   };
 
@@ -572,7 +579,7 @@ export default function useTaskActions({
       const nextDay = new Date(parsed.dateStr + 'T12:00:00');
       nextDay.setDate(nextDay.getDate() + 1);
       const nextDateStr = dateToString(nextDay);
-      pushUndo();
+      const said = pushUndo({ key: 'postponed', title });
       setRecurringTasks(prev => prev.map(t => t.id !== parsed.templateId ? t : {
         ...t,
         exceptions: { ...t.exceptions, [parsed.dateStr]: { ...(t.exceptions?.[parsed.dateStr] || {}), skipped: true } },
@@ -583,7 +590,7 @@ export default function useTaskActions({
         startTime: isAllDay ? '00:00' : startTime, duration, color,
         isAllDay, date: nextDateStr, completed: false, notes: '', subtasks: [],
       }]);
-      setUndoToast({ message: 'Task postponed to tomorrow', actionable: true });
+      setUndoToast({ message: said, actionable: true });
       playUISound('slide');
       return;
     }
@@ -608,11 +615,11 @@ export default function useTaskActions({
       return;
     }
 
-    pushUndo();
+    const said = pushUndo({ key: 'postponed', taskId: id });
     setTasks(prev => prev.map(t =>
       t.id === id ? { ...t, date: nextDateStr } : t
     ));
-    setUndoToast({ message: 'Task postponed to tomorrow', actionable: true });
+    setUndoToast({ message: said, actionable: true });
     playUISound('slide');
     if (!onboardingProgress.hasUsedActionButtons) {
       setOnboardingProgress(prev => ({ ...prev, hasUsedActionButtons: true }));
@@ -620,10 +627,10 @@ export default function useTaskActions({
   };
 
   const moveToInbox = (id) => {
-    pushUndo();
     if (typeof id === 'string' && id.startsWith('recurring-')) return;
     const task = tasks.find(t => t.id === id);
     if (!task || task.imported) return;
+    const said = pushUndo({ key: 'toInbox', taskId: id });
 
     // Shared with the harness's unschedule (utils/inboxMove.js): an
     // Obsidian task records the time this move removes, so a stale read of
@@ -633,7 +640,7 @@ export default function useTaskActions({
     setTasks(prev => prev.filter(t => t.id !== id));
     setUnscheduledTasks(prev => [...prev, unscheduledTask]);
     playUISound('slide');
-    setUndoToast({ message: 'Moved to inbox', actionable: true });
+    setUndoToast({ message: said, actionable: true });
     if (!onboardingProgress.hasUsedActionButtons) {
       setOnboardingProgress(prev => ({ ...prev, hasUsedActionButtons: true }));
     }
@@ -643,7 +650,7 @@ export default function useTaskActions({
 
   const addSubtask = (taskId, title, isInbox, extraFields = {}) => {
     if (!title.trim()) return;
-    pushUndo();
+    pushUndo({ key: 'subtaskAdded', taskId });
     const newSubtask = {
       id: crypto.randomUUID(),
       title: title.trim(),
@@ -668,7 +675,7 @@ export default function useTaskActions({
   };
 
   const toggleSubtask = (taskId, subtaskId, isInbox) => {
-    pushUndo();
+    pushUndo({ key: 'subtaskChanged', taskId });
     const subtaskUpdater = t => ({
       ...t,
       subtasks: (t.subtasks || []).map(st =>
@@ -685,7 +692,7 @@ export default function useTaskActions({
   };
 
   const deleteSubtask = (taskId, subtaskId, isInbox) => {
-    pushUndo();
+    pushUndo({ key: 'subtaskDeleted', taskId });
     const subtaskUpdater = t => ({
       ...t,
       subtasks: (t.subtasks || []).filter(st => st.id !== subtaskId)
@@ -700,7 +707,7 @@ export default function useTaskActions({
   };
 
   const updateSubtaskTitle = (taskId, subtaskId, newTitle, isInbox) => {
-    pushUndo();
+    pushUndo({ key: 'subtaskChanged', taskId });
     const subtaskUpdater = t => ({
       ...t,
       subtasks: (t.subtasks || []).map(st =>
@@ -727,7 +734,7 @@ export default function useTaskActions({
       return;
     }
 
-    pushUndo();
+    const said = pushUndo({ key: 'deleted', taskId: id });
     const taskInScheduled = tasks.find(t => t.id === id);
     const taskInInbox = unscheduledTasks.find(t => t.id === id);
     const task = fromInbox ? taskInInbox : (taskInScheduled || taskInInbox);
@@ -762,7 +769,7 @@ export default function useTaskActions({
       }
       playUISound('swoosh');
       triggerHaptic('success');
-      setUndoToast({ message: 'Task deleted', actionable: true });
+      setUndoToast({ message: said, actionable: true });
       if (!onboardingProgress.hasUsedActionButtons) {
         setOnboardingProgress(prev => ({ ...prev, hasUsedActionButtons: true }));
       }
@@ -771,8 +778,8 @@ export default function useTaskActions({
 
   const deleteRecurringInstance = (mode) => {
     if (!recurringDeleteConfirm) return;
-    pushUndo();
     const { taskId, dateStr } = recurringDeleteConfirm;
+    pushUndo({ key: 'deleted', title: recurringTasks.find(t => t.id === taskId)?.title });
 
     if (mode === 'this') {
       setRecurringTasks(prev => prev.map(t => {
@@ -834,7 +841,7 @@ export default function useTaskActions({
     const slot = slots.find(s => s.minutes >= taskDuration);
     const startTime = slot ? slot.start : frame.start;
 
-    pushUndo();
+    pushUndo({ key: 'scheduled', taskId });
     const { priority, deadline, ...preserved } = task;
     setTasks(prev => [...prev, {
       ...preserved,
@@ -860,7 +867,7 @@ export default function useTaskActions({
   const scheduleDeadlineTaskAt = (taskId, dateStr, startTime) => {
     const task = unscheduledTasks.find(t => t.id === taskId);
     if (!task) return;
-    pushUndo();
+    pushUndo({ key: 'scheduled', taskId });
     const { priority, deadline, ...preserved } = task;
     setUnscheduledTasks(prev => prev.filter(t => t.id !== taskId));
     setTasks(prev => [...prev, {

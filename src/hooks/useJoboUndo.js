@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { joboUndoEntry, planJoboUndo } from '../jobo/undo.js';
 import { buildJoboTaskResolver } from '../jobo/viewModel.js';
+import { doWriteMessageKey } from '../jobo/viewActions.js';
 
 // Puts Do edits from the JOBO view into the app's one undo history, beside the
 // task snapshots, so Cmd+Z reverses whatever was done last, task or Do.
@@ -36,13 +37,15 @@ export default function useJoboUndo({ joboRecords, readJoboWorkingSet, recordJob
         const result = await write([plan.record]);
         if (result?.ok || result?.held) {
           entry.expect = plan.record;
-          return { ok: true, message: tr(direction === 'undo' ? 'jobo.undo.undone' : 'jobo.undo.redone') };
+          return { ok: true };
         }
       } catch (err) {
         console.error('[jobo] undo write failed:', err);
       }
       return { ok: false, message: tr('jobo.undo.failed') };
     };
-    live.current.pushUndoAction({ undo: run('undo'), redo: run('redo') });
+    // The step says what the write did ("Do added"), and the undo toast says
+    // it back: "Undone: Do added".
+    live.current.pushUndoAction({ undo: run('undo'), redo: run('redo') }, live.current.t(doWriteMessageKey(before, after)));
   }, []);
 }

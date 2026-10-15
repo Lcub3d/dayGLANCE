@@ -23,12 +23,17 @@
 // "Sync proxy" always means the outbound proxy server setting; never reuse
 // plain "proxy" for it in user-facing strings or channel names.
 //
-// SSRF INTERACTION. The guard in proxyUrlPolicy.ts runs BEFORE any connection
-// and is unchanged: it judges the target by local DNS. A target that resolves
-// to a private or reserved range is still refused until its origin is granted,
-// whether or not a proxy is configured — the proxy changes where the connection
-// comes from, never what is allowed to be connected to. Two consequences are
-// deliberate:
+// SSRF INTERACTION. The guard in proxyUrlPolicy.ts still runs BEFORE every
+// request, and this feature does not widen it: a target that resolves into a
+// private or reserved range is refused until its origin is granted, whether or
+// not a proxy is configured. What changes is what that answer MEANS. The guard
+// judges the target by THIS machine's DNS, while an HTTP or SOCKS5 proxy
+// resolves the target hostname on the proxy side (Chromium defers name
+// resolution to the proxy), so with the proxy enabled the guard has checked an
+// address that is not necessarily the one the proxy connects to. The proxy is
+// the user's own, configured on the user's own machine, so that is an accepted
+// trust boundary — but it is a real difference, and saying "unchanged" would
+// oversell it. Two consequences follow:
 //
 //   1. Trusted-host grants are NOT auto-merged into the bypass list, and the
 //      consent itself is required in BOTH private-address modes: a proxy is the

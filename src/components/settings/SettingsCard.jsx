@@ -6,44 +6,76 @@
 // Without `onToggle` it is a static card: the same frame, title and status
 // badge, its contents always shown, for a section whose on and off live
 // inside it (a Disconnect, a consent dialog, several sources of its own).
-import React from 'react';
+// A static card can be `collapsible`: the title row opens and closes it, and
+// `defaultOpen` says how it starts. Closed, it shows the title and the badge
+// only, so a page of long sections stays a short list.
+import React, { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 export default function SettingsCard({
   icon: Icon, title, checked, onToggle, switchLabel, hint, summary, badge, darkMode,
   textPrimary, textSecondary, borderClass, children, cardId, disabled = false,
+  collapsible = false, defaultOpen = false,
 }) {
+  const canCollapse = collapsible && !onToggle;
+  const [open, setOpen] = useState(defaultOpen);
+  const expanded = !canCollapse || open;
+
+  const heading = (
+    <>
+      {Icon && <Icon size={18} className={`${textSecondary} flex-shrink-0`} />}
+      <div className={`flex-1 min-w-0 font-medium ${textPrimary} flex items-center gap-2`}>
+        <span className="truncate">{title}</span>
+        {badge}
+      </div>
+    </>
+  );
+
+  let state = 'static';
+  if (onToggle) state = checked ? 'on' : 'off';
+  else if (canCollapse) state = open ? 'open' : 'closed';
+
   return (
     <section
       data-settings-card={cardId}
-      data-settings-card-state={onToggle ? (checked ? 'on' : 'off') : 'static'}
+      data-settings-card-state={state}
       className={`rounded-xl border ${borderClass} p-4 space-y-3`}
     >
-      <div className="flex items-start gap-3">
-        {Icon && <Icon size={18} className={`${textSecondary} flex-shrink-0 mt-0.5`} />}
-        <div className="flex-1 min-w-0">
-          <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
-            <span className="truncate">{title}</span>
-            {badge}
-          </div>
-          {hint && <p className={`text-xs ${textSecondary} mt-0.5`}>{hint}</p>}
-        </div>
-        {onToggle && (
+      {canCollapse ? (
         <button
           type="button"
-          role="switch"
-          aria-checked={!!checked}
-          aria-label={switchLabel || title}
-          data-settings-card-switch
-          disabled={disabled}
-          onClick={() => { if (!disabled) onToggle(!checked); }}
-          className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          aria-expanded={open}
+          data-settings-card-toggle
+          onClick={() => setOpen((v) => !v)}
+          className="w-full flex items-center gap-3 text-left"
         >
-          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${checked ? 'left-5' : 'left-1'}`} />
+          {heading}
+          <ChevronDown size={16} className={`${textSecondary} flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
-        )}
-      </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          {heading}
+          {onToggle && (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!!checked}
+            aria-label={switchLabel || title}
+            data-settings-card-switch
+            disabled={disabled}
+            onClick={() => { if (!disabled) onToggle(!checked); }}
+            className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${checked ? 'left-5' : 'left-1'}`} />
+          </button>
+          )}
+        </div>
+      )}
+      {/* The hint starts at the card's edge, like the summary under it, so the
+          lines below the title read as one left-aligned column. */}
+      {hint && expanded && <p className={`text-xs ${textSecondary} -mt-1.5`} data-settings-card-hint>{hint}</p>}
       {summary && <div className={`text-xs ${textSecondary}`} data-settings-card-summary>{summary}</div>}
-      {(checked || !onToggle) && children}
+      {(onToggle ? checked : expanded) && children}
     </section>
   );
 }

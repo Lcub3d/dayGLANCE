@@ -113,9 +113,7 @@
       "vaultSkipped_other": "{{count}} Elemente konnten nicht gelesen werden (übersprungen). Das bedeutet meist, dass auf einem anderen Gerät eine andere Synchronisierungs-Passphrase verwendet wurde.",
       "saveEnable": "Speichern & aktivieren",
       "enabling": "Wird aktiviert...",
-      "syncProxyAdvanced": "Erweitert: Netzwerk-Proxy",
-      "syncProxyStatusOn": "Ein — {{host}}",
-      "syncProxyStatusOff": "Aus",
+      "syncProxyTitle": "Netzwerk-Proxy",
       "syncProxyToggle": "Sync-Datenverkehr über einen Proxy-Server leiten",
       "syncProxyToggleHint": "Synchronisierungsanfragen (WebDAV, CalDAV und GLANCEvault) laufen über diesen Proxy. Ohne ihn bleibt alles wie bisher: Die Synchronisierung nutzt weiterhin die System-Proxy-Einstellungen. Alles außerhalb der Synchronisierung bleibt unberührt.",
       "syncProxyScheme": "Typ",
@@ -526,7 +524,7 @@
     "multiUserMode": "Mehrbenutzer-Modus",
     "multiUserModeHint": "Aufgaben bestimmten Haushaltsmitgliedern zuweisen",
     "multiUserPeople": "Personen",
-    "multiUserRequiresSync": "Erfordert Cloud-Synchronisierung. Richten Sie zuerst GLANCEvault oder WebDAV-Synchronisierung ein.",
+    "multiUserRequiresSync": "Mehrbenutzer erfordert Synchronisierung. Richten Sie zuerst WebDAV, GLANCEvault oder einen Direct-Access-Ordner ein.",
     "usersSyncPath": "Benutzer-Synchronisierungspfad",
     "syncFailed": "Fehlgeschlagen",
     "aiFeatures": "KI-Funktionen",
@@ -683,7 +681,7 @@
     "removeFileImportedConfirm": "Alle {{n}} aus Datei importierten Termine entfernen? Ein erneuter Datei-Import stellt sie wieder her.",
     "liveActivity": "Live-Aktivität",
     "liveActivityDesc": "Der heutige Plan in der Dynamic Island und auf dem Sperrbildschirm. Verbreitert die Island und verdeckt die Signalsymbole neben der Uhr.",
-    "multiUserICloudOnly": "Erfordert ein gemeinsames Sync-Ziel. iCloud synchronisiert Ihre eigenen Geräte unter einer Apple-ID und kann zwei Personen daher keine gemeinsame Liste bereitstellen. Richten Sie dafür GLANCEvault oder WebDAV-Sync ein.",
+    "multiUserICloudOnly": "Erfordert ein gemeinsames Sync-Ziel. iCloud synchronisiert Ihre eigenen Geräte unter einer Apple-ID und kann zwei Personen daher keine gemeinsame Liste bereitstellen. Richten Sie dafür WebDAV, GLANCEvault oder einen Direct-Access-Ordner ein.",
     "language": "Sprache",
     "calendarUrlHelpPrompt": "Wo finde ich diese URLs?",
     "calendarUrlHelp": "Füge eine beliebige öffentliche ICS/iCal-URL ein. Google Kalender: Einstellungen → [dein Kalender] → „Geheime Adresse im iCal-Format“. Outlook: Einstellungen → Alle anzeigen → Kalender → Freigegebene Kalender → Veröffentlichen → ICS-Link. Nextcloud (öffentlich): Kalender → Einstellungen → Öffentlichen Link kopieren. Nextcloud (privat): Verwende die interne CalDAV-URL mit angehängtem ?export (zum Beispiel …/remote.php/dav/calendars/user/personal/?export) und gib die Zugangsdaten ein.",
@@ -776,7 +774,8 @@
       "about": "Über & Hilfe"
     },
     "theme": "Design",
-    "themeSystem": "System"
+    "themeSystem": "System",
+    "glanceWebdavLog": "WebDAV-Ereignisprotokoll"
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",
@@ -1632,7 +1631,7 @@
   },
   "backup": {
     "title": "Sicherung & Wiederherstellung",
-    "description": "Exportieren Sie Ihre Daten in eine Datei oder stellen Sie eine frühere Sicherung wieder her.",
+    "description": "Exportieren Sie Ihre Daten in eine Datei, stellen Sie eine frühere Sicherung wieder her oder setzen Sie die App-Daten zurück.",
     "exportBackup": "Sicherung exportieren",
     "exportHint": "Alle Aufgaben und Einstellungen als JSON herunterladen",
     "restoreBackup": "Sicherung wiederherstellen",
@@ -1674,7 +1673,7 @@
     "snapshotFrequency": "Häufigkeit der Momentaufnahmen",
     "snapshotDescription": "Die Live-Kopie wird innerhalb weniger Sekunden nach jeder Änderung aktualisiert; Momentaufnahmen sind zusätzliche Dateien zu bestimmten Zeitpunkten, die nach diesem Intervall aufbewahrt werden.",
     "lastSaved": "Zuletzt gespeichert: {{time}}",
-    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein.",
+    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein. Wenn Sie mit GLANCEvault synchronisieren, lassen Sie Remote-Sicherungen ausgeschaltet.",
     "provider": "Anbieter",
     "testing": "Wird getestet…",
     "testConnection": "Verbindung testen",
@@ -1693,7 +1692,8 @@
       "webdavUrl": "WebDAV-URL"
     },
     "folderPaused": "Ordnersicherung pausiert. Verbinde sie unter Sicherung & Wiederherstellung → Automatische Sicherung neu, um fortzufahren.",
-    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei."
+    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei.",
+    "historyTitle": "Sicherungsverlauf"
   },
   "app": {
     "tasksScheduledTitle": "Aufgaben geplant",

@@ -25,8 +25,11 @@ export function canEnableMultiUser({ cloudSyncEnabled, vaultEnabled, directAcces
  * @param {{cloudSyncConfigured?: boolean, multiUserEnabled?: boolean}} opts
  * @returns {boolean}
  */
-export function multiUserToggleLocked({ cloudSyncConfigured, multiUserEnabled } = {}) {
-  return !cloudSyncConfigured && !multiUserEnabled;
+export function multiUserToggleLocked({ cloudSyncConfigured, directAccessConnected, multiUserEnabled } = {}) {
+  // A connected Direct Access folder is a shared destination, exactly as in
+  // multiUserUnavailableReason below; the two must agree, or the toggle sits
+  // locked under no explanation at all.
+  return !(cloudSyncConfigured || directAccessConnected) && !multiUserEnabled;
 }
 
 /**

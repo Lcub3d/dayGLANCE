@@ -113,9 +113,7 @@
       "vaultSkipped_other": "{{count}} éléments n'ont pas pu être lus (ignorés). Cela signifie généralement qu'une phrase secrète de synchronisation différente a été utilisée sur un autre appareil.",
       "saveEnable": "Enregistrer et activer",
       "enabling": "Activation...",
-      "syncProxyAdvanced": "Avancé : proxy réseau",
-      "syncProxyStatusOn": "Activé — {{host}}",
-      "syncProxyStatusOff": "Désactivé",
+      "syncProxyTitle": "Proxy réseau",
       "syncProxyToggle": "Passer la synchronisation par un serveur proxy",
       "syncProxyToggleHint": "Les requêtes de synchronisation (WebDAV, CalDAV et GLANCEvault) passent par ce proxy. Désactivé, rien ne change : la synchronisation utilise toujours les paramètres système. Tout ce qui n’est pas de la synchronisation reste inchangé.",
       "syncProxyScheme": "Type",
@@ -524,9 +522,9 @@
     "importIcsDesc": "Importer des événements depuis un fichier iCal (.ics)",
     "multiUser": "Multi-utilisateur",
     "multiUserMode": "Mode multi-utilisateur",
-    "multiUserModeHint": "Attribuez des tâches à des membres du foyer",
+    "multiUserModeHint": "Attribuez des tâches à des membres précis du foyer",
     "multiUserPeople": "Personnes",
-    "multiUserRequiresSync": "Nécessite la synchronisation cloud. Configurez d'abord GLANCEvault ou la synchronisation WebDAV.",
+    "multiUserRequiresSync": "Le mode multi-utilisateur nécessite la synchronisation. Configurez d'abord WebDAV, GLANCEvault ou un dossier Direct Access.",
     "usersSyncPath": "Chemin de synchronisation des utilisateurs",
     "syncFailed": "Échec",
     "aiFeatures": "Fonctionnalités IA",
@@ -683,7 +681,7 @@
     "removeFileImportedConfirm": "Supprimer les {{n}} événements importés depuis un fichier ? Réimporter le fichier les restaurera.",
     "liveActivity": "Activité en direct",
     "liveActivityDesc": "Le plan du jour dans la Dynamic Island et sur l'écran verrouillé. Élargit l'île et masque les icônes de signal près de l'horloge.",
-    "multiUserICloudOnly": "Nécessite une destination de synchronisation partagée. iCloud synchronise vos propres appareils sous un seul identifiant Apple et ne peut donc pas donner une liste partagée à deux personnes. Configurez GLANCEvault ou WebDAV pour cela.",
+    "multiUserICloudOnly": "Nécessite une destination de synchronisation partagée. iCloud synchronise vos propres appareils sous un seul identifiant Apple et ne peut donc pas donner une liste partagée à deux personnes. Configurez WebDAV, GLANCEvault ou un dossier Direct Access pour cela.",
     "language": "Langue",
     "calendarUrlHelpPrompt": "Où trouver ces URL ?",
     "calendarUrlHelp": "Collez n’importe quelle URL ICS/iCal publique. Google Agenda : Paramètres → [votre agenda] → « Adresse secrète au format iCal ». Outlook : Paramètres → Afficher tous les paramètres → Calendrier → Calendriers partagés → Publier → lien ICS. Nextcloud (public) : Calendrier → Paramètres → Copier le lien public. Nextcloud (privé) : utilisez l’URL CalDAV interne suivie de ?export (par exemple …/remote.php/dav/calendars/user/personal/?export) et saisissez les identifiants.",
@@ -776,7 +774,8 @@
       "about": "À propos et aide"
     },
     "theme": "Thème",
-    "themeSystem": "Système"
+    "themeSystem": "Système",
+    "glanceWebdavLog": "Journal d'événements WebDAV"
   },
   "dailyNotes": {
     "quickNotes": "Notes rapides",
@@ -1632,7 +1631,7 @@
   },
   "backup": {
     "title": "Sauvegarde & Restauration",
-    "description": "Exportez vos données vers un fichier ou restaurez une sauvegarde précédente.",
+    "description": "Exportez vos données vers un fichier, restaurez une sauvegarde précédente ou réinitialisez les données.",
     "exportBackup": "Exporter la sauvegarde",
     "exportHint": "Télécharger toutes les tâches et paramètres en JSON",
     "restoreBackup": "Restaurer la sauvegarde",
@@ -1674,7 +1673,7 @@
     "snapshotFrequency": "Fréquence des instantanés",
     "snapshotDescription": "La copie à jour est actualisée dans les secondes qui suivent chaque modification ; les instantanés sont des fichiers supplémentaires conservés à cette fréquence.",
     "lastSaved": "Dernier enregistrement : {{time}}",
-    "remoteDeviceHint": "Activez cette option sur un seul appareil. Si vous utilisez plusieurs appareils, utilisez la synchronisation cloud pour les maintenir synchronisés et configurez les sauvegardes distantes uniquement sur votre appareil principal.",
+    "remoteDeviceHint": "Activez cette option sur un seul appareil. Si vous utilisez plusieurs appareils, utilisez la synchronisation cloud pour les maintenir synchronisés et configurez les sauvegardes distantes uniquement sur votre appareil principal. Si vous synchronisez avec GLANCEvault, laissez les sauvegardes distantes désactivées.",
     "provider": "Fournisseur",
     "testing": "Test en cours…",
     "testConnection": "Tester la connexion",
@@ -1693,7 +1692,8 @@
       "webdavUrl": "URL WebDAV"
     },
     "folderPaused": "Sauvegarde dans le dossier en pause. Reconnectez-la dans Sauvegarde & Restauration → Sauvegarde automatique pour la reprendre.",
-    "storageFull": "Stockage plein. Certaines données n’ont peut-être pas été enregistrées. Supprimez d’anciennes données ou libérez de l’espace dans le navigateur."
+    "storageFull": "Stockage plein. Certaines données n’ont peut-être pas été enregistrées. Supprimez d’anciennes données ou libérez de l’espace dans le navigateur.",
+    "historyTitle": "Historique des sauvegardes"
   },
   "app": {
     "tasksScheduledTitle": "Tâches planifiées",

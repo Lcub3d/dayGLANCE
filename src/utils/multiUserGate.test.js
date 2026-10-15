@@ -35,6 +35,18 @@ describe('multiUserToggleLocked (never-trap rule)', () => {
     expect(multiUserToggleLocked({ cloudSyncConfigured: true, multiUserEnabled: true })).toBe(false);
   });
 
+  it('stays unlocked with only a Direct Access folder, which the reason also counts as sync', () => {
+    expect(multiUserToggleLocked({ cloudSyncConfigured: false, directAccessConnected: true, multiUserEnabled: false })).toBe(false);
+    // The lock and the explanation agree: locked exactly when there is a reason to show.
+    for (const cloudSyncConfigured of [false, true]) {
+      for (const directAccessConnected of [false, true]) {
+        const locked = multiUserToggleLocked({ cloudSyncConfigured, directAccessConnected, multiUserEnabled: false });
+        const reason = multiUserUnavailableReason({ cloudSyncConfigured, directAccessConnected, icloudAvailable: false });
+        expect(locked).toBe(reason !== 'none');
+      }
+    }
+  });
+
   it('never traps: stays unlocked when multi-user is already on despite unconfigured sync', () => {
     expect(multiUserToggleLocked({ cloudSyncConfigured: false, multiUserEnabled: true })).toBe(false);
   });

@@ -165,7 +165,6 @@ const MobileSettingsPanel = () => {
     joboEnabled, setJoboEnabled,
   } = useFeaturesCtx();
   // Gate multi-user when sync is unconfigured; never trap an already-on toggle.
-  const multiUserLocked = multiUserToggleLocked({ cloudSyncConfigured, multiUserEnabled });
   // "Requires cloud sync" is wrong on an iCloud-only device — that user IS
   // syncing, just to a destination only they can reach. Pick the sentence that
   // matches their situation instead of the generic one.
@@ -173,6 +172,7 @@ const MobileSettingsPanel = () => {
   // household roster (docs/direct-access-sync.md, Phase 5).
   const directAccessStatus = useDirectAccessStatus();
   const directAccessRoster = directAccessStatus.connected && directAccessStatus.enabled;
+  const multiUserLocked = multiUserToggleLocked({ cloudSyncConfigured, directAccessConnected: directAccessRoster, multiUserEnabled });
   const multiUserReason = multiUserUnavailableReason({
     cloudSyncConfigured,
     icloudAvailable: isICloudAvailable(),

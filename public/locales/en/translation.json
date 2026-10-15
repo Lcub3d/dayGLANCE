@@ -115,7 +115,8 @@
       "enabling": "Enabling...",
       "pausedKept": "Paused. The connection details are kept: switch it on to resume.",
       "vaultDisconnect": "Disconnect",
-      "vaultDisconnectConfirm": "Disconnect GLANCEvault on this device? The server address, device token and account ID are removed from this device. Your data on the server is not touched."
+      "vaultDisconnectConfirm": "Disconnect GLANCEvault on this device? The server address, device token and account ID are removed from this device. Your data on the server is not touched.",
+      "encryptionTitle": "End-to-end encryption"
     },
     "passphraseHint": "This is the passphrase you set when you first enabled encryption. It is never stored — only you know it.",
     "passphraseLabel": "Sync passphrase",

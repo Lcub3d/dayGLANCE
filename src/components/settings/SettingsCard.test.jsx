@@ -23,6 +23,15 @@ describe('SettingsCard', () => {
     expect(render({ checked: false, summary: 'Paused' })).toMatch(/data-settings-card-summary="true">Paused/);
   });
 
+  it('without onToggle it is static: no switch, contents always shown', () => {
+    const html = renderToStaticMarkup(
+      <SettingsCard cardId="s" title="Static" borderClass="" textPrimary="" textSecondary=""><p data-body>body</p></SettingsCard>,
+    );
+    expect(html).toContain('data-settings-card-state="static"');
+    expect(html).toContain('data-body');
+    expect(html).not.toContain('role="switch"');
+  });
+
   it('a locked switch is disabled and says its state', () => {
     const html = render({ checked: false, disabled: true });
     expect(html).toMatch(/role="switch" aria-checked="false"/);

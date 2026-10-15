@@ -151,6 +151,18 @@ Each channel needs an `enabled` flag that is separate from its configuration:
 - **Integrations**: Obsidian, Todoist, TRMNL, calendars and the rest are audited
   for the same rule in their step.
 
+### Integrations audit (step 2)
+
+| Integration | Today | Card |
+|---|---|---|
+| TRMNL | `trmnlConfig.enabled` beside the webhook and key; off keeps both | **Card.** Off pauses; on with no webhook opens the form until one is entered |
+| Android Automation | one boolean, no configuration | **Card** |
+| Obsidian | off is Disconnect: `setObsidianConfig(null)` forgets the vault | Not yet. A pause needs `enabled: false` with the vault kept, and every reader of `obsidianConfig` (the hook, the plugin bridge, the header dot) audited first, as GLANCEvault was |
+| Calendars | several independent sources (task calendar URL, ICS feeds, device calendars), no single switch | Stays a block: a card switch would have to mean "all of them" |
+| Todoist | its own component with its own connect / disconnect | Stays as is until its page moves (step 4) |
+| GLANCE apps (intents) | WebDAV log and GLANCEvault intents, two separate switches | Stays a block for the same reason as Calendars |
+| Local Integrations (MCP) | its own component with its own kill switch | Stays as is |
+
 ## Mobile
 
 The mobile Settings tab keeps its **nine quick tiles** in their 3 × 3 grid, as

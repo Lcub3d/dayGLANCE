@@ -6,7 +6,7 @@ import React from 'react';
 
 export default function SettingsCard({
   icon: Icon, title, checked, onToggle, switchLabel, hint, summary, badge, darkMode,
-  textPrimary, textSecondary, borderClass, children, cardId,
+  textPrimary, textSecondary, borderClass, children, cardId, disabled = false,
 }) {
   return (
     <section
@@ -29,8 +29,9 @@ export default function SettingsCard({
           aria-checked={!!checked}
           aria-label={switchLabel || title}
           data-settings-card-switch
-          onClick={() => onToggle(!checked)}
-          className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}
+          disabled={disabled}
+          onClick={() => { if (!disabled) onToggle(!checked); }}
+          className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${checked ? 'left-5' : 'left-1'}`} />
         </button>

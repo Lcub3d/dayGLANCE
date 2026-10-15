@@ -1525,42 +1525,29 @@ const SettingsModal = () => {
     },
     ai: {
       show: !aiSuppressed,
+      card: true,
       node: (
         <>
             {/* AI Features Section — hidden on the China App Store storefront
                 to comply with App Store Review Guideline 5 (Deep Synthesis / MIIT). */}
             {!aiSuppressed && (<>
 
-            <div className="space-y-3">
-              <button onClick={() => toggleSettingsSection('ai')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                <BrainCircuit size={16} className={aiConfig.enabled ? 'text-purple-400' : textSecondary} />
-                {t('settings.aiFeatures')}
-                {aiConfig.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />}
-                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.ai ? '' : 'rotate-180'}`} />
-              </button>
-              {!collapsedSettings.ai && (<>
-              <p className={`${textSecondary} text-xs`}>
-                {t('settings.aiByoApiKey')}
-              </p>
-
-              {/* Master toggle */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={aiConfig.enabled}
-                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setAiConfig(prev => ({ ...prev, enabled: e.target.checked })); }}
-                    className="sr-only"
-                  />
-                  <div className={`w-10 h-6 rounded-full transition-colors ${aiConfig.enabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aiConfig.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </div>
-                </div>
-                <span className={`text-sm ${textPrimary}`}>{t('settings.enableAIFeatures')}</span>
-              </label>
-
-              {aiConfig.enabled && (
-                <div className="space-y-3 mt-2">
+            {/* Off hides the provider, key and model; they are kept, so
+                switching AI back on resumes with the same configuration. */}
+            <SettingsCard
+              cardId="ai"
+              icon={BrainCircuit}
+              title={t('settings.aiFeatures')}
+              hint={t('settings.aiByoApiKey')}
+              switchLabel={t('settings.enableAIFeatures')}
+              checked={aiConfig.enabled}
+              onToggle={(next) => {
+                if (next) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true }));
+                setAiConfig(prev => ({ ...prev, enabled: next }));
+              }}
+              darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+            >
+                <div className="space-y-3">
                   {/* Provider selector */}
                   <div>
                     <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiProvider')}</label>
@@ -1804,9 +1791,7 @@ const SettingsModal = () => {
                     ))}
                   </div>
                 </div>
-              )}
-              </>)}
-            </div>
+            </SettingsCard>
             </>)}
         </>
       ),

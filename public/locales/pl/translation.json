@@ -1748,7 +1748,8 @@
       "webdavUrl": "Adres URL WebDAV"
     },
     "folderPaused": "Kopia zapasowa w folderze wstrzymana. Połącz ją ponownie w Kopia zapasowa i przywracanie → Automatyczna kopia zapasowa, aby wznowić.",
-    "storageFull": "Pamięć pełna. Część danych mogła nie zostać zapisana. Usuń stare dane lub zwolnij pamięć przeglądarki."
+    "storageFull": "Pamięć pełna. Część danych mogła nie zostać zapisana. Usuń stare dane lub zwolnij pamięć przeglądarki.",
+    "historyTitle": "Historia kopii zapasowych"
   },
   "app": {
     "tasksScheduledTitle": "Zaplanowano zadania",

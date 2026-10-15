@@ -1693,7 +1693,8 @@
       "webdavUrl": "URL do WebDAV"
     },
     "folderPaused": "Backup na pasta pausado. Reconecte-o em Backup e restauração → Backup automático para retomar.",
-    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido salvos. Apague dados antigos ou libere espaço no navegador."
+    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido salvos. Apague dados antigos ou libere espaço no navegador.",
+    "historyTitle": "Histórico de backups"
   },
   "app": {
     "tasksScheduledTitle": "Tarefas agendadas",

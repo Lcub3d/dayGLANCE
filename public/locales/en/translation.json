@@ -1693,7 +1693,8 @@
       "webdavUrl": "WebDAV URL"
     },
     "folderPaused": "Folder backup paused. Reconnect it in Backup & Restore → Auto-Backup to resume.",
-    "storageFull": "Storage full. Some data may not have saved. Clear old data or free up browser storage."
+    "storageFull": "Storage full. Some data may not have saved. Clear old data or free up browser storage.",
+    "historyTitle": "Backup history"
   },
   "app": {
     "tasksScheduledTitle": "Tasks Scheduled",

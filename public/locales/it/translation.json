@@ -1695,7 +1695,8 @@
       "webdavUrl": "URL WebDAV"
     },
     "folderPaused": "Backup nella cartella in pausa. Ricollegala in Backup e ripristino → Backup automatico per riprendere.",
-    "storageFull": "Spazio di archiviazione pieno. Alcuni dati potrebbero non essere stati salvati. Elimina i dati vecchi o libera spazio nel browser."
+    "storageFull": "Spazio di archiviazione pieno. Alcuni dati potrebbero non essere stati salvati. Elimina i dati vecchi o libera spazio nel browser.",
+    "historyTitle": "Cronologia dei backup"
   },
   "app": {
     "tasksScheduledTitle": "Attività pianificate",

@@ -1693,7 +1693,8 @@
       "webdavUrl": "WebDAV-URL"
     },
     "folderPaused": "Ordnersicherung pausiert. Verbinde sie unter Sicherung & Wiederherstellung → Automatische Sicherung neu, um fortzufahren.",
-    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei."
+    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei.",
+    "historyTitle": "Sicherungsverlauf"
   },
   "app": {
     "tasksScheduledTitle": "Aufgaben geplant",

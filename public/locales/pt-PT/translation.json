@@ -1693,7 +1693,8 @@
       "webdavUrl": "URL do WebDAV"
     },
     "folderPaused": "Cópia de segurança na pasta em pausa. Volte a ligá-la em Cópia de segurança e restauro → Cópia de segurança automática para retomar.",
-    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido guardados. Apague dados antigos ou liberte espaço no navegador."
+    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido guardados. Apague dados antigos ou liberte espaço no navegador.",
+    "historyTitle": "Histórico de cópias de segurança"
   },
   "app": {
     "tasksScheduledTitle": "Tarefas agendadas",

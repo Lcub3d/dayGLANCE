@@ -1693,7 +1693,8 @@
       "webdavUrl": "URL WebDAV"
     },
     "folderPaused": "Sauvegarde dans le dossier en pause. Reconnectez-la dans Sauvegarde & Restauration → Sauvegarde automatique pour la reprendre.",
-    "storageFull": "Stockage plein. Certaines données n’ont peut-être pas été enregistrées. Supprimez d’anciennes données ou libérez de l’espace dans le navigateur."
+    "storageFull": "Stockage plein. Certaines données n’ont peut-être pas été enregistrées. Supprimez d’anciennes données ou libérez de l’espace dans le navigateur.",
+    "historyTitle": "Historique des sauvegardes"
   },
   "app": {
     "tasksScheduledTitle": "Tâches planifiées",

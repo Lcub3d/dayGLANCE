@@ -3,9 +3,10 @@ import { Save, Cloud, FolderOpen } from 'lucide-react';
 import { autoBackupProviders } from '../utils/autoBackup.js';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import SettingsCard from './settings/SettingsCard.jsx';
 
 // Auto-Backup Settings Form (extracted to avoid hooks-in-conditional issues)
-const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrimary, textSecondary, borderClass, hoverBg, onRemoteBackupNow, folderBackup, onFolderRestore }) => {
+const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrimary, textSecondary, borderClass, hoverBg, onRemoteBackupNow, folderBackup, onFolderRestore, variant }) => {
   const { t } = useTranslation();
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -53,26 +54,11 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
     setTesting(false);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Local Backup Settings */}
-      <div>
-        <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
-          <Save size={16} />
-          {t('backup.localBackups')}
-        </h4>
-        <div className="space-y-3 ml-1">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={localConfig.enabled}
-              onChange={(e) => updateLocal({ enabled: e.target.checked })}
-              className="w-4 h-4 rounded"
-            />
-            <span className={textPrimary}>{t('backup.enableLocalBackups')}</span>
-          </label>
-          {localConfig.enabled && (
-                <div className="ml-7">
+  // The pieces each destination shows while it is on, shared by the two
+  // layouts below: the mobile auto-backup dialog's sections and the desktop
+  // Settings cards.
+  const localBody = (
+    <>
               <label className={`block text-sm ${textSecondary} mb-1`}>{t('backup.frequency')}</label>
               <select
                 value={localConfig.frequency}
@@ -88,24 +74,10 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                   {t('backup.lastBackup', { time: formatLocalizedDate(new Date(status.local.lastBackup), { dateStyle: 'short', timeStyle: 'short' }) })}
                   </p>
               )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Folder Backup Settings — continuous write-through to a local folder.
-          Web/PWA only (File System Access API); the section is hidden where
-          unsupported (Firefox/Safari, Electron, native). */}
-      {folderBackup?.supported && (
-        <div>
-          <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
-            <FolderOpen size={16} />
-            {t('backup.folderBackup')}
-          </h4>
-          <div className="space-y-3 ml-1">
-            <p className={`text-xs ${textSecondary}`}>
-              {t('backup.folderBackupDescription')}
-            </p>
+    </>
+  );
+  const folderBody = (
+    <>
 
             {folderPrompt ? (
               <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-amber-900/20' : 'bg-amber-50'} space-y-2`}>
@@ -219,31 +191,10 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Remote Backup Settings */}
-      <div>
-          <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
-            <Cloud size={16} />
-            {t('backup.remoteBackups')}
-        </h4>
-        <div className="space-y-3 ml-1">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={remoteConfig.enabled}
-              onChange={(e) => updateRemote({ enabled: e.target.checked })}
-              className="w-4 h-4 rounded"
-            />
-            <span className={textPrimary}>{t('backup.enableRemoteBackups')}</span>
-          </label>
-          <p className={`text-xs ${textSecondary} ml-7`}>
-            {t('backup.remoteDeviceHint')}
-          </p>
-          {remoteConfig.enabled && (
-            <div className="ml-7 space-y-3">
+    </>
+  );
+  const remoteBody = (
+    <>
               <div>
                 <label className={`block text-sm ${textSecondary} mb-1`}>{t('backup.provider')}</label>
                 <select
@@ -312,6 +263,128 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
                   {t('backup.lastBackup', { time: formatLocalizedDate(new Date(status.remote.lastBackup), { dateStyle: 'short', timeStyle: 'short' }) })}
                 </p>
               )}
+    </>
+  );
+
+  // Settings → Backup & Restore: one card per destination, each with its own
+  // switch. Local and remote save as they change, as they do in the dialog.
+  // The folder has no switch: connecting needs a folder picked, and its
+  // Disconnect forgets the folder, so its own buttons stay inside the card.
+  if (variant === 'cards') {
+    const cardProps = { darkMode, textPrimary, textSecondary, borderClass };
+    return (
+      <div className="space-y-6">
+        <SettingsCard
+          cardId="localBackups"
+          icon={Save}
+          title={t('backup.localBackups')}
+          switchLabel={t('backup.enableLocalBackups')}
+          checked={!!localConfig.enabled}
+          onToggle={(next) => updateLocal({ enabled: next })}
+          {...cardProps}
+        >
+          <div>
+            {localBody}
+          </div>
+        </SettingsCard>
+        {folderBackup?.supported && (
+          <SettingsCard
+            cardId="folderBackup"
+            icon={FolderOpen}
+            title={t('backup.folderBackup')}
+            hint={t('backup.folderBackupDescription')}
+            badge={folderConfig.enabled && folderBackup.folderName ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+            {...cardProps}
+          >
+            <div className="space-y-3">
+            {folderBody}
+            </div>
+          </SettingsCard>
+        )}
+        <SettingsCard
+          cardId="remoteBackups"
+          icon={Cloud}
+          title={t('backup.remoteBackups')}
+          hint={t('backup.remoteDeviceHint')}
+          switchLabel={t('backup.enableRemoteBackups')}
+          checked={!!remoteConfig.enabled}
+          onToggle={(next) => updateRemote({ enabled: next })}
+          {...cardProps}
+        >
+          <div className="space-y-3">
+            {remoteBody}
+          </div>
+        </SettingsCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Local Backup Settings */}
+      <div>
+        <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
+          <Save size={16} />
+          {t('backup.localBackups')}
+        </h4>
+        <div className="space-y-3 ml-1">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={localConfig.enabled}
+              onChange={(e) => updateLocal({ enabled: e.target.checked })}
+              className="w-4 h-4 rounded"
+            />
+            <span className={textPrimary}>{t('backup.enableLocalBackups')}</span>
+          </label>
+          {localConfig.enabled && (
+                <div className="ml-7">
+                  {localBody}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Folder Backup Settings — continuous write-through to a local folder.
+          Web/PWA only (File System Access API); the section is hidden where
+          unsupported (Firefox/Safari, Electron, native). */}
+      {folderBackup?.supported && (
+        <div>
+          <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
+            <FolderOpen size={16} />
+            {t('backup.folderBackup')}
+          </h4>
+          <div className="space-y-3 ml-1">
+            <p className={`text-xs ${textSecondary}`}>
+              {t('backup.folderBackupDescription')}
+            </p>
+            {folderBody}
+          </div>
+        </div>
+      )}
+
+      {/* Remote Backup Settings */}
+      <div>
+          <h4 className={`font-medium ${textPrimary} mb-3 flex items-center gap-2`}>
+            <Cloud size={16} />
+            {t('backup.remoteBackups')}
+        </h4>
+        <div className="space-y-3 ml-1">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={remoteConfig.enabled}
+              onChange={(e) => updateRemote({ enabled: e.target.checked })}
+              className="w-4 h-4 rounded"
+            />
+            <span className={textPrimary}>{t('backup.enableRemoteBackups')}</span>
+          </label>
+          <p className={`text-xs ${textSecondary} ml-7`}>
+            {t('backup.remoteDeviceHint')}
+          </p>
+          {remoteConfig.enabled && (
+            <div className="ml-7 space-y-3">
+              {remoteBody}
             </div>
           )}
         </div>

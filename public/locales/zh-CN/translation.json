@@ -2623,6 +2623,8 @@
   "undo": {
     "undone": "已撤销：{{action}}",
     "redone": "已重做：{{action}}",
+    "nothingToUndo": "没有可撤销的操作",
+    "nothingToRedo": "没有可重做的操作",
     "untitled": "无标题",
     "action": {
       "added": "已添加“{{title}}”",

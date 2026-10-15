@@ -2623,6 +2623,8 @@
   "undo": {
     "undone": "Rückgängig gemacht: {{action}}",
     "redone": "Wiederhergestellt: {{action}}",
+    "nothingToUndo": "Nichts rückgängig zu machen",
+    "nothingToRedo": "Nichts wiederherzustellen",
     "untitled": "Ohne Titel",
     "action": {
       "added": "„{{title}}“ hinzugefügt",

@@ -105,3 +105,35 @@ describe('undo toasts that say what was undone', () => {
     expect(render().undoToast.message).toBe('This Do has changed since.');
   });
 });
+
+describe('the way back, and an empty history', () => {
+  it('an undo offers Redo, and a redo offers Undo', () => {
+    const { state, render } = app([{ id: 't1', title: 'Write report' }]);
+    render().pushUndo({ key: 'deleted', taskId: 't1' });
+    state.tasks = [];
+    render().performUndo();
+    expect(render().undoToast).toMatchObject({ redoable: true });
+    expect(render().undoToast.actionable).toBeUndefined();
+    // What the toast's Redo button does.
+    render().performRedo();
+    expect(state.tasks).toEqual([]);
+    expect(render().undoToast).toMatchObject({ message: 'Redone: Deleted "Write report"', actionable: true });
+  });
+
+  it('says so when there is nothing to undo or redo', () => {
+    const { render } = app([]);
+    render().performUndo();
+    expect(render().undoToast).toEqual({ message: 'Nothing to undo' });
+    render().performRedo();
+    expect(render().undoToast).toEqual({ message: 'Nothing to redo' });
+  });
+
+  it('a step that could not run says why, as a warning', async () => {
+    const { render } = app([]);
+    render().pushUndoAction({ undo: async () => ({ ok: false }) }, 'Do saved');
+    render().performUndo();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(render().undoToast).toEqual({ message: 'Could not undo', kind: 'warning' });
+  });
+});
+

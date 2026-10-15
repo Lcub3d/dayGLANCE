@@ -219,7 +219,7 @@ export default function useDataPersistence({
         console.error('Error saving data:', key, e);
         if (!quotaHit && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
           quotaHit = true;
-          setUndoToast({ message: t('backup.storageFull'), actionable: false });
+          setUndoToast({ message: t('backup.storageFull'), kind: 'warning' });
         }
       }
     };

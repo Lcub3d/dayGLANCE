@@ -2720,6 +2720,8 @@
   "undo": {
     "undone": "Cofnięto: {{action}}",
     "redone": "Ponowiono: {{action}}",
+    "nothingToUndo": "Nie ma czego cofnąć",
+    "nothingToRedo": "Nie ma czego ponowić",
     "untitled": "Bez tytułu",
     "action": {
       "added": "Dodano „{{title}}”",

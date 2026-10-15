@@ -2623,6 +2623,8 @@
   "undo": {
     "undone": "Deshecho: {{action}}",
     "redone": "Rehecho: {{action}}",
+    "nothingToUndo": "Nada que deshacer",
+    "nothingToRedo": "Nada que rehacer",
     "untitled": "Sin título",
     "action": {
       "added": "Se añadió «{{title}}»",

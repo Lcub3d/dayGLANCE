@@ -273,9 +273,16 @@ const SettingsModal = () => {
   const timezoneMismatch = Intl.DateTimeFormat().resolvedOptions().timeZone !== homeTimezone;
   const updateVisible = !!updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true);
 
-  // TRMNL's card is open while its form is being filled in, before a webhook
-  // makes it possible to switch the push on.
-  const [trmnlSetupOpen, setTrmnlSetupOpen] = useState(false);
+  // What each GLANCE apps protocol has SAVED (not the form being edited), for
+  // the dots and for which sub-cards start open.
+  const intentsSaved = {
+    webdav: (() => { try { return !!JSON.parse(localStorage.getItem(INTENT_CONFIG_KEY) || 'null')?.webdavUrl; } catch { return false; } })(),
+    vault: !!getDbIntentsConfig()?.enabled,
+    icloud: isICloudAvailable() && getIcloudIntentsEnabledFlag(),
+    directAccess: isDirectAccessSupported() && getDirectAccessIntentsEnabledFlag(),
+  };
+  // Local Integrations reports whether Stream Deck or MCP is on, for its dot.
+  const [localIntegrationsOn, setLocalIntegrationsOn] = useState(false);
 
   // Every block of the dialog, verbatim, with the condition under which it
   // renders anything. A topic page is a list of these; separators go between
@@ -1110,6 +1117,7 @@ const SettingsModal = () => {
             {/* Calendar Sync Section - wide screens */}
             <SettingsCard
               cardId="calendars"
+              collapsible
               icon={RefreshCw}
               title={t('settings.calendarSync')}
               badge={calendarSourceActive ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
@@ -1809,6 +1817,7 @@ const SettingsModal = () => {
                 modal's counterpart wherever the modal is reachable. */}
             <SettingsCard
               cardId="obsidian"
+              collapsible
               icon={BookOpen}
               title={t('settings.obsidianIntegration')}
               badge={obsidianConfig?.enabled ? <span className={`w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} /> : null}
@@ -2206,29 +2215,15 @@ const SettingsModal = () => {
       card: true,
       node: (
         <>
-            {/* TRMNL E-Ink Dashboard Section */}
-            {/* TRMNL E-Ink Dashboard. Off pauses the push and keeps the webhook
-                and key; turning it on with no webhook yet opens the form, and
-                the push starts once a webhook is entered and enabled. */}
+            {/* TRMNL E-Ink Dashboard: a collapsible card like the other
+                integrations; its Enable and Disable stay inside, and the dot
+                shows while it pushes. Disable keeps the webhook and key. */}
             <SettingsCard
               cardId="trmnl"
+              collapsible
               icon={LayoutGrid}
               title={t('settings.trmnlDashboard')}
-              checked={!!trmnlConfig?.enabled || trmnlSetupOpen}
-              onToggle={(next) => {
-                if (!next) {
-                  setTrmnlSetupOpen(false);
-                  if (trmnlConfig?.enabled) setTrmnlConfig(prev => ({ ...prev, enabled: false }));
-                  return;
-                }
-                if (trmnlConfig?.webhookUrl) {
-                  setTrmnlConfig(prev => ({ ...prev, enabled: true }));
-                  setTimeout(() => performTrmnlSync(), 100);
-                } else {
-                  setTrmnlSetupOpen(true);
-                }
-              }}
-              summary={!trmnlConfig?.enabled && !trmnlSetupOpen && trmnlConfig?.webhookUrl ? t('sync.form.pausedKept') : null}
+              badge={trmnlConfig?.enabled ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
               darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
             >
             <div className="space-y-3">
@@ -2272,6 +2267,12 @@ const SettingsModal = () => {
                       <RefreshCw size={14} className={trmnlSyncStatus === 'syncing' ? 'animate-spin' : ''} />
                       {trmnlSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
                     </button>
+                    <button
+                      onClick={() => setTrmnlConfig(prev => ({ ...prev, enabled: false }))}
+                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
+                    >
+                      {t('common.disable')}
+                    </button>
                   </>
                 ) : (
                   <button
@@ -2306,7 +2307,7 @@ const SettingsModal = () => {
       card: true,
       node: (
         <>
-            <SettingsCard cardId="todoist" icon={CheckSquare} title={t('todoist.title')} badge={todoistConnected ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+            <SettingsCard cardId="todoist" collapsible icon={CheckSquare} title={t('todoist.title')} badge={todoistConnected ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
               <TodoistSettings variant="card" />
             </SettingsCard>
         </>
@@ -2319,8 +2320,8 @@ const SettingsModal = () => {
         <>
             {/* Local Integrations (Stream Deck + MCP) — Electron only,
                 renders nothing on web/mobile builds. */}
-            <SettingsCard cardId="localIntegrations" icon={Plug} title={t('settings.localIntegrations')} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
-              <LocalIntegrationsSettings variant="card" />
+            <SettingsCard cardId="localIntegrations" collapsible icon={Plug} title={t('settings.localIntegrations')} badge={localIntegrationsOn ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
+              <LocalIntegrationsSettings variant="card" onActiveChange={setLocalIntegrationsOn} />
             </SettingsCard>
         </>
       ),
@@ -2333,15 +2334,27 @@ const SettingsModal = () => {
             {/* GLANCE Integrations Section */}
             <SettingsCard
               cardId="glanceApps"
+              collapsible
               icon={Activity}
               title={t('settings.glanceIntegrations')}
-              badge={(intentForm.webdavUrl || dbIntentsEnabled) ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+              badge={Object.values(intentsSaved).some(Boolean) ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
               darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
             >
             <div className="space-y-3">
               <p className={`${textSecondary} text-xs`}>
                 {t('settings.glanceIntegrationsDesc', { defaultValue: 'Connect dayGLANCE to other Glance-compatible apps via a shared WebDAV event log.' })}
               </p>
+              {/* One card per protocol, each open from the start only when it is
+                  on, so the page lists what is set up and folds the rest. */}
+              <SettingsCard
+                cardId="intentsWebdav"
+                collapsible
+                defaultOpen={intentsSaved.webdav}
+                icon={Cloud}
+                title={t('settings.glanceWebdavLog')}
+                badge={intentsSaved.webdav ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              >
               <div className="space-y-3">
                 <div>
                   <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceServerUrl')}</label>
@@ -2599,15 +2612,21 @@ const SettingsModal = () => {
                 </div>
               </div>
 
+              </SettingsCard>
+
               {/* GLANCEvault intents (beta) — DB transport. Independent of the
                   WebDAV intents config above AND of the vault sync toggle; it only
                   INHERITS the vault connection from the GLANCEvault sync config. */}
-              <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                <div className="flex items-center gap-2">
-                  <Server size={14} className={textSecondary} />
-                  <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.glanceVaultIntents', { defaultValue: 'GLANCEvault intents' })}</span>
-                  <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}>{t('settings.beta', { defaultValue: 'Beta' })}</span>
-                </div>
+              <SettingsCard
+                cardId="intentsVault"
+                collapsible
+                defaultOpen={intentsSaved.vault}
+                icon={Server}
+                title={t('settings.glanceVaultIntents', { defaultValue: 'GLANCEvault intents' })}
+                badge={<><span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}>{t('settings.beta', { defaultValue: 'Beta' })}</span>{intentsSaved.vault ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}</>}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              >
+                <div className="space-y-3">
                 <p className={`${textSecondary} text-xs`}>
                   {t('settings.glanceVaultIntentsDesc', { defaultValue: 'Deliver intents over your GLANCEvault server instead of (or alongside) the WebDAV event log. Uses the same vault connection as GLANCEvault sync — no separate URL or token needed.' })}
                 </p>
@@ -2768,18 +2787,24 @@ const SettingsModal = () => {
                     </>
                   );
                 })()}
-              </div>
+                </div>
+              </SettingsCard>
 
               {/* iCloud intents opt-in — Apple platforms only (isICloudAvailable()
                   is false on Android/web). Gates ACTIVATION of the iCloud intents
                   transport (emit + poll); default OFF so the path stays inert
                   until the user opts in. */}
               {isICloudAvailable() && (
-                <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                  <div className="flex items-center gap-2">
-                    <Cloud size={14} className={textSecondary} />
-                    <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.icloudIntents')}</span>
-                  </div>
+                <SettingsCard
+                cardId="intentsIcloud"
+                collapsible
+                defaultOpen={intentsSaved.icloud}
+                icon={Cloud}
+                title={t('settings.icloudIntents')}
+                badge={<>{intentsSaved.icloud ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}</>}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              >
+                <div className="space-y-3">
                   <p className={`${textSecondary} text-xs`}>
                     {t('settings.icloudIntentsDesc')}
                   </p>
@@ -2815,6 +2840,7 @@ const SettingsModal = () => {
                     {icloudIntentsSaved ? t('common.saved') : t('common.save')}
                   </button>
                 </div>
+              </SettingsCard>
               )}
 
               {/* Direct Access intents opt-in — wherever the folder bridge exists
@@ -2822,11 +2848,16 @@ const SettingsModal = () => {
                   transport (emit + poll); default OFF, and inert until a folder
                   is connected on this device. */}
               {isDirectAccessSupported() && (
-                <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                  <div className="flex items-center gap-2">
-                    <FolderOpen size={14} className={textSecondary} />
-                    <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.directAccessIntents')}</span>
-                  </div>
+                <SettingsCard
+                cardId="intentsDirectAccess"
+                collapsible
+                defaultOpen={intentsSaved.directAccess}
+                icon={FolderOpen}
+                title={t('settings.directAccessIntents')}
+                badge={<>{intentsSaved.directAccess ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}</>}
+                darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+              >
+                <div className="space-y-3">
                   <p className={`${textSecondary} text-xs`}>
                     {t('settings.directAccessIntentsDesc')}
                   </p>
@@ -2888,6 +2919,7 @@ const SettingsModal = () => {
                     {directAccessIntentsSaved ? t('common.saved') : t('common.save')}
                   </button>
                 </div>
+              </SettingsCard>
               )}
             </div>
             </SettingsCard>
@@ -2901,22 +2933,40 @@ const SettingsModal = () => {
         <>
             {/* Automation intents (Tasker) — Android only. Opt-in gate for the
                 exported IntentReceiver + outbound RESULT/NOTIFY broadcasts.
-                The warning shows while it is off, before anyone turns it on. */}
+                A collapsible card like the other integrations; the warning sits
+                beside the checkbox that turns it on. */}
             {isNativeAndroid() && (
             <SettingsCard
               cardId="automationIntents"
+              collapsible
               icon={Zap}
               title={t('settings.automationIntents')}
               hint={t('settings.automationIntentsDesc')}
-              switchLabel={t('settings.automationIntentsToggle')}
-              checked={automationIntentsEnabled}
-              onToggle={(v) => {
-                setAutomationIntentsEnabled(v);
-                nativeSetAutomationIntentsEnabled(v);
-              }}
-              summary={t('settings.automationIntentsWarning')}
+              badge={automationIntentsEnabled ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
               darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
-            />
+            >
+              <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
+                <input
+                  type="checkbox"
+                  id="automation-intents-toggle"
+                  checked={automationIntentsEnabled}
+                  onChange={e => {
+                    const v = e.target.checked;
+                    setAutomationIntentsEnabled(v);
+                    nativeSetAutomationIntentsEnabled(v);
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded"
+                />
+                <div>
+                  <label htmlFor="automation-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
+                    {t('settings.automationIntentsToggle')}
+                  </label>
+                  <p className={`text-xs ${textSecondary} mt-0.5`}>
+                    {t('settings.automationIntentsWarning')}
+                  </p>
+                </div>
+              </div>
+            </SettingsCard>
             )}
         </>
       ),

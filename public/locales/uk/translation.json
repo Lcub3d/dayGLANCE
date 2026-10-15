@@ -797,7 +797,8 @@
       "about": "Про застосунок і допомога"
     },
     "theme": "Тема",
-    "themeSystem": "Системна"
+    "themeSystem": "Системна",
+    "glanceWebdavLog": "Журнал подій WebDAV"
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",

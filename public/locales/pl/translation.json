@@ -793,7 +793,8 @@
       "about": "Informacje i pomoc"
     },
     "theme": "Motyw",
-    "themeSystem": "Systemowy"
+    "themeSystem": "Systemowy",
+    "glanceWebdavLog": "Dziennik zdarzeń WebDAV"
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

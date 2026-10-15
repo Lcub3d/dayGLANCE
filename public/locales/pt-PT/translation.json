@@ -740,7 +740,16 @@
     "directAccessIntents": "Intents do Direct Access",
     "directAccessIntentsDesc": "Partilhe intents de tarefas com outras apps GLANCE através da pasta do Direct Access: um ficheiro de eventos, glance-events.json, que cada dispositivo e app na pasta lê e acrescenta. Cifrado com a sua frase-passe de sincronização quando o ficheiro do Direct Access o é.",
     "directAccessIntentsEnable": "Ativar intents do Direct Access",
-    "directAccessIntentsNeedsFolder": "Nenhuma pasta está ligada neste dispositivo. Ligue uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado nem recebido aqui."
+    "directAccessIntentsNeedsFolder": "Nenhuma pasta está ligada neste dispositivo. Ligue uma primeiro em Sincronização na nuvem → Direct Access; até lá nada é enviado nem recebido aqui.",
+    "topics": {
+      "general": "Geral",
+      "appearance": "Aspeto",
+      "features": "Funcionalidades",
+      "ai": "IA",
+      "sync": "Sincronização",
+      "integrations": "Integrações",
+      "advanced": "Avançado"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Notas rápidas",

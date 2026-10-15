@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "备份与恢复",
-    "description": "将数据导出为文件，或从之前的备份恢复。",
+    "description": "将数据导出为文件、从之前的备份恢复，或重置应用程序数据。",
     "exportBackup": "导出备份",
     "exportHint": "下载所有任务和设置为 JSON",
     "restoreBackup": "恢复备份",

@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Sicherung & Wiederherstellung",
-    "description": "Exportieren Sie Ihre Daten in eine Datei oder stellen Sie eine frühere Sicherung wieder her.",
+    "description": "Exportieren Sie Ihre Daten in eine Datei, stellen Sie eine frühere Sicherung wieder her oder setzen Sie die App-Daten zurück.",
     "exportBackup": "Sicherung exportieren",
     "exportHint": "Alle Aufgaben und Einstellungen als JSON herunterladen",
     "restoreBackup": "Sicherung wiederherstellen",

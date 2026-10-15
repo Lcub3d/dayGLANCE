@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Backup e restauração",
-    "description": "Exporte seus dados para um arquivo ou restaure a partir de uma cópia anterior.",
+    "description": "Exporte seus dados para um arquivo, restaure a partir de uma cópia anterior ou redefina os dados do aplicativo.",
     "exportBackup": "Exportar backup",
     "exportHint": "Baixar todas as tarefas e configurações como JSON",
     "restoreBackup": "Restaurar backup",

@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Backup & Restore",
-    "description": "Export your data to a file or restore from a previous backup.",
+    "description": "Export your data to a file, restore from a previous backup, or reset app data.",
     "exportBackup": "Export Backup",
     "exportHint": "Download all tasks and settings as JSON",
     "restoreBackup": "Restore Backup",

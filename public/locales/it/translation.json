@@ -1632,7 +1632,7 @@
   },
   "backup": {
     "title": "Backup e ripristino",
-    "description": "Esporta i tuoi dati in un file o ripristina da un backup precedente.",
+    "description": "Esporta i tuoi dati in un file, ripristina da un backup precedente o reimposta i dati dell'app.",
     "exportBackup": "Esporta backup",
     "exportHint": "Scarica tutte le attività e impostazioni come JSON",
     "restoreBackup": "Ripristina backup",

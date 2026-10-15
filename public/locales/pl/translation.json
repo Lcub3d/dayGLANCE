@@ -1685,7 +1685,7 @@
   },
   "backup": {
     "title": "Kopia zapasowa i przywracanie",
-    "description": "Wyeksportuj swoje dane do pliku lub przywróć z poprzedniej kopii zapasowej.",
+    "description": "Wyeksportuj swoje dane do pliku, przywróć z poprzedniej kopii zapasowej lub zresetuj dane aplikacji.",
     "exportBackup": "Eksportuj kopię zapasową",
     "exportHint": "Pobierz wszystkie zadania i ustawienia jako JSON",
     "restoreBackup": "Przywróć kopię zapasową",

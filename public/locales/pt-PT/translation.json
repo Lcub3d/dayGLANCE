@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Cópia de segurança e restauro",
-    "description": "Exporte os seus dados para um ficheiro ou restaure a partir de uma cópia anterior.",
+    "description": "Exporte os seus dados para um ficheiro, restaure a partir de uma cópia anterior ou reponha os dados da aplicação.",
     "exportBackup": "Exportar cópia de segurança",
     "exportHint": "Transferir todas as tarefas e definições como JSON",
     "restoreBackup": "Restaurar cópia de segurança",

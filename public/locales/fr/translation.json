@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Sauvegarde & Restauration",
-    "description": "Exportez vos données vers un fichier ou restaurez une sauvegarde précédente.",
+    "description": "Exportez vos données vers un fichier, restaurez une sauvegarde précédente ou réinitialisez les données.",
     "exportBackup": "Exporter la sauvegarde",
     "exportHint": "Télécharger toutes les tâches et paramètres en JSON",
     "restoreBackup": "Restaurer la sauvegarde",

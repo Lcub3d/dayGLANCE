@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Frecuencia de las copias",
     "snapshotDescription": "La copia activa se actualiza en unos segundos después de cada cambio; las copias son archivos adicionales de puntos en el tiempo que se conservan con esta frecuencia.",
     "lastSaved": "Último guardado: {{time}}",
-    "remoteDeviceHint": "Actívalo solo en un dispositivo. Si usas varios dispositivos, utiliza la sincronización en la nube para mantenerlos sincronizados y configura las copias remotas solo en tu dispositivo principal.",
+    "remoteDeviceHint": "Actívalo solo en un dispositivo. Si usas varios dispositivos, utiliza la sincronización en la nube para mantenerlos sincronizados y configura las copias remotas solo en tu dispositivo principal. Si sincronizas con GLANCEvault, deja las copias remotas desactivadas.",
     "provider": "Proveedor",
     "testing": "Probando…",
     "testConnection": "Probar conexión",

@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Snapshot frequency",
     "snapshotDescription": "The live copy is updated within seconds of every change; snapshots are extra point-in-time files kept on this cadence.",
     "lastSaved": "Last saved: {{time}}",
-    "remoteDeviceHint": "Only enable on one device. If you use multiple devices, use Cloud Sync to keep them in sync and set up remote backups on your primary device only.",
+    "remoteDeviceHint": "Only enable on one device. If you use multiple devices, use Cloud Sync to keep them in sync and set up remote backups on your primary device only. If you sync with GLANCEvault, leave remote backups off.",
     "provider": "Provider",
     "testing": "Testing…",
     "testConnection": "Test Connection",

@@ -273,7 +273,7 @@ const AutoBackupSettingsForm = ({ config, setConfig, status, darkMode, textPrima
   if (variant === 'cards') {
     const cardProps = { darkMode, textPrimary, textSecondary, borderClass };
     return (
-      <div className="space-y-6">
+      <div className="space-y-3">
         <SettingsCard
           cardId="localBackups"
           icon={Save}

@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Frequência dos snapshots",
     "snapshotDescription": "A cópia atualizada é modificada em poucos segundos após cada alteração; snapshots são arquivos adicionais de momentos específicos mantidos nesta frequência.",
     "lastSaved": "Último salvamento: {{time}}",
-    "remoteDeviceHint": "Ative em apenas um dispositivo. Se usar vários dispositivos, utilize a sincronização na nuvem para mantê-los sincronizados e configure backups remotos somente no dispositivo principal.",
+    "remoteDeviceHint": "Ative em apenas um dispositivo. Se usar vários dispositivos, utilize a sincronização na nuvem para mantê-los sincronizados e configure backups remotos somente no dispositivo principal. Se você sincroniza com o GLANCEvault, deixe os backups remotos desativados.",
     "provider": "Provedor",
     "testing": "Testando…",
     "testConnection": "Testar conexão",

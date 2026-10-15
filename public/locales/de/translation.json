@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Häufigkeit der Momentaufnahmen",
     "snapshotDescription": "Die Live-Kopie wird innerhalb weniger Sekunden nach jeder Änderung aktualisiert; Momentaufnahmen sind zusätzliche Dateien zu bestimmten Zeitpunkten, die nach diesem Intervall aufbewahrt werden.",
     "lastSaved": "Zuletzt gespeichert: {{time}}",
-    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein.",
+    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein. Wenn Sie mit GLANCEvault synchronisieren, lassen Sie Remote-Sicherungen ausgeschaltet.",
     "provider": "Anbieter",
     "testing": "Wird getestet…",
     "testConnection": "Verbindung testen",

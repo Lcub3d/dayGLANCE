@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Fréquence des instantanés",
     "snapshotDescription": "La copie à jour est actualisée dans les secondes qui suivent chaque modification ; les instantanés sont des fichiers supplémentaires conservés à cette fréquence.",
     "lastSaved": "Dernier enregistrement : {{time}}",
-    "remoteDeviceHint": "Activez cette option sur un seul appareil. Si vous utilisez plusieurs appareils, utilisez la synchronisation cloud pour les maintenir synchronisés et configurez les sauvegardes distantes uniquement sur votre appareil principal.",
+    "remoteDeviceHint": "Activez cette option sur un seul appareil. Si vous utilisez plusieurs appareils, utilisez la synchronisation cloud pour les maintenir synchronisés et configurez les sauvegardes distantes uniquement sur votre appareil principal. Si vous synchronisez avec GLANCEvault, laissez les sauvegardes distantes désactivées.",
     "provider": "Fournisseur",
     "testing": "Test en cours…",
     "testConnection": "Tester la connexion",

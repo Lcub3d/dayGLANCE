@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "快照频率",
     "snapshotDescription": "实时副本会在每次更改后的几秒内更新；快照是按此频率保留的额外时间点文件。",
     "lastSaved": "上次保存：{{time}}",
-    "remoteDeviceHint": "仅在一台设备上启用。如果使用多台设备，请使用云同步保持数据一致，并只在主设备上设置远程备份。",
+    "remoteDeviceHint": "仅在一台设备上启用。如果使用多台设备，请使用云同步保持数据一致，并只在主设备上设置远程备份。如果使用 GLANCEvault 同步，请保持远程备份关闭。",
     "provider": "服务商",
     "testing": "测试中…",
     "testConnection": "测试连接",

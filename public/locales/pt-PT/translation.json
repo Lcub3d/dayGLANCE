@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Frequência dos instantâneos",
     "snapshotDescription": "A cópia atualizada é modificada poucos segundos após cada alteração; os instantâneos são ficheiros adicionais de momentos específicos mantidos nesta frequência.",
     "lastSaved": "Última gravação: {{time}}",
-    "remoteDeviceHint": "Ative apenas num dispositivo. Se utilizar vários dispositivos, use a sincronização na nuvem para os manter sincronizados e configure as cópias remotas apenas no dispositivo principal.",
+    "remoteDeviceHint": "Ative apenas num dispositivo. Se utilizar vários dispositivos, use a sincronização na nuvem para os manter sincronizados e configure as cópias remotas apenas no dispositivo principal. Se sincroniza com o GLANCEvault, deixe as cópias remotas desativadas.",
     "provider": "Fornecedor",
     "testing": "A testar…",
     "testConnection": "Testar ligação",

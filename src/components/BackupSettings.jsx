@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Clock, History, Upload } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Clock, History, Trash2, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
@@ -8,9 +8,9 @@ import AutoBackupSettingsForm from './AutoBackupSettingsForm.jsx';
 import AutoBackupHistory from './AutoBackupHistory.jsx';
 import SettingsCard from './settings/SettingsCard.jsx';
 
-// Settings → Backup & Restore (#2075, docs/settings-redesign.md): export and
-// restore, then Auto-Backup as cards (one per destination, each with its own
-// switch, and the backup history), then reset. On desktop this replaces the
+// Settings → Backup & Restore (#2075, docs/settings-redesign.md): Auto-Backup
+// as one card (its destinations, each with its own switch, and the backup
+// history as cards inside it), then export, restore and reset as one row. On desktop this replaces the
 // auto-backup dialog; mobile still opens the dialog, which shares the same
 // form and history. The restore confirmation opens above Settings.
 const BackupSettings = () => {
@@ -30,70 +30,80 @@ const BackupSettings = () => {
   const lastRemote = autoBackupStatus?.remote?.lastBackup;
   useEffect(() => { loadAutoBackupHistory?.(); }, [lastLocal, lastRemote]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [resetOpen, setResetOpen] = useState(false);
+  const autoBackupActive = !!(autoBackupConfig?.local?.enabled || autoBackupConfig?.remote?.enabled
+    || (autoBackupConfig?.folder?.enabled && folderBackup?.folderName));
+  const actionClass = `flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'}`;
+
   return (
-          <div>
-            <p className={`${textSecondary} mb-4`}>
-              {t('backup.description')}
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={() => exportBackup()}
-                className={`w-full px-4 py-3 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'} ${textPrimary} rounded-lg text-left transition-colors`}
-              >
-                <div className="font-medium flex items-center gap-2">
-                  <Upload size={16} className="rotate-180" />
-                  {t('backup.exportBackup')}
-                </div>
-                <div className={`text-sm ${textSecondary}`}>{t('backup.exportHint')}</div>
-              </button>
-              <label className={`block w-full px-4 py-3 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'} ${textPrimary} rounded-lg text-left transition-colors cursor-pointer`}>
-                <div className="font-medium flex items-center gap-2">
-                  <Upload size={16} />
-                  {t('backup.restoreBackup')}
-                </div>
-                <div className={`text-sm ${textSecondary}`}>{t('backup.restoreHint')}</div>
-                <input type="file" accept=".json" onChange={handleBackupFileSelect} className="hidden" />
-              </label>
-              {/* Auto-Backup: what was its own dialog, as cards on this page. */}
-              <div className="pt-3 space-y-3" data-settings-group="autoBackup">
-                <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                  <Clock size={16} className={textSecondary} />
-                  {t('backup.autoBackup')}
-                </h4>
-                <p className={`text-xs ${textSecondary}`}>{t('backup.autoBackupHint')}</p>
-                <AutoBackupSettingsForm
-                  variant="cards"
-                  config={autoBackupConfig}
-                  setConfig={setAutoBackupConfig}
-                  status={autoBackupStatus}
-                  darkMode={darkMode}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderClass={borderClass}
-                  hoverBg={hoverBg}
-                  onRemoteBackupNow={performRemoteBackup}
-                  folderBackup={folderBackup}
-                  onFolderRestore={restoreFromBackupFolder}
-                />
-                <SettingsCard
-                  cardId="backupHistory"
-                  icon={History}
-                  title={t('backup.historyTitle')}
-                  darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
-                >
-                  <AutoBackupHistory />
-                </SettingsCard>
-              </div>
-              {/* Reset sits under the backup actions on purpose: exporting first
-                  is the adjacent, obvious step before wiping everything. */}
-              <ResetAppDataSection
-                darkMode={darkMode}
-                textPrimary={textPrimary}
-                textSecondary={textSecondary}
-                onExportBackup={exportBackup}
-              />
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Auto-Backup: one card, its destinations and history cards inside. */}
+      <SettingsCard
+        cardId="autoBackup"
+        icon={Clock}
+        title={t('backup.autoBackup')}
+        hint={t('backup.autoBackupHint')}
+        badge={autoBackupActive ? <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded">{t('backup.activeLabel')}</span> : null}
+        darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+      >
+        <div className="space-y-3">
+          <AutoBackupSettingsForm
+            variant="cards"
+            config={autoBackupConfig}
+            setConfig={setAutoBackupConfig}
+            status={autoBackupStatus}
+            darkMode={darkMode}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+            borderClass={borderClass}
+            hoverBg={hoverBg}
+            onRemoteBackupNow={performRemoteBackup}
+            folderBackup={folderBackup}
+            onFolderRestore={restoreFromBackupFolder}
+          />
+          <SettingsCard
+            cardId="backupHistory"
+            icon={History}
+            title={t('backup.historyTitle')}
+            darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+          >
+            <AutoBackupHistory />
+          </SettingsCard>
+        </div>
+      </SettingsCard>
+
+      {/* Export, restore and reset: one row of actions under the cards. Reset
+          opens its own panel below the row, which still asks for scope and a
+          confirmation before anything is deleted. */}
+      <div className="space-y-3" data-backup-actions>
+        <p className={`text-xs ${textSecondary}`}>{t('backup.description')}</p>
+        <div className="grid grid-cols-3 gap-3">
+          <button type="button" onClick={() => exportBackup()} title={t('backup.exportHint')} className={`${actionClass} ${textPrimary}`} data-backup-action="export">
+            <Upload size={16} className="rotate-180 flex-shrink-0" />
+            <span className="truncate">{t('backup.exportBackup')}</span>
+          </button>
+          <label title={t('backup.restoreHint')} className={`${actionClass} ${textPrimary} cursor-pointer`} data-backup-action="restore">
+            <Upload size={16} className="flex-shrink-0" />
+            <span className="truncate">{t('backup.restoreBackup')}</span>
+            <input type="file" accept=".json" onChange={handleBackupFileSelect} className="hidden" />
+          </label>
+          <button type="button" onClick={() => setResetOpen(true)} title={t('reset.subtitle')} className={`${actionClass} text-red-600 dark:text-red-400`} data-backup-action="reset">
+            <Trash2 size={16} className="flex-shrink-0" />
+            <span className="truncate">{t('reset.title')}</span>
+          </button>
+        </div>
+        {resetOpen && (
+          <ResetAppDataSection
+            startExpanded
+            onCollapse={() => setResetOpen(false)}
+            darkMode={darkMode}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+            onExportBackup={exportBackup}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 

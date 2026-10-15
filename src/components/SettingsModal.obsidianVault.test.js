@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 // picks the folder again and keeps everything else. Disconnect is not, since
 // it also drops the Obsidian-imported tasks (which then sync as deletions).
 describe('Obsidian settings: Change Vault', () => {
-  const source = readFileSync(new URL('./SettingsModal.jsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./settings/topics/useIntegrationsTopic.jsx', import.meta.url), 'utf8');
   const start = source.indexOf('data-obsidian-change-vault');
   const handler = source.slice(start, source.indexOf('</button>', start));
 
@@ -31,7 +31,7 @@ describe('a lost vault is shown, not passed off as connected', () => {
   const read = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
 
   it('Settings swaps the green check for the reason and the fix', () => {
-    const source = read('./SettingsModal.jsx');
+    const source = read('./settings/topics/useIntegrationsTopic.jsx');
     expect(source).toMatch(/obsidianVaultAccess === 'lost'\s*\?\s*<AlertCircle/);
     expect(source).toContain("data-obsidian-vault-lost className=\"text-xs text-red-500\">{t('settings.obsidianVaultAccessLost')}");
   });
@@ -51,7 +51,7 @@ describe('a lost vault is shown, not passed off as connected', () => {
 // The daily-note path preview (2026-10-03 field report): the folder a note
 // lands in is shown, and the nesting trap is named before the first write.
 describe('the daily-note path is previewed, and the nesting shape is called out', () => {
-  const source = readFileSync(new URL('./SettingsModal.jsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./settings/topics/useIntegrationsTopic.jsx', import.meta.url), 'utf8');
   it('renders the resolved path under the folder setting and the warning when nested', () => {
     expect(source).toContain('describeDailyNotePath({');
     expect(source).toMatch(/data-obsidian-daily-path[^>]*>\s*\{t\('settings\.obsidianDailyNotesResolved', \{ path: resolved\.path \}\)\}/);

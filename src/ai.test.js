@@ -119,7 +119,7 @@ describe('AI gate', () => {
         const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
         if (entry.isDirectory()) { walk(url); continue; }
         if (!/\.jsx?$/.test(entry.name) || /\.test\.jsx?$/.test(entry.name)) continue;
-        if (/^(SettingsModal|MobileSettingsPanel|ai)\.jsx?$/.test(entry.name)) continue;
+        if (/^(SettingsModal|MobileSettingsPanel|useAiTopic|ai)\.jsx?$/.test(entry.name)) continue;
         if (/aiConfig\??\.enabled/.test(readFileSync(url, 'utf8'))) offenders.push(entry.name);
       }
     };

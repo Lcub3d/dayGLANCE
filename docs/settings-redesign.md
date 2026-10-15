@@ -209,6 +209,15 @@ Each step is one or more PRs, each shippable on its own.
    Tests per page: it renders, its controls are present, and its storage keys
    are untouched. Notifications and Backup & Restore join here; their header
    icons go when their pages land.
+   Done for desktop: each topic is a hook under
+   `src/components/settings/topics/` (`useGeneralTopic`, `useSyncTopic`, ...)
+   returning its sections, and `SettingsModal.jsx` only gathers them and draws
+   the shell. They are hooks rather than page components because the topic
+   list, its dots and search need every topic's `show` without rendering it,
+   and a form's unsaved edits have to survive switching topics. The one piece
+   of state two topics share, the GLANCE apps WebDAV form (Integrations edits
+   it, the multi-user card reads it), is `useIntentForm`, held once by the
+   dialog. Step 4 calls the same hooks from mobile.
 2. **Cards.** Sync first (with pausing, including the GLANCEvault change), then
    Integrations, then Features.
 3. **Theme: System**, with the migration above.

@@ -13,11 +13,11 @@
 
 export const TOPICS = [
   { id: 'general', labelKey: 'settings.topics.general', fallback: 'General',
-    sections: ['timezoneNotice', 'localization', 'sound', 'weather', 'dailyContent'] },
+    sections: ['timezoneNotice', 'localization', 'sound', 'weather', 'dailyContent', 'globalShortcut'] },
   { id: 'appearance', labelKey: 'settings.topics.appearance', fallback: 'Appearance',
     sections: ['theme', 'viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
   { id: 'features', labelKey: 'settings.topics.features', fallback: 'Features',
-    sections: ['goals', 'routines', 'habits', 'multiUser', 'inbox', 'followUpTag', 'experimental'] },
+    sections: ['inbox', 'followUpTag', 'goals', 'routines', 'habits', 'multiUser', 'experimental'] },
   { id: 'ai', labelKey: 'settings.aiFeatures', fallback: 'AI Features',
     sections: ['ai'] },
   { id: 'sync', labelKey: 'settings.topics.sync', fallback: 'Sync',
@@ -28,8 +28,6 @@ export const TOPICS = [
     sections: ['notifications'] },
   { id: 'backup', labelKey: 'backup.title', fallback: 'Backup & Restore',
     sections: ['backup'] },
-  { id: 'advanced', labelKey: 'settings.topics.advanced', fallback: 'Advanced',
-    sections: ['globalShortcut'] },
   { id: 'about', labelKey: 'settings.topics.about', fallback: 'About & Help',
     sections: ['about'] },
 ];

@@ -134,7 +134,8 @@
       "pausedKept": "Pausado. Os dados de conexão são mantidos: ative para retomar.",
       "vaultDisconnect": "Desconectar",
       "vaultDisconnectConfirm": "Desconectar o GLANCEvault neste dispositivo? O endereço do servidor, o token do dispositivo e o ID da conta serão removidos deste dispositivo. Seus dados no servidor não são afetados.",
-      "encryptionTitle": "Criptografia de ponta a ponta"
+      "encryptionTitle": "Criptografia de ponta a ponta",
+      "saveCaption": "Salvar aplica a criptografia de ponta a ponta, o WebDAV e o GLANCEvault."
     },
     "passphraseHint": "Esta é a frase de sincronização que você definiu ao ativar a criptografia pela primeira vez. Ela nunca é armazenada — só você a conhece.",
     "passphraseLabel": "Frase de sincronização",

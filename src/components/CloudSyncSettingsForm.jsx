@@ -14,7 +14,7 @@ import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
-const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, onClose, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
+const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, onClose, onCancel, afterChannels, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState(() => {
     const initial = {
@@ -842,27 +842,28 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         )}
       </SettingsCard>
 
-      {/* Private addresses the desktop proxy may reach (#1642). Shared by
-          WebDAV and GLANCEvault, so it sits outside both sections. */}
-      {proxyTrust && trustedHosts.length > 0 && (
-        <div className={`border-t ${borderClass} pt-4 space-y-1`}>
-          <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
-          <ul className="space-y-1">
-            {trustedHosts.map((h) => (
-              <li key={h.origin} className="flex items-center justify-between gap-2">
-                <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRevokePrivateAddress(h.origin)}
-                  className="text-xs text-red-500 hover:underline shrink-0"
-                >
-                  {t('sync.form.vaultTrustedHostRemove')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Save and Cancel belong to the three cards above: encryption,
+          WebDAV and GLANCEvault are one form, saved together (GLANCEvault
+          needs the passphrase). Everything below saves on its own. Cancel
+          puts the form back to what is saved. */}
+      <div className={`flex items-center justify-end gap-3 flex-wrap`} data-sync-form-actions>
+        <p className={`text-xs ${textSecondary} mr-auto`}>{t('sync.form.saveCaption')}</p>
+        <button
+          onClick={onCancel || onClose}
+          className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors`}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!canSave || vaultBootstrapping}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {vaultBootstrapping ? t('sync.form.enabling') : ((cloudSyncConfig?.enabled || vaultOriginal?.enabled) ? t('common.save') : t('sync.form.saveEnable'))}
+        </button>
+      </div>
+
+      {afterChannels}
 
       {/* Sync proxy (Electron): the outbound proxy server sync traffic
           connects through, as a card like the channels above. Its own Save:
@@ -981,21 +982,28 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
         </SettingsCard>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          onClick={onClose}
-          className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg transition-colors`}
-        >
-          {t('common.cancel')}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!canSave || vaultBootstrapping}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {vaultBootstrapping ? t('sync.form.enabling') : ((cloudSyncConfig?.enabled || vaultOriginal?.enabled) ? t('common.save') : t('sync.form.saveEnable'))}
-        </button>
-      </div>
+      {/* Private addresses the desktop proxy may reach (#1642). Shared by
+          WebDAV and GLANCEvault, so it sits outside both sections. */}
+      {proxyTrust && trustedHosts.length > 0 && (
+        <div className={`border-t ${borderClass} pt-4 space-y-1`}>
+          <p className={sectionHeader}>{t('sync.form.vaultTrustedHostsTitle')}</p>
+          <ul className="space-y-1">
+            {trustedHosts.map((h) => (
+              <li key={h.origin} className="flex items-center justify-between gap-2">
+                <span className={`text-xs break-all ${textSecondary}`}>{h.origin}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRevokePrivateAddress(h.origin)}
+                  className="text-xs text-red-500 hover:underline shrink-0"
+                >
+                  {t('sync.form.vaultTrustedHostRemove')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
     </div>
   );
 };

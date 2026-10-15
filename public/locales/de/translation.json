@@ -776,7 +776,8 @@
     },
     "theme": "Design",
     "themeSystem": "System",
-    "glanceWebdavLog": "WebDAV-Ereignisprotokoll"
+    "glanceWebdavLog": "WebDAV-Ereignisprotokoll",
+    "aiNeedsKey": "Fügen Sie oben einen API-Schlüssel hinzu, um diese einzuschalten."
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

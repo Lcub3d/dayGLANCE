@@ -52,10 +52,10 @@ shipped as #2078).
 
 | Topic | Contents | Today |
 |---|---|---|
-| **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes; global shortcuts (desktop, last) | Localization, Sound, Weather, Daily Content, Global Shortcuts blocks |
+| **General** | Language; clock format; first day of week; home timezone; end of day; sounds; weather (on/off, location, unit); daily tips & quotes; Inbox (auto-archive) and Follow-ups after Sounds; global shortcuts (desktop, last) | Localization, Sound, Weather, Daily Content, Global Shortcuts blocks |
 | **Appearance** | Theme (Light / Dark / System); default view on load; views on this device; timeline size; tablet view defaults; GLANCE tab default | View Defaults, Tablet View Defaults, timeline size; theme from the header |
-| **Features** | Inbox (auto-archive) and Follow-ups first, then one card each with its own switch: Goals & Projects, Routines, Habits, Multi-user (with the roster); an **Experimental** group last: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
-| **AI Features** | One card: provider, key, model, frame nudges, voice | AI Features block |
+| **Features** | One card each with its own switch: Goals & Projects, Routines, Habits, Multi-user (with the roster); an **Experimental** group last: JOBO, Aspire | Goals & Projects, Routines, Habit Tracking, Inbox, Experimental, Multi-user blocks |
+| **AI Features** | One card: provider, key, model, then each AI feature, all off by default and locked until the provider has a key (Ollama needs none) | AI Features block |
 | **Sync** | End-to-end encryption, WebDAV and GLANCEvault (one form, with its Save and Cancel right under it); then Direct Access, iCloud (Apple only), Network proxy (desktop, #2082) and the private-address grants, each saving on its own; Sync diagnostics last | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
 | **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |

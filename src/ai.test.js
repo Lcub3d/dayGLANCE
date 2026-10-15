@@ -62,3 +62,29 @@ describe('aiComplete follows the app language', () => {
     expect(calls[0].body.messages[0].content.endsWith(GERMAN)).toBe(true);
   });
 });
+
+describe('AI features before a key', async () => {
+  const { aiHasCredentials, loadAIConfig } = await import('./ai.js');
+  it('a provider can be called with a key, or Ollama without one', () => {
+    expect(aiHasCredentials({ provider: 'openai', apiKey: '' })).toBe(false);
+    expect(aiHasCredentials({ provider: 'openai', apiKey: '   ' })).toBe(false);
+    expect(aiHasCredentials({ provider: 'openai', apiKey: 'sk-x' })).toBe(true);
+    expect(aiHasCredentials({ provider: 'ollama', apiKey: '' })).toBe(true);
+    expect(aiHasCredentials(null)).toBe(false);
+  });
+
+  it('a fresh config has every feature off, and a saved choice is kept', () => {
+    const store = new Map();
+    const original = globalThis.localStorage;
+    globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
+    try {
+      expect(Object.values(loadAIConfig().features).every((on) => on === false)).toBe(true);
+      store.set('day-planner-ai-config', JSON.stringify({ enabled: true, apiKey: 'k', features: { morningSummary: true } }));
+      const cfg = loadAIConfig();
+      expect(cfg.features.morningSummary).toBe(true);
+      expect(cfg.features.weeklySummary).toBe(false);
+    } finally {
+      globalThis.localStorage = original;
+    }
+  });
+});

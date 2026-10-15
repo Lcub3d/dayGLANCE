@@ -795,7 +795,8 @@
     },
     "theme": "Motyw",
     "themeSystem": "Systemowy",
-    "glanceWebdavLog": "Dziennik zdarzeń WebDAV"
+    "glanceWebdavLog": "Dziennik zdarzeń WebDAV",
+    "aiNeedsKey": "Dodaj powyżej klucz API, aby je włączyć."
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

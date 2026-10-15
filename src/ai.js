@@ -9,18 +9,28 @@ const DEFAULT_CONFIG = {
   apiKey: '',
   model: 'gpt-4o-mini',
   baseUrl: '',
+  // Every feature starts off: turning AI on before a key is entered must not
+  // switch on features that cannot run. A saved config keeps its own choices.
   features: {
-    voiceTaskInput: true,
-    morningSummary: true,
-    eveningReflection: true,
-    weeklySummary: true,
-    smartScheduling: true,
-    durationEstimate: true,
-    frameNudge: true,
-    aiReschedule: true,
-    aiSubtasks: true,
+    voiceTaskInput: false,
+    morningSummary: false,
+    eveningReflection: false,
+    weeklySummary: false,
+    smartScheduling: false,
+    durationEstimate: false,
+    frameNudge: false,
+    aiReschedule: false,
+    aiSubtasks: false,
   }
 };
+
+/**
+ * Whether the configured provider can be called: an API key, or Ollama, which
+ * runs locally and needs none (the same rule the briefings use before a call).
+ */
+export function aiHasCredentials(config) {
+  return config?.provider === 'ollama' || !!(config?.apiKey && String(config.apiKey).trim());
+}
 
 const PROVIDER_MODELS = {
   openai: [

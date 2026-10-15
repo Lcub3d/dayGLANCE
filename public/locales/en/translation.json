@@ -776,7 +776,8 @@
     },
     "theme": "Theme",
     "themeSystem": "System",
-    "glanceWebdavLog": "WebDAV event log"
+    "glanceWebdavLog": "WebDAV event log",
+    "aiNeedsKey": "Add an API key above to turn these on."
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

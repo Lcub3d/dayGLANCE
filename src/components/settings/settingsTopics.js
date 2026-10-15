@@ -13,11 +13,11 @@
 
 export const TOPICS = [
   { id: 'general', labelKey: 'settings.topics.general', fallback: 'General',
-    sections: ['timezoneNotice', 'localization', 'sound', 'weather', 'dailyContent', 'globalShortcut'] },
+    sections: ['timezoneNotice', 'localization', 'sound', 'inbox', 'followUpTag', 'weather', 'dailyContent', 'globalShortcut'] },
   { id: 'appearance', labelKey: 'settings.topics.appearance', fallback: 'Appearance',
     sections: ['theme', 'viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
   { id: 'features', labelKey: 'settings.topics.features', fallback: 'Features',
-    sections: ['inbox', 'followUpTag', 'goals', 'routines', 'habits', 'multiUser', 'experimental'] },
+    sections: ['goals', 'routines', 'habits', 'multiUser', 'experimental'] },
   { id: 'ai', labelKey: 'settings.aiFeatures', fallback: 'AI Features',
     sections: ['ai'] },
   { id: 'sync', labelKey: 'settings.topics.sync', fallback: 'Sync',

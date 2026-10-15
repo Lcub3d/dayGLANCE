@@ -799,7 +799,8 @@
     },
     "theme": "Тема",
     "themeSystem": "Системна",
-    "glanceWebdavLog": "Журнал подій WebDAV"
+    "glanceWebdavLog": "Журнал подій WebDAV",
+    "aiNeedsKey": "Додайте ключ API вище, щоб увімкнути їх."
   },
   "dailyNotes": {
     "quickNotes": "Швидкі нотатки",

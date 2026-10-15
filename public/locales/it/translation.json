@@ -740,7 +740,16 @@
     "directAccessIntents": "Intent Direct Access",
     "directAccessIntentsDesc": "Condividi gli intent delle attività con le altre app GLANCE tramite la cartella Direct Access: un file di eventi, glance-events.json, che ogni dispositivo e app sulla cartella legge e amplia. Cifrato con la tua passphrase di sincronizzazione quando lo è il file Direct Access.",
     "directAccessIntentsEnable": "Attiva gli intent Direct Access",
-    "directAccessIntentsNeedsFolder": "Nessuna cartella è collegata su questo dispositivo. Collegane prima una in Sincronizzazione cloud → Direct Access; fino ad allora qui non viene inviato né ricevuto nulla."
+    "directAccessIntentsNeedsFolder": "Nessuna cartella è collegata su questo dispositivo. Collegane prima una in Sincronizzazione cloud → Direct Access; fino ad allora qui non viene inviato né ricevuto nulla.",
+    "topics": {
+      "general": "Generale",
+      "appearance": "Aspetto",
+      "features": "Funzionalità",
+      "ai": "IA",
+      "sync": "Sincronizzazione",
+      "integrations": "Integrazioni",
+      "advanced": "Avanzate"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Note rapide",

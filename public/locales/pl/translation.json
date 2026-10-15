@@ -759,7 +759,16 @@
     "directAccessIntents": "Intencje Direct Access",
     "directAccessIntentsDesc": "Udostępniaj intencje zadań innym aplikacjom GLANCE przez folder Direct Access: jeden plik zdarzeń, glance-events.json, który każde urządzenie i każda aplikacja w folderze odczytuje i uzupełnia. Szyfrowany Twoim hasłem synchronizacji, gdy plik Direct Access jest szyfrowany.",
     "directAccessIntentsEnable": "Włącz intencje Direct Access",
-    "directAccessIntentsNeedsFolder": "Na tym urządzeniu nie podłączono folderu. Najpierw podłącz go w Synchronizacja w chmurze → Direct Access; do tego czasu nic nie jest tu wysyłane ani odbierane."
+    "directAccessIntentsNeedsFolder": "Na tym urządzeniu nie podłączono folderu. Najpierw podłącz go w Synchronizacja w chmurze → Direct Access; do tego czasu nic nie jest tu wysyłane ani odbierane.",
+    "topics": {
+      "general": "Ogólne",
+      "appearance": "Wygląd",
+      "features": "Funkcje",
+      "ai": "AI",
+      "sync": "Synchronizacja",
+      "integrations": "Integracje",
+      "advanced": "Zaawansowane"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Szybkie notatki",

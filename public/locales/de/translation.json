@@ -740,7 +740,16 @@
     "directAccessIntents": "Direct-Access-Intents",
     "directAccessIntentsDesc": "Aufgaben-Intents über den Direct-Access-Ordner mit anderen GLANCE-Apps teilen: eine Ereignisdatei, glance-events.json, die jedes Gerät und jede App im Ordner liest und ergänzt. Verschlüsselt mit deiner Sync-Passphrase, wenn die Direct-Access-Datei es ist.",
     "directAccessIntentsEnable": "Direct-Access-Intents aktivieren",
-    "directAccessIntentsNeedsFolder": "Auf diesem Gerät ist kein Ordner verbunden. Verbinde zuerst einen unter Cloud-Sync → Direct Access; bis dahin wird hier nichts gesendet oder empfangen."
+    "directAccessIntentsNeedsFolder": "Auf diesem Gerät ist kein Ordner verbunden. Verbinde zuerst einen unter Cloud-Sync → Direct Access; bis dahin wird hier nichts gesendet oder empfangen.",
+    "topics": {
+      "general": "Allgemein",
+      "appearance": "Darstellung",
+      "features": "Funktionen",
+      "ai": "KI",
+      "sync": "Synchronisierung",
+      "integrations": "Integrationen",
+      "advanced": "Erweitert"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Kurznotizen",

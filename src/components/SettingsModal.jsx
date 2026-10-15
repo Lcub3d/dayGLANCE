@@ -7,6 +7,9 @@ import ViewToggles from './ViewToggles.jsx';
 import { useSyncCtx } from '../context/SyncContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
 import FollowUpTagSetting from './FollowUpTagSetting.jsx';
+import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
+import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
+import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
 import CardSizeSettings from './CardSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
@@ -260,6 +263,2631 @@ const SettingsModal = () => {
     window.electronAPI?.setMainWindowHotkey?.('');
   };
 
+  // Every block of the dialog, verbatim, with the condition under which it
+  // renders anything. A topic page is a list of these; separators go between
+  // the visible ones only (#2075, docs/settings-redesign.md step 1).
+  const sections = {
+    viewDefaults: {
+      show: (canShowViewCycler || schedOnlyCycler) && !isTablet,
+      node: (
+        <>
+            {/* View Defaults Section — desktop only (tablet has its own
+                section below). Wide desktop offers all four views;
+                narrow desktop offers MULTI/SCHED, matching the cycler. */}
+            {(canShowViewCycler || schedOnlyCycler) && !isTablet && (
+              <div className="space-y-3">
+                <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                  <LayoutGrid size={16} className={textSecondary} />
+                  {t('settings.viewDefaults')}
+                </h4>
+                <div>
+                  <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.defaultViewOnLoad')}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {enabledViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
+                      <button
+                        key={v}
+                        onClick={() => setDefaultView(v)}
+                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors uppercase ${
+                          defaultView === v
+                            ? 'bg-blue-600 text-white'
+                            : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                        }`}
+                      >
+                        {desktopViewLabel(v)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <ViewToggles scope="desktop" views={offeredViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, { joboEnabled })} label={desktopViewLabel} />
+                {canShowViewCycler && (<>
+                <div>
+                  <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.dayViewMode')}</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setDayViewMode('calendar-day')}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                        dayViewMode === 'calendar-day'
+                          ? 'bg-blue-600 text-white'
+                          : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                      }`}
+                    >
+                      {t('settings.viewCalendarDay')}
+                    </button>
+                    <button
+                      onClick={() => setDayViewMode('rolling-24')}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                        dayViewMode === 'rolling-24'
+                          ? 'bg-blue-600 text-white'
+                          : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                      }`}
+                    >
+                      {t('settings.viewRolling24')}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekViewMode')}</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setWeekViewMode('strict')}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                        weekViewMode === 'strict'
+                          ? 'bg-blue-600 text-white'
+                          : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                      }`}
+                    >
+                      {t('settings.viewStrictWeek')}
+                    </button>
+                    <button
+                      onClick={() => setWeekViewMode('rolling')}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                        weekViewMode === 'rolling'
+                          ? 'bg-blue-600 text-white'
+                          : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                      }`}
+                    >
+                      {t('settings.viewRolling7')}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineStart')}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[0, 4, 5, 6, 7].map(h => (
+                      <button
+                        key={h}
+                        onClick={() => setWeekTimelineStartHour(h)}
+                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                          weekTimelineStartHour === h
+                            ? 'bg-blue-600 text-white'
+                            : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                        }`}
+                      >
+                        {formatHour(h)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineEnd')}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {/* A stored end that is no longer offered still keeps its
+                        button, so the picker cannot show nothing selected
+                        while the grid is visibly trimmed. 18 was offered
+                        before this list was; another device may send any
+                        value at all. */}
+                    {[...new Set([20, 21, 22, 23, 24, weekTimelineEndHour])]
+                      .filter(h => h > 0 && h <= 24)
+                      .sort((a, b) => a - b)
+                      .map(h => (
+                      <button
+                        key={h}
+                        onClick={() => setWeekTimelineEndHour(h)}
+                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                          weekTimelineEndHour === h
+                            ? 'bg-blue-600 text-white'
+                            : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                        }`}
+                      >
+                        {formatHour(h)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {habitsEnabled && goalsProjectsEnabled && (
+                  <div>
+                    <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.glanceDefault')}</label>
+                    <div className="flex gap-2">
+                      {[{ value: 0, label: t('settings.glanceDefaultHabits') }, { value: 1, label: t('settings.glanceDefaultGoals') }].map(({ value, label }) => (
+                        <button
+                          key={value}
+                          onClick={() => setGlancePage(value)}
+                          className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                            glancePage === value
+                              ? 'bg-blue-600 text-white'
+                              : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                </>)}
+              </div>
+            )}
+        </>
+      ),
+    },
+    tabletViewDefaults: {
+      show: isTablet,
+      node: (
+        <>
+            {/* Tablet view defaults — portrait (GRID/LIST/SCHED, shared
+                with the phone toggle) and landscape (MULTI/SCHED via
+                the desktop cycler) are independent view states */}
+            {isTablet && (
+              <>
+                <div className="space-y-3">
+                  <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                    <LayoutGrid size={16} className={textSecondary} />
+                    {t('settings.viewDefaults')}
+                  </h4>
+                  <div>
+                    <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.portraitViewDefault', 'Portrait view')}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {enabledViews(MOBILE_VIEW_MODES, hiddenViews?.mobile).map(mode => (
+                        <button
+                          key={mode}
+                          onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            mobileDefaultView === mode
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+                          }`}
+                        >
+                          {mobileViewLabel(mode)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.landscapeViewDefault', 'Landscape view')}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {enabledViews(NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
+                        <button
+                          key={v}
+                          onClick={() => { setDefaultView(v); setViewMode(v); }}
+                          className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            defaultView === v
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+                          }`}
+                        >
+                          {desktopViewLabel(v)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* One group per orientation, as with the defaults above: the phone
+                      toggle's views for portrait, the narrow cycler's for landscape. */}
+                  <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
+                  <ViewToggles scope="desktop" views={NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} heading={t('settings.viewsInLandscape')} hint={false} />
+                  {mobileViewMode === 'list' && (
+                    <div className="mt-3 space-y-1.5">
+                      <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>
+                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.endOfDayHint')}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[{ label: t('common.off'), value: null }, ...Array.from({ length: 13 }, (_, i) => {
+                          const totalMin = 18 * 60 + i * 30;
+                          const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+                          const mm = String(totalMin % 60).padStart(2, '0');
+                          const val = `${hh}:${mm}`;
+                          return { label: formatTime(val), value: val };
+                        })].map(({ label, value }) => {
+                          const active = (listEndOfDayTime ?? null) === value;
+                          return (
+                            <button
+                              key={label}
+                              onClick={() => setListEndOfDayTime(value)}
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                active
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : `${darkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-stone-300 text-stone-700'}`
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+        </>
+      ),
+    },
+    timelineSize: {
+      show: !isMobile,
+      node: (
+        <>
+            {/* Timeline size (utils/timelineZoom.js), desktop and tablet */}
+            {!isMobile && (
+              <>
+                <TimelineSizeSettings joboEnabled={joboEnabled} />
+              </>
+            )}
+        </>
+      ),
+    },
+    cardSize: {
+      show: !isMobile && goalsProjectsEnabled,
+      node: (
+        <>
+            {/* Goals & Projects card size (utils/cardSize.js), desktop and tablet */}
+            {!isMobile && goalsProjectsEnabled && (
+              <>
+                <CardSizeSettings />
+              </>
+            )}
+        </>
+      ),
+    },
+    localization: {
+      show: true,
+      node: (
+        <>
+            {/* Localization Section */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Clock size={16} className={textSecondary} />
+                {t('settings.localization')}
+              </h4>
+              <div>
+                <label htmlFor="settings-language" className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.language')}</label>
+                <LanguagePicker
+                  id="settings-language"
+                  className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+              </div>
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.clockFormat')}</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setUse24HourClock(false)}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                      !use24HourClock
+                        ? 'bg-blue-600 text-white'
+                        : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                    }`}
+                  >
+                    {t('settings.clock12h')}
+                  </button>
+                  <button
+                    onClick={() => setUse24HourClock(true)}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                      use24HourClock
+                        ? 'bg-blue-600 text-white'
+                        : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                    }`}
+                  >
+                    {t('settings.clock24h')}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.firstDayOfWeek')}</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setWeekStartDay(0)}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                      weekStartDay === 0
+                        ? 'bg-blue-600 text-white'
+                        : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                    }`}
+                  >
+                    {t('settings.firstDaySunday')}
+                  </button>
+                  <button
+                    onClick={() => setWeekStartDay(1)}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                      weekStartDay === 1
+                        ? 'bg-blue-600 text-white'
+                        : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
+                    }`}
+                  >
+                    {t('settings.firstDayMonday')}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.homeTimezone')}</label>
+                <select
+                  value={homeTimezone}
+                  onChange={e => setHomeTimezone(e.target.value)}
+                  className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                >
+                  {getTzOptions(homeTimezone).map(tz => (
+                    <option key={tz} value={tz}>{getTzLabel(tz)}</option>
+                  ))}
+                </select>
+                <p className={`text-[10px] ${textSecondary} mt-1 opacity-70`}>
+                  {t('settings.homeTimezoneHint')}
+                </p>
+              </div>
+            </div>
+        </>
+      ),
+    },
+    globalShortcut: {
+      show: window.electronAPI?.platform === 'darwin',
+      node: (
+        <>
+            {window.electronAPI?.platform === 'darwin' && (<>
+
+            {/* Global Shortcut — macOS only */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Key size={16} className={textSecondary} />
+                {t('settings.globalShortcuts')}
+              </h4>
+              <p className={`text-sm ${textSecondary}`}>
+                {t('settings.globalShortcutsHint')}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  placeholder={t('settings.globalShortcutsPlaceholder')}
+                  value={trayHotkey}
+                  onKeyDown={handleHotkeyRecord}
+                  className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
+                />
+                {trayHotkey && (
+                  <button
+                    onClick={clearHotkey}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}
+                  >
+                    {t('common.clear')}
+                  </button>
+                )}
+              </div>
+              <p className={`text-sm ${textSecondary} mt-3`}>
+                {t('settings.globalShortcutsMainWindowHint')}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  placeholder={t('settings.globalShortcutsPlaceholder')}
+                  value={mainWindowHotkey}
+                  onKeyDown={handleMainWindowHotkeyRecord}
+                  className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
+                />
+                {mainWindowHotkey && (
+                  <button
+                    onClick={clearMainWindowHotkey}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}
+                  >
+                    {t('common.clear')}
+                  </button>
+                )}
+              </div>
+            </div>
+            </>)}
+        </>
+      ),
+    },
+    sound: {
+      show: true,
+      node: (
+        <>
+            {/* Sound Section */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Bell size={16} className={textSecondary} />
+                {t('settings.sound')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={soundEnabled}
+                    onChange={(e) => setSoundEnabled(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${soundEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableUISounds')}</span>
+              </label>
+            </div>
+        </>
+      ),
+    },
+    followUpTag: {
+      show: true,
+      node: (
+        <>
+            <FollowUpTagSetting />
+        </>
+      ),
+    },
+    weather: {
+      show: !isMobile,
+      node: (
+        <>
+            {!isMobile && (<>
+
+            {/* Weather — desktop and tablet (a tablet in landscape
+                already counted as desktop here; portrait now matches).
+                Phones never open this modal: their settings live in
+                MobileSettingsPanel, whose App Settings screen has a
+                Location section with the same field and unit. */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Thermometer size={16} className={textSecondary} />
+                {t('settings.weather')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" checked={weatherEnabled} onChange={(e) => setWeatherEnabled(e.target.checked)} className="sr-only" />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.showWeatherInHeader')}</span>
+              </label>
+              {weatherEnabled && (
+                <>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherZipLabel')}</label>
+                    <input
+                      type="text"
+                      placeholder={t('settings.weatherLocationPlaceholder', { defaultValue: 'e.g. 90210 or Seattle' })}
+                      value={weatherZip}
+                      onChange={(e) => setWeatherZip(e.target.value)}
+                      onBlur={() => fetchWeather()}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+                      className={`w-48 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherTempUnit')}</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setWeatherTempUnit('fahrenheit'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'fahrenheit' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°F</button>
+                      <button onClick={() => { setWeatherTempUnit('celsius'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'celsius' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°C</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            </>)}
+        </>
+      ),
+    },
+    dailyContent: {
+      show: !isMobile && !isTablet,
+      node: (
+        <>
+            {!isMobile && !isTablet && (<>
+
+            {/* Daily Content — desktop only */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Newspaper size={16} className={textSecondary} />
+                {t('settings.dailyContent')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" checked={dailyContentEnabled} onChange={(e) => setDailyContentEnabled(e.target.checked)} className="sr-only" />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${dailyContentEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${dailyContentEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.showDailyContent')}</span>
+              </label>
+            </div>
+
+            </>)}
+        </>
+      ),
+    },
+    goals: {
+      show: true,
+      node: (
+        <>
+            {/* Goals & Projects Section */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Flag size={16} className={textSecondary} />
+                {t('settings.goalsProjects')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={goalsProjectsEnabled}
+                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(e.target.checked); }}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${goalsProjectsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${goalsProjectsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableGoalsProjects')}</span>
+              </label>
+            </div>
+        </>
+      ),
+    },
+    routines: {
+      show: true,
+      node: (
+        <>
+            {/* Routines Section */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Sparkles size={16} className={textSecondary} />
+                {t('settings.routines')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={routinesEnabled}
+                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setRoutinesEnabled(e.target.checked); }}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${routinesEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${routinesEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableRoutines')}</span>
+              </label>
+            </div>
+        </>
+      ),
+    },
+    habits: {
+      show: true,
+      node: (
+        <>
+            {/* Habit Tracking Section */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Activity size={16} className={textSecondary} />
+                {t('settings.habitTracking')}
+              </h4>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={habitsEnabled}
+                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setHabitsEnabled(e.target.checked); }}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${habitsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${habitsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableHabitTracking')}</span>
+              </label>
+            </div>
+        </>
+      ),
+    },
+    experimental: {
+      show: true,
+      node: (
+        <>
+            {/* Experimental: features landing in slices, off by default.
+                The switch is the only thing a regular user ever sees of
+                them; everything behind it stays absent until it is on. */}
+            <div className="space-y-3">
+              <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <FlaskConical size={16} className={textSecondary} />
+                {t('settings.experimental')}
+              </h4>
+              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.experimentalHint')}</p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={joboEnabled}
+                    onChange={(e) => setJoboEnabled(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
+              </label>
+              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHint')}</p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={aspireEnabled}
+                    onChange={(e) => setAspireEnabled(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aspireEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableAspire')}</span>
+              </label>
+              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableAspireHint')}</p>
+            </div>
+        </>
+      ),
+    },
+    inbox: {
+      show: true,
+      node: (
+        <>
+            {/* Inbox */}
+            <div className="space-y-3">
+              <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <Archive size={16} className={textSecondary} />
+                {t('settings.inbox')}
+              </div>
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.inboxAutoArchive')}</label>
+                <select
+                  value={inboxAutoArchiveDays}
+                  onChange={(e) => setInboxAutoArchiveDays(Number(e.target.value))}
+                  className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                >
+                  <option value={0}>{t('settings.inboxArchiveNever')}</option>
+                  <option value={7}>{t('settings.inboxArchive7')}</option>
+                  <option value={14}>{t('settings.inboxArchive14')}</option>
+                  <option value={30}>{t('settings.inboxArchive30')}</option>
+                  <option value={60}>{t('settings.inboxArchive60')}</option>
+                </select>
+              </div>
+            </div>
+        </>
+      ),
+    },
+    cloudSync: {
+      show: true,
+      node: (
+        <>
+            {/* Cloud Sync Section */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('cloudSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <Cloud size={16} className={textSecondary} />
+                {t('settings.cloudSync')}
+                {(cloudSyncConfig?.enabled || isVaultEnabled()) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.cloudSync ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.cloudSync && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.cloudSyncDesc')}
+              </p>
+              <CloudSyncSettingsForm
+                darkMode={darkMode}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                borderClass={borderClass}
+                hoverBg={hoverBg}
+                cloudSyncConfig={cloudSyncConfig}
+                setCloudSyncConfig={setCloudSyncConfig}
+                cloudSyncTest={cloudSyncTest}
+                provider={provider}
+                currentProvider={currentProvider}
+                onClose={() => setShowSettings(false)}
+                cloudSyncLastSynced={cloudSyncLastSynced}
+                cloudSyncStatus={cloudSyncStatus}
+                cloudSyncError={cloudSyncError}
+                cloudSyncNow={cloudSyncNow}
+                vaultSyncNow={vaultSyncNow}
+                vaultBootstrapSync={vaultBootstrapSync}
+                vaultStatus={vaultStatus}
+                vaultError={vaultError}
+                vaultLastSynced={vaultLastSynced}
+                vaultSkipped={vaultSkipped}
+                onSyncKeyReady={(ready) => setSyncKeyReady(ready)}
+              />
+              {/* Apple platforms only — on Android/web every probe reports
+                  unsupported, so the panel would be an empty box. */}
+              {isICloudAvailable() && (
+                <ICloudSyncToggle
+                  darkMode={darkMode}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderClass={borderClass}
+                />
+              )}
+              {/* On every platform: the panel reports GLANCEvault and WebDAV
+                  everywhere, the iCloud container on Apple platforms, and the
+                  Direct Access folder wherever the bridge exists, each block
+                  only where its transport is (docs/direct-access-sync.md). */}
+              <ICloudDiagnostics
+                darkMode={darkMode}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                borderClass={borderClass}
+              />
+              {/* Desktop only — the Electron main process holds the folder
+                  (docs/direct-access-sync.md). */}
+              {isDirectAccessSupported() && (
+                <DirectAccessSyncCard
+                  darkMode={darkMode}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderClass={borderClass}
+                />
+              )}
+              </>)}
+            </div>
+        </>
+      ),
+    },
+    calendarSync: {
+      show: true,
+      node: (
+        <>
+            {/* Calendar Sync Section - wide screens */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('calSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <RefreshCw size={16} className={textSecondary} />
+                {t('settings.calendarSync')}
+                {calendarSourceActive && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.calSync ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.calSync && (<>
+              {!hasNativeCalendar() && <CalendarList />}
+              {hasNativeCalendar() && (
+                <p className={`text-xs ${textSecondary}`}>
+                  {t('settings.deviceCalendarDescription', { defaultValue: 'Calendar events are read from your device accounts. Use the Device Calendars section below to choose which calendars to show.' })}
+                </p>
+              )}
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>
+                  {t('settings.taskCalendarUrl')}
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://nextcloud.example.com/remote.php/dav/calendars/user/tasks/?export"
+                  value={taskCalendarUrl}
+                  onChange={(e) => setTaskCalendarUrl(e.target.value.replace(/^webcal:\/\//i, 'https://'))}
+                  onPaste={(e) => { const text = e.clipboardData.getData('text'); if (/^webcal:\/\//i.test(text)) { e.preventDefault(); setTaskCalendarUrl(text.replace(/^webcal:\/\//i, 'https://')); } }}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                />
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  {t('settings.taskCalendarHint', { defaultValue: 'Tasks appear with striped pattern; completion state persists across syncs' })}
+                </p>
+              </div>
+              {taskCalendarUrl && (
+                <div className={`space-y-2 pl-3 border-l-2 ${darkMode ? 'border-gray-600' : 'border-stone-300'}`}>
+                  <p className={`text-xs font-medium ${textSecondary}`}>{t('settings.taskCalendarAuth')}</p>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className={`block text-xs ${textSecondary} mb-1`}>{t('common.username')}</label>
+                      <input
+                        type="text"
+                        placeholder={t('common.username')}
+                        value={taskCalendarAuth.username}
+                        onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, username: e.target.value }))}
+                        className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className={`block text-xs ${textSecondary} mb-1`}>{t('settings.appPassword')}</label>
+                      <input
+                        type="password"
+                        placeholder={t('settings.appPassword')}
+                        value={taskCalendarAuth.appPassword}
+                        onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, appPassword: e.target.value }))}
+                        className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={`block text-xs ${textSecondary} mb-1`}>{t('settings.calDAVBaseUrl')}</label>
+                    <input
+                      type="url"
+                      placeholder="https://cloud.example.com/remote.php/dav/calendars/user/personal/"
+                      value={taskCalendarAuth.caldavBaseUrl}
+                      onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, caldavBaseUrl: e.target.value }))}
+                      className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
+                    />
+                    <p className={`text-xs ${textSecondary} mt-0.5`}>
+                      {t('settings.calDAVSyncHint', { defaultValue: 'For syncing completions back: the CalDAV collection URL (without ?export). In Nextcloud, the calendar ID in the URL may differ from the display name.' })}
+                    </p>
+                  </div>
+                  <p className={`text-xs ${textSecondary}`}>
+                    {t('settings.taskCalendarCredentialsHint', { defaultValue: 'Username + password fetches protected task calendars. Adding a CalDAV Base URL also syncs completion status back to your server.' })}
+                  </p>
+                </div>
+              )}
+              {multiUserEnabled && meUserSyncId && (
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={syncCalendarCreds}
+                    onChange={(e) => setSyncCalendarCreds(e.target.checked)}
+                    className="mt-0.5 flex-shrink-0"
+                  />
+                  <span className={`text-xs ${textSecondary}`}>
+                    {t('settings.syncCalendarCreds')}
+                    {!(cloudSyncConfig?.encryptionEnabled || isVaultEnabled()) && (
+                      <span className="block mt-0.5 italic">{t('settings.syncCalendarCredsNeedsEncryption')}</span>
+                    )}
+                  </span>
+                </label>
+              )}
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>
+                  {t('settings.keepPastEvents')}
+                </label>
+                <select
+                  value={syncRetentionDays}
+                  onChange={(e) => setSyncRetentionDays(Number(e.target.value))}
+                  className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                >
+                  <option value={7}>{formatUnit(7, 'day')}</option>
+                  <option value={14}>{formatUnit(14, 'day')}</option>
+                  <option value={30}>{formatUnit(30, 'day')}</option>
+                  <option value={60}>{formatUnit(60, 'day')}</option>
+                  <option value={90}>{formatUnit(90, 'day')}</option>
+                  <option value={180}>{formatUnit(6, 'month')}</option>
+                  <option value={365}>{formatUnit(1, 'year')}</option>
+                  <option value={0}>{t('settings.keepPastEventsAll', { defaultValue: 'All (no limit)' })}</option>
+                </select>
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  {t('settings.keepPastEventsHint', { defaultValue: 'Older imported events are dropped to save storage. Future events are always kept.' })}
+                </p>
+              </div>
+              <button
+                onClick={() => syncAll()}
+                disabled={isSyncing || !calSyncConfigured}
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? t('common.syncing') : t('common.syncNow')}
+              </button>
+              {calSyncLastSynced && (
+                <p className={`text-xs ${textSecondary}`}>
+                  {t('common.lastSynced')}: {new Date(calSyncLastSynced).toLocaleString(locale)}
+                </p>
+              )}
+              {hasNativeCalendar() && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.deviceCalendars')}</p>
+                    <button onClick={async () => {
+                      // force: this button is the documented recovery path for an
+                      // empty list, so it must bypass the main-process cache.
+                      const cals = electronCalendarAvailable() ? await electronGetCalendars({ force: true }) : nativeGetCalendars();
+                      if (cals.length > 0) setAvailableCalendars(cals);
+                    }} className={`text-xs ${textSecondary} underline`}>{t('common.refresh')}</button>
+                  </div>
+                  {availableCalendars.length === 0 ? (
+                    <p className={`text-xs ${textSecondary}`}>{t('settings.noDeviceCalendars', { defaultValue: 'No calendars loaded — tap Refresh, or rebuild the app if this persists.' })}</p>
+                  ) : (<>
+                    <p className={`text-xs ${textSecondary}`}>{t('settings.deviceCalendarFilterHint', { defaultValue: 'Uncheck to hide calendars. Leave all checked to show everything.' })}</p>
+                    {availableCalendars.map(cal => {
+                      const isChecked = calendarFilter.length === 0 || calendarFilter.includes(cal.id);
+                      return (
+                        <label key={cal.id} className={`flex items-center gap-2 text-sm ${textPrimary} cursor-pointer`}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => setCalendarFilter(prev => {
+                              if (prev.length === 0) return availableCalendars.map(c => c.id).filter(id => id !== cal.id);
+                              if (prev.includes(cal.id)) return prev.filter(id => id !== cal.id);
+                              const next = [...prev, cal.id];
+                              return next.length === availableCalendars.length ? [] : next;
+                            })}
+                            className="rounded accent-blue-500"
+                          />
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cal.color }} />
+                          <span className="flex-1 truncate">{cal.name}</span>
+                          <span className={`text-xs ${textSecondary} truncate max-w-[8rem]`}>{cal.accountName}</span>
+                        </label>
+                      );
+                    })}
+                  </>)}
+                </div>
+              )}
+              {/* iCal Import — one-time .ics file import, lives inside Calendar Sync */}
+              <div className={`pt-2 border-t ${borderClass} space-y-2`}>
+                <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.importIcsFile')}</p>
+                <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg} text-sm ${textPrimary}`}>
+                  <Upload size={14} className={textSecondary} />
+                  {t('settings.chooseIcsFile')}
+                  <input type="file" accept=".ics" onChange={(e) => { handleFileUpload(e); setShowSettings(false); }} className="hidden" />
+                </label>
+                <p className={`text-xs ${textSecondary}`}>{t('settings.importIcsDesc')}</p>
+                {fileImportedEventCount > 0 && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(t('settings.removeFileImportedConfirm', 'Remove all {{n}} file-imported events? Re-importing the file brings them back.', { n: fileImportedEventCount }))) {
+                        removeFileImportedEvents();
+                      }
+                    }}
+                    className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors"
+                  >
+                    {t('settings.removeFileImported', 'Remove file-imported events')} ({fileImportedEventCount})
+                  </button>
+                )}
+              </div>
+              </>)}
+            </div>
+        </>
+      ),
+    },
+    multiUser: {
+      show: true,
+      node: (
+        <>
+            {/* Multi-user / Household Section */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('multiUser')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <Users size={16} className={textSecondary} />
+                {t('settings.multiUser')}
+                {multiUserEnabled && users.filter(u => !u.deleted).length > 0 && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.multiUser ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.multiUser && (
+                <div className="space-y-4">
+                  {/* Enable toggle */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.multiUserMode')}</p>
+                      <p className={`${textSecondary} text-xs`}>{t('settings.multiUserModeHint')}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={multiUserLocked}
+                      aria-label={t('settings.multiUserMode')}
+                      onClick={() => {
+                        const next = !multiUserEnabled;
+                        setMultiUserEnabled(next);
+                        localStorage.setItem('dayglance-multi-user-enabled', JSON.stringify(next));
+                      }}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${multiUserEnabled ? 'bg-green-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${multiUserLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      role="switch"
+                      aria-checked={multiUserEnabled}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${multiUserEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                  {multiUserReason !== 'none' && (
+                    <p className={`text-xs ${textSecondary} -mt-2`}>
+                      {t(multiUserReason === 'icloud-only' ? 'settings.multiUserICloudOnly' : 'settings.multiUserRequiresSync')}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={`${textSecondary} text-xs`}>
+                      {t('settings.multiUserDescription', { defaultValue: 'Share dayGLANCE with your household. Tasks can be assigned to specific people; unassigned tasks are visible to everyone.' })}
+                    </p>
+                    {multiUserRosterSyncable && (
+                      <button
+                        type="button"
+                        disabled={userSyncStatus === 'syncing'}
+                        onClick={async () => {
+                          setUserSyncStatus('syncing');
+                          try {
+                            const raw = localStorage.getItem(MULTI_USER_CONFIG_KEY);
+                            const uPath = raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
+                            // Prefer WebDAV when configured, then a connected Direct
+                            // Access folder, then iCloud Drive (same-Apple-ID only).
+                            const merged = cloudSyncConfig?.enabled
+                              ? await syncSharedUsers(cloudSyncConfig, uPath, users)
+                              : directAccessRoster
+                                ? await syncSharedUsersViaDirectAccess(uPath, users)
+                                : await syncSharedUsersViaICloud(uPath, users);
+                            if (merged) {
+                              localStorage.setItem('dayglance-users', JSON.stringify(merged));
+                              setUsers(merged);
+                            }
+                            setUserSyncStatus('ok');
+                            setTimeout(() => setUserSyncStatus(null), 2000);
+                          } catch {
+                            setUserSyncStatus('error');
+                            setTimeout(() => setUserSyncStatus(null), 3000);
+                          }
+                        }}
+                        className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 ${
+                          userSyncStatus === 'ok' ? 'bg-green-500/20 text-green-500' :
+                          userSyncStatus === 'error' ? 'bg-red-500/20 text-red-500' :
+                          darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        <RefreshCw size={12} className={userSyncStatus === 'syncing' ? 'animate-spin' : ''} />
+                        {userSyncStatus === 'ok' ? t('common.saved') : userSyncStatus === 'error' ? t('settings.syncFailed') : t('common.syncNow')}
+                      </button>
+                    )}
+                  </div>
+                  {/* User list */}
+                  <DirectAccessFileRow slot="users" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
+                  <div>
+                    <p className={`text-xs font-medium ${textSecondary} mb-2`}>{t('settings.multiUserPeople')}</p>
+                    <div className="space-y-2">
+                      {users.filter(u => !u.deleted).map(u => (
+                        <div key={u.id} className="flex items-center gap-2">
+                          <span
+                            style={{ width: 24, height: 24, fontSize: 13 }}
+                            className="rounded-full bg-gray-500 text-white flex items-center justify-center font-semibold leading-none flex-shrink-0"
+                          >
+                            {u.name[0].toUpperCase()}
+                          </span>
+                          {editingUserId === u.id ? (
+                            <>
+                              <input
+                                type="text"
+                                value={editingUserName}
+                                onChange={e => setEditingUserName(e.target.value)}
+                                className={`flex-1 px-2 py-1 border ${borderClass} rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const trimmed = editingUserName.trim();
+                                  if (!trimmed) return;
+                                  const updated = users.map(usr => usr.id === u.id ? { ...usr, name: trimmed, updatedAt: new Date().toISOString() } : usr);
+                                  setUsers(updated);
+                                  localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                  markRosterEdited();
+                                  setEditingUserId(null);
+                                }}
+                                className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                              >{t('common.save')}</button>
+                              <button type="button" onClick={() => setEditingUserId(null)} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`flex-1 text-sm ${textPrimary}`}>{u.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const key = u.syncId ?? u.id;
+                                  const next = meUserSyncId === key ? null : key;
+                                  setMeUserSyncId(next);
+                                  localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: next }));
+                                }}
+                                className={`px-2 py-1 rounded text-xs border transition-colors ${meUserSyncId === (u.syncId ?? u.id)
+                                  ? 'border-green-500 bg-green-500/20 text-green-400'
+                                  : `${borderClass} ${darkMode ? 'bg-transparent text-gray-400 hover:text-gray-200' : 'bg-transparent text-stone-500 hover:text-stone-700'}`}`}
+                              >{meUserSyncId === (u.syncId ?? u.id) ? `✓ ${t('settings.multiUserMe', { defaultValue: 'Me' })}` : t('settings.multiUserMe', { defaultValue: 'Me' })}</button>
+                              <button
+                                type="button"
+                                onClick={() => { setEditingUserId(u.id); setEditingUserName(u.name); }}
+                                className={`px-1.5 py-1 rounded text-xs ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-stone-400 hover:text-stone-600'}`}
+                                aria-label={t('common.edit')}
+                              >✎</button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = users.map(usr => usr.id === u.id ? { ...usr, deleted: true, updatedAt: new Date().toISOString() } : usr);
+                                  setUsers(updated);
+                                  localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                                  markRosterEdited();
+                                  if (meUserSyncId === (u.syncId ?? u.id)) {
+                                    setMeUserSyncId(null);
+                                    localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: null }));
+                                  }
+                                }}
+                                className={`px-1.5 py-1 rounded text-xs ${darkMode ? 'text-gray-500 hover:text-red-400' : 'text-stone-400 hover:text-red-500'}`}
+                                aria-label={t('common.delete')}
+                              >🗑</button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {addingUser ? (
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="text"
+                          placeholder={t('common.name')}
+                          value={newUserName}
+                          onChange={e => setNewUserName(e.target.value)}
+                          className={`flex-1 px-2 py-1 border ${borderClass} rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const trimmed = newUserName.trim();
+                              if (!trimmed) return;
+                              const newUser = { id: crypto.randomUUID(), name: trimmed, syncId: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+                              const updated = [...users, newUser];
+                              setUsers(updated);
+                              localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                              markRosterEdited();
+                              setNewUserName('');
+                              setAddingUser(false);
+                            } else if (e.key === 'Escape') {
+                              setAddingUser(false);
+                              setNewUserName('');
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = newUserName.trim();
+                            if (!trimmed) return;
+                            const newUser = { id: crypto.randomUUID(), name: trimmed, syncId: crypto.randomUUID(), updatedAt: new Date().toISOString() };
+                            const updated = [...users, newUser];
+                            setUsers(updated);
+                            localStorage.setItem('dayglance-users', JSON.stringify(updated));
+                            markRosterEdited();
+                            setNewUserName('');
+                            setAddingUser(false);
+                          }}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                        >{t('common.add')}</button>
+                        <button type="button" onClick={() => { setAddingUser(false); setNewUserName(''); }} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAddingUser(true)}
+                        className={`mt-2 text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                      >{t('common.addPerson')}</button>
+                    )}
+                  </div>
+                  {/* Users path — only shown when GLANCE Integrations WebDAV is configured */}
+                  {intentForm.webdavUrl && (
+                    <div>
+                      <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.usersSyncPath')}</label>
+                      <input
+                        type="text"
+                        placeholder="/GLANCE/users/"
+                        value={usersPath}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setUsersPath(val);
+                          const existing = localStorage.getItem(MULTI_USER_CONFIG_KEY);
+                          const prev = existing ? JSON.parse(existing) : {};
+                          localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...prev, usersPath: val }));
+                        }}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                      />
+                      <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.usersSyncPathHint', { defaultValue: 'WebDAV path where the shared user list is stored. Must match across all GLANCE apps.' })}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+        </>
+      ),
+    },
+    ai: {
+      show: !aiSuppressed,
+      node: (
+        <>
+            {/* AI Features Section — hidden on the China App Store storefront
+                to comply with App Store Review Guideline 5 (Deep Synthesis / MIIT). */}
+            {!aiSuppressed && (<>
+
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('ai')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <BrainCircuit size={16} className={aiConfig.enabled ? 'text-purple-400' : textSecondary} />
+                {t('settings.aiFeatures')}
+                {aiConfig.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.ai ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.ai && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.aiByoApiKey')}
+              </p>
+
+              {/* Master toggle */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={aiConfig.enabled}
+                    onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setAiConfig(prev => ({ ...prev, enabled: e.target.checked })); }}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-6 rounded-full transition-colors ${aiConfig.enabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aiConfig.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                </div>
+                <span className={`text-sm ${textPrimary}`}>{t('settings.enableAIFeatures')}</span>
+              </label>
+
+              {aiConfig.enabled && (
+                <div className="space-y-3 mt-2">
+                  {/* Provider selector */}
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiProvider')}</label>
+                    <select
+                      value={aiConfig.provider}
+                      onChange={(e) => {
+                        const provider = e.target.value;
+                        const models = PROVIDER_MODELS[provider] || [];
+                        setAiConfig(prev => ({
+                          ...prev,
+                          provider,
+                          model: models[0]?.id || prev.model,
+                          baseUrl: provider === 'ollama' ? (prev.baseUrl || 'http://localhost:11434') : provider === 'custom' ? prev.baseUrl : '',
+                        }));
+                        setAiConnectionStatus(null);
+                        setAiOllamaHelp(null);
+                      }}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    >
+                      {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {key === 'ollama'
+                            ? t('settings.aiProviderOllama', { defaultValue: 'Ollama (Local)' })
+                            : key === 'custom'
+                              ? t('settings.aiProviderCustom', { defaultValue: 'Custom (OpenAI-compatible)' })
+                              : label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* API Key */}
+                  {aiConfig.provider !== 'ollama' && (
+                    <div>
+                      <label className={`block text-sm ${textSecondary} mb-1`}>
+                        <Key size={12} className="inline mr-1" />
+                        {t('settings.aiApiKey')}
+                      </label>
+                      <input
+                        type="password"
+                        placeholder={aiConfig.provider === 'openai' ? 'sk-...' : aiConfig.provider === 'anthropic' ? 'sk-ant-...' : t('settings.aiApiKey')}
+                        value={aiConfig.apiKey}
+                        onChange={(e) => {
+                          setAiConfig(prev => ({ ...prev, apiKey: e.target.value }));
+                          setAiConnectionStatus(null);
+                        setAiOllamaHelp(null);
+                        }}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm font-mono`}
+                      />
+                      <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.aiApiKeyHint')}</p>
+                    </div>
+                  )}
+
+                  {/* Base URL for Ollama/Custom */}
+                  {(aiConfig.provider === 'ollama' || aiConfig.provider === 'custom') && (
+                    <div>
+                      <label className={`block text-sm ${textSecondary} mb-1`}>
+                        <Server size={12} className="inline mr-1" />
+                        {aiConfig.provider === 'ollama'
+                          ? t('settings.aiOllamaUrl', { defaultValue: 'Ollama URL' })
+                          : t('settings.aiBaseUrl', { defaultValue: 'Base URL' })}
+                      </label>
+                      <input
+                        type="url"
+                        placeholder={aiConfig.provider === 'ollama' ? 'http://localhost:11434' : 'https://your-endpoint.com/v1'}
+                        value={aiConfig.baseUrl}
+                        onChange={(e) => setAiConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                      />
+                      {aiConfig.provider === 'custom' && (
+                        <p className={`text-xs ${textSecondary} mt-1`}>
+                          {t('settings.aiCommonProviders', { defaultValue: 'Common providers:' })} Groq → <code className="font-mono">https://api.groq.com/openai/v1</code> · Together AI → <code className="font-mono">https://api.together.xyz/v1</code> · LM Studio → <code className="font-mono">http://localhost:1234/v1</code>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Model selector. The built-in list is a starting
+                      point: a provider's ids retire (the 2026-10-03
+                      Gemini report), so the list can be refreshed from
+                      the provider and any id can be typed. A model not
+                      in the list shows as "Other" with the id editable. */}
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiModel')}</label>
+                    {(() => {
+                      const listed = (aiConfig.modelLists?.[aiConfig.provider]?.length ? aiConfig.modelLists[aiConfig.provider] : PROVIDER_MODELS[aiConfig.provider]) || [];
+                      const inList = listed.some((m) => m.id === aiConfig.model);
+                      return (
+                        <div className="space-y-2">
+                          {listed.length > 0 && (
+                            <select
+                              data-ai-model-select
+                              value={inList ? aiConfig.model : '__other__'}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setAiConfig(prev => ({ ...prev, model: v === '__other__' ? '' : v }));
+                              }}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                            >
+                              {listed.map(m => (
+                                <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
+                              ))}
+                              <option value="__other__">{t('settings.aiModelOther', { defaultValue: 'Other (type a model id)' })}</option>
+                            </select>
+                          )}
+                          {(!inList || listed.length === 0) && (
+                            <input
+                              type="text"
+                              data-ai-model-input
+                              placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
+                              value={aiConfig.model}
+                              onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
+                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                            />
+                          )}
+                          {(
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                data-ai-fetch-models
+                                disabled={aiModelsStatus === 'loading'}
+                                onClick={async () => {
+                                  setAiModelsStatus('loading');
+                                  setAiModelsMessage('');
+                                  try {
+                                    const models = await fetchProviderModels(aiConfig);
+                                    setAiConfig(prev => ({ ...prev, modelLists: { ...(prev.modelLists || {}), [prev.provider]: models } }));
+                                    setAiModelsStatus('ok');
+                                    setAiModelsMessage(t('settings.aiFetchModelsOk', { defaultValue: '{{count}} models available', count: models.length }));
+                                  } catch (err) {
+                                    setAiModelsStatus('error');
+                                    setAiModelsMessage(t('settings.aiFetchModelsFailed', { defaultValue: 'Could not fetch models: {{error}}', error: err?.message || String(err) }));
+                                  }
+                                }}
+                                className={`px-3 py-1.5 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-xs transition-colors disabled:opacity-50`}
+                              >
+                                {t('settings.aiFetchModels', { defaultValue: 'Fetch model list' })}
+                              </button>
+                              {aiModelsMessage && (
+                                <span className={`text-xs ${aiModelsStatus === 'error' ? 'text-red-500' : textSecondary}`}>{aiModelsMessage}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Test Connection */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          setAiConnectionStatus('testing');
+                          setAiConnectionMessage('');
+                          setAiOllamaHelp(null);
+                          const result = await testConnection(aiConfig);
+                          setAiConnectionStatus(result.success ? 'success' : 'error');
+                          setAiConnectionMessage(result.message);
+                          setAiOllamaHelp(result.ollamaHelp || null);
+                        }}
+                        disabled={aiConnectionStatus === 'testing'}
+                        className="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm disabled:opacity-50"
+                      >
+                        {aiConnectionStatus === 'testing' ? (
+                          <Loader size={14} className="animate-spin" />
+                        ) : aiConnectionStatus === 'success' ? (
+                          <Wifi size={14} />
+                        ) : aiConnectionStatus === 'error' ? (
+                          <WifiOff size={14} />
+                        ) : (
+                          <Wifi size={14} />
+                        )}
+                        {aiConnectionStatus === 'testing' ? t('settings.aiTesting') : t('settings.aiTestConnection')}
+                      </button>
+                      {aiConnectionStatus === 'success' && (
+                        <span className="text-xs text-green-500">{t('settings.aiConnected')}</span>
+                      )}
+                      {aiConnectionStatus === 'error' && !aiOllamaHelp && (
+                        <span className="text-xs text-red-500 truncate max-w-[180px]" title={aiConnectionMessage}>{aiConnectionMessage}</span>
+                      )}
+                    </div>
+                    {aiOllamaHelp && (
+                      <div className={`text-xs p-3 rounded-lg ${darkMode ? 'bg-red-900/30 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
+                        <p className="text-red-500 font-medium mb-1.5">{t('settings.aiOllamaConnectionError', { defaultValue: "Could not reach Ollama. Make sure it's running and CORS is enabled for this origin. See setup guide →" })}</p>
+                        <ul className={`${textSecondary} space-y-1 ml-3 list-disc mb-2`}>
+                          <li>{t('settings.aiOllamaRunning', { defaultValue: 'Ollama must be running on your computer' })}</li>
+                          <li>{t('settings.aiOllamaCors', { defaultValue: "CORS must be enabled for this site's origin" })}</li>
+                          <li>{t('settings.aiOllamaSetEnv', { defaultValue: 'Set:' })} <code className={`text-xs px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>OLLAMA_ORIGINS={window.electronAPI?.isElectron ? '*' : window.location.origin}</code></li>
+                        </ul>
+                        <a
+                          href="https://github.com/ollama/ollama/blob/main/docs/faq.md#how-do-i-configure-ollama-server"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-purple-500 hover:text-purple-400 underline flex items-center gap-1 w-fit"
+                        >
+                          {t('settings.aiOllamaSetupGuide', { defaultValue: 'Ollama setup guide' })} <ExternalLink size={11} />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Per-feature toggles */}
+                  <div className="space-y-2 mt-2">
+                    <p className={`text-xs font-medium ${textSecondary}`}>{t('settings.aiFeaturesList')}</p>
+                    {[
+                      { key: 'voiceTaskInput', label: t('settings.aiVoiceTaskInput'), icon: <Mic size={12} /> },
+                      { key: 'morningSummary', label: t('settings.aiMorningSummary'), icon: <Sun size={12} /> },
+                      { key: 'eveningReflection', label: t('settings.aiEveningReflection'), icon: <Moon size={12} /> },
+                      { key: 'durationEstimate', label: t('settings.aiDurationEstimates'), icon: <Sparkles size={12} /> },
+                      { key: 'frameNudge', label: t('settings.aiFrameNudges'), icon: <Zap size={12} /> },
+                      { key: 'aiReschedule', label: t('settings.aiReschedule'), icon: <CalendarDays size={12} /> },
+                      { key: 'aiSubtasks', label: t('settings.aiSubtasks'), icon: <CheckSquare size={12} /> },
+                      { key: 'weeklySummary', label: t('settings.aiWeeklySummary'), icon: <BarChart3 size={12} /> },
+                      { key: 'smartScheduling', label: t('settings.aiSmartScheduling'), icon: <CalendarDays size={12} /> },
+                    ].map(f => (
+                      <label key={f.key} className={`flex items-center gap-2 ${f.comingSoon ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
+                        <div className="relative flex-shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={f.comingSoon ? false : aiConfig.features[f.key]}
+                            onChange={(e) => {
+                              if (f.comingSoon) return;
+                              setAiConfig(prev => ({
+                                ...prev,
+                                features: { ...prev.features, [f.key]: e.target.checked }
+                              }));
+                            }}
+                            disabled={f.comingSoon}
+                            className="sr-only"
+                          />
+                          <div className={`w-8 h-4 rounded-full transition-colors ${!f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${!f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-xs ${textPrimary} flex items-center gap-1.5`}>
+                          {f.icon} {f.label}
+                          {f.comingSoon && <span className={`${textSecondary} italic`}>{t('common.comingSoon')}</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </>)}
+            </div>
+            </>)}
+        </>
+      ),
+    },
+    obsidian: {
+      show: !isMobile || isNativeApp(),
+      node: (
+        <>
+            {/* Hidden at mobile width ONLY for browsers, where FSA is
+                unavailable on phones; a NATIVE app (Android or iOS)
+                has vault access at any width. The old Android-only
+                exception predated the iOS native bridge. */}
+            {(!isMobile || isNativeApp()) && (<>
+
+            {/* Obsidian Integration Section — desktop (FSA) + native
+                apps (Android SAF, iOS bookmark). MobileSettingsPanel
+                carries the primary mobile surface; this section is the
+                modal's counterpart wherever the modal is reachable. */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('obsidian')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <BookOpen size={16} className={textSecondary} />
+                {t('settings.obsidianIntegration')}
+                {obsidianConfig?.enabled && <span className={`mr-1 w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.obsidian ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.obsidian && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.obsidianDesc')}
+              </p>
+              {/* The Chromium/FSA requirement is a BROWSER constraint:
+                  a native app reaches the vault through its own bridge
+                  (SAF / iOS bookmark) and must not see this warning —
+                  gating on Android alone showed it, wrongly, on iPad. */}
+              {!isNativeApp() && !isFileSystemAccessSupported() && (
+                <p className={`text-xs text-amber-500`}>
+                  {t('settings.obsidianBrowserRequirement', { defaultValue: 'Obsidian integration requires a Chromium-based browser (Chrome, Edge, or Brave). Firefox and Safari do not support the File System Access API.' })}
+                </p>
+              )}
+              {isNativeAndroid() ? (
+                <div className="space-y-3">
+                  <p className={`text-xs ${textSecondary}`}>
+                    {t('settings.obsidianNativeSettingsHint', { defaultValue: 'Vault access and daily note settings are configured in the app settings.' })}
+                  </p>
+                  <button
+                    onClick={() => window.DayGlanceNative.openSettings()}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm"
+                  >
+                    <FolderOpen size={14} />
+                    {t('settings.obsidianOpenVaultSettings')}
+                  </button>
+                  {launchOnWritePlatform && obsidianConfig?.enabled && (
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform)}
+                            onChange={(e) => setObsidianLaunchOnWrite(e.target.checked ? 'on' : 'off')}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-6 rounded-full transition-colors ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianLaunchOnWrite')}</span>
+                      </label>
+                      <p className={`text-xs ${textSecondary} mt-1`}>
+                        {t('settings.obsidianLaunchOnWriteHintAndroid')}
+                      </p>
+                    </div>
+                  )}
+                  {obsidianConfig?.enabled && (
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={obsidianCompletionDates}
+                            onChange={(e) => setObsidianCompletionDates(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-6 rounded-full transition-colors ${obsidianCompletionDates ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianCompletionDates ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionDates')}</span>
+                      </label>
+                      <p className={`text-xs ${textSecondary} mt-1`}>
+                        {t('settings.obsidianCompletionDatesHint')}
+                      </p>
+                    </div>
+                  )}
+                  {/* §6 mode indicator, native flavor: read-only bridge
+                      status (three states — see BridgeStatusPanel).
+                      Pairing itself stays a desktop act; this makes
+                      plugin mode, and especially the SILENTLY-UNPAIRED
+                      middle state, legible on this device. */}
+                  {obsidianConfig?.enabled && (
+                    <BridgeStatusPanel darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
+                  )}
+                </div>
+              ) : obsidianConfig?.enabled ? (
+                <div className="space-y-3">
+                  <div className={`flex items-center gap-2 text-sm ${textPrimary}`}>
+                    <FolderOpen size={14} className={textSecondary} />
+                    <span className="truncate">{obsidianConfig.vaultName || t('settings.obsidianVaultConnected')}</span>
+                    {obsidianVaultAccess === 'lost'
+                      ? <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
+                      : <CheckCircle size={14} className="text-green-500 flex-shrink-0" />}
+                  </div>
+                  {/* Configured is not reachable: say so here, where the
+                      green check used to claim otherwise, and point at
+                      the button that fixes it. */}
+                  {obsidianVaultAccess === 'lost' && (
+                    <p data-obsidian-vault-lost className="text-xs text-red-500">{t('settings.obsidianVaultAccessLost')}</p>
+                  )}
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      {t('settings.obsidianDailyNotesFolder')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t('settings.obsidianVaultRootPlaceholder', { defaultValue: '(vault root)' })}
+                      value={obsidianConfig.dailyNotesPath || ''}
+                      onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotesPath: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianDailyNotesFolderHint', { defaultValue: 'Leave empty for vault root. Common: "Daily Notes" or "journals"' })}
+                    </p>
+                    {/* Where a daily note lands, and the nesting trap
+                        (utils/obsidianFolderCheck.js): the picked folder
+                        named like the setting means a second folder of
+                        the same name inside it, and two copies of each
+                        day's note. Said here, before the first write. */}
+                    {(() => {
+                      const resolved = describeDailyNotePath({
+                        vaultName: obsidianConfig.vaultName, dailyNotesPath: obsidianConfig.dailyNotesPath,
+                        dailyNotePattern: obsidianConfig.dailyNotePattern, formatDatePattern,
+                      });
+                      return (
+                        <>
+                          <p data-obsidian-daily-path className={`text-xs ${textSecondary} mt-1`}>
+                            {t('settings.obsidianDailyNotesResolved', { path: resolved.path })}
+                          </p>
+                          {resolved.nested && (
+                            <p data-obsidian-daily-nested className="text-xs text-amber-500 mt-1">
+                              {t('settings.obsidianDailyNotesNested', { name: obsidianConfig.vaultName })}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      {t('settings.obsidianNewNotesFolder')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="dayGLANCE"
+                      value={obsidianConfig.newNotesFolder ?? 'dayGLANCE'}
+                      onChange={(e) => setObsidianConfig(prev => ({ ...prev, newNotesFolder: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                    {validateVaultFolderSetting(obsidianConfig.newNotesFolder) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {validateVaultFolderSetting(obsidianConfig.newNotesFolder)}
+                      </p>
+                    )}
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianNewNotesFolderHint', { defaultValue: 'Where new notes created in dayGLANCE are saved. Leave empty for vault root.' })}
+                    </p>
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      {t('settings.obsidianFilenamePattern')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="yyyy-MM-dd"
+                      value={obsidianConfig.dailyNotePattern ?? 'yyyy-MM-dd'}
+                      onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotePattern: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                    {validateDailyNotePattern(obsidianConfig.dailyNotePattern, formatDatePattern) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {validateDailyNotePattern(obsidianConfig.dailyNotePattern, formatDatePattern)}
+                      </p>
+                    )}
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianFilenamePatternHint', { defaultValue: 'Date pattern for daily note filenames (without .md). e.g. "yyyy-MM-dd", "dd-MM-yyyy", "MMMM dd, yyyy"' })}
+                    </p>
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      {t('settings.obsidianTaskHeading')}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={buildLocalizedTaskHeading(t)}
+                      value={obsidianConfig.taskHeading || ''}
+                      onChange={(e) => setObsidianConfig(prev => ({ ...prev, taskHeading: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianTaskHeadingHintPrefix', { defaultValue: 'Tasks tagged' })} <code>#obsidian</code> {t('settings.obsidianTaskHeadingHintSuffix', { defaultValue: "are added under this heading in today's daily note" })}
+                    </p>
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>
+                      {t('settings.obsidianDailyNoteTemplate')}
+                    </label>
+                    <textarea
+                      value={dailyNoteTemplate}
+                      onChange={(e) => setDailyNoteTemplate(e.target.value)}
+                      placeholder={t('settings.obsidianDailyNoteTemplatePlaceholder', { defaultValue: 'Template for new daily notes...' })}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-500' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm resize-y`}
+                      rows={4}
+                    />
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianDailyNoteTemplateBridgeHint', { dateToken: '{{date}}', defaultValue: "Pre-filled when creating a new daily note. {{dateToken}} becomes the note's date. A template note configured in the Bridge plugin takes precedence when the plugin creates the note." })}
+                    </p>
+                  </div>
+                  {launchOnWritePlatform && (
+                    <div>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform)}
+                            onChange={(e) => setObsidianLaunchOnWrite(e.target.checked ? 'on' : 'off')}
+                            className="sr-only"
+                          />
+                          <div className={`w-10 h-6 rounded-full transition-colors ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </div>
+                        </div>
+                        <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianLaunchOnWrite')}</span>
+                      </label>
+                      <p className={`text-xs ${textSecondary} mt-1`}>
+                        {t('settings.obsidianLaunchOnWriteHint')}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={obsidianCompletionDates}
+                          onChange={(e) => setObsidianCompletionDates(e.target.checked)}
+                          className="sr-only"
+                        />
+                        <div className={`w-10 h-6 rounded-full transition-colors ${obsidianCompletionDates ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianCompletionDates ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </div>
+                      </div>
+                      <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionDates')}</span>
+                    </label>
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianCompletionDatesHint')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={!!obsidianConfig.completionLogEnabled}
+                          onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogEnabled: e.target.checked }))}
+                          className="sr-only"
+                        />
+                        <div className={`w-10 h-6 rounded-full transition-colors ${obsidianConfig.completionLogEnabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianConfig.completionLogEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                        </div>
+                      </div>
+                      <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionLog')}</span>
+                    </label>
+                    <p className={`text-xs ${textSecondary} mt-1`}>
+                      {t('settings.obsidianCompletionLogHint')}
+                    </p>
+                    {obsidianConfig.completionLogEnabled && (
+                      <div className="mt-2">
+                        <label className={`block text-sm ${textSecondary} mb-1`}>
+                          {t('settings.obsidianCompletionLogHeading')}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="## Completed"
+                          value={obsidianConfig.completionLogHeading || ''}
+                          onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogHeading: e.target.value }))}
+                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => performObsidianSync()}
+                      disabled={obsidianSyncStatus === 'syncing'}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm"
+                    >
+                      <RefreshCw size={14} className={obsidianSyncStatus === 'syncing' ? 'animate-spin' : ''} />
+                      {obsidianSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
+                    </button>
+                    {/* Re-pick the vault folder without disconnecting. Stored
+                        access can lapse (an expired browser permission, a
+                        stale macOS bookmark after the app is replaced) while
+                        Settings still reads connected, and every note read
+                        and vault write then fails. Disconnect is no way back:
+                        it also drops the Obsidian-imported tasks. Picking
+                        again stores fresh access (a new directory handle, or
+                        a new bookmark on desktop) and keeps everything else. */}
+                    <button
+                      data-obsidian-change-vault
+                      onClick={async () => {
+                        if (isNativeApp()) { nativePickVault(); return; }
+                        try {
+                          const handle = await requestVaultAccess();
+                          if (!handle) return;
+                          obsidianVaultHandleRef.current = handle;
+                          setObsidianConfig(prev => ({ ...prev, enabled: true, vaultName: handle.name }));
+                          performObsidianSync();
+                        } catch (err) {
+                          console.error('Obsidian: failed to change vault', err);
+                        }
+                      }}
+                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors flex items-center gap-2`}
+                    >
+                      <FolderOpen size={14} />
+                      {t('settings.obsidianChangeVault')}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await disconnectVault();
+                        obsidianVaultHandleRef.current = null;
+                        setObsidianConfig(null);
+                        setObsidianLastSynced(null);
+                        setUnportableVaultFiles?.([]);
+                        localStorage.removeItem('day-planner-obsidian-last-synced');
+                        // Remove Obsidian-imported tasks
+                        setTasks(prev => prev.filter(t => t.importSource !== 'obsidian'));
+                        setUnscheduledTasks(prev => prev.filter(t => t.importSource !== 'obsidian'));
+                      }}
+                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
+                    >
+                      {t('common.disconnect')}
+                    </button>
+                  </div>
+                  {obsidianSyncStatus === 'success' && (
+                    <p className={`text-xs text-green-500`}>{t('settings.obsidianSyncComplete')}</p>
+                  )}
+                  {obsidianSyncStatus === 'error' && (
+                    <p className={`text-xs text-red-500`}>{t('settings.obsidianSyncFailed')}{obsidianSyncError ? `: ${obsidianSyncError}` : ''}</p>
+                  )}
+                  {obsidianLastSynced && (
+                    <p className={`text-xs ${textSecondary}`}>
+                      {t('common.lastSynced')}: {new Date(obsidianLastSynced).toLocaleString(locale)}
+                    </p>
+                  )}
+                  {/* Native app in this branch = iOS (isNativeAndroid
+                      took Android above): the pairing form's minting
+                      path needs direct FSA vault access the native
+                      bridge doesn't have — startBridgePairing can only
+                      throw pairing_no_vault_access here, and the
+                      form's status probe skips native handles. The
+                      read-only status block is the working equivalent;
+                      pairing happens once from a desktop and covers
+                      this device (per-vault granularity, spec §3.2). */}
+                  {isNativeApp()
+                    ? <BridgeStatusPanel darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
+                    : <BridgePairingPanel vaultHandleRef={obsidianVaultHandleRef} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />}
+                  <UnportableVaultNamesPanel entries={unportableVaultFiles} darkMode={darkMode} textSecondary={textSecondary} />
+                </div>
+              ) : (
+                <button
+                  onClick={async () => {
+                    // Native app (iOS lands here; Android took its own
+                    // branch above): the vault is picked through the
+                    // NATIVE folder picker (UIDocumentPickerViewController
+                    // via nativePickVault, which reloads the webview
+                    // once a folder is chosen) — the FSA flow below is
+                    // browser-only and, gated on Android alone, used to
+                    // leave iPad with a dead connect button that could
+                    // only alert about Chromium.
+                    if (isNativeApp()) {
+                      nativePickVault();
+                      return;
+                    }
+                    if (!isFileSystemAccessSupported()) {
+                      alert(t('settings.obsidianBrowserUnsupported', { defaultValue: 'Your browser does not support the File System Access API. Please use a Chromium-based browser (e.g., Chrome, Edge, Brave) to connect an Obsidian vault.' }));
+                      return;
+                    }
+                    const handle = await requestVaultAccess();
+                    if (handle) {
+                      obsidianVaultHandleRef.current = handle;
+                      setObsidianConfig({ enabled: true, dailyNotesPath: '', vaultName: handle.name });
+                    }
+                  }}
+                  className={`px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm`}
+                >
+                  <FolderOpen size={14} />
+                  {t('settings.obsidianSelectVault')}
+                </button>
+              )}
+              </>)}
+            </div>
+            </>)}
+        </>
+      ),
+    },
+    trmnl: {
+      show: true,
+      node: (
+        <>
+            {/* TRMNL E-Ink Dashboard Section */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('trmnl')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <LayoutGrid size={16} className={textSecondary} />
+                {t('settings.trmnlDashboard')}
+                {trmnlConfig?.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.trmnl ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.trmnl && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.trmnlDescriptionPrefix', { defaultValue: 'Push your daily schedule to a' })} <a href="https://trmnl.com" target="_blank" rel="noopener noreferrer" className="underline">TRMNL</a> {t('settings.trmnlDescriptionSuffix', { defaultValue: 'e-ink display via webhook. Install the DayGLANCE recipe from the TRMNL Recipe Library to get started.' })}
+              </p>
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.trmnlWebhookUrl')}</label>
+                <input
+                  type="url"
+                  placeholder="https://usetrmnl.com/api/custom_plugins/your-uuid"
+                  value={trmnlConfig?.webhookUrl || ''}
+                  onChange={(e) => setTrmnlConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                />
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  {t('settings.trmnlWebhookHint', { defaultValue: 'Found in your DayGLANCE recipe settings on TRMNL' })}
+                </p>
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  {t('settings.trmnlOneDeviceHint', { defaultValue: 'TRMNL accepts a limited number of updates per hour for the whole plugin, so enable this on one device that is usually running.' })}
+                </p>
+              </div>
+              <div>
+                <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.trmnlApiKey')}</label>
+                  <input
+                    type="password"
+                    placeholder={t('settings.trmnlBearerTokenPlaceholder', { defaultValue: 'Bearer token' })}
+                  value={trmnlConfig?.apiKey || ''}
+                  onChange={(e) => setTrmnlConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                {trmnlConfig?.enabled ? (
+                  <>
+                    <button
+                      onClick={() => performTrmnlSync()}
+                      disabled={trmnlSyncStatus === 'syncing'}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm"
+                    >
+                      <RefreshCw size={14} className={trmnlSyncStatus === 'syncing' ? 'animate-spin' : ''} />
+                      {trmnlSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
+                    </button>
+                    <button
+                      onClick={() => setTrmnlConfig(prev => ({ ...prev, enabled: false }))}
+                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
+                    >
+                      {t('common.disable')}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (!trmnlConfig?.webhookUrl) return;
+                      setTrmnlConfig(prev => ({ ...prev, enabled: true }));
+                      setTimeout(() => performTrmnlSync(), 100);
+                    }}
+                    disabled={!trmnlConfig?.webhookUrl}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm disabled:opacity-50"
+                  >
+                    <Wifi size={14} />
+                    {t('settings.trmnlEnableSync')}
+                  </button>
+                )}
+              </div>
+              {trmnlSyncStatus === 'success' && <p className="text-xs text-green-500">{t('settings.trmnlSyncSuccess')}</p>}
+              {trmnlSyncStatus === 'error' && <p className="text-xs text-red-500">{t('settings.trmnlSyncError')}</p>}
+              {trmnlLastSynced && (
+                <p className={`text-xs ${textSecondary}`}>
+                  {t('common.lastSynced')}: {new Date(trmnlLastSynced).toLocaleString(locale)}
+                </p>
+              )}
+
+              </>)}
+            </div>
+        </>
+      ),
+    },
+    todoist: {
+      show: true,
+      node: (
+        <>
+            <TodoistSettings />
+        </>
+      ),
+    },
+    localIntegrations: {
+      show: !!window.electronAPI?.localIntegrations,
+      node: (
+        <>
+            {/* Local Integrations (Stream Deck + MCP) — Electron only,
+                renders nothing on web/mobile builds. */}
+            <LocalIntegrationsSettings />
+        </>
+      ),
+    },
+    glanceIntegrations: {
+      show: true,
+      node: (
+        <>
+            {/* GLANCE Integrations Section */}
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('intent')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <Activity size={16} className={textSecondary} />
+                {t('settings.glanceIntegrations')}
+                {(intentForm.webdavUrl || dbIntentsEnabled) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.intent ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.intent && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.glanceIntegrationsDesc', { defaultValue: 'Connect dayGLANCE to other Glance-compatible apps via a shared WebDAV event log.' })}
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceServerUrl')}</label>
+                  <input
+                    type="url"
+                    placeholder="https://nextcloud.example.com/remote.php/dav/files/user"
+                    value={intentForm.webdavUrl}
+                    onChange={e => setIntentForm(p => ({ ...p, webdavUrl: e.target.value }))}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('common.username')}</label>
+                    <input
+                      type="text"
+                      placeholder={t('common.username')}
+                      value={intentForm.username}
+                      onChange={e => setIntentForm(p => ({ ...p, username: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.appPassword')}</label>
+                    <input
+                      type="password"
+                      placeholder="••••••••••••"
+                      value={intentForm.appPassword}
+                      onChange={e => setIntentForm(p => ({ ...p, appPassword: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceEventsPath')}</label>
+                  <input
+                    type="text"
+                    placeholder="/GLANCE/events/"
+                    value={intentForm.eventsPath}
+                    onChange={e => setIntentForm(p => ({ ...p, eventsPath: e.target.value }))}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                  />
+                  <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceEventsPathHint', { defaultValue: 'Path on the WebDAV server where event files are stored.' })}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceForegroundPoll')}</label>
+                    <select
+                      value={intentForm.foregroundInterval}
+                      onChange={e => setIntentForm(p => ({ ...p, foregroundInterval: Number(e.target.value) }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    >
+                      <option value={30000}>{formatUnit(30, 'second')}</option>
+                      <option value={60000}>{formatUnit(1, 'minute')}</option>
+                      <option value={120000}>{formatUnit(2, 'minute')}</option>
+                      <option value={300000}>{formatUnit(5, 'minute')}</option>
+                      <option value={600000}>{formatUnit(10, 'minute')}</option>
+                      <option value={1800000}>{formatUnit(30, 'minute')}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceBackgroundPoll')}</label>
+                    <select
+                      value={intentForm.backgroundInterval}
+                      onChange={e => setIntentForm(p => ({ ...p, backgroundInterval: Number(e.target.value) }))}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                    >
+                      <option value={300000}>{formatUnit(5, 'minute')}</option>
+                      <option value={900000}>{formatUnit(15, 'minute')}</option>
+                      <option value={1800000}>{formatUnit(30, 'minute')}</option>
+                      <option value={3600000}>{formatUnit(1, 'hour')}</option>
+                      <option value={21600000}>{formatUnit(6, 'hour')}</option>
+                      <option value={86400000}>{formatUnit(24, 'hour')}</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceEventRetention')}</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={intentForm.gcRetentionDays}
+                    onChange={e => setIntentForm(p => ({ ...p, gcRetentionDays: e.target.value }))}
+                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                  />
+                  <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceRetentionHint', { defaultValue: 'Event files older than this are deleted automatically.' })}</p>
+                </div>
+                <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass} ${cloudSyncConfig?.encryptionEnabled ? '' : 'opacity-60'}`}>
+                  <input
+                    type="checkbox"
+                    id="intent-encryption-toggle"
+                    checked={intentForm.encryptionEnabled && !!cloudSyncConfig?.encryptionEnabled}
+                    disabled={!cloudSyncConfig?.encryptionEnabled || intentSetupPhase !== null}
+                    onChange={e => setIntentForm(p => ({ ...p, encryptionEnabled: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 rounded"
+                  />
+                  <div>
+                    <label htmlFor="intent-encryption-toggle" className={`text-sm font-medium ${textPrimary} ${cloudSyncConfig?.encryptionEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                      {t('settings.glanceEncryptEvents', { defaultValue: 'Encrypt intent events' })}
+                    </label>
+                    {cloudSyncConfig?.encryptionEnabled ? (
+                      <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.glanceEncryptionEnabledHint', { defaultValue: 'Uses your cloud sync passphrase. Set up once; remains active across sessions.' })}</p>
+                    ) : (
+                      <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.glanceEncryptionRequiredHint', { defaultValue: 'Requires cloud sync encryption to be enabled first.' })}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Intents encryption setup — inline passphrase prompt or error */}
+                {intentSetupPhase === 'passphrase-needed' && (
+                  <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock size={13} className="text-blue-500 flex-shrink-0" />
+                      <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle', { defaultValue: 'Enter your sync passphrase to complete setup' })}</span>
+                    </div>
+                    <p className={`text-xs ${textSecondary} mb-3`}>
+                      {t('settings.intentsPassphraseSetupHint', { defaultValue: 'Required once to derive the intents encryption key. After this, no passphrase is needed across sessions.' })}
+                    </p>
+                    <input
+                      type="password"
+                      autoFocus
+                      value={intentPassphraseInput}
+                      onChange={e => setIntentPassphraseInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Escape') { setIntentSetupPhase(null); setIntentPassphraseInput(''); } }}
+                      placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
+                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        disabled={!intentPassphraseInput.trim()}
+                        onClick={async () => {
+                          const passphrase = intentPassphraseInput.trim();
+                          setSyncPassphrase(passphrase);
+                          setIntentPassphraseInput('');
+                          setIntentSetupPhase('running');
+                          const cfg = {
+                            ...intentForm,
+                            gcRetentionDays: Number(intentForm.gcRetentionDays) || 30,
+                            encryptionEnabled: true,
+                          };
+                          try {
+                            await setupIntentsEncryption(cfg, passphrase);
+                            if (cfg.webdavUrl || cfg.username || cfg.appPassword) {
+                              localStorage.setItem(INTENT_CONFIG_KEY, JSON.stringify(cfg));
+                            }
+                            setIntentSetupPhase(null);
+                            setIntentSaved(true);
+                            setTimeout(() => setIntentSaved(false), 2000);
+                          } catch (err) {
+                            setIntentSetupPhase({ error: err.message });
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                      >
+                        {t('common.confirm')}
+                      </button>
+                      <button
+                        onClick={() => { setIntentSetupPhase(null); setIntentPassphraseInput(''); }}
+                        className={`px-3 py-1.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm`}
+                      >
+                        {t('common.cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {intentSetupPhase === 'running' && (
+                  <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
+                    <Loader size={14} className="animate-spin text-blue-500" />
+                    <span className={`text-sm ${textSecondary}`}>{t('settings.intentsEncryptionSettingUp', { defaultValue: 'Setting up intents encryption…' })}</span>
+                  </div>
+                )}
+                {intentSetupPhase?.error && (
+                  <div className={`p-3 rounded-lg border border-red-300 ${darkMode ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                    <p className="text-sm text-red-500">{t('settings.intentsSetupFailed', { error: intentSetupPhase.error, defaultValue: 'Setup failed: {{error}}' })}</p>
+                    <button
+                      onClick={() => setIntentSetupPhase(null)}
+                      className="mt-1 text-xs text-red-400 hover:text-red-300 underline"
+                    >
+                      {t('common.dismiss')}
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    disabled={intentSetupPhase === 'running' || intentSetupPhase === 'passphrase-needed'}
+                    onClick={async () => {
+                      const wantsEncryption = intentForm.encryptionEnabled && !!cloudSyncConfig?.encryptionEnabled;
+                      const cfg = {
+                        ...intentForm,
+                        gcRetentionDays: Number(intentForm.gcRetentionDays) || 30,
+                        encryptionEnabled: wantsEncryption,
+                      };
+
+                      // If encryption is being turned off, clear the cached root key.
+                      if (!wantsEncryption) {
+                        await clearIntentsRootKey();
+                      }
+
+                      // If encryption is on, ensure setup is complete before saving.
+                      if (wantsEncryption) {
+                        const rootKey = await loadIntentsRootKey();
+                        if (!rootKey) {
+                          const passphrase = getSyncPassphrase();
+                          if (passphrase) {
+                            // Passphrase already in session — run setup silently.
+                            setIntentSetupPhase('running');
+                            try {
+                              await setupIntentsEncryption(cfg, passphrase);
+                            } catch (err) {
+                              setIntentSetupPhase({ error: err.message });
+                              return;
+                            }
+                            setIntentSetupPhase(null);
+                          } else {
+                            // Passphrase not in session — show inline prompt.
+                            setIntentSetupPhase('passphrase-needed');
+                            return; // save deferred until passphrase confirmed
+                          }
+                        }
+                      }
+
+                      if (cfg.webdavUrl || cfg.username || cfg.appPassword) {
+                        localStorage.setItem(INTENT_CONFIG_KEY, JSON.stringify(cfg));
+                      } else {
+                        localStorage.removeItem(INTENT_CONFIG_KEY);
+                      }
+                      setIntentSaved(true);
+                      setTimeout(() => setIntentSaved(false), 2000);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors flex items-center gap-1.5"
+                  >
+                    {intentSetupPhase === 'running' && <Loader size={13} className="animate-spin" />}
+                    {intentSaved ? t('common.saved') : t('common.save')}
+                  </button>
+                  {intentForm.webdavUrl && (
+                    <button
+                      onClick={() => {
+                        setIntentForm({ webdavUrl: '', username: '', appPassword: '', eventsPath: '/GLANCE/events/', foregroundInterval: 120000, backgroundInterval: 900000, gcRetentionDays: 30, encryptionEnabled: false });
+                        localStorage.removeItem(INTENT_CONFIG_KEY);
+                        clearIntentsRootKey();
+                      }}
+                      className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
+                    >
+                      {t('common.disconnect')}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowIntentActivityLog(true)}
+                    className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'} ${textPrimary} rounded-lg text-sm flex items-center gap-1.5 transition-colors`}
+                  >
+                    <Activity size={14} />
+                    {t('settings.glanceActivityLog')}
+                  </button>
+                </div>
+              </div>
+
+              {/* GLANCEvault intents (beta) — DB transport. Independent of the
+                  WebDAV intents config above AND of the vault sync toggle; it only
+                  INHERITS the vault connection from the GLANCEvault sync config. */}
+              <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
+                <div className="flex items-center gap-2">
+                  <Server size={14} className={textSecondary} />
+                  <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.glanceVaultIntents', { defaultValue: 'GLANCEvault intents' })}</span>
+                  <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}>{t('settings.beta', { defaultValue: 'Beta' })}</span>
+                </div>
+                <p className={`${textSecondary} text-xs`}>
+                  {t('settings.glanceVaultIntentsDesc', { defaultValue: 'Deliver intents over your GLANCEvault server instead of (or alongside) the WebDAV event log. Uses the same vault connection as GLANCEvault sync — no separate URL or token needed.' })}
+                </p>
+
+                {(() => {
+                  const dbConn = getDbIntentsConnection();
+                  return (
+                    <>
+                      <div className={`text-xs px-3 py-2 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/40' : 'bg-stone-50'}`}>
+                        {dbConn ? (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                            <span className={textSecondary}>{t('settings.glanceVaultConnectionReady', { defaultValue: 'Vault connection detected — ready to enable.' })}</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+                            <span className={textSecondary}>{t('settings.glanceVaultConnectionMissing', { defaultValue: 'No vault connection. Configure GLANCEvault in Cloud Sync settings first.' })}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass} ${dbConn ? '' : 'opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          id="db-intents-toggle"
+                          checked={dbIntentsEnabled}
+                          disabled={!dbConn}
+                          onChange={e => setDbIntentsEnabled(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded"
+                        />
+                        <div>
+                          <label htmlFor="db-intents-toggle" className={`text-sm font-medium ${textPrimary} ${dbConn ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                            {t('settings.glanceVaultIntentsEnable', { defaultValue: 'Enable GLANCEvault intents' })}
+                          </label>
+                          <p className={`text-xs ${textSecondary} mt-0.5`}>
+                            {t('settings.glanceVaultIntentsHint', { defaultValue: 'Independent of WebDAV intents and of GLANCEvault sync. Saving reloads the app so the poller restarts.' })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Vault intents are ALWAYS encrypted. Enabling derives + caches the
+                          vault intents key BEFORE the reload (the passphrase is gone after).
+                          Prompt only when the passphrase is actually unavailable. */}
+                      {dbIntentsSetupPhase === 'passphrase-needed' && (
+                        <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
+                          <p className={`text-sm ${textPrimary} mb-2`}>
+                            {t('settings.glanceVaultPassphrasePrompt', { defaultValue: 'GLANCEvault intents are always encrypted. Enter your sync passphrase to set up the encryption key.' })}
+                          </p>
+                          <input
+                            type="password"
+                            autoFocus
+                            value={dbIntentsPassphraseInput}
+                            onChange={e => setDbIntentsPassphraseInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Escape') { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); } }}
+                            placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
+                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              disabled={!dbIntentsPassphraseInput.trim()}
+                              onClick={async () => {
+                                const passphrase = dbIntentsPassphraseInput.trim();
+                                setSyncPassphrase(passphrase);
+                                setDbIntentsPassphraseInput('');
+                                setDbIntentsSetupPhase('running');
+                                try {
+                                  await setupVaultIntentsEncryption(passphrase);
+                                } catch (err) {
+                                  setDbIntentsSetupPhase({ error: err.message });
+                                  return;
+                                }
+                                // Key cached — now persist the toggle and reload the poller.
+                                const existing = getDbIntentsConfig() || {};
+                                setDbIntentsConfig({ ...existing, enabled: true });
+                                window.location.reload();
+                              }}
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                            >
+                              {t('common.confirm')}
+                            </button>
+                            <button
+                              onClick={() => { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); }}
+                              className={`px-3 py-1.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm`}
+                            >
+                              {t('common.cancel')}
+                            </button>
+                          </div>
+                          <p className="text-xs text-amber-500 mt-2">
+                            {t('settings.glanceVaultEncryptionRequired', { defaultValue: "Encryption setup is required — GLANCEvault intents won't be enabled until the key is set up." })}
+                          </p>
+                        </div>
+                      )}
+                      {dbIntentsSetupPhase === 'running' && (
+                        <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
+                          <Loader size={14} className="animate-spin text-blue-500" />
+                          <span className={`text-sm ${textSecondary}`}>{t('settings.glanceVaultEncryptionSettingUp', { defaultValue: 'Setting up vault intents encryption…' })}</span>
+                        </div>
+                      )}
+                      {dbIntentsSetupPhase?.error && (
+                        <div className={`p-3 rounded-lg border border-red-300 ${darkMode ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                          <p className="text-sm text-red-500">{t('settings.intentsSetupFailed', { error: dbIntentsSetupPhase.error, defaultValue: 'Setup failed: {{error}}' })}</p>
+                          <button
+                            onClick={() => { setDbIntentsSetupPhase(null); setDbIntentsEnabled(false); }}
+                            className="mt-1 text-xs text-red-400 hover:text-red-300 underline"
+                          >
+                            {t('common.dismiss')}
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          disabled={dbIntentsSetupPhase === 'running' || dbIntentsSetupPhase === 'passphrase-needed'}
+                          onClick={async () => {
+                            // Match-by-construction: spread the EXISTING config and override
+                            // only `enabled`, so ttlMs / pollIntervalMinutes are preserved
+                            // (not re-seeded). Persist via the config module's own saver to
+                            // the exact key the gate reads.
+                            const existing = getDbIntentsConfig() || {};
+                            const wasEnabled = !!existing.enabled;
+                            // Vault intents are always encrypted — make sure the vault intents
+                            // key is derived + cached BEFORE the reload (the passphrase is gone
+                            // after). Only when enabling (or on with no key cached yet).
+                            if (dbIntentsEnabled) {
+                              let res;
+                              try {
+                                res = await ensureVaultIntentsKey();
+                              } catch (err) {
+                                setDbIntentsSetupPhase({ error: err.message });
+                                return; // do NOT enable without a key
+                              }
+                              if (res.needsPassphrase) {
+                                setDbIntentsSetupPhase('passphrase-needed');
+                                return; // prompt; its confirm finishes save + reload
+                              }
+                            }
+                            setDbIntentsConfig({ ...existing, enabled: dbIntentsEnabled });
+                            // Reload-on-change so useDbIntentPoller remounts and picks up the
+                            // new config (mirrors the GLANCEvault sync toggle's behavior). The
+                            // post-reload useOutboxFlush mount drain flushes any held intents
+                            // now that the vault key exists.
+                            if (wasEnabled !== dbIntentsEnabled) {
+                              window.location.reload();
+                              return;
+                            }
+                            // No reload (already enabled): the key may have just been set up,
+                            // so flush held intents now.
+                            await flushOutboxNow();
+                            setDbIntentsSaved(true);
+                            setTimeout(() => setDbIntentsSaved(false), 2000);
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors"
+                        >
+                          {dbIntentsSaved ? t('common.saved') : t('common.save')}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* iCloud intents opt-in — Apple platforms only (isICloudAvailable()
+                  is false on Android/web). Gates ACTIVATION of the iCloud intents
+                  transport (emit + poll); default OFF so the path stays inert
+                  until the user opts in. */}
+              {isICloudAvailable() && (
+                <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
+                  <div className="flex items-center gap-2">
+                    <Cloud size={14} className={textSecondary} />
+                    <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.icloudIntents')}</span>
+                  </div>
+                  <p className={`${textSecondary} text-xs`}>
+                    {t('settings.icloudIntentsDesc')}
+                  </p>
+                  <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
+                    <input
+                      type="checkbox"
+                      id="icloud-intents-toggle"
+                      checked={icloudIntentsEnabled}
+                      onChange={e => setIcloudIntentsEnabledState(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded"
+                    />
+                    <div>
+                      <label htmlFor="icloud-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
+                        {t('settings.icloudIntentsEnable')}
+                      </label>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const wasEnabled = getIcloudIntentsEnabledFlag();
+                      setIcloudIntentsEnabled(icloudIntentsEnabled);
+                      // Reload so the intent poller remounts and re-reads the
+                      // opt-in (mirrors the GLANCEvault intents reload-on-change).
+                      if (wasEnabled !== icloudIntentsEnabled) {
+                        window.location.reload();
+                        return;
+                      }
+                      setIcloudIntentsSaved(true);
+                      setTimeout(() => setIcloudIntentsSaved(false), 2000);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    {icloudIntentsSaved ? t('common.saved') : t('common.save')}
+                  </button>
+                </div>
+              )}
+
+              {/* Direct Access intents opt-in — wherever the folder bridge exists
+                  (docs/direct-access-sync.md, Phase 7). Gates the event-set
+                  transport (emit + poll); default OFF, and inert until a folder
+                  is connected on this device. */}
+              {isDirectAccessSupported() && (
+                <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
+                  <div className="flex items-center gap-2">
+                    <FolderOpen size={14} className={textSecondary} />
+                    <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.directAccessIntents')}</span>
+                  </div>
+                  <p className={`${textSecondary} text-xs`}>
+                    {t('settings.directAccessIntentsDesc')}
+                  </p>
+                  {!directAccessStatus.connected && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">{t('settings.directAccessIntentsNeedsFolder')}</p>
+                  )}
+                  <DirectAccessFileRow slot="events" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
+                  <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
+                    <input
+                      type="checkbox"
+                      id="direct-access-intents-toggle"
+                      checked={directAccessIntentsEnabled}
+                      onChange={e => setDirectAccessIntentsEnabledState(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded"
+                    />
+                    <div>
+                      <label htmlFor="direct-access-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
+                        {t('settings.directAccessIntentsEnable')}
+                      </label>
+                    </div>
+                  </div>
+                  {directAccessIntentsKeyWanted && (
+                    <div className={`p-3 rounded-lg border ${borderClass} space-y-2`}>
+                      <p className={`text-sm ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle', { defaultValue: 'Enter your sync passphrase to complete setup' })}</p>
+                      <p className={`text-xs ${textSecondary}`}>{t('settings.intentsPassphraseSetupHint', { defaultValue: 'Required once to derive the intents encryption key. After this, no passphrase is needed across sessions.' })}</p>
+                      <input
+                        type="password"
+                        autoFocus
+                        value={directAccessIntentsPassphrase}
+                        onChange={e => setDirectAccessIntentsPassphrase(e.target.value)}
+                        placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
+                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      const wasEnabled = getDirectAccessIntentsEnabledFlag();
+                      if (directAccessIntentsEnabled && directAccessStatus.encrypt) {
+                        const typed = directAccessIntentsPassphrase.trim();
+                        if (typed) setSyncPassphrase(typed);
+                        const r = await resolveDirectAccessIntentsKey({ transport: directAccessTransport });
+                        if (!r.key) { setDirectAccessIntentsKeyWanted(true); return; }
+                        setDirectAccessIntentsKeyWanted(false);
+                        setDirectAccessIntentsPassphrase('');
+                      }
+                      setDirectAccessIntentsEnabled(directAccessIntentsEnabled);
+                      // Reload so the poller remounts and re-reads the opt-in,
+                      // as the iCloud and GLANCEvault intents switches do.
+                      if (wasEnabled !== directAccessIntentsEnabled) {
+                        window.location.reload();
+                        return;
+                      }
+                      setDirectAccessIntentsSaved(true);
+                      setTimeout(() => setDirectAccessIntentsSaved(false), 2000);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    {directAccessIntentsSaved ? t('common.saved') : t('common.save')}
+                  </button>
+                </div>
+              )}
+              </>)}
+            </div>
+        </>
+      ),
+    },
+    automationIntents: {
+      show: isNativeAndroid(),
+      node: (
+        <>
+            {/* Automation intents (Tasker) — Android only. Opt-in gate for the
+                exported IntentReceiver + outbound RESULT/NOTIFY broadcasts. */}
+            {isNativeAndroid() && (<>
+            <div className="space-y-3">
+              <button onClick={() => toggleSettingsSection('automationIntents')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
+                <Zap size={16} className={textSecondary} />
+                {t('settings.automationIntents')}
+                {automationIntentsEnabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
+                <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.automationIntents ? '' : 'rotate-180'}`} />
+              </button>
+              {!collapsedSettings.automationIntents && (<>
+              <p className={`${textSecondary} text-xs`}>
+                {t('settings.automationIntentsDesc')}
+              </p>
+              <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
+                <input
+                  type="checkbox"
+                  id="automation-intents-toggle"
+                  checked={automationIntentsEnabled}
+                  onChange={e => {
+                    const v = e.target.checked;
+                    setAutomationIntentsEnabled(v);
+                    nativeSetAutomationIntentsEnabled(v);
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded"
+                />
+                <div>
+                  <label htmlFor="automation-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
+                    {t('settings.automationIntentsToggle')}
+                  </label>
+                  <p className={`text-xs ${textSecondary} mt-0.5`}>
+                    {t('settings.automationIntentsWarning')}
+                  </p>
+                </div>
+              </div>
+              </>)}
+            </div>
+            </>)}
+        </>
+      ),
+    },
+  };
+
+  // The topic list shows only topics with something to show on this device,
+  // and opens on the topic last used here (docs/settings-redesign.md).
+  const listedTopics = visibleTopics(sections);
+  const [chosenTopic, setChosenTopic] = useState(readRememberedTopic);
+  const activeTopicId = initialTopicId(chosenTopic, listedTopics);
+  const activeTopic = TOPICS.find((topic) => topic.id === activeTopicId);
+  const selectTopic = (id) => { setChosenTopic(id); rememberTopic(id); };
+
   return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
             {/* Grows with the window past lg (#2075): the two columns had a
@@ -270,13 +2898,14 @@ const SettingsModal = () => {
               aria-modal="true"
               aria-labelledby="settings-dialog-title"
               data-settings-dialog
-              className={`${cardBg} rounded-lg shadow-xl ${borderClass} border max-w-md lg:max-w-3xl xl:max-w-5xl w-full mx-4 max-h-[85vh] lg:max-h-[90vh] overflow-y-auto`}
+              className={`${cardBg} rounded-lg shadow-xl ${borderClass} border max-w-2xl lg:max-w-4xl xl:max-w-5xl w-full mx-4 h-[85vh] lg:h-[90vh] flex flex-col overflow-hidden`}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* The header stays put while the content scrolls, with a Close
-                  control in reach from anywhere in the list (#2075). Escape
-                  closes too (hooks/useModalClose.js). */}
-              <div data-settings-header className={`sticky top-0 z-10 ${cardBg} border-b ${borderClass} px-6 py-4 flex items-center gap-3`}>
+              {/* The header stays put while the page scrolls, with a Close
+                  control in reach from anywhere (#2075). Escape closes too
+                  (hooks/useModalClose.js). The dialog keeps one height, so
+                  switching topics never makes it jump. */}
+              <div data-settings-header className={`flex-shrink-0 ${cardBg} border-b ${borderClass} px-6 py-4 flex items-center gap-3`}>
                 <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
                   <Settings size={20} className="text-blue-600 dark:text-blue-400" />
                 </div>
@@ -292,7 +2921,17 @@ const SettingsModal = () => {
                   <X size={18} className={textSecondary} />
                 </button>
               </div>
-              <div className="p-6">
+              <div className="flex flex-1 min-h-0">
+              <SettingsTopicNav
+                topics={listedTopics}
+                activeId={activeTopicId}
+                onSelect={selectTopic}
+                darkMode={darkMode}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                borderClass={borderClass}
+              />
+              <div className="flex-1 min-w-0 overflow-y-auto p-6" data-settings-scroll>
 
                 {updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true) && (
                   <div className={`mb-4 p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
@@ -353,2517 +2992,8 @@ const SettingsModal = () => {
                   </div>
                 )}
 
-                <div className="lg:grid lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
-                  {/* Left column */}
-                  <div className="space-y-6">
-
-                    {/* View Defaults Section — desktop only (tablet has its own
-                        section below). Wide desktop offers all four views;
-                        narrow desktop offers MULTI/SCHED, matching the cycler. */}
-                    {(canShowViewCycler || schedOnlyCycler) && !isTablet && (
-                      <div className="space-y-3">
-                        <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                          <LayoutGrid size={16} className={textSecondary} />
-                          {t('settings.viewDefaults')}
-                        </h4>
-                        <div>
-                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.defaultViewOnLoad')}</label>
-                          <div className="flex flex-wrap gap-2">
-                            {enabledViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
-                              <button
-                                key={v}
-                                onClick={() => setDefaultView(v)}
-                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors uppercase ${
-                                  defaultView === v
-                                    ? 'bg-blue-600 text-white'
-                                    : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                                }`}
-                              >
-                                {desktopViewLabel(v)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <ViewToggles scope="desktop" views={offeredViews(canShowViewCycler ? DESKTOP_VIEW_MODES : NARROW_DESKTOP_VIEW_MODES, { joboEnabled })} label={desktopViewLabel} />
-                        {canShowViewCycler && (<>
-                        <div>
-                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.dayViewMode')}</label>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setDayViewMode('calendar-day')}
-                              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                dayViewMode === 'calendar-day'
-                                  ? 'bg-blue-600 text-white'
-                                  : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                              }`}
-                            >
-                              {t('settings.viewCalendarDay')}
-                            </button>
-                            <button
-                              onClick={() => setDayViewMode('rolling-24')}
-                              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                dayViewMode === 'rolling-24'
-                                  ? 'bg-blue-600 text-white'
-                                  : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                              }`}
-                            >
-                              {t('settings.viewRolling24')}
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekViewMode')}</label>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setWeekViewMode('strict')}
-                              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                weekViewMode === 'strict'
-                                  ? 'bg-blue-600 text-white'
-                                  : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                              }`}
-                            >
-                              {t('settings.viewStrictWeek')}
-                            </button>
-                            <button
-                              onClick={() => setWeekViewMode('rolling')}
-                              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                weekViewMode === 'rolling'
-                                  ? 'bg-blue-600 text-white'
-                                  : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                              }`}
-                            >
-                              {t('settings.viewRolling7')}
-                            </button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineStart')}</label>
-                          <div className="flex flex-wrap gap-2">
-                            {[0, 4, 5, 6, 7].map(h => (
-                              <button
-                                key={h}
-                                onClick={() => setWeekTimelineStartHour(h)}
-                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                  weekTimelineStartHour === h
-                                    ? 'bg-blue-600 text-white'
-                                    : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                                }`}
-                              >
-                                {formatHour(h)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.weekTimelineEnd')}</label>
-                          <div className="flex flex-wrap gap-2">
-                            {/* A stored end that is no longer offered still keeps its
-                                button, so the picker cannot show nothing selected
-                                while the grid is visibly trimmed. 18 was offered
-                                before this list was; another device may send any
-                                value at all. */}
-                            {[...new Set([20, 21, 22, 23, 24, weekTimelineEndHour])]
-                              .filter(h => h > 0 && h <= 24)
-                              .sort((a, b) => a - b)
-                              .map(h => (
-                              <button
-                                key={h}
-                                onClick={() => setWeekTimelineEndHour(h)}
-                                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                  weekTimelineEndHour === h
-                                    ? 'bg-blue-600 text-white'
-                                    : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                                }`}
-                              >
-                                {formatHour(h)}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        {habitsEnabled && goalsProjectsEnabled && (
-                          <div>
-                            <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.glanceDefault')}</label>
-                            <div className="flex gap-2">
-                              {[{ value: 0, label: t('settings.glanceDefaultHabits') }, { value: 1, label: t('settings.glanceDefaultGoals') }].map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  onClick={() => setGlancePage(value)}
-                                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                    glancePage === value
-                                      ? 'bg-blue-600 text-white'
-                                      : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                                  }`}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        </>)}
-                      </div>
-                    )}
-
-                    {(canShowViewCycler || schedOnlyCycler) && !isTablet && <hr className={borderClass} />}
-
-                    {/* Tablet view defaults — portrait (GRID/LIST/SCHED, shared
-                        with the phone toggle) and landscape (MULTI/SCHED via
-                        the desktop cycler) are independent view states */}
-                    {isTablet && (
-                      <>
-                        <div className="space-y-3">
-                          <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                            <LayoutGrid size={16} className={textSecondary} />
-                            {t('settings.viewDefaults')}
-                          </h4>
-                          <div>
-                            <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.portraitViewDefault', 'Portrait view')}</label>
-                            <div className="flex flex-wrap gap-2">
-                              {enabledViews(MOBILE_VIEW_MODES, hiddenViews?.mobile).map(mode => (
-                                <button
-                                  key={mode}
-                                  onClick={() => { setMobileDefaultView(mode); setMobileViewMode(mode); }}
-                                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                                    mobileDefaultView === mode
-                                      ? 'bg-blue-600 text-white border-blue-600'
-                                      : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
-                                  }`}
-                                >
-                                  {mobileViewLabel(mode)}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div>
-                            <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.landscapeViewDefault', 'Landscape view')}</label>
-                            <div className="flex flex-wrap gap-2">
-                              {enabledViews(NARROW_DESKTOP_VIEW_MODES, hiddenViews?.desktop).map(v => (
-                                <button
-                                  key={v}
-                                  onClick={() => { setDefaultView(v); setViewMode(v); }}
-                                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                                    defaultView === v
-                                      ? 'bg-blue-600 text-white border-blue-600'
-                                      : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
-                                  }`}
-                                >
-                                  {desktopViewLabel(v)}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          {/* One group per orientation, as with the defaults above: the phone
-                              toggle's views for portrait, the narrow cycler's for landscape. */}
-                          <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} heading={t('settings.viewsInPortrait')} />
-                          <ViewToggles scope="desktop" views={NARROW_DESKTOP_VIEW_MODES} label={desktopViewLabel} heading={t('settings.viewsInLandscape')} hint={false} />
-                          {mobileViewMode === 'list' && (
-                            <div className="mt-3 space-y-1.5">
-                              <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>
-                              <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.endOfDayHint')}</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {[{ label: t('common.off'), value: null }, ...Array.from({ length: 13 }, (_, i) => {
-                                  const totalMin = 18 * 60 + i * 30;
-                                  const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
-                                  const mm = String(totalMin % 60).padStart(2, '0');
-                                  const val = `${hh}:${mm}`;
-                                  return { label: formatTime(val), value: val };
-                                })].map(({ label, value }) => {
-                                  const active = (listEndOfDayTime ?? null) === value;
-                                  return (
-                                    <button
-                                      key={label}
-                                      onClick={() => setListEndOfDayTime(value)}
-                                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                                        active
-                                          ? 'bg-blue-600 text-white border-blue-600'
-                                          : `${darkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-stone-300 text-stone-700'}`
-                                      }`}
-                                    >
-                                      {label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <hr className={borderClass} />
-                      </>
-                    )}
-
-                    {/* Timeline size (utils/timelineZoom.js), desktop and tablet */}
-                    {!isMobile && (
-                      <>
-                        <TimelineSizeSettings joboEnabled={joboEnabled} />
-                        <hr className={borderClass} />
-                      </>
-                    )}
-
-                    {/* Goals & Projects card size (utils/cardSize.js), desktop and tablet */}
-                    {!isMobile && goalsProjectsEnabled && (
-                      <>
-                        <CardSizeSettings />
-                        <hr className={borderClass} />
-                      </>
-                    )}
-
-                    {/* Localization Section */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Clock size={16} className={textSecondary} />
-                        {t('settings.localization')}
-                      </h4>
-                      <div>
-                        <label htmlFor="settings-language" className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.language')}</label>
-                        <LanguagePicker
-                          id="settings-language"
-                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                        />
-                      </div>
-                      <div>
-                        <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.clockFormat')}</label>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setUse24HourClock(false)}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                              !use24HourClock
-                                ? 'bg-blue-600 text-white'
-                                : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                            }`}
-                          >
-                            {t('settings.clock12h')}
-                          </button>
-                          <button
-                            onClick={() => setUse24HourClock(true)}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                              use24HourClock
-                                ? 'bg-blue-600 text-white'
-                                : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                            }`}
-                          >
-                            {t('settings.clock24h')}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.firstDayOfWeek')}</label>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setWeekStartDay(0)}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                              weekStartDay === 0
-                                ? 'bg-blue-600 text-white'
-                                : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                            }`}
-                          >
-                            {t('settings.firstDaySunday')}
-                          </button>
-                          <button
-                            onClick={() => setWeekStartDay(1)}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                              weekStartDay === 1
-                                ? 'bg-blue-600 text-white'
-                                : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`
-                            }`}
-                          >
-                            {t('settings.firstDayMonday')}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className={`block text-xs ${textSecondary} mb-1.5`}>{t('settings.homeTimezone')}</label>
-                        <select
-                          value={homeTimezone}
-                          onChange={e => setHomeTimezone(e.target.value)}
-                          className={`w-full px-2 py-1.5 text-xs rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                        >
-                          {getTzOptions(homeTimezone).map(tz => (
-                            <option key={tz} value={tz}>{getTzLabel(tz)}</option>
-                          ))}
-                        </select>
-                        <p className={`text-[10px] ${textSecondary} mt-1 opacity-70`}>
-                          {t('settings.homeTimezoneHint')}
-                        </p>
-                      </div>
-                    </div>
-
-                    {window.electronAPI?.platform === 'darwin' && (<>
-                    <hr className={borderClass} />
-
-                    {/* Global Shortcut — macOS only */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Key size={16} className={textSecondary} />
-                        {t('settings.globalShortcuts')}
-                      </h4>
-                      <p className={`text-sm ${textSecondary}`}>
-                        {t('settings.globalShortcutsHint')}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          readOnly
-                          placeholder={t('settings.globalShortcutsPlaceholder')}
-                          value={trayHotkey}
-                          onKeyDown={handleHotkeyRecord}
-                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
-                        />
-                        {trayHotkey && (
-                          <button
-                            onClick={clearHotkey}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}
-                          >
-                            {t('common.clear')}
-                          </button>
-                        )}
-                      </div>
-                      <p className={`text-sm ${textSecondary} mt-3`}>
-                        {t('settings.globalShortcutsMainWindowHint')}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          readOnly
-                          placeholder={t('settings.globalShortcutsPlaceholder')}
-                          value={mainWindowHotkey}
-                          onKeyDown={handleMainWindowHotkeyRecord}
-                          className={`flex-1 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-stone-900 placeholder-stone-400'} text-sm cursor-pointer font-mono`}
-                        />
-                        {mainWindowHotkey && (
-                          <button
-                            onClick={clearMainWindowHotkey}
-                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}
-                          >
-                            {t('common.clear')}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    </>)}
-
-                    <hr className={borderClass} />
-
-                    {/* Sound Section */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Bell size={16} className={textSecondary} />
-                        {t('settings.sound')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={soundEnabled}
-                            onChange={(e) => setSoundEnabled(e.target.checked)}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${soundEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableUISounds')}</span>
-                      </label>
-                    </div>
-
-                    <hr className={borderClass} />
-                    <FollowUpTagSetting />
-
-                    {!isMobile && (<>
-                    <hr className={borderClass} />
-
-                    {/* Weather — desktop and tablet (a tablet in landscape
-                        already counted as desktop here; portrait now matches).
-                        Phones never open this modal: their settings live in
-                        MobileSettingsPanel, whose App Settings screen has a
-                        Location section with the same field and unit. */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Thermometer size={16} className={textSecondary} />
-                        {t('settings.weather')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input type="checkbox" checked={weatherEnabled} onChange={(e) => setWeatherEnabled(e.target.checked)} className="sr-only" />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${weatherEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${weatherEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.showWeatherInHeader')}</span>
-                      </label>
-                      {weatherEnabled && (
-                        <>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherZipLabel')}</label>
-                            <input
-                              type="text"
-                              placeholder={t('settings.weatherLocationPlaceholder', { defaultValue: 'e.g. 90210 or Seattle' })}
-                              value={weatherZip}
-                              onChange={(e) => setWeatherZip(e.target.value)}
-                              onBlur={() => fetchWeather()}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
-                              className={`w-48 px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.weatherTempUnit')}</label>
-                            <div className="flex gap-2">
-                              <button onClick={() => { setWeatherTempUnit('fahrenheit'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'fahrenheit' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°F</button>
-                              <button onClick={() => { setWeatherTempUnit('celsius'); setTimeout(fetchWeather, 100); }} className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${weatherTempUnit === 'celsius' ? 'bg-blue-600 text-white' : `${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-700'} ${hoverBg}`}`}>°C</button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    </>)}
-
-                    {!isMobile && !isTablet && (<>
-                    <hr className={borderClass} />
-
-                    {/* Daily Content — desktop only */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Newspaper size={16} className={textSecondary} />
-                        {t('settings.dailyContent')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input type="checkbox" checked={dailyContentEnabled} onChange={(e) => setDailyContentEnabled(e.target.checked)} className="sr-only" />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${dailyContentEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${dailyContentEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.showDailyContent')}</span>
-                      </label>
-                    </div>
-
-                    </>)}
-
-                    <hr className={borderClass} />
-
-                    {/* Goals & Projects Section */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Flag size={16} className={textSecondary} />
-                        {t('settings.goalsProjects')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={goalsProjectsEnabled}
-                            onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setGoalsProjectsEnabled(e.target.checked); }}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${goalsProjectsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${goalsProjectsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableGoalsProjects')}</span>
-                      </label>
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Routines Section */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Sparkles size={16} className={textSecondary} />
-                        {t('settings.routines')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={routinesEnabled}
-                            onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setRoutinesEnabled(e.target.checked); }}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${routinesEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${routinesEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableRoutines')}</span>
-                      </label>
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Habit Tracking Section */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Activity size={16} className={textSecondary} />
-                        {t('settings.habitTracking')}
-                      </h4>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={habitsEnabled}
-                            onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setHabitsEnabled(e.target.checked); }}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${habitsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${habitsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableHabitTracking')}</span>
-                      </label>
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Experimental: features landing in slices, off by default.
-                        The switch is the only thing a regular user ever sees of
-                        them; everything behind it stays absent until it is on. */}
-                    <div className="space-y-3">
-                      <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <FlaskConical size={16} className={textSecondary} />
-                        {t('settings.experimental')}
-                      </h4>
-                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.experimentalHint')}</p>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={joboEnabled}
-                            onChange={(e) => setJoboEnabled(e.target.checked)}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${joboEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${joboEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableJobo')}</span>
-                      </label>
-                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableJoboHint')}</p>
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={aspireEnabled}
-                            onChange={(e) => setAspireEnabled(e.target.checked)}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${aspireEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aspireEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableAspire')}</span>
-                      </label>
-                      <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.enableAspireHint')}</p>
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Inbox */}
-                    <div className="space-y-3">
-                      <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
-                        <Archive size={16} className={textSecondary} />
-                        {t('settings.inbox')}
-                      </div>
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.inboxAutoArchive')}</label>
-                        <select
-                          value={inboxAutoArchiveDays}
-                          onChange={(e) => setInboxAutoArchiveDays(Number(e.target.value))}
-                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        >
-                          <option value={0}>{t('settings.inboxArchiveNever')}</option>
-                          <option value={7}>{t('settings.inboxArchive7')}</option>
-                          <option value={14}>{t('settings.inboxArchive14')}</option>
-                          <option value={30}>{t('settings.inboxArchive30')}</option>
-                          <option value={60}>{t('settings.inboxArchive60')}</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right column — integrations (side-by-side on desktop, stacked below on tablet) */}
-                  <div className={`space-y-6 lg:border-l lg:pl-6 ${borderClass}`}>
-                    <hr className={`${borderClass} lg:hidden`} />
-                    {/* Cloud Sync Section */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('cloudSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <Cloud size={16} className={textSecondary} />
-                        {t('settings.cloudSync')}
-                        {(cloudSyncConfig?.enabled || isVaultEnabled()) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.cloudSync ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.cloudSync && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.cloudSyncDesc')}
-                      </p>
-                      <CloudSyncSettingsForm
-                        darkMode={darkMode}
-                        textPrimary={textPrimary}
-                        textSecondary={textSecondary}
-                        borderClass={borderClass}
-                        hoverBg={hoverBg}
-                        cloudSyncConfig={cloudSyncConfig}
-                        setCloudSyncConfig={setCloudSyncConfig}
-                        cloudSyncTest={cloudSyncTest}
-                        provider={provider}
-                        currentProvider={currentProvider}
-                        onClose={() => setShowSettings(false)}
-                        cloudSyncLastSynced={cloudSyncLastSynced}
-                        cloudSyncStatus={cloudSyncStatus}
-                        cloudSyncError={cloudSyncError}
-                        cloudSyncNow={cloudSyncNow}
-                        vaultSyncNow={vaultSyncNow}
-                        vaultBootstrapSync={vaultBootstrapSync}
-                        vaultStatus={vaultStatus}
-                        vaultError={vaultError}
-                        vaultLastSynced={vaultLastSynced}
-                        vaultSkipped={vaultSkipped}
-                        onSyncKeyReady={(ready) => setSyncKeyReady(ready)}
-                      />
-                      {/* Apple platforms only — on Android/web every probe reports
-                          unsupported, so the panel would be an empty box. */}
-                      {isICloudAvailable() && (
-                        <ICloudSyncToggle
-                          darkMode={darkMode}
-                          textPrimary={textPrimary}
-                          textSecondary={textSecondary}
-                          borderClass={borderClass}
-                        />
-                      )}
-                      {/* On every platform: the panel reports GLANCEvault and WebDAV
-                          everywhere, the iCloud container on Apple platforms, and the
-                          Direct Access folder wherever the bridge exists, each block
-                          only where its transport is (docs/direct-access-sync.md). */}
-                      <ICloudDiagnostics
-                        darkMode={darkMode}
-                        textPrimary={textPrimary}
-                        textSecondary={textSecondary}
-                        borderClass={borderClass}
-                      />
-                      {/* Desktop only — the Electron main process holds the folder
-                          (docs/direct-access-sync.md). */}
-                      {isDirectAccessSupported() && (
-                        <DirectAccessSyncCard
-                          darkMode={darkMode}
-                          textPrimary={textPrimary}
-                          textSecondary={textSecondary}
-                          borderClass={borderClass}
-                        />
-                      )}
-                      </>)}
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Calendar Sync Section - wide screens */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('calSync')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <RefreshCw size={16} className={textSecondary} />
-                        {t('settings.calendarSync')}
-                        {calendarSourceActive && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.calSync ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.calSync && (<>
-                      {!hasNativeCalendar() && <CalendarList />}
-                      {hasNativeCalendar() && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {t('settings.deviceCalendarDescription', { defaultValue: 'Calendar events are read from your device accounts. Use the Device Calendars section below to choose which calendars to show.' })}
-                        </p>
-                      )}
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>
-                          {t('settings.taskCalendarUrl')}
-                        </label>
-                        <input
-                          type="url"
-                          placeholder="https://nextcloud.example.com/remote.php/dav/calendars/user/tasks/?export"
-                          value={taskCalendarUrl}
-                          onChange={(e) => setTaskCalendarUrl(e.target.value.replace(/^webcal:\/\//i, 'https://'))}
-                          onPaste={(e) => { const text = e.clipboardData.getData('text'); if (/^webcal:\/\//i.test(text)) { e.preventDefault(); setTaskCalendarUrl(text.replace(/^webcal:\/\//i, 'https://')); } }}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        />
-                        <p className={`text-xs ${textSecondary} mt-1`}>
-                          {t('settings.taskCalendarHint', { defaultValue: 'Tasks appear with striped pattern; completion state persists across syncs' })}
-                        </p>
-                      </div>
-                      {taskCalendarUrl && (
-                        <div className={`space-y-2 pl-3 border-l-2 ${darkMode ? 'border-gray-600' : 'border-stone-300'}`}>
-                          <p className={`text-xs font-medium ${textSecondary}`}>{t('settings.taskCalendarAuth')}</p>
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <label className={`block text-xs ${textSecondary} mb-1`}>{t('common.username')}</label>
-                              <input
-                                type="text"
-                                placeholder={t('common.username')}
-                                value={taskCalendarAuth.username}
-                                onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, username: e.target.value }))}
-                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <label className={`block text-xs ${textSecondary} mb-1`}>{t('settings.appPassword')}</label>
-                              <input
-                                type="password"
-                                placeholder={t('settings.appPassword')}
-                                value={taskCalendarAuth.appPassword}
-                                onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, appPassword: e.target.value }))}
-                                className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className={`block text-xs ${textSecondary} mb-1`}>{t('settings.calDAVBaseUrl')}</label>
-                            <input
-                              type="url"
-                              placeholder="https://cloud.example.com/remote.php/dav/calendars/user/personal/"
-                              value={taskCalendarAuth.caldavBaseUrl}
-                              onChange={(e) => setTaskCalendarAuth(prev => ({ ...prev, caldavBaseUrl: e.target.value }))}
-                              className={`w-full px-3 py-1.5 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-xs`}
-                            />
-                            <p className={`text-xs ${textSecondary} mt-0.5`}>
-                              {t('settings.calDAVSyncHint', { defaultValue: 'For syncing completions back: the CalDAV collection URL (without ?export). In Nextcloud, the calendar ID in the URL may differ from the display name.' })}
-                            </p>
-                          </div>
-                          <p className={`text-xs ${textSecondary}`}>
-                            {t('settings.taskCalendarCredentialsHint', { defaultValue: 'Username + password fetches protected task calendars. Adding a CalDAV Base URL also syncs completion status back to your server.' })}
-                          </p>
-                        </div>
-                      )}
-                      {multiUserEnabled && meUserSyncId && (
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={syncCalendarCreds}
-                            onChange={(e) => setSyncCalendarCreds(e.target.checked)}
-                            className="mt-0.5 flex-shrink-0"
-                          />
-                          <span className={`text-xs ${textSecondary}`}>
-                            {t('settings.syncCalendarCreds')}
-                            {!(cloudSyncConfig?.encryptionEnabled || isVaultEnabled()) && (
-                              <span className="block mt-0.5 italic">{t('settings.syncCalendarCredsNeedsEncryption')}</span>
-                            )}
-                          </span>
-                        </label>
-                      )}
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>
-                          {t('settings.keepPastEvents')}
-                        </label>
-                        <select
-                          value={syncRetentionDays}
-                          onChange={(e) => setSyncRetentionDays(Number(e.target.value))}
-                          className={`px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        >
-                          <option value={7}>{formatUnit(7, 'day')}</option>
-                          <option value={14}>{formatUnit(14, 'day')}</option>
-                          <option value={30}>{formatUnit(30, 'day')}</option>
-                          <option value={60}>{formatUnit(60, 'day')}</option>
-                          <option value={90}>{formatUnit(90, 'day')}</option>
-                          <option value={180}>{formatUnit(6, 'month')}</option>
-                          <option value={365}>{formatUnit(1, 'year')}</option>
-                          <option value={0}>{t('settings.keepPastEventsAll', { defaultValue: 'All (no limit)' })}</option>
-                        </select>
-                        <p className={`text-xs ${textSecondary} mt-1`}>
-                          {t('settings.keepPastEventsHint', { defaultValue: 'Older imported events are dropped to save storage. Future events are always kept.' })}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => syncAll()}
-                        disabled={isSyncing || !calSyncConfigured}
-                        className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm ${!calSyncConfigured ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-                        {isSyncing ? t('common.syncing') : t('common.syncNow')}
-                      </button>
-                      {calSyncLastSynced && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {t('common.lastSynced')}: {new Date(calSyncLastSynced).toLocaleString(locale)}
-                        </p>
-                      )}
-                      {hasNativeCalendar() && (
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between">
-                            <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.deviceCalendars')}</p>
-                            <button onClick={async () => {
-                              // force: this button is the documented recovery path for an
-                              // empty list, so it must bypass the main-process cache.
-                              const cals = electronCalendarAvailable() ? await electronGetCalendars({ force: true }) : nativeGetCalendars();
-                              if (cals.length > 0) setAvailableCalendars(cals);
-                            }} className={`text-xs ${textSecondary} underline`}>{t('common.refresh')}</button>
-                          </div>
-                          {availableCalendars.length === 0 ? (
-                            <p className={`text-xs ${textSecondary}`}>{t('settings.noDeviceCalendars', { defaultValue: 'No calendars loaded — tap Refresh, or rebuild the app if this persists.' })}</p>
-                          ) : (<>
-                            <p className={`text-xs ${textSecondary}`}>{t('settings.deviceCalendarFilterHint', { defaultValue: 'Uncheck to hide calendars. Leave all checked to show everything.' })}</p>
-                            {availableCalendars.map(cal => {
-                              const isChecked = calendarFilter.length === 0 || calendarFilter.includes(cal.id);
-                              return (
-                                <label key={cal.id} className={`flex items-center gap-2 text-sm ${textPrimary} cursor-pointer`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => setCalendarFilter(prev => {
-                                      if (prev.length === 0) return availableCalendars.map(c => c.id).filter(id => id !== cal.id);
-                                      if (prev.includes(cal.id)) return prev.filter(id => id !== cal.id);
-                                      const next = [...prev, cal.id];
-                                      return next.length === availableCalendars.length ? [] : next;
-                                    })}
-                                    className="rounded accent-blue-500"
-                                  />
-                                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cal.color }} />
-                                  <span className="flex-1 truncate">{cal.name}</span>
-                                  <span className={`text-xs ${textSecondary} truncate max-w-[8rem]`}>{cal.accountName}</span>
-                                </label>
-                              );
-                            })}
-                          </>)}
-                        </div>
-                      )}
-                      {/* iCal Import — one-time .ics file import, lives inside Calendar Sync */}
-                      <div className={`pt-2 border-t ${borderClass} space-y-2`}>
-                        <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.importIcsFile')}</p>
-                        <label className={`cursor-pointer inline-flex items-center gap-2 px-4 py-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg} text-sm ${textPrimary}`}>
-                          <Upload size={14} className={textSecondary} />
-                          {t('settings.chooseIcsFile')}
-                          <input type="file" accept=".ics" onChange={(e) => { handleFileUpload(e); setShowSettings(false); }} className="hidden" />
-                        </label>
-                        <p className={`text-xs ${textSecondary}`}>{t('settings.importIcsDesc')}</p>
-                        {fileImportedEventCount > 0 && (
-                          <button
-                            onClick={() => {
-                              if (window.confirm(t('settings.removeFileImportedConfirm', 'Remove all {{n}} file-imported events? Re-importing the file brings them back.', { n: fileImportedEventCount }))) {
-                                removeFileImportedEvents();
-                              }
-                            }}
-                            className="text-xs font-medium text-red-500 hover:text-red-600 transition-colors"
-                          >
-                            {t('settings.removeFileImported', 'Remove file-imported events')} ({fileImportedEventCount})
-                          </button>
-                        )}
-                      </div>
-                      </>)}
-                    </div>
-
-                    <hr className={borderClass} />
-
-                    {/* Multi-user / Household Section */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('multiUser')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <Users size={16} className={textSecondary} />
-                        {t('settings.multiUser')}
-                        {multiUserEnabled && users.filter(u => !u.deleted).length > 0 && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.multiUser ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.multiUser && (
-                        <div className="space-y-4">
-                          {/* Enable toggle */}
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className={`text-sm font-medium ${textPrimary}`}>{t('settings.multiUserMode')}</p>
-                              <p className={`${textSecondary} text-xs`}>{t('settings.multiUserModeHint')}</p>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={multiUserLocked}
-                              aria-label={t('settings.multiUserMode')}
-                              onClick={() => {
-                                const next = !multiUserEnabled;
-                                setMultiUserEnabled(next);
-                                localStorage.setItem('dayglance-multi-user-enabled', JSON.stringify(next));
-                              }}
-                              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${multiUserEnabled ? 'bg-green-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'} ${multiUserLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
-                              role="switch"
-                              aria-checked={multiUserEnabled}
-                            >
-                              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${multiUserEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                            </button>
-                          </div>
-                          {multiUserReason !== 'none' && (
-                            <p className={`text-xs ${textSecondary} -mt-2`}>
-                              {t(multiUserReason === 'icloud-only' ? 'settings.multiUserICloudOnly' : 'settings.multiUserRequiresSync')}
-                            </p>
-                          )}
-                          <div className="flex items-center justify-between gap-3">
-                            <p className={`${textSecondary} text-xs`}>
-                              {t('settings.multiUserDescription', { defaultValue: 'Share dayGLANCE with your household. Tasks can be assigned to specific people; unassigned tasks are visible to everyone.' })}
-                            </p>
-                            {multiUserRosterSyncable && (
-                              <button
-                                type="button"
-                                disabled={userSyncStatus === 'syncing'}
-                                onClick={async () => {
-                                  setUserSyncStatus('syncing');
-                                  try {
-                                    const raw = localStorage.getItem(MULTI_USER_CONFIG_KEY);
-                                    const uPath = raw ? (JSON.parse(raw).usersPath ?? undefined) : undefined;
-                                    // Prefer WebDAV when configured, then a connected Direct
-                                    // Access folder, then iCloud Drive (same-Apple-ID only).
-                                    const merged = cloudSyncConfig?.enabled
-                                      ? await syncSharedUsers(cloudSyncConfig, uPath, users)
-                                      : directAccessRoster
-                                        ? await syncSharedUsersViaDirectAccess(uPath, users)
-                                        : await syncSharedUsersViaICloud(uPath, users);
-                                    if (merged) {
-                                      localStorage.setItem('dayglance-users', JSON.stringify(merged));
-                                      setUsers(merged);
-                                    }
-                                    setUserSyncStatus('ok');
-                                    setTimeout(() => setUserSyncStatus(null), 2000);
-                                  } catch {
-                                    setUserSyncStatus('error');
-                                    setTimeout(() => setUserSyncStatus(null), 3000);
-                                  }
-                                }}
-                                className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 ${
-                                  userSyncStatus === 'ok' ? 'bg-green-500/20 text-green-500' :
-                                  userSyncStatus === 'error' ? 'bg-red-500/20 text-red-500' :
-                                  darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                                }`}
-                              >
-                                <RefreshCw size={12} className={userSyncStatus === 'syncing' ? 'animate-spin' : ''} />
-                                {userSyncStatus === 'ok' ? t('common.saved') : userSyncStatus === 'error' ? t('settings.syncFailed') : t('common.syncNow')}
-                              </button>
-                            )}
-                          </div>
-                          {/* User list */}
-                          <DirectAccessFileRow slot="users" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
-                          <div>
-                            <p className={`text-xs font-medium ${textSecondary} mb-2`}>{t('settings.multiUserPeople')}</p>
-                            <div className="space-y-2">
-                              {users.filter(u => !u.deleted).map(u => (
-                                <div key={u.id} className="flex items-center gap-2">
-                                  <span
-                                    style={{ width: 24, height: 24, fontSize: 13 }}
-                                    className="rounded-full bg-gray-500 text-white flex items-center justify-center font-semibold leading-none flex-shrink-0"
-                                  >
-                                    {u.name[0].toUpperCase()}
-                                  </span>
-                                  {editingUserId === u.id ? (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={editingUserName}
-                                        onChange={e => setEditingUserName(e.target.value)}
-                                        className={`flex-1 px-2 py-1 border ${borderClass} rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                                        autoFocus
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const trimmed = editingUserName.trim();
-                                          if (!trimmed) return;
-                                          const updated = users.map(usr => usr.id === u.id ? { ...usr, name: trimmed, updatedAt: new Date().toISOString() } : usr);
-                                          setUsers(updated);
-                                          localStorage.setItem('dayglance-users', JSON.stringify(updated));
-                                          markRosterEdited();
-                                          setEditingUserId(null);
-                                        }}
-                                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                      >{t('common.save')}</button>
-                                      <button type="button" onClick={() => setEditingUserId(null)} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className={`flex-1 text-sm ${textPrimary}`}>{u.name}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const key = u.syncId ?? u.id;
-                                          const next = meUserSyncId === key ? null : key;
-                                          setMeUserSyncId(next);
-                                          localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: next }));
-                                        }}
-                                        className={`px-2 py-1 rounded text-xs border transition-colors ${meUserSyncId === (u.syncId ?? u.id)
-                                          ? 'border-green-500 bg-green-500/20 text-green-400'
-                                          : `${borderClass} ${darkMode ? 'bg-transparent text-gray-400 hover:text-gray-200' : 'bg-transparent text-stone-500 hover:text-stone-700'}`}`}
-                                      >{meUserSyncId === (u.syncId ?? u.id) ? `✓ ${t('settings.multiUserMe', { defaultValue: 'Me' })}` : t('settings.multiUserMe', { defaultValue: 'Me' })}</button>
-                                      <button
-                                        type="button"
-                                        onClick={() => { setEditingUserId(u.id); setEditingUserName(u.name); }}
-                                        className={`px-1.5 py-1 rounded text-xs ${darkMode ? 'text-gray-400 hover:text-gray-200' : 'text-stone-400 hover:text-stone-600'}`}
-                                        aria-label={t('common.edit')}
-                                      >✎</button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const updated = users.map(usr => usr.id === u.id ? { ...usr, deleted: true, updatedAt: new Date().toISOString() } : usr);
-                                          setUsers(updated);
-                                          localStorage.setItem('dayglance-users', JSON.stringify(updated));
-                                          markRosterEdited();
-                                          if (meUserSyncId === (u.syncId ?? u.id)) {
-                                            setMeUserSyncId(null);
-                                            localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(MULTI_USER_CONFIG_KEY) || '{}'), meUserSyncId: null }));
-                                          }
-                                        }}
-                                        className={`px-1.5 py-1 rounded text-xs ${darkMode ? 'text-gray-500 hover:text-red-400' : 'text-stone-400 hover:text-red-500'}`}
-                                        aria-label={t('common.delete')}
-                                      >🗑</button>
-                                    </>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            {addingUser ? (
-                              <div className="flex items-center gap-2 mt-2">
-                                <input
-                                  type="text"
-                                  placeholder={t('common.name')}
-                                  value={newUserName}
-                                  onChange={e => setNewUserName(e.target.value)}
-                                  className={`flex-1 px-2 py-1 border ${borderClass} rounded text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'}`}
-                                  autoFocus
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      const trimmed = newUserName.trim();
-                                      if (!trimmed) return;
-                                      const newUser = { id: crypto.randomUUID(), name: trimmed, syncId: crypto.randomUUID(), updatedAt: new Date().toISOString() };
-                                      const updated = [...users, newUser];
-                                      setUsers(updated);
-                                      localStorage.setItem('dayglance-users', JSON.stringify(updated));
-                                      markRosterEdited();
-                                      setNewUserName('');
-                                      setAddingUser(false);
-                                    } else if (e.key === 'Escape') {
-                                      setAddingUser(false);
-                                      setNewUserName('');
-                                    }
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const trimmed = newUserName.trim();
-                                    if (!trimmed) return;
-                                    const newUser = { id: crypto.randomUUID(), name: trimmed, syncId: crypto.randomUUID(), updatedAt: new Date().toISOString() };
-                                    const updated = [...users, newUser];
-                                    setUsers(updated);
-                                    localStorage.setItem('dayglance-users', JSON.stringify(updated));
-                                    markRosterEdited();
-                                    setNewUserName('');
-                                    setAddingUser(false);
-                                  }}
-                                  className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                >{t('common.add')}</button>
-                                <button type="button" onClick={() => { setAddingUser(false); setNewUserName(''); }} className={`px-2 py-1 rounded text-xs ${darkMode ? 'bg-gray-600 text-gray-200' : 'bg-stone-200 text-stone-700'}`}>{t('common.cancel')}</button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setAddingUser(true)}
-                                className={`mt-2 text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
-                              >{t('common.addPerson')}</button>
-                            )}
-                          </div>
-                          {/* Users path — only shown when GLANCE Integrations WebDAV is configured */}
-                          {intentForm.webdavUrl && (
-                            <div>
-                              <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.usersSyncPath')}</label>
-                              <input
-                                type="text"
-                                placeholder="/GLANCE/users/"
-                                value={usersPath}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setUsersPath(val);
-                                  const existing = localStorage.getItem(MULTI_USER_CONFIG_KEY);
-                                  const prev = existing ? JSON.parse(existing) : {};
-                                  localStorage.setItem(MULTI_USER_CONFIG_KEY, JSON.stringify({ ...prev, usersPath: val }));
-                                }}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              />
-                              <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.usersSyncPathHint', { defaultValue: 'WebDAV path where the shared user list is stored. Must match across all GLANCE apps.' })}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* AI Features Section — hidden on the China App Store storefront
-                        to comply with App Store Review Guideline 5 (Deep Synthesis / MIIT). */}
-                    {!aiSuppressed && (<>
-                    <hr className={borderClass} />
-
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('ai')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <BrainCircuit size={16} className={aiConfig.enabled ? 'text-purple-400' : textSecondary} />
-                        {t('settings.aiFeatures')}
-                        {aiConfig.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.ai ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.ai && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.aiByoApiKey')}
-                      </p>
-
-                      {/* Master toggle */}
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={aiConfig.enabled}
-                            onChange={(e) => { if (e.target.checked) setOnboardingProgress(prev => ({ ...prev, hasEnabledOptionalFeature: true })); setAiConfig(prev => ({ ...prev, enabled: e.target.checked })); }}
-                            className="sr-only"
-                          />
-                          <div className={`w-10 h-6 rounded-full transition-colors ${aiConfig.enabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${aiConfig.enabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </div>
-                        </div>
-                        <span className={`text-sm ${textPrimary}`}>{t('settings.enableAIFeatures')}</span>
-                      </label>
-
-                      {aiConfig.enabled && (
-                        <div className="space-y-3 mt-2">
-                          {/* Provider selector */}
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiProvider')}</label>
-                            <select
-                              value={aiConfig.provider}
-                              onChange={(e) => {
-                                const provider = e.target.value;
-                                const models = PROVIDER_MODELS[provider] || [];
-                                setAiConfig(prev => ({
-                                  ...prev,
-                                  provider,
-                                  model: models[0]?.id || prev.model,
-                                  baseUrl: provider === 'ollama' ? (prev.baseUrl || 'http://localhost:11434') : provider === 'custom' ? prev.baseUrl : '',
-                                }));
-                                setAiConnectionStatus(null);
-                                setAiOllamaHelp(null);
-                              }}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            >
-                              {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
-                                <option key={key} value={key}>
-                                  {key === 'ollama'
-                                    ? t('settings.aiProviderOllama', { defaultValue: 'Ollama (Local)' })
-                                    : key === 'custom'
-                                      ? t('settings.aiProviderCustom', { defaultValue: 'Custom (OpenAI-compatible)' })
-                                      : label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* API Key */}
-                          {aiConfig.provider !== 'ollama' && (
-                            <div>
-                              <label className={`block text-sm ${textSecondary} mb-1`}>
-                                <Key size={12} className="inline mr-1" />
-                                {t('settings.aiApiKey')}
-                              </label>
-                              <input
-                                type="password"
-                                placeholder={aiConfig.provider === 'openai' ? 'sk-...' : aiConfig.provider === 'anthropic' ? 'sk-ant-...' : t('settings.aiApiKey')}
-                                value={aiConfig.apiKey}
-                                onChange={(e) => {
-                                  setAiConfig(prev => ({ ...prev, apiKey: e.target.value }));
-                                  setAiConnectionStatus(null);
-                                setAiOllamaHelp(null);
-                                }}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm font-mono`}
-                              />
-                              <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.aiApiKeyHint')}</p>
-                            </div>
-                          )}
-
-                          {/* Base URL for Ollama/Custom */}
-                          {(aiConfig.provider === 'ollama' || aiConfig.provider === 'custom') && (
-                            <div>
-                              <label className={`block text-sm ${textSecondary} mb-1`}>
-                                <Server size={12} className="inline mr-1" />
-                                {aiConfig.provider === 'ollama'
-                                  ? t('settings.aiOllamaUrl', { defaultValue: 'Ollama URL' })
-                                  : t('settings.aiBaseUrl', { defaultValue: 'Base URL' })}
-                              </label>
-                              <input
-                                type="url"
-                                placeholder={aiConfig.provider === 'ollama' ? 'http://localhost:11434' : 'https://your-endpoint.com/v1'}
-                                value={aiConfig.baseUrl}
-                                onChange={(e) => setAiConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              />
-                              {aiConfig.provider === 'custom' && (
-                                <p className={`text-xs ${textSecondary} mt-1`}>
-                                  {t('settings.aiCommonProviders', { defaultValue: 'Common providers:' })} Groq → <code className="font-mono">https://api.groq.com/openai/v1</code> · Together AI → <code className="font-mono">https://api.together.xyz/v1</code> · LM Studio → <code className="font-mono">http://localhost:1234/v1</code>
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Model selector. The built-in list is a starting
-                              point: a provider's ids retire (the 2026-10-03
-                              Gemini report), so the list can be refreshed from
-                              the provider and any id can be typed. A model not
-                              in the list shows as "Other" with the id editable. */}
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.aiModel')}</label>
-                            {(() => {
-                              const listed = (aiConfig.modelLists?.[aiConfig.provider]?.length ? aiConfig.modelLists[aiConfig.provider] : PROVIDER_MODELS[aiConfig.provider]) || [];
-                              const inList = listed.some((m) => m.id === aiConfig.model);
-                              return (
-                                <div className="space-y-2">
-                                  {listed.length > 0 && (
-                                    <select
-                                      data-ai-model-select
-                                      value={inList ? aiConfig.model : '__other__'}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        setAiConfig(prev => ({ ...prev, model: v === '__other__' ? '' : v }));
-                                      }}
-                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                                    >
-                                      {listed.map(m => (
-                                        <option key={m.id} value={m.id}>{m.label}{m.recommended ? ` (${t('settings.aiRecommended', { defaultValue: 'Recommended' })})` : ''}</option>
-                                      ))}
-                                      <option value="__other__">{t('settings.aiModelOther', { defaultValue: 'Other (type a model id)' })}</option>
-                                    </select>
-                                  )}
-                                  {(!inList || listed.length === 0) && (
-                                    <input
-                                      type="text"
-                                      data-ai-model-input
-                                      placeholder={t('settings.aiModelPlaceholder', { defaultValue: 'Model name' })}
-                                      value={aiConfig.model}
-                                      onChange={(e) => setAiConfig(prev => ({ ...prev, model: e.target.value }))}
-                                      className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                                    />
-                                  )}
-                                  {(
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <button
-                                        type="button"
-                                        data-ai-fetch-models
-                                        disabled={aiModelsStatus === 'loading'}
-                                        onClick={async () => {
-                                          setAiModelsStatus('loading');
-                                          setAiModelsMessage('');
-                                          try {
-                                            const models = await fetchProviderModels(aiConfig);
-                                            setAiConfig(prev => ({ ...prev, modelLists: { ...(prev.modelLists || {}), [prev.provider]: models } }));
-                                            setAiModelsStatus('ok');
-                                            setAiModelsMessage(t('settings.aiFetchModelsOk', { defaultValue: '{{count}} models available', count: models.length }));
-                                          } catch (err) {
-                                            setAiModelsStatus('error');
-                                            setAiModelsMessage(t('settings.aiFetchModelsFailed', { defaultValue: 'Could not fetch models: {{error}}', error: err?.message || String(err) }));
-                                          }
-                                        }}
-                                        className={`px-3 py-1.5 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-xs transition-colors disabled:opacity-50`}
-                                      >
-                                        {t('settings.aiFetchModels', { defaultValue: 'Fetch model list' })}
-                                      </button>
-                                      {aiModelsMessage && (
-                                        <span className={`text-xs ${aiModelsStatus === 'error' ? 'text-red-500' : textSecondary}`}>{aiModelsMessage}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Test Connection */}
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={async () => {
-                                  setAiConnectionStatus('testing');
-                                  setAiConnectionMessage('');
-                                  setAiOllamaHelp(null);
-                                  const result = await testConnection(aiConfig);
-                                  setAiConnectionStatus(result.success ? 'success' : 'error');
-                                  setAiConnectionMessage(result.message);
-                                  setAiOllamaHelp(result.ollamaHelp || null);
-                                }}
-                                disabled={aiConnectionStatus === 'testing'}
-                                className="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm disabled:opacity-50"
-                              >
-                                {aiConnectionStatus === 'testing' ? (
-                                  <Loader size={14} className="animate-spin" />
-                                ) : aiConnectionStatus === 'success' ? (
-                                  <Wifi size={14} />
-                                ) : aiConnectionStatus === 'error' ? (
-                                  <WifiOff size={14} />
-                                ) : (
-                                  <Wifi size={14} />
-                                )}
-                                {aiConnectionStatus === 'testing' ? t('settings.aiTesting') : t('settings.aiTestConnection')}
-                              </button>
-                              {aiConnectionStatus === 'success' && (
-                                <span className="text-xs text-green-500">{t('settings.aiConnected')}</span>
-                              )}
-                              {aiConnectionStatus === 'error' && !aiOllamaHelp && (
-                                <span className="text-xs text-red-500 truncate max-w-[180px]" title={aiConnectionMessage}>{aiConnectionMessage}</span>
-                              )}
-                            </div>
-                            {aiOllamaHelp && (
-                              <div className={`text-xs p-3 rounded-lg ${darkMode ? 'bg-red-900/30 border border-red-800/50' : 'bg-red-50 border border-red-200'}`}>
-                                <p className="text-red-500 font-medium mb-1.5">{t('settings.aiOllamaConnectionError', { defaultValue: "Could not reach Ollama. Make sure it's running and CORS is enabled for this origin. See setup guide →" })}</p>
-                                <ul className={`${textSecondary} space-y-1 ml-3 list-disc mb-2`}>
-                                  <li>{t('settings.aiOllamaRunning', { defaultValue: 'Ollama must be running on your computer' })}</li>
-                                  <li>{t('settings.aiOllamaCors', { defaultValue: "CORS must be enabled for this site's origin" })}</li>
-                                  <li>{t('settings.aiOllamaSetEnv', { defaultValue: 'Set:' })} <code className={`text-xs px-1 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>OLLAMA_ORIGINS={window.electronAPI?.isElectron ? '*' : window.location.origin}</code></li>
-                                </ul>
-                                <a
-                                  href="https://github.com/ollama/ollama/blob/main/docs/faq.md#how-do-i-configure-ollama-server"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-purple-500 hover:text-purple-400 underline flex items-center gap-1 w-fit"
-                                >
-                                  {t('settings.aiOllamaSetupGuide', { defaultValue: 'Ollama setup guide' })} <ExternalLink size={11} />
-                                </a>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Per-feature toggles */}
-                          <div className="space-y-2 mt-2">
-                            <p className={`text-xs font-medium ${textSecondary}`}>{t('settings.aiFeaturesList')}</p>
-                            {[
-                              { key: 'voiceTaskInput', label: t('settings.aiVoiceTaskInput'), icon: <Mic size={12} /> },
-                              { key: 'morningSummary', label: t('settings.aiMorningSummary'), icon: <Sun size={12} /> },
-                              { key: 'eveningReflection', label: t('settings.aiEveningReflection'), icon: <Moon size={12} /> },
-                              { key: 'durationEstimate', label: t('settings.aiDurationEstimates'), icon: <Sparkles size={12} /> },
-                              { key: 'frameNudge', label: t('settings.aiFrameNudges'), icon: <Zap size={12} /> },
-                              { key: 'aiReschedule', label: t('settings.aiReschedule'), icon: <CalendarDays size={12} /> },
-                              { key: 'aiSubtasks', label: t('settings.aiSubtasks'), icon: <CheckSquare size={12} /> },
-                              { key: 'weeklySummary', label: t('settings.aiWeeklySummary'), icon: <BarChart3 size={12} /> },
-                              { key: 'smartScheduling', label: t('settings.aiSmartScheduling'), icon: <CalendarDays size={12} /> },
-                            ].map(f => (
-                              <label key={f.key} className={`flex items-center gap-2 ${f.comingSoon ? 'opacity-50 cursor-default' : 'cursor-pointer'}`}>
-                                <div className="relative flex-shrink-0">
-                                  <input
-                                    type="checkbox"
-                                    checked={f.comingSoon ? false : aiConfig.features[f.key]}
-                                    onChange={(e) => {
-                                      if (f.comingSoon) return;
-                                      setAiConfig(prev => ({
-                                        ...prev,
-                                        features: { ...prev.features, [f.key]: e.target.checked }
-                                      }));
-                                    }}
-                                    disabled={f.comingSoon}
-                                    className="sr-only"
-                                  />
-                                  <div className={`w-8 h-4 rounded-full transition-colors ${!f.comingSoon && aiConfig.features[f.key] ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${!f.comingSoon && aiConfig.features[f.key] ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                                  </div>
-                                </div>
-                                <span className={`text-xs ${textPrimary} flex items-center gap-1.5`}>
-                                  {f.icon} {f.label}
-                                  {f.comingSoon && <span className={`${textSecondary} italic`}>{t('common.comingSoon')}</span>}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      </>)}
-                    </div>
-                    </>)}
-
-                    {/* Hidden at mobile width ONLY for browsers, where FSA is
-                        unavailable on phones; a NATIVE app (Android or iOS)
-                        has vault access at any width. The old Android-only
-                        exception predated the iOS native bridge. */}
-                    {(!isMobile || isNativeApp()) && (<>
-                    <hr className={borderClass} />
-
-                    {/* Obsidian Integration Section — desktop (FSA) + native
-                        apps (Android SAF, iOS bookmark). MobileSettingsPanel
-                        carries the primary mobile surface; this section is the
-                        modal's counterpart wherever the modal is reachable. */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('obsidian')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <BookOpen size={16} className={textSecondary} />
-                        {t('settings.obsidianIntegration')}
-                        {obsidianConfig?.enabled && <span className={`mr-1 w-2 h-2 rounded-full flex-shrink-0 ${obsidianVaultAccess === 'lost' ? 'bg-red-500' : 'bg-green-500'}`} />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.obsidian ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.obsidian && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.obsidianDesc')}
-                      </p>
-                      {/* The Chromium/FSA requirement is a BROWSER constraint:
-                          a native app reaches the vault through its own bridge
-                          (SAF / iOS bookmark) and must not see this warning —
-                          gating on Android alone showed it, wrongly, on iPad. */}
-                      {!isNativeApp() && !isFileSystemAccessSupported() && (
-                        <p className={`text-xs text-amber-500`}>
-                          {t('settings.obsidianBrowserRequirement', { defaultValue: 'Obsidian integration requires a Chromium-based browser (Chrome, Edge, or Brave). Firefox and Safari do not support the File System Access API.' })}
-                        </p>
-                      )}
-                      {isNativeAndroid() ? (
-                        <div className="space-y-3">
-                          <p className={`text-xs ${textSecondary}`}>
-                            {t('settings.obsidianNativeSettingsHint', { defaultValue: 'Vault access and daily note settings are configured in the app settings.' })}
-                          </p>
-                          <button
-                            onClick={() => window.DayGlanceNative.openSettings()}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm"
-                          >
-                            <FolderOpen size={14} />
-                            {t('settings.obsidianOpenVaultSettings')}
-                          </button>
-                          {launchOnWritePlatform && obsidianConfig?.enabled && (
-                            <div>
-                              <label className="flex items-center gap-3 cursor-pointer">
-                                <div className="relative">
-                                  <input
-                                    type="checkbox"
-                                    checked={effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform)}
-                                    onChange={(e) => setObsidianLaunchOnWrite(e.target.checked ? 'on' : 'off')}
-                                    className="sr-only"
-                                  />
-                                  <div className={`w-10 h-6 rounded-full transition-colors ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'translate-x-5' : 'translate-x-1'}`} />
-                                  </div>
-                                </div>
-                                <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianLaunchOnWrite')}</span>
-                              </label>
-                              <p className={`text-xs ${textSecondary} mt-1`}>
-                                {t('settings.obsidianLaunchOnWriteHintAndroid')}
-                              </p>
-                            </div>
-                          )}
-                          {obsidianConfig?.enabled && (
-                            <div>
-                              <label className="flex items-center gap-3 cursor-pointer">
-                                <div className="relative">
-                                  <input
-                                    type="checkbox"
-                                    checked={obsidianCompletionDates}
-                                    onChange={(e) => setObsidianCompletionDates(e.target.checked)}
-                                    className="sr-only"
-                                  />
-                                  <div className={`w-10 h-6 rounded-full transition-colors ${obsidianCompletionDates ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianCompletionDates ? 'translate-x-5' : 'translate-x-1'}`} />
-                                  </div>
-                                </div>
-                                <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionDates')}</span>
-                              </label>
-                              <p className={`text-xs ${textSecondary} mt-1`}>
-                                {t('settings.obsidianCompletionDatesHint')}
-                              </p>
-                            </div>
-                          )}
-                          {/* §6 mode indicator, native flavor: read-only bridge
-                              status (three states — see BridgeStatusPanel).
-                              Pairing itself stays a desktop act; this makes
-                              plugin mode, and especially the SILENTLY-UNPAIRED
-                              middle state, legible on this device. */}
-                          {obsidianConfig?.enabled && (
-                            <BridgeStatusPanel darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
-                          )}
-                        </div>
-                      ) : obsidianConfig?.enabled ? (
-                        <div className="space-y-3">
-                          <div className={`flex items-center gap-2 text-sm ${textPrimary}`}>
-                            <FolderOpen size={14} className={textSecondary} />
-                            <span className="truncate">{obsidianConfig.vaultName || t('settings.obsidianVaultConnected')}</span>
-                            {obsidianVaultAccess === 'lost'
-                              ? <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
-                              : <CheckCircle size={14} className="text-green-500 flex-shrink-0" />}
-                          </div>
-                          {/* Configured is not reachable: say so here, where the
-                              green check used to claim otherwise, and point at
-                              the button that fixes it. */}
-                          {obsidianVaultAccess === 'lost' && (
-                            <p data-obsidian-vault-lost className="text-xs text-red-500">{t('settings.obsidianVaultAccessLost')}</p>
-                          )}
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>
-                              {t('settings.obsidianDailyNotesFolder')}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder={t('settings.obsidianVaultRootPlaceholder', { defaultValue: '(vault root)' })}
-                              value={obsidianConfig.dailyNotesPath || ''}
-                              onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotesPath: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianDailyNotesFolderHint', { defaultValue: 'Leave empty for vault root. Common: "Daily Notes" or "journals"' })}
-                            </p>
-                            {/* Where a daily note lands, and the nesting trap
-                                (utils/obsidianFolderCheck.js): the picked folder
-                                named like the setting means a second folder of
-                                the same name inside it, and two copies of each
-                                day's note. Said here, before the first write. */}
-                            {(() => {
-                              const resolved = describeDailyNotePath({
-                                vaultName: obsidianConfig.vaultName, dailyNotesPath: obsidianConfig.dailyNotesPath,
-                                dailyNotePattern: obsidianConfig.dailyNotePattern, formatDatePattern,
-                              });
-                              return (
-                                <>
-                                  <p data-obsidian-daily-path className={`text-xs ${textSecondary} mt-1`}>
-                                    {t('settings.obsidianDailyNotesResolved', { path: resolved.path })}
-                                  </p>
-                                  {resolved.nested && (
-                                    <p data-obsidian-daily-nested className="text-xs text-amber-500 mt-1">
-                                      {t('settings.obsidianDailyNotesNested', { name: obsidianConfig.vaultName })}
-                                    </p>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>
-                              {t('settings.obsidianNewNotesFolder')}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="dayGLANCE"
-                              value={obsidianConfig.newNotesFolder ?? 'dayGLANCE'}
-                              onChange={(e) => setObsidianConfig(prev => ({ ...prev, newNotesFolder: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                            {validateVaultFolderSetting(obsidianConfig.newNotesFolder) && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {validateVaultFolderSetting(obsidianConfig.newNotesFolder)}
-                              </p>
-                            )}
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianNewNotesFolderHint', { defaultValue: 'Where new notes created in dayGLANCE are saved. Leave empty for vault root.' })}
-                            </p>
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>
-                              {t('settings.obsidianFilenamePattern')}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="yyyy-MM-dd"
-                              value={obsidianConfig.dailyNotePattern ?? 'yyyy-MM-dd'}
-                              onChange={(e) => setObsidianConfig(prev => ({ ...prev, dailyNotePattern: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                            {validateDailyNotePattern(obsidianConfig.dailyNotePattern, formatDatePattern) && (
-                              <p className="text-xs text-red-500 mt-1">
-                                {validateDailyNotePattern(obsidianConfig.dailyNotePattern, formatDatePattern)}
-                              </p>
-                            )}
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianFilenamePatternHint', { defaultValue: 'Date pattern for daily note filenames (without .md). e.g. "yyyy-MM-dd", "dd-MM-yyyy", "MMMM dd, yyyy"' })}
-                            </p>
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>
-                              {t('settings.obsidianTaskHeading')}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder={buildLocalizedTaskHeading(t)}
-                              value={obsidianConfig.taskHeading || ''}
-                              onChange={(e) => setObsidianConfig(prev => ({ ...prev, taskHeading: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianTaskHeadingHintPrefix', { defaultValue: 'Tasks tagged' })} <code>#obsidian</code> {t('settings.obsidianTaskHeadingHintSuffix', { defaultValue: "are added under this heading in today's daily note" })}
-                            </p>
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>
-                              {t('settings.obsidianDailyNoteTemplate')}
-                            </label>
-                            <textarea
-                              value={dailyNoteTemplate}
-                              onChange={(e) => setDailyNoteTemplate(e.target.value)}
-                              placeholder={t('settings.obsidianDailyNoteTemplatePlaceholder', { defaultValue: 'Template for new daily notes...' })}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white placeholder:text-gray-500' : 'bg-white text-stone-900 placeholder:text-stone-400'} text-sm resize-y`}
-                              rows={4}
-                            />
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianDailyNoteTemplateBridgeHint', { dateToken: '{{date}}', defaultValue: "Pre-filled when creating a new daily note. {{dateToken}} becomes the note's date. A template note configured in the Bridge plugin takes precedence when the plugin creates the note." })}
-                            </p>
-                          </div>
-                          {launchOnWritePlatform && (
-                            <div>
-                              <label className="flex items-center gap-3 cursor-pointer">
-                                <div className="relative">
-                                  <input
-                                    type="checkbox"
-                                    checked={effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform)}
-                                    onChange={(e) => setObsidianLaunchOnWrite(e.target.checked ? 'on' : 'off')}
-                                    className="sr-only"
-                                  />
-                                  <div className={`w-10 h-6 rounded-full transition-colors ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${effectiveLaunchOnWrite(obsidianLaunchOnWrite, launchOnWritePlatform) ? 'translate-x-5' : 'translate-x-1'}`} />
-                                  </div>
-                                </div>
-                                <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianLaunchOnWrite')}</span>
-                              </label>
-                              <p className={`text-xs ${textSecondary} mt-1`}>
-                                {t('settings.obsidianLaunchOnWriteHint')}
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <label className="flex items-center gap-3 cursor-pointer">
-                              <div className="relative">
-                                <input
-                                  type="checkbox"
-                                  checked={obsidianCompletionDates}
-                                  onChange={(e) => setObsidianCompletionDates(e.target.checked)}
-                                  className="sr-only"
-                                />
-                                <div className={`w-10 h-6 rounded-full transition-colors ${obsidianCompletionDates ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianCompletionDates ? 'translate-x-5' : 'translate-x-1'}`} />
-                                </div>
-                              </div>
-                              <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionDates')}</span>
-                            </label>
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianCompletionDatesHint')}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="flex items-center gap-3 cursor-pointer">
-                              <div className="relative">
-                                <input
-                                  type="checkbox"
-                                  checked={!!obsidianConfig.completionLogEnabled}
-                                  onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogEnabled: e.target.checked }))}
-                                  className="sr-only"
-                                />
-                                <div className={`w-10 h-6 rounded-full transition-colors ${obsidianConfig.completionLogEnabled ? 'bg-purple-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
-                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${obsidianConfig.completionLogEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                                </div>
-                              </div>
-                              <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianCompletionLog')}</span>
-                            </label>
-                            <p className={`text-xs ${textSecondary} mt-1`}>
-                              {t('settings.obsidianCompletionLogHint')}
-                            </p>
-                            {obsidianConfig.completionLogEnabled && (
-                              <div className="mt-2">
-                                <label className={`block text-sm ${textSecondary} mb-1`}>
-                                  {t('settings.obsidianCompletionLogHeading')}
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="## Completed"
-                                  value={obsidianConfig.completionLogHeading || ''}
-                                  onChange={(e) => setObsidianConfig(prev => ({ ...prev, completionLogHeading: e.target.value }))}
-                                  className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => performObsidianSync()}
-                              disabled={obsidianSyncStatus === 'syncing'}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm"
-                            >
-                              <RefreshCw size={14} className={obsidianSyncStatus === 'syncing' ? 'animate-spin' : ''} />
-                              {obsidianSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
-                            </button>
-                            {/* Re-pick the vault folder without disconnecting. Stored
-                                access can lapse (an expired browser permission, a
-                                stale macOS bookmark after the app is replaced) while
-                                Settings still reads connected, and every note read
-                                and vault write then fails. Disconnect is no way back:
-                                it also drops the Obsidian-imported tasks. Picking
-                                again stores fresh access (a new directory handle, or
-                                a new bookmark on desktop) and keeps everything else. */}
-                            <button
-                              data-obsidian-change-vault
-                              onClick={async () => {
-                                if (isNativeApp()) { nativePickVault(); return; }
-                                try {
-                                  const handle = await requestVaultAccess();
-                                  if (!handle) return;
-                                  obsidianVaultHandleRef.current = handle;
-                                  setObsidianConfig(prev => ({ ...prev, enabled: true, vaultName: handle.name }));
-                                  performObsidianSync();
-                                } catch (err) {
-                                  console.error('Obsidian: failed to change vault', err);
-                                }
-                              }}
-                              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors flex items-center gap-2`}
-                            >
-                              <FolderOpen size={14} />
-                              {t('settings.obsidianChangeVault')}
-                            </button>
-                            <button
-                              onClick={async () => {
-                                await disconnectVault();
-                                obsidianVaultHandleRef.current = null;
-                                setObsidianConfig(null);
-                                setObsidianLastSynced(null);
-                                setUnportableVaultFiles?.([]);
-                                localStorage.removeItem('day-planner-obsidian-last-synced');
-                                // Remove Obsidian-imported tasks
-                                setTasks(prev => prev.filter(t => t.importSource !== 'obsidian'));
-                                setUnscheduledTasks(prev => prev.filter(t => t.importSource !== 'obsidian'));
-                              }}
-                              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
-                            >
-                              {t('common.disconnect')}
-                            </button>
-                          </div>
-                          {obsidianSyncStatus === 'success' && (
-                            <p className={`text-xs text-green-500`}>{t('settings.obsidianSyncComplete')}</p>
-                          )}
-                          {obsidianSyncStatus === 'error' && (
-                            <p className={`text-xs text-red-500`}>{t('settings.obsidianSyncFailed')}{obsidianSyncError ? `: ${obsidianSyncError}` : ''}</p>
-                          )}
-                          {obsidianLastSynced && (
-                            <p className={`text-xs ${textSecondary}`}>
-                              {t('common.lastSynced')}: {new Date(obsidianLastSynced).toLocaleString(locale)}
-                            </p>
-                          )}
-                          {/* Native app in this branch = iOS (isNativeAndroid
-                              took Android above): the pairing form's minting
-                              path needs direct FSA vault access the native
-                              bridge doesn't have — startBridgePairing can only
-                              throw pairing_no_vault_access here, and the
-                              form's status probe skips native handles. The
-                              read-only status block is the working equivalent;
-                              pairing happens once from a desktop and covers
-                              this device (per-vault granularity, spec §3.2). */}
-                          {isNativeApp()
-                            ? <BridgeStatusPanel darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
-                            : <BridgePairingPanel vaultHandleRef={obsidianVaultHandleRef} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />}
-                          <UnportableVaultNamesPanel entries={unportableVaultFiles} darkMode={darkMode} textSecondary={textSecondary} />
-                        </div>
-                      ) : (
-                        <button
-                          onClick={async () => {
-                            // Native app (iOS lands here; Android took its own
-                            // branch above): the vault is picked through the
-                            // NATIVE folder picker (UIDocumentPickerViewController
-                            // via nativePickVault, which reloads the webview
-                            // once a folder is chosen) — the FSA flow below is
-                            // browser-only and, gated on Android alone, used to
-                            // leave iPad with a dead connect button that could
-                            // only alert about Chromium.
-                            if (isNativeApp()) {
-                              nativePickVault();
-                              return;
-                            }
-                            if (!isFileSystemAccessSupported()) {
-                              alert(t('settings.obsidianBrowserUnsupported', { defaultValue: 'Your browser does not support the File System Access API. Please use a Chromium-based browser (e.g., Chrome, Edge, Brave) to connect an Obsidian vault.' }));
-                              return;
-                            }
-                            const handle = await requestVaultAccess();
-                            if (handle) {
-                              obsidianVaultHandleRef.current = handle;
-                              setObsidianConfig({ enabled: true, dailyNotesPath: '', vaultName: handle.name });
-                            }
-                          }}
-                          className={`px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm`}
-                        >
-                          <FolderOpen size={14} />
-                          {t('settings.obsidianSelectVault')}
-                        </button>
-                      )}
-                      </>)}
-                    </div>
-                    </>)}
-
-                    <hr className={borderClass} />
-
-                    {/* TRMNL E-Ink Dashboard Section */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('trmnl')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <LayoutGrid size={16} className={textSecondary} />
-                        {t('settings.trmnlDashboard')}
-                        {trmnlConfig?.enabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.trmnl ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.trmnl && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.trmnlDescriptionPrefix', { defaultValue: 'Push your daily schedule to a' })} <a href="https://trmnl.com" target="_blank" rel="noopener noreferrer" className="underline">TRMNL</a> {t('settings.trmnlDescriptionSuffix', { defaultValue: 'e-ink display via webhook. Install the DayGLANCE recipe from the TRMNL Recipe Library to get started.' })}
-                      </p>
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.trmnlWebhookUrl')}</label>
-                        <input
-                          type="url"
-                          placeholder="https://usetrmnl.com/api/custom_plugins/your-uuid"
-                          value={trmnlConfig?.webhookUrl || ''}
-                          onChange={(e) => setTrmnlConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        />
-                        <p className={`text-xs ${textSecondary} mt-1`}>
-                          {t('settings.trmnlWebhookHint', { defaultValue: 'Found in your DayGLANCE recipe settings on TRMNL' })}
-                        </p>
-                        <p className={`text-xs ${textSecondary} mt-1`}>
-                          {t('settings.trmnlOneDeviceHint', { defaultValue: 'TRMNL accepts a limited number of updates per hour for the whole plugin, so enable this on one device that is usually running.' })}
-                        </p>
-                      </div>
-                      <div>
-                        <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.trmnlApiKey')}</label>
-                          <input
-                            type="password"
-                            placeholder={t('settings.trmnlBearerTokenPlaceholder', { defaultValue: 'Bearer token' })}
-                          value={trmnlConfig?.apiKey || ''}
-                          onChange={(e) => setTrmnlConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {trmnlConfig?.enabled ? (
-                          <>
-                            <button
-                              onClick={() => performTrmnlSync()}
-                              disabled={trmnlSyncStatus === 'syncing'}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm"
-                            >
-                              <RefreshCw size={14} className={trmnlSyncStatus === 'syncing' ? 'animate-spin' : ''} />
-                              {trmnlSyncStatus === 'syncing' ? t('common.syncing') : t('common.syncNow')}
-                            </button>
-                            <button
-                              onClick={() => setTrmnlConfig(prev => ({ ...prev, enabled: false }))}
-                              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
-                            >
-                              {t('common.disable')}
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (!trmnlConfig?.webhookUrl) return;
-                              setTrmnlConfig(prev => ({ ...prev, enabled: true }));
-                              setTimeout(() => performTrmnlSync(), 100);
-                            }}
-                            disabled={!trmnlConfig?.webhookUrl}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm disabled:opacity-50"
-                          >
-                            <Wifi size={14} />
-                            {t('settings.trmnlEnableSync')}
-                          </button>
-                        )}
-                      </div>
-                      {trmnlSyncStatus === 'success' && <p className="text-xs text-green-500">{t('settings.trmnlSyncSuccess')}</p>}
-                      {trmnlSyncStatus === 'error' && <p className="text-xs text-red-500">{t('settings.trmnlSyncError')}</p>}
-                      {trmnlLastSynced && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {t('common.lastSynced')}: {new Date(trmnlLastSynced).toLocaleString(locale)}
-                        </p>
-                      )}
-
-                      </>)}
-                    </div>
-
-                    <hr className={borderClass} />
-                    <TodoistSettings />
-
-                    {/* Local Integrations (Stream Deck + MCP) — Electron only,
-                        renders nothing on web/mobile builds. */}
-                    <LocalIntegrationsSettings />
-
-                    <hr className={borderClass} />
-
-                    {/* GLANCE Integrations Section */}
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('intent')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <Activity size={16} className={textSecondary} />
-                        {t('settings.glanceIntegrations')}
-                        {(intentForm.webdavUrl || dbIntentsEnabled) && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.intent ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.intent && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.glanceIntegrationsDesc', { defaultValue: 'Connect dayGLANCE to other Glance-compatible apps via a shared WebDAV event log.' })}
-                      </p>
-                      <div className="space-y-3">
-                        <div>
-                          <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceServerUrl')}</label>
-                          <input
-                            type="url"
-                            placeholder="https://nextcloud.example.com/remote.php/dav/files/user"
-                            value={intentForm.webdavUrl}
-                            onChange={e => setIntentForm(p => ({ ...p, webdavUrl: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('common.username')}</label>
-                            <input
-                              type="text"
-                              placeholder={t('common.username')}
-                              value={intentForm.username}
-                              onChange={e => setIntentForm(p => ({ ...p, username: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.appPassword')}</label>
-                            <input
-                              type="password"
-                              placeholder="••••••••••••"
-                              value={intentForm.appPassword}
-                              onChange={e => setIntentForm(p => ({ ...p, appPassword: e.target.value }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceEventsPath')}</label>
-                          <input
-                            type="text"
-                            placeholder="/GLANCE/events/"
-                            value={intentForm.eventsPath}
-                            onChange={e => setIntentForm(p => ({ ...p, eventsPath: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                          />
-                          <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceEventsPathHint', { defaultValue: 'Path on the WebDAV server where event files are stored.' })}</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceForegroundPoll')}</label>
-                            <select
-                              value={intentForm.foregroundInterval}
-                              onChange={e => setIntentForm(p => ({ ...p, foregroundInterval: Number(e.target.value) }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            >
-                              <option value={30000}>{formatUnit(30, 'second')}</option>
-                              <option value={60000}>{formatUnit(1, 'minute')}</option>
-                              <option value={120000}>{formatUnit(2, 'minute')}</option>
-                              <option value={300000}>{formatUnit(5, 'minute')}</option>
-                              <option value={600000}>{formatUnit(10, 'minute')}</option>
-                              <option value={1800000}>{formatUnit(30, 'minute')}</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceBackgroundPoll')}</label>
-                            <select
-                              value={intentForm.backgroundInterval}
-                              onChange={e => setIntentForm(p => ({ ...p, backgroundInterval: Number(e.target.value) }))}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                            >
-                              <option value={300000}>{formatUnit(5, 'minute')}</option>
-                              <option value={900000}>{formatUnit(15, 'minute')}</option>
-                              <option value={1800000}>{formatUnit(30, 'minute')}</option>
-                              <option value={3600000}>{formatUnit(1, 'hour')}</option>
-                              <option value={21600000}>{formatUnit(6, 'hour')}</option>
-                              <option value={86400000}>{formatUnit(24, 'hour')}</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div>
-                          <label className={`block text-sm ${textSecondary} mb-1`}>{t('settings.glanceEventRetention')}</label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={intentForm.gcRetentionDays}
-                            onChange={e => setIntentForm(p => ({ ...p, gcRetentionDays: e.target.value }))}
-                            className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                          />
-                          <p className={`text-xs ${textSecondary} mt-1`}>{t('settings.glanceRetentionHint', { defaultValue: 'Event files older than this are deleted automatically.' })}</p>
-                        </div>
-                        <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass} ${cloudSyncConfig?.encryptionEnabled ? '' : 'opacity-60'}`}>
-                          <input
-                            type="checkbox"
-                            id="intent-encryption-toggle"
-                            checked={intentForm.encryptionEnabled && !!cloudSyncConfig?.encryptionEnabled}
-                            disabled={!cloudSyncConfig?.encryptionEnabled || intentSetupPhase !== null}
-                            onChange={e => setIntentForm(p => ({ ...p, encryptionEnabled: e.target.checked }))}
-                            className="mt-0.5 h-4 w-4 rounded"
-                          />
-                          <div>
-                            <label htmlFor="intent-encryption-toggle" className={`text-sm font-medium ${textPrimary} ${cloudSyncConfig?.encryptionEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
-                              {t('settings.glanceEncryptEvents', { defaultValue: 'Encrypt intent events' })}
-                            </label>
-                            {cloudSyncConfig?.encryptionEnabled ? (
-                              <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.glanceEncryptionEnabledHint', { defaultValue: 'Uses your cloud sync passphrase. Set up once; remains active across sessions.' })}</p>
-                            ) : (
-                              <p className={`text-xs ${textSecondary} mt-0.5`}>{t('settings.glanceEncryptionRequiredHint', { defaultValue: 'Requires cloud sync encryption to be enabled first.' })}</p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Intents encryption setup — inline passphrase prompt or error */}
-                        {intentSetupPhase === 'passphrase-needed' && (
-                          <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Lock size={13} className="text-blue-500 flex-shrink-0" />
-                              <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle', { defaultValue: 'Enter your sync passphrase to complete setup' })}</span>
-                            </div>
-                            <p className={`text-xs ${textSecondary} mb-3`}>
-                              {t('settings.intentsPassphraseSetupHint', { defaultValue: 'Required once to derive the intents encryption key. After this, no passphrase is needed across sessions.' })}
-                            </p>
-                            <input
-                              type="password"
-                              autoFocus
-                              value={intentPassphraseInput}
-                              onChange={e => setIntentPassphraseInput(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Escape') { setIntentSetupPhase(null); setIntentPassphraseInput(''); } }}
-                              placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-                              className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                disabled={!intentPassphraseInput.trim()}
-                                onClick={async () => {
-                                  const passphrase = intentPassphraseInput.trim();
-                                  setSyncPassphrase(passphrase);
-                                  setIntentPassphraseInput('');
-                                  setIntentSetupPhase('running');
-                                  const cfg = {
-                                    ...intentForm,
-                                    gcRetentionDays: Number(intentForm.gcRetentionDays) || 30,
-                                    encryptionEnabled: true,
-                                  };
-                                  try {
-                                    await setupIntentsEncryption(cfg, passphrase);
-                                    if (cfg.webdavUrl || cfg.username || cfg.appPassword) {
-                                      localStorage.setItem(INTENT_CONFIG_KEY, JSON.stringify(cfg));
-                                    }
-                                    setIntentSetupPhase(null);
-                                    setIntentSaved(true);
-                                    setTimeout(() => setIntentSaved(false), 2000);
-                                  } catch (err) {
-                                    setIntentSetupPhase({ error: err.message });
-                                  }
-                                }}
-                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-                              >
-                                {t('common.confirm')}
-                              </button>
-                              <button
-                                onClick={() => { setIntentSetupPhase(null); setIntentPassphraseInput(''); }}
-                                className={`px-3 py-1.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm`}
-                              >
-                                {t('common.cancel')}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {intentSetupPhase === 'running' && (
-                          <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                            <Loader size={14} className="animate-spin text-blue-500" />
-                            <span className={`text-sm ${textSecondary}`}>{t('settings.intentsEncryptionSettingUp', { defaultValue: 'Setting up intents encryption…' })}</span>
-                          </div>
-                        )}
-                        {intentSetupPhase?.error && (
-                          <div className={`p-3 rounded-lg border border-red-300 ${darkMode ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                            <p className="text-sm text-red-500">{t('settings.intentsSetupFailed', { error: intentSetupPhase.error, defaultValue: 'Setup failed: {{error}}' })}</p>
-                            <button
-                              onClick={() => setIntentSetupPhase(null)}
-                              className="mt-1 text-xs text-red-400 hover:text-red-300 underline"
-                            >
-                              {t('common.dismiss')}
-                            </button>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button
-                            disabled={intentSetupPhase === 'running' || intentSetupPhase === 'passphrase-needed'}
-                            onClick={async () => {
-                              const wantsEncryption = intentForm.encryptionEnabled && !!cloudSyncConfig?.encryptionEnabled;
-                              const cfg = {
-                                ...intentForm,
-                                gcRetentionDays: Number(intentForm.gcRetentionDays) || 30,
-                                encryptionEnabled: wantsEncryption,
-                              };
-
-                              // If encryption is being turned off, clear the cached root key.
-                              if (!wantsEncryption) {
-                                await clearIntentsRootKey();
-                              }
-
-                              // If encryption is on, ensure setup is complete before saving.
-                              if (wantsEncryption) {
-                                const rootKey = await loadIntentsRootKey();
-                                if (!rootKey) {
-                                  const passphrase = getSyncPassphrase();
-                                  if (passphrase) {
-                                    // Passphrase already in session — run setup silently.
-                                    setIntentSetupPhase('running');
-                                    try {
-                                      await setupIntentsEncryption(cfg, passphrase);
-                                    } catch (err) {
-                                      setIntentSetupPhase({ error: err.message });
-                                      return;
-                                    }
-                                    setIntentSetupPhase(null);
-                                  } else {
-                                    // Passphrase not in session — show inline prompt.
-                                    setIntentSetupPhase('passphrase-needed');
-                                    return; // save deferred until passphrase confirmed
-                                  }
-                                }
-                              }
-
-                              if (cfg.webdavUrl || cfg.username || cfg.appPassword) {
-                                localStorage.setItem(INTENT_CONFIG_KEY, JSON.stringify(cfg));
-                              } else {
-                                localStorage.removeItem(INTENT_CONFIG_KEY);
-                              }
-                              setIntentSaved(true);
-                              setTimeout(() => setIntentSaved(false), 2000);
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors flex items-center gap-1.5"
-                          >
-                            {intentSetupPhase === 'running' && <Loader size={13} className="animate-spin" />}
-                            {intentSaved ? t('common.saved') : t('common.save')}
-                          </button>
-                          {intentForm.webdavUrl && (
-                            <button
-                              onClick={() => {
-                                setIntentForm({ webdavUrl: '', username: '', appPassword: '', eventsPath: '/GLANCE/events/', foregroundInterval: 120000, backgroundInterval: 900000, gcRetentionDays: 30, encryptionEnabled: false });
-                                localStorage.removeItem(INTENT_CONFIG_KEY);
-                                clearIntentsRootKey();
-                              }}
-                              className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
-                            >
-                              {t('common.disconnect')}
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setShowIntentActivityLog(true)}
-                            className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-100 hover:bg-stone-200'} ${textPrimary} rounded-lg text-sm flex items-center gap-1.5 transition-colors`}
-                          >
-                            <Activity size={14} />
-                            {t('settings.glanceActivityLog')}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* GLANCEvault intents (beta) — DB transport. Independent of the
-                          WebDAV intents config above AND of the vault sync toggle; it only
-                          INHERITS the vault connection from the GLANCEvault sync config. */}
-                      <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                        <div className="flex items-center gap-2">
-                          <Server size={14} className={textSecondary} />
-                          <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.glanceVaultIntents', { defaultValue: 'GLANCEvault intents' })}</span>
-                          <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-stone-200 text-stone-600'}`}>{t('settings.beta', { defaultValue: 'Beta' })}</span>
-                        </div>
-                        <p className={`${textSecondary} text-xs`}>
-                          {t('settings.glanceVaultIntentsDesc', { defaultValue: 'Deliver intents over your GLANCEvault server instead of (or alongside) the WebDAV event log. Uses the same vault connection as GLANCEvault sync — no separate URL or token needed.' })}
-                        </p>
-
-                        {(() => {
-                          const dbConn = getDbIntentsConnection();
-                          return (
-                            <>
-                              <div className={`text-xs px-3 py-2 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/40' : 'bg-stone-50'}`}>
-                                {dbConn ? (
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                                    <span className={textSecondary}>{t('settings.glanceVaultConnectionReady', { defaultValue: 'Vault connection detected — ready to enable.' })}</span>
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-                                    <span className={textSecondary}>{t('settings.glanceVaultConnectionMissing', { defaultValue: 'No vault connection. Configure GLANCEvault in Cloud Sync settings first.' })}</span>
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass} ${dbConn ? '' : 'opacity-60'}`}>
-                                <input
-                                  type="checkbox"
-                                  id="db-intents-toggle"
-                                  checked={dbIntentsEnabled}
-                                  disabled={!dbConn}
-                                  onChange={e => setDbIntentsEnabled(e.target.checked)}
-                                  className="mt-0.5 h-4 w-4 rounded"
-                                />
-                                <div>
-                                  <label htmlFor="db-intents-toggle" className={`text-sm font-medium ${textPrimary} ${dbConn ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
-                                    {t('settings.glanceVaultIntentsEnable', { defaultValue: 'Enable GLANCEvault intents' })}
-                                  </label>
-                                  <p className={`text-xs ${textSecondary} mt-0.5`}>
-                                    {t('settings.glanceVaultIntentsHint', { defaultValue: 'Independent of WebDAV intents and of GLANCEvault sync. Saving reloads the app so the poller restarts.' })}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {/* Vault intents are ALWAYS encrypted. Enabling derives + caches the
-                                  vault intents key BEFORE the reload (the passphrase is gone after).
-                                  Prompt only when the passphrase is actually unavailable. */}
-                              {dbIntentsSetupPhase === 'passphrase-needed' && (
-                                <div className={`p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                                  <p className={`text-sm ${textPrimary} mb-2`}>
-                                    {t('settings.glanceVaultPassphrasePrompt', { defaultValue: 'GLANCEvault intents are always encrypted. Enter your sync passphrase to set up the encryption key.' })}
-                                  </p>
-                                  <input
-                                    type="password"
-                                    autoFocus
-                                    value={dbIntentsPassphraseInput}
-                                    onChange={e => setDbIntentsPassphraseInput(e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Escape') { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); } }}
-                                    placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-                                    className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm mb-2`}
-                                  />
-                                  <div className="flex gap-2">
-                                    <button
-                                      disabled={!dbIntentsPassphraseInput.trim()}
-                                      onClick={async () => {
-                                        const passphrase = dbIntentsPassphraseInput.trim();
-                                        setSyncPassphrase(passphrase);
-                                        setDbIntentsPassphraseInput('');
-                                        setDbIntentsSetupPhase('running');
-                                        try {
-                                          await setupVaultIntentsEncryption(passphrase);
-                                        } catch (err) {
-                                          setDbIntentsSetupPhase({ error: err.message });
-                                          return;
-                                        }
-                                        // Key cached — now persist the toggle and reload the poller.
-                                        const existing = getDbIntentsConfig() || {};
-                                        setDbIntentsConfig({ ...existing, enabled: true });
-                                        window.location.reload();
-                                      }}
-                                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-                                    >
-                                      {t('common.confirm')}
-                                    </button>
-                                    <button
-                                      onClick={() => { setDbIntentsSetupPhase(null); setDbIntentsPassphraseInput(''); setDbIntentsEnabled(false); }}
-                                      className={`px-3 py-1.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm`}
-                                    >
-                                      {t('common.cancel')}
-                                    </button>
-                                  </div>
-                                  <p className="text-xs text-amber-500 mt-2">
-                                    {t('settings.glanceVaultEncryptionRequired', { defaultValue: "Encryption setup is required — GLANCEvault intents won't be enabled until the key is set up." })}
-                                  </p>
-                                </div>
-                              )}
-                              {dbIntentsSetupPhase === 'running' && (
-                                <div className={`flex items-center gap-2 p-3 rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700/50' : 'bg-stone-50'}`}>
-                                  <Loader size={14} className="animate-spin text-blue-500" />
-                                  <span className={`text-sm ${textSecondary}`}>{t('settings.glanceVaultEncryptionSettingUp', { defaultValue: 'Setting up vault intents encryption…' })}</span>
-                                </div>
-                              )}
-                              {dbIntentsSetupPhase?.error && (
-                                <div className={`p-3 rounded-lg border border-red-300 ${darkMode ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                                  <p className="text-sm text-red-500">{t('settings.intentsSetupFailed', { error: dbIntentsSetupPhase.error, defaultValue: 'Setup failed: {{error}}' })}</p>
-                                  <button
-                                    onClick={() => { setDbIntentsSetupPhase(null); setDbIntentsEnabled(false); }}
-                                    className="mt-1 text-xs text-red-400 hover:text-red-300 underline"
-                                  >
-                                    {t('common.dismiss')}
-                                  </button>
-                                </div>
-                              )}
-
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <button
-                                  disabled={dbIntentsSetupPhase === 'running' || dbIntentsSetupPhase === 'passphrase-needed'}
-                                  onClick={async () => {
-                                    // Match-by-construction: spread the EXISTING config and override
-                                    // only `enabled`, so ttlMs / pollIntervalMinutes are preserved
-                                    // (not re-seeded). Persist via the config module's own saver to
-                                    // the exact key the gate reads.
-                                    const existing = getDbIntentsConfig() || {};
-                                    const wasEnabled = !!existing.enabled;
-                                    // Vault intents are always encrypted — make sure the vault intents
-                                    // key is derived + cached BEFORE the reload (the passphrase is gone
-                                    // after). Only when enabling (or on with no key cached yet).
-                                    if (dbIntentsEnabled) {
-                                      let res;
-                                      try {
-                                        res = await ensureVaultIntentsKey();
-                                      } catch (err) {
-                                        setDbIntentsSetupPhase({ error: err.message });
-                                        return; // do NOT enable without a key
-                                      }
-                                      if (res.needsPassphrase) {
-                                        setDbIntentsSetupPhase('passphrase-needed');
-                                        return; // prompt; its confirm finishes save + reload
-                                      }
-                                    }
-                                    setDbIntentsConfig({ ...existing, enabled: dbIntentsEnabled });
-                                    // Reload-on-change so useDbIntentPoller remounts and picks up the
-                                    // new config (mirrors the GLANCEvault sync toggle's behavior). The
-                                    // post-reload useOutboxFlush mount drain flushes any held intents
-                                    // now that the vault key exists.
-                                    if (wasEnabled !== dbIntentsEnabled) {
-                                      window.location.reload();
-                                      return;
-                                    }
-                                    // No reload (already enabled): the key may have just been set up,
-                                    // so flush held intents now.
-                                    await flushOutboxNow();
-                                    setDbIntentsSaved(true);
-                                    setTimeout(() => setDbIntentsSaved(false), 2000);
-                                  }}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 text-sm transition-colors"
-                                >
-                                  {dbIntentsSaved ? t('common.saved') : t('common.save')}
-                                </button>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      {/* iCloud intents opt-in — Apple platforms only (isICloudAvailable()
-                          is false on Android/web). Gates ACTIVATION of the iCloud intents
-                          transport (emit + poll); default OFF so the path stays inert
-                          until the user opts in. */}
-                      {isICloudAvailable() && (
-                        <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                          <div className="flex items-center gap-2">
-                            <Cloud size={14} className={textSecondary} />
-                            <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.icloudIntents')}</span>
-                          </div>
-                          <p className={`${textSecondary} text-xs`}>
-                            {t('settings.icloudIntentsDesc')}
-                          </p>
-                          <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
-                            <input
-                              type="checkbox"
-                              id="icloud-intents-toggle"
-                              checked={icloudIntentsEnabled}
-                              onChange={e => setIcloudIntentsEnabledState(e.target.checked)}
-                              className="mt-0.5 h-4 w-4 rounded"
-                            />
-                            <div>
-                              <label htmlFor="icloud-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
-                                {t('settings.icloudIntentsEnable')}
-                              </label>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const wasEnabled = getIcloudIntentsEnabledFlag();
-                              setIcloudIntentsEnabled(icloudIntentsEnabled);
-                              // Reload so the intent poller remounts and re-reads the
-                              // opt-in (mirrors the GLANCEvault intents reload-on-change).
-                              if (wasEnabled !== icloudIntentsEnabled) {
-                                window.location.reload();
-                                return;
-                              }
-                              setIcloudIntentsSaved(true);
-                              setTimeout(() => setIcloudIntentsSaved(false), 2000);
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                          >
-                            {icloudIntentsSaved ? t('common.saved') : t('common.save')}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Direct Access intents opt-in — wherever the folder bridge exists
-                          (docs/direct-access-sync.md, Phase 7). Gates the event-set
-                          transport (emit + poll); default OFF, and inert until a folder
-                          is connected on this device. */}
-                      {isDirectAccessSupported() && (
-                        <div className={`mt-4 pt-4 border-t ${borderClass} space-y-3`}>
-                          <div className="flex items-center gap-2">
-                            <FolderOpen size={14} className={textSecondary} />
-                            <span className={`text-sm font-medium ${textPrimary}`}>{t('settings.directAccessIntents')}</span>
-                          </div>
-                          <p className={`${textSecondary} text-xs`}>
-                            {t('settings.directAccessIntentsDesc')}
-                          </p>
-                          {!directAccessStatus.connected && (
-                            <p className="text-xs text-amber-700 dark:text-amber-300">{t('settings.directAccessIntentsNeedsFolder')}</p>
-                          )}
-                          <DirectAccessFileRow slot="events" darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />
-                          <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
-                            <input
-                              type="checkbox"
-                              id="direct-access-intents-toggle"
-                              checked={directAccessIntentsEnabled}
-                              onChange={e => setDirectAccessIntentsEnabledState(e.target.checked)}
-                              className="mt-0.5 h-4 w-4 rounded"
-                            />
-                            <div>
-                              <label htmlFor="direct-access-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
-                                {t('settings.directAccessIntentsEnable')}
-                              </label>
-                            </div>
-                          </div>
-                          {directAccessIntentsKeyWanted && (
-                            <div className={`p-3 rounded-lg border ${borderClass} space-y-2`}>
-                              <p className={`text-sm ${textPrimary}`}>{t('settings.intentsPassphraseSetupTitle', { defaultValue: 'Enter your sync passphrase to complete setup' })}</p>
-                              <p className={`text-xs ${textSecondary}`}>{t('settings.intentsPassphraseSetupHint', { defaultValue: 'Required once to derive the intents encryption key. After this, no passphrase is needed across sessions.' })}</p>
-                              <input
-                                type="password"
-                                autoFocus
-                                value={directAccessIntentsPassphrase}
-                                onChange={e => setDirectAccessIntentsPassphrase(e.target.value)}
-                                placeholder={t('sync.passphrasePlaceholder', { defaultValue: 'Your sync passphrase' })}
-                                className={`w-full px-3 py-2 border ${borderClass} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} text-sm`}
-                              />
-                            </div>
-                          )}
-                          <button
-                            onClick={async () => {
-                              const wasEnabled = getDirectAccessIntentsEnabledFlag();
-                              if (directAccessIntentsEnabled && directAccessStatus.encrypt) {
-                                const typed = directAccessIntentsPassphrase.trim();
-                                if (typed) setSyncPassphrase(typed);
-                                const r = await resolveDirectAccessIntentsKey({ transport: directAccessTransport });
-                                if (!r.key) { setDirectAccessIntentsKeyWanted(true); return; }
-                                setDirectAccessIntentsKeyWanted(false);
-                                setDirectAccessIntentsPassphrase('');
-                              }
-                              setDirectAccessIntentsEnabled(directAccessIntentsEnabled);
-                              // Reload so the poller remounts and re-reads the opt-in,
-                              // as the iCloud and GLANCEvault intents switches do.
-                              if (wasEnabled !== directAccessIntentsEnabled) {
-                                window.location.reload();
-                                return;
-                              }
-                              setDirectAccessIntentsSaved(true);
-                              setTimeout(() => setDirectAccessIntentsSaved(false), 2000);
-                            }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                          >
-                            {directAccessIntentsSaved ? t('common.saved') : t('common.save')}
-                          </button>
-                        </div>
-                      )}
-                      </>)}
-                    </div>
-
-                    {/* Automation intents (Tasker) — Android only. Opt-in gate for the
-                        exported IntentReceiver + outbound RESULT/NOTIFY broadcasts. */}
-                    {isNativeAndroid() && (<>
-                    <hr className={borderClass} />
-                    <div className="space-y-3">
-                      <button onClick={() => toggleSettingsSection('automationIntents')} className={`font-medium ${textPrimary} flex items-center gap-2 w-full text-left`}>
-                        <Zap size={16} className={textSecondary} />
-                        {t('settings.automationIntents')}
-                        {automationIntentsEnabled && <span className="mr-1 w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />}
-                        <ChevronDown size={16} className={`ml-auto flex-shrink-0 ${textSecondary} transition-transform ${collapsedSettings.automationIntents ? '' : 'rotate-180'}`} />
-                      </button>
-                      {!collapsedSettings.automationIntents && (<>
-                      <p className={`${textSecondary} text-xs`}>
-                        {t('settings.automationIntentsDesc')}
-                      </p>
-                      <div className={`flex items-start gap-3 p-3 rounded-lg border ${borderClass}`}>
-                        <input
-                          type="checkbox"
-                          id="automation-intents-toggle"
-                          checked={automationIntentsEnabled}
-                          onChange={e => {
-                            const v = e.target.checked;
-                            setAutomationIntentsEnabled(v);
-                            nativeSetAutomationIntentsEnabled(v);
-                          }}
-                          className="mt-0.5 h-4 w-4 rounded"
-                        />
-                        <div>
-                          <label htmlFor="automation-intents-toggle" className={`text-sm font-medium ${textPrimary} cursor-pointer`}>
-                            {t('settings.automationIntentsToggle')}
-                          </label>
-                          <p className={`text-xs ${textSecondary} mt-0.5`}>
-                            {t('settings.automationIntentsWarning')}
-                          </p>
-                        </div>
-                      </div>
-                      </>)}
-                    </div>
-                    </>)}
-
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className={`w-full mt-2 px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors`}
-                >
-                  {t('common.close')}
-                </button>
+                <SettingsTopicPage key={activeTopicId} topic={activeTopic} sections={sections} borderClass={borderClass} />
+              </div>
               </div>
             </div>
           </div>

@@ -740,7 +740,16 @@
     "directAccessIntents": "Direct Access intents",
     "directAccessIntentsDesc": "Share task intents with other GLANCE apps through the Direct Access folder: one event file, glance-events.json, that every device and app on the folder reads and adds to. Encrypted with your sync passphrase when the Direct Access file is.",
     "directAccessIntentsEnable": "Enable Direct Access intents",
-    "directAccessIntentsNeedsFolder": "No folder is connected on this device. Connect one under Cloud Sync → Direct Access first; until then nothing is sent or received here."
+    "directAccessIntentsNeedsFolder": "No folder is connected on this device. Connect one under Cloud Sync → Direct Access first; until then nothing is sent or received here.",
+    "topics": {
+      "general": "General",
+      "appearance": "Appearance",
+      "features": "Features",
+      "ai": "AI",
+      "sync": "Sync",
+      "integrations": "Integrations",
+      "advanced": "Advanced"
+    }
   },
   "dailyNotes": {
     "quickNotes": "Quick Notes",

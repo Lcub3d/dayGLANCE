@@ -1,0 +1,50 @@
+// The Settings topics (#2075, docs/settings-redesign.md): which blocks of the
+// dialog each topic page shows, in order. Pure, so the mapping and the
+// visibility rules are tested without rendering the dialog.
+//
+// Step 1 of the redesign moves blocks without changing them, so a block keeps
+// its own internal layout and collapse state here; the card pattern replaces
+// that per topic in step 2. Notifications, Backup & Restore and About & Help
+// join as their pages land.
+
+export const TOPICS = [
+  { id: 'general', labelKey: 'settings.topics.general', fallback: 'General',
+    sections: ['localization', 'sound', 'weather', 'dailyContent'] },
+  { id: 'appearance', labelKey: 'settings.topics.appearance', fallback: 'Appearance',
+    sections: ['viewDefaults', 'tabletViewDefaults', 'timelineSize', 'cardSize'] },
+  { id: 'features', labelKey: 'settings.topics.features', fallback: 'Features',
+    sections: ['goals', 'routines', 'habits', 'multiUser', 'inbox', 'followUpTag', 'experimental'] },
+  { id: 'ai', labelKey: 'settings.topics.ai', fallback: 'AI',
+    sections: ['ai'] },
+  { id: 'sync', labelKey: 'settings.topics.sync', fallback: 'Sync',
+    sections: ['cloudSync'] },
+  { id: 'integrations', labelKey: 'settings.topics.integrations', fallback: 'Integrations',
+    sections: ['calendarSync', 'obsidian', 'todoist', 'trmnl', 'glanceIntegrations', 'localIntegrations', 'automationIntents'] },
+  { id: 'advanced', labelKey: 'settings.topics.advanced', fallback: 'Advanced',
+    sections: ['globalShortcut'] },
+];
+
+export const SETTINGS_TOPIC_KEY = 'dg-settings-topic';
+
+/** The keys of a topic's sections that render anything here, in order. */
+export function visibleSectionKeys(topic, sections) {
+  return (topic?.sections ?? []).filter((key) => sections[key] && sections[key].show);
+}
+
+/** Topics with at least one visible section; an empty topic is not listed. */
+export function visibleTopics(sections, topics = TOPICS) {
+  return topics.filter((topic) => visibleSectionKeys(topic, sections).length > 0);
+}
+
+/** The topic to open: the remembered one if it is listed here, else the first. */
+export function initialTopicId(remembered, listed) {
+  return listed.some((topic) => topic.id === remembered) ? remembered : (listed[0]?.id ?? null);
+}
+
+export function readRememberedTopic() {
+  try { return localStorage.getItem(SETTINGS_TOPIC_KEY); } catch { return null; }
+}
+
+export function rememberTopic(id) {
+  try { localStorage.setItem(SETTINGS_TOPIC_KEY, id); } catch { /* a convenience only */ }
+}

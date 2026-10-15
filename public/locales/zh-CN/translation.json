@@ -740,7 +740,16 @@
     "directAccessIntents": "Direct Access 意图",
     "directAccessIntentsDesc": "通过 Direct Access 文件夹与其他 GLANCE 应用共享任务意图：一个事件文件 glance-events.json，文件夹中的每台设备和每个应用都会读取并追加。当 Direct Access 文件已加密时，它也以你的同步口令加密。",
     "directAccessIntentsEnable": "启用 Direct Access 意图",
-    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。"
+    "directAccessIntentsNeedsFolder": "本设备尚未连接文件夹。请先在“云同步 → Direct Access”中连接一个；在此之前这里不会发送或接收任何内容。",
+    "topics": {
+      "general": "常规",
+      "appearance": "外观",
+      "features": "功能",
+      "ai": "AI",
+      "sync": "同步",
+      "integrations": "集成",
+      "advanced": "高级"
+    }
   },
   "dailyNotes": {
     "quickNotes": "快速笔记",

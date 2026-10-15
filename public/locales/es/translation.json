@@ -134,7 +134,8 @@
       "pausedKept": "En pausa. Los datos de conexión se conservan: actívalo para reanudar.",
       "vaultDisconnect": "Desconectar",
       "vaultDisconnectConfirm": "¿Desconectar GLANCEvault en este dispositivo? Se eliminarán de este dispositivo la dirección del servidor, el token del dispositivo y el ID de cuenta. Tus datos en el servidor no se modifican.",
-      "encryptionTitle": "Cifrado de extremo a extremo"
+      "encryptionTitle": "Cifrado de extremo a extremo",
+      "saveCaption": "Al guardar se aplican el cifrado de extremo a extremo, WebDAV y GLANCEvault."
     },
     "passphraseHint": "Esta es la frase de contraseña que estableciste al activar el cifrado por primera vez. Nunca se guarda: solo tú la conoces.",
     "passphraseLabel": "Frase de contraseña de sincronización",

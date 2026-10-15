@@ -276,6 +276,8 @@ const SettingsModal = () => {
   // TRMNL's card is open while its form is being filled in, before a webhook
   // makes it possible to switch the push on.
   const [trmnlSetupOpen, setTrmnlSetupOpen] = useState(false);
+  // Cancel on the Sync form puts it back to what is saved, by remounting it.
+  const [syncFormKey, setSyncFormKey] = useState(0);
 
   // Every block of the dialog, verbatim, with the condition under which it
   // renders anything. A topic page is a list of these; separators go between
@@ -1044,6 +1046,7 @@ const SettingsModal = () => {
                   switch and status. */}
               {(<>
               <CloudSyncSettingsForm
+                key={syncFormKey}
                 darkMode={darkMode}
                 textPrimary={textPrimary}
                 textSecondary={textSecondary}
@@ -1055,6 +1058,7 @@ const SettingsModal = () => {
                 provider={provider}
                 currentProvider={currentProvider}
                 onClose={() => setShowSettings(false)}
+                onCancel={() => setSyncFormKey((k) => k + 1)}
                 cloudSyncLastSynced={cloudSyncLastSynced}
                 cloudSyncStatus={cloudSyncStatus}
                 cloudSyncError={cloudSyncError}
@@ -1066,17 +1070,32 @@ const SettingsModal = () => {
                 vaultLastSynced={vaultLastSynced}
                 vaultSkipped={vaultSkipped}
                 onSyncKeyReady={(ready) => setSyncKeyReady(ready)}
+                afterChannels={(
+                  <>
+                  {/* Desktop only — the Electron main process holds the folder
+                      (docs/direct-access-sync.md). */}
+                  {isDirectAccessSupported() && (
+                    <DirectAccessSyncCard
+                      darkMode={darkMode}
+                      textPrimary={textPrimary}
+                      textSecondary={textSecondary}
+                      borderClass={borderClass}
+                    />
+                  )}
+                  {/* Apple platforms only — on Android/web every probe reports
+                      unsupported, so the panel would be an empty box. */}
+                  {isICloudAvailable() && (
+                    <ICloudSyncToggle
+                      darkMode={darkMode}
+                      textPrimary={textPrimary}
+                      textSecondary={textSecondary}
+                      borderClass={borderClass}
+                    />
+                  )}
+                  </>
+                )}
               />
-              {/* Apple platforms only — on Android/web every probe reports
-                  unsupported, so the panel would be an empty box. */}
-              {isICloudAvailable() && (
-                <ICloudSyncToggle
-                  darkMode={darkMode}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderClass={borderClass}
-                />
-              )}
+              {/* Last: read-only, and about every transport above. */}
               {/* On every platform: the panel reports GLANCEvault and WebDAV
                   everywhere, the iCloud container on Apple platforms, and the
                   Direct Access folder wherever the bridge exists, each block
@@ -1087,16 +1106,6 @@ const SettingsModal = () => {
                 textSecondary={textSecondary}
                 borderClass={borderClass}
               />
-              {/* Desktop only — the Electron main process holds the folder
-                  (docs/direct-access-sync.md). */}
-              {isDirectAccessSupported() && (
-                <DirectAccessSyncCard
-                  darkMode={darkMode}
-                  textPrimary={textPrimary}
-                  textSecondary={textSecondary}
-                  borderClass={borderClass}
-                />
-              )}
               </>)}
             </div>
         </>

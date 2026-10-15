@@ -35,7 +35,7 @@ describe('the topic map', () => {
 
   it('holds what were the header bell and save icon as their own topics', () => {
     const ids = TOPICS.map((topic) => topic.id);
-    expect(ids).toEqual(['general', 'appearance', 'features', 'ai', 'sync', 'integrations', 'notifications', 'backup', 'advanced', 'about']);
+    expect(ids).toEqual(['general', 'appearance', 'features', 'ai', 'sync', 'integrations', 'notifications', 'backup', 'about']);
     expect(TOPICS.find((topic) => topic.id === 'notifications').sections).toEqual(['notifications']);
     expect(TOPICS.find((topic) => topic.id === 'backup').sections).toEqual(['backup']);
   });
@@ -51,10 +51,21 @@ describe('visibility', () => {
     expect(visibleSectionKeys(TOPICS[0], sections)).toEqual(['localization', 'sound']);
   });
 
-  it('a topic with nothing to show is not listed (Advanced off macOS)', () => {
+  it('a topic with nothing to show is not listed', () => {
     const ids = visibleTopics(sections).map((topic) => topic.id);
     expect(ids).toEqual(['general', 'sync']);
-    expect(ids).not.toContain('advanced');
+    expect(ids).not.toContain('ai');
+  });
+
+  it('global shortcuts live on General, last, where the platform has them', () => {
+    const general = TOPICS.find((topic) => topic.id === 'general');
+    expect(general.sections.at(-1)).toBe('globalShortcut');
+    expect(visibleSectionKeys(general, { ...sections, globalShortcut: { show: true } })).toEqual(['localization', 'sound', 'globalShortcut']);
+  });
+
+  it('Features opens with Inbox and Follow-ups, Experimental last', () => {
+    expect(TOPICS.find((topic) => topic.id === 'features').sections)
+      .toEqual(['inbox', 'followUpTag', 'goals', 'routines', 'habits', 'multiUser', 'experimental']);
   });
 });
 

@@ -112,7 +112,10 @@
       "vaultSkipped_one": "{{count}} item couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "vaultSkipped_other": "{{count}} items couldn't be read (skipped). This usually means a different sync passphrase was used on another device.",
       "saveEnable": "Save & Enable",
-      "enabling": "Enabling..."
+      "enabling": "Enabling...",
+      "pausedKept": "Paused. The connection details are kept: switch it on to resume.",
+      "vaultDisconnect": "Disconnect",
+      "vaultDisconnectConfirm": "Disconnect GLANCEvault on this device? The server address, device token and account ID are removed from this device. Your data on the server is not touched."
     },
     "passphraseHint": "This is the passphrase you set when you first enabled encryption. It is never stored — only you know it.",
     "passphraseLabel": "Sync passphrase",

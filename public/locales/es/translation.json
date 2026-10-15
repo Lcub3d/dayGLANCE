@@ -112,7 +112,10 @@
       "vaultSkipped_one": "No se pudo leer {{count}} elemento (omitido). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "vaultSkipped_other": "No se pudieron leer {{count}} elementos (omitidos). Esto suele significar que se usó una frase de contraseña de sincronización distinta en otro dispositivo.",
       "saveEnable": "Guardar y activar",
-      "enabling": "Activando..."
+      "enabling": "Activando...",
+      "pausedKept": "En pausa. Los datos de conexión se conservan: actívalo para reanudar.",
+      "vaultDisconnect": "Desconectar",
+      "vaultDisconnectConfirm": "¿Desconectar GLANCEvault en este dispositivo? Se eliminarán de este dispositivo la dirección del servidor, el token del dispositivo y el ID de cuenta. Tus datos en el servidor no se modifican."
     },
     "passphraseHint": "Esta es la frase de contraseña que estableciste al activar el cifrado por primera vez. Nunca se guarda: solo tú la conoces.",
     "passphraseLabel": "Frase de contraseña de sincronización",

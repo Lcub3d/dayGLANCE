@@ -112,7 +112,10 @@
       "vaultSkipped_one": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "vaultSkipped_other": "有 {{count}} 个项目无法读取，已跳过。通常是因为另一台设备使用了不同的同步口令。",
       "saveEnable": "保存并启用",
-      "enabling": "正在启用…"
+      "enabling": "正在启用…",
+      "pausedKept": "已暂停。连接信息已保留：打开开关即可继续。",
+      "vaultDisconnect": "断开连接",
+      "vaultDisconnectConfirm": "要在此设备上断开 GLANCEvault 吗？服务器地址、设备令牌和账户 ID 将从此设备移除。服务器上的数据不受影响。"
     },
     "passphraseHint": "这是你首次启用加密时设置的同步口令。应用不会存储它，只有你知道。",
     "passphraseLabel": "同步口令",

@@ -1723,7 +1723,18 @@ app.whenReady().then(async () => {
   // effect. A missing or corrupt file means off, and the apply is a no-op then
   // — sync keeps going out through net.fetch on the default session.
   loadSyncProxySettings();
-  await applySyncProxySettings();
+  // A saved proxy that cannot be applied must not stop the app from starting:
+  // nothing would be left to show a window or fix the setting. Treat it as
+  // off for this run (sync takes the pre-feature path, net.fetch on the
+  // default session) and leave the file alone, so the user's settings are
+  // still there to correct. Same direction as the loader: a failure forgets
+  // the proxy, it never invents one.
+  try {
+    await applySyncProxySettings();
+  } catch (err) {
+    console.error('[dayGLANCE] The saved sync proxy could not be applied; sync proxy is off for this run:', err);
+    syncProxyConfig = { ...syncProxyConfig, enabled: false };
+  }
 
   logStartup('storage migration: start');
   await migrateFileToAppStorage();

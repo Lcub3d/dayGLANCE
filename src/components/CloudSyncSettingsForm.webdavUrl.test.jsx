@@ -40,3 +40,23 @@ describe('CloudSyncSettingsForm WebDAV URL warning', () => {
     expect(html).not.toContain(insecurePublicWarning);
   });
 });
+
+// Each Sync card saves on its own (sync/syncFormPlan.js): a form that matches
+// what is saved shows no Save or Cancel at all.
+describe('CloudSyncSettingsForm per-card saves', () => {
+  const original = globalThis.localStorage;
+  beforeAll(() => { globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }; });
+  afterAll(() => { globalThis.localStorage = original; });
+
+  it('shows no card actions while nothing differs from what is saved', () => {
+    const html = renderToStaticMarkup(
+      <CloudSyncSettingsForm
+        darkMode={false} textPrimary="" textSecondary="" borderClass="" hoverBg="" currentProvider="nextcloud"
+        cloudSyncConfig={{ enabled: true, provider: 'nextcloud', nextcloudUrl: 'https://dav.example.com', username: 'u', appPassword: 'p', syncFolder: 'GLANCE/dayglance', encryptionEnabled: false }}
+        setCloudSyncConfig={() => {}}
+      />,
+    );
+    expect(html).not.toContain('data-sync-card-actions');
+    expect(html).not.toContain('data-sync-form-actions');
+  });
+});

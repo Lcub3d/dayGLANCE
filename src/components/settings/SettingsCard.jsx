@@ -9,13 +9,14 @@
 // A static card can be `collapsible`: the title row opens and closes it, and
 // `defaultOpen` says how it starts. Closed, it shows the title and the badge
 // only, so a page of long sections stays a short list.
+// `footer` renders under the contents whether the card is on or off.
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 export default function SettingsCard({
   icon: Icon, title, checked, onToggle, switchLabel, hint, summary, badge, darkMode,
   textPrimary, textSecondary, borderClass, children, cardId, disabled = false,
-  collapsible = false, defaultOpen = false,
+  collapsible = false, defaultOpen = false, footer = null,
 }) {
   const canCollapse = collapsible && !onToggle;
   const [open, setOpen] = useState(defaultOpen);
@@ -76,6 +77,9 @@ export default function SettingsCard({
       {hint && expanded && <p className={`text-xs ${textSecondary} -mt-1.5`} data-settings-card-hint>{hint}</p>}
       {summary && <div className={`text-xs ${textSecondary}`} data-settings-card-summary>{summary}</div>}
       {(onToggle ? checked : expanded) && children}
+      {/* Shown on or off: a card's own Save and Cancel, while it has unsaved
+          changes, must stay reachable after its switch is turned off. */}
+      {footer}
     </section>
   );
 }

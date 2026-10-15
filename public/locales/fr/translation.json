@@ -92,7 +92,7 @@
       "accountIdPlaceholder": "ID de compte du foyer",
       "vaultReloadHint": "L'enregistrement d'une modification de GLANCEvault recharge l'application afin que les moteurs de synchronisation soient reconstruits.",
       "vaultNeedsEncryption": "GLANCEvault est toujours chiffré de bout en bout. Activez \"{{encryption}}\" ci-dessus et définissez votre phrase secrète de synchronisation pour l'activer.",
-      "vaultNeedsPassphrase": "Saisissez votre phrase secrète de synchronisation dans la section de chiffrement ci-dessus pour activer GLANCEvault sur cet appareil.",
+      "vaultNeedsPassphrase": "Votre phrase secrète de synchronisation, pour connecter GLANCEvault sur cet appareil.",
       "vaultUnreachableSimple": "Impossible de joindre le vault à cette URL.",
       "vaultAllowPrivateAddress": "Autoriser cette adresse…",
       "vaultAllowPrivateAddressHint": "dayGLANCE vous demandera de confirmer. N’autorisez que des adresses de votre propre réseau.",
@@ -134,8 +134,7 @@
       "pausedKept": "En pause. Les informations de connexion sont conservées : activez-le pour reprendre.",
       "vaultDisconnect": "Déconnecter",
       "vaultDisconnectConfirm": "Déconnecter GLANCEvault sur cet appareil ? L'adresse du serveur, le jeton de l'appareil et l'identifiant du compte sont supprimés de cet appareil. Vos données sur le serveur ne sont pas touchées.",
-      "encryptionTitle": "Chiffrement de bout en bout",
-      "saveCaption": "L'enregistrement applique le chiffrement de bout en bout, WebDAV et GLANCEvault."
+      "encryptionTitle": "Chiffrement de bout en bout"
     },
     "passphraseHint": "Il s'agit de la phrase secrète définie lors de la première activation du chiffrement. Elle n'est jamais stockée — vous seul la connaissez.",
     "passphraseLabel": "Phrase secrète de synchronisation",

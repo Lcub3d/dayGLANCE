@@ -1632,7 +1632,7 @@
   },
   "backup": {
     "title": "Backup e ripristino",
-    "description": "Esporta i tuoi dati in un file o ripristina da un backup precedente.",
+    "description": "Esporta i tuoi dati in un file, ripristina da un backup precedente o reimposta i dati dell'app.",
     "exportBackup": "Esporta backup",
     "exportHint": "Scarica tutte le attività e impostazioni come JSON",
     "restoreBackup": "Ripristina backup",
@@ -1674,7 +1674,7 @@
     "snapshotFrequency": "Frequenza degli snapshot",
     "snapshotDescription": "La copia aggiornata viene modificata entro pochi secondi da ogni cambiamento; gli snapshot sono file aggiuntivi di un determinato momento, conservati con questa frequenza.",
     "lastSaved": "Ultimo salvataggio: {{time}}",
-    "remoteDeviceHint": "Abilitalo su un solo dispositivo. Se usi più dispositivi, utilizza la sincronizzazione cloud per mantenerli sincronizzati e configura i backup remoti solo sul dispositivo principale.",
+    "remoteDeviceHint": "Abilitalo su un solo dispositivo. Se usi più dispositivi, utilizza la sincronizzazione cloud per mantenerli sincronizzati e configura i backup remoti solo sul dispositivo principale. Se sincronizzi con GLANCEvault, lascia disattivati i backup remoti.",
     "provider": "Provider",
     "testing": "Test in corso…",
     "testConnection": "Testa connessione",
@@ -1693,7 +1693,8 @@
       "webdavUrl": "URL WebDAV"
     },
     "folderPaused": "Backup nella cartella in pausa. Ricollegala in Backup e ripristino → Backup automatico per riprendere.",
-    "storageFull": "Spazio di archiviazione pieno. Alcuni dati potrebbero non essere stati salvati. Elimina i dati vecchi o libera spazio nel browser."
+    "storageFull": "Spazio di archiviazione pieno. Alcuni dati potrebbero non essere stati salvati. Elimina i dati vecchi o libera spazio nel browser.",
+    "historyTitle": "Cronologia dei backup"
   },
   "app": {
     "tasksScheduledTitle": "Attività pianificate",

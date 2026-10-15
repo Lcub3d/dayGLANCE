@@ -32,7 +32,7 @@ export const SECTION_SEARCH = {
   glanceIntegrations: ['settings.glanceIntegrations', 'settings.glanceServerUrl'],
   localIntegrations: ['settings.localIntegrations'],
   automationIntents: ['settings.automationIntents'],
-  backup: ['backup.title', 'backup.exportBackup', 'backup.restoreBackup', 'backup.autoBackup'],
+  backup: ['backup.title', 'backup.exportBackup', 'backup.restoreBackup', 'backup.autoBackup', 'backup.localBackups', 'backup.remoteBackups', 'backup.folderBackup', 'backup.historyTitle'],
   globalShortcut: ['settings.globalShortcuts'],
   about: ['settings.topics.about', 'app.documentation', 'onboarding.privacyPolicy', 'onboarding.termsOfUse'],
 };

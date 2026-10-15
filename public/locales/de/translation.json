@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Sicherung & Wiederherstellung",
-    "description": "Exportieren Sie Ihre Daten in eine Datei oder stellen Sie eine frühere Sicherung wieder her.",
+    "description": "Exportieren Sie Ihre Daten in eine Datei, stellen Sie eine frühere Sicherung wieder her oder setzen Sie die App-Daten zurück.",
     "exportBackup": "Sicherung exportieren",
     "exportHint": "Alle Aufgaben und Einstellungen als JSON herunterladen",
     "restoreBackup": "Sicherung wiederherstellen",
@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Häufigkeit der Momentaufnahmen",
     "snapshotDescription": "Die Live-Kopie wird innerhalb weniger Sekunden nach jeder Änderung aktualisiert; Momentaufnahmen sind zusätzliche Dateien zu bestimmten Zeitpunkten, die nach diesem Intervall aufbewahrt werden.",
     "lastSaved": "Zuletzt gespeichert: {{time}}",
-    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein.",
+    "remoteDeviceHint": "Aktivieren Sie dies nur auf einem Gerät. Wenn Sie mehrere Geräte verwenden, nutzen Sie Cloud-Synchronisierung, um sie synchron zu halten, und richten Sie Remote-Sicherungen nur auf Ihrem Hauptgerät ein. Wenn Sie mit GLANCEvault synchronisieren, lassen Sie Remote-Sicherungen ausgeschaltet.",
     "provider": "Anbieter",
     "testing": "Wird getestet…",
     "testConnection": "Verbindung testen",
@@ -1691,7 +1691,8 @@
       "webdavUrl": "WebDAV-URL"
     },
     "folderPaused": "Ordnersicherung pausiert. Verbinde sie unter Sicherung & Wiederherstellung → Automatische Sicherung neu, um fortzufahren.",
-    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei."
+    "storageFull": "Speicher voll. Einige Daten wurden möglicherweise nicht gespeichert. Lösche alte Daten oder gib Browserspeicher frei.",
+    "historyTitle": "Sicherungsverlauf"
   },
   "app": {
     "tasksScheduledTitle": "Aufgaben geplant",

@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Copia de seguridad y restauración",
-    "description": "Exporta tus datos a un archivo o restaura desde una copia anterior.",
+    "description": "Exporta tus datos a un archivo, restaura desde una copia anterior o restablece los datos de la app.",
     "exportBackup": "Exportar copia de seguridad",
     "exportHint": "Descargar todas las tareas y ajustes como JSON",
     "restoreBackup": "Restaurar copia de seguridad",
@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Frecuencia de las copias",
     "snapshotDescription": "La copia activa se actualiza en unos segundos después de cada cambio; las copias son archivos adicionales de puntos en el tiempo que se conservan con esta frecuencia.",
     "lastSaved": "Último guardado: {{time}}",
-    "remoteDeviceHint": "Actívalo solo en un dispositivo. Si usas varios dispositivos, utiliza la sincronización en la nube para mantenerlos sincronizados y configura las copias remotas solo en tu dispositivo principal.",
+    "remoteDeviceHint": "Actívalo solo en un dispositivo. Si usas varios dispositivos, utiliza la sincronización en la nube para mantenerlos sincronizados y configura las copias remotas solo en tu dispositivo principal. Si sincronizas con GLANCEvault, deja las copias remotas desactivadas.",
     "provider": "Proveedor",
     "testing": "Probando…",
     "testConnection": "Probar conexión",
@@ -1691,7 +1691,8 @@
       "webdavUrl": "URL de WebDAV"
     },
     "folderPaused": "Copia de seguridad en carpeta en pausa. Vuelve a conectarla en Copia de seguridad y restauración → Copia de seguridad automática para reanudarla.",
-    "storageFull": "Almacenamiento lleno. Es posible que algunos datos no se hayan guardado. Borra datos antiguos o libera almacenamiento del navegador."
+    "storageFull": "Almacenamiento lleno. Es posible que algunos datos no se hayan guardado. Borra datos antiguos o libera almacenamiento del navegador.",
+    "historyTitle": "Historial de copias de seguridad"
   },
   "app": {
     "tasksScheduledTitle": "Tareas programadas",

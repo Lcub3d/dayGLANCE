@@ -1685,7 +1685,7 @@
   },
   "backup": {
     "title": "Kopia zapasowa i przywracanie",
-    "description": "Wyeksportuj swoje dane do pliku lub przywróć z poprzedniej kopii zapasowej.",
+    "description": "Wyeksportuj swoje dane do pliku, przywróć z poprzedniej kopii zapasowej lub zresetuj dane aplikacji.",
     "exportBackup": "Eksportuj kopię zapasową",
     "exportHint": "Pobierz wszystkie zadania i ustawienia jako JSON",
     "restoreBackup": "Przywróć kopię zapasową",
@@ -1727,7 +1727,7 @@
     "snapshotFrequency": "Częstotliwość migawek",
     "snapshotDescription": "Aktualna kopia jest aktualizowana w ciągu kilku sekund po każdej zmianie; migawki to dodatkowe pliki z określonego momentu, tworzone z tą częstotliwością.",
     "lastSaved": "Ostatni zapis: {{time}}",
-    "remoteDeviceHint": "Włączaj tylko na jednym urządzeniu. Jeśli używasz wielu urządzeń, użyj synchronizacji w chmurze do ich synchronizowania, a kopie zdalne skonfiguruj tylko na swoim urządzeniu głównym.",
+    "remoteDeviceHint": "Włączaj tylko na jednym urządzeniu. Jeśli używasz wielu urządzeń, użyj synchronizacji w chmurze do ich synchronizowania, a kopie zdalne skonfiguruj tylko na swoim urządzeniu głównym. Jeśli synchronizujesz przez GLANCEvault, pozostaw kopie zdalne wyłączone.",
     "provider": "Dostawca",
     "testing": "Testowanie…",
     "testConnection": "Testuj połączenie",
@@ -1746,7 +1746,8 @@
       "webdavUrl": "Adres URL WebDAV"
     },
     "folderPaused": "Kopia zapasowa w folderze wstrzymana. Połącz ją ponownie w Kopia zapasowa i przywracanie → Automatyczna kopia zapasowa, aby wznowić.",
-    "storageFull": "Pamięć pełna. Część danych mogła nie zostać zapisana. Usuń stare dane lub zwolnij pamięć przeglądarki."
+    "storageFull": "Pamięć pełna. Część danych mogła nie zostać zapisana. Usuń stare dane lub zwolnij pamięć przeglądarki.",
+    "historyTitle": "Historia kopii zapasowych"
   },
   "app": {
     "tasksScheduledTitle": "Zaplanowano zadania",

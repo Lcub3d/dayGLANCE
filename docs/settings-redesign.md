@@ -59,7 +59,7 @@ shipped as #2078).
 | **Sync** | One card each: End-to-end encryption first (the passphrase both channels use), then WebDAV, GLANCEvault, iCloud (Apple only); Network proxy last (desktop, #2082), since it applies only to sync traffic | Cloud Sync block |
 | **Integrations** | One card each: Calendars (CalDAV task calendar, ICS feeds, device calendars, file import), Obsidian, Todoist, TRMNL, GLANCE apps (intents), Local Integrations (MCP), Android Automation (Android only) | Calendar Sync, Obsidian, Todoist, TRMNL, GLANCE Integrations, Local Integrations, Automation Intents blocks |
 | **Notifications** | Cards: Reminders, Weekly Review, hyperGLANCE Sessions (each with its own switch) | The header bell's dialog |
-| **Backup & Restore** | Back up now; restore from file or folder; auto-backup settings | The header save icon's menu and the auto-backup manager |
+| **Backup & Restore** | Auto-Backup as one card holding cards for Local Backups and Remote Backups (each with a switch), Folder Backup (web only, its own connect / disconnect) and Backup history (restore and delete); then Export, Restore and Reset as one row | The header save icon's menu and the auto-backup manager |
 | **Advanced** | Global shortcuts (desktop); diagnostics | Global Shortcuts block |
 | **About & Help** | Version and update check; help; send feedback; privacy policy and terms | Update banner, help modal links |
 

@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "备份与恢复",
-    "description": "将数据导出为文件，或从之前的备份恢复。",
+    "description": "将数据导出为文件、从之前的备份恢复，或重置应用程序数据。",
     "exportBackup": "导出备份",
     "exportHint": "下载所有任务和设置为 JSON",
     "restoreBackup": "恢复备份",
@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "快照频率",
     "snapshotDescription": "实时副本会在每次更改后的几秒内更新；快照是按此频率保留的额外时间点文件。",
     "lastSaved": "上次保存：{{time}}",
-    "remoteDeviceHint": "仅在一台设备上启用。如果使用多台设备，请使用云同步保持数据一致，并只在主设备上设置远程备份。",
+    "remoteDeviceHint": "仅在一台设备上启用。如果使用多台设备，请使用云同步保持数据一致，并只在主设备上设置远程备份。如果使用 GLANCEvault 同步，请保持远程备份关闭。",
     "provider": "服务商",
     "testing": "测试中…",
     "testConnection": "测试连接",
@@ -1691,7 +1691,8 @@
       "webdavUrl": "WebDAV 地址"
     },
     "folderPaused": "文件夹备份已暂停。请在“备份与恢复 → 自动备份”中重新连接以继续。",
-    "storageFull": "存储空间已满，部分数据可能未保存。请清除旧数据或释放浏览器存储空间。"
+    "storageFull": "存储空间已满，部分数据可能未保存。请清除旧数据或释放浏览器存储空间。",
+    "historyTitle": "备份历史"
   },
   "app": {
     "tasksScheduledTitle": "任务已排期",

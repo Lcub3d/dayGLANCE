@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Backup e restauração",
-    "description": "Exporte seus dados para um arquivo ou restaure a partir de uma cópia anterior.",
+    "description": "Exporte seus dados para um arquivo, restaure a partir de uma cópia anterior ou redefina os dados do aplicativo.",
     "exportBackup": "Exportar backup",
     "exportHint": "Baixar todas as tarefas e configurações como JSON",
     "restoreBackup": "Restaurar backup",
@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Frequência dos snapshots",
     "snapshotDescription": "A cópia atualizada é modificada em poucos segundos após cada alteração; snapshots são arquivos adicionais de momentos específicos mantidos nesta frequência.",
     "lastSaved": "Último salvamento: {{time}}",
-    "remoteDeviceHint": "Ative em apenas um dispositivo. Se usar vários dispositivos, utilize a sincronização na nuvem para mantê-los sincronizados e configure backups remotos somente no dispositivo principal.",
+    "remoteDeviceHint": "Ative em apenas um dispositivo. Se usar vários dispositivos, utilize a sincronização na nuvem para mantê-los sincronizados e configure backups remotos somente no dispositivo principal. Se você sincroniza com o GLANCEvault, deixe os backups remotos desativados.",
     "provider": "Provedor",
     "testing": "Testando…",
     "testConnection": "Testar conexão",
@@ -1691,7 +1691,8 @@
       "webdavUrl": "URL do WebDAV"
     },
     "folderPaused": "Backup na pasta pausado. Reconecte-o em Backup e restauração → Backup automático para retomar.",
-    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido salvos. Apague dados antigos ou libere espaço no navegador."
+    "storageFull": "Armazenamento cheio. Alguns dados podem não ter sido salvos. Apague dados antigos ou libere espaço no navegador.",
+    "historyTitle": "Histórico de backups"
   },
   "app": {
     "tasksScheduledTitle": "Tarefas agendadas",

@@ -1630,7 +1630,7 @@
   },
   "backup": {
     "title": "Backup & Restore",
-    "description": "Export your data to a file or restore from a previous backup.",
+    "description": "Export your data to a file, restore from a previous backup, or reset app data.",
     "exportBackup": "Export Backup",
     "exportHint": "Download all tasks and settings as JSON",
     "restoreBackup": "Restore Backup",
@@ -1672,7 +1672,7 @@
     "snapshotFrequency": "Snapshot frequency",
     "snapshotDescription": "The live copy is updated within seconds of every change; snapshots are extra point-in-time files kept on this cadence.",
     "lastSaved": "Last saved: {{time}}",
-    "remoteDeviceHint": "Only enable on one device. If you use multiple devices, use Cloud Sync to keep them in sync and set up remote backups on your primary device only.",
+    "remoteDeviceHint": "Only enable on one device. If you use multiple devices, use Cloud Sync to keep them in sync and set up remote backups on your primary device only. If you sync with GLANCEvault, leave remote backups off.",
     "provider": "Provider",
     "testing": "Testing…",
     "testConnection": "Test Connection",
@@ -1691,7 +1691,8 @@
       "webdavUrl": "WebDAV URL"
     },
     "folderPaused": "Folder backup paused. Reconnect it in Backup & Restore → Auto-Backup to resume.",
-    "storageFull": "Storage full. Some data may not have saved. Clear old data or free up browser storage."
+    "storageFull": "Storage full. Some data may not have saved. Clear old data or free up browser storage.",
+    "historyTitle": "Backup history"
   },
   "app": {
     "tasksScheduledTitle": "Tasks Scheduled",

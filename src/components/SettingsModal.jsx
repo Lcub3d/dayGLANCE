@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity, AlertCircle, Archive, BarChart3, Bell, BookOpen, BrainCircuit, CalendarDays, CheckCircle, CheckSquare, ChevronDown, Clock, Cloud, ExternalLink, Flag, FlaskConical, FolderOpen, Globe, Info, Key, LayoutGrid, Loader, Lock, MapPin, Mic, Moon, Newspaper, RefreshCw, Server, Settings, Sparkles, Sun, Target, Thermometer, Upload, Users, Wifi, WifiOff, X, Zap } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../utils/timezones.js';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
@@ -15,6 +15,7 @@ import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
 import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
 import SettingsCard from './settings/SettingsCard.jsx';
 import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
+import { searchSettings } from './settings/settingsSearch.js';
 import TimelineSizeSettings from './TimelineSizeSettings.jsx';
 import CardSizeSettings from './CardSizeSettings.jsx';
 import CloudSyncSettingsForm from './CloudSyncSettingsForm.jsx';
@@ -2940,7 +2941,24 @@ const SettingsModal = () => {
   const [chosenTopic, setChosenTopic] = useState(readRememberedTopic);
   const activeTopicId = initialTopicId(chosenTopic, listedTopics);
   const activeTopic = TOPICS.find((topic) => topic.id === activeTopicId);
-  const selectTopic = (id) => { setChosenTopic(id); rememberTopic(id); };
+  const selectTopic = (id) => { setChosenTopic(id); rememberTopic(id); setSettingsQuery(''); };
+
+  // Search lists the matching settings in the page's place; choosing one opens
+  // its topic scrolled to it, and marks it for a moment so the eye finds it.
+  const [settingsQuery, setSettingsQuery] = useState('');
+  const [scrollToSection, setScrollToSection] = useState(null);
+  const searchResults = settingsQuery ? searchSettings(settingsQuery, sections, t) : [];
+  const openSearchResult = (result) => { selectTopic(result.topicId); setScrollToSection(result.sectionKey); };
+  useEffect(() => {
+    if (!scrollToSection) return undefined;
+    const el = document.querySelector(`[data-settings-section="${scrollToSection}"]`);
+    setScrollToSection(null);
+    if (!el) return undefined;
+    el.scrollIntoView?.({ block: 'start' });
+    el.setAttribute('data-settings-found', '');
+    const timer = setTimeout(() => el.removeAttribute('data-settings-found'), 1600);
+    return () => clearTimeout(timer);
+  }, [scrollToSection, activeTopicId]);
 
   return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
@@ -2981,6 +2999,8 @@ const SettingsModal = () => {
                 sections={sections}
                 activeId={activeTopicId}
                 onSelect={selectTopic}
+                query={settingsQuery}
+                onQuery={setSettingsQuery}
                 darkMode={darkMode}
                 textPrimary={textPrimary}
                 textSecondary={textSecondary}
@@ -2988,7 +3008,32 @@ const SettingsModal = () => {
               />
               <div className="flex-1 min-w-0 overflow-y-auto p-6" data-settings-scroll>
 
-                <SettingsTopicPage key={activeTopicId} topic={activeTopic} sections={sections} borderClass={borderClass} />
+                {settingsQuery ? (
+                  <div data-settings-results className="space-y-1">
+                    {searchResults.length === 0 ? (
+                      <p className={`text-sm ${textSecondary}`}>{t('spotlight.noResults')}</p>
+                    ) : searchResults.map((result) => {
+                      const topic = TOPICS.find((entry) => entry.id === result.topicId);
+                      const topicLabel = t(topic.labelKey, topic.fallback);
+                      return (
+                        <button
+                          key={result.sectionKey}
+                          type="button"
+                          data-settings-result={result.sectionKey}
+                          onClick={() => openSearchResult(result)}
+                          className={`w-full text-left px-3 py-2 rounded-lg ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} transition-colors`}
+                        >
+                          <span className={`block text-sm font-medium ${textPrimary}`}>
+                            {result.title}{result.match && <span className={`font-normal ${textSecondary}`}>{' · '}{result.match}</span>}
+                          </span>
+                          {topicLabel !== result.title && <span className={`block text-xs ${textSecondary}`}>{topicLabel}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <SettingsTopicPage key={activeTopicId} topic={activeTopic} sections={sections} borderClass={borderClass} />
+                )}
               </div>
               </div>
             </div>

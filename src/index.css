@@ -223,3 +223,16 @@ body.using-pointer a:focus-visible {
   outline-offset: 1px;
   border-radius: 0.5rem;
 }
+
+/* Settings search: the section a result opened, marked for a moment. */
+@keyframes settings-found {
+  from { box-shadow: 0 0 0 3px rgb(59 130 246 / 0.6); }
+  to { box-shadow: 0 0 0 3px rgb(59 130 246 / 0); }
+}
+[data-settings-found] {
+  border-radius: 0.75rem;
+  animation: settings-found 1.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-settings-found] { animation: none; }
+}

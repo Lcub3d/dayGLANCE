@@ -35,7 +35,7 @@ describe('the topic map', () => {
 
   it('holds what were the header bell and save icon as their own topics', () => {
     const ids = TOPICS.map((topic) => topic.id);
-    expect(ids).toEqual(['general', 'appearance', 'features', 'notifications', 'ai', 'sync', 'integrations', 'backup', 'advanced', 'about']);
+    expect(ids).toEqual(['general', 'appearance', 'features', 'ai', 'sync', 'integrations', 'notifications', 'backup', 'advanced', 'about']);
     expect(TOPICS.find((topic) => topic.id === 'notifications').sections).toEqual(['notifications']);
     expect(TOPICS.find((topic) => topic.id === 'backup').sections).toEqual(['backup']);
   });

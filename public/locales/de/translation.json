@@ -1420,7 +1420,8 @@
     "hgStartingNow": "{{title}} · Beginnt jetzt",
     "taskCount_one": "{{count}} Aufgabe",
     "taskCount_other": "{{count}} Aufgaben",
-    "snoozeMinutes": "In {{count}} Min. erneut erinnern"
+    "snoozeMinutes": "In {{count}} Min. erneut erinnern",
+    "title": "Erinnerungen"
   },
   "frames": {
     "title": "GTD-Rahmen",

@@ -32,6 +32,25 @@ export function aiHasCredentials(config) {
   return config?.provider === 'ollama' || !!(config?.apiKey && String(config.apiKey).trim());
 }
 
+/**
+ * Is AI usable at all: switched on, with a provider that can answer. Every
+ * AI surface outside Settings asks this (or `aiFeatureOn`), never
+ * `config.enabled` alone, so switching AI on before a key is entered changes
+ * nothing in the app.
+ */
+export function aiActive(config) {
+  return !!config?.enabled && aiHasCredentials(config);
+}
+
+/**
+ * Is one AI feature on. A saved feature flag counts only while AI is active:
+ * configs saved before features defaulted off still carry `true` for every
+ * feature, and Settings shows those as off and locked until a key is set.
+ */
+export function aiFeatureOn(config, key) {
+  return aiActive(config) && !!config.features?.[key];
+}
+
 const PROVIDER_MODELS = {
   openai: [
     { id: 'gpt-4o-mini', label: 'GPT-4o Mini', recommended: true },

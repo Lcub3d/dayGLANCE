@@ -18,7 +18,7 @@ import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormattin
 import { findRunningTask } from '../utils/runningTask.js';
 import { HABIT_COLORS, HABIT_ICONS } from '../constants/habits.js';
 import { cloudSyncProviders } from '../utils/cloudSyncProviders.js';
-import { PROVIDER_MODELS, PROVIDER_LABELS } from '../ai.js';
+import { PROVIDER_MODELS, PROVIDER_LABELS, aiFeatureOn } from '../ai.js';
 import { HabitRing, MiniHabitRing } from './HabitRing.jsx';
 import GettingStartedChecklist from './GettingStartedChecklist.jsx';
 import NotesSubtasksPanel from './NotesSubtasksPanel.jsx';
@@ -475,7 +475,7 @@ const MobileLayout = () => {
   const [showInboxFilter, setShowInboxFilter] = useState(false);
   // The Inbox's Smart Schedule FAB: AI scheduling on, a frame to schedule
   // into, and an open inbox task to place (the desktop header's same test).
-  const inboxSmartScheduleAvailable = !!(aiConfig?.enabled && aiConfig.features?.smartScheduling
+  const inboxSmartScheduleAvailable = !!(aiFeatureOn(aiConfig, 'smartScheduling')
     && myFrames.filter(f => f.enabled).length > 0
     && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0);
   const inboxFilterBtnRef = useRef(null);

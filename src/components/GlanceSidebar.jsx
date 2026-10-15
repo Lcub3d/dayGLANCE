@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDuration } from '../utils/formatDuration.js';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import { aiFeatureOn } from '../ai.js';
 
 const GlanceSidebar = ({ variant = 'desktop' }) => {
   const {
@@ -511,7 +512,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
   })()}
 
   {/* Morning dayGLANCE — AI morning summary card (desktop) */}
-  {aiConfig.enabled && aiConfig.features.morningSummary && !morningGlanceDismissed && (
+  {aiFeatureOn(aiConfig, 'morningSummary') && !morningGlanceDismissed && (
     (morningGlanceText || morningGlanceLoading || morningGlanceError) ? (
     <div className={`rounded-lg border p-3 ${darkMode ? 'border-amber-800/50 bg-amber-900/20' : 'border-amber-200 bg-amber-50'}`}>
       <div className="flex items-start justify-between gap-2">
@@ -549,7 +550,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
         {morningGlanceText && !morningGlanceLoading && (
           <p className={`text-sm leading-relaxed ${textPrimary}`}>{morningGlanceText}</p>
         )}
-        {morningGlanceText && !morningGlanceLoading && aiConfig?.enabled && aiConfig.features?.smartScheduling && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
+        {morningGlanceText && !morningGlanceLoading && aiFeatureOn(aiConfig, 'smartScheduling') && myFrames.filter(f => f.enabled).length > 0 && unscheduledTasks.filter(t => notBucketed(t) && !t.completed && !t.isExample).length > 0 && (
           <button
             onClick={() => isTray ? openMainAt({ action: 'schedule-inbox' }) : (setShowFramesModal(true), setFramesModalTab('schedule'), setEditingFrame(null))}
             className={`mt-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${darkMode ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'}`}
@@ -579,7 +580,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
   )}
 
   {/* Evening Reflection — AI end-of-day card (desktop) */}
-  {aiConfig.enabled && aiConfig.features.eveningReflection && !eveningGlanceDismissed && currentTime.getHours() >= 19 && (
+  {aiFeatureOn(aiConfig, 'eveningReflection') && !eveningGlanceDismissed && currentTime.getHours() >= 19 && (
     (eveningGlanceText || eveningGlanceLoading || eveningGlanceError) ? (
     <div className={`rounded-lg border p-3 ${darkMode ? 'border-indigo-800/50 bg-indigo-900/20' : 'border-indigo-200 bg-indigo-50'}`}>
       <div className="flex items-start justify-between gap-2">
@@ -605,7 +606,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
         )}
         {eveningGlanceError && <p className={`text-xs ${darkMode ? 'text-red-400' : 'text-red-600'}`}>{eveningGlanceError}</p>}
         {eveningGlanceText && !eveningGlanceLoading && <p className={`text-sm leading-relaxed ${textPrimary}`}>{eveningGlanceText}</p>}
-        {eveningGlanceText && !eveningGlanceLoading && incompleteTodayTasks.length > 0 && myFrames.filter(f => f.enabled).length > 0 && aiConfig.features?.aiReschedule && (
+        {eveningGlanceText && !eveningGlanceLoading && incompleteTodayTasks.length > 0 && myFrames.filter(f => f.enabled).length > 0 && aiFeatureOn(aiConfig, 'aiReschedule') && (
           <button
             onClick={() => isTray ? openMainAt({ action: 'reschedule' }) : (setShowRescheduleModal(true), setRescheduleResults(null), setRescheduleError(''))}
             className={`mt-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${darkMode ? 'text-orange-400 hover:text-orange-300' : 'text-orange-600 hover:text-orange-700'}`}
@@ -631,7 +632,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
   )}
 
   {/* Frame Nudge card (desktop) */}
-  {aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge && activeFrameForNudge.minutesRemaining > 30 && agendaNowMarker.gapMinutes >= 15 && frameNudgeDismissedKey !== activeFrameNudgeKey && (frameNudgeSuggestion || frameNudgeLoading || frameNudgeError || frameNudgeNotice) && (
+  {aiFeatureOn(aiConfig, 'frameNudge') && activeFrameForNudge && activeFrameForNudge.minutesRemaining > 30 && agendaNowMarker.gapMinutes >= 15 && frameNudgeDismissedKey !== activeFrameNudgeKey && (frameNudgeSuggestion || frameNudgeLoading || frameNudgeError || frameNudgeNotice) && (
     <FrameNudgeCard
       suggestion={frameNudgeSuggestion}
       loading={frameNudgeLoading}
@@ -665,7 +666,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
   }}
 />}
   {/* Reschedule Tasks — shown when overdue past-day tasks exist, or incomplete today tasks after 7pm */}
-  {aiConfig?.enabled && aiConfig.features?.aiReschedule && myFrames.filter(f => f.enabled).length > 0 && (() => {
+  {aiFeatureOn(aiConfig, 'aiReschedule') && myFrames.filter(f => f.enabled).length > 0 && (() => {
     const _todayStr = getTodayStr();
     const _pastOverdue = getOverdueTasks().filter(t => t._overdueType === 'scheduled' ? t.date < _todayStr : true);
     if (!(_pastOverdue.length > 0 || (incompleteTodayTasks.length > 0 && currentTime.getHours() >= 19))) return null;
@@ -967,7 +968,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
             ) : agendaNowMarker.inboxCount > 0 ? (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-xs italic text-red-500">{t('app.maybeTackleInbox')}</span>
-                {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge?.minutesRemaining > 30 && (
+                {agendaNowMarker.showNudge && aiFeatureOn(aiConfig, 'frameNudge') && activeFrameForNudge?.minutesRemaining > 30 && (
                   <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); revealFrameNudgeCard(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
                     <Sparkles size={9} />AI
                   </button>
@@ -1138,7 +1139,7 @@ const GlanceSidebar = ({ variant = 'desktop' }) => {
               ) : agendaNowMarker.inboxCount > 0 ? (
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-xs italic text-red-500">{t('app.maybeTackleInbox')}</span>
-                  {agendaNowMarker.showNudge && aiConfig.enabled && aiConfig.features?.frameNudge && activeFrameForNudge?.minutesRemaining > 30 && (
+                  {agendaNowMarker.showNudge && aiFeatureOn(aiConfig, 'frameNudge') && activeFrameForNudge?.minutesRemaining > 30 && (
                     <button onClick={() => { setFrameNudgeDismissedKey(''); generateFrameNudge(); revealFrameNudgeCard(); }} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-500/20 hover:bg-teal-500/30 text-teal-600 dark:text-teal-400 transition-colors">
                       <Sparkles size={9} />AI
                     </button>

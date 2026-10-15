@@ -2,11 +2,12 @@ import React from 'react';
 import { BrainCircuit, LayoutGrid, Inbox, CalendarDays, Check, Loader } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { renderTitle } from '../utils/textFormatting.jsx';
+import { aiActive } from '../ai.js';
 
 const SmartSchedulePanel = ({ aiConfig, inboxTasks, smartScheduleResults, smartScheduleLoading, smartScheduleError, smartScheduleAccepted, setSmartScheduleAccepted, onRun, onApply, onCancel, darkMode, textPrimary, textSecondary, borderClass, cardBg, hoverBg, gtdFrames, formatTime, mode = 'inbox' }) => {
   const { t } = useTranslation();
   const isReschedule = mode === 'reschedule';
-  if (!aiConfig?.enabled || (!aiConfig.features?.smartScheduling && !isReschedule)) {
+  if (!aiActive(aiConfig) || (!aiConfig.features?.smartScheduling && !isReschedule)) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <BrainCircuit size={48} className={textSecondary} />

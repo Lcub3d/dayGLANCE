@@ -13,6 +13,7 @@ import LastGlanceBadge from './LastGlanceBadge.jsx';
 import TaskModalNotes from './TaskModalNotes.jsx';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
+import { aiFeatureOn } from '../ai.js';
 
 const DesktopNewTaskModal = () => {
   const { t, i18n } = useTranslation();
@@ -176,7 +177,7 @@ const DesktopNewTaskModal = () => {
                   </div>
                 )}
                 {/* AI duration + tag suggestion */}
-                {aiConfig.enabled && aiConfig.features?.durationEstimate && !mobileEditingTask && (
+                {aiFeatureOn(aiConfig, 'durationEstimate') && !mobileEditingTask && (
                   taskAISuggestionLoading ? (
                     <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
                       <Loader size={11} className="animate-spin" />

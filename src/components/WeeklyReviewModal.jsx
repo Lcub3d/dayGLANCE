@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { notBucketed } from '../utils/bucketList.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import { formatDuration } from '../utils/formatDuration.js';
+import { aiFeatureOn } from '../ai.js';
 
 const WeeklyReviewModal = () => {
   const {
@@ -701,7 +702,7 @@ const WeeklyReviewModal = () => {
                   )}
 
                   {/* AI Weekly Insights */}
-                  {aiConfig.enabled && aiConfig.features.weeklySummary && (
+                  {aiFeatureOn(aiConfig, 'weeklySummary') && (
                     (weeklyAISummary || weeklyAILoading || weeklyAIError) ? (
                     <div className={`mt-3 rounded-lg border p-3 ${darkMode ? 'border-purple-800/50 bg-purple-900/20' : 'border-purple-200 bg-purple-50'}`}>
                       <div className="flex items-center justify-between mb-2">

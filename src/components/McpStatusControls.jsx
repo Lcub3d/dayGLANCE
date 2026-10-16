@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Power, Undo2, X, Zap } from 'lucide-react';
+import { Power, Settings, Undo2, X, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { mcpSurfaceState } from '../utils/mcpSurfaceState.js';
 
@@ -334,7 +334,7 @@ export function McpStatusPanel({ mcp, darkMode, open, borderClass, variant, card
  * (backup/help pattern — dimmed backdrop, centered card, X or backdrop click
  * to close). Renders null when hidden, closing the surface with it.
  */
-export function McpStatusModal({ mcp, darkMode, open, onClose, borderClass, cardBg }) {
+export function McpStatusModal({ mcp, darkMode, open, onClose, onOpenSettings, borderClass, cardBg }) {
   const { t } = useTranslation();
   if (!open || !mcp.visible) return null;
 
@@ -372,6 +372,21 @@ export function McpStatusModal({ mcp, darkMode, open, onClose, borderClass, card
         <div className="px-5 py-4 space-y-2">
           <McpPanelBody mcp={mcp} darkMode={darkMode} textScale="text-xs" />
         </div>
+        {/* Where the server and Stream Deck are set up (Integrations →
+            Local Integrations). */}
+        {onOpenSettings && (
+          <div className={`px-5 py-3 border-t ${borderClass}`}>
+            <button
+              type="button"
+              data-mcp-open-settings
+              onClick={onOpenSettings}
+              className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+            >
+              <Settings size={12} />
+              {t('settings.localIntegrations')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

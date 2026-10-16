@@ -19,6 +19,13 @@ describe('SettingsCard', () => {
     expect(render({ checked: false })).toContain('data-settings-card-state="off"');
   });
 
+  it('contentsWhenOff keeps the contents while off, the switch still saying off', () => {
+    const html = render({ checked: false, contentsWhenOff: true });
+    expect(html).toContain('data-body');
+    expect(html).toContain('data-settings-card-state="off"');
+    expect(html).toContain('aria-checked="false"');
+  });
+
   it('shows the summary when off, so a paused card says so', () => {
     expect(render({ checked: false, summary: 'Paused' })).toMatch(/data-settings-card-summary="true">Paused/);
   });
@@ -30,6 +37,30 @@ describe('SettingsCard', () => {
     expect(html).toContain('data-settings-card-state="static"');
     expect(html).toContain('data-body');
     expect(html).not.toContain('role="switch"');
+  });
+
+  it('a collapsible card starts closed, showing its title and badge only', () => {
+    const html = renderToStaticMarkup(
+      <SettingsCard cardId="c" title="Fold" collapsible hint="Hint" badge={<i data-badge />} borderClass="" textPrimary="" textSecondary=""><p data-body>body</p></SettingsCard>,
+    );
+    expect(html).toContain('data-settings-card-state="closed"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('data-badge');
+    expect(html).not.toContain('data-body');
+    expect(html).not.toContain('Hint');
+  });
+
+  it('defaultOpen starts it open', () => {
+    const html = renderToStaticMarkup(
+      <SettingsCard cardId="c" title="Fold" collapsible defaultOpen borderClass="" textPrimary="" textSecondary=""><p data-body>body</p></SettingsCard>,
+    );
+    expect(html).toContain('data-settings-card-state="open"');
+    expect(html).toContain('data-body');
+  });
+
+  it('a card with a switch ignores collapsible', () => {
+    expect(render({ checked: true, collapsible: true })).toContain('role="switch"');
+    expect(render({ checked: true, collapsible: true })).toContain('data-body');
   });
 
   it('a locked switch is disabled and says its state', () => {

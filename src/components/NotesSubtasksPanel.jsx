@@ -9,6 +9,7 @@ import { isCalendarEventRow } from '../utils/eventNotes.js';
 import { noteFocusTarget } from '../utils/noteFocusTarget.js';
 import { autoSizeTextarea } from '../utils/autoSizeTextarea.js';
 import { useSyncCtx } from '../context/SyncContext.jsx';
+import { aiFeatureOn } from '../ai.js';
 
 /** Format an ISO timestamp as a human-readable relative or absolute string. */
 function formatNoteTimestamp(iso) {
@@ -547,7 +548,7 @@ const NotesSubtasksPanel = ({
       <div>
         <div className={`text-xs font-semibold mb-1 flex items-center gap-1.5 ${th.label}`}>
           <span>{t('task.subtasks')} {task.subtasks?.length > 0 && `(${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length})`}</span>
-          {aiConfig?.enabled && aiConfig.features?.aiSubtasks && onGenerateSubtasks && (
+          {aiFeatureOn(aiConfig, 'aiSubtasks') && onGenerateSubtasks && (
             <button
               type="button"
               onClick={() => onGenerateSubtasks(task.id, task.title, task.notes, isInbox)}

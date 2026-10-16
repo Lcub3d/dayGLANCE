@@ -19,9 +19,12 @@ import { resetAppData, reloadAfterReset } from '../utils/resetAppData.js';
  * open → choose scope → confirm. Rendered in both the mobile settings Backups
  * view and the desktop backup menu.
  */
-const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBackup }) => {
+// `startExpanded` / `onCollapse` let a page show its own Reset button and open
+// this panel straight at the scope choice (Settings → Backup & Restore); the
+// panel still asks for scope and a confirmation before anything is deleted.
+const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBackup, startExpanded = false, onCollapse }) => {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(startExpanded);
   // 'device' | 'everywhere' — 'device' is the safer default, so a mis-tap on a
   // synced setup cannot silently wipe the other devices too.
   const [scope, setScope] = useState('device');
@@ -153,7 +156,7 @@ const ResetAppDataSection = ({ darkMode, textPrimary, textSecondary, onExportBac
           {busy ? t('reset.working') : t('reset.confirm')}
         </button>
         <button
-          onClick={() => { setExpanded(false); setErrors(null); }}
+          onClick={() => { setExpanded(false); setErrors(null); onCollapse?.(); }}
           disabled={busy}
           className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} transition-colors disabled:opacity-60`}
         >

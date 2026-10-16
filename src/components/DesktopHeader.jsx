@@ -27,7 +27,7 @@ const DesktopHeader = () => {
     monthViewActive,
     setShowDayDial,
     viewedMonth, setViewedMonth,
-    setShowSettings,
+    setShowSettings, openSettings,
     updateInfo,
     setShowHelpModal,
     weather, weatherTempUnit, weatherEnabled,
@@ -236,7 +236,7 @@ const DesktopHeader = () => {
               if (calSyncConfigured) {
                 syncAll();
               } else {
-                setShowSettings(true);
+                openSettings('integrations', 'calendarSync');
               }
             }}
             disabled={isSyncing}
@@ -259,7 +259,9 @@ const DesktopHeader = () => {
           </button>}
           {syncConfigured && (
           <button
-            onClick={triggerSync}
+            // Red means the last sync failed: open Sync, where the error and
+            // Sync now are, rather than retrying blind.
+            onClick={() => (effSyncStatus === 'error' ? openSettings('sync', 'cloudSync') : triggerSync())}
             className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg}`}
             title={effSyncing
               ? t('common.syncing')
@@ -275,7 +277,11 @@ const DesktopHeader = () => {
           )}
           {obsidianConfig?.enabled && (
             <button
-              onClick={() => performObsidianSync()}
+              // Red (a failed sync or a lost vault) opens Obsidian's settings,
+              // where the reason and the fix are; otherwise it syncs.
+              onClick={() => (obsidianSyncStatus === 'error' || obsidianVaultAccess === 'lost'
+                ? openSettings('integrations', 'obsidian')
+                : performObsidianSync())}
               disabled={obsidianSyncStatus === 'syncing'}
               className={`relative p-2 ${darkMode ? 'bg-gray-700' : 'bg-stone-200'} rounded-lg ${hoverBg} ${obsidianSyncStatus === 'syncing' ? 'opacity-70 cursor-not-allowed' : ''}`}
               title={obsidianSyncStatus === 'syncing'
@@ -330,7 +336,7 @@ const DesktopHeader = () => {
       </div>
       {/* Desktop uses the app's standard modal chrome (backup/help pattern) —
           the earlier inline expansion pushed the whole calendar down. */}
-      <McpStatusModal mcp={mcp} darkMode={darkMode} open={mcpOpen} onClose={() => setMcpOpen(false)} borderClass={borderClass} cardBg={cardBg} />
+      <McpStatusModal mcp={mcp} darkMode={darkMode} open={mcpOpen} onClose={() => setMcpOpen(false)} onOpenSettings={() => { setMcpOpen(false); openSettings('integrations', 'localIntegrations'); }} borderClass={borderClass} cardBg={cardBg} />
     </>
   );
 };

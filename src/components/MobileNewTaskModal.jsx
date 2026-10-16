@@ -13,6 +13,7 @@ import TaskModalNotes from './TaskModalNotes.jsx';
 import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import useBackClose, { ABOVE_EDITORS } from '../hooks/useBackClose.js';
+import { aiFeatureOn } from '../ai.js';
 
 const MobileNewTaskModal = () => {
   const { t, i18n } = useTranslation();
@@ -133,7 +134,7 @@ const MobileNewTaskModal = () => {
                   </div>
                 )}
                 {/* AI duration + tag suggestion */}
-                {aiConfig.enabled && aiConfig.features?.durationEstimate && !mobileEditingTask && (
+                {aiFeatureOn(aiConfig, 'durationEstimate') && !mobileEditingTask && (
                   taskAISuggestionLoading ? (
                     <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
                       <Loader size={11} className="animate-spin" />

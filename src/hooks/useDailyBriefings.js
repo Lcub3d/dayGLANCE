@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { aiComplete } from '../ai.js';
+import { aiComplete, aiFeatureOn } from '../ai.js';
 import {
   morningSummarySystemPrompt, morningSummaryUserPrompt,
   eveningReflectionSystemPrompt, eveningReflectionUserPrompt,
@@ -37,10 +37,12 @@ export default function useDailyBriefings({
   // guard holds between clicks that land before a re-render.
   const morningInFlight = useRef(false);
   const eveningInFlight = useRef(false);
+  const morningOn = aiFeatureOn(aiConfig, 'morningSummary');
+  const eveningOn = aiFeatureOn(aiConfig, 'eveningReflection');
 
   // --- Morning dayGLANCE (AI morning summary) ---
   const generateMorningSummary = useCallback(async (force = false) => {
-    if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.morningSummary) return;
+    if (!aiFeatureOn(aiConfig, 'morningSummary')) return;
     const todayStr = dateToString(new Date());
     const language = currentAiLanguage();
     // Check cache (skip when force-regenerating via the refresh button). A
@@ -126,7 +128,7 @@ export default function useDailyBriefings({
   // We no longer auto-generate — the user clicks "see your daily briefing" to trigger it.
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || !aiConfig.enabled || !aiConfig.features.morningSummary) return;
+      if (document.visibilityState !== 'visible' || !morningOn) return;
       const todayStr = dateToString(new Date());
       // Already have today's briefing cached, in the language shown now?
       try {
@@ -140,11 +142,11 @@ export default function useDailyBriefings({
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [aiConfig.enabled, aiConfig.features.morningSummary, setMorningGlanceDismissed, setMorningGlanceText]);
+  }, [morningOn, setMorningGlanceDismissed, setMorningGlanceText]);
 
   // --- Evening Reflection ---
   const generateEveningReflection = useCallback(async (force = false) => {
-    if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.eveningReflection) return;
+    if (!aiFeatureOn(aiConfig, 'eveningReflection')) return;
     const todayStr = dateToString(new Date());
     const language = currentAiLanguage();
     if (!force) {
@@ -211,7 +213,7 @@ export default function useDailyBriefings({
   // Reset evening reflection on day rollover
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || !aiConfig.enabled || !aiConfig.features.eveningReflection) return;
+      if (document.visibilityState !== 'visible' || !eveningOn) return;
       const todayStr = dateToString(new Date());
       try {
         if (isBriefingCurrent(parseBriefingCache(localStorage.getItem(EVENING_KEY)), todayStr, currentAiLanguage())) return;
@@ -222,7 +224,7 @@ export default function useDailyBriefings({
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [aiConfig.enabled, aiConfig.features.eveningReflection, setEveningGlanceDismissed, setEveningGlanceText]);
+  }, [eveningOn, setEveningGlanceDismissed, setEveningGlanceText]);
 
   // A language switch makes the briefing on screen stale in the same way a new
   // day does (#1789): clear the text so the click prompt returns, and the next

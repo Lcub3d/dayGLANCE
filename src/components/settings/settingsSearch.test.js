@@ -31,7 +31,7 @@ describe('settings search', () => {
   it('skips sections this device does not show', () => {
     const shown = { ...allShown, globalShortcut: { show: false } };
     expect(searchSettings('shortcut', shown, t)).toEqual([]);
-    expect(searchSettings('shortcut', allShown, t).map((r) => r.topicId)).toEqual(['advanced']);
+    expect(searchSettings('shortcut', allShown, t).map((r) => r.topicId)).toEqual(['general']);
   });
 
   it('finds the cards inside a page by their own titles', () => {

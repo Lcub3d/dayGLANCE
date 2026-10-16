@@ -146,7 +146,8 @@ describe('Todoist namespace and settings', () => {
   });
   it('is wired to both settings entries and an always-mounted hook', () => {
     expect(readFileSync('src/App.jsx', 'utf8')).toContain('const todoist = useTodoistSync(');
-    expect(readFileSync('src/components/SettingsModal.jsx', 'utf8')).toContain('<TodoistSettings variant="card" />');
-    expect(readFileSync('src/components/MobileSettingsPanel.jsx', 'utf8')).toContain("mobileSettingsView === 'todoist'");
+    expect(readFileSync('src/components/settings/topics/useIntegrationsTopic.jsx', 'utf8')).toContain('<TodoistSettings variant="card" />');
+    // Mobile opens the same Integrations page, from the shared sections.
+    expect(readFileSync('src/components/MobileSettingsPanel.jsx', 'utf8')).toContain('useSettingsSections()');
   });
 });

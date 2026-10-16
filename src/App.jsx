@@ -8,7 +8,7 @@ import { readDailyNoteFresh, readDailyNoteNative, simpleHash as obsidianSimpleHa
 import { appendTaskDirect, writeDailyNoteDirect } from './utils/obsidianDirectWrites.js';
 import { emitBridgeIntent } from './utils/obsidianBridgeStream.js';
 import { isStreamPosture } from './utils/obsidianVaultPosture.js';
-import { loadAIConfig, saveAIConfig, aiComplete, aiJSON, testConnection, DEFAULT_CONFIG, PROVIDER_MODELS, PROVIDER_LABELS } from './ai.js';
+import { loadAIConfig, saveAIConfig, aiComplete, aiJSON, testConnection, DEFAULT_CONFIG, PROVIDER_MODELS, PROVIDER_LABELS, aiFeatureOn } from './ai.js';
 import { taskSuggestSystemPrompt, taskSuggestUserPrompt, frameNudgeSystemPrompt, frameNudgeUserPrompt, rescheduleSystemPrompt, rescheduleUserPrompt, aiSubtasksSystemPrompt, aiSubtasksUserPrompt, weeklySummarySystemPrompt, weeklySummaryUserPrompt, smartScheduleSystemPrompt, smartScheduleUserPrompt } from './ai-prompts.js';
 import { checkForUpdate } from './versionCheck.js';
 import { getStorageUsage, formatBytes } from './utils/storage.js';
@@ -105,6 +105,7 @@ import ReminderToasts from './components/ReminderToasts.jsx';
 import TaskPeek from './components/TaskPeek.jsx';
 import { FOLLOW_UP_TAG_KEY, PEEK_TASK_EVENT, canFollowUp, completionFollowUpDraft, doneDateOf, normalizeFollowUpTag, resolveTaskRef, taskLink } from './utils/followUp.js';
 import ObsidianSyncToast from './components/ObsidianSyncToast.jsx';
+import { useSettingsLink } from './components/settings/settingsLink.js';
 import MobileNewTaskModal from './components/MobileNewTaskModal.jsx';
 import ProjectPlanner from './components/projects/ProjectPlanner.jsx';
 import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
@@ -1130,6 +1131,10 @@ const DayPlanner = () => {
 
   // Settings & Reminders modals
   const [showSettings, setShowSettings] = useState(false);
+  // Links into Settings at a topic and section (components/settings/settingsLink.js).
+  const { settingsLink, setSettingsLink, openSettings } = useSettingsLink({
+    isMobile, setShowSettings, setMobileActiveTab, setMobileSettingsView,
+  });
   const [collapsedSettings, setCollapsedSettings] = useState({ cloudSync: false, calSync: true, ai: true, obsidian: true, todoist: true, trmnl: true, multiUser: true, intent: true, automationIntents: true, localIntegrations: true });
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateDismissedVersion, setUpdateDismissedVersion] = useState(() => localStorage.getItem('dayglance-update-dismissed') || null);
@@ -6150,9 +6155,7 @@ const DayPlanner = () => {
     const cleanedTitle = newTask.title.replace(/#\w+|@\S+|~\S+|%\d+|\^\S*/g, '').trim();
     if (
       cleanedTitle.length < 3 ||
-      !aiConfig.enabled ||
-      !aiConfig.features?.durationEstimate ||
-      (!aiConfig.apiKey && aiConfig.provider !== 'ollama')
+      !aiFeatureOn(aiConfig, 'durationEstimate')
     ) return;
     setTaskAISuggestion(null);
     setTaskAISuggestionLoading(true);
@@ -6171,7 +6174,7 @@ const DayPlanner = () => {
 
   // --- Weekly AI Summary (enhanced weekly review) ---
   const generateWeeklyAISummary = useCallback(async (stats) => {
-    if (!aiConfig.enabled || (!aiConfig.apiKey && aiConfig.provider !== 'ollama') || !aiConfig.features.weeklySummary) return;
+    if (!aiFeatureOn(aiConfig, 'weeklySummary')) return;
     setWeeklyAILoading(true);
     setWeeklyAIError('');
     try {
@@ -6680,7 +6683,7 @@ const DayPlanner = () => {
   // suggestion, an error, or a notice saying why there is none. Only the
   // automatic nudge on entering a frame stays quiet when nothing fits.
   const generateFrameNudge = useCallback(async (opts) => {
-    if (!aiConfig.enabled || !aiConfig.features?.frameNudge || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')) return;
+    if (!aiFeatureOn(aiConfig, 'frameNudge')) return;
     const auto = opts?.auto === true;
     const nowMin = currentTime.getHours() * 60 + currentTime.getMinutes();
     const today = new Date();
@@ -6736,7 +6739,7 @@ const DayPlanner = () => {
   // Auto-trigger frame nudge when entering a new Frame
   const prevFrameNudgeKeyRef = useRef(null);
   useEffect(() => {
-    if (isTrayMode || !aiConfig.enabled || !aiConfig.features?.frameNudge) return;
+    if (isTrayMode || !aiFeatureOn(aiConfig, 'frameNudge')) return;
     if (myFrames.filter(f => f.enabled).length === 0) return;
     if (activeFrameNudgeKey === prevFrameNudgeKeyRef.current) return;
     prevFrameNudgeKeyRef.current = activeFrameNudgeKey;
@@ -7574,7 +7577,7 @@ const DayPlanner = () => {
 
   // Run Smart Schedule: gather context, call AI, present results
   const runSmartSchedule = async () => {
-    if (!aiConfig?.enabled || !aiConfig.features?.smartScheduling) return;
+    if (!aiFeatureOn(aiConfig, 'smartScheduling')) return;
     setSmartScheduleLoading(true);
     setSmartScheduleError('');
     setSmartScheduleResults(null);
@@ -7723,7 +7726,7 @@ const DayPlanner = () => {
 
   // --- AI Rescheduling ---
   const runReschedule = async () => {
-    if (!aiConfig?.enabled || !aiConfig.features?.aiReschedule) return;
+    if (!aiFeatureOn(aiConfig, 'aiReschedule')) return;
     setRescheduleLoading(true);
     setRescheduleError('');
     setRescheduleResults(null);
@@ -7818,7 +7821,7 @@ const DayPlanner = () => {
 
   // --- AI Subtask Generation ---
   const generateAISubtasks = useCallback(async (taskId, taskTitle, taskNotes, isInbox) => {
-    if (!aiConfig?.enabled || !aiConfig.features?.aiSubtasks || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')) return;
+    if (!aiFeatureOn(aiConfig, 'aiSubtasks')) return;
     setAiSubtasksLoadingForTask(taskId);
     try {
       const result = await aiJSON(aiSubtasksSystemPrompt(), aiSubtasksUserPrompt({ title: stripWikilinks(taskTitle), notes: taskNotes }), aiConfig);
@@ -8008,6 +8011,7 @@ const DayPlanner = () => {
     weekTimelineEndHour, setWeekTimelineEndHour,
     minimizedSections, setMinimizedSections,
     showSettings, setShowSettings,
+    settingsLink, setSettingsLink, openSettings,
     collapsedSettings, setCollapsedSettings,
     soundEnabled, setSoundEnabled,
     updateInfo, setUpdateInfo,
@@ -9785,7 +9789,7 @@ const DayPlanner = () => {
                   </button>
                 );
               })()}
-              {!isImported && aiConfig?.enabled && aiConfig.features?.aiSubtasks && (
+              {!isImported && aiFeatureOn(aiConfig, 'aiSubtasks') && (
                 <button
                   className={`w-full text-left px-3 py-2 text-sm ${textPrimary} ${hoverBg} transition-colors flex items-center gap-2`}
                   onClick={() => {

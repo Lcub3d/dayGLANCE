@@ -16,6 +16,7 @@ import { notBucketed } from '../utils/bucketList.js';
 import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
 import useSettingsSections from './settings/useSettingsSections.js';
 import { visibleTopics, topicAttention } from './settings/settingsTopics.js';
+import { mobileViewForTopic, revealSettingsSection } from './settings/settingsLink.js';
 
 // One icon per Settings topic for the mobile rows (the desktop list has none).
 const TOPIC_ICONS = {
@@ -31,7 +32,7 @@ const MobileSettingsPanel = () => {
     weekStartDay, setWeekStartDay, homeTimezone, soundEnabled, setSoundEnabled,
     setShowHelpModal, allTags, unscheduledTasks, getTodayStr,
     setOnboardingProgress, cardBg, borderClass, textPrimary, textSecondary,
-    hoverBg, colors, formatTime,
+    hoverBg, colors, formatTime, settingsLink, setSettingsLink,
   } = useDayPlannerCtx();
   const {
     calSyncStatus, calSyncConfigured, isSyncing, cloudSyncConfig, cloudSyncStatus,
@@ -86,7 +87,19 @@ const MobileSettingsPanel = () => {
   const mobileTopic = mobileSettingsView?.startsWith('topic:')
     ? listedTopics.find((topic) => `topic:${topic.id}` === mobileSettingsView) ?? null
     : null;
-  const openTopic = (id) => setMobileSettingsView(`topic:${id}`);
+  const openTopic = (id) => setMobileSettingsView(mobileViewForTopic(id));
+  // A topic this device doesn't show (a link, or a remembered view) falls
+  // back to the list rather than a blank screen.
+  const strandedTopic = mobileSettingsView?.startsWith('topic:') && !mobileTopic;
+  useEffect(() => { if (strandedTopic) setMobileSettingsView('main'); }, [strandedTopic, setMobileSettingsView]);
+  // A link into Settings (settings/settingsLink.js) already opened its topic;
+  // scroll to its section once that page is on screen, then clear it.
+  useEffect(() => {
+    if (!settingsLink || (mobileTopic && mobileTopic.id !== settingsLink.topic)) return undefined;
+    const section = mobileTopic ? settingsLink.section : null;
+    setSettingsLink(null);
+    return section ? revealSettingsSection(section) : undefined;
+  }, [settingsLink, mobileTopic]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The Sync row keeps its live dot: WebDAV or GLANCEvault, whichever is on.
   const syncIcon = (() => {

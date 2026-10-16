@@ -66,7 +66,7 @@ export default function useAppearanceTopic() {
       ),
     },
     viewDefaults: {
-      show: (canShowViewCycler || schedOnlyCycler) && !isTablet,
+      show: (canShowViewCycler || schedOnlyCycler) && !isTablet && !isMobile,
       node: (
         <>
             {/* View Defaults Section — desktop only (tablet has its own
@@ -216,6 +216,101 @@ export default function useAppearanceTopic() {
               </div>
             )}
         </>
+      ),
+    },
+    // The phone's view defaults: which view opens, which views the cycler
+    // offers, LIST's end of day and the GLANCE page. Desktop and tablet have
+    // their own blocks above (docs/settings-redesign.md, Mobile).
+    mobileViewDefaults: {
+      show: isMobile,
+      node: (
+        <div className="space-y-4">
+          {/* View default */}
+          <div className="space-y-2">
+            <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
+              <LayoutGrid size={16} className={textSecondary} />
+              {t('settings.viewDefault')}
+            </div>
+            <p className={`text-xs ${textSecondary}`}>{t('settings.viewDefaultDesc')}</p>
+            <div className="flex flex-wrap gap-2">
+              {enabledViews(MOBILE_VIEW_MODES, hiddenViews?.mobile).map((value) => ({ value, label: mobileViewLabel(value) })).map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => { setMobileDefaultView(value); setMobileViewMode(value); }}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    mobileDefaultView === value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="pt-2">
+              <ViewToggles scope="mobile" views={offeredViews(MOBILE_VIEW_MODES, { joboEnabled })} label={mobileViewLabel} />
+            </div>
+
+            {/* End of day (LIST view only) */}
+            {mobileViewMode === 'list' && (
+              <div className="mt-3 space-y-1.5">
+                <label className={`block text-xs font-medium ${textSecondary}`}>{t('settings.endOfDay')}</label>
+                <p className={`text-xs ${textSecondary} opacity-70`}>{t('settings.endOfDayHint')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[{ label: t('common.off'), value: null }, ...Array.from({ length: 13 }, (_, i) => {
+                    const totalMin = 18 * 60 + i * 30;
+                    const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+                    const mm = String(totalMin % 60).padStart(2, '0');
+                    const val = `${hh}:${mm}`;
+                    return { label: formatTime(val), value: val };
+                  })].map(({ label, value }) => {
+                    const active = (listEndOfDayTime ?? null) === value;
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => setListEndOfDayTime(value)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          active
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : `${darkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-white border-stone-300 text-stone-700'}`
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* GLANCE default */}
+          {habitsEnabled && goalsProjectsEnabled && (
+            <>
+              <div className="space-y-2">
+                <div className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                  <LayoutGrid size={16} className={textSecondary} />
+                  {t('settings.glanceDefault')}
+                </div>
+                <p className={`text-xs ${textSecondary}`}>{t('settings.glanceDefaultDesc')}</p>
+                <div className="flex gap-2">
+                  {[{ value: 0, label: t('settings.glanceDefaultHabits') }, { value: 1, label: t('settings.glanceDefaultGoals') }].map(({ value, label }) => (
+                    <button
+                      key={value}
+                      onClick={() => setGlancePage(value)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        glancePage === value
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       ),
     },
     tabletViewDefaults: {

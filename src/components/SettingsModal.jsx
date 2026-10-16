@@ -5,15 +5,7 @@ import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
 import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
 import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
 import { searchSettings } from './settings/settingsSearch.js';
-import useGeneralTopic from './settings/topics/useGeneralTopic.jsx';
-import useAppearanceTopic from './settings/topics/useAppearanceTopic.jsx';
-import useFeaturesTopic from './settings/topics/useFeaturesTopic.jsx';
-import useAiTopic from './settings/topics/useAiTopic.jsx';
-import useSyncTopic from './settings/topics/useSyncTopic.jsx';
-import useIntegrationsTopic, { useIntentForm } from './settings/topics/useIntegrationsTopic.jsx';
-import useNotificationsTopic from './settings/topics/useNotificationsTopic.jsx';
-import useBackupTopic from './settings/topics/useBackupTopic.jsx';
-import useAboutTopic from './settings/topics/useAboutTopic.jsx';
+import useSettingsSections from './settings/useSettingsSections.js';
 import { useTranslation } from 'react-i18next';
 
 const SettingsModal = () => {
@@ -23,23 +15,9 @@ const SettingsModal = () => {
   } = useDayPlannerCtx();
 
   // Every block of the dialog, with the condition under which it renders
-  // anything, from each topic's own file under settings/topics/. A topic page
-  // is a list of these; separators go between the visible ones only (#2075,
-  // docs/settings-redesign.md step 1). The hooks run whichever topic is open,
-  // so the topic list, its dots and search see every section, and a form's
-  // unsaved edits survive switching topics.
-  const [intentForm, setIntentForm] = useIntentForm();
-  const sections = {
-    ...useGeneralTopic(),
-    ...useAppearanceTopic(),
-    ...useFeaturesTopic({ intentForm }),
-    ...useAiTopic(),
-    ...useSyncTopic(),
-    ...useIntegrationsTopic({ intentForm, setIntentForm }),
-    ...useNotificationsTopic(),
-    ...useBackupTopic(),
-    ...useAboutTopic(),
-  };
+  // anything (settings/useSettingsSections.js). A topic page is a list of
+  // these; separators go between the visible ones only (#2075).
+  const sections = useSettingsSections();
 
   // The topic list shows only topics with something to show on this device,
   // and opens on the topic last used here (docs/settings-redesign.md).

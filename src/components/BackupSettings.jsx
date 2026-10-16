@@ -83,7 +83,7 @@ const BackupSettings = () => {
           confirmation before anything is deleted. */}
       <div className="space-y-3" data-backup-actions>
         <p className={`text-xs ${textSecondary}`}>{t('backup.description')}</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button type="button" onClick={() => exportBackup()} title={t('backup.exportHint')} className={`${actionClass} ${textPrimary}`} data-backup-action="export">
             <Upload size={16} className="rotate-180 flex-shrink-0" />
             <span className="truncate">{t('backup.exportBackup')}</span>

@@ -66,7 +66,7 @@ describe('App wiring', () => {
 
 describe('the view pickers in Settings wrap', () => {
   it('no view row can run into the next column', () => {
-    const modal = readFileSync(new URL('../components/SettingsModal.jsx', import.meta.url), 'utf8');
+    const modal = readFileSync(new URL('../components/settings/topics/useAppearanceTopic.jsx', import.meta.url), 'utf8');
     const panel = readFileSync(new URL('../components/MobileSettingsPanel.jsx', import.meta.url), 'utf8');
     expect(modal.match(/<div className="flex flex-wrap gap-2">\s*\{enabledViews\(/g)).toHaveLength(3);
     expect(modal).not.toMatch(/<div className="flex gap-2">\s*\{enabledViews\(/);

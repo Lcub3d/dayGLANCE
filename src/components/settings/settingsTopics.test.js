@@ -8,9 +8,19 @@ import {
 // unchanged, onto exactly one topic page. These pin the mapping against the
 // dialog's own section list, so a block can neither be dropped nor shown twice.
 
-const modal = readFileSync(new URL('../SettingsModal.jsx', import.meta.url), 'utf8');
-const sectionsBlock = modal.slice(modal.indexOf('  const sections = {'), modal.indexOf('\n  };\n', modal.indexOf('  const sections = {')));
-const modalSectionKeys = [...sectionsBlock.matchAll(/^ {4}(\w+): \{\n {6}show:/gm)].map((m) => m[1]);
+// Each topic's sections live in its own file under topics/ (step 1's split),
+// named after the topic.
+const TOPIC_FILES = {
+  general: 'useGeneralTopic', appearance: 'useAppearanceTopic', features: 'useFeaturesTopic',
+  ai: 'useAiTopic', sync: 'useSyncTopic', integrations: 'useIntegrationsTopic',
+  notifications: 'useNotificationsTopic', backup: 'useBackupTopic', about: 'useAboutTopic',
+};
+const fileSectionKeys = (name) => {
+  const source = readFileSync(new URL(`./topics/${name}.jsx`, import.meta.url), 'utf8');
+  const block = source.slice(source.indexOf('\n  return {'), source.indexOf('\n  };\n', source.indexOf('\n  return {')));
+  return [...block.matchAll(/^ {4}(\w+): \{\n {6}show:/gm)].map((m) => m[1]);
+};
+const modalSectionKeys = Object.values(TOPIC_FILES).flatMap(fileSectionKeys);
 const en = JSON.parse(readFileSync(new URL('../../../public/locales/en/translation.json', import.meta.url), 'utf8'));
 
 describe('the topic map', () => {
@@ -19,6 +29,12 @@ describe('the topic map', () => {
     const placed = TOPICS.flatMap((topic) => topic.sections);
     expect([...placed].sort()).toEqual([...modalSectionKeys].sort());
     expect(new Set(placed).size).toBe(placed.length);
+  });
+
+  it("keeps each topic's sections in that topic's own file", () => {
+    for (const topic of TOPICS) {
+      expect([...fileSectionKeys(TOPIC_FILES[topic.id])].sort(), topic.id).toEqual([...topic.sections].sort());
+    }
   });
 
   it('labels every topic in the locale bundle', () => {

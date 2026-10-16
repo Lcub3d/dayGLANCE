@@ -23,7 +23,7 @@ async function i18n() {
 }
 
 const noop = () => {};
-const render = async (task, { isInbox = true, showDeadlinePicker = null } = {}) => renderToStaticMarkup(
+const render = async (task, { isInbox = true, showDeadlinePicker = null, showOverdueDate = false } = {}) => renderToStaticMarkup(
   <I18nextProvider i18n={await i18n()}>
     <DayPlannerContext.Provider value={{
       darkMode: false, cardBg: 'bg-white', borderClass: 'border-stone-200', textPrimary: 'text-stone-900', textSecondary: 'text-stone-500',
@@ -33,7 +33,7 @@ const render = async (task, { isInbox = true, showDeadlinePicker = null } = {}) 
     }}>
       <FeaturesContext.Provider value={{ projects: [], goalsProjectsEnabled: false, generateAISubtasks: noop, aiSubtasksLoadingForTask: null, aiConfig: null }}>
         <SyncContext.Provider value={{ loadWikiNote: null, saveWikiNote: null, openInObsidian: null }}>
-          <SchedTaskCard task={task} isInbox={isInbox} />
+          <SchedTaskCard task={task} isInbox={isInbox} showOverdueDate={showOverdueDate} />
         </SyncContext.Provider>
       </FeaturesContext.Provider>
     </DayPlannerContext.Provider>
@@ -41,6 +41,8 @@ const render = async (task, { isInbox = true, showDeadlinePicker = null } = {}) 
 );
 
 const deadlineButton = (html) => html.match(/<button[^>]*aria-label="Set deadline"[^>]*>[\s\S]*?<\/button>/)?.[0] ?? '';
+// The amber "this one is late" date, as opposed to the deadline button's own text.
+const overdueDate = (html) => html.match(/<span class="flex-shrink-0 font-medium text-amber-500">\s*([^<]+?)\s*<\/span>/)?.[1] ?? '';
 
 const base = { id: 'p-task', title: 'Draft outline', duration: 30, completed: false, projectId: 'proj1', subtasks: [] };
 
@@ -62,6 +64,18 @@ describe('SchedTaskCard deadline button', () => {
   it('no button on a completed task or a dated (non-inbox) card', async () => {
     expect(deadlineButton(await render({ ...base, completed: true }))).toBe('');
     expect(deadlineButton(await render({ ...base, date: '2030-03-15', startTime: '09:00' }, { isInbox: false }))).toBe('');
+  });
+
+  // The Overdue section holds both kinds of lateness (#2116 review), and an
+  // Inbox deadline row has no `date` at all: without the fallback it would show
+  // no date, which is the one thing the row is there to say.
+  it('the Overdue date comes from the deadline for an inbox row', async () => {
+    expect(overdueDate(await render({ ...base, deadline: '2030-03-15' }, { showOverdueDate: true }))).toMatch(/Mar\s*15/);
+    // …and from the scheduled day for a scheduled row, as before.
+    expect(overdueDate(await render(
+      { ...base, date: '2030-04-02', startTime: '09:00' },
+      { isInbox: false, showOverdueDate: true },
+    ))).toMatch(/Apr\s*2/);
   });
 
   // The PLANNER opens over the project card listing the same task, and the

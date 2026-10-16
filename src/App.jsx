@@ -3669,6 +3669,10 @@ const DayPlanner = () => {
         recurrence,
         projectId: task.projectId || null,
         keepUnscheduled: !!(task.projectId && !task.date),
+        // A project task that stays unscheduled is edited here, and its edit
+        // modal is the flavor that shows the deadline field, so the draft has
+        // to carry the current value (a scheduled task's own edit ignores it).
+        deadline: task.deadline || null,
       });
     }
     setShowAddTask(true);
@@ -3991,6 +3995,10 @@ const DayPlanner = () => {
           duration: newTask.duration,
           color: newTask.color || colors[0].class,
           projectId: newTask.projectId,
+          // An unscheduled project task takes a deadline like any inbox task:
+          // the project row already offers the picker, and the edit modal shows
+          // the field for this flavor (utils/pendingProject.js).
+          deadline: newTask.deadline || null,
           assignedUserSyncIds: mobileEditingTask.assignedUserSyncIds ?? rest.assignedUserSyncIds,
         }]);
       } else {
@@ -4001,6 +4009,7 @@ const DayPlanner = () => {
           duration: newTask.duration,
           color: newTask.color || colors[0].class,
           projectId: newTask.projectId,
+          deadline: newTask.deadline || null,
           assignedUserSyncIds: mobileEditingTask.assignedUserSyncIds ?? t.assignedUserSyncIds,
           transitionId: crypto.randomUUID(),
         } : t));

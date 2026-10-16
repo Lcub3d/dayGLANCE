@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Calendar, Check, Loader, Sparkles, Telescope, X } from 'lucide-react';
+import { BookOpen, Check, Loader, Sparkles, Telescope, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../context/FeaturesContext.jsx';
@@ -10,7 +10,8 @@ import QuickAddChips from './QuickAddChips.jsx';
 import TaskProjectField from './TaskProjectField.jsx';
 import RecurrencePicker from './RecurrencePicker.jsx';
 import TaskModalNotes from './TaskModalNotes.jsx';
-import { dateToString, extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
+import TaskDeadlineField from './TaskDeadlineField.jsx';
+import { extractTags, getRecurrenceLabel } from '../utils/taskUtils.js';
 import { formatLocalizedDate } from '../utils/localeFormatting.js';
 import useBackClose, { ABOVE_EDITORS } from '../hooks/useBackClose.js';
 import { aiFeatureOn } from '../ai.js';
@@ -271,37 +272,7 @@ const MobileNewTaskModal = () => {
                       ))}
                     </button>
                   </div>
-                  <div>
-                    <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.deadline')}</label>
-                    <div className="relative deadline-picker-container">
-                      <button
-                        type="button"
-                        onClick={() => !newTask.projectId && setShowNewTaskDeadlinePicker(!showNewTaskDeadlinePicker)}
-                        disabled={!!newTask.projectId}
-                        className={`w-full px-3 py-2 border ${borderClass} rounded-lg text-left text-sm ${darkMode ? 'bg-gray-700 text-white' : 'bg-white'} flex items-center gap-2 ${newTask.projectId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <Calendar size={14} className={textSecondary} />
-                        {newTask.deadline
-                          ? formatLocalizedDate(new Date(newTask.deadline + 'T12:00:00'), { month: 'short', day: 'numeric' })
-                          : t('task.noDeadline')}
-                      </button>
-                      {showNewTaskDeadlinePicker && (
-                        <div className={`absolute bottom-12 left-0 ${cardBg} rounded-lg shadow-xl border ${borderClass} p-2 min-w-[160px] z-20`}>
-                          <div className="space-y-1">
-                            <button type="button" onClick={() => { setNewTask({ ...newTask, deadline: dateToString(new Date()) }); setShowNewTaskDeadlinePicker(false); }} className={`w-full text-left px-3 py-2 rounded text-sm ${textPrimary} ${hoverBg} flex items-center gap-2`}><Calendar size={14} />{t('common.today')}</button>
-                            <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setNewTask({ ...newTask, deadline: dateToString(d) }); setShowNewTaskDeadlinePicker(false); }} className={`w-full text-left px-3 py-2 rounded text-sm ${textPrimary} ${hoverBg} flex items-center gap-2`}><Calendar size={14} />{t('common.tomorrow')}</button>
-                            <button type="button" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 7); setNewTask({ ...newTask, deadline: dateToString(d) }); setShowNewTaskDeadlinePicker(false); }} className={`w-full text-left px-3 py-2 rounded text-sm ${textPrimary} ${hoverBg} flex items-center gap-2`}><Calendar size={14} />{t('common.nextWeek')}</button>
-                            {newTask.deadline && (
-                              <>
-                                <div className={`border-t ${borderClass} my-1`}></div>
-                                <button type="button" onClick={() => { setNewTask({ ...newTask, deadline: null }); setShowNewTaskDeadlinePicker(false); }} className={`w-full text-left px-3 py-2 rounded text-sm text-red-500 ${hoverBg} flex items-center gap-2`}><X size={14} />{t('common.clear')}</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <TaskDeadlineField newTask={newTask} setNewTask={setNewTask} openUpward />
                   </>)}
                   <div className="col-span-2">
                     <label className={`block text-sm ${textSecondary} mb-1`}>{t('task.duration')}</label>
@@ -368,6 +339,11 @@ const MobileNewTaskModal = () => {
                       <span className={`ml-2 text-sm ${textPrimary}`}>{t('task.allDay')}</span>
                     </label>
                   </div>
+                  {/* Shows only when the task stays unscheduled (a project
+                      task kept in the inbox) and never for a series: a
+                      scheduled task carries no deadline, so the control
+                      renders nothing for one. */}
+                  <TaskDeadlineField newTask={newTask} setNewTask={setNewTask} openUpward />
                   {/* Unscheduled — only shown when a project is selected */}
                   {newTask.projectId && (
                     <div className="col-span-2">

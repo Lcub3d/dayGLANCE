@@ -3,10 +3,13 @@
 // modal leaves nothing behind.
 //
 // While it is pending, newTask.projectId holds NEW_PROJECT_ID, so the modal
-// treats the task as a project task (no priority or deadline, the
-// Unscheduled option, the button label), and newTask.newProject holds the
-// name and goal. Every path that saves newTask (addTask, saveMobileEditTask)
-// passes it through createPendingProject first, which swaps in the real id.
+// treats the task as a project task (the Unscheduled option, the button label,
+// and a disabled priority control), and newTask.newProject holds the name and
+// goal. The DEADLINE control stays live for it: an unscheduled project task is
+// an inbox task and the deadline is an inbox field, which is what the project
+// row's own picker already assumed (#2116 review). Every path that saves
+// newTask (addTask, saveMobileEditTask) passes it through createPendingProject
+// first, which swaps in the real id.
 import { PROJECT_FALLBACK_COLOR } from './colorUtils.js';
 
 export const NEW_PROJECT_ID = '__new-project__';

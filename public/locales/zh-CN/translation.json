@@ -2680,6 +2680,7 @@
       "toInbox": "已将“{{title}}”移至收件箱",
       "toBucket": "已将“{{title}}”移至心愿清单",
       "scheduled": "已安排“{{title}}”",
+      "scheduledDroppedDeadline": "已安排“{{title}}”（已移除截止日期）",
       "postponed": "已将“{{title}}”推迟到明天",
       "deadlineSet": "已为“{{title}}”设置截止日期",
       "deadlinePostponed": "已将“{{title}}”的截止日期改为 {{date}}",

@@ -3,49 +3,79 @@ import { CalendarPlus } from 'lucide-react';
 import { useDayPlannerCtx } from '../../context/DayPlannerContext.jsx';
 import { useFeaturesCtx } from '../../context/FeaturesContext.jsx';
 import { useTranslation } from 'react-i18next';
-import { taskColorToHex } from '../../utils/colorUtils.js';
+import { taskColorToHex, hexToRgba } from '../../utils/colorUtils.js';
 import { renderTitleWithoutTags } from '../../utils/textFormatting.jsx';
 import ClockTimePicker from '../ClockTimePicker.jsx';
 
 /**
  * Non-task rows in a SCHED day group: deadline tasks and (today only) routine
- * pills. Both are "not yet on the clock" items — tapping opens a time picker
- * that schedules them into the day, mirroring what dragging them onto the
- * timeline does in the MULTI views.
+ * pills. Both are "not yet on the clock" items, so both offer a way to put
+ * them on it: the deadline card's calendar button and a routine pill's
+ * press-and-hold open a time picker that schedules them into the day, mirroring
+ * what dragging them onto the timeline does in the MULTI views. The deadline
+ * card itself opens the task for editing, like every other card in the view.
  */
 
 /** A deadline task on its deadline day — all-day-task look with a dashed
-    border and a calendar affordance; tap picks a time on that day. */
+    border and a calendar affordance. Tapping the card opens the task for
+    editing, as every other card in the view does; the calendar button (and
+    only it) opens the time picker that schedules the task into the day,
+    mirroring what dragging it onto the timeline does. The project pill shows
+    where the task belongs, matching the scheduled cards beside it (#2116). */
 export const SchedDeadlineCard = ({ task, dateStr }) => {
   const {
     darkMode, cardBg, borderClass, textPrimary, textSecondary,
     scheduleDeadlineTaskAt, use24HourClock, isTablet,
+    openMobileEditTask,
   } = useDayPlannerCtx();
+  const { projects, goalsProjectsEnabled } = useFeaturesCtx();
   const { t } = useTranslation();
   const [showPicker, setShowPicker] = useState(false);
   const hex = taskColorToHex(task.color);
+  const project = goalsProjectsEnabled && task.projectId
+    ? projects.find(p => p.id === task.projectId)
+    : null;
 
   return (
     <>
       <div
-        onClick={() => !task.completed && setShowPicker(true)}
+        onClick={() => openMobileEditTask(task, true)}
         className={`flex items-center gap-2 rounded-xl border border-dashed ${borderClass} ${cardBg} px-3 py-2 ${
           task.completed ? 'opacity-55' : 'cursor-pointer active:opacity-70'
         }`}
         style={{ borderLeft: `4px solid ${hex}` }}
-        title={t('sched.deadlineTapToSchedule', 'Deadline — tap to pick a time')}
+        title={t('common.edit', 'Edit')}
       >
         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
           <span className={`text-sm font-medium ${textPrimary} truncate ${task.completed ? 'line-through' : ''}`}>
             {renderTitleWithoutTags(task.title)}
           </span>
-          <span className={`text-xs ${textSecondary} flex items-center gap-1.5`}>
-            <span className="font-medium text-red-400">{t('sched.deadline', 'Deadline')}</span>
-            {task.duration ? <span>{task.duration}m</span> : null}
+          <span className={`text-xs ${textSecondary} flex items-center gap-1.5 min-w-0`}>
+            <span className="font-medium text-red-400 flex-shrink-0">{t('sched.deadline', 'Deadline')}</span>
+            {task.duration ? <span className="flex-shrink-0">{task.duration}m</span> : null}
+            {project && (
+              <span
+                className="px-2 py-0.5 rounded-full text-[11px] font-medium truncate flex-shrink-0 max-w-[12rem] ml-auto"
+                style={{
+                  backgroundColor: hexToRgba(hex, darkMode ? 0.22 : 0.12),
+                  color: hex,
+                }}
+                title={project.title}
+              >
+                {project.title}
+              </span>
+            )}
           </span>
         </div>
         {!task.completed && (
-          <CalendarPlus size={14} className={`flex-shrink-0 ${textSecondary} opacity-60`} />
+          <button
+            onClick={e => { e.stopPropagation(); setShowPicker(true); }}
+            className={`flex-shrink-0 p-1 -m-1 rounded ${textSecondary} opacity-60 hover:opacity-100 hover:text-blue-500`}
+            title={t('sched.deadlineTapToSchedule', 'Deadline — tap to pick a time')}
+            aria-label={t('sched.scheduleForToday', 'Schedule for today')}
+          >
+            <CalendarPlus size={14} />
+          </button>
         )}
       </div>
       {showPicker && (

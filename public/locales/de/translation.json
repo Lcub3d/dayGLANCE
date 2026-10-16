@@ -2680,6 +2680,7 @@
       "toInbox": "„{{title}}“ in den Posteingang verschoben",
       "toBucket": "„{{title}}“ auf die Bucket List gesetzt",
       "scheduled": "„{{title}}“ eingeplant",
+      "scheduledDroppedDeadline": "„{{title}}“ eingeplant (Frist entfernt)",
       "postponed": "„{{title}}“ auf morgen verschoben",
       "deadlineSet": "Frist für „{{title}}“ gesetzt",
       "deadlinePostponed": "Frist von „{{title}}“ auf {{date}} verschoben",

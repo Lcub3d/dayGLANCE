@@ -113,6 +113,14 @@ export default function useDragDrop({
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  // Does this drop onto the timeline drop the task's deadline? Scheduling
+  // strips the inbox-only fields, and only these two sources reach a timeline
+  // drop as an inbox task (`inbox` itself, and an overdue deadline card, which
+  // is an inbox task wearing the overdue marker). Used for the UNDO LABEL, so
+  // the toast and the undo report say the deadline went.
+  const dropsDeadline = (task, source) =>
+    !!task?.deadline && (source === 'inbox' || (source === 'overdue' && task._overdueType === 'deadline'));
+
   // Measure actual hour row height from DOM (handles sub-pixel borders on high-DPI screens)
   const getHourHeight = () => {
     if (timeGridRef.current && timeGridRef.current.children.length > 2) {
@@ -427,7 +435,10 @@ export default function useDragDrop({
       return;
     }
 
-    pushUndo({ key: dragSource === 'inbox' ? 'scheduled' : 'moved', taskId: draggedTask.id });
+    pushUndo({
+      key: dropsDeadline(draggedTask, dragSource) ? 'scheduledDroppedDeadline' : (dragSource === 'inbox' ? 'scheduled' : 'moved'),
+      taskId: draggedTask.id,
+    });
     if (dragSource === 'inbox') {
       setUnscheduledTasks(prev => prev.filter(t => t.id !== draggedTask.id));
       const { priority, deadline, ...taskWithoutPriorityAndDeadline } = draggedTask;
@@ -562,7 +573,11 @@ export default function useDragDrop({
 
     const dropDateStr = dateToString(targetDate);
 
-    pushUndo({ key: dragSource === 'inbox' ? 'scheduled' : 'moved', taskId: draggedTask.id });
+    // All-day scheduling drops the same inbox-only fields; name a deadline.
+    pushUndo({
+      key: dropsDeadline(draggedTask, dragSource) ? 'scheduledDroppedDeadline' : (dragSource === 'inbox' ? 'scheduled' : 'moved'),
+      taskId: draggedTask.id,
+    });
     if (dragSource === 'inbox') {
       setUnscheduledTasks(prev => prev.filter(t => t.id !== draggedTask.id));
       const { priority, deadline, ...taskWithoutPriorityAndDeadline } = draggedTask;
@@ -1311,8 +1326,9 @@ export default function useDragDrop({
       if (fromAllDay && droppingToAllDay) {
         // no-op
       } else if (task.isDeadlineDrag) {
-        // Deadline task: move from unscheduled to scheduled
-        pushUndo({ key: 'scheduled', taskId: task.id });
+        // Deadline task: move from unscheduled to scheduled, which drops the
+        // deadline — the undo step says so.
+        pushUndo({ key: 'scheduledDroppedDeadline', taskId: task.id });
         setUnscheduledTasks(prev => prev.filter(t => t.id !== task.id));
         setTasks(prev => [...prev, {
           id: task.id,

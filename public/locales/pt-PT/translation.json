@@ -2680,6 +2680,7 @@
       "toInbox": "\"{{title}}\" movida para a caixa de entrada",
       "toBucket": "\"{{title}}\" enviada para a Bucket List",
       "scheduled": "\"{{title}}\" agendada",
+      "scheduledDroppedDeadline": "\"{{title}}\" agendada (prazo removido)",
       "postponed": "\"{{title}}\" adiada para amanhã",
       "deadlineSet": "Prazo definido para \"{{title}}\"",
       "deadlinePostponed": "Prazo de \"{{title}}\" mudado para {{date}}",

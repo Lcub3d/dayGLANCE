@@ -153,8 +153,16 @@ export default function useTaskActions({
       // newTask. Dismissed chips are not in nlSpans, so their text survives.
       // cleanTitle then strips sigil shorthand as before.
       const savedTitle = cleanTitle(stripSpans(newTask.title, newTask.nlSpans));
-      // Scheduling an Inbox task by swipe goes through here too.
-      pushUndo({ key: swipeSchedulingInboxTaskId.current ? 'scheduled' : 'added', title: savedTitle });
+      // Scheduling an Inbox task by swipe goes through here too, and that path
+      // strips the deadline: the undo step has to say so, or a toast that
+      // offers Undo would look like it only moved the task.
+      const swipeInboxTask = swipeSchedulingInboxTaskId.current
+        ? unscheduledTasks.find(t => t.id === swipeSchedulingInboxTaskId.current)
+        : null;
+      pushUndo({
+        key: swipeInboxTask ? (swipeInboxTask.deadline ? 'scheduledDroppedDeadline' : 'scheduled') : 'added',
+        title: savedTitle,
+      });
 
       // Determine whether this task should be linked to an Obsidian daily note.
       // Recurring and swipe-scheduling paths are excluded: recurring tasks use
@@ -203,9 +211,11 @@ export default function useTaskActions({
         }
         setUnscheduledTasks(prev => [...prev, inboxTask]);
       } else if (newTask.keepUnscheduled && newTask.projectId) {
-        // Save as unscheduled project task (no scheduling)
+        // Save as unscheduled project task (no scheduling). It is an inbox task
+        // by the same rule, and the editor's deadline field is live for it, so
+        // the value has to come through here too (#2116 review).
         createdId = taskId;
-        setUnscheduledTasks(prev => [...prev, task]);
+        setUnscheduledTasks(prev => [...prev, newTask.deadline ? { ...task, deadline: newTask.deadline } : task]);
       } else if (newTask.recurrence) {
         // Create recurring task template
         const taskDate = newTask.date || dateToString(selectedDate);
@@ -813,8 +823,16 @@ export default function useTaskActions({
     if (isInbox) {
       const task = unscheduledTasks.find(t => t.id === taskId);
       if (!task) return;
+      // Both fields are inbox-only, so putting the task on the clock drops
+      // them — the same strip the drag paths do. A dropped deadline is named in
+      // the undo step, and the toast below shows it (the action is reachable
+      // from an overdue Inbox deadline card, where the deadline is the reason
+      // the card is on screen at all).
+      const said = task.deadline ? pushUndo({ key: 'scheduledDroppedDeadline', taskId }) : null;
+      const { priority, deadline, ...preserved } = stripBucketId(task);
       setUnscheduledTasks(prev => prev.filter(t => t.id !== taskId));
-      setTasks(prev => [...prev, { ...stripBucketId(task), startTime: nextSlotTime, date: todayStr, isAllDay: false }]);
+      setTasks(prev => [...prev, { ...preserved, startTime: nextSlotTime, date: todayStr, isAllDay: false }]);
+      if (said) setUndoToast({ message: said, actionable: true });
     } else {
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, startTime: nextSlotTime, date: todayStr } : t));
     }
@@ -841,7 +859,10 @@ export default function useTaskActions({
     const slot = slots.find(s => s.minutes >= taskDuration);
     const startTime = slot ? slot.start : frame.start;
 
-    pushUndo({ key: 'scheduled', taskId });
+    // Placing it in a Frame schedules it, so the inbox-only fields go and a
+    // dropped deadline is named in the undo step (the sync notification below
+    // reports the placement itself).
+    pushUndo(task.deadline ? { key: 'scheduledDroppedDeadline', taskId } : { key: 'scheduled', taskId });
     const { priority, deadline, ...preserved } = task;
     setTasks(prev => [...prev, {
       ...preserved,
@@ -863,11 +884,13 @@ export default function useTaskActions({
 
   // SCHED: give a deadline task a concrete slot on a given day (deadline card
   // → scheduled task). Deadline and priority are stripped, matching what
-  // dragging a deadline chip onto the time grid does.
+  // dragging a deadline chip onto the time grid does — and because this button
+  // is the one-tap path for exactly the task the deadline is about, the toast
+  // says the deadline went, with an Undo that brings it back.
   const scheduleDeadlineTaskAt = (taskId, dateStr, startTime) => {
     const task = unscheduledTasks.find(t => t.id === taskId);
     if (!task) return;
-    pushUndo({ key: 'scheduled', taskId });
+    const said = pushUndo(task.deadline ? { key: 'scheduledDroppedDeadline', taskId } : { key: 'scheduled', taskId });
     const { priority, deadline, ...preserved } = task;
     setUnscheduledTasks(prev => prev.filter(t => t.id !== taskId));
     setTasks(prev => [...prev, {
@@ -878,6 +901,7 @@ export default function useTaskActions({
       isAllDay: false,
       lastModified: new Date().toISOString(),
     }]);
+    setUndoToast({ message: said, actionable: true });
     playUISound('pop');
   };
 

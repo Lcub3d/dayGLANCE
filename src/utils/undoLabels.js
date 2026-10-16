@@ -28,6 +28,7 @@ export const UNDO_LABELS = [
   'toInbox',
   'toBucket',
   'scheduled',
+  'scheduledDroppedDeadline',
   'postponed',
   'deadlineSet',
   'deadlinePostponed',

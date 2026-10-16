@@ -893,9 +893,10 @@ const DesktopLayout = () => {
                         macOS title bar carries the same numbers — always false
                         on a tablet, since that bar is Electron-on-macOS only.
                         The desktop strip collapses into a caret at the foot of
-                        the hour gutter; in WEEK that foot also holds the
-                        end-hour toggle whenever the band is trimmed, so the
-                        caret lifts over it. Keyed on the variant so a tablet
+                        the hour gutter. WEEK right-aligns its hour labels,
+                        so there the caret keeps to the gutter's left edge, and
+                        that foot also holds the end-hour toggle whenever the
+                        band is trimmed, so the caret lifts over it. Keyed on the variant so a tablet
                         turning between the two remounts it and reads the
                         right collapse flag. */}
                     {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && (
@@ -903,6 +904,7 @@ const DesktopLayout = () => {
                         key={isTablet && !isLandscape ? 'compact' : 'desktop'}
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}
+                        weekGutter={effectiveViewMode === 'week'}
                         liftCaret={effectiveViewMode === 'week' && weekTimelineEndHour < 24}
                       />
                     )}

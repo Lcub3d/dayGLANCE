@@ -22,11 +22,15 @@ const COLLAPSE_KEY = 'day-planner-summary-strip-collapsed';
 // always on, and it is the timeline's entry point for the day window.
 export const DESKTOP_COLLAPSE_KEY = 'day-planner-summary-strip-desktop-collapsed';
 
-// Where the caret sits over the hour gutter: 6px in, 20px wide, so it ends
-// before WEEK's right-aligned hour labels begin. Bottom matches the pill row's
-// pb-2, so the caret and the row read as one line; the lift clears WEEK's
-// end-hour toggle, which hangs at the foot of the same gutter.
-const CARET_LEFT = 6;
+// Where the caret sits over the hour gutter. DAY and MULTI left-align their
+// hour labels at the gutter's px-3, so the caret takes the same 12px line.
+// WEEK right-aligns them, which leaves its free space at the gutter's left
+// edge: there the caret sits 6px in so its 20px end before the labels begin.
+// Bottom matches the pill row's pb-2, so the caret and the row read as one
+// line; the lift clears WEEK's end-hour toggle, which hangs at the foot of the
+// same gutter whenever the band is trimmed.
+const CARET_LEFT = 12;
+const CARET_LEFT_WEEK = 6;
 const CARET_BOTTOM = 8;
 const CARET_BOTTOM_LIFTED = 14;
 
@@ -85,6 +89,8 @@ export const summaryPillClass = (darkMode) =>
  * @param staticPlacement In-flow instead of sticky — used by LIST view, where a
  *              sticky overlay reads as an extension of the list's spine. Static
  *              places the strip after the day's content as its own element.
+ * @param weekGutter The timeline is WEEK, whose gutter right-aligns its hour
+ *              labels: the desktop caret moves to the gutter's left edge.
  * @param liftCaret Raise the desktop caret clear of WEEK's end-hour toggle,
  *              which shares the foot of the hour gutter with it. Desktop only.
  * @param titlebarPills The macOS title bar is currently carrying today's pills
@@ -95,7 +101,7 @@ export const summaryPillClass = (darkMode) =>
  *              strip, since the bar cannot describe it. Never set alongside
  *              compact: the title bar only exists on macOS desktop.
  */
-export default function SummaryStrip({ compact = false, fabClearance = false, staticPlacement = false, titlebarPills = false, liftCaret = false, gutterInset = HOUR_GUTTER_W }) {
+export default function SummaryStrip({ compact = false, fabClearance = false, staticPlacement = false, titlebarPills = false, weekGutter = false, liftCaret = false, gutterInset = HOUR_GUTTER_W }) {
   const {
     selectedDate, getTasksForDate, listEndOfDayTime, visibleDays, isToday,
     darkMode, textPrimary, textSecondary,
@@ -213,7 +219,7 @@ export default function SummaryStrip({ compact = false, fabClearance = false, st
           className={`absolute pointer-events-auto w-5 h-[26px] rounded-full flex items-center justify-center border shadow-sm backdrop-blur-sm ${textSecondary} hover:opacity-80 ${
             darkMode ? 'bg-gray-900/85 border-gray-700' : 'bg-white/90 border-stone-200'
           }`}
-          style={{ left: CARET_LEFT, bottom: liftCaret ? CARET_BOTTOM_LIFTED : CARET_BOTTOM }}
+          style={{ left: weekGutter ? CARET_LEFT_WEEK : CARET_LEFT, bottom: liftCaret ? CARET_BOTTOM_LIFTED : CARET_BOTTOM }}
         >
           {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
         </button>

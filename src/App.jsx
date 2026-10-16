@@ -105,6 +105,7 @@ import ReminderToasts from './components/ReminderToasts.jsx';
 import TaskPeek from './components/TaskPeek.jsx';
 import { FOLLOW_UP_TAG_KEY, PEEK_TASK_EVENT, canFollowUp, completionFollowUpDraft, doneDateOf, normalizeFollowUpTag, resolveTaskRef, taskLink } from './utils/followUp.js';
 import ObsidianSyncToast from './components/ObsidianSyncToast.jsx';
+import { useSettingsLink } from './components/settings/settingsLink.js';
 import MobileNewTaskModal from './components/MobileNewTaskModal.jsx';
 import ProjectPlanner from './components/projects/ProjectPlanner.jsx';
 import DesktopNewTaskModal from './components/DesktopNewTaskModal.jsx';
@@ -1130,6 +1131,10 @@ const DayPlanner = () => {
 
   // Settings & Reminders modals
   const [showSettings, setShowSettings] = useState(false);
+  // Links into Settings at a topic and section (components/settings/settingsLink.js).
+  const { settingsLink, setSettingsLink, openSettings } = useSettingsLink({
+    isMobile, setShowSettings, setMobileActiveTab, setMobileSettingsView,
+  });
   const [collapsedSettings, setCollapsedSettings] = useState({ cloudSync: false, calSync: true, ai: true, obsidian: true, todoist: true, trmnl: true, multiUser: true, intent: true, automationIntents: true, localIntegrations: true });
   const [updateInfo, setUpdateInfo] = useState(null);
   const [updateDismissedVersion, setUpdateDismissedVersion] = useState(() => localStorage.getItem('dayglance-update-dismissed') || null);
@@ -8006,6 +8011,7 @@ const DayPlanner = () => {
     weekTimelineEndHour, setWeekTimelineEndHour,
     minimizedSections, setMinimizedSections,
     showSettings, setShowSettings,
+    settingsLink, setSettingsLink, openSettings,
     collapsedSettings, setCollapsedSettings,
     soundEnabled, setSoundEnabled,
     updateInfo, setUpdateInfo,

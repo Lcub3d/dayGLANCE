@@ -209,6 +209,21 @@ search works in every language.
 - the Obsidian header dot → Integrations → Obsidian;
 - existing "fix in settings" links on mobile.
 
+Done (`src/components/settings/settingsLink.js`): `openSettings` is on the
+app context. On desktop it opens the dialog at the topic; on a phone it opens
+the Settings tab on the topic's page. Either side reads the link once, scrolls
+to the section, opens the section's card if it starts folded, and clears it,
+so later visits open where the user left off. The links:
+
+- the header cloud and Obsidian buttons open Sync and Integrations → Obsidian
+  while their dot is red (an error, or a lost vault), and sync otherwise;
+- the MCP status modal links to Integrations → Local Integrations;
+- the Obsidian error toast has a Settings link to Integrations → Obsidian;
+- the calendar button, with nothing set up, opens Integrations → Calendar Sync;
+- the mobile timezone notice opens General.
+
+There is no cloud sync error toast; the header dot is that surface.
+
 ## Order of work
 
 Each step is one or more PRs, each shippable on its own.

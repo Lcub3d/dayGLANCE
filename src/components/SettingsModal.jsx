@@ -6,12 +6,14 @@ import SettingsTopicPage from './settings/SettingsTopicPage.jsx';
 import { TOPICS, visibleTopics, initialTopicId, readRememberedTopic, rememberTopic } from './settings/settingsTopics.js';
 import { searchSettings } from './settings/settingsSearch.js';
 import useSettingsSections from './settings/useSettingsSections.js';
+import { revealSettingsSection } from './settings/settingsLink.js';
 import { useTranslation } from 'react-i18next';
 
 const SettingsModal = () => {
   const { t } = useTranslation();
   const {
     setShowSettings, darkMode, cardBg, borderClass, textPrimary, textSecondary,
+    settingsLink, setSettingsLink,
   } = useDayPlannerCtx();
 
   // Every block of the dialog, with the condition under which it renders
@@ -35,14 +37,20 @@ const SettingsModal = () => {
   const openSearchResult = (result) => { selectTopic(result.topicId); setScrollToSection(result.sectionKey); };
   useEffect(() => {
     if (!scrollToSection) return undefined;
-    const el = document.querySelector(`[data-settings-section="${scrollToSection}"]`);
+    const key = scrollToSection;
     setScrollToSection(null);
-    if (!el) return undefined;
-    el.scrollIntoView?.({ block: 'start' });
-    el.setAttribute('data-settings-found', '');
-    const timer = setTimeout(() => el.removeAttribute('data-settings-found'), 1600);
-    return () => clearTimeout(timer);
+    return revealSettingsSection(key);
   }, [scrollToSection, activeTopicId]);
+
+  // A link from elsewhere in the app opens its topic, scrolled to its section
+  // (settings/settingsLink.js). Read once, then cleared.
+  useEffect(() => {
+    if (!settingsLink) return;
+    setSettingsLink(null);
+    if (!listedTopics.some((topic) => topic.id === settingsLink.topic)) return;
+    selectTopic(settingsLink.topic);
+    if (settingsLink.section) setScrollToSection(settingsLink.section);
+  }, [settingsLink]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>

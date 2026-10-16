@@ -3,17 +3,22 @@
 // for the keys this topic lists in settingsTopics.js; the dialog builds
 // its topic list, search and page from them.
 import React from 'react';
-import { ExternalLink, Info, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, ListChecks, X } from 'lucide-react';
 import HelpLinks from '../../HelpLinks.jsx';
+import SettingsCard from '../SettingsCard.jsx';
+import { getStorageUsage, formatBytes } from '../../../utils/storage.js';
 import { useTranslation } from 'react-i18next';
 import { useDayPlannerCtx } from '../../../context/DayPlannerContext.jsx';
+import { useSyncCtx } from '../../../context/SyncContext.jsx';
 
 export default function useAboutTopic() {
   const { t } = useTranslation();
   const {
     updateInfo, setUpdateInfo, setUpdateDismissedVersion, darkMode, textPrimary,
-    textSecondary,
+    textSecondary, borderClass, gettingStartedDismissed, setGettingStartedDismissed,
+    setShowSettings,
   } = useDayPlannerCtx();
+  const { setShowStorageBreakdown } = useSyncCtx();
   const updateVisible = !!updateInfo && !(typeof window !== 'undefined' && window.electronAPI?.isMAS === true);
 
   return {
@@ -22,10 +27,8 @@ export default function useAboutTopic() {
       attention: updateVisible ? 'red' : null,
       node: (
         <div className="space-y-5">
-          <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
-            <Info size={16} className={textSecondary} />
-            {t('settings.topics.about', 'About & Help')}
-          </h4>
+          {/* No heading of its own: the page is the section, and the phone's
+              page title already names it. */}
           {updateVisible && (
               <div className={`p-3 rounded-lg border ${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -71,6 +74,39 @@ export default function useAboutTopic() {
             {typeof __BUILD_TIMESTAMP__ !== 'undefined' ? ` · ${new Date(__BUILD_TIMESTAMP__).toLocaleString()}` : ''}
           </p>
           <HelpLinks textSecondary={textSecondary} />
+          {/* What the Help & Feedback dialog held besides the links: the
+              Getting Started checklist's switch and local storage use. */}
+          <SettingsCard
+            cardId="gettingStarted"
+            icon={ListChecks}
+            title={t('app.gettingStartedChecklist')}
+            hint={t('app.gettingStartedChecklistHint')}
+            checked={!gettingStartedDismissed}
+            onToggle={(on) => {
+              if (on) {
+                localStorage.removeItem('gettingStartedDismissed');
+                setGettingStartedDismissed(false);
+              } else {
+                setGettingStartedDismissed(true);
+              }
+            }}
+            darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
+          />
+          {(() => {
+            const usage = getStorageUsage();
+            const warn = usage.totalBytes > 4 * 1024 * 1024;
+            return (
+              <button
+                type="button"
+                data-about-storage
+                onClick={() => { setShowSettings(false); setShowStorageBreakdown(true); }}
+                className={`flex items-center gap-1.5 text-xs ${warn ? 'text-orange-500' : textSecondary} hover:opacity-75 transition-opacity`}
+              >
+                {warn && <AlertTriangle size={11} />}
+                Local storage: {formatBytes(usage.totalBytes)} / ~5 MB
+              </button>
+            );
+          })()}
         </div>
       ),
     },

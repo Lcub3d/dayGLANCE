@@ -1481,23 +1481,41 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
         <>
             {/* Automation intents (Tasker) — Android only. Opt-in gate for the
                 exported IntentReceiver + outbound RESULT/NOTIFY broadcasts.
-                A switch card like the others; the warning is its summary, so
-                it is read before the switch turns it on. */}
+                A collapsible card with a status dot like every integration;
+                the warning sits under the switch that turns it on. */}
             {isNativeAndroid() && (
             <SettingsCard
               cardId="automationIntents"
+              collapsible
               icon={Zap}
               title={t('settings.automationIntents')}
-              switchLabel={t('settings.automationIntentsToggle')}
               hint={t('settings.automationIntentsDesc')}
-              summary={t('settings.automationIntentsWarning')}
-              checked={automationIntentsEnabled}
-              onToggle={(v) => {
-                setAutomationIntentsEnabled(v);
-                nativeSetAutomationIntentsEnabled(v);
-              }}
+              badge={automationIntentsEnabled ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null}
               darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
-            />
+            >
+              <div className="space-y-1">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      id="automation-intents-toggle"
+                      checked={automationIntentsEnabled}
+                      onChange={(e) => {
+                        const v = e.target.checked;
+                        setAutomationIntentsEnabled(v);
+                        nativeSetAutomationIntentsEnabled(v);
+                      }}
+                      className="sr-only"
+                    />
+                    <div className={`w-10 h-6 rounded-full transition-colors ${automationIntentsEnabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}>
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${automationIntentsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </div>
+                  </div>
+                  <span className={`text-sm ${textPrimary}`}>{t('settings.automationIntentsToggle')}</span>
+                </label>
+                <p className={`text-xs ${textSecondary}`}>{t('settings.automationIntentsWarning')}</p>
+              </div>
+            </SettingsCard>
             )}
         </>
       ),

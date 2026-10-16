@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Activity, AlertCircle, BookOpen, CheckCircle, CheckSquare, Cloud, FolderOpen, Key, LayoutGrid, Loader, Lock, Plug, RefreshCw, Server, Settings, Upload, Wifi, Zap } from 'lucide-react';
 import SettingsCard from '../SettingsCard.jsx';
 import LocalIntegrationsSettings from '../../LocalIntegrationsSettings.jsx';
+import { useMcpStatus } from '../../McpStatusControls.jsx';
 import TodoistSettings from '../../TodoistSettings.jsx';
 import CalendarList from '../../CalendarList.jsx';
 import DirectAccessFileRow from '../../DirectAccessFileRow.jsx';
@@ -124,8 +125,12 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
     icloud: isICloudAvailable() && getIcloudIntentsEnabledFlag(),
     directAccess: isDirectAccessSupported() && getDirectAccessIntentsEnabledFlag(),
   };
-  // Local Integrations reports whether Stream Deck or MCP is on, for its dot.
-  const [localIntegrationsOn, setLocalIntegrationsOn] = useState(false);
+  // The Local Integrations dot: Stream Deck or MCP on, read from the main
+  // process here rather than reported by the card's body, which only mounts
+  // once the card is opened (so the dot used to wait for that).
+  const localIntegrationsConfig = useMcpStatus().snapshot?.config;
+  const localIntegrationsOn = !!(localIntegrationsConfig?.streamDeck?.enabled
+    || (localIntegrationsConfig?.mcp?.readTier && localIntegrationsConfig.mcp.readTier !== 'off'));
 
   return {
     calendarSync: {
@@ -864,7 +869,7 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
             {/* Local Integrations (Stream Deck + MCP) — Electron only,
                 renders nothing on web/mobile builds. */}
             <SettingsCard cardId="localIntegrations" collapsible icon={Plug} title={t('settings.localIntegrations')} badge={localIntegrationsOn ? <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" /> : null} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}>
-              <LocalIntegrationsSettings variant="card" onActiveChange={setLocalIntegrationsOn} />
+              <LocalIntegrationsSettings variant="card" />
             </SettingsCard>
         </>
       ),

@@ -20,7 +20,7 @@ export default function useFeaturesTopic({ intentForm }) {
   const { t } = useTranslation();
   const {
     darkMode, borderClass, textPrimary, textSecondary, setOnboardingProgress,
-    tasks,
+    tasks, isMobile,
   } = useDayPlannerCtx();
   const {
     cloudSyncConfig,
@@ -127,7 +127,7 @@ export default function useFeaturesTopic({ intentForm }) {
                 cardId="jobo"
                 icon={BarChart3}
                 title={t('settings.enableJobo')}
-                hint={t('settings.enableJoboHint')}
+                hint={isMobile ? t('settings.enableJoboHintPhone') : t('settings.enableJoboHint')}
                 checked={joboEnabled}
                 onToggle={setJoboEnabled}
                 darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}

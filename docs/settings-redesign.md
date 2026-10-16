@@ -181,6 +181,17 @@ row opens the same page component desktop shows on the right. Mobile-only
 pages that already exist as `variant="page"` (Todoist, Local Integrations)
 become the shared implementation.
 
+Done: the rows are the topics this device shows, each opening its page from
+`useSettingsSections`, the same sections the dialog draws. Syncing calendars
+stays a row above them (an action, not a page), and Help & Feedback a row
+below them (the phone's `?`). Frames, Routines and Habits keep their own
+screens, which their tiles open. What only a phone had moved into the shared
+sections behind the same conditions: the Location block on General (phones
+have no header weather), the phone's view defaults on Appearance
+(`mobileViewDefaults`), the iOS Live Activity card on Notifications, and the
+native Obsidian vault actions (an Android phone picks the folder in the app's
+settings; every native app disconnects through its bridge).
+
 ## Search
 
 A search box at the top of the topic list. Each page declares its keywords

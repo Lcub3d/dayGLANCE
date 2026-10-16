@@ -58,7 +58,7 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
     setObsidianCompletionDates, obsidianVaultHandleRef, unportableVaultFiles,
     setUnportableVaultFiles, performObsidianSync, trmnlConfig, setTrmnlConfig,
     trmnlSyncStatus, trmnlLastSynced, performTrmnlSync, setShowIntentActivityLog,
-    removeFileImportedEvents, todoist,
+    removeFileImportedEvents, todoist, nativeClearVault, setWikilinkCandidates,
   } = useSyncCtx();
   const {
     multiUserEnabled, meUserSyncId,
@@ -361,7 +361,10 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                   {t('settings.obsidianBrowserRequirement', { defaultValue: 'Obsidian integration requires a Chromium-based browser (Chrome, Edge, or Brave). Firefox and Safari do not support the File System Access API.' })}
                 </p>
               )}
-              {isNativeAndroid() ? (
+              {/* An Android TABLET configures the vault in the app's own
+                  settings; an Android phone edits the same fields here and
+                  opens those settings only to pick the vault folder. */}
+              {isNativeAndroid() && !isMobile ? (
                 <div className="space-y-3">
                   <p className={`text-xs ${textSecondary}`}>
                     {t('settings.obsidianNativeSettingsHint', { defaultValue: 'Vault access and daily note settings are configured in the app settings.' })}
@@ -564,7 +567,7 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                         <span className={`text-sm ${textPrimary}`}>{t('settings.obsidianLaunchOnWrite')}</span>
                       </label>
                       <p className={`text-xs ${textSecondary} mt-1`}>
-                        {t('settings.obsidianLaunchOnWriteHint')}
+                        {launchOnWritePlatform === 'android' ? t('settings.obsidianLaunchOnWriteHintAndroid') : t('settings.obsidianLaunchOnWriteHint')}
                       </p>
                     </div>
                   )}
@@ -640,6 +643,8 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                     <button
                       data-obsidian-change-vault
                       onClick={async () => {
+                        // Android picks the folder in the app's own settings.
+                        if (isNativeAndroid()) { window.DayGlanceNative.openSettings(); return; }
                         if (isNativeApp()) { nativePickVault(); return; }
                         try {
                           const handle = await requestVaultAccess();
@@ -654,14 +659,18 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                       className={`px-4 py-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-stone-200 hover:bg-stone-300'} ${textPrimary} rounded-lg text-sm transition-colors flex items-center gap-2`}
                     >
                       <FolderOpen size={14} />
-                      {t('settings.obsidianChangeVault')}
+                      {isNativeAndroid() ? t('settings.obsidianVaultSettings') : t('settings.obsidianChangeVault')}
                     </button>
                     <button
                       onClick={async () => {
-                        await disconnectVault();
+                        // A native app holds the vault in its bridge (SAF
+                        // URI, iOS bookmark), not in a browser handle.
+                        if (isNativeApp()) nativeClearVault?.();
+                        else await disconnectVault();
                         obsidianVaultHandleRef.current = null;
                         setObsidianConfig(null);
                         setObsidianLastSynced(null);
+                        setWikilinkCandidates?.([]);
                         setUnportableVaultFiles?.([]);
                         localStorage.removeItem('day-planner-obsidian-last-synced');
                         // Remove Obsidian-imported tasks
@@ -698,7 +707,12 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                     : <BridgePairingPanel vaultHandleRef={obsidianVaultHandleRef} darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass} />}
                   <UnportableVaultNamesPanel entries={unportableVaultFiles} darkMode={darkMode} textSecondary={textSecondary} />
                 </div>
-              ) : (
+              ) : (<>
+                {isNativeApp() && (
+                  <p className={`text-xs ${textSecondary}`}>
+                    {t('settings.obsidianNoVaultConfigured', { defaultValue: 'No vault configured. Open settings to select your Obsidian vault folder.' })}
+                  </p>
+                )}
                 <button
                   onClick={async () => {
                     // Native app (iOS lands here; Android took its own
@@ -709,6 +723,10 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                     // browser-only and, gated on Android alone, used to
                     // leave iPad with a dead connect button that could
                     // only alert about Chromium.
+                    if (isNativeAndroid()) {
+                      window.DayGlanceNative.openSettings();
+                      return;
+                    }
                     if (isNativeApp()) {
                       nativePickVault();
                       return;
@@ -726,9 +744,9 @@ export default function useIntegrationsTopic({ intentForm, setIntentForm }) {
                   className={`px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 text-sm`}
                 >
                   <FolderOpen size={14} />
-                  {t('settings.obsidianSelectVault')}
+                  {isNativeAndroid() ? t('settings.obsidianVaultSettings') : t('settings.obsidianSelectVault')}
                 </button>
-              )}
+              </>)}
             </div>
             </SettingsCard>
             </>)}

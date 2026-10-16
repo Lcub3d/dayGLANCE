@@ -3,7 +3,7 @@
 // for the keys this topic lists in settingsTopics.js; the dialog builds
 // its topic list, search and page from them.
 import React, { useState } from 'react';
-import { Archive, Bell, Clock, Globe, Key, Newspaper, Settings, Thermometer } from 'lucide-react';
+import { Archive, Bell, Clock, Globe, Key, MapPin, Newspaper, Settings, Thermometer } from 'lucide-react';
 import { getTzLabel, getTzOptions } from '../../../utils/timezones.js';
 import FollowUpTagSetting from '../../FollowUpTagSetting.jsx';
 import LanguagePicker from '../../LanguagePicker.jsx';
@@ -261,16 +261,14 @@ export default function useGeneralTopic() {
       ),
     },
     weather: {
-      show: !isMobile,
+      show: true,
       node: (
         <>
             {!isMobile && (<>
 
             {/* Weather — desktop and tablet (a tablet in landscape
                 already counted as desktop here; portrait now matches).
-                Phones never open this modal: their settings live in
-                MobileSettingsPanel, whose App Settings screen has a
-                Location section with the same field and unit. */}
+                A phone shows the Location block below instead. */}
             <div className="space-y-3">
               <h4 className={`font-medium ${textPrimary} flex items-center gap-2`}>
                 <Thermometer size={16} className={textSecondary} />
@@ -308,6 +306,47 @@ export default function useGeneralTopic() {
                   </div>
                 </>
               )}
+            </div>
+            </>)}
+            {isMobile && (<>
+            {/* Location. The Day Dial's sunrise, sunset, moon and hourly weather,
+                in the app and on the home-screen widget, are computed for this
+                place; without it the dial draws an unlit sky. The same field,
+                geocode and unit as the Weather block above,
+                without the header toggle: nothing on a phone renders header
+                weather, and useWeather geocodes regardless of that toggle. */}
+            <div className="space-y-2">
+              <label htmlFor="mobile-settings-location" className={`font-medium ${textPrimary} flex items-center gap-2`}>
+                <MapPin size={16} className={textSecondary} />
+                {t('settings.location')}
+              </label>
+              <p className={`text-xs ${textSecondary}`}>{t('settings.locationHelp')}</p>
+              <input
+                id="mobile-settings-location"
+                type="text"
+                placeholder={t('settings.weatherLocationPlaceholder', { defaultValue: 'e.g. 90210 or Seattle' })}
+                value={weatherZip}
+                onChange={(e) => setWeatherZip(e.target.value)}
+                onBlur={() => fetchWeather()}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+                className={`w-full px-3 py-2 text-sm rounded-lg border ${borderClass} ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-stone-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              />
+              <div className={`text-xs ${textSecondary}`}>{t('settings.weatherTempUnit')}</div>
+              <div className="flex gap-2">
+                {[{ value: 'fahrenheit', label: '°F' }, { value: 'celsius', label: '°C' }].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => { setWeatherTempUnit(value); setTimeout(fetchWeather, 100); }}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      weatherTempUnit === value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : `${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-stone-300'} ${textPrimary}`
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             </>)}
         </>

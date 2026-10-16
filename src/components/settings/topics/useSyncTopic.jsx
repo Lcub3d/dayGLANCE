@@ -22,14 +22,19 @@ export default function useSyncTopic() {
     cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncLastSynced,
     cloudSyncStatus, cloudSyncError, cloudSyncNow, vaultSyncNow,
     vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped,
-    setSyncKeyReady,
+    setSyncKeyReady, vaultEnabled,
   } = useSyncCtx();
   const currentProvider = cloudSyncConfig?.provider || 'nextcloud';
   const provider = cloudSyncProviders[currentProvider];
 
+  // A failed sync marks the Sync topic red, in the dialog's list and on the
+  // phone's row: the channel in use is WebDAV when it is on, else GLANCEvault.
+  const syncStatus = cloudSyncConfig?.enabled ? cloudSyncStatus : vaultEnabled ? vaultStatus : null;
+
   return {
     cloudSync: {
       show: true,
+      attention: syncStatus === 'error' ? 'red' : null,
       node: (
         <>
             {/* Cloud Sync Section */}

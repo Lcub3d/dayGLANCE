@@ -59,15 +59,19 @@ describe('DirectAccessSyncCard: the encryption switch', () => {
 });
 
 describe('DirectAccessSyncCard: the card', () => {
-  it('is a Settings card whose switch, once connected, keeps changing the folder and disconnecting in reach while off', () => {
+  it('is a Settings card with its switch in every state; connected and off, changing the folder and disconnecting stay in reach', () => {
     const offCard = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ enabled: false })} crypto={crypto(true)} />);
     expect(offCard).toContain('data-settings-card="directAccess"');
     expect(offCard).toMatch(/aria-checked="false" aria-label="directAccess\.title"/);
     expect(offCard).toContain('directAccess.changeFolder');
     expect(offCard).toContain('directAccess.disconnect');
     const disconnected = renderToStaticMarkup(<DirectAccessSyncCard {...props} transport={fakeTransport({ status: 'disconnected', connected: false, name: null })} crypto={crypto(true)} />);
-    expect(disconnected).toContain('data-settings-card-state="static"');
-    expect(disconnected).toContain('directAccess.chooseFolder');
+    // Not connected: the switch is there, off, saying so; turning it on
+    // shows the folder choice (choosing is local state, not rendered here).
+    expect(disconnected).toContain('data-settings-card-state="off"');
+    expect(disconnected).toMatch(/aria-checked="false" aria-label="directAccess\.title"/);
+    expect(disconnected).toContain('directAccess.notConnected');
+    expect(disconnected).not.toContain('directAccess.chooseFolder');
   });
 });
 

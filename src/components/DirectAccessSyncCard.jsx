@@ -114,13 +114,19 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
     finally { setBusy(false); }
   };
   const toggle = () => transport.setEnabled(!status.enabled);
+  // Not connected: the switch shows the choice of folder or file.
+  const [choosing, setChoosing] = useState(false);
+  // A connection ends the choosing; a later disconnect starts from off.
+  useEffect(() => { if (status.connected) setChoosing(false); }, [status.connected]);
 
   const button = `px-3 py-1.5 text-sm rounded-lg border ${borderClass} ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-stone-100'} ${textPrimary} disabled:opacity-50`;
 
-  // A Settings card like the other channels (docs/settings-redesign.md). Its
-  // switch appears once a folder is connected; its contents stay while it is
-  // off, since changing the folder and disconnecting are still there to do.
-  // Encryption is a card inside it, as the Sync page's own encryption is.
+  // A Settings card like the other channels (docs/settings-redesign.md), its
+  // switch there in every state. Connected, it turns the channel on and off,
+  // and the contents stay while off: changing the folder and disconnecting
+  // are still there to do. Not connected, turning it on shows the folder (or
+  // file) choice; picking one connects it. Encryption is a card inside it, as
+  // the Sync page's own encryption is.
   const platformHint = isNativeAndroid() ? t('directAccess.androidHint') : isNativeIOS() ? t('directAccess.iosHint') : null;
   const removable = crypto.hasEncryptionReady() || !!crypto.getSyncPassphrase();
   return (
@@ -134,7 +140,10 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
             Android picker; only an app that mirrors to local storage works. */}
         {platformHint && <span className="block mt-1">{platformHint}</span>}
       </>}
-      {...(status.connected ? { checked: !!status.enabled, onToggle: toggle, contentsWhenOff: true } : {})}
+      checked={status.connected ? !!status.enabled : choosing}
+      onToggle={status.connected ? toggle : setChoosing}
+      contentsWhenOff={status.connected}
+      summary={!status.connected && !choosing ? (ios ? t('directAccess.notConnectedFile') : t('directAccess.notConnected')) : null}
       darkMode={darkMode} textPrimary={textPrimary} textSecondary={textSecondary} borderClass={borderClass}
     >
     <div className="space-y-3">
@@ -147,7 +156,6 @@ const DirectAccessSyncCard = ({ darkMode, textPrimary, textSecondary, borderClas
       )}
       {!status.connected ? (
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className={`text-xs ${textSecondary}`}>{ios ? t('directAccess.notConnectedFile') : t('directAccess.notConnected')}</p>
           <div className="flex gap-2">
             <button type="button" onClick={pick} disabled={busy || status.status === 'unknown'} className={button}>
               {ios ? t('directAccess.chooseFile') : t('directAccess.chooseFolder')}

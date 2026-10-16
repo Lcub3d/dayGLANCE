@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useDayPlannerCtx } from '../context/DayPlannerContext.jsx';
 import SettingsTopicNav from './settings/SettingsTopicNav.jsx';
@@ -35,6 +35,10 @@ const SettingsModal = () => {
   const [scrollToSection, setScrollToSection] = useState(null);
   const searchResults = settingsQuery ? searchSettings(settingsQuery, sections, t) : [];
   const openSearchResult = (result) => { selectTopic(result.topicId); setScrollToSection(result.sectionKey); };
+  // Each topic opens at its top, not at the last page's scroll offset; before
+  // paint, and before a search result or link scrolls to its section.
+  const scrollRef = useRef(null);
+  useLayoutEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [activeTopicId]);
   useEffect(() => {
     if (!scrollToSection) return undefined;
     const key = scrollToSection;
@@ -98,7 +102,7 @@ const SettingsModal = () => {
                 textSecondary={textSecondary}
                 borderClass={borderClass}
               />
-              <div className="flex-1 min-w-0 overflow-y-auto p-6" data-settings-scroll>
+              <div ref={scrollRef} className="flex-1 min-w-0 overflow-y-auto p-6" data-settings-scroll>
 
                 {settingsQuery ? (
                   <div data-settings-results className="space-y-1">

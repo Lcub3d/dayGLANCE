@@ -183,8 +183,11 @@ become the shared implementation.
 
 Done: the rows are the topics this device shows, each opening its page from
 `useSettingsSections`, the same sections the dialog draws. Syncing calendars
-stays a row above them (an action, not a page), and Help & Feedback a row
-below them (the phone's `?`). Frames, Routines and Habits keep their own
+stays a row above them (an action, not a page). Help & Feedback is gone
+from the phone: About & Help carries its links, the Getting Started
+checklist's switch and local storage use. The rows are alike; a failed sync
+marks Sync with the same red dot the dialog's list shows. A page opens at its
+top, and Back returns the list to where it was. Frames, Routines and Habits keep their own
 screens, which their tiles open. What only a phone had moved into the shared
 sections behind the same conditions: the Location block on General (phones
 have no header weather), the phone's view defaults on Appearance
@@ -196,8 +199,11 @@ The cards that only native devices show are `SettingsCard`s too: iCloud sync
 (Apple) is a switch card; Direct Access (Android, iOS, desktop) is a card
 whose switch appears once a folder is connected, with its contents kept while
 off (`contentsWhenOff`) for changing the folder and disconnecting, and its
-encryption as a card inside it; Automation intents (Android) is a switch card
-whose warning is its summary, read before it is turned on. Card titles wrap
+encryption as a card inside it, and its switch shows in every state (off and
+not connected, turning it on offers the folder or file to pick); Automation
+intents (Android) is a collapsible card with a status dot like every other
+integration, its switch and warning inside. Integrations are collapsible
+cards with dots; switch cards belong to Sync and Features. Card titles wrap
 rather than truncate, so a long one reads whole on a phone.
 
 ## Search

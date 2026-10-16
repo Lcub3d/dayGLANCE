@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Activity, Bell, BrainCircuit, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, Flag, Footprints, Globe, GripVertical, HelpCircle, Info, LayoutGrid, Monitor, Moon, Palette, Pencil, Plug, Plus, RefreshCw, Save, Settings, Sparkles, Sun, Target, Trash2, Volume2, VolumeX, WifiOff } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Activity, Bell, BrainCircuit, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, Flag, Footprints, Globe, GripVertical, Info, LayoutGrid, Monitor, Moon, Palette, Pencil, Plug, Plus, RefreshCw, Save, Settings, Sparkles, Sun, Target, Trash2, Volume2, VolumeX, WifiOff } from 'lucide-react';
 import { HABIT_ICONS, HABIT_ICON_NAMES, HABIT_COLORS } from '../constants/habits.js';
 import { getDeviceId } from '../native.js';
 import { formatLocalizedDate, localizedWeekdays } from '../utils/localeFormatting.js';
@@ -30,13 +30,12 @@ const MobileSettingsPanel = () => {
     consumeTestPurchase, canConsumeTestPurchase, darkMode, themePref, setThemePref,
     mobileSettingsView, setMobileSettingsView, use24HourClock, setUse24HourClock,
     weekStartDay, setWeekStartDay, homeTimezone, soundEnabled, setSoundEnabled,
-    setShowHelpModal, allTags, unscheduledTasks, getTodayStr,
-    setOnboardingProgress, cardBg, borderClass, textPrimary, textSecondary,
-    hoverBg, colors, formatTime, settingsLink, setSettingsLink,
+    allTags, unscheduledTasks, getTodayStr, setOnboardingProgress, cardBg,
+    borderClass, textPrimary, textSecondary, hoverBg, colors, formatTime,
+    settingsLink, setSettingsLink,
   } = useDayPlannerCtx();
   const {
-    calSyncStatus, calSyncConfigured, isSyncing, cloudSyncConfig, cloudSyncStatus,
-    vaultStatus, vaultEnabled, syncAll,
+    calSyncStatus, calSyncConfigured, isSyncing, syncAll,
   } = useSyncCtx();
 
   const {
@@ -88,6 +87,21 @@ const MobileSettingsPanel = () => {
     ? listedTopics.find((topic) => `topic:${topic.id}` === mobileSettingsView) ?? null
     : null;
   const openTopic = (id) => setMobileSettingsView(mobileViewForTopic(id));
+  // The list and every page share one scroll area. A page opens at its top,
+  // not at the list's offset (a row far down opened its page part-way down),
+  // and Back returns the list to where it was. Before paint, and before a
+  // link's reveal below scrolls to its section. The list's offset is kept as
+  // it scrolls: once a page replaces it, the browser has already clamped it.
+  const scrollRef = useRef(null);
+  const listScrollRef = useRef(0);
+  const prevViewRef = useRef(mobileSettingsView);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const prev = prevViewRef.current;
+    prevViewRef.current = mobileSettingsView;
+    if (!el || prev === mobileSettingsView) return;
+    el.scrollTop = mobileSettingsView === 'main' ? listScrollRef.current : 0;
+  }, [mobileSettingsView]);
   // A topic this device doesn't show (a link, or a remembered view) falls
   // back to the list rather than a blank screen.
   const strandedTopic = mobileSettingsView?.startsWith('topic:') && !mobileTopic;
@@ -101,26 +115,9 @@ const MobileSettingsPanel = () => {
     return section ? revealSettingsSection(section) : undefined;
   }, [settingsLink, mobileTopic]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The Sync row keeps its live dot: WebDAV or GLANCEvault, whichever is on.
-  const syncIcon = (() => {
-    const webdavOn = !!cloudSyncConfig?.enabled;
-    const syncOn = webdavOn || vaultEnabled;
-    const st = webdavOn ? cloudSyncStatus : vaultStatus;
-    const syncing = st === 'uploading' || st === 'downloading';
-    return (
-      <div className="relative">
-        <Cloud size={20} className={`${syncOn ? 'text-blue-500' : textSecondary} ${syncing ? 'animate-pulse' : ''}`} />
-        {syncOn && (
-          <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'} ${
-            syncing ? 'bg-blue-500 animate-pulse' : st === 'error' ? 'bg-red-500' : 'bg-green-500'
-          }`} />
-        )}
-      </div>
-    );
-  })();
 
   return (
-<div className={`relative overflow-hidden mobile-tab-fade-in flex-1 min-h-0 overflow-y-auto`}>
+<div ref={scrollRef} data-mobile-settings-scroll onScroll={(e) => { if (mobileSettingsView === 'main') listScrollRef.current = e.currentTarget.scrollTop; }} className={`relative overflow-hidden mobile-tab-fade-in flex-1 min-h-0 overflow-y-auto`}>
   {/* Main settings view */}
   <div
     className={`px-4 py-4 space-y-4 transition-transform duration-200 ${mobileSettingsView !== 'main' ? '-translate-x-full' : 'translate-x-0'}`}
@@ -260,7 +257,7 @@ const MobileSettingsPanel = () => {
             data-mobile-settings-topic={topic.id}
             className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
           >
-            {topic.id === 'sync' ? syncIcon : <Icon size={20} className={textSecondary} />}
+            <Icon size={20} className={textSecondary} />
             <span className={`font-medium ${textPrimary} flex-1 text-left`}>{t(topic.labelKey, topic.fallback)}</span>
             {mark && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${mark === 'red' ? 'bg-red-500' : 'bg-amber-500'}`} />}
             <ChevronRight size={18} className={textSecondary} />
@@ -272,14 +269,6 @@ const MobileSettingsPanel = () => {
     {/* Stats */}
     {/* Sub-menu buttons */}
     <div className="space-y-2">
-      <button
-        onClick={() => setShowHelpModal(true)}
-        className={`w-full ${cardBg} border ${borderClass} rounded-xl p-4 flex items-center gap-3`}
-      >
-        <HelpCircle size={20} className={textSecondary} />
-        <span className={`font-medium ${textPrimary} flex-1 text-left`}>{t('app.helpFeedback')}</span>
-        <ChevronRight size={18} className={textSecondary} />
-      </button>
       {canConsumeTestPurchase && devTapCount >= 7 && (
         confirmingPurchaseReset ? (
           <div className={`w-full ${cardBg} border border-red-500/40 rounded-xl p-3 space-y-2`}>

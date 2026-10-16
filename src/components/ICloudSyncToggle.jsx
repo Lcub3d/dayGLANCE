@@ -47,15 +47,9 @@ const ICloudSyncToggle = ({ darkMode, textPrimary, textSecondary, borderClass })
           role="switch"
           aria-checked={enabled}
           aria-label={t('icloudSync.title')}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-            enabled ? 'bg-green-500' : darkMode ? 'bg-gray-600' : 'bg-stone-300'
-          }`}
+          className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? 'bg-blue-600' : darkMode ? 'bg-gray-600' : 'bg-stone-300'}`}
         >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
-              enabled ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
+          <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${enabled ? 'left-5' : 'left-1'}`} />
         </button>
       </div>
     </div>

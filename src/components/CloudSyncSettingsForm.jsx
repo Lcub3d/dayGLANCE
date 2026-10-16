@@ -15,7 +15,7 @@ import { normalizeSyncFolder } from '../utils/syncFolder.js';
 import { useTranslation } from 'react-i18next';
 
 // Cloud sync settings form (extracted to avoid hooks-in-conditional issues)
-const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, afterChannels, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
+const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderClass, hoverBg, cloudSyncConfig, setCloudSyncConfig, cloudSyncTest, cloudSyncNow, provider, currentProvider, afterChannels, afterProxy, cloudSyncLastSynced, cloudSyncStatus, cloudSyncError, vaultSyncNow, vaultBootstrapSync, vaultStatus, vaultError, vaultLastSynced, vaultSkipped, onSyncKeyReady }) => {
   const { t } = useTranslation();
   // The WebDAV fields as saved; also what the WebDAV card's Cancel puts back.
   const savedFormData = () => {
@@ -1055,6 +1055,8 @@ const CloudSyncSettingsForm = ({ darkMode, textPrimary, textSecondary, borderCla
           </ul>
         </div>
       )}
+
+      {afterProxy}
 
     </div>
   );

@@ -94,7 +94,7 @@ const READ_TIER_OPTIONS = [
  *  - "card": the same bare content inside a desktop Settings card, which
  *    carries the title.
  */
-const LocalIntegrationsSettings = ({ variant, onActiveChange }) => {
+const LocalIntegrationsSettings = ({ variant }) => {
   const { t } = useTranslation();
   const {
     collapsedSettings, toggleSettingsSection,
@@ -177,11 +177,6 @@ const LocalIntegrationsSettings = ({ variant, onActiveChange }) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Whether Stream Deck or the MCP server is on, for the Settings card's dot.
-  // Computed before the early return so the hook order never changes.
-  const active = !!snapshot && (snapshot.config.streamDeck.enabled || snapshot.config.mcp.readTier !== 'off');
-  useEffect(() => { onActiveChange?.(active); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!api || !snapshot) return null;
 

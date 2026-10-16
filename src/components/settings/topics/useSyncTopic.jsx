@@ -72,6 +72,12 @@ export default function useSyncTopic() {
                       borderClass={borderClass}
                     />
                   )}
+                  </>
+                )}
+                // iCloud follows the network proxy: the proxy is about the
+                // channels above it, iCloud is a channel of its own.
+                afterProxy={(
+                  <>
                   {/* Apple platforms only — on Android/web every probe reports
                       unsupported, so the panel would be an empty box. */}
                   {isICloudAvailable() && (

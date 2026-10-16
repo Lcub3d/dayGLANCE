@@ -2090,6 +2090,8 @@
     "hideCompleted": "Ocultar concluídas"
   },
   "strip": {
+    "showSummary": "Mostrar resumo do dia",
+    "hideSummary": "Ocultar resumo do dia",
     "unblocked": "livre",
     "effort": "Esforço",
     "restore": "Descanso",

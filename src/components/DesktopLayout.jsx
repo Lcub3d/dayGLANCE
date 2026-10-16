@@ -43,7 +43,7 @@ const DesktopLayout = () => {
   const {
     isPhone, isMobile, isTablet, isLandscape,
     visibleDays, visibleDates,
-    effectiveViewMode,
+    effectiveViewMode, weekTimelineEndHour,
     tabBarRef, suppressTabBarRef,
     reviewScrollRef, calendarRef, timeGridRef, currentTimeRef,
     tagFilterBtnRef, spotlightInputRef, newTaskInputRef,
@@ -891,11 +891,19 @@ const DesktopLayout = () => {
                         the desktop layout, and takes the desktop strip.
                         titlebarPills lets it stand down for today while the
                         macOS title bar carries the same numbers — always false
-                        on a tablet, since that bar is Electron-on-macOS only. */}
+                        on a tablet, since that bar is Electron-on-macOS only.
+                        The desktop strip collapses into a caret at the foot of
+                        the hour gutter; in WEEK that foot also holds the
+                        end-hour toggle whenever the band is trimmed, so the
+                        caret lifts over it. Keyed on the variant so a tablet
+                        turning between the two remounts it and reads the
+                        right collapse flag. */}
                     {effectiveViewMode !== 'sched' && effectiveViewMode !== 'month' && effectiveViewMode !== 'jobo' && (
                       <SummaryStrip
+                        key={isTablet && !isLandscape ? 'compact' : 'desktop'}
                         compact={isTablet && !isLandscape}
                         titlebarPills={titlebarPills}
+                        liftCaret={effectiveViewMode === 'week' && weekTimelineEndHour < 24}
                       />
                     )}
                   </>

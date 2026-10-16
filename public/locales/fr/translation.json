@@ -2090,6 +2090,8 @@
     "hideCompleted": "Masquer les terminées"
   },
   "strip": {
+    "showSummary": "Afficher le résumé du jour",
+    "hideSummary": "Masquer le résumé du jour",
     "unblocked": "libre",
     "effort": "Effort",
     "restore": "Repos",
